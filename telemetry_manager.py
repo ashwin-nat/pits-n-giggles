@@ -32,7 +32,7 @@ class F12023TelemetryManager:
             F1PacketType.MOTION_EX : None,
         }
         self.m_packet_type_map = {
-            F1PacketType.MOTION : PacketMotionData,
+            # F1PacketType.MOTION : PacketMotionData,
             # F1PacketType.SESSION : PacketSessionData,
             # F1PacketType.LAP_DATA : PacketLapData,
             # F1PacketType.EVENT : PacketEventData,
@@ -45,7 +45,7 @@ class F12023TelemetryManager:
             # F1PacketType.CAR_DAMAGE : PacketCarDamageData,
             # F1PacketType.SESSION_HISTORY : PacketSessionHistoryData,
             # F1PacketType.TYRE_SETS : PacketTyreSetsData,
-            # F1PacketType.MOTION_EX : PacketMotionExData,
+            F1PacketType.MOTION_EX : PacketMotionExData,
         }
 
     def registerCallback(self, packet_type, callback):
@@ -71,6 +71,7 @@ class F12023TelemetryManager:
                 logging.debug('unsupported header')
                 continue
             is_packet_parser_available = (header.m_packetId in self.m_packet_type_map)
+
             if is_packet_parser_available:
                 try:
                     packet = self.m_packet_type_map[header.m_packetId](header, payload_raw)
@@ -92,12 +93,13 @@ class F12023TelemetryManager:
         i=0
         for char in hex_string:
             formatted_hex_string += char
-            if i%32 == 0:
-                formatted_hex_string += '\n'
-            elif i%16 == 0:
-                formatted_hex_string +='    '
-            elif i%2 == 0:
-                formatted_hex_string += ' '
+            if i != 0:
+                if i%32 == 0:
+                    formatted_hex_string += '\n'
+                elif i%16 == 0:
+                    formatted_hex_string +='    '
+                elif i%2 == 0:
+                    formatted_hex_string += ' '
             i += 1
 
         return formatted_hex_string

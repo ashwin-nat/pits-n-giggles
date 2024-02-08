@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) [year] [Your Name]
+# Copyright (c) [2024] [Ashwin Natarajan]
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,9 +24,40 @@ from enum import Enum, auto
 from typing import List
 from f1_packet_info import *
 import struct
+import binascii
 
 def _split_list(original_list, sublist_length):
     return [original_list[i:i+sublist_length] for i in range(0, len(original_list), sublist_length)]
+
+def _extract_sublist(data: bytes, lower_index: int, upper_index: int) -> bytes:
+    # Ensure the indices are within bounds
+    if lower_index < 0 or upper_index > len(data) or lower_index > upper_index:
+        # Return an empty bytes object to indicate an error
+        return b''
+
+    # Extract the sub-list
+    sub_list: bytes = data[lower_index:upper_index]
+    return sub_list
+
+def _packetDump(data):
+
+    # Convert the raw bytes to a string of hex values in upper case with a space between each byte
+    hex_string = binascii.hexlify(data).decode('utf-8').upper()
+
+    # Add a space between each pair of characters and format as 8 bytes per line
+    formatted_hex_string = ''
+    i=0
+    for char in hex_string:
+        formatted_hex_string += char
+        if i%32 == 0:
+            formatted_hex_string += '\n'
+        elif i%16 == 0:
+            formatted_hex_string +='    '
+        elif i%2 == 0:
+            formatted_hex_string += ' '
+        i += 1
+
+    return formatted_hex_string
 
 # -------------------- PACKET FORMAT STRINGS ---------------------------------
 header_format_string = "<HBBBBBQfIIBB"
@@ -165,10 +196,10 @@ class PacketMotionData:
         return f"PacketMotionData(Header: {str(self.m_header)}, CarMotionData: [{car_motion_data_str}])"
 
 
-class CarLapData:
+class LapData:
     def __init__(self, data) -> None:
 
-        unpacked_data = struct.unpack(motion_format_string, data)
+        unpacked_data = struct.unpack(lap_time_packet_format_str, data)
 
         # Assign the members from unpacked_data
         (
@@ -206,7 +237,7 @@ class CarLapData:
 
     def __str__(self) -> str:
         return (
-            f"CarLapData("
+            f"LapData("
             f"Last Lap Time: {self.m_lastLapTimeInMS} ms, "
             f"Current Lap Time: {self.m_currentLapTimeInMS} ms, "
             f"Sector 1 Time: {self.m_sector1TimeInMS} ms, "
@@ -241,17 +272,28 @@ class CarLapData:
 class PacketLapData:
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
         self.m_header: PacketHeader = header
-        self.m_carLapData: List[CarLapData] = []                 # CarLapData[22]
+        self.m_LapData: List[LapData] = []                 # LapData[22]
+        self.m_LapDataCount = 22
+        len_of_lap_data_array = self.m_LapDataCount * F1_23_LAP_DATA_PACKET_PER_CAR_LEN
 
-        if ((len(packet) % F1_23_LAP_DATA_PACKET_PER_CAR_LEN) != 0):
-            raise InvalidPacketLengthError("Received packet length " + str(len(packet)) + " is not a multiple of " +
-                                            str(F1_23_LAP_DATA_PACKET_PER_CAR_LEN))
-        lap_data_packet_per_car = _split_list(packet, F1_23_LAP_DATA_PACKET_PER_CAR_LEN)
-        for lap_data_packet in lap_data_packet_per_car:
-            self.m_carMotionData.append(CarLapData(lap_data_packet))
+        # 2 extra bytes for the two uint8 that follow LapData
+        expected_len = (len_of_lap_data_array+2)
+        if ((len(packet) != expected_len) != 0):
+            raise InvalidPacketLengthError("Received LapDataPacket length " + str(len(packet)) + " is not of expected length " +
+                                            str(expected_len))
+        lap_data_packet_raw = _extract_sublist(packet, 0, len_of_lap_data_array)
+        for lap_data_packet in _split_list(lap_data_packet_raw, F1_23_LAP_DATA_PACKET_PER_CAR_LEN):
+            self.m_LapData.append(LapData(lap_data_packet))
+
+        time_trial_section_raw = _extract_sublist(packet, len_of_lap_data_array, len(packet))
+        unpacked_data = struct.unpack('<bb', time_trial_section_raw)
+        (
+            self.m_timeTrialPBCarIdx,
+            self.m_timeTrialRivalCarIdx
+        ) = unpacked_data
 
     def __str__(self) -> str:
-        lap_data_str = ", ".join(str(data) for data in self.m_carLapData)
+        lap_data_str = ", ".join(str(data) for data in self.m_LapData)
         return f"PacketLapData(Header: {str(self.m_header)}, Car Lap Data: [{lap_data_str}])"
 
 class CarSignalData:
@@ -270,27 +312,60 @@ class CarSignalData:
             f"Right End Plate Damage: {self.m_rightEndPlateDamage})"
         )
 
+class MarshalZoneFlagType(Enum):
 
+    INVALID_UNKNOWN = -1
+    NONE = 0
+    GREEN_FLAG = 1
+    BLUE_FLAG = 2
+    YELLOW_FLAG = 3
+
+
+    @staticmethod
+    def isValid(packet_type):
+        if isinstance(packet_type, MarshalZoneFlagType):
+            return True  # It's already an instance of MarshalZoneFlagType
+        else:
+            min_value = min(member.value for member in MarshalZoneFlagType)
+            max_value = max(member.value for member in MarshalZoneFlagType)
+            return min_value <= packet_type <= max_value
+
+    def __str__(self):
+        if F1PacketType.isValid(self.value):
+            return self.name
+        else:
+            return 'Marshal Zone Flag type ' + str(self.value)
 
 class MarshalZone:
-    def __init__(self) -> None:
-        self.m_zoneStart: float = 0.0  # Fraction (0..1) of way through the lap the marshal zone starts
-        self.m_zoneFlag: int = -1      # -1 = invalid/unknown, 0 = none, 1 = green, 2 = blue, 3 = yellow
+    def __init__(self, data) -> None:
+
+        unpacked_data = struct.unpack(marshal_zone_format_str, data)
+        (
+            self.m_zoneStart,   # float - Fraction (0..1) of way through the lap the marshal zone starts
+            self.m_zoneFlag     # int8 - -1 = invalid/unknown, 0 = none, 1 = green, 2 = blue, 3 = yellow
+        ) = unpacked_data
+
+        if MarshalZoneFlagType.isValid(self.m_zoneFlag):
+            self.m_zoneFlag = MarshalZoneFlagType(self.m_zoneFlag)
 
     def __str__(self) -> str:
         return f"MarshalZone(Start: {self.m_zoneStart}, Flag: {self.m_zoneFlag})"
 
 
 class WeatherForecastSample:
-    def __init__(self) -> None:
-        self.m_sessionType: int = 0                   # uint8
-        self.m_timeOffset: int = 0                    # uint8
-        self.m_weather: int = 0                       # uint8
-        self.m_trackTemperature: int = 0              # int8
-        self.m_trackTemperatureChange: int = 0        # int8
-        self.m_airTemperature: int = 0                # int8
-        self.m_airTemperatureChange: int = 0          # int8
-        self.m_rainPercentage: int = 0               # uint8
+    def __init__(self, data) -> None:
+
+        unpacked_data = struct.unpack(weather_forecast_sample_format_str, data)
+        (
+            self.m_sessionType,                   # uint8
+            self.m_timeOffset,                    # uint8
+            self.m_weather,                       # uint8
+            self.m_trackTemperature,              # int8
+            self.m_trackTemperatureChange,        # int8
+            self.m_airTemperature,                # int8
+            self.m_airTemperatureChange,          # int8
+            self.m_rainPercentage                 # uint8
+        ) = unpacked_data
 
     def __str__(self) -> str:
         return (
@@ -306,57 +381,98 @@ class WeatherForecastSample:
         )
 
 class PacketSessionData:
-    def __init__(self) -> None:
-        self.m_header: PacketHeader = PacketHeader()          # Header
-        self.m_weather: int = 0                             # uint8
-        self.m_trackTemperature: int = 0                    # int8
-        self.m_airTemperature: int = 0                      # int8
-        self.m_totalLaps: int = 0                           # uint8
-        self.m_trackLength: int = 0                         # uint16
-        self.m_sessionType: int = 0                         # uint8
-        self.m_trackId: int = 0                             # int8
-        self.m_formula: int = 0                             # uint8
-        self.m_sessionTimeLeft: int = 0                     # uint16
-        self.m_sessionDuration: int = 0                     # uint16
-        self.m_pitSpeedLimit: int = 0                       # uint8
-        self.m_gamePaused: int = 0                          # uint8
-        self.m_isSpectating: int = 0                        # uint8
-        self.m_spectatorCarIndex: int = 0                   # uint8
-        self.m_sliProNativeSupport: int = 0                 # uint8
-        self.m_numMarshalZones: int = 0                     # uint8
+    def __init__(self, header, data) -> None:
+        self.m_header: PacketHeader = header          # Header
+
+        self.m_maxMarshalZones = 21
+        self.m_maxWeatherForecastSamples = 56
+        # First, section 0
+        section_0_raw_data = _extract_sublist(data, 0, F1_23_SESSION_SECTION_0_PACKET_LEN)
+        byte_index_so_far = F1_23_SESSION_SECTION_0_PACKET_LEN
+        unpacked_data = struct.unpack(packet_session_section_0_format_str, section_0_raw_data)
+        (
+            self.m_weather,
+            self.m_trackTemperature,
+            self.m_airTemperature,
+            self.m_totalLaps,
+            self.m_trackLength,
+            self.m_sessionType,
+            self.m_trackId,
+            self.m_formula,
+            self.m_sessionTimeLeft,
+            self.m_sessionDuration,
+            self.m_pitSpeedLimit,
+            self.m_gamePaused,
+            self.m_isSpectating,
+            self.m_spectatorCarIndex,
+            self.m_sliProNativeSupport,
+            self.m_numMarshalZones,
+        ) = unpacked_data
+
+        # Next section 1, marshalZones
+        section_1_size = marshal_zone_packet_len * self.m_maxMarshalZones
+        section_1_raw_data = _extract_sublist(data, byte_index_so_far, byte_index_so_far+section_1_size)
+        byte_index_so_far += section_1_size
         self.m_marshalZones: List[MarshalZone] = []         # List of marshal zones – max 21
-        self.m_safetyCarStatus: int = 0                     # uint8
-        self.m_networkGame: int = 0                         # uint8
-        self.m_numWeatherForecastSamples: int = 0           # uint8
+        for per_marshal_zone_raw_data in _split_list(section_1_raw_data, marshal_zone_packet_len):
+            self.m_marshalZones.append(MarshalZone(per_marshal_zone_raw_data))
+        # section_1_raw_data = None
+
+        # Section 2, till numWeatherForecastSamples
+        section_2_raw_data = _extract_sublist(data, byte_index_so_far, byte_index_so_far + F1_23_SESSION_SECTION_2_PACKET_LEN)
+        byte_index_so_far += F1_23_SESSION_SECTION_2_PACKET_LEN
+        unpacked_data = struct.unpack(packet_session_section_2_format_str, section_2_raw_data)
+        (
+            self.m_safetyCarStatus, #           // 0 = no safety car, 1 = full 2 = virtual, 3 = formation lap
+            self.m_networkGame, #               // 0 = offline, 1 = online
+            self.m_numWeatherForecastSamples # // Number of weather samples to follow
+        ) = unpacked_data
+        # section_2_raw_data = None
+
+
+        # Section 3 - weather forecast samples
+        section_3_size = weather_forecast_sample_packet_len * self.m_maxWeatherForecastSamples
+        section_3_raw_data = _extract_sublist(data, byte_index_so_far, byte_index_so_far+section_3_size)
+        byte_index_so_far += section_3_size
         self.m_weatherForecastSamples: List[WeatherForecastSample] = []  # Array of weather forecast samples
-        self.m_forecastAccuracy: int = 0                    # uint8
-        self.m_aiDifficulty: int = 0                        # uint8
-        self.m_seasonLinkIdentifier: int = 0               # uint32
-        self.m_weekendLinkIdentifier: int = 0              # uint32
-        self.m_sessionLinkIdentifier: int = 0              # uint32
-        self.m_pitStopWindowIdealLap: int = 0              # uint8
-        self.m_pitStopWindowLatestLap: int = 0             # uint8
-        self.m_pitStopRejoinPosition: int = 0              # uint8
-        self.m_steeringAssist: int = 0                     # uint8
-        self.m_brakingAssist: int = 0                      # uint8
-        self.m_gearboxAssist: int = 0                      # uint8
-        self.m_pitAssist: int = 0                          # uint8
-        self.m_pitReleaseAssist: int = 0                   # uint8
-        self.m_ERSAssist: int = 0                          # uint8
-        self.m_DRSAssist: int = 0                          # uint8
-        self.m_dynamicRacingLine: int = 0                 # uint8
-        self.m_dynamicRacingLineType: int = 0             # uint8
-        self.m_gameMode: int = 0                           # uint8
-        self.m_ruleSet: int = 0                            # uint8
-        self.m_timeOfDay: int = 0                          # uint32
-        self.m_sessionLength: int = 0                      # uint8
-        self.m_speedUnitsLeadPlayer: int = 0              # uint8
-        self.m_temperatureUnitsLeadPlayer: int = 0        # uint8
-        self.m_speedUnitsSecondaryPlayer: int = 0         # uint8
-        self.m_temperatureUnitsSecondaryPlayer: int = 0   # uint8
-        self.m_numSafetyCarPeriods: int = 0               # uint8
-        self.m_numVirtualSafetyCarPeriods: int = 0        # uint8
-        self.m_numRedFlagPeriods: int = 0                 # uint8
+        for per_weather_sample_raw_data in _split_list(section_3_raw_data, weather_forecast_sample_packet_len):
+            self.m_weatherForecastSamples.append(WeatherForecastSample(per_weather_sample_raw_data))
+        # section_3_raw_data = None
+
+        # Section 4 - rest of the packet
+        section_4_raw_data = _extract_sublist(data, byte_index_so_far, byte_index_so_far+F1_23_SESSION_SECTION_4_PACKET_LEN)
+        unpacked_data = struct.unpack(packet_session_section_4_format_str, section_4_raw_data)
+        (
+            self.m_forecastAccuracy,                   # uint8
+            self.m_aiDifficulty,                       # uint8
+            self.m_seasonLinkIdentifier,              # uint32
+            self.m_weekendLinkIdentifier,             # uint32
+            self.m_sessionLinkIdentifier,             # uint32
+            self.m_pitStopWindowIdealLap,             # uint8
+            self.m_pitStopWindowLatestLap,            # uint8
+            self.m_pitStopRejoinPosition,             # uint8
+            self.m_steeringAssist,                    # uint8
+            self.m_brakingAssist,                     # uint8
+            self.m_gearboxAssist,                     # uint8
+            self.m_pitAssist,                         # uint8
+            self.m_pitReleaseAssist,                  # uint8
+            self.m_ERSAssist,                         # uint8
+            self.m_DRSAssist,                         # uint8
+            self.m_dynamicRacingLine,                # uint8
+            self.m_dynamicRacingLineType,            # uint8
+            self.m_gameMode,                          # uint8
+            self.m_ruleSet,                           # uint8
+            self.m_timeOfDay,                         # uint32
+            self.m_sessionLength,                     # uint8
+            self.m_speedUnitsLeadPlayer,             # uint8
+            self.m_temperatureUnitsLeadPlayer,       # uint8
+            self.m_speedUnitsSecondaryPlayer,        # uint8
+            self.m_temperatureUnitsSecondaryPlayer,  # uint8
+            self.m_numSafetyCarPeriods,              # uint8
+            self.m_numVirtualSafetyCarPeriods,       # uint8
+            self.m_numRedFlagPeriods,                # uint8
+        ) = unpacked_data
+
 
     def __str__(self) -> str:
         marshal_zones_str = ", ".join(str(zone) for zone in self.m_marshalZones)
@@ -417,52 +533,297 @@ class PacketSessionData:
         )
 
 
-class PacketCarTelemetryData:
-    def __init__(self, packet: bytes) -> None:
-        self.m_header: PacketHeader = PacketHeader(packet)           # PacketHeader
-        self.m_carTelemetryData: List[CarTelemetryData] = []         # CarTelemetryData[22]
-        self.m_buttonStatus: int = 0                                # uint32
-
-    def __str__(self) -> str:
-        telemetry_data_str = ", ".join(str(data) for data in self.m_carTelemetryData)
-        return (
-            f"PacketCarTelemetryData("
-            f"Header: {str(self.m_header)}, "
-            f"Car Telemetry Data: [{telemetry_data_str}], "
-            f"Button Status: {self.m_buttonStatus})"
-        )
 
 
-class PacketCarStatusData:
-    def __init__(self, packet: bytes) -> None:
-        self.m_header: PacketHeader = PacketHeader(packet)           # PacketHeader
-        self.m_carStatusData: List[CarStatusData] = []               # CarStatusData[22]
+class EventPacketType(Enum):
+    """
+    Enum class representing different event types.
+    """
 
-    def __str__(self) -> str:
-        status_data_str = ", ".join(str(data) for data in self.m_carStatusData)
-        return f"PacketCarStatusData(Header: {str(self.m_header)}, Car Status Data: [{status_data_str}])"
+    # Session Started: Sent when the session starts
+    SESSION_STARTED = "SSTA"
+
+    # Session Ended: Sent when the session ends
+    SESSION_ENDED = "SEND"
+
+    # Fastest Lap: When a driver achieves the fastest lap
+    FASTEST_LAP = "FTLP"
+
+    # Retirement: When a driver retires
+    RETIREMENT = "RTMT"
+
+    # DRS enabled: Race control have enabled DRS
+    DRS_ENABLED = "DRSE"
+
+    # DRS disabled: Race control have disabled DRS
+    DRS_DISABLED = "DRSD"
+
+    # Team mate in pits: Your team mate has entered the pits
+    TEAM_MATE_IN_PITS = "TMPT"
+
+    # Chequered flag: The chequered flag has been waved
+    CHEQUERED_FLAG = "CHQF"
+
+    # Race Winner: The race winner is announced
+    RACE_WINNER = "RCWN"
+
+    # Penalty Issued: A penalty has been issued – details in event
+    PENALTY_ISSUED = "PENA"
+
+    # Speed Trap Triggered: Speed trap has been triggered by fastest speed
+    SPEED_TRAP_TRIGGERED = "SPTP"
+
+    # Start lights: Start lights – number shown
+    START_LIGHTS = "STLG"
+
+    # Lights out: Lights out
+    LIGHTS_OUT = "LGOT"
+
+    # Drive through served: Drive through penalty served
+    DRIVE_THROUGH_SERVED = "DTSV"
+
+    # Stop go served: Stop go penalty served
+    STOP_GO_SERVED = "SGSV"
+
+    # Flashback: Flashback activated
+    FLASHBACK = "FLBK"
+
+    # Button status: Button status changed
+    BUTTON_STATUS = "BUTN"
+
+    # Red Flag: Red flag shown
+    RED_FLAG = "RDFL"
+
+    # Overtake: Overtake occurred
+    OVERTAKE = "OVTK"
+
+    @staticmethod
+    def isValid(event_type: str) -> bool:
+        """
+        Check if the input event type string maps to a valid enum value.
+
+        Args:
+            event_type (str): The event type string to check.
+
+        Returns:
+            bool: True if the event type is valid, False otherwise.
+        """
+        if isinstance(event_type, EventPacketType):
+            return True
+        try:
+            EventPacketType(event_type)
+            return True
+        except ValueError:
+            return False
+
+class FastestLap:
+    def __init__(self, data):
+
+        format_str = "<Bf"
+        unpacked_data = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
+        (
+            self.vehicleIdx,
+            self.lapTime
+        ) = unpacked_data
+
+    def __str__(self):
+        return f"FastestLap(vehicleIdx={self.vehicleIdx}, lapTime={self.lapTime})"
 
 
+class Retirement:
+    def __init__(self, data):
+        format_str = "<B"
+        self.vehicleIdx = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
+
+    def __str__(self):
+        return f"Retirement(vehicleIdx={self.vehicleIdx})"
+
+
+class TeamMateInPits:
+    def __init__(self, data):
+        format_str = "<B"
+        self.vehicleIdx = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
+
+    def __str__(self):
+        return f"TeamMateInPits(vehicleIdx={self.vehicleIdx})"
+
+
+class RaceWinner:
+    def __init__(self, data):
+        format_str = "<B"
+        self.vehicleIdx = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
+
+    def __str__(self):
+        return f"RaceWinner(vehicleIdx={self.vehicleIdx})"
+
+
+class Penalty:
+    def __init__(self, data):
+
+        format_str = "<BBBBBBB"
+        unpacked_data = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
+        (
+            self.penaltyType,
+            self.infringementType,
+            self.vehicleIdx,
+            self.otherVehicleIdx,
+            self.time,
+            self.lapNum,
+            self.placesGained
+        ) = unpacked_data
+
+    def __str__(self):
+        return f"Penalty(penaltyType={self.penaltyType}, infringementType={self.infringementType}, " \
+               f"vehicleIdx={self.vehicleIdx}, otherVehicleIdx={self.otherVehicleIdx}, time={self.time}, " \
+               f"lapNum={self.lapNum}, placesGained={self.placesGained})"
+
+
+class SpeedTrap:
+    def __init__(self, data):
+
+        format_str = "<BfBBBf"
+        unpacked_data = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
+        (
+            self.vehicleIdx,
+            self.speed,
+            self.isOverallFastestInSession,
+            self.isDriverFastestInSession,
+            self.fastestVehicleIdxInSession,
+            self.fastestSpeedInSession
+        ) = unpacked_data
+
+    def __str__(self):
+        return f"SpeedTrap(vehicleIdx={self.vehicleIdx}, speed={self.speed}, " \
+               f"isOverallFastestInSession={self.isOverallFastestInSession}, " \
+               f"isDriverFastestInSession={self.isDriverFastestInSession}, " \
+               f"fastestVehicleIdxInSession={self.fastestVehicleIdxInSession}, " \
+               f"fastestSpeedInSession={self.fastestSpeedInSession})"
+
+class StartLights:
+    def __init__(self, data):
+        format_str = "<B"
+        self.numLights = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
+
+    def __str__(self):
+        return f"StartLights(numLights={self.numLights})"
+
+
+class DriveThroughPenaltyServed:
+    def __init__(self, data):
+        format_str = "<B"
+        self.vehicleIdx = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
+
+    def __str__(self):
+        return f"DriveThroughPenaltyServed(vehicleIdx={self.vehicleIdx})"
+
+
+class StopGoPenaltyServed:
+    def __init__(self, data):
+        format_str = "<B"
+        self.vehicleIdx = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
+
+    def __str__(self):
+        return f"StopGoPenaltyServed(vehicleIdx={self.vehicleIdx})"
+
+
+class Flashback:
+    def __init__(self, data):
+
+        format_str = "<If"
+        unpacked_data = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
+        (
+            self.flashbackFrameIdentifier,
+            self.flashbackSessionTime
+        ) = unpacked_data
+
+    def __str__(self):
+        return f"Flashback(flashbackFrameIdentifier={self.flashbackFrameIdentifier}, " \
+               f"flashbackSessionTime={self.flashbackSessionTime})"
+
+
+class Buttons:
+    def __init__(self, data):
+        format_str = "<B"
+        self.buttonStatus = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
+
+    def __str__(self):
+        return f"Buttons(buttonStatus={self.buttonStatus})"
+
+
+class Overtake:
+    def __init__(self, data):
+        format_str = "<BB"
+        self.overtakingVehicleIdx, self.beingOvertakenVehicleIdx = struct.unpack(format_str,
+            data[0:struct.calcsize(format_str)])
+
+    def __str__(self):
+        return f"Overtake(overtakingVehicleIdx={self.overtakingVehicleIdx}, " \
+               f"beingOvertakenVehicleIdx={self.beingOvertakenVehicleIdx})"
 
 
 class PacketEventData:
-    def __init__(self, packet: bytes) -> None:
-        self.m_header: PacketHeader = PacketHeader(packet)       # PacketHeader
+
+    event_type_map = {
+        EventPacketType.SESSION_STARTED: None,
+        EventPacketType.SESSION_ENDED: None,
+        EventPacketType.FASTEST_LAP: FastestLap,
+        EventPacketType.RETIREMENT: Retirement,
+        EventPacketType.DRS_ENABLED: None,
+        EventPacketType.DRS_DISABLED: None,
+        EventPacketType.TEAM_MATE_IN_PITS: TeamMateInPits,
+        EventPacketType.CHEQUERED_FLAG: None,
+        EventPacketType.RACE_WINNER: RaceWinner,
+        EventPacketType.PENALTY_ISSUED: Penalty,
+        EventPacketType.SPEED_TRAP_TRIGGERED: SpeedTrap,
+        EventPacketType.START_LIGHTS: StartLights,
+        EventPacketType.LIGHTS_OUT: None,
+        EventPacketType.DRIVE_THROUGH_SERVED: DriveThroughPenaltyServed,
+        EventPacketType.STOP_GO_SERVED: StopGoPenaltyServed,
+        EventPacketType.FLASHBACK: Flashback,
+        EventPacketType.BUTTON_STATUS: Buttons,
+        EventPacketType.RED_FLAG: None,
+        EventPacketType.OVERTAKE: Overtake
+    }
+
+    def __init__(self, header, packet: bytes) -> None:
+        self.m_header: PacketHeader = header       # PacketHeader
         self.m_eventStringCode: str = ""                         # char[4]
 
+        self.m_eventStringCode = struct.unpack('4s', packet[0:4])[0].decode('ascii')
+        if EventPacketType.isValid(self.m_eventStringCode):
+            self.m_eventStringCode = EventPacketType(self.m_eventStringCode)
+        else:
+            raise TypeError("Unsupported Event Type " + self.m_eventStringCode)
+
+        if PacketEventData.event_type_map.get(self.m_eventStringCode, None):
+            self.mEventDetails = PacketEventData.event_type_map[self.m_eventStringCode](packet[4:])
+        else:
+            self.mEventDetails = None
+
     def __str__(self) -> str:
-        return f"PacketEventData(Header: {str(self.m_header)}, Event String Code: {self.m_eventStringCode})"
+        event_str = (f"Event: {str(self.mEventDetails)}") if self.mEventDetails else ""
+        return f"PacketEventData(Header: {str(self.m_header)}, Event String Code: {self.m_eventStringCode}, {event_str})"
 
 
 class ParticipantData:
-    def __init__(self) -> None:
-        self.m_aiControlled: int = 0               # uint8
-        self.m_driverId: int = 0                   # uint8
-        self.m_teamId: int = 0                     # uint8
-        self.m_raceNumber: int = 0                 # uint8
-        self.m_nationality: int = 0                # uint8
-        self.m_name: str = ""                      # char[48]
-        self.m_yourTelemetry: int = 0             # uint8
+    def __init__(self, data) -> None:
+
+        unpacked_data = struct.unpack(participant_format_string, data)
+        (
+            self.m_aiControlled,
+            self.m_driverId,
+            self.networkId,
+            self.m_teamId,
+            self.m_myTeam,
+            self.m_raceNumber,
+            self.m_nationality,
+            self.m_name,
+            self.m_yourTelemetry,
+            self.m_showOnlineNames,
+            self.m_platform
+        ) = unpacked_data
+
+        self.m_name = self.m_name.decode('utf-8').rstrip('\x00')
 
     def __str__(self) -> str:
         return (
@@ -478,10 +839,14 @@ class ParticipantData:
 
 
 class PacketParticipantsData:
-    def __init__(self, packet: bytes) -> None:
-        self.m_header: PacketHeader = PacketHeader(packet)         # PacketHeader
-        self.m_numActiveCars: int = 0                              # uint8
+    max_participants = 22
+    def __init__(self, header: PacketHeader, packet: bytes) -> None:
+        self.m_header: PacketHeader = header         # PacketHeader
+        self.m_numActiveCars: int = struct.unpack("<B", packet[0:1])[0]
         self.m_participants: List[ParticipantData] = []            # ParticipantData[22]
+
+        for participant_data_raw in _split_list(packet[1:], F1_23_PER_PARTICIPANT_INFO_LEN):
+            self.m_participants.append(ParticipantData(participant_data_raw))
 
     def __str__(self) -> str:
         participants_str = ", ".join(str(participant) for participant in self.m_participants)
@@ -494,9 +859,12 @@ class PacketParticipantsData:
 
 
 class PacketCarSetupData:
-    def __init__(self, packet: bytes) -> None:
-        self.m_header: PacketHeader = PacketHeader(packet)       # PacketHeader
+    def __init__(self, header, packet: bytes) -> None:
+        self.m_header: PacketHeader = header
         self.m_carSetups: List[CarSetupData] = []                # CarSetupData[22]
+
+        for setup_per_car_raw_data in _split_list(packet, F1_23_CAR_SETUPS_LEN):
+            self.m_carSetups.append(CarSetupData(setup_per_car_raw_data))
 
     def __str__(self) -> str:
         setups_str = ", ".join(str(setup) for setup in self.m_carSetups)
@@ -504,86 +872,147 @@ class PacketCarSetupData:
 
 
 class CarSetupData:
-    def __init__(self) -> None:
-        self.m_frontWing: int = 0               # uint8
-        self.m_rearWing: int = 0                # uint8
-        self.m_onThrottle: int = 0              # uint8
-        self.m_offThrottle: int = 0             # uint8
-        self.m_frontCamber: float = 0           # float
-        self.m_rearCamber: float = 0            # float
-        self.m_frontToe: float = 0              # float
-        self.m_rearToe: float = 0               # float
-        self.m_frontSuspension: int = 0         # uint8
-        self.m_rearSuspension: int = 0          # uint8
-        self.m_frontAntiRollBar: int = 0        # uint8
-        self.m_rearAntiRollBar: int = 0         # uint8
-        self.m_frontSuspensionHeight: int = 0   # uint8
-        self.m_rearSuspensionHeight: int = 0    # uint8
-        self.m_brakePressure: int = 0           # uint8
-        self.m_brakeBias: int = 0               # uint8
-        self.m_frontTyrePressure: float = 0     # float
-        self.m_rearTyrePressure: float = 0      # float
-        self.m_ballast: int = 0                 # uint8
-        self.m_fuelLoad: float = 0              # float
+    def __init__(self, data) -> None:
+
+        unpacked_data = struct.unpack(car_setups_format_string, data)
+
+        (
+            self.m_frontWing,
+            self.m_rearWing,
+            self.m_onThrottle,
+            self.m_offThrottle,
+            self.m_frontCamber,
+            self.m_rearCamber,
+            self.m_frontToe,
+            self.m_rearToe,
+            self.m_frontSuspension,
+            self.m_rearSuspension,
+            self.m_frontAntiRollBar,
+            self.m_rearAntiRollBar,
+            self.m_frontSuspensionHeight,
+            self.m_rearSuspensionHeight,
+            self.m_brakePressure,
+            self.m_brakeBias,
+            self.m_rearLeftTyrePressure,
+            self.m_rearRightTyrePressure,
+            self.m_frontLeftTyrePressure,
+            self.m_frontRightTyrePressure,
+            self.m_ballast,
+            self.m_fuelLoad,
+        ) = unpacked_data
 
     def __str__(self) -> str:
         return (
-            f"CarSetupData("
-            f"Front Wing: {self.m_frontWing}, "
-            f"Rear Wing: {self.m_rearWing}, "
-            f"On Throttle: {self.m_onThrottle}, "
-            f"Off Throttle: {self.m_offThrottle}, "
-            f"Front Camber: {self.m_frontCamber}, "
-            f"Rear Camber: {self.m_rearCamber}, "
-            f"Front Toe: {self.m_frontToe}, "
-            f"Rear Toe: {self.m_rearToe}, "
-            f"Front Suspension: {self.m_frontSuspension}, "
-            f"Rear Suspension: {self.m_rearSuspension}, "
-            f"Front Anti-Roll Bar: {self.m_frontAntiRollBar}, "
-            f"Rear Anti-Roll Bar: {self.m_rearAntiRollBar}, "
-            f"Front Suspension Height: {self.m_frontSuspensionHeight}, "
-            f"Rear Suspension Height: {self.m_rearSuspensionHeight}, "
-            f"Brake Pressure: {self.m_brakePressure}, "
-            f"Brake Bias: {self.m_brakeBias}, "
-            f"Front Tyre Pressure: {self.m_frontTyrePressure}, "
-            f"Rear Tyre Pressure: {self.m_rearTyrePressure}, "
-            f"Ballast: {self.m_ballast}, "
-            f"Fuel Load: {self.m_fuelLoad})"
+            f"CarSetupData(\n"
+            f"  Front Wing: {self.m_frontWing}\n"
+            f"  Rear Wing: {self.m_rearWing}\n"
+            f"  On Throttle: {self.m_onThrottle}\n"
+            f"  Off Throttle: {self.m_offThrottle}\n"
+            f"  Front Camber: {self.m_frontCamber}\n"
+            f"  Rear Camber: {self.m_rearCamber}\n"
+            f"  Front Toe: {self.m_frontToe}\n"
+            f"  Rear Toe: {self.m_rearToe}\n"
+            f"  Front Suspension: {self.m_frontSuspension}\n"
+            f"  Rear Suspension: {self.m_rearSuspension}\n"
+            f"  Front Anti-Roll Bar: {self.m_frontAntiRollBar}\n"
+            f"  Rear Anti-Roll Bar: {self.m_rearAntiRollBar}\n"
+            f"  Front Suspension Height: {self.m_frontSuspensionHeight}\n"
+            f"  Rear Suspension Height: {self.m_rearSuspensionHeight}\n"
+            f"  Brake Pressure: {self.m_brakePressure}\n"
+            f"  Brake Bias: {self.m_brakeBias}\n"
+            f"  Rear Left Tyre Pressure: {self.m_rearLeftTyrePressure}\n"
+            f"  Rear Right Tyre Pressure: {self.m_rearRightTyrePressure}\n"
+            f"  Front Left Tyre Pressure: {self.m_frontLeftTyrePressure}\n"
+            f"  Front Right Tyre Pressure: {self.m_frontRightTyrePressure}\n"
+            f"  Ballast: {self.m_ballast}\n"
+            f"  Fuel Load: {self.m_fuelLoad}\n"
+            f")"
         )
 
 
 class PacketCarTelemetryData:
-    def __init__(self, packet: bytes) -> None:
-        self.m_header: PacketHeader = PacketHeader(packet)           # PacketHeader
+
+    max_telemetry_entries = 22
+    def __init__(self, header:PacketHeader, packet: bytes) -> None:
+        self.m_header: PacketHeader = header
         self.m_carTelemetryData: List[CarTelemetryData] = []         # CarTelemetryData[22]
-        self.m_buttonStatus: int = 0                                # uint32
+        len_all_car_telemetry = PacketCarTelemetryData.max_telemetry_entries * F1_23_CAR_TELEMETRY_LEN
+
+        for per_car_telemetry_raw_data in _split_list(packet[:len_all_car_telemetry], F1_23_CAR_TELEMETRY_LEN):
+            self.m_carTelemetryData.append(CarTelemetryData(per_car_telemetry_raw_data))
+
+        self.mfdPanelIndex, self.m_mfdPanelIndexSecondaryPlayer, self.m_suggestedGear = \
+            struct.unpack("<BBb", packet[len_all_car_telemetry:])
 
     def __str__(self) -> str:
         telemetry_data_str = ", ".join(str(telemetry) for telemetry in self.m_carTelemetryData)
+        mfdPanelIndex_to_string = lambda value: {
+            255: "MFD closed Single player, race",
+            0: "Car setup",
+            1: "Pits",
+            2: "Damage",
+            3: "Engine",
+            4: "Temperatures",
+        }.get(value, f"Unknown state: {value}")
         return (
             f"PacketCarTelemetryData("
             f"Header: {str(self.m_header)}, "
             f"Car Telemetry Data: [{telemetry_data_str}], "
-            f"Button Status: {self.m_buttonStatus})"
+            f"MFD Panel Index: {mfdPanelIndex_to_string(self.mfdPanelIndex)}), "
+            f"MFD Panel Index Secondary: {mfdPanelIndex_to_string(self.mfdPanelIndex)}), "
+            f"Suggested Gear: {self.m_suggestedGear}"
         )
 
 
 class CarTelemetryData:
-    def __init__(self) -> None:
-        self.m_speed: int = 0                   # uint16
-        self.m_throttle: float = 0              # float
-        self.m_steer: float = 0                 # float
-        self.m_brake: float = 0                 # float
-        self.m_clutch: int = 0                  # uint8
-        self.m_gear: int = 0                    # int8
-        self.m_engineRPM: int = 0               # uint16
-        self.m_drs: int = 0                     # uint8
-        self.m_revLightsPercent: int = 0        # uint8
-        self.m_brakesTemperature: List[int] = []           # uint16[4]
-        self.m_tyresSurfaceTemperature: List[int] = []     # uint8[4]
-        self.m_tyresInnerTemperature: List[int] = []       # uint8[4]
-        self.m_engineTemperature: int = 0                   # uint16
-        self.m_tyresPressure: List[float] = []              # float[4]
+    def __init__(self, data) -> None:
+
+        unpacked_data = struct.unpack(car_telemetry_format_string, data)
+
+        (
+            self.m_speed,
+            self.m_throttle,
+            self.m_steer,
+            self.m_brake,
+            self.m_clutch,
+            self.m_gear,
+            self.m_engineRPM,
+            self.m_drs,
+            self.m_revLightsPercent,
+            self.m_revLightsBitValue,
+            # self.m_brakesTemperature,  # array of 4
+            brake_temp1,
+            brake_temp2,
+            brake_temp3,
+            brake_temp4,
+            # self.m_tyresSurfaceTemperature,  # array of 4
+            tyre_surface_temp1,
+            tyre_surface_temp2,
+            tyre_surface_temp3,
+            tyre_surface_temp4,
+            # self.m_tyresInnerTemperature,  # array of 4
+            tyre_inner_temp1,
+            tyre_inner_temp2,
+            tyre_inner_temp3,
+            tyre_inner_temp4,
+            self.m_engineTemperature,
+            # self.m_tyresPressure,  # array of 4
+            tyre_pressure_1,
+            tyre_pressure_2,
+            tyre_pressure_3,
+            tyre_pressure_4,
+            # self.m_surfaceType,  # array of 4
+            surface_type_1,
+            surface_type_2,
+            surface_type_3,
+            surface_type_4,
+        ) = unpacked_data
+
+        self.m_brakesTemperature = [brake_temp1, brake_temp2, brake_temp3, brake_temp4]
+        self.m_tyresSurfaceTemperature = [tyre_surface_temp1, tyre_surface_temp2, tyre_surface_temp3, tyre_surface_temp4]
+        self.m_tyresInnerTemperature = [tyre_inner_temp1, tyre_inner_temp2, tyre_inner_temp3, tyre_inner_temp4]
+        self.m_tyresPressure = [tyre_pressure_1, tyre_pressure_2, tyre_pressure_3, tyre_pressure_4]
+        self.m_surfaceType = [surface_type_1, surface_type_2, surface_type_3, surface_type_4]
 
     def __str__(self) -> str:
         return (
@@ -597,18 +1026,22 @@ class CarTelemetryData:
             f"Engine RPM: {self.m_engineRPM}, "
             f"DRS: {self.m_drs}, "
             f"Rev Lights Percent: {self.m_revLightsPercent}, "
-            f"Brakes Temperature: {self.m_brakesTemperature}, "
-            f"Tyres Surface Temperature: {self.m_tyresSurfaceTemperature}, "
-            f"Tyres Inner Temperature: {self.m_tyresInnerTemperature}, "
-            f"Engine Temperature: {self.m_engineTemperature}, "
-            f"Tyres Pressure: {self.m_tyresPressure})"
+            f"Brakes Temperature: {str(self.m_brakesTemperature)}, "
+            f"Tyres Surface Temperature: {str(self.m_tyresSurfaceTemperature)}, "
+            f"Tyres Inner Temperature: {str(self.m_tyresInnerTemperature)}, "
+            f"Engine Temperature: {str(self.m_engineTemperature)}, "
+            f"Tyres Pressure: {str(self.m_tyresPressure)})"
         )
 
 
 class PacketCarStatusData:
-    def __init__(self, packet: bytes) -> None:
-        self.m_header: PacketHeader = PacketHeader(packet)           # PacketHeader
+    def __init__(self, header: PacketHeader, packet: bytes) -> None:
+        self.m_header: PacketHeader = header
         self.m_carStatusData: List[CarStatusData] = []               # CarStatusData[22]
+
+        for status_per_car_raw_data in _split_list(packet, F1_23_CAR_STATUS_LEN):
+            self.m_carStatusData.append(CarStatusData(status_per_car_raw_data))
+
 
     def __str__(self) -> str:
         status_data_str = ", ".join(str(status) for status in self.m_carStatusData)
@@ -616,165 +1049,244 @@ class PacketCarStatusData:
 
 
 class CarStatusData:
-    def __init__(self) -> None:
-        self.m_tractionControl: int = 0             # uint8
-        self.m_antiLockBrakes: int = 0              # uint8
-        self.m_fuelMix: int = 0                     # uint8
-        self.m_frontBrakeBias: int = 0              # uint8
-        self.m_pitLimiterStatus: int = 0            # uint8
-        self.m_fuelInTank: float = 0                # float
-        self.m_fuelCapacity: float = 0              # float
-        self.m_maxRPM: int = 0                      # uint16
-        self.m_idleRPM: int = 0                     # uint16
-        self.m_maxGears: int = 0                    # uint8
-        self.m_drsAllowed: int = 0                  # uint8
-        self.m_tyresWear: List[int] = []            # uint8[4]
-        self.m_tyreCompound: int = 0                # uint8
-        self.m_visualTyreCompound: int = 0          # uint8
-        self.m_tyresAgeLaps: int = 0                # uint8
-        self.m_tyresDamage: List[int] = []          # uint8[4]
-        self.m_frontLeftWingDamage: int = 0         # uint8
-        self.m_frontRightWingDamage: int = 0        # uint8
-        self.m_rearWingDamage: int = 0              # uint8
-        self.m_engineDamage: int = 0                # uint8
-        self.m_gearBoxDamage: int = 0               # uint8
-        self.m_exhaustDamage: int = 0               # uint8
-        self.m_vehicleFiaFlags: int = 0             # int8
+    def __init__(self, data) -> None:
 
-    def __str__(self) -> str:
+        (
+            self.m_tractionControl,
+            self.m_antiLockBrakes,
+            self.m_fuelMix,
+            self.m_frontBrakeBias,
+            self.m_pitLimiterStatus,
+            self.m_fuelInTank,
+            self.m_fuelCapacity,
+            self.m_fuelRemainingLaps,
+            self.m_maxRPM,
+            self.m_idleRPM,
+            self.m_maxGears,
+            self.m_drsAllowed,
+            self.m_drsActivationDistance,
+            self.m_actualTyreCompound,
+            self.m_visualTyreCompound,
+            self.m_tyresAgeLaps,
+            self. m_vehicleFiaFlags,
+            self.m_enginePowerICE,
+            self.m_enginePowerMGUK,
+            self.m_ersStoreEnergy,
+            self.m_ersDeployMode,
+            self.m_ersHarvestedThisLapMGUK,
+            self.m_ersHarvestedThisLapMGUH,
+            self.m_ersDeployedThisLap,
+            self.m_networkPaused
+        ) = struct.unpack(car_status_format_string, data)
+
+
+    def __str__(self):
         return (
             f"CarStatusData("
-            f"Traction Control: {self.m_tractionControl}, "
-            f"Anti-lock Brakes: {self.m_antiLockBrakes}, "
-            f"Fuel Mix: {self.m_fuelMix}, "
-            f"Front Brake Bias: {self.m_frontBrakeBias}, "
-            f"Pit Limiter Status: {self.m_pitLimiterStatus}, "
-            f"Fuel In Tank: {self.m_fuelInTank}, "
-            f"Fuel Capacity: {self.m_fuelCapacity}, "
-            f"Max RPM: {self.m_maxRPM}, "
-            f"Idle RPM: {self.m_idleRPM}, "
-            f"Max Gears: {self.m_maxGears}, "
-            f"DRS Allowed: {self.m_drsAllowed}, "
-            f"Tyres Wear: {self.m_tyresWear}, "
-            f"Tyre Compound: {self.m_tyreCompound}, "
-            f"Visual Tyre Compound: {self.m_visualTyreCompound}, "
-            f"Tyres Age Laps: {self.m_tyresAgeLaps}, "
-            f"Tyres Damage: {self.m_tyresDamage}, "
-            f"Front Left Wing Damage: {self.m_frontLeftWingDamage}, "
-            f"Front Right Wing Damage: {self.m_frontRightWingDamage}, "
-            f"Rear Wing Damage: {self.m_rearWingDamage}, "
-            f"Engine Damage: {self.m_engineDamage}, "
-            f"Gearbox Damage: {self.m_gearBoxDamage}, "
-            f"Exhaust Damage: {self.m_exhaustDamage}, "
-            f"Vehicle FIA Flags: {self.m_vehicleFiaFlags})"
+            f"m_tractionControl={self.m_tractionControl}, "
+            f"m_antiLockBrakes={self.m_antiLockBrakes}, "
+            f"m_fuelMix={self.m_fuelMix}, "
+            f"m_frontBrakeBias={self.m_frontBrakeBias}, "
+            f"m_pitLimiterStatus={self.m_pitLimiterStatus}, "
+            f"m_fuelInTank={self.m_fuelInTank}, "
+            f"m_fuelCapacity={self.m_fuelCapacity}, "
+            f"m_fuelRemainingLaps={self.m_fuelRemainingLaps}, "
+            f"m_maxRPM={self.m_maxRPM}, "
+            f"m_idleRPM={self.m_idleRPM}, "
+            f"m_maxGears={self.m_maxGears}, "
+            f"m_drsAllowed={self.m_drsAllowed}, "
+            f"m_drsActivationDistance={self.m_drsActivationDistance}, "
+            f"m_actualTyreCompound={self.m_actualTyreCompound}, "
+            f"m_visualTyreCompound={self.m_visualTyreCompound}, "
+            f"m_tyresAgeLaps={self.m_tyresAgeLaps}, "
+            f"m_vehicleFiaFlags={self.m_vehicleFiaFlags}, "
+            f"m_enginePowerICE={self.m_enginePowerICE}, "
+            f"m_enginePowerMGUK={self.m_enginePowerMGUK}, "
+            f"m_ersStoreEnergy={self.m_ersStoreEnergy}, "
+            f"m_ersDeployMode={self.m_ersDeployMode}, "
+            f"m_ersHarvestedThisLapMGUK={self.m_ersHarvestedThisLapMGUK}, "
+            f"m_ersHarvestedThisLapMGUH={self.m_ersHarvestedThisLapMGUH}, "
+            f"m_ersDeployedThisLap={self.m_ersDeployedThisLap}, "
+            f"m_networkPaused={self.m_networkPaused})"
         )
 
 class PacketFinalClassificationData:
-    def __init__(self, packet: bytes) -> None:
-        self.m_header: PacketHeader = PacketHeader(packet)           # PacketHeader
-        self.m_numCars: int = 0                                      # uint8
+    max_cars = 22
+    def __init__(self, header: PacketHeader, packet: bytes) -> None:
+        self.m_header: PacketHeader = header
+        self.m_numCars: int = struct.unpack("<B", packet[0:1])[0]
         self.m_classificationData: List[FinalClassificationData] = []  # FinalClassificationData[22]
 
+        for classification_per_car_raw_data in _split_list(packet[1:], F1_23_FINAL_CLASSIFICATION_PER_CAR_LEN):
+            self.m_classificationData.append(FinalClassificationData(classification_per_car_raw_data))
+
     def __str__(self) -> str:
-        classification_data_str = ", ".join(str(data) for data in self.m_classificationData)
+        classification_data_str = ", ".join(str(data) for data in self.m_classificationData[:self.m_numCars])
         return (
             f"PacketFinalClassificationData("
-            f"Header: {str(self.m_header)}, "
             f"Number of Cars: {self.m_numCars}, "
             f"Classification Data: [{classification_data_str}])"
         )
 
 
 class FinalClassificationData:
-    def __init__(self) -> None:
-        self.m_position: int = 0                   # uint8
-        self.m_lapTime: float = 0                   # float
-        self.m_numLaps: int = 0                     # uint8
-        self.m_gridPosition: int = 0                # uint8
-        self.m_points: int = 0                      # uint8
-        self.m_numPitStops: int = 0                 # uint8
-        self.m_resultStatus: int = 0                # uint8
-        self.m_bestLapTime: float = 0               # float
-        self.m_totalRaceTime: float = 0             # double
+    def __init__(self, data) -> None:
 
-    def __str__(self) -> str:
+        (
+            self.m_position,
+            self.m_numLaps,
+            self.m_gridPosition,
+            self.m_points,
+            self.m_numPitStops,
+            self.m_resultStatus,
+            self.m_bestLapTimeInMS,
+            self.m_totalRaceTime,
+            self.m_penaltiesTime,
+            self.m_numPenalties,
+            self.m_numTyreStints,
+            # self.m_tyreStintsActual,  # array of 8
+            tyre_stints_actual1,
+            tyre_stints_actual2,
+            tyre_stints_actual3,
+            tyre_stints_actual4,
+            tyre_stints_actual5,
+            tyre_stints_actual6,
+            tyre_stints_actual7,
+            tyre_stints_actual8,
+            # self.m_tyreStintsVisual,  # array of 8
+            tyre_stints_visual1,
+            tyre_stints_visual2,
+            tyre_stints_visual3,
+            tyre_stints_visual4,
+            tyre_stints_visual5,
+            tyre_stints_visual6,
+            tyre_stints_visual7,
+            tyre_stints_visual8,
+            # self.m_tyreStintsEndLaps,  # array of 8
+            tyre_stints_end_laps1,
+            tyre_stints_end_laps2,
+            tyre_stints_end_laps3,
+            tyre_stints_end_laps4,
+            tyre_stints_end_laps5,
+            tyre_stints_end_laps6,
+            tyre_stints_end_laps7,
+            tyre_stints_end_laps8,
+        ) = struct.unpack(final_classification_per_car_format_string, data)
+
+        self.m_tyreStintsActual = [tyre_stints_actual1, tyre_stints_actual2, tyre_stints_actual3, tyre_stints_actual4,
+                                   tyre_stints_actual5, tyre_stints_actual6, tyre_stints_actual7, tyre_stints_actual8]
+        self.m_tyreStintsVisual = [tyre_stints_visual1, tyre_stints_visual2, tyre_stints_visual3, tyre_stints_visual4,
+                                   tyre_stints_visual5, tyre_stints_visual6, tyre_stints_visual7, tyre_stints_visual8]
+        self.m_tyreStintsEndLaps = [tyre_stints_end_laps1, tyre_stints_end_laps2, tyre_stints_end_laps3, tyre_stints_end_laps4,
+                                    tyre_stints_end_laps5, tyre_stints_end_laps6, tyre_stints_end_laps7, tyre_stints_end_laps8]
+
+    def __str__(self):
         return (
             f"FinalClassificationData("
-            f"Position: {self.m_position}, "
-            f"Lap Time: {self.m_lapTime}, "
-            f"Number of Laps: {self.m_numLaps}, "
-            f"Grid Position: {self.m_gridPosition}, "
-            f"Points: {self.m_points}, "
-            f"Number of Pit Stops: {self.m_numPitStops}, "
-            f"Result Status: {self.m_resultStatus}, "
-            f"Best Lap Time: {self.m_bestLapTime}, "
-            f"Total Race Time: {self.m_totalRaceTime})"
+            f"m_position={self.m_position}, "
+            f"m_numLaps={self.m_numLaps}, "
+            f"m_gridPosition={self.m_gridPosition}, "
+            f"m_points={self.m_points}, "
+            f"m_numPitStops={self.m_numPitStops}, "
+            f"m_resultStatus={self.m_resultStatus}, "
+            f"m_bestLapTimeInMS={self.m_bestLapTimeInMS}, "
+            f"m_totalRaceTime={self.m_totalRaceTime}, "
+            f"m_penaltiesTime={self.m_penaltiesTime}, "
+            f"m_numPenalties={self.m_numPenalties}, "
+            f"m_numTyreStints={self.m_numTyreStints}, "
+            f"m_tyreStintsActual={str(self.m_tyreStintsActual)}, "
+            f"m_tyreStintsVisual={str(self.m_tyreStintsVisual)}, "
+            f"m_tyreStintsEndLaps={str(self.m_tyreStintsEndLaps)})"
         )
 
 
 class PacketLobbyInfoData:
-    def __init__(self, packet: bytes) -> None:
-        self.m_header: PacketHeader = PacketHeader(packet)         # PacketHeader
-        self.m_numPlayers: int = 0                                  # uint8
+    def __init__(self, header: PacketHeader, packet: bytes) -> None:
+        self.m_header: PacketHeader = header
+        self.m_numPlayers: int = struct.unpack("<B", packet[:1])[0]
         self.m_lobbyPlayers: List[LobbyInfoData] = []              # LobbyInfoData[22]
 
+        for lobby_info_per_player_raw_data in _split_list(packet[1:], F1_23_LOBBY_INFO_PER_PLAYER_LEN):
+            self.m_lobbyPlayers.append(LobbyInfoData(lobby_info_per_player_raw_data))
+
+
     def __str__(self) -> str:
-        lobby_players_str = ", ".join(str(player) for player in self.m_lobbyPlayers)
+        lobby_players_str = ", ".join(str(player) for player in self.m_lobbyPlayers[:self.m_numPlayers])
         return (
             f"PacketLobbyInfoData("
-            f"Header: {str(self.m_header)}, "
             f"Number of Players: {self.m_numPlayers}, "
             f"Lobby Players: [{lobby_players_str}])"
         )
 
-
 class LobbyInfoData:
-    def __init__(self) -> None:
-        self.m_aiControlled: int = 0               # uint8
-        self.m_teamId: int = 0                     # uint8
-        self.m_nationality: int = 0                # uint8
-        self.m_name: str = ""                      # char[48]
-        self.m_readyStatus: int = 0                # uint8
+    def __init__(self, data ) -> None:
 
-    def __str__(self) -> str:
+        (
+            self.m_aiControlled,
+            self.m_teamId,
+            self.m_nationality,
+            self.m_platform,
+            self.m_name,
+            self.m_carNumber,
+            self.m_readyStatus,
+        ) = struct.unpack(lobby_info_format_string, data)
+
+    def __str__(self):
         return (
             f"LobbyInfoData("
-            f"AI Controlled: {self.m_aiControlled}, "
-            f"Team ID: {self.m_teamId}, "
-            f"Nationality: {self.m_nationality}, "
-            f"Name: {self.m_name}, "
-            f"Ready Status: {self.m_readyStatus})"
+            f"m_aiControlled={self.m_aiControlled}, "
+            f"m_teamId={self.m_teamId}, "
+            f"m_nationality={self.m_nationality}, "
+            f"m_platform={self.m_platform}, "
+            f"m_name={self.m_name}, "
+            f"m_carNumber={self.m_carNumber}, "
+            f"m_readyStatus={self.m_readyStatus})"
         )
 
 
 class CarDamageData:
-    def __init__(self) -> None:
-        self.m_tyresWear: List[float] = [0.0, 0.0, 0.0, 0.0]  # Tyre wear (percentage)
-        self.m_tyresDamage: List[int] = [0, 0, 0, 0]          # Tyre damage (percentage)
-        self.m_brakesDamage: List[int] = [0, 0, 0, 0]         # Brakes damage (percentage)
-        self.m_frontLeftWingDamage: int = 0                  # Front left wing damage (percentage)
-        self.m_frontRightWingDamage: int = 0                 # Front right wing damage (percentage)
-        self.m_rearWingDamage: int = 0                       # Rear wing damage (percentage)
-        self.m_floorDamage: int = 0                          # Floor damage (percentage)
-        self.m_diffuserDamage: int = 0                       # Diffuser damage (percentage)
-        self.m_sidepodDamage: int = 0                        # Sidepod damage (percentage)
-        self.m_drsFault: int = 0                             # Indicator for DRS fault, 0 = OK, 1 = fault
-        self.m_ersFault: int = 0                             # Indicator for ERS fault, 0 = OK, 1 = fault
-        self.m_gearBoxDamage: int = 0                        # Gear box damage (percentage)
-        self.m_engineDamage: int = 0                         # Engine damage (percentage)
-        self.m_engineMGUHWear: int = 0                       # Engine wear MGU-H (percentage)
-        self.m_engineESWear: int = 0                         # Engine wear ES (percentage)
-        self.m_engineCEWear: int = 0                         # Engine wear CE (percentage)
-        self.m_engineICEWear: int = 0                        # Engine wear ICE (percentage)
-        self.m_engineMGUKWear: int = 0                       # Engine wear MGU-K (percentage)
-        self.m_engineTCWear: int = 0                         # Engine wear TC (percentage)
-        self.m_engineBlown: int = 0                          # Engine blown, 0 = OK, 1 = fault
-        self.m_engineSeized: int = 0                         # Engine seized, 0 = OK, 1 = fault
+    def __init__(self, data) -> None:
+
+        self.m_tyresWear = [0.0] * 4
+        self.m_tyresDamage = [0] * 4
+        self.m_brakesDamage = [0] * 4
+        (
+            self.m_tyresWear[0],
+            self.m_tyresWear[1],
+            self.m_tyresWear[2],
+            self.m_tyresWear[3],
+            self.m_tyresDamage[0],
+            self.m_tyresDamage[1],
+            self.m_tyresDamage[2],
+            self.m_tyresDamage[3],
+            self.m_brakesDamage[0],
+            self.m_brakesDamage[1],
+            self.m_brakesDamage[2],
+            self.m_brakesDamage[3],
+            self.m_frontLeftWingDamage,
+            self.m_frontRightWingDamage,
+            self.m_rearWingDamage,
+            self.m_floorDamage,
+            self.m_diffuserDamage,
+            self.m_sidepodDamage,
+            self.m_drsFault,
+            self.m_ersFault,
+            self.m_gearBoxDamage,
+            self.m_engineDamage,
+            self.m_engineMGUHWear,
+            self.m_engineESWear,
+            self.m_engineCEWear,
+            self.m_engineICEWear,
+            self.m_engineMGUKWear,
+            self.m_engineTCWear,
+            self.m_engineBlown,
+            self.m_engineSeized,
+        ) = struct.unpack(car_damage_packet_format_string, data)
 
     def __str__(self) -> str:
         return (
-            f"Tyres Wear: {self.m_tyresWear}, Tyres Damage: {self.m_tyresDamage}, "
-            f"Brakes Damage: {self.m_brakesDamage}, Front Left Wing Damage: {self.m_frontLeftWingDamage}, "
+            f"Tyres Wear: {str(self.m_tyresWear)}, Tyres Damage: {str(self.m_tyresDamage)}, "
+            f"Brakes Damage: {str(self.m_brakesDamage)}, Front Left Wing Damage: {self.m_frontLeftWingDamage}, "
             f"Front Right Wing Damage: {self.m_frontRightWingDamage}, Rear Wing Damage: {self.m_rearWingDamage}, "
             f"Floor Damage: {self.m_floorDamage}, Diffuser Damage: {self.m_diffuserDamage}, "
             f"Sidepod Damage: {self.m_sidepodDamage}, DRS Fault: {self.m_drsFault}, ERS Fault: {self.m_ersFault}, "
@@ -786,23 +1298,28 @@ class CarDamageData:
         )
 
 class PacketCarDamageData:
-    def __init__(self) -> None:
-        self.m_header: PacketHeader = PacketHeader()
-        self.m_carDamageData: List[CarDamageData] = [CarDamageData() for _ in range(22)]
+    def __init__(self, header, data) -> None:
+        self.m_header: PacketHeader = header
+        self.m_carDamageData: List[CarDamageData] = []
+
+        for raw_data_per_car in _split_list(data, F1_23_DAMAGE_PER_CAR_PACKET_LEN):
+            self.m_carDamageData.append(CarDamageData(raw_data_per_car))
 
     def __str__(self) -> str:
         return f"Header: {str(self.m_header)}, Car Damage Data: {[str(car_data) for car_data in self.m_carDamageData]}"
 
 class LapHistoryData:
-    def __init__(self) -> None:
-        self.m_lapTimeInMS: int = 0
-        self.m_sector1TimeInMS: int = 0
-        self.m_sector1TimeMinutes: int = 0
-        self.m_sector2TimeInMS: int = 0
-        self.m_sector2TimeMinutes: int = 0
-        self.m_sector3TimeInMS: int = 0
-        self.m_sector3TimeMinutes: int = 0
-        self.m_lapValidBitFlags: int = 0
+    def __init__(self, data) -> None:
+        (
+            self.m_lapTimeInMS,
+            self.m_sector1TimeInMS,
+            self.m_sector1TimeMinutes,
+            self.m_sector2TimeInMS,
+            self.m_sector2TimeMinutes,
+            self.m_sector3TimeInMS,
+            self.m_sector3TimeMinutes,
+            self.m_lapValidBitFlags,
+        ) = struct.unpack(session_history_lap_history_data_format_string, data)
 
     def __str__(self) -> str:
         return (
@@ -813,47 +1330,70 @@ class LapHistoryData:
         )
 
 class TyreStintHistoryData:
-    def __init__(self) -> None:
-        self.m_endLap: int = 0
-        self.m_tyreActualCompound: int = 0
-        self.m_tyreVisualCompound: int = 0
+    def __init__(self, data) -> None:
+        (
+            self.m_endLap,
+            self.m_tyreActualCompound,
+            self.m_tyreVisualCompound,
+        ) = struct.unpack(session_history_tyre_stint_format_string, data)
 
     def __str__(self) -> str:
         return f"End Lap: {self.m_endLap}, Tyre Actual Compound: {self.m_tyreActualCompound}, Tyre Visual Compound: {self.m_tyreVisualCompound}"
 
 class PacketSessionHistoryData:
-    def __init__(self) -> None:
-        self.m_header: PacketHeader = PacketHeader()
-        self.m_carIdx: int = 0
-        self.m_numLaps: int = 0
-        self.m_numTyreStints: int = 0
-        self.m_bestLapTimeLapNum: int = 0
-        self.m_bestSector1LapNum: int = 0
-        self.m_bestSector2LapNum: int = 0
-        self.m_bestSector3LapNum: int = 0
+    max_laps = 100
+    max_tyre_stint_count = 8
+    def __init__(self, header, data) -> None:
+        self.m_header: PacketHeader = header
+        (
+            self.m_carIdx,
+            self.m_numLaps,
+            self.m_numTyreStints,
+            self.m_bestLapTimeLapNum,
+            self.m_bestSector1LapNum,
+            self.m_bestSector2LapNum,
+            self.m_bestSector3LapNum,
+        ) = struct.unpack(session_history_format_string, data[:F1_23_SESSION_HISTORY_LEN])
+        bytes_index_so_far = F1_23_SESSION_HISTORY_LEN
+
         self.m_lapHistoryData: List[LapHistoryData] = []
         self.m_tyreStintsHistoryData: List[TyreStintHistoryData] = []
+
+        # Next, parse the lap history data
+        len_total_lap_hist = F1_23_SESSION_HISTORY_LAP_HISTORY_DATA_LEN * PacketSessionHistoryData.max_laps
+        laps_history_data_all = _extract_sublist(data, bytes_index_so_far, bytes_index_so_far+len_total_lap_hist)
+        for per_lap_history_raw in _split_list(laps_history_data_all, F1_23_SESSION_HISTORY_LAP_HISTORY_DATA_LEN):
+            self.m_lapHistoryData.append(LapHistoryData(per_lap_history_raw))
+        bytes_index_so_far += len_total_lap_hist
+
+        # Finally, parse tyre stint data
+        len_total_tyre_stint = PacketSessionHistoryData.max_tyre_stint_count * F1_23_SESSION_HISTORY_TYRE_STINT_LEN
+        tyre_stint_history_all = _extract_sublist(data, bytes_index_so_far, (bytes_index_so_far+len_total_tyre_stint))
+        for tyre_history_per_stint_raw in _split_list(tyre_stint_history_all, F1_23_SESSION_HISTORY_TYRE_STINT_LEN):
+            self.m_tyreStintsHistoryData.append(TyreStintHistoryData(tyre_history_per_stint_raw))
 
     def __str__(self) -> str:
         return (
             f"Header: {str(self.m_header)}, Car Index: {self.m_carIdx}, Num Laps: {self.m_numLaps}, "
             f"Num Tyre Stints: {self.m_numTyreStints}, Best Lap Time Lap Num: {self.m_bestLapTimeLapNum}, "
             f"Best Sector 1 Lap Num: {self.m_bestSector1LapNum}, Best Sector 2 Lap Num: {self.m_bestSector2LapNum}, "
-            f"Best Sector 3 Lap Num: {self.m_bestSector3LapNum}, Lap History Data: {[str(lap_data) for lap_data in self.m_lapHistoryData]}, "
-            f"Tyre Stints History Data: {[str(tyre_stint_data) for tyre_stint_data in self.m_tyreStintsHistoryData]}"
+            f"Best Sector 3 Lap Num: {self.m_bestSector3LapNum}, Lap History Data: {[str(lap_data) for lap_data in self.m_lapHistoryData[self.m_numLaps:]]}, "
+            f"Tyre Stints History Data: {[str(tyre_stint_data) for tyre_stint_data in self.m_tyreStintsHistoryData[self.m_numTyreStints:]]}"
         )
 
 class TyreSetData:
-    def __init__(self) -> None:
-        self.m_actualTyreCompound: int = 0
-        self.m_visualTyreCompound: int = 0
-        self.m_wear: int = 0
-        self.m_available: int = 0
-        self.m_recommendedSession: int = 0
-        self.m_lifeSpan: int = 0
-        self.m_usableLife: int = 0
-        self.m_lapDeltaTime: int = 0
-        self.m_fitted: int = 0
+    def __init__(self, data) -> None:
+        (
+            self.m_actualTyreCompound,
+            self.m_visualTyreCompound,
+            self.m_wear,
+            self.m_available,
+            self.m_recommendedSession,
+            self.m_lifeSpan,
+            self.m_usableLife,
+            self.m_lapDeltaTime,
+            self.m_fitted,
+        ) = struct.unpack(tyre_set_data_per_set_format_string, data)
 
     def __str__(self) -> str:
         return (
@@ -864,11 +1404,18 @@ class TyreSetData:
         )
 
 class PacketTyreSetsData:
-    def __init__(self) -> None:
-        self.m_header: PacketHeader = PacketHeader()
-        self.m_carIdx: int = 0
+    max_tyre_sets = 20
+    def __init__(self, header, data) -> None:
+        self.m_header: PacketHeader = header
+        self.m_carIdx: int = struct.unpack("<B", data[0:1])[0]
         self.m_tyreSetData: List[TyreSetData] = []
-        self.m_fittedIdx: int = 0
+
+        tyre_set_data_full_len = PacketTyreSetsData.max_tyre_sets * F1_23_TYRE_SET_DATA_PER_SET_LEN
+        full_tyre_set_data_raw = _extract_sublist(data, 1, 1+tyre_set_data_full_len)
+        for tyre_set_data_raw in _split_list(full_tyre_set_data_raw, F1_23_TYRE_SET_DATA_PER_SET_LEN):
+            self.m_tyreSetData.append(TyreSetData(tyre_set_data_raw))
+
+        self.m_fittedIdx = struct.unpack("<B", data[(1+tyre_set_data_full_len):])[0]
 
     def __str__(self) -> str:
         return (
@@ -877,38 +1424,77 @@ class PacketTyreSetsData:
         )
 
 class PacketMotionExData:
-    def __init__(self) -> None:
-        self.m_header: PacketHeader = PacketHeader()
-        self.m_suspensionPosition: List[float] = [0.0, 0.0, 0.0, 0.0]
-        self.m_suspensionVelocity: List[float] = [0.0, 0.0, 0.0, 0.0]
-        self.m_suspensionAcceleration: List[float] = [0.0, 0.0, 0.0, 0.0]
-        self.m_wheelSpeed: List[float] = [0.0, 0.0, 0.0, 0.0]
-        self.m_wheelSlipRatio: List[float] = [0.0, 0.0, 0.0, 0.0]
-        self.m_wheelSlipAngle: List[float] = [0.0, 0.0, 0.0, 0.0]
-        self.m_wheelLatForce: List[float] = [0.0, 0.0, 0.0, 0.0]
-        self.m_wheelLongForce: List[float] = [0.0, 0.0, 0.0, 0.0]
-        self.m_heightOfCOGAboveGround: float = 0.0
-        self.m_localVelocityX: float = 0.0
-        self.m_localVelocityY: float = 0.0
-        self.m_localVelocityZ: float = 0.0
-        self.m_angularVelocityX: float = 0.0
-        self.m_angularVelocityY: float = 0.0
-        self.m_angularVelocityZ: float = 0.0
-        self.m_angularAccelerationX: float = 0.0
-        self.m_angularAccelerationY: float = 0.0
-        self.m_angularAccelerationZ: float = 0.0
-        self.m_frontWheelsAngle: float = 0.0
-        self.m_wheelVertForce: List[float] = [0.0, 0.0, 0.0, 0.0]
+    def __init__(self, header, data) -> None:
+        self.m_header = header
+
+        self.m_suspensionPosition = [0.0] * 4
+        self.m_suspensionVelocity = [0.0] * 4
+        self.m_suspensionAcceleration = [0.0] * 4
+        self.m_wheelSpeed = [0.0] * 4
+        self.m_wheelSlipRatio = [0.0] * 4
+        self.m_wheelSlipAngle = [0.0] * 4
+        self.m_wheelLatForce = [0.0] * 4
+        self.m_wheelLongForce = [0.0] * 4
+        self.m_wheelVertForce = [0.0] * 4
+        (
+            self.m_suspensionPosition[0],           # array of floats
+            self.m_suspensionPosition[1],           # array of floats
+            self.m_suspensionPosition[2],           # array of floats
+            self.m_suspensionPosition[3],           # array of floats
+            self.m_suspensionVelocity[0],           # array of floats
+            self.m_suspensionVelocity[1],           # array of floats
+            self.m_suspensionVelocity[2],           # array of floats
+            self.m_suspensionVelocity[3],           # array of floats
+            self.m_suspensionAcceleration[0],       # array of floats
+            self.m_suspensionAcceleration[1],       # array of floats
+            self.m_suspensionAcceleration[2],       # array of floats
+            self.m_suspensionAcceleration[3],       # array of floats
+            self.m_wheelSpeed[0],                   # array of floats
+            self.m_wheelSpeed[1],                   # array of floats
+            self.m_wheelSpeed[2],                   # array of floats
+            self.m_wheelSpeed[3],                   # array of floats
+            self.m_wheelSlipRatio[0],               # array of floats
+            self.m_wheelSlipRatio[1],               # array of floats
+            self.m_wheelSlipRatio[2],               # array of floats
+            self.m_wheelSlipRatio[3],               # array of floats
+            self.m_wheelSlipAngle[0],               # array of floats
+            self.m_wheelSlipAngle[1],               # array of floats
+            self.m_wheelSlipAngle[2],               # array of floats
+            self.m_wheelSlipAngle[3],               # array of floats
+            self.m_wheelLatForce[0],                # array of floats
+            self.m_wheelLatForce[1],                # array of floats
+            self.m_wheelLatForce[2],                # array of floats
+            self.m_wheelLatForce[3],                # array of floats
+            self.m_wheelLongForce[0],               # array of floats
+            self.m_wheelLongForce[1],               # array of floats
+            self.m_wheelLongForce[2],               # array of floats
+            self.m_wheelLongForce[3],               # array of floats
+            self.m_heightOfCOGAboveGround,       # float
+            self.m_localVelocityX,               # float
+            self.m_localVelocityY,               # float
+            self.m_localVelocityZ,               # float
+            self.m_angularVelocityX,             # float
+            self.m_angularVelocityY,             # float
+            self.m_angularVelocityZ,             # float
+            self.m_angularAccelerationX,         # float
+            self.m_angularAccelerationY,         # float
+            self.m_angularAccelerationZ,         # float
+            self.m_frontWheelsAngle,             # float
+            self.m_wheelVertForce[0],               # array of floats
+            self.m_wheelVertForce[1],               # array of floats
+            self.m_wheelVertForce[2],               # array of floats
+            self.m_wheelVertForce[3],               # array of floats
+        ) = struct.unpack(motion_ex_format_string, data)
 
     def __str__(self) -> str:
         return (
-            f"Header: {str(self.m_header)}, Suspension Position: {self.m_suspensionPosition}, "
-            f"Suspension Velocity: {self.m_suspensionVelocity}, Suspension Acceleration: {self.m_suspensionAcceleration}, "
-            f"Wheel Speed: {self.m_wheelSpeed}, Wheel Slip Ratio: {self.m_wheelSlipRatio}, Wheel Slip Angle: {self.m_wheelSlipAngle}, "
-            f"Wheel Lat Force: {self.m_wheelLatForce}, Wheel Long Force: {self.m_wheelLongForce}, "
+            f"Header: {str(self.m_header)}, Suspension Position: {str(self.m_suspensionPosition)}, "
+            f"Suspension Velocity: {str(self.m_suspensionVelocity)}, Suspension Acceleration: {str(self.m_suspensionAcceleration)}, "
+            f"Wheel Speed: {str(self.m_wheelSpeed)}, Wheel Slip Ratio: {str(self.m_wheelSlipRatio)}, Wheel Slip Angle: {str(self.m_wheelSlipAngle)}, "
+            f"Wheel Lat Force: {str(self.m_wheelLatForce)}, Wheel Long Force: {str(self.m_wheelLongForce)}, "
             f"Height of COG Above Ground: {self.m_heightOfCOGAboveGround}, Local Velocity (X, Y, Z): "
             f"({self.m_localVelocityX}, {self.m_localVelocityY}, {self.m_localVelocityZ}), "
             f"Angular Velocity (X, Y, Z): ({self.m_angularVelocityX}, {self.m_angularVelocityY}, {self.m_angularVelocityZ}), "
             f"Angular Acceleration (X, Y, Z): ({self.m_angularAccelerationX}, {self.m_angularAccelerationY}, {self.m_angularAccelerationZ}), "
-            f"Front Wheels Angle: {self.m_frontWheelsAngle}, Wheel Vertical Force: {self.m_wheelVertForce}"
+            f"Front Wheels Angle: {self.m_frontWheelsAngle}, Wheel Vertical Force: {str(self.m_wheelVertForce)}"
         )
