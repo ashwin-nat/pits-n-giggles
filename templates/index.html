@@ -135,6 +135,13 @@
                     row.style.backgroundColor = ''; // Reset background color
                     row.style.color = ''; // Reset text color
                 }
+
+                // Conditionally apply styles based on "drs" key
+                if (entry["drs"]) {
+                    row.style.color = 'green'; // Set green font color
+                } else {
+                    row.style.color = ''; // Reset text colour
+                }
             });
         }
 

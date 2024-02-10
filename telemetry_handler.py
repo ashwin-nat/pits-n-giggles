@@ -58,8 +58,10 @@ class F12023TelemetryHandler:
                 if (lap_data.m_lastLapTimeInMS > 0) else "---"
             data.m_delta = lap_data.m_deltaToCarInFrontInMS
             # data.m_delta = ("{:.3f}".format(lap_data.m_deltaToRaceLeaderInMS / 1000))
-            data.m_penalties = str("(+" + str(lap_data.m_penalties) + ")") if (lap_data.m_penalties != 0) else ""
+            data.m_penalties = F12023TelemetryHandler.getPenaltyString(lap_data.m_penalties,
+                                lap_data.m_numUnservedDriveThroughPens, lap_data.m_numUnservedStopGoPens)
             data.m_current_lap = lap_data.m_currentLapNum
+            data.m_is_pitting = True if lap_data.m_pitStatus in [1,2] else False
 
             should_recompute_fastest_lap |= TelData.set_driver_data(index, data)
 
@@ -104,6 +106,10 @@ class F12023TelemetryHandler:
     @staticmethod
     def handleCarTelemetry(packet: PacketCarTelemetryData) -> None:
         # print('Received Car Telemetry Packet. ' + str(packet))
+        for index, car_telemetry_data in enumerate(packet.m_carTelemetryData):
+            driver_data = TelData.DataPerDriver()
+            driver_data.m_drs_activated = bool(car_telemetry_data.m_drs)
+            TelData.set_driver_data(index, driver_data)
         return
 
     @staticmethod
@@ -120,6 +126,8 @@ class F12023TelemetryHandler:
             if vis_cmp_name is None:
                 vis_cmp_name = "---"
             data.m_tyre_compound_type = act_cmp_name + ' - ' + vis_cmp_name
+            data.m_drs_allowed = bool(car_status_data.m_drsAllowed)
+            data.m_drs_distance = bool(car_status_data.m_drsActivationDistance)
 
             TelData.set_driver_data(index, data)
         return
@@ -149,7 +157,7 @@ class F12023TelemetryHandler:
         # print('Received Session History Packet. ' + str(packet))
         # Update the best time for this car
         driver_data = TelData.DataPerDriver()
-        if packet.m_bestLapTimeLapNum > 0:
+        if (packet.m_bestLapTimeLapNum > 0) and (packet.m_bestLapTimeLapNum <= packet.m_numLaps):
             driver_data.m_best_lap = F12023TelemetryHandler.millisecondsToMinutesSeconds(
                 packet.m_lapHistoryData[packet.m_bestLapTimeLapNum-1].m_lapTimeInMS)
             if (TelData.set_driver_data(packet.m_carIdx, driver_data)) is True:
@@ -193,6 +201,27 @@ class F12023TelemetryHandler:
         milliseconds = total_milliseconds % 1000
 
         return f"{minutes:02}:{seconds:02}.{milliseconds:03}"
+
+    @staticmethod
+    def getPenaltyString(penalties_sec, num_dt, num_stop_go):
+        if penalties_sec == 0 and num_dt == 0 and num_stop_go == 0:
+            return ""
+        penalty_string = "("
+        started_filling = False
+        if penalties_sec > 0:
+            penalty_string += "+" + str(penalties_sec) + " sec"
+            started_filling = True
+        if num_dt > 0:
+            if started_filling:
+                penalty_string += " + "
+            penalty_string += str(num_dt) + "DT"
+            started_filling = True
+        if num_stop_go:
+            if started_filling:
+                penalty_string += " + "
+            penalty_string += str(num_stop_go) + "SG"
+        penalty_string += ")"
+        return penalty_string
 
     def registerCallbacks(self):
 
