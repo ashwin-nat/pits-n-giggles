@@ -59,6 +59,143 @@ def _packetDump(data):
 
     return formatted_hex_string
 
+def getTrackName(track_id: int) -> str:
+    track_data = {
+        0: "Melbourne",
+        1: "Paul Ricard",
+        2: "Shanghai",
+        3: "Sakhir (Bahrain)",
+        4: "Catalunya",
+        5: "Monaco",
+        6: "Montreal",
+        7: "Silverstone",
+        8: "Hockenheim",
+        9: "Hungaroring",
+        10: "Spa",
+        11: "Monza",
+        12: "Singapore",
+        13: "Suzuka",
+        14: "Abu Dhabi",
+        15: "Texas",
+        16: "Brazil",
+        17: "Austria",
+        18: "Sochi",
+        19: "Mexico",
+        20: "Baku (Azerbaijan)",
+        21: "Sakhir Short",
+        22: "Silverstone Short",
+        23: "Texas Short",
+        24: "Suzuka Short",
+        25: "Hanoi",
+        26: "Zandvoort",
+        27: "Imola",
+        28: "Portimão",
+        29: "Jeddah",
+        30: "Miami",
+        31: "Las Vegas",
+        32: "Losail",
+    }
+    return track_data.get(track_id, None)
+
+def getRuleSetName(rule_set_id: int) -> str:
+    ruleset_data = {
+        0: "Practice & Qualifying",
+        1: "Race",
+        2: "Time Trial",
+        4: "Time Attack",
+        6: "Checkpoint Challenge",
+        8: "Autocross",
+        9: "Drift",
+        10: "Average Speed Zone",
+        11: "Rival Duel",
+    }
+    return ruleset_data.get(rule_set_id, None)
+
+def getSessionTypeName(session_type_id: int) -> str:
+    session_type_mapping = {
+        0: "Unknown",
+        1: "Practice 1",
+        2: "Practice 2",
+        3: "Practice 3",
+        4: "Short Practice",
+        5: "Qualifying 1",
+        6: "Qualifying 2",
+        7: "Qualifying 3",
+        8: "Short Qualifying",
+        9: "One-Shot Qualifying",
+        10: "Race",
+        11: "Race 2",
+        12: "Race 3",
+        13: "Time Trial",
+    }
+    return session_type_mapping.get(session_type_id, None)
+
+def getTeamName(team_id: int) -> str:
+    teams_mapping = {
+        0: "Mercedes", 1: "Ferrari", 2: "Red Bull Racing",
+        3: "Williams", 4: "Aston Martin", 5: "Alpine",
+        6: "Alpha Tauri", 7: "Haas", 8: "McLaren",
+        9: "Alfa Romeo", 85: "Mercedes 2020", 86: "Ferrari 2020",
+        87: "Red Bull 2020", 88: "Williams 2020", 89: "Racing Point 2020",
+        90: "Renault 2020", 91: "Alpha Tauri 2020", 92: "Haas 2020",
+        93: "McLaren 2020", 94: "Alfa Romeo 2020", 95: "Aston Martin DB11 V12",
+        96: "Aston Martin Vantage F1 Edition", 97: "Aston Martin Vantage Safety Car",
+        98: "Ferrari F8 Tributo", 99: "Ferrari Roma", 100: "McLaren 720S",
+        101: "McLaren Artura", 102: "Mercedes AMG GT Black Series Safety Car",
+        103: "Mercedes AMG GTR Pro", 104: "F1 Custom Team",
+        106: "Prema '21", 107: "Uni-Virtuosi '21", 108: "Carlin '21",
+        109: "Hitech '21", 110: "Art GP '21", 111: "MP Motorsport '21",
+        112: "Charouz '21", 113: "Dams '21", 114: "Campos '21",
+        115: "BWT '21", 116: "Trident '21", 117: "Mercedes AMG GT Black Series",
+        118: "Mercedes '22", 119: "Ferrari '22", 120: "Red Bull Racing '22",
+        121: "Williams '22", 122: "Aston Martin '22", 123: "Alpine '22",
+        124: "Alpha Tauri '22", 125: "Haas '22", 126: "McLaren '22",
+        127: "Alfa Romeo '22", 128: "Konnersport '22", 129: "Konnersport",
+        130: "Prema '22", 131: "Virtuosi '22", 132: "Carlin '22",
+        133: "MP Motorsport '22", 134: "Charouz '22", 135: "Dams '22",
+        136: "Campos '22", 137: "Van Amersfoort Racing '22", 138: "Trident '22",
+        139: "Hitech '22", 140: "Art GP '22"
+    }
+    return teams_mapping.get(team_id, None)
+
+def getActualTyreCompoundName(tyre_compound_code: int) -> str:
+    tyre_compound_mapping = {
+        16: 'C5',
+        17: 'C4',
+        18: 'C3',
+        19: 'C2',
+        20: 'C1',
+        21: 'C0',
+        7: 'Intermediate',
+        8: 'Wet',
+        9: 'Dry (F1 Classic)',
+        10: 'Wet (F1 Classic)',
+        11: 'Super Soft (F2)',
+        12: 'Soft (F2)',
+        13: 'Medium (F2)',
+        14: 'Hard (F2)',
+        15: 'Wet (F2)'
+    }
+    return tyre_compound_mapping.get(tyre_compound_code, '---')
+
+def getVisualTyreCompoundName(tyre_compound_code: int) -> str:
+
+    tyre_compound_mapping_visual = {
+        16: 'SFT',
+        17: 'MED',
+        18: 'HRD',
+        7: 'INT',
+        8: 'WER',
+        15: 'WET',
+        19: 'SS',
+        20: 'SFT',
+        21: 'MED',
+        22: 'HRD'
+    }
+    return tyre_compound_mapping_visual.get(tyre_compound_code, '---')
+
+
+
 # -------------------- PACKET FORMAT STRINGS ---------------------------------
 header_format_string = "<HBBBBBQfIIBB"
 F1_23_PACKET_HEADER_LEN: int = struct.calcsize(header_format_string)
@@ -151,8 +288,6 @@ class PacketHeader:
 
     def isPacketTypeSupported(self):
         return self.is_supported_packet_type
-
-
 
 class CarMotionData:
     def __init__(self, data) -> None:
@@ -533,8 +668,6 @@ class PacketSessionData:
         )
 
 
-
-
 class EventPacketType(Enum):
     """
     Enum class representing different event types.
@@ -825,16 +958,20 @@ class ParticipantData:
 
         self.m_name = self.m_name.decode('utf-8').rstrip('\x00')
 
-    def __str__(self) -> str:
+    def __str__(self):
         return (
             f"ParticipantData("
-            f"AI Controlled: {self.m_aiControlled}, "
-            f"Driver ID: {self.m_driverId}, "
-            f"Team ID: {self.m_teamId}, "
-            f"Race Number: {self.m_raceNumber}, "
-            f"Nationality: {self.m_nationality}, "
-            f"Name: {self.m_name}, "
-            f"Your Telemetry: {self.m_yourTelemetry})"
+            f"m_aiControlled={self.m_aiControlled}, "
+            f"m_driverId={self.m_driverId}, "
+            f"networkId={self.networkId}, "
+            f"m_teamId={self.m_teamId}, "
+            f"m_myTeam={self.m_myTeam}, "
+            f"m_raceNumber={self.m_raceNumber}, "
+            f"m_nationality={self.m_nationality}, "
+            f"m_name={self.m_name}, "
+            f"m_yourTelemetry={self.m_yourTelemetry}, "
+            f"m_showOnlineNames={self.m_showOnlineNames}, "
+            f"m_platform={self.m_platform})"
         )
 
 
@@ -849,7 +986,7 @@ class PacketParticipantsData:
             self.m_participants.append(ParticipantData(participant_data_raw))
 
     def __str__(self) -> str:
-        participants_str = ", ".join(str(participant) for participant in self.m_participants)
+        participants_str = ", ".join(str(participant) for participant in self.m_participants[self.m_numActiveCars:])
         return (
             f"PacketParticipantsData("
             f"Header: {str(self.m_header)}, "
@@ -1049,6 +1186,8 @@ class PacketCarStatusData:
 
 
 class CarStatusData:
+
+    max_ers_store_energy = 4000000.0
     def __init__(self, data) -> None:
 
         (
