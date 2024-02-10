@@ -26,6 +26,8 @@ from f1_packet_info import *
 import struct
 import binascii
 
+# ------------------------- PRIVATE FUNCTIONS ----------------------------------
+
 def _split_list(original_list, sublist_length):
     return [original_list[i:i+sublist_length] for i in range(0, len(original_list), sublist_length)]
 
@@ -59,26 +61,216 @@ def _packetDump(data):
 
     return formatted_hex_string
 
-# -------------------- PACKET FORMAT STRINGS ---------------------------------
-header_format_string = "<HBBBBBQfIIBB"
-F1_23_PACKET_HEADER_LEN: int = struct.calcsize(header_format_string)
+# ------------------------- PUBLIC FUNCTIONS -----------------------------------
 
-'''
-    H # packet format
-    B # year
-    B # major
-    B # minor
-    B # ver
-    B # pktID
-    Q # sessionID
-    f # session time
-    I # uint32
-    I # uint32
-    B # carIndex
-    B # sec car index
-'''
+def getTrackName(track_id: int) -> str:
+    """For the given track ID, get the string representation of the track name.
+        All data is obtained from the appendix section of the
+            F1 23 UDP specification document
+
+    Args:
+        track_id (int): The numeric track ID code
+
+    Returns:
+        str: Name of the track, None if invalid track name
+    """
+    track_data = {
+        0: "Melbourne",
+        1: "Paul Ricard",
+        2: "Shanghai",
+        3: "Sakhir (Bahrain)",
+        4: "Catalunya",
+        5: "Monaco",
+        6: "Montreal",
+        7: "Silverstone",
+        8: "Hockenheim",
+        9: "Hungaroring",
+        10: "Spa",
+        11: "Monza",
+        12: "Singapore",
+        13: "Suzuka",
+        14: "Abu Dhabi",
+        15: "Texas",
+        16: "Brazil",
+        17: "Austria",
+        18: "Sochi",
+        19: "Mexico",
+        20: "Baku (Azerbaijan)",
+        21: "Sakhir Short",
+        22: "Silverstone Short",
+        23: "Texas Short",
+        24: "Suzuka Short",
+        25: "Hanoi",
+        26: "Zandvoort",
+        27: "Imola",
+        28: "Portimão",
+        29: "Jeddah",
+        30: "Miami",
+        31: "Las Vegas",
+        32: "Losail",
+    }
+    return track_data.get(track_id, None)
+
+def getRuleSetName(rule_set_id: int) -> str:
+    """For the given rule set ID, get the string representation of the rule set name.
+        All data is obtained from the appendix section of the
+            F1 23 UDP specification document
+
+    Args:
+        rule_set_id (int): The numeric rule set ID code
+
+    Returns:
+        str: Name of the rule set, None if invalid rule set name
+    """
+    ruleset_data = {
+        0: "Practice & Qualifying",
+        1: "Race",
+        2: "Time Trial",
+        4: "Time Attack",
+        6: "Checkpoint Challenge",
+        8: "Autocross",
+        9: "Drift",
+        10: "Average Speed Zone",
+        11: "Rival Duel",
+    }
+    return ruleset_data.get(rule_set_id, None)
+
+def getSessionTypeName(session_type_id: int) -> str:
+    """For the given session type ID, get the string representation of the session type name.
+        All data is obtained from the appendix section of the
+            F1 23 UDP specification document
+
+    Args:
+        session_type_id (int): The numeric session type ID code
+
+    Returns:
+        str: Name of the session type, None if invalid session type name
+    """
+    session_type_mapping = {
+        0: "Unknown",
+        1: "Practice 1",
+        2: "Practice 2",
+        3: "Practice 3",
+        4: "Short Practice",
+        5: "Qualifying 1",
+        6: "Qualifying 2",
+        7: "Qualifying 3",
+        8: "Short Qualifying",
+        9: "One-Shot Qualifying",
+        10: "Race",
+        11: "Race 2",
+        12: "Race 3",
+        13: "Time Trial",
+    }
+    return session_type_mapping.get(session_type_id, None)
+
+def getTeamName(team_id: int) -> str:
+    """For the given team ID, get the string representation of the team name.
+        All data is obtained from the appendix section of the
+            F1 23 UDP specification document
+
+    Args:
+        team_id (int): The numeric team ID code
+
+    Returns:
+        str: Name of the team, None if invalid team name
+    """
+    teams_mapping = {
+        0: "Mercedes", 1: "Ferrari", 2: "Red Bull Racing",
+        3: "Williams", 4: "Aston Martin", 5: "Alpine",
+        6: "Alpha Tauri", 7: "Haas", 8: "McLaren",
+        9: "Alfa Romeo", 85: "Mercedes 2020", 86: "Ferrari 2020",
+        87: "Red Bull 2020", 88: "Williams 2020", 89: "Racing Point 2020",
+        90: "Renault 2020", 91: "Alpha Tauri 2020", 92: "Haas 2020",
+        93: "McLaren 2020", 94: "Alfa Romeo 2020", 95: "Aston Martin DB11 V12",
+        96: "Aston Martin Vantage F1 Edition", 97: "Aston Martin Vantage Safety Car",
+        98: "Ferrari F8 Tributo", 99: "Ferrari Roma", 100: "McLaren 720S",
+        101: "McLaren Artura", 102: "Mercedes AMG GT Black Series Safety Car",
+        103: "Mercedes AMG GTR Pro", 104: "F1 Custom Team",
+        106: "Prema '21", 107: "Uni-Virtuosi '21", 108: "Carlin '21",
+        109: "Hitech '21", 110: "Art GP '21", 111: "MP Motorsport '21",
+        112: "Charouz '21", 113: "Dams '21", 114: "Campos '21",
+        115: "BWT '21", 116: "Trident '21", 117: "Mercedes AMG GT Black Series",
+        118: "Mercedes '22", 119: "Ferrari '22", 120: "Red Bull Racing '22",
+        121: "Williams '22", 122: "Aston Martin '22", 123: "Alpine '22",
+        124: "Alpha Tauri '22", 125: "Haas '22", 126: "McLaren '22",
+        127: "Alfa Romeo '22", 128: "Konnersport '22", 129: "Konnersport",
+        130: "Prema '22", 131: "Virtuosi '22", 132: "Carlin '22",
+        133: "MP Motorsport '22", 134: "Charouz '22", 135: "Dams '22",
+        136: "Campos '22", 137: "Van Amersfoort Racing '22", 138: "Trident '22",
+        139: "Hitech '22", 140: "Art GP '22"
+    }
+    return teams_mapping.get(team_id, None)
+
+def getActualTyreCompoundName(tyre_compound_code: int) -> str:
+    """For the given actual tyre compound ID, get the string representation of the actual tyre compound name.
+        All data is obtained from the appendix section of the
+            F1 23 UDP specification document
+
+    Args:
+        tyre_compound_code (int): The numeric actual tyre compound ID code
+
+    Returns:
+        str: Name of the team, None if invalid actual tyre compound ID
+    """
+    tyre_compound_mapping = {
+        16: 'C5',
+        17: 'C4',
+        18: 'C3',
+        19: 'C2',
+        20: 'C1',
+        21: 'C0',
+        7: 'Intermediate',
+        8: 'Wet',
+        9: 'Dry (F1 Classic)',
+        10: 'Wet (F1 Classic)',
+        11: 'Super Soft (F2)',
+        12: 'Soft (F2)',
+        13: 'Medium (F2)',
+        14: 'Hard (F2)',
+        15: 'Wet (F2)'
+    }
+    return tyre_compound_mapping.get(tyre_compound_code, '---')
+
+def getVisualTyreCompoundName(tyre_compound_code: int) -> str:
+    """For the given visual tyre compound ID, get the string representation of the visual tyre compound name.
+        All data is obtained from the appendix section of the
+            F1 23 UDP specification document
+
+    Args:
+        tyre_compound_code (int): The numeric visual tyre compound ID code
+
+    Returns:
+        str: Name of the team, None if invalid visual tyre compound ID
+    """
+    tyre_compound_mapping_visual = {
+        16: 'SFT',
+        17: 'MED',
+        18: 'HRD',
+        7: 'INT',
+        8: 'WER',
+        15: 'WET',
+        19: 'SS',
+        20: 'SFT',
+        21: 'MED',
+        22: 'HRD'
+    }
+    return tyre_compound_mapping_visual.get(tyre_compound_code, '---')
+
+"""
+This exception type is used to indicate to the telemetry manager that there has
+been a parsing error due to receving a packet of unexpected length (possibly
+incomplete or corrupt. or more realistically a bug)
+"""
+class InvalidPacketLengthError(Exception):
+    def __init__(self, message):
+        super().__init__("Invalid packet length. " + message)
+
+# -------------------- HEADER PARSING ------------------------------------------
 
 class F1PacketType(Enum):
+    """Class of enum representing the different packet types emitted by the game
+    """
     MOTION = 0
     SESSION = 1
     LAP_DATA = 2
@@ -95,26 +287,62 @@ class F1PacketType(Enum):
     MOTION_EX = 13
 
     @staticmethod
-    def isValid(packet_type):
+    def isValid(packet_type) -> bool:
+        """Check if the given packet type ID is valid
+
+        Args:
+            packet_type (int or F1PacketType): The packet type to be validated
+
+        Returns:
+            bool: True if valid, else False
+        """
+
         if isinstance(packet_type, F1PacketType):
             return True  # It's already an instance of F1PacketType
         else:
+            # check if the integer value falls in range
             min_value = min(member.value for member in F1PacketType)
             max_value = max(member.value for member in F1PacketType)
             return min_value <= packet_type <= max_value
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """to_string method
+
+        Returns:
+            str: string representation of this enum
+        """
         if F1PacketType.isValid(self.value):
             return self.name
         else:
             return 'packet type ' + str(self.value)
 
-class InvalidPacketLengthError(Exception):
-    def __init__(self, message):
-        super().__init__("Invalid packet length. " + message)
-
 class PacketHeader:
-    def __init__(self, data) -> None:
+    """
+    A class for parsing the Packet Header of a telemetry packet in a racing game.
+
+    The packet header structure is as follows:
+
+    Attributes:
+        - m_packet_format (int): The format of the telemetry packet (2023).
+        - m_game_year (int): The game year, represented by the last two digits (e.g., 23).
+        - m_game_major_version (int): The game's major version (X.00).
+        - m_game_minor_version (int): The game's minor version (1.XX).
+        - m_packet_version (int): The version of this packet type, starting from 1.
+        - m_packet_id (int): Identifier for the packet type.
+        - m_session_uid (int): Unique identifier for the session.
+        - m_session_time (float): Timestamp of the session.
+        - m_frame_identifier (int): Identifier for the frame the data was retrieved on.
+        - m_overall_frame_identifier (int): Overall identifier for the frame, not going back after flashbacks.
+        - m_player_car_index (int): Index of the player's car in the array.
+        - m_secondary_player_car_index (int): Index of the secondary player's car in the array (255 if no second player).
+    """
+    def __init__(self, data: bytes) -> None:
+        """
+        Initializes the PacketHeaderParser with the raw packet data.
+
+        Args:
+            data (bytes): Raw binary data representing the packet header.
+        """
 
         # Unpack the data
         unpacked_data = struct.unpack(header_format_string, data)
@@ -149,13 +377,48 @@ class PacketHeader:
             f"Secondary Player Car Index: {self.m_secondaryPlayerCarIndex})"
         )
 
-    def isPacketTypeSupported(self):
+    def isPacketTypeSupported(self) -> bool:
+        """Check if this packet type is supported
+
+        Returns:
+            bool: self explanatory
+        """
         return self.is_supported_packet_type
 
-
+# ------------------------- PACKET TYPE 0 - MOTION -----------------------------
 
 class CarMotionData:
-    def __init__(self, data) -> None:
+    """
+    A class for parsing the Car Motion Data of a telemetry packet in a racing game.
+
+    The car motion data structure is as follows:
+
+    Attributes:
+        - m_world_position_x (float): World space X position - meters.
+        - m_world_position_y (float): World space Y position.
+        - m_world_position_z (float): World space Z position.
+        - m_world_velocity_x (float): Velocity in world space X – meters/s.
+        - m_world_velocity_y (float): Velocity in world space Y.
+        - m_world_velocity_z (float): Velocity in world space Z.
+        - m_world_forward_dir_x (int): World space forward X direction (normalised).
+        - m_world_forward_dir_y (int): World space forward Y direction (normalised).
+        - m_world_forward_dir_z (int): World space forward Z direction (normalised).
+        - m_world_right_dir_x (int): World space right X direction (normalised).
+        - m_world_right_dir_y (int): World space right Y direction (normalised).
+        - m_world_right_dir_z (int): World space right Z direction (normalised).
+        - m_g_force_lateral (float): Lateral G-Force component.
+        - m_g_force_longitudinal (float): Longitudinal G-Force component.
+        - m_g_force_vertical (float): Vertical G-Force component.
+        - m_yaw (float): Yaw angle in radians.
+        - m_pitch (float): Pitch angle in radians.
+        - m_roll (float): Roll angle in radians.
+    """
+    def __init__(self, data: bytes) -> None:
+        """Parse the raw bytes into this object
+
+        Args:
+            data (List[bytes]): list containing the raw bytes for this packet
+        """
         unpacked_data = struct.unpack(motion_format_string, data)
 
         self.m_worldPositionX, self.m_worldPositionY, self.m_worldPositionZ, \
@@ -181,7 +444,31 @@ class CarMotionData:
         )
 
 class PacketMotionData:
+    """
+    A class for parsing the Motion Data Packet of a telemetry packet in a racing game.
+
+    The motion data packet structure is as follows:
+
+    Attributes:
+        - m_header (PacketHeader): The header of the telemetry packet.
+        - m_car_motion_data (list): List of CarMotionData objects containing data for all cars on track.
+          Each CarMotionData object has attributes similar to the CarMotionData structure.
+
+    Note: The m_car_motion_data list has a length of 22, corresponding to the data for all cars on track.
+        (last 2 may be inactive)
+    """
+
     def __init__(self, header:PacketHeader, packet: bytes) -> None:
+        """Parse the raw data into this object
+
+        Args:
+            header (PacketHeader): Incoming packet header
+            packet (List[bytes]): list containing the raw bytes for this packet
+
+        Raises:
+            InvalidPacketLengthError: If received length is not as per expectation
+        """
+
         self.m_header: PacketHeader = header       # PacketHeader
         if ((len(packet) % F1_23_MOTION_PACKET_PER_CAR_LEN) != 0):
             raise InvalidPacketLengthError("Received packet length " + str(len(packet)) + " is not a multiple of " +
@@ -296,23 +583,12 @@ class PacketLapData:
         lap_data_str = ", ".join(str(data) for data in self.m_LapData)
         return f"PacketLapData(Header: {str(self.m_header)}, Car Lap Data: [{lap_data_str}])"
 
-class CarSignalData:
-    def __init__(self) -> None:
-        self.m_bumperDamage: int = 0                # uint8
-        self.m_lightDamage: int = 0                 # uint8
-        self.m_leftEndPlateDamage: int = 0          # uint8
-        self.m_rightEndPlateDamage: int = 0         # uint8
-
-    def __str__(self) -> str:
-        return (
-            f"CarSignalData("
-            f"Bumper Damage: {self.m_bumperDamage}, "
-            f"Light Damage: {self.m_lightDamage}, "
-            f"Left End Plate Damage: {self.m_leftEndPlateDamage}, "
-            f"Right End Plate Damage: {self.m_rightEndPlateDamage})"
-        )
+# ------------------------- PACKET TYPE 1 - SESSION ----------------------------
 
 class MarshalZoneFlagType(Enum):
+    """
+    ENUM class for the marshal zone flag status
+    """
 
     INVALID_UNKNOWN = -1
     NONE = 0
@@ -320,15 +596,23 @@ class MarshalZoneFlagType(Enum):
     BLUE_FLAG = 2
     YELLOW_FLAG = 3
 
-
     @staticmethod
-    def isValid(packet_type):
-        if isinstance(packet_type, MarshalZoneFlagType):
+    def isValid(flag_type: int):
+        """Check if the given packet type is valid.
+
+        Args:
+            flag_type (int): The flag code to be validated. Also supports type MarshalZoneFlagType. Returns true in this
+                case
+
+        Returns:
+            bool: true if valid
+        """
+        if isinstance(flag_type, MarshalZoneFlagType):
             return True  # It's already an instance of MarshalZoneFlagType
         else:
             min_value = min(member.value for member in MarshalZoneFlagType)
             max_value = max(member.value for member in MarshalZoneFlagType)
-            return min_value <= packet_type <= max_value
+            return min_value <= flag_type <= max_value
 
     def __str__(self):
         if F1PacketType.isValid(self.value):
@@ -337,7 +621,21 @@ class MarshalZoneFlagType(Enum):
             return 'Marshal Zone Flag type ' + str(self.value)
 
 class MarshalZone:
-    def __init__(self, data) -> None:
+    """
+    A class for parsing the Marshal Zone data within a telemetry packet in a racing game.
+
+    The Marshal Zone structure is as follows:
+
+    Attributes:
+        - m_zone_start (float): Fraction (0..1) of the way through the lap the marshal zone starts.
+        - m_zone_flag (MarshalZoneFlagType): Refer to the enum type for various options
+    """
+    def __init__(self, data: bytes) -> None:
+        """Unpack the given raw bytes into this object
+
+        Args:
+            data (bytes): List of raw bytes received as part of this
+        """
 
         unpacked_data = struct.unpack(marshal_zone_format_str, data)
         (
@@ -353,7 +651,54 @@ class MarshalZone:
 
 
 class WeatherForecastSample:
-    def __init__(self, data) -> None:
+
+    """
+    A class for parsing the Weather Forecast Sample data within a telemetry packet in a racing game.
+
+    The Weather Forecast Sample structure is as follows:
+
+    Attributes:
+        - m_session_type (int): Type of session:
+            - 0: Unknown
+            - 1: P1 (Practice 1)
+            - 2: P2 (Practice 2)
+            - 3: P3 (Practice 3)
+            - 4: Short P (Short Practice)
+            - 5: Q1 (Qualifying 1)
+            - 6: Q2 (Qualifying 2)
+            - 7: Q3 (Qualifying 3)
+            - 8: Short Q (Short Qualifying)
+            - 9: OSQ (One-Shot Qualifying)
+            - 10: R (Race)
+            - 11: R2 (Race 2)
+            - 12: R3 (Race 3)
+            - 13: Time Trial
+        - m_time_offset (int): Time in minutes the forecast is for.
+        - m_weather (int): Weather condition:
+            - 0: Clear
+            - 1: Light cloud
+            - 2: Overcast
+            - 3: Light rain
+            - 4: Heavy rain
+            - 5: Storm
+        - m_track_temperature (int): Track temperature in degrees Celsius.
+        - m_track_temperature_change (int): Track temperature change:
+            - 0: Up
+            - 1: Down
+            - 2: No change
+        - m_air_temperature (int): Air temperature in degrees Celsius.
+        - m_air_temperature_change (int): Air temperature change:
+            - 0: Up
+            - 1: Down
+            - 2: No change
+        - m_rain_percentage (int): Rain percentage (0-100).
+    """
+    def __init__(self, data: bytes) -> None:
+        """Unpack the given raw bytes into this object
+
+        Args:
+            data (bytes): List of raw bytes received as part of this
+        """
 
         unpacked_data = struct.unpack(weather_forecast_sample_format_str, data)
         (
@@ -380,7 +725,40 @@ class WeatherForecastSample:
             f"Rain Percentage: {self.m_rainPercentage})"
         )
 
+
 class PacketSessionData:
+    """
+    A class for parsing the Session Data Packet of a telemetry packet in a racing game.
+
+    The session data packet structure is defined in the F1 23 UDP Specification Appendix.
+
+    Attributes:
+        - m_header (PacketHeader): The header of the telemetry packet.
+        - m_weather (int): Weather condition - see F1 23 UDP Specification Appendix.
+        - m_track_temperature (int): Track temperature in degrees Celsius.
+        - m_air_temperature (int): Air temperature in degrees Celsius.
+        - m_total_laps (int): Total number of laps in this race.
+        - m_track_length (int): Track length in meters.
+        - m_session_type (int): Type of session - see F1 23 UDP Specification Appendix.
+        - m_track_id (int): Track identifier (-1 for unknown) - see F1 23 UDP Specification Appendix.
+        - m_formula (int): Formula type - see F1 23 UDP Specification Appendix.
+        - m_session_time_left (int): Time left in session in seconds.
+        - m_session_duration (int): Session duration in seconds.
+        - m_pit_speed_limit (int): Pit speed limit in kilometers per hour.
+        - m_game_paused (int): Whether the game is paused – network game only.
+        - m_is_spectating (int): Whether the player is spectating.
+        - m_spectator_car_index (int): Index of the car being spectated.
+        - m_sli_pro_native_support (int): SLI Pro support - 0 = inactive, 1 = active.
+        - m_num_marshal_zones (int): Number of marshal zones to follow.
+        - m_marshal_zones (list): List of MarshalZone objects - see F1 23 UDP Specification Appendix.
+        - m_safety_car_status (int): Safety car status - see F1 23 UDP Specification Appendix.
+        - m_network_game (int): Network game status - 0 = offline, 1 = online.
+        - m_num_weather_forecast_samples (int): Number of weather samples to follow.
+        - m_weather_forecast_samples (list): List of WeatherForecastSample objects - see F1 23 UDP Specification Appendix.
+        - m_forecast_accuracy (int): Forecast accuracy - 0 = Perfect, 1 = Approximate.
+        - ... (Other attributes documented in the F1 23 UDP Specification Appendix)
+    """
+
     def __init__(self, header, data) -> None:
         self.m_header: PacketHeader = header          # Header
 
@@ -531,8 +909,6 @@ class PacketSessionData:
             f"Num Virtual Safety Car Periods: {self.m_numVirtualSafetyCarPeriods}, "
             f"Num Red Flag Periods: {self.m_numRedFlagPeriods})"
         )
-
-
 
 
 class EventPacketType(Enum):
@@ -825,16 +1201,20 @@ class ParticipantData:
 
         self.m_name = self.m_name.decode('utf-8').rstrip('\x00')
 
-    def __str__(self) -> str:
+    def __str__(self):
         return (
             f"ParticipantData("
-            f"AI Controlled: {self.m_aiControlled}, "
-            f"Driver ID: {self.m_driverId}, "
-            f"Team ID: {self.m_teamId}, "
-            f"Race Number: {self.m_raceNumber}, "
-            f"Nationality: {self.m_nationality}, "
-            f"Name: {self.m_name}, "
-            f"Your Telemetry: {self.m_yourTelemetry})"
+            f"m_aiControlled={self.m_aiControlled}, "
+            f"m_driverId={self.m_driverId}, "
+            f"networkId={self.networkId}, "
+            f"m_teamId={self.m_teamId}, "
+            f"m_myTeam={self.m_myTeam}, "
+            f"m_raceNumber={self.m_raceNumber}, "
+            f"m_nationality={self.m_nationality}, "
+            f"m_name={self.m_name}, "
+            f"m_yourTelemetry={self.m_yourTelemetry}, "
+            f"m_showOnlineNames={self.m_showOnlineNames}, "
+            f"m_platform={self.m_platform})"
         )
 
 
@@ -849,7 +1229,7 @@ class PacketParticipantsData:
             self.m_participants.append(ParticipantData(participant_data_raw))
 
     def __str__(self) -> str:
-        participants_str = ", ".join(str(participant) for participant in self.m_participants)
+        participants_str = ", ".join(str(participant) for participant in self.m_participants[self.m_numActiveCars:])
         return (
             f"PacketParticipantsData("
             f"Header: {str(self.m_header)}, "
@@ -1049,6 +1429,8 @@ class PacketCarStatusData:
 
 
 class CarStatusData:
+
+    max_ers_store_energy = 4000000.0
     def __init__(self, data) -> None:
 
         (

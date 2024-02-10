@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="pageTitle">Live Table Display</title>
+    <style>
+        body {
+            font-family: 'Helvetica', Arial, sans-serif;
+            margin: 20px;
+            padding: 20px;
+            background-color: #000; /* Black background color for the body */
+            color: #fff; /* White text color */
+            font-size: 25px; /* Add this line to set the font size */
+        }
+
+        h2 {
+            color: #3498db; /* Accent color for headers */
+            text-align: center; /* Centering the header */
+            font-size: 25px; /* Add this line to set the font size */
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 20px;
+            background-color: #111; /* Dark background color for the table */
+            color: #fff; /* White text color */
+            text-align: center;
+        }
+
+        th,
+        td {
+            border: 1px solid #000; /* Black border color */
+            padding: 12px;
+            text-align: center;
+            font-size: 25px; /* Add this line to set the font size */
+        }
+
+        th {
+            background-color: #333; /* Dark gray accent color for table headers */
+            color: #fff; /* White text color */
+            text-align: center; /* Centering the row titles */
+        }
+
+        p {
+            margin: 0;
+            margin-top: 10px;
+            color: #888; /* Light gray text color */
+            text-align: center; /* Centering the paragraphs */
+            font-size: 25px; /* Add this line to set the font size */
+        }
+
+        #trackTemperature,
+        #lapInformation {
+            font-weight: bold;
+            color: #fff; /* White text color */
+            text-align: center; /* Centering the paragraphs */
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: #222; /* Dark gray background color for every alternate row */
+        }
+    </style>
+</head>
+
+<body>
+    <h2 id="tableTitle">Live Table Display</h2>
+    <p id="trackTemperature">Track Temperature: </p>
+    <p id="lapInformation">Lap: </p>
+    <table id="liveTable">
+        <thead>
+            <tr>
+                <th>Position</th>
+                <th>Name</th>
+                <th>Team</th>
+                <th>Delta</th>
+                <th>ERS</th>
+                <th>Best</th>
+                <th>Last</th>
+                <th>Tyre Wear<br>Tyre Age<br>Tyre Compound</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        function fetchDataAndDisplay() {
+            fetch('/telemetry-info')  // Update the endpoint accordingly
+            .then(response => response.json())
+            .then(data => {
+                updateTable(data["table-entries"]);
+                updateHeader(data["circuit"], data["event-type"], data["track-temperature"], data["current-lap"],
+                data["total-laps"])
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+            });
+        }
+
+        function updateTable(entries) {
+            const tableBody = document.querySelector('#liveTable tbody');
+            tableBody.innerHTML = '';
+
+            entries.forEach(entry => {
+                const row = tableBody.insertRow();
+
+                row.insertCell().textContent = entry["position"];
+                row.insertCell().textContent = entry["name"];
+                row.insertCell().textContent = entry["team"];
+                row.insertCell().textContent = entry["delta"];
+                row.insertCell().textContent = entry["ers"];
+                row.insertCell().textContent = entry["best"];
+                row.insertCell().textContent = entry["last"];
+                // Add a line break and capture "tyre-wear" and "tyre-age"
+                const tyreWearCell = row.insertCell();
+                tyreWearCell.innerHTML = entry["average-tyre-wear"] + '<br>' + entry["tyre-age"] + " laps" + '<br>' +
+                    entry["tyre-compound"];
+
+                // Conditionally apply styles based on is-player
+                if (entry["is-player"]) {
+                    row.style.fontWeight = 'bold';
+                } else {
+                    // Add an else case for is-player
+                    row.style.fontWeight = 'normal'; // Reset font weight
+                }
+
+                // Conditionally apply styles based on is-fastest
+                if (entry["is-fastest"]) {
+                    row.style.backgroundColor = 'purple';
+                    row.style.color = 'white';
+                } else {
+                    // Add an else case for is-fastest
+                    row.style.backgroundColor = ''; // Reset background color
+                    row.style.color = ''; // Reset text color
+                }
+            });
+        }
+
+        function updateHeader(circuit, event_type, track_temp, curr_lap, total_laps) {
+
+            // Set the page title and table title dynamically
+            var race_info_str = "";
+            race_info_str += event_type + " - "
+            race_info_str += circuit
+            document.getElementById('pageTitle').textContent = race_info_str;
+            document.getElementById('tableTitle').textContent = race_info_str;
+
+            document.getElementById('trackTemperature').textContent = "Track Temperature: " + track_temp + "°C";
+
+            var lap_info_str = curr_lap + "/" + total_laps;
+            document.getElementById('lapInformation').textContent = lap_info_str;
+        }
+        setInterval(fetchDataAndDisplay, 200);  // Fetch data every 200 milliseconds
+    </script>
+
+</body>
+
+</html>

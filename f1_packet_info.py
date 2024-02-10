@@ -23,9 +23,27 @@
 import struct
 from typing import Tuple
 
+# ------------------ COMMON HEADER ---------------------------------------------
+
+header_format_string = "<HBBBBBQfIIBB"
+F1_23_PACKET_HEADER_LEN: int = struct.calcsize(header_format_string)
+
+'''
+    H # packet format
+    B # year
+    B # major
+    B # minor
+    B # ver
+    B # pktID
+    Q # sessionID
+    f # session time
+    I # uint32
+    I # uint32
+    B # carIndex
+    B # sec car index
+'''
+
 # ------------------ EVENT 0 - MOTION ------------------------------------------
-
-
 
 motion_format_string = "<ffffffhhhhhhffffff"
 F1_23_MOTION_PACKET_PER_CAR_LEN: int = struct.calcsize(motion_format_string)
@@ -116,8 +134,6 @@ packet_session_section_4_format_str = ("<"
 )
 F1_23_SESSION_SECTION_4_PACKET_LEN = struct.calcsize(packet_session_section_4_format_str)
 
-
-
 '''
     # skipped header
     # SECTION 0 -------------------------------------------------
@@ -193,7 +209,6 @@ F1_23_SESSION_SECTION_4_PACKET_LEN = struct.calcsize(packet_session_section_4_fo
 
 # ------------------ EVENT 2 - LAP DATA ----------------------------------------
 
-
 lap_time_packet_format_str = ("<"
     "I" # uint32 - Last lap time in milliseconds
     "I" # uint32 - Current time around the lap in milliseconds
@@ -227,7 +242,6 @@ lap_time_packet_format_str = ("<"
     "B" # uint8  - Whether the car should serve a penalty at this stop
 )
 F1_23_LAP_DATA_PACKET_PER_CAR_LEN:int = struct.calcsize(lap_time_packet_format_str)
-
 
 # ------------------ EVENT 4 - PARTICIPANTS ----------------------------------------
 participant_format_string = ("<"
