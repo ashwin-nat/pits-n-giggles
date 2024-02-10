@@ -1,4 +1,26 @@
 
+# MIT License
+#
+# Copyright (c) [2024] [Ashwin Natarajan]
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
 from collections import defaultdict
 import threading
 import copy
@@ -15,14 +37,16 @@ class GlobalData:
         self.m_event_type = None
         self.m_track_temp = None
         self.m_total_laps = None
+        self.m_safety_car_status = None
 
-        print("created GlobalData object. " + str(id(self)) + " tid = " + str(threading.get_ident()))
+        # print("created GlobalData object. " + str(id(self)) + " tid = " + str(threading.get_ident()))
     def __str__(self):
         return (
             f"GlobalData(m_circuit={self.m_circuit}, "
             f"m_event_type={self.m_event_type}, "
             f"m_track_temp={self.m_track_temp}, "
-            f"m_total_laps={self.m_total_laps})"
+            f"m_total_laps={self.m_total_laps}, "
+            f"m_safety_car_status={str(self.m_safety_car_status)})"
         )
 
 class DataPerDriver:
@@ -41,6 +65,10 @@ class DataPerDriver:
         self.m_penalties = None
         self.m_tyre_age = None
         self.m_tyre_compound_type = None
+        self.m_is_pitting = None
+        self.m_drs_activated = None
+        self.m_drs_allowed = None
+        self.m_drs_distance = None
 
 class DriverData:
 
@@ -49,7 +77,7 @@ class DriverData:
         self.m_player_index = None
         self.m_fastest_index = None
         self.m_num_cars = None
-        print("created DriverData object. " + str(id(self)) + " tid = " + str(threading.get_ident()))
+        # print("created DriverData object. " + str(id(self)) + " tid = " + str(threading.get_ident()))
 
     def update_object(self, index, new_obj):
         if self.m_driver_data is None:
@@ -92,19 +120,21 @@ class DriverData:
 _globals = GlobalData()
 _driver_data = DriverData()
 
-def set_globals(circuit, track_temp, event_type, total_laps):
+def set_globals(circuit, track_temp, event_type, total_laps, safety_car_status):
     with _globals_lock:
         _globals.m_circuit = circuit
         _globals.m_track_temp = track_temp
         _globals.m_event_type = event_type
         _globals.m_total_laps = total_laps
+        _globals.m_safety_car_status = safety_car_status
 
 def get_globals():
     with _globals_lock:
         with _driver_data_lock: # we need this for current lap
             player_index = _driver_data.m_player_index
             curr_lap = _driver_data.m_driver_data[player_index].m_current_lap if player_index is not None else None
-            return (_globals.m_circuit, _globals.m_track_temp, _globals.m_event_type, _globals.m_total_laps, curr_lap)
+            return (_globals.m_circuit, _globals.m_track_temp, _globals.m_event_type, _globals.m_total_laps, curr_lap,
+                        _globals.m_safety_car_status)
 
 def set_driver_data(index: int, driver_data: DataPerDriver, is_fastest=False):
     with _driver_data_lock:
@@ -155,23 +185,30 @@ def clear_all_driver_data():
     with _driver_data_lock:
         _driver_data.set_members_to_none()
 
-def _get_adjacent_positions(position, total_cars=20, adjacent_count=5):
+def _get_adjacent_positions(position, total_cars=20, num_adjacent_cars=3):
     if not (1 <= position <= total_cars):
         return []
 
-    # ideal scenario, lower bound and upper bound are off input position by 2
-    lower_bound = position - 2
-    upper_bound = position + 2
-
     min_valid_lower_bound = 1
-    max_valid_upper_bound = 20
+    max_valid_upper_bound = total_cars
+
+    # In time trial, total_cars will be lower than num_adjacent_cars
+    if num_adjacent_cars >= total_cars:
+        num_adjacent_cars = total_cars
+        lower_bound = min_valid_lower_bound
+        upper_bound = max_valid_upper_bound
+
+    # GP scenario, lower bound and upper bound are off input position by num_adjacent_cars
+    else:
+        lower_bound = position - num_adjacent_cars
+        upper_bound = position + num_adjacent_cars
 
     # now correct if lower and upper bounds have become invalid
     if lower_bound < min_valid_lower_bound:
         # lower bound is negative, need to shift the entire window right
         upper_bound += min_valid_lower_bound - lower_bound
         lower_bound = min_valid_lower_bound
-    elif upper_bound > total_cars:
+    if upper_bound > total_cars:
         # upper bound is greater than limit, need to shift the entire window left
         lower_bound = lower_bound - (upper_bound - total_cars)
         upper_bound = max_valid_upper_bound
@@ -197,7 +234,7 @@ def get_driver_data(short=True) -> list[DataPerDriver]:
 
     with _driver_data_lock:
         final_list = []
-        if _driver_data.m_player_index is None or _driver_data.m_num_cars is None:
+        if (_driver_data.m_player_index) is None or (_driver_data.m_num_cars is None):
             return final_list
         player_position = _driver_data.m_driver_data[_driver_data.m_player_index].m_position
         positions = _get_adjacent_positions(player_position, total_cars=_driver_data.m_num_cars)

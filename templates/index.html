@@ -8,60 +8,62 @@
     <style>
         body {
             font-family: 'Helvetica', Arial, sans-serif;
-            margin: 20px;
-            padding: 20px;
-            background-color: #000; /* Black background color for the body */
-            color: #fff; /* White text color */
-            font-size: 25px; /* Add this line to set the font size */
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            color: #fff;
+            font-size: 20px; /* Adjust the font size to fit more content */
         }
 
         h2 {
-            color: #3498db; /* Accent color for headers */
-            text-align: center; /* Centering the header */
-            font-size: 25px; /* Add this line to set the font size */
+            color: #3498db;
+            text-align: center;
+            font-size: 25px;
         }
 
         table {
             border-collapse: collapse;
             width: 100%;
             margin-top: 20px;
-            background-color: #111; /* Dark background color for the table */
-            color: #fff; /* White text color */
+            background-color: #111;
+            color: #fff;
             text-align: center;
         }
 
         th,
         td {
-            border: 1px solid #000; /* Black border color */
-            padding: 12px;
+            border: 1px solid #000;
+            padding: 10px; /* Adjust padding to make the table cells smaller */
             text-align: center;
-            font-size: 25px; /* Add this line to set the font size */
+            font-size: 20px;
         }
 
         th {
-            background-color: #333; /* Dark gray accent color for table headers */
-            color: #fff; /* White text color */
-            text-align: center; /* Centering the row titles */
+            background-color: #333;
+            color: #fff;
         }
 
         p {
             margin: 0;
             margin-top: 10px;
-            color: #888; /* Light gray text color */
-            text-align: center; /* Centering the paragraphs */
-            font-size: 25px; /* Add this line to set the font size */
+            color: #888;
+            text-align: center;
+            font-size: 20px;
         }
 
         #trackTemperature,
-        #lapInformation {
+        #lapInformation,
+        #safetyCarStatus {
             font-weight: bold;
-            color: #fff; /* White text color */
-            text-align: center; /* Centering the paragraphs */
+            color: #fff;
+            text-align: center;
+            font-size: 20px;
         }
 
         tbody tr:nth-child(even) {
-            background-color: #222; /* Dark gray background color for every alternate row */
+            background-color: #222;
         }
+
     </style>
 </head>
 
@@ -69,6 +71,7 @@
     <h2 id="tableTitle">Live Table Display</h2>
     <p id="trackTemperature">Track Temperature: </p>
     <p id="lapInformation">Lap: </p>
+    <p id="safetyCarStatus"></p>
     <table id="liveTable">
         <thead>
             <tr>
@@ -92,7 +95,7 @@
             .then(data => {
                 updateTable(data["table-entries"]);
                 updateHeader(data["circuit"], data["event-type"], data["track-temperature"], data["current-lap"],
-                data["total-laps"])
+                    data["total-laps"], data["safety-car-status"])
             })
             .catch(error => {
                 console.error('Error fetching data:', error);
@@ -121,9 +124,10 @@
                 // Conditionally apply styles based on is-player
                 if (entry["is-player"]) {
                     row.style.fontWeight = 'bold';
+                    row.style.border = '2px solid #ffd700'; // Gold border for the player row
                 } else {
-                    // Add an else case for is-player
                     row.style.fontWeight = 'normal'; // Reset font weight
+                    row.style.border = ''; // Reset border
                 }
 
                 // Conditionally apply styles based on is-fastest
@@ -135,10 +139,17 @@
                     row.style.backgroundColor = ''; // Reset background color
                     row.style.color = ''; // Reset text color
                 }
+
+                // Conditionally apply styles based on "drs" key
+                if (entry["drs"]) {
+                    row.style.color = 'green'; // Set green font color
+                } else {
+                    row.style.color = ''; // Reset text colour
+                }
             });
         }
 
-        function updateHeader(circuit, event_type, track_temp, curr_lap, total_laps) {
+        function updateHeader(circuit, event_type, track_temp, curr_lap, total_laps, safety_car_status) {
 
             // Set the page title and table title dynamically
             var race_info_str = "";
@@ -151,6 +162,8 @@
 
             var lap_info_str = curr_lap + "/" + total_laps;
             document.getElementById('lapInformation').textContent = lap_info_str;
+            document.getElementById('safetyCarStatus').textContent = safety_car_status;
+            console.log('Safety Car Status:', safety_car_status);
         }
         setInterval(fetchDataAndDisplay, 200);  // Fetch data every 200 milliseconds
     </script>

@@ -725,6 +725,42 @@ class WeatherForecastSample:
             f"Rain Percentage: {self.m_rainPercentage})"
         )
 
+class SafetyCarStatus(Enum):
+    NO_SAFETY_CAR = 0
+    FULL_SAFETY_CAR = 1
+    VIRTUAL_SAFETY_CAR = 2
+    FORMATION_LAP = 3
+
+    @staticmethod
+    def isValid(safety_car_status_code: int):
+        """Check if the given safety car status is valid.
+
+        Args:
+            flag_type (int): The safety car status to be validated.
+                Also supports type SafetyCarStatus. Returns true in this case
+
+        Returns:
+            bool: true if valid
+        """
+        if isinstance(safety_car_status_code, SafetyCarStatus):
+            return True  # It's already an instance of SafetyCarStatus
+        else:
+            min_value = min(member.value for member in SafetyCarStatus)
+            max_value = max(member.value for member in SafetyCarStatus)
+            return min_value <= safety_car_status_code <= max_value
+
+    def __str__(self):
+
+        if self == SafetyCarStatus.NO_SAFETY_CAR:
+            return str()
+        elif self == SafetyCarStatus.FULL_SAFETY_CAR:
+            return "Full Safety Car"
+        elif self == SafetyCarStatus.VIRTUAL_SAFETY_CAR:
+            return "Virtual Safety Car"
+        elif self == SafetyCarStatus.FORMATION_LAP:
+            return "Formation Lap"
+        else:
+            return "Unknown Safety Car Status"
 
 class PacketSessionData:
     """
@@ -805,6 +841,8 @@ class PacketSessionData:
             self.m_networkGame, #               // 0 = offline, 1 = online
             self.m_numWeatherForecastSamples # // Number of weather samples to follow
         ) = unpacked_data
+        if SafetyCarStatus.isValid(self.m_safetyCarStatus):
+            self.m_safetyCarStatus = SafetyCarStatus(self.m_safetyCarStatus)
         # section_2_raw_data = None
 
 
