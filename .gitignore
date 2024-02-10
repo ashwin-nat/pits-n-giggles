@@ -1,0 +1,4 @@
+launch.json
+*.pyc
+*.log
+*.bat

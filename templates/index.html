@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="pageTitle">Live Table Display</title>
+    <style>
+        body {
+            font-family: 'Helvetica', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            color: #fff;
+            font-size: 20px; /* Adjust the font size to fit more content */
+        }
+
+        h2 {
+            color: #3498db;
+            text-align: center;
+            font-size: 25px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 20px;
+            background-color: #111;
+            color: #fff;
+            text-align: center;
+        }
+
+        th,
+        td {
+            border: 1px solid #000;
+            padding: 10px; /* Adjust padding to make the table cells smaller */
+            text-align: center;
+            font-size: 20px;
+        }
+
+        th {
+            background-color: #333;
+            color: #fff;
+        }
+
+        p {
+            margin: 0;
+            margin-top: 10px;
+            color: #888;
+            text-align: center;
+            font-size: 20px;
+        }
+
+        #trackTemperature,
+        #lapInformation,
+        #safetyCarStatus {
+            font-weight: bold;
+            color: #fff;
+            text-align: center;
+            font-size: 20px;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: #222;
+        }
+
+    </style>
+</head>
+
+<body>
+    <h2 id="tableTitle">Live Table Display</h2>
+    <p id="trackTemperature">Track Temperature: </p>
+    <p id="lapInformation">Lap: </p>
+    <p id="safetyCarStatus"></p>
+    <table id="liveTable">
+        <thead>
+            <tr>
+                <th>Position</th>
+                <th>Name</th>
+                <th>Team</th>
+                <th>Delta</th>
+                <th>ERS</th>
+                <th>Best</th>
+                <th>Last</th>
+                <th>Tyre Wear<br>Tyre Age<br>Tyre Compound</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        function fetchDataAndDisplay() {
+            fetch('/telemetry-info')  // Update the endpoint accordingly
+            .then(response => response.json())
+            .then(data => {
+                updateTable(data["table-entries"]);
+                updateHeader(data["circuit"], data["event-type"], data["track-temperature"], data["current-lap"],
+                    data["total-laps"], data["safety-car-status"])
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+            });
+        }
+
+        function updateTable(entries) {
+            const tableBody = document.querySelector('#liveTable tbody');
+            tableBody.innerHTML = '';
+
+            entries.forEach(entry => {
+                const row = tableBody.insertRow();
+
+                row.insertCell().textContent = entry["position"];
+                row.insertCell().textContent = entry["name"];
+                row.insertCell().textContent = entry["team"];
+                row.insertCell().textContent = entry["delta"];
+                row.insertCell().textContent = entry["ers"];
+                row.insertCell().textContent = entry["best"];
+                row.insertCell().textContent = entry["last"];
+                // Add a line break and capture "tyre-wear" and "tyre-age"
+                const tyreWearCell = row.insertCell();
+                tyreWearCell.innerHTML = entry["average-tyre-wear"] + '<br>' + entry["tyre-age"] + " laps" + '<br>' +
+                    entry["tyre-compound"];
+
+                // Conditionally apply styles based on is-player
+                if (entry["is-player"]) {
+                    row.style.fontWeight = 'bold';
+                    row.style.border = '2px solid #ffd700'; // Gold border for the player row
+                } else {
+                    row.style.fontWeight = 'normal'; // Reset font weight
+                    row.style.border = ''; // Reset border
+                }
+
+                // Conditionally apply styles based on is-fastest
+                if (entry["is-fastest"]) {
+                    row.style.backgroundColor = 'purple';
+                    row.style.color = 'white';
+                } else {
+                    // Add an else case for is-fastest
+                    row.style.backgroundColor = ''; // Reset background color
+                    row.style.color = ''; // Reset text color
+                }
+
+                // Conditionally apply styles based on "drs" key
+                if (entry["drs"]) {
+                    row.style.color = 'green'; // Set green font color
+                } else {
+                    row.style.color = ''; // Reset text colour
+                }
+            });
+        }
+
+        function updateHeader(circuit, event_type, track_temp, curr_lap, total_laps, safety_car_status) {
+
+            // Set the page title and table title dynamically
+            var race_info_str = "";
+            race_info_str += event_type + " - "
+            race_info_str += circuit
+            document.getElementById('pageTitle').textContent = race_info_str;
+            document.getElementById('tableTitle').textContent = race_info_str;
+
+            document.getElementById('trackTemperature').textContent = "Track Temperature: " + track_temp + "°C";
+
+            var lap_info_str = curr_lap + "/" + total_laps;
+            document.getElementById('lapInformation').textContent = lap_info_str;
+            document.getElementById('safetyCarStatus').textContent = safety_car_status;
+            console.log('Safety Car Status:', safety_car_status);
+        }
+        setInterval(fetchDataAndDisplay, 200);  // Fetch data every 200 milliseconds
+    </script>
+
+</body>
+
+</html>
