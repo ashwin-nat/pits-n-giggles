@@ -44,7 +44,11 @@ class F12023TelemetryHandler:
             track_temp=packet.m_trackTemperature,
             event_type=getSessionTypeName(packet.m_sessionType),
             total_laps=packet.m_totalLaps,
-            safety_car_status=packet.m_safetyCarStatus)
+            safety_car_status=packet.m_safetyCarStatus,
+            is_spectating=bool(packet.m_isSpectating),
+            spectator_car_index=packet.m_spectatorCarIndex,
+            weather_forecast_samples=packet.m_weatherForecastSamples)
+
 
         return
 
@@ -63,6 +67,7 @@ class F12023TelemetryHandler:
                                 lap_data.m_numUnservedDriveThroughPens, lap_data.m_numUnservedStopGoPens)
             data.m_current_lap = lap_data.m_currentLapNum
             data.m_is_pitting = True if lap_data.m_pitStatus in [1,2] else False
+            data.m_num_pitstops = lap_data.m_numPitStops
 
             should_recompute_fastest_lap |= TelData.set_driver_data(index, data)
 
@@ -135,7 +140,7 @@ class F12023TelemetryHandler:
 
     @staticmethod
     def handleFinalClassification(packet: PacketFinalClassificationData) -> None:
-        # print('Received Final Classification Packet. ' + str(packet))
+        print('Received Final Classification Packet. ')
         return
 
     @staticmethod

@@ -53,7 +53,8 @@ class TelemetryServer:
 
     def get_telemetry_data(self):
         driver_data = TelData.get_driver_data()
-        circuit, track_temp, event_type, total_laps, curr_lap, safety_car_status = TelData.get_globals()
+        circuit, track_temp, event_type, total_laps, curr_lap, \
+            safety_car_status, weather_forecast_samples = TelData.get_globals()
 
         json_response = {
             "circuit": self.get_value_or_default_str(circuit),
@@ -61,11 +62,24 @@ class TelemetryServer:
             "event-type": self.get_value_or_default_str(event_type),
             "total-laps": self.get_value_or_default_str(total_laps),
             "current-lap": self.get_value_or_default_str(curr_lap),
-            "safety-car-status": str(self.get_value_or_default_str(safety_car_status, default_value=""))
+            "safety-car-status": str(self.get_value_or_default_str(safety_car_status, default_value="")),
+            "weather-forecast-samples" : [
+            ]
         }
+        for sample in weather_forecast_samples:
+            json_response["weather-forecast-samples"].append(
+                {
+                    "time-offset" : str(sample.m_timeOffset),
+                    "weather" : str(sample.m_weather),
+                    "rain-probability" : str(sample.m_rainPercentage)
+                }
+            )
 
         json_response["table-entries"] = []
+        fastest_lap_overall = "---"
         for data_per_driver in driver_data:
+            if data_per_driver.m_is_fastest:
+                fastest_lap_overall = data_per_driver.m_best_lap
             json_response["table-entries"].append(
                 {
                     "position": self.get_value_or_default_str(data_per_driver.m_position),
@@ -82,9 +96,11 @@ class TelemetryServer:
                     "tyre-age" : self.get_value_or_default_str(data_per_driver.m_tyre_age),
                     "tyre-compound" : self.get_value_or_default_str(data_per_driver.m_tyre_compound_type),
                     "drs" : self.get_drs_value(data_per_driver.m_drs_activated, data_per_driver.m_drs_allowed,
-                                                data_per_driver.m_drs_distance)
+                                                data_per_driver.m_drs_distance),
+                    "num-pitstops" : self.get_value_or_default_str(data_per_driver.m_num_pitstops)
                 }
             )
+        json_response["fastest-lap-overall"] = fastest_lap_overall
 
         return jsonify(json_response)
 

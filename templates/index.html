@@ -1,77 +1,142 @@
 <!DOCTYPE html>
 <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title id="pageTitle">Pits n' Giggles</title>
+        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Bangers&display=swap" rel="stylesheet">
+        <style>
+            body {
+                font-family: 'Roboto', sans-serif;
+                margin: 0;
+                padding: 0;
+                background-color: #000; /* Black background */
+                color: #fdd835; /* Gold text */
+                position: relative;
+            }
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title id="pageTitle">Live Table Display</title>
-    <style>
-        body {
-            font-family: 'Helvetica', Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #000;
-            color: #fff;
-            font-size: 20px; /* Adjust the font size to fit more content */
-        }
+            .top-section {
+                display: flex;
+                justify-content: space-around;
+                align-items: stretch;
+                gap: 20px;
+                margin-top: 20px;
+                max-height: 300px;
+                overflow: hidden;
+                margin-bottom: 1px; /* Adjust the margin-bottom as needed */
+            }
 
-        h2 {
-            color: #3498db;
-            text-align: center;
-            font-size: 25px;
-        }
+            .weather-box, .race-info-box, .time-box {
+                flex: 1;
+                padding: 1px;
+                background-color: #2e2e2e; /* Dark grey for Gotham feel */
+                border: 2px solid #fdd835; /* Highlighted border in gold */
+                border-radius: 10px;
+                color: #fdd835; /* Text in gold */
+                font-size: 22px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 1px;
+                line-height: 1;
+            }
 
-        table {
-            border-collapse: collapse;
-            width: 100%;
-            margin-top: 20px;
-            background-color: #111;
-            color: #fff;
-            text-align: center;
-        }
+            .race-info-box {
+                line-height: 0.5;
+            }
 
-        th,
-        td {
-            border: 1px solid #000;
-            padding: 10px; /* Adjust padding to make the table cells smaller */
-            text-align: center;
-            font-size: 20px;
-        }
+            table {
+                width: 100%;
+                table-layout: fixed;
+                margin: 20px 0;
+                background-color: #000; /* Black background */
+                color: #fdd835; /* Gold text */
+                border-spacing: 0;
+                font-size: 26px;
+            }
 
-        th {
-            background-color: #333;
-            color: #fff;
-        }
+            th, td {
+                padding: 10px;
+                text-align: center;
+                border-bottom: 1px solid #2e2e2e; /* Dark grey row separation */
+            }
 
-        p {
-            margin: 0;
-            margin-top: 10px;
-            color: #888;
-            text-align: center;
-            font-size: 20px;
-        }
+            th {
+                background-color: #2e2e2e; /* Dark grey header background */
+                color: #fdd835; /* Gold header text */
+                font-weight: 700;
+            }
 
-        #trackTemperature,
-        #lapInformation,
-        #safetyCarStatus {
-            font-weight: bold;
-            color: #fff;
-            text-align: center;
-            font-size: 20px;
-        }
+            tbody tr:nth-child(even) {
+                background-color: #1a1a1a; /* Darker shade for even rows */
+            }
 
-        tbody tr:nth-child(even) {
-            background-color: #222;
-        }
+            .player-row td {
+                font-weight: bold;
+                border-color: #fdd835; /* Gold border */
+            }
 
-    </style>
+            .player-row td:first-child {
+                border-left: 2px solid #fdd835; /* Left border on the first cell */
+            }
+
+            .player-row td:last-child {
+                border-right: 2px solid #fdd835; /* Right border on the last cell */
+            }
+
+            .player-row td {
+                border-top: 2px solid #fdd835; /* Top border on all cells */
+                border-bottom: 2px solid #fdd835; /* Bottom border on all cells */
+            }
+
+            .fastest-lap {
+                background-color: #b31217; /* Haas red for fastest lap */
+                color: #fff; /* White text for contrast */
+            }
+
+            .drs-active {
+                color: #28a745; /* Green font color for DRS active, no background change */
+            }
+
+            /* Remove link styling */
+            .motivation-link {
+                display: none;
+            }
+        </style>
+    <script src="https://www.youtube.com/iframe_api"></script>
 </head>
-
 <body>
-    <h2 id="tableTitle">Live Table Display</h2>
-    <p id="trackTemperature">Track Temperature: </p>
-    <p id="lapInformation">Lap: </p>
-    <p id="safetyCarStatus"></p>
+
+    <div class="top-section">
+        <div class="weather-box">
+            <!-- Weather table -->
+            <table id="weatherTable">
+                <thead>
+                    <tr>
+                        <th>Time Offset</th>
+                        <th>Rain Probability</th>
+                        <th>Weather</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <div class="race-info-box">
+            <h2 id="tableTitle">F1 Telemetry Live</h2>
+            <p id="trackTemperature">Track Temperature: </p>
+            <p id="lapInformation">Lap: </p>
+            <p id="safetyCarStatus">Safety Car Status: </p>
+        </div>
+        <div class="time-box">
+            <p id="localTime">Local Time: </p>
+            <p id="fastestLapOverall">Fastest Lap Overall: </p>
+            <a href="javascript:void(0);" id="motivationLink">Click here for motivation</a>
+        </div>
+    </div>
+
+    <!-- YouTube iframe for audio, set to play when the link is clicked -->
+    <iframe id="youtubeAudio" class="youtube-audio" width="0" height="0" src="https://www.youtube.com/embed/2L7Qm2hBJ6o?start=38&enablejsapi=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+
     <table id="liveTable">
         <thead>
             <tr>
@@ -82,23 +147,67 @@
                 <th>ERS</th>
                 <th>Best</th>
                 <th>Last</th>
-                <th>Tyre Wear<br>Tyre Age<br>Tyre Compound</th>
+                <th>Tyre Info</th>
             </tr>
         </thead>
         <tbody></tbody>
     </table>
 
     <script>
+        var player; // Define YT player
+
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('youtubeAudio', {
+                events: {
+                    'onReady': onPlayerReady
+                }
+            });
+        }
+
+        function onPlayerReady(event) {
+            var motivationLink = document.getElementById("motivationLink");
+            motivationLink.addEventListener("click", playAudio);
+
+            // Simulate a click to auto play the video when the page loads
+            motivationLink.click();
+        }
+
+        function playAudio() {
+            // Play the audio
+            player.playVideo();
+
+            // Set a timeout to stop the audio after 5000 milliseconds (5 seconds)
+            setTimeout(stopAudio, 5000);
+        }
+
+        function stopAudio() {
+            // Pause the audio
+            player.pauseVideo();
+        }
+
         function fetchDataAndDisplay() {
-            fetch('/telemetry-info')  // Update the endpoint accordingly
+            fetch('/telemetry-info')
             .then(response => response.json())
             .then(data => {
                 updateTable(data["table-entries"]);
-                updateHeader(data["circuit"], data["event-type"], data["track-temperature"], data["current-lap"],
-                    data["total-laps"], data["safety-car-status"])
+                updateGlobalInfo(data["circuit"], data["event-type"], data["track-temperature"], data["current-lap"],
+                    data["total-laps"], data["safety-car-status"], data["fastest-lap-overall"]);
+                updateWeatherTable(data["weather-forecast-samples"])
             })
             .catch(error => {
                 console.error('Error fetching data:', error);
+            });
+        }
+
+        function updateWeatherTable(weatherData) {
+            const weatherTableBody = document.querySelector('#weatherTable tbody');
+            weatherTableBody.innerHTML = '';
+
+            weatherData.forEach(data => {
+                const row = weatherTableBody.insertRow();
+                row.insertCell().textContent = data["time-offset"];
+                row.insertCell().textContent = data["rain-probability"];
+                row.insertCell().textContent = data["weather"];
             });
         }
 
@@ -116,58 +225,41 @@
                 row.insertCell().textContent = entry["ers"];
                 row.insertCell().textContent = entry["best"];
                 row.insertCell().textContent = entry["last"];
-                // Add a line break and capture "tyre-wear" and "tyre-age"
-                const tyreWearCell = row.insertCell();
-                tyreWearCell.innerHTML = entry["average-tyre-wear"] + '<br>' + entry["tyre-age"] + " laps" + '<br>' +
-                    entry["tyre-compound"];
+                const tyreInfoCell = row.insertCell();
+                tyreInfoCell.innerHTML = `${entry["average-tyre-wear"]}<br>` +
+                        `${entry["tyre-age"]} laps ` + `(${entry["num-pitstops"]} pitstops)<br>` +
+                        `${entry["tyre-compound"]}`;
 
-                // Conditionally apply styles based on is-player
-                if (entry["is-player"]) {
-                    row.style.fontWeight = 'bold';
-                    row.style.border = '2px solid #ffd700'; // Gold border for the player row
-                } else {
-                    row.style.fontWeight = 'normal'; // Reset font weight
-                    row.style.border = ''; // Reset border
-                }
-
-                // Conditionally apply styles based on is-fastest
                 if (entry["is-fastest"]) {
-                    row.style.backgroundColor = 'purple';
-                    row.style.color = 'white';
-                } else {
-                    // Add an else case for is-fastest
-                    row.style.backgroundColor = ''; // Reset background color
-                    row.style.color = ''; // Reset text color
+                    row.classList.add('fastest-lap');
                 }
 
-                // Conditionally apply styles based on "drs" key
-                if (entry["drs"]) {
-                    row.style.color = 'green'; // Set green font color
-                } else {
-                    row.style.color = ''; // Reset text colour
+                if (entry["is-player"]) {
+                    row.classList.add('player-row'); // Apply the player-row class to the row
+                }
+
+                // Fix for DRS active styling
+                if (entry["drs"] === true) {
+                    Array.from(row.cells).forEach(cell => cell.classList.add('drs-active'));
                 }
             });
         }
 
-        function updateHeader(circuit, event_type, track_temp, curr_lap, total_laps, safety_car_status) {
-
-            // Set the page title and table title dynamically
-            var race_info_str = "";
-            race_info_str += event_type + " - "
-            race_info_str += circuit
-            document.getElementById('pageTitle').textContent = race_info_str;
-            document.getElementById('tableTitle').textContent = race_info_str;
-
-            document.getElementById('trackTemperature').textContent = "Track Temperature: " + track_temp + "°C";
-
-            var lap_info_str = curr_lap + "/" + total_laps;
-            document.getElementById('lapInformation').textContent = lap_info_str;
-            document.getElementById('safetyCarStatus').textContent = safety_car_status;
-            console.log('Safety Car Status:', safety_car_status);
+        function updateGlobalInfo(circuit, event_type, track_temp, curr_lap, total_laps, safety_car_status, fastest_lap) {
+            document.getElementById('tableTitle').textContent = `${event_type} - ${circuit}`;
+            document.getElementById('trackTemperature').textContent = `Track Temperature: ${track_temp}°C`;
+            document.getElementById('lapInformation').textContent = `Lap: ${curr_lap}/${total_laps}`;
+            document.getElementById('safetyCarStatus').textContent = `Safety Car Status: ${safety_car_status}`;
+            document.getElementById('fastestLapOverall').textContent = `Fastest Lap Overall: ${fastest_lap}`;
         }
-        setInterval(fetchDataAndDisplay, 200);  // Fetch data every 200 milliseconds
+        function updateLocalTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString(); // Converts the current time to a string using the local time convention
+            document.getElementById('localTime').textContent = `Local Time: ${timeString}`;
+        }
+
+        setInterval(updateLocalTime, 1000); // Update the time every second
+        setInterval(fetchDataAndDisplay, 200); // Fetch data every 200 milliseconds
     </script>
-
 </body>
-
 </html>
