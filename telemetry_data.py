@@ -271,14 +271,16 @@ def _get_cars_in_front_and_behind(track_positions, player_position):
 
     return cars_in_front, cars_behind
 
-def get_driver_data(short=True) -> list[DataPerDriver]:
+def get_driver_data(short=True) -> Tuple[list[DataPerDriver], str]:
 
     with _driver_data_lock:
         final_list = []
+        fastest_lap_time = "---"
         if (_driver_data.m_player_index) is None or (_driver_data.m_num_cars is None):
-            return final_list
+            return final_list, fastest_lap_time
         player_position = _driver_data.m_driver_data[_driver_data.m_player_index].m_position
         positions = _get_adjacent_positions(player_position, total_cars=_driver_data.m_num_cars)
+        fastest_lap_time = _driver_data.m_driver_data[_driver_data.m_fastest_index].m_best_lap
         for position in positions:
             index, temp_data = _driver_data.get_index_driver_data_by_track_position(position)
             temp_data.m_is_fastest = True if (index == _driver_data.m_fastest_index) else False
@@ -336,4 +338,4 @@ def get_driver_data(short=True) -> list[DataPerDriver]:
                 # finally set the delta for the player
                 final_list[player_index].m_delta = "---"
 
-        return final_list
+        return final_list, fastest_lap_time

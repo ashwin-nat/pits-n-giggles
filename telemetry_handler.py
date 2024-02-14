@@ -125,13 +125,16 @@ class F12023TelemetryHandler:
             data = TelData.DataPerDriver()
             data.m_ers_perc = (car_status_data.m_ersStoreEnergy / CarStatusData.max_ers_store_energy) * 100.0
             data.m_tyre_age = car_status_data.m_tyresAgeLaps
-            act_cmp_name = getActualTyreCompoundName(car_status_data.m_actualTyreCompound)
-            if act_cmp_name is None:
-                act_cmp_name = "---"
-            vis_cmp_name = getVisualTyreCompoundName(car_status_data.m_visualTyreCompound)
-            if vis_cmp_name is None:
-                vis_cmp_name = "---"
-            data.m_tyre_compound_type = act_cmp_name + ' - ' + vis_cmp_name
+            # TODO: remove below
+            # act_cmp_name = getActualTyreCompoundName(car_status_data.m_actualTyreCompound)
+            # if act_cmp_name is None:
+            #     act_cmp_name = "---"
+            # vis_cmp_name = getVisualTyreCompoundName(car_status_data.m_visualTyreCompound)
+            # if vis_cmp_name is None:
+            #     vis_cmp_name = "---"
+            # data.m_tyre_compound_type = act_cmp_name + ' - ' + vis_cmp_name
+            data.m_tyre_compound_type = str(car_status_data.m_actualTyreCompound) + ' - ' + \
+                str(car_status_data.m_visualTyreCompound)
             data.m_drs_allowed = bool(car_status_data.m_drsAllowed)
             data.m_drs_distance = bool(car_status_data.m_drsActivationDistance)
 

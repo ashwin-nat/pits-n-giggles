@@ -21,19 +21,44 @@
 # SOFTWARE.
 
 from f1_types import *
-import logging
-import binascii
 from udp_listener import UDPListener
+from typing import Callable
 
-logging.basicConfig(filename='f1-telemetry.log',
-                    filemode='a',
-                    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
-                    datefmt='%H:%M:%S',
-                    level=logging.DEBUG)
+# ------------------------- CLASSES --------------------------------------------
 
 class F12023TelemetryManager:
+    """
+    This class is used to act as the interface between the raw parsers and the user application layer.
+    This class handles the following tasks
+        1 - manage the socket and receive the data
+        2 - identify the packet type and parse the packet accordingly
+        3 - identify the callback function that the user has registered and invoke it for the incoming packet type
+    """
 
-    def __init__(self, port_number):
+    packet_type_map = {
+        F1PacketType.MOTION : PacketMotionData,
+        F1PacketType.SESSION : PacketSessionData,
+        F1PacketType.LAP_DATA : PacketLapData,
+        F1PacketType.EVENT : PacketEventData,
+        F1PacketType.PARTICIPANTS : PacketParticipantsData,
+        F1PacketType.CAR_SETUPS : PacketCarSetupData,
+        F1PacketType.CAR_TELEMETRY : PacketCarTelemetryData,
+        F1PacketType.CAR_STATUS : PacketCarStatusData,
+        F1PacketType.FINAL_CLASSIFICATION : PacketFinalClassificationData,
+        F1PacketType.LOBBY_INFO : PacketLobbyInfoData,
+        F1PacketType.CAR_DAMAGE : PacketCarDamageData,
+        F1PacketType.SESSION_HISTORY : PacketSessionHistoryData,
+        F1PacketType.TYRE_SETS : PacketTyreSetsData,
+        F1PacketType.MOTION_EX : PacketMotionExData,
+    }
+
+
+    def __init__(self, port_number: int):
+        """Init the telemetry manager app and all its sub components
+
+        Args:
+            port_number (int): The port number to listen in on
+        """
 
         self.m_udp_listener = UDPListener(port_number, "localhost")
         self.m_callbacks = {
@@ -52,81 +77,70 @@ class F12023TelemetryManager:
             F1PacketType.TYRE_SETS : None,
             F1PacketType.MOTION_EX : None,
         }
-        self.m_packet_type_map = {
-            F1PacketType.MOTION : PacketMotionData,
-            F1PacketType.SESSION : PacketSessionData,
-            F1PacketType.LAP_DATA : PacketLapData,
-            F1PacketType.EVENT : PacketEventData,
-            F1PacketType.PARTICIPANTS : PacketParticipantsData,
-            F1PacketType.CAR_SETUPS : PacketCarSetupData,
-            F1PacketType.CAR_TELEMETRY : PacketCarTelemetryData,
-            F1PacketType.CAR_STATUS : PacketCarStatusData,
-            F1PacketType.FINAL_CLASSIFICATION : PacketFinalClassificationData,
-            F1PacketType.LOBBY_INFO : PacketLobbyInfoData,
-            F1PacketType.CAR_DAMAGE : PacketCarDamageData,
-            F1PacketType.SESSION_HISTORY : PacketSessionHistoryData,
-            F1PacketType.TYRE_SETS : PacketTyreSetsData,
-            F1PacketType.MOTION_EX : PacketMotionExData,
-        }
 
-    def registerCallback(self, packet_type, callback):
+    def registerCallback(self, packet_type: F1PacketType, callback: Callable) -> None:
+        """
+        Registers a callback function for a specific F1 packet type.
 
+        Args:
+            packet_type (F1PacketType): The type of F1 packet for which the callback is registered.
+            callback (Callable): The callback function to be executed when a packet of the specified type is received.
+                It should be a function that takes one argument of the corresponding packet type.
+                    e.g. if registering for F1PacketType.MOTION event, the arg passed will be PacketMotionData
+                    Refer to the the below table for all mappings
+                        # Packet Type Mappings:
+                        +-------------------------------------+-------------------------------------------+
+                        | F1PacketType                        | Corresponding Packet Class                |
+                        +-------------------------------------+-------------------------------------------+
+                        | F1PacketType.MOTION                 | PacketMotionData                          |
+                        | F1PacketType.SESSION                | PacketSessionData                         |
+                        | F1PacketType.LAP_DATA               | PacketLapData                             |
+                        | F1PacketType.EVENT                  | PacketEventData                           |
+                        | F1PacketType.PARTICIPANTS           | PacketParticipantsData                    |
+                        | F1PacketType.CAR_SETUPS             | PacketCarSetupData                        |
+                        | F1PacketType.CAR_TELEMETRY          | PacketCarTelemetryData                    |
+                        | F1PacketType.CAR_STATUS             | PacketCarStatusData                       |
+                        | F1PacketType.FINAL_CLASSIFICATION   | PacketFinalClassificationData             |
+                        | F1PacketType.LOBBY_INFO             | PacketLobbyInfoData                       |
+                        | F1PacketType.CAR_DAMAGE             | PacketCarDamageData                       |
+                        | F1PacketType.SESSION_HISTORY        | PacketSessionHistoryData                  |
+                        | F1PacketType.TYRE_SETS              | PacketTyreSetsData                        |
+                        | F1PacketType.MOTION_EX              | PacketMotionExData                        |
+                        +-------------------------------------+-------------------------------------------+
+
+        Raises:
+            ValueError: If the provided packet_type is not a valid F1PacketType.
+        """
         if not F1PacketType.isValid(packet_type):
             raise ValueError('Invalid packet type in registering callback')
-
         self.m_callbacks[packet_type] = callback
 
-    def run(self):
+    def run(self) -> None:
+        """Run the telemetry client
+        """
 
+        # Run the client indefinitely
         while True:
+
+            # Get next UDP message
             data = self.m_udp_listener.getNextMessage()
             if len(data) < F1_23_PACKET_HEADER_LEN:
-                logging.debug('skipping incomplete packet')
+                # skip incomplete packet
+                continue
+
+            # Parse the header
             header_raw = data[:F1_23_PACKET_HEADER_LEN]
-            payload_raw = data[F1_23_PACKET_HEADER_LEN:]
-            logging.debug('received %d bytes packet. header dump =\n%s' %(len(data), self.__packetDump(header_raw)))
             header = PacketHeader(header_raw)
-            logging.debug('received header. parsed contents is ' + str(header))
-
             if not header.isPacketTypeSupported():
-                logging.debug('unsupported header')
+                # Unsupported packet type, skip
                 continue
-            is_packet_parser_available = (header.m_packetId in self.m_packet_type_map)
 
-            if is_packet_parser_available:
-                try:
-                    packet = self.m_packet_type_map[header.m_packetId](header, payload_raw)
-                except InvalidPacketLengthError as e:
-                    logging.error("Cannot parse packet of type " + header.m_packetId + ". Error = " + e)
-            else:
-                continue
+            # Parse the payload and call the registered callback
+            payload_raw = data[F1_23_PACKET_HEADER_LEN:]
+            try:
+                packet = F12023TelemetryManager.packet_type_map[header.m_packetId](header, payload_raw)
+            except InvalidPacketLengthError as e:
+                print("Cannot parse packet of type " + header.m_packetId + ". Error = " + e)
             callback = self.m_callbacks.get(header.m_packetId, None)
             if callback:
                 callback(packet)
-
-    def __packetDump(self, data):
-
-        # Convert the raw bytes to a string of hex values in upper case with a space between each byte
-        hex_string = binascii.hexlify(data).decode('utf-8').upper()
-
-        # Add a space between each pair of characters and format as 8 bytes per line
-        formatted_hex_string = ''
-        i=0
-        for char in hex_string:
-            formatted_hex_string += char
-            if i != 0:
-                if i%32 == 0:
-                    formatted_hex_string += '\n'
-                elif i%16 == 0:
-                    formatted_hex_string +='    '
-                elif i%2 == 0:
-                    formatted_hex_string += ' '
-            i += 1
-
-        return formatted_hex_string
-
-
-
-
-
-

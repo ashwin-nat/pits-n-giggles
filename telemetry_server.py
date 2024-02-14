@@ -52,7 +52,7 @@ class TelemetryServer:
         return value if value is not None else default_value
 
     def get_telemetry_data(self):
-        driver_data = TelData.get_driver_data()
+        driver_data, fastest_lap_overall = TelData.get_driver_data()
         circuit, track_temp, event_type, total_laps, curr_lap, \
             safety_car_status, weather_forecast_samples = TelData.get_globals()
 
@@ -63,6 +63,7 @@ class TelemetryServer:
             "total-laps": self.get_value_or_default_str(total_laps),
             "current-lap": self.get_value_or_default_str(curr_lap),
             "safety-car-status": str(self.get_value_or_default_str(safety_car_status, default_value="")),
+            "fastest-lap-overall" : fastest_lap_overall,
             "weather-forecast-samples" : [
             ]
         }
@@ -100,7 +101,6 @@ class TelemetryServer:
                     "num-pitstops" : self.get_value_or_default_str(data_per_driver.m_num_pitstops)
                 }
             )
-        json_response["fastest-lap-overall"] = fastest_lap_overall
 
         return jsonify(json_response)
 
