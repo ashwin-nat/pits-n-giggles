@@ -137,7 +137,7 @@ def set_globals(circuit, track_temp, event_type, total_laps, safety_car_status, 
         _globals.m_spectator_car_index = spectator_car_index
         _globals.m_weather_forecast_samples = weather_forecast_samples
 
-def get_globals(num_weather_forecast_samples=3) -> Tuple[str, int, str, int, int, str, List[WeatherForecastSample]]:
+def get_globals(num_weather_forecast_samples=4) -> Tuple[str, int, str, int, int, str, List[WeatherForecastSample]]:
     with _globals_lock:
         with _driver_data_lock: # we need this for current lap
             player_index = _driver_data.m_player_index

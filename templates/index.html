@@ -227,7 +227,7 @@
                 row.insertCell().textContent = entry["last"];
                 const tyreInfoCell = row.insertCell();
                 tyreInfoCell.innerHTML = `${entry["average-tyre-wear"]}<br>` +
-                        `${entry["tyre-age"]} laps ` + `(${entry["num-pitstops"]} pitstops)<br>` +
+                        `${entry["tyre-age"]} laps ` + `(${entry["num-pitstops"]} pit)<br>` +
                         `${entry["tyre-compound"]}`;
 
                 if (entry["is-fastest"]) {

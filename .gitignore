@@ -1,5 +1,4 @@
 launch.json
 *.pyc
 *.log
-*.bat
 *.bin
