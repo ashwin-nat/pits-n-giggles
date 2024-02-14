@@ -24,6 +24,7 @@
 from collections import defaultdict
 import threading
 import copy
+from f1_types import *
 
 _globals_lock = threading.Lock()
 _driver_data_lock = threading.Lock()
@@ -38,16 +39,19 @@ class GlobalData:
         self.m_track_temp = None
         self.m_total_laps = None
         self.m_safety_car_status = None
+        self.m_is_spectating = None
+        self.m_spectator_car_index = None
+        self.m_weather_forecast_samples = None
 
-        # print("created GlobalData object. " + str(id(self)) + " tid = " + str(threading.get_ident()))
     def __str__(self):
         return (
             f"GlobalData(m_circuit={self.m_circuit}, "
             f"m_event_type={self.m_event_type}, "
             f"m_track_temp={self.m_track_temp}, "
             f"m_total_laps={self.m_total_laps}, "
-            f"m_safety_car_status={str(self.m_safety_car_status)})"
-        )
+            f"m_safety_car_status={str(self.m_safety_car_status)}, "
+            f"m_is_spectating={str(self.m_is_spectating)}"
+            f"m_spectator_car_index={str(self.m_spectator_car_index)}")
 
 class DataPerDriver:
 
@@ -69,6 +73,7 @@ class DataPerDriver:
         self.m_drs_activated = None
         self.m_drs_allowed = None
         self.m_drs_distance = None
+        self.m_num_pitstops = None
 
 class DriverData:
 
@@ -120,21 +125,29 @@ class DriverData:
 _globals = GlobalData()
 _driver_data = DriverData()
 
-def set_globals(circuit, track_temp, event_type, total_laps, safety_car_status):
+def set_globals(circuit, track_temp, event_type, total_laps, safety_car_status, is_spectating,
+                    spectator_car_index, weather_forecast_samples):
     with _globals_lock:
         _globals.m_circuit = circuit
         _globals.m_track_temp = track_temp
         _globals.m_event_type = event_type
         _globals.m_total_laps = total_laps
         _globals.m_safety_car_status = safety_car_status
+        _globals.m_is_spectating = is_spectating
+        _globals.m_spectator_car_index = spectator_car_index
+        _globals.m_weather_forecast_samples = weather_forecast_samples
 
-def get_globals():
+def get_globals(num_weather_forecast_samples=3) -> Tuple[str, int, str, int, int, str, List[WeatherForecastSample]]:
     with _globals_lock:
         with _driver_data_lock: # we need this for current lap
             player_index = _driver_data.m_player_index
             curr_lap = _driver_data.m_driver_data[player_index].m_current_lap if player_index is not None else None
-            return (_globals.m_circuit, _globals.m_track_temp, _globals.m_event_type, _globals.m_total_laps, curr_lap,
-                        _globals.m_safety_car_status)
+            if _globals.m_weather_forecast_samples is not None:
+                weather_forecast_samples = _globals.m_weather_forecast_samples[:num_weather_forecast_samples]
+            else:
+                weather_forecast_samples = []
+            return (_globals.m_circuit, _globals.m_track_temp, _globals.m_event_type,
+                        _globals.m_total_laps, curr_lap, _globals.m_safety_car_status, weather_forecast_samples)
 
 def set_driver_data(index: int, driver_data: DataPerDriver, is_fastest=False):
     with _driver_data_lock:
@@ -158,23 +171,51 @@ def set_driver_data(index: int, driver_data: DataPerDriver, is_fastest=False):
         else:
             return False
 
+def millisecondsToMinutesSeconds(milliseconds):
+    if not isinstance(milliseconds, int):
+        raise ValueError("Input must be an integer representing milliseconds")
+
+    if milliseconds < 0:
+        raise ValueError("Input must be a non-negative integer")
+
+    total_seconds, milliseconds = divmod(milliseconds, 1000)
+    minutes, seconds = divmod(total_seconds, 60)
+
+    return f"{minutes:02}:{seconds:02}.{milliseconds:03}"
+
+def set_all_driver_data(packet: PacketFinalClassificationData):
+
+    with _driver_data_lock:
+        for index, data in enumerate(packet.m_classificationData):
+            driver_data = DataPerDriver()
+            driver_data.m_best_lap = millisecondsToMinutesSeconds(data.m_bestLapTimeInMS)
+            driver_data.m_position = data.m_position
+            driver_data.m_penalties = "" if (data.m_penaltiesTime == 0) else ("(" + str(data.m_penaltiesTime) + " sec)")
+            _driver_data.update_object(index, driver_data)
+
+        if _driver_data.m_fastest_index is None:
+            _recompute_fastest_lap_no_mutex()
+
 def _convert_to_milliseconds(time_str):
     minutes, seconds_with_milliseconds = map(str, time_str.split(':'))
     seconds, milliseconds = map(int, seconds_with_milliseconds.split('.'))
     total_milliseconds = int(minutes) * 60 * 1000 + seconds * 1000 + milliseconds
     return total_milliseconds
 
+def _recompute_fastest_lap_no_mutex():
+    # TODO - handle case where multiple cars have same fastest time.
+    _driver_data.m_fastest_index = None
+    fastest_time_ms = 500000000000 # cant be slower than this, right?
+    for index, driver_data in _driver_data.m_driver_data.items():
+        if driver_data.m_best_lap is not None:
+            temp_lap_ms = _convert_to_milliseconds(driver_data.m_best_lap)
+            if temp_lap_ms > 0 and temp_lap_ms < fastest_time_ms:
+                fastest_time_ms = temp_lap_ms
+                _driver_data.m_fastest_index = index
+
 def recompute_fastest_lap():
     with _driver_data_lock:
-        # TODO - handle case where multiple cars have same fastest time.
-        _driver_data.m_fastest_index = None
-        fastest_time_ms = 500000000000 # cant be slower than this, right?
-        for index, driver_data in _driver_data.m_driver_data.items():
-            if driver_data.m_best_lap is not None:
-                temp_lap_ms = _convert_to_milliseconds(driver_data.m_best_lap)
-                if temp_lap_ms > 0 and temp_lap_ms < fastest_time_ms:
-                    fastest_time_ms = temp_lap_ms
-                    _driver_data.m_fastest_index = index
+        _recompute_fastest_lap_no_mutex()
 
 
 def set_num_cars(num_cars: int) -> None:
@@ -185,7 +226,7 @@ def clear_all_driver_data():
     with _driver_data_lock:
         _driver_data.set_members_to_none()
 
-def _get_adjacent_positions(position, total_cars=20, num_adjacent_cars=3):
+def _get_adjacent_positions(position, total_cars=20, num_adjacent_cars=2):
     if not (1 <= position <= total_cars):
         return []
 
@@ -292,7 +333,7 @@ def get_driver_data(short=True) -> list[DataPerDriver]:
                     delta_so_far += data.m_delta
                     data.m_delta = milliseconds_to_seconds(delta_so_far)
 
-                # first set the delta for the player
+                # finally set the delta for the player
                 final_list[player_index].m_delta = "---"
 
         return final_list

@@ -21,15 +21,25 @@
 # SOFTWARE.
 
 from enum import Enum, auto
-from typing import List
+from typing import List, Any
 from f1_packet_info import *
 import struct
 import binascii
 
 # ------------------------- PRIVATE FUNCTIONS ----------------------------------
 
-def _split_list(original_list, sublist_length):
-    return [original_list[i:i+sublist_length] for i in range(0, len(original_list), sublist_length)]
+def _split_list(original_list: List[Any], sublist_length: int) -> List[List[Any]]:
+    """
+    Splits the given list into sublists of a specified length.
+
+    Args:
+        original_list (List[Any]): The original list to be split.
+        sublist_length (int): The desired length of each sublist.
+
+    Returns:
+        List[List[Any]]: A list containing sublists of the specified length.
+    """
+    return [original_list[i:i + sublist_length] for i in range(0, len(original_list), sublist_length)]
 
 def _extract_sublist(data: bytes, lower_index: int, upper_index: int) -> bytes:
     # Ensure the indices are within bounds
@@ -41,8 +51,16 @@ def _extract_sublist(data: bytes, lower_index: int, upper_index: int) -> bytes:
     sub_list: bytes = data[lower_index:upper_index]
     return sub_list
 
-def _packetDump(data):
+def _packetDump(data: bytes) -> str:
+    """
+    Convert the raw bytes to a formatted string of hex values.
 
+    Args:
+    - data (bytes): The raw bytes to be formatted.
+
+    Returns:
+    - str: Formatted string of hex values.
+    """
     # Convert the raw bytes to a string of hex values in upper case with a space between each byte
     hex_string = binascii.hexlify(data).decode('utf-8').upper()
 
@@ -257,12 +275,13 @@ def getVisualTyreCompoundName(tyre_compound_code: int) -> str:
     }
     return tyre_compound_mapping_visual.get(tyre_compound_code, '---')
 
-"""
-This exception type is used to indicate to the telemetry manager that there has
-been a parsing error due to receving a packet of unexpected length (possibly
-incomplete or corrupt. or more realistically a bug)
-"""
+
 class InvalidPacketLengthError(Exception):
+    """
+    This exception type is used to indicate to the telemetry manager that there has
+    been a parsing error due to receving a packet of unexpected length (possibly
+    incomplete or corrupt. or more realistically a bug)
+    """
     def __init__(self, message):
         super().__init__("Invalid packet length. " + message)
 
@@ -393,7 +412,15 @@ class CarMotionData:
 
     The car motion data structure is as follows:
 
-    Attributes:
+
+    """
+    def __init__(self, data: bytes) -> None:
+        """A class for parsing the data related to the motion of the F1 car
+
+        Args:
+            data (List[bytes]): list containing the raw bytes for this packet
+
+        Attributes:
         - m_world_position_x (float): World space X position - meters.
         - m_world_position_y (float): World space Y position.
         - m_world_position_z (float): World space Z position.
@@ -412,12 +439,6 @@ class CarMotionData:
         - m_yaw (float): Yaw angle in radians.
         - m_pitch (float): Pitch angle in radians.
         - m_roll (float): Roll angle in radians.
-    """
-    def __init__(self, data: bytes) -> None:
-        """Parse the raw bytes into this object
-
-        Args:
-            data (List[bytes]): list containing the raw bytes for this packet
         """
         unpacked_data = struct.unpack(motion_format_string, data)
 
@@ -444,26 +465,17 @@ class CarMotionData:
         )
 
 class PacketMotionData:
-    """
-    A class for parsing the Motion Data Packet of a telemetry packet in a racing game.
-
-    The motion data packet structure is as follows:
-
-    Attributes:
-        - m_header (PacketHeader): The header of the telemetry packet.
-        - m_car_motion_data (list): List of CarMotionData objects containing data for all cars on track.
-          Each CarMotionData object has attributes similar to the CarMotionData structure.
-
-    Note: The m_car_motion_data list has a length of 22, corresponding to the data for all cars on track.
-        (last 2 may be inactive)
-    """
 
     def __init__(self, header:PacketHeader, packet: bytes) -> None:
-        """Parse the raw data into this object
+        """A class for parsing the Motion Data Packet of a telemetry packet in a racing game.
 
         Args:
             header (PacketHeader): Incoming packet header
             packet (List[bytes]): list containing the raw bytes for this packet
+
+        Attributes:
+        - m_header (PacketHeader): The header of the telemetry packet.
+        - m_car_motion_data (list): List of CarMotionData objects containing data for all cars on track.
 
         Raises:
             InvalidPacketLengthError: If received length is not as per expectation
@@ -479,12 +491,58 @@ class PacketMotionData:
             self.m_carMotionData.append(CarMotionData(motion_data_packet))
 
     def __str__(self) -> str:
+        """
+        Return a string representation of the PacketMotionData instance.
+
+        Returns:
+        - str: String representation of PacketMotionData.
+        """
         car_motion_data_str = ", ".join(str(car) for car in self.m_carMotionData)
         return f"PacketMotionData(Header: {str(self.m_header)}, CarMotionData: [{car_motion_data_str}])"
 
 
 class LapData:
     def __init__(self, data) -> None:
+        """
+        Initialize LapData instance by unpacking binary data.
+
+        Args:
+        - data (bytes): Binary data containing lap information.
+
+        Unpacked Data Members:
+        - m_lastLapTimeInMS (uint32): Last lap time in milliseconds.
+        - m_currentLapTimeInMS (uint32): Current time around the lap in milliseconds.
+        - m_sector1TimeInMS (uint16): Sector 1 time in milliseconds.
+        - m_sector1TimeMinutes (uint8): Sector 1 whole minute part.
+        - m_sector2TimeInMS (uint16): Sector 2 time in milliseconds.
+        - m_sector2TimeMinutes (uint8): Sector 2 whole minute part.
+        - m_deltaToCarInFrontInMS (uint16): Time delta to car in front in milliseconds.
+        - m_deltaToRaceLeaderInMS (uint16): Time delta to race leader in milliseconds.
+        - m_lapDistance (float): Distance vehicle is around the current lap in meters.
+        - m_totalDistance (float): Total distance traveled in the session in meters.
+        - m_safetyCarDelta (float): Delta in seconds for safety car.
+        - m_carPosition (uint8): Car race position.
+        - m_currentLapNum (uint8): Current lap number.
+        - m_pitStatus (uint8): Pit status (0 = none, 1 = pitting, 2 = in pit area).
+        - m_numPitStops (uint8): Number of pit stops taken in this race.
+        - m_sector (uint8): Sector (0 = sector1, 1 = sector2, 2 = sector3).
+        - m_currentLapInvalid (uint8): Current lap validity (0 = valid, 1 = invalid).
+        - m_penalties (uint8): Accumulated time penalties in seconds to be added.
+        - m_totalWarnings (uint8): Accumulated number of warnings issued.
+        - m_cornerCuttingWarnings (uint8): Accumulated number of corner cutting warnings issued.
+        - m_numUnservedDriveThroughPens (uint8): Number of drive-through penalties left to serve.
+        - m_numUnservedStopGoPens (uint8): Number of stop-go penalties left to serve.
+        - m_gridPosition (uint8): Grid position the vehicle started the race in.
+        - m_driverStatus (uint8): Status of the driver (0 = in garage, 1 = flying lap,
+          2 = in lap, 3 = out lap, 4 = on track).
+        - m_resultStatus (uint8): Result status (0 = invalid, 1 = inactive, 2 = active,
+          3 = finished, 4 = did not finish, 5 = disqualified, 6 = not classified, 7 = retired).
+        - m_pitLaneTimerActive (uint8): Pit lane timing (0 = inactive, 1 = active).
+        - m_pitLaneTimeInLaneInMS (uint16): If active, the current time spent in the pit lane in ms.
+        - m_pitStopTimerInMS (uint16): Time of the actual pit stop in ms.
+        - m_pitStopShouldServePen (uint8): Whether the car should serve a penalty at this stop.
+
+        """
 
         unpacked_data = struct.unpack(lap_time_packet_format_str, data)
 
@@ -523,6 +581,12 @@ class LapData:
 
 
     def __str__(self) -> str:
+        """
+        Return a string representation of the LapData instance.
+
+        Returns:
+        - str: String representation of LapData.
+        """
         return (
             f"LapData("
             f"Last Lap Time: {self.m_lastLapTimeInMS} ms, "
@@ -558,16 +622,38 @@ class LapData:
 
 class PacketLapData:
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
+        """
+        Initialize PacketLapData instance by unpacking binary data.
+
+        Args:
+        - header (PacketHeader): Packet header information.
+        - packet (bytes): Binary data containing lap data packet.
+
+        Raises:
+        - InvalidPacketLengthError: If the received packet length is not as expected.
+
+        Unpacked Data Members:
+        - m_header (PacketHeader): Packet header information.
+        - m_LapData (List[LapData]): List of LapData instances for all cars on track.
+        - m_LapDataCount (int): Number of LapData entries (constant value: 22).
+        - m_timeTrialPBCarIdx (uint8): Index of Personal Best car in time trial (255 if invalid).
+        - m_timeTrialRivalCarIdx (uint8): Index of Rival car in time trial (255 if invalid).
+
+        Returns:
+        - None
+        """
         self.m_header: PacketHeader = header
-        self.m_LapData: List[LapData] = []                 # LapData[22]
+        self.m_LapData: List[LapData] = []  # LapData[22]
         self.m_LapDataCount = 22
         len_of_lap_data_array = self.m_LapDataCount * F1_23_LAP_DATA_PACKET_PER_CAR_LEN
 
         # 2 extra bytes for the two uint8 that follow LapData
-        expected_len = (len_of_lap_data_array+2)
-        if ((len(packet) != expected_len) != 0):
-            raise InvalidPacketLengthError("Received LapDataPacket length " + str(len(packet)) + " is not of expected length " +
-                                            str(expected_len))
+        expected_len = (len_of_lap_data_array + 2)
+        if len(packet) != expected_len:
+            raise InvalidPacketLengthError(
+                f"Received LapDataPacket length {len(packet)} is not of expected length {expected_len}"
+            )
+
         lap_data_packet_raw = _extract_sublist(packet, 0, len_of_lap_data_array)
         for lap_data_packet in _split_list(lap_data_packet_raw, F1_23_LAP_DATA_PACKET_PER_CAR_LEN):
             self.m_LapData.append(LapData(lap_data_packet))
@@ -580,6 +666,12 @@ class PacketLapData:
         ) = unpacked_data
 
     def __str__(self) -> str:
+        """
+        Return a string representation of the PacketLapData instance.
+
+        Returns:
+        - str: String representation of PacketLapData.
+        """
         lap_data_str = ", ".join(str(data) for data in self.m_LapData)
         return f"PacketLapData(Header: {str(self.m_header)}, Car Lap Data: [{lap_data_str}])"
 
@@ -652,27 +744,161 @@ class MarshalZone:
 
 class WeatherForecastSample:
 
+    class SessionType(Enum):
+        UNKNOWN = 0
+        P1 = 1
+        P2 = 2
+        P3 = 3
+        SHORT_P = 4
+        Q1 = 5
+        Q2 = 6
+        Q3 = 7
+        SHORT_Q = 8
+        OSQ = 9
+        RACE = 10
+        RACE2 = 11
+        RACE3 = 12
+        TIMETRIAL = 13
+
+        def __str__(self):
+            return {
+                WeatherForecastSample.SessionType.UNKNOWN: "Unknown",
+                WeatherForecastSample.SessionType.P1: "Practice 1",
+                WeatherForecastSample.SessionType.P2: "Practice 2",
+                WeatherForecastSample.SessionType.P3: "Practice 3",
+                WeatherForecastSample.SessionType.SHORT_P: "Short Practice",
+                WeatherForecastSample.SessionType.Q1: "Qualifying 1",
+                WeatherForecastSample.SessionType.Q2: "Qualifying 2",
+                WeatherForecastSample.SessionType.Q3: "Qualifying 3",
+                WeatherForecastSample.SessionType.SHORT_Q: "Short Qualifying",
+                WeatherForecastSample.SessionType.OSQ: "OSQ",
+                WeatherForecastSample.SessionType.RACE: "Race",
+                WeatherForecastSample.SessionType.RACE2: "Race 2",
+                WeatherForecastSample.SessionType.RACE3: "Race 3",
+                WeatherForecastSample.SessionType.TIMETRIAL: "Time Trial",
+            }[self]
+
+        @staticmethod
+        def isValid(session_type_code: int):
+            """Check if the given session type code is valid.
+
+            Args:
+                flag_type (int): The session type code to be validated.
+                    Also supports type SessionType. Returns true in this case
+
+            Returns:
+                bool: true if valid
+            """
+            if isinstance(session_type_code, WeatherForecastSample.SessionType):
+                return True  # It's already an instance of SafetyCarStatus
+            else:
+                min_value = min(member.value for member in WeatherForecastSample.SessionType)
+                max_value = max(member.value for member in WeatherForecastSample.SessionType)
+                return min_value <= session_type_code <= max_value
+
+    class WeatherCondition(Enum):
+        CLEAR = 0
+        LIGHT_CLOUD = 1
+        OVERCAST = 2
+        LIGHT_RAIN = 3
+        HEAVY_RAIN = 4
+        STORM = 5
+
+        def __str__(self):
+            return {
+                WeatherForecastSample.WeatherCondition.CLEAR: "Clear",
+                WeatherForecastSample.WeatherCondition.LIGHT_CLOUD: "Light Cloud",
+                WeatherForecastSample.WeatherCondition.OVERCAST: "Overcast",
+                WeatherForecastSample.WeatherCondition.LIGHT_RAIN: "Light Rain",
+                WeatherForecastSample.WeatherCondition.HEAVY_RAIN: "Heavy Rain",
+                WeatherForecastSample.WeatherCondition.STORM: "Storm",
+            }[self]
+
+        @staticmethod
+        def isValid(weather_type_code: int):
+            """Check if the given weather type code is valid.
+
+            Args:
+                flag_type (int): The weather type code to be validated.
+                    Also supports type WeatherCondition. Returns true in this case
+
+            Returns:
+                bool: true if valid
+            """
+            if isinstance(weather_type_code, WeatherForecastSample.WeatherCondition):
+                return True  # It's already an instance of SafetyCarStatus
+            else:
+                min_value = min(member.value for member in WeatherForecastSample.WeatherCondition)
+                max_value = max(member.value for member in WeatherForecastSample.WeatherCondition)
+                return min_value <= weather_type_code <= max_value
+
+    class TrackTemperatureChange(Enum):
+        UP = 0
+        DOWN = 1
+        NO_CHANGE = 2
+
+        def __str__(self):
+            return {
+                WeatherForecastSample.TrackTemperatureChange.UP: "Temperature Up",
+                WeatherForecastSample.TrackTemperatureChange.DOWN: "Temperature Down",
+                WeatherForecastSample.TrackTemperatureChange.NO_CHANGE: "No Temperature Change",
+            }[self]
+
+        @staticmethod
+        def isValid(temp_change_code: int):
+            """Check if the given temperature change code is valid.
+
+            Args:
+                flag_type (int): The temperature change code to be validated.
+                    Also supports type TrackTemperatureChange. Returns true in this case
+
+            Returns:
+                bool: true if valid
+            """
+            if isinstance(temp_change_code, WeatherForecastSample.TrackTemperatureChange):
+                return True  # It's already an instance of SafetyCarStatus
+            else:
+                min_value = min(member.value for member in WeatherForecastSample.TrackTemperatureChange)
+                max_value = max(member.value for member in WeatherForecastSample.TrackTemperatureChange)
+                return min_value <= temp_change_code <= max_value
+
+    class AirTemperatureChange(Enum):
+        UP = 0
+        DOWN = 1
+        NO_CHANGE = 2
+
+        @staticmethod
+        def isValid(air_temp_change_code: int):
+            """Check if the given air temperature change code is valid.
+
+            Args:
+                flag_type (int): The air temperature change to be validated.
+                    Also supports type AirTemperatureChange. Returns true in this case
+
+            Returns:
+                bool: true if valid
+            """
+            if isinstance(air_temp_change_code, WeatherForecastSample.AirTemperatureChange):
+                return True  # It's already an instance of SafetyCarStatus
+            else:
+                min_value = min(member.value for member in WeatherForecastSample.AirTemperatureChange)
+                max_value = max(member.value for member in WeatherForecastSample.AirTemperatureChange)
+                return min_value <= air_temp_change_code <= max_value
+
+        def __str__(self):
+            return {
+                WeatherForecastSample.AirTemperatureChange.UP: "Temperature Up",
+                WeatherForecastSample.AirTemperatureChange.DOWN: "Temperature Down",
+                WeatherForecastSample.AirTemperatureChange.NO_CHANGE: "No Temperature Change",
+            }[self]
+
     """
     A class for parsing the Weather Forecast Sample data within a telemetry packet in a racing game.
 
     The Weather Forecast Sample structure is as follows:
 
     Attributes:
-        - m_session_type (int): Type of session:
-            - 0: Unknown
-            - 1: P1 (Practice 1)
-            - 2: P2 (Practice 2)
-            - 3: P3 (Practice 3)
-            - 4: Short P (Short Practice)
-            - 5: Q1 (Qualifying 1)
-            - 6: Q2 (Qualifying 2)
-            - 7: Q3 (Qualifying 3)
-            - 8: Short Q (Short Qualifying)
-            - 9: OSQ (One-Shot Qualifying)
-            - 10: R (Race)
-            - 11: R2 (Race 2)
-            - 12: R3 (Race 3)
-            - 13: Time Trial
+        - m_session_type (SessionType): Type of session (this is converted to enum from int)
         - m_time_offset (int): Time in minutes the forecast is for.
         - m_weather (int): Weather condition:
             - 0: Clear
@@ -711,6 +937,13 @@ class WeatherForecastSample:
             self.m_airTemperatureChange,          # int8
             self.m_rainPercentage                 # uint8
         ) = unpacked_data
+
+        if WeatherForecastSample.WeatherCondition.isValid(self.m_weather):
+            self.m_weather = WeatherForecastSample.WeatherCondition(self.m_weather)
+        if WeatherForecastSample.AirTemperatureChange.isValid(self.m_airTemperatureChange):
+            self.m_airTemperatureChange = WeatherForecastSample.AirTemperatureChange(self.m_airTemperatureChange)
+        if WeatherForecastSample.TrackTemperatureChange.isValid(self.m_trackTemperatureChange):
+            self.m_trackTemperatureChange = WeatherForecastSample.TrackTemperatureChange(self.m_trackTemperatureChange)
 
     def __str__(self) -> str:
         return (
@@ -830,7 +1063,9 @@ class PacketSessionData:
         self.m_marshalZones: List[MarshalZone] = []         # List of marshal zones – max 21
         for per_marshal_zone_raw_data in _split_list(section_1_raw_data, marshal_zone_packet_len):
             self.m_marshalZones.append(MarshalZone(per_marshal_zone_raw_data))
-        # section_1_raw_data = None
+        # Trim the unnecessary marshalZones
+        self.m_marshalZones = self.m_marshalZones[:self.m_numMarshalZones]
+        section_1_raw_data = None
 
         # Section 2, till numWeatherForecastSamples
         section_2_raw_data = _extract_sublist(data, byte_index_so_far, byte_index_so_far + F1_23_SESSION_SECTION_2_PACKET_LEN)
@@ -843,7 +1078,7 @@ class PacketSessionData:
         ) = unpacked_data
         if SafetyCarStatus.isValid(self.m_safetyCarStatus):
             self.m_safetyCarStatus = SafetyCarStatus(self.m_safetyCarStatus)
-        # section_2_raw_data = None
+        section_2_raw_data = None
 
 
         # Section 3 - weather forecast samples
@@ -853,7 +1088,9 @@ class PacketSessionData:
         self.m_weatherForecastSamples: List[WeatherForecastSample] = []  # Array of weather forecast samples
         for per_weather_sample_raw_data in _split_list(section_3_raw_data, weather_forecast_sample_packet_len):
             self.m_weatherForecastSamples.append(WeatherForecastSample(per_weather_sample_raw_data))
-        # section_3_raw_data = None
+        # Trim the unnecessary weatherForecastSamples
+        self.m_weatherForecastSamples = self.m_weatherForecastSamples[:self.m_numWeatherForecastSamples]
+        section_3_raw_data = None
 
         # Section 4 - rest of the packet
         section_4_raw_data = _extract_sublist(data, byte_index_so_far, byte_index_so_far+F1_23_SESSION_SECTION_4_PACKET_LEN)
@@ -1218,7 +1455,6 @@ class PacketEventData:
         event_str = (f"Event: {str(self.mEventDetails)}") if self.mEventDetails else ""
         return f"PacketEventData(Header: {str(self.m_header)}, Event String Code: {self.m_eventStringCode}, {event_str})"
 
-
 class ParticipantData:
     def __init__(self, data) -> None:
 
@@ -1255,7 +1491,6 @@ class ParticipantData:
             f"m_platform={self.m_platform})"
         )
 
-
 class PacketParticipantsData:
     max_participants = 22
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
@@ -1274,7 +1509,6 @@ class PacketParticipantsData:
             f"Number of Active Cars: {self.m_numActiveCars}, "
             f"Participants: [{participants_str}])"
         )
-
 
 class PacketCarSetupData:
     def __init__(self, header, packet: bytes) -> None:
