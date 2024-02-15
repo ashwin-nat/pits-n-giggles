@@ -21,12 +21,21 @@
 # SOFTWARE.
 
 try:
-    from flask import Flask, jsonify, render_template
+    from flask import Flask, render_template
 except ImportError:
     print("Flask is not installed. Installing...")
     import subprocess
     subprocess.check_call(["pip", "install", "flask"])
     print("Flask installation complete.")
+    from flask import Flask, render_template
+try:
+    from flask_cors import CORS
+except ImportError:
+    print("flask-cors is not installed. Installing...")
+    import subprocess
+    subprocess.check_call(["pip", "install", "flask-cors"])
+    print("Flask installation complete.")
+    from flask_cors import CORS
 import telemetry_data as TelData
 import logging
 
@@ -91,7 +100,7 @@ class TelemetryServer:
         # Fetch the data from the data stores
         driver_data, fastest_lap_overall = TelData.getDriverData()
         circuit, track_temp, event_type, total_laps, curr_lap, \
-            safety_car_status, weather_forecast_samples = TelData.getGlobals()
+            safety_car_status, weather_forecast_samples, pit_speed_limit = TelData.getGlobals()
 
         # Init the global data onto the JSON repsonse
         json_response = {
@@ -102,6 +111,7 @@ class TelemetryServer:
             "current-lap": self.getValueOrDefaultStr(curr_lap),
             "safety-car-status": str(self.getValueOrDefaultStr(safety_car_status, default_value="")),
             "fastest-lap-overall": fastest_lap_overall,
+            "pit-speed-limit" : self.getValueOrDefaultStr(pit_speed_limit),
             "weather-forecast-samples": []
         }
         for sample in weather_forecast_samples:
@@ -125,7 +135,9 @@ class TelemetryServer:
                     "name": self.getValueOrDefaultStr(data_per_driver.m_name),
                     "team": self.getValueOrDefaultStr(data_per_driver.m_team),
                     "delta": self.getDeltaPlusPenaltiesPlusPit(data_per_driver.m_delta,
-                                                               data_per_driver.m_penalties, data_per_driver.m_is_pitting),
+                                                               data_per_driver.m_penalties,
+                                                               data_per_driver.m_is_pitting,
+                                                               data_per_driver.m_dnf_status_code),
                     "ers": self.getValueOrDefaultStr(data_per_driver.m_ers_perc),
                     "best": self.getValueOrDefaultStr(data_per_driver.m_best_lap),
                     "last": self.getValueOrDefaultStr(data_per_driver.m_last_lap),
@@ -144,7 +156,7 @@ class TelemetryServer:
 
         return json_response
 
-    def getDeltaPlusPenaltiesPlusPit(self, delta, penalties, is_pitting):
+    def getDeltaPlusPenaltiesPlusPit(self, delta, penalties, is_pitting, dnf_status_code: str):
         """
         Get delta plus penalties plus pit information.
 
@@ -152,12 +164,15 @@ class TelemetryServer:
             delta: Delta information.
             penalties: Penalties information.
             is_pitting: Whether the driver is pitting.
+            dnf_status_code: The code indicating DNF status. Empty string if driver is still racing
 
         Returns:
             str: Delta plus penalties plus pit information.
         """
 
-        if is_pitting:
+        if len(dnf_status_code) > 0:
+            return dnf_status_code
+        elif is_pitting:
             return "PIT " + penalties
         elif delta is not None:
             return delta + " " + penalties
