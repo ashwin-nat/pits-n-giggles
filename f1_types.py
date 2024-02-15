@@ -55,202 +55,7 @@ def _extract_sublist(data: bytes, lower_index: int, upper_index: int) -> bytes:
     sub_list: bytes = data[lower_index:upper_index]
     return sub_list
 
-# ------------------------- PUBLIC FUNCTIONS -----------------------------------
-
-def getTrackName(track_id: int) -> str:
-    """For the given track ID, get the string representation of the track name.
-        All data is obtained from the appendix section of the
-            F1 23 UDP specification document
-
-    Args:
-        track_id (int): The numeric track ID code
-
-    Returns:
-        str: Name of the track, None if invalid track name
-    """
-    track_data = {
-        0: "Melbourne",
-        1: "Paul Ricard",
-        2: "Shanghai",
-        3: "Sakhir (Bahrain)",
-        4: "Catalunya",
-        5: "Monaco",
-        6: "Montreal",
-        7: "Silverstone",
-        8: "Hockenheim",
-        9: "Hungaroring",
-        10: "Spa",
-        11: "Monza",
-        12: "Singapore",
-        13: "Suzuka",
-        14: "Abu Dhabi",
-        15: "Texas",
-        16: "Brazil",
-        17: "Austria",
-        18: "Sochi",
-        19: "Mexico",
-        20: "Baku (Azerbaijan)",
-        21: "Sakhir Short",
-        22: "Silverstone Short",
-        23: "Texas Short",
-        24: "Suzuka Short",
-        25: "Hanoi",
-        26: "Zandvoort",
-        27: "Imola",
-        28: "Portimão",
-        29: "Jeddah",
-        30: "Miami",
-        31: "Las Vegas",
-        32: "Losail",
-    }
-    return track_data.get(track_id, None)
-
-def getRuleSetName(rule_set_id: int) -> str:
-    """For the given rule set ID, get the string representation of the rule set name.
-        All data is obtained from the appendix section of the
-            F1 23 UDP specification document
-
-    Args:
-        rule_set_id (int): The numeric rule set ID code
-
-    Returns:
-        str: Name of the rule set, None if invalid rule set name
-    """
-    ruleset_data = {
-        0: "Practice & Qualifying",
-        1: "Race",
-        2: "Time Trial",
-        4: "Time Attack",
-        6: "Checkpoint Challenge",
-        8: "Autocross",
-        9: "Drift",
-        10: "Average Speed Zone",
-        11: "Rival Duel",
-    }
-    return ruleset_data.get(rule_set_id, None)
-
-def getSessionTypeName(session_type_id: int) -> str:
-    """For the given session type ID, get the string representation of the session type name.
-        All data is obtained from the appendix section of the
-            F1 23 UDP specification document
-
-    Args:
-        session_type_id (int): The numeric session type ID code
-
-    Returns:
-        str: Name of the session type, None if invalid session type name
-    """
-    session_type_mapping = {
-        0: "Unknown",
-        1: "Practice 1",
-        2: "Practice 2",
-        3: "Practice 3",
-        4: "Short Practice",
-        5: "Qualifying 1",
-        6: "Qualifying 2",
-        7: "Qualifying 3",
-        8: "Short Qualifying",
-        9: "One-Shot Qualifying",
-        10: "Race",
-        11: "Race 2",
-        12: "Race 3",
-        13: "Time Trial",
-    }
-    return session_type_mapping.get(session_type_id, None)
-
-def getTeamName(team_id: int) -> str:
-    """For the given team ID, get the string representation of the team name.
-        All data is obtained from the appendix section of the
-            F1 23 UDP specification document
-
-    Args:
-        team_id (int): The numeric team ID code
-
-    Returns:
-        str: Name of the team, None if invalid team name
-    """
-    teams_mapping = {
-        0: "Mercedes", 1: "Ferrari", 2: "Red Bull Racing",
-        3: "Williams", 4: "Aston Martin", 5: "Alpine",
-        6: "Alpha Tauri", 7: "Haas", 8: "McLaren",
-        9: "Alfa Romeo", 85: "Mercedes 2020", 86: "Ferrari 2020",
-        87: "Red Bull 2020", 88: "Williams 2020", 89: "Racing Point 2020",
-        90: "Renault 2020", 91: "Alpha Tauri 2020", 92: "Haas 2020",
-        93: "McLaren 2020", 94: "Alfa Romeo 2020", 95: "Aston Martin DB11 V12",
-        96: "Aston Martin Vantage F1 Edition", 97: "Aston Martin Vantage Safety Car",
-        98: "Ferrari F8 Tributo", 99: "Ferrari Roma", 100: "McLaren 720S",
-        101: "McLaren Artura", 102: "Mercedes AMG GT Black Series Safety Car",
-        103: "Mercedes AMG GTR Pro", 104: "F1 Custom Team",
-        106: "Prema '21", 107: "Uni-Virtuosi '21", 108: "Carlin '21",
-        109: "Hitech '21", 110: "Art GP '21", 111: "MP Motorsport '21",
-        112: "Charouz '21", 113: "Dams '21", 114: "Campos '21",
-        115: "BWT '21", 116: "Trident '21", 117: "Mercedes AMG GT Black Series",
-        118: "Mercedes '22", 119: "Ferrari '22", 120: "Red Bull Racing '22",
-        121: "Williams '22", 122: "Aston Martin '22", 123: "Alpine '22",
-        124: "Alpha Tauri '22", 125: "Haas '22", 126: "McLaren '22",
-        127: "Alfa Romeo '22", 128: "Konnersport '22", 129: "Konnersport",
-        130: "Prema '22", 131: "Virtuosi '22", 132: "Carlin '22",
-        133: "MP Motorsport '22", 134: "Charouz '22", 135: "Dams '22",
-        136: "Campos '22", 137: "Van Amersfoort Racing '22", 138: "Trident '22",
-        139: "Hitech '22", 140: "Art GP '22"
-    }
-    return teams_mapping.get(team_id, None)
-
-# TODO: remove
-# def getActualTyreCompoundName(tyre_compound_code: int) -> str:
-#     """For the given actual tyre compound ID, get the string representation of the actual tyre compound name.
-#         All data is obtained from the appendix section of the
-#             F1 23 UDP specification document
-
-#     Args:
-#         tyre_compound_code (int): The numeric actual tyre compound ID code
-
-#     Returns:
-#         str: Name of the team, None if invalid actual tyre compound ID
-#     """
-#     tyre_compound_mapping = {
-#         16: 'C5',
-#         17: 'C4',
-#         18: 'C3',
-#         19: 'C2',
-#         20: 'C1',
-#         21: 'C0',
-#         7: 'Intermediate',
-#         8: 'Wet',
-#         9: 'Dry (F1 Classic)',
-#         10: 'Wet (F1 Classic)',
-#         11: 'Super Soft (F2)',
-#         12: 'Soft (F2)',
-#         13: 'Medium (F2)',
-#         14: 'Hard (F2)',
-#         15: 'Wet (F2)'
-#     }
-#     return tyre_compound_mapping.get(tyre_compound_code, '---')
-
-# def getVisualTyreCompoundName(tyre_compound_code: int) -> str:
-#     """For the given visual tyre compound ID, get the string representation of the visual tyre compound name.
-#         All data is obtained from the appendix section of the
-#             F1 23 UDP specification document
-
-#     Args:
-#         tyre_compound_code (int): The numeric visual tyre compound ID code
-
-#     Returns:
-#         str: Name of the team, None if invalid visual tyre compound ID
-#     """
-#     tyre_compound_mapping_visual = {
-#         16: 'SFT',
-#         17: 'MED',
-#         18: 'HRD',
-#         7: 'INT',
-#         8: 'WER',
-#         15: 'WET',
-#         19: 'SS',
-#         20: 'SFT',
-#         21: 'MED',
-#         22: 'HRD'
-#     }
-#     return tyre_compound_mapping_visual.get(tyre_compound_code, '---')
+# ------------------------- ERROR CLASSES --------------------------------------
 
 class InvalidPacketLengthError(Exception):
     """
@@ -892,8 +697,8 @@ class PacketSessionData:
         - m_air_temperature (int): Air temperature in degrees Celsius.
         - m_total_laps (int): Total number of laps in this race.
         - m_track_length (int): Track length in meters.
-        - m_session_type (int): Type of session - see F1 23 UDP Specification Appendix.
-        - m_track_id (int): Track identifier (-1 for unknown) - see F1 23 UDP Specification Appendix.
+        - m_session_type (SessionType): See SessionType enum for more info
+        - m_track_id (TrackID): See the TrackID enumeration inside this class for more info
         - m_formula (int): Formula type - see F1 23 UDP Specification Appendix.
         - m_session_time_left (int): Time left in session in seconds.
         - m_session_duration (int): Session duration in seconds.
@@ -911,6 +716,120 @@ class PacketSessionData:
         - m_forecast_accuracy (int): Forecast accuracy - 0 = Perfect, 1 = Approximate.
         - ... (Other attributes documented in the F1 23 UDP Specification Appendix)
     """
+
+    class TrackID(Enum):
+        """
+        Enum class representing F1 track IDs and their corresponding names.
+        """
+        Melbourne = 0
+        Paul_Ricard = 1
+        Shanghai = 2
+        Sakhir_Bahrain = 3
+        Catalunya = 4
+        Monaco = 5
+        Montreal = 6
+        Silverstone = 7
+        Hockenheim = 8
+        Hungaroring = 9
+        Spa = 10
+        Monza = 11
+        Singapore = 12
+        Suzuka = 13
+        Abu_Dhabi = 14
+        Texas = 15
+        Brazil = 16
+        Austria = 17
+        Sochi = 18
+        Mexico = 19
+        Baku_Azerbaijan = 20
+        Sakhir_Short = 21
+        Silverstone_Short = 22
+        Texas_Short = 23
+        Suzuka_Short = 24
+        Hanoi = 25
+        Zandvoort = 26
+        Imola = 27
+        Portimao = 28
+        Jeddah = 29
+        Miami = 30
+        Las_Vegas = 31
+        Losail = 32
+
+        def __str__(self):
+            """
+            Returns a string representation of the track.
+            """
+            return {
+                "Paul_Ricard": "Paul Ricard",
+                "Sakhir_Bahrain": "Sakhir (Bahrain)",
+                "Abu_Dhabi": "Abu Dhabi",
+                "Baku_Azerbaijan": "Baku (Azerbaijan)",
+                "Portimao": "Portimão"
+            }.get(self.name, self.name.replace("_", " "))
+
+        @staticmethod
+        def isValid(track: int):
+            """Check if the given circuit code is valid.
+
+            Args:
+                flag_type (int): The circuit code to be validated.
+                    Also supports type TrackID. Returns true in this case
+
+            Returns:
+                bool: true if valid
+            """
+            if isinstance(track, PacketSessionData.TrackID):
+                return True  # It's already an instance of TrackID
+            else:
+                min_value = min(member.value for member in PacketSessionData.TrackID)
+                max_value = max(member.value for member in PacketSessionData.TrackID)
+                return min_value <= track <= max_value
+
+    class SessionType(Enum):
+        """
+        Enum class representing F1 session types.
+        """
+        UNKNOWN = 0
+        PRACTICE_1 = 1
+        PRACTICE_2 = 2
+        PRACTICE_3 = 3
+        SHORT_PRACTICE = 4
+        QUALIFYING_1 = 5
+        QUALIFYING_2 = 6
+        QUALIFYING_3 = 7
+        SHORT_QUALIFYING = 8
+        ONE_SHOT_QUALIFYING = 9
+        RACE = 10
+        RACE_2 = 11
+        RACE_3 = 12
+        TIME_TRIAL = 13
+
+        @staticmethod
+        def is_valid(session_type: int):
+            """
+            Check if the given session type is valid.
+
+            Args:
+                session_type (int): The session type to be validated.
+
+            Returns:
+                bool: True if valid
+            """
+            if isinstance(session_type, PacketSessionData.SessionType):
+                return True  # It's already an instance of SessionType
+            else:
+                min_value = min(member.value for member in PacketSessionData.SessionType)
+                max_value = max(member.value for member in PacketSessionData.SessionType)
+                return min_value <= session_type <= max_value
+
+        def __str__(self):
+            """
+            Return a string representation of the SessionType with spaces.
+
+            Returns:
+                str: String representation of the SessionType.
+            """
+            return self.name.replace("_", " ")
 
     def __init__(self, header, data) -> None:
         """Construct a PacketSessionData object
@@ -945,6 +864,10 @@ class PacketSessionData:
             self.m_sliProNativeSupport,
             self.m_numMarshalZones,
         ) = unpacked_data
+        if PacketSessionData.TrackID.isValid(self.m_trackId):
+            self.m_trackId = PacketSessionData.TrackID(self.m_trackId)
+        if PacketSessionData.SessionType.is_valid(self.m_sessionType):
+            self.m_sessionType = PacketSessionData.SessionType(self.m_sessionType)
 
         # Next section 1, marshalZones
         section_1_size = marshal_zone_packet_len * self.m_maxMarshalZones
@@ -969,7 +892,6 @@ class PacketSessionData:
         if SafetyCarStatus.isValid(self.m_safetyCarStatus):
             self.m_safetyCarStatus = SafetyCarStatus(self.m_safetyCarStatus)
         section_2_raw_data = None
-
 
         # Section 3 - weather forecast samples
         section_3_size = weather_forecast_sample_packet_len * self.m_maxWeatherForecastSamples
@@ -1077,6 +999,216 @@ class PacketSessionData:
 # ------------------------- PACKET TYPE 2 - LAP DATA----------------------------
 
 class LapData:
+    """
+    Class representing lap data.
+    Attributes:
+        m_lastLapTimeInMS (uint32): Last lap time in milliseconds.
+        m_currentLapTimeInMS (uint32): Current time around the lap in milliseconds.
+        m_sector1TimeInMS (uint16): Sector 1 time in milliseconds.
+        m_sector1TimeMinutes (uint8): Sector 1 whole minute part.
+        m_sector2TimeInMS (uint16): Sector 2 time in milliseconds.
+        m_sector2TimeMinutes (uint8): Sector 2 whole minute part.
+        m_deltaToCarInFrontInMS (uint16): Time delta to the car in front in milliseconds.
+        m_deltaToRaceLeaderInMS (uint16): Time delta to the race leader in milliseconds.
+        m_lapDistance (float): Distance vehicle is around the current lap in meters.
+        m_totalDistance (float): Total distance traveled in the session in meters.
+        m_safetyCarDelta (float): Delta in seconds for the safety car.
+        m_carPosition (uint8): Car race position.
+        m_currentLapNum (uint8): Current lap number.
+        m_pitStatus (PitStatus): See the PitStatus enumeration
+        m_numPitStops (uint8): Number of pit stops taken in this race.
+        m_sector (Sector): See the sector enumeration
+        m_currentLapInvalid (bool): Current lap validity (False = valid, True = invalid).
+        m_penalties (uint8): Accumulated time penalties in seconds to be added.
+        m_totalWarnings (uint8): Accumulated number of warnings issued.
+        m_cornerCuttingWarnings (uint8): Accumulated number of corner cutting warnings issued.
+        m_numUnservedDriveThroughPens (uint8): Number of drive-through penalties left to serve.
+        m_numUnservedStopGoPens (uint8): Number of stop-go penalties left to serve.
+        m_gridPosition (uint8): Grid position the vehicle started the race in.
+        m_driverStatus (DriverStatus): Status of the driver.
+        m_resultStatus (ResultStatus): Result status of the driver.
+        m_pitLaneTimerActive (bool): Pit lane timing (False = inactive, True = active).
+        m_pitLaneTimeInLaneInMS (uint16): If active, the current time spent in the pit lane in ms.
+        m_pitStopTimerInMS (uint16): Time of the actual pit stop in ms.
+        m_pitStopShouldServePen (uint8): Whether the car should serve a penalty at this stop.
+    """
+    class DriverStatus(Enum):
+        """
+        Enumeration representing the status of a driver during a racing session.
+
+        Note:
+            Each attribute represents a unique driver status identified by an integer value.
+        """
+
+        IN_GARAGE = 0
+        FLYING_LAP = 1
+        IN_LAP = 2
+        OUT_LAP = 3
+        ON_TRACK = 4
+
+        @staticmethod
+        def isValid(driver_status: int) -> bool:
+            """Check if the given driver status is valid.
+
+            Args:
+                driver_status (int): The driver status to be validated.
+
+            Returns:
+                bool: True if valid.
+            """
+            if isinstance(driver_status, LapData.DriverStatus):
+                return True  # It's already an instance of DriverStatus
+            else:
+                min_value = min(member.value for member in LapData.DriverStatus)
+                max_value = max(member.value for member in LapData.DriverStatus)
+                return min_value <= driver_status <= max_value
+
+        def __str__(self) -> str:
+            """
+            Returns a human-readable string representation of the driver status.
+
+            Returns:
+                str: String representation of the driver status.
+            """
+            status_mapping = {
+                0: "IN_GARAGE",
+                1: "FLYING_LAP",
+                2: "IN_LAP",
+                3: "OUT_LAP",
+                4: "ON_TRACK",
+            }
+            return status_mapping.get(self.value, "---")
+
+    class ResultStatus(Enum):
+        """
+        Enumeration representing the result status of a driver after a racing session.
+        """
+
+        INVALID = 0
+        INACTIVE = 1
+        ACTIVE = 2
+        FINISHED = 3
+        DID_NOT_FINISH = 4
+        DISQUALIFIED = 5
+        NOT_CLASSIFIED = 6
+        RETIRED = 7
+
+        @staticmethod
+        def isValid(result_status: int) -> bool:
+            """Check if the given result status is valid.
+
+            Args:
+                result_status (int): The result status to be validated.
+
+            Returns:
+                bool: True if valid.
+            """
+            if isinstance(result_status, LapData.ResultStatus):
+                return True  # It's already an instance of ResultStatus
+            else:
+                min_value = min(member.value for member in LapData.ResultStatus)
+                max_value = max(member.value for member in LapData.ResultStatus)
+                return min_value <= result_status <= max_value
+
+        def __str__(self) -> str:
+            """
+            Returns a human-readable string representation of the result status.
+
+            Returns:
+                str: String representation of the result status.
+            """
+            status_mapping = {
+                0: "INVALID",
+                1: "INACTIVE",
+                2: "ACTIVE",
+                3: "FINISHED",
+                4: "DID_NOT_FINISH",
+                5: "DISQUALIFIED",
+                6: "NOT_CLASSIFIED",
+                7: "RETIRED",
+            }
+            return status_mapping.get(self.value, "---")
+
+    class PitStatus(Enum):
+        """
+        Enumeration representing the pit status of a driver during a racing session.
+        """
+
+        NONE = 0
+        PITTING = 1
+        IN_PIT_AREA = 2
+
+        @staticmethod
+        def isValid(pit_status: int) -> bool:
+            """Check if the given pit status is valid.
+
+            Args:
+                pit_status (int): The pit status to be validated.
+
+            Returns:
+                bool: True if valid.
+            """
+            if isinstance(pit_status, LapData.PitStatus):
+                return True  # It's already an instance of PitStatus
+            else:
+                min_value = min(member.value for member in LapData.PitStatus)
+                max_value = max(member.value for member in LapData.PitStatus)
+                return min_value <= pit_status <= max_value
+
+        def __str__(self) -> str:
+            """
+            Returns a human-readable string representation of the pit status.
+
+            Returns:
+                str: String representation of the pit status.
+            """
+            status_mapping = {
+                0: "NONE",
+                1: "PITTING",
+                2: "IN_PIT_AREA",
+            }
+            return status_mapping.get(self.value, "---")
+
+    class Sector(Enum):
+        """
+        Enumeration representing the sector of a racing track.
+        """
+
+        SECTOR1 = 0
+        SECTOR2 = 1
+        SECTOR3 = 2
+
+        @staticmethod
+        def isValid(sector: int) -> bool:
+            """Check if the given sector is valid.
+
+            Args:
+                sector (int): The sector to be validated.
+
+            Returns:
+                bool: True if valid.
+            """
+            if isinstance(sector, LapData.Sector):
+                return True  # It's already an instance of Sector
+            else:
+                min_value = min(member.value for member in LapData.Sector)
+                max_value = max(member.value for member in LapData.Sector)
+                return min_value <= sector <= max_value
+
+        def __str__(self) -> str:
+            """
+            Returns a human-readable string representation of the sector.
+
+            Returns:
+                str: String representation of the sector.
+            """
+            sector_mapping = {
+                0: "SECTOR1",
+                1: "SECTOR2",
+                2: "SECTOR3",
+            }
+            return sector_mapping.get(self.value, "---")
+
     def __init__(self, data) -> None:
         """
         Initialize LapData instance by unpacking binary data.
@@ -1084,41 +1216,9 @@ class LapData:
         Args:
         - data (bytes): Binary data containing lap information.
 
-        Unpacked Data Members:
-        - m_lastLapTimeInMS (uint32): Last lap time in milliseconds.
-        - m_currentLapTimeInMS (uint32): Current time around the lap in milliseconds.
-        - m_sector1TimeInMS (uint16): Sector 1 time in milliseconds.
-        - m_sector1TimeMinutes (uint8): Sector 1 whole minute part.
-        - m_sector2TimeInMS (uint16): Sector 2 time in milliseconds.
-        - m_sector2TimeMinutes (uint8): Sector 2 whole minute part.
-        - m_deltaToCarInFrontInMS (uint16): Time delta to car in front in milliseconds.
-        - m_deltaToRaceLeaderInMS (uint16): Time delta to race leader in milliseconds.
-        - m_lapDistance (float): Distance vehicle is around the current lap in meters.
-        - m_totalDistance (float): Total distance traveled in the session in meters.
-        - m_safetyCarDelta (float): Delta in seconds for safety car.
-        - m_carPosition (uint8): Car race position.
-        - m_currentLapNum (uint8): Current lap number.
-        - m_pitStatus (uint8): Pit status (0 = none, 1 = pitting, 2 = in pit area).
-        - m_numPitStops (uint8): Number of pit stops taken in this race.
-        - m_sector (uint8): Sector (0 = sector1, 1 = sector2, 2 = sector3).
-        - m_currentLapInvalid (uint8): Current lap validity (0 = valid, 1 = invalid).
-        - m_penalties (uint8): Accumulated time penalties in seconds to be added.
-        - m_totalWarnings (uint8): Accumulated number of warnings issued.
-        - m_cornerCuttingWarnings (uint8): Accumulated number of corner cutting warnings issued.
-        - m_numUnservedDriveThroughPens (uint8): Number of drive-through penalties left to serve.
-        - m_numUnservedStopGoPens (uint8): Number of stop-go penalties left to serve.
-        - m_gridPosition (uint8): Grid position the vehicle started the race in.
-        - m_driverStatus (uint8): Status of the driver (0 = in garage, 1 = flying lap,
-          2 = in lap, 3 = out lap, 4 = on track).
-        - m_resultStatus (uint8): Result status (0 = invalid, 1 = inactive, 2 = active,
-          3 = finished, 4 = did not finish, 5 = disqualified, 6 = not classified, 7 = retired).
-        - m_pitLaneTimerActive (uint8): Pit lane timing (0 = inactive, 1 = active).
-        - m_pitLaneTimeInLaneInMS (uint16): If active, the current time spent in the pit lane in ms.
-        - m_pitStopTimerInMS (uint16): Time of the actual pit stop in ms.
-        - m_pitStopShouldServePen (uint8): Whether the car should serve a penalty at this stop.
-
+        Raises:
+        - struct.error: If the binary data does not match the expected format.
         """
-
         unpacked_data = struct.unpack(lap_time_packet_format_str, data)
 
         # Assign the members from unpacked_data
@@ -1153,6 +1253,17 @@ class LapData:
             self.m_pitStopTimerInMS,
             self.m_pitStopShouldServePen,
         ) = unpacked_data
+
+        if LapData.DriverStatus.isValid(self.m_driverStatus):
+            self.m_driverStatus = LapData.DriverStatus(self.m_driverStatus)
+        if LapData.ResultStatus.isValid(self.m_resultStatus):
+            self.m_resultStatus = LapData.ResultStatus(self.m_resultStatus)
+        if LapData.PitStatus.isValid(self.m_pitStatus):
+            self.m_pitStatus = LapData.PitStatus(self.m_pitStatus)
+        if LapData.Sector.isValid(self.m_sector):
+            self.m_sector = LapData.Sector(self.m_sector)
+        self.m_currentLapInvalid = bool(self.m_currentLapInvalid)
+        self.m_pitLaneTimerActive = bool(self.m_pitLaneTimerActive)
 
 
     def __str__(self) -> str:
@@ -1369,18 +1480,28 @@ class FastestLap:
         return f"FastestLap(vehicleIdx={self.vehicleIdx}, lapTime={self.lapTime})"
 
 class Retirement:
+    """
+    The class representing the RETIREMENT event. This is sent when any driver retires or DNF's
+    Attributes:
+        vehicleIdx(int) - The index of the vehicle that retired
+    """
     def __init__(self, data):
         format_str = "<B"
-        self.vehicleIdx = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
+        self.vehicleIdx = struct.unpack(format_str, data[0:struct.calcsize(format_str)])[0]
 
     def __str__(self):
         return f"Retirement(vehicleIdx={self.vehicleIdx})"
 
-
 class TeamMateInPits:
+    """
+    The class representing the TEAMMATE IN PITS event. This is sent when the player's teammate pits.
+    This is not sent in spectator mode
+    Attributes:
+        vehicleIdx(int) - The index of the vehicle that pitted (the teammates index)
+    """
     def __init__(self, data):
         format_str = "<B"
-        self.vehicleIdx = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
+        self.vehicleIdx = struct.unpack(format_str, data[0:struct.calcsize(format_str)])[0]
 
     def __str__(self):
         return f"TeamMateInPits(vehicleIdx={self.vehicleIdx})"
@@ -1388,7 +1509,7 @@ class TeamMateInPits:
 class RaceWinner:
     def __init__(self, data):
         format_str = "<B"
-        self.vehicleIdx = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
+        self.vehicleIdx = struct.unpack(format_str, data[0:struct.calcsize(format_str)])[0]
 
     def __str__(self):
         return f"RaceWinner(vehicleIdx={self.vehicleIdx})"
@@ -1543,7 +1664,7 @@ class ParticipantData:
         m_aiControlled (int): Whether the vehicle is AI (1) or Human (0) controlled.
         m_driverId (int): Driver id - see appendix, 255 if network human.
         networkId (int): Network id - unique identifier for network players.
-        m_teamId (int): Team id - see appendix.
+        m_teamId (ParticipantData.TeamID): See TeamID enumeration
         m_myTeam (int): My team flag - 1 = My Team, 0 = otherwise.
         m_raceNumber (int): Race number of the car.
         m_nationality (int): Nationality of the driver.
@@ -1556,6 +1677,123 @@ class ParticipantData:
         Note:
             The m_platform attribute is an instance of ParticipantData.Platform.
     """
+
+    class TeamID(Enum):
+        MERCEDES = 0
+        FERRARI = 1
+        RED_BULL_RACING = 2
+        WILLIAMS = 3
+        ASTON_MARTIN = 4
+        ALPINE = 5
+        ALPHA_TAURI = 6
+        HAAS = 7
+        MCLAREN = 8
+        ALFA_ROMEO = 9
+        MERCEDES_2020 = 85
+        FERRARI_2020 = 86
+        RED_BULL_2020 = 87
+        WILLIAMS_2020 = 88
+        RACING_POINT_2020 = 89
+        RENAULT_2020 = 90
+        ALPHA_TAURI_2020 = 91
+        HAAS_2020 = 92
+        MCLAREN_2020 = 93
+        ALFA_ROMEO_2020 = 94
+        ASTON_MARTIN_DB11_V12 = 95
+        ASTON_MARTIN_VANTAGE_F1_EDITION = 96
+        ASTON_MARTIN_VANTAGE_SAFETY_CAR = 97
+        FERRARI_F8_TRIBUTO = 98
+        FERRARI_ROMA = 99
+        MCLAREN_720S = 100
+        MCLAREN_ARTURA = 101
+        MERCEDES_AMG_GT_BLACK_SERIES_SAFETY_CAR = 102
+        MERCEDES_AMG_GTR_PRO = 103
+        F1_CUSTOM_TEAM = 104
+        PREMA_21 = 106
+        UNI_VIRTUOSI_21 = 107
+        CARLIN_21 = 108
+        HITECH_21 = 109
+        ART_GP_21 = 110
+        MP_MOTORSPORT_21 = 111
+        CHAROUZ_21 = 112
+        DAMS_21 = 113
+        CAMPOS_21 = 114
+        BWT_21 = 115
+        TRIDENT_21 = 116
+        MERCEDES_AMG_GT_BLACK_SERIES = 117
+        MERCEDES_22 = 118
+        FERRARI_22 = 119
+        RED_BULL_RACING_22 = 120
+        WILLIAMS_22 = 121
+        ASTON_MARTIN_22 = 122
+        ALPINE_22 = 123
+        ALPHA_TAURI_22 = 124
+        HAAS_22 = 125
+        MCLAREN_22 = 126
+        ALFA_ROMEO_22 = 127
+        KONNERSPORT_22 = 128
+        KONNERSPORT = 129
+        PREMA_22 = 130
+        VIRTUOSI_22 = 131
+        CARLIN_22 = 132
+        MP_MOTORSPORT_22 = 133
+        CHAROUZ_22 = 134
+        DAMS_22 = 135
+        CAMPOS_22 = 136
+        VAN_AMERSFOORT_RACING_22 = 137
+        TRIDENT_22 = 138
+        HITECH_22 = 139
+        ART_GP_22 = 140
+
+        @staticmethod
+        def isValid(driver_id: int) -> bool:
+            """Check if the given driver ID is valid.
+
+            Args:
+                driver_id (int): The driver ID to be validated.
+
+            Returns:
+                bool: True if valid.
+            """
+            if isinstance(driver_id, ParticipantData.TeamID):
+                return True  # It's already an instance of TeamID
+            else:
+                min_value = min(member.value for member in ParticipantData.TeamID)
+                max_value = max(member.value for member in ParticipantData.TeamID)
+                return min_value <= driver_id <= max_value
+
+        def __str__(self) -> str:
+            """Return the string representation of the driver.
+
+            Returns:
+                str: String representation of the driver.
+            """
+            teams_mapping = {
+                0: "Mercedes", 1: "Ferrari", 2: "Red Bull Racing",
+                3: "Williams", 4: "Aston Martin", 5: "Alpine",
+                6: "Alpha Tauri", 7: "Haas", 8: "McLaren",
+                9: "Alfa Romeo", 85: "Mercedes 2020", 86: "Ferrari 2020",
+                87: "Red Bull 2020", 88: "Williams 2020", 89: "Racing Point 2020",
+                90: "Renault 2020", 91: "Alpha Tauri 2020", 92: "Haas 2020",
+                93: "McLaren 2020", 94: "Alfa Romeo 2020", 95: "Aston Martin DB11 V12",
+                96: "Aston Martin Vantage F1 Edition", 97: "Aston Martin Vantage Safety Car",
+                98: "Ferrari F8 Tributo", 99: "Ferrari Roma", 100: "McLaren 720S",
+                101: "McLaren Artura", 102: "Mercedes AMG GT Black Series Safety Car",
+                103: "Mercedes AMG GTR Pro", 104: "F1 Custom Team",
+                106: "Prema '21", 107: "Uni-Virtuosi '21", 108: "Carlin '21",
+                109: "Hitech '21", 110: "Art GP '21", 111: "MP Motorsport '21",
+                112: "Charouz '21", 113: "Dams '21", 114: "Campos '21",
+                115: "BWT '21", 116: "Trident '21", 117: "Mercedes AMG GT Black Series",
+                118: "Mercedes '22", 119: "Ferrari '22", 120: "Red Bull Racing '22",
+                121: "Williams '22", 122: "Aston Martin '22", 123: "Alpine '22",
+                124: "Alpha Tauri '22", 125: "Haas '22", 126: "McLaren '22",
+                127: "Alfa Romeo '22", 128: "Konnersport '22", 129: "Konnersport",
+                130: "Prema '22", 131: "Virtuosi '22", 132: "Carlin '22",
+                133: "MP Motorsport '22", 134: "Charouz '22", 135: "Dams '22",
+                136: "Campos '22", 137: "Van Amersfoort Racing '22", 138: "Trident '22",
+                139: "Hitech '22", 140: "Art GP '22"
+            }
+            return teams_mapping.get(self.value, "---")
 
     class Platform(Enum):
         """
@@ -1638,6 +1876,8 @@ class ParticipantData:
         self.m_name = self.m_name.decode('utf-8').rstrip('\x00')
         if ParticipantData.Platform.isValid(self.m_platform):
             self.m_platform = ParticipantData.Platform(self.m_platform)
+        if ParticipantData.TeamID.isValid(self.m_teamId):
+            self.m_teamId = ParticipantData.TeamID(self.m_teamId)
 
     def __str__(self):
         """

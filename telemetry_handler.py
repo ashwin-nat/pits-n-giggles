@@ -24,7 +24,7 @@ from telemetry_manager import F12023TelemetryManager
 from f1_types import *
 import telemetry_data as TelData
 
-num_active_cars = 0
+g_num_active_cars = 0
 
 class F12023TelemetryHandler:
 
@@ -40,9 +40,9 @@ class F12023TelemetryHandler:
     def handleSessionData(packet: PacketSessionData) -> None:
 
         TelData.set_globals(
-            circuit=getTrackName(packet.m_trackId),
+            circuit=str(packet.m_trackId),
             track_temp=packet.m_trackTemperature,
-            event_type=getSessionTypeName(packet.m_sessionType),
+            event_type=str(packet.m_sessionType),
             total_laps=packet.m_totalLaps,
             safety_car_status=packet.m_safetyCarStatus,
             is_spectating=bool(packet.m_isSpectating),
@@ -56,7 +56,12 @@ class F12023TelemetryHandler:
     def handleLapData(packet: PacketLapData) -> None:
         # print('Received Lap Data Packet. ' + str(packet))
         should_recompute_fastest_lap = False
+        global g_num_active_cars
+        num_active_cars = 0
         for index, lap_data in enumerate(packet.m_LapData):
+            if lap_data.m_resultStatus == LapData.ResultStatus.INVALID:
+                continue
+            num_active_cars += 1
             data = TelData.DataPerDriver()
             data.m_position = lap_data.m_carPosition
             data.m_last_lap = F12023TelemetryHandler.millisecondsToMinutesSeconds(lap_data.m_lastLapTimeInMS) \
@@ -66,13 +71,22 @@ class F12023TelemetryHandler:
             data.m_penalties = F12023TelemetryHandler.getPenaltyString(lap_data.m_penalties,
                                 lap_data.m_numUnservedDriveThroughPens, lap_data.m_numUnservedStopGoPens)
             data.m_current_lap = lap_data.m_currentLapNum
-            data.m_is_pitting = True if lap_data.m_pitStatus in [1,2] else False
+            data.m_is_pitting = True if lap_data.m_pitStatus in \
+                    [LapData.PitStatus.PITTING, LapData.PitStatus.IN_PIT_AREA] else False
             data.m_num_pitstops = lap_data.m_numPitStops
-
+            result_str_map = {
+                LapData.ResultStatus.DID_NOT_FINISH : "DNF",
+                LapData.ResultStatus.DISQUALIFIED : "DSQ",
+                LapData.ResultStatus.RETIRED : "DNF"
+            }
+            data.m_dnf_status_code = result_str_map.get(lap_data.m_resultStatus, "")
             should_recompute_fastest_lap |= TelData.set_driver_data(index, data)
 
         if should_recompute_fastest_lap:
             TelData.recompute_fastest_lap()
+        if g_num_active_cars != num_active_cars:
+            g_num_active_cars = num_active_cars
+            TelData.set_num_cars(num_active_cars)
 
         return
 
@@ -83,10 +97,14 @@ class F12023TelemetryHandler:
             data.m_best_lap = F12023TelemetryHandler.floatSecondsToMinutesSecondsMilliseconds(packet.mEventDetails.lapTime)
             TelData.set_driver_data(packet.mEventDetails.vehicleIdx, data, is_fastest=True)
         elif packet.m_eventStringCode == EventPacketType.SESSION_STARTED:
-            global num_active_cars
-            num_active_cars = 0
+            global g_num_active_cars
+            g_num_active_cars = 0
             TelData.clear_all_driver_data()
             print("Received SESSION_STARTED")
+        elif packet.m_eventStringCode == EventPacketType.RETIREMENT:
+            data = TelData.DataPerDriver()
+            data.m_dnf_status_code = True
+            TelData.set_driver_data(packet.mEventDetails.vehicleIdx, data)
         return
 
     @staticmethod
@@ -95,13 +113,13 @@ class F12023TelemetryHandler:
         for index, participant in enumerate(packet.m_participants):
             data = TelData.DataPerDriver()
             data.m_name = participant.m_name
-            data.m_team = getTeamName(participant.m_teamId)
+            data.m_team = str(participant.m_teamId)
             data.m_is_player = True if (index == packet.m_header.m_playerCarIndex) else False
             TelData.set_driver_data(index, data)
-        global num_active_cars
-        if num_active_cars != packet.m_numActiveCars:
-            num_active_cars = packet.m_numActiveCars
-            TelData.set_num_cars(num_active_cars)
+        # global num_active_cars
+        # if num_active_cars != packet.m_numActiveCars:
+        #     num_active_cars = packet.m_numActiveCars
+        #     TelData.set_num_cars(num_active_cars)
         return
 
     @staticmethod
@@ -144,6 +162,7 @@ class F12023TelemetryHandler:
     @staticmethod
     def handleFinalClassification(packet: PacketFinalClassificationData) -> None:
         print('Received Final Classification Packet. ')
+        # TODO - recompute table
         return
 
     @staticmethod

@@ -90,7 +90,17 @@
             }
 
             .fastest-lap {
-                background-color: #b31217; /* Haas red for fastest lap */
+                background-color: #E829F1; /* Purple for fastest lap */
+                color: #fff; /* White text for contrast */
+            }
+
+            .dnf {
+                background-color: #f12929; /* Red for DNF */
+                color: #fff; /* White text for contrast */
+            }
+
+            .dsq {
+                background-color: #000000; /* Black for DSQ */
                 color: #fff; /* White text for contrast */
             }
 
@@ -232,6 +242,18 @@
 
                 if (entry["is-fastest"]) {
                     row.classList.add('fastest-lap');
+                }
+
+                switch (entry["dnf-status"]) {
+                    case "DNF":
+                        row.classList.add('dnf');
+                        break;
+                    case "DSQ":
+                        row.classList.add('dsq');
+                        break;
+                    // Add more cases if needed
+                    default:
+                        // Default case if none of the cases match
                 }
 
                 if (entry["is-player"]) {

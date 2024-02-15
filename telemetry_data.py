@@ -74,6 +74,7 @@ class DataPerDriver:
         self.m_drs_allowed = None
         self.m_drs_distance = None
         self.m_num_pitstops = None
+        self.m_dnf_status_code = None
 
 class DriverData:
 
@@ -81,25 +82,29 @@ class DriverData:
         self.m_driver_data = {} # key = car index, value = DataPerDriver
         self.m_player_index = None
         self.m_fastest_index = None
-        self.m_num_cars = None
+        self.m_num_active_cars = None
+        self.m_num_dnf_cars = None
         # print("created DriverData object. " + str(id(self)) + " tid = " + str(threading.get_ident()))
 
     def update_object(self, index, new_obj):
+        # For the first driver, the data structure will be None, create it
         if self.m_driver_data is None:
             self.m_driver_data = {}
+        # The index may not be added into the data structure yet
         if index not in self.m_driver_data.keys():
             self.m_driver_data[index] = new_obj
         else:
             old_obj = self.m_driver_data[index]
+            # Loop through every attribute in the object
             for attr_name in dir(old_obj):
                 if not attr_name.startswith("__") and not callable(getattr(old_obj, attr_name)):
-
+                    # For all non default/builtin attributes
                     new_value = getattr(new_obj, attr_name, None)
                     if new_value is not None:
                         setattr(old_obj, attr_name, new_value)
             self.m_driver_data[index] = old_obj
             if new_obj.m_is_player:
-
+                # If we are updating the player's object
                 if self.m_player_index is None:
                     self.m_player_index = index
                 elif self.m_player_index != index:
@@ -120,7 +125,7 @@ class DriverData:
         for index, driver_data in self.m_driver_data.items():
             if driver_data.m_position == track_position:
                 return index, copy.deepcopy(driver_data)
-        return None
+        return None, None
 
 _globals = GlobalData()
 _driver_data = DriverData()
@@ -137,7 +142,7 @@ def set_globals(circuit, track_temp, event_type, total_laps, safety_car_status, 
         _globals.m_spectator_car_index = spectator_car_index
         _globals.m_weather_forecast_samples = weather_forecast_samples
 
-def get_globals(num_weather_forecast_samples=4) -> Tuple[str, int, str, int, int, str, List[WeatherForecastSample]]:
+def getGlobals(num_weather_forecast_samples=4) -> Tuple[str, int, str, int, int, str, List[WeatherForecastSample]]:
     with _globals_lock:
         with _driver_data_lock: # we need this for current lap
             player_index = _driver_data.m_player_index
@@ -156,10 +161,10 @@ def set_driver_data(index: int, driver_data: DataPerDriver, is_fastest=False):
             # First clear old fastest
             _driver_data.m_fastest_index = index
         # return whether fastest lap needs to be recomputed later (we missed the fastest lap event)
-        if (_driver_data.m_fastest_index is None) and (_driver_data.m_num_cars is not None):
+        if (_driver_data.m_fastest_index is None) and (_driver_data.m_num_active_cars is not None):
             count_null_best_times = 0
             for curr_index, driver_data in _driver_data.m_driver_data.items():
-                if curr_index >= _driver_data.m_num_cars:
+                if curr_index >= _driver_data.m_num_active_cars:
                     continue
                 if driver_data.m_best_lap is None:
                     count_null_best_times += 1
@@ -217,10 +222,17 @@ def recompute_fastest_lap():
     with _driver_data_lock:
         _recompute_fastest_lap_no_mutex()
 
-
-def set_num_cars(num_cars: int) -> None:
+def set_num_cars(num_active_cars: int) -> None:
     with _driver_data_lock:
-        _driver_data.m_num_cars = num_cars
+        print("setting m_num_active_cars = " + str(num_active_cars))
+        _driver_data.m_num_active_cars = num_active_cars
+
+def increment_dnf_counter() -> None:
+    with _driver_data_lock:
+        if _driver_data.m_num_dnf_cars is None:
+            _driver_data.m_num_dnf_cars = 1
+        else:
+            _driver_data.m_num_dnf_cars += 1
 
 def clear_all_driver_data():
     with _driver_data_lock:
@@ -256,39 +268,29 @@ def _get_adjacent_positions(position, total_cars=20, num_adjacent_cars=2):
 
     return list(range(lower_bound, upper_bound + 1))
 
-def _get_cars_in_front_and_behind(track_positions, player_position):
-    # Ensure the track positions are sorted
-    sorted_positions = sorted(track_positions)
-
-    # Find the index of the player's car in the sorted positions
-    player_index = sorted_positions.index(player_position)
-
-    # Cars in front of the player
-    cars_in_front = sorted_positions[:player_index]
-
-    # Cars behind the player
-    cars_behind = sorted_positions[player_index + 1:]
-
-    return cars_in_front, cars_behind
-
-def get_driver_data(short=True) -> Tuple[list[DataPerDriver], str]:
+def getDriverData() -> Tuple[list[DataPerDriver], str]:
 
     with _driver_data_lock:
         final_list = []
         fastest_lap_time = "---"
-        if (_driver_data.m_player_index) is None or (_driver_data.m_num_cars is None):
+        if (_driver_data.m_player_index) is None or (_driver_data.m_num_active_cars is None):
             return final_list, fastest_lap_time
         player_position = _driver_data.m_driver_data[_driver_data.m_player_index].m_position
-        positions = _get_adjacent_positions(player_position, total_cars=_driver_data.m_num_cars)
+        total_cars = _driver_data.m_num_active_cars + \
+                (0 if _driver_data.m_num_dnf_cars is None else _driver_data.m_num_dnf_cars)
+        positions = _get_adjacent_positions(player_position, total_cars)
         if _driver_data.m_fastest_index is not None:
             fastest_lap_time = _driver_data.m_driver_data[_driver_data.m_fastest_index].m_best_lap
         for position in positions:
             index, temp_data = _driver_data.get_index_driver_data_by_track_position(position)
+            if (index, temp_data) == (None, None):
+                return []
             temp_data.m_is_fastest = True if (index == _driver_data.m_fastest_index) else False
             if temp_data.m_ers_perc is not None:
                 temp_data.m_ers_perc = ("{:.2f}".format(temp_data.m_ers_perc)) + "%"
             if temp_data.m_tyre_wear is not None:
                 temp_data.m_tyre_wear = ("{:.2f}".format(temp_data.m_tyre_wear)) + "%"
+            temp_data.m_index = index
             final_list.append(temp_data)
 
         if len(final_list) > 0:
