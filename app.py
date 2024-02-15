@@ -34,7 +34,7 @@ def http_server_task() -> None:
     """Entry to point to start the HTTP server
     """
 
-    telemetry_server = TelemetryServer(http_port, debug_mode=True)
+    telemetry_server = TelemetryServer(http_port, debug_mode=False)
     print("Starting HTTP Server")
     telemetry_server.run()
 
