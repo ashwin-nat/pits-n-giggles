@@ -85,23 +85,23 @@
             }
 
             .player-row td {
-                border-top: 2px solid #fdd835; /* Top border on all cells */
-                border-bottom: 2px solid #fdd835; /* Bottom border on all cells */
+                border-top: 2px solid #fdd835 !important; /* Top border on all cells */
+                border-bottom: 2px solid #fdd835 !important; /* Bottom border on all cells */
             }
 
             .fastest-lap {
-                background-color: #E829F1; /* Purple for fastest lap */
-                color: #fff; /* White text for contrast */
+                background-color: #E829F1 !important; /* Purple for fastest lap */
+                color: #fff !important; /* White text for contrast */
             }
 
             .dnf {
-                background-color: #f12929; /* Red for DNF */
-                color: #fff; /* White text for contrast */
+                background-color: #771010 !important; /* Red for DNF */
+                color: #fff !important; /* White text for contrast */
             }
 
             .dsq {
-                background-color: #000000; /* Black for DSQ */
-                color: #fff; /* White text for contrast */
+                background-color : #000000 !important; /* Black for DSQ */
+                color: #fff !important; /* White text for contrast */
             }
 
             .drs-active {
@@ -140,6 +140,7 @@
         <div class="time-box">
             <p id="localTime">Local Time: </p>
             <p id="fastestLapOverall">Fastest Lap Overall: </p>
+            <p id="pitSpeedLimit">Pit Lane Speed Limit: </p>
             <a href="javascript:void(0);" id="motivationLink">Click here for motivation</a>
         </div>
     </div>
@@ -201,7 +202,7 @@
             .then(data => {
                 updateTable(data["table-entries"]);
                 updateGlobalInfo(data["circuit"], data["event-type"], data["track-temperature"], data["current-lap"],
-                    data["total-laps"], data["safety-car-status"], data["fastest-lap-overall"]);
+                    data["total-laps"], data["safety-car-status"], data["fastest-lap-overall"], data["pit-speed-limit"]);
                 updateWeatherTable(data["weather-forecast-samples"])
             })
             .catch(error => {
@@ -241,15 +242,21 @@
                         `${entry["tyre-compound"]}`;
 
                 if (entry["is-fastest"]) {
+                    console.log("Fastest lap: ", entry["name"]);
+                    row.className = '';
                     row.classList.add('fastest-lap');
                 }
 
                 switch (entry["dnf-status"]) {
                     case "DNF":
+                        row.className = '';
                         row.classList.add('dnf');
+                        console.log("DNF: ", entry["name"]);
                         break;
                     case "DSQ":
+                        row.className = '';
                         row.classList.add('dsq');
+                        console.log("DSQ: ", entry["name"]);
                         break;
                     // Add more cases if needed
                     default:
@@ -257,22 +264,30 @@
                 }
 
                 if (entry["is-player"]) {
+                    row.className = '';
                     row.classList.add('player-row'); // Apply the player-row class to the row
+                    console.log("Player: ", entry["name"]);
                 }
 
                 // Fix for DRS active styling
                 if (entry["drs"] === true) {
+                    row.className = '';
                     Array.from(row.cells).forEach(cell => cell.classList.add('drs-active'));
+                    console.log("DSR: ", entry["name"]);
                 }
             });
         }
 
-        function updateGlobalInfo(circuit, event_type, track_temp, curr_lap, total_laps, safety_car_status, fastest_lap) {
+        function updateGlobalInfo(circuit, event_type, track_temp, curr_lap, total_laps,
+            safety_car_status, fastest_lap, pit_speed_limit) {
+
             document.getElementById('tableTitle').textContent = `${event_type} - ${circuit}`;
             document.getElementById('trackTemperature').textContent = `Track Temperature: ${track_temp}°C`;
             document.getElementById('lapInformation').textContent = `Lap: ${curr_lap}/${total_laps}`;
             document.getElementById('safetyCarStatus').textContent = `Safety Car Status: ${safety_car_status}`;
             document.getElementById('fastestLapOverall').textContent = `Fastest Lap Overall: ${fastest_lap}`;
+            document.getElementById('pitSpeedLimit').textContent = `Pit Lane Speed Limit: ${pit_speed_limit} km/h`;
+
         }
         function updateLocalTime() {
             const now = new Date();

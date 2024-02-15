@@ -28,7 +28,6 @@ from enum import Enum, auto
 from typing import List, Any
 from f1_packet_info import *
 import struct
-import binascii
 
 # ------------------------- PRIVATE FUNCTIONS ----------------------------------
 
@@ -66,7 +65,7 @@ class InvalidPacketLengthError(Exception):
     def __init__(self, message):
         super().__init__("Invalid packet length. " + message)
 
-# -------------------- HEADER PARSING ------------------------------------------
+# -------------------- COMMON ENUMS --------------------------------------------
 
 class F1PacketType(Enum):
     """Class of enum representing the different packet types emitted by the game
@@ -115,6 +114,58 @@ class F1PacketType(Enum):
             return self.name
         else:
             return 'packet type ' + str(self.value)
+
+class ResultStatus(Enum):
+    """
+    Enumeration representing the result status of a driver after a racing session.
+    """
+
+    INVALID = 0
+    INACTIVE = 1
+    ACTIVE = 2
+    FINISHED = 3
+    DID_NOT_FINISH = 4
+    DISQUALIFIED = 5
+    NOT_CLASSIFIED = 6
+    RETIRED = 7
+
+    @staticmethod
+    def isValid(result_status: int) -> bool:
+        """Check if the given result status is valid.
+
+        Args:
+            result_status (int): The result status to be validated.
+
+        Returns:
+            bool: True if valid.
+        """
+        if isinstance(result_status, ResultStatus):
+            return True  # It's already an instance of ResultStatus
+        else:
+            min_value = min(member.value for member in ResultStatus)
+            max_value = max(member.value for member in ResultStatus)
+            return min_value <= result_status <= max_value
+
+    def __str__(self) -> str:
+        """
+        Returns a human-readable string representation of the result status.
+
+        Returns:
+            str: String representation of the result status.
+        """
+        status_mapping = {
+            0: "INVALID",
+            1: "INACTIVE",
+            2: "ACTIVE",
+            3: "FINISHED",
+            4: "DID_NOT_FINISH",
+            5: "DISQUALIFIED",
+            6: "NOT_CLASSIFIED",
+            7: "RETIRED",
+        }
+        return status_mapping.get(self.value, "---")
+
+# -------------------- HEADER PARSING ------------------------------------------
 
 class PacketHeader:
     """
@@ -1078,57 +1129,6 @@ class LapData:
                 4: "ON_TRACK",
             }
             return status_mapping.get(self.value, "---")
-
-    class ResultStatus(Enum):
-        """
-        Enumeration representing the result status of a driver after a racing session.
-        """
-
-        INVALID = 0
-        INACTIVE = 1
-        ACTIVE = 2
-        FINISHED = 3
-        DID_NOT_FINISH = 4
-        DISQUALIFIED = 5
-        NOT_CLASSIFIED = 6
-        RETIRED = 7
-
-        @staticmethod
-        def isValid(result_status: int) -> bool:
-            """Check if the given result status is valid.
-
-            Args:
-                result_status (int): The result status to be validated.
-
-            Returns:
-                bool: True if valid.
-            """
-            if isinstance(result_status, LapData.ResultStatus):
-                return True  # It's already an instance of ResultStatus
-            else:
-                min_value = min(member.value for member in LapData.ResultStatus)
-                max_value = max(member.value for member in LapData.ResultStatus)
-                return min_value <= result_status <= max_value
-
-        def __str__(self) -> str:
-            """
-            Returns a human-readable string representation of the result status.
-
-            Returns:
-                str: String representation of the result status.
-            """
-            status_mapping = {
-                0: "INVALID",
-                1: "INACTIVE",
-                2: "ACTIVE",
-                3: "FINISHED",
-                4: "DID_NOT_FINISH",
-                5: "DISQUALIFIED",
-                6: "NOT_CLASSIFIED",
-                7: "RETIRED",
-            }
-            return status_mapping.get(self.value, "---")
-
     class PitStatus(Enum):
         """
         Enumeration representing the pit status of a driver during a racing session.
@@ -1256,15 +1256,14 @@ class LapData:
 
         if LapData.DriverStatus.isValid(self.m_driverStatus):
             self.m_driverStatus = LapData.DriverStatus(self.m_driverStatus)
-        if LapData.ResultStatus.isValid(self.m_resultStatus):
-            self.m_resultStatus = LapData.ResultStatus(self.m_resultStatus)
+        if ResultStatus.isValid(self.m_resultStatus):
+            self.m_resultStatus = ResultStatus(self.m_resultStatus)
         if LapData.PitStatus.isValid(self.m_pitStatus):
             self.m_pitStatus = LapData.PitStatus(self.m_pitStatus)
         if LapData.Sector.isValid(self.m_sector):
             self.m_sector = LapData.Sector(self.m_sector)
         self.m_currentLapInvalid = bool(self.m_currentLapInvalid)
         self.m_pitLaneTimerActive = bool(self.m_pitLaneTimerActive)
-
 
     def __str__(self) -> str:
         """
@@ -2717,9 +2716,7 @@ class FinalClassificationData:
         m_gridPosition (uint8): Grid position of the car
         m_points (uint8): Number of points scored
         m_numPitStops (uint8): Number of pit stops made
-        m_resultStatus (uint8): Result status - 0 = invalid, 1 = inactive, 2 = active
-                               3 = finished, 4 = did not finish, 5 = disqualified
-                               6 = not classified, 7 = retired
+        m_resultStatus (ResultStatus): See ResultStatus enumeration for more info
         m_bestLapTimeInMS (uint32): Best lap time of the session in milliseconds
         m_totalRaceTime (double): Total race time in seconds without penalties
         m_penaltiesTime (uint8): Total penalties accumulated in seconds
@@ -2740,6 +2737,9 @@ class FinalClassificationData:
             data (bytes): Raw data representing final classification for a car in a race.
         """
 
+        self.m_tyreStintsActual = [0] * 8
+        self.m_tyreStintsVisual = [0] * 8
+        self.m_tyreStintsEndLaps = [0] * 8
         (
             self.m_position,
             self.m_numLaps,
@@ -2753,40 +2753,36 @@ class FinalClassificationData:
             self.m_numPenalties,
             self.m_numTyreStints,
             # self.m_tyreStintsActual,  # array of 8
-            tyre_stints_actual1,
-            tyre_stints_actual2,
-            tyre_stints_actual3,
-            tyre_stints_actual4,
-            tyre_stints_actual5,
-            tyre_stints_actual6,
-            tyre_stints_actual7,
-            tyre_stints_actual8,
+            self.m_tyreStintsActual[0],
+            self.m_tyreStintsActual[1],
+            self.m_tyreStintsActual[2],
+            self.m_tyreStintsActual[3],
+            self.m_tyreStintsActual[4],
+            self.m_tyreStintsActual[5],
+            self.m_tyreStintsActual[6],
+            self.m_tyreStintsActual[7],
             # self.m_tyreStintsVisual,  # array of 8
-            tyre_stints_visual1,
-            tyre_stints_visual2,
-            tyre_stints_visual3,
-            tyre_stints_visual4,
-            tyre_stints_visual5,
-            tyre_stints_visual6,
-            tyre_stints_visual7,
-            tyre_stints_visual8,
+            self.m_tyreStintsVisual[0],
+            self.m_tyreStintsVisual[1],
+            self.m_tyreStintsVisual[2],
+            self.m_tyreStintsVisual[3],
+            self.m_tyreStintsVisual[4],
+            self.m_tyreStintsVisual[5],
+            self.m_tyreStintsVisual[6],
+            self.m_tyreStintsVisual[7],
             # self.m_tyreStintsEndLaps,  # array of 8
-            tyre_stints_end_laps1,
-            tyre_stints_end_laps2,
-            tyre_stints_end_laps3,
-            tyre_stints_end_laps4,
-            tyre_stints_end_laps5,
-            tyre_stints_end_laps6,
-            tyre_stints_end_laps7,
-            tyre_stints_end_laps8,
+            self.m_tyreStintsEndLaps[0],
+            self.m_tyreStintsEndLaps[1],
+            self.m_tyreStintsEndLaps[2],
+            self.m_tyreStintsEndLaps[3],
+            self.m_tyreStintsEndLaps[4],
+            self.m_tyreStintsEndLaps[5],
+            self.m_tyreStintsEndLaps[6],
+            self.m_tyreStintsEndLaps[7]
         ) = struct.unpack(final_classification_per_car_format_string, data)
 
-        self.m_tyreStintsActual = [tyre_stints_actual1, tyre_stints_actual2, tyre_stints_actual3, tyre_stints_actual4,
-                                   tyre_stints_actual5, tyre_stints_actual6, tyre_stints_actual7, tyre_stints_actual8]
-        self.m_tyreStintsVisual = [tyre_stints_visual1, tyre_stints_visual2, tyre_stints_visual3, tyre_stints_visual4,
-                                   tyre_stints_visual5, tyre_stints_visual6, tyre_stints_visual7, tyre_stints_visual8]
-        self.m_tyreStintsEndLaps = [tyre_stints_end_laps1, tyre_stints_end_laps2, tyre_stints_end_laps3, tyre_stints_end_laps4,
-                                    tyre_stints_end_laps5, tyre_stints_end_laps6, tyre_stints_end_laps7, tyre_stints_end_laps8]
+        if ResultStatus.isValid(self.m_resultStatus):
+            self.m_resultStatus = ResultStatus(self.m_resultStatus)
 
     def __str__(self):
         """

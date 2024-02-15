@@ -42,6 +42,7 @@ class GlobalData:
         self.m_is_spectating = None
         self.m_spectator_car_index = None
         self.m_weather_forecast_samples = None
+        self.m_pit_speed_limit = None
 
     def __str__(self):
         return (
@@ -84,6 +85,7 @@ class DriverData:
         self.m_fastest_index = None
         self.m_num_active_cars = None
         self.m_num_dnf_cars = None
+        self.m_race_completed = None
         # print("created DriverData object. " + str(id(self)) + " tid = " + str(threading.get_ident()))
 
     def update_object(self, index, new_obj):
@@ -131,7 +133,7 @@ _globals = GlobalData()
 _driver_data = DriverData()
 
 def set_globals(circuit, track_temp, event_type, total_laps, safety_car_status, is_spectating,
-                    spectator_car_index, weather_forecast_samples):
+                    spectator_car_index, weather_forecast_samples, pit_speed_limit):
     with _globals_lock:
         _globals.m_circuit = circuit
         _globals.m_track_temp = track_temp
@@ -141,6 +143,7 @@ def set_globals(circuit, track_temp, event_type, total_laps, safety_car_status, 
         _globals.m_is_spectating = is_spectating
         _globals.m_spectator_car_index = spectator_car_index
         _globals.m_weather_forecast_samples = weather_forecast_samples
+        _globals.m_pit_speed_limit = pit_speed_limit
 
 def getGlobals(num_weather_forecast_samples=4) -> Tuple[str, int, str, int, int, str, List[WeatherForecastSample]]:
     with _globals_lock:
@@ -152,10 +155,12 @@ def getGlobals(num_weather_forecast_samples=4) -> Tuple[str, int, str, int, int,
             else:
                 weather_forecast_samples = []
             return (_globals.m_circuit, _globals.m_track_temp, _globals.m_event_type,
-                        _globals.m_total_laps, curr_lap, _globals.m_safety_car_status, weather_forecast_samples)
+                        _globals.m_total_laps, curr_lap, _globals.m_safety_car_status,
+                            weather_forecast_samples, _globals.m_pit_speed_limit)
 
 def set_driver_data(index: int, driver_data: DataPerDriver, is_fastest=False):
     with _driver_data_lock:
+        _driver_data.m_race_completed = False
         _driver_data.update_object(index, driver_data)
         if is_fastest:
             # First clear old fastest
@@ -175,6 +180,12 @@ def set_driver_data(index: int, driver_data: DataPerDriver, is_fastest=False):
                 return False
         else:
             return False
+
+def set_final_classification(packet: PacketFinalClassificationData) -> None:
+    with _driver_data_lock:
+        _driver_data.m_race_completed = True
+        for index, data in enumerate(packet.m_classificationData):
+            _driver_data.m_driver_data[index].m_position = data.m_position
 
 def millisecondsToMinutesSeconds(milliseconds):
     if not isinstance(milliseconds, int):
@@ -238,7 +249,18 @@ def clear_all_driver_data():
     with _driver_data_lock:
         _driver_data.set_members_to_none()
 
-def _get_adjacent_positions(position, total_cars=20, num_adjacent_cars=2):
+def _get_adjacent_positions(position:int, total_cars:int=20, num_adjacent_cars:int=2) -> List[int]:
+    """Get the list of positions of the race that are to be returned to the UI.
+        It will include the player's position plus/minus num_adjacent_cars
+
+    Args:
+        position (int): Track position of the player
+        total_cars (int, optional): Total number of cars in the race. Defaults to 20.
+        num_adjacent_cars (int, optional): Number of adjacent cars to be displayed. Defaults to 2.
+
+    Returns:
+        List[int]: The final list of track positions to be displayed
+    """
     if not (1 <= position <= total_cars):
         return []
 
@@ -270,6 +292,7 @@ def _get_adjacent_positions(position, total_cars=20, num_adjacent_cars=2):
 
 def getDriverData() -> Tuple[list[DataPerDriver], str]:
 
+    # TODO: tidy up
     with _driver_data_lock:
         final_list = []
         fastest_lap_time = "---"
@@ -278,7 +301,10 @@ def getDriverData() -> Tuple[list[DataPerDriver], str]:
         player_position = _driver_data.m_driver_data[_driver_data.m_player_index].m_position
         total_cars = _driver_data.m_num_active_cars + \
                 (0 if _driver_data.m_num_dnf_cars is None else _driver_data.m_num_dnf_cars)
-        positions = _get_adjacent_positions(player_position, total_cars)
+        if _driver_data.m_race_completed:
+            positions = [i for i in range(1, _driver_data.m_num_active_cars+1)]
+        else:
+            positions = _get_adjacent_positions(player_position, total_cars)
         if _driver_data.m_fastest_index is not None:
             fastest_lap_time = _driver_data.m_driver_data[_driver_data.m_fastest_index].m_best_lap
         for position in positions:

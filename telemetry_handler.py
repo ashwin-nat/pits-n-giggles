@@ -47,8 +47,8 @@ class F12023TelemetryHandler:
             safety_car_status=packet.m_safetyCarStatus,
             is_spectating=bool(packet.m_isSpectating),
             spectator_car_index=packet.m_spectatorCarIndex,
-            weather_forecast_samples=packet.m_weatherForecastSamples)
-
+            weather_forecast_samples=packet.m_weatherForecastSamples,
+            pit_speed_limit=packet.m_pitSpeedLimit)
 
         return
 
@@ -59,7 +59,7 @@ class F12023TelemetryHandler:
         global g_num_active_cars
         num_active_cars = 0
         for index, lap_data in enumerate(packet.m_LapData):
-            if lap_data.m_resultStatus == LapData.ResultStatus.INVALID:
+            if lap_data.m_resultStatus == ResultStatus.INVALID:
                 continue
             num_active_cars += 1
             data = TelData.DataPerDriver()
@@ -75,9 +75,9 @@ class F12023TelemetryHandler:
                     [LapData.PitStatus.PITTING, LapData.PitStatus.IN_PIT_AREA] else False
             data.m_num_pitstops = lap_data.m_numPitStops
             result_str_map = {
-                LapData.ResultStatus.DID_NOT_FINISH : "DNF",
-                LapData.ResultStatus.DISQUALIFIED : "DSQ",
-                LapData.ResultStatus.RETIRED : "DNF"
+                ResultStatus.DID_NOT_FINISH : "DNF",
+                ResultStatus.DISQUALIFIED : "DSQ",
+                ResultStatus.RETIRED : "DNF"
             }
             data.m_dnf_status_code = result_str_map.get(lap_data.m_resultStatus, "")
             should_recompute_fastest_lap |= TelData.set_driver_data(index, data)
@@ -143,14 +143,6 @@ class F12023TelemetryHandler:
             data = TelData.DataPerDriver()
             data.m_ers_perc = (car_status_data.m_ersStoreEnergy / CarStatusData.max_ers_store_energy) * 100.0
             data.m_tyre_age = car_status_data.m_tyresAgeLaps
-            # TODO: remove below
-            # act_cmp_name = getActualTyreCompoundName(car_status_data.m_actualTyreCompound)
-            # if act_cmp_name is None:
-            #     act_cmp_name = "---"
-            # vis_cmp_name = getVisualTyreCompoundName(car_status_data.m_visualTyreCompound)
-            # if vis_cmp_name is None:
-            #     vis_cmp_name = "---"
-            # data.m_tyre_compound_type = act_cmp_name + ' - ' + vis_cmp_name
             data.m_tyre_compound_type = str(car_status_data.m_actualTyreCompound) + ' - ' + \
                 str(car_status_data.m_visualTyreCompound)
             data.m_drs_allowed = bool(car_status_data.m_drsAllowed)
@@ -162,7 +154,7 @@ class F12023TelemetryHandler:
     @staticmethod
     def handleFinalClassification(packet: PacketFinalClassificationData) -> None:
         print('Received Final Classification Packet. ')
-        # TODO - recompute table
+        TelData.set_final_classification(packet)
         return
 
     @staticmethod
