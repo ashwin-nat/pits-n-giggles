@@ -280,7 +280,8 @@ def get_driver_data(short=True) -> Tuple[list[DataPerDriver], str]:
             return final_list, fastest_lap_time
         player_position = _driver_data.m_driver_data[_driver_data.m_player_index].m_position
         positions = _get_adjacent_positions(player_position, total_cars=_driver_data.m_num_cars)
-        fastest_lap_time = _driver_data.m_driver_data[_driver_data.m_fastest_index].m_best_lap
+        if _driver_data.m_fastest_index is not None:
+            fastest_lap_time = _driver_data.m_driver_data[_driver_data.m_fastest_index].m_best_lap
         for position in positions:
             index, temp_data = _driver_data.get_index_driver_data_by_track_position(position)
             temp_data.m_is_fastest = True if (index == _driver_data.m_fastest_index) else False
