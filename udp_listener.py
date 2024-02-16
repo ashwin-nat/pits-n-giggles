@@ -8,6 +8,7 @@ class UDPListener(object):
         self.m_bind_ip = bind_ip
         self.m_socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
         self.m_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.m_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         self.m_socket.bind((self.m_bind_ip, self.m_port))
 
     def getNextMessage(self):

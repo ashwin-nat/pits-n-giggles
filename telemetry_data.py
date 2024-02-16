@@ -290,7 +290,7 @@ def _get_adjacent_positions(position:int, total_cars:int=20, num_adjacent_cars:i
 
     return list(range(lower_bound, upper_bound + 1))
 
-def getDriverData() -> Tuple[list[DataPerDriver], str]:
+def getDriverData() -> Tuple[List[DataPerDriver], str]:
 
     # TODO: tidy up
     with _driver_data_lock:

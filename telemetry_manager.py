@@ -60,7 +60,7 @@ class F12023TelemetryManager:
             port_number (int): The port number to listen in on
         """
 
-        self.m_udp_listener = UDPListener(port_number, "localhost")
+        self.m_udp_listener = UDPListener(port_number, "0.0.0.0")
         self.m_callbacks = {
             F1PacketType.MOTION : None,
             F1PacketType.SESSION : None,

@@ -241,20 +241,18 @@
                         `${entry["tyre-age"]} laps ` + `(${entry["num-pitstops"]} pit)<br>` +
                         `${entry["tyre-compound"]}`;
 
+                row.className = '';
                 if (entry["is-fastest"]) {
                     console.log("Fastest lap: ", entry["name"]);
-                    row.className = '';
                     row.classList.add('fastest-lap');
                 }
 
                 switch (entry["dnf-status"]) {
                     case "DNF":
-                        row.className = '';
                         row.classList.add('dnf');
                         console.log("DNF: ", entry["name"]);
                         break;
                     case "DSQ":
-                        row.className = '';
                         row.classList.add('dsq');
                         console.log("DSQ: ", entry["name"]);
                         break;
@@ -264,14 +262,12 @@
                 }
 
                 if (entry["is-player"]) {
-                    row.className = '';
                     row.classList.add('player-row'); // Apply the player-row class to the row
                     console.log("Player: ", entry["name"]);
                 }
 
                 // Fix for DRS active styling
                 if (entry["drs"] === true) {
-                    row.className = '';
                     Array.from(row.cells).forEach(cell => cell.classList.add('drs-active'));
                     console.log("DSR: ", entry["name"]);
                 }
