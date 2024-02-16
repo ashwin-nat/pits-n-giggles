@@ -202,4 +202,4 @@ class TelemetryServer:
         werkzeug_logger = logging.getLogger('werkzeug')
         werkzeug_logger.setLevel(logging.ERROR)
 
-        self.m_app.run(debug=self.m_debug_mode, port=self.m_port, threaded=True, use_reloader=False)
+        self.m_app.run(debug=self.m_debug_mode, port=self.m_port, threaded=True, use_reloader=False, host='0.0.0.0')
