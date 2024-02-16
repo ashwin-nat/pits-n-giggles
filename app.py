@@ -29,11 +29,9 @@ import sys
 http_port = 5000
 f1_telemetry_port = 20777
 
-
 def http_server_task() -> None:
     """Entry to point to start the HTTP server
     """
-
     telemetry_server = TelemetryServer(http_port, debug_mode=False)
     print("Starting HTTP Server")
     telemetry_server.run()
@@ -44,6 +42,8 @@ def f1_telemetry_client_task():
 
     telemetry_client = F12023TelemetryHandler(f1_telemetry_port)
     print("Starting F1 telemetry client. Open http://127.0.0.1:" + str(http_port))
+    print("NOTE: The tables will be empty until the red lights appear on the screen before the race start")
+    print("That is when the game starts sending telemetry data")
     telemetry_client.run()
 
 if __name__ == '__main__':
