@@ -25,7 +25,7 @@ try:
 except ImportError:
     print("Flask is not installed. Installing...")
     import subprocess
-    subprocess.check_call(["pip", "install", "flask"])
+    subprocess.check_call(["pip3", "install", "flask"])
     print("Flask installation complete.")
     from flask import Flask, render_template
 try:
@@ -33,7 +33,7 @@ try:
 except ImportError:
     print("flask-cors is not installed. Installing...")
     import subprocess
-    subprocess.check_call(["pip", "install", "flask-cors"])
+    subprocess.check_call(["pip3", "install", "flask-cors"])
     print("Flask installation complete.")
     from flask_cors import CORS
 import telemetry_data as TelData
