@@ -25,15 +25,29 @@ from telemetry_server import TelemetryServer
 import threading
 import time
 import sys
+import socket
 
 http_port = 5000
 f1_telemetry_port = 20777
+
+def get_local_ip_addresses():
+    ip_addresses = set()
+    ip_addresses.add('127.0.0.1')
+    ip_addresses.add('localhost')
+    for host_name in socket.gethostbyname_ex(socket.gethostname())[2]:
+        ip_addresses.add(host_name)
+    return ip_addresses
 
 def http_server_task() -> None:
     """Entry to point to start the HTTP server
     """
     telemetry_server = TelemetryServer(http_port, debug_mode=False)
-    print("Starting HTTP Server")
+    print("Starting F1 2023 telemetry server. Open one of the below addresses in your browser")
+    ip_addresses = get_local_ip_addresses()
+    for ip_addr in ip_addresses:
+        print("    http://" + ip_addr + ":" + str(http_port))
+    print("NOTE: The tables will be empty until the red lights appear on the screen before the race start")
+    print("That is when the game starts sending telemetry data")
     telemetry_server.run()
 
 def f1_telemetry_client_task():
@@ -41,9 +55,6 @@ def f1_telemetry_client_task():
     """
 
     telemetry_client = F12023TelemetryHandler(f1_telemetry_port)
-    print("Starting F1 telemetry client. Open http://127.0.0.1:" + str(http_port))
-    print("NOTE: The tables will be empty until the red lights appear on the screen before the race start")
-    print("That is when the game starts sending telemetry data")
     telemetry_client.run()
 
 if __name__ == '__main__':
