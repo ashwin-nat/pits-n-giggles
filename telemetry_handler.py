@@ -22,18 +22,85 @@
 
 from telemetry_manager import F12023TelemetryManager
 from f1_types import *
+from packet_cap import F1PacketCapture
 import telemetry_data as TelData
+from threading import Lock
+from enum import Enum
+from typing import Optional
+from datetime import datetime
 
 g_num_active_cars = 0
+g_packet_capture_table = None
+g_packet_capture_table_lock = None
+g_auto_save_packets = False
+
+class PktSaveStatus(Enum):
+    SUCCESS = 0
+    DISABLED = 1
+    TABLE_EMPTY = 2
+    OS_ERROR = 3
+    OTHER = 4
+
+    def __str__(self):
+        return self.name
+
+
+def initPktCap():
+    global g_packet_capture_table
+    global g_packet_capture_table_lock
+    global g_auto_save_packets
+    g_packet_capture_table = F1PacketCapture()
+    g_packet_capture_table_lock = Lock()
+    g_auto_save_packets = True
+
+def addRawPacket(packet: List[bytes]):
+    global g_packet_capture_table
+    global g_packet_capture_table_lock
+    with g_packet_capture_table_lock:
+        g_packet_capture_table.add(packet)
+
+def dumpPktCapToFile(file_name: Optional[str] = None, clear_db:bool=False, reason:str='') -> Tuple[PktSaveStatus, str, int, int]:
+    global g_auto_save_packets
+
+    if not g_auto_save_packets:
+        return PktSaveStatus.DISABLED, None, 0, 0
+
+    global g_packet_capture_table
+    global g_packet_capture_table_lock
+
+    with g_packet_capture_table_lock:
+        try:
+            file_name, num_packets, num_bytes = g_packet_capture_table.dumpToFile(file_name)
+            if clear_db:
+                g_packet_capture_table.clear()
+            if (file_name is not None) and (num_bytes > 0) and (num_packets > 0):
+                print(
+                    f"Dumped raw telemetry data. "
+                    f"File Name: {file_name}, "
+                    f"Number of Packets: {num_packets}, "
+                    f"Number of Bytes: {num_bytes}, "
+                    f"Clear DB: {str(clear_db)}, ",
+                    f"Reason: {reason}"
+                )
+                return PktSaveStatus.SUCCESS, file_name, num_packets, num_bytes
+            else:
+                return PktSaveStatus.TABLE_EMPTY, None, 0, 0
+
+        except Exception as e:
+            # Log the exception
+            print(f"An error occurred while dumping telemetry data: {e}")
+
+            # Return the appropriate status
+            return PktSaveStatus.OS_ERROR, None, 0, 0
 
 class F12023TelemetryHandler:
 
-    def __init__(self, port: int) -> None:
+    def __init__(self, port: int, raw_packet_capture: bool=False) -> None:
         self.m_manager = F12023TelemetryManager(port)
+        self.m_raw_packet_capture = raw_packet_capture
 
     @staticmethod
     def handleMotion(packet: PacketMotionData) -> None:
-        # print('Received motion packet. ' + str(packet))
         return
 
     @staticmethod
@@ -67,7 +134,7 @@ class F12023TelemetryHandler:
             data.m_last_lap = F12023TelemetryHandler.millisecondsToMinutesSeconds(lap_data.m_lastLapTimeInMS) \
                 if (lap_data.m_lastLapTimeInMS > 0) else "---"
             data.m_delta = lap_data.m_deltaToCarInFrontInMS
-            # data.m_delta = ("{:.3f}".format(lap_data.m_deltaToRaceLeaderInMS / 1000))
+            data.m_delta_to_leader = lap_data.m_deltaToRaceLeaderInMS
             data.m_penalties = F12023TelemetryHandler.getPenaltyString(lap_data.m_penalties,
                                 lap_data.m_numUnservedDriveThroughPens, lap_data.m_numUnservedStopGoPens)
             data.m_current_lap = lap_data.m_currentLapNum
@@ -115,11 +182,8 @@ class F12023TelemetryHandler:
             data.m_name = participant.m_name
             data.m_team = str(participant.m_teamId)
             data.m_is_player = True if (index == packet.m_header.m_playerCarIndex) else False
+            data.m_telemetry_restrictions = participant.m_yourTelemetry
             TelData.set_driver_data(index, data)
-        # global num_active_cars
-        # if num_active_cars != packet.m_numActiveCars:
-        #     num_active_cars = packet.m_numActiveCars
-        #     TelData.set_num_cars(num_active_cars)
         return
 
     @staticmethod
@@ -133,6 +197,10 @@ class F12023TelemetryHandler:
         for index, car_telemetry_data in enumerate(packet.m_carTelemetryData):
             driver_data = TelData.DataPerDriver()
             driver_data.m_drs_activated = bool(car_telemetry_data.m_drs)
+            driver_data.m_tyre_inner_temp = \
+                    sum(car_telemetry_data.m_tyresInnerTemperature)/len(car_telemetry_data.m_tyresInnerTemperature)
+            driver_data.m_tyre_surface_temp = \
+                    sum(car_telemetry_data.m_tyresSurfaceTemperature)/len(car_telemetry_data.m_tyresSurfaceTemperature)
             TelData.set_driver_data(index, driver_data)
         return
 
@@ -141,7 +209,7 @@ class F12023TelemetryHandler:
 
         for index, car_status_data in enumerate(packet.m_carStatusData):
             data = TelData.DataPerDriver()
-            data.m_ers_perc = (car_status_data.m_ersStoreEnergy / CarStatusData.max_ers_store_energy) * 100.0
+            data.m_ers_perc = (car_status_data.m_ersStoreEnergy/CarStatusData.max_ers_store_energy) * 100.0
             data.m_tyre_age = car_status_data.m_tyresAgeLaps
             data.m_tyre_compound_type = str(car_status_data.m_actualTyreCompound) + ' - ' + \
                 str(car_status_data.m_visualTyreCompound)
@@ -155,6 +223,12 @@ class F12023TelemetryHandler:
     def handleFinalClassification(packet: PacketFinalClassificationData) -> None:
         print('Received Final Classification Packet. ')
         TelData.set_final_classification(packet)
+        global g_auto_save_packets
+        if g_auto_save_packets:
+            event_str = TelData.getEventInfoStr()
+            if event_str:
+                file_name = 'capture_' + event_str + '_' + datetime.now().strftime("%Y_%m_%d_%H_%M_%S") + '.bin'
+                dumpPktCapToFile(file_name=file_name,reason='Final Classification')
         return
 
     @staticmethod
@@ -169,7 +243,6 @@ class F12023TelemetryHandler:
             data = TelData.DataPerDriver()
             data.m_tyre_wear = sum(car_damage.m_tyresWear)/len(car_damage.m_tyresWear)
             TelData.set_driver_data(index, data)
-
         return
 
     @staticmethod
@@ -188,6 +261,10 @@ class F12023TelemetryHandler:
     @staticmethod
     def handleTyreSets(packet: PacketTyreSetsData) -> None:
         # print('Received Tyre Sets Packet. ' + str(packet))
+
+        data = TelData.DataPerDriver()
+        data.m_tyre_life_remaining_laps = packet.m_tyreSetData[packet.m_fittedIdx].m_lifeSpan
+        TelData.set_driver_data(packet.m_carIdx, data)
         return
 
     @staticmethod
@@ -243,6 +320,11 @@ class F12023TelemetryHandler:
         penalty_string += ")"
         return penalty_string
 
+    @staticmethod
+    def handleRawPacket(packet: List[bytes]):
+
+        addRawPacket(packet)
+
     def registerCallbacks(self):
 
         self.m_manager.registerCallback(F1PacketType.MOTION, F12023TelemetryHandler.handleMotion)
@@ -260,11 +342,10 @@ class F12023TelemetryHandler:
         self.m_manager.registerCallback(F1PacketType.TYRE_SETS, F12023TelemetryHandler.handleTyreSets)
         self.m_manager.registerCallback(F1PacketType.MOTION_EX, F12023TelemetryHandler.handleMotionEx)
 
+        if self.m_raw_packet_capture:
+            self.m_manager.registerRawPacketCallback(F12023TelemetryHandler.handleRawPacket)
+
     def run(self):
 
         self.registerCallbacks()
         self.m_manager.run()
-
-# if __name__ == "__main__":
-#     app = F12023TelemetryHandler(20777)
-#     app.run()

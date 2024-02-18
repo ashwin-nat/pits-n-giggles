@@ -114,6 +114,7 @@
             }
         </style>
     <script src="https://www.youtube.com/iframe_api"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
 </head>
 <body>
 
@@ -136,6 +137,7 @@
             <p id="trackTemperature">Track Temperature: </p>
             <p id="lapInformation">Lap: </p>
             <p id="safetyCarStatus">Safety Car Status: </p>
+            <p><a href="javascript:void(0);" id="saveTelemetryLink" class="motivationLink">Save telemetry packet capture</a></p>
         </div>
         <div class="time-box">
             <p id="localTime">Local Time: </p>
@@ -290,6 +292,78 @@
             const timeString = now.toLocaleTimeString(); // Converts the current time to a string using the local time convention
             document.getElementById('localTime').textContent = `Local Time: ${timeString}`;
         }
+
+        function formatFileSize(bytes) {
+            const sizes = ['Bytes', 'kB', 'MB', 'GB', 'TB'];
+
+            if (bytes === 0) return '0 Byte';
+
+            const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+
+            // Dynamically determine the appropriate unit based on the file size
+            const sizeUnit = sizes[Math.min(i, sizes.length - 1)];
+
+            // Calculate the size in the determined unit
+            const formattedSize = Math.round((bytes / Math.pow(1024, i)) * 100) / 100;
+
+            return `${formattedSize} ${sizeUnit}`;
+        }
+        document.getElementById("saveTelemetryLink").addEventListener("click", function () {
+            // Make an HTTP request when the link is clicked
+            fetch('/save-telemetry-capture')
+                .then(response => response.json())
+                .then(data => {
+                    // Process the data received from the server
+                    console.log('Telemetry Capture Details:', data);
+
+                    if (data['status-code'] === 'SUCCESS') {
+                        // Format file size in a human-readable format
+                        const formattedFileSize = formatFileSize(data['num-bytes']);
+
+                        // Add commas to the number of packets
+                        const numPacketsWithCommas = data['num-packets'].toLocaleString();
+
+                        // If successful, display a success message
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Telemetry captured!',
+                            html: `Written to file: ${data['file-name']}.<br>${numPacketsWithCommas} packets written.<br>File size: ${formattedFileSize}.`,
+                        });
+                    } else if (data['status-code'] === 'DISABLED') {
+                        // Handle DISABLED status
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Telemetry capture is disabled!',
+                            text: 'Please enable telemetry capture.',
+                        });
+                    } else {
+                        // If unsuccessful, display an error message with response details
+                        if (data["num-packets"] === 0) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error capturing telemetry!',
+                                text: 'There is no data available to write to file',
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error capturing telemetry!',
+                                text: JSON.stringify(data),
+                            });
+                        }
+                    }
+                })
+                .catch(error => {
+                    // If an error occurs during the HTTP request, display an error message
+                    console.error('Error fetching telemetry capture details:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error fetching telemetry capture details!',
+                        text: 'Please check the console for more information.',
+                    });
+                });
+        });
+
 
         setInterval(updateLocalTime, 1000); // Update the time every second
         setInterval(fetchDataAndDisplay, 200); // Fetch data every 200 milliseconds

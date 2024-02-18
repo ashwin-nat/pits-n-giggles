@@ -77,6 +77,18 @@ class F12023TelemetryManager:
             F1PacketType.TYRE_SETS : None,
             F1PacketType.MOTION_EX : None,
         }
+        self.m_raw_packet_callback = None
+
+    def registerRawPacketCallback(self, callback: Callable):
+        """Register a callback for every UDP message on this socket. This is useful for debugging
+
+        Args:
+            callback (Callable): The callback function to be executed for every incoming UDP packet.
+                It should be a function that takes one argument containing the list of raw bytes
+
+        """
+
+        self.m_raw_packet_callback = callback
 
     def registerCallback(self, packet_type: F1PacketType, callback: Callable) -> None:
         """
@@ -123,20 +135,20 @@ class F12023TelemetryManager:
         while True:
 
             # Get next UDP message
-            data = self.m_udp_listener.getNextMessage()
-            if len(data) < F1_23_PACKET_HEADER_LEN:
+            raw_packet = self.m_udp_listener.getNextMessage()
+            if len(raw_packet) < F1_23_PACKET_HEADER_LEN:
                 # skip incomplete packet
                 continue
 
             # Parse the header
-            header_raw = data[:F1_23_PACKET_HEADER_LEN]
+            header_raw = raw_packet[:F1_23_PACKET_HEADER_LEN]
             header = PacketHeader(header_raw)
             if not header.isPacketTypeSupported():
                 # Unsupported packet type, skip
                 continue
 
             # Parse the payload and call the registered callback
-            payload_raw = data[F1_23_PACKET_HEADER_LEN:]
+            payload_raw = raw_packet[F1_23_PACKET_HEADER_LEN:]
             try:
                 packet = F12023TelemetryManager.packet_type_map[header.m_packetId](header, payload_raw)
             except InvalidPacketLengthError as e:
@@ -144,3 +156,5 @@ class F12023TelemetryManager:
             callback = self.m_callbacks.get(header.m_packetId, None)
             if callback:
                 callback(packet)
+            if self.m_raw_packet_callback:
+                self.m_raw_packet_callback(raw_packet)

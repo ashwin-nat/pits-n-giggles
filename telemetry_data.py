@@ -61,6 +61,7 @@ class DataPerDriver:
         self.m_name = None
         self.m_team = None
         self.m_delta = None
+        self.m_delta_to_leader = None
         self.m_ers_perc = None
         self.m_best_lap = None
         self.m_last_lap = None
@@ -70,12 +71,16 @@ class DataPerDriver:
         self.m_penalties = None
         self.m_tyre_age = None
         self.m_tyre_compound_type = None
+        self.m_tyre_surface_temp = None
+        self.m_tyre_inner_temp = None
         self.m_is_pitting = None
         self.m_drs_activated = None
         self.m_drs_allowed = None
         self.m_drs_distance = None
         self.m_num_pitstops = None
         self.m_dnf_status_code = None
+        self.m_tyre_life_remaining_laps = None
+        self.m_telemetry_restrictions = None
 
 class DriverData:
 
@@ -86,7 +91,6 @@ class DriverData:
         self.m_num_active_cars = None
         self.m_num_dnf_cars = None
         self.m_race_completed = None
-        # print("created DriverData object. " + str(id(self)) + " tid = " + str(threading.get_ident()))
 
     def update_object(self, index, new_obj):
         # For the first driver, the data structure will be None, create it
@@ -157,6 +161,13 @@ def getGlobals(num_weather_forecast_samples=4) -> Tuple[str, int, str, int, int,
             return (_globals.m_circuit, _globals.m_track_temp, _globals.m_event_type,
                         _globals.m_total_laps, curr_lap, _globals.m_safety_car_status,
                             weather_forecast_samples, _globals.m_pit_speed_limit)
+
+def getEventInfoStr() -> str:
+    with _globals_lock:
+        if _globals.m_event_type and _globals.m_circuit:
+            return _globals.m_event_type + "_" + _globals.m_circuit
+        else:
+            return None
 
 def set_driver_data(index: int, driver_data: DataPerDriver, is_fastest=False):
     with _driver_data_lock:
@@ -235,7 +246,6 @@ def recompute_fastest_lap():
 
 def set_num_cars(num_active_cars: int) -> None:
     with _driver_data_lock:
-        print("setting m_num_active_cars = " + str(num_active_cars))
         _driver_data.m_num_active_cars = num_active_cars
 
 def increment_dnf_counter() -> None:
@@ -293,6 +303,8 @@ def _get_adjacent_positions(position:int, total_cars:int=20, num_adjacent_cars:i
 def getDriverData() -> Tuple[List[DataPerDriver], str]:
 
     # TODO: tidy up
+    with _globals_lock:
+        is_spectator_mode = _globals.m_is_spectating
     with _driver_data_lock:
         final_list = []
         fastest_lap_time = "---"
@@ -301,7 +313,7 @@ def getDriverData() -> Tuple[List[DataPerDriver], str]:
         player_position = _driver_data.m_driver_data[_driver_data.m_player_index].m_position
         total_cars = _driver_data.m_num_active_cars + \
                 (0 if _driver_data.m_num_dnf_cars is None else _driver_data.m_num_dnf_cars)
-        if _driver_data.m_race_completed:
+        if _driver_data.m_race_completed or is_spectator_mode:
             positions = [i for i in range(1, _driver_data.m_num_active_cars+1)]
         else:
             positions = _get_adjacent_positions(player_position, total_cars)
@@ -319,20 +331,26 @@ def getDriverData() -> Tuple[List[DataPerDriver], str]:
             temp_data.m_index = index
             final_list.append(temp_data)
 
-        if len(final_list) > 0:
-            # recompute the deltas
+        if len(final_list) == 0:
+            return final_list, fastest_lap_time
 
+        milliseconds_to_seconds_str = lambda ms: ("+" if ms >= 0 else "") + "{:.3f}".format(ms / 1000)
+        if is_spectator_mode:
+            # just convert the deltas to str
+            for data in final_list:
+                data.m_delta = milliseconds_to_seconds_str(data.m_delta)
+        else:
+            # recompute the deltas if not spectator mode
             condition = lambda x: x.m_is_player == True
             player_index = next((index for index, item in enumerate(final_list) if condition(item)), None)
 
             # case 1: player is in the absolute front of this pack
-            milliseconds_to_seconds = lambda ms: ("+" if ms >= 0 else "") + "{:.3f}".format(ms / 1000)
             if player_index == 0:
                 final_list[0].m_delta = "---"
                 delta_so_far = 0
                 for data in final_list[1:]:
                     delta_so_far += data.m_delta
-                    data.m_delta = milliseconds_to_seconds(delta_so_far)
+                    data.m_delta = milliseconds_to_seconds_str(delta_so_far)
 
             # case 2: player is in the back of the pack
             # Iterate from back to front using reversed need to look at previous car's data for distance ahead
@@ -343,7 +361,7 @@ def getDriverData() -> Tuple[List[DataPerDriver], str]:
                 for data in reversed(final_list[:len(final_list)-1]):
                     delta_so_far -= one_car_behind_delta
                     one_car_behind_delta = data.m_delta
-                    data.m_delta = milliseconds_to_seconds(delta_so_far)
+                    data.m_delta = milliseconds_to_seconds_str(delta_so_far)
                 final_list[len(final_list)-1].m_delta = "---"
 
             # case 3: player is somewhere in the middle of the pack
@@ -356,13 +374,13 @@ def getDriverData() -> Tuple[List[DataPerDriver], str]:
                 for data in reversed(final_list[:player_index]):
                     delta_so_far -= one_car_behind_delta
                     one_car_behind_delta = data.m_delta
-                    data.m_delta = milliseconds_to_seconds(delta_so_far)
+                    data.m_delta = milliseconds_to_seconds_str(delta_so_far)
 
                 # Finally, set the deltas for the cars ahead
                 delta_so_far = 0
                 for data in final_list[player_index+1:]:
                     delta_so_far += data.m_delta
-                    data.m_delta = milliseconds_to_seconds(delta_so_far)
+                    data.m_delta = milliseconds_to_seconds_str(delta_so_far)
 
                 # finally set the delta for the player
                 final_list[player_index].m_delta = "---"
