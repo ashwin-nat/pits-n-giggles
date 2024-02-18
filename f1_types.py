@@ -1677,6 +1677,65 @@ class ParticipantData:
             The m_platform attribute is an instance of ParticipantData.Platform.
     """
 
+    class TelemetrySetting(Enum):
+        """
+        Enumeration representing the telemetry setting for the player.
+
+        Attributes:
+            RESTRICTED (int): Telemetry setting is restricted (0).
+            PUBLIC (int): Telemetry setting is public (1).
+        """
+
+        RESTRICTED = 0
+        PUBLIC = 1
+
+        @staticmethod
+        def isValid(telemetry_setting: int) -> bool:
+            """
+            Check if the given telemetry setting is valid.
+
+            Args:
+                telemetry_setting (int): The telemetry setting to be validated.
+
+            Returns:
+                bool: True if valid.
+            """
+            if isinstance(telemetry_setting, TelemetrySetting):
+                return True  # It's already an instance of TelemetrySetting
+            else:
+                min_value = min(member.value for member in TelemetrySetting)
+                max_value = max(member.value for member in TelemetrySetting)
+                return min_value <= telemetry_setting <= max_value
+
+        def __str__(self) -> str:
+            """
+            Returns a human-readable string representation of the telemetry setting.
+
+            Returns:
+                str: String representation of the telemetry setting.
+            """
+            return {
+                ParticipantData.TelemetrySetting.RESTRICTED: "Restricted",
+                ParticipantData.TelemetrySetting.PUBLIC: "Public",
+            }.get(self)
+
+        @staticmethod
+        def isValid(telemetry_setting_code: int) -> bool:
+            """Check if the given telemetry setting code is valid.
+
+            Args:
+                driver_id (int): The telemetry setting code to be validated.
+
+            Returns:
+                bool: True if valid.
+            """
+            if isinstance(telemetry_setting_code, ParticipantData.TelemetrySetting):
+                return True  # It's already an instance of TelemetrySetting
+            else:
+                min_value = min(member.value for member in ParticipantData.TelemetrySetting)
+                max_value = max(member.value for member in ParticipantData.TelemetrySetting)
+                return min_value <= telemetry_setting_code <= max_value
+
     class TeamID(Enum):
         MERCEDES = 0
         FERRARI = 1
@@ -1877,6 +1936,8 @@ class ParticipantData:
             self.m_platform = ParticipantData.Platform(self.m_platform)
         if ParticipantData.TeamID.isValid(self.m_teamId):
             self.m_teamId = ParticipantData.TeamID(self.m_teamId)
+        if ParticipantData.TelemetrySetting.isValid(self.m_yourTelemetry):
+            self.m_yourTelemetry = ParticipantData.TelemetrySetting(self.m_yourTelemetry)
 
     def __str__(self):
         """
@@ -2266,15 +2327,33 @@ class CarTelemetryData:
 # ------------------------- PACKET TYPE 7 - CAR STATUS -------------------------
 
 class PacketCarStatusData:
+    """
+    Class containing details on car statuses for all the cars in the race.
+
+    Attributes:
+        - m_header(PacketHeader) - packet header info
+        - m_carStatusData(List[CarStatusData]) - List of statuses of every car
+    """
+
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
+        """Initialise the object from the raw bytes list
+
+        Args:
+            header (PacketHeader): Object containing header info
+            packet (bytes): List of bytes representing the packet payload
+        """
         self.m_header: PacketHeader = header
         self.m_carStatusData: List[CarStatusData] = []               # CarStatusData[22]
 
         for status_per_car_raw_data in _split_list(packet, F1_23_CAR_STATUS_LEN):
             self.m_carStatusData.append(CarStatusData(status_per_car_raw_data))
 
-
     def __str__(self) -> str:
+        """Generate a human readable string of this object's contents
+
+        Returns:
+            str: Printable/Loggable string
+        """
         status_data_str = ", ".join(str(status) for status in self.m_carStatusData)
         return f"PacketCarStatusData(Header: {str(self.m_header)}, Car Status Data: [{status_data_str}])"
 
@@ -2283,32 +2362,32 @@ class CarStatusData:
     Class representing car status data.
 
     Attributes:
-        m_tractionControl (uint8): Traction control - 0 = off, 1 = medium, 2 = full
-        m_antiLockBrakes (uint8): Anti-lock brakes - 0 (off) - 1 (on)
-        m_fuelMix (uint8): Fuel mix - 0 = lean, 1 = standard, 2 = rich, 3 = max
-        m_frontBrakeBias (uint8): Front brake bias (percentage)
-        m_pitLimiterStatus (uint8): Pit limiter status - 0 = off, 1 = on
-        m_fuelInTank (float): Current fuel mass
-        m_fuelCapacity (float): Fuel capacity
-        m_fuelRemainingLaps (float): Fuel remaining in terms of laps (value on MFD)
-        m_maxRPM (uint16): Cars max RPM, point of rev limiter
-        m_idleRPM (uint16): Cars idle RPM
-        m_maxGears (uint8): Maximum number of gears
-        m_drsAllowed (uint8): DRS allowed - 0 = not allowed, 1 = allowed
-        m_drsActivationDistance (uint16): DRS activation distance -
+        - m_tractionControl (uint8): Traction control - 0 = off, 1 = medium, 2 = full
+        - m_antiLockBrakes (uint8): Anti-lock brakes - 0 (off) - 1 (on)
+        - m_fuelMix (uint8): Fuel mix - 0 = lean, 1 = standard, 2 = rich, 3 = max
+        - m_frontBrakeBias (uint8): Front brake bias (percentage)
+        - m_pitLimiterStatus (uint8): Pit limiter status - 0 = off, 1 = on
+        - m_fuelInTank (float): Current fuel mass
+        - m_fuelCapacity (float): Fuel capacity
+        - m_fuelRemainingLaps (float): Fuel remaining in terms of laps (value on MFD)
+        - m_maxRPM (uint16): Cars max RPM, point of rev limiter
+        - m_idleRPM (uint16): Cars idle RPM
+        - m_maxGears (uint8): Maximum number of gears
+        - m_drsAllowed (uint8): DRS allowed - 0 = not allowed, 1 = allowed
+        - m_drsActivationDistance (uint16): DRS activation distance -
                                           0 = DRS not available, non-zero - DRS will be available in [X] metres
-        m_actualTyreCompound (ActualTyreCompound): Actual tyre compound (enum)
-        m_visualTyreCompound (VisualTyreCompound): Visual tyre compound (enum)
-        m_tyresAgeLaps (uint8): Age in laps of the current set of tyres
-        m_vehicleFiaFlags (VehicleFIAFlags): Vehicle FIA flags (enum)
-        m_enginePowerICE (float): Engine power output of ICE (W)
-        m_enginePowerMGUK (float): Engine power output of MGU-K (W)
-        m_ersStoreEnergy (float): ERS energy store in Joules
-        m_ersDeployMode (ERSDeployMode): ERS deployment mode (enum)
-        m_ersHarvestedThisLapMGUK (float): ERS energy harvested this lap by MGU-K
-        m_ersHarvestedThisLapMGUH (float): ERS energy harvested this lap by MGU-H
-        m_ersDeployedThisLap (float): ERS energy deployed this lap
-        m_networkPaused (uint8): Whether the car is paused in a network game
+        - m_actualTyreCompound (ActualTyreCompound): Actual tyre compound (enum)
+        - m_visualTyreCompound (VisualTyreCompound): Visual tyre compound (enum)
+        - m_tyresAgeLaps (uint8): Age in laps of the current set of tyres
+        - m_vehicleFiaFlags (VehicleFIAFlags): Vehicle FIA flags (enum)
+        - m_enginePowerICE (float): Engine power output of ICE (W)
+        - m_enginePowerMGUK (float): Engine power output of MGU-K (W)
+        - m_ersStoreEnergy (float): ERS energy store in Joules
+        - m_ersDeployMode (ERSDeployMode): ERS deployment mode (enum)
+        - m_ersHarvestedThisLapMGUK (float): ERS energy harvested this lap by MGU-K
+        - m_ersHarvestedThisLapMGUH (float): ERS energy harvested this lap by MGU-H
+        - m_ersDeployedThisLap (float): ERS energy deployed this lap
+        - m_networkPaused (uint8): Whether the car is paused in a network game
 
     Note:
         The class uses enum classes for certain attributes for better readability and type safety.

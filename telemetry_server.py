@@ -37,6 +37,7 @@ except ImportError:
     print("Flask installation complete.")
     from flask_cors import CORS
 import telemetry_data as TelData
+from telemetry_handler import dumpPktCapToFile
 import logging
 
 class TelemetryServer:
@@ -65,6 +66,16 @@ class TelemetryServer:
             telemetry_data = self.getTelemetryData()
             return telemetry_data
 
+        @self.m_app.route('/save-telemetry-capture', methods=['GET'])
+        def saveTelemetryCapture():
+            """
+            Endpoint for saving telemetry packet capture.
+
+            Returns:
+                str: JSON response indicating success or failure.
+            """
+            return self.saveTelemetryData()
+
         # Render the HTML page
         @self.m_app.route('/')
         def index():
@@ -76,7 +87,7 @@ class TelemetryServer:
             """
             return render_template('index.html')
 
-    def getValueOrDefaultStr(self, value, default_value='---'):
+    def getValueOrDefaultValue(self, value, default_value='---'):
         """
         Get value or default as string.
 
@@ -104,14 +115,14 @@ class TelemetryServer:
 
         # Init the global data onto the JSON repsonse
         json_response = {
-            "circuit": self.getValueOrDefaultStr(circuit),
-            "track-temperature": self.getValueOrDefaultStr(track_temp),
-            "event-type": self.getValueOrDefaultStr(event_type),
-            "total-laps": self.getValueOrDefaultStr(total_laps),
-            "current-lap": self.getValueOrDefaultStr(curr_lap),
-            "safety-car-status": str(self.getValueOrDefaultStr(safety_car_status, default_value="")),
+            "circuit": self.getValueOrDefaultValue(circuit),
+            "track-temperature": self.getValueOrDefaultValue(track_temp),
+            "event-type": self.getValueOrDefaultValue(event_type),
+            "total-laps": self.getValueOrDefaultValue(total_laps),
+            "current-lap": self.getValueOrDefaultValue(curr_lap),
+            "safety-car-status": str(self.getValueOrDefaultValue(safety_car_status, default_value="")),
             "fastest-lap-overall": fastest_lap_overall,
-            "pit-speed-limit" : self.getValueOrDefaultStr(pit_speed_limit),
+            "pit-speed-limit" : self.getValueOrDefaultValue(pit_speed_limit),
             "weather-forecast-samples": []
         }
         for sample in weather_forecast_samples:
@@ -131,30 +142,47 @@ class TelemetryServer:
                 fastest_lap_overall = data_per_driver.m_best_lap
             json_response["table-entries"].append(
                 {
-                    "position": self.getValueOrDefaultStr(data_per_driver.m_position),
-                    "name": self.getValueOrDefaultStr(data_per_driver.m_name),
-                    "team": self.getValueOrDefaultStr(data_per_driver.m_team),
+                    "position": self.getValueOrDefaultValue(data_per_driver.m_position),
+                    "name": self.getValueOrDefaultValue(data_per_driver.m_name),
+                    "team": self.getValueOrDefaultValue(data_per_driver.m_team),
                     "delta": self.getDeltaPlusPenaltiesPlusPit(data_per_driver.m_delta,
                                                                data_per_driver.m_penalties,
                                                                data_per_driver.m_is_pitting,
                                                                data_per_driver.m_dnf_status_code),
-                    "ers": self.getValueOrDefaultStr(data_per_driver.m_ers_perc),
-                    "best": self.getValueOrDefaultStr(data_per_driver.m_best_lap),
-                    "last": self.getValueOrDefaultStr(data_per_driver.m_last_lap),
-                    "is-fastest": self.getValueOrDefaultStr(data_per_driver.m_is_fastest),
-                    "is-player": self.getValueOrDefaultStr(data_per_driver.m_is_player),
-                    "average-tyre-wear": self.getValueOrDefaultStr(data_per_driver.m_tyre_wear),
-                    "tyre-age": self.getValueOrDefaultStr(data_per_driver.m_tyre_age),
-                    "tyre-compound": self.getValueOrDefaultStr(data_per_driver.m_tyre_compound_type),
+                    "ers": self.getValueOrDefaultValue(data_per_driver.m_ers_perc),
+                    "best": self.getValueOrDefaultValue(data_per_driver.m_best_lap),
+                    "last": self.getValueOrDefaultValue(data_per_driver.m_last_lap),
+                    "is-fastest": self.getValueOrDefaultValue(data_per_driver.m_is_fastest),
+                    "is-player": self.getValueOrDefaultValue(data_per_driver.m_is_player),
+                    "average-tyre-wear": self.getValueOrDefaultValue(data_per_driver.m_tyre_wear),
+                    "tyre-age": self.getValueOrDefaultValue(data_per_driver.m_tyre_age),
+                    "tyre-life-remaining" : self.getValueOrDefaultValue(data_per_driver.m_tyre_life_remaining_laps),
+                    "tyre-compound": self.getValueOrDefaultValue(data_per_driver.m_tyre_compound_type),
                     "drs": self.getDRSValue(data_per_driver.m_drs_activated, data_per_driver.m_drs_allowed,
                                             data_per_driver.m_drs_distance),
-                    "num-pitstops": self.getValueOrDefaultStr(data_per_driver.m_num_pitstops),
-                    "dnf-status" : self.getValueOrDefaultStr(data_per_driver.m_dnf_status_code),
-                    "index" : self.getValueOrDefaultStr(data_per_driver.m_index)
+                    "num-pitstops": self.getValueOrDefaultValue(data_per_driver.m_num_pitstops),
+                    "dnf-status" : self.getValueOrDefaultValue(data_per_driver.m_dnf_status_code),
+                    "index" : self.getValueOrDefaultValue(data_per_driver.m_index)
                 }
             )
 
         return json_response
+
+    def saveTelemetryData(self) -> str:
+        """Save the raw telemetry data to a file.
+
+        Returns:
+            str: The str containing the JSON response
+        """
+
+        status_code, file_name, num_packets, num_bytes = dumpPktCapToFile(clear_db=True, reason='Received Request')
+        return {
+            "is-success" : (True if file_name else False),
+            "status-code" : str(status_code),
+            "file-name" : self.getValueOrDefaultValue(file_name, ""),
+            "num-packets" : self.getValueOrDefaultValue(num_packets, default_value=0),
+            "num-bytes" : self.getValueOrDefaultValue(num_bytes, default_value=0)
+        }
 
     def getDeltaPlusPenaltiesPlusPit(self, delta, penalties, is_pitting, dnf_status_code: str):
         """
