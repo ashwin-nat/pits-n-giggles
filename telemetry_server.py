@@ -219,7 +219,8 @@ class TelemetryServer:
         Returns:
             bool: True if DRS is activated or available or has non-zero distance, False otherwise.
         """
-        return True if (drs_activated or drs_available or (drs_distance > 0)) else False
+        # return True if (drs_activated or drs_available or (drs_distance > 0)) else False
+        return True if (drs_activated or drs_available) else False
 
     def run(self):
         """

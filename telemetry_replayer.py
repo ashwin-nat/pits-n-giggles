@@ -25,6 +25,7 @@ import socket
 from packet_cap import F1PacketCapture
 import argparse
 from tqdm import tqdm
+import time
 
 def sendBytesUDP(data: bytes, udp_ip: str, udp_port: int) -> int:
     """Send the given list of bytes to the specified destination over UDP
@@ -85,6 +86,8 @@ def main():
         for _, data in tqdm(captured_packets.getPackets(), desc='Sending Packets', unit='packet', total=total_packets):
             counter += 1
             total_bytes += sendBytesUDP(data, args.udp_ip, args.udp_port)
+            if (counter % 1000 == 0):
+                time.sleep(0.001)
 
         print(f'Total bytes sent: {formatFileSize(total_bytes)}')
         print(total_bytes)

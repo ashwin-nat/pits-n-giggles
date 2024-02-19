@@ -285,6 +285,11 @@ class F12023TelemetryHandler:
 
     @staticmethod
     def handleEvent(packet: PacketEventData) -> None:
+        """Handle the Event packet
+
+        Args:
+            packet (PacketEventData): The parsed object containing the event data packet's contents
+        """
         if packet.m_eventStringCode == EventPacketType.FASTEST_LAP:
             data = TelData.DataPerDriver()
             data.m_best_lap = F12023TelemetryHandler.floatSecondsToMinutesSecondsMilliseconds(packet.mEventDetails.lapTime)
