@@ -1,24 +1,26 @@
-# MIT License
-#
-# Copyright (c) [2024] [Ashwin Natarajan]
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
+"""
+MIT License
+
+Copyright (c) 2024 Ashwin Natarajan
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"""
 
 from telemetry_manager import F12023TelemetryManager
 from f1_types import *
@@ -26,15 +28,11 @@ from packet_cap import F1PacketCapture
 import telemetry_data as TelData
 from threading import Lock
 from enum import Enum
-from typing import Optional
+from typing import Optional, List, Tuple
 from datetime import datetime
 
-g_num_active_cars = 0
-g_packet_capture_table = None
-g_packet_capture_table_lock = None
-g_auto_save_packets = False
-
 class PktSaveStatus(Enum):
+    """Enum representing packet save status."""
     SUCCESS = 0
     DISABLED = 1
     TABLE_EMPTY = 2
@@ -45,11 +43,21 @@ class PktSaveStatus(Enum):
         return self.name
 
 class PacketCaptureMode(Enum):
+    """Enum representing packet capture modes."""
     DISABLED = 'disabled'
     ENABLED = 'enabled'
     ENABLED_WITH_AUTOSAVE = 'enabled-with-autosave'
 
 def initPktCap(packet_capture_mode: PacketCaptureMode):
+    """
+    Initialize packet capture.
+
+    Parameters:
+    - packet_capture_mode (PacketCaptureMode): The mode for packet capture.
+
+    Returns:
+    None
+    """
     global g_packet_capture_table
     global g_packet_capture_table_lock
     global g_auto_save_packets
@@ -59,12 +67,32 @@ def initPktCap(packet_capture_mode: PacketCaptureMode):
         g_auto_save_packets = True
 
 def addRawPacket(packet: List[bytes]):
+    """
+    Add raw packet to the packet capture table.
+
+    Parameters:
+    - packet (List[bytes]): The raw packet data.
+
+    Returns:
+    None
+    """
     global g_packet_capture_table
     global g_packet_capture_table_lock
     with g_packet_capture_table_lock:
         g_packet_capture_table.add(packet)
 
-def dumpPktCapToFile(file_name: Optional[str] = None, clear_db:bool=False, reason:str='') -> Tuple[PktSaveStatus, str, int, int]:
+def dumpPktCapToFile(file_name: Optional[str] = None, clear_db: bool = False, reason: str = '') -> Tuple[PktSaveStatus, str, int, int]:
+    """
+    Dump packet capture data to a file.
+
+    Parameters:
+    - file_name (Optional[str]): The name of the file to save. Default is None.
+    - clear_db (bool): Whether to clear the packet capture database. Default is False.
+    - reason (str): Reason for dumping the packet capture data.
+
+    Returns:
+    Tuple[PktSaveStatus, str, int, int]: A tuple representing the save status, file name, number of packets, and number of bytes.
+    """
     global g_auto_save_packets
 
     if not g_auto_save_packets:
@@ -99,18 +127,101 @@ def dumpPktCapToFile(file_name: Optional[str] = None, clear_db:bool=False, reaso
             return PktSaveStatus.OS_ERROR, None, 0, 0
 
 class F12023TelemetryHandler:
+    """
+    Handles incoming F1 2023 telemetry data. Handles the various types of incoming packets
 
-    def __init__(self, port: int, raw_packet_capture: PacketCaptureMode=PacketCaptureMode.DISABLED) -> None:
+    Attributes:
+    - m_manager (F12023TelemetryManager): The telemetry manager instance.
+    - m_raw_packet_capture (PacketCaptureMode): The raw packet capture mode.
+    """
+
+    def __init__(self, port: int, raw_packet_capture: PacketCaptureMode = PacketCaptureMode.DISABLED) -> None:
+        """
+        Initialize F12023TelemetryHandler.
+
+        Parameters:
+        - port (int): The port number for telemetry.
+        - raw_packet_capture (PacketCaptureMode): The mode for raw packet capture. Default is PacketCaptureMode.DISABLED.
+
+        Returns:
+        None
+        """
         self.m_manager = F12023TelemetryManager(port)
         self.m_raw_packet_capture = raw_packet_capture
 
+    def run(self):
+        """
+        Run the telemetry handler.
+
+        Returns:
+        None
+        """
+        self.registerCallbacks()
+        self.m_manager.run()
+
+    def registerCallbacks(self) -> None:
+        """
+        Register callback functions for different types of telemetry packets.
+
+        Returns:
+        None
+        """
+
+        self.m_manager.registerCallback(F1PacketType.MOTION, F12023TelemetryHandler.handleMotion)
+        self.m_manager.registerCallback(F1PacketType.SESSION, F12023TelemetryHandler.handleSessionData)
+        self.m_manager.registerCallback(F1PacketType.LAP_DATA, F12023TelemetryHandler.handleLapData)
+        self.m_manager.registerCallback(F1PacketType.EVENT, F12023TelemetryHandler.handleEvent)
+        self.m_manager.registerCallback(F1PacketType.PARTICIPANTS, F12023TelemetryHandler.handleParticipants)
+        self.m_manager.registerCallback(F1PacketType.CAR_SETUPS, F12023TelemetryHandler.handleCarSetups)
+        self.m_manager.registerCallback(F1PacketType.CAR_TELEMETRY, F12023TelemetryHandler.handleCarTelemetry)
+        self.m_manager.registerCallback(F1PacketType.CAR_STATUS, F12023TelemetryHandler.handleCarStatus)
+        self.m_manager.registerCallback(F1PacketType.FINAL_CLASSIFICATION, F12023TelemetryHandler.handleFinalClassification)
+        self.m_manager.registerCallback(F1PacketType.LOBBY_INFO, F12023TelemetryHandler.handleLobbyInfo)
+        self.m_manager.registerCallback(F1PacketType.CAR_DAMAGE, F12023TelemetryHandler.handleCarDamage)
+        self.m_manager.registerCallback(F1PacketType.SESSION_HISTORY, F12023TelemetryHandler.handleSessionHistory)
+        self.m_manager.registerCallback(F1PacketType.TYRE_SETS, F12023TelemetryHandler.handleTyreSets)
+        self.m_manager.registerCallback(F1PacketType.MOTION_EX, F12023TelemetryHandler.handleMotionEx)
+
+        if self.m_raw_packet_capture != PacketCaptureMode.DISABLED:
+            self.m_manager.registerRawPacketCallback(F12023TelemetryHandler.handleRawPacket)
+
+    @staticmethod
+    def handleRawPacket(packet: List[bytes]) -> None:
+        """
+        Handle raw telemetry packet.
+
+        Parameters:
+        - packet (List[bytes]): The raw telemetry packet.
+
+        Returns:
+        None
+        """
+        addRawPacket(packet)
+
     @staticmethod
     def handleMotion(packet: PacketMotionData) -> None:
+        """
+        Handle motion telemetry packet.
+
+        Parameters:
+        - packet (PacketMotionData): The motion telemetry packet.
+
+        Returns:
+        None
+        """
         return
 
     @staticmethod
     def handleSessionData(packet: PacketSessionData) -> None:
+        """
+        Handle session data telemetry packet.
 
+        Parameters:
+        - packet (PacketSessionData): The session data telemetry packet.
+
+        Returns:
+        None
+        """
         TelData.set_globals(
             circuit=str(packet.m_trackId),
             track_temp=packet.m_trackTemperature,
@@ -126,11 +237,23 @@ class F12023TelemetryHandler:
 
     @staticmethod
     def handleLapData(packet: PacketLapData) -> None:
+        """
+        Handle lap data telemetry packet.
+
+        Parameters:
+        - packet (PacketLapData): The lap data telemetry packet.
+
+        Returns:
+        None
+        """
         # print('Received Lap Data Packet. ' + str(packet))
         should_recompute_fastest_lap = False
         global g_num_active_cars
         num_active_cars = 0
+
+        # loop through each of the car's lap data
         for index, lap_data in enumerate(packet.m_LapData):
+            # not handling invalid laps as of now
             if lap_data.m_resultStatus == ResultStatus.INVALID:
                 continue
             num_active_cars += 1
@@ -159,8 +282,6 @@ class F12023TelemetryHandler:
         if g_num_active_cars != num_active_cars:
             g_num_active_cars = num_active_cars
             TelData.set_num_cars(num_active_cars)
-
-        return
 
     @staticmethod
     def handleEvent(packet: PacketEventData) -> None:
@@ -324,33 +445,3 @@ class F12023TelemetryHandler:
             penalty_string += str(num_stop_go) + "SG"
         penalty_string += ")"
         return penalty_string
-
-    @staticmethod
-    def handleRawPacket(packet: List[bytes]):
-
-        addRawPacket(packet)
-
-    def registerCallbacks(self):
-
-        self.m_manager.registerCallback(F1PacketType.MOTION, F12023TelemetryHandler.handleMotion)
-        self.m_manager.registerCallback(F1PacketType.SESSION, F12023TelemetryHandler.handleSessionData)
-        self.m_manager.registerCallback(F1PacketType.LAP_DATA, F12023TelemetryHandler.handleLapData)
-        self.m_manager.registerCallback(F1PacketType.EVENT, F12023TelemetryHandler.handleEvent)
-        self.m_manager.registerCallback(F1PacketType.PARTICIPANTS, F12023TelemetryHandler.handleParticipants)
-        self.m_manager.registerCallback(F1PacketType.CAR_SETUPS, F12023TelemetryHandler.handleCarSetups)
-        self.m_manager.registerCallback(F1PacketType.CAR_TELEMETRY, F12023TelemetryHandler.handleCarTelemetry)
-        self.m_manager.registerCallback(F1PacketType.CAR_STATUS, F12023TelemetryHandler.handleCarStatus)
-        self.m_manager.registerCallback(F1PacketType.FINAL_CLASSIFICATION, F12023TelemetryHandler.handleFinalClassification)
-        self.m_manager.registerCallback(F1PacketType.LOBBY_INFO, F12023TelemetryHandler.handleLobbyInfo)
-        self.m_manager.registerCallback(F1PacketType.CAR_DAMAGE, F12023TelemetryHandler.handleCarDamage)
-        self.m_manager.registerCallback(F1PacketType.SESSION_HISTORY, F12023TelemetryHandler.handleSessionHistory)
-        self.m_manager.registerCallback(F1PacketType.TYRE_SETS, F12023TelemetryHandler.handleTyreSets)
-        self.m_manager.registerCallback(F1PacketType.MOTION_EX, F12023TelemetryHandler.handleMotionEx)
-
-        if self.m_raw_packet_capture != PacketCaptureMode.DISABLED:
-            self.m_manager.registerRawPacketCallback(F12023TelemetryHandler.handleRawPacket)
-
-    def run(self):
-
-        self.registerCallbacks()
-        self.m_manager.run()

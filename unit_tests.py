@@ -141,7 +141,7 @@ class TestF1PacketCapture(unittest.TestCase):
 
     # Configurable max_packet_len value
     max_packet_len = 1250
-    max_num_packets = 3
+    max_num_packets = 100000
 
     def setUp(self):
         # Create an instance of F1PacketCapture for each test
@@ -203,7 +203,6 @@ class TestF1PacketCapture(unittest.TestCase):
 
         # Generate a random number of packets to add
         num_packets = random.randint(1, TestF1PacketCapture.max_num_packets)
-        print("num_packets = " + str(num_packets))
 
         for _ in range(num_packets):
             # Generate random data for the packet with a length up to max_packet_len
@@ -221,30 +220,26 @@ class TestF1PacketCapture(unittest.TestCase):
 
     def test_random_packets_to_file_and_read(self):
         """Test generating random packets, writing to a file, and reading back."""
-        # Configurable max_packet_len value
-        max_packet_len = 50
 
         # Generate a random number of packets to add
         num_packets = random.randint(1, TestF1PacketCapture.max_num_packets)
-        print("num_packets = " + str(num_packets))
 
         for i in range(num_packets):
             # Generate random data for the packet with a length up to max_packet_len
-            packet_len = random.randint(1, max_packet_len)
+            packet_len = random.randint(1, TestF1PacketCapture.max_packet_len)
             packet_data = bytes([random.randint(0, 255) for _ in range(packet_len)])
 
             # Add the packet to the capture object
             self.capture.add(packet_data)
 
             # Check if the added packet length is within the specified limit
-            self.assertLessEqual(len(packet_data), max_packet_len)
+            self.assertLessEqual(len(packet_data), TestF1PacketCapture.max_packet_len)
             self.assertEqual(len(packet_data), packet_len)
 
         self.assertEqual(num_packets, len(self.capture.m_packet_history))
 
         # Dump to file
-        file_name, _, num_bytes = self.dumpToFileHelper()
-        print("num_bytes_written = " + str(num_bytes))
+        file_name, _, _ = self.dumpToFileHelper()
 
         # Ensure that the file has been created
         self.assertTrue(os.path.exists(file_name))
