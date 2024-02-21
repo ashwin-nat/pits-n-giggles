@@ -25,11 +25,25 @@ SOFTWARE.
 from telemetry_manager import F12023TelemetryManager
 from f1_types import *
 from packet_cap import F1PacketCapture
+from overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, printOvertakeData as analyzerPrintOvertakeData
 import telemetry_data as TelData
 from threading import Lock
 from enum import Enum
 from typing import Optional, List, Tuple
 from datetime import datetime
+
+class PacketCaptureMode(Enum):
+    """Enum representing packet capture modes."""
+    DISABLED = 'disabled'
+    ENABLED = 'enabled'
+    ENABLED_WITH_AUTOSAVE = 'enabled-with-autosave'
+
+g_packet_capture_table = F1PacketCapture()
+g_packet_capture_table_lock = Lock()
+g_pkt_cap_mode = PacketCaptureMode.DISABLED
+g_num_active_cars = 0
+g_overtakes_history = []
+g_autosave_overtakes = False
 
 class PktSaveStatus(Enum):
     """Enum representing packet save status."""
@@ -42,11 +56,9 @@ class PktSaveStatus(Enum):
     def __str__(self):
         return self.name
 
-class PacketCaptureMode(Enum):
-    """Enum representing packet capture modes."""
-    DISABLED = 'disabled'
-    ENABLED = 'enabled'
-    ENABLED_WITH_AUTOSAVE = 'enabled-with-autosave'
+def initOvertakesAutosave():
+    global g_autosave_overtakes
+    g_autosave_overtakes = True
 
 def initPktCap(packet_capture_mode: PacketCaptureMode):
     """
@@ -60,11 +72,10 @@ def initPktCap(packet_capture_mode: PacketCaptureMode):
     """
     global g_packet_capture_table
     global g_packet_capture_table_lock
-    global g_auto_save_packets
+    global g_pkt_cap_mode
     g_packet_capture_table = F1PacketCapture()
     g_packet_capture_table_lock = Lock()
-    if packet_capture_mode == PacketCaptureMode.ENABLED_WITH_AUTOSAVE:
-        g_auto_save_packets = True
+    g_pkt_cap_mode = packet_capture_mode
 
 def addRawPacket(packet: List[bytes]):
     """
@@ -93,9 +104,9 @@ def dumpPktCapToFile(file_name: Optional[str] = None, clear_db: bool = False, re
     Returns:
     Tuple[PktSaveStatus, str, int, int]: A tuple representing the save status, file name, number of packets, and number of bytes.
     """
-    global g_auto_save_packets
+    global g_pkt_cap_mode
 
-    if not g_auto_save_packets:
+    if g_pkt_cap_mode == PacketCaptureMode.DISABLED:
         return PktSaveStatus.DISABLED, None, 0, 0
 
     global g_packet_capture_table
@@ -126,6 +137,20 @@ def dumpPktCapToFile(file_name: Optional[str] = None, clear_db: bool = False, re
             # Return the appropriate status
             return PktSaveStatus.OS_ERROR, None, 0, 0
 
+def printOvertakeData(file_name: str=None):
+    """Print the overtake data
+
+    Args:
+        file_name (str): Name of the csv file with the overtake data. If None, directly gets the data from the list
+    """
+
+    if file_name:
+        overtake_analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_FILE, file_name)
+    else:
+        global g_overtakes_history
+        overtake_analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_LIST, g_overtakes_history)
+    analyzerPrintOvertakeData(overtake_analyzer)
+
 class F12023TelemetryHandler:
     """
     Handles incoming F1 2023 telemetry data. Handles the various types of incoming packets
@@ -135,7 +160,8 @@ class F12023TelemetryHandler:
     - m_raw_packet_capture (PacketCaptureMode): The raw packet capture mode.
     """
 
-    def __init__(self, port: int, raw_packet_capture: PacketCaptureMode = PacketCaptureMode.DISABLED) -> None:
+    def __init__(self, port: int, raw_packet_capture: PacketCaptureMode = PacketCaptureMode.DISABLED,
+                 replay_server: bool = False) -> None:
         """
         Initialize F12023TelemetryHandler.
 
@@ -146,7 +172,7 @@ class F12023TelemetryHandler:
         Returns:
         None
         """
-        self.m_manager = F12023TelemetryManager(port)
+        self.m_manager = F12023TelemetryManager(port, replay_server)
         self.m_raw_packet_capture = raw_packet_capture
 
     def run(self):
@@ -303,6 +329,12 @@ class F12023TelemetryHandler:
             data = TelData.DataPerDriver()
             data.m_dnf_status_code = True
             TelData.set_driver_data(packet.mEventDetails.vehicleIdx, data)
+        elif packet.m_eventStringCode == EventPacketType.OVERTAKE:
+            global g_overtakes_history
+            overtake_csv_str = TelData.getOvertakeString(packet.mEventDetails.overtakingVehicleIdx,
+                                                        packet.mEventDetails.beingOvertakenVehicleIdx)
+            g_overtakes_history.append(overtake_csv_str)
+
         return
 
     @staticmethod
@@ -354,12 +386,38 @@ class F12023TelemetryHandler:
     def handleFinalClassification(packet: PacketFinalClassificationData) -> None:
         print('Received Final Classification Packet. ')
         TelData.set_final_classification(packet)
-        global g_auto_save_packets
-        if g_auto_save_packets:
+
+        # Perform the auto save stuff only for races
+        _, _, event_type_str, _, _, _, _, _ = TelData.getGlobals()
+        if event_type_str in [str(SessionType.RACE), str(SessionType.RACE_2), str(SessionType.RACE_3)]:
+
+            # Capture the packets if required
+            global g_pkt_cap_mode
+            if g_pkt_cap_mode == PacketCaptureMode.ENABLED_WITH_AUTOSAVE:
+                event_str = TelData.getEventInfoStr()
+                if event_str:
+                    file_name = 'capture_' + event_str + '_' + datetime.now().strftime("%Y_%m_%d_%H_%M_%S") + '.bin'
+                    dumpPktCapToFile(file_name=file_name,reason='Final Classification')
+
+            # Compute and display overtake stats
             event_str = TelData.getEventInfoStr()
             if event_str:
-                file_name = 'capture_' + event_str + '_' + datetime.now().strftime("%Y_%m_%d_%H_%M_%S") + '.bin'
-                dumpPktCapToFile(file_name=file_name,reason='Final Classification')
+                global g_autosave_overtakes
+                if g_autosave_overtakes:
+                    file_name = 'overtakes_history_' + event_str +  datetime.now().strftime("%Y_%m_%d_%H_%M_%S") + '.csv'
+                    with open(file_name, 'w', encoding='utf-8') as file:
+                        # Iterate through the list and write each string to the file
+                        for line in g_overtakes_history:
+                            file.write(line + '\n')  # Add a newline character after each line
+                        print("Recorded overtakes to file " + file_name + ". Number of overtakes was " +
+                            str(len(g_overtakes_history)))
+                    # Analyze the overtake data and dump the output
+                    printOvertakeData(file_name)
+                else:
+                    printOvertakeData()
+
+        # Clear the list regardless of event type
+        g_overtakes_history.clear()
         return
 
     @staticmethod

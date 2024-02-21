@@ -86,7 +86,7 @@ def main():
         for _, data in tqdm(captured_packets.getPackets(), desc='Sending Packets', unit='packet', total=total_packets):
             counter += 1
             total_bytes += sendBytesUDP(data, args.udp_ip, args.udp_port)
-            if (counter % 1000 == 0):
+            if (counter % 750 == 0):
                 time.sleep(0.001)
 
         print(f'Total bytes sent: {formatFileSize(total_bytes)}')

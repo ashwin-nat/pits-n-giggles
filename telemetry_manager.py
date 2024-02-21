@@ -52,12 +52,12 @@ class F12023TelemetryManager:
         F1PacketType.MOTION_EX : PacketMotionExData,
     }
 
-
-    def __init__(self, port_number: int):
+    def __init__(self, port_number: int, replay_server: bool = False):
         """Init the telemetry manager app and all its sub components
 
         Args:
             port_number (int): The port number to listen in on
+            replay_server (bool): If True, the TCP based packet replay server will also be created
         """
 
         self.m_udp_listener = UDPListener(port_number, "0.0.0.0")
@@ -78,6 +78,8 @@ class F12023TelemetryManager:
             F1PacketType.MOTION_EX : None,
         }
         self.m_raw_packet_callback = None
+        if replay_server:
+            pass
 
     def registerRawPacketCallback(self, callback: Callable):
         """Register a callback for every UDP message on this socket. This is useful for debugging
@@ -131,11 +133,13 @@ class F12023TelemetryManager:
         """Run the telemetry client
         """
 
+        counter = 0
         # Run the client indefinitely
         while True:
 
             # Get next UDP message
             raw_packet = self.m_udp_listener.getNextMessage()
+            counter += 1
             if len(raw_packet) < F1_23_PACKET_HEADER_LEN:
                 # skip incomplete packet
                 continue
@@ -158,3 +162,5 @@ class F12023TelemetryManager:
                 callback(packet)
             if self.m_raw_packet_callback:
                 self.m_raw_packet_callback(raw_packet)
+
+            print('counter = ' + str(counter))

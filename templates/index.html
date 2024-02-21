@@ -162,7 +162,7 @@ SOFTWARE.
             <p id="trackTemperature">Track Temperature: </p>
             <p id="lapInformation">Lap: </p>
             <p id="safetyCarStatus">Safety Car Status: </p>
-            <p><a href="javascript:void(0);" id="saveTelemetryLink" class="motivationLink">Save telemetry packet capture</a></p>
+            <p><a href="javascript:void(0);" id="saveTelemetryLink" class="motivationLink" style="display: none;">Save telemetry packet capture</a></p>
         </div>
         <div class="time-box">
             <p id="localTime">Local Time: </p>
@@ -229,7 +229,8 @@ SOFTWARE.
             .then(data => {
                 updateTable(data["table-entries"]);
                 updateGlobalInfo(data["circuit"], data["event-type"], data["track-temperature"], data["current-lap"],
-                    data["total-laps"], data["safety-car-status"], data["fastest-lap-overall"], data["pit-speed-limit"]);
+                    data["total-laps"], data["safety-car-status"], data["fastest-lap-overall"],
+                    data["pit-speed-limit"], {{ packet_capture_enabled | tojson }});
                 updateWeatherTable(data["weather-forecast-samples"])
             })
             .catch(error => {
@@ -302,16 +303,20 @@ SOFTWARE.
         }
 
         function updateGlobalInfo(circuit, event_type, track_temp, curr_lap, total_laps,
-            safety_car_status, fastest_lap, pit_speed_limit) {
+            safety_car_status, fastest_lap, pit_speed_limit, packet_capture_enabled) {
 
             document.getElementById('tableTitle').textContent = `${event_type} - ${circuit}`;
             document.getElementById('trackTemperature').textContent = `Track Temperature: ${track_temp}°C`;
             document.getElementById('lapInformation').textContent = `Lap: ${curr_lap}/${total_laps}`;
             document.getElementById('safetyCarStatus').textContent = `Safety Car Status: ${safety_car_status}`;
             document.getElementById('fastestLapOverall').textContent = `Fastest Lap Overall: ${fastest_lap}`;
-            document.getElementById('pitSpeedLimit').textContent = `Pit Lane Speed Limit: ${pit_speed_limit} km/h`;
+            document.getElementById('pitSpeedLimit').textContent = `Pit Lane Speed Limit: ${pit_speed_limit}`;
 
+            // Update the visibility of the saveTelemetryLink based on packet_capture_enabled
+            const saveTelemetryLink = document.getElementById('saveTelemetryLink');
+            saveTelemetryLink.style.display = packet_capture_enabled ? 'inline' : 'none';
         }
+
         function updateLocalTime() {
             const now = new Date();
             const timeString = now.toLocaleTimeString(); // Converts the current time to a string using the local time convention
@@ -333,6 +338,7 @@ SOFTWARE.
 
             return `${formattedSize} ${sizeUnit}`;
         }
+
         document.getElementById("saveTelemetryLink").addEventListener("click", function () {
             // Make an HTTP request when the link is clicked
             fetch('/save-telemetry-capture')

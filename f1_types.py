@@ -165,6 +165,67 @@ class ResultStatus(Enum):
         }
         return status_mapping.get(self.value, "---")
 
+class SessionType(Enum):
+    """
+    Enum class representing F1 session types.
+    """
+    UNKNOWN = 0
+    PRACTICE_1 = 1
+    PRACTICE_2 = 2
+    PRACTICE_3 = 3
+    SHORT_PRACTICE = 4
+    QUALIFYING_1 = 5
+    QUALIFYING_2 = 6
+    QUALIFYING_3 = 7
+    SHORT_QUALIFYING = 8
+    ONE_SHOT_QUALIFYING = 9
+    RACE = 10
+    RACE_2 = 11
+    RACE_3 = 12
+    TIME_TRIAL = 13
+
+    @staticmethod
+    def isValid(session_type: int):
+        """
+        Check if the given session type is valid.
+
+        Args:
+            session_type (int): The session type to be validated.
+
+        Returns:
+            bool: True if valid
+        """
+        if isinstance(session_type, SessionType):
+            return True  # It's already an instance of SessionType
+        else:
+            min_value = min(member.value for member in SessionType)
+            max_value = max(member.value for member in SessionType)
+            return min_value <= session_type <= max_value
+
+    def __str__(self):
+        """
+        Return a string representation of the SessionType with spaces.
+
+        Returns:
+            str: String representation of the SessionType.
+        """
+        return {
+            SessionType.UNKNOWN : "N/A",
+            SessionType.PRACTICE_1 : "Practice 1",
+            SessionType.PRACTICE_2 : "Practice 2",
+            SessionType.PRACTICE_3 : "Practice 3",
+            SessionType.SHORT_PRACTICE : "Short Practice",
+            SessionType.QUALIFYING_1 : "Qualifying 1",
+            SessionType.QUALIFYING_2 : "Qualifying 2",
+            SessionType.QUALIFYING_3 : "Qualifying 3",
+            SessionType.SHORT_QUALIFYING : "Short Qualifying",
+            SessionType.ONE_SHOT_QUALIFYING : "One Shot Qualifying",
+            SessionType.RACE  : "Race",
+            SessionType.RACE_2  : "Race 2",
+            SessionType.RACE_3  : "Race 3",
+            SessionType.TIME_TRIAL  : "Time Trial",
+        }.get(self, " ")
+
 # -------------------- HEADER PARSING ------------------------------------------
 
 class PacketHeader:
@@ -415,87 +476,6 @@ class WeatherForecastSample:
         - m_air_temperature_change (AirTemperatureChange): Air temperature change
         - m_rain_percentage (int): Rain percentage (0-100).
     """
-    class SessionType(Enum):
-        """
-        Enumeration representing different types of sessions.
-
-        Attributes:
-            UNKNOWN (int): Session type unknown.
-            P1 (int): Practice 1 session.
-            P2 (int): Practice 2 session.
-            P3 (int): Practice 3 session.
-            SHORT_P (int): Short Practice session.
-            Q1 (int): Qualifying 1 session.
-            Q2 (int): Qualifying 2 session.
-            Q3 (int): Qualifying 3 session.
-            SHORT_Q (int): Short Qualifying session.
-            OSQ (int): OSQ (One-Shot Qualifying) session.
-            RACE (int): Race session.
-            RACE2 (int): Second Race session.
-            RACE3 (int): Third Race session.
-            TIMETRIAL (int): Time Trial session.
-
-            Note:
-                Each attribute represents a unique session type identified by an integer value.
-        """
-
-        UNKNOWN = 0
-        P1 = 1
-        P2 = 2
-        P3 = 3
-        SHORT_P = 4
-        Q1 = 5
-        Q2 = 6
-        Q3 = 7
-        SHORT_Q = 8
-        OSQ = 9
-        RACE = 10
-        RACE2 = 11
-        RACE3 = 12
-        TIMETRIAL = 13
-
-        def __str__(self):
-            """
-            Returns a human-readable string representation of the session type.
-
-            Returns:
-                str: String representation of the session type.
-            """
-            return {
-                WeatherForecastSample.SessionType.UNKNOWN: "Unknown",
-                WeatherForecastSample.SessionType.P1: "Practice 1",
-                WeatherForecastSample.SessionType.P2: "Practice 2",
-                WeatherForecastSample.SessionType.P3: "Practice 3",
-                WeatherForecastSample.SessionType.SHORT_P: "Short Practice",
-                WeatherForecastSample.SessionType.Q1: "Qualifying 1",
-                WeatherForecastSample.SessionType.Q2: "Qualifying 2",
-                WeatherForecastSample.SessionType.Q3: "Qualifying 3",
-                WeatherForecastSample.SessionType.SHORT_Q: "Short Qualifying",
-                WeatherForecastSample.SessionType.OSQ: "OSQ",
-                WeatherForecastSample.SessionType.RACE: "Race",
-                WeatherForecastSample.SessionType.RACE2: "Race 2",
-                WeatherForecastSample.SessionType.RACE3: "Race 3",
-                WeatherForecastSample.SessionType.TIMETRIAL: "Time Trial",
-            }[self]
-
-        @staticmethod
-        def isValid(session_type_code: int):
-            """Check if the given session type code is valid.
-
-            Args:
-                flag_type (int): The session type code to be validated.
-                    Also supports type SessionType. Returns true in this case
-
-            Returns:
-                bool: true if valid
-            """
-            if isinstance(session_type_code, WeatherForecastSample.SessionType):
-                return True  # It's already an instance of SafetyCarStatus
-            else:
-                min_value = min(member.value for member in WeatherForecastSample.SessionType)
-                max_value = max(member.value for member in WeatherForecastSample.SessionType)
-                return min_value <= session_type_code <= max_value
-
     class WeatherCondition(Enum):
         """
         Enumeration representing different weather conditions.
@@ -576,9 +556,9 @@ class WeatherForecastSample:
                 str: String representation of the track temperature change.
             """
             return {
-                TrackTemperatureChange.UP: "Temperature Up",
-                TrackTemperatureChange.DOWN: "Temperature Down",
-                TrackTemperatureChange.NO_CHANGE: "No Temperature Change",
+                WeatherForecastSample.TrackTemperatureChange.UP: "Temperature Up",
+                WeatherForecastSample.TrackTemperatureChange.DOWN: "Temperature Down",
+                WeatherForecastSample.TrackTemperatureChange.NO_CHANGE: "No Temperature Change",
             }[self]
 
         @staticmethod
@@ -665,11 +645,13 @@ class WeatherForecastSample:
             self.m_airTemperatureChange = WeatherForecastSample.AirTemperatureChange(self.m_airTemperatureChange)
         if WeatherForecastSample.TrackTemperatureChange.isValid(self.m_trackTemperatureChange):
             self.m_trackTemperatureChange = WeatherForecastSample.TrackTemperatureChange(self.m_trackTemperatureChange)
+        if SessionType.isValid(self.m_sessionType):
+            self.m_sessionType = SessionType(self.m_sessionType)
 
     def __str__(self) -> str:
         return (
             f"WeatherForecastSample("
-            f"Session Type: {self.m_sessionType}, "
+            f"Session Type: {str(self.m_sessionType)}, "
             f"Time Offset: {self.m_timeOffset}, "
             f"Weather: {self.m_weather}, "
             f"Track Temperature: {self.m_trackTemperature}, "
@@ -836,52 +818,6 @@ class PacketSessionData:
                 max_value = max(member.value for member in PacketSessionData.TrackID)
                 return min_value <= track <= max_value
 
-    class SessionType(Enum):
-        """
-        Enum class representing F1 session types.
-        """
-        UNKNOWN = 0
-        PRACTICE_1 = 1
-        PRACTICE_2 = 2
-        PRACTICE_3 = 3
-        SHORT_PRACTICE = 4
-        QUALIFYING_1 = 5
-        QUALIFYING_2 = 6
-        QUALIFYING_3 = 7
-        SHORT_QUALIFYING = 8
-        ONE_SHOT_QUALIFYING = 9
-        RACE = 10
-        RACE_2 = 11
-        RACE_3 = 12
-        TIME_TRIAL = 13
-
-        @staticmethod
-        def is_valid(session_type: int):
-            """
-            Check if the given session type is valid.
-
-            Args:
-                session_type (int): The session type to be validated.
-
-            Returns:
-                bool: True if valid
-            """
-            if isinstance(session_type, PacketSessionData.SessionType):
-                return True  # It's already an instance of SessionType
-            else:
-                min_value = min(member.value for member in PacketSessionData.SessionType)
-                max_value = max(member.value for member in PacketSessionData.SessionType)
-                return min_value <= session_type <= max_value
-
-        def __str__(self):
-            """
-            Return a string representation of the SessionType with spaces.
-
-            Returns:
-                str: String representation of the SessionType.
-            """
-            return self.name.replace("_", " ")
-
     def __init__(self, header, data) -> None:
         """Construct a PacketSessionData object
 
@@ -917,8 +853,8 @@ class PacketSessionData:
         ) = unpacked_data
         if PacketSessionData.TrackID.isValid(self.m_trackId):
             self.m_trackId = PacketSessionData.TrackID(self.m_trackId)
-        if PacketSessionData.SessionType.is_valid(self.m_sessionType):
-            self.m_sessionType = PacketSessionData.SessionType(self.m_sessionType)
+        if SessionType.isValid(self.m_sessionType):
+            self.m_sessionType = SessionType(self.m_sessionType)
 
         # Next section 1, marshalZones
         section_1_size = marshal_zone_packet_len * self.m_maxMarshalZones
@@ -1001,7 +937,7 @@ class PacketSessionData:
             f"Air Temperature: {self.m_airTemperature}, "
             f"Total Laps: {self.m_totalLaps}, "
             f"Track Length: {self.m_trackLength}, "
-            f"Session Type: {self.m_sessionType}, "
+            f"Session Type: {str(self.m_sessionType)}, "
             f"Track ID: {self.m_trackId}, "
             f"Formula: {self.m_formula}, "
             f"Session Time Left: {self.m_sessionTimeLeft}, "

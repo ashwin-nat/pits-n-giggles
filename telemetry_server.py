@@ -41,7 +41,7 @@ from telemetry_handler import dumpPktCapToFile
 import logging
 
 class TelemetryServer:
-    def __init__(self, port, debug_mode=False):
+    def __init__(self, port, debug_mode=False, packet_capture_enabled=False):
         """
         Initialize TelemetryServer.
 
@@ -53,6 +53,7 @@ class TelemetryServer:
         self.m_app.config['PROPAGATE_EXCEPTIONS'] = True
         self.m_port = port
         self.m_debug_mode = debug_mode
+        self.m_packet_capture_enabled = packet_capture_enabled
 
         # Define your endpoint
         @self.m_app.route('/telemetry-info')
@@ -85,7 +86,7 @@ class TelemetryServer:
             Returns:
                 str: HTML page content.
             """
-            return render_template('index.html')
+            return render_template('index.html', packet_capture_enabled=self.m_packet_capture_enabled)
 
     def getValueOrDefaultValue(self, value, default_value='---'):
         """

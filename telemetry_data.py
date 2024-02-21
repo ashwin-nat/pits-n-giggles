@@ -150,6 +150,23 @@ def set_globals(circuit, track_temp, event_type, total_laps, safety_car_status, 
         _globals.m_pit_speed_limit = pit_speed_limit
 
 def getGlobals(num_weather_forecast_samples=4) -> Tuple[str, int, str, int, int, str, List[WeatherForecastSample]]:
+    """
+    Retrieves the global info regarding the current session
+
+    Parameters:
+    - num_weather_forecast_samples (int): Number of weather forecast samples to retrieve (default is 4).
+
+    Returns:
+        Tuple[str, int, str, int, int, str, List[WeatherForecastSample]]:
+            1: Circuit name (str)
+            2: Track temperature (int)
+            3: Event type (str)
+            4: Total number of laps in the race (int)
+            5: Current lap of the player (int or None if player index is None)
+            6: Safety car status (str)
+            7: List of weather forecast samples (List[WeatherForecastSample])
+            8: Pit speed limit (int)
+    """
     with _globals_lock:
         with _driver_data_lock: # we need this for current lap
             player_index = _driver_data.m_player_index
@@ -165,7 +182,7 @@ def getGlobals(num_weather_forecast_samples=4) -> Tuple[str, int, str, int, int,
 def getEventInfoStr() -> str:
     with _globals_lock:
         if _globals.m_event_type and _globals.m_circuit:
-            return _globals.m_event_type + "_" + _globals.m_circuit
+            return (_globals.m_event_type + "_" + _globals.m_circuit).replace(' ', '_')
         else:
             return None
 
@@ -192,11 +209,41 @@ def set_driver_data(index: int, driver_data: DataPerDriver, is_fastest=False):
         else:
             return False
 
+def getOvertakeString(overtaking_car_index: int, being_overtaken_index: int) -> str:
+    """Returns a comma separating string containing overtake information
+
+    Args:
+        overtaking_car_index (int): The index of the overtaking car
+        being_overtaken_index (int): The index of the car being overtaken
+
+    Returns:
+        str: comma separated string containing 4 values
+            - Current Lap number of overtaking car
+            - Name of driver of overtaking car
+            - Current Lap number of car being overtaken
+            - Name of driver of car being overtaken
+    """
+
+    with _driver_data_lock:
+        overtaking_car_obj      = _driver_data.m_driver_data.get(overtaking_car_index, None)
+        being_overtaken_car_obj = _driver_data.m_driver_data.get(being_overtaken_index, None)
+        if (overtaking_car_obj is None) or (being_overtaken_car_obj is None):
+            return
+
+        # Format is Lap_Overtaking_car, Name_overtaking_car, Lap_overtaken_car, Name_overtaken_car
+        return (
+            str(overtaking_car_obj.m_current_lap) + ' ,' +
+            overtaking_car_obj.m_name + ',' +
+            str(being_overtaken_car_obj.m_current_lap) + ',' +
+            being_overtaken_car_obj.m_name
+        )
+
 def set_final_classification(packet: PacketFinalClassificationData) -> None:
     with _driver_data_lock:
         _driver_data.m_race_completed = True
         for index, data in enumerate(packet.m_classificationData):
-            _driver_data.m_driver_data[index].m_position = data.m_position
+            if index in _driver_data.m_driver_data:
+                _driver_data.m_driver_data[index].m_position = data.m_position
 
 def millisecondsToMinutesSeconds(milliseconds):
     if not isinstance(milliseconds, int):

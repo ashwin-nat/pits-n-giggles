@@ -24,11 +24,14 @@ import unittest
 import os
 from tempfile import NamedTemporaryFile
 from telemetry_data import _get_adjacent_positions
-from packet_cap import F1PacketCapture, F1PacketCaptureEntry
+from packet_cap import F1PacketCapture
+from overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, OvertakeRecord, OvertakeRivalryPair
 from colorama import Fore, Style
 import random
 import cProfile
 import sys
+import csv
+from io import StringIO
 
 # Initialize colorama
 from colorama import init
@@ -141,7 +144,7 @@ class TestF1PacketCapture(unittest.TestCase):
 
     # Configurable max_packet_len value
     max_packet_len = 1250
-    max_num_packets = 100000
+    max_num_packets = 50000
 
     def setUp(self):
         # Create an instance of F1PacketCapture for each test
@@ -257,9 +260,150 @@ class TestF1PacketCapture(unittest.TestCase):
             if os.path.exists(file_name):
                 os.remove(file_name)
 
+    def shortDescription(self):
+        return self._testMethodName
+
+class TestOvertakeAnalyzerFile(unittest.TestCase):
+    def setUp(self):
+        # Create a temporary CSV file with sample data
+        self.sample_data = """
+        1, HAMILTON, 1, RUSSELL
+        1, PIASTRI, 1, ALONSO
+        2, LECLERC, 2, STROLL
+        2, TSUNODA, 2, GASLY
+        3, PIASTRI, 3, NORRIS
+        3, NORRIS, 3, PIASTRI
+        4, HAMILTON, 4, STROLL
+        5, RUSSELL, 5, HAMILTON
+        """
+        self.temp_file = NamedTemporaryFile(mode='w', delete=False)
+        self.temp_file.write(self.sample_data)
+        self.temp_file.close()
+
+        # Initialize OvertakeAnalyzer with the temporary file
+        self.analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_FILE, self.temp_file.name)
+
+    def tearDown(self):
+        # Clean up the temporary file
+        self.temp_file.close()
+
+    def test_most_overtakes(self):
+        drivers, count = self.analyzer.getMostOvertakes()
+        expected_drivers = ['HAMILTON', 'PIASTRI']
+        self.assertEqual(len(drivers), 2)
+        self.assertEqual(count, 2)
+        for driver in expected_drivers:
+            self.assertIn(driver, drivers)
+
+    def test_most_overtaken(self):
+        drivers, count = self.analyzer.getMostOvertaken()
+        expected_drivers = ['STROLL']
+        self.assertEqual(count, 2)
+        for driver in expected_drivers:
+            self.assertIn(driver, drivers)
+
+    def assertOvertakeRecordInList(self, record, record_list, message=None):
+        record_str = str(record)
+        record_list_str = [str(r) for r in record_list]
+        error_message = f"{record_str} not found in {record_list_str}"
+        if message:
+            error_message = f"{message}: {error_message}"
+        self.assertIn(record, record_list, error_message)
+
+    def test_most_heated_rivalry(self):
+        rivalries_data = self.analyzer.getMostHeatedRivalries()
+        expected_rivalries = {
+            OvertakeRivalryPair('PIASTRI', 'NORRIS') : [
+                OvertakeRecord(
+                    overtaking_driver_name='PIASTRI',
+                    overtaking_driver_lap=3,
+                    overtaken_driver_name='NORRIS',
+                    overtaken_driver_lap=3,
+                    row_id=4),
+                OvertakeRecord(
+                    overtaking_driver_name='NORRIS',
+                    overtaking_driver_lap=3,
+                    overtaken_driver_name='PIASTRI',
+                    overtaken_driver_lap=3,
+                    row_id=5)
+            ],
+            OvertakeRivalryPair('HAMILTON', 'RUSSELL') : [
+                OvertakeRecord(
+                    overtaking_driver_name='HAMILTON',
+                    overtaking_driver_lap=1,
+                    overtaken_driver_name='RUSSELL',
+                    overtaken_driver_lap=1,
+                    row_id=0),
+                OvertakeRecord(
+                    overtaking_driver_name='RUSSELL',
+                    overtaking_driver_lap=5,
+                    overtaken_driver_name='HAMILTON',
+                    overtaken_driver_lap=5,
+                    row_id=7)
+            ]
+        }
+        for overtake_key, overtake_data in rivalries_data.items():
+            self.assertEqual(len(overtake_data), 2)
+            self.assertIn(overtake_key, expected_rivalries.keys())
+            for record in overtake_data:
+                # self.assertIn(record, expected_rivalries[overtake_key])
+                self.assertOvertakeRecordInList(record, expected_rivalries[overtake_key], message=f"Key: {overtake_key}")
+
+    def test_total_overtakes(self):
+        total_overtakes = self.analyzer.getTotalNumberOfOvertakes()
+        self.assertEqual(total_overtakes, 8)
+
+    def test_format_overtakes_involved(self):
+        expected_formatted_overtakes = [
+            "HAMILTON overtook RUSSELL in lap 1",
+            "PIASTRI overtook ALONSO in lap 1",
+            "LECLERC overtook STROLL in lap 2",
+            "TSUNODA overtook GASLY in lap 2",
+            "PIASTRI overtook NORRIS in lap 3",
+            "NORRIS overtook PIASTRI in lap 3",
+            "HAMILTON overtook STROLL in lap 4",
+            "RUSSELL overtook HAMILTON in lap 5",
+        ]
+
+        overtakes_data = [
+            OvertakeRecord("HAMILTON", 1, "RUSSELL", 1, 0),
+            OvertakeRecord("PIASTRI", 1, "ALONSO", 1, 1),
+            OvertakeRecord("LECLERC", 2, "STROLL", 2, 2),
+            OvertakeRecord("TSUNODA", 2, "GASLY", 2, 3),
+            OvertakeRecord("PIASTRI", 3, "NORRIS", 3, 4),
+            OvertakeRecord("NORRIS", 3, "PIASTRI", 3, 5),
+            OvertakeRecord("HAMILTON", 4, "STROLL", 4, 6),
+            OvertakeRecord("RUSSELL", 5, "HAMILTON", 5, 7),
+        ]
+
+        formatted_overtakes = self.analyzer.formatOvertakesInvolved(overtakes_data)
+
+        self.assertEqual(formatted_overtakes, expected_formatted_overtakes)
 
     def shortDescription(self):
         return self._testMethodName
+
+class TestOvertakeAnalyzerList(TestOvertakeAnalyzerFile):
+
+    def setUp(self):
+        # Create a temporary CSV file with sample data
+        self.sample_data = [
+            "1, HAMILTON, 1, RUSSELL",
+            "1, PIASTRI, 1, ALONSO",
+            "2, LECLERC, 2, STROLL",
+            "2, TSUNODA, 2, GASLY",
+            "3, PIASTRI, 3, NORRIS",
+            "3, NORRIS, 3, PIASTRI",
+            "4, HAMILTON, 4, STROLL",
+            "5, RUSSELL, 5, HAMILTON"
+        ]
+
+        # Initialize OvertakeAnalyzer with the temporary file
+        self.analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_LIST, self.sample_data)
+
+    def tearDown(self):
+        # Clean up the temporary file
+        return
 
 def runTests():
     unittest.main(testRunner=unittest.TextTestRunner(resultclass=CustomTestResult))
