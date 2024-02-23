@@ -185,6 +185,18 @@ class OvertakeRivalryKey:
         """
         return "(" + self.m_driver_1_name + ", " + self.m_driver_2_name + ")"
 
+    def __contains__(self, player_name: str) -> bool:
+        """
+        Check if the given player name is present in the OvertakeRivalryKey.
+
+        Args:
+            player_name (str): The name of the player to check.
+
+        Returns:
+            bool: True if the player name is present, False otherwise.
+        """
+        return player_name in (self.m_driver_1_name, self.m_driver_2_name)
+
     def getDrivers(self) -> tuple[str, str]:
         """
         Get a tuple of the driver names in this object.
@@ -398,7 +410,7 @@ class OvertakeAnalyzer:
         return rivalry_dict
 
     def toJSON(self,
-            player_name: Optional[str] = None,
+            driver_name: Optional[str] = None,
             is_case_sensitive: Optional[bool] = False) -> Dict[str, dict]:
         """
         Generate a JSON dictionary containing information about the most overtakes,
@@ -439,13 +451,13 @@ class OvertakeAnalyzer:
             ],
         }
 
-        if player_name is not None:
-            final_dict["player-name"] = player_name
-
-            if player_name not in most_heated_rivalries:
+        if driver_name is not None:
+            final_dict["player-name"] = driver_name
+            final_dict["is-player-in-most-heated-rivalries"] = any(driver_name in key for key in most_heated_rivalries)
+            if not final_dict["is-player-in-most-heated-rivalries"]:
                 # Get the dict including the player name
                 player_most_heated_rivalries = self.getMostHeatedRivalries(
-                    driver_name=player_name,
+                    driver_name=driver_name,
                     is_case_sensitive=is_case_sensitive)
                 final_dict["player-most-heated-rivalries"] = [
                     {
@@ -498,34 +510,62 @@ class OvertakeAnalyzer:
             formatted_overtakes.append(formatted_overtake)
         return formatted_overtakes
 
-    def ___dumpRivalryRecords(self):
+    def getFormattedString(self,
+            driver_name: Optional[str] = None,
+            is_case_sensitive: Optional[bool] = True) -> str:
+        """Returns a formatted string containing the overtakes info. Contains the following
+                - Most overtakes
+                - Most overtaken
+                - Most heated rivalries
+                - Specified driver's most heated rivalries
 
-        for rivalry_key, rivalry_data in self.m_rivalry_records.items():
-            print(str(rivalry_key))
-            for record in rivalry_data:
-                print('    ' + str(record))
+        Args:
+            driver_name (str): Name of the specific driver whose overtake data is required. Defaults to None.
+            is_case_sensitive (bool): Whether the name search must be case sensitive. Defaults to True.
 
-def printOvertakeData(
-    overtake_analyzer: OvertakeAnalyzer,
-    player_name: Optional[str] = None,
-    is_case_sensitive: Optional[bool] = True) -> None:
-    """
-    Print analysis results of overtaking data.
-
-    Args:
-        overtake_analyzer (OvertakeAnalyzer): The OvertakeAnalyzer instance.
-        player_name (str, optional): The name of the player to focus on.
-        is_case_sensitive (bool, optional): Whether the player name search must be case sensitive
-    """
-
-    def _printMostHeatedRivalry(
-        rivalry_key: OvertakeRivalryKey,
-        rivalry_record: List[OvertakeRecord],
-        player_name: Optional[str] = None,
-        is_case_sensitive: Optional[bool] = True
-    ) -> bool:
+        Returns:
+            str: Formatted string representing the overtakes info.
         """
-        Print details of the most heated rivalry.
+
+        final_str = ''
+        total_overtakes = self.getTotalNumberOfOvertakes()
+        most_overtakes_drivers, overtakes_count = self.getMostOvertakes()
+        most_overtaken_drivers, overtaken_count = self.getMostOvertaken()
+
+        final_str += ("=== Overtake Analysis ===\n" )
+        final_str += (f"There were {total_overtakes} overtakes in this race!\n")
+        final_str += (f"Driver(s) with the most overtakes: {most_overtakes_drivers} (Count: {overtakes_count})\n")
+        final_str += (f"Driver(s) who has been overtaken the most: {most_overtaken_drivers} (Count: {overtaken_count})\n")
+
+        final_str += ("Here are the most heated rivalries from the race\n")
+        most_heated_rivalries = self.getMostHeatedRivalries()
+        player_found = False
+        for rivalry_key, rivalry_record in most_heated_rivalries.items():
+            status, riv_str = self._getMostHeatedRivalryStr(rivalry_key, rivalry_record, driver_name, is_case_sensitive)
+            final_str += riv_str
+            player_found |= status
+
+        if driver_name and not player_found:
+            most_heated_rivalries_involving_player = self.getMostHeatedRivalries(driver_name, is_case_sensitive)
+            final_str += ("These were your most heated rivalries\n")
+            if not most_heated_rivalries_involving_player:
+                final_str += ("Invalid player name. Not found in input data set\n")
+            else:
+                for rivalry_key, rivalry_record in most_heated_rivalries_involving_player.items():
+                    _, riv_str = self._getMostHeatedRivalryStr(rivalry_key, rivalry_record, \
+                        driver_name, is_case_sensitive)
+                    final_str += riv_str
+
+        return final_str
+
+    def _getMostHeatedRivalryStr(self,
+            rivalry_key: OvertakeRivalryKey,
+            rivalry_record: List[OvertakeRecord],
+            player_name: Optional[str] = None,
+            is_case_sensitive: Optional[bool] = True) -> Tuple[bool, str]:
+
+        """
+        Returns details of the most heated rivalry in a formatted string.
 
         Args:
             rivalry_key (OvertakeRivalryPair): The rivalry key.
@@ -535,14 +575,16 @@ def printOvertakeData(
 
         Returns:
             bool: True if the player is involved in the rivalry, False otherwise.
+            str: The formatted string
         """
 
-        print(f"    Most heated rivalry: {rivalry_key}, Count: {len(rivalry_record)}")
-        print("    Overtakes involved:")
-        formatted_overtakes = overtake_analyzer.formatOvertakesInvolved(rivalry_record)
+        final_str = ''
+        final_str += (f"    Most heated rivalry: {rivalry_key}, Count: {len(rivalry_record)}\n")
+        final_str += ("    Overtakes involved:\n")
+        formatted_overtakes = self.formatOvertakesInvolved(rivalry_record)
         for overtake in formatted_overtakes:
-            print('        ' + overtake)
-        print("\n")
+            final_str += ('        ' + overtake + '\n')
+        final_str += ("\n")
 
         # Check if the player is involved in the rivalry
         if player_name:
@@ -550,33 +592,16 @@ def printOvertakeData(
                 player_involved = player_name in rivalry_key.getDrivers()
             else:
                 player_involved = player_name.lower() in [driver.lower() for driver in rivalry_key.getDrivers()]
-            return player_involved
+            return player_involved, final_str
 
-        return False
+        return False, final_str
 
-    total_overtakes = overtake_analyzer.getTotalNumberOfOvertakes()
-    most_overtakes_drivers, overtakes_count = overtake_analyzer.getMostOvertakes()
-    most_overtaken_drivers, overtaken_count = overtake_analyzer.getMostOvertaken()
+    def ___dumpRivalryRecords(self):
 
-    print("=== Overtake Analysis ===")
-    print(f"There were {total_overtakes} overtakes in this race!")
-    print(f"Driver(s) with the most overtakes: {most_overtakes_drivers} (Count: {overtakes_count})")
-    print(f"Driver(s) who has been overtaken the most: {most_overtaken_drivers} (Count: {overtaken_count})")
-
-    print("Here are the most heated rivalries from the race")
-    most_heated_rivalries = overtake_analyzer.getMostHeatedRivalries()
-    player_found = False
-    for rivalry_key, rivalry_record in most_heated_rivalries.items():
-        player_found |= _printMostHeatedRivalry(rivalry_key, rivalry_record, player_name, is_case_sensitive)
-
-    if player_name and not player_found:
-        most_heated_rivalries_involving_player = overtake_analyzer.getMostHeatedRivalries(player_name, is_case_sensitive)
-        print("These were your most heated rivalries")
-        if not most_heated_rivalries_involving_player:
-            print("Invalid player name. Not found in input data set")
-        else:
-            for rivalry_key, rivalry_record in most_heated_rivalries_involving_player.items():
-                _printMostHeatedRivalry(rivalry_key, rivalry_record, player_name)
+        for rivalry_key, rivalry_data in self.m_rivalry_records.items():
+            print(str(rivalry_key))
+            for record in rivalry_data:
+                print('    ' + str(record))
 
 if __name__ == "__main__":
     import sys
@@ -586,6 +611,8 @@ if __name__ == "__main__":
         exit(1)
 
     file_name = sys.argv[1]
-    player_name = sys.argv[2] if len(sys.argv) == 3 else None
-    overtake_analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_FILE, file_name)
-    printOvertakeData(overtake_analyzer, player_name, is_case_sensitive=True)
+    driver_name = sys.argv[2] if len(sys.argv) == 3 else None
+    self = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_FILE, file_name)
+    # print(self.getFormattedString(driver_name='HAMILTON'))
+    import json
+    print(json.dumps(self.toJSON(driver_name='SAINZ'), indent=4))

@@ -25,7 +25,7 @@ SOFTWARE.
 from telemetry_manager import F12023TelemetryManager
 from f1_types import *
 from packet_cap import F1PacketCapture
-from overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, printOvertakeData as analyzerPrintOvertakeData
+from overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode
 import telemetry_data as TelData
 from threading import Lock
 from enum import Enum
@@ -169,13 +169,13 @@ def getOvertakeJSON() -> Tuple[GetOvertakesStatus, Dict]:
                 return GetOvertakesStatus.RACE_ONGOING, OvertakeAnalyzer(
                     input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST,
                     input=g_overtakes_history).toJSON(
-                        player_name=player_name,
+                        driver_name=player_name,
                         is_case_sensitive=True)
         else:
             return GetOvertakesStatus.RACE_COMPLETED, OvertakeAnalyzer(
                 input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST,
                 input=g_overtakes_history).toJSON(
-                    player_name=player_name,
+                    driver_name=player_name,
                     is_case_sensitive=True)
 
 
@@ -198,10 +198,7 @@ def printOvertakeData(file_name: str=None):
             overtake_analyzer = OvertakeAnalyzer(
                 input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST,
                 input=g_overtakes_history)
-    analyzerPrintOvertakeData(
-        overtake_analyzer=overtake_analyzer,
-        player_name=player_name,
-        is_case_sensitive=True)
+    print(overtake_analyzer.getFormattedString(driver_name=player_name, is_case_sensitive=True))
 
 class F12023TelemetryHandler:
     """
