@@ -371,7 +371,10 @@ class F12023TelemetryHandler:
         global g_overtakes_table_lock
         global g_overtakes_history
         global g_num_active_cars
-        if packet.m_eventStringCode == EventPacketType.FASTEST_LAP:
+        if packet.m_eventStringCode == EventPacketType.BUTTON_STATUS:
+            # explicitly handle this bullshit because this just adds unnecessary load
+            return
+        elif packet.m_eventStringCode == EventPacketType.FASTEST_LAP:
             data = TelData.DataPerDriver()
             data.m_best_lap = F12023TelemetryHandler.floatSecondsToMinutesSecondsMilliseconds(packet.mEventDetails.lapTime)
             TelData.set_driver_data(packet.mEventDetails.vehicleIdx, data, is_fastest=True)
