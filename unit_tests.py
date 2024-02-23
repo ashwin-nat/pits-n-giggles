@@ -25,7 +25,7 @@ import os
 from tempfile import NamedTemporaryFile
 from telemetry_data import _get_adjacent_positions
 from packet_cap import F1PacketCapture
-from overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, OvertakeRecord, OvertakeRivalryPair
+from overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, OvertakeRecord, OvertakeRivalryKey
 from colorama import Fore, Style
 import random
 import cProfile
@@ -40,7 +40,7 @@ init(autoreset=True)
 class CustomTestResult(unittest.TextTestResult):
     def startTest(self, test):
         super().startTest(test)
-        test_class_name = test.__class__.__name__
+        test_class_name = test.getFullTestName()
         test_description = test.shortDescription()
         print(f"{Fore.MAGENTA}{Style.BRIGHT}Running test: {Fore.CYAN}{Style.BRIGHT}{test_class_name}.{Fore.YELLOW}{Style.BRIGHT}{test_description}", end="")
 
@@ -56,7 +56,27 @@ class CustomTestResult(unittest.TextTestResult):
         super().addError(test, err)
         print(f" {Fore.RED}[ERROR]{Style.RESET_ALL}")
 
-class TestAdjacentPositions(unittest.TestCase):
+class F1TelemetryUnitTestsBase(unittest.TestCase):
+
+    def shortDescription(self):
+        return self._testMethodName
+
+    def getFullTestName(self):
+        test_class = self.__class__
+        test_hierarchy = [test_class.__name__]
+
+        while issubclass(test_class, unittest.TestCase):
+            parent_class = test_class.__bases__[0]
+            if issubclass(parent_class, unittest.TestCase):
+                if parent_class.__name__ == 'F1TelemetryUnitTestsBase':
+                    break
+                test_hierarchy.insert(0, parent_class.__name__)
+            test_class = parent_class
+
+        return '.'.join(test_hierarchy)
+
+
+class TestAdjacentPositions(F1TelemetryUnitTestsBase):
 
     def test_gp_p1(self):
         # GP - Check for pole position
@@ -136,11 +156,7 @@ class TestAdjacentPositions(unittest.TestCase):
         expected_result = [1,2,3]
         self.assertEqual(result, expected_result)
 
-    def shortDescription(self):
-        # Override the shortDescription method to return the test method name
-        return self._testMethodName
-
-class TestF1PacketCapture(unittest.TestCase):
+class TestF1PacketCapture(F1TelemetryUnitTestsBase):
 
     # Configurable max_packet_len value
     max_packet_len = 1250
@@ -260,10 +276,10 @@ class TestF1PacketCapture(unittest.TestCase):
             if os.path.exists(file_name):
                 os.remove(file_name)
 
-    def shortDescription(self):
-        return self._testMethodName
+class OvertakeAnalyzerUT(F1TelemetryUnitTestsBase):
+    pass
 
-class TestOvertakeAnalyzerFile(unittest.TestCase):
+class TestOvertakeAnalyzerFile(OvertakeAnalyzerUT):
     def setUp(self):
         # Create a temporary CSV file with sample data
         self.sample_data = """
@@ -313,7 +329,7 @@ class TestOvertakeAnalyzerFile(unittest.TestCase):
     def test_most_heated_rivalry(self):
         rivalries_data = self.analyzer.getMostHeatedRivalries()
         expected_rivalries = {
-            OvertakeRivalryPair('PIASTRI', 'NORRIS') : [
+            OvertakeRivalryKey('PIASTRI', 'NORRIS') : [
                 OvertakeRecord(
                     overtaking_driver_name='PIASTRI',
                     overtaking_driver_lap=3,
@@ -327,7 +343,7 @@ class TestOvertakeAnalyzerFile(unittest.TestCase):
                     overtaken_driver_lap=3,
                     row_id=5)
             ],
-            OvertakeRivalryPair('HAMILTON', 'RUSSELL') : [
+            OvertakeRivalryKey('HAMILTON', 'RUSSELL') : [
                 OvertakeRecord(
                     overtaking_driver_name='HAMILTON',
                     overtaking_driver_lap=1,
@@ -377,11 +393,7 @@ class TestOvertakeAnalyzerFile(unittest.TestCase):
         ]
 
         formatted_overtakes = self.analyzer.formatOvertakesInvolved(overtakes_data)
-
         self.assertEqual(formatted_overtakes, expected_formatted_overtakes)
-
-    def shortDescription(self):
-        return self._testMethodName
 
 class TestOvertakeAnalyzerList(TestOvertakeAnalyzerFile):
 
@@ -404,6 +416,94 @@ class TestOvertakeAnalyzerList(TestOvertakeAnalyzerFile):
     def tearDown(self):
         # Clean up the temporary file
         return
+
+class TestOvertakeAnalyzerEmptyInput(OvertakeAnalyzerUT):
+    def test_empty_file_input(self):
+        # Create an empty temporary CSV file
+        temp_file = NamedTemporaryFile(mode='w', delete=False)
+        temp_file.close()
+
+        # Initialize OvertakeAnalyzer with the empty file
+        analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_FILE, temp_file.name)
+
+        # Test most overtakes
+        drivers, count = analyzer.getMostOvertakes()
+        self.assertEqual(drivers, [])
+        self.assertEqual(count, 0)
+
+        # Test most overtaken
+        drivers, count = analyzer.getMostOvertaken()
+        self.assertEqual(drivers, [])
+        self.assertEqual(count, 0)
+
+        # Test most heated rivalry
+        rivalries_data = analyzer.getMostHeatedRivalries()
+        self.assertEqual(rivalries_data, None)
+
+        # Test total overtakes
+        total_overtakes = analyzer.getTotalNumberOfOvertakes()
+        self.assertEqual(total_overtakes, 0)
+
+        # Test formatted overtakes
+        overtakes_data = []
+        formatted_overtakes = analyzer.formatOvertakesInvolved(overtakes_data)
+        self.assertEqual(formatted_overtakes, [])
+
+    def test_empty_list_input(self):
+        # Initialize OvertakeAnalyzer with an empty list
+        analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_LIST, [])
+
+        # Test most overtakes
+        drivers, count = analyzer.getMostOvertakes()
+        self.assertEqual(drivers, [])
+        self.assertEqual(count, 0)
+
+        # Test most overtaken
+        drivers, count = analyzer.getMostOvertaken()
+        self.assertEqual(drivers, [])
+        self.assertEqual(count, 0)
+
+        # Test most heated rivalry
+        rivalries_data = analyzer.getMostHeatedRivalries()
+        self.assertEqual(rivalries_data, None)
+
+        # Test total overtakes
+        total_overtakes = analyzer.getTotalNumberOfOvertakes()
+        self.assertEqual(total_overtakes, 0)
+
+        # Test formatted overtakes
+        overtakes_data = []
+        formatted_overtakes = analyzer.formatOvertakesInvolved(overtakes_data)
+        self.assertEqual(formatted_overtakes, [])
+
+class TestOvertakeAnalyzerInvalidData(OvertakeAnalyzerUT):
+    def test_invalid_data_handling_list(self):
+        # Invalid CSV data with missing values
+        invalid_data = [
+            "1, HAMILTON, 1, RUSSELL",
+            "2, LECLERC, 2",  # Invalid: Missing values
+            "3, PIASTRI, 3, NORRIS",
+        ]
+
+        # Initializing OvertakeAnalyzer with invalid CSV data should raise a ValueError
+        with self.assertRaises(ValueError):
+            analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_LIST, invalid_data)
+
+    def test_invalid_data_handling_file(self):
+        # Create a temporary CSV file with invalid data
+        invalid_data = "1, HAMILTON, 1, RUSSELL\n2, LECLERC, 2\n3, PIASTRI, 3, NORRIS"
+
+        # Write the invalid data to a temporary file
+        temp_file = NamedTemporaryFile(mode='w', delete=False)
+        temp_file.write(invalid_data)
+        temp_file.close()
+
+        # Initializing OvertakeAnalyzer with invalid CSV file should raise a ValueError
+        with self.assertRaises(ValueError):
+            analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_FILE, temp_file.name)
+
+        # Clean up the temporary file
+        os.remove(temp_file.name)
 
 def runTests():
     unittest.main(testRunner=unittest.TextTestRunner(resultclass=CustomTestResult))

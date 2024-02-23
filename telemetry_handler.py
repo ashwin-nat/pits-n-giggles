@@ -29,7 +29,7 @@ from overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, printOvert
 import telemetry_data as TelData
 from threading import Lock
 from enum import Enum
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict
 from datetime import datetime
 
 class PacketCaptureMode(Enum):
@@ -43,6 +43,7 @@ g_packet_capture_table_lock = Lock()
 g_pkt_cap_mode = PacketCaptureMode.DISABLED
 g_num_active_cars = 0
 g_overtakes_history = []
+g_overtakes_table_lock = Lock()
 g_autosave_overtakes = False
 
 class PktSaveStatus(Enum):
@@ -56,9 +57,22 @@ class PktSaveStatus(Enum):
     def __str__(self):
         return self.name
 
-def initOvertakesAutosave():
+class GetOvertakesStatus(Enum):
+
+    RACE_COMPLETED = 0
+    RACE_ONGOING = 1
+    NO_DATA = 2
+
+    def __str__(self):
+        return self.name
+
+def initOvertakesAutosave(autosave_enabled: bool = False):
     global g_autosave_overtakes
-    g_autosave_overtakes = True
+    global g_overtakes_history
+    global g_overtakes_table_lock
+    g_autosave_overtakes = autosave_enabled
+    g_overtakes_history = []
+    g_overtakes_table_lock = Lock()
 
 def initPktCap(packet_capture_mode: PacketCaptureMode):
     """
@@ -137,6 +151,34 @@ def dumpPktCapToFile(file_name: Optional[str] = None, clear_db: bool = False, re
             # Return the appropriate status
             return PktSaveStatus.OS_ERROR, None, 0, 0
 
+def getOvertakeJSON() -> Tuple[GetOvertakesStatus, Dict]:
+    """Get the JSON value containing key overtake information
+
+    Returns:
+        Tuple[GetOvertakesStatus, Dict]: Status, JSON value (may be empty)
+    """
+    _, _, _, _, _, _, _, _, final_classification_received = TelData.getGlobals()
+    global g_overtakes_history
+    global g_overtakes_table_lock
+    with g_overtakes_table_lock:
+        player_name = TelData.getPlayerName()
+        if not final_classification_received:
+            if len(g_overtakes_history) == 0:
+                return GetOvertakesStatus.NO_DATA, {}
+            else:
+                return GetOvertakesStatus.RACE_ONGOING, OvertakeAnalyzer(
+                    input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST,
+                    input=g_overtakes_history).toJSON(
+                        player_name=player_name,
+                        is_case_sensitive=True)
+        else:
+            return GetOvertakesStatus.RACE_COMPLETED, OvertakeAnalyzer(
+                input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST,
+                input=g_overtakes_history).toJSON(
+                    player_name=player_name,
+                    is_case_sensitive=True)
+
+
 def printOvertakeData(file_name: str=None):
     """Print the overtake data
 
@@ -144,12 +186,22 @@ def printOvertakeData(file_name: str=None):
         file_name (str): Name of the csv file with the overtake data. If None, directly gets the data from the list
     """
 
+    player_name = TelData.getPlayerName()
     if file_name:
-        overtake_analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_FILE, file_name)
+        overtake_analyzer = OvertakeAnalyzer(
+            input_mode=OvertakeAnalyzerMode.INPUT_MODE_FILE,
+            input=file_name)
     else:
         global g_overtakes_history
-        overtake_analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_LIST, g_overtakes_history)
-    analyzerPrintOvertakeData(overtake_analyzer)
+        global g_overtakes_table_lock
+        with g_overtakes_table_lock:
+            overtake_analyzer = OvertakeAnalyzer(
+                input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST,
+                input=g_overtakes_history)
+    analyzerPrintOvertakeData(
+        overtake_analyzer=overtake_analyzer,
+        player_name=player_name,
+        is_case_sensitive=True)
 
 class F12023TelemetryHandler:
     """
@@ -316,25 +368,30 @@ class F12023TelemetryHandler:
         Args:
             packet (PacketEventData): The parsed object containing the event data packet's contents
         """
+        global g_overtakes_table_lock
+        global g_overtakes_history
+        global g_num_active_cars
         if packet.m_eventStringCode == EventPacketType.FASTEST_LAP:
             data = TelData.DataPerDriver()
             data.m_best_lap = F12023TelemetryHandler.floatSecondsToMinutesSecondsMilliseconds(packet.mEventDetails.lapTime)
             TelData.set_driver_data(packet.mEventDetails.vehicleIdx, data, is_fastest=True)
         elif packet.m_eventStringCode == EventPacketType.SESSION_STARTED:
-            global g_num_active_cars
             g_num_active_cars = 0
             TelData.clear_all_driver_data()
+            # Clear the list regardless of event type
+            with g_overtakes_table_lock:
+                g_overtakes_history.clear()
             print("Received SESSION_STARTED")
         elif packet.m_eventStringCode == EventPacketType.RETIREMENT:
             data = TelData.DataPerDriver()
             data.m_dnf_status_code = True
             TelData.set_driver_data(packet.mEventDetails.vehicleIdx, data)
         elif packet.m_eventStringCode == EventPacketType.OVERTAKE:
-            global g_overtakes_history
             overtake_csv_str = TelData.getOvertakeString(packet.mEventDetails.overtakingVehicleIdx,
                                                         packet.mEventDetails.beingOvertakenVehicleIdx)
-            g_overtakes_history.append(overtake_csv_str)
-
+            if overtake_csv_str:
+                with g_overtakes_table_lock:
+                    g_overtakes_history.append(overtake_csv_str)
         return
 
     @staticmethod
@@ -388,7 +445,8 @@ class F12023TelemetryHandler:
         TelData.set_final_classification(packet)
 
         # Perform the auto save stuff only for races
-        _, _, event_type_str, _, _, _, _, _ = TelData.getGlobals()
+        _, _, event_type_str, _, _, _, _, _, _ = TelData.getGlobals()
+        global g_overtakes_table_lock
         if event_type_str in [str(SessionType.RACE), str(SessionType.RACE_2), str(SessionType.RACE_3)]:
 
             # Capture the packets if required
@@ -403,6 +461,7 @@ class F12023TelemetryHandler:
             event_str = TelData.getEventInfoStr()
             if event_str:
                 global g_autosave_overtakes
+                file_name=None
                 if g_autosave_overtakes:
                     file_name = 'overtakes_history_' + event_str +  datetime.now().strftime("%Y_%m_%d_%H_%M_%S") + '.csv'
                     with open(file_name, 'w', encoding='utf-8') as file:
@@ -412,12 +471,7 @@ class F12023TelemetryHandler:
                         print("Recorded overtakes to file " + file_name + ". Number of overtakes was " +
                             str(len(g_overtakes_history)))
                     # Analyze the overtake data and dump the output
-                    printOvertakeData(file_name)
-                else:
-                    printOvertakeData()
-
-        # Clear the list regardless of event type
-        g_overtakes_history.clear()
+                printOvertakeData(file_name)
         return
 
     @staticmethod

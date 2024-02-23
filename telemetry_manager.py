@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 from f1_types import *
-from udp_listener import UDPListener
+from socket_receiver import UDPListener, TCPListener
 from typing import Callable
 
 # ------------------------- CLASSES --------------------------------------------
@@ -57,10 +57,16 @@ class F12023TelemetryManager:
 
         Args:
             port_number (int): The port number to listen in on
-            replay_server (bool): If True, the TCP based packet replay server will also be created
+            replay_server (bool): If True, the TCP based packet replay server will be created
+                NOTE: This is not suited for game. It is meant to be used in conjunction with telemetry_replayer.py
         """
 
-        self.m_udp_listener = UDPListener(port_number, "0.0.0.0")
+        self.m_replay_server = replay_server
+        self.m_port_number = port_number
+        if self.m_replay_server:
+            self.m_server = TCPListener(port_number, "localhost")
+        else:
+            self.m_server = UDPListener(port_number, "0.0.0.0", buffer_size=4096)
         self.m_callbacks = {
             F1PacketType.MOTION : None,
             F1PacketType.SESSION : None,
@@ -78,8 +84,6 @@ class F12023TelemetryManager:
             F1PacketType.MOTION_EX : None,
         }
         self.m_raw_packet_callback = None
-        if replay_server:
-            pass
 
     def registerRawPacketCallback(self, callback: Callable):
         """Register a callback for every UDP message on this socket. This is useful for debugging
@@ -133,13 +137,16 @@ class F12023TelemetryManager:
         """Run the telemetry client
         """
 
-        counter = 0
+        if self.m_replay_server:
+            print("REPLAY SERVER MODE. PORT = " + str(self.m_port_number))
+
+        # counter = 0
         # Run the client indefinitely
         while True:
 
-            # Get next UDP message
-            raw_packet = self.m_udp_listener.getNextMessage()
-            counter += 1
+            # Get next UDP message (TCP in the case of replay server)
+            raw_packet = self.m_server.getNextMessage()
+            # counter += 1
             if len(raw_packet) < F1_23_PACKET_HEADER_LEN:
                 # skip incomplete packet
                 continue
@@ -163,4 +170,4 @@ class F12023TelemetryManager:
             if self.m_raw_packet_callback:
                 self.m_raw_packet_callback(raw_packet)
 
-            print('counter = ' + str(counter))
+            # print('counter = ' + str(counter))

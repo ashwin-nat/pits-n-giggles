@@ -25,24 +25,10 @@ import socket
 from packet_cap import F1PacketCapture
 import argparse
 from tqdm import tqdm
-import time
-
-def sendBytesUDP(data: bytes, udp_ip: str, udp_port: int) -> int:
-    """Send the given list of bytes to the specified destination over UDP
-
-    Args:
-        data (bytes): List of raw bytes to be sent
-        udp_ip (str): The destination IP address
-        udp_port (int): The destination UDP port
-
-    Returns:
-        int: Number of bytes sent
-    """
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp_socket:
-        return udp_socket.sendto(data, (udp_ip, udp_port))
+import struct
 
 def formatFileSize(num_bytes:int) -> str:
-    """_summary_
+    """Get human readable string containing file size
 
     Args:
         num_bytes (int): The number of bytes in integer form
@@ -64,10 +50,10 @@ def formatFileSize(num_bytes:int) -> str:
 def main():
 
     # Parse the command line args
-    parser = argparse.ArgumentParser(description="Send captured F1 packets over UDP")
+    parser = argparse.ArgumentParser(description="Send captured F1 packets over TCP")
     parser.add_argument("--file-name", help="Name of the capture file")
-    parser.add_argument("--udp_ip", default="127.0.0.1", help="UDP IP address (default: 127.0.0.1)")
-    parser.add_argument("--udp_port", type=int, default=20777, help="UDP port number (default: 20777)")
+    parser.add_argument("--ip-addr", default="127.0.0.1", help="Server IP address (default: 127.0.0.1)")
+    parser.add_argument("--port", type=int, default=20777, help="Server port number (default: 20777)")
     args = parser.parse_args()
 
     if not args.file_name:
@@ -75,27 +61,41 @@ def main():
         return
 
     try:
-
         # Read and parse the file
         captured_packets = F1PacketCapture(args.file_name)
-        counter = 0
         total_bytes = 0
         total_packets = captured_packets.getNumPackets()
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_socket.connect((args.ip_addr, args.port))
+
+        # Disable Nagle's algorithm
+        client_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 
         # Send each packet one by one and update the progress bar
-        for _, data in tqdm(captured_packets.getPackets(), desc='Sending Packets', unit='packet', total=total_packets):
-            counter += 1
-            total_bytes += sendBytesUDP(data, args.udp_ip, args.udp_port)
-            if (counter % 750 == 0):
-                time.sleep(0.001)
+        for _, message in tqdm(
+            captured_packets.getPackets(),
+            desc='Sending Packets',
+            unit='packet',
+            total=total_packets):
 
-        print(f'Total bytes sent: {formatFileSize(total_bytes)}')
-        print(total_bytes)
+            # Prefix each message with its length (as a 4-byte integer)
+            message_length = len(message)
+            message_length_bytes = struct.pack('!I', message_length)
 
+            # Send the message length followed by the actual message
+            client_socket.sendall(message_length_bytes + message)
+            total_bytes += message_length
+
+    except KeyboardInterrupt:
+        print("Client terminated by user.")
     except FileNotFoundError:
         print(f"Error: File '{args.file_name}' not found.")
     except Exception as e:
         print(f"Error: {e}")
+    finally:
+        # Close the socket in the finally block to ensure cleanup
+        if client_socket:
+            client_socket.close()
 
 if __name__ == "__main__":
     main()

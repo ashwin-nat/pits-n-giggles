@@ -43,6 +43,7 @@ class GlobalData:
         self.m_spectator_car_index = None
         self.m_weather_forecast_samples = None
         self.m_pit_speed_limit = None
+        self.m_final_classification_received = None
 
     def __str__(self):
         return (
@@ -52,7 +53,10 @@ class GlobalData:
             f"m_total_laps={self.m_total_laps}, "
             f"m_safety_car_status={str(self.m_safety_car_status)}, "
             f"m_is_spectating={str(self.m_is_spectating)}"
-            f"m_spectator_car_index={str(self.m_spectator_car_index)}")
+            f"m_spectator_car_index={str(self.m_spectator_car_index)}, "
+            f"m_weather_forecast_samples={str(self.m_weather_forecast_samples)}, "
+            f"m_pit_speed_limit={str(self.m_pit_speed_limit)}, "
+            f"m_final_classification_received={str(self.m_final_classification_received)}")
 
 class DataPerDriver:
 
@@ -149,7 +153,7 @@ def set_globals(circuit, track_temp, event_type, total_laps, safety_car_status, 
         _globals.m_weather_forecast_samples = weather_forecast_samples
         _globals.m_pit_speed_limit = pit_speed_limit
 
-def getGlobals(num_weather_forecast_samples=4) -> Tuple[str, int, str, int, int, str, List[WeatherForecastSample]]:
+def getGlobals(num_weather_forecast_samples=4) -> Tuple[str, int, str, int, int, str, List[WeatherForecastSample], int, bool]:
     """
     Retrieves the global info regarding the current session
 
@@ -166,6 +170,7 @@ def getGlobals(num_weather_forecast_samples=4) -> Tuple[str, int, str, int, int,
             6: Safety car status (str)
             7: List of weather forecast samples (List[WeatherForecastSample])
             8: Pit speed limit (int)
+            9: Final Classification Received (bool)
     """
     with _globals_lock:
         with _driver_data_lock: # we need this for current lap
@@ -177,14 +182,24 @@ def getGlobals(num_weather_forecast_samples=4) -> Tuple[str, int, str, int, int,
                 weather_forecast_samples = []
             return (_globals.m_circuit, _globals.m_track_temp, _globals.m_event_type,
                         _globals.m_total_laps, curr_lap, _globals.m_safety_car_status,
-                            weather_forecast_samples, _globals.m_pit_speed_limit)
+                            weather_forecast_samples, _globals.m_pit_speed_limit, _globals.m_final_classification_received)
 
 def getEventInfoStr() -> str:
     with _globals_lock:
         if _globals.m_event_type and _globals.m_circuit:
-            return (_globals.m_event_type + "_" + _globals.m_circuit).replace(' ', '_')
+            return (_globals.m_event_type + "_" + _globals.m_circuit).replace(' ', '_') + '_'
         else:
             return None
+
+def getPlayerName() -> str:
+    """Get the player's name.
+
+    Returns:
+        str: Player's name. None if not found (can be in spectator mode or before PNG has received sufficient data)
+    """
+    with _driver_data_lock:
+        player_data = _driver_data.m_driver_data.get(_driver_data.m_player_index, None)
+        return player_data.m_name if player_data else None
 
 def set_driver_data(index: int, driver_data: DataPerDriver, is_fastest=False):
     with _driver_data_lock:
@@ -223,12 +238,13 @@ def getOvertakeString(overtaking_car_index: int, being_overtaken_index: int) -> 
             - Current Lap number of car being overtaken
             - Name of driver of car being overtaken
     """
-
     with _driver_data_lock:
+        if not _driver_data.m_driver_data:
+            return None
         overtaking_car_obj      = _driver_data.m_driver_data.get(overtaking_car_index, None)
         being_overtaken_car_obj = _driver_data.m_driver_data.get(being_overtaken_index, None)
         if (overtaking_car_obj is None) or (being_overtaken_car_obj is None):
-            return
+            return None
 
         # Format is Lap_Overtaking_car, Name_overtaking_car, Lap_overtaken_car, Name_overtaken_car
         return (
@@ -244,6 +260,8 @@ def set_final_classification(packet: PacketFinalClassificationData) -> None:
         for index, data in enumerate(packet.m_classificationData):
             if index in _driver_data.m_driver_data:
                 _driver_data.m_driver_data[index].m_position = data.m_position
+    with _globals_lock:
+        _globals.m_final_classification_received = True
 
 def millisecondsToMinutesSeconds(milliseconds):
     if not isinstance(milliseconds, int):
@@ -305,6 +323,8 @@ def increment_dnf_counter() -> None:
 def clear_all_driver_data():
     with _driver_data_lock:
         _driver_data.set_members_to_none()
+    with _globals_lock:
+        _globals.m_final_classification_received = False # Mark this as False because this is the start of the race
 
 def _get_adjacent_positions(position:int, total_cars:int=20, num_adjacent_cars:int=2) -> List[int]:
     """Get the list of positions of the race that are to be returned to the UI.

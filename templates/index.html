@@ -161,7 +161,8 @@ SOFTWARE.
             <h2 id="tableTitle">F1 Telemetry Live</h2>
             <p id="trackTemperature">Track Temperature: </p>
             <p id="lapInformation">Lap: </p>
-            <p id="safetyCarStatus">Safety Car Status: </p>
+            <p id="safetyCarStatus" style="display: none;">Safety Car Status: </p>
+            <p><a href="javascript:void(0);" id="getOvertakeInfo" class="motivationLink">Get Overtake Information</a></p>
             <p><a href="javascript:void(0);" id="saveTelemetryLink" class="motivationLink" style="display: none;">Save telemetry packet capture</a></p>
         </div>
         <div class="time-box">
@@ -345,8 +346,6 @@ SOFTWARE.
                 .then(response => response.json())
                 .then(data => {
                     // Process the data received from the server
-                    console.log('Telemetry Capture Details:', data);
-
                     if (data['status-code'] === 'SUCCESS') {
                         // Format file size in a human-readable format
                         const formattedFileSize = formatFileSize(data['num-bytes']);
@@ -395,9 +394,35 @@ SOFTWARE.
                 });
         });
 
+        document.getElementById("getOvertakeInfo").addEventListener("click", function () {
+            // Make an HTTP request when the link is clicked
+            fetch('/overtake-info')
+                .then(response => response.json())
+                .then(data => {
+                    // Process the data received from the server
+                    console.log('Telemetry Capture Details:', data);
+
+                    if (data['status-code'] === 'SUCCESS') {
+
+                        // print the info
+                    } else {
+                         // print the info
+                    }
+                })
+                .catch(error => {
+                    // If an error occurs during the HTTP request, display an error message
+                    console.error('Error fetching telemetry capture details:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error fetching telemetry capture details!',
+                        text: 'Please check the console for more information.',
+                    });
+                });
+        });
+
 
         setInterval(updateLocalTime, 1000); // Update the time every second
-        setInterval(fetchDataAndDisplay, 200); // Fetch data every 200 milliseconds
+        setInterval(fetchDataAndDisplay, {{ client_poll_interval_ms | tojson | safe }});
     </script>
 </body>
 </html>
