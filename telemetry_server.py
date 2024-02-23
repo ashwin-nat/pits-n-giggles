@@ -37,16 +37,23 @@ except ImportError:
     print("Flask installation complete.")
     from flask_cors import CORS
 import telemetry_data as TelData
-from telemetry_handler import dumpPktCapToFile
+from telemetry_handler import dumpPktCapToFile, getOvertakeJSON
 import logging
+from typing import Dict, List
 
-class TelemetryServer:
-    def __init__(self, port, debug_mode=False, packet_capture_enabled=False):
+class TelemetryWebServer:
+    def __init__(self,
+                port: int,
+                packet_capture_enabled: bool,
+                client_poll_interval_ms: int,
+                debug_mode: bool = False):
         """
         Initialize TelemetryServer.
 
         Args:
             port (int): Port number for the server.
+            packet_capture (bool) - True if packet capture is enabled
+            client_refresh_interval_ms (int) - The interval at which the client is to poll the server for data
             debug_mode (bool, optional): Enable debug mode. Defaults to False.
         """
         self.m_app = Flask(__name__)
@@ -54,10 +61,11 @@ class TelemetryServer:
         self.m_port = port
         self.m_debug_mode = debug_mode
         self.m_packet_capture_enabled = packet_capture_enabled
+        self.m_client_poll_interval_ms = client_poll_interval_ms
 
         # Define your endpoint
         @self.m_app.route('/telemetry-info')
-        def telemetryInfo():
+        def telemetryInfo() -> Dict:
             """
             Endpoint for telemetry information.
 
@@ -67,8 +75,20 @@ class TelemetryServer:
             telemetry_data = self.getTelemetryData()
             return telemetry_data
 
-        @self.m_app.route('/save-telemetry-capture', methods=['GET'])
-        def saveTelemetryCapture():
+        # Define your endpoint
+        @self.m_app.route('/overtake-info')
+        def overtakeInfo() -> Dict:
+            """
+            Endpoint for overtake information.
+
+            Returns:
+                str: Overtake data in JSON format.
+            """
+            overtake_info = self.getOvertakeInfo()
+            return overtake_info
+
+        @self.m_app.route('/save-telemetry-capture')
+        def saveTelemetryCapture() -> Dict:
             """
             Endpoint for saving telemetry packet capture.
 
@@ -86,9 +106,13 @@ class TelemetryServer:
             Returns:
                 str: HTML page content.
             """
-            return render_template('index.html', packet_capture_enabled=self.m_packet_capture_enabled)
+            return render_template('index.html',
+                packet_capture_enabled=self.m_packet_capture_enabled,
+                client_poll_interval_ms=self.m_client_poll_interval_ms)
 
-    def getValueOrDefaultValue(self, value, default_value='---'):
+    def getValueOrDefaultValue(self,
+            value: str,
+            default_value: str ='---') -> str:
         """
         Get value or default as string.
 
@@ -101,18 +125,19 @@ class TelemetryServer:
         """
         return value if value is not None else default_value
 
-    def getTelemetryData(self):
+    def getTelemetryData(self) -> Dict:
         """
         Get telemetry data in JSON format.
 
         Returns:
-            str: Telemetry data in JSON format.
+            Dict: Telemetry data in JSON format.
         """
 
         # Fetch the data from the data stores
         driver_data, fastest_lap_overall = TelData.getDriverData()
         circuit, track_temp, event_type, total_laps, curr_lap, \
-            safety_car_status, weather_forecast_samples, pit_speed_limit = TelData.getGlobals()
+            safety_car_status, weather_forecast_samples, pit_speed_limit, \
+                    final_classification_received = TelData.getGlobals()
 
         # Init the global data onto the JSON repsonse
         json_response = {
@@ -124,7 +149,8 @@ class TelemetryServer:
             "safety-car-status": str(self.getValueOrDefaultValue(safety_car_status, default_value="")),
             "fastest-lap-overall": fastest_lap_overall,
             "pit-speed-limit" : self.getValueOrDefaultValue(pit_speed_limit),
-            "weather-forecast-samples": []
+            "weather-forecast-samples": [],
+            "race-ended" : self.getValueOrDefaultValue(final_classification_received, False)
         }
         for sample in weather_forecast_samples:
             json_response["weather-forecast-samples"].append(
@@ -159,8 +185,7 @@ class TelemetryServer:
                     "tyre-age": self.getValueOrDefaultValue(data_per_driver.m_tyre_age),
                     "tyre-life-remaining" : self.getValueOrDefaultValue(data_per_driver.m_tyre_life_remaining_laps),
                     "tyre-compound": self.getValueOrDefaultValue(data_per_driver.m_tyre_compound_type),
-                    "drs": self.getDRSValue(data_per_driver.m_drs_activated, data_per_driver.m_drs_allowed,
-                                            data_per_driver.m_drs_distance),
+                    "drs": self.getDRSValue(data_per_driver.m_drs_activated, data_per_driver.m_drs_allowed),
                     "num-pitstops": self.getValueOrDefaultValue(data_per_driver.m_num_pitstops),
                     "dnf-status" : self.getValueOrDefaultValue(data_per_driver.m_dnf_status_code),
                     "index" : self.getValueOrDefaultValue(data_per_driver.m_index)
@@ -169,11 +194,11 @@ class TelemetryServer:
 
         return json_response
 
-    def saveTelemetryData(self) -> str:
+    def saveTelemetryData(self) -> Dict:
         """Save the raw telemetry data to a file.
 
         Returns:
-            str: The str containing the JSON response
+            Dict: The Dict containing the JSON response
         """
 
         status_code, file_name, num_packets, num_bytes = dumpPktCapToFile(clear_db=True, reason='Received Request')
@@ -185,15 +210,30 @@ class TelemetryServer:
             "num-bytes" : self.getValueOrDefaultValue(num_bytes, default_value=0)
         }
 
-    def getDeltaPlusPenaltiesPlusPit(self, delta, penalties, is_pitting, dnf_status_code: str):
+    def getOvertakeInfo(self) -> Dict:
+        """Get the overtake information
+
+        Returns:
+            Dict: Dict containing overtake Info in JSON format
+        """
+
+        status, overtake_info = getOvertakeJSON()
+        overtake_info["status-code"] = str(status)
+        return overtake_info
+
+    def getDeltaPlusPenaltiesPlusPit(self,
+            delta: str,
+            penalties: str,
+            is_pitting: bool,
+            dnf_status_code: str):
         """
         Get delta plus penalties plus pit information.
 
         Args:
-            delta: Delta information.
-            penalties: Penalties information.
-            is_pitting: Whether the driver is pitting.
-            dnf_status_code: The code indicating DNF status. Empty string if driver is still racing
+            delta (str): Delta information.
+            penalties (str): Penalties information.
+            is_pitting (bool): Whether the driver is pitting.
+            dnf_status_code (str): The code indicating DNF status. Empty string if driver is still racing
 
         Returns:
             str: Delta plus penalties plus pit information.
@@ -208,14 +248,15 @@ class TelemetryServer:
         else:
             return "---"
 
-    def getDRSValue(self, drs_activated, drs_available, drs_distance):
+    def getDRSValue(self,
+            drs_activated: bool,
+            drs_available: bool) -> bool:
         """
         Get DRS value.
 
         Args:
-            drs_activated: Whether DRS is activated.
-            drs_available: Whether DRS is available.
-            drs_distance: DRS distance.
+            drs_activated (bool): Whether DRS is activated.
+            drs_available (bool): Whether DRS is available.
 
         Returns:
             bool: True if DRS is activated or available or has non-zero distance, False otherwise.

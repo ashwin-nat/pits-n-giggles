@@ -1625,24 +1625,6 @@ class ParticipantData:
         RESTRICTED = 0
         PUBLIC = 1
 
-        @staticmethod
-        def isValid(telemetry_setting: int) -> bool:
-            """
-            Check if the given telemetry setting is valid.
-
-            Args:
-                telemetry_setting (int): The telemetry setting to be validated.
-
-            Returns:
-                bool: True if valid.
-            """
-            if isinstance(telemetry_setting, TelemetrySetting):
-                return True  # It's already an instance of TelemetrySetting
-            else:
-                min_value = min(member.value for member in TelemetrySetting)
-                max_value = max(member.value for member in TelemetrySetting)
-                return min_value <= telemetry_setting <= max_value
-
         def __str__(self) -> str:
             """
             Returns a human-readable string representation of the telemetry setting.
@@ -2384,7 +2366,7 @@ class CarStatusData:
                 CarStatusData.ActualTyreCompound.C2: "C2",
                 CarStatusData.ActualTyreCompound.C1: "C1",
                 CarStatusData.ActualTyreCompound.C0: "C0",
-                CarStatusData.ActualTyreCompound.INTER: "Intermediate",
+                CarStatusData.ActualTyreCompound.INTER: "Inters",
                 CarStatusData.ActualTyreCompound.WET: "Wet",
                 CarStatusData.ActualTyreCompound.DRY: "Dry",
                 CarStatusData.ActualTyreCompound.WET_CLASSIC: "Wet (Classic)",
@@ -2458,9 +2440,10 @@ class CarStatusData:
                 CarStatusData.VisualTyreCompound.SOFT: "Soft",
                 CarStatusData.VisualTyreCompound.MEDIUM: "Medium",
                 CarStatusData.VisualTyreCompound.HARD: "Hard",
-                CarStatusData.VisualTyreCompound.INTER: "Intermediate",
+                CarStatusData.VisualTyreCompound.INTER: "Inters",
                 CarStatusData.VisualTyreCompound.WET: "Wet",
-                CarStatusData.VisualTyreCompound.WET_CLASSIC: "Wet (Classic)",
+                # CarStatusData.VisualTyreCompound.WET_CLASSIC: "Wet (Classic)",
+                CarStatusData.VisualTyreCompound.WET_CLASSIC: "Wet",
                 CarStatusData.VisualTyreCompound.SUPER_SOFT: "Super Soft (F2 '19)",
                 CarStatusData.VisualTyreCompound.SOFT_F2: "Soft (F2 '19)",
                 CarStatusData.VisualTyreCompound.MEDIUM_F2: "Medium (F2 '19)",
