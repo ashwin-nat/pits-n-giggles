@@ -459,24 +459,27 @@ class OvertakeAnalyzer:
                 player_most_heated_rivalries = self.getMostHeatedRivalries(
                     driver_name=driver_name,
                     is_case_sensitive=is_case_sensitive)
-                final_dict["player-most-heated-rivalries"] = [
-                    {
-                        # Extracting data from rivalry_key
-                        "driver1": rivalry_key.m_driver_1_name,
-                        "driver2": rivalry_key.m_driver_2_name,
-                        "overtakes": [
-                            {
-                                # Extracting data from each record in rivalry_data
-                                "overtaking-driver-name": record.m_overtaking_driver_name,
-                                "overtaking-driver-lap": record.m_overtaking_driver_lap,
-                                "overtaken-driver-name": record.m_overtaken_driver_name,
-                                "overtaken-driver-lap": record.m_overtaken_driver_lap,
-                            }
-                            for record in rivalry_data
-                        ],
-                    }
-                    for rivalry_key, rivalry_data in player_most_heated_rivalries.items()
-                ]
+                if player_most_heated_rivalries:
+                    final_dict["player-most-heated-rivalries"] = [
+                        {
+                            # Extracting data from rivalry_key
+                            "driver1": rivalry_key.m_driver_1_name,
+                            "driver2": rivalry_key.m_driver_2_name,
+                            "overtakes": [
+                                {
+                                    # Extracting data from each record in rivalry_data
+                                    "overtaking-driver-name": record.m_overtaking_driver_name,
+                                    "overtaking-driver-lap": record.m_overtaking_driver_lap,
+                                    "overtaken-driver-name": record.m_overtaken_driver_name,
+                                    "overtaken-driver-lap": record.m_overtaken_driver_lap,
+                                }
+                                for record in rivalry_data
+                            ],
+                        }
+                        for rivalry_key, rivalry_data in player_most_heated_rivalries.items()
+                    ]
+                else:
+                    final_dict["player-most-heated-rivalries"] = []
 
         return final_dict
 
@@ -613,6 +616,6 @@ if __name__ == "__main__":
     file_name = sys.argv[1]
     driver_name = sys.argv[2] if len(sys.argv) == 3 else None
     self = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_FILE, file_name)
-    # print(self.getFormattedString(driver_name='HAMILTON'))
-    import json
-    print(json.dumps(self.toJSON(driver_name='SAINZ'), indent=4))
+    print(self.getFormattedString(driver_name='HAMILTON'))
+    # import json
+    # print(json.dumps(self.toJSON(driver_name=driver_name), indent=4))

@@ -84,11 +84,12 @@ def initPktCap(packet_capture_mode: PacketCaptureMode):
     Returns:
     None
     """
-    global g_packet_capture_table
-    global g_packet_capture_table_lock
+
+    # global g_packet_capture_table
+    # global g_packet_capture_table_lock
     global g_pkt_cap_mode
-    g_packet_capture_table = F1PacketCapture()
-    g_packet_capture_table_lock = Lock()
+    # g_packet_capture_table = F1PacketCapture()
+    # g_packet_capture_table_lock = Lock()
     g_pkt_cap_mode = packet_capture_mode
 
 def addRawPacket(packet: List[bytes]):

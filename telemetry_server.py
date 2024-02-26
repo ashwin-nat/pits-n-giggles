@@ -188,7 +188,8 @@ class TelemetryWebServer:
                     "drs": self.getDRSValue(data_per_driver.m_drs_activated, data_per_driver.m_drs_allowed),
                     "num-pitstops": self.getValueOrDefaultValue(data_per_driver.m_num_pitstops),
                     "dnf-status" : self.getValueOrDefaultValue(data_per_driver.m_dnf_status_code),
-                    "index" : self.getValueOrDefaultValue(data_per_driver.m_index)
+                    "index" : self.getValueOrDefaultValue(data_per_driver.m_index),
+                    "telemetry-setting" : data_per_driver.m_telemetry_restrictions # Already NULL checked
                 }
             )
 

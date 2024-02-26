@@ -3,3 +3,5 @@ launch.json
 *.log
 *.bin
 *.csv
+*.tar.xz
+*.tar.gz

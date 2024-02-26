@@ -25,6 +25,8 @@ from collections import defaultdict
 import threading
 import copy
 from f1_types import *
+import csv
+from io import StringIO
 
 _globals_lock = threading.Lock()
 _driver_data_lock = threading.Lock()
@@ -130,7 +132,7 @@ class DriverData:
         for member in members:
             setattr(self, member, None)
 
-    def get_index_driver_data_by_track_position(self, track_position):
+    def get_index_driver_data_by_track_position(self, track_position) -> Tuple[int, DataPerDriver]:
 
         for index, driver_data in self.m_driver_data.items():
             if driver_data.m_position == track_position:
@@ -224,15 +226,45 @@ def set_driver_data(index: int, driver_data: DataPerDriver, is_fastest=False):
         else:
             return False
 
+# def getOvertakeString(overtaking_car_index: int, being_overtaken_index: int) -> str:
+#     """Returns a comma separating string containing overtake information
+
+#     Args:
+#         overtaking_car_index (int): The index of the overtaking car
+#         being_overtaken_index (int): The index of the car being overtaken
+
+#     Returns:
+#         str: comma separated string containing 4 values
+#             - Current Lap number of overtaking car
+#             - Name of driver of overtaking car
+#             - Current Lap number of car being overtaken
+#             - Name of driver of car being overtaken
+#     """
+#     with _driver_data_lock:
+#         if not _driver_data.m_driver_data:
+#             return None
+#         overtaking_car_obj      = _driver_data.m_driver_data.get(overtaking_car_index, None)
+#         being_overtaken_car_obj = _driver_data.m_driver_data.get(being_overtaken_index, None)
+#         if (overtaking_car_obj is None) or (being_overtaken_car_obj is None):
+#             return None
+
+#         # Format is Lap_Overtaking_car, Name_overtaking_car, Lap_overtaken_car, Name_overtaken_car
+#         return (
+#             str(overtaking_car_obj.m_current_lap) + ' ,' +
+#             overtaking_car_obj.m_name + ',' +
+#             str(being_overtaken_car_obj.m_current_lap) + ',' +
+#             being_overtaken_car_obj.m_name
+#         )
+
 def getOvertakeString(overtaking_car_index: int, being_overtaken_index: int) -> str:
-    """Returns a comma separating string containing overtake information
+    """Returns a CSV-formatted string containing overtake information
 
     Args:
         overtaking_car_index (int): The index of the overtaking car
         being_overtaken_index (int): The index of the car being overtaken
 
     Returns:
-        str: comma separated string containing 4 values
+        str: CSV-formatted string containing 4 values
             - Current Lap number of overtaking car
             - Name of driver of overtaking car
             - Current Lap number of car being overtaken
@@ -241,18 +273,27 @@ def getOvertakeString(overtaking_car_index: int, being_overtaken_index: int) -> 
     with _driver_data_lock:
         if not _driver_data.m_driver_data:
             return None
-        overtaking_car_obj      = _driver_data.m_driver_data.get(overtaking_car_index, None)
+        overtaking_car_obj = _driver_data.m_driver_data.get(overtaking_car_index, None)
         being_overtaken_car_obj = _driver_data.m_driver_data.get(being_overtaken_index, None)
-        if (overtaking_car_obj is None) or (being_overtaken_car_obj is None):
+        if overtaking_car_obj is None or being_overtaken_car_obj is None:
             return None
 
-        # Format is Lap_Overtaking_car, Name_overtaking_car, Lap_overtaken_car, Name_overtaken_car
-        return (
-            str(overtaking_car_obj.m_current_lap) + ' ,' +
-            overtaking_car_obj.m_name + ',' +
-            str(being_overtaken_car_obj.m_current_lap) + ',' +
+        # Prepare data for CSV writing
+        data = [
+            overtaking_car_obj.m_current_lap,
+            overtaking_car_obj.m_name,
+            being_overtaken_car_obj.m_current_lap,
             being_overtaken_car_obj.m_name
-        )
+        ]
+
+        # Use CSV writer to handle quoting and escaping
+        csv_buffer = StringIO()
+        csv_writer = csv.writer(csv_buffer)
+        csv_writer.writerow(data)
+
+        # Get the CSV-formatted string
+        csv_string = csv_buffer.getvalue().strip()
+        return csv_string
 
 def set_final_classification(packet: PacketFinalClassificationData) -> None:
     with _driver_data_lock:
@@ -396,6 +437,10 @@ def getDriverData() -> Tuple[List[DataPerDriver], str]:
             if temp_data.m_tyre_wear is not None:
                 temp_data.m_tyre_wear = ("{:.2f}".format(temp_data.m_tyre_wear)) + "%"
             temp_data.m_index = index
+            if temp_data.m_telemetry_restrictions is not None:
+                temp_data.m_telemetry_restrictions = str(temp_data.m_telemetry_restrictions)
+            else:
+                temp_data.m_telemetry_restrictions = "N/A"
             final_list.append(temp_data)
 
         if len(final_list) == 0:

@@ -154,7 +154,7 @@ class F12023TelemetryManager:
             # Parse the header
             header_raw = raw_packet[:F1_23_PACKET_HEADER_LEN]
             header = PacketHeader(header_raw)
-            if not header.isPacketTypeSupported():
+            if not header.is_supported_packet_type:
                 # Unsupported packet type, skip
                 continue
 
