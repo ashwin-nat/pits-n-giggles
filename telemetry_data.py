@@ -203,6 +203,16 @@ def getPlayerName() -> str:
         player_data = _driver_data.m_driver_data.get(_driver_data.m_player_index, None)
         return player_data.m_name if player_data else None
 
+def getDriverNameByIndex(index: int) -> str:
+    """Get the driver's name for the given index
+
+    Returns:
+        str: Driver's name. None if not found (can be before PNG has received sufficient data)
+    """
+    with _driver_data_lock:
+        driver_data = _driver_data.m_driver_data.get(index, None)
+        return driver_data.m_name if driver_data else None
+
 def set_driver_data(index: int, driver_data: DataPerDriver, is_fastest=False):
     with _driver_data_lock:
         _driver_data.m_race_completed = False

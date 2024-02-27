@@ -369,25 +369,25 @@ class F12023TelemetryHandler:
         global g_overtakes_table_lock
         global g_overtakes_history
         global g_num_active_cars
-        if packet.m_eventStringCode == EventPacketType.BUTTON_STATUS:
+        if packet.m_eventStringCode == PacketEventData.EventPacketType.BUTTON_STATUS:
             # explicitly handle this bullshit because this just adds unnecessary load
             return
-        elif packet.m_eventStringCode == EventPacketType.FASTEST_LAP:
+        elif packet.m_eventStringCode == PacketEventData.EventPacketType.FASTEST_LAP:
             data = TelData.DataPerDriver()
             data.m_best_lap = F12023TelemetryHandler.floatSecondsToMinutesSecondsMilliseconds(packet.mEventDetails.lapTime)
             TelData.set_driver_data(packet.mEventDetails.vehicleIdx, data, is_fastest=True)
-        elif packet.m_eventStringCode == EventPacketType.SESSION_STARTED:
+        elif packet.m_eventStringCode == PacketEventData.EventPacketType.SESSION_STARTED:
             g_num_active_cars = 0
             TelData.clear_all_driver_data()
             # Clear the list regardless of event type
             with g_overtakes_table_lock:
                 g_overtakes_history.clear()
             print("Received SESSION_STARTED")
-        elif packet.m_eventStringCode == EventPacketType.RETIREMENT:
+        elif packet.m_eventStringCode == PacketEventData.EventPacketType.RETIREMENT:
             data = TelData.DataPerDriver()
             data.m_dnf_status_code = True
             TelData.set_driver_data(packet.mEventDetails.vehicleIdx, data)
-        elif packet.m_eventStringCode == EventPacketType.OVERTAKE:
+        elif packet.m_eventStringCode == PacketEventData.EventPacketType.OVERTAKE:
             overtake_csv_str = TelData.getOvertakeString(packet.mEventDetails.overtakingVehicleIdx,
                                                         packet.mEventDetails.beingOvertakenVehicleIdx)
             if overtake_csv_str:
@@ -397,6 +397,10 @@ class F12023TelemetryHandler:
                         print("not adding repeated overtake string " + overtake_csv_str)
                     else:
                         g_overtakes_history.append(overtake_csv_str)
+        # elif packet.m_eventStringCode == PacketEventData.EventPacketType.SPEED_TRAP_TRIGGERED:
+        #     name = TelData.getDriverNameByIndex(packet.mEventDetails.vehicleIdx)
+        #     if name:
+        #         print("Speed trap triggered for " + name + " Speed = " + str(packet.mEventDetails.speed))
         return
 
     @staticmethod
