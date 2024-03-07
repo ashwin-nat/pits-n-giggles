@@ -28,7 +28,8 @@ import time
 import sys
 import webbrowser
 
-from telemetry_handler import initPktCap, PacketCaptureMode, initOvertakesAutosave, F12023TelemetryHandler
+from telemetry_handler import initPktCap, PacketCaptureMode, initOvertakesAutosave, \
+    F12023TelemetryHandler, initDirectories
 from telemetry_server import TelemetryWebServer
 
 def get_local_ip_addresses() -> Set[str]:

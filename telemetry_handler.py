@@ -31,6 +31,8 @@ from threading import Lock
 from enum import Enum
 from typing import Optional, List, Tuple, Dict
 from datetime import datetime
+import os
+import logging
 
 class PacketCaptureMode(Enum):
     """Enum representing packet capture modes."""
@@ -45,6 +47,7 @@ g_num_active_cars = 0
 g_overtakes_history = []
 g_overtakes_table_lock = Lock()
 g_autosave_overtakes = False
+g_directory_mapping = {}
 
 class PktSaveStatus(Enum):
     """Enum representing packet save status."""
@@ -73,6 +76,32 @@ def initOvertakesAutosave(autosave_enabled: bool = False):
     g_autosave_overtakes = autosave_enabled
     g_overtakes_history = []
     g_overtakes_table_lock = Lock()
+
+def initDirectories():
+
+    def ensureDirectoryExists(directory: str) -> None:
+        """
+        Ensure that the specified directory exists. If it doesn't, create it along with any missing parent directories.
+
+        Parameters:
+        - directory (str): The path of the directory to be checked or created.
+
+        Returns:
+        - None
+        """
+        if not os.path.exists(directory):
+            os.makedirs(directory, exist_ok=True)
+            logging.info(f"Directory '{directory}' created.")
+
+    global g_directory_mapping
+    ts_prefix = getTimestampStr()
+    g_directory_mapping['overtakes'] = "data/" + ts_prefix + "/overtakes/"
+    g_directory_mapping['race-info'] = "data/" + ts_prefix + "/race-info/"
+    g_directory_mapping['packet-captures'] = "data/" + ts_prefix + "/packet-captures/"
+
+    for directory in g_directory_mapping.values():
+        ensureDirectoryExists(directory)
+
 
 def initPktCap(packet_capture_mode: PacketCaptureMode):
     """
@@ -106,6 +135,9 @@ def addRawPacket(packet: List[bytes]):
     global g_packet_capture_table_lock
     with g_packet_capture_table_lock:
         g_packet_capture_table.add(packet)
+
+def getTimestampStr() -> str:
+    return datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 
 def dumpPktCapToFile(file_name: Optional[str] = None, clear_db: bool = False, reason: str = '') -> Tuple[PktSaveStatus, str, int, int]:
     """
@@ -456,6 +488,7 @@ class F12023TelemetryHandler:
         # Perform the auto save stuff only for races
         _, _, event_type_str, _, _, _, _, _, _ = TelData.getGlobals()
         global g_overtakes_table_lock
+        global g_directory_mapping
         if event_type_str in [str(SessionType.RACE), str(SessionType.RACE_2), str(SessionType.RACE_3)]:
 
             # Capture the packets if required
@@ -464,6 +497,7 @@ class F12023TelemetryHandler:
                 event_str = TelData.getEventInfoStr()
                 if event_str:
                     file_name = 'capture_' + event_str + '_' + datetime.now().strftime("%Y_%m_%d_%H_%M_%S") + '.bin'
+                    file_name = g_directory_mapping["packet-captures"] + file_name
                     dumpPktCapToFile(file_name=file_name,reason='Final Classification')
 
             # Compute and display overtake stats
@@ -473,6 +507,7 @@ class F12023TelemetryHandler:
                 file_name=None
                 if g_autosave_overtakes:
                     file_name = 'overtakes_history_' + event_str +  datetime.now().strftime("%Y_%m_%d_%H_%M_%S") + '.csv'
+                    file_name = g_directory_mapping['overtakes'] + file_name
                     with open(file_name, 'w', encoding='utf-8') as file:
                         # Iterate through the list and write each string to the file
                         for line in g_overtakes_history:
