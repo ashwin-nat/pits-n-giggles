@@ -27,6 +27,7 @@ import copy
 from f1_types import *
 import csv
 from io import StringIO
+from typing import Optional
 
 _globals_lock = threading.Lock()
 _driver_data_lock = threading.Lock()
@@ -63,30 +64,40 @@ class GlobalData:
 class DataPerDriver:
 
     def __init__(self):
-        self.m_position = None
-        self.m_name = None
-        self.m_team = None
-        self.m_delta = None
-        self.m_delta_to_leader = None
-        self.m_ers_perc = None
-        self.m_best_lap = None
-        self.m_last_lap = None
-        self.m_tyre_wear = None
-        self.m_is_player = None
-        self.m_current_lap = None
-        self.m_penalties = None
-        self.m_tyre_age = None
-        self.m_tyre_compound_type = None
-        self.m_tyre_surface_temp = None
-        self.m_tyre_inner_temp = None
-        self.m_is_pitting = None
-        self.m_drs_activated = None
-        self.m_drs_allowed = None
-        self.m_drs_distance = None
-        self.m_num_pitstops = None
-        self.m_dnf_status_code = None
-        self.m_tyre_life_remaining_laps = None
-        self.m_telemetry_restrictions = None
+        self.m_position: Optional[int] = None
+        self.m_name: Optional[str] = None
+        self.m_team: Optional[str] = None
+        self.m_delta: Optional[str] = None
+        self.m_delta_to_leader: Optional[str] = None
+        self.m_ers_perc: Optional[float] = None
+        self.m_best_lap: Optional[str] = None
+        self.m_last_lap: Optional[str] = None
+        self.m_tyre_wear: Optional[float] = None
+        self.m_is_player: Optional[bool] = None
+        self.m_current_lap: Optional[int] = None
+        self.m_penalties: Optional[str] = None
+        self.m_tyre_age: Optional[int] = None
+        self.m_tyre_compound_type: Optional[str] = None
+        self.m_tyre_surface_temp: Optional[float] = None
+        self.m_tyre_inner_temp: Optional[float] = None
+        self.m_is_pitting: Optional[bool] = None
+        self.m_drs_activated: Optional[bool] = None
+        self.m_drs_allowed: Optional[bool] = None
+        self.m_drs_distance: Optional[int] = None
+        self.m_num_pitstops: Optional[int] = None
+        self.m_dnf_status_code: Optional[str] = None
+        self.m_tyre_life_remaining_laps: Optional[int] = None
+        self.m_telemetry_restrictions: Optional[ParticipantData.TelemetrySetting] = None
+
+        # packet copies
+        self.m_packet_lap_data: Optional[LapData] = None
+        self.m_packet_particpant_data: Optional[ParticipantData] = None
+        self.m_packet_car_telemetry: Optional[CarTelemetryData] = None
+        self.m_packet_car_status: Optional[CarStatusData] = None
+        self.m_packet_car_damage: Optional[CarDamageData] = None
+        self.m_packet_session_history: Optional[PacketSessionHistoryData] = None
+        self.m_packet_tyre_sets: Optional[PacketTyreSetsData] = None
+        self.m_packet_final_classification: Optional[FinalClassificationData] = None
 
 class DriverData:
 
@@ -191,7 +202,6 @@ class DriverData:
             ResultStatus.DISQUALIFIED : "DSQ",
             ResultStatus.RETIRED : "DNF"
         }
-        should_recompute_fastest_lap = False
         for index, lap_data in enumerate(packet.m_LapData):
 
             if lap_data.m_resultStatus == ResultStatus.INVALID:
@@ -212,6 +222,7 @@ class DriverData:
                     [LapData.PitStatus.PITTING, LapData.PitStatus.IN_PIT_AREA] else False
             obj_to_be_updated.m_num_pitstops = lap_data.m_numPitStops
             obj_to_be_updated.m_dnf_status_code = result_str_map.get(lap_data.m_resultStatus, "")
+            obj_to_be_updated.m_packet_lap_data = packet
 
         self.m_num_active_cars = num_active_cars
         return self._shouldRecomputeFastestLap()
@@ -237,6 +248,7 @@ class DriverData:
                 obj_to_be_updated.m_is_player = True
                 self.m_player_index = index
             obj_to_be_updated.m_telemetry_restrictions = participant.m_yourTelemetry
+            obj_to_be_updated.m_packet_particpant_data = participant
 
     def processCarTelemetryUpdate(self, packet: PacketCarTelemetryData) -> None:
 
@@ -247,6 +259,7 @@ class DriverData:
                     sum(car_telemetry_data.m_tyresInnerTemperature)/len(car_telemetry_data.m_tyresInnerTemperature)
             obj_to_be_updated.m_tyre_surface_temp = \
                     sum(car_telemetry_data.m_tyresSurfaceTemperature)/len(car_telemetry_data.m_tyresSurfaceTemperature)
+            obj_to_be_updated.m_packet_car_telemetry = car_telemetry_data
 
     def processCarStatusUpdate(self, packet: PacketCarStatusData) -> None:
 
@@ -258,25 +271,66 @@ class DriverData:
                 str(car_status_data.m_visualTyreCompound)
             obj_to_be_updated.m_drs_allowed = bool(car_status_data.m_drsAllowed)
             obj_to_be_updated.m_drs_distance = car_status_data.m_drsActivationDistance
+            obj_to_be_updated.m_packet_car_status = car_status_data
+
+    def processFinalClassificationUpdate(self, packet: PacketFinalClassificationData) -> Dict[str, Any]:
+        _driver_data.m_race_completed = True
+        final_json = packet.toJSON()
+        for index, data in enumerate(packet.m_classificationData):
+            obj_to_be_updated = self.m_driver_data.get(index, None)
+            if obj_to_be_updated:
+                obj_to_be_updated.m_name = data.m_position
+                obj_to_be_updated.m_packet_final_classification = data
+                final_json["classification-data"][index] = self._getDriverInfoJSON(index, obj_to_be_updated)
+        final_json['classification-data'] = sorted(final_json['classification-data'], key=lambda x: x['track-position'])
 
     def processCarDamageUpdate(self, packet: PacketCarDamageData) -> None:
 
         for index, car_damage in enumerate(packet.m_carDamageData):
             obj_to_be_updated = self._getObjectByIndexCreate(index)
             obj_to_be_updated.m_tyre_wear = sum(car_damage.m_tyresWear)/len(car_damage.m_tyresWear)
+            obj_to_be_updated.m_packet_car_damage = car_damage
 
     def processSessionHistoryUpdate(self, packet: PacketSessionHistoryData) -> bool:
 
+        obj_to_be_updated = self._getObjectByIndexCreate(packet.m_carIdx)
+        obj_to_be_updated.m_packet_session_history = packet
         if (packet.m_bestLapTimeLapNum > 0) and (packet.m_bestLapTimeLapNum <= packet.m_numLaps):
-            obj_to_be_updated = self._getObjectByIndexCreate(packet.m_carIdx)
             obj_to_be_updated.m_best_lap = F1Utils.millisecondsToMinutesSeconds(
                 packet.m_lapHistoryData[packet.m_bestLapTimeLapNum-1].m_lapTimeInMS)
+
         return self._shouldRecomputeFastestLap()
 
     def processTyreSetsUpdate(self, packet: PacketTyreSetsData) -> None:
 
         obj_to_be_updated = self._getObjectByIndexCreate(packet.m_carIdx)
         obj_to_be_updated.m_tyre_life_remaining_laps = packet.m_tyreSetData[packet.m_fittedIdx].m_lifeSpan
+        obj_to_be_updated.m_packet_tyre_sets = packet
+
+    def _getDriverInfoJSON(self, index: int, driver_data: DataPerDriver) -> Dict[str, Any]:
+
+            final_json = {}
+            final_json["index"] = index
+            final_json["driver-name"] = driver_data.m_name
+            final_json["track-position"] = driver_data.m_position
+            final_json["telemetry-settings"] = str(driver_data.m_telemetry_restrictions)
+            if driver_data.m_packet_car_damage:
+                final_json["car-damage"] = driver_data.m_packet_car_damage.toJSON()
+            if driver_data.m_packet_car_status:
+                final_json["car-status"] = driver_data.m_packet_car_status.toJSON()
+            if driver_data.m_packet_lap_data:
+                final_json["lap-data"] = driver_data.m_packet_lap_data.toJSON()
+            if driver_data.m_packet_particpant_data:
+                final_json["participant-data"] = driver_data.m_packet_particpant_data.toJSON()
+            if driver_data.m_packet_tyre_sets:
+                final_json["tyre-sets"] = driver_data.m_packet_tyre_sets.toJSON()
+            if driver_data.m_packet_session_history:
+                final_json["session-history"] = driver_data.m_packet_session_history.toJSON()
+            if driver_data.m_final_classification:
+                final_json["final-classification"] = driver_data.m_final_classification.toJSON()
+
+            return final_json
+
 
 _globals = GlobalData()
 _driver_data = DriverData()
