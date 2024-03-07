@@ -496,6 +496,7 @@ class F12023TelemetryHandler:
             if g_pkt_cap_mode == PacketCaptureMode.ENABLED_WITH_AUTOSAVE:
                 event_str = TelData.getEventInfoStr()
                 if event_str:
+                    global g_directory_mapping
                     file_name = 'capture_' + event_str + '_' + datetime.now().strftime("%Y_%m_%d_%H_%M_%S") + '.bin'
                     file_name = g_directory_mapping["packet-captures"] + file_name
                     dumpPktCapToFile(file_name=file_name,reason='Final Classification')
@@ -504,6 +505,7 @@ class F12023TelemetryHandler:
             event_str = TelData.getEventInfoStr()
             if event_str:
                 global g_autosave_overtakes
+                global g_directory_mapping
                 file_name=None
                 if g_autosave_overtakes:
                     file_name = 'overtakes_history_' + event_str +  datetime.now().strftime("%Y_%m_%d_%H_%M_%S") + '.csv'
