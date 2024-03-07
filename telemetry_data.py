@@ -283,7 +283,7 @@ class DriverData:
             if obj_to_be_updated:
                 obj_to_be_updated.m_name = data.m_position
                 obj_to_be_updated.m_packet_final_classification = data
-                final_json["classification-data"][index] = self._getDriverInfoJSON(index, obj_to_be_updated)
+                final_json["classification-data"][index] = self.getDriverInfoJSON(index, obj_to_be_updated)
         final_json['classification-data'] = sorted(final_json['classification-data'], key=lambda x: x['track-position'])
         return final_json
 
@@ -310,7 +310,7 @@ class DriverData:
         obj_to_be_updated.m_tyre_life_remaining_laps = packet.m_tyreSetData[packet.m_fittedIdx].m_lifeSpan
         obj_to_be_updated.m_packet_tyre_sets = packet
 
-    def _getDriverInfoJSON(self, index: int, driver_data: DataPerDriver) -> Dict[str, Any]:
+    def getDriverInfoJSON(self, index: int, driver_data: DataPerDriver) -> Dict[str, Any]:
 
             final_json = {}
             final_json["index"] = index
@@ -753,3 +753,9 @@ def processTyreSetsUpdate(packet: PacketTyreSetsData) -> None:
 
     with _driver_data_lock:
         _driver_data.processTyreSetsUpdate(packet)
+
+def getDriverInfoJsonByIndex(index: int) -> Dict[str, Any]:
+
+    with _driver_data_lock:
+        driver_data = _driver_data.m_driver_data.get(index, None)
+        return _driver_data.getDriverInfoJSON(index, driver_data) if driver_data else None

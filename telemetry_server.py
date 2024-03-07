@@ -21,25 +21,26 @@
 # SOFTWARE.
 
 try:
-    from flask import Flask, render_template
+    from flask import Flask, render_template, request, jsonify
 except ImportError:
     print("Flask is not installed. Installing...")
     import subprocess
     subprocess.check_call(["pip3", "install", "flask"])
     print("Flask installation complete.")
-    from flask import Flask, render_template
+    from flask import Flask, render_template, request, jsonify
 try:
     from flask_cors import CORS
 except ImportError:
     print("flask-cors is not installed. Installing...")
     import subprocess
     subprocess.check_call(["pip3", "install", "flask-cors"])
-    print("Flask installation complete.")
+    print("flask-cors installation complete.")
     from flask_cors import CORS
-import telemetry_data as TelData
-from telemetry_handler import dumpPktCapToFile, getOvertakeJSON
+from telemetry_handler import dumpPktCapToFile, getOvertakeJSON, GetOvertakesStatus
 import logging
 from typing import Dict, List
+from http import HTTPStatus
+import telemetry_data as TelData
 
 class TelemetryWebServer:
     def __init__(self,
@@ -96,6 +97,53 @@ class TelemetryWebServer:
                 str: JSON response indicating success or failure.
             """
             return self.saveTelemetryData()
+
+        @self.m_app.route('/driver-info', methods=['GET'])
+        def driverInfo() -> Dict:
+            """
+            Endpoint for saving telemetry packet capture.
+
+            Returns:
+                str: JSON response indicating success or failure.
+            """
+            # Access parameters using request.args
+            index = request.args.get('index')
+
+            # Check if only one parameter is provided
+            if not index:
+                error_response = {
+                    'error': 'Invalid parameters',
+                    'message': 'Provide "index" parameter'
+                }
+                return error_response, HTTPStatus.BAD_REQUEST
+
+            # Check if the provided value for index is numeric
+            if not index.isdigit():
+                error_response = {
+                    'error': 'Invalid parameter value',
+                    'message': '"index" parameter must be numeric'
+                }
+                return jsonify(error_response), HTTPStatus.BAD_REQUEST
+
+            # Process parameters and generate response
+            index = int(index)
+            logging.info('received driver-info query for index ' + str(index))
+            driver_info = TelData.getDriverInfoJsonByIndex(index)
+            if driver_info:
+                # return jsonify(driver_info), HTTPStatus.OK
+                status, overtakes_info = getOvertakeJSON(index)
+                driver_info["overtakes-status-code"] = str(status)
+                driver_info['overtakes'] = overtakes_info
+                if status != GetOvertakesStatus.INVALID_INDEX:
+                    return jsonify(driver_info), HTTPStatus.OK
+                else:
+                    return jsonify(driver_info), HTTPStatus.BAD_REQUEST
+            else:
+                error_response = {
+                    'error' : 'Invalid parameter value',
+                    'message' : 'Invalid index'
+                }
+                return jsonify(error_response), HTTPStatus.BAD_REQUEST
 
         # Render the HTML page
         @self.m_app.route('/')
