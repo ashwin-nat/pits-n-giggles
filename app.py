@@ -127,21 +127,20 @@ def httpServerTask(http_port: int, packet_capture_enabled: bool, client_poll_int
 
 
 def f1TelemetryServerTask(packet_capture: PacketCaptureMode, port_number: int,
-                              overtakes_autosave: bool, replay_server: bool,
-                              post_race_data_autosave: bool) -> None:
+                            replay_server: bool,
+                            post_race_data_autosave: bool) -> None:
     """Entry point to start the F1 23 telemetry server.
 
     Args:
         packet_capture (PacketCaptureMode): Packet capture mode.
         port_number (int): Port number for the telemetry client.
-        overtakes_autosave (bool): Whether to autosave overtakes to a CSV file.
         replay_server (bool): Whether to enable the TCP replay debug server.
         post_race_data_autosave (bool): Whether to autosave race data at the end of the race.
     """
     time.sleep(2)
     if packet_capture != PacketCaptureMode.DISABLED:
         initPktCap(packet_capture)
-    initAutosaves(overtakes_autosave, post_race_data_autosave)
+    initAutosaves(post_race_data_autosave)
     telemetry_client = F12023TelemetryHandler(port_number, packet_capture, replay_server)
     telemetry_client.run()
 
@@ -160,8 +159,6 @@ if __name__ == '__main__':
                         help="Port number for F1 telemetry client")
     parser.add_argument('-s', '--server-port', type=int, default=5000, metavar='SERVER_PORT',
                         help="Port number for HTTP server")
-    parser.add_argument('-o', '--overtakes-autosave', action='store_true',
-                        help="Autosave all overtakes to a CSV file")
     parser.add_argument('-f', '--post-race-data-autosave', action='store_true',
                         help="Autosave all race data into a JSON file at the end of the race")
     parser.add_argument('--replay-server', action='store_true',

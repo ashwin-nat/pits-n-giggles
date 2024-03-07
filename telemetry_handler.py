@@ -47,7 +47,6 @@ g_pkt_cap_mode = PacketCaptureMode.DISABLED
 g_num_active_cars = 0
 g_overtakes_history = []
 g_overtakes_table_lock = Lock()
-g_autosave_overtakes = False
 g_post_race_data_autosave = False
 g_directory_mapping = {}
 
@@ -72,12 +71,10 @@ class GetOvertakesStatus(Enum):
     def __str__(self):
         return self.name
 
-def initAutosaves(autosave_enabled: bool, post_race_data_autosave: bool):
-    global g_autosave_overtakes
+def initAutosaves(post_race_data_autosave: bool):
     global g_overtakes_history
     global g_overtakes_table_lock
     global g_post_race_data_autosave
-    g_autosave_overtakes = autosave_enabled
     g_overtakes_history = []
     g_overtakes_table_lock = Lock()
     g_post_race_data_autosave = post_race_data_autosave
@@ -100,7 +97,6 @@ def initDirectories():
 
     global g_directory_mapping
     ts_prefix = datetime.now().strftime("%Y_%m_%d")
-    g_directory_mapping['overtakes'] = "data/" + ts_prefix + "/overtakes/"
     g_directory_mapping['race-info'] = "data/" + ts_prefix + "/race-info/"
     g_directory_mapping['packet-captures'] = "data/" + ts_prefix + "/packet-captures/"
 
@@ -466,18 +462,6 @@ class F12023TelemetryHandler:
                 dumpPktCapToFile(file_name=file_name,reason='Final Classification')
 
             # Compute and display overtake stats
-            global g_autosave_overtakes
-            file_name=None
-            if g_autosave_overtakes:
-                file_name = 'overtakes_history_' + event_str +  getTimestampStr() + '.csv'
-                file_name = g_directory_mapping['overtakes'] + file_name
-                with g_overtakes_table_lock:
-                    with open(file_name, 'w', encoding='utf-8') as file:
-                        # Iterate through the list and write each string to the file
-                        for line in g_overtakes_history:
-                            file.write(line + '\n')  # Add a newline character after each line
-                        logging.info("Recorded overtakes to file " + file_name + ". Number of overtakes was " +
-                            str(len(g_overtakes_history)))
             # Analyze the overtake data and dump the output
             printOvertakeData(file_name)
 
