@@ -119,11 +119,7 @@ def initPktCap(packet_capture_mode: PacketCaptureMode):
     None
     """
 
-    # global g_packet_capture_table
-    # global g_packet_capture_table_lock
     global g_pkt_cap_mode
-    # g_packet_capture_table = F1PacketCapture()
-    # g_packet_capture_table_lock = Lock()
     g_pkt_cap_mode = packet_capture_mode
 
 def addRawPacket(packet: List[bytes]):
@@ -170,7 +166,7 @@ def dumpPktCapToFile(file_name: Optional[str] = None, clear_db: bool = False, re
             if clear_db:
                 g_packet_capture_table.clear()
             if (file_name is not None) and (num_bytes > 0) and (num_packets > 0):
-                print(
+                logging.info(
                     f"Dumped raw telemetry data. "
                     f"File Name: {file_name}, "
                     f"Number of Packets: {num_packets}, "
@@ -184,7 +180,7 @@ def dumpPktCapToFile(file_name: Optional[str] = None, clear_db: bool = False, re
 
         except Exception as e:
             # Log the exception
-            print(f"An error occurred while dumping telemetry data: {e}")
+            logging.error(f"An error occurred while dumping telemetry data: {e}")
 
             # Return the appropriate status
             return PktSaveStatus.OS_ERROR, None, 0, 0
@@ -244,7 +240,7 @@ def printOvertakeData(file_name: str=None):
             overtake_analyzer = OvertakeAnalyzer(
                 input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST,
                 input=g_overtakes_history)
-    print(overtake_analyzer.getFormattedString(driver_name=player_name, is_case_sensitive=True))
+    logging.info(overtake_analyzer.getFormattedString(driver_name=player_name, is_case_sensitive=True))
 
 def writeDictToJsonFile(data_dict: Dict, file_name: str) -> None:
     """
@@ -378,42 +374,7 @@ class F12023TelemetryHandler:
         Returns:
         None
         """
-        # print('Received Lap Data Packet. ' + str(packet))
-        # should_recompute_fastest_lap = False
-        # global g_num_active_cars
-        # num_active_cars = 0
 
-        # # loop through each of the car's lap data
-        # for index, lap_data in enumerate(packet.m_LapData):
-        #     # not handling invalid laps as of now
-        #     if lap_data.m_resultStatus == ResultStatus.INVALID:
-        #         continue
-        #     num_active_cars += 1
-        #     data = TelData.DataPerDriver()
-        #     data.m_position = lap_data.m_carPosition
-        #     data.m_last_lap = F12023TelemetryHandler.millisecondsToMinutesSeconds(lap_data.m_lastLapTimeInMS) \
-        #         if (lap_data.m_lastLapTimeInMS > 0) else "---"
-        #     data.m_delta = lap_data.m_deltaToCarInFrontInMS
-        #     data.m_delta_to_leader = lap_data.m_deltaToRaceLeaderInMS
-        #     data.m_penalties = F12023TelemetryHandler.getPenaltyString(lap_data.m_penalties,
-        #                         lap_data.m_numUnservedDriveThroughPens, lap_data.m_numUnservedStopGoPens)
-        #     data.m_current_lap = lap_data.m_currentLapNum
-        #     data.m_is_pitting = True if lap_data.m_pitStatus in \
-        #             [LapData.PitStatus.PITTING, LapData.PitStatus.IN_PIT_AREA] else False
-        #     data.m_num_pitstops = lap_data.m_numPitStops
-        #     result_str_map = {
-        #         ResultStatus.DID_NOT_FINISH : "DNF",
-        #         ResultStatus.DISQUALIFIED : "DSQ",
-        #         ResultStatus.RETIRED : "DNF"
-        #     }
-        #     data.m_dnf_status_code = result_str_map.get(lap_data.m_resultStatus, "")
-        #     should_recompute_fastest_lap |= TelData.set_driver_data(index, data)
-
-        # if should_recompute_fastest_lap:
-        #     TelData.recompute_fastest_lap()
-        # if g_num_active_cars != num_active_cars:
-        #     g_num_active_cars = num_active_cars
-        #     TelData.set_num_cars(num_active_cars)
         TelData.processLapDataUpdate(packet)
 
     @staticmethod
@@ -430,9 +391,6 @@ class F12023TelemetryHandler:
             # explicitly handle this bullshit first because this just adds unnecessary load
             return
         elif packet.m_eventStringCode == PacketEventData.EventPacketType.FASTEST_LAP:
-            # data = TelData.DataPerDriver()
-            # data.m_best_lap = F12023TelemetryHandler.floatSecondsToMinutesSecondsMilliseconds(packet.mEventDetails.lapTime)
-            # TelData.set_driver_data(packet.mEventDetails.vehicleIdx, data, is_fastest=True)
             TelData.processFastestLapUpdate(packet)
         elif packet.m_eventStringCode == PacketEventData.EventPacketType.SESSION_STARTED:
             g_num_active_cars = 0
@@ -440,11 +398,8 @@ class F12023TelemetryHandler:
             # Clear the list regardless of event type
             with g_overtakes_table_lock:
                 g_overtakes_history.clear()
-            print("Received SESSION_STARTED")
+            logging.info("Received SESSION_STARTED")
         elif packet.m_eventStringCode == PacketEventData.EventPacketType.RETIREMENT:
-            # data = TelData.DataPerDriver()
-            # data.m_dnf_status_code = True
-            # TelData.set_driver_data(packet.mEventDetails.vehicleIdx, data)
             TelData.processRetirementEvent(packet)
         elif packet.m_eventStringCode == PacketEventData.EventPacketType.OVERTAKE:
             overtake_csv_str = TelData.getOvertakeString(packet.mEventDetails.overtakingVehicleIdx,
@@ -453,66 +408,37 @@ class F12023TelemetryHandler:
                 with g_overtakes_table_lock:
                     # Experimental input sanitizer
                     if len(g_overtakes_history) > 0 and g_overtakes_history[-1] == overtake_csv_str:
-                        print("not adding repeated overtake string " + overtake_csv_str)
+                        logging.debug("not adding repeated overtake string " + overtake_csv_str)
                     else:
                         g_overtakes_history.append(overtake_csv_str)
-        # elif packet.m_eventStringCode == PacketEventData.EventPacketType.SPEED_TRAP_TRIGGERED:
-        #     name = TelData.getDriverNameByIndex(packet.mEventDetails.vehicleIdx)
-        #     if name:
-        #         print("Speed trap triggered for " + name + " Speed = " + str(packet.mEventDetails.speed))
         return
 
     @staticmethod
     def handleParticipants(packet: PacketParticipantsData) -> None:
-        # print('Received Participants Packet. ' + str(packet))
-        # for index, participant in enumerate(packet.m_participants):
-        #     data = TelData.DataPerDriver()
-        #     data.m_name = participant.m_name
-        #     data.m_team = str(participant.m_teamId)
-        #     data.m_is_player = True if (index == packet.m_header.m_playerCarIndex) else False
-        #     data.m_telemetry_restrictions = participant.m_yourTelemetry
-        #     TelData.set_driver_data(index, data)
+
         TelData.processParticipantsUpdate(packet)
         return
 
     @staticmethod
     def handleCarSetups(packet: PacketCarSetupData) -> None:
-        # print('Received Car Setups Packet. ' + str(packet))
+
         return
 
     @staticmethod
     def handleCarTelemetry(packet: PacketCarTelemetryData) -> None:
-        # print('Received Car Telemetry Packet. ' + str(packet))
-        # for index, car_telemetry_data in enumerate(packet.m_carTelemetryData):
-        #     driver_data = TelData.DataPerDriver()
-        #     driver_data.m_drs_activated = bool(car_telemetry_data.m_drs)
-        #     driver_data.m_tyre_inner_temp = \
-        #             sum(car_telemetry_data.m_tyresInnerTemperature)/len(car_telemetry_data.m_tyresInnerTemperature)
-        #     driver_data.m_tyre_surface_temp = \
-        #             sum(car_telemetry_data.m_tyresSurfaceTemperature)/len(car_telemetry_data.m_tyresSurfaceTemperature)
-        #     TelData.set_driver_data(index, driver_data)
+
         TelData.processCarTelemetryUpdate(packet)
         return
 
     @staticmethod
     def handleCarStatus(packet: PacketCarStatusData) -> None:
 
-        # for index, car_status_data in enumerate(packet.m_carStatusData):
-        #     data = TelData.DataPerDriver()
-        #     data.m_ers_perc = (car_status_data.m_ersStoreEnergy/CarStatusData.max_ers_store_energy) * 100.0
-        #     data.m_tyre_age = car_status_data.m_tyresAgeLaps
-        #     data.m_tyre_compound_type = str(car_status_data.m_actualTyreCompound) + ' - ' + \
-        #         str(car_status_data.m_visualTyreCompound)
-        #     data.m_drs_allowed = bool(car_status_data.m_drsAllowed)
-        #     data.m_drs_distance = bool(car_status_data.m_drsActivationDistance)
-
-        #     TelData.set_driver_data(index, data)
         TelData.processCarStatusUpdate(packet)
         return
 
     @staticmethod
     def handleFinalClassification(packet: PacketFinalClassificationData) -> None:
-        print('Received Final Classification Packet. ')
+        logging.info('Received Final Classification Packet.')
         final_json = TelData.processFinalClassificationUpdate(packet)
 
         # Perform the auto save stuff only for races
@@ -550,7 +476,7 @@ class F12023TelemetryHandler:
                         # Iterate through the list and write each string to the file
                         for line in g_overtakes_history:
                             file.write(line + '\n')  # Add a newline character after each line
-                        print("Recorded overtakes to file " + file_name + ". Number of overtakes was " +
+                        logging.info("Recorded overtakes to file " + file_name + ". Number of overtakes was " +
                             str(len(g_overtakes_history)))
             # Analyze the overtake data and dump the output
             printOvertakeData(file_name)
@@ -563,7 +489,7 @@ class F12023TelemetryHandler:
                 final_json_file_name = g_directory_mapping['race-info'] + 'race_info_' + \
                         event_str + getTimestampStr() + '.json'
                 writeDictToJsonFile(final_json, final_json_file_name)
-                print("Wrote race info to " + final_json_file_name)
+                logging.info("Wrote race info to " + final_json_file_name)
 
         return
 
@@ -574,86 +500,23 @@ class F12023TelemetryHandler:
 
     @staticmethod
     def handleCarDamage(packet: PacketCarDamageData) -> None:
-        # print('Received Car Damage Packet. ' + str(packet))
-        # for index, car_damage in enumerate(packet.m_carDamageData):
-        #     data = TelData.DataPerDriver()
-        #     data.m_tyre_wear = sum(car_damage.m_tyresWear)/len(car_damage.m_tyresWear)
-        #     TelData.set_driver_data(index, data)
+
         TelData.processCarDamageUpdate(packet)
         return
 
     @staticmethod
     def handleSessionHistory(packet: PacketSessionHistoryData) -> None:
-        # print('Received Session History Packet. ' + str(packet))
-        # Update the best time for this car
-        # driver_data = TelData.DataPerDriver()
-        # if (packet.m_bestLapTimeLapNum > 0) and (packet.m_bestLapTimeLapNum <= packet.m_numLaps):
-        #     driver_data.m_best_lap = F12023TelemetryHandler.millisecondsToMinutesSeconds(
-        #         packet.m_lapHistoryData[packet.m_bestLapTimeLapNum-1].m_lapTimeInMS)
-        #     if (TelData.set_driver_data(packet.m_carIdx, driver_data)) is True:
-        #         TelData.recompute_fastest_lap()
+
         TelData.processSessionHistoryUpdate(packet)
         return
 
     @staticmethod
     def handleTyreSets(packet: PacketTyreSetsData) -> None:
-        # print('Received Tyre Sets Packet. ' + str(packet))
 
-        # data = TelData.DataPerDriver()
-        # data.m_tyre_life_remaining_laps = packet.m_tyreSetData[packet.m_fittedIdx].m_lifeSpan
-        # TelData.set_driver_data(packet.m_carIdx, data)
         TelData.processTyreSetsUpdate(packet)
         return
 
     @staticmethod
     def handleMotionEx(packet: PacketMotionExData) -> None:
-        # print('Received Motion Ex Packet. ' + str(packet))
+
         return
-
-    @staticmethod
-    def millisecondsToMinutesSeconds(milliseconds):
-        if not isinstance(milliseconds, int):
-            raise ValueError("Input must be an integer representing milliseconds")
-
-        if milliseconds < 0:
-            raise ValueError("Input must be a non-negative integer")
-
-        total_seconds, milliseconds = divmod(milliseconds, 1000)
-        minutes, seconds = divmod(total_seconds, 60)
-
-        return f"{minutes:02}:{seconds:02}.{milliseconds:03}"
-
-    @staticmethod
-    def floatSecondsToMinutesSecondsMilliseconds(seconds):
-        if not isinstance(seconds, float):
-            raise ValueError("Input must be a float representing seconds")
-
-        if seconds < 0:
-            raise ValueError("Input must be a non-negative float")
-
-        total_milliseconds = int(seconds * 1000)
-        minutes, seconds = divmod(total_milliseconds // 1000, 60)
-        milliseconds = total_milliseconds % 1000
-
-        return f"{minutes:02}:{seconds:02}.{milliseconds:03}"
-
-    @staticmethod
-    def getPenaltyString(penalties_sec, num_dt, num_stop_go):
-        if penalties_sec == 0 and num_dt == 0 and num_stop_go == 0:
-            return ""
-        penalty_string = "("
-        started_filling = False
-        if penalties_sec > 0:
-            penalty_string += "+" + str(penalties_sec) + " sec"
-            started_filling = True
-        if num_dt > 0:
-            if started_filling:
-                penalty_string += " + "
-            penalty_string += str(num_dt) + "DT"
-            started_filling = True
-        if num_stop_go:
-            if started_filling:
-                penalty_string += " + "
-            penalty_string += str(num_stop_go) + "SG"
-        penalty_string += ")"
-        return penalty_string

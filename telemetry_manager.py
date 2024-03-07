@@ -23,6 +23,7 @@
 from f1_types import *
 from socket_receiver import UDPListener, TCPListener
 from typing import Callable
+import logging
 
 # ------------------------- CLASSES --------------------------------------------
 
@@ -138,7 +139,7 @@ class F12023TelemetryManager:
         """
 
         if self.m_replay_server:
-            print("REPLAY SERVER MODE. PORT = " + str(self.m_port_number))
+            logging.info("REPLAY SERVER MODE. PORT = " + str(self.m_port_number))
 
         # counter = 0
         # Run the client indefinitely
@@ -146,7 +147,6 @@ class F12023TelemetryManager:
 
             # Get next UDP message (TCP in the case of replay server)
             raw_packet = self.m_server.getNextMessage()
-            # counter += 1
             if len(raw_packet) < F1_23_PACKET_HEADER_LEN:
                 # skip incomplete packet
                 continue
@@ -163,11 +163,9 @@ class F12023TelemetryManager:
             try:
                 packet = F12023TelemetryManager.packet_type_map[header.m_packetId](header, payload_raw)
             except InvalidPacketLengthError as e:
-                print("Cannot parse packet of type " + header.m_packetId + ". Error = " + e)
+                logging.error("Cannot parse packet of type " + header.m_packetId + ". Error = " + e)
             callback = self.m_callbacks.get(header.m_packetId, None)
             if callback:
                 callback(packet)
             if self.m_raw_packet_callback:
                 self.m_raw_packet_callback(raw_packet)
-
-            # print('counter = ' + str(counter))

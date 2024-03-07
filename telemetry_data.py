@@ -134,33 +134,7 @@ class DriverData:
         self.m_num_dnf_cars: int = None
         self.m_race_completed: bool = None
 
-    def update_object(self, index, new_obj):
-        # For the first driver, the data structure will be None, create it
-        if self.m_driver_data is None:
-            self.m_driver_data = {}
-        # The index may not be added into the data structure yet
-        if index not in self.m_driver_data.keys():
-            self.m_driver_data[index] = new_obj
-        else:
-            old_obj = self.m_driver_data[index]
-            # Loop through every attribute in the object
-            for attr_name in dir(old_obj):
-                if not attr_name.startswith("__") and not callable(getattr(old_obj, attr_name)):
-                    # For all non default/builtin attributes
-                    new_value = getattr(new_obj, attr_name, None)
-                    if new_value is not None:
-                        setattr(old_obj, attr_name, new_value)
-            self.m_driver_data[index] = old_obj
-            if new_obj.m_is_player:
-                # If we are updating the player's object
-                if self.m_player_index is None:
-                    self.m_player_index = index
-                elif self.m_player_index != index:
-                    # Clear the flag from the old driver entry and update the global index var
-                    self.m_driver_data[self.m_player_index].m_is_player = False
-                    self.m_player_index = index
-
-    def clear(self):
+    def clear(self) -> None:
         self.m_driver_data.clear()
         self.m_player_index = None
         self.m_fastest_index = None
@@ -176,6 +150,7 @@ class DriverData:
         return None, None
 
     def _getPenaltyString(self, penalties_sec, num_dt, num_stop_go):
+
         if penalties_sec == 0 and num_dt == 0 and num_stop_go == 0:
             return ""
         penalty_string = "("
@@ -336,35 +311,10 @@ class DriverData:
         obj_to_be_updated.m_tyre_life_remaining_laps = packet.m_tyreSetData[packet.m_fittedIdx].m_lifeSpan
         obj_to_be_updated.m_packet_tyre_sets = packet
 
-    # def _getDriverInfoJSON(self, index: int, driver_data: DataPerDriver) -> Dict[str, Any]:
-
-    #         final_json = {}
-    #         final_json["index"] = index
-    #         final_json["driver-name"] = driver_data.m_name
-    #         final_json["track-position"] = driver_data.m_position
-    #         final_json["telemetry-settings"] = str(driver_data.m_telemetry_restrictions)
-    #         if driver_data.m_packet_car_damage:
-    #             final_json["car-damage"] = driver_data.m_packet_car_damage.toJSON()
-    #         if driver_data.m_packet_car_status:
-    #             final_json["car-status"] = driver_data.m_packet_car_status.toJSON()
-    #         if driver_data.m_packet_lap_data:
-    #             final_json["lap-data"] = driver_data.m_packet_lap_data.toJSON()
-    #         if driver_data.m_packet_particpant_data:
-    #             final_json["participant-data"] = driver_data.m_packet_particpant_data.toJSON()
-    #         if driver_data.m_packet_tyre_sets:
-    #             final_json["tyre-sets"] = driver_data.m_packet_tyre_sets.toJSON()
-    #         if driver_data.m_packet_session_history:
-    #             final_json["session-history"] = driver_data.m_packet_session_history.toJSON()
-    #         if driver_data.m_packet_final_classification:
-    #             final_json["final-classification"] = driver_data.m_packet_final_classification.toJSON()
-
-    #         return final_json
-
     def getDriverInfoJsonByIndex(self, index: int) -> Optional[Dict[str, Any]]:
 
         obj_to_be_updated = self.m_driver_data.get(index, None)
         return obj_to_be_updated.toJSON(index) if obj_to_be_updated else None
-
 
 _globals = GlobalData()
 _driver_data = DriverData()
@@ -440,60 +390,6 @@ def getDriverNameByIndex(index: int) -> str:
         driver_data = _driver_data.m_driver_data.get(index, None)
         return driver_data.m_name if driver_data else None
 
-def set_driver_data(index: int, driver_data: DataPerDriver, is_fastest=False):
-    with _driver_data_lock:
-        _driver_data.m_race_completed = False
-        _driver_data.update_object(index, driver_data)
-        if is_fastest:
-            # First clear old fastest
-            _driver_data.m_fastest_index = index
-        # return whether fastest lap needs to be recomputed later (we missed the fastest lap event)
-        elif (_driver_data.m_fastest_index is None) and (_driver_data.m_num_active_cars is not None):
-        # if (_driver_data.m_fastest_index is None) and (_driver_data.m_num_active_cars is not None):
-            count_null_best_times = 0
-            for curr_index, driver_data in _driver_data.m_driver_data.items():
-                if curr_index >= _driver_data.m_num_active_cars:
-                    continue
-                if driver_data.m_best_lap is None:
-                    count_null_best_times += 1
-            if count_null_best_times == 0:
-                # only recompute once all the best lap times are available
-                return True
-            else:
-                return False
-        else:
-            return False
-
-# def getOvertakeString(overtaking_car_index: int, being_overtaken_index: int) -> str:
-#     """Returns a comma separating string containing overtake information
-
-#     Args:
-#         overtaking_car_index (int): The index of the overtaking car
-#         being_overtaken_index (int): The index of the car being overtaken
-
-#     Returns:
-#         str: comma separated string containing 4 values
-#             - Current Lap number of overtaking car
-#             - Name of driver of overtaking car
-#             - Current Lap number of car being overtaken
-#             - Name of driver of car being overtaken
-#     """
-#     with _driver_data_lock:
-#         if not _driver_data.m_driver_data:
-#             return None
-#         overtaking_car_obj      = _driver_data.m_driver_data.get(overtaking_car_index, None)
-#         being_overtaken_car_obj = _driver_data.m_driver_data.get(being_overtaken_index, None)
-#         if (overtaking_car_obj is None) or (being_overtaken_car_obj is None):
-#             return None
-
-#         # Format is Lap_Overtaking_car, Name_overtaking_car, Lap_overtaken_car, Name_overtaken_car
-#         return (
-#             str(overtaking_car_obj.m_current_lap) + ' ,' +
-#             overtaking_car_obj.m_name + ',' +
-#             str(being_overtaken_car_obj.m_current_lap) + ',' +
-#             being_overtaken_car_obj.m_name
-#         )
-
 def getOvertakeString(overtaking_car_index: int, being_overtaken_index: int) -> str:
     """Returns a CSV-formatted string containing overtake information
 
@@ -544,19 +440,6 @@ def millisecondsToMinutesSeconds(milliseconds):
     minutes, seconds = divmod(total_seconds, 60)
 
     return f"{minutes:02}:{seconds:02}.{milliseconds:03}"
-
-def set_all_driver_data(packet: PacketFinalClassificationData):
-
-    with _driver_data_lock:
-        for index, data in enumerate(packet.m_classificationData):
-            driver_data = DataPerDriver()
-            driver_data.m_best_lap = millisecondsToMinutesSeconds(data.m_bestLapTimeInMS)
-            driver_data.m_position = data.m_position
-            driver_data.m_penalties = "" if (data.m_penaltiesTime == 0) else ("(" + str(data.m_penaltiesTime) + " sec)")
-            _driver_data.update_object(index, driver_data)
-
-        if _driver_data.m_fastest_index is None:
-            _recompute_fastest_lap_no_mutex()
 
 def _convert_to_milliseconds(time_str):
     minutes, seconds_with_milliseconds = map(str, time_str.split(':'))

@@ -102,7 +102,7 @@ class TCPListener(object):
         """
         while True:
             if self.m_connection is None:
-                self.m_connection, client_address = self.m_socket.accept()
+                self.m_connection, _ = self.m_socket.accept()
 
             try:
                 # Read the message length (assumed to be a 4-byte integer)
