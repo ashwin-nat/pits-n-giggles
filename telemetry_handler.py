@@ -67,6 +67,7 @@ class GetOvertakesStatus(Enum):
     RACE_COMPLETED = 0
     RACE_ONGOING = 1
     NO_DATA = 2
+    INVALID_INDEX = 3
 
     def __str__(self):
         return self.name
@@ -188,17 +189,25 @@ def dumpPktCapToFile(file_name: Optional[str] = None, clear_db: bool = False, re
             # Return the appropriate status
             return PktSaveStatus.OS_ERROR, None, 0, 0
 
-def getOvertakeJSON() -> Tuple[GetOvertakesStatus, Dict]:
+def getOvertakeJSON(index: int=None) -> Tuple[GetOvertakesStatus, Dict]:
     """Get the JSON value containing key overtake information
+
+    Arguments:
+        index (int) - Index of the driver if specific overtake info is required
 
     Returns:
         Tuple[GetOvertakesStatus, Dict]: Status, JSON value (may be empty)
     """
     _, _, _, _, _, _, _, _, final_classification_received = TelData.getGlobals()
+    if index:
+        driver_name = TelData.getDriverNameByIndex(index)
+        if not driver_name:
+            return GetOvertakesStatus.INVALID_INDEX, {}
+    else:
+        driver_name = None
     global g_overtakes_history
     global g_overtakes_table_lock
     with g_overtakes_table_lock:
-        player_name = TelData.getPlayerName()
         if not final_classification_received:
             if len(g_overtakes_history) == 0:
                 return GetOvertakesStatus.NO_DATA, {}
@@ -206,13 +215,13 @@ def getOvertakeJSON() -> Tuple[GetOvertakesStatus, Dict]:
                 return GetOvertakesStatus.RACE_ONGOING, OvertakeAnalyzer(
                     input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST,
                     input=g_overtakes_history).toJSON(
-                        driver_name=player_name,
+                        driver_name=driver_name,
                         is_case_sensitive=True)
         else:
             return GetOvertakesStatus.RACE_COMPLETED, OvertakeAnalyzer(
                 input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST,
                 input=g_overtakes_history).toJSON(
-                    driver_name=player_name,
+                    driver_name=driver_name,
                     is_case_sensitive=True)
 
 

@@ -25,122 +25,232 @@ SOFTWARE.
 
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title id="pageTitle">Pits n' Giggles</title>
-        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Bangers&display=swap" rel="stylesheet">
-        <style>
-            body {
-                font-family: 'Roboto', sans-serif;
-                margin: 0;
-                padding: 0;
-                background-color: #000; /* Black background */
-                color: #fdd835; /* Gold text */
-                position: relative;
-            }
 
-            .top-section {
-                display: flex;
-                justify-content: space-around;
-                align-items: stretch;
-                gap: 20px;
-                margin-top: 20px;
-                max-height: 300px;
-                overflow: hidden;
-                margin-bottom: 1px; /* Adjust the margin-bottom as needed */
-            }
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="pageTitle">Pits n' Giggles</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Bangers&display=swap"
+        rel="stylesheet">
+    <style>
+        /* Your existing styles */
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            /* Black background */
+            color: #fdd835;
+            /* Gold text */
+            position: relative;
+        }
 
-            .weather-box, .race-info-box, .time-box {
-                flex: 1;
-                padding: 1px;
-                background-color: #2e2e2e; /* Dark grey for Gotham feel */
-                border: 2px solid #fdd835; /* Highlighted border in gold */
-                border-radius: 10px;
-                color: #fdd835; /* Text in gold */
-                font-size: 22px;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 1px;
-                line-height: 1;
-            }
+        .top-section {
+            display: flex;
+            justify-content: space-around;
+            align-items: stretch;
+            gap: 20px;
+            margin-top: 20px;
+            max-height: 300px;
+            overflow: hidden;
+            margin-bottom: 1px;
+            /* Adjust the margin-bottom as needed */
+        }
 
-            .race-info-box {
-                line-height: 0.5;
-            }
+        .weather-box,
+        .race-info-box,
+        .time-box {
+            flex: 1;
+            padding: 1px;
+            background-color: #2e2e2e;
+            /* Dark grey for Gotham feel */
+            border: 2px solid #fdd835;
+            /* Highlighted border in gold */
+            border-radius: 10px;
+            color: #fdd835;
+            /* Text in gold */
+            font-size: 22px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1px;
+            line-height: 1;
+        }
 
-            table {
-                width: 100%;
-                table-layout: fixed;
-                margin: 20px 0;
-                background-color: #000; /* Black background */
-                color: #fdd835; /* Gold text */
-                border-spacing: 0;
-                font-size: 26px;
-            }
+        .race-info-box {
+            line-height: 0.5;
+        }
 
-            th, td {
-                padding: 10px;
-                text-align: center;
-                border-bottom: 1px solid #2e2e2e; /* Dark grey row separation */
-            }
+        table {
+            width: 100%;
+            table-layout: fixed;
+            margin: 20px 0;
+            background-color: #000;
+            /* Black background */
+            color: #fdd835;
+            /* Gold text */
+            border-spacing: 0;
+            font-size: 26px;
+        }
 
-            th {
-                background-color: #2e2e2e; /* Dark grey header background */
-                color: #fdd835; /* Gold header text */
-                font-weight: 700;
-            }
+        th,
+        td {
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid #2e2e2e;
+            /* Dark grey row separation */
+        }
 
-            tbody tr:nth-child(even) {
-                background-color: #1a1a1a; /* Darker shade for even rows */
-            }
+        th {
+            background-color: #2e2e2e;
+            /* Dark grey header background */
+            color: #fdd835;
+            /* Gold header text */
+            font-weight: 700;
+        }
 
-            .player-row td {
-                font-weight: bold;
-                border-color: #fdd835; /* Gold border */
-            }
+        tbody tr:nth-child(even) {
+            background-color: #1a1a1a;
+            /* Darker shade for even rows */
+        }
 
-            .player-row td:first-child {
-                border-left: 2px solid #fdd835; /* Left border on the first cell */
-            }
+        .player-row td {
+            font-weight: bold;
+            border-color: #fdd835;
+            /* Gold border */
+        }
 
-            .player-row td:last-child {
-                border-right: 2px solid #fdd835; /* Right border on the last cell */
-            }
+        .player-row td:first-child {
+            border-left: 2px solid #fdd835;
+            /* Left border on the first cell */
+        }
 
-            .player-row td {
-                border-top: 2px solid #fdd835 !important; /* Top border on all cells */
-                border-bottom: 2px solid #fdd835 !important; /* Bottom border on all cells */
-            }
+        .player-row td:last-child {
+            border-right: 2px solid #fdd835;
+            /* Right border on the last cell */
+        }
 
-            .fastest-lap {
-                background-color: #E829F1 !important; /* Purple for fastest lap */
-                color: #fff !important; /* White text for contrast */
-            }
+        .player-row td {
+            border-top: 2px solid #fdd835 !important;
+            /* Top border on all cells */
+            border-bottom: 2px solid #fdd835 !important;
+            /* Bottom border on all cells */
+        }
 
-            .dnf {
-                background-color: #771010 !important; /* Red for DNF */
-                color: #fff !important; /* White text for contrast */
-            }
+        .fastest-lap {
+            background-color: #E829F1 !important;
+            /* Purple for fastest lap */
+            color: #fff !important;
+            /* White text for contrast */
+        }
 
-            .dsq {
-                background-color : #000000 !important; /* Black for DSQ */
-                color: #fff !important; /* White text for contrast */
-            }
+        .dnf {
+            background-color: #771010 !important;
+            /* Red for DNF */
+            color: #fff !important;
+            /* White text for contrast */
+        }
 
-            .drs-active {
-                color: #28a745; /* Green font color for DRS active, no background change */
-            }
+        .dsq {
+            background-color: #000000 !important;
+            /* Black for DSQ */
+            color: #fff !important;
+            /* White text for contrast */
+        }
 
-            /* Remove link styling */
-            .motivationLink {
-                color: #fdd835; /* Text in gold */
-            }
-        </style>
+        .drs-active {
+            color: #28a745;
+            /* Green font color for DRS active, no background change */
+        }
+
+        /* Remove link styling */
+        .motivationLink {
+            color: #fdd835;
+            /* Text in gold */
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            /* Add background opacity */
+            background-color: rgba(255, 255, 255, 0.9);
+        }
+
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #fefefe;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+
+            /* Set width to 80% of the viewport width */
+            width: 80%;
+
+            /* Set max height to 80% of the viewport height */
+            max-height: 80vh;
+
+            /* Set overflow-y to auto to enable scrolling if the content exceeds the max height */
+            overflow-y: auto;
+
+            /* Change font color to a darker shade */
+            color: #333;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .accordion {
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .accordion-title {
+            background-color: #2e2e2e;
+            /* Dark grey header background */
+            color: #fdd835;
+            /* Gold header text */
+            cursor: pointer;
+            padding: 14px;
+            width: 100%;
+            text-align: left;
+            border: none;
+            outline: none;
+            transition: background-color 0.3s;
+        }
+
+        .accordion-content {
+            padding: 0 18px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.2s ease-out;
+            width: 100%;
+        }
+
+        .accordion-content p {
+            margin: 0;
+            padding: 8px;
+        }
+    </style>
     <script src="https://www.youtube.com/iframe_api"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
 </head>
+
 <body>
 
     <div class="top-section">
@@ -162,8 +272,9 @@ SOFTWARE.
             <p id="trackTemperature">Track Temperature: </p>
             <p id="lapInformation">Lap: </p>
             <p id="safetyCarStatus" style="display: none;">Safety Car Status: </p>
-            <p><a href="javascript:void(0);" id="getOvertakeInfo" class="motivationLink">Get Overtake Information</a></p>
-            <p><a href="javascript:void(0);" id="saveTelemetryLink" class="motivationLink" style="display: none;">Save telemetry packet capture</a></p>
+            <p><a href="#" id="getOvertakeInfo" class="motivationLink">Get Overtake Information</a></p>
+            <p><a href="#" id="saveTelemetryLink" class="motivationLink" style="display: none;">Save telemetry packet
+                    capture</a></p>
         </div>
         <div class="time-box">
             <p id="localTime">Local Time: </p>
@@ -174,7 +285,10 @@ SOFTWARE.
     </div>
 
     <!-- YouTube iframe for audio, set to play when the link is clicked -->
-    <iframe id="youtubeAudio" class="youtube-audio" width="0" height="0" src="https://www.youtube.com/embed/2L7Qm2hBJ6o?start=38&enablejsapi=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+    <iframe id="youtubeAudio" class="youtube-audio" width="0" height="0"
+        src="https://www.youtube.com/embed/2L7Qm2hBJ6o?start=38&enablejsapi=1" frameborder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowfullscreen></iframe>
 
     <table id="liveTable">
         <thead>
@@ -191,6 +305,14 @@ SOFTWARE.
         </thead>
         <tbody></tbody>
     </table>
+
+    <div id="driverInfoModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeDriverInfoModal()">&times;</span>
+            <h2 id="modalTitle">Driver Information</h2>
+            <div id="modalContent" style="height: 90vh; overflow-y: auto;"></div>
+        </div>
+    </div>
 
     <script>
         var player; // Define YT player
@@ -224,19 +346,29 @@ SOFTWARE.
             player.pauseVideo();
         }
 
+        function formatFloatWithTwoDecimals(floatNumber) {
+            if (typeof floatNumber !== 'number' || isNaN(floatNumber)) {
+                console.error('Invalid input. Please provide a valid number.');
+                return null;
+            }
+
+            // Use toFixed to round to two decimal places and convert to string
+            return floatNumber.toFixed(2);
+        }
+
         function fetchDataAndDisplay() {
             fetch('/telemetry-info')
-            .then(response => response.json())
-            .then(data => {
-                updateTable(data["table-entries"]);
-                updateGlobalInfo(data["circuit"], data["event-type"], data["track-temperature"], data["current-lap"],
-                    data["total-laps"], data["safety-car-status"], data["fastest-lap-overall"],
-                    data["pit-speed-limit"], {{ packet_capture_enabled | tojson }});
-                updateWeatherTable(data["weather-forecast-samples"])
-            })
-            .catch(error => {
-                console.error('Error fetching data:', error);
-            });
+                .then(response => response.json())
+                .then(data => {
+                    updateTable(data["table-entries"]);
+                    updateGlobalInfo(data["circuit"], data["event-type"], data["track-temperature"], data["current-lap"],
+                        data["total-laps"], data["safety-car-status"], data["fastest-lap-overall"],
+                        data["pit-speed-limit"], {{ packet_capture_enabled | tojson }});
+                    updateWeatherTable(data["weather-forecast-samples"]);
+                })
+                .catch (error => {
+            console.error('Error fetching data:', error);
+        });
         }
 
         function updateWeatherTable(weatherData) {
@@ -258,49 +390,229 @@ SOFTWARE.
             entries.forEach(entry => {
                 const row = tableBody.insertRow();
 
-                row.insertCell().textContent = entry["position"];
-                row.insertCell().textContent = entry["name"];
+                // Position column
+                const positionCell = row.insertCell();
+                positionCell.textContent = entry["position"];
+
+                // Create a clickable link for the driver's name
+                const nameCell = row.insertCell();
+                const nameLink = document.createElement('a');
+                nameLink.textContent = entry["name"];
+                nameLink.href = '#'; // Set a placeholder href value
+                nameLink.style.color = '#fdd835'; // Set the font color to match the table
+                nameLink.style.textDecoration = 'underline'; // Add standard link underline
+                nameLink.onclick = function () {
+                    handleDriverInfoClick(entry["index"]);
+                };
+                nameCell.appendChild(nameLink);
+
+
                 row.insertCell().textContent = entry["team"];
                 row.insertCell().textContent = entry["delta"];
                 row.insertCell().textContent = entry["ers"];
                 row.insertCell().textContent = entry["best"];
                 row.insertCell().textContent = entry["last"];
+
                 const tyreInfoCell = row.insertCell();
                 tyreInfoCell.innerHTML = `${entry["average-tyre-wear"]}<br>` +
-                        `${entry["tyre-age"]} laps ` + `(${entry["num-pitstops"]} pit)<br>` +
-                        `${entry["tyre-compound"]}`;
+                    `${entry["tyre-age"]} laps ` + `(${entry["num-pitstops"]} pit)<br>` +
+                    `${entry["tyre-compound"]}`;
 
                 row.className = '';
                 if (entry["is-fastest"]) {
-                    console.log("Fastest lap: ", entry["name"]);
                     row.classList.add('fastest-lap');
                 }
 
                 switch (entry["dnf-status"]) {
                     case "DNF":
                         row.classList.add('dnf');
-                        console.log("DNF: ", entry["name"]);
                         break;
                     case "DSQ":
                         row.classList.add('dsq');
-                        console.log("DSQ: ", entry["name"]);
                         break;
                     // Add more cases if needed
                     default:
-                        // Default case if none of the cases match
+                    // Default case if none of the cases match
                 }
 
                 if (entry["is-player"]) {
                     row.classList.add('player-row'); // Apply the player-row class to the row
-                    console.log("Player: ", entry["name"]);
                 }
 
                 // Fix for DRS active styling
                 if (entry["drs"] === true) {
                     Array.from(row.cells).forEach(cell => cell.classList.add('drs-active'));
-                    console.log("DSR: ", entry["name"]);
                 }
             });
+        }
+
+        function handleDriverInfoClick(index) {
+            fetch(`/driver-info?index=${index}`)
+                .then(response => response.json())
+                .then(data => {
+                    openDriverInfoModal(data);
+                })
+                .catch(error => {
+                    console.error('Error fetching driver info:', error);
+                });
+        }
+
+        function openDriverInfoModal(data) {
+            const modalContent = document.getElementById('modalContent');
+            modalContent.innerHTML = '';
+
+            function createAccordion(title, content) {
+                const accordion = document.createElement('div');
+                accordion.className = 'accordion';
+
+                const accordionTitle = document.createElement('button');
+                accordionTitle.className = 'accordion-title';
+                accordionTitle.innerText = title;
+
+                const accordionContent = document.createElement('div');
+                accordionContent.className = 'accordion-content';
+                accordionContent.appendChild(content);
+
+                accordion.appendChild(accordionTitle);
+                accordion.appendChild(accordionContent);
+
+                // Add event listener for the accordion
+                accordionTitle.addEventListener('click', function () {
+                    accordion.classList.toggle('active');
+                    if (accordion.classList.contains('active')) {
+                        accordionContent.style.maxHeight = accordionContent.scrollHeight + 'px';
+                    } else {
+                        accordionContent.style.maxHeight = null;
+                    }
+                });
+
+                return accordion;
+            }
+
+            function createRow(label, value) {
+                const row = document.createElement('p');
+                row.innerHTML = `<strong>${label}:</strong> ${value}`;
+                return row;
+            }
+
+            const carDamageContent = document.createElement('div');
+            if ("car-damage" in data) {
+                carDamageContent.appendChild(createRow(
+                    'Front Left Wing Damage',
+                    formatFloatWithTwoDecimals(data["car-damage"]["front-left-wing-damage"]) + "%"));
+                carDamageContent.appendChild(createRow(
+                    'Front Right Wing Damage',
+                    formatFloatWithTwoDecimals(data["car-damage"]["front-right-wing-damage"]) + "%"));
+                carDamageContent.appendChild(createRow(
+                    'Rear Wing Damage',
+                    formatFloatWithTwoDecimals(
+                        data["car-damage"]["rear-wing-damage"]) + "%"));
+                modalContent.appendChild(createAccordion('Car Damage', carDamageContent));
+
+                const tyreContent = document.createElement('div');
+
+                // Tyre Damage Accordion
+                const tyreDamageContent = document.createElement('div');
+                console.log('Tyres Damage length:', data["car-damage"]["tyres-damage"].length);
+                if (data["car-damage"]["tyres-damage"].length >= 4) {
+                    console.log('Tyres Damage: inside if:');
+                    tyreDamageContent.appendChild(
+                        createRow('Front Left Tyre Damage',
+                        formatFloatWithTwoDecimals(data["car-damage"]["tyres-damage"][2]) + "%"));
+                    tyreDamageContent.appendChild(
+                        createRow('Front Right Tyre Damage',
+                        formatFloatWithTwoDecimals(data["car-damage"]["tyres-damage"][3]) + "%"));
+                    tyreDamageContent.appendChild(
+                        createRow('Rear Left Tyre Damage',
+                        formatFloatWithTwoDecimals(data["car-damage"]["tyres-damage"][0]) + "%"));
+                    tyreDamageContent.appendChild(
+                        createRow('Rear Right Tyre Damage',
+                        formatFloatWithTwoDecimals(data["car-damage"]["tyres-damage"][1]) + "%"));
+                } else {
+                    // Handle the case where there is not enough data for all tyres
+                    console.log('Tyres Damage: inside else:');
+                    tyreDamageContent.appendChild(createRow('Tyre damage data not available', ''));
+                }
+                // tyreContent.appendChild(createAccordion('Tyre Damage', tyreDamageContent));
+
+                // Tyre Wear Accordion
+                const tyreWearContent = document.createElement('div');
+                console.log('Tyres wear length:', data["car-damage"]["tyres-wear"].length);
+                if (data["car-damage"]["tyres-wear"].length >= 4) {
+                    console.log('Tyres wear: inside if:');
+                    tyreWearContent.appendChild(createRow(
+                        'Front Left Tyre Wear',
+                        formatFloatWithTwoDecimals(data["car-damage"]["tyres-wear"][2]) + "%"));
+                    tyreWearContent.appendChild(createRow(
+                        'Front Right Tyre Wear',
+                        formatFloatWithTwoDecimals(data["car-damage"]["tyres-wear"][3]) + "%"));
+                    tyreWearContent.appendChild(createRow(
+                        'Rear Left Tyre Wear',
+                        formatFloatWithTwoDecimals(data["car-damage"]["tyres-wear"][0]) + "%"));
+                    tyreWearContent.appendChild(createRow(
+                        'Rear Right Tyre Wear',
+                        formatFloatWithTwoDecimals(data["car-damage"]["tyres-wear"][1]) + "%"));
+                } else {
+                    // Handle the case where there is not enough data for all tyres
+                    console.log('Tyres wear: inside else:');
+                    tyreWearContent.appendChild(createRow('Tyre wear data not available', ''));
+                }
+                // tyreContent.appendChild(createAccordion('Tyre Wear', tyreWearContent));
+
+                console.log('Appending Tyre Damage accordion');
+                tyreContent.appendChild(createAccordion('Tyre Damage', tyreDamageContent));
+                console.log('Appending Tyre Wear accordion');
+                tyreContent.appendChild(createAccordion('Tyre Wear', tyreWearContent));
+                console.log('Appending Tyre Content to modal');
+                modalContent.appendChild(tyreContent);
+            } else {
+                tyreWearContent.appendChild(createRow('Car damage data not available', ''));
+            }
+
+
+            const lapDataContent = document.createElement('div');
+            if ("lap-data" in data) {
+                lapDataContent.appendChild(createRow(
+                    'S1 Time', data["lap-data"]["sector-1-time-str"]));
+                lapDataContent.appendChild(createRow(
+                    'S2 Time', data["lap-data"]["sector-2-time-str"]));
+                lapDataContent.appendChild(createRow(
+                    'Total Time', data["lap-data"]["current-lap-time-str"]));
+                lapDataContent.appendChild(createRow(
+                    'Lap Number', data["lap-data"]["current-lap-num"]));
+            } else {
+                lapDataContent.appendChild(createRow('Lap data not available', ''));
+            }
+            modalContent.appendChild(createAccordion('Lap Data', lapDataContent));
+
+            const lapHistoryContent = document.createElement('div');
+            if ("session-history" in data)  {
+                const lapHistoryData = data["session-history"]["lap-history-data"];
+                lapHistoryData.forEach((lap, index) => {
+                    const lapContent = document.createElement('div');
+                    lapContent.appendChild(createRow(`S1 Time`, lap["sector-1-time-str"]));
+                    lapContent.appendChild(createRow(`S2 Time`, lap["sector-2-time-str"]));
+                    lapContent.appendChild(createRow(`S3 Time`, lap["sector-3-time-str"]));
+                    lapContent.appendChild(createRow(`Total Time`, lap["lap-time-str"]));
+                    lapHistoryContent.appendChild(createAccordion(`Lap ${index + 1}`, lapContent));
+                });
+            } else {
+                lapHistoryContent.appendChild(createRow('Lap History data not available', ''));
+            }
+            modalContent.appendChild(createAccordion('Lap History', lapHistoryContent));
+
+            const modal = document.getElementById('driverInfoModal');
+            modal.style.display = 'block';
+
+            const modalTitle = document.getElementById('modalTitle');
+            modalTitle.innerText = `Driver Information - ${data["driver-name"]}`;
+            // modalContent.innerHTML = '';
+        }
+
+
+        function closeDriverInfoModal() {
+            const modal = document.getElementById('driverInfoModal');
+            modal.style.display = 'none';
         }
 
         function updateGlobalInfo(circuit, event_type, track_temp, curr_lap, total_laps,
@@ -313,14 +625,13 @@ SOFTWARE.
             document.getElementById('fastestLapOverall').textContent = `Fastest Lap Overall: ${fastest_lap}`;
             document.getElementById('pitSpeedLimit').textContent = `Pit Lane Speed Limit: ${pit_speed_limit}`;
 
-            // Update the visibility of the saveTelemetryLink based on packet_capture_enabled
             const saveTelemetryLink = document.getElementById('saveTelemetryLink');
             saveTelemetryLink.style.display = packet_capture_enabled ? 'inline' : 'none';
         }
 
         function updateLocalTime() {
             const now = new Date();
-            const timeString = now.toLocaleTimeString(); // Converts the current time to a string using the local time convention
+            const timeString = now.toLocaleTimeString();
             document.getElementById('localTime').textContent = `Local Time: ${timeString}`;
         }
 
@@ -330,44 +641,32 @@ SOFTWARE.
             if (bytes === 0) return '0 Byte';
 
             const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
-
-            // Dynamically determine the appropriate unit based on the file size
             const sizeUnit = sizes[Math.min(i, sizes.length - 1)];
-
-            // Calculate the size in the determined unit
             const formattedSize = Math.round((bytes / Math.pow(1024, i)) * 100) / 100;
 
             return `${formattedSize} ${sizeUnit}`;
         }
 
         document.getElementById("saveTelemetryLink").addEventListener("click", function () {
-            // Make an HTTP request when the link is clicked
             fetch('/save-telemetry-capture')
                 .then(response => response.json())
                 .then(data => {
-                    // Process the data received from the server
                     if (data['status-code'] === 'SUCCESS') {
-                        // Format file size in a human-readable format
                         const formattedFileSize = formatFileSize(data['num-bytes']);
-
-                        // Add commas to the number of packets
                         const numPacketsWithCommas = data['num-packets'].toLocaleString();
 
-                        // If successful, display a success message
                         Swal.fire({
                             icon: 'success',
                             title: 'Telemetry captured!',
                             html: `Written to file: ${data['file-name']}.<br>${numPacketsWithCommas} packets written.<br>File size: ${formattedFileSize}.`,
                         });
                     } else if (data['status-code'] === 'DISABLED') {
-                        // Handle DISABLED status
                         Swal.fire({
                             icon: 'info',
                             title: 'Telemetry capture is disabled!',
                             text: 'Please enable telemetry capture.',
                         });
                     } else {
-                        // If unsuccessful, display an error message with response details
                         if (data["num-packets"] === 0) {
                             Swal.fire({
                                 icon: 'error',
@@ -384,7 +683,6 @@ SOFTWARE.
                     }
                 })
                 .catch(error => {
-                    // If an error occurs during the HTTP request, display an error message
                     console.error('Error fetching telemetry capture details:', error);
                     Swal.fire({
                         icon: 'error',
@@ -395,34 +693,50 @@ SOFTWARE.
         });
 
         document.getElementById("getOvertakeInfo").addEventListener("click", function () {
-            // Make an HTTP request when the link is clicked
             fetch('/overtake-info')
                 .then(response => response.json())
                 .then(data => {
-                    // Process the data received from the server
                     console.log('Telemetry Capture Details:', data);
 
                     if (data['status-code'] === 'SUCCESS') {
+                        const overtakeInfo = data['overtake-info'];
+                        const formattedOvertakeInfo = overtakeInfo.map(info => `${info['driver']} overtakes ${info['overtaken-driver']} at lap ${info['lap']}`);
+                        const formattedOvertakeList = formattedOvertakeInfo.join('<br>');
 
-                        // print the info
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Overtake Information',
+                            html: formattedOvertakeList,
+                            confirmButtonText: 'OK',
+                        });
                     } else {
-                         // print the info
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error fetching overtake information!',
+                            text: JSON.stringify(data),
+                        });
                     }
                 })
                 .catch(error => {
-                    // If an error occurs during the HTTP request, display an error message
-                    console.error('Error fetching telemetry capture details:', error);
+                    console.error('Error fetching overtake information:', error);
                     Swal.fire({
                         icon: 'error',
-                        title: 'Error fetching telemetry capture details!',
+                        title: 'Error fetching overtake information!',
                         text: 'Please check the console for more information.',
                     });
                 });
         });
 
-
-        setInterval(updateLocalTime, 1000); // Update the time every second
+        // Fetch data at intervals specified from jinja
         setInterval(fetchDataAndDisplay, {{ client_poll_interval_ms | tojson | safe }});
+
+        // Update local time every second
+        setInterval(updateLocalTime, 1000);
+
+        // Initial fetch and display
+        fetchDataAndDisplay();
+        updateLocalTime();
     </script>
 </body>
+
 </html>

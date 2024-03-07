@@ -99,6 +99,31 @@ class DataPerDriver:
         self.m_packet_tyre_sets: Optional[PacketTyreSetsData] = None
         self.m_packet_final_classification: Optional[FinalClassificationData] = None
 
+    def toJSON(self, index: int = None) -> Dict[str, Any]:
+
+            final_json = {}
+            if index:
+                final_json["index"] = index
+            final_json["driver-name"] = self.m_name
+            final_json["track-position"] = self.m_position
+            final_json["telemetry-settings"] = str(self.m_telemetry_restrictions)
+            if self.m_packet_car_damage:
+                final_json["car-damage"] = self.m_packet_car_damage.toJSON()
+            if self.m_packet_car_status:
+                final_json["car-status"] = self.m_packet_car_status.toJSON()
+            if self.m_packet_lap_data:
+                final_json["lap-data"] = self.m_packet_lap_data.toJSON()
+            if self.m_packet_particpant_data:
+                final_json["participant-data"] = self.m_packet_particpant_data.toJSON()
+            if self.m_packet_tyre_sets:
+                final_json["tyre-sets"] = self.m_packet_tyre_sets.toJSON()
+            if self.m_packet_session_history:
+                final_json["session-history"] = self.m_packet_session_history.toJSON()
+            if self.m_packet_final_classification:
+                final_json["final-classification"] = self.m_packet_final_classification.toJSON()
+
+            return final_json
+
 class DriverData:
 
     def __init__(self):
@@ -222,7 +247,7 @@ class DriverData:
                     [LapData.PitStatus.PITTING, LapData.PitStatus.IN_PIT_AREA] else False
             obj_to_be_updated.m_num_pitstops = lap_data.m_numPitStops
             obj_to_be_updated.m_dnf_status_code = result_str_map.get(lap_data.m_resultStatus, "")
-            obj_to_be_updated.m_packet_lap_data = packet
+            obj_to_be_updated.m_packet_lap_data = lap_data
 
         self.m_num_active_cars = num_active_cars
         return self._shouldRecomputeFastestLap()
@@ -281,9 +306,10 @@ class DriverData:
         for index, data in enumerate(packet.m_classificationData):
             obj_to_be_updated = self.m_driver_data.get(index, None)
             if obj_to_be_updated:
-                obj_to_be_updated.m_name = data.m_position
+                obj_to_be_updated.m_position = data.m_position
                 obj_to_be_updated.m_packet_final_classification = data
-                final_json["classification-data"][index] = self._getDriverInfoJSON(index, obj_to_be_updated)
+                # final_json["classification-data"][index] = self._getDriverInfoJSON(index, obj_to_be_updated)
+                final_json["classification-data"][index] = obj_to_be_updated.toJSON(index)
         final_json['classification-data'] = sorted(final_json['classification-data'], key=lambda x: x['track-position'])
         return final_json
 
@@ -310,29 +336,34 @@ class DriverData:
         obj_to_be_updated.m_tyre_life_remaining_laps = packet.m_tyreSetData[packet.m_fittedIdx].m_lifeSpan
         obj_to_be_updated.m_packet_tyre_sets = packet
 
-    def _getDriverInfoJSON(self, index: int, driver_data: DataPerDriver) -> Dict[str, Any]:
+    # def _getDriverInfoJSON(self, index: int, driver_data: DataPerDriver) -> Dict[str, Any]:
 
-            final_json = {}
-            final_json["index"] = index
-            final_json["driver-name"] = driver_data.m_name
-            final_json["track-position"] = driver_data.m_position
-            final_json["telemetry-settings"] = str(driver_data.m_telemetry_restrictions)
-            if driver_data.m_packet_car_damage:
-                final_json["car-damage"] = driver_data.m_packet_car_damage.toJSON()
-            if driver_data.m_packet_car_status:
-                final_json["car-status"] = driver_data.m_packet_car_status.toJSON()
-            if driver_data.m_packet_lap_data:
-                final_json["lap-data"] = driver_data.m_packet_lap_data.toJSON()
-            if driver_data.m_packet_particpant_data:
-                final_json["participant-data"] = driver_data.m_packet_particpant_data.toJSON()
-            if driver_data.m_packet_tyre_sets:
-                final_json["tyre-sets"] = driver_data.m_packet_tyre_sets.toJSON()
-            if driver_data.m_packet_session_history:
-                final_json["session-history"] = driver_data.m_packet_session_history.toJSON()
-            if driver_data.m_packet_final_classification:
-                final_json["final-classification"] = driver_data.m_packet_final_classification.toJSON()
+    #         final_json = {}
+    #         final_json["index"] = index
+    #         final_json["driver-name"] = driver_data.m_name
+    #         final_json["track-position"] = driver_data.m_position
+    #         final_json["telemetry-settings"] = str(driver_data.m_telemetry_restrictions)
+    #         if driver_data.m_packet_car_damage:
+    #             final_json["car-damage"] = driver_data.m_packet_car_damage.toJSON()
+    #         if driver_data.m_packet_car_status:
+    #             final_json["car-status"] = driver_data.m_packet_car_status.toJSON()
+    #         if driver_data.m_packet_lap_data:
+    #             final_json["lap-data"] = driver_data.m_packet_lap_data.toJSON()
+    #         if driver_data.m_packet_particpant_data:
+    #             final_json["participant-data"] = driver_data.m_packet_particpant_data.toJSON()
+    #         if driver_data.m_packet_tyre_sets:
+    #             final_json["tyre-sets"] = driver_data.m_packet_tyre_sets.toJSON()
+    #         if driver_data.m_packet_session_history:
+    #             final_json["session-history"] = driver_data.m_packet_session_history.toJSON()
+    #         if driver_data.m_packet_final_classification:
+    #             final_json["final-classification"] = driver_data.m_packet_final_classification.toJSON()
 
-            return final_json
+    #         return final_json
+
+    def getDriverInfoJsonByIndex(self, index: int) -> Optional[Dict[str, Any]]:
+
+        obj_to_be_updated = self.m_driver_data.get(index, None)
+        return obj_to_be_updated.toJSON(index) if obj_to_be_updated else None
 
 
 _globals = GlobalData()
@@ -753,3 +784,8 @@ def processTyreSetsUpdate(packet: PacketTyreSetsData) -> None:
 
     with _driver_data_lock:
         _driver_data.processTyreSetsUpdate(packet)
+
+def getDriverInfoJsonByIndex(index: int) -> None:
+
+    with _driver_data_lock:
+        return _driver_data.getDriverInfoJsonByIndex(index)
