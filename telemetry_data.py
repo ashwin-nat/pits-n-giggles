@@ -166,6 +166,23 @@ class DriverData:
             self.m_driver_data[index] = DataPerDriver()
         return self.m_driver_data[index]
 
+    def _shouldRecomputeFastestLap(self) -> bool:
+
+        if (self.m_fastest_index is None) and (self.m_num_active_cars is not None):
+            count_null_best_times = 0
+            for curr_index, driver_data in _driver_data.m_driver_data.items():
+                if curr_index >= _driver_data.m_num_active_cars:
+                    continue
+                if driver_data.m_best_lap is None:
+                    count_null_best_times += 1
+            if count_null_best_times == 0:
+                # only recompute once all the best lap times are available
+                return True
+            else:
+                return False
+        else:
+            return False
+
     def processLapDataUpdate(self, packet: PacketLapData) -> int:
 
         num_active_cars = 0
@@ -196,24 +213,8 @@ class DriverData:
             obj_to_be_updated.m_num_pitstops = lap_data.m_numPitStops
             obj_to_be_updated.m_dnf_status_code = result_str_map.get(lap_data.m_resultStatus, "")
 
-            # Check whether fastest lap needs to be recomputed
-            if (self.m_fastest_index is None) and (self.m_num_active_cars is not None):
-                count_null_best_times = 0
-                for curr_index, driver_data in _driver_data.m_driver_data.items():
-                    if curr_index >= _driver_data.m_num_active_cars:
-                        continue
-                    if driver_data.m_best_lap is None:
-                        count_null_best_times += 1
-                if count_null_best_times == 0:
-                    # only recompute once all the best lap times are available
-                    should_recompute_fastest_lap = True
-                else:
-                    should_recompute_fastest_lap = False
-            else:
-                should_recompute_fastest_lap = False
-
         self.m_num_active_cars = num_active_cars
-        return should_recompute_fastest_lap
+        return self._shouldRecomputeFastestLap()
 
     def processFastestLapUpdate(self, packet: PacketEventData.FastestLap) -> None:
 
@@ -237,6 +238,45 @@ class DriverData:
                 self.m_player_index = index
             obj_to_be_updated.m_telemetry_restrictions = participant.m_yourTelemetry
 
+    def processCarTelemetryUpdate(self, packet: PacketCarTelemetryData) -> None:
+
+        for index, car_telemetry_data in enumerate(packet.m_carTelemetryData):
+            obj_to_be_updated = self._getObjectByIndexCreate(index)
+            obj_to_be_updated.m_drs_activated = bool(car_telemetry_data.m_drs)
+            obj_to_be_updated.m_tyre_inner_temp = \
+                    sum(car_telemetry_data.m_tyresInnerTemperature)/len(car_telemetry_data.m_tyresInnerTemperature)
+            obj_to_be_updated.m_tyre_surface_temp = \
+                    sum(car_telemetry_data.m_tyresSurfaceTemperature)/len(car_telemetry_data.m_tyresSurfaceTemperature)
+
+    def processCarStatusUpdate(self, packet: PacketCarStatusData) -> None:
+
+        for index, car_status_data in enumerate(packet.m_carStatusData):
+            obj_to_be_updated = self._getObjectByIndexCreate(index)
+            obj_to_be_updated.m_ers_perc = (car_status_data.m_ersStoreEnergy/CarStatusData.max_ers_store_energy) * 100.0
+            obj_to_be_updated.m_tyre_age = car_status_data.m_tyresAgeLaps
+            obj_to_be_updated.m_tyre_compound_type = str(car_status_data.m_actualTyreCompound) + ' - ' + \
+                str(car_status_data.m_visualTyreCompound)
+            obj_to_be_updated.m_drs_allowed = bool(car_status_data.m_drsAllowed)
+            obj_to_be_updated.m_drs_distance = car_status_data.m_drsActivationDistance
+
+    def processCarDamageUpdate(self, packet: PacketCarDamageData) -> None:
+
+        for index, car_damage in enumerate(packet.m_carDamageData):
+            obj_to_be_updated = self._getObjectByIndexCreate(index)
+            obj_to_be_updated.m_tyre_wear = sum(car_damage.m_tyresWear)/len(car_damage.m_tyresWear)
+
+    def processSessionHistoryUpdate(self, packet: PacketSessionHistoryData) -> bool:
+
+        if (packet.m_bestLapTimeLapNum > 0) and (packet.m_bestLapTimeLapNum <= packet.m_numLaps):
+            obj_to_be_updated = self._getObjectByIndexCreate(packet.m_carIdx)
+            obj_to_be_updated.m_best_lap = F1Utils.millisecondsToMinutesSeconds(
+                packet.m_lapHistoryData[packet.m_bestLapTimeLapNum-1].m_lapTimeInMS)
+        return self._shouldRecomputeFastestLap()
+
+    def processTyreSetsUpdate(self, packet: PacketTyreSetsData) -> None:
+
+        obj_to_be_updated = self._getObjectByIndexCreate(packet.m_carIdx)
+        obj_to_be_updated.m_tyre_life_remaining_laps = packet.m_tyreSetData[packet.m_fittedIdx].m_lifeSpan
 
 _globals = GlobalData()
 _driver_data = DriverData()
@@ -404,15 +444,6 @@ def getOvertakeString(overtaking_car_index: int, being_overtaken_index: int) -> 
         # Get the CSV-formatted string
         csv_string = csv_buffer.getvalue().strip()
         return csv_string
-
-def set_final_classification(packet: PacketFinalClassificationData) -> None:
-    with _driver_data_lock:
-        _driver_data.m_race_completed = True
-        for index, data in enumerate(packet.m_classificationData):
-            if index in _driver_data.m_driver_data:
-                _driver_data.m_driver_data[index].m_position = data.m_position
-    with _globals_lock:
-        _globals.m_final_classification_received = True
 
 def millisecondsToMinutesSeconds(milliseconds):
     if not isinstance(milliseconds, int):
@@ -631,3 +662,39 @@ def processParticipantsUpdate(packet: PacketParticipantsData):
 
     with _driver_data_lock:
         _driver_data.processParticipantsUpdate(packet)
+
+def processCarTelemetryUpdate(packet: PacketCarTelemetryData) -> None:
+
+    with _driver_data_lock:
+        _driver_data.processCarTelemetryUpdate(packet)
+
+def processCarStatusUpdate(packet: PacketCarStatusData) -> None:
+
+    with _driver_data_lock:
+        _driver_data.processCarStatusUpdate(packet)
+
+def processFinalClassificationUpdate(packet: PacketFinalClassificationData) -> None:
+    with _driver_data_lock:
+        _driver_data.m_race_completed = True
+        for index, data in enumerate(packet.m_classificationData):
+            if index in _driver_data.m_driver_data:
+                _driver_data.m_driver_data[index].m_position = data.m_position
+    with _globals_lock:
+        _globals.m_final_classification_received = True
+
+def processCarDamageUpdate(packet: PacketCarDamageData):
+
+    with _driver_data_lock:
+        _driver_data.processCarDamageUpdate(packet)
+
+def processSessionHistoryUpdate(packet: PacketSessionHistoryData):
+
+    with _driver_data_lock:
+        should_recompute_fastest_lap = _driver_data.processSessionHistoryUpdate(packet)
+        if should_recompute_fastest_lap:
+            _recompute_fastest_lap_no_mutex()
+
+def processTyreSetsUpdate(packet: PacketTyreSetsData) -> None:
+
+    with _driver_data_lock:
+        _driver_data.processTyreSetsUpdate(packet)

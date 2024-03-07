@@ -280,7 +280,7 @@ class F12023TelemetryHandler:
         self.m_manager.registerCallback(F1PacketType.LAP_DATA, F12023TelemetryHandler.handleLapData)
         self.m_manager.registerCallback(F1PacketType.EVENT, F12023TelemetryHandler.handleEvent)
         self.m_manager.registerCallback(F1PacketType.PARTICIPANTS, F12023TelemetryHandler.handleParticipants)
-        self.m_manager.registerCallback(F1PacketType.CAR_SETUPS, F12023TelemetryHandler.handleCarSetups)
+        # self.m_manager.registerCallback(F1PacketType.CAR_SETUPS, F12023TelemetryHandler.handleCarSetups)
         self.m_manager.registerCallback(F1PacketType.CAR_TELEMETRY, F12023TelemetryHandler.handleCarTelemetry)
         self.m_manager.registerCallback(F1PacketType.CAR_STATUS, F12023TelemetryHandler.handleCarStatus)
         self.m_manager.registerCallback(F1PacketType.FINAL_CLASSIFICATION, F12023TelemetryHandler.handleFinalClassification)
@@ -459,35 +459,37 @@ class F12023TelemetryHandler:
     @staticmethod
     def handleCarTelemetry(packet: PacketCarTelemetryData) -> None:
         # print('Received Car Telemetry Packet. ' + str(packet))
-        for index, car_telemetry_data in enumerate(packet.m_carTelemetryData):
-            driver_data = TelData.DataPerDriver()
-            driver_data.m_drs_activated = bool(car_telemetry_data.m_drs)
-            driver_data.m_tyre_inner_temp = \
-                    sum(car_telemetry_data.m_tyresInnerTemperature)/len(car_telemetry_data.m_tyresInnerTemperature)
-            driver_data.m_tyre_surface_temp = \
-                    sum(car_telemetry_data.m_tyresSurfaceTemperature)/len(car_telemetry_data.m_tyresSurfaceTemperature)
-            TelData.set_driver_data(index, driver_data)
+        # for index, car_telemetry_data in enumerate(packet.m_carTelemetryData):
+        #     driver_data = TelData.DataPerDriver()
+        #     driver_data.m_drs_activated = bool(car_telemetry_data.m_drs)
+        #     driver_data.m_tyre_inner_temp = \
+        #             sum(car_telemetry_data.m_tyresInnerTemperature)/len(car_telemetry_data.m_tyresInnerTemperature)
+        #     driver_data.m_tyre_surface_temp = \
+        #             sum(car_telemetry_data.m_tyresSurfaceTemperature)/len(car_telemetry_data.m_tyresSurfaceTemperature)
+        #     TelData.set_driver_data(index, driver_data)
+        TelData.processCarTelemetryUpdate(packet)
         return
 
     @staticmethod
     def handleCarStatus(packet: PacketCarStatusData) -> None:
 
-        for index, car_status_data in enumerate(packet.m_carStatusData):
-            data = TelData.DataPerDriver()
-            data.m_ers_perc = (car_status_data.m_ersStoreEnergy/CarStatusData.max_ers_store_energy) * 100.0
-            data.m_tyre_age = car_status_data.m_tyresAgeLaps
-            data.m_tyre_compound_type = str(car_status_data.m_actualTyreCompound) + ' - ' + \
-                str(car_status_data.m_visualTyreCompound)
-            data.m_drs_allowed = bool(car_status_data.m_drsAllowed)
-            data.m_drs_distance = bool(car_status_data.m_drsActivationDistance)
+        # for index, car_status_data in enumerate(packet.m_carStatusData):
+        #     data = TelData.DataPerDriver()
+        #     data.m_ers_perc = (car_status_data.m_ersStoreEnergy/CarStatusData.max_ers_store_energy) * 100.0
+        #     data.m_tyre_age = car_status_data.m_tyresAgeLaps
+        #     data.m_tyre_compound_type = str(car_status_data.m_actualTyreCompound) + ' - ' + \
+        #         str(car_status_data.m_visualTyreCompound)
+        #     data.m_drs_allowed = bool(car_status_data.m_drsAllowed)
+        #     data.m_drs_distance = bool(car_status_data.m_drsActivationDistance)
 
-            TelData.set_driver_data(index, data)
+        #     TelData.set_driver_data(index, data)
+        TelData.processCarStatusUpdate(packet)
         return
 
     @staticmethod
     def handleFinalClassification(packet: PacketFinalClassificationData) -> None:
         print('Received Final Classification Packet. ')
-        TelData.set_final_classification(packet)
+        TelData.processFinalClassificationUpdate(packet)
 
         # Perform the auto save stuff only for races
         _, _, event_type_str, _, _, _, _, _, _ = TelData.getGlobals()
@@ -531,32 +533,34 @@ class F12023TelemetryHandler:
     @staticmethod
     def handleCarDamage(packet: PacketCarDamageData) -> None:
         # print('Received Car Damage Packet. ' + str(packet))
-        for index, car_damage in enumerate(packet.m_carDamageData):
-            data = TelData.DataPerDriver()
-            data.m_tyre_wear = sum(car_damage.m_tyresWear)/len(car_damage.m_tyresWear)
-            TelData.set_driver_data(index, data)
+        # for index, car_damage in enumerate(packet.m_carDamageData):
+        #     data = TelData.DataPerDriver()
+        #     data.m_tyre_wear = sum(car_damage.m_tyresWear)/len(car_damage.m_tyresWear)
+        #     TelData.set_driver_data(index, data)
+        TelData.processCarDamageUpdate(packet)
         return
 
     @staticmethod
     def handleSessionHistory(packet: PacketSessionHistoryData) -> None:
         # print('Received Session History Packet. ' + str(packet))
         # Update the best time for this car
-        driver_data = TelData.DataPerDriver()
-        if (packet.m_bestLapTimeLapNum > 0) and (packet.m_bestLapTimeLapNum <= packet.m_numLaps):
-            driver_data.m_best_lap = F12023TelemetryHandler.millisecondsToMinutesSeconds(
-                packet.m_lapHistoryData[packet.m_bestLapTimeLapNum-1].m_lapTimeInMS)
-            if (TelData.set_driver_data(packet.m_carIdx, driver_data)) is True:
-                TelData.recompute_fastest_lap()
-
+        # driver_data = TelData.DataPerDriver()
+        # if (packet.m_bestLapTimeLapNum > 0) and (packet.m_bestLapTimeLapNum <= packet.m_numLaps):
+        #     driver_data.m_best_lap = F12023TelemetryHandler.millisecondsToMinutesSeconds(
+        #         packet.m_lapHistoryData[packet.m_bestLapTimeLapNum-1].m_lapTimeInMS)
+        #     if (TelData.set_driver_data(packet.m_carIdx, driver_data)) is True:
+        #         TelData.recompute_fastest_lap()
+        TelData.processSessionHistoryUpdate(packet)
         return
 
     @staticmethod
     def handleTyreSets(packet: PacketTyreSetsData) -> None:
         # print('Received Tyre Sets Packet. ' + str(packet))
 
-        data = TelData.DataPerDriver()
-        data.m_tyre_life_remaining_laps = packet.m_tyreSetData[packet.m_fittedIdx].m_lifeSpan
-        TelData.set_driver_data(packet.m_carIdx, data)
+        # data = TelData.DataPerDriver()
+        # data.m_tyre_life_remaining_laps = packet.m_tyreSetData[packet.m_fittedIdx].m_lifeSpan
+        # TelData.set_driver_data(packet.m_carIdx, data)
+        TelData.processTyreSetsUpdate(packet)
         return
 
     @staticmethod
