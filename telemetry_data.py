@@ -247,6 +247,8 @@ class DriverData:
             if (index == packet.m_header.m_playerCarIndex):
                 obj_to_be_updated.m_is_player = True
                 self.m_player_index = index
+            else:
+                obj_to_be_updated.m_is_player = False
             obj_to_be_updated.m_telemetry_restrictions = participant.m_yourTelemetry
             obj_to_be_updated.m_packet_particpant_data = participant
 
@@ -283,6 +285,7 @@ class DriverData:
                 obj_to_be_updated.m_packet_final_classification = data
                 final_json["classification-data"][index] = self._getDriverInfoJSON(index, obj_to_be_updated)
         final_json['classification-data'] = sorted(final_json['classification-data'], key=lambda x: x['track-position'])
+        return final_json
 
     def processCarDamageUpdate(self, packet: PacketCarDamageData) -> None:
 
@@ -326,8 +329,8 @@ class DriverData:
                 final_json["tyre-sets"] = driver_data.m_packet_tyre_sets.toJSON()
             if driver_data.m_packet_session_history:
                 final_json["session-history"] = driver_data.m_packet_session_history.toJSON()
-            if driver_data.m_final_classification:
-                final_json["final-classification"] = driver_data.m_final_classification.toJSON()
+            if driver_data.m_packet_final_classification:
+                final_json["final-classification"] = driver_data.m_packet_final_classification.toJSON()
 
             return final_json
 
@@ -727,14 +730,12 @@ def processCarStatusUpdate(packet: PacketCarStatusData) -> None:
     with _driver_data_lock:
         _driver_data.processCarStatusUpdate(packet)
 
-def processFinalClassificationUpdate(packet: PacketFinalClassificationData) -> None:
+def processFinalClassificationUpdate(packet: PacketFinalClassificationData) -> Dict[str, Any]:
     with _driver_data_lock:
-        _driver_data.m_race_completed = True
-        for index, data in enumerate(packet.m_classificationData):
-            if index in _driver_data.m_driver_data:
-                _driver_data.m_driver_data[index].m_position = data.m_position
+        final_json = _driver_data.processFinalClassificationUpdate(packet)
     with _globals_lock:
         _globals.m_final_classification_received = True
+    return final_json
 
 def processCarDamageUpdate(packet: PacketCarDamageData):
 

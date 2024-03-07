@@ -2087,11 +2087,11 @@ class PacketEventData:
                 Returns:
                     bool: true if valid
                 """
-                if isinstance(penalty_type, Penalty.PenaltyType):
+                if isinstance(penalty_type, PacketEventData.Penalty.PenaltyType):
                     return True  # It's already an instance of SafetyCarStatus
                 else:
-                    min_value = min(member.value for member in Penalty.PenaltyType)
-                    max_value = max(member.value for member in Penalty.PenaltyType)
+                    min_value = min(member.value for member in PacketEventData.Penalty.PenaltyType)
+                    max_value = max(member.value for member in PacketEventData.Penalty.PenaltyType)
                     return min_value <= penalty_type <= max_value
 
         class InfringementType(Enum):
@@ -2168,11 +2168,11 @@ class PacketEventData:
                 Returns:
                     bool: true if valid
                 """
-                if isinstance(infringement_type, Penalty.InfringementType):
+                if isinstance(infringement_type, PacketEventData.Penalty.InfringementType):
                     return True  # It's already an instance of SafetyCarStatus
                 else:
-                    min_value = min(member.value for member in Penalty.InfringementType)
-                    max_value = max(member.value for member in Penalty.InfringementType)
+                    min_value = min(member.value for member in PacketEventData.Penalty.InfringementType)
+                    max_value = max(member.value for member in PacketEventData.Penalty.InfringementType)
                     return min_value <= infringement_type <= max_value
 
         def __init__(self, data: bytes):
@@ -2194,10 +2194,10 @@ class PacketEventData:
                 self.placesGained
             ) = unpacked_data
 
-            if Penalty.PenaltyType.isValid(self.penaltyType):
-                self.penaltyType = Penalty.PenaltyType(self.penaltyType)
-            if Penalty.InfringementType.isValid(self.infringementType):
-                self.infringementType = Penalty.InfringementType(self.infringementType)
+            if PacketEventData.Penalty.PenaltyType.isValid(self.penaltyType):
+                self.penaltyType = PacketEventData.Penalty.PenaltyType(self.penaltyType)
+            if PacketEventData.Penalty.InfringementType.isValid(self.infringementType):
+                self.infringementType = PacketEventData.Penalty.InfringementType(self.infringementType)
 
         def __str__(self):
             return f"Penalty(penaltyType={self.penaltyType}, infringementType={self.infringementType}, " \
@@ -2212,9 +2212,12 @@ class PacketEventData:
                 Dict[str, Any]: JSON-compatible dictionary representing the Penalty instance.
             """
             return {
-                "penalty-type": str(self.penaltyType.value) if Penalty.PenaltyType.isValid(self.penaltyType) else self.penaltyType,
+                "penalty-type": str(self.penaltyType.value) \
+                    if PacketEventData.Penalty.PenaltyType.isValid(self.penaltyType) \
+                    else self.penaltyType,
                 "infringement-type": str(self.infringementType.value) \
-                            if Penalty.InfringementType.isValid(self.infringementType) else self.infringementType,
+                        if PacketEventData.Penalty.InfringementType.isValid(self.infringementType) \
+                        else self.infringementType,
                 "vehicle-idx": self.vehicleIdx,
                 "other-vehicle-idx": self.otherVehicleIdx,
                 "time": self.time,

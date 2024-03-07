@@ -28,7 +28,7 @@ import time
 import sys
 import webbrowser
 
-from telemetry_handler import initPktCap, PacketCaptureMode, initOvertakesAutosave, \
+from telemetry_handler import initPktCap, PacketCaptureMode, initAutosaves, \
     F12023TelemetryHandler, initDirectories
 from telemetry_server import TelemetryWebServer
 
@@ -78,14 +78,15 @@ def http_server_task(
     telemetry_server.run()
 
 def f1_telemetry_server_task(packet_capture: PacketCaptureMode, port_number: int,
-                            overtakes_autosave: bool, replay_server: bool) -> None:
+                            overtakes_autosave: bool, replay_server: bool,
+                            post_race_data_autosave: bool) -> None:
     """Entry point to start the F1 23 telemetry server.
     """
 
     time.sleep(2)
     if packet_capture != PacketCaptureMode.DISABLED:
         initPktCap(packet_capture)
-    initOvertakesAutosave(overtakes_autosave)
+    initAutosaves(overtakes_autosave, post_race_data_autosave)
     telemetry_client = F12023TelemetryHandler(port_number, packet_capture, replay_server)
     telemetry_client.run()
 
@@ -103,6 +104,8 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--server-port', type=int, default=5000, metavar='SERVER_PORT',
                         help="Port number for HTTP server")
     parser.add_argument('-o', '--overtakes-autosave', action='store_true', help="Autosave all overtakes to a CSV file")
+    parser.add_argument('-f', '--post-race-data-autosave', action='store_true',
+                            help="Autosave all race data into a JSON file at the end of the race")
     parser.add_argument('--replay-server',  action='store_true', help="Enable the TCP replay debug server")
     parser.add_argument('--disable-browser-autoload',  action='store_true',
                         help="Set this flag to not open the browser tab automatically")
@@ -111,11 +114,12 @@ if __name__ == '__main__':
 
     # Parse the command-line arguments
     args = parser.parse_args()
+    initDirectories()
 
     # First init the telemetry client on a main thread
     client_thread = threading.Thread(target=f1_telemetry_server_task,
                                     args=(args.packet_capture_mode, args.telemetry_port, args.overtakes_autosave,
-                                            args.replay_server))
+                                            args.replay_server, args.post_race_data_autosave))
     client_thread.daemon = True
     client_thread.start()
 

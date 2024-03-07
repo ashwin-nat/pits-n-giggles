@@ -162,14 +162,14 @@ class F1PktCapFileHeader:
             num_packets=num_packets,
             is_little_endian=is_little_endian)
 
-class F1PacketCaptureEntry:
+class F1PktCapMessage:
     """Represents an entry in the F1PacketCapture."""
 
     HEADER_LEN = 8
 
     def __init__(self, data: bytes, timestamp: float = None, is_little_endian: bool = True):
         """
-        Initialize a F1PacketCaptureEntry.
+        Initialize a F1PktCapMessage.
 
         Parameters:
         - data (bytes): Raw data for the entry.
@@ -198,13 +198,13 @@ class F1PacketCaptureEntry:
     @classmethod
     def from_bytes(cls, data: bytes, is_little_endian: bool = True):
         """
-        Create a F1PacketCaptureEntry from serialized bytes.
+        Create a F1PktCapMessage from serialized bytes.
 
         Parameters:
         - data (bytes): Serialized bytes containing timestamp and payload length followed by the payload.
 
         Returns:
-        - F1PacketCaptureEntry: Deserialized entry.
+        - F1PktCapMessage: Deserialized entry.
 
         Raises:
         - ValueError: If the length of the payload does not match the expected length specified in the header.
@@ -215,14 +215,15 @@ class F1PacketCaptureEntry:
         payload = data[8:]
         if len(payload) != length:
             raise ValueError(f"Data length mismatch. Header length: {length}, Actual length: {len(payload)}")
-        return F1PacketCaptureEntry(payload, timestamp)
+        return F1PktCapMessage(payload, timestamp)
 
 class F1PacketCapture:
-    """Represents a collection of F1PacketCaptureEntry objects."""
+    """Represents a collection of F1PktCapMessage objects."""
 
     major_ver = 1
     minor_ver = 0
     is_little_endian = (sys.byteorder == "little")
+    file_extension = "f1pcap"
 
     def __init__(self, file_name:str=None):
         """Initialize a F1PacketCapture.
@@ -230,7 +231,7 @@ class F1PacketCapture:
         Parmeters:
             file_name(str): If specified, will parse the given file into this container
         """
-        self.m_packet_history: List[F1PacketCaptureEntry] = []
+        self.m_packet_history: List[F1PktCapMessage] = []
         if file_name:
             self.readFromFile(file_name, append=False)
         else:
@@ -249,7 +250,7 @@ class F1PacketCapture:
         Parameters:
         - data (bytes): Raw data for the entry.
         """
-        entry = F1PacketCaptureEntry(data, is_little_endian=self.is_little_endian)
+        entry = F1PktCapMessage(data, is_little_endian=self.is_little_endian)
         self.m_packet_history.append(entry)
         self.m_header.num_packets += 1
 
@@ -344,8 +345,8 @@ class F1PacketCapture:
                 # Concatenate timestamp_bytes, data_length_bytes, and payload
                 entry_data = timestamp_bytes + data_length_bytes + payload
 
-                # Use F1PacketCaptureEntry.from_bytes to create the entry
-                entry = F1PacketCaptureEntry.from_bytes(entry_data, self.m_header.is_little_endian)
+                # Use F1PktCapMessage.from_bytes to create the entry
+                entry = F1PktCapMessage.from_bytes(entry_data, self.m_header.is_little_endian)
                 self.m_packet_history.append(entry)
 
     def getPackets(self) -> Generator[Tuple[float, bytes], None, None]:
@@ -357,3 +358,11 @@ class F1PacketCapture:
         """
         for entry in self.m_packet_history:
             yield entry.m_timestamp, entry.m_data
+
+    def getFirstTimestamp(self) -> float:
+        """Returns the timestamp of the first packet in the capture
+
+        Returns:
+            float: Timestamp
+        """
+        return self.m_packet_history[0].m_timestamp if len(self.m_packet_history) > 0 else None

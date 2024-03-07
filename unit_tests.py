@@ -158,10 +158,10 @@ class TestAdjacentPositions(F1TelemetryUnitTestsBase):
         expected_result = [1,2,3]
         self.assertEqual(result, expected_result)
 
+# ------------------------------------------PACKET-CAPTURE--------------------------------------------------------------
+
 class TestF1PacketCapture(F1TelemetryUnitTestsBase):
     pass
-
-# ------------------------------------------PACKET-CAPTURE--------------------------------------------------------------
 
 class FullPCapTests(TestF1PacketCapture):
     # Configurable max_packet_len value
@@ -474,7 +474,7 @@ class TestOvertakeAnalyzerEmptyInput(OvertakeAnalyzerUT):
 
         # Test most heated rivalry
         rivalries_data = analyzer.getMostHeatedRivalries()
-        self.assertEqual(rivalries_data, None)
+        self.assertEqual(rivalries_data, {})
 
         # Test total overtakes
         total_overtakes = analyzer.getTotalNumberOfOvertakes()
@@ -501,7 +501,7 @@ class TestOvertakeAnalyzerEmptyInput(OvertakeAnalyzerUT):
 
         # Test most heated rivalry
         rivalries_data = analyzer.getMostHeatedRivalries()
-        self.assertEqual(rivalries_data, None)
+        self.assertEqual(rivalries_data, {})
 
         # Test total overtakes
         total_overtakes = analyzer.getTotalNumberOfOvertakes()

@@ -33,6 +33,7 @@ from typing import Optional, List, Tuple, Dict
 from datetime import datetime
 import os
 import logging
+import json
 
 class PacketCaptureMode(Enum):
     """Enum representing packet capture modes."""
@@ -47,6 +48,7 @@ g_num_active_cars = 0
 g_overtakes_history = []
 g_overtakes_table_lock = Lock()
 g_autosave_overtakes = False
+g_post_race_data_autosave = False
 g_directory_mapping = {}
 
 class PktSaveStatus(Enum):
@@ -69,13 +71,15 @@ class GetOvertakesStatus(Enum):
     def __str__(self):
         return self.name
 
-def initOvertakesAutosave(autosave_enabled: bool = False):
+def initAutosaves(autosave_enabled: bool, post_race_data_autosave: bool):
     global g_autosave_overtakes
     global g_overtakes_history
     global g_overtakes_table_lock
+    global g_post_race_data_autosave
     g_autosave_overtakes = autosave_enabled
     g_overtakes_history = []
     g_overtakes_table_lock = Lock()
+    g_post_race_data_autosave = post_race_data_autosave
 
 def initDirectories():
 
@@ -94,7 +98,7 @@ def initDirectories():
             logging.info(f"Directory '{directory}' created.")
 
     global g_directory_mapping
-    ts_prefix = getTimestampStr()
+    ts_prefix = datetime.now().strftime("%Y_%m_%d")
     g_directory_mapping['overtakes'] = "data/" + ts_prefix + "/overtakes/"
     g_directory_mapping['race-info'] = "data/" + ts_prefix + "/race-info/"
     g_directory_mapping['packet-captures'] = "data/" + ts_prefix + "/packet-captures/"
@@ -232,6 +236,17 @@ def printOvertakeData(file_name: str=None):
                 input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST,
                 input=g_overtakes_history)
     print(overtake_analyzer.getFormattedString(driver_name=player_name, is_case_sensitive=True))
+
+def writeDictToJsonFile(data_dict: Dict, file_name: str) -> None:
+    """
+    Write a dictionary containing JSON data to a file.
+
+    Parameters:
+    - data_dict (Dict): Dictionary containing JSON data.
+    - file_name (str): File name to write the data to.
+    """
+    with open(file_name, 'w', encoding='utf-8') as json_file:
+        json.dump(data_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
 
 class F12023TelemetryHandler:
     """
@@ -489,40 +504,58 @@ class F12023TelemetryHandler:
     @staticmethod
     def handleFinalClassification(packet: PacketFinalClassificationData) -> None:
         print('Received Final Classification Packet. ')
-        TelData.processFinalClassificationUpdate(packet)
+        final_json = TelData.processFinalClassificationUpdate(packet)
 
         # Perform the auto save stuff only for races
         _, _, event_type_str, _, _, _, _, _, _ = TelData.getGlobals()
         global g_overtakes_table_lock
         global g_directory_mapping
-        if event_type_str in [str(SessionType.RACE), str(SessionType.RACE_2), str(SessionType.RACE_3)]:
+        supported_event_types = [str(SessionType.RACE), str(SessionType.RACE_2), str(SessionType.RACE_3)]
+        is_event_supported = False
+        for event_type in supported_event_types:
+            if event_type in event_type_str:
+                is_event_supported = True
+                break
+        if is_event_supported:
 
+            global g_directory_mapping
+            event_str = TelData.getEventInfoStr()
+            if not event_str:
+                return
             # Capture the packets if required
             global g_pkt_cap_mode
             if g_pkt_cap_mode == PacketCaptureMode.ENABLED_WITH_AUTOSAVE:
-                event_str = TelData.getEventInfoStr()
-                if event_str:
-                    global g_directory_mapping
-                    file_name = 'capture_' + event_str + '_' + datetime.now().strftime("%Y_%m_%d_%H_%M_%S") + '.bin'
-                    file_name = g_directory_mapping["packet-captures"] + file_name
-                    dumpPktCapToFile(file_name=file_name,reason='Final Classification')
+                file_name = 'capture_' + event_str + getTimestampStr() + \
+                    F1PacketCapture.file_extension
+                file_name = g_directory_mapping["packet-captures"] + file_name
+                dumpPktCapToFile(file_name=file_name,reason='Final Classification')
 
             # Compute and display overtake stats
-            event_str = TelData.getEventInfoStr()
-            if event_str:
-                global g_autosave_overtakes
-                file_name=None
-                if g_autosave_overtakes:
-                    file_name = 'overtakes_history_' + event_str +  datetime.now().strftime("%Y_%m_%d_%H_%M_%S") + '.csv'
-                    file_name = g_directory_mapping['overtakes'] + file_name
+            global g_autosave_overtakes
+            file_name=None
+            if g_autosave_overtakes:
+                file_name = 'overtakes_history_' + event_str +  getTimestampStr() + '.csv'
+                file_name = g_directory_mapping['overtakes'] + file_name
+                with g_overtakes_table_lock:
                     with open(file_name, 'w', encoding='utf-8') as file:
                         # Iterate through the list and write each string to the file
                         for line in g_overtakes_history:
                             file.write(line + '\n')  # Add a newline character after each line
                         print("Recorded overtakes to file " + file_name + ". Number of overtakes was " +
                             str(len(g_overtakes_history)))
-                    # Analyze the overtake data and dump the output
-                printOvertakeData(file_name)
+            # Analyze the overtake data and dump the output
+            printOvertakeData(file_name)
+
+            # Save the JSON data
+            global g_post_race_data_autosave
+            if g_post_race_data_autosave:
+                with g_overtakes_table_lock:
+                    final_json['overtakes-info'] = g_overtakes_history
+                final_json_file_name = g_directory_mapping['race-info'] + 'race_info_' + \
+                        event_str + getTimestampStr() + '.json'
+                writeDictToJsonFile(final_json, final_json_file_name)
+                print("Wrote race info to " + final_json_file_name)
+
         return
 
     @staticmethod
