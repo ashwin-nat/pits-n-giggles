@@ -275,7 +275,7 @@ class F12023TelemetryHandler:
         None
         """
 
-        self.m_manager.registerCallback(F1PacketType.MOTION, F12023TelemetryHandler.handleMotion)
+        # self.m_manager.registerCallback(F1PacketType.MOTION, F12023TelemetryHandler.handleMotion)
         self.m_manager.registerCallback(F1PacketType.SESSION, F12023TelemetryHandler.handleSessionData)
         self.m_manager.registerCallback(F1PacketType.LAP_DATA, F12023TelemetryHandler.handleLapData)
         self.m_manager.registerCallback(F1PacketType.EVENT, F12023TelemetryHandler.handleEvent)
@@ -284,11 +284,11 @@ class F12023TelemetryHandler:
         self.m_manager.registerCallback(F1PacketType.CAR_TELEMETRY, F12023TelemetryHandler.handleCarTelemetry)
         self.m_manager.registerCallback(F1PacketType.CAR_STATUS, F12023TelemetryHandler.handleCarStatus)
         self.m_manager.registerCallback(F1PacketType.FINAL_CLASSIFICATION, F12023TelemetryHandler.handleFinalClassification)
-        self.m_manager.registerCallback(F1PacketType.LOBBY_INFO, F12023TelemetryHandler.handleLobbyInfo)
+        # self.m_manager.registerCallback(F1PacketType.LOBBY_INFO, F12023TelemetryHandler.handleLobbyInfo)
         self.m_manager.registerCallback(F1PacketType.CAR_DAMAGE, F12023TelemetryHandler.handleCarDamage)
         self.m_manager.registerCallback(F1PacketType.SESSION_HISTORY, F12023TelemetryHandler.handleSessionHistory)
         self.m_manager.registerCallback(F1PacketType.TYRE_SETS, F12023TelemetryHandler.handleTyreSets)
-        self.m_manager.registerCallback(F1PacketType.MOTION_EX, F12023TelemetryHandler.handleMotionEx)
+        # self.m_manager.registerCallback(F1PacketType.MOTION_EX, F12023TelemetryHandler.handleMotionEx)
 
         if self.m_raw_packet_capture != PacketCaptureMode.DISABLED:
             self.m_manager.registerRawPacketCallback(F12023TelemetryHandler.handleRawPacket)
@@ -355,41 +355,42 @@ class F12023TelemetryHandler:
         None
         """
         # print('Received Lap Data Packet. ' + str(packet))
-        should_recompute_fastest_lap = False
-        global g_num_active_cars
-        num_active_cars = 0
+        # should_recompute_fastest_lap = False
+        # global g_num_active_cars
+        # num_active_cars = 0
 
-        # loop through each of the car's lap data
-        for index, lap_data in enumerate(packet.m_LapData):
-            # not handling invalid laps as of now
-            if lap_data.m_resultStatus == ResultStatus.INVALID:
-                continue
-            num_active_cars += 1
-            data = TelData.DataPerDriver()
-            data.m_position = lap_data.m_carPosition
-            data.m_last_lap = F12023TelemetryHandler.millisecondsToMinutesSeconds(lap_data.m_lastLapTimeInMS) \
-                if (lap_data.m_lastLapTimeInMS > 0) else "---"
-            data.m_delta = lap_data.m_deltaToCarInFrontInMS
-            data.m_delta_to_leader = lap_data.m_deltaToRaceLeaderInMS
-            data.m_penalties = F12023TelemetryHandler.getPenaltyString(lap_data.m_penalties,
-                                lap_data.m_numUnservedDriveThroughPens, lap_data.m_numUnservedStopGoPens)
-            data.m_current_lap = lap_data.m_currentLapNum
-            data.m_is_pitting = True if lap_data.m_pitStatus in \
-                    [LapData.PitStatus.PITTING, LapData.PitStatus.IN_PIT_AREA] else False
-            data.m_num_pitstops = lap_data.m_numPitStops
-            result_str_map = {
-                ResultStatus.DID_NOT_FINISH : "DNF",
-                ResultStatus.DISQUALIFIED : "DSQ",
-                ResultStatus.RETIRED : "DNF"
-            }
-            data.m_dnf_status_code = result_str_map.get(lap_data.m_resultStatus, "")
-            should_recompute_fastest_lap |= TelData.set_driver_data(index, data)
+        # # loop through each of the car's lap data
+        # for index, lap_data in enumerate(packet.m_LapData):
+        #     # not handling invalid laps as of now
+        #     if lap_data.m_resultStatus == ResultStatus.INVALID:
+        #         continue
+        #     num_active_cars += 1
+        #     data = TelData.DataPerDriver()
+        #     data.m_position = lap_data.m_carPosition
+        #     data.m_last_lap = F12023TelemetryHandler.millisecondsToMinutesSeconds(lap_data.m_lastLapTimeInMS) \
+        #         if (lap_data.m_lastLapTimeInMS > 0) else "---"
+        #     data.m_delta = lap_data.m_deltaToCarInFrontInMS
+        #     data.m_delta_to_leader = lap_data.m_deltaToRaceLeaderInMS
+        #     data.m_penalties = F12023TelemetryHandler.getPenaltyString(lap_data.m_penalties,
+        #                         lap_data.m_numUnservedDriveThroughPens, lap_data.m_numUnservedStopGoPens)
+        #     data.m_current_lap = lap_data.m_currentLapNum
+        #     data.m_is_pitting = True if lap_data.m_pitStatus in \
+        #             [LapData.PitStatus.PITTING, LapData.PitStatus.IN_PIT_AREA] else False
+        #     data.m_num_pitstops = lap_data.m_numPitStops
+        #     result_str_map = {
+        #         ResultStatus.DID_NOT_FINISH : "DNF",
+        #         ResultStatus.DISQUALIFIED : "DSQ",
+        #         ResultStatus.RETIRED : "DNF"
+        #     }
+        #     data.m_dnf_status_code = result_str_map.get(lap_data.m_resultStatus, "")
+        #     should_recompute_fastest_lap |= TelData.set_driver_data(index, data)
 
-        if should_recompute_fastest_lap:
-            TelData.recompute_fastest_lap()
-        if g_num_active_cars != num_active_cars:
-            g_num_active_cars = num_active_cars
-            TelData.set_num_cars(num_active_cars)
+        # if should_recompute_fastest_lap:
+        #     TelData.recompute_fastest_lap()
+        # if g_num_active_cars != num_active_cars:
+        #     g_num_active_cars = num_active_cars
+        #     TelData.set_num_cars(num_active_cars)
+        TelData.processLapDataUpdate(packet)
 
     @staticmethod
     def handleEvent(packet: PacketEventData) -> None:
@@ -402,23 +403,25 @@ class F12023TelemetryHandler:
         global g_overtakes_history
         global g_num_active_cars
         if packet.m_eventStringCode == PacketEventData.EventPacketType.BUTTON_STATUS:
-            # explicitly handle this bullshit because this just adds unnecessary load
+            # explicitly handle this bullshit first because this just adds unnecessary load
             return
         elif packet.m_eventStringCode == PacketEventData.EventPacketType.FASTEST_LAP:
-            data = TelData.DataPerDriver()
-            data.m_best_lap = F12023TelemetryHandler.floatSecondsToMinutesSecondsMilliseconds(packet.mEventDetails.lapTime)
-            TelData.set_driver_data(packet.mEventDetails.vehicleIdx, data, is_fastest=True)
+            # data = TelData.DataPerDriver()
+            # data.m_best_lap = F12023TelemetryHandler.floatSecondsToMinutesSecondsMilliseconds(packet.mEventDetails.lapTime)
+            # TelData.set_driver_data(packet.mEventDetails.vehicleIdx, data, is_fastest=True)
+            TelData.processFastestLapUpdate(packet)
         elif packet.m_eventStringCode == PacketEventData.EventPacketType.SESSION_STARTED:
             g_num_active_cars = 0
-            TelData.clear_all_driver_data()
+            TelData.processSessionStarted()
             # Clear the list regardless of event type
             with g_overtakes_table_lock:
                 g_overtakes_history.clear()
             print("Received SESSION_STARTED")
         elif packet.m_eventStringCode == PacketEventData.EventPacketType.RETIREMENT:
-            data = TelData.DataPerDriver()
-            data.m_dnf_status_code = True
-            TelData.set_driver_data(packet.mEventDetails.vehicleIdx, data)
+            # data = TelData.DataPerDriver()
+            # data.m_dnf_status_code = True
+            # TelData.set_driver_data(packet.mEventDetails.vehicleIdx, data)
+            TelData.processRetirementEvent(packet)
         elif packet.m_eventStringCode == PacketEventData.EventPacketType.OVERTAKE:
             overtake_csv_str = TelData.getOvertakeString(packet.mEventDetails.overtakingVehicleIdx,
                                                         packet.mEventDetails.beingOvertakenVehicleIdx)
@@ -438,13 +441,14 @@ class F12023TelemetryHandler:
     @staticmethod
     def handleParticipants(packet: PacketParticipantsData) -> None:
         # print('Received Participants Packet. ' + str(packet))
-        for index, participant in enumerate(packet.m_participants):
-            data = TelData.DataPerDriver()
-            data.m_name = participant.m_name
-            data.m_team = str(participant.m_teamId)
-            data.m_is_player = True if (index == packet.m_header.m_playerCarIndex) else False
-            data.m_telemetry_restrictions = participant.m_yourTelemetry
-            TelData.set_driver_data(index, data)
+        # for index, participant in enumerate(packet.m_participants):
+        #     data = TelData.DataPerDriver()
+        #     data.m_name = participant.m_name
+        #     data.m_team = str(participant.m_teamId)
+        #     data.m_is_player = True if (index == packet.m_header.m_playerCarIndex) else False
+        #     data.m_telemetry_restrictions = participant.m_yourTelemetry
+        #     TelData.set_driver_data(index, data)
+        TelData.processParticipantsUpdate(packet)
         return
 
     @staticmethod
@@ -505,7 +509,6 @@ class F12023TelemetryHandler:
             event_str = TelData.getEventInfoStr()
             if event_str:
                 global g_autosave_overtakes
-                global g_directory_mapping
                 file_name=None
                 if g_autosave_overtakes:
                     file_name = 'overtakes_history_' + event_str +  datetime.now().strftime("%Y_%m_%d_%H_%M_%S") + '.csv'

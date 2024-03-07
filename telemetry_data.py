@@ -91,12 +91,12 @@ class DataPerDriver:
 class DriverData:
 
     def __init__(self):
-        self.m_driver_data = {} # key = car index, value = DataPerDriver
-        self.m_player_index = None
-        self.m_fastest_index = None
-        self.m_num_active_cars = None
-        self.m_num_dnf_cars = None
-        self.m_race_completed = None
+        self.m_driver_data: Dict[int, DataPerDriver] = {}
+        self.m_player_index: int = None
+        self.m_fastest_index: int = None
+        self.m_num_active_cars: int = None
+        self.m_num_dnf_cars: int = None
+        self.m_race_completed: bool = None
 
     def update_object(self, index, new_obj):
         # For the first driver, the data structure will be None, create it
@@ -124,13 +124,13 @@ class DriverData:
                     self.m_driver_data[self.m_player_index].m_is_player = False
                     self.m_player_index = index
 
-    def set_members_to_none(self):
-        # Get all class attributes (members)
-        members = vars(self)
-
-        # Iterate through the members and set them to None
-        for member in members:
-            setattr(self, member, None)
+    def clear(self):
+        self.m_driver_data.clear()
+        self.m_player_index = None
+        self.m_fastest_index = None
+        self.m_num_active_cars = None
+        self.m_num_dnf_cars = None
+        self.m_race_completed = None
 
     def get_index_driver_data_by_track_position(self, track_position) -> Tuple[int, DataPerDriver]:
 
@@ -138,6 +138,105 @@ class DriverData:
             if driver_data.m_position == track_position:
                 return index, copy.deepcopy(driver_data)
         return None, None
+
+    def _getPenaltyString(self, penalties_sec, num_dt, num_stop_go):
+        if penalties_sec == 0 and num_dt == 0 and num_stop_go == 0:
+            return ""
+        penalty_string = "("
+        started_filling = False
+        if penalties_sec > 0:
+            penalty_string += "+" + str(penalties_sec) + " sec"
+            started_filling = True
+        if num_dt > 0:
+            if started_filling:
+                penalty_string += " + "
+            penalty_string += str(num_dt) + "DT"
+            started_filling = True
+        if num_stop_go:
+            if started_filling:
+                penalty_string += " + "
+            penalty_string += str(num_stop_go) + "SG"
+        penalty_string += ")"
+        return penalty_string
+
+    def _getObjectByIndexCreate(self, index: int) -> DataPerDriver:
+
+        # create index if not found
+        if index not in self.m_driver_data:
+            self.m_driver_data[index] = DataPerDriver()
+        return self.m_driver_data[index]
+
+    def processLapDataUpdate(self, packet: PacketLapData) -> int:
+
+        num_active_cars = 0
+        result_str_map = {
+            ResultStatus.DID_NOT_FINISH : "DNF",
+            ResultStatus.DISQUALIFIED : "DSQ",
+            ResultStatus.RETIRED : "DNF"
+        }
+        should_recompute_fastest_lap = False
+        for index, lap_data in enumerate(packet.m_LapData):
+
+            if lap_data.m_resultStatus == ResultStatus.INVALID:
+                continue
+            num_active_cars += 1
+
+            obj_to_be_updated = self._getObjectByIndexCreate(index)
+
+            obj_to_be_updated.m_position = lap_data.m_carPosition
+            obj_to_be_updated.m_last_lap = F1Utils.millisecondsToMinutesSeconds(lap_data.m_lastLapTimeInMS) \
+                if (lap_data.m_lastLapTimeInMS > 0) else "---"
+            obj_to_be_updated.m_delta = lap_data.m_deltaToCarInFrontInMS
+            obj_to_be_updated.m_delta_to_leader = lap_data.m_deltaToRaceLeaderInMS
+            obj_to_be_updated.m_penalties = self._getPenaltyString(lap_data.m_penalties,
+                                lap_data.m_numUnservedDriveThroughPens, lap_data.m_numUnservedStopGoPens)
+            obj_to_be_updated.m_current_lap = lap_data.m_currentLapNum
+            obj_to_be_updated.m_is_pitting = True if lap_data.m_pitStatus in \
+                    [LapData.PitStatus.PITTING, LapData.PitStatus.IN_PIT_AREA] else False
+            obj_to_be_updated.m_num_pitstops = lap_data.m_numPitStops
+            obj_to_be_updated.m_dnf_status_code = result_str_map.get(lap_data.m_resultStatus, "")
+
+            # Check whether fastest lap needs to be recomputed
+            if (self.m_fastest_index is None) and (self.m_num_active_cars is not None):
+                count_null_best_times = 0
+                for curr_index, driver_data in _driver_data.m_driver_data.items():
+                    if curr_index >= _driver_data.m_num_active_cars:
+                        continue
+                    if driver_data.m_best_lap is None:
+                        count_null_best_times += 1
+                if count_null_best_times == 0:
+                    # only recompute once all the best lap times are available
+                    should_recompute_fastest_lap = True
+                else:
+                    should_recompute_fastest_lap = False
+            else:
+                should_recompute_fastest_lap = False
+
+        self.m_num_active_cars = num_active_cars
+        return should_recompute_fastest_lap
+
+    def processFastestLapUpdate(self, packet: PacketEventData.FastestLap) -> None:
+
+        obj_to_be_updated = self._getObjectByIndexCreate(packet.vehicleIdx)
+        obj_to_be_updated.m_best_lap = F1Utils.floatSecondsToMinutesSecondsMilliseconds(packet.lapTime)
+        self.m_fastest_index = packet.vehicleIdx
+
+    def processRetirement(self, packet: PacketEventData.Retirement) -> None:
+
+        obj_to_be_updated = self._getObjectByIndexCreate(packet.vehicleIdx)
+        obj_to_be_updated.m_dnf_status_code = True
+
+    def processParticipantsUpdate(self, packet: PacketParticipantsData) -> None:
+
+        for index, participant in enumerate(packet.m_participants):
+            obj_to_be_updated = self._getObjectByIndexCreate(index)
+            obj_to_be_updated.m_name = participant.m_name
+            obj_to_be_updated.m_team = str(participant.m_teamId)
+            if (index == packet.m_header.m_playerCarIndex):
+                obj_to_be_updated.m_is_player = True
+                self.m_player_index = index
+            obj_to_be_updated.m_telemetry_restrictions = participant.m_yourTelemetry
+
 
 _globals = GlobalData()
 _driver_data = DriverData()
@@ -221,7 +320,8 @@ def set_driver_data(index: int, driver_data: DataPerDriver, is_fastest=False):
             # First clear old fastest
             _driver_data.m_fastest_index = index
         # return whether fastest lap needs to be recomputed later (we missed the fastest lap event)
-        if (_driver_data.m_fastest_index is None) and (_driver_data.m_num_active_cars is not None):
+        elif (_driver_data.m_fastest_index is None) and (_driver_data.m_num_active_cars is not None):
+        # if (_driver_data.m_fastest_index is None) and (_driver_data.m_num_active_cars is not None):
             count_null_best_times = 0
             for curr_index, driver_data in _driver_data.m_driver_data.items():
                 if curr_index >= _driver_data.m_num_active_cars:
@@ -371,9 +471,9 @@ def increment_dnf_counter() -> None:
         else:
             _driver_data.m_num_dnf_cars += 1
 
-def clear_all_driver_data():
+def processSessionStarted():
     with _driver_data_lock:
-        _driver_data.set_members_to_none()
+        _driver_data.clear()
     with _globals_lock:
         _globals.m_final_classification_received = False # Mark this as False because this is the start of the race
 
@@ -508,3 +608,26 @@ def getDriverData() -> Tuple[List[DataPerDriver], str]:
                 final_list[player_index].m_delta = "---"
 
         return final_list, fastest_lap_time
+
+
+def processLapDataUpdate(packet: PacketLapData) -> int:
+
+    with _driver_data_lock:
+        should_recompute_fastest_lap = _driver_data.processLapDataUpdate(packet)
+        if should_recompute_fastest_lap:
+            _recompute_fastest_lap_no_mutex()
+
+def processFastestLapUpdate(packet: PacketEventData) -> None:
+
+    with _driver_data_lock:
+        _driver_data.processFastestLapUpdate(packet.mEventDetails)
+
+def processRetirementEvent(packet: PacketEventData) -> None:
+
+    with _driver_data_lock:
+        _driver_data.processRetirement(packet.mEventDetails)
+
+def processParticipantsUpdate(packet: PacketParticipantsData):
+
+    with _driver_data_lock:
+        _driver_data.processParticipantsUpdate(packet)
