@@ -181,22 +181,16 @@ def dumpPktCapToFile(file_name: Optional[str] = None, clear_db: bool = False, re
             # Return the appropriate status
             return PktSaveStatus.OS_ERROR, None, 0, 0
 
-def getOvertakeJSON(index: int=None) -> Tuple[GetOvertakesStatus, Dict]:
+def getOvertakeJSON(driver_name: str=None) -> Tuple[GetOvertakesStatus, Dict]:
     """Get the JSON value containing key overtake information
 
     Arguments:
-        index (int) - Index of the driver if specific overtake info is required
+        driver_name (str) - Name of the driver if specific overtake info is required
 
     Returns:
         Tuple[GetOvertakesStatus, Dict]: Status, JSON value (may be empty)
     """
     _, _, _, _, _, _, _, _, final_classification_received = TelData.getGlobals()
-    if index:
-        driver_name = TelData.getDriverNameByIndex(index)
-        if not driver_name:
-            return GetOvertakesStatus.INVALID_INDEX, {}
-    else:
-        driver_name = None
     global g_overtakes_history
     global g_overtakes_table_lock
     with g_overtakes_table_lock:
@@ -215,7 +209,6 @@ def getOvertakeJSON(index: int=None) -> Tuple[GetOvertakesStatus, Dict]:
                 input=g_overtakes_history).toJSON(
                     driver_name=driver_name,
                     is_case_sensitive=True)
-
 
 def printOvertakeData(file_name: str=None):
     """Print the overtake data
@@ -342,22 +335,8 @@ class F12023TelemetryHandler:
 
         Parameters:
         - packet (PacketSessionData): The session data telemetry packet.
-
-        Returns:
-        None
         """
-        TelData.set_globals(
-            circuit=str(packet.m_trackId),
-            track_temp=packet.m_trackTemperature,
-            event_type=str(packet.m_sessionType),
-            total_laps=packet.m_totalLaps,
-            safety_car_status=packet.m_safetyCarStatus,
-            is_spectating=bool(packet.m_isSpectating),
-            spectator_car_index=packet.m_spectatorCarIndex,
-            weather_forecast_samples=packet.m_weatherForecastSamples,
-            pit_speed_limit=packet.m_pitSpeedLimit)
-
-        return
+        TelData.processSessionUpdate(packet)
 
     @staticmethod
     def handleLapData(packet: PacketLapData) -> None:
@@ -461,15 +440,23 @@ class F12023TelemetryHandler:
                 file_name = g_directory_mapping["packet-captures"] + file_name
                 dumpPktCapToFile(file_name=file_name,reason='Final Classification')
 
-            # Compute and display overtake stats
-            # Analyze the overtake data and dump the output
-            printOvertakeData(file_name)
-
             # Save the JSON data
             global g_post_race_data_autosave
             if g_post_race_data_autosave:
                 with g_overtakes_table_lock:
-                    final_json['overtakes-info'] = g_overtakes_history
+                    player_name = TelData.getPlayerName()
+                    overtake_analyzer = OvertakeAnalyzer(
+                                            input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST,
+                                            input=g_overtakes_history)
+                    overtake_analyzer.getFormattedString(driver_name=player_name, is_case_sensitive=True)
+                    final_json['overtakes'] = {
+                        'records' : g_overtakes_history
+                    }
+                    # Add the new keys directly to the top level of final_json
+                    final_json['overtakes'].update(
+                        overtake_analyzer.toJSON(
+                            driver_name=player_name,
+                            is_case_sensitive=True))
                 final_json_file_name = g_directory_mapping['race-info'] + 'race_info_' + \
                         event_str + getTimestampStr() + '.json'
                 writeDictToJsonFile(final_json, final_json_file_name)

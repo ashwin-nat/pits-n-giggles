@@ -167,6 +167,8 @@ SOFTWARE.
         .motivationLink {
             color: #fdd835;
             /* Text in gold */
+            cursor: pointer;
+            text-decoration: underline;
         }
 
         .modal {
@@ -177,7 +179,7 @@ SOFTWARE.
             width: 100%;
             height: 100%;
             /* Add background opacity */
-            background-color: rgba(255, 255, 255, 0.9);
+            background-color: rgba(31, 30, 30, 0.9);
         }
 
         .modal-content {
@@ -246,6 +248,9 @@ SOFTWARE.
             margin: 0;
             padding: 8px;
         }
+
+
+
     </style>
     <script src="https://www.youtube.com/iframe_api"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
@@ -272,12 +277,12 @@ SOFTWARE.
             <p id="trackTemperature">Track Temperature: </p>
             <p id="lapInformation">Lap: </p>
             <p id="safetyCarStatus" style="display: none;">Safety Car Status: </p>
-            <p><a href="#" id="getOvertakeInfo" class="motivationLink">Get Overtake Information</a></p>
+            <p><a href="#" id="getOvertakeInfo" class="motivationLink" style="display: none;">Get Overtake Information</a></p>
             <p><a href="#" id="saveTelemetryLink" class="motivationLink" style="display: none;">Save telemetry packet
                     capture</a></p>
         </div>
         <div class="time-box">
-            <p id="localTime">Local Time: </p>
+            <p id="localTime" class="motivationLink">Local Time: </p>
             <p id="fastestLapOverall">Fastest Lap Overall: </p>
             <p id="pitSpeedLimit">Pit Lane Speed Limit: </p>
             <a href="javascript:void(0);" id="motivationLink" class="motivationLink">Click here for motivation</a>
@@ -316,6 +321,7 @@ SOFTWARE.
 
     <script>
         var player; // Define YT player
+        let is24HourFormat = true; // Initial format
 
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('youtubeAudio', {
@@ -364,7 +370,7 @@ SOFTWARE.
                     updateGlobalInfo(data["circuit"], data["event-type"], data["track-temperature"], data["current-lap"],
                         data["total-laps"], data["safety-car-status"], data["fastest-lap-overall"],
                         data["pit-speed-limit"], {{ packet_capture_enabled | tojson }});
-                    updateWeatherTable(data["weather-forecast-samples"]);
+        updateWeatherTable(data["weather-forecast-samples"]);
                 })
                 .catch (error => {
             console.error('Error fetching data:', error);
@@ -399,13 +405,17 @@ SOFTWARE.
                 const nameLink = document.createElement('a');
                 nameLink.textContent = entry["name"];
                 nameLink.href = '#'; // Set a placeholder href value
-                nameLink.style.color = '#fdd835'; // Set the font color to match the table
+
+                // Get the computed style of the row and apply it to the hyperlink
+                const rowStyles = window.getComputedStyle(row);
+                nameLink.style.color = rowStyles.getPropertyValue('color');
+                nameLink.style.fontFamily = rowStyles.getPropertyValue('font-family');
+
                 nameLink.style.textDecoration = 'underline'; // Add standard link underline
                 nameLink.onclick = function () {
                     handleDriverInfoClick(entry["index"]);
                 };
                 nameCell.appendChild(nameLink);
-
 
                 row.insertCell().textContent = entry["team"];
                 row.insertCell().textContent = entry["delta"];
@@ -480,8 +490,10 @@ SOFTWARE.
                 accordionTitle.addEventListener('click', function () {
                     accordion.classList.toggle('active');
                     if (accordion.classList.contains('active')) {
+                        // Set max-height to the scrollHeight only if the accordion is being opened
                         accordionContent.style.maxHeight = accordionContent.scrollHeight + 'px';
                     } else {
+                        // Set max-height to 0 when the accordion is being closed
                         accordionContent.style.maxHeight = null;
                     }
                 });
@@ -495,83 +507,105 @@ SOFTWARE.
                 return row;
             }
 
-            const carDamageContent = document.createElement('div');
-            if ("car-damage" in data) {
-                carDamageContent.appendChild(createRow(
-                    'Front Left Wing Damage',
-                    formatFloatWithTwoDecimals(data["car-damage"]["front-left-wing-damage"]) + "%"));
-                carDamageContent.appendChild(createRow(
-                    'Front Right Wing Damage',
-                    formatFloatWithTwoDecimals(data["car-damage"]["front-right-wing-damage"]) + "%"));
-                carDamageContent.appendChild(createRow(
-                    'Rear Wing Damage',
-                    formatFloatWithTwoDecimals(
-                        data["car-damage"]["rear-wing-damage"]) + "%"));
-                modalContent.appendChild(createAccordion('Car Damage', carDamageContent));
-
-                const tyreContent = document.createElement('div');
-
-                // Tyre Damage Accordion
-                const tyreDamageContent = document.createElement('div');
-                console.log('Tyres Damage length:', data["car-damage"]["tyres-damage"].length);
-                if (data["car-damage"]["tyres-damage"].length >= 4) {
-                    console.log('Tyres Damage: inside if:');
-                    tyreDamageContent.appendChild(
-                        createRow('Front Left Tyre Damage',
-                        formatFloatWithTwoDecimals(data["car-damage"]["tyres-damage"][2]) + "%"));
-                    tyreDamageContent.appendChild(
-                        createRow('Front Right Tyre Damage',
-                        formatFloatWithTwoDecimals(data["car-damage"]["tyres-damage"][3]) + "%"));
-                    tyreDamageContent.appendChild(
-                        createRow('Rear Left Tyre Damage',
-                        formatFloatWithTwoDecimals(data["car-damage"]["tyres-damage"][0]) + "%"));
-                    tyreDamageContent.appendChild(
-                        createRow('Rear Right Tyre Damage',
-                        formatFloatWithTwoDecimals(data["car-damage"]["tyres-damage"][1]) + "%"));
-                } else {
-                    // Handle the case where there is not enough data for all tyres
-                    console.log('Tyres Damage: inside else:');
-                    tyreDamageContent.appendChild(createRow('Tyre damage data not available', ''));
-                }
-                // tyreContent.appendChild(createAccordion('Tyre Damage', tyreDamageContent));
-
-                // Tyre Wear Accordion
-                const tyreWearContent = document.createElement('div');
-                console.log('Tyres wear length:', data["car-damage"]["tyres-wear"].length);
-                if (data["car-damage"]["tyres-wear"].length >= 4) {
-                    console.log('Tyres wear: inside if:');
-                    tyreWearContent.appendChild(createRow(
-                        'Front Left Tyre Wear',
-                        formatFloatWithTwoDecimals(data["car-damage"]["tyres-wear"][2]) + "%"));
-                    tyreWearContent.appendChild(createRow(
-                        'Front Right Tyre Wear',
-                        formatFloatWithTwoDecimals(data["car-damage"]["tyres-wear"][3]) + "%"));
-                    tyreWearContent.appendChild(createRow(
-                        'Rear Left Tyre Wear',
-                        formatFloatWithTwoDecimals(data["car-damage"]["tyres-wear"][0]) + "%"));
-                    tyreWearContent.appendChild(createRow(
-                        'Rear Right Tyre Wear',
-                        formatFloatWithTwoDecimals(data["car-damage"]["tyres-wear"][1]) + "%"));
-                } else {
-                    // Handle the case where there is not enough data for all tyres
-                    console.log('Tyres wear: inside else:');
-                    tyreWearContent.appendChild(createRow('Tyre wear data not available', ''));
-                }
-                // tyreContent.appendChild(createAccordion('Tyre Wear', tyreWearContent));
-
-                console.log('Appending Tyre Damage accordion');
-                tyreContent.appendChild(createAccordion('Tyre Damage', tyreDamageContent));
-                console.log('Appending Tyre Wear accordion');
-                tyreContent.appendChild(createAccordion('Tyre Wear', tyreWearContent));
-                console.log('Appending Tyre Content to modal');
-                modalContent.appendChild(tyreContent);
-            } else {
-                tyreWearContent.appendChild(createRow('Car damage data not available', ''));
+            function formatComponentName(component) {
+                // Convert component names to kebab-case
+                return component.toLowerCase().replace(/\s+/g, '-');
             }
 
+            // Car Damage Table
+            const carDamageContent = document.createElement('div');
+            const carDamageTable = document.createElement('table');
+            carDamageTable.classList.add('car-damage-table');
+            const carDamageHeader = carDamageTable.createTHead();
+            const carDamageHeaderRow = carDamageHeader.insertRow();
+            carDamageHeaderRow.innerHTML = '<th>Component</th><th>Damage</th>';
+            const carDamageBody = carDamageTable.createTBody();
+            if ("car-damage" in data) {
+                // Front Left Wing Damage
+                const row1 = carDamageBody.insertRow();
+                row1.innerHTML = `<td>Front Left Wing Damage</td><td>${formatFloatWithTwoDecimals(data["car-damage"]["front-left-wing-damage"])}%</td>`;
 
-            const lapDataContent = document.createElement('div');
+                // Front Right Wing Damage
+                const row2 = carDamageBody.insertRow();
+                row2.innerHTML = `<td>Front Right Wing Damage</td><td>${formatFloatWithTwoDecimals(data["car-damage"]["front-right-wing-damage"])}%</td>`;
+
+                // Rear Wing Damage
+                const row3 = carDamageBody.insertRow();
+                row3.innerHTML = `<td>Rear Wing Damage</td><td>${formatFloatWithTwoDecimals(data["car-damage"]["rear-wing-damage"])}%</td>`;
+            } else {
+                const row = carDamageBody.insertRow();
+                row.innerHTML = '<td colspan="2">Car Damage data not available</td>';
+            }
+            carDamageContent.appendChild(createAccordion('Car Damage', carDamageTable));
+            modalContent.appendChild(carDamageContent);
+
+            // Tyre Damage Table
+            const tyreDamageContent = document.createElement('div');
+            const tyreDamageTable = document.createElement('table');
+            tyreDamageTable.classList.add('tyre-damage-table');
+            const tyreDamageHeader = tyreDamageTable.createTHead();
+            const tyreDamageHeaderRow = tyreDamageHeader.insertRow();
+            tyreDamageHeaderRow.innerHTML = '<th>Tyre</th><th>Damage</th>';
+            const tyreDamageBody = tyreDamageTable.createTBody();
+            if ("car-damage" in data) {
+                // Front Left Tyre Damage
+                const row1 = tyreDamageBody.insertRow();
+                row1.innerHTML = `<td>Front Left Tyre Damage</td><td>${formatFloatWithTwoDecimals(data["car-damage"]["tyres-damage"][2])}%</td>`;
+
+                // Front Right Tyre Damage
+                const row2 = tyreDamageBody.insertRow();
+                row2.innerHTML = `<td>Front Right Tyre Damage</td><td>${formatFloatWithTwoDecimals(data["car-damage"]["tyres-damage"][3])}%</td>`;
+
+                // Rear Left Tyre Damage
+                const row3 = tyreDamageBody.insertRow();
+                row3.innerHTML = `<td>Rear Left Tyre Damage</td><td>${formatFloatWithTwoDecimals(data["car-damage"]["tyres-damage"][0])}%</td>`;
+
+                // Rear Right Tyre Damage
+                const row4 = tyreDamageBody.insertRow();
+                row4.innerHTML = `<td>Rear Right Tyre Damage</td><td>${formatFloatWithTwoDecimals(data["car-damage"]["tyres-damage"][1])}%</td>`;
+            } else {
+                const row = tyreDamageBody.insertRow();
+                row.innerHTML = '<td colspan="2">Tyre Damage data not available</td>';
+            }
+            tyreDamageContent.appendChild(createAccordion('Tyre Damage', tyreDamageTable));
+            modalContent.appendChild(tyreDamageContent);
+
+
+            // Tyre Wear Table
+            const tyreWearContent = document.createElement('div');
+            const tyreWearTable = document.createElement('table');
+            tyreWearTable.classList.add('tyre-damage-table');
+            const tyreWearHeader = tyreWearTable.createTHead();
+            const tyreWearHeaderRow = tyreWearHeader.insertRow();
+            tyreWearHeaderRow.innerHTML = '<th>Tyre</th><th>Wear</th>';
+            const tyreWearBody = tyreWearTable.createTBody();
+            if ("car-damage" in data) {
+                // Front Left Tyre Wear
+                const row1 = tyreWearBody.insertRow();
+                row1.innerHTML = `<td>Front Left Tyre Wear</td><td>${formatFloatWithTwoDecimals(data["car-damage"]["tyres-wear"][2])}%</td>`;
+
+                // Front Right Tyre Wear
+                const row2 = tyreWearBody.insertRow();
+                row2.innerHTML = `<td>Front Right Tyre Wear</td><td>${formatFloatWithTwoDecimals(data["car-damage"]["tyres-wear"][3])}%</td>`;
+
+                // Rear Left Tyre Wear
+                const row3 = tyreWearBody.insertRow();
+                row3.innerHTML = `<td>Rear Left Tyre Wear</td><td>${formatFloatWithTwoDecimals(data["car-damage"]["tyres-wear"][0])}%</td>`;
+
+                // Rear Right Tyre Wear
+                const row4 = tyreWearBody.insertRow();
+                row4.innerHTML = `<td>Rear Right Tyre Wear</td><td>${formatFloatWithTwoDecimals(data["car-damage"]["tyres-wear"][1])}%</td>`;
+            } else {
+                const row = tyreWearBody.insertRow();
+                row.innerHTML = '<td colspan="2">Tyre Wear data not available</td>';
+            }
+            tyreWearContent.appendChild(createAccordion('Tyre Wear', tyreWearTable));
+            modalContent.appendChild(tyreWearContent);
+
+
+            // Add current lap info only if race is still ongoing
             if ("lap-data" in data) {
+                const lapDataContent = document.createElement('div');
                 lapDataContent.appendChild(createRow(
                     'S1 Time', data["lap-data"]["sector-1-time-str"]));
                 lapDataContent.appendChild(createRow(
@@ -580,32 +614,39 @@ SOFTWARE.
                     'Total Time', data["lap-data"]["current-lap-time-str"]));
                 lapDataContent.appendChild(createRow(
                     'Lap Number', data["lap-data"]["current-lap-num"]));
-            } else {
-                lapDataContent.appendChild(createRow('Lap data not available', ''));
+                modalContent.appendChild(createAccordion('Lap Data', lapDataContent));
             }
-            modalContent.appendChild(createAccordion('Lap Data', lapDataContent));
 
+            // Lap History Table
             const lapHistoryContent = document.createElement('div');
-            if ("session-history" in data)  {
+            const lapHistoryTable = document.createElement('table');
+            lapHistoryTable.classList.add('lap-history-table');
+
+            const lapHistoryHeader = lapHistoryTable.createTHead();
+            const headerRow = lapHistoryHeader.insertRow();
+            headerRow.innerHTML = '<th>Lap</th><th>S1 Time</th><th>S2 Time</th><th>S3 Time</th><th>Total Time</th>';
+
+            const lapHistoryBody = lapHistoryTable.createTBody();
+            if ("session-history" in data) {
                 const lapHistoryData = data["session-history"]["lap-history-data"];
                 lapHistoryData.forEach((lap, index) => {
-                    const lapContent = document.createElement('div');
-                    lapContent.appendChild(createRow(`S1 Time`, lap["sector-1-time-str"]));
-                    lapContent.appendChild(createRow(`S2 Time`, lap["sector-2-time-str"]));
-                    lapContent.appendChild(createRow(`S3 Time`, lap["sector-3-time-str"]));
-                    lapContent.appendChild(createRow(`Total Time`, lap["lap-time-str"]));
-                    lapHistoryContent.appendChild(createAccordion(`Lap ${index + 1}`, lapContent));
+                    const row = lapHistoryBody.insertRow();
+                    row.innerHTML = `<td>${index + 1}</td><td>${lap["sector-1-time-str"]}</td><td>${lap["sector-2-time-str"]}</td><td>${lap["sector-3-time-str"]}</td><td>${lap["lap-time-str"]}</td>`;
                 });
             } else {
-                lapHistoryContent.appendChild(createRow('Lap History data not available', ''));
+                const row = lapHistoryBody.insertRow();
+                row.innerHTML = '<td colspan="5">Lap History data not available</td>';
             }
-            modalContent.appendChild(createAccordion('Lap History', lapHistoryContent));
+
+            lapHistoryContent.appendChild(createAccordion('Lap History', lapHistoryTable));
+            modalContent.appendChild(lapHistoryContent);
+
+            const modalTitle = document.getElementById('modalTitle');
+            modalTitle.innerText = `Driver Information - ${data["driver-name"]}`;
 
             const modal = document.getElementById('driverInfoModal');
             modal.style.display = 'block';
 
-            const modalTitle = document.getElementById('modalTitle');
-            modalTitle.innerText = `Driver Information - ${data["driver-name"]}`;
             // modalContent.innerHTML = '';
         }
 
@@ -631,8 +672,16 @@ SOFTWARE.
 
         function updateLocalTime() {
             const now = new Date();
-            const timeString = now.toLocaleTimeString();
+            const options = {
+                hour12: !is24HourFormat
+            };
+            const timeString = now.toLocaleTimeString('en-US', options);
             document.getElementById('localTime').textContent = `Local Time: ${timeString}`;
+        }
+
+        function toggleTimeFormat() {
+            is24HourFormat = !is24HourFormat;
+            updateLocalTime();
         }
 
         function formatFileSize(bytes) {
@@ -727,6 +776,9 @@ SOFTWARE.
                 });
         });
 
+        // Add an event listener to the hyperlink
+        document.getElementById('localTime').addEventListener('click', toggleTimeFormat);
+
         // Fetch data at intervals specified from jinja
         setInterval(fetchDataAndDisplay, {{ client_poll_interval_ms | tojson | safe }});
 
@@ -736,6 +788,7 @@ SOFTWARE.
         // Initial fetch and display
         fetchDataAndDisplay();
         updateLocalTime();
+
     </script>
 </body>
 

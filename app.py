@@ -44,7 +44,7 @@ def initLogger(file_name: str = None, debug_mode: bool = False) -> logging.Logge
         logging.Logger: The configured logger.
     """
     # Create a formatter with a time-based format
-    format_str = '%(asctime)s [%(levelname)s] [%(funcName)s:%(lineno)d] - %(message)s' if debug_mode else \
+    format_str = '%(asctime)s [%(levelname)s] [%(filename)s:%(lineno)d] - %(message)s' if debug_mode else \
                  '%(asctime)s [%(levelname)s] - %(message)s'
     formatter = logging.Formatter(format_str)
 
@@ -167,7 +167,7 @@ if __name__ == '__main__':
                         help="Set this flag to not open the browser tab automatically")
     parser.add_argument('-r', '--refresh-interval', type=int, default=200, metavar='REFRESH_INTERVAL',
                         help="How often the web page should refresh itself with new data")
-    parser.add_argument('l', '--log-file', type=str, default=None, metavar='LOG_FILE',
+    parser.add_argument('-l', '--log-file', type=str, default=None, metavar='LOG_FILE',
                         help='Write output to specified log file (append)')
     parser.add_argument('-d', '--debug', action='store_true',
                         help="Enable debug logs")
@@ -179,8 +179,8 @@ if __name__ == '__main__':
 
     # First init the telemetry client on a main thread
     client_thread = threading.Thread(target=f1TelemetryServerTask,
-                                     args=(args.packet_capture_mode, args.telemetry_port,
-                                           args.overtakes_autosave, args.replay_server,
+                                    args=(args.packet_capture_mode, args.telemetry_port,
+                                        args.replay_server,
                                            args.post_race_data_autosave))
     client_thread.daemon = True
     client_thread.start()

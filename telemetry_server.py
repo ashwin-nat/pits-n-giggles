@@ -127,11 +127,11 @@ class TelemetryWebServer:
 
             # Process parameters and generate response
             index = int(index)
-            logging.info('received driver-info query for index ' + str(index))
+            logging.debug('received driver-info query for index ' + str(index))
             driver_info = TelData.getDriverInfoJsonByIndex(index)
             if driver_info:
                 # return jsonify(driver_info), HTTPStatus.OK
-                status, overtakes_info = getOvertakeJSON(index)
+                status, overtakes_info = getOvertakeJSON(driver_info["driver-name"])
                 driver_info["overtakes-status-code"] = str(status)
                 driver_info['overtakes'] = overtakes_info
                 if status != GetOvertakesStatus.INVALID_INDEX:
