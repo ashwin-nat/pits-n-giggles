@@ -2,5 +2,7 @@ launch.json
 *.pyc
 *.log
 *.bin
+*.csv
+*.tar.xz
+*.tar.gz
 *.json
-data/

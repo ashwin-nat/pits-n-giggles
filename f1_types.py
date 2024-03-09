@@ -24,8 +24,8 @@
 ## All classes in supported in this library are documented with the members, but it is still recommended to read the
 ## official document. https://answers.ea.com/t5/General-Discussion/F1-23-UDP-Specification/m-p/12633159
 
-from enum import Enum, auto
-from typing import List, Any
+from enum import Enum
+from typing import List, Any, Dict
 from f1_packet_info import *
 import struct
 
@@ -66,7 +66,6 @@ class InvalidPacketLengthError(Exception):
         super().__init__("Invalid packet length. " + message)
 
 # -------------------- COMMON ENUMS --------------------------------------------
-
 class F1PacketType(Enum):
     """Class of enum representing the different packet types emitted by the game
     """
@@ -165,6 +164,388 @@ class ResultStatus(Enum):
         }
         return status_mapping.get(self.value, "---")
 
+class SessionType(Enum):
+    """
+    Enum class representing F1 session types.
+    """
+    UNKNOWN = 0
+    PRACTICE_1 = 1
+    PRACTICE_2 = 2
+    PRACTICE_3 = 3
+    SHORT_PRACTICE = 4
+    QUALIFYING_1 = 5
+    QUALIFYING_2 = 6
+    QUALIFYING_3 = 7
+    SHORT_QUALIFYING = 8
+    ONE_SHOT_QUALIFYING = 9
+    RACE = 10
+    RACE_2 = 11
+    RACE_3 = 12
+    TIME_TRIAL = 13
+
+    @staticmethod
+    def isValid(session_type: int):
+        """
+        Check if the given session type is valid.
+
+        Args:
+            session_type (int): The session type to be validated.
+
+        Returns:
+            bool: True if valid
+        """
+        if isinstance(session_type, SessionType):
+            return True  # It's already an instance of SessionType
+        else:
+            min_value = min(member.value for member in SessionType)
+            max_value = max(member.value for member in SessionType)
+            return min_value <= session_type <= max_value
+
+    def __str__(self):
+        """
+        Return a string representation of the SessionType with spaces.
+
+        Returns:
+            str: String representation of the SessionType.
+        """
+        return {
+            SessionType.UNKNOWN : "N/A",
+            SessionType.PRACTICE_1 : "Practice 1",
+            SessionType.PRACTICE_2 : "Practice 2",
+            SessionType.PRACTICE_3 : "Practice 3",
+            SessionType.SHORT_PRACTICE : "Short Practice",
+            SessionType.QUALIFYING_1 : "Qualifying 1",
+            SessionType.QUALIFYING_2 : "Qualifying 2",
+            SessionType.QUALIFYING_3 : "Qualifying 3",
+            SessionType.SHORT_QUALIFYING : "Short Qualifying",
+            SessionType.ONE_SHOT_QUALIFYING : "One Shot Qualifying",
+            SessionType.RACE  : "Race",
+            SessionType.RACE_2  : "Race 2",
+            SessionType.RACE_3  : "Race 3",
+            SessionType.TIME_TRIAL  : "Time Trial",
+        }.get(self, " ")
+
+class ActualTyreCompound(Enum):
+    """
+    Enumeration representing different tyre compounds used in Formula 1 and Formula 2.
+
+    Attributes:
+        C5 (int): F1 Modern - C5
+        C4 (int): F1 Modern - C4
+        C3 (int): F1 Modern - C3
+        C2 (int): F1 Modern - C2
+        C1 (int): F1 Modern - C1
+        C0 (int): F1 Modern - C0
+        INTER (int): F1 Modern - Intermediate
+        WET (int): F1 Modern - Wet
+        DRY (int): F1 Classic - Dry
+        WET_CLASSIC (int): F1 Classic - Wet
+        SUPER_SOFT (int): F2 - Super Soft
+        SOFT (int): F2 - Soft
+        MEDIUM (int): F2 - Medium
+        HARD (int): F2 - Hard
+        WET_F2 (int): F2 - Wet
+
+        Note:
+            Each attribute represents a unique tyre compound identified by an integer value.
+    """
+
+    C5 = 16
+    C4 = 17
+    C3 = 18
+    C2 = 19
+    C1 = 20
+    C0 = 21
+    INTER = 7
+    WET = 8
+    DRY = 9
+    WET_CLASSIC = 10
+    SUPER_SOFT = 11
+    SOFT = 12
+    MEDIUM = 13
+    HARD = 14
+    WET_F2 = 15
+
+    def __str__(self) -> str:
+        """
+        Returns a human-readable string representation of the tyre compound.
+
+        Returns:
+            str: String representation of the tyre compound.
+        """
+        return {
+            ActualTyreCompound.C5: "C5",
+            ActualTyreCompound.C4: "C4",
+            ActualTyreCompound.C3: "C3",
+            ActualTyreCompound.C2: "C2",
+            ActualTyreCompound.C1: "C1",
+            ActualTyreCompound.C0: "C0",
+            ActualTyreCompound.INTER: "Inters",
+            ActualTyreCompound.WET: "Wet",
+            ActualTyreCompound.DRY: "Dry",
+            ActualTyreCompound.WET_CLASSIC: "Wet (Classic)",
+            ActualTyreCompound.SUPER_SOFT: "Super Soft",
+            ActualTyreCompound.SOFT: "Soft",
+            ActualTyreCompound.MEDIUM: "Medium",
+            ActualTyreCompound.HARD: "Hard",
+            ActualTyreCompound.WET_F2: "Wet (F2)",
+        }[self]
+
+    @staticmethod
+    def isValid(actual_tyre_compound: int) -> bool:
+        """
+        Check if the input event type string maps to a valid enum value.
+
+        Args:
+            event_type (int): The actual tyre compound code
+
+        Returns:
+            bool: True if the event type is valid, False otherwise.
+        """
+        if isinstance(actual_tyre_compound, ActualTyreCompound):
+            return True  # It's already an instance of ActualTyreCompound
+        else:
+            # check if the integer value falls in range
+            min_value = min(member.value for member in ActualTyreCompound)
+            max_value = max(member.value for member in ActualTyreCompound)
+            return min_value <= actual_tyre_compound <= max_value
+
+class VisualTyreCompound(Enum):
+    """
+    Enumeration representing different visual tyre compounds used in Formula 1 and Formula 2.
+
+    Attributes:
+        SOFT (int): Soft tyre compound
+        MEDIUM (int): Medium tyre compound
+        HARD (int): Hard tyre compound
+        INTER (int): Intermediate tyre compound
+        WET (int): Wet tyre compound
+        WET_CLASSIC (int): Wet tyre compound (Classic)
+        SUPER_SOFT (int): Super Soft tyre compound (F2 '19)
+        SOFT_F2 (int): Soft tyre compound (F2 '19)
+        MEDIUM_F2 (int): Medium tyre compound (F2 '19)
+        HARD_F2 (int): Hard tyre compound (F2 '19)
+        WET_F2 (int): Wet tyre compound (F2 '19)
+
+        Note:
+            Each attribute represents a unique visual tyre compound identified by an integer value.
+    """
+
+    SOFT = 16
+    MEDIUM = 17
+    HARD = 18
+    INTER = 7
+    WET = 8
+    WET_CLASSIC = 8  # Same value as WET for F1 visual (Classic)
+    SUPER_SOFT = 19
+    SOFT_F2 = 20
+    MEDIUM_F2 = 21
+    HARD_F2 = 22
+    WET_F2 = 15
+
+    def __str__(self) -> str:
+        """
+        Returns a human-readable string representation of the visual tyre compound.
+
+        Returns:
+            str: String representation of the visual tyre compound.
+        """
+        return {
+            VisualTyreCompound.SOFT: "Soft",
+            VisualTyreCompound.MEDIUM: "Medium",
+            VisualTyreCompound.HARD: "Hard",
+            VisualTyreCompound.INTER: "Inters",
+            VisualTyreCompound.WET: "Wet",
+            # VisualTyreCompound.WET_CLASSIC: "Wet (Classic)",
+            VisualTyreCompound.WET_CLASSIC: "Wet",
+            VisualTyreCompound.SUPER_SOFT: "Super Soft (F2 '19)",
+            VisualTyreCompound.SOFT_F2: "Soft (F2 '19)",
+            VisualTyreCompound.MEDIUM_F2: "Medium (F2 '19)",
+            VisualTyreCompound.HARD_F2: "Hard (F2 '19)",
+            VisualTyreCompound.WET_F2: "Wet (F2 '19)",
+        }[self]
+
+    @staticmethod
+    def isValid(visual_tyre_compound: int) -> bool:
+        """
+        Check if the input event type string maps to a valid enum value.
+
+        Args:
+            event_type (int): The actual tyre compound code
+
+        Returns:
+            bool: True if the event type is valid, False otherwise.
+        """
+        if isinstance(visual_tyre_compound, VisualTyreCompound):
+            return True  # It's already an instance of VisualTyreCompound
+        else:
+            # check if the integer value falls in range
+            min_value = min(member.value for member in VisualTyreCompound)
+            max_value = max(member.value for member in VisualTyreCompound)
+            return min_value <= visual_tyre_compound <= max_value
+
+class F1Utils:
+    """
+    Utility class for Formula 1-related operations.
+
+    Constants:
+        INDEX_REAR_LEFT (int): Index for the rear-left position in tyre/brake arrays/lists.
+        INDEX_REAR_RIGHT (int): Index for the rear-right position in tyre/brake arrays/lists.
+        INDEX_FRONT_LEFT (int): Index for the front-left position in tyre/brake arrays/lists.
+        INDEX_FRONT_RIGHT (int): Index for the front-right position in tyre/brake arrays/lists.
+
+    Methods:
+        millisecondsToMinutesSecondsMilliseconds(milliseconds) -> str:
+            Convert milliseconds to a formatted string in the format "MM:SS.SSS".
+
+        millisecondsToSecondsMilliseconds(milliseconds) -> str:
+            Convert milliseconds to a formatted string in the format "SS.SSS".
+
+        millisecondsToSecondsStr(milliseconds) -> str:
+            Convert milliseconds to a formatted string in the format "SS.SSS".
+
+        secondsToMinutesSecondsMilliseconds(seconds) -> str:
+            Convert seconds to a formatted string in the format "MM:SS.SSS".
+
+        floatSecondsToMinutesSecondsMilliseconds(seconds) -> str:
+            Convert float seconds to a formatted string in the format "MM:SS.SSS".
+
+        timeStrToMilliseconds(time_str: str) -> int:
+            Convert a time string in the format "MM:SS.SSS" to milliseconds.
+    """
+
+    # These are the indices for tyre/brake arrays/lists
+    INDEX_REAR_LEFT = 0
+    INDEX_REAR_RIGHT = 1
+    INDEX_FRONT_LEFT = 2
+    INDEX_FRONT_RIGHT = 3
+
+    @staticmethod
+    def millisecondsToMinutesSecondsMilliseconds(milliseconds: int) -> str:
+        """
+        Convert milliseconds to a formatted string in the format "MM:SS.SSS".
+
+        Args:
+            milliseconds (int): The input time in milliseconds.
+
+        Returns:
+            str: The formatted time string.
+        """
+        if not isinstance(milliseconds, int):
+            raise ValueError("Input must be an integer representing milliseconds")
+
+        if milliseconds < 0:
+            raise ValueError("Input must be a non-negative integer")
+
+        total_seconds, milliseconds = divmod(milliseconds, 1000)
+        minutes, seconds = divmod(total_seconds, 60)
+
+        return f"{minutes:02}:{seconds:02}.{milliseconds:03}"
+
+    @staticmethod
+    def millisecondsToSecondsMilliseconds(milliseconds: int) -> str:
+        """
+        Convert milliseconds to a formatted string in the format "SS.SSS".
+
+        Args:
+            milliseconds (int): The input time in milliseconds.
+
+        Returns:
+            str: The formatted time string.
+        """
+        if not isinstance(milliseconds, int):
+            raise ValueError("Input must be an integer representing milliseconds")
+
+        if milliseconds < 0:
+            raise ValueError("Input must be a non-negative integer")
+
+        seconds, milliseconds = divmod(milliseconds, 1000)
+
+        return f"{seconds}.{milliseconds:03}"
+
+    @staticmethod
+    def millisecondsToSecondsStr(milliseconds: int) -> str:
+        """
+        Convert milliseconds to a formatted string in the format "SS.SSS".
+
+        Args:
+            milliseconds (int): The input time in milliseconds.
+
+        Returns:
+            str: The formatted time string.
+        """
+        if not isinstance(milliseconds, int):
+            raise ValueError("Input must be an integer representing milliseconds")
+
+        if milliseconds < 0:
+            raise ValueError("Input must be a non-negative integer")
+
+        total_seconds, milliseconds = divmod(milliseconds, 1000)
+
+        return f"{total_seconds:02}.{milliseconds:03}"
+
+    @staticmethod
+    def secondsToMinutesSecondsMilliseconds(seconds: float) -> str:
+        """
+        Convert seconds to a formatted string in the format "MM:SS.SSS".
+
+        Args:
+            seconds (float): The input time in seconds.
+
+        Returns:
+            str: The formatted time string.
+        """
+        if not isinstance(seconds, float):
+            raise ValueError("Input must be a float representing seconds")
+
+        if seconds < 0:
+            raise ValueError("Input must be a non-negative float")
+
+        total_milliseconds = int(seconds * 1000)
+        minutes, seconds = divmod(total_milliseconds // 1000, 60)
+        milliseconds = total_milliseconds % 1000
+
+        return f"{minutes:02}:{seconds:02}.{milliseconds:03}"
+
+    @staticmethod
+    def floatSecondsToMinutesSecondsMilliseconds(seconds: float) -> str:
+        """
+        Convert float seconds to a formatted string in the format "MM:SS.SSS".
+
+        Args:
+            seconds (float): The input time in seconds.
+
+        Returns:
+            str: The formatted time string.
+        """
+        if not isinstance(seconds, float):
+            raise ValueError("Input must be a float representing seconds")
+
+        if seconds < 0:
+            raise ValueError("Input must be a non-negative float")
+
+        total_milliseconds = int(seconds * 1000)
+        minutes, seconds = divmod(total_milliseconds // 1000, 60)
+        milliseconds = total_milliseconds % 1000
+
+        return f"{minutes:02}:{seconds:02}.{milliseconds:03}"
+
+    @staticmethod
+    def timeStrToMilliseconds(time_str: str) -> int:
+        """
+        Convert a time string in the format "MM:SS.SSS" to milliseconds.
+
+        Args:
+            time_str (str): The input time string.
+
+        Returns:
+            int: The time in milliseconds.
+        """
+        minutes, seconds_with_milliseconds = map(str, time_str.split(':'))
+        seconds, milliseconds = map(int, seconds_with_milliseconds.split('.'))
+        total_milliseconds = int(minutes) * 60 * 1000 + seconds * 1000 + milliseconds
+        return total_milliseconds
+
 # -------------------- HEADER PARSING ------------------------------------------
 
 class PacketHeader:
@@ -179,7 +560,7 @@ class PacketHeader:
         - m_game_major_version (int): The game's major version (X.00).
         - m_game_minor_version (int): The game's minor version (1.XX).
         - m_packet_version (int): The version of this packet type, starting from 1.
-        - m_packet_id (int): Identifier for the packet type.
+        - m_packet_id (F1PacketType): Identifier for the packet type. Refer the F1PacketType enumeration
         - m_session_uid (int): Unique identifier for the session.
         - m_session_time (float): Timestamp of the session.
         - m_frame_identifier (int): Identifier for the frame the data was retrieved on.
@@ -228,23 +609,58 @@ class PacketHeader:
             f"Secondary Player Car Index: {self.m_secondaryPlayerCarIndex})"
         )
 
-    def isPacketTypeSupported(self) -> bool:
-        """Check if this packet type is supported
+    def toJSON(self) -> Dict[str, Any]:
+        """Converts the PacketHeader object to a dictionary suitable for JSON serialization.
 
         Returns:
-            bool: self explanatory
+            Dict[str, Any]: A dictionary representing the JSON-compatible data.
         """
-        return self.is_supported_packet_type
+        packet_id_value = \
+                str(self.m_packetId.value) \
+                if F1PacketType.isValid(self.m_packetId) \
+                else self.m_packetId
+
+        return {
+            "packet-format": self.m_packetFormat,
+            "game-year": self.m_gameYear,
+            "game-major-version": self.m_gameMajorVersion,
+            "game-minor-version": self.m_gameMinorVersion,
+            "packet-version": self.m_packetVersion,
+            "packet-id": packet_id_value,
+            "session-uid": self.m_sessionUID,
+            "session-time": self.m_sessionTime,
+            "frame-identifier": self.m_frameIdentifier,
+            "overall-frame-identifier": self.m_overallFrameIdentifier,
+            "player-car-index": self.m_playerCarIndex,
+            "secondary-player-car-index": self.m_secondaryPlayerCarIndex
+        }
 
 # ------------------------- PACKET TYPE 0 - MOTION -----------------------------
 
 class CarMotionData:
     """
     A class for parsing the Car Motion Data of a telemetry packet in a racing game.
-
     The car motion data structure is as follows:
 
-
+    Attributes:
+        - m_worldPositionX (float): World space X position - metres
+        - m_worldPositionY (float): World space Y position - metres
+        - m_worldPositionZ (float): World space Z position - metres
+        - m_worldVelocityX (float): Velocity in world space X - metres/s
+        - m_worldVelocityY (float): Velocity in world space Y - metres/s
+        - m_worldVelocityZ (float): Velocity in world space Z - metres/s
+        - m_worldForwardDirX (int): World space forward X direction (normalised)
+        - m_worldForwardDirY (int): World space forward Y direction (normalised)
+        - m_worldForwardDirZ (int): World space forward X direction (normalised)
+        - m_worldRightDirX (int): World space right X direction (normalised)
+        - m_worldRightDirY (int): World space right Y direction (normalised)
+        - m_worldRightDirZ (int): World space right Z direction (normalised)
+        - m_gForceLateral (float): Lateral G-Force component
+        - m_gForceLongitudinal (float): Longitudinal G-Force component
+        - m_gForceVertical (float): Vertical G-Force component
+        - m_yaw (float): Yaw angle in radians
+        - m_pitch (float): Pitch angle in radians
+        - m_roll (float): Roll angle in radians
     """
     def __init__(self, data: bytes) -> None:
         """A class for parsing the data related to the motion of the F1 car
@@ -296,21 +712,69 @@ class CarMotionData:
             f"Roll: {self.m_roll})"
         )
 
+    def toJSON(self) -> Dict[str, Any]:
+        """Converts the CarMotionData object to a dictionary suitable for JSON serialization.
+
+        Returns:
+            Dict[str, Any]: A dictionary representing the JSON-compatible data.
+        """
+        return {
+            "world-position": {
+                "x": self.m_worldPositionX,
+                "y": self.m_worldPositionY,
+                "z": self.m_worldPositionZ
+            },
+            "world-velocity": {
+                "x": self.m_worldVelocityX,
+                "y": self.m_worldVelocityY,
+                "z": self.m_worldVelocityZ
+            },
+            "world-forward-dir": {
+                "x": self.m_worldForwardDirX,
+                "y": self.m_worldForwardDirY,
+                "z": self.m_worldForwardDirZ
+            },
+            "world-right-dir": {
+                "x": self.m_worldRightDirX,
+                "y": self.m_worldRightDirY,
+                "z": self.m_worldRightDirZ
+            },
+            "g-force": {
+                "lateral": self.m_gForceLateral,
+                "longitudinal": self.m_gForceLongitudinal,
+                "vertical": self.m_gForceVertical
+            },
+            "orientation": {
+                "yaw": self.m_yaw,
+                "pitch": self.m_pitch,
+                "roll": self.m_roll
+            }
+        }
+
 class PacketMotionData:
+    """A class for parsing the Motion Data Packet of a telemetry packet in a racing game.
+
+    Args:
+        header (PacketHeader): Incoming packet header
+        packet (List[bytes]): list containing the raw bytes for this packet
+
+    Attributes:
+    - m_header (PacketHeader): The header of the telemetry packet.
+    - m_car_motion_data (list): List of CarMotionData objects containing data for all cars on track.
+
+    Raises:
+        InvalidPacketLengthError: If received length is not as per expectation
+    """
 
     def __init__(self, header:PacketHeader, packet: bytes) -> None:
-        """A class for parsing the Motion Data Packet of a telemetry packet in a racing game.
+        """Construct the PacketMotionData object from the given packet payload
 
         Args:
-            header (PacketHeader): Incoming packet header
-            packet (List[bytes]): list containing the raw bytes for this packet
-
-        Attributes:
-        - m_header (PacketHeader): The header of the telemetry packet.
-        - m_car_motion_data (list): List of CarMotionData objects containing data for all cars on track.
+            header (PacketHeader): the parsed header object
+            packet (bytes): The packet containing only the payload (header must be stripped)
 
         Raises:
-            InvalidPacketLengthError: If received length is not as per expectation
+            InvalidPacketLengthError: If number of bytes is not as per expectation
         """
 
         self.m_header: PacketHeader = header       # PacketHeader
@@ -332,43 +796,26 @@ class PacketMotionData:
         car_motion_data_str = ", ".join(str(car) for car in self.m_carMotionData)
         return f"PacketMotionData(Header: {str(self.m_header)}, CarMotionData: [{car_motion_data_str}])"
 
+    def toJSON(self, include_header: bool=False) -> Dict[str, Any]:
+        """Converts the PacketMotionData object to a dictionary suitable for JSON serialization.
 
-# ------------------------- PACKET TYPE 1 - SESSION ----------------------------
-
-class MarshalZoneFlagType(Enum):
-    """
-    ENUM class for the marshal zone flag status
-    """
-
-    INVALID_UNKNOWN = -1
-    NONE = 0
-    GREEN_FLAG = 1
-    BLUE_FLAG = 2
-    YELLOW_FLAG = 3
-
-    @staticmethod
-    def isValid(flag_type: int):
-        """Check if the given packet type is valid.
-
-        Args:
-            flag_type (int): The flag code to be validated. Also supports type MarshalZoneFlagType. Returns true in this
-                case
+        Arguments:
+            - include_header - Whether the header dump must be included in the JSON
 
         Returns:
-            bool: true if valid
+            Dict[str, Any]: A dictionary representing the JSON-compatible data.
         """
-        if isinstance(flag_type, MarshalZoneFlagType):
-            return True  # It's already an instance of MarshalZoneFlagType
-        else:
-            min_value = min(member.value for member in MarshalZoneFlagType)
-            max_value = max(member.value for member in MarshalZoneFlagType)
-            return min_value <= flag_type <= max_value
 
-    def __str__(self):
-        if F1PacketType.isValid(self.value):
-            return self.name
-        else:
-            return 'Marshal Zone Flag type ' + str(self.value)
+        json_data = {
+            "car-motion-data": [car.toJSON() for car in self.m_carMotionData]
+        }
+
+        if include_header:
+            json_data["header"] = self.m_header.toJSON()
+
+        return json_data
+
+# ------------------------- PACKET TYPE 1 - SESSION ----------------------------
 
 class MarshalZone:
     """
@@ -378,8 +825,44 @@ class MarshalZone:
 
     Attributes:
         - m_zone_start (float): Fraction (0..1) of the way through the lap the marshal zone starts.
-        - m_zone_flag (MarshalZoneFlagType): Refer to the enum type for various options
+        - m_zone_flag (MarshalZone.MarshalZoneFlagType): Refer to the enum type for various options
     """
+
+    class MarshalZoneFlagType(Enum):
+        """
+        ENUM class for the marshal zone flag status
+        """
+
+        INVALID_UNKNOWN = -1
+        NONE = 0
+        GREEN_FLAG = 1
+        BLUE_FLAG = 2
+        YELLOW_FLAG = 3
+
+        @staticmethod
+        def isValid(flag_type: int):
+            """Check if the given packet type is valid.
+
+            Args:
+                flag_type (int): The flag code to be validated. Also supports type MarshalZoneFlagType.
+                    Returns true in this case
+
+            Returns:
+                bool: true if valid
+            """
+            if isinstance(flag_type, MarshalZone.MarshalZoneFlagType):
+                return True  # It's already an instance of MarshalZone.MarshalZoneFlagType
+            else:
+                min_value = min(member.value for member in MarshalZone.MarshalZoneFlagType)
+                max_value = max(member.value for member in MarshalZone.MarshalZoneFlagType)
+                return min_value <= flag_type <= max_value
+
+        def __str__(self):
+            if F1PacketType.isValid(self.value):
+                return self.name
+            else:
+                return 'Marshal Zone Flag type ' + str(self.value)
+
     def __init__(self, data: bytes) -> None:
         """Unpack the given raw bytes into this object
 
@@ -393,11 +876,27 @@ class MarshalZone:
             self.m_zoneFlag     # int8 - -1 = invalid/unknown, 0 = none, 1 = green, 2 = blue, 3 = yellow
         ) = unpacked_data
 
-        if MarshalZoneFlagType.isValid(self.m_zoneFlag):
-            self.m_zoneFlag = MarshalZoneFlagType(self.m_zoneFlag)
+        if MarshalZone.MarshalZoneFlagType.isValid(self.m_zoneFlag):
+            self.m_zoneFlag = MarshalZone.MarshalZoneFlagType(self.m_zoneFlag)
 
     def __str__(self) -> str:
         return f"MarshalZone(Start: {self.m_zoneStart}, Flag: {self.m_zoneFlag})"
+
+    def toJSON(self) -> Dict[str, Any]:
+        """Converts the MarshalZone object to a dictionary suitable for JSON serialization.
+
+        Returns:
+            Dict[str, Any]: A dictionary representing the JSON-compatible data.
+        """
+        zone_flag_value = \
+                str(self.m_zoneFlag.value) \
+                if MarshalZone.MarshalZoneFlagType.isValid(self.m_zoneFlag) \
+                else self.m_zoneFlag
+
+        return {
+            "zone-start": self.m_zoneStart,
+            "zone-flag": zone_flag_value
+        }
 
 class WeatherForecastSample:
     """
@@ -415,87 +914,6 @@ class WeatherForecastSample:
         - m_air_temperature_change (AirTemperatureChange): Air temperature change
         - m_rain_percentage (int): Rain percentage (0-100).
     """
-    class SessionType(Enum):
-        """
-        Enumeration representing different types of sessions.
-
-        Attributes:
-            UNKNOWN (int): Session type unknown.
-            P1 (int): Practice 1 session.
-            P2 (int): Practice 2 session.
-            P3 (int): Practice 3 session.
-            SHORT_P (int): Short Practice session.
-            Q1 (int): Qualifying 1 session.
-            Q2 (int): Qualifying 2 session.
-            Q3 (int): Qualifying 3 session.
-            SHORT_Q (int): Short Qualifying session.
-            OSQ (int): OSQ (One-Shot Qualifying) session.
-            RACE (int): Race session.
-            RACE2 (int): Second Race session.
-            RACE3 (int): Third Race session.
-            TIMETRIAL (int): Time Trial session.
-
-            Note:
-                Each attribute represents a unique session type identified by an integer value.
-        """
-
-        UNKNOWN = 0
-        P1 = 1
-        P2 = 2
-        P3 = 3
-        SHORT_P = 4
-        Q1 = 5
-        Q2 = 6
-        Q3 = 7
-        SHORT_Q = 8
-        OSQ = 9
-        RACE = 10
-        RACE2 = 11
-        RACE3 = 12
-        TIMETRIAL = 13
-
-        def __str__(self):
-            """
-            Returns a human-readable string representation of the session type.
-
-            Returns:
-                str: String representation of the session type.
-            """
-            return {
-                WeatherForecastSample.SessionType.UNKNOWN: "Unknown",
-                WeatherForecastSample.SessionType.P1: "Practice 1",
-                WeatherForecastSample.SessionType.P2: "Practice 2",
-                WeatherForecastSample.SessionType.P3: "Practice 3",
-                WeatherForecastSample.SessionType.SHORT_P: "Short Practice",
-                WeatherForecastSample.SessionType.Q1: "Qualifying 1",
-                WeatherForecastSample.SessionType.Q2: "Qualifying 2",
-                WeatherForecastSample.SessionType.Q3: "Qualifying 3",
-                WeatherForecastSample.SessionType.SHORT_Q: "Short Qualifying",
-                WeatherForecastSample.SessionType.OSQ: "OSQ",
-                WeatherForecastSample.SessionType.RACE: "Race",
-                WeatherForecastSample.SessionType.RACE2: "Race 2",
-                WeatherForecastSample.SessionType.RACE3: "Race 3",
-                WeatherForecastSample.SessionType.TIMETRIAL: "Time Trial",
-            }[self]
-
-        @staticmethod
-        def isValid(session_type_code: int):
-            """Check if the given session type code is valid.
-
-            Args:
-                flag_type (int): The session type code to be validated.
-                    Also supports type SessionType. Returns true in this case
-
-            Returns:
-                bool: true if valid
-            """
-            if isinstance(session_type_code, WeatherForecastSample.SessionType):
-                return True  # It's already an instance of SafetyCarStatus
-            else:
-                min_value = min(member.value for member in WeatherForecastSample.SessionType)
-                max_value = max(member.value for member in WeatherForecastSample.SessionType)
-                return min_value <= session_type_code <= max_value
-
     class WeatherCondition(Enum):
         """
         Enumeration representing different weather conditions.
@@ -546,7 +964,7 @@ class WeatherForecastSample:
                 bool: true if valid
             """
             if isinstance(weather_type_code, WeatherForecastSample.WeatherCondition):
-                return True  # It's already an instance of SafetyCarStatus
+                return True  # It's already an instance of WeatherForecastSample.WeatherCondition
             else:
                 min_value = min(member.value for member in WeatherForecastSample.WeatherCondition)
                 max_value = max(member.value for member in WeatherForecastSample.WeatherCondition)
@@ -576,9 +994,9 @@ class WeatherForecastSample:
                 str: String representation of the track temperature change.
             """
             return {
-                TrackTemperatureChange.UP: "Temperature Up",
-                TrackTemperatureChange.DOWN: "Temperature Down",
-                TrackTemperatureChange.NO_CHANGE: "No Temperature Change",
+                WeatherForecastSample.TrackTemperatureChange.UP: "Temperature Up",
+                WeatherForecastSample.TrackTemperatureChange.DOWN: "Temperature Down",
+                WeatherForecastSample.TrackTemperatureChange.NO_CHANGE: "No Temperature Change",
             }[self]
 
         @staticmethod
@@ -593,7 +1011,7 @@ class WeatherForecastSample:
                 bool: true if valid
             """
             if isinstance(temp_change_code, WeatherForecastSample.TrackTemperatureChange):
-                return True  # It's already an instance of SafetyCarStatus
+                return True  # It's already an instance of WeatherForecastSample.TrackTemperatureChange
             else:
                 min_value = min(member.value for member in WeatherForecastSample.TrackTemperatureChange)
                 max_value = max(member.value for member in WeatherForecastSample.TrackTemperatureChange)
@@ -627,7 +1045,7 @@ class WeatherForecastSample:
                 bool: true if valid
             """
             if isinstance(air_temp_change_code, WeatherForecastSample.AirTemperatureChange):
-                return True  # It's already an instance of SafetyCarStatus
+                return True  # It's already an instance of WeatherForecastSample.AirTemperatureChange
             else:
                 min_value = min(member.value for member in WeatherForecastSample.AirTemperatureChange)
                 max_value = max(member.value for member in WeatherForecastSample.AirTemperatureChange)
@@ -665,11 +1083,13 @@ class WeatherForecastSample:
             self.m_airTemperatureChange = WeatherForecastSample.AirTemperatureChange(self.m_airTemperatureChange)
         if WeatherForecastSample.TrackTemperatureChange.isValid(self.m_trackTemperatureChange):
             self.m_trackTemperatureChange = WeatherForecastSample.TrackTemperatureChange(self.m_trackTemperatureChange)
+        if SessionType.isValid(self.m_sessionType):
+            self.m_sessionType = SessionType(self.m_sessionType)
 
     def __str__(self) -> str:
         return (
             f"WeatherForecastSample("
-            f"Session Type: {self.m_sessionType}, "
+            f"Session Type: {str(self.m_sessionType)}, "
             f"Time Offset: {self.m_timeOffset}, "
             f"Weather: {self.m_weather}, "
             f"Track Temperature: {self.m_trackTemperature}, "
@@ -679,61 +1099,46 @@ class WeatherForecastSample:
             f"Rain Percentage: {self.m_rainPercentage})"
         )
 
-class SafetyCarStatus(Enum):
-    """
-    Enumeration representing different safety car statuses.
-
-    Attributes:
-        NO_SAFETY_CAR (int): No safety car on the track.
-        FULL_SAFETY_CAR (int): Full safety car deployed.
-        VIRTUAL_SAFETY_CAR (int): Virtual safety car deployed.
-        FORMATION_LAP (int): Formation lap in progress.
-
-        Note:
-            Each attribute represents a unique safety car status identified by an integer value.
-    """
-
-    NO_SAFETY_CAR = 0
-    FULL_SAFETY_CAR = 1
-    VIRTUAL_SAFETY_CAR = 2
-    FORMATION_LAP = 3
-
-    @staticmethod
-    def isValid(safety_car_status_code: int):
-        """Check if the given safety car status is valid.
-
-        Args:
-            flag_type (int): The safety car status to be validated.
-                Also supports type SafetyCarStatus. Returns true in this case
+    def toJSON(self) -> Dict[str, Any]:
+        """Converts the WeatherForecastSample object to a dictionary suitable for JSON serialization.
 
         Returns:
-            bool: true if valid
+            Dict[str, Any]: A dictionary representing the JSON-compatible data.
         """
-        if isinstance(safety_car_status_code, SafetyCarStatus):
-            return True  # It's already an instance of SafetyCarStatus
-        else:
-            min_value = min(member.value for member in SafetyCarStatus)
-            max_value = max(member.value for member in SafetyCarStatus)
-            return min_value <= safety_car_status_code <= max_value
+        session_type_value = (
+            str(self.m_sessionType.value)
+            if SessionType.isValid(self.m_sessionType)
+            else self.m_sessionType
+        )
 
-    def __str__(self):
-        """
-        Returns a human-readable string representation of the safety car status.
+        weather_value = (
+            str(self.m_weather.value)
+            if WeatherForecastSample.WeatherCondition.isValid(self.m_weather)
+            else self.m_weather
+        )
 
-        Returns:
-            str: String representation of the safety car status.
-        """
+        track_temp_change_value = (
+            str(self.m_trackTemperatureChange.value)
+            if WeatherForecastSample.TrackTemperatureChange.isValid(self.m_trackTemperatureChange)
+            else self.m_trackTemperatureChange
+        )
 
-        if self == SafetyCarStatus.NO_SAFETY_CAR:
-            return str()
-        elif self == SafetyCarStatus.FULL_SAFETY_CAR:
-            return "Full Safety Car"
-        elif self == SafetyCarStatus.VIRTUAL_SAFETY_CAR:
-            return "Virtual Safety Car"
-        elif self == SafetyCarStatus.FORMATION_LAP:
-            return "Formation Lap"
-        else:
-            return "Unknown Safety Car Status"
+        air_temp_change_value = (
+            str(self.m_airTemperatureChange.value)
+            if WeatherForecastSample.AirTemperatureChange.isValid(self.m_airTemperatureChange)
+            else self.m_airTemperatureChange
+        )
+
+        return {
+            "session-type": session_type_value,
+            "time-offset": self.m_timeOffset,
+            "weather": weather_value,
+            "track-temperature": self.m_trackTemperature,
+            "track-temperature-change": track_temp_change_value,
+            "air-temperature": self.m_airTemperature,
+            "air-temperature-change": air_temp_change_value,
+            "rain-percentage": self.m_rainPercentage
+        }
 
 class PacketSessionData:
     """
@@ -767,6 +1172,62 @@ class PacketSessionData:
         - m_forecast_accuracy (int): Forecast accuracy - 0 = Perfect, 1 = Approximate.
         - ... (Other attributes documented in the F1 23 UDP Specification Appendix)
     """
+
+    class SafetyCarStatus(Enum):
+        """
+        Enumeration representing different safety car statuses.
+
+        Attributes:
+            NO_SAFETY_CAR (int): No safety car on the track.
+            FULL_SAFETY_CAR (int): Full safety car deployed.
+            VIRTUAL_SAFETY_CAR (int): Virtual safety car deployed.
+            FORMATION_LAP (int): Formation lap in progress.
+
+            Note:
+                Each attribute represents a unique safety car status identified by an integer value.
+        """
+
+        NO_SAFETY_CAR = 0
+        FULL_SAFETY_CAR = 1
+        VIRTUAL_SAFETY_CAR = 2
+        FORMATION_LAP = 3
+
+        @staticmethod
+        def isValid(safety_car_status_code: int):
+            """Check if the given safety car status is valid.
+
+            Args:
+                flag_type (int): The safety car status to be validated.
+                    Also supports type SafetyCarStatus. Returns true in this case
+
+            Returns:
+                bool: true if valid
+            """
+            if isinstance(safety_car_status_code, PacketSessionData.SafetyCarStatus):
+                return True  # It's already an instance of SafetyCarStatus
+            else:
+                min_value = min(member.value for member in PacketSessionData.SafetyCarStatus)
+                max_value = max(member.value for member in PacketSessionData.SafetyCarStatus)
+                return min_value <= safety_car_status_code <= max_value
+
+        def __str__(self):
+            """
+            Returns a human-readable string representation of the safety car status.
+
+            Returns:
+                str: String representation of the safety car status.
+            """
+
+            if self == PacketSessionData.SafetyCarStatus.NO_SAFETY_CAR:
+                return str()
+            elif self == PacketSessionData.SafetyCarStatus.FULL_SAFETY_CAR:
+                return "Full Safety Car"
+            elif self == PacketSessionData.SafetyCarStatus.VIRTUAL_SAFETY_CAR:
+                return "Virtual Safety Car"
+            elif self == PacketSessionData.SafetyCarStatus.FORMATION_LAP:
+                return "Formation Lap"
+            else:
+                return "Unknown Safety Car Status"
 
     class TrackID(Enum):
         """
@@ -836,52 +1297,6 @@ class PacketSessionData:
                 max_value = max(member.value for member in PacketSessionData.TrackID)
                 return min_value <= track <= max_value
 
-    class SessionType(Enum):
-        """
-        Enum class representing F1 session types.
-        """
-        UNKNOWN = 0
-        PRACTICE_1 = 1
-        PRACTICE_2 = 2
-        PRACTICE_3 = 3
-        SHORT_PRACTICE = 4
-        QUALIFYING_1 = 5
-        QUALIFYING_2 = 6
-        QUALIFYING_3 = 7
-        SHORT_QUALIFYING = 8
-        ONE_SHOT_QUALIFYING = 9
-        RACE = 10
-        RACE_2 = 11
-        RACE_3 = 12
-        TIME_TRIAL = 13
-
-        @staticmethod
-        def is_valid(session_type: int):
-            """
-            Check if the given session type is valid.
-
-            Args:
-                session_type (int): The session type to be validated.
-
-            Returns:
-                bool: True if valid
-            """
-            if isinstance(session_type, PacketSessionData.SessionType):
-                return True  # It's already an instance of SessionType
-            else:
-                min_value = min(member.value for member in PacketSessionData.SessionType)
-                max_value = max(member.value for member in PacketSessionData.SessionType)
-                return min_value <= session_type <= max_value
-
-        def __str__(self):
-            """
-            Return a string representation of the SessionType with spaces.
-
-            Returns:
-                str: String representation of the SessionType.
-            """
-            return self.name.replace("_", " ")
-
     def __init__(self, header, data) -> None:
         """Construct a PacketSessionData object
 
@@ -917,8 +1332,8 @@ class PacketSessionData:
         ) = unpacked_data
         if PacketSessionData.TrackID.isValid(self.m_trackId):
             self.m_trackId = PacketSessionData.TrackID(self.m_trackId)
-        if PacketSessionData.SessionType.is_valid(self.m_sessionType):
-            self.m_sessionType = PacketSessionData.SessionType(self.m_sessionType)
+        if SessionType.isValid(self.m_sessionType):
+            self.m_sessionType = SessionType(self.m_sessionType)
 
         # Next section 1, marshalZones
         section_1_size = marshal_zone_packet_len * self.m_maxMarshalZones
@@ -940,8 +1355,8 @@ class PacketSessionData:
             self.m_networkGame, #               // 0 = offline, 1 = online
             self.m_numWeatherForecastSamples # // Number of weather samples to follow
         ) = unpacked_data
-        if SafetyCarStatus.isValid(self.m_safetyCarStatus):
-            self.m_safetyCarStatus = SafetyCarStatus(self.m_safetyCarStatus)
+        if PacketSessionData.SafetyCarStatus.isValid(self.m_safetyCarStatus):
+            self.m_safetyCarStatus = PacketSessionData.SafetyCarStatus(self.m_safetyCarStatus)
         section_2_raw_data = None
 
         # Section 3 - weather forecast samples
@@ -1001,7 +1416,7 @@ class PacketSessionData:
             f"Air Temperature: {self.m_airTemperature}, "
             f"Total Laps: {self.m_totalLaps}, "
             f"Track Length: {self.m_trackLength}, "
-            f"Session Type: {self.m_sessionType}, "
+            f"Session Type: {str(self.m_sessionType)}, "
             f"Track ID: {self.m_trackId}, "
             f"Formula: {self.m_formula}, "
             f"Session Time Left: {self.m_sessionTimeLeft}, "
@@ -1046,6 +1461,83 @@ class PacketSessionData:
             f"Num Virtual Safety Car Periods: {self.m_numVirtualSafetyCarPeriods}, "
             f"Num Red Flag Periods: {self.m_numRedFlagPeriods})"
         )
+
+    def toJSON(self, include_header: bool=False) -> Dict[str, Any]:
+        """Converts the PacketSessionData object to a dictionary suitable for JSON serialization.
+
+        Arguments:
+            - include_header - Whether the header dump must be included in the JSON
+
+        Returns:
+            Dict[str, Any]: A dictionary representing the JSON-compatible data.
+        """
+        marshal_zones_json = [zone.toJSON() for zone in self.m_marshalZones]
+        weather_forecast_samples_json = [sample.toJSON() for sample in self.m_weatherForecastSamples]
+        session_type_value = (
+            str(self.m_sessionType.value)
+            if SessionType.isValid(self.m_sessionType)
+            else self.m_sessionType
+        )
+        safety_car_status_value = (
+            str(self.m_safetyCarStatus.value)
+            if PacketSessionData.SafetyCarStatus.isValid(self.m_safetyCarStatus)
+            else self.m_safetyCarStatus
+        )
+
+        json_data = {
+            "weather": self.m_weather,
+            "track-temperature": self.m_trackTemperature,
+            "air-temperature": self.m_airTemperature,
+            "total-laps": self.m_totalLaps,
+            "track-length": self.m_trackLength,
+            "session-type": session_type_value,
+            "track-id": str(self.m_trackId),
+            "formula": self.m_formula,
+            "session-time-left": self.m_sessionTimeLeft,
+            "session-duration": self.m_sessionDuration,
+            "pit-speed-limit": self.m_pitSpeedLimit,
+            "game-paused": self.m_gamePaused,
+            "is-spectating": self.m_isSpectating,
+            "spectator-car-index": self.m_spectatorCarIndex,
+            "sli-pro-native-support": self.m_sliProNativeSupport,
+            "num-marshal-zones": self.m_numMarshalZones,
+            "marshal-zones": marshal_zones_json,
+            "safety-car-status": safety_car_status_value,
+            "network-game": self.m_networkGame,
+            "num-weather-forecast-samples": self.m_numWeatherForecastSamples,
+            "weather-forecast-samples": weather_forecast_samples_json,
+            "forecast-accuracy": self.m_forecastAccuracy,
+            "ai-difficulty": self.m_aiDifficulty,
+            "season-link-identifier": self.m_seasonLinkIdentifier,
+            "weekend-link-identifier": self.m_weekendLinkIdentifier,
+            "session-link-identifier": self.m_sessionLinkIdentifier,
+            "pit-stop-window-ideal-lap": self.m_pitStopWindowIdealLap,
+            "pit-stop-window-latest-lap": self.m_pitStopWindowLatestLap,
+            "pit-stop-rejoin-position": self.m_pitStopRejoinPosition,
+            "steering-assist": self.m_steeringAssist,
+            "braking-assist": self.m_brakingAssist,
+            "gearbox-assist": self.m_gearboxAssist,
+            "pit-assist": self.m_pitAssist,
+            "pit-release-assist": self.m_pitReleaseAssist,
+            "ers-assist": self.m_ERSAssist,
+            "drs-assist": self.m_DRSAssist,
+            "dynamic-racing-line": self.m_dynamicRacingLine,
+            "dynamic-racing-line-type": self.m_dynamicRacingLineType,
+            "game-mode": self.m_gameMode,
+            "rule-set": self.m_ruleSet,
+            "time-of-day": self.m_timeOfDay,
+            "session-length": self.m_sessionLength,
+            "speed-units-lead-player": self.m_speedUnitsLeadPlayer,
+            "temp-units-lead-player": self.m_temperatureUnitsLeadPlayer,
+            "speed-units-secondary-player": self.m_speedUnitsSecondaryPlayer,
+            "temp-units-secondary-player": self.m_temperatureUnitsSecondaryPlayer,
+            "num-safety-car-periods": self.m_numSafetyCarPeriods,
+            "num-virtual-safety-car-periods": self.m_numVirtualSafetyCarPeriods,
+            "num-red-flag-periods": self.m_numRedFlagPeriods
+        }
+        if include_header:
+            json_data["header"] = self.m_header.toJSON()
+        return json_data
 
 # ------------------------- PACKET TYPE 2 - LAP DATA----------------------------
 
@@ -1305,7 +1797,58 @@ class LapData:
             f"Pit Stop Should Serve Penalty: {self.m_pitStopShouldServePen})"
         )
 
+    def toJSON(self) -> Dict[str, Any]:
+        """
+        Convert LapData instance to JSON format.
+
+        Returns:
+        - dict: JSON representation of LapData.
+        """
+
+        return {
+            "last-lap-time-in-ms": self.m_lastLapTimeInMS,
+            "last-lap-time-str": F1Utils.millisecondsToMinutesSecondsMilliseconds(self.m_lastLapTimeInMS),
+            "current-lap-time-in-ms": self.m_currentLapTimeInMS,
+            "current-lap-time-str": F1Utils.millisecondsToMinutesSecondsMilliseconds(self.m_currentLapTimeInMS),
+            "sector-1-time-in-ms": self.m_sector1TimeInMS,
+            "sector-1-time-minutes": self.m_sector1TimeMinutes,
+            "sector-1-time-str": F1Utils.millisecondsToSecondsStr(self.m_sector1TimeInMS),
+            "sector-2-time-in-ms": self.m_sector2TimeInMS,
+            "sector-2-time-minutes": self.m_sector2TimeMinutes,
+            "sector-2-time-str": F1Utils.millisecondsToSecondsStr(self.m_sector2TimeInMS),
+            "delta-to-car-in-front-in-ms": self.m_deltaToCarInFrontInMS,
+            "delta-to-race-leader-in-ms": self.m_deltaToRaceLeaderInMS,
+            "lap-distance": self.m_lapDistance,
+            "total-distance": self.m_totalDistance,
+            "safety-car-delta": self.m_safetyCarDelta,
+            "car-position": self.m_carPosition,
+            "current-lap-num": self.m_currentLapNum,
+            "pit-status": str(self.m_pitStatus.value) if LapData.PitStatus.isValid(self.m_pitStatus) else self.m_pitStatus,
+            "num-pit-stops": self.m_numPitStops,
+            "sector": str(self.m_sector.value) if LapData.Sector.isValid(self.m_sector) else self.m_sector,
+            "current-lap-invalid": self.m_currentLapInvalid,
+            "penalties": self.m_penalties,
+            "total-warnings": self.m_totalWarnings,
+            "corner-cutting-warnings": self.m_cornerCuttingWarnings,
+            "num-unserved-drive-through-pens": self.m_numUnservedDriveThroughPens,
+            "num-unserved-stop-go-pens": self.m_numUnservedStopGoPens,
+            "grid-position": self.m_gridPosition,
+            "driver-status": str(self.m_driverStatus),
+            "result-status": str(self.m_resultStatus),
+            "pit-lane-timer-active": self.m_pitLaneTimerActive,
+            "pit-lane-time-in-lane-in-ms": self.m_pitLaneTimeInLaneInMS,
+            "pit-stop-timer-in-ms": self.m_pitStopTimerInMS,
+            "pit-stop-should-serve-pen": self.m_pitStopShouldServePen
+        }
+
 class PacketLapData:
+    """Class representing the incoming PacketLapData.
+    Attributes:
+        m_header (PacketHeader) - The header object
+        m_lapData(List[LapData]) - The list of LapData objects, in the order of driver index
+        m_timeTrialPBCarIdx (int) - Index of Personal Best car in time trial (255 if invalid)
+        m_timeTrialRivalCarIdx (int) - Index of Rival car in time trial (255 if invalid)
+    """
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
         """
         Initialize PacketLapData instance by unpacking binary data.
@@ -1360,258 +1903,759 @@ class PacketLapData:
         lap_data_str = ", ".join(str(data) for data in self.m_LapData)
         return f"PacketLapData(Header: {str(self.m_header)}, Car Lap Data: [{lap_data_str}])"
 
+    def toJSON(self, include_header: bool=False) -> Dict[str, Any]:
+        """
+        Convert PacketLapData instance to a JSON-formatted dictionary.
+
+        Arguments:
+            - include_header - Whether the header dump must be included in the JSON
+
+        Returns:
+        - dict: JSON-formatted dictionary representing the PacketLapData instance.
+        """
+        lap_data_json = [lap_data.toJSON() for lap_data in self.m_LapData]
+
+        json_data = {
+            "lap-data": lap_data_json,
+            "lap-data-count": self.m_LapDataCount,
+            "time-trial-pb-car-idx": int(self.m_timeTrialPBCarIdx),
+            "time-trial-rival-car-idx": int(self.m_timeTrialRivalCarIdx),
+        }
+        if include_header:
+            json_data["header"] = self.m_header.toJSON()
+        return json_data
+
 # ------------------------- PACKET TYPE 3 - EVENT ------------------------------
 
-class EventPacketType(Enum):
-    """
-    Enum class representing different event types.
-    """
 
-    # Session Started: Sent when the session starts
-    SESSION_STARTED = "SSTA"
-
-    # Session Ended: Sent when the session ends
-    SESSION_ENDED = "SEND"
-
-    # Fastest Lap: When a driver achieves the fastest lap
-    FASTEST_LAP = "FTLP"
-
-    # Retirement: When a driver retires
-    RETIREMENT = "RTMT"
-
-    # DRS enabled: Race control have enabled DRS
-    DRS_ENABLED = "DRSE"
-
-    # DRS disabled: Race control have disabled DRS
-    DRS_DISABLED = "DRSD"
-
-    # Team mate in pits: Your team mate has entered the pits
-    TEAM_MATE_IN_PITS = "TMPT"
-
-    # Chequered flag: The chequered flag has been waved
-    CHEQUERED_FLAG = "CHQF"
-
-    # Race Winner: The race winner is announced
-    RACE_WINNER = "RCWN"
-
-    # Penalty Issued: A penalty has been issued – details in event
-    PENALTY_ISSUED = "PENA"
-
-    # Speed Trap Triggered: Speed trap has been triggered by fastest speed
-    SPEED_TRAP_TRIGGERED = "SPTP"
-
-    # Start lights: Start lights – number shown
-    START_LIGHTS = "STLG"
-
-    # Lights out: Lights out
-    LIGHTS_OUT = "LGOT"
-
-    # Drive through served: Drive through penalty served
-    DRIVE_THROUGH_SERVED = "DTSV"
-
-    # Stop go served: Stop go penalty served
-    STOP_GO_SERVED = "SGSV"
-
-    # Flashback: Flashback activated
-    FLASHBACK = "FLBK"
-
-    # Button status: Button status changed
-    BUTTON_STATUS = "BUTN"
-
-    # Red Flag: Red flag shown
-    RED_FLAG = "RDFL"
-
-    # Overtake: Overtake occurred
-    OVERTAKE = "OVTK"
-
-    @staticmethod
-    def isValid(event_type: str) -> bool:
-        """
-        Check if the input event type string maps to a valid enum value.
-
-        Args:
-            event_type (str): The event type string to check.
-
-        Returns:
-            bool: True if the event type is valid, False otherwise.
-        """
-        if isinstance(event_type, EventPacketType):
-            return True
-        try:
-            EventPacketType(event_type)
-            return True
-        except ValueError:
-            return False
-
-class FastestLap:
-    """
-    A class representing the data structure for the fastest lap information.
-
-    Attributes:
-        vehicleIdx (int): Vehicle index of the car achieving the fastest lap.
-        lapTime (float): Lap time in seconds.
-    """
-
-    def __init__(self, data: bytes):
-        """
-        Initializes a FastestLap object by unpacking the provided binary data.
-
-        Parameters:
-            data (bytes): Binary data to be unpacked.
-
-        Raises:
-            struct.error: If the binary data does not match the expected format.
-        """
-        format_str = "<Bf"
-        unpacked_data = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
-        (
-            self.vehicleIdx,
-            self.lapTime
-        ) = unpacked_data
-
-    def __str__(self) -> str:
-        """
-        Returns a string representation of the FastestLap object.
-
-        Returns:
-            str: String representation of the object.
-        """
-        return f"FastestLap(vehicleIdx={self.vehicleIdx}, lapTime={self.lapTime})"
-
-class Retirement:
-    """
-    The class representing the RETIREMENT event. This is sent when any driver retires or DNF's
-    Attributes:
-        vehicleIdx(int) - The index of the vehicle that retired
-    """
-    def __init__(self, data):
-        format_str = "<B"
-        self.vehicleIdx = struct.unpack(format_str, data[0:struct.calcsize(format_str)])[0]
-
-    def __str__(self):
-        return f"Retirement(vehicleIdx={self.vehicleIdx})"
-
-class TeamMateInPits:
-    """
-    The class representing the TEAMMATE IN PITS event. This is sent when the player's teammate pits.
-    This is not sent in spectator mode
-    Attributes:
-        vehicleIdx(int) - The index of the vehicle that pitted (the teammates index)
-    """
-    def __init__(self, data):
-        format_str = "<B"
-        self.vehicleIdx = struct.unpack(format_str, data[0:struct.calcsize(format_str)])[0]
-
-    def __str__(self):
-        return f"TeamMateInPits(vehicleIdx={self.vehicleIdx})"
-
-class RaceWinner:
-    def __init__(self, data):
-        format_str = "<B"
-        self.vehicleIdx = struct.unpack(format_str, data[0:struct.calcsize(format_str)])[0]
-
-    def __str__(self):
-        return f"RaceWinner(vehicleIdx={self.vehicleIdx})"
-
-class Penalty:
-    def __init__(self, data):
-
-        format_str = "<BBBBBBB"
-        unpacked_data = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
-        (
-            self.penaltyType,
-            self.infringementType,
-            self.vehicleIdx,
-            self.otherVehicleIdx,
-            self.time,
-            self.lapNum,
-            self.placesGained
-        ) = unpacked_data
-
-    def __str__(self):
-        return f"Penalty(penaltyType={self.penaltyType}, infringementType={self.infringementType}, " \
-               f"vehicleIdx={self.vehicleIdx}, otherVehicleIdx={self.otherVehicleIdx}, time={self.time}, " \
-               f"lapNum={self.lapNum}, placesGained={self.placesGained})"
-
-class SpeedTrap:
-    def __init__(self, data):
-
-        format_str = "<BfBBBf"
-        unpacked_data = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
-        (
-            self.vehicleIdx,
-            self.speed,
-            self.isOverallFastestInSession,
-            self.isDriverFastestInSession,
-            self.fastestVehicleIdxInSession,
-            self.fastestSpeedInSession
-        ) = unpacked_data
-
-    def __str__(self):
-        return f"SpeedTrap(vehicleIdx={self.vehicleIdx}, speed={self.speed}, " \
-               f"isOverallFastestInSession={self.isOverallFastestInSession}, " \
-               f"isDriverFastestInSession={self.isDriverFastestInSession}, " \
-               f"fastestVehicleIdxInSession={self.fastestVehicleIdxInSession}, " \
-               f"fastestSpeedInSession={self.fastestSpeedInSession})"
-
-class StartLights:
-    def __init__(self, data):
-        format_str = "<B"
-        self.numLights = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
-
-    def __str__(self):
-        return f"StartLights(numLights={self.numLights})"
-
-class DriveThroughPenaltyServed:
-    def __init__(self, data):
-        format_str = "<B"
-        self.vehicleIdx = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
-
-    def __str__(self):
-        return f"DriveThroughPenaltyServed(vehicleIdx={self.vehicleIdx})"
-
-class StopGoPenaltyServed:
-    def __init__(self, data):
-        format_str = "<B"
-        self.vehicleIdx = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
-
-    def __str__(self):
-        return f"StopGoPenaltyServed(vehicleIdx={self.vehicleIdx})"
-
-class Flashback:
-    def __init__(self, data):
-
-        format_str = "<If"
-        unpacked_data = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
-        (
-            self.flashbackFrameIdentifier,
-            self.flashbackSessionTime
-        ) = unpacked_data
-
-    def __str__(self):
-        return f"Flashback(flashbackFrameIdentifier={self.flashbackFrameIdentifier}, " \
-               f"flashbackSessionTime={self.flashbackSessionTime})"
-
-class Buttons:
-    def __init__(self, data):
-        format_str = "<B"
-        self.buttonStatus = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
-
-    def __str__(self):
-        return f"Buttons(buttonStatus={self.buttonStatus})"
-
-class Overtake:
-    def __init__(self, data):
-        format_str = "<BB"
-        self.overtakingVehicleIdx, self.beingOvertakenVehicleIdx = struct.unpack(format_str,
-            data[0:struct.calcsize(format_str)])
-
-    def __str__(self):
-        return f"Overtake(overtakingVehicleIdx={self.overtakingVehicleIdx}, " \
-               f"beingOvertakenVehicleIdx={self.beingOvertakenVehicleIdx})"
 
 class PacketEventData:
+    """Class representing the incoming PacketEventData message
 
+    Raises:
+        TypeError: Unsupported event type
+
+    Attributes:
+        m_header (PacketHeader) - Parsed header object
+        m_eventStringCode (str) - The string code of the event type (IDK why they didnt just use a uint8)
+        m_eventDetails (type depends on m_eventStringCode) - Holds the object with the event info.
+                                                            May be None for certain event types.
+                                                            Refer PacketEventData.event_type_map
+
+    """
+    class EventPacketType(Enum):
+        """
+        Enum class representing different event types.
+        """
+
+        # Session Started: Sent when the session starts
+        SESSION_STARTED = "SSTA"
+
+        # Session Ended: Sent when the session ends
+        SESSION_ENDED = "SEND"
+
+        # Fastest Lap: When a driver achieves the fastest lap
+        FASTEST_LAP = "FTLP"
+
+        # Retirement: When a driver retires
+        RETIREMENT = "RTMT"
+
+        # DRS enabled: Race control have enabled DRS
+        DRS_ENABLED = "DRSE"
+
+        # DRS disabled: Race control have disabled DRS
+        DRS_DISABLED = "DRSD"
+
+        # Team mate in pits: Your team mate has entered the pits
+        TEAM_MATE_IN_PITS = "TMPT"
+
+        # Chequered flag: The chequered flag has been waved
+        CHEQUERED_FLAG = "CHQF"
+
+        # Race Winner: The race winner is announced
+        RACE_WINNER = "RCWN"
+
+        # Penalty Issued: A penalty has been issued – details in event
+        PENALTY_ISSUED = "PENA"
+
+        # Speed Trap Triggered: Speed trap has been triggered by fastest speed
+        SPEED_TRAP_TRIGGERED = "SPTP"
+
+        # Start lights: Start lights – number shown
+        START_LIGHTS = "STLG"
+
+        # Lights out: Lights out
+        LIGHTS_OUT = "LGOT"
+
+        # Drive through served: Drive through penalty served
+        DRIVE_THROUGH_SERVED = "DTSV"
+
+        # Stop go served: Stop go penalty served
+        STOP_GO_SERVED = "SGSV"
+
+        # Flashback: Flashback activated
+        FLASHBACK = "FLBK"
+
+        # Button status: Button status changed
+        BUTTON_STATUS = "BUTN"
+
+        # Red Flag: Red flag shown
+        RED_FLAG = "RDFL"
+
+        # Overtake: Overtake occurred
+        OVERTAKE = "OVTK"
+
+        @staticmethod
+        def isValid(event_type: str) -> bool:
+            """
+            Check if the input event type string maps to a valid enum value.
+
+            Args:
+                event_type (str): The event type string to check.
+
+            Returns:
+                bool: True if the event type is valid, False otherwise.
+            """
+            if isinstance(event_type, PacketEventData.EventPacketType):
+                return True
+            try:
+                PacketEventData.EventPacketType(event_type)
+                return True
+            except ValueError:
+                return False
+
+    class FastestLap:
+        """
+        A class representing the data structure for the fastest lap information.
+
+        Attributes:
+            vehicleIdx (int): Vehicle index of the car achieving the fastest lap.
+            lapTime (float): Lap time in seconds.
+        """
+
+        def __init__(self, data: bytes):
+            """
+            Initializes a FastestLap object by unpacking the provided binary data.
+
+            Parameters:
+                data (bytes): Binary data to be unpacked.
+
+            Raises:
+                struct.error: If the binary data does not match the expected format.
+            """
+            format_str = "<Bf"
+            unpacked_data = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
+            (
+                self.vehicleIdx,
+                self.lapTime
+            ) = unpacked_data
+
+        def __str__(self) -> str:
+            """
+            Returns a string representation of the FastestLap object.
+
+            Returns:
+                str: String representation of the object.
+            """
+            return f"FastestLap(vehicleIdx={self.vehicleIdx}, lapTime={self.lapTime})"
+
+        def toJSON(self) -> Dict[str, Any]:
+            """
+            Convert FastestLap instance to a JSON-formatted dictionary.
+
+            Returns:
+                dict: JSON-formatted dictionary representing the FastestLap instance.
+            """
+            return {
+                "vehicle-idx": self.vehicleIdx,
+                "lap-time": self.lapTime,
+            }
+
+    class Retirement:
+        """
+        The class representing the RETIREMENT event. This is sent when any driver retires or DNF's
+        Attributes:
+            vehicleIdx(int) - The index of the vehicle that retired
+        """
+        def __init__(self, data):
+            format_str = "<B"
+            self.vehicleIdx = struct.unpack(format_str, data[0:struct.calcsize(format_str)])[0]
+
+        def __str__(self):
+            return f"Retirement(vehicleIdx={self.vehicleIdx})"
+
+        def toJSON(self) -> Dict[str, Any]:
+            """
+            Convert the Retirement object to a JSON-compatible dictionary.
+
+            Returns:
+                dict: JSON-compatible dictionary representing the Retirement object.
+            """
+            return {
+                "vehicle-idx": self.vehicleIdx,
+            }
+
+    class TeamMateInPits:
+        """
+        The class representing the TEAMMATE IN PITS event. This is sent when the player's teammate pits.
+        This is not sent in spectator mode
+        Attributes:
+            vehicleIdx(int) - The index of the vehicle that pitted (the teammates index)
+        """
+        def __init__(self, data):
+            format_str = "<B"
+            self.vehicleIdx = struct.unpack(format_str, data[0:struct.calcsize(format_str)])[0]
+
+        def __str__(self):
+            return f"TeamMateInPits(vehicleIdx={self.vehicleIdx})"
+
+        def toJSON(self) -> Dict[str,Any]:
+            """
+            Convert the TeamMateInPits object to a JSON-compatible dictionary.
+
+            Returns:
+                Dict[str, str]: JSON-compatible dictionary representing the TeamMateInPits object.
+            """
+            return {
+                "vehicle-idx": self.vehicleIdx,
+            }
+
+    class RaceWinner:
+        """
+        The class representing the RACE WINNER event. This is sent when the race winner crosses the finish line
+        Attributes:
+            vehicleIdx(int) - The index of the vehicle that pitted (the teammates index)
+        """
+        def __init__(self, data):
+            format_str = "<B"
+            self.vehicleIdx = struct.unpack(format_str, data[0:struct.calcsize(format_str)])[0]
+
+        def __str__(self):
+            return f"RaceWinner(vehicleIdx={self.vehicleIdx})"
+
+        def toJSON(self) -> Dict[str, Any]:
+            """
+            Convert the RaceWinner object to a JSON-compatible dictionary.
+
+            Returns:
+                Dict[str, str]: JSON-compatible dictionary representing the RaceWinner object.
+            """
+            return {
+                "vehicle-idx": self.vehicleIdx,
+            }
+
+    class Penalty:
+        """
+        The class representing the PENALTY event. This is sent when any driver receives a penalty
+        Attributes:
+            penaltyType (Penalty.PenaltyType) - The type of penalty. See Penalty.PenaltyType enumeration
+            infrigementType (Penalty.InfringementType) - The type of infringement. See Penalty.InfringementType enumeration
+            vehicleIdx (int) - The index of the vehicle receiving the penalty
+            otherVehicleIndex (int) - The index of the other vehicle involved
+            time (int) - Time gained or spent doing the action in seconds
+            lapNum (int) - Lap number the penalty occured on
+            placesGained (int) - Number of places gained by this
+        """
+
+        class PenaltyType(Enum):
+            """Enum class representing different penalties in motorsports."""
+
+            DRIVE_THROUGH = 0
+            STOP_GO = 1
+            GRID_PENALTY = 2
+            PENALTY_REMINDER = 3
+            TIME_PENALTY = 4
+            WARNING = 5
+            DISQUALIFIED = 6
+            REMOVED_FROM_FORMATION_LAP = 7
+            PARKED_TOO_LONG_TIMER = 8
+            TYRE_REGULATIONS = 9
+            THIS_LAP_INVALIDATED = 10
+            THIS_AND_NEXT_LAP_INVALIDATED = 11
+            THIS_LAP_INVALIDATED_WITHOUT_REASON = 12
+            THIS_AND_NEXT_LAP_INVALIDATED_WITHOUT_REASON = 13
+            THIS_PREVIOUS_LAP_INVALIDATED = 14
+            THIS_AND_PREVIOUS_LAP_INVALIDATED_WITHOUT_REASON = 15
+            RETIRED = 16
+            BLACK_FLAG_TIMER = 17
+
+            def __str__(self) -> str:
+                """Return a human-readable string representation of the penalty."""
+                return self.name.replace("_", " ").title()
+
+            @staticmethod
+            def isValid(penalty_type: int):
+                """Check if the given PenaltyType code is valid.
+
+                Args:
+                    penalty_type (int): The PenaltyType code to be validated.
+                        Also supports type PenaltyType. Returns true in this case
+
+                Returns:
+                    bool: true if valid
+                """
+                if isinstance(penalty_type, PacketEventData.Penalty.PenaltyType):
+                    return True  # It's already an instance of SafetyCarStatus
+                else:
+                    min_value = min(member.value for member in PacketEventData.Penalty.PenaltyType)
+                    max_value = max(member.value for member in PacketEventData.Penalty.PenaltyType)
+                    return min_value <= penalty_type <= max_value
+
+        class InfringementType(Enum):
+            """Enum class representing different infringements in motorsports."""
+
+            BLOCKING_BY_SLOW_DRIVING = 0
+            BLOCKING_BY_WRONG_WAY_DRIVING = 1
+            REVERSING_OFF_THE_START_LINE = 2
+            BIG_COLLISION = 3
+            SMALL_COLLISION = 4
+            COLLISION_FAILED_TO_HAND_BACK_POSITION_SINGLE = 5
+            COLLISION_FAILED_TO_HAND_BACK_POSITION_MULTIPLE = 6
+            CORNER_CUTTING_GAINED_TIME = 7
+            CORNER_CUTTING_OVERTAKE_SINGLE = 8
+            CORNER_CUTTING_OVERTAKE_MULTIPLE = 9
+            CROSSED_PIT_EXIT_LANE = 10
+            IGNORING_BLUE_FLAGS = 11
+            IGNORING_YELLOW_FLAGS = 12
+            IGNORING_DRIVE_THROUGH = 13
+            TOO_MANY_DRIVE_THROUGHS = 14
+            DRIVE_THROUGH_REMINDER_SERVE_WITHIN_N_LAPS = 15
+            DRIVE_THROUGH_REMINDER_SERVE_THIS_LAP = 16
+            PIT_LANE_SPEEDING = 17
+            PARKED_FOR_TOO_LONG = 18
+            IGNORING_TYRE_REGULATIONS = 19
+            TOO_MANY_PENALTIES = 20
+            MULTIPLE_WARNINGS = 21
+            APPROACHING_DISQUALIFICATION = 22
+            TYRE_REGULATIONS_SELECT_SINGLE = 23
+            TYRE_REGULATIONS_SELECT_MULTIPLE = 24
+            LAP_INVALIDATED_CORNER_CUTTING = 25
+            LAP_INVALIDATED_RUNNING_WIDE = 26
+            CORNER_CUTTING_RAN_WIDE_GAINED_TIME_MINOR = 27
+            CORNER_CUTTING_RAN_WIDE_GAINED_TIME_SIGNIFICANT = 28
+            CORNER_CUTTING_RAN_WIDE_GAINED_TIME_EXTREME = 29
+            LAP_INVALIDATED_WALL_RIDING = 30
+            LAP_INVALIDATED_FLASHBACK_USED = 31
+            LAP_INVALIDATED_RESET_TO_TRACK = 32
+            BLOCKING_THE_PITLANE = 33
+            JUMP_START = 34
+            SAFETY_CAR_TO_CAR_COLLISION = 35
+            SAFETY_CAR_ILLEGAL_OVERTAKE = 36
+            SAFETY_CAR_EXCEEDING_ALLOWED_PACE = 37
+            VIRTUAL_SAFETY_CAR_EXCEEDING_ALLOWED_PACE = 38
+            FORMATION_LAP_BELOW_ALLOWED_SPEED = 39
+            FORMATION_LAP_PARKING = 40
+            RETIRED_MECHANICAL_FAILURE = 41
+            RETIRED_TERMINALLY_DAMAGED = 42
+            SAFETY_CAR_FALLING_TOO_FAR_BACK = 43
+            BLACK_FLAG_TIMER = 44
+            UNSERVED_STOP_GO_PENALTY = 45
+            UNSERVED_DRIVE_THROUGH_PENALTY = 46
+            ENGINE_COMPONENT_CHANGE = 47
+            GEARBOX_CHANGE = 48
+            PARC_FERME_CHANGE = 49
+            LEAGUE_GRID_PENALTY = 50
+            RETRY_PENALTY = 51
+            ILLEGAL_TIME_GAIN = 52
+            MANDATORY_PITSTOP = 53
+            ATTRIBUTE_ASSIGNED = 54
+
+            def __str__(self) -> str:
+                """Return a human-readable string representation of the infringement."""
+                return self.name.replace("_", " ").title()
+
+            @staticmethod
+            def isValid(infringement_type: int):
+                """Check if the given InfringementType code is valid.
+
+                Args:
+                    infringement_type (int): The InfringementType code to be validated.
+                        Also supports type InfringementType. Returns true in this case
+
+                Returns:
+                    bool: true if valid
+                """
+                if isinstance(infringement_type, PacketEventData.Penalty.InfringementType):
+                    return True  # It's already an instance of SafetyCarStatus
+                else:
+                    min_value = min(member.value for member in PacketEventData.Penalty.InfringementType)
+                    max_value = max(member.value for member in PacketEventData.Penalty.InfringementType)
+                    return min_value <= infringement_type <= max_value
+
+        def __init__(self, data: bytes):
+            """Parse the penalty event packet into this object
+
+            Args:
+                data (bytes): The packet containing the event data.
+            """
+
+            format_str = "<BBBBBBB"
+            unpacked_data = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
+            (
+                self.penaltyType,
+                self.infringementType,
+                self.vehicleIdx,
+                self.otherVehicleIdx,
+                self.time,
+                self.lapNum,
+                self.placesGained
+            ) = unpacked_data
+
+            if PacketEventData.Penalty.PenaltyType.isValid(self.penaltyType):
+                self.penaltyType = PacketEventData.Penalty.PenaltyType(self.penaltyType)
+            if PacketEventData.Penalty.InfringementType.isValid(self.infringementType):
+                self.infringementType = PacketEventData.Penalty.InfringementType(self.infringementType)
+
+        def __str__(self):
+            return f"Penalty(penaltyType={self.penaltyType}, infringementType={self.infringementType}, " \
+                f"vehicleIdx={self.vehicleIdx}, otherVehicleIdx={self.otherVehicleIdx}, time={self.time}, " \
+                f"lapNum={self.lapNum}, placesGained={self.placesGained})"
+
+        def toJSON(self) -> Dict[str, Any]:
+            """
+            Convert the Penalty instance to a JSON-compatible dictionary.
+
+            Returns:
+                Dict[str, Any]: JSON-compatible dictionary representing the Penalty instance.
+            """
+            return {
+                "penalty-type": str(self.penaltyType.value) \
+                    if PacketEventData.Penalty.PenaltyType.isValid(self.penaltyType) \
+                    else self.penaltyType,
+                "infringement-type": str(self.infringementType.value) \
+                        if PacketEventData.Penalty.InfringementType.isValid(self.infringementType) \
+                        else self.infringementType,
+                "vehicle-idx": self.vehicleIdx,
+                "other-vehicle-idx": self.otherVehicleIdx,
+                "time": self.time,
+                "lap-num": self.lapNum,
+                "places-gained": self.placesGained
+            }
+
+    class SpeedTrap:
+        """
+        The class representing the SPEED TRAP event. This is sent when a car is caught speeding by the speed trap.
+        Attributes:
+            vehicleIdx (int): The index of the vehicle caught speeding.
+            speed (float): The speed of the vehicle in meters per second.
+            isOverallFastestInSession (bool): Flag indicating if the speed is the overall fastest in the session.
+            isDriverFastestInSession (bool): Flag indicating if the speed is the fastest for the driver in the session.
+            fastestVehicleIdxInSession (int): The index of the vehicle with the fastest speed in the session.
+            fastestSpeedInSession (float): The speed of the fastest vehicle in the session.
+        """
+
+        def __init__(self, data: bytes) -> None:
+            """
+            Initializes a SpeedTrap object by unpacking the provided binary data.
+
+            Parameters:
+                data (bytes): Binary data to be unpacked.
+
+            Raises:
+                struct.error: If the binary data does not match the expected format.
+            """
+            format_str = "<BfBBBf"
+            unpacked_data = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
+            (
+                self.vehicleIdx,
+                self.speed,
+                self.isOverallFastestInSession,
+                self.isDriverFastestInSession,
+                self.fastestVehicleIdxInSession,
+                self.fastestSpeedInSession
+            ) = unpacked_data
+            self.isOverallFastestInSession = bool(self.isOverallFastestInSession)
+            self.isDriverFastestInSession = bool(self.isDriverFastestInSession)
+
+        def __str__(self) -> str:
+            """
+            Returns a string representation of the SpeedTrap object.
+
+            Returns:
+                str: String representation of the object.
+            """
+            return (
+                f"SpeedTrap(vehicleIdx={self.vehicleIdx}, speed={self.speed}, "
+                f"isOverallFastestInSession={self.isOverallFastestInSession}, "
+                f"isDriverFastestInSession={self.isDriverFastestInSession}, "
+                f"fastestVehicleIdxInSession={self.fastestVehicleIdxInSession}, "
+                f"fastestSpeedInSession={self.fastestSpeedInSession})"
+            )
+
+        def toJSON(self) -> Dict[str, Any]:
+            """
+            Convert the SpeedTrap instance to a JSON-compatible dictionary.
+
+            Returns:
+                Dict[str, Any]: JSON-compatible dictionary representing the SpeedTrap instance.
+            """
+            return {
+                "vehicle-idx": self.vehicleIdx,
+                "speed": self.speed,
+                "is-overall-fastest-in-session": self.isOverallFastestInSession,
+                "is-driver-fastest-in-session": self.isDriverFastestInSession,
+                "fastest-vehicle-idx-in-session": self.fastestVehicleIdxInSession,
+                "fastest-speed-in-session": self.fastestSpeedInSession
+            }
+
+    class StartLights:
+        """
+        The class representing the START LIGHTS event. This is sent when the start lights sequence begins.
+        Attributes:
+            numLights (int): The number of lights in the start lights sequence.
+        """
+
+        def __init__(self, data: bytes) -> None:
+            """
+            Initializes a StartLights object by unpacking the provided binary data.
+
+            Parameters:
+                data (bytes): Binary data to be unpacked.
+
+            Raises:
+                struct.error: If the binary data does not match the expected format.
+            """
+            format_str = "<B"
+            self.numLights = struct.unpack(format_str, data[0:struct.calcsize(format_str)])[0]
+
+        def __str__(self) -> str:
+            """
+            Returns a string representation of the StartLights object.
+
+            Returns:
+                str: String representation of the object.
+            """
+            return f"StartLights(numLights={self.numLights})"
+
+        def toJSON(self) -> Dict[str, Any]:
+            """
+            Convert the StartLights instance to a JSON-compatible dictionary.
+
+            Returns:
+                Dict[str, Any]: JSON-compatible dictionary representing the StartLights instance.
+            """
+            return {"num-lights": self.numLights}
+
+    class DriveThroughPenaltyServed:
+        """
+        The class representing the DRIVE THROUGH PENALTY SERVED event.
+        This is sent when a driver serves a drive-through penalty.
+
+        Attributes:
+            vehicleIdx (int): The index of the vehicle serving the drive-through penalty.
+        """
+
+        def __init__(self, data: bytes) -> None:
+            """
+            Initializes a DriveThroughPenaltyServed object by unpacking the provided binary data.
+
+            Parameters:
+                data (bytes): Binary data to be unpacked.
+
+            Raises:
+                struct.error: If the binary data does not match the expected format.
+            """
+            format_str = "<B"
+            self.vehicleIdx = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
+
+        def __str__(self) -> str:
+            """
+            Returns a string representation of the DriveThroughPenaltyServed object.
+
+            Returns:
+                str: String representation of the object.
+            """
+            return f"DriveThroughPenaltyServed(vehicleIdx={self.vehicleIdx})"
+
+        def toJSON(self) -> Dict[str, Any]:
+            """
+            Convert the DriveThroughPenaltyServed instance to a JSON-compatible dictionary.
+
+            Returns:
+                Dict[str, Any]: JSON-compatible dictionary representing the DriveThroughPenaltyServed instance.
+            """
+            return {
+                "vehicle-idx": self.vehicleIdx
+            }
+
+    class StopGoPenaltyServed:
+        """
+        The class representing the STOP-GO PENALTY SERVED event.
+        This is sent when a driver serves a stop-go penalty.
+
+        Attributes:
+            vehicleIdx (int): The index of the vehicle serving the stop-go penalty.
+        """
+
+        def __init__(self, data: bytes) -> None:
+            """
+            Initializes a StopGoPenaltyServed object by unpacking the provided binary data.
+
+            Parameters:
+                data (bytes): Binary data to be unpacked.
+
+            Raises:
+                struct.error: If the binary data does not match the expected format.
+            """
+            format_str = "<B"
+            self.vehicleIdx = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
+
+        def __str__(self) -> str:
+            """
+            Returns a string representation of the StopGoPenaltyServed object.
+
+            Returns:
+                str: String representation of the object.
+            """
+            return f"StopGoPenaltyServed(vehicleIdx={self.vehicleIdx})"
+
+        def toJSON(self) -> Dict[str, Any]:
+            """
+            Convert the StopGoPenaltyServed instance to a JSON-compatible dictionary.
+
+            Returns:
+                Dict[str, Any]: JSON-compatible dictionary representing the StopGoPenaltyServed instance.
+            """
+            return {
+                "vehicle-idx": self.vehicleIdx
+            }
+
+    class Flashback:
+        """
+        The class representing the FLASHBACK event. This is sent when the player initiates a flashback.
+
+        Attributes:
+            flashbackFrameIdentifier (int): Identifier for the flashback frame.
+            flashbackSessionTime (float): Session time when the flashback was initiated, in seconds.
+        """
+
+        def __init__(self, data: bytes) -> None:
+            """
+            Initializes a Flashback object by unpacking the provided binary data.
+
+            Parameters:
+                data (bytes): Binary data to be unpacked.
+
+            Raises:
+                struct.error: If the binary data does not match the expected format.
+            """
+            format_str = "<If"
+            unpacked_data = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
+            (
+                self.flashbackFrameIdentifier,
+                self.flashbackSessionTime
+            ) = unpacked_data
+
+        def __str__(self) -> str:
+            """
+            Returns a string representation of the Flashback object.
+
+            Returns:
+                str: String representation of the object.
+            """
+            return f"Flashback(flashbackFrameIdentifier={self.flashbackFrameIdentifier}, " \
+                f"flashbackSessionTime={self.flashbackSessionTime})"
+
+        def toJSON(self) -> Dict[str, Any]:
+            """
+            Convert the Flashback instance to a JSON-compatible dictionary.
+
+            Returns:
+                Dict[str, Any]: JSON-compatible dictionary representing the Flashback instance.
+            """
+            return {
+                "flashback-frame-identifier": self.flashbackFrameIdentifier,
+                "flashback-session-time": self.flashbackSessionTime
+            }
+
+    class Buttons:
+        """
+        The class representing the BUTTONS event. This is sent when any buttons on the controller are pressed.
+
+        Attributes:
+            buttonStatus (int): The status of the buttons.
+        """
+
+        def __init__(self, data: bytes) -> None:
+            """
+            Initializes a Buttons object by unpacking the provided binary data.
+
+            Parameters:
+                data (bytes): Binary data to be unpacked.
+
+            Raises:
+                struct.error: If the binary data does not match the expected format.
+            """
+            format_str = "<B"
+            self.buttonStatus = struct.unpack(format_str, data[0:struct.calcsize(format_str)])[0]
+
+        def __str__(self) -> str:
+            """
+            Returns a string representation of the Buttons object.
+
+            Returns:
+                str: String representation of the object.
+            """
+            return f"Buttons(buttonStatus={self.buttonStatus})"
+
+        def toJSON(self) -> Dict[str, Any]:
+            """
+            Convert the Buttons instance to a JSON-compatible dictionary.
+
+            Returns:
+                Dict[str, Any]: JSON-compatible dictionary representing the Buttons instance.
+            """
+            return {
+                "button-status": self.buttonStatus
+            }
+
+    class Overtake:
+        """
+        The class representing the OVERTAKE event. This is sent when one vehicle overtakes another.
+
+        Attributes:
+            overtakingVehicleIdx (int): The index of the overtaking vehicle.
+            beingOvertakenVehicleIdx (int): The index of the vehicle being overtaken.
+        """
+
+        def __init__(self, data: bytes) -> None:
+            """
+            Initializes an Overtake object by unpacking the provided binary data.
+
+            Parameters:
+                data (bytes): Binary data to be unpacked.
+
+            Raises:
+                struct.error: If the binary data does not match the expected format.
+            """
+            format_str = "<BB"
+            self.overtakingVehicleIdx, self.beingOvertakenVehicleIdx = struct.unpack(format_str,
+                data[0:struct.calcsize(format_str)])
+
+        def __str__(self) -> str:
+            """
+            Returns a string representation of the Overtake object.
+
+            Returns:
+                str: String representation of the object.
+            """
+            return f"Overtake(overtakingVehicleIdx={self.overtakingVehicleIdx}, " \
+                f"beingOvertakenVehicleIdx={self.beingOvertakenVehicleIdx})"
+
+        def toJSON(self) -> Dict[str, Any]:
+            """
+            Convert the Overtake instance to a JSON-compatible dictionary.
+
+            Returns:
+                Dict[str, Any]: JSON-compatible dictionary representing the Overtake instance.
+            """
+            return {
+                "overtaking-vehicle-idx": self.overtakingVehicleIdx,
+                "being-overtaken-vehicle-idx": self.beingOvertakenVehicleIdx
+            }
+
+
+    # Mappings between the event type and the type of object to parse into
     event_type_map = {
         EventPacketType.SESSION_STARTED: None,
         EventPacketType.SESSION_ENDED: None,
@@ -1639,8 +2683,8 @@ class PacketEventData:
         self.m_eventStringCode: str = ""                         # char[4]
 
         self.m_eventStringCode = struct.unpack('4s', packet[0:4])[0].decode('ascii')
-        if EventPacketType.isValid(self.m_eventStringCode):
-            self.m_eventStringCode = EventPacketType(self.m_eventStringCode)
+        if PacketEventData.EventPacketType.isValid(self.m_eventStringCode):
+            self.m_eventStringCode = PacketEventData.EventPacketType(self.m_eventStringCode)
         else:
             raise TypeError("Unsupported Event Type " + self.m_eventStringCode)
 
@@ -1653,6 +2697,23 @@ class PacketEventData:
         event_str = (f"Event: {str(self.mEventDetails)}") if self.mEventDetails else ""
         return f"PacketEventData(Header: {str(self.m_header)}, Event String Code: {self.m_eventStringCode}, {event_str})"
 
+    def toJSON(self, include_header: bool=False) -> Dict[str, Any]:
+        """Convert this PacketEventData object into a JSON friendly dict
+
+        Arguments:
+            - include_header - Whether the header dump must be included in the JSON
+
+        Returns:
+            Dict[str, Any]: JSON dict containing all the attributes
+        """
+        json_data = {
+            "event-string-code" : self.m_eventStringCode,
+            "event-details" : self.mEventDetails.toJSON() if self.mEventDetails else None
+        }
+        if include_header:
+            json_data["header"] = self.m_header.toJSON()
+        return json_data
+
 # ------------------------- PACKET TYPE 4 - PARTICIPANTS -----------------------
 
 class ParticipantData:
@@ -1660,52 +2721,145 @@ class ParticipantData:
     A class representing participant data in a racing simulation.
 
     Attributes:
-        m_aiControlled (int): Whether the vehicle is AI (1) or Human (0) controlled.
+        m_aiControlled (bool): Whether the vehicle is AI (True) or Human (False) controlled.
         m_driverId (int): Driver id - see appendix, 255 if network human.
         networkId (int): Network id - unique identifier for network players.
         m_teamId (ParticipantData.TeamID): See TeamID enumeration
-        m_myTeam (int): My team flag - 1 = My Team, 0 = otherwise.
+        m_myTeam (bool): My team flag - True = My Team, False = otherwise.
         m_raceNumber (int): Race number of the car.
         m_nationality (int): Nationality of the driver.
         m_name (str): Name of participant in UTF-8 format - null terminated.
                       Will be truncated with … (U+2026) if too long.
-        m_yourTelemetry (int): The player's UDP setting, 0 = restricted, 1 = public.
-        m_showOnlineNames (int): The player's show online names setting, 0 = off, 1 = on.
+        m_yourTelemetry (TelemetrySetting): The player's UDP setting (see TelemetrySetting enumeration)
+        m_showOnlineNames (bool): The player's show online names setting, False = off, True = on.
         m_platform (ParticipantData.Platform): Gaming platform (see Platform enumeration).
 
         Note:
             The m_platform attribute is an instance of ParticipantData.Platform.
     """
 
-    class TelemetrySetting(Enum):
+    class Nationality(Enum):
         """
-        Enumeration representing the telemetry setting for the player.
-
-        Attributes:
-            RESTRICTED (int): Telemetry setting is restricted (0).
-            PUBLIC (int): Telemetry setting is public (1).
+        Enum representing nationalities with corresponding IDs.
         """
+        American = 1
+        Argentinean = 2
+        Australian = 3
+        Austrian = 4
+        Azerbaijani = 5
+        Bahraini = 6
+        Belgian = 7
+        Bolivian = 8
+        Brazilian = 9
+        British = 10
+        Bulgarian = 11
+        Cameroonian = 12
+        Canadian = 13
+        Chilean = 14
+        Chinese = 15
+        Colombian = 16
+        Costa_Rican = 17
+        Croatian = 18
+        Cypriot = 19
+        Czech = 20
+        Danish = 21
+        Dutch = 22
+        Ecuadorian = 23
+        English = 24
+        Emirian = 25
+        Estonian = 26
+        Finnish = 27
+        French = 28
+        German = 29
+        Ghanaian = 30
+        Greek = 31
+        Guatemalan = 32
+        Honduran = 33
+        Hong_Konger = 34
+        Hungarian = 35
+        Icelander = 36
+        Indian = 37
+        Indonesian = 38
+        Irish = 39
+        Israeli = 40
+        Italian = 41
+        Jamaican = 42
+        Japanese = 43
+        Jordanian = 44
+        Kuwaiti = 45
+        Latvian = 46
+        Lebanese = 47
+        Lithuanian = 48
+        Luxembourger = 49
+        Malaysian = 50
+        Maltese = 51
+        Mexican = 52
+        Monegasque = 53
+        New_Zealander = 54
+        Nicaraguan = 55
+        Northern_Irish = 56
+        Norwegian = 57
+        Omani = 58
+        Pakistani = 59
+        Panamanian = 60
+        Paraguayan = 61
+        Peruvian = 62
+        Polish = 63
+        Portuguese = 64
+        Qatari = 65
+        Romanian = 66
+        Russian = 67
+        Salvadoran = 68
+        Saudi = 69
+        Scottish = 70
+        Serbian = 71
+        Singaporean = 72
+        Slovakian = 73
+        Slovenian = 74
+        South_Korean = 75
+        South_African = 76
+        Spanish = 77
+        Swedish = 78
+        Swiss = 79
+        Thai = 80
+        Turkish = 81
+        Uruguayan = 82
+        Ukrainian = 83
+        Venezuelan = 84
+        Barbadian = 85
+        Welsh = 86
+        Vietnamese = 87
 
-        RESTRICTED = 0
-        PUBLIC = 1
+        def __str__(self) -> str:
+            """
+            Returns the string representation of the Enum member.
+            """
+            return f"{self.name.replace('_', ' ')}"
 
         @staticmethod
-        def isValid(telemetry_setting: int) -> bool:
-            """
-            Check if the given telemetry setting is valid.
+        def isValid(telemetry_setting_code: int) -> bool:
+            """Check if the given nationality code is valid.
 
             Args:
-                telemetry_setting (int): The telemetry setting to be validated.
+                driver_id (int): The nationality code to be validated.
 
             Returns:
                 bool: True if valid.
             """
-            if isinstance(telemetry_setting, TelemetrySetting):
-                return True  # It's already an instance of TelemetrySetting
+            if isinstance(telemetry_setting_code, ParticipantData.Nationality):
+                return True  # It's already an instance of Nationality
             else:
-                min_value = min(member.value for member in TelemetrySetting)
-                max_value = max(member.value for member in TelemetrySetting)
-                return min_value <= telemetry_setting <= max_value
+                min_value = min(member.value for member in ParticipantData.Nationality)
+                max_value = max(member.value for member in ParticipantData.Nationality)
+                return min_value <= telemetry_setting_code <= max_value
+
+    class TelemetrySetting(Enum):
+        """
+        Enumeration representing the telemetry setting for the player.
+        """
+
+        RESTRICTED = 0
+        PUBLIC = 1
 
         def __str__(self) -> str:
             """
@@ -1737,6 +2891,10 @@ class ParticipantData:
                 return min_value <= telemetry_setting_code <= max_value
 
     class TeamID(Enum):
+        """
+        Enumeration representing the TeamID setting for the player.
+        """
+
         MERCEDES = 0
         FERRARI = 1
         RED_BULL_RACING = 2
@@ -1856,16 +3014,6 @@ class ParticipantData:
     class Platform(Enum):
         """
         Enumeration representing different gaming platforms.
-
-        Attributes:
-            STEAM (int): Steam platform.
-            PLAYSTATION (int): PlayStation platform.
-            XBOX (int): Xbox platform.
-            ORIGIN (int): Origin platform.
-            UNKNOWN (int): Unknown platform.
-
-            Note:
-                Each attribute represents a unique gaming platform identified by an integer value.
         """
         STEAM = 1
         PLAYSTATION = 3
@@ -1938,6 +3086,11 @@ class ParticipantData:
             self.m_teamId = ParticipantData.TeamID(self.m_teamId)
         if ParticipantData.TelemetrySetting.isValid(self.m_yourTelemetry):
             self.m_yourTelemetry = ParticipantData.TelemetrySetting(self.m_yourTelemetry)
+        if ParticipantData.Nationality.isValid(self.m_nationality):
+            self.m_nationality = ParticipantData.Nationality(self.m_nationality)
+        self.m_showOnlineNames = bool(self.m_showOnlineNames)
+        self.m_myTeam = bool(self.m_myTeam)
+        self.m_aiControlled = bool(self.m_aiControlled)
 
     def __str__(self):
         """
@@ -1952,14 +3105,42 @@ class ParticipantData:
             f"m_driverId={self.m_driverId}, "
             f"networkId={self.networkId}, "
             f"m_teamId={self.m_teamId}, "
-            f"m_myTeam={self.m_myTeam}, "
+            f"m_myTeam={str(self.m_myTeam)}, "
             f"m_raceNumber={self.m_raceNumber}, "
             f"m_nationality={self.m_nationality}, "
             f"m_name={self.m_name}, "
-            f"m_yourTelemetry={self.m_yourTelemetry}, "
-            f"m_showOnlineNames={self.m_showOnlineNames}, "
-            f"m_platform={self.m_platform})"
+            f"m_yourTelemetry={str(self.m_yourTelemetry)}, "
+            f"m_showOnlineNames={str(self.m_showOnlineNames)}, "
+            f"m_platform={str(self.m_platform)})"
         )
+
+    def toJSON(self) -> Dict[str, Any]:
+        """
+        Convert the ParticipantData instance to a JSON-compatible dictionary.
+
+        Returns:
+            Dict[str, Any]: JSON-compatible dictionary representing the ParticipantData instance.
+        """
+
+        team_id_value = str(self.m_teamId) if ParticipantData.TeamID.isValid(self.m_teamId) else self.m_teamId
+        telemetry_setting_value = \
+            str(self.m_yourTelemetry) \
+            if ParticipantData.TelemetrySetting.isValid(self.m_yourTelemetry)  \
+            else self.m_yourTelemetry
+        platform_value = str(self.m_platform) if ParticipantData.Platform.isValid(self.m_platform) else self.m_platform
+        return {
+            "ai-controlled": self.m_aiControlled,
+            "driver-id": self.m_driverId,
+            "network-id": self.networkId,
+            "team-id": team_id_value,
+            "my-team": self.m_myTeam,
+            "race-number": self.m_raceNumber,
+            "nationality": str(self.m_nationality),
+            "name": self.m_name,
+            "telemetry-setting": telemetry_setting_value,
+            "show-online-names": self.m_showOnlineNames,
+            "platform": platform_value
+        }
 
 class PacketParticipantsData:
     """
@@ -2010,6 +3191,24 @@ class PacketParticipantsData:
             f"Participants: [{participants_str}])"
         )
 
+    def toJSON(self, include_header: bool=False) -> Dict[str, Any]:
+        """
+        Convert the PacketParticipantsData instance to a JSON-compatible dictionary.
+
+        Arguments:
+            - include_header - Whether the header dump must be included in the JSON
+
+        Returns:
+            Dict[str, Any]: JSON-compatible dictionary representing the PacketParticipantsData instance.
+        """
+        json_data = {
+            "num-active-cars": self.m_numActiveCars,
+            "participants": [participant.toJSON() for participant in self.m_participants]
+        }
+        if include_header:
+            json_data["header"] = self.m_header.toJSON()
+        return json_data
+
 # ------------------------- PACKET TYPE 5 - CAR SETUP --------------------------
 
 class PacketCarSetupData:
@@ -2051,6 +3250,23 @@ class PacketCarSetupData:
         """
         setups_str = ", ".join(str(setup) for setup in self.m_carSetups)
         return f"PacketCarSetupData(Header: {str(self.m_header)}, Car Setups: [{setups_str}])"
+
+    def toJSON(self, include_header: bool=False) -> Dict[str, Any]:
+        """
+        Convert the PacketCarSetupData instance to a JSON-compatible dictionary.
+
+        Arguments:
+            - include_header - Whether the header dump must be included in the JSON
+
+        Returns:
+            Dict[str, Any]: JSON-compatible dictionary representing the PacketCarSetupData instance.
+        """
+        json_data = {
+            "car-setups": [car_setup.toJSON() for car_setup in self.m_carSetups]
+        }
+        if include_header:
+            json_data["header"] = self.m_header.toJSON()
+        return json_data
 
 class CarSetupData:
     """
@@ -2152,6 +3368,38 @@ class CarSetupData:
             f")"
         )
 
+    def toJSON(self) -> Dict[str, Any]:
+        """
+        Convert the CarSetupData instance to a JSON-compatible dictionary.
+
+        Returns:
+            Dict[str, Any]: JSON-compatible dictionary representing the CarSetupData instance.
+        """
+        return {
+            "front-wing": self.m_frontWing,
+            "rear-wing": self.m_rearWing,
+            "on-throttle": self.m_onThrottle,
+            "off-throttle": self.m_offThrottle,
+            "front-camber": self.m_frontCamber,
+            "rear-camber": self.m_rearCamber,
+            "front-toe": self.m_frontToe,
+            "rear-toe": self.m_rearToe,
+            "front-suspension": self.m_frontSuspension,
+            "rear-suspension": self.m_rearSuspension,
+            "front-anti-roll-bar": self.m_frontAntiRollBar,
+            "rear-anti-roll-bar": self.m_rearAntiRollBar,
+            "front-suspension-height": self.m_frontSuspensionHeight,
+            "rear-suspension-height": self.m_rearSuspensionHeight,
+            "brake-pressure": self.m_brakePressure,
+            "brake-bias": self.m_brakeBias,
+            "rear-left-tyre-pressure": self.m_rearLeftTyrePressure,
+            "rear-right-tyre-pressure": self.m_rearRightTyrePressure,
+            "front-left-tyre-pressure": self.m_frontLeftTyrePressure,
+            "front-right-tyre-pressure": self.m_frontRightTyrePressure,
+            "ballast": self.m_ballast,
+            "fuel-load": self.m_fuelLoad
+        }
+
 # ------------------------- PACKET TYPE 6 - CAR TELEMETRY-----------------------
 
 class PacketCarTelemetryData:
@@ -2174,6 +3422,7 @@ class PacketCarTelemetryData:
     """
 
     max_telemetry_entries = 22
+
     def __init__(self, header:PacketHeader, packet: bytes) -> None:
         """
         Initializes a PacketCarTelemetryData object by unpacking the provided binary data.
@@ -2193,7 +3442,7 @@ class PacketCarTelemetryData:
         for per_car_telemetry_raw_data in _split_list(packet[:len_all_car_telemetry], F1_23_CAR_TELEMETRY_LEN):
             self.m_carTelemetryData.append(CarTelemetryData(per_car_telemetry_raw_data))
 
-        self.mfdPanelIndex, self.m_mfdPanelIndexSecondaryPlayer, self.m_suggestedGear = \
+        self.m_mfdPanelIndex, self.m_mfdPanelIndexSecondaryPlayer, self.m_suggestedGear = \
             struct.unpack("<BBb", packet[len_all_car_telemetry:])
 
     def __str__(self) -> str:
@@ -2216,11 +3465,31 @@ class PacketCarTelemetryData:
             f"PacketCarTelemetryData("
             f"Header: {str(self.m_header)}, "
             f"Car Telemetry Data: [{telemetry_data_str}], "
-            f"MFD Panel Index: {mfdPanelIndex_to_string(self.mfdPanelIndex)}), "
-            f"MFD Panel Index Secondary: {mfdPanelIndex_to_string(self.mfdPanelIndex)}), "
+            f"MFD Panel Index: {mfdPanelIndex_to_string(self.m_mfdPanelIndex)}), "
+            f"MFD Panel Index Secondary: {mfdPanelIndex_to_string(self.m_mfdPanelIndex)}), "
             f"Suggested Gear: {self.m_suggestedGear}"
         )
 
+    def toJSON(self, include_header: bool=False) -> Dict[str, Any]:
+        """
+        Convert the PacketCarTelemetryData instance to a JSON-compatible dictionary.
+
+        Arguments:
+            - include_header - Whether the header dump must be included in the JSON
+
+        Returns:
+            Dict[str, Any]: JSON-compatible dictionary representing the PacketCarTelemetryData instance.
+        """
+
+        json_data = {
+            "car-telemetry-data": [telemetry.toJSON() for telemetry in self.m_carTelemetryData],
+            "mfd-panel-index": self.m_mfdPanelIndex,
+            "mfd-panel-index-secondary": self.m_mfdPanelIndexSecondaryPlayer,
+            "suggested-gear": self.m_suggestedGear
+        }
+        if include_header:
+            json_data["header"] = self.m_header.toJSON()
+        return json_data
 class CarTelemetryData:
     """
     A class representing telemetry data for a single car in a racing simulation.
@@ -2258,6 +3527,11 @@ class CarTelemetryData:
             struct.error: If the binary data does not match the expected format.
         """
         unpacked_data = struct.unpack(car_telemetry_format_string, data)
+        self.m_brakesTemperature = [0] * 4
+        self.m_tyresSurfaceTemperature = [0] * 4
+        self.m_tyresInnerTemperature = [0] * 4
+        self.m_tyresPressure = [0] * 4
+        self.m_surfaceType = [0] * 4
 
         (
             self.m_speed,
@@ -2270,34 +3544,28 @@ class CarTelemetryData:
             self.m_drs,
             self.m_revLightsPercent,
             self.m_revLightsBitValue,
-            brake_temp1,
-            brake_temp2,
-            brake_temp3,
-            brake_temp4,
-            tyre_surface_temp1,
-            tyre_surface_temp2,
-            tyre_surface_temp3,
-            tyre_surface_temp4,
-            tyre_inner_temp1,
-            tyre_inner_temp2,
-            tyre_inner_temp3,
-            tyre_inner_temp4,
+            self.m_brakesTemperature[0],
+            self.m_brakesTemperature[1],
+            self.m_brakesTemperature[2],
+            self.m_brakesTemperature[3],
+            self.m_tyresSurfaceTemperature[0],
+            self.m_tyresSurfaceTemperature[1],
+            self.m_tyresSurfaceTemperature[2],
+            self.m_tyresSurfaceTemperature[3],
+            self.m_tyresInnerTemperature[0],
+            self.m_tyresInnerTemperature[1],
+            self.m_tyresInnerTemperature[2],
+            self.m_tyresInnerTemperature[3],
             self.m_engineTemperature,
-            tyre_pressure_1,
-            tyre_pressure_2,
-            tyre_pressure_3,
-            tyre_pressure_4,
-            surface_type_1,
-            surface_type_2,
-            surface_type_3,
-            surface_type_4,
+            self.m_tyresPressure[0],
+            self.m_tyresPressure[1],
+            self.m_tyresPressure[2],
+            self.m_tyresPressure[3],
+            self.m_surfaceType[0],
+            self.m_surfaceType[1],
+            self.m_surfaceType[2],
+            self.m_surfaceType[3],
         ) = unpacked_data
-
-        self.m_brakesTemperature = [brake_temp1, brake_temp2, brake_temp3, brake_temp4]
-        self.m_tyresSurfaceTemperature = [tyre_surface_temp1, tyre_surface_temp2, tyre_surface_temp3, tyre_surface_temp4]
-        self.m_tyresInnerTemperature = [tyre_inner_temp1, tyre_inner_temp2, tyre_inner_temp3, tyre_inner_temp4]
-        self.m_tyresPressure = [tyre_pressure_1, tyre_pressure_2, tyre_pressure_3, tyre_pressure_4]
-        self.m_surfaceType = [surface_type_1, surface_type_2, surface_type_3, surface_type_4]
 
     def __str__(self) -> str:
         """
@@ -2323,6 +3591,31 @@ class CarTelemetryData:
             f"Engine Temperature: {str(self.m_engineTemperature)}, "
             f"Tyres Pressure: {str(self.m_tyresPressure)})"
         )
+
+    def toJSON(self) -> Dict[str, Any]:
+        """
+        Convert the CarTelemetryData instance to a JSON-compatible dictionary.
+
+        Returns:
+            Dict[str, Any]: JSON-compatible dictionary representing the CarTelemetryData instance.
+        """
+        return {
+            "speed": self.m_speed,
+            "throttle": self.m_throttle,
+            "steer": self.m_steer,
+            "brake": self.m_brake,
+            "clutch": self.m_clutch,
+            "gear": self.m_gear,
+            "engine-rpm": self.m_engineRPM,
+            "drs": self.m_drs,
+            "rev-lights-percent": self.m_revLightsPercent,
+            "brakes-temperature": self.m_brakesTemperature,
+            "tyres-surface-temperature": self.m_tyresSurfaceTemperature,
+            "tyres-inner-temperature": self.m_tyresInnerTemperature,
+            "engine-temperature": self.m_engineTemperature,
+            "tyres-pressure": self.m_tyresPressure,
+            "surface-type": self.m_surfaceType,
+        }
 
 # ------------------------- PACKET TYPE 7 - CAR STATUS -------------------------
 
@@ -2356,6 +3649,23 @@ class PacketCarStatusData:
         """
         status_data_str = ", ".join(str(status) for status in self.m_carStatusData)
         return f"PacketCarStatusData(Header: {str(self.m_header)}, Car Status Data: [{status_data_str}])"
+
+    def toJSON(self, include_header: bool=False) -> Dict[str, Any]:
+        """
+        Convert the PacketCarStatusData instance to a JSON-compatible dictionary.
+
+        Arguments:
+            - include_header - Whether the header dump must be included in the JSON
+        Returns:
+            Dict[str, Any]: JSON-compatible dictionary representing the PacketCarStatusData instance.
+        """
+        json_data = {
+            "car-status-data": [car_status_data.toJSON() for car_status_data in self.m_carStatusData],
+        }
+        if include_header:
+            json_data["header"] = self.m_header.toJSON()
+
+        return json_data
 
 class CarStatusData:
     """
@@ -2392,164 +3702,6 @@ class CarStatusData:
     Note:
         The class uses enum classes for certain attributes for better readability and type safety.
     """
-
-    class ActualTyreCompound(Enum):
-        """
-        Enumeration representing different tyre compounds used in Formula 1 and Formula 2.
-
-        Attributes:
-            C5 (int): F1 Modern - C5
-            C4 (int): F1 Modern - C4
-            C3 (int): F1 Modern - C3
-            C2 (int): F1 Modern - C2
-            C1 (int): F1 Modern - C1
-            C0 (int): F1 Modern - C0
-            INTER (int): F1 Modern - Intermediate
-            WET (int): F1 Modern - Wet
-            DRY (int): F1 Classic - Dry
-            WET_CLASSIC (int): F1 Classic - Wet
-            SUPER_SOFT (int): F2 - Super Soft
-            SOFT (int): F2 - Soft
-            MEDIUM (int): F2 - Medium
-            HARD (int): F2 - Hard
-            WET_F2 (int): F2 - Wet
-
-            Note:
-                Each attribute represents a unique tyre compound identified by an integer value.
-        """
-
-        C5 = 16
-        C4 = 17
-        C3 = 18
-        C2 = 19
-        C1 = 20
-        C0 = 21
-        INTER = 7
-        WET = 8
-        DRY = 9
-        WET_CLASSIC = 10
-        SUPER_SOFT = 11
-        SOFT = 12
-        MEDIUM = 13
-        HARD = 14
-        WET_F2 = 15
-
-        def __str__(self) -> str:
-            """
-            Returns a human-readable string representation of the tyre compound.
-
-            Returns:
-                str: String representation of the tyre compound.
-            """
-            return {
-                CarStatusData.ActualTyreCompound.C5: "C5",
-                CarStatusData.ActualTyreCompound.C4: "C4",
-                CarStatusData.ActualTyreCompound.C3: "C3",
-                CarStatusData.ActualTyreCompound.C2: "C2",
-                CarStatusData.ActualTyreCompound.C1: "C1",
-                CarStatusData.ActualTyreCompound.C0: "C0",
-                CarStatusData.ActualTyreCompound.INTER: "Intermediate",
-                CarStatusData.ActualTyreCompound.WET: "Wet",
-                CarStatusData.ActualTyreCompound.DRY: "Dry",
-                CarStatusData.ActualTyreCompound.WET_CLASSIC: "Wet (Classic)",
-                CarStatusData.ActualTyreCompound.SUPER_SOFT: "Super Soft",
-                CarStatusData.ActualTyreCompound.SOFT: "Soft",
-                CarStatusData.ActualTyreCompound.MEDIUM: "Medium",
-                CarStatusData.ActualTyreCompound.HARD: "Hard",
-                CarStatusData.ActualTyreCompound.WET_F2: "Wet (F2)",
-            }[self]
-
-        @staticmethod
-        def isValid(actual_tyre_compound: int) -> bool:
-            """
-            Check if the input event type string maps to a valid enum value.
-
-            Args:
-                event_type (int): The actual tyre compound code
-
-            Returns:
-                bool: True if the event type is valid, False otherwise.
-            """
-            if isinstance(actual_tyre_compound, CarStatusData.ActualTyreCompound):
-                return True  # It's already an instance of CarStatusData.ActualTyreCompound
-            else:
-                # check if the integer value falls in range
-                min_value = min(member.value for member in CarStatusData.ActualTyreCompound)
-                max_value = max(member.value for member in CarStatusData.ActualTyreCompound)
-                return min_value <= actual_tyre_compound <= max_value
-
-    class VisualTyreCompound(Enum):
-        """
-        Enumeration representing different visual tyre compounds used in Formula 1 and Formula 2.
-
-        Attributes:
-            SOFT (int): Soft tyre compound
-            MEDIUM (int): Medium tyre compound
-            HARD (int): Hard tyre compound
-            INTER (int): Intermediate tyre compound
-            WET (int): Wet tyre compound
-            WET_CLASSIC (int): Wet tyre compound (Classic)
-            SUPER_SOFT (int): Super Soft tyre compound (F2 '19)
-            SOFT_F2 (int): Soft tyre compound (F2 '19)
-            MEDIUM_F2 (int): Medium tyre compound (F2 '19)
-            HARD_F2 (int): Hard tyre compound (F2 '19)
-            WET_F2 (int): Wet tyre compound (F2 '19)
-
-            Note:
-                Each attribute represents a unique visual tyre compound identified by an integer value.
-        """
-
-        SOFT = 16
-        MEDIUM = 17
-        HARD = 18
-        INTER = 7
-        WET = 8
-        WET_CLASSIC = 8  # Same value as WET for F1 visual (Classic)
-        SUPER_SOFT = 19
-        SOFT_F2 = 20
-        MEDIUM_F2 = 21
-        HARD_F2 = 22
-        WET_F2 = 15
-
-        def __str__(self) -> str:
-            """
-            Returns a human-readable string representation of the visual tyre compound.
-
-            Returns:
-                str: String representation of the visual tyre compound.
-            """
-            return {
-                CarStatusData.VisualTyreCompound.SOFT: "Soft",
-                CarStatusData.VisualTyreCompound.MEDIUM: "Medium",
-                CarStatusData.VisualTyreCompound.HARD: "Hard",
-                CarStatusData.VisualTyreCompound.INTER: "Intermediate",
-                CarStatusData.VisualTyreCompound.WET: "Wet",
-                CarStatusData.VisualTyreCompound.WET_CLASSIC: "Wet (Classic)",
-                CarStatusData.VisualTyreCompound.SUPER_SOFT: "Super Soft (F2 '19)",
-                CarStatusData.VisualTyreCompound.SOFT_F2: "Soft (F2 '19)",
-                CarStatusData.VisualTyreCompound.MEDIUM_F2: "Medium (F2 '19)",
-                CarStatusData.VisualTyreCompound.HARD_F2: "Hard (F2 '19)",
-                CarStatusData.VisualTyreCompound.WET_F2: "Wet (F2 '19)",
-            }[self]
-
-        @staticmethod
-        def isValid(visual_tyre_compound: int) -> bool:
-            """
-            Check if the input event type string maps to a valid enum value.
-
-            Args:
-                event_type (int): The actual tyre compound code
-
-            Returns:
-                bool: True if the event type is valid, False otherwise.
-            """
-            if isinstance(visual_tyre_compound, CarStatusData.VisualTyreCompound):
-                return True  # It's already an instance of CarStatusData.VisualTyreCompound
-            else:
-                # check if the integer value falls in range
-                min_value = min(member.value for member in CarStatusData.VisualTyreCompound)
-                max_value = max(member.value for member in CarStatusData.VisualTyreCompound)
-                return min_value <= visual_tyre_compound <= max_value
 
     class VehicleFIAFlags(Enum):
         """
@@ -2658,7 +3810,8 @@ class CarStatusData:
                 max_value = max(member.value for member in CarStatusData.ERSDeployMode)
                 return min_value <= ers_deploy_mode_code <= max_value
 
-    max_ers_store_energy = 4000000.0 # Figured out through trial and error
+    max_ers_store_energy = 4000000.0 # Source: https://www.mercedes-amg-hpp.com/formula-1-engine-facts/#
+
     def __init__(self, data) -> None:
         """
         Initializes CarStatusData with raw data.
@@ -2694,10 +3847,10 @@ class CarStatusData:
             self.m_networkPaused
         ) = struct.unpack(car_status_format_string, data)
 
-        if CarStatusData.ActualTyreCompound.isValid(self.m_actualTyreCompound):
-            self.m_actualTyreCompound = CarStatusData.ActualTyreCompound(self.m_actualTyreCompound)
-        if CarStatusData.VisualTyreCompound.isValid(self.m_visualTyreCompound):
-            self.m_visualTyreCompound = CarStatusData.VisualTyreCompound(self.m_visualTyreCompound)
+        if ActualTyreCompound.isValid(self.m_actualTyreCompound):
+            self.m_actualTyreCompound = ActualTyreCompound(self.m_actualTyreCompound)
+        if VisualTyreCompound.isValid(self.m_visualTyreCompound):
+            self.m_visualTyreCompound = VisualTyreCompound(self.m_visualTyreCompound)
         if CarStatusData.VehicleFIAFlags.isValid(self.m_vehicleFiaFlags):
             self.m_vehicleFiaFlags = CarStatusData.VehicleFIAFlags(self.m_vehicleFiaFlags)
         if CarStatusData.ERSDeployMode.isValid(self.m_ersDeployMode):
@@ -2739,6 +3892,58 @@ class CarStatusData:
             f"m_networkPaused={self.m_networkPaused})"
         )
 
+    def toJSON(self) -> Dict[str, Any]:
+        """
+        Convert the CarStatusData instance to a JSON-compatible dictionary.
+
+        Returns:
+            Dict[str, Any]: JSON-compatible dictionary representing the CarStatusData instance.
+        """
+        actual_tyre_compound_value = \
+            str( self.m_actualTyreCompound) \
+            if ActualTyreCompound.isValid(self.m_actualTyreCompound) \
+            else self.m_actualTyreCompound
+        visual_tyre_compound_value = \
+            str(self.m_visualTyreCompound) \
+            if VisualTyreCompound.isValid(self.m_visualTyreCompound) \
+            else self.m_visualTyreCompound
+        fia_flags_value = \
+            str(self.m_vehicleFiaFlags) \
+            if CarStatusData.VehicleFIAFlags.isValid(self.m_vehicleFiaFlags) \
+            else self.m_vehicleFiaFlags
+        ers_deploy_mode_value = \
+            str(self.m_ersDeployMode) \
+            if CarStatusData.ERSDeployMode.isValid(self.m_ersDeployMode) \
+            else self.m_ersDeployMode
+
+        return {
+            "traction-control": self.m_tractionControl,
+            "anti-lock-brakes": self.m_antiLockBrakes,
+            "fuel-mix": self.m_fuelMix,
+            "front-brake-bias": self.m_frontBrakeBias,
+            "pit-limiter-status": self.m_pitLimiterStatus,
+            "fuel-in-tank": self.m_fuelInTank,
+            "fuel-capacity": self.m_fuelCapacity,
+            "fuel-remaining-laps": self.m_fuelRemainingLaps,
+            "max-rpm": self.m_maxRPM,
+            "idle-rpm": self.m_idleRPM,
+            "max-gears": self.m_maxGears,
+            "drs-allowed": self.m_drsAllowed,
+            "drs-activation-distance": self.m_drsActivationDistance,
+            "actual-tyre-compound": actual_tyre_compound_value,
+            "visual-tyre-compound": visual_tyre_compound_value,
+            "tyres-age-laps": self.m_tyresAgeLaps,
+            "vehicle-fia-flags": fia_flags_value,
+            "engine-power-ice": self.m_enginePowerICE,
+            "engine-power-mguk": self.m_enginePowerMGUK,
+            "ers-store-energy": self.m_ersStoreEnergy,
+            "ers-deploy-mode": ers_deploy_mode_value,
+            "ers-harvested-this-lap-mguk": self.m_ersHarvestedThisLapMGUK,
+            "ers-harvested-this-lap-mguh": self.m_ersHarvestedThisLapMGUH,
+            "ers-deployed-this-lap": self.m_ersDeployedThisLap,
+            "network-paused": self.m_networkPaused,
+        }
+
 # ------------------------- PACKET TYPE 8 - FINAL CLASSIFICATION ---------------
 
 class PacketFinalClassificationData:
@@ -2771,6 +3976,9 @@ class PacketFinalClassificationData:
         for classification_per_car_raw_data in _split_list(packet[1:], F1_23_FINAL_CLASSIFICATION_PER_CAR_LEN):
             self.m_classificationData.append(FinalClassificationData(classification_per_car_raw_data))
 
+        # strip the non-applicable data
+        self.m_classificationData = self.m_classificationData[:self.m_numCars]
+
     def __str__(self) -> str:
         """
         Returns a string representation of PacketFinalClassificationData.
@@ -2784,6 +3992,26 @@ class PacketFinalClassificationData:
             f"Number of Cars: {self.m_numCars}, "
             f"Classification Data: [{classification_data_str}])"
         )
+
+    def toJSON(self, include_header: bool=False) -> Dict[str, Any]:
+        """
+        Convert the PacketFinalClassificationData instance to a JSON-compatible dictionary with kebab-case keys.
+
+        Arguments:
+            - include_header - Whether the header dump must be included in the JSON
+
+        Returns:
+            Dict[str, Any]: JSON-compatible dictionary with kebab-case keys representing the PacketFinalClassificationData instance.
+        """
+        classification_data_list = [data.toJSON() for data in self.m_classificationData[:self.m_numCars]]
+
+        json_data = {
+            "num-cars": self.m_numCars,
+            "classification-data": classification_data_list,
+        }
+        if include_header:
+            json_data["header"] = self.m_header.toJSON()
+        return json_data
 
 class FinalClassificationData:
     """
@@ -2863,6 +4091,11 @@ class FinalClassificationData:
         if ResultStatus.isValid(self.m_resultStatus):
             self.m_resultStatus = ResultStatus(self.m_resultStatus)
 
+        # Trim the tyre stints info
+        self.m_tyreStintsActual     = self.m_tyreStintsActual[:self.m_numTyreStints]
+        self.m_tyreStintsVisual     = self.m_tyreStintsVisual[:self.m_numTyreStints]
+        self.m_tyreStintsEndLaps    = self.m_tyreStintsEndLaps[:self.m_numTyreStints]
+
     def __str__(self):
         """
         Returns a string representation of FinalClassificationData.
@@ -2888,19 +4121,78 @@ class FinalClassificationData:
             f"m_tyreStintsEndLaps={str(self.m_tyreStintsEndLaps)})"
         )
 
+    def toJSON(self) -> Dict[str, Any]:
+        """
+        Convert the FinalClassificationData instance to a JSON-compatible dictionary with kebab-case keys.
+
+        Returns:
+            Dict[str, Any]: JSON-compatible dictionary with kebab-case keys representing the FinalClassificationData instance.
+        """
+        result_status = \
+            str(self.m_resultStatus) \
+            if ResultStatus.isValid(self.m_resultStatus) \
+            else self.m_resultStatus
+        return {
+            "position": self.m_position,
+            "num-laps": self.m_numLaps,
+            "grid-position": self.m_gridPosition,
+            "points": self.m_points,
+            "num-pit-stops": self.m_numPitStops,
+            "result-status": result_status,
+            "best-lap-time-ms": self.m_bestLapTimeInMS,
+            "best-lap-time-str": F1Utils.millisecondsToMinutesSecondsMilliseconds(self.m_bestLapTimeInMS),
+            "total-race-time": self.m_totalRaceTime,
+            "total-race-time-str": F1Utils.secondsToMinutesSecondsMilliseconds(self.m_totalRaceTime),
+            "penalties-time": self.m_penaltiesTime,
+            "num-penalties": self.m_numPenalties,
+            "num-tyre-stints": self.m_numTyreStints,
+            "tyre-stints-actual": self.m_tyreStintsActual,
+            "tyre-stints-visual": self.m_tyreStintsVisual,
+            "tyre-stints-end-laps": self.m_tyreStintsEndLaps,
+        }
+
 # ------------------------- PACKET TYPE 9 - LOBBY INFO -------------------------
 
 class PacketLobbyInfoData:
+    """
+    Class representing the packet for lobby information data.
+
+    Attributes:
+        m_header (PacketHeader): Header information.
+        m_numPlayers (int): Number of players in the lobby.
+        m_lobbyPlayers (List[LobbyInfoData]): List of lobby information data for each player.
+
+    Note:
+        The class is designed to parse and represent the lobby information data packet.
+    """
+
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
+        """
+        Initializes PacketLobbyInfoData with raw data.
+
+        Args:
+            header (PacketHeader): Header information for the packet.
+            packet (bytes): Raw data representing the packet for lobby information data.
+        """
+
         self.m_header: PacketHeader = header
         self.m_numPlayers: int = struct.unpack("<B", packet[:1])[0]
-        self.m_lobbyPlayers: List[LobbyInfoData] = []              # LobbyInfoData[22]
+        self.m_lobbyPlayers: List[LobbyInfoData] = []
 
         for lobby_info_per_player_raw_data in _split_list(packet[1:], F1_23_LOBBY_INFO_PER_PLAYER_LEN):
             self.m_lobbyPlayers.append(LobbyInfoData(lobby_info_per_player_raw_data))
 
+        # Trim the list
+        self.m_lobbyPlayers = self.m_lobbyPlayers[:self.m_numPlayers]
 
     def __str__(self) -> str:
+        """
+        Returns a string representation of PacketLobbyInfoData.
+
+        Returns:
+            str: String representation of PacketLobbyInfoData.
+        """
+
         lobby_players_str = ", ".join(str(player) for player in self.m_lobbyPlayers[:self.m_numPlayers])
         return (
             f"PacketLobbyInfoData("
@@ -2908,9 +4200,49 @@ class PacketLobbyInfoData:
             f"Lobby Players: [{lobby_players_str}])"
         )
 
-class LobbyInfoData:
-    def __init__(self, data ) -> None:
+    def toJSON(self, include_header: bool=False) -> Dict[str, Any]:
+        """
+        Convert the PacketLobbyInfoData instance to a JSON-compatible dictionary with kebab-case keys.
 
+        Arguments:
+            - include_header - Whether the header dump must be included in the JSON
+
+        Returns:
+            Dict[str, Any]: JSON-compatible dictionary with kebab-case keys representing the PacketLobbyInfoData instance.
+        """
+
+        json_data = {
+            "num-players": self.m_numPlayers,
+            "lobby-players": [player.toJSON() for player in self.m_lobbyPlayers[:self.m_numPlayers]],
+        }
+        if include_header:
+            json_data["header"] = self.m_header.toJSON()
+        return json_data
+
+class LobbyInfoData:
+    """
+    Class representing lobby information data for a player.
+
+    Attributes:
+        m_aiControlled (bool): Flag indicating whether the car is AI-controlled.
+        m_teamId (uint8): Team ID of the player.
+        m_nationality (uint8): Nationality of the player.
+        m_platform (uint8): Platform on which the player is participating.
+        m_name (str): Name of the player.
+        m_carNumber (uint8): Car number of the player.
+        m_readyStatus (uint8): Ready status of the player.
+
+    Note:
+        The class is designed to parse and represent lobby information data for a player.
+    """
+
+    def __init__(self, data) -> None:
+        """
+        Initializes LobbyInfoData with raw data.
+
+        Args:
+            data (bytes): Raw data representing lobby information for a player.
+        """
         (
             self.m_aiControlled,
             self.m_teamId,
@@ -2921,17 +4253,40 @@ class LobbyInfoData:
             self.m_readyStatus,
         ) = struct.unpack(lobby_info_format_string, data)
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """
+        Returns a string representation of LobbyInfoData.
+
+        Returns:
+            str: String representation of LobbyInfoData.
+        """
         return (
             f"LobbyInfoData("
-            f"m_aiControlled={self.m_aiControlled}, "
-            f"m_teamId={self.m_teamId}, "
-            f"m_nationality={self.m_nationality}, "
-            f"m_platform={self.m_platform}, "
-            f"m_name={self.m_name}, "
-            f"m_carNumber={self.m_carNumber}, "
-            f"m_readyStatus={self.m_readyStatus})"
+            f"AI Controlled: {self.m_aiControlled}, "
+            f"Team ID: {self.m_teamId}, "
+            f"Nationality: {self.m_nationality}, "
+            f"Platform: {self.m_platform}, "
+            f"Name: {self.m_name}, "
+            f"Car Number: {self.m_carNumber}, "
+            f"Ready Status: {self.m_readyStatus})"
         )
+
+    def toJSON(self) -> Dict[str, Any]:
+        """
+        Convert the LobbyInfoData instance to a JSON-compatible dictionary with kebab-case keys.
+
+        Returns:
+            Dict[str, Any]: JSON-compatible dictionary with kebab-case keys representing the LobbyInfoData instance.
+        """
+        return {
+            "ai-controlled": self.m_aiControlled,
+            "team-id": self.m_teamId,
+            "nationality": self.m_nationality,
+            "platform": self.m_platform,
+            "name": self.m_name,
+            "car-number": self.m_carNumber,
+            "ready-status": self.m_readyStatus,
+        }
 
 # ------------------------- PACKET TYPE 10 - CAR DAMAGE ------------------------
 
@@ -3034,6 +4389,37 @@ class CarDamageData:
             f"Engine Blown: {self.m_engineBlown}, Engine Seized: {self.m_engineSeized}"
         )
 
+    def toJSON(self) -> Dict[str, Any]:
+        """
+        Convert the CarDamageData instance to a JSON-compatible dictionary with kebab-case keys.
+
+        Returns:
+            Dict[str, Any]: JSON-compatible dictionary with kebab-case keys representing the CarDamageData instance.
+        """
+        return {
+            "tyres-wear": self.m_tyresWear,
+            "tyres-damage": self.m_tyresDamage,
+            "brakes-damage": self.m_brakesDamage,
+            "front-left-wing-damage": self.m_frontLeftWingDamage,
+            "front-right-wing-damage": self.m_frontRightWingDamage,
+            "rear-wing-damage": self.m_rearWingDamage,
+            "floor-damage": self.m_floorDamage,
+            "diffuser-damage": self.m_diffuserDamage,
+            "sidepod-damage": self.m_sidepodDamage,
+            "drs-fault": self.m_drsFault,
+            "ers-fault": self.m_ersFault,
+            "gear-box-damage": self.m_gearBoxDamage,
+            "engine-damage": self.m_engineDamage,
+            "engine-mguh-wear": self.m_engineMGUHWear,
+            "engine-es-wear": self.m_engineESWear,
+            "engine-ce-wear": self.m_engineCEWear,
+            "engine-ice-wear": self.m_engineICEWear,
+            "engine-mguk-wear": self.m_engineMGUKWear,
+            "engine-tc-wear": self.m_engineTCWear,
+            "engine-blown": self.m_engineBlown,
+            "engine-seized": self.m_engineSeized,
+        }
+
 class PacketCarDamageData:
     """
     Class representing the packet for car damage data.
@@ -3069,6 +4455,24 @@ class PacketCarDamageData:
         """
         return f"Header: {str(self.m_header)}, Car Damage Data: {[str(car_data) for car_data in self.m_carDamageData]}"
 
+    def toJSON(self, include_header: bool=False) -> Dict[str, Any]:
+        """
+        Convert the PacketCarDamageData instance to a JSON-compatible dictionary with kebab-case keys.
+
+        Arguments:
+            - include_header - Whether the header dump must be included in the JSON
+
+        Returns:
+            Dict[str, Any]: JSON-compatible dictionary with kebab-case keys representing the PacketCarDamageData instance.
+        """
+        json_data = {
+            "car-damage-data": [car_data.toJSON() for car_data in self.m_carDamageData],
+        }
+        if include_header:
+            json_data["header"] = self.m_header.toJSON()
+
+        return json_data
+
 # ------------------------- PACKET TYPE 11 - SESSION HISTORY -------------------
 
 class LapHistoryData:
@@ -3092,6 +4496,11 @@ class LapHistoryData:
         - 0x04 bit set: Sector 2 valid
         - 0x08 bit set: Sector 3 valid
     """
+
+    full_lap_valid_bit_mask = 0x01
+    sector_1_valid_bit_mask = 0x02
+    sector_2_valid_bit_mask = 0x04
+    sector_3_valid_bit_mask = 0x08
 
     def __init__(self, data: bytes) -> None:
         """
@@ -3125,14 +4534,72 @@ class LapHistoryData:
             f"Lap Valid Bit Flags: {self.m_lapValidBitFlags}"
         )
 
+    def toJSON(self) -> Dict[str, Any]:
+        """
+        Convert the LapHistoryData instance to a JSON-compatible dictionary with kebab-case keys.
+
+        Returns:
+            Dict[str, Any]: JSON-compatible dictionary with kebab-case keys representing the LapHistoryData instance.
+        """
+        return {
+            "lap-time-in-ms": self.m_lapTimeInMS,
+            "lap-time-str": F1Utils.millisecondsToMinutesSecondsMilliseconds(self.m_lapTimeInMS),
+            "sector-1-time-in-ms": self.m_sector1TimeInMS,
+            "sector-1-time-minutes": self.m_sector1TimeMinutes,
+            "sector-1-time-str" : F1Utils.millisecondsToSecondsStr(self.m_sector1TimeInMS),
+            "sector-2-time-in-ms": self.m_sector2TimeInMS,
+            "sector-2-time-minutes": self.m_sector2TimeMinutes,
+            "sector-2-time-str": F1Utils.millisecondsToSecondsStr(self.m_sector2TimeInMS),
+            "sector-3-time-in-ms": self.m_sector3TimeInMS,
+            "sector-3-time-minutes": self.m_sector3TimeMinutes,
+            "sector-3-time-str": F1Utils.millisecondsToSecondsStr(self.m_sector3TimeInMS),
+            "lap-valid-bit-flags": self.m_lapValidBitFlags,
+        }
+
+    def isSector1Valid(self) -> bool:
+        """Check if the first sector of this lap was valid
+
+        Returns:
+            bool: True if valid, False if invalid
+        """
+
+        return self.m_lapValidBitFlags & LapHistoryData.sector_1_valid_bit_mask
+
+    def isSector2Valid(self) -> bool:
+        """Check if the second sector of this lap was valid
+
+        Returns:
+            bool: True if valid, False if invalid
+        """
+
+        return self.m_lapValidBitFlags & LapHistoryData.sector_2_valid_bit_mask
+
+    def isSector3Valid(self) -> bool:
+        """Check if the third sector of this lap was valid
+
+        Returns:
+            bool: True if valid, False if invalid
+        """
+
+        return self.m_lapValidBitFlags & LapHistoryData.sector_3_valid_bit_mask
+
+    def isLapValid(self) -> bool:
+        """Check if this lap was valid
+
+        Returns:
+            bool: True if valid, False if invalid
+        """
+
+        return self.m_lapValidBitFlags & LapHistoryData.full_lap_valid_bit_mask
+
 class TyreStintHistoryData:
     """
     Class representing tyre stint history data for a session.
 
     Attributes:
         m_endLap (uint8): Lap the tyre usage ends on (255 if current tyre).
-        m_tyreActualCompound (uint8): Actual tyres used by this driver.
-        m_tyreVisualCompound (uint8): Visual tyres used by this driver.
+        m_tyreActualCompound (ActualTyreCompound): Actual tyres used by this driver.
+        m_tyreVisualCompound (VisualTyreCompound): Visual tyres used by this driver.
     """
 
     def __init__(self, data: bytes) -> None:
@@ -3148,6 +4615,11 @@ class TyreStintHistoryData:
             self.m_tyreVisualCompound,
         ) = struct.unpack(session_history_tyre_stint_format_string, data)
 
+        if ActualTyreCompound.isValid(self.m_tyreActualCompound):
+            self.m_tyreActualCompound = ActualTyreCompound(self.m_tyreActualCompound)
+        if VisualTyreCompound.isValid(self.m_tyreVisualCompound):
+            self.m_tyreVisualCompound = VisualTyreCompound(self.m_tyreVisualCompound)
+
     def __str__(self) -> str:
         """
         Returns a string representation of TyreStintHistoryData.
@@ -3157,9 +4629,23 @@ class TyreStintHistoryData:
         """
         return (
             f"End Lap: {self.m_endLap}, "
-            f"Tyre Actual Compound: {self.m_tyreActualCompound}, "
-            f"Tyre Visual Compound: {self.m_tyreVisualCompound}"
+            f"Tyre Actual Compound: {str(self.m_tyreActualCompound)}, "
+            f"Tyre Visual Compound: {str(self.m_tyreVisualCompound)}"
         )
+
+    def toJSON(self) -> Dict[str, Any]:
+        """
+        Convert the TyreStintHistoryData instance to a JSON-compatible dictionary with kebab-case keys.
+
+        Returns:
+            Dict[str, Any]: JSON-compatible dictionary with kebab-case keys representing
+                                the TyreStintHistoryData instance.
+        """
+        return {
+            "end-lap": self.m_endLap,
+            "tyre-actual-compound": str(self.m_tyreActualCompound),
+            "tyre-visual-compound": str(self.m_tyreVisualCompound),
+        }
 
 class PacketSessionHistoryData:
     """
@@ -3217,6 +4703,10 @@ class PacketSessionHistoryData:
         for tyre_history_per_stint_raw in _split_list(tyre_stint_history_all, F1_23_SESSION_HISTORY_TYRE_STINT_LEN):
             self.m_tyreStintsHistoryData.append(TyreStintHistoryData(tyre_history_per_stint_raw))
 
+        # Trim the tyre stint and lap history lists
+        self.m_lapHistoryData = self.m_lapHistoryData[:self.m_numLaps]
+        self.m_tyreStintsHistoryData = self.m_tyreStintsHistoryData[:self.m_numTyreStints]
+
     def __str__(self) -> str:
         """
         Returns a string representation of PacketSessionHistoryData.
@@ -3237,6 +4727,32 @@ class PacketSessionHistoryData:
             f"Tyre Stints History Data: {[str(tyre_stint_data) for tyre_stint_data in self.m_tyreStintsHistoryData[self.m_numTyreStints:]]}"
         )
 
+    def toJSON(self, include_header: bool=False) -> Dict[str, Any]:
+        """
+        Convert the PacketSessionHistoryData instance to a JSON-compatible dictionary with kebab-case keys.
+
+        Arguments:
+            - include_header - Whether the header dump must be included in the JSON
+
+        Returns:
+            Dict[str, Any]: JSON-compatible dictionary with kebab-case keys representing the PacketSessionHistoryData instance.
+        """
+        json_data = {
+            "car-index": self.m_carIdx,
+            "num-laps": self.m_numLaps,
+            "num-tyre-stints": self.m_numTyreStints,
+            "best-lap-time-lap-num": self.m_bestLapTimeLapNum,
+            "best-sector-1-lap-num": self.m_bestSector1LapNum,
+            "best-sector-2-lap-num": self.m_bestSector2LapNum,
+            "best-sector-3-lap-num": self.m_bestSector3LapNum,
+            "lap-history-data": [lap.toJSON() for lap in self.m_lapHistoryData],
+            "tyre-stints-history-data": [tyre.toJSON() for tyre in self.m_tyreStintsHistoryData],
+        }
+        if include_header:
+            json_data["header"] = self.m_header.toJSON()
+
+        return json_data
+
 # ------------------------- PACKET TYPE 12 - TYRE SETS -------------------------
 
 class TyreSetData:
@@ -3252,7 +4768,7 @@ class TyreSetData:
         m_lifeSpan (int): Laps left in this tyre set.
         m_usableLife (int): Max number of laps recommended for this compound.
         m_lapDeltaTime (int): Lap delta time in milliseconds compared to the fitted set.
-        m_fitted (int): Whether the set is fitted or not.
+        m_fitted (bool): Whether the set is fitted or not.
 
     Methods:
         __init__(self, data: bytes) -> None:
@@ -3281,6 +4797,12 @@ class TyreSetData:
             self.m_fitted,
         ) = struct.unpack(tyre_set_data_per_set_format_string, data)
 
+        if ActualTyreCompound.isValid(self.m_actualTyreCompound):
+            self.m_actualTyreCompound = ActualTyreCompound(self.m_actualTyreCompound)
+        if VisualTyreCompound.isValid(self.m_visualTyreCompound):
+            self.m_visualTyreCompound = VisualTyreCompound(self.m_visualTyreCompound)
+        self.m_fitted = bool(self.m_fitted)
+
     def __str__(self) -> str:
         """
         Returns a string representation of TyreSetData.
@@ -3294,6 +4816,35 @@ class TyreSetData:
             f"Life Span: {self.m_lifeSpan}, Usable Life: {self.m_usableLife}, Lap Delta Time: {self.m_lapDeltaTime} ms, "
             f"Fitted: {self.m_fitted}"
         )
+
+    def toJSON(self) -> Dict[str, Any]:
+        """
+        Convert the TyreSetData instance to a JSON-compatible dictionary with kebab-case keys.
+
+        Returns:
+            Dict[str, Any]: JSON-compatible dictionary with kebab-case keys representing the TyreSetData instance.
+        """
+
+        actual_tyre_compound_value = \
+            str(self.m_actualTyreCompound) \
+            if ActualTyreCompound.isValid(self.m_actualTyreCompound) \
+            else self.m_actualTyreCompound
+        visual_tyre_compound_value = \
+            str(self.m_visualTyreCompound) \
+            if VisualTyreCompound.isValid(self.m_visualTyreCompound) \
+            else self.m_visualTyreCompound
+
+        return {
+            "actual-tyre-compound": actual_tyre_compound_value,
+            "visual-tyre-compound": visual_tyre_compound_value,
+            "wear": self.m_wear,
+            "available": bool(self.m_available),
+            "recommended-session": self.m_recommendedSession,
+            "life-span": self.m_lifeSpan,
+            "usable-life": self.m_usableLife,
+            "lap-delta-time": self.m_lapDeltaTime,
+            "fitted": bool(self.m_fitted),
+        }
 
 class PacketTyreSetsData:
     """
@@ -3338,6 +4889,28 @@ class PacketTyreSetsData:
             f"Header: {str(self.m_header)}, Car Index: {self.m_carIdx}, "
             f"Tyre Set Data: {[str(tyre_set_data) for tyre_set_data in self.m_tyreSetData]}, Fitted Index: {self.m_fittedIdx}"
         )
+
+    def toJSON(self, include_header: bool=False) -> Dict[str, Any]:
+        """
+        Convert the PacketTyreSetsData instance to a JSON-compatible dictionary with kebab-case keys.
+
+        Arguments:
+            - include_header - Whether the header dump must be included in the JSON
+
+        Returns:
+            Dict[str, Any]: JSON-compatible dictionary with kebab-case keys representing the PacketTyreSetsData instance.
+        """
+        tyre_set_data_list = [tyre_set_data.toJSON() for tyre_set_data in self.m_tyreSetData]
+
+        json_data = {
+            "car-index": self.m_carIdx,
+            "tyre-set-data": tyre_set_data_list,
+            "fitted-index": self.m_fittedIdx
+        }
+        if include_header:
+            json_data["header"] = self.m_header.toJSON()
+
+        return json_data
 
 # ------------------------- PACKET TYPE 13 - MOTION EX -------------------------
 
@@ -3406,3 +4979,40 @@ class PacketMotionExData:
             f"Front Wheels Angle: {self.m_frontWheelsAngle}, "
             f"Wheel Vertical Force: {str(self.m_wheelVertForce)}"
         )
+
+    def toJSON(self, include_header: bool=False) -> Dict[str, Any]:
+        """
+        Convert the PacketMotionExData instance to a JSON-compatible dictionary with the specified structure.
+
+        Arguments:
+            - include_header - Whether the header dump must be included in the JSON
+
+        Returns:
+            Dict[str, Any]: JSON-compatible dictionary representing the PacketMotionExData instance.
+        """
+        # Helper function to create sub-dictionaries for x, y, z components
+        def xyz_dict(x, y, z):
+            return {"x": x, "y": y, "z": z}
+
+        json_data = {
+            "suspension-position": self.m_suspensionPosition,
+            "suspension-velocity": self.m_suspensionVelocity,
+            "suspension-acceleration": self.m_suspensionAcceleration,
+            "wheel-speed": self.m_wheelSpeed,
+            "wheel-slip-ratio": self.m_wheelSlipRatio,
+            "wheel-slip-angle": self.m_wheelSlipAngle,
+            "wheel-lat-force": self.m_wheelLatForce,
+            "wheel-long-force": self.m_wheelLongForce,
+            "height-of-cog-above-ground": self.m_heightOfCOGAboveGround,
+            "local-velocity": xyz_dict(self.m_localVelocityX, self.m_localVelocityY, self.m_localVelocityZ),
+            "angular-velocity": xyz_dict(self.m_angularVelocityX, self.m_angularVelocityY, self.m_angularVelocityZ),
+            "angular-acceleration": xyz_dict(
+                self.m_angularAccelerationX, self.m_angularAccelerationY, self.m_angularAccelerationZ
+            ),
+            "front-wheels-angle": self.m_frontWheelsAngle,
+            "wheel-vert-force": self.m_wheelVertForce,
+        }
+        if include_header:
+            json_data["header"] = self.m_header.toJSON()
+
+        return json_data

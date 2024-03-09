@@ -21,8 +21,9 @@
 # SOFTWARE.
 
 from f1_types import *
-from udp_listener import UDPListener
+from socket_receiver import UDPListener, TCPListener
 from typing import Callable
+import logging
 
 # ------------------------- CLASSES --------------------------------------------
 
@@ -52,15 +53,21 @@ class F12023TelemetryManager:
         F1PacketType.MOTION_EX : PacketMotionExData,
     }
 
-
-    def __init__(self, port_number: int):
+    def __init__(self, port_number: int, replay_server: bool = False):
         """Init the telemetry manager app and all its sub components
 
         Args:
             port_number (int): The port number to listen in on
+            replay_server (bool): If True, the TCP based packet replay server will be created
+                NOTE: This is not suited for game. It is meant to be used in conjunction with telemetry_replayer.py
         """
 
-        self.m_udp_listener = UDPListener(port_number, "0.0.0.0")
+        self.m_replay_server = replay_server
+        self.m_port_number = port_number
+        if self.m_replay_server:
+            self.m_server = TCPListener(port_number, "localhost")
+        else:
+            self.m_server = UDPListener(port_number, "0.0.0.0", buffer_size=4096)
         self.m_callbacks = {
             F1PacketType.MOTION : None,
             F1PacketType.SESSION : None,
@@ -131,11 +138,15 @@ class F12023TelemetryManager:
         """Run the telemetry client
         """
 
+        if self.m_replay_server:
+            logging.info("REPLAY SERVER MODE. PORT = " + str(self.m_port_number))
+
+        # counter = 0
         # Run the client indefinitely
         while True:
 
-            # Get next UDP message
-            raw_packet = self.m_udp_listener.getNextMessage()
+            # Get next UDP message (TCP in the case of replay server)
+            raw_packet = self.m_server.getNextMessage()
             if len(raw_packet) < F1_23_PACKET_HEADER_LEN:
                 # skip incomplete packet
                 continue
@@ -143,7 +154,7 @@ class F12023TelemetryManager:
             # Parse the header
             header_raw = raw_packet[:F1_23_PACKET_HEADER_LEN]
             header = PacketHeader(header_raw)
-            if not header.isPacketTypeSupported():
+            if not header.is_supported_packet_type:
                 # Unsupported packet type, skip
                 continue
 
@@ -152,7 +163,7 @@ class F12023TelemetryManager:
             try:
                 packet = F12023TelemetryManager.packet_type_map[header.m_packetId](header, payload_raw)
             except InvalidPacketLengthError as e:
-                print("Cannot parse packet of type " + header.m_packetId + ". Error = " + e)
+                logging.error("Cannot parse packet of type " + header.m_packetId + ". Error = " + e)
             callback = self.m_callbacks.get(header.m_packetId, None)
             if callback:
                 callback(packet)
