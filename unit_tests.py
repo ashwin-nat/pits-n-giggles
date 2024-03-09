@@ -23,15 +23,14 @@
 import unittest
 import os
 from tempfile import NamedTemporaryFile
-from telemetry_data import _get_adjacent_positions
+from telemetry_data import _getAdjacentPositions
 from packet_cap import F1PacketCapture, F1PktCapFileHeader
 from overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, OvertakeRecord, OvertakeRivalryKey
 from colorama import Fore, Style
 import random
 import cProfile
 import sys
-import csv
-from io import StringIO
+import json
 # Initialize colorama
 from colorama import init
 init(autoreset=True)
@@ -82,79 +81,79 @@ class TestAdjacentPositions(F1TelemetryUnitTestsBase):
 
     def test_gp_p1(self):
         # GP - Check for pole position
-        result = _get_adjacent_positions(position=1, total_cars=20, num_adjacent_cars=3)
+        result = _getAdjacentPositions(position=1, total_cars=20, num_adjacent_cars=3)
         expected_result = [i for i in range(1, 8)]
         self.assertCountEqual(result, expected_result)
 
     def test_gp_p2(self):
         # Check for P2
-        result = _get_adjacent_positions(position=1, total_cars=20, num_adjacent_cars=3)
+        result = _getAdjacentPositions(position=1, total_cars=20, num_adjacent_cars=3)
         expected_result = [i for i in range(1, 8)]
         self.assertEqual(result, expected_result)
 
     def test_gp_midfield(self):
         # Check for P10
-        result = _get_adjacent_positions(position=10, total_cars=20, num_adjacent_cars=3)
+        result = _getAdjacentPositions(position=10, total_cars=20, num_adjacent_cars=3)
         expected_result = [i for i in range(7, 14)]
         self.assertEqual(result, expected_result)
 
     def test_gp_p20(self):
         # Check for P20
-        result = _get_adjacent_positions(position=20, total_cars=20, num_adjacent_cars=3)
+        result = _getAdjacentPositions(position=20, total_cars=20, num_adjacent_cars=3)
         expected_result = [i for i in range(14, 21)]
         self.assertEqual(result, expected_result)
 
     def test_gp_p19(self):
         # Check for P19
-        result = _get_adjacent_positions(position=19, total_cars=20, num_adjacent_cars=3)
+        result = _getAdjacentPositions(position=19, total_cars=20, num_adjacent_cars=3)
         expected_result = [i for i in range(14, 21)]
         self.assertEqual(result, expected_result)
 
     def test_gp_full_table_p1(self):
         # Check for P1 in full table output
-        result = _get_adjacent_positions(position=1, total_cars=20, num_adjacent_cars=20)
+        result = _getAdjacentPositions(position=1, total_cars=20, num_adjacent_cars=20)
         expected_result = [i for i in range(1, 21)]
         self.assertEqual(result, expected_result)
 
     def test_gp_full_table_p2(self):
         # Check for P2 in full table output
-        result = _get_adjacent_positions(position=2, total_cars=20, num_adjacent_cars=20)
+        result = _getAdjacentPositions(position=2, total_cars=20, num_adjacent_cars=20)
         expected_result = [i for i in range(1, 21)]
         self.assertEqual(result, expected_result)
 
     def test_gp_full_table_p10(self):
         # Check for P10 in full table output
-        result = _get_adjacent_positions(position=10, total_cars=20, num_adjacent_cars=20)
+        result = _getAdjacentPositions(position=10, total_cars=20, num_adjacent_cars=20)
         expected_result = [i for i in range(1, 21)]
         self.assertEqual(result, expected_result)
 
     def test_gp_full_table_p19(self):
         # Check for P19 in full table output
-        result = _get_adjacent_positions(position=19, total_cars=20, num_adjacent_cars=20)
+        result = _getAdjacentPositions(position=19, total_cars=20, num_adjacent_cars=20)
         expected_result = [i for i in range(1, 21)]
         self.assertEqual(result, expected_result)
 
     def test_gp_full_table_p20(self):
         # Check for P20 in full table output
-        result = _get_adjacent_positions(position=20, total_cars=20, num_adjacent_cars=20)
+        result = _getAdjacentPositions(position=20, total_cars=20, num_adjacent_cars=20)
         expected_result = [i for i in range(1, 21)]
         self.assertEqual(result, expected_result)
 
     def test_tt_1(self):
         # Time Trial - 1 car
-        result = _get_adjacent_positions(position=1, total_cars=1, num_adjacent_cars=3)
+        result = _getAdjacentPositions(position=1, total_cars=1, num_adjacent_cars=3)
         expected_result = [1]
         self.assertEqual(result, expected_result)
 
     def test_tt_2(self):
         # Time Trial - 2 cars
-        result = _get_adjacent_positions(position=1, total_cars=2, num_adjacent_cars=3)
+        result = _getAdjacentPositions(position=1, total_cars=2, num_adjacent_cars=3)
         expected_result = [1,2]
         self.assertEqual(result, expected_result)
 
     def test_tt_3(self):
         # Time Trial - 3 cars
-        result = _get_adjacent_positions(position=1, total_cars=3, num_adjacent_cars=3)
+        result = _getAdjacentPositions(position=1, total_cars=3, num_adjacent_cars=3)
         expected_result = [1,2,3]
         self.assertEqual(result, expected_result)
 
@@ -328,8 +327,13 @@ class TestOvertakeAnalyzerFile(OvertakeAnalyzerUT):
         4, HAMILTON, 4, STROLL
         5, RUSSELL, 5, HAMILTON
         """
+        self.input_json = {
+            'overtakes' : {
+                'records' : self.sample_data.strip().splitlines()
+            }
+        }
         self.temp_file = NamedTemporaryFile(mode='w', delete=False)
-        self.temp_file.write(self.sample_data)
+        json.dump(self.input_json, self.temp_file)
         self.temp_file.close()
 
         # Initialize OvertakeAnalyzer with the temporary file
@@ -460,30 +464,9 @@ class TestOvertakeAnalyzerEmptyInput(OvertakeAnalyzerUT):
         temp_file.close()
 
         # Initialize OvertakeAnalyzer with the empty file
-        analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_FILE, temp_file.name)
-
-        # Test most overtakes
-        drivers, count = analyzer.getMostOvertakes()
-        self.assertEqual(drivers, [])
-        self.assertEqual(count, 0)
-
-        # Test most overtaken
-        drivers, count = analyzer.getMostOvertaken()
-        self.assertEqual(drivers, [])
-        self.assertEqual(count, 0)
-
-        # Test most heated rivalry
-        rivalries_data = analyzer.getMostHeatedRivalries()
-        self.assertEqual(rivalries_data, {})
-
-        # Test total overtakes
-        total_overtakes = analyzer.getTotalNumberOfOvertakes()
-        self.assertEqual(total_overtakes, 0)
-
-        # Test formatted overtakes
-        overtakes_data = []
-        formatted_overtakes = analyzer.formatOvertakesInvolved(overtakes_data)
-        self.assertEqual(formatted_overtakes, [])
+        from json.decoder import JSONDecodeError
+        with self.assertRaises(JSONDecodeError):
+            analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_FILE, temp_file.name)
 
     def test_empty_list_input(self):
         # Initialize OvertakeAnalyzer with an empty list

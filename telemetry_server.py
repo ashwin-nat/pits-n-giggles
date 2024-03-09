@@ -127,11 +127,11 @@ class TelemetryWebServer:
 
             # Process parameters and generate response
             index = int(index)
-            logging.info('received driver-info query for index ' + str(index))
+            logging.debug('received driver-info query for index ' + str(index))
             driver_info = TelData.getDriverInfoJsonByIndex(index)
             if driver_info:
                 # return jsonify(driver_info), HTTPStatus.OK
-                status, overtakes_info = getOvertakeJSON(index)
+                status, overtakes_info = getOvertakeJSON(driver_info["driver-name"])
                 driver_info["overtakes-status-code"] = str(status)
                 driver_info['overtakes'] = overtakes_info
                 if status != GetOvertakesStatus.INVALID_INDEX:
@@ -237,7 +237,8 @@ class TelemetryWebServer:
                     "num-pitstops": self.getValueOrDefaultValue(data_per_driver.m_num_pitstops),
                     "dnf-status" : self.getValueOrDefaultValue(data_per_driver.m_dnf_status_code),
                     "index" : self.getValueOrDefaultValue(data_per_driver.m_index),
-                    "telemetry-setting" : data_per_driver.m_telemetry_restrictions # Already NULL checked
+                    "telemetry-setting" : data_per_driver.m_telemetry_restrictions, # Already NULL checked
+                    "lap-progress" : data_per_driver.m_lap_progress # NULL is supported
                 }
             )
 

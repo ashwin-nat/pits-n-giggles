@@ -385,9 +385,52 @@ class VisualTyreCompound(Enum):
             return min_value <= visual_tyre_compound <= max_value
 
 class F1Utils:
+    """
+    Utility class for Formula 1-related operations.
+
+    Constants:
+        INDEX_REAR_LEFT (int): Index for the rear-left position in tyre/brake arrays/lists.
+        INDEX_REAR_RIGHT (int): Index for the rear-right position in tyre/brake arrays/lists.
+        INDEX_FRONT_LEFT (int): Index for the front-left position in tyre/brake arrays/lists.
+        INDEX_FRONT_RIGHT (int): Index for the front-right position in tyre/brake arrays/lists.
+
+    Methods:
+        millisecondsToMinutesSecondsMilliseconds(milliseconds) -> str:
+            Convert milliseconds to a formatted string in the format "MM:SS.SSS".
+
+        millisecondsToSecondsMilliseconds(milliseconds) -> str:
+            Convert milliseconds to a formatted string in the format "SS.SSS".
+
+        millisecondsToSecondsStr(milliseconds) -> str:
+            Convert milliseconds to a formatted string in the format "SS.SSS".
+
+        secondsToMinutesSecondsMilliseconds(seconds) -> str:
+            Convert seconds to a formatted string in the format "MM:SS.SSS".
+
+        floatSecondsToMinutesSecondsMilliseconds(seconds) -> str:
+            Convert float seconds to a formatted string in the format "MM:SS.SSS".
+
+        timeStrToMilliseconds(time_str: str) -> int:
+            Convert a time string in the format "MM:SS.SSS" to milliseconds.
+    """
+
+    # These are the indices for tyre/brake arrays/lists
+    INDEX_REAR_LEFT = 0
+    INDEX_REAR_RIGHT = 1
+    INDEX_FRONT_LEFT = 2
+    INDEX_FRONT_RIGHT = 3
 
     @staticmethod
-    def millisecondsToMinutesSeconds(milliseconds):
+    def millisecondsToMinutesSecondsMilliseconds(milliseconds: int) -> str:
+        """
+        Convert milliseconds to a formatted string in the format "MM:SS.SSS".
+
+        Args:
+            milliseconds (int): The input time in milliseconds.
+
+        Returns:
+            str: The formatted time string.
+        """
         if not isinstance(milliseconds, int):
             raise ValueError("Input must be an integer representing milliseconds")
 
@@ -400,7 +443,37 @@ class F1Utils:
         return f"{minutes:02}:{seconds:02}.{milliseconds:03}"
 
     @staticmethod
-    def millisecondsToSecondsStr(milliseconds):
+    def millisecondsToSecondsMilliseconds(milliseconds: int) -> str:
+        """
+        Convert milliseconds to a formatted string in the format "SS.SSS".
+
+        Args:
+            milliseconds (int): The input time in milliseconds.
+
+        Returns:
+            str: The formatted time string.
+        """
+        if not isinstance(milliseconds, int):
+            raise ValueError("Input must be an integer representing milliseconds")
+
+        if milliseconds < 0:
+            raise ValueError("Input must be a non-negative integer")
+
+        seconds, milliseconds = divmod(milliseconds, 1000)
+
+        return f"{seconds}.{milliseconds:03}"
+
+    @staticmethod
+    def millisecondsToSecondsStr(milliseconds: int) -> str:
+        """
+        Convert milliseconds to a formatted string in the format "SS.SSS".
+
+        Args:
+            milliseconds (int): The input time in milliseconds.
+
+        Returns:
+            str: The formatted time string.
+        """
         if not isinstance(milliseconds, int):
             raise ValueError("Input must be an integer representing milliseconds")
 
@@ -412,7 +485,16 @@ class F1Utils:
         return f"{total_seconds:02}.{milliseconds:03}"
 
     @staticmethod
-    def secondsToMinutesSecondsMilliseconds(seconds):
+    def secondsToMinutesSecondsMilliseconds(seconds: float) -> str:
+        """
+        Convert seconds to a formatted string in the format "MM:SS.SSS".
+
+        Args:
+            seconds (float): The input time in seconds.
+
+        Returns:
+            str: The formatted time string.
+        """
         if not isinstance(seconds, float):
             raise ValueError("Input must be a float representing seconds")
 
@@ -426,7 +508,16 @@ class F1Utils:
         return f"{minutes:02}:{seconds:02}.{milliseconds:03}"
 
     @staticmethod
-    def floatSecondsToMinutesSecondsMilliseconds(seconds):
+    def floatSecondsToMinutesSecondsMilliseconds(seconds: float) -> str:
+        """
+        Convert float seconds to a formatted string in the format "MM:SS.SSS".
+
+        Args:
+            seconds (float): The input time in seconds.
+
+        Returns:
+            str: The formatted time string.
+        """
         if not isinstance(seconds, float):
             raise ValueError("Input must be a float representing seconds")
 
@@ -438,6 +529,22 @@ class F1Utils:
         milliseconds = total_milliseconds % 1000
 
         return f"{minutes:02}:{seconds:02}.{milliseconds:03}"
+
+    @staticmethod
+    def timeStrToMilliseconds(time_str: str) -> int:
+        """
+        Convert a time string in the format "MM:SS.SSS" to milliseconds.
+
+        Args:
+            time_str (str): The input time string.
+
+        Returns:
+            int: The time in milliseconds.
+        """
+        minutes, seconds_with_milliseconds = map(str, time_str.split(':'))
+        seconds, milliseconds = map(int, seconds_with_milliseconds.split('.'))
+        total_milliseconds = int(minutes) * 60 * 1000 + seconds * 1000 + milliseconds
+        return total_milliseconds
 
 # -------------------- HEADER PARSING ------------------------------------------
 
@@ -1700,9 +1807,9 @@ class LapData:
 
         return {
             "last-lap-time-in-ms": self.m_lastLapTimeInMS,
-            "last-lap-time-str": F1Utils.millisecondsToMinutesSeconds(self.m_lastLapTimeInMS),
+            "last-lap-time-str": F1Utils.millisecondsToMinutesSecondsMilliseconds(self.m_lastLapTimeInMS),
             "current-lap-time-in-ms": self.m_currentLapTimeInMS,
-            "current-lap-time-str": F1Utils.millisecondsToMinutesSeconds(self.m_currentLapTimeInMS),
+            "current-lap-time-str": F1Utils.millisecondsToMinutesSecondsMilliseconds(self.m_currentLapTimeInMS),
             "sector-1-time-in-ms": self.m_sector1TimeInMS,
             "sector-1-time-minutes": self.m_sector1TimeMinutes,
             "sector-1-time-str": F1Utils.millisecondsToSecondsStr(self.m_sector1TimeInMS),
@@ -3315,6 +3422,7 @@ class PacketCarTelemetryData:
     """
 
     max_telemetry_entries = 22
+
     def __init__(self, header:PacketHeader, packet: bytes) -> None:
         """
         Initializes a PacketCarTelemetryData object by unpacking the provided binary data.
@@ -3982,6 +4090,11 @@ class FinalClassificationData:
         if ResultStatus.isValid(self.m_resultStatus):
             self.m_resultStatus = ResultStatus(self.m_resultStatus)
 
+        # Trim the tyre stints info
+        self.m_tyreStintsActual     = self.m_tyreStintsActual[:self.m_numTyreStints]
+        self.m_tyreStintsVisual     = self.m_tyreStintsVisual[:self.m_numTyreStints]
+        self.m_tyreStintsEndLaps    = self.m_tyreStintsEndLaps[:self.m_numTyreStints]
+
     def __str__(self):
         """
         Returns a string representation of FinalClassificationData.
@@ -4026,7 +4139,7 @@ class FinalClassificationData:
             "num-pit-stops": self.m_numPitStops,
             "result-status": result_status,
             "best-lap-time-ms": self.m_bestLapTimeInMS,
-            "best-lap-time-str": F1Utils.millisecondsToMinutesSeconds(self.m_bestLapTimeInMS),
+            "best-lap-time-str": F1Utils.millisecondsToMinutesSecondsMilliseconds(self.m_bestLapTimeInMS),
             "total-race-time": self.m_totalRaceTime,
             "total-race-time-str": F1Utils.secondsToMinutesSecondsMilliseconds(self.m_totalRaceTime),
             "penalties-time": self.m_penaltiesTime,
@@ -4429,7 +4542,7 @@ class LapHistoryData:
         """
         return {
             "lap-time-in-ms": self.m_lapTimeInMS,
-            "lap-time-str": F1Utils.millisecondsToMinutesSeconds(self.m_lapTimeInMS),
+            "lap-time-str": F1Utils.millisecondsToMinutesSecondsMilliseconds(self.m_lapTimeInMS),
             "sector-1-time-in-ms": self.m_sector1TimeInMS,
             "sector-1-time-minutes": self.m_sector1TimeMinutes,
             "sector-1-time-str" : F1Utils.millisecondsToSecondsStr(self.m_sector1TimeInMS),
@@ -4654,7 +4767,7 @@ class TyreSetData:
         m_lifeSpan (int): Laps left in this tyre set.
         m_usableLife (int): Max number of laps recommended for this compound.
         m_lapDeltaTime (int): Lap delta time in milliseconds compared to the fitted set.
-        m_fitted (int): Whether the set is fitted or not.
+        m_fitted (bool): Whether the set is fitted or not.
 
     Methods:
         __init__(self, data: bytes) -> None:
@@ -4687,6 +4800,7 @@ class TyreSetData:
             self.m_actualTyreCompound = ActualTyreCompound(self.m_actualTyreCompound)
         if VisualTyreCompound.isValid(self.m_visualTyreCompound):
             self.m_visualTyreCompound = VisualTyreCompound(self.m_visualTyreCompound)
+        self.m_fitted = bool(self.m_fitted)
 
     def __str__(self) -> str:
         """

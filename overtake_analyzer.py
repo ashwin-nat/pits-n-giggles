@@ -25,6 +25,7 @@ from collections import defaultdict
 from typing import List, Tuple, Dict, Optional
 from enum import Enum
 from io import StringIO
+import json
 
 class OvertakeRecord:
     """
@@ -243,7 +244,7 @@ class OvertakeAnalyzer:
             input_mode (OvertakeAnalyzerMode): Describes the type of input
             input (str): Context varies based on input_mode
                 INPUT_MODE_LIST - This is a list of all overtakes in csv format
-                INPUT_MODE_FILE - This is a csv file containing all the overtake information
+                INPUT_MODE_FILE - This is a JSON file containing all overtake records under the key
         """
 
         self.m_input_mode: OvertakeAnalyzerMode = input_mode
@@ -261,7 +262,18 @@ class OvertakeAnalyzer:
         """
 
         with open(file_name, 'r', encoding='utf-8') as file:
-            self.__analyze(file, is_file=True)
+            data = json.load(file)
+            # Check if "overtakes" key is present
+            overtakes = data.get('overtakes', None)
+            if not overtakes:
+                raise ValueError('"overtakes" key is missing in the JSON.')
+
+            # Check if "records" key is present and is a list
+            records = overtakes.get('records', None)
+            if not records or not isinstance(records, list):
+                raise ValueError('"records" key is missing or is not a list in the JSON.')
+
+            self.__analyze(data['overtakes']['records'], is_file=False)
 
     def __analyzeCsvList(self, csv_list: List[str]) -> None:
         """Parse and analyze the given CSV list into this object
@@ -637,14 +649,14 @@ class OvertakeAnalyzer:
 
 if __name__ == "__main__":
     import sys
-    if len(sys.argv) not in [2,3]:
-        print("Usage: python3 " + sys.argv[0] + " <file-name> <player-name>")
-        print("The second arg player-name is optional")
-        exit(1)
+    import argparse
 
-    file_name = sys.argv[1]
-    driver_name = sys.argv[2] if len(sys.argv) == 3 else None
-    self = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_FILE, file_name)
-    print(self.getFormattedString(driver_name='HAMILTON'))
-    # import json
-    # print(json.dumps(self.toJSON(driver_name=driver_name), indent=4))
+    # Parse the command line args
+    parser = argparse.ArgumentParser(description="Send captured F1 packets over TCP")
+    parser.add_argument("--file-name", help="Name of the capture file")
+    parser.add_argument("--driver-name", type=str, help="Name of the driver whose specific info is required")
+
+    args = parser.parse_args()
+
+    overtake_analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_FILE, args.file_name)
+    print(overtake_analyzer.getFormattedString(driver_name=args.driver_name))
