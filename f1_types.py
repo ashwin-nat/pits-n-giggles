@@ -3810,7 +3810,8 @@ class CarStatusData:
                 max_value = max(member.value for member in CarStatusData.ERSDeployMode)
                 return min_value <= ers_deploy_mode_code <= max_value
 
-    max_ers_store_energy = 4000000.0 # Figured out through trial and error
+    max_ers_store_energy = 4000000.0 # Source: https://www.mercedes-amg-hpp.com/formula-1-engine-facts/#
+
     def __init__(self, data) -> None:
         """
         Initializes CarStatusData with raw data.
