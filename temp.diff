@@ -1,0 +1,182 @@
+diff --git a/telemetry_data.py b/telemetry_data.py
+index 6d70df9..2dfa355 100644
+--- a/telemetry_data.py
++++ b/telemetry_data.py
+@@ -283,7 +283,7 @@ class DriverData:
+             if obj_to_be_updated:
+                 obj_to_be_updated.m_name = data.m_position
+                 obj_to_be_updated.m_packet_final_classification = data
+-                final_json["classification-data"][index] = self._getDriverInfoJSON(index, obj_to_be_updated)
++                final_json["classification-data"][index] = self.getDriverInfoJSON(index, obj_to_be_updated)
+         final_json['classification-data'] = sorted(final_json['classification-data'], key=lambda x: x['track-position'])
+         return final_json
+ 
+@@ -310,7 +310,7 @@ class DriverData:
+         obj_to_be_updated.m_tyre_life_remaining_laps = packet.m_tyreSetData[packet.m_fittedIdx].m_lifeSpan
+         obj_to_be_updated.m_packet_tyre_sets = packet
+ 
+-    def _getDriverInfoJSON(self, index: int, driver_data: DataPerDriver) -> Dict[str, Any]:
++    def getDriverInfoJSON(self, index: int, driver_data: DataPerDriver) -> Dict[str, Any]:
+ 
+             final_json = {}
+             final_json["index"] = index
+@@ -752,4 +752,10 @@ def processSessionHistoryUpdate(packet: PacketSessionHistoryData):
+ def processTyreSetsUpdate(packet: PacketTyreSetsData) -> None:
+ 
+     with _driver_data_lock:
+-        _driver_data.processTyreSetsUpdate(packet)
+\ No newline at end of file
++        _driver_data.processTyreSetsUpdate(packet)
++
++def getDriverInfoJsonByIndex(index: int) -> Dict[str, Any]:
++
++    with _driver_data_lock:
++        driver_data = _driver_data.m_driver_data.get(index, None)
++        return _driver_data.getDriverInfoJSON(index, driver_data) if driver_data else None
+\ No newline at end of file
+diff --git a/telemetry_handler.py b/telemetry_handler.py
+index e079cfe..839637e 100644
+--- a/telemetry_handler.py
++++ b/telemetry_handler.py
+@@ -67,6 +67,7 @@ class GetOvertakesStatus(Enum):
+     RACE_COMPLETED = 0
+     RACE_ONGOING = 1
+     NO_DATA = 2
++    INVALID_INDEX = 3
+ 
+     def __str__(self):
+         return self.name
+@@ -188,17 +189,25 @@ def dumpPktCapToFile(file_name: Optional[str] = None, clear_db: bool = False, re
+             # Return the appropriate status
+             return PktSaveStatus.OS_ERROR, None, 0, 0
+ 
+-def getOvertakeJSON() -> Tuple[GetOvertakesStatus, Dict]:
++def getOvertakeJSON(index: int=None) -> Tuple[GetOvertakesStatus, Dict]:
+     """Get the JSON value containing key overtake information
+ 
++    Arguments:
++        index (int) - Index of the driver if specific overtake info is required
++
+     Returns:
+         Tuple[GetOvertakesStatus, Dict]: Status, JSON value (may be empty)
+     """
+     _, _, _, _, _, _, _, _, final_classification_received = TelData.getGlobals()
++    if index:
++        driver_name = TelData.getDriverNameByIndex(index)
++        if not driver_name:
++            return GetOvertakesStatus.INVALID_INDEX, {}
++    else:
++        driver_name = None
+     global g_overtakes_history
+     global g_overtakes_table_lock
+     with g_overtakes_table_lock:
+-        player_name = TelData.getPlayerName()
+         if not final_classification_received:
+             if len(g_overtakes_history) == 0:
+                 return GetOvertakesStatus.NO_DATA, {}
+@@ -206,13 +215,13 @@ def getOvertakeJSON() -> Tuple[GetOvertakesStatus, Dict]:
+                 return GetOvertakesStatus.RACE_ONGOING, OvertakeAnalyzer(
+                     input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST,
+                     input=g_overtakes_history).toJSON(
+-                        driver_name=player_name,
++                        driver_name=driver_name,
+                         is_case_sensitive=True)
+         else:
+             return GetOvertakesStatus.RACE_COMPLETED, OvertakeAnalyzer(
+                 input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST,
+                 input=g_overtakes_history).toJSON(
+-                    driver_name=player_name,
++                    driver_name=driver_name,
+                     is_case_sensitive=True)
+ 
+ 
+diff --git a/telemetry_server.py b/telemetry_server.py
+index fbe8579..4b6d585 100644
+--- a/telemetry_server.py
++++ b/telemetry_server.py
+@@ -21,25 +21,26 @@
+ # SOFTWARE.
+ 
+ try:
+-    from flask import Flask, render_template
++    from flask import Flask, render_template, request, jsonify
+ except ImportError:
+     print("Flask is not installed. Installing...")
+     import subprocess
+     subprocess.check_call(["pip3", "install", "flask"])
+     print("Flask installation complete.")
+-    from flask import Flask, render_template
++    from flask import Flask, render_template, request, jsonify
+ try:
+     from flask_cors import CORS
+ except ImportError:
+     print("flask-cors is not installed. Installing...")
+     import subprocess
+     subprocess.check_call(["pip3", "install", "flask-cors"])
+-    print("Flask installation complete.")
++    print("flask-cors installation complete.")
+     from flask_cors import CORS
+-import telemetry_data as TelData
+-from telemetry_handler import dumpPktCapToFile, getOvertakeJSON
++from telemetry_handler import dumpPktCapToFile, getOvertakeJSON, GetOvertakesStatus
+ import logging
+ from typing import Dict, List
++from http import HTTPStatus
++import telemetry_data as TelData
+ 
+ class TelemetryWebServer:
+     def __init__(self,
+@@ -97,6 +98,53 @@ class TelemetryWebServer:
+             """
+             return self.saveTelemetryData()
+ 
++        @self.m_app.route('/driver-info', methods=['GET'])
++        def driverInfo() -> Dict:
++            """
++            Endpoint for saving telemetry packet capture.
++
++            Returns:
++                str: JSON response indicating success or failure.
++            """
++            # Access parameters using request.args
++            index = request.args.get('index')
++
++            # Check if only one parameter is provided
++            if not index:
++                error_response = {
++                    'error': 'Invalid parameters',
++                    'message': 'Provide "index" parameter'
++                }
++                return error_response, HTTPStatus.BAD_REQUEST
++
++            # Check if the provided value for index is numeric
++            if not index.isdigit():
++                error_response = {
++                    'error': 'Invalid parameter value',
++                    'message': '"index" parameter must be numeric'
++                }
++                return jsonify(error_response), HTTPStatus.BAD_REQUEST
++
++            # Process parameters and generate response
++            index = int(index)
++            logging.info('received driver-info query for index ' + str(index))
++            driver_info = TelData.getDriverInfoJsonByIndex(index)
++            if driver_info:
++                # return jsonify(driver_info), HTTPStatus.OK
++                status, overtakes_info = getOvertakeJSON(index)
++                driver_info["overtakes-status-code"] = str(status)
++                driver_info['overtakes'] = overtakes_info
++                if status != GetOvertakesStatus.INVALID_INDEX:
++                    return jsonify(driver_info), HTTPStatus.OK
++                else:
++                    return jsonify(driver_info), HTTPStatus.BAD_REQUEST
++            else:
++                error_response = {
++                    'error' : 'Invalid parameter value',
++                    'message' : 'Invalid index'
++                }
++                return jsonify(error_response), HTTPStatus.BAD_REQUEST
++
+         # Render the HTML page
+         @self.m_app.route('/')
+         def index():
