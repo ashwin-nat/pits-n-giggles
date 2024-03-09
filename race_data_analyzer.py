@@ -2,6 +2,7 @@ import json
 import argparse
 from f1_types import F1Utils
 from overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode
+from prettytable import PrettyTable
 
 def printFastestRecord(fastest_dict, description, toStringFunction=F1Utils.millisecondsToMinutesSecondsMilliseconds):
 
@@ -74,6 +75,7 @@ def printDriverFastestTimes(json_data, driver_name):
 
     if not driver_data:
         print('Invalid Name')
+        return
 
     session_history = driver_data.get("session-history", None)
     if session_history:
@@ -123,9 +125,9 @@ def printOvertakeInfo(json_data, driver_name):
     if not overtakes_printed:
         print('No overtakes data')
 
-def printSeparator():
+def printSeparator(count=75):
 
-    print('-' * 75)
+    print('-' * count)
 
 def printTyreStintRecords(json_data):
 
@@ -166,6 +168,54 @@ def printTyreStintRecords(json_data):
         print("    Longest stint of " + str(records["longest-stint-length"]) + " laps by " + records["longest-stint-driver-name"])
         print("    Lowest tyre wear per lap of " + str(records["lowest-wear-per-lap-value"]) + "% by " + records["lowest-wear-per-lap-driver-name"])
 
+def printStintHistoryForDriver(json_data, driver_name):
+
+    driver_data = None
+    driver_index = None
+    for index, classification_data in enumerate(json_data["classification-data"]):
+        if classification_data["driver-name"] == driver_name:
+            driver_data = classification_data
+            driver_index = index
+            break
+
+    if driver_index and driver_data:
+        tyre_set_history = driver_data.get('tyre-set-history', None)
+        if not tyre_set_history:
+            print('Tyre set history data not available :(')
+            return
+
+        for stint_index, history_item in enumerate(tyre_set_history):
+
+            compound_str =  history_item["tyre-set-data"]["visual-tyre-compound"] + " - " +  \
+                            history_item["tyre-set-data"]["actual-tyre-compound"]
+            start_lap = history_item["start-lap"]
+            end_lap = history_item["end-lap"]
+            tyre_age = history_item["stint-length"]
+            tyre_wear = history_item["tyre-set-data"]["wear"]
+            wear_per_lap = float(tyre_wear) / tyre_age
+            wear_per_lap_str = f"{wear_per_lap:.2f}" + "%"
+            lifespan = history_item["tyre-set-data"]["usable-life"]
+
+            print('Stint ' + str(stint_index+1) + ': ' + compound_str)
+            table  = PrettyTable()
+            table.header = False
+            table.align = "l"
+
+
+            table.add_row(['Compound', compound_str])
+            table.add_row(['Start Lap', str(start_lap)])
+            table.add_row(['End Lap', str(end_lap)])
+            table.add_row(['Tyre Age', str(tyre_age) + ' laps'])
+            table.add_row(['Tyre wear', str(tyre_wear) + "%"])
+            table.add_row(['Tyre wear per lap', wear_per_lap_str])
+            table.add_row(['Game suggested max lifespan', str(lifespan) + ' laps'])
+
+
+            # Indent the table output by 4 characters
+            table_str = str(table)
+            indented_table_str = "\n".join([" " * 4 + line for line in table_str.split("\n")])
+            print(indented_table_str)
+
 if __name__ == "__main__":
 
     # Parse the command line args
@@ -189,3 +239,6 @@ if __name__ == "__main__":
 
     printTyreStintRecords(json_data)
     printSeparator()
+
+    if args.driver_name:
+        printStintHistoryForDriver(json_data, args.driver_name)
