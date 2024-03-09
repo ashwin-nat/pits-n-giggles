@@ -2,3 +2,5 @@ launch.json
 *.pyc
 *.log
 *.bin
+*.json
+data/
