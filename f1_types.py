@@ -25,7 +25,7 @@
 ## official document. https://answers.ea.com/t5/General-Discussion/F1-23-UDP-Specification/m-p/12633159
 
 from enum import Enum
-from typing import List, Any, Dict
+from typing import List, Any, Dict, Optional
 from f1_packet_info import *
 import struct
 
@@ -412,6 +412,9 @@ class F1Utils:
 
         timeStrToMilliseconds(time_str: str) -> int:
             Convert a time string in the format "MM:SS.SSS" to milliseconds.
+
+        floatToStr(float_val : float, num_dec_places : Optional[int] = 2) -> str:
+            Convert a float to a string with a specified number of decimal places.
     """
 
     # These are the indices for tyre/brake arrays/lists
@@ -545,6 +548,21 @@ class F1Utils:
         seconds, milliseconds = map(int, seconds_with_milliseconds.split('.'))
         total_milliseconds = int(minutes) * 60 * 1000 + seconds * 1000 + milliseconds
         return total_milliseconds
+
+    @staticmethod
+    def floatToStr(float_val : float, num_dec_places : Optional[int] = 2) -> str:
+        """
+        Convert a float to a string with a specified number of decimal places.
+
+        Parameters:
+        - float_val (float): The float value to convert.
+        - num_dec_places (Optional[int]): Number of decimal places (default is 2).
+
+        Returns:
+        - str: The formatted string.
+        """
+        format_string = "{:." + str(num_dec_places) + "f}"
+        return format_string.format(float_val)
 
 # -------------------- HEADER PARSING ------------------------------------------
 
@@ -3941,6 +3959,7 @@ class CarStatusData:
             "ers-harvested-this-lap-mguk": self.m_ersHarvestedThisLapMGUK,
             "ers-harvested-this-lap-mguh": self.m_ersHarvestedThisLapMGUH,
             "ers-deployed-this-lap": self.m_ersDeployedThisLap,
+            "ers-max-capacity" : self.max_ers_store_energy,
             "network-paused": self.m_networkPaused,
         }
 

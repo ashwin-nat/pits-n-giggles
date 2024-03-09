@@ -284,11 +284,12 @@ class F1PacketCapture:
 
         if file_name is None:
             timestamp_str = time.strftime("%Y%m%d%H%M%S", time.localtime())
-            file_name = f"capture_{timestamp_str}.bin"
+            file_name = f"capture_{timestamp_str}." + self.file_extension
 
         byte_count = 0
         packet_count = len(self.m_packet_history)
 
+        # Construct the header
         header = F1PktCapFileHeader(
             major_version=self.major_ver,
             minor_version=self.minor_ver,
@@ -304,11 +305,6 @@ class F1PacketCapture:
                 data_to_write = entry.to_bytes()
                 file.write(data_to_write)
                 byte_count += len(data_to_write)
-        # data_to_write = header.to_bytes() + (b''.join(entry.to_bytes() for entry in self.m_packet_history))
-
-        # with open(file_name, mode) as file:
-        #     file.write(data_to_write)
-        #     byte_count = len(data_to_write)
 
         return file_name, packet_count, byte_count
 

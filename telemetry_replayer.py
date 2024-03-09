@@ -138,6 +138,9 @@ def main():
 
                 progress_bar.update(1)
 
+            print('Sent ' + str(total_packets) + ' packets.')
+            print('Sent ' + str(total_bytes) + ' bytes.')
+
     except KeyboardInterrupt:
         print("Client terminated by user.")
     except FileNotFoundError:

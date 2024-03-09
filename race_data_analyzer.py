@@ -83,22 +83,22 @@ def printDriverFastestTimes(json_data, driver_name):
             'lap' : {
                 'driver-index' : driver_index,
                 'lap-number'  : session_history["best-lap-time-lap-num"],
-                'time' : session_history["lap-history-data"][session_history["best-lap-time-lap-num"]]["lap-time-in-ms"]
+                'time' : session_history["lap-history-data"][session_history["best-lap-time-lap-num"]-1]["lap-time-in-ms"]
             },
             's1' : {
                 'driver-index' : driver_index,
                 'lap-number'  : session_history["best-sector-1-lap-num"],
-                'time' : session_history["lap-history-data"][session_history["best-sector-1-lap-num"]]["sector-1-time-in-ms"]
+                'time' : session_history["lap-history-data"][session_history["best-sector-1-lap-num"]-1]["sector-1-time-in-ms"]
             },
             's2' : {
                 'driver-index' : driver_index,
                 'lap-number'  : session_history["best-sector-2-lap-num"],
-                'time' : session_history["lap-history-data"][session_history["best-sector-2-lap-num"]]["sector-2-time-in-ms"]
+                'time' : session_history["lap-history-data"][session_history["best-sector-2-lap-num"]-1]["sector-2-time-in-ms"]
             },
             's3' : {
                 'driver-index' : driver_index,
                 'lap-number'  : session_history["best-sector-3-lap-num"],
-                'time' : session_history["lap-history-data"][session_history["best-sector-3-lap-num"]]["sector-3-time-in-ms"]
+                'time' : session_history["lap-history-data"][session_history["best-sector-3-lap-num"]-1]["sector-3-time-in-ms"]
             },
         }
 
@@ -178,7 +178,7 @@ def printStintHistoryForDriver(json_data, driver_name):
             driver_index = index
             break
 
-    if driver_index and driver_data:
+    if driver_index is not None and driver_data is not None:
         tyre_set_history = driver_data.get('tyre-set-history', None)
         if not tyre_set_history:
             print('Tyre set history data not available :(')
@@ -215,6 +215,72 @@ def printStintHistoryForDriver(json_data, driver_name):
             table_str = str(table)
             indented_table_str = "\n".join([" " * 4 + line for line in table_str.split("\n")])
             print(indented_table_str)
+    else:
+        print('Invalid driver name')
+
+def printERSDataForDriver(json_data, driver_name):
+
+    driver_data = None
+    driver_index = None
+    for index, classification_data in enumerate(json_data["classification-data"]):
+        if classification_data["driver-name"] == driver_name:
+            driver_data = classification_data
+            driver_index = index
+            break
+
+    if driver_index is not None and driver_data is not None:
+        if "per-lap-info" in driver_data:
+
+            print('ERS per lap')
+            table  = PrettyTable()
+            table.align = "c"
+            table.field_names = [
+                "Lap",
+                "ERS remaining",
+                "ERS deployed",
+                "Harvested - MGU-H",
+                "Harvested - MGU-K",
+                "Harvested - Total"]
+
+            for lap_info in driver_data["per-lap-info"]:
+                lap_number = lap_info["lap-number"]
+                if "car-status-data" in lap_info:
+                    ers_max_capacity            = lap_info["car-status-data"]["ers-max-capacity"]
+                    ers_rem_val                 = lap_info["car-status-data"]["ers-store-energy"]
+                    ers_deployed_val            = lap_info["car-status-data"]["ers-deployed-this-lap"]
+                    ers_harvested_mguh_val      = lap_info["car-status-data"]["ers-harvested-this-lap-mguh"]
+                    ers_harvested_mguk_val      = lap_info["car-status-data"]["ers-harvested-this-lap-mguk"]
+
+                    ers_rem_perc                = F1Utils.floatToStr((ers_rem_val / ers_max_capacity) * 100.0) + "%"
+                    ers_deployed_perc           = F1Utils.floatToStr((ers_deployed_val / ers_max_capacity) * 100.0) + "%"
+                    ers_harvested_mguh_perc     = F1Utils.floatToStr((ers_harvested_mguh_val / ers_max_capacity) * 100.0) + "%"
+                    ers_harvested_mguk_perc     = F1Utils.floatToStr((ers_harvested_mguk_val / ers_max_capacity) * 100.0) + "%"
+                    ers_harvested_total_perc    = \
+                        F1Utils.floatToStr(((ers_harvested_mguh_val + ers_harvested_mguk_val) / ers_max_capacity)\
+                                            * 100.0) + "%"
+                else:
+                    ers_rem_perc                = '---'
+                    ers_deployed_perc           = '---'
+                    ers_harvested_mguh_perc     = '---'
+                    ers_harvested_mguk_perc     = '---'
+                    ers_harvested_total_perc    = '---'
+
+                table.add_row([
+                    str(lap_number),
+                    ers_rem_perc,
+                    ers_deployed_perc,
+                    ers_harvested_mguh_perc,
+                    ers_harvested_mguk_perc,
+                    ers_harvested_total_perc])
+
+            # Indent the table output by 4 characters
+            table_str = str(table)
+            indented_table_str = "\n".join([" " * 4 + line for line in table_str.split("\n")])
+            print(indented_table_str)
+        else:
+            print('ERS per lap data is not available')
+    else:
+        print('Invalid driver name')
 
 if __name__ == "__main__":
 
@@ -242,3 +308,7 @@ if __name__ == "__main__":
 
     if args.driver_name:
         printStintHistoryForDriver(json_data, args.driver_name)
+        printSeparator()
+
+    if args.driver_name:
+        printERSDataForDriver(json_data, args.driver_name)

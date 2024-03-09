@@ -28,7 +28,7 @@ import copy
 from f1_types import *
 import csv
 from io import StringIO
-from typing import Optional
+from typing import Optional, Generator
 from collections import OrderedDict
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
@@ -189,6 +189,36 @@ class DataPerDriver:
             self.m_fitted_index = index
             self.m_end_lap = None
 
+    class PerLapHistoryEntry:
+        """
+        Class that captures one lap's backup data
+
+        Attributes:
+            m_car_damage_packet (CarDamageData): The Car damage packet
+            m_car_status_packet (CarStatusData): The Car Status packet
+        """
+
+        def __init__(self,
+                     car_damage : CarDamageData,
+                     car_status : CarStatusData):
+            """Init the backup entry object
+
+            Args:
+                car_damage (CarDamageData): The Car damage packet
+                car_status (CarStatusData): The Car Status packet
+            """
+
+            self.m_car_damage_packet: Optional[CarDamageData] = car_damage
+            self.m_car_status_packet: Optional[CarStatusData] = car_status
+
+        def toJSON(self, lap_number : int) -> Dict[str, Any]:
+
+            return {
+                "lap-number" : lap_number,
+                "car-damage-data" : self.m_car_damage_packet.toJSON() if self.m_car_damage_packet else None,
+                "car-status-data" : self.m_car_status_packet.toJSON() if self.m_car_status_packet else None
+            }
+
     def __init__(self):
         """
         Init the data per driver fields
@@ -228,6 +258,9 @@ class DataPerDriver:
         self.m_packet_session_history: Optional[PacketSessionHistoryData] = None
         self.m_packet_tyre_sets: Optional[PacketTyreSetsData] = None
         self.m_packet_final_classification: Optional[FinalClassificationData] = None
+
+        # Per lap backup
+        self.m_per_lap_backups: Dict[int, DataPerDriver.PerLapHistoryEntry] = {}
 
     def toJSON(self, index: Optional[int] = None) -> Dict[str, Any]:
         """Get a JSON representation of this DataPerDriver object
@@ -277,8 +310,44 @@ class DataPerDriver:
                                     if is_index_valid else None
             })
 
+        # Insert the per lap backup
+        final_json["per-lap-info"] = []
+        for lap_number, backup_entry in self._getNextLapBackup():
+            final_json["per-lap-info"].append(backup_entry.toJSON(lap_number))
+
         # Return this fully prepped JSON
         return final_json
+
+    def onLapChange(self, old_lap_number: int) -> None:
+        """
+        Perform backup for the given lap change.
+
+        Args:
+            old_lap_number (int): The old lap number.
+
+        Returns:
+            None
+        """
+        # Check if the old lap number is already present in the backups
+        if not old_lap_number in self.m_per_lap_backups:
+            # Create a backup entry for the current lap
+            backup_data = DataPerDriver.PerLapHistoryEntry(
+                car_damage=self.m_packet_car_damage,
+                car_status=self.m_packet_car_status
+            )
+
+            # Store the backup data for the old lap
+            self.m_per_lap_backups[old_lap_number] = backup_data
+
+    def _getNextLapBackup(self) -> Generator[Tuple[int, PerLapHistoryEntry], None, None]:
+        """
+        Returns a generator for each lap's backup in order.
+
+        Yields:
+            Tuple[int, PerLapHistoryEntry]: Tuple containing lap number and backup data for each lap.
+        """
+        for lap_number in sorted(self.m_per_lap_backups.keys()):
+            yield lap_number, self.m_per_lap_backups[lap_number]
 
     def _computeTyreStintEndLaps(self) -> None:
         """
@@ -506,7 +575,10 @@ class DriverData:
             obj_to_be_updated.m_delta_to_leader = lap_data.m_deltaToRaceLeaderInMS
             obj_to_be_updated.m_penalties = self._getPenaltyString(lap_data.m_penalties,
                                 lap_data.m_numUnservedDriveThroughPens, lap_data.m_numUnservedStopGoPens)
-            obj_to_be_updated.m_current_lap = lap_data.m_currentLapNum
+            if (obj_to_be_updated.m_current_lap) and (obj_to_be_updated.m_current_lap != lap_data.m_currentLapNum):
+                obj_to_be_updated.onLapChange(obj_to_be_updated.m_current_lap)
+            obj_to_be_updated.m_current_lap =  lap_data.m_currentLapNum
+
             obj_to_be_updated.m_is_pitting = True if lap_data.m_pitStatus in \
                     [LapData.PitStatus.PITTING, LapData.PitStatus.IN_PIT_AREA] else False
             obj_to_be_updated.m_num_pitstops = lap_data.m_numPitStops
@@ -608,6 +680,8 @@ class DriverData:
         final_json = packet.toJSON()
         for index, data in enumerate(packet.m_classificationData):
             obj_to_be_updated = self.m_driver_data.get(index, None)
+            # Perform the final backup
+            obj_to_be_updated.onLapChange(data.m_numLaps)
             if obj_to_be_updated:
                 obj_to_be_updated.m_position = data.m_position
                 obj_to_be_updated.m_packet_final_classification = data
@@ -879,9 +953,9 @@ def getDriverData(num_adjacent_cars: Optional[int] = 2) -> Tuple[List[DataPerDri
                 return []
             temp_data.m_is_fastest = True if (index == _driver_data.m_fastest_index) else False
             if temp_data.m_ers_perc is not None:
-                temp_data.m_ers_perc = ("{:.2f}".format(temp_data.m_ers_perc)) + "%"
+                temp_data.m_ers_perc = F1Utils.floatToStr(temp_data.m_ers_perc) + "%"
             if temp_data.m_tyre_wear is not None:
-                temp_data.m_tyre_wear = ("{:.2f}".format(temp_data.m_tyre_wear)) + "%"
+                temp_data.m_tyre_wear = F1Utils.floatToStr(temp_data.m_tyre_wear) + "%"
             temp_data.m_index = index
             if temp_data.m_telemetry_restrictions is not None:
                 temp_data.m_telemetry_restrictions = str(temp_data.m_telemetry_restrictions)

@@ -369,7 +369,7 @@ SOFTWARE.
                     updateGlobalInfo(data["circuit"], data["event-type"], data["track-temperature"], data["current-lap"],
                         data["total-laps"], data["safety-car-status"], data["fastest-lap-overall"],
                         data["pit-speed-limit"], {{ packet_capture_enabled | tojson }});
-        updateWeatherTable(data["weather-forecast-samples"]);
+                    updateWeatherTable(data["weather-forecast-samples"]);
                 })
                 .catch (error => {
             console.error('Error fetching data:', error);
@@ -667,6 +667,71 @@ SOFTWARE.
             lapHistoryContent.appendChild(createAccordion('Lap History', lapHistoryTable));
             modalContent.appendChild(lapHistoryContent);
 
+
+            // ERS history
+            const ersHistoryContent = document.createElement('div');
+            const ersHistoryTable = document.createElement('table');
+            ersHistoryTable.classList.add('ers-damage-table');
+            const ersHistoryHeader = ersHistoryTable.createTHead();
+            const ersHistoryHeaderRow = ersHistoryHeader.insertRow();
+            ersHistoryHeaderRow.innerHTML = `
+                <th>Lap</th>
+                <th>ERS remaining</th>
+                <th>ERS deployed</th>
+                <th>Harvested - MGU-H</th>
+                <th>Harvested - MGU-K</th>
+                <th>Harvested - Total</th>
+            `;
+            const ersHistoryBody = ersHistoryTable.createTBody();
+            if ("per-lap-info" in data) {
+                const perLapHistoryData = data["per-lap-info"];
+                if (perLapHistoryData.length > 0) {
+                    perLapHistoryData.forEach((lap, index) => {
+                        const row = ersHistoryBody.insertRow();
+                        const currentLapNum = lap["lap-number"];
+                        let ersRemainingPerc = "---";
+                        let ersDeployedPerc = "---";
+                        let ersHarvestedMguHPerc = "---";
+                        let ersHarvestedMguKPerc = "---";
+                        let ersHarvestedTotalPerc = "---";
+
+                        if ("car-status-data" in lap) {
+                            const maxErsCapacity = lap["car-status-data"]["ers-max-capacity"];
+                            const ersRemainingVal = lap["car-status-data"]["ers-store-energy"];
+                            const ersDeployedThisLapVal = lap["car-status-data"]["ers-deployed-this-lap"];
+                            const ersHarvestedThisLapMguHVal = lap["car-status-data"]["ers-harvested-this-lap-mguh"];
+                            const ersHarvestedThisLapMguKVal = lap["car-status-data"]["ers-harvested-this-lap-mguk"];
+
+                            ersRemainingPerc = formatFloatWithTwoDecimals((ersRemainingVal / maxErsCapacity) * 100) + "%";
+                            ersDeployedPerc = formatFloatWithTwoDecimals((ersDeployedThisLapVal / maxErsCapacity) * 100) + "%";
+                            ersHarvestedMguHPerc = formatFloatWithTwoDecimals((ersHarvestedThisLapMguHVal / maxErsCapacity) * 100) + "%";
+                            ersHarvestedMguKPerc = formatFloatWithTwoDecimals((ersHarvestedThisLapMguKVal / maxErsCapacity) * 100) + "%";
+                            ersHarvestedTotalPerc = formatFloatWithTwoDecimals(((ersHarvestedThisLapMguHVal + ersHarvestedThisLapMguKVal) / maxErsCapacity) * 100) + "%";
+                        }
+
+                        row.innerHTML = `
+                            <td>${currentLapNum}</td>
+                            <td>${ersRemainingPerc}</td>
+                            <td>${ersDeployedPerc}</td>
+                            <td>${ersHarvestedMguHPerc}</td>
+                            <td>${ersHarvestedMguKPerc}</td>
+                            <td>${ersHarvestedTotalPerc}</td>
+                        `;
+                    });
+                } else {
+                    const row = ersHistoryBody.insertRow();
+                    row.innerHTML = '<td colspan="6">ERS History data not available</td>';
+                }
+            } else {
+                const row = ersHistoryBody.insertRow();
+                row.innerHTML = '<td colspan="6">ERS History data not available</td>';
+            }
+
+            ersHistoryContent.appendChild(createAccordion('ERS History', ersHistoryTable));
+            modalContent.appendChild(ersHistoryContent);
+
+
+            // Finalise the data
             const modalTitle = document.getElementById('modalTitle');
             modalTitle.innerText = `Driver Information - ${data["driver-name"]}`;
 

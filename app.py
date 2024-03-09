@@ -174,8 +174,12 @@ if __name__ == '__main__':
 
     # Parse the command-line arguments
     args = parser.parse_args()
-    initDirectories()
+
     initLogger(file_name=args.log_file, debug_mode=args.debug)
+    logging.info("Starting the app with the following options:")
+    for arg, value in vars(args).items():
+        logging.info(f"{arg}: {value}")
+    initDirectories()
 
     # First init the telemetry client on a main thread
     client_thread = threading.Thread(target=f1TelemetryServerTask,
