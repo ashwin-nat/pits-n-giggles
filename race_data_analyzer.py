@@ -146,6 +146,9 @@ def printTyreStintRecords(json_data):
                         continue
                     tyre_set_data = tyre_set_history_item["tyre-set-data"]
                     compound = tyre_set_data["actual-tyre-compound"]
+                    if isinstance(compound, int):
+                        # cunts who have telemetry disabled can fuck themselves
+                        continue
                     if compound not in self.m_records:
                         self.m_records[compound] = {
                             "longest-stint-driver-name" : driver_data["driver-name"],
@@ -284,33 +287,71 @@ def printERSDataForDriver(json_data, driver_name):
     else:
         print('Invalid driver name')
 
+def printParticipantInfo(json_data):
+
+    table  = PrettyTable()
+    table.align = "c"
+    table.field_names = [
+        "Name",
+        "Team",
+        "Driver number",
+        "Platform",
+        "Show Name",
+        "Telemetry Setting"]
+
+    for classification_data in json_data["classification-data"]:
+        participant_data = classification_data["participant-data"]
+        table.add_row([
+            participant_data["name"],
+            participant_data["team-id"],
+            str(participant_data["race-number"]),
+            participant_data["platform"],
+            str(participant_data["show-online-names"]),
+            participant_data["telemetry-setting"]])
+
+    # Indent the table output by 4 characters
+    table_str = str(table)
+    indented_table_str = "\n".join([" " * 4 + line for line in table_str.split("\n")])
+    print(indented_table_str)
+
 if __name__ == "__main__":
 
     # Parse the command line args
     parser = argparse.ArgumentParser(description="Parse the race data JSON file and perform analysis")
     parser.add_argument("--file-name", help="Name of the capture file")
     parser.add_argument("--driver-name", type=str, help="Name of the driver whose specific info is required")
+    parser.add_argument('--players-info', action='store_true', help="Show only player info")
 
     args = parser.parse_args()
 
     with open(args.file_name, 'r', encoding='utf-8') as file:
         json_data = json.load(file)
 
-    printFastestTimes(json_data)
-    printSeparator()
+    if args.players_info:
+        printParticipantInfo(json_data)
 
-    printOvertakeInfo(json_data, driver_name=args.driver_name)
-    printSeparator()
-    if args.driver_name:
-        printDriverFastestTimes(json_data, args.driver_name)
+    else:
+        print("Fastest times records (all drivers)")
+        printFastestTimes(json_data)
         printSeparator()
 
-    printTyreStintRecords(json_data)
-    printSeparator()
+        print("Overtake records")
+        printOvertakeInfo(json_data, driver_name=args.driver_name)
+        printSeparator()
+        if args.driver_name:
+            print("Fastest lap time records (for " + args.driver_name + ")")
+            printDriverFastestTimes(json_data, args.driver_name)
+            printSeparator()
 
-    if args.driver_name:
-        printStintHistoryForDriver(json_data, args.driver_name)
+        print("Tyre stint records (all players)")
+        printTyreStintRecords(json_data)
         printSeparator()
 
-    if args.driver_name:
-        printERSDataForDriver(json_data, args.driver_name)
+        if args.driver_name:
+            print("Tyre stint history (for " + args.driver_name + ")")
+            printStintHistoryForDriver(json_data, args.driver_name)
+            printSeparator()
+
+        if args.driver_name:
+            print("ERS history (for " + args.driver_name + ")")
+            printERSDataForDriver(json_data, args.driver_name)
