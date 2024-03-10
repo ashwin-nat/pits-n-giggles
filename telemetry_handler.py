@@ -342,7 +342,9 @@ class F12023TelemetryHandler:
         Parameters:
         - packet (PacketSessionData): The session data telemetry packet.
         """
-        TelData.processSessionUpdate(packet)
+        if TelData.processSessionUpdate(packet):
+            logging.info("Session UID changed")
+            TelData.processSessionStarted()
 
     @staticmethod
     def handleLapData(packet: PacketLapData) -> None:

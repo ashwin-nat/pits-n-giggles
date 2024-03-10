@@ -142,6 +142,8 @@ def printTyreStintRecords(json_data):
 
             for index, driver_data in enumerate(json_data["classification-data"]):
                 for tyre_set_history_item in driver_data["tyre-set-history"]:
+                    if not "tyre-set-data" in tyre_set_history_item or tyre_set_history_item["tyre-set-data"] is None:
+                        continue
                     tyre_set_data = tyre_set_history_item["tyre-set-data"]
                     compound = tyre_set_data["actual-tyre-compound"]
                     if compound not in self.m_records:
