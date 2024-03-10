@@ -6,3 +6,5 @@ launch.json
 *.tar.xz
 *.tar.gz
 *.json
+*.txt
+*.f1pcap

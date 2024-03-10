@@ -103,23 +103,32 @@ class GlobalData:
         self.m_final_classification_received = False
         self.m_packet_session = None
 
-    def processSessionUpdate(self, packet: PacketSessionData) -> None:
+    def processSessionUpdate(self, packet: PacketSessionData) -> bool:
         """Populates the fields from the session data packet
-
         Args:
             packet (PacketSessionData): The incoming session update packet
+        Returns:
+            bool - True if all data needs to be reset
         """
 
+        ret_status = False
+        if self.m_packet_session:
+            if packet.m_header.m_sessionUID != self.m_packet_session.m_header.m_sessionUID:
+                ret_status = True
+
+        self.m_circuit = str(packet.m_trackId)
         self.m_circuit = str(packet.m_trackId)
         self.m_track_temp = packet.m_trackTemperature
+        self.m_track_temp = packet.m_trackTemperature
         self.m_event_type = str(packet.m_sessionType)
-        self.m_total_laps = packet.m_totalLaps
-        self.m_safety_car_status = packet.m_safetyCarStatus
-        self.m_is_spectating = bool(packet.m_isSpectating)
-        self.m_spectator_car_index = packet.m_spectatorCarIndex
+        self.m_event_type = str(packet.m_sessionType)
+        self.m_weather_forecast_samples = packet.m_weatherForecastSamples
         self.m_weather_forecast_samples = packet.m_weatherForecastSamples
         self.m_pit_speed_limit = packet.m_pitSpeedLimit
+        self.m_pit_speed_limit = packet.m_pitSpeedLimit
         self.m_packet_session = packet
+        self.m_packet_session = packet
+        return ret_status
 
 class DataPerDriver:
     """
@@ -688,15 +697,16 @@ def processSessionStarted() -> None:
     with _globals_lock:
         _globals.m_final_classification_received = False # Mark this as False because this is the start of the race
 
-def processSessionUpdate(packet: PacketSessionData) -> None:
+def processSessionUpdate(packet: PacketSessionData) -> bool:
     """Update the data strctures with session data
-
     Args:
         packet (PacketSessionData): Session data packet
+    Returns:
+        bool - True if all data needs to be reset
     """
 
     with _globals_lock:
-        _globals.processSessionUpdate(packet)
+        return _globals.processSessionUpdate(packet)
 
 def processLapDataUpdate(packet: PacketLapData) -> None:
     """Update the data structures with lap data
