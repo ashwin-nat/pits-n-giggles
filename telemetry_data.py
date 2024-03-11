@@ -285,6 +285,7 @@ class DataPerDriver:
         # Add the primary data
         if index:
             final_json["index"] = index
+        final_json["is-player"] = self.m_is_player
         final_json["driver-name"] = self.m_name
         final_json["track-position"] = self.m_position
         final_json["telemetry-settings"] = str(self.m_telemetry_restrictions)
@@ -1051,6 +1052,13 @@ def getDriverInfoJsonByIndex(index: int) -> Optional[Dict[str, Any]]:
 
     with _driver_data_lock:
         return _driver_data.getDriverInfoJsonByIndex(index)
+
+def clearData() -> None:
+    """
+    Clears all data on demand.
+    """
+    # All data is cleared when SESSION_STARTED is received. Pretend as if its the same situation
+    processSessionStarted()
 
 
 # -------------------------------------- UTILITIES ---------------------------------------------------------------------

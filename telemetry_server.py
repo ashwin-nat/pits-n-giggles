@@ -98,6 +98,18 @@ class TelemetryWebServer:
             """
             return self.saveTelemetryData()
 
+        @self.m_app.route('/clear-data')
+        def clearData() -> Dict:
+            """
+            Endpoint for saving telemetry packet capture.
+
+            Returns:
+                str: JSON response indicating success or failure.
+            """
+
+            TelData.clearData()
+            return {"clear-status" : "success"},HTTPStatus.OK
+
         @self.m_app.route('/driver-info', methods=['GET'])
         def driverInfo() -> Dict:
             """
