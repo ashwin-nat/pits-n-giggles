@@ -90,7 +90,7 @@ SOFTWARE.
             color: #fdd835;
             /* Gold text */
             border-spacing: 0;
-            font-size: 26px;
+            font-size: 25.5px;
         }
 
         th,
@@ -796,35 +796,59 @@ SOFTWARE.
             const warningsPenaltiesBody = warningsPenaltiesTable.createTBody();
             if ("lap-data" in data) {
                 const lapData = data["lap-data"];
+                const numPenalties = lapData["penalties"];
+                const totalWarnings = lapData["total-warnings"];
+                const numCornerCuttingWarnings = lapData["corner-cutting-warnings"];
+                const numUnservedDriveThroughPens = lapData["num-unserved-drive-through-pens"];
+                const numUnservedStopGoPens = lapData["num-unserved-stop-go-pens"];
+
+                let naughtyStatus;
+                if (
+                    numPenalties > 0 ||
+                    totalWarnings > 0 ||
+                    numCornerCuttingWarnings > 0 ||
+                    numUnservedDriveThroughPens > 0 ||
+                    numUnservedStopGoPens > 0
+                ) {
+                    naughtyStatus = "Yes, You are naughty";
+                } else {
+                    naughtyStatus = "Well, You may be naughty";
+                }
 
                 const row1 = warningsPenaltiesBody.insertRow();
                 row1.innerHTML = `
                     <td>Total penalties (time)</td>
-                    <td>${lapData["penalties"]} sec</td>
+                    <td>${numPenalties} sec</td>
                 `;
 
                 const row2 = warningsPenaltiesBody.insertRow();
                 row2.innerHTML = `
                     <td>Total warnings</td>
-                    <td>${lapData["total-warnings"]}</td>
+                    <td>${totalWarnings}</td>
                 `;
 
                 const row3 = warningsPenaltiesBody.insertRow();
                 row3.innerHTML = `
                     <td>Corner Cutting Warnings</td>
-                    <td>${lapData["corner-cutting-warnings"]}</td>
+                    <td>${numCornerCuttingWarnings}</td>
                 `;
 
                 const row4 = warningsPenaltiesBody.insertRow();
                 row4.innerHTML = `
                     <td>Unserved Drive Through Penalties</td>
-                    <td>${lapData["num-unserved-drive-through-pens"]}</td>
+                    <td>${numUnservedDriveThroughPens}</td>
                 `;
 
                 const row5 = warningsPenaltiesBody.insertRow();
                 row5.innerHTML = `
                     <td>Unserved Stop Go Penalties</td>
-                    <td>${lapData["num-unserved-stop-go-pens"]}</td>
+                    <td>${numUnservedStopGoPens}</td>
+                `;
+
+                const row6 = warningsPenaltiesBody.insertRow();
+                row5.innerHTML = `
+                    <td>Are you naughty?</td>
+                    <td>${naughtyStatus}</td>
                 `;
             } else {
                 const row = warningsPenaltiesBody.insertRow();

@@ -1052,6 +1052,13 @@ def getDriverInfoJsonByIndex(index: int) -> Optional[Dict[str, Any]]:
     with _driver_data_lock:
         return _driver_data.getDriverInfoJsonByIndex(index)
 
+def clearData() -> None:
+    """
+    Clears all data on demand.
+    """
+    # All data is cleared when SESSION_STARTED is received. Pretend as if its the same situation
+    processSessionStarted()
+
 
 # -------------------------------------- UTILITIES ---------------------------------------------------------------------
 
