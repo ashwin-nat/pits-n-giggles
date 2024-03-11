@@ -1861,11 +1861,12 @@ class LapData:
 
 class PacketLapData:
     """Class representing the incoming PacketLapData.
+
     Attributes:
-        m_header (PacketHeader) - The header object
-        m_lapData(List[LapData]) - The list of LapData objects, in the order of driver index
-        m_timeTrialPBCarIdx (int) - Index of Personal Best car in time trial (255 if invalid)
-        m_timeTrialRivalCarIdx (int) - Index of Rival car in time trial (255 if invalid)
+        - m_header (PacketHeader) - The header object
+        - m_lapData(List[LapData]) - The list of LapData objects, in the order of driver index
+        - m_timeTrialPBCarIdx (int) - Index of Personal Best car in time trial (255 if invalid)
+        - m_timeTrialRivalCarIdx (int) - Index of Rival car in time trial (255 if invalid)
     """
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
         """

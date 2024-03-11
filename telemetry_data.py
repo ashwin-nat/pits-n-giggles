@@ -302,7 +302,7 @@ class DataPerDriver:
             final_json["session-history"] = self.m_packet_session_history.toJSON()
         if self.m_packet_final_classification:
             final_json["final-classification"] = self.m_packet_final_classification.toJSON()
-        elif self.m_packet_lap_data: # Current lap data is required only during race, not after
+        if self.m_packet_lap_data:
             final_json["lap-data"] = self.m_packet_lap_data.toJSON()
 
         # Insert the tyre set history
@@ -976,7 +976,7 @@ def getDriverData(num_adjacent_cars: Optional[int] = 2) -> Tuple[List[DataPerDri
                 temp_data.m_telemetry_restrictions = "N/A"
 
             if temp_data.m_packet_lap_data and track_length:
-                temp_data.m_lap_progress = temp_data.m_packet_lap_data.m_lapDistance / track_length
+                temp_data.m_lap_progress = (temp_data.m_packet_lap_data.m_lapDistance / track_length) * 100.0
             else:
                 temp_data.m_lap_progress = None
 

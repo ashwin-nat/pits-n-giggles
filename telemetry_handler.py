@@ -161,9 +161,8 @@ def dumpPktCapToFile(file_name: Optional[str] = None, clear_db: bool = False, re
             if not file_name:
                 global g_directory_mapping
                 file_name = g_directory_mapping['packet-captures'] + \
-                            '/capture_' + getTimestampStr() + \
-                            '.' + \
-                            g_packet_capture_table.file_extension
+                            'capture_' + getTimestampStr() + \
+                            '.' + g_packet_capture_table.file_extension
             file_name, num_packets, num_bytes = g_packet_capture_table.dumpToFile(file_name)
             if clear_db:
                 g_packet_capture_table.clear()

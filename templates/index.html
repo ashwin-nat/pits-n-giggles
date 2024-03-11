@@ -230,10 +230,12 @@ SOFTWARE.
             cursor: pointer;
             padding: 14px;
             width: 100%;
-            text-align: left;
+            text-align: center;
             border: none;
             outline: none;
             transition: background-color 0.3s;
+            font-size: larger;
+            font-family: 'Roboto', sans-serif;
         }
 
         .accordion-content {
@@ -248,8 +250,6 @@ SOFTWARE.
             margin: 0;
             padding: 8px;
         }
-
-
 
     </style>
     <script src="https://www.youtube.com/iframe_api"></script>
@@ -294,7 +294,7 @@ SOFTWARE.
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
         allowfullscreen></iframe>
 
-    <table id="liveTable">
+    <table id="raceTable">
         <thead>
             <tr>
                 <th>Position</th>
@@ -365,7 +365,7 @@ SOFTWARE.
             fetch('/telemetry-info')
                 .then(response => response.json())
                 .then(data => {
-                    updateTable(data["table-entries"]);
+                    updateRaceTable(data["table-entries"]);
                     updateGlobalInfo(data["circuit"], data["event-type"], data["track-temperature"], data["current-lap"],
                         data["total-laps"], data["safety-car-status"], data["fastest-lap-overall"],
                         data["pit-speed-limit"], {{ packet_capture_enabled | tojson }});
@@ -388,8 +388,8 @@ SOFTWARE.
             });
         }
 
-        function updateTable(entries) {
-            const tableBody = document.querySelector('#liveTable tbody');
+        function updateRaceTable(entries) {
+            const tableBody = document.querySelector('#raceTable tbody');
             tableBody.innerHTML = '';
 
             entries.forEach(entry => {
@@ -424,7 +424,7 @@ SOFTWARE.
 
                 const tyreInfoCell = row.insertCell();
                 tyreInfoCell.innerHTML = `${entry["average-tyre-wear"]}<br>` +
-                    `${entry["tyre-age"]} laps ` + `(${entry["num-pitstops"]} pit)<br>` +
+                    `${entry["tyre-age"]} lap(s) ` + `(${entry["num-pitstops"]} pit)<br>` +
                     `${entry["tyre-compound"]}`;
 
                 row.className = '';
@@ -601,21 +601,6 @@ SOFTWARE.
             tyreWearContent.appendChild(createAccordion('Tyre Wear', tyreWearTable));
             modalContent.appendChild(tyreWearContent);
 
-
-            // Add current lap info only if race is still ongoing
-            if ("lap-data" in data) {
-                const lapDataContent = document.createElement('div');
-                lapDataContent.appendChild(createRow(
-                    'S1 Time', data["lap-data"]["sector-1-time-str"]));
-                lapDataContent.appendChild(createRow(
-                    'S2 Time', data["lap-data"]["sector-2-time-str"]));
-                lapDataContent.appendChild(createRow(
-                    'Total Time', data["lap-data"]["current-lap-time-str"]));
-                lapDataContent.appendChild(createRow(
-                    'Lap Number', data["lap-data"]["current-lap-num"]));
-                modalContent.appendChild(createAccordion('Lap Data', lapDataContent));
-            }
-
             // Lap History Table
             const lapHistoryContent = document.createElement('div');
             const lapHistoryTable = document.createElement('table');
@@ -637,24 +622,30 @@ SOFTWARE.
                     const row = lapHistoryBody.insertRow();
                     const currentLapNum = index + 1;
 
-                    row.innerHTML = `<td>${currentLapNum}</td><td>${lap["sector-1-time-str"]}</td><td>${lap["sector-2-time-str"]}</td><td>${lap["sector-3-time-str"]}</td><td>${lap["lap-time-str"]}</td>`;
+                    row.innerHTML = `
+                        <td>${currentLapNum}</td>
+                        <td>${lap["sector-1-time-str"]}</td>
+                        <td>${lap["sector-2-time-str"]}</td>
+                        <td>${lap["sector-3-time-str"]}</td>
+                        <td>${lap["lap-time-str"]}</td>
+                    `;
 
-                    // Check and mark purple for best sector 1
+                    // Check and mark green for best sector 1
                     if (currentLapNum === bestSector1Num) {
                         row.cells[1].style.color = '#32F129';
                     }
 
-                    // Check and mark purple for best sector 2
+                    // Check and mark green for best sector 2
                     if (currentLapNum === bestSector2Num) {
                         row.cells[2].style.color = '#32F129';
                     }
 
-                    // Check and mark purple for best sector 3
+                    // Check and mark green for best sector 3
                     if (currentLapNum === bestSector3Num) {
                         row.cells[3].style.color = '#32F129';
                     }
 
-                    // Check and mark purple for total time
+                    // Check and mark green for total time
                     if (currentLapNum === bestLapNum) {
                         row.cells[4].style.color = '#32F129';
                     }
@@ -730,6 +721,117 @@ SOFTWARE.
             ersHistoryContent.appendChild(createAccordion('ERS History', ersHistoryTable));
             modalContent.appendChild(ersHistoryContent);
 
+            // Tyre Stint History
+            const tyreStintHistoryContent = document.createElement('div');
+            const tyreStintHistoryTable = document.createElement('table');
+            tyreStintHistoryTable.classList.add('tyre-stint-history-table');
+
+            const tyreStintHistoryHeader = tyreStintHistoryTable.createTHead();
+            const tyreStintHistoryHeaderRow = tyreStintHistoryHeader.insertRow();
+            tyreStintHistoryHeaderRow.innerHTML = `
+                <th>Stint number</th>
+                <th>Start Lap</th>
+                <th>End Lap</th>
+                <th>Stint Length</th>
+                <th>Compound</th>
+                <th>Tyre Set ID</th>
+                <th>Tyre Wear</th>
+                <th>Tyre Wear Per Lap</th>
+            `;
+
+            const tyreStintHistoryBody = tyreStintHistoryTable.createTBody();
+            if ("tyre-set-history" in data) {
+                const tyreStintHistoryData = data["tyre-set-history"];
+                tyreStintHistoryData.forEach((stintData, index) => {
+                    const row = tyreStintHistoryBody.insertRow();
+                    const stintId = index + 1;
+
+                    const stintStartLap = stintData["start-lap"];
+                    const stintEndLap = stintData["end-lap"];
+                    const stintLength = `${stintData["stint-length"]} lap(s)`;
+                    let compound = "---";
+                    let tyreSetId = "---";
+                    let tyreWear = "---";
+                    let tyreWearPerLap = "---";
+
+                    if ("tyre-set-data" in stintData) {
+                        const tyreSetData = stintData["tyre-set-data"];
+                        const tyreSetIndex = stintData["fitted-index"];
+
+                        compound = tyreSetData["actual-tyre-compound"];
+                        tyreSetId = `${compound} - ${tyreSetIndex}`;
+                        tyreWear = `${tyreSetData["wear"]} %`;
+
+                        // Use parseFloat to ensure numerical calculation
+                        const wearPerLap = parseFloat(tyreSetData["wear"]) / parseFloat(stintData["stint-length"]);
+                        tyreWearPerLap = formatFloatWithTwoDecimals(wearPerLap) + "%";
+                    }
+
+                    row.innerHTML = `
+                        <td>${stintId}</td>
+                        <td>${stintStartLap}</td>
+                        <td>${stintEndLap}</td>
+                        <td>${stintLength}</td>
+                        <td>${compound}</td>
+                        <td>${tyreSetId}</td>
+                        <td>${tyreWear}</td>
+                        <td>${tyreWearPerLap}</td>
+                    `;
+                });
+            } else {
+                const row = tyreStintHistoryBody.insertRow();
+                row.innerHTML = '<td colspan="8">Tyre Stint History data not available</td>';
+            }
+            tyreStintHistoryContent.appendChild(createAccordion('Tyre Stint History History', tyreStintHistoryTable));
+            modalContent.appendChild(tyreStintHistoryContent);
+
+
+            // Warning and Penalties Table
+            const warningsPenaltiesContent = document.createElement('div');
+            const warningsPenaltiesTable = document.createElement('table');
+            warningsPenaltiesTable.classList.add('warnings-penalties-damage-table');
+            const warningsPenaltiesHeader = warningsPenaltiesTable.createTHead();
+            const warningsPenaltiesHeaderRow = warningsPenaltiesHeader.insertRow();
+            warningsPenaltiesHeaderRow.innerHTML = '<th>Type</th><th>Value</th>';
+            const warningsPenaltiesBody = warningsPenaltiesTable.createTBody();
+            if ("lap-data" in data) {
+                const lapData = data["lap-data"];
+
+                const row1 = warningsPenaltiesBody.insertRow();
+                row1.innerHTML = `
+                    <td>Total penalties (time)</td>
+                    <td>${lapData["penalties"]} sec</td>
+                `;
+
+                const row2 = warningsPenaltiesBody.insertRow();
+                row2.innerHTML = `
+                    <td>Total warnings</td>
+                    <td>${lapData["total-warnings"]}</td>
+                `;
+
+                const row3 = warningsPenaltiesBody.insertRow();
+                row3.innerHTML = `
+                    <td>Corner Cutting Warnings</td>
+                    <td>${lapData["corner-cutting-warnings"]}</td>
+                `;
+
+                const row4 = warningsPenaltiesBody.insertRow();
+                row4.innerHTML = `
+                    <td>Unserved Drive Through Penalties</td>
+                    <td>${lapData["num-unserved-drive-through-pens"]}</td>
+                `;
+
+                const row5 = warningsPenaltiesBody.insertRow();
+                row5.innerHTML = `
+                    <td>Unserved Stop Go Penalties</td>
+                    <td>${lapData["num-unserved-stop-go-pens"]}</td>
+                `;
+            } else {
+                const row = warningsPenaltiesBody.insertRow();
+                row.innerHTML = '<td colspan="2">Tyre Wear data not available</td>';
+            }
+            warningsPenaltiesContent.appendChild(createAccordion('Warnings & Penalties', warningsPenaltiesTable));
+            modalContent.appendChild(warningsPenaltiesContent);
 
             // Finalise the data
             const modalTitle = document.getElementById('modalTitle');
@@ -836,7 +938,6 @@ SOFTWARE.
             fetch('/overtake-info')
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Telemetry Capture Details:', data);
 
                     if (data['status-code'] === 'SUCCESS') {
                         const overtakeInfo = data['overtake-info'];
