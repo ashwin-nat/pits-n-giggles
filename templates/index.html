@@ -250,14 +250,12 @@ SOFTWARE.
             margin: 0;
             padding: 8px;
         }
-
     </style>
     <script src="https://www.youtube.com/iframe_api"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
 </head>
 
 <body>
-
     <div class="top-section">
         <div class="weather-box">
             <!-- Weather table -->
@@ -277,7 +275,8 @@ SOFTWARE.
             <p id="trackTemperature">Track Temperature: </p>
             <p id="lapInformation">Lap: </p>
             <p id="safetyCarStatus" style="display: none;">Safety Car Status: </p>
-            <p><a href="#" id="getOvertakeInfo" class="motivationLink" style="display: none;">Get Overtake Information</a></p>
+            <p><a href="#" id="getOvertakeInfo" class="motivationLink" style="display: none;">Get Overtake
+                    Information</a></p>
             <p><a href="#" id="saveTelemetryLink" class="motivationLink">Save telemetry packet capture</a></p>
         </div>
         <div class="time-box">
@@ -359,6 +358,21 @@ SOFTWARE.
 
             // Use toFixed to round to two decimal places and convert to string
             return floatNumber.toFixed(2);
+        }
+
+        function formatFloatWithTwoDecimalsSigned(floatNumber) {
+            if (typeof floatNumber !== 'number' || isNaN(floatNumber)) {
+                console.error('Invalid input. Please provide a valid number.');
+                return null;
+            }
+
+            // Use toFixed to round to two decimal places and convert to string
+            const floatStr = floatNumber.toFixed(2);
+            if (floatNumber >= 0.0) {
+                return '+' + floatStr;
+            } else {
+                return floatStr;
+            }
         }
 
         function fetchDataAndDisplay() {
@@ -511,352 +525,519 @@ SOFTWARE.
                 return component.toLowerCase().replace(/\s+/g, '-');
             }
 
-            // Car Damage Table
-            const carDamageContent = document.createElement('div');
-            const carDamageTable = document.createElement('table');
-            carDamageTable.classList.add('car-damage-table');
-            const carDamageHeader = carDamageTable.createTHead();
-            const carDamageHeaderRow = carDamageHeader.insertRow();
-            carDamageHeaderRow.innerHTML = '<th>Component</th><th>Damage</th>';
-            const carDamageBody = carDamageTable.createTBody();
-            if ("car-damage" in data) {
-                // Front Left Wing Damage
-                const row1 = carDamageBody.insertRow();
-                row1.innerHTML = `<td>Front Left Wing Damage</td><td>${formatFloatWithTwoDecimals(data["car-damage"]["front-left-wing-damage"])}%</td>`;
+            function getCarDamageContent(data) {
 
-                // Front Right Wing Damage
-                const row2 = carDamageBody.insertRow();
-                row2.innerHTML = `<td>Front Right Wing Damage</td><td>${formatFloatWithTwoDecimals(data["car-damage"]["front-right-wing-damage"])}%</td>`;
-
-                // Rear Wing Damage
-                const row3 = carDamageBody.insertRow();
-                row3.innerHTML = `<td>Rear Wing Damage</td><td>${formatFloatWithTwoDecimals(data["car-damage"]["rear-wing-damage"])}%</td>`;
-            } else {
-                const row = carDamageBody.insertRow();
-                row.innerHTML = '<td colspan="2">Car Damage data not available</td>';
-            }
-            carDamageContent.appendChild(createAccordion('Car Damage', carDamageTable));
-            modalContent.appendChild(carDamageContent);
-
-            // Tyre Damage Table
-            const tyreDamageContent = document.createElement('div');
-            const tyreDamageTable = document.createElement('table');
-            tyreDamageTable.classList.add('tyre-damage-table');
-            const tyreDamageHeader = tyreDamageTable.createTHead();
-            const tyreDamageHeaderRow = tyreDamageHeader.insertRow();
-            tyreDamageHeaderRow.innerHTML = '<th>Tyre</th><th>Damage</th>';
-            const tyreDamageBody = tyreDamageTable.createTBody();
-            if ("car-damage" in data) {
-                // Front Left Tyre Damage
-                const row1 = tyreDamageBody.insertRow();
-                row1.innerHTML = `<td>Front Left Tyre Damage</td><td>${formatFloatWithTwoDecimals(data["car-damage"]["tyres-damage"][2])}%</td>`;
-
-                // Front Right Tyre Damage
-                const row2 = tyreDamageBody.insertRow();
-                row2.innerHTML = `<td>Front Right Tyre Damage</td><td>${formatFloatWithTwoDecimals(data["car-damage"]["tyres-damage"][3])}%</td>`;
-
-                // Rear Left Tyre Damage
-                const row3 = tyreDamageBody.insertRow();
-                row3.innerHTML = `<td>Rear Left Tyre Damage</td><td>${formatFloatWithTwoDecimals(data["car-damage"]["tyres-damage"][0])}%</td>`;
-
-                // Rear Right Tyre Damage
-                const row4 = tyreDamageBody.insertRow();
-                row4.innerHTML = `<td>Rear Right Tyre Damage</td><td>${formatFloatWithTwoDecimals(data["car-damage"]["tyres-damage"][1])}%</td>`;
-            } else {
-                const row = tyreDamageBody.insertRow();
-                row.innerHTML = '<td colspan="2">Tyre Damage data not available</td>';
-            }
-            tyreDamageContent.appendChild(createAccordion('Tyre Damage', tyreDamageTable));
-            modalContent.appendChild(tyreDamageContent);
-
-
-            // Tyre Wear Table
-            const tyreWearContent = document.createElement('div');
-            const tyreWearTable = document.createElement('table');
-            tyreWearTable.classList.add('tyre-damage-table');
-            const tyreWearHeader = tyreWearTable.createTHead();
-            const tyreWearHeaderRow = tyreWearHeader.insertRow();
-            tyreWearHeaderRow.innerHTML = '<th>Tyre</th><th>Wear</th>';
-            const tyreWearBody = tyreWearTable.createTBody();
-            if ("car-damage" in data) {
-                // Front Left Tyre Wear
-                const row1 = tyreWearBody.insertRow();
-                row1.innerHTML = `<td>Front Left Tyre Wear</td><td>${formatFloatWithTwoDecimals(data["car-damage"]["tyres-wear"][2])}%</td>`;
-
-                // Front Right Tyre Wear
-                const row2 = tyreWearBody.insertRow();
-                row2.innerHTML = `<td>Front Right Tyre Wear</td><td>${formatFloatWithTwoDecimals(data["car-damage"]["tyres-wear"][3])}%</td>`;
-
-                // Rear Left Tyre Wear
-                const row3 = tyreWearBody.insertRow();
-                row3.innerHTML = `<td>Rear Left Tyre Wear</td><td>${formatFloatWithTwoDecimals(data["car-damage"]["tyres-wear"][0])}%</td>`;
-
-                // Rear Right Tyre Wear
-                const row4 = tyreWearBody.insertRow();
-                row4.innerHTML = `<td>Rear Right Tyre Wear</td><td>${formatFloatWithTwoDecimals(data["car-damage"]["tyres-wear"][1])}%</td>`;
-            } else {
-                const row = tyreWearBody.insertRow();
-                row.innerHTML = '<td colspan="2">Tyre Wear data not available</td>';
-            }
-            tyreWearContent.appendChild(createAccordion('Tyre Wear', tyreWearTable));
-            modalContent.appendChild(tyreWearContent);
-
-            // Lap History Table
-            const lapHistoryContent = document.createElement('div');
-            const lapHistoryTable = document.createElement('table');
-            lapHistoryTable.classList.add('lap-history-table');
-
-            const lapHistoryHeader = lapHistoryTable.createTHead();
-            const headerRow = lapHistoryHeader.insertRow();
-            headerRow.innerHTML = '<th>Lap</th><th>S1 Time</th><th>S2 Time</th><th>S3 Time</th><th>Total Time</th>';
-
-            const lapHistoryBody = lapHistoryTable.createTBody();
-            if ("session-history" in data) {
-                const lapHistoryData = data["session-history"]["lap-history-data"];
-                const bestLapNum = data["session-history"]["best-lap-time-lap-num"];
-                const bestSector1Num = data["session-history"]["best-sector-1-lap-num"];
-                const bestSector2Num = data["session-history"]["best-sector-2-lap-num"];
-                const bestSector3Num = data["session-history"]["best-sector-3-lap-num"];
-
-                lapHistoryData.forEach((lap, index) => {
-                    const row = lapHistoryBody.insertRow();
-                    const currentLapNum = index + 1;
-
-                    row.innerHTML = `
-                        <td>${currentLapNum}</td>
-                        <td>${lap["sector-1-time-str"]}</td>
-                        <td>${lap["sector-2-time-str"]}</td>
-                        <td>${lap["sector-3-time-str"]}</td>
-                        <td>${lap["lap-time-str"]}</td>
+                const carDamageContent = document.createElement('div');
+                const carDamageTable = document.createElement('table');
+                carDamageTable.classList.add('car-damage-table');
+                const carDamageHeader = carDamageTable.createTHead();
+                const carDamageHeaderRow = carDamageHeader.insertRow();
+                carDamageHeaderRow.innerHTML = `
+                    <th>Component</th>
+                    <th>Damage</th>
+                `;
+                const carDamageBody = carDamageTable.createTBody();
+                if ("car-damage" in data) {
+                    // Front Left Wing Damage
+                    const row1 = carDamageBody.insertRow();
+                    row1.innerHTML = `
+                        <td>Front Left Wing Damage</td>
+                        <td>${formatFloatWithTwoDecimals(data["car-damage"]["front-left-wing-damage"])}%</td>
                     `;
 
-                    // Check and mark green for best sector 1
-                    if (currentLapNum === bestSector1Num) {
-                        row.cells[1].style.color = '#32F129';
-                    }
+                    // Front Right Wing Damage
+                    const row2 = carDamageBody.insertRow();
+                    row2.innerHTML = `
+                        <td>Front Right Wing Damage</td>
+                        <td>${formatFloatWithTwoDecimals(data["car-damage"]["front-right-wing-damage"])}%</td>
+                    `;
 
-                    // Check and mark green for best sector 2
-                    if (currentLapNum === bestSector2Num) {
-                        row.cells[2].style.color = '#32F129';
-                    }
-
-                    // Check and mark green for best sector 3
-                    if (currentLapNum === bestSector3Num) {
-                        row.cells[3].style.color = '#32F129';
-                    }
-
-                    // Check and mark green for total time
-                    if (currentLapNum === bestLapNum) {
-                        row.cells[4].style.color = '#32F129';
-                    }
-                });
-            } else {
-                const row = lapHistoryBody.insertRow();
-                row.innerHTML = '<td colspan="5">Lap History data not available</td>';
+                    // Rear Wing Damage
+                    const row3 = carDamageBody.insertRow();
+                    row3.innerHTML = `
+                        <td>Rear Wing Damage</td>
+                        <td>${formatFloatWithTwoDecimals(data["car-damage"]["rear-wing-damage"])}%</td>
+                    `;
+                } else {
+                    const row = carDamageBody.insertRow();
+                    row.innerHTML = '<td colspan="2">Car Damage data not available</td>';
+                }
+                carDamageContent.appendChild(createAccordion('Car Damage', carDamageTable));
+                return carDamageContent;
             }
 
-            lapHistoryContent.appendChild(createAccordion('Lap History', lapHistoryTable));
-            modalContent.appendChild(lapHistoryContent);
+            function getTyreDamageContent(data) {
 
+                const tyreDamageContent = document.createElement('div');
+                const tyreDamageTable = document.createElement('table');
+                tyreDamageTable.classList.add('tyre-damage-table');
+                const tyreDamageHeader = tyreDamageTable.createTHead();
+                const tyreDamageHeaderRow = tyreDamageHeader.insertRow();
+                tyreDamageHeaderRow.innerHTML = `
+                    <th>Tyre</th>
+                    <th>Damage</th>
+                `;
+                const tyreDamageBody = tyreDamageTable.createTBody();
+                if ("car-damage" in data) {
+                    // Front Left Tyre Damage
+                    const row1 = tyreDamageBody.insertRow();
+                    row1.innerHTML = `
+                        <td>Front Left Tyre Damage</td>
+                        <td>${formatFloatWithTwoDecimals(data["car-damage"]["tyres-damage"][2])}%</td>
+                    `;
 
-            // ERS history
-            const ersHistoryContent = document.createElement('div');
-            const ersHistoryTable = document.createElement('table');
-            ersHistoryTable.classList.add('ers-damage-table');
-            const ersHistoryHeader = ersHistoryTable.createTHead();
-            const ersHistoryHeaderRow = ersHistoryHeader.insertRow();
-            ersHistoryHeaderRow.innerHTML = `
-                <th>Lap</th>
-                <th>ERS remaining</th>
-                <th>ERS deployed</th>
-                <th>Harvested - MGU-H</th>
-                <th>Harvested - MGU-K</th>
-                <th>Harvested - Total</th>
-            `;
-            const ersHistoryBody = ersHistoryTable.createTBody();
-            if ("per-lap-info" in data) {
-                const perLapHistoryData = data["per-lap-info"];
-                if (perLapHistoryData.length > 0) {
-                    perLapHistoryData.forEach((lap, index) => {
-                        const row = ersHistoryBody.insertRow();
-                        const currentLapNum = lap["lap-number"];
-                        let ersRemainingPerc = "---";
-                        let ersDeployedPerc = "---";
-                        let ersHarvestedMguHPerc = "---";
-                        let ersHarvestedMguKPerc = "---";
-                        let ersHarvestedTotalPerc = "---";
+                    // Front Right Tyre Damage
+                    const row2 = tyreDamageBody.insertRow();
+                    row2.innerHTML = `
+                        <td>Front Right Tyre Damage</td>
+                        <td>${formatFloatWithTwoDecimals(data["car-damage"]["tyres-damage"][3])}%</td>
+                    `;
 
-                        if ("car-status-data" in lap) {
-                            const maxErsCapacity = lap["car-status-data"]["ers-max-capacity"];
-                            const ersRemainingVal = lap["car-status-data"]["ers-store-energy"];
-                            const ersDeployedThisLapVal = lap["car-status-data"]["ers-deployed-this-lap"];
-                            const ersHarvestedThisLapMguHVal = lap["car-status-data"]["ers-harvested-this-lap-mguh"];
-                            const ersHarvestedThisLapMguKVal = lap["car-status-data"]["ers-harvested-this-lap-mguk"];
+                    // Rear Left Tyre Damage
+                    const row3 = tyreDamageBody.insertRow();
+                    row3.innerHTML = `
+                        <td>Rear Left Tyre Damage</td>
+                        <td>${formatFloatWithTwoDecimals(data["car-damage"]["tyres-damage"][0])}%</td>
+                    `;
 
-                            ersRemainingPerc = formatFloatWithTwoDecimals((ersRemainingVal / maxErsCapacity) * 100) + "%";
-                            ersDeployedPerc = formatFloatWithTwoDecimals((ersDeployedThisLapVal / maxErsCapacity) * 100) + "%";
-                            ersHarvestedMguHPerc = formatFloatWithTwoDecimals((ersHarvestedThisLapMguHVal / maxErsCapacity) * 100) + "%";
-                            ersHarvestedMguKPerc = formatFloatWithTwoDecimals((ersHarvestedThisLapMguKVal / maxErsCapacity) * 100) + "%";
-                            ersHarvestedTotalPerc = formatFloatWithTwoDecimals(((ersHarvestedThisLapMguHVal + ersHarvestedThisLapMguKVal) / maxErsCapacity) * 100) + "%";
-                        }
+                    // Rear Right Tyre Damage
+                    const row4 = tyreDamageBody.insertRow();
+                    row4.innerHTML = `
+                        <td>Rear Right Tyre Damage</td>
+                        <td>${formatFloatWithTwoDecimals(data["car-damage"]["tyres-damage"][1])}%</td>
+                    `;
+                } else {
+                    const row = tyreDamageBody.insertRow();
+                    row.innerHTML = '<td colspan="2">Tyre Damage data not available</td>';
+                }
+                tyreDamageContent.appendChild(createAccordion('Tyre Damage', tyreDamageTable));
+                return tyreDamageContent;
+            }
+
+            function getTyreWearContent(data) {
+
+                const tyreWearContent = document.createElement('div');
+                const tyreWearTable = document.createElement('table');
+                tyreWearTable.classList.add('tyre-damage-table');
+                const tyreWearHeader = tyreWearTable.createTHead();
+                const tyreWearHeaderRow = tyreWearHeader.insertRow();
+                tyreWearHeaderRow.innerHTML = `
+                    <th>Tyre</th>
+                    <th>Wear</th>
+                `;
+                const tyreWearBody = tyreWearTable.createTBody();
+                if ("car-damage" in data) {
+                    // Front Left Tyre Wear
+                    const row1 = tyreWearBody.insertRow();
+                    row1.innerHTML = `
+                        <td>Front Left Tyre Wear</td>
+                        <td>${formatFloatWithTwoDecimals(data["car-damage"]["tyres-wear"][2])}%</td>
+                    `;
+
+                    // Front Right Tyre Wear
+                    const row2 = tyreWearBody.insertRow();
+                    row2.innerHTML = `
+                        <td>Front Right Tyre Wear</td>
+                        <td>${formatFloatWithTwoDecimals(data["car-damage"]["tyres-wear"][3])}%</td>
+                    `;
+
+                    // Rear Left Tyre Wear
+                    const row3 = tyreWearBody.insertRow();
+                    row3.innerHTML = `
+                        <td>Rear Left Tyre Wear</td>
+                        <td>${formatFloatWithTwoDecimals(data["car-damage"]["tyres-wear"][0])}%</td>
+                    `;
+
+                    // Rear Right Tyre Wear
+                    const row4 = tyreWearBody.insertRow();
+                    row4.innerHTML = `
+                        <td>Rear Right Tyre Wear</td>
+                        <td>${formatFloatWithTwoDecimals(data["car-damage"]["tyres-wear"][1])}%</td>
+                    `;
+                } else {
+                    const row = tyreWearBody.insertRow();
+                    row.innerHTML = '<td colspan="2">Tyre Wear data not available</td>';
+                }
+                tyreWearContent.appendChild(createAccordion('Tyre Wear', tyreWearTable));
+                return tyreWearContent;
+            }
+
+            function getLapHistoryContent(data) {
+
+                const lapHistoryContent = document.createElement('div');
+                const lapHistoryTable = document.createElement('table');
+                lapHistoryTable.classList.add('lap-history-table');
+
+                const lapHistoryHeader = lapHistoryTable.createTHead();
+                const headerRow = lapHistoryHeader.insertRow();
+                headerRow.innerHTML = `
+                    <th>Lap</th>
+                    <th>S1 Time</th>
+                    <th>S2 Time</th>
+                    <th>S3 Time</th>
+                    <th>Total Time</th>
+                `;
+
+                const lapHistoryBody = lapHistoryTable.createTBody();
+                if ("session-history" in data) {
+                    const lapHistoryData = data["session-history"]["lap-history-data"];
+                    const bestLapNum = data["session-history"]["best-lap-time-lap-num"];
+                    const bestSector1Num = data["session-history"]["best-sector-1-lap-num"];
+                    const bestSector2Num = data["session-history"]["best-sector-2-lap-num"];
+                    const bestSector3Num = data["session-history"]["best-sector-3-lap-num"];
+
+                    lapHistoryData.forEach((lap, index) => {
+                        const row = lapHistoryBody.insertRow();
+                        const currentLapNum = index + 1;
 
                         row.innerHTML = `
                             <td>${currentLapNum}</td>
-                            <td>${ersRemainingPerc}</td>
-                            <td>${ersDeployedPerc}</td>
-                            <td>${ersHarvestedMguHPerc}</td>
-                            <td>${ersHarvestedMguKPerc}</td>
-                            <td>${ersHarvestedTotalPerc}</td>
+                            <td>${lap["sector-1-time-str"]}</td>
+                            <td>${lap["sector-2-time-str"]}</td>
+                            <td>${lap["sector-3-time-str"]}</td>
+                            <td>${lap["lap-time-str"]}</td>
                         `;
+
+                        // Check and mark green for best sector 1
+                        if (currentLapNum === bestSector1Num) {
+                            row.cells[1].style.color = '#32F129';
+                        }
+
+                        // Check and mark green for best sector 2
+                        if (currentLapNum === bestSector2Num) {
+                            row.cells[2].style.color = '#32F129';
+                        }
+
+                        // Check and mark green for best sector 3
+                        if (currentLapNum === bestSector3Num) {
+                            row.cells[3].style.color = '#32F129';
+                        }
+
+                        // Check and mark green for total time
+                        if (currentLapNum === bestLapNum) {
+                            row.cells[4].style.color = '#32F129';
+                        }
                     });
+                } else {
+                    const row = lapHistoryBody.insertRow();
+                    row.innerHTML = '<td colspan="5">Lap History data not available</td>';
+                }
+
+                lapHistoryContent.appendChild(createAccordion('Lap History', lapHistoryTable));
+                return lapHistoryContent;
+            }
+
+            function getErsHistoryContent(data) {
+
+                const ersHistoryContent = document.createElement('div');
+                const ersHistoryTable = document.createElement('table');
+                ersHistoryTable.classList.add('ers-damage-table');
+                const ersHistoryHeader = ersHistoryTable.createTHead();
+                const ersHistoryHeaderRow = ersHistoryHeader.insertRow();
+                ersHistoryHeaderRow.innerHTML = `
+                    <th>Lap</th>
+                    <th>ERS remaining</th>
+                    <th>ERS deployed</th>
+                    <th>Harvested - MGU-H</th>
+                    <th>Harvested - MGU-K</th>
+                    <th>Harvested - Total</th>
+                `;
+                const ersHistoryBody = ersHistoryTable.createTBody();
+                if ("per-lap-info" in data) {
+                    const perLapHistoryData = data["per-lap-info"];
+                    if (perLapHistoryData.length > 0) {
+                        perLapHistoryData.forEach((lap, index) => {
+                            const row = ersHistoryBody.insertRow();
+                            const currentLapNum = lap["lap-number"];
+                            if (currentLapNum == 0) {
+                                // Skip lap 0 for ERS, we want that only for fuel
+                                console.log("ERS: skipping lap 0. index=", index);
+
+                                // If this is the only lap info available, print the standard error message
+                                if (perLapHistoryData.length == 1) {
+                                    row.innerHTML = '<td colspan="6">ERS data not available</td>';
+                                }
+
+                                return;
+                            }
+                            console.log("ERS: Processing lap " + currentLapNum + ". index=", index);
+                            let ersRemainingPerc = "---";
+                            let ersDeployedPerc = "---";
+                            let ersHarvestedMguHPerc = "---";
+                            let ersHarvestedMguKPerc = "---";
+                            let ersHarvestedTotalPerc = "---";
+
+                            if ("car-status-data" in lap) {
+                                const maxErsCapacity = lap["car-status-data"]["ers-max-capacity"];
+                                const ersRemainingVal = lap["car-status-data"]["ers-store-energy"];
+                                const ersDeployedThisLapVal = lap["car-status-data"]["ers-deployed-this-lap"];
+                                const ersHarvestedThisLapMguHVal = lap["car-status-data"]["ers-harvested-this-lap-mguh"];
+                                const ersHarvestedThisLapMguKVal = lap["car-status-data"]["ers-harvested-this-lap-mguk"];
+
+                                ersRemainingPerc = formatFloatWithTwoDecimals(
+                                    (ersRemainingVal / maxErsCapacity) * 100) + "%";
+                                ersDeployedPerc = formatFloatWithTwoDecimals(
+                                    (ersDeployedThisLapVal / maxErsCapacity) * 100) + "%";
+                                ersHarvestedMguHPerc = formatFloatWithTwoDecimals(
+                                    (ersHarvestedThisLapMguHVal / maxErsCapacity) * 100) + "%";
+                                ersHarvestedMguKPerc = formatFloatWithTwoDecimals(
+                                    (ersHarvestedThisLapMguKVal / maxErsCapacity) * 100) + "%";
+                                ersHarvestedTotalPerc = formatFloatWithTwoDecimals(
+                                    ((ersHarvestedThisLapMguHVal + ersHarvestedThisLapMguKVal) / maxErsCapacity)
+                                    * 100) + "%";
+                            }
+
+                            row.innerHTML = `
+                                <td>${currentLapNum}</td>
+                                <td>${ersRemainingPerc}</td>
+                                <td>${ersDeployedPerc}</td>
+                                <td>${ersHarvestedMguHPerc}</td>
+                                <td>${ersHarvestedMguKPerc}</td>
+                                <td>${ersHarvestedTotalPerc}</td>
+                            `;
+                        });
+                    } else {
+                        const row = ersHistoryBody.insertRow();
+                        row.innerHTML = '<td colspan="6">ERS History data not available</td>';
+                    }
                 } else {
                     const row = ersHistoryBody.insertRow();
                     row.innerHTML = '<td colspan="6">ERS History data not available</td>';
                 }
-            } else {
-                const row = ersHistoryBody.insertRow();
-                row.innerHTML = '<td colspan="6">ERS History data not available</td>';
+
+                ersHistoryContent.appendChild(createAccordion('ERS History', ersHistoryTable));
+                return ersHistoryContent;
             }
 
-            ersHistoryContent.appendChild(createAccordion('ERS History', ersHistoryTable));
-            modalContent.appendChild(ersHistoryContent);
+            function getFuelHistoryContent(data) {
+
+                const fuelHistoryContent = document.createElement('div');
+                const fuelHistoryTable = document.createElement('table');
+                fuelHistoryTable.classList.add('fuel-damage-table');
+                const fuelHistoryHeader = fuelHistoryTable.createTHead();
+                const fuelHistoryHeaderRow = fuelHistoryHeader.insertRow();
+                fuelHistoryHeaderRow.innerHTML = `
+                    <th>Lap</th>
+                    <th>Fuel Load (kg)</th>
+                    <th>Fuel Load Delta</th>
+                    <th>Excess Laps</th>
+                    <th>Excess Laps Delta</th>
+                `;
+                const fuelHistoryBody = fuelHistoryTable.createTBody();
+                if ("per-lap-info" in data) {
+                    const perLapHistoryData = data["per-lap-info"];
+                    if (perLapHistoryData.length > 0) {
+                        perLapHistoryData.forEach((lap, index) => {
+                            const row = fuelHistoryBody.insertRow();
+                            const currentLapNum = lap["lap-number"];
+
+                            let fuelLoad = "---";
+                            let fuelLaps = "---";
+                            let fuelLoadDelta = "---";
+                            let fuelLapsDelta = "---";
+
+                            if ("car-status-data" in lap) {
+                                const fuelLoadVal = lap["car-status-data"]["fuel-in-tank"];
+                                const fuelLapsVal = lap["car-status-data"]["fuel-remaining-laps"];
+
+                                fuelLoad = formatFloatWithTwoDecimals(fuelLoadVal);
+                                fuelLaps = formatFloatWithTwoDecimals(fuelLapsVal);
+
+
+                                if (index > 0 && "car-status-data" in data["per-lap-info"][index - 1]) {
+                                    console.log("inside if. length: " + data["per-lap-info"].length + " index " + index);
+                                    const fuelLoadValPrev = data["per-lap-info"][index - 1]["car-status-data"]["fuel-in-tank"];
+                                    const fuelLapsValPrev = data["per-lap-info"][index - 1]["car-status-data"]["fuel-remaining-laps"];
+
+                                    fuelLoadDelta = formatFloatWithTwoDecimalsSigned(fuelLoadValPrev - fuelLoadVal);
+                                    fuelLapsDelta = formatFloatWithTwoDecimalsSigned(fuelLapsValPrev - fuelLapsVal);
+                                }
+                            }
+
+                            row.innerHTML = `
+                                <td>${currentLapNum}</td>
+                                <td>${fuelLoad}</td>
+                                <td>${fuelLoadDelta}</td>
+                                <td>${fuelLaps}</td>
+                                <td>${fuelLapsDelta}</td>
+                            `;
+                        });
+                    } else {
+                        const row = fuelHistoryBody.insertRow();
+                        row.innerHTML = '<td colspan="6">ERS History data not available</td>';
+                    }
+                } else {
+                    const row = fuelHistoryBody.insertRow();
+                    row.innerHTML = '<td colspan="6">ERS History data not available</td>';
+                }
+
+                fuelHistoryContent.appendChild(createAccordion('Fuel History', fuelHistoryTable));
+                return fuelHistoryContent;
+            }
+
+            function getTyreStintHistoryContent(data) {
+
+                const tyreStintHistoryContent = document.createElement('div');
+                const tyreStintHistoryTable = document.createElement('table');
+                tyreStintHistoryTable.classList.add('tyre-stint-history-table');
+
+                const tyreStintHistoryHeader = tyreStintHistoryTable.createTHead();
+                const tyreStintHistoryHeaderRow = tyreStintHistoryHeader.insertRow();
+                tyreStintHistoryHeaderRow.innerHTML = `
+                    <th>Stint number</th>
+                    <th>Start Lap</th>
+                    <th>End Lap</th>
+                    <th>Stint Length</th>
+                    <th>Compound</th>
+                    <th>Tyre Set ID</th>
+                    <th>Tyre Wear</th>
+                    <th>Tyre Wear Per Lap</th>
+                `;
+
+                const tyreStintHistoryBody = tyreStintHistoryTable.createTBody();
+                if ("tyre-set-history" in data) {
+                    const tyreStintHistoryData = data["tyre-set-history"];
+                    tyreStintHistoryData.forEach((stintData, index) => {
+                        const row = tyreStintHistoryBody.insertRow();
+                        const stintId = index + 1;
+
+                        const stintStartLap = stintData["start-lap"];
+                        const stintEndLap = stintData["end-lap"];
+                        const stintLength = `${stintData["stint-length"]} lap(s)`;
+                        let compound = "---";
+                        let tyreSetId = "---";
+                        let tyreWear = "---";
+                        let tyreWearPerLap = "---";
+
+                        if ("tyre-set-data" in stintData) {
+                            const tyreSetData = stintData["tyre-set-data"];
+                            const tyreSetIndex = stintData["fitted-index"];
+
+                            compound = tyreSetData["actual-tyre-compound"];
+                            tyreSetId = `${compound} - ${tyreSetIndex}`;
+                            tyreWear = `${tyreSetData["wear"]} %`;
+
+                            // Use parseFloat to ensure numerical calculation
+                            const wearPerLap = parseFloat(tyreSetData["wear"]) / parseFloat(stintData["stint-length"]);
+                            tyreWearPerLap = formatFloatWithTwoDecimals(wearPerLap) + "%";
+                        }
+
+                        row.innerHTML = `
+                            <td>${stintId}</td>
+                            <td>${stintStartLap}</td>
+                            <td>${stintEndLap}</td>
+                            <td>${stintLength}</td>
+                            <td>${compound}</td>
+                            <td>${tyreSetId}</td>
+                            <td>${tyreWear}</td>
+                            <td>${tyreWearPerLap}</td>
+                        `;
+                    });
+                } else {
+                    const row = tyreStintHistoryBody.insertRow();
+                    row.innerHTML = '<td colspan="8">Tyre Stint History data not available</td>';
+                }
+                tyreStintHistoryContent.appendChild(createAccordion('Tyre Stint History History', tyreStintHistoryTable));
+                return tyreStintHistoryContent;
+            }
+
+            function getWarningsAndPenaltiesContent(data) {
+
+                const warningsPenaltiesContent = document.createElement('div');
+                const warningsPenaltiesTable = document.createElement('table');
+                warningsPenaltiesTable.classList.add('warnings-penalties-damage-table');
+                const warningsPenaltiesHeader = warningsPenaltiesTable.createTHead();
+                const warningsPenaltiesHeaderRow = warningsPenaltiesHeader.insertRow();
+                warningsPenaltiesHeaderRow.innerHTML = '<th>Type</th><th>Value</th>';
+                const warningsPenaltiesBody = warningsPenaltiesTable.createTBody();
+                if ("lap-data" in data) {
+                    const lapData = data["lap-data"];
+                    const numPenalties = lapData["penalties"];
+                    const totalWarnings = lapData["total-warnings"];
+                    const numCornerCuttingWarnings = lapData["corner-cutting-warnings"];
+                    const numUnservedDriveThroughPens = lapData["num-unserved-drive-through-pens"];
+                    const numUnservedStopGoPens = lapData["num-unserved-stop-go-pens"];
+
+                    const row1 = warningsPenaltiesBody.insertRow();
+                    row1.innerHTML = `
+                        <td>Total penalties (time)</td>
+                        <td>${numPenalties} sec</td>
+                    `;
+
+                    const row2 = warningsPenaltiesBody.insertRow();
+                    row2.innerHTML = `
+                        <td>Total warnings</td>
+                        <td>${totalWarnings}</td>
+                    `;
+
+                    const row3 = warningsPenaltiesBody.insertRow();
+                    row3.innerHTML = `
+                        <td>Corner Cutting Warnings</td>
+                        <td>${numCornerCuttingWarnings}</td>
+                    `;
+
+                    const row4 = warningsPenaltiesBody.insertRow();
+                    row4.innerHTML = `
+                        <td>Unserved Drive Through Penalties</td>
+                        <td>${numUnservedDriveThroughPens}</td>
+                    `;
+
+                    const row5 = warningsPenaltiesBody.insertRow();
+                    row5.innerHTML = `
+                        <td>Unserved Stop Go Penalties</td>
+                        <td>${numUnservedStopGoPens}</td>
+                    `;
+
+                    if (data["is-player"]) {
+                        let naughtyStatus;
+                        if (
+                            numPenalties > 0 ||
+                            totalWarnings > 0 ||
+                            numCornerCuttingWarnings > 0 ||
+                            numUnservedDriveThroughPens > 0 ||
+                            numUnservedStopGoPens > 0
+                        ) {
+                            naughtyStatus = "Yes, You are naughty";
+                        } else {
+                            naughtyStatus = "Well, You may be naughty";
+                        }
+                        const row6 = warningsPenaltiesBody.insertRow();
+                        row6.innerHTML = `
+                            <td>Are you naughty?</td>
+                            <td>${naughtyStatus}</td>
+                        `;
+                    }
+                } else {
+                    const row = warningsPenaltiesBody.insertRow();
+                    row.innerHTML = '<td colspan="2">Tyre Wear data not available</td>';
+                }
+                warningsPenaltiesContent.appendChild(createAccordion('Warnings & Penalties', warningsPenaltiesTable));
+                return warningsPenaltiesContent;
+            }
+
+            // Car Damage Table
+            modalContent.appendChild(getCarDamageContent(data));
+
+            // Tyre Damage Table
+            modalContent.appendChild(getTyreDamageContent(data));
+
+            // Tyre Wear Table
+            modalContent.appendChild(getTyreWearContent(data));
+
+            // Lap History Table
+            modalContent.appendChild(getLapHistoryContent(data));
+
+            // ERS history
+            modalContent.appendChild(getErsHistoryContent(data));
+
+            // Fuel history
+            modalContent.appendChild(getFuelHistoryContent(data));
 
             // Tyre Stint History
-            const tyreStintHistoryContent = document.createElement('div');
-            const tyreStintHistoryTable = document.createElement('table');
-            tyreStintHistoryTable.classList.add('tyre-stint-history-table');
-
-            const tyreStintHistoryHeader = tyreStintHistoryTable.createTHead();
-            const tyreStintHistoryHeaderRow = tyreStintHistoryHeader.insertRow();
-            tyreStintHistoryHeaderRow.innerHTML = `
-                <th>Stint number</th>
-                <th>Start Lap</th>
-                <th>End Lap</th>
-                <th>Stint Length</th>
-                <th>Compound</th>
-                <th>Tyre Set ID</th>
-                <th>Tyre Wear</th>
-                <th>Tyre Wear Per Lap</th>
-            `;
-
-            const tyreStintHistoryBody = tyreStintHistoryTable.createTBody();
-            if ("tyre-set-history" in data) {
-                const tyreStintHistoryData = data["tyre-set-history"];
-                tyreStintHistoryData.forEach((stintData, index) => {
-                    const row = tyreStintHistoryBody.insertRow();
-                    const stintId = index + 1;
-
-                    const stintStartLap = stintData["start-lap"];
-                    const stintEndLap = stintData["end-lap"];
-                    const stintLength = `${stintData["stint-length"]} lap(s)`;
-                    let compound = "---";
-                    let tyreSetId = "---";
-                    let tyreWear = "---";
-                    let tyreWearPerLap = "---";
-
-                    if ("tyre-set-data" in stintData) {
-                        const tyreSetData = stintData["tyre-set-data"];
-                        const tyreSetIndex = stintData["fitted-index"];
-
-                        compound = tyreSetData["actual-tyre-compound"];
-                        tyreSetId = `${compound} - ${tyreSetIndex}`;
-                        tyreWear = `${tyreSetData["wear"]} %`;
-
-                        // Use parseFloat to ensure numerical calculation
-                        const wearPerLap = parseFloat(tyreSetData["wear"]) / parseFloat(stintData["stint-length"]);
-                        tyreWearPerLap = formatFloatWithTwoDecimals(wearPerLap) + "%";
-                    }
-
-                    row.innerHTML = `
-                        <td>${stintId}</td>
-                        <td>${stintStartLap}</td>
-                        <td>${stintEndLap}</td>
-                        <td>${stintLength}</td>
-                        <td>${compound}</td>
-                        <td>${tyreSetId}</td>
-                        <td>${tyreWear}</td>
-                        <td>${tyreWearPerLap}</td>
-                    `;
-                });
-            } else {
-                const row = tyreStintHistoryBody.insertRow();
-                row.innerHTML = '<td colspan="8">Tyre Stint History data not available</td>';
-            }
-            tyreStintHistoryContent.appendChild(createAccordion('Tyre Stint History History', tyreStintHistoryTable));
-            modalContent.appendChild(tyreStintHistoryContent);
-
+            modalContent.appendChild(getTyreStintHistoryContent(data));
 
             // Warning and Penalties Table
-            const warningsPenaltiesContent = document.createElement('div');
-            const warningsPenaltiesTable = document.createElement('table');
-            warningsPenaltiesTable.classList.add('warnings-penalties-damage-table');
-            const warningsPenaltiesHeader = warningsPenaltiesTable.createTHead();
-            const warningsPenaltiesHeaderRow = warningsPenaltiesHeader.insertRow();
-            warningsPenaltiesHeaderRow.innerHTML = '<th>Type</th><th>Value</th>';
-            const warningsPenaltiesBody = warningsPenaltiesTable.createTBody();
-            if ("lap-data" in data) {
-                const lapData = data["lap-data"];
-                const numPenalties = lapData["penalties"];
-                const totalWarnings = lapData["total-warnings"];
-                const numCornerCuttingWarnings = lapData["corner-cutting-warnings"];
-                const numUnservedDriveThroughPens = lapData["num-unserved-drive-through-pens"];
-                const numUnservedStopGoPens = lapData["num-unserved-stop-go-pens"];
-
-                const row1 = warningsPenaltiesBody.insertRow();
-                row1.innerHTML = `
-                    <td>Total penalties (time)</td>
-                    <td>${numPenalties} sec</td>
-                `;
-
-                const row2 = warningsPenaltiesBody.insertRow();
-                row2.innerHTML = `
-                    <td>Total warnings</td>
-                    <td>${totalWarnings}</td>
-                `;
-
-                const row3 = warningsPenaltiesBody.insertRow();
-                row3.innerHTML = `
-                    <td>Corner Cutting Warnings</td>
-                    <td>${numCornerCuttingWarnings}</td>
-                `;
-
-                const row4 = warningsPenaltiesBody.insertRow();
-                row4.innerHTML = `
-                    <td>Unserved Drive Through Penalties</td>
-                    <td>${numUnservedDriveThroughPens}</td>
-                `;
-
-                const row5 = warningsPenaltiesBody.insertRow();
-                row5.innerHTML = `
-                    <td>Unserved Stop Go Penalties</td>
-                    <td>${numUnservedStopGoPens}</td>
-                `;
-
-                if (data["is-player"]) {
-                    let naughtyStatus;
-                    if (
-                        numPenalties > 0 ||
-                        totalWarnings > 0 ||
-                        numCornerCuttingWarnings > 0 ||
-                        numUnservedDriveThroughPens > 0 ||
-                        numUnservedStopGoPens > 0
-                    ) {
-                        naughtyStatus = "Yes, You are naughty";
-                    } else {
-                        naughtyStatus = "Well, You may be naughty";
-                    }
-                    const row6 = warningsPenaltiesBody.insertRow();
-                    row6.innerHTML = `
-                        <td>Are you naughty?</td>
-                        <td>${naughtyStatus}</td>
-                    `;
-                }
-            } else {
-                const row = warningsPenaltiesBody.insertRow();
-                row.innerHTML = '<td colspan="2">Tyre Wear data not available</td>';
-            }
-            warningsPenaltiesContent.appendChild(createAccordion('Warnings & Penalties', warningsPenaltiesTable));
-            modalContent.appendChild(warningsPenaltiesContent);
+            modalContent.appendChild(getWarningsAndPenaltiesContent(data));
 
             // Finalise the data
             const modalTitle = document.getElementById('modalTitle');
@@ -864,10 +1045,7 @@ SOFTWARE.
 
             const modal = document.getElementById('driverInfoModal');
             modal.style.display = 'block';
-
-            // modalContent.innerHTML = '';
         }
-
 
         function closeDriverInfoModal() {
             const modal = document.getElementById('driverInfoModal');

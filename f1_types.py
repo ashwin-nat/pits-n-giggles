@@ -1160,35 +1160,60 @@ class WeatherForecastSample:
 
 class PacketSessionData:
     """
-    A class for parsing the Session Data Packet of a telemetry packet in a racing game.
-
-    The session data packet structure is defined in the F1 23 UDP Specification Appendix.
+    Represents an incoming packet containing session data.
 
     Attributes:
-        - m_header (PacketHeader): The header of the telemetry packet.
-        - m_weather (int): Weather condition - see F1 23 UDP Specification Appendix.
-        - m_track_temperature (int): Track temperature in degrees Celsius.
-        - m_air_temperature (int): Air temperature in degrees Celsius.
-        - m_total_laps (int): Total number of laps in this race.
-        - m_track_length (int): Track length in meters.
-        - m_session_type (SessionType): See SessionType enum for more info
-        - m_track_id (TrackID): See the TrackID enumeration inside this class for more info
-        - m_formula (int): Formula type - see F1 23 UDP Specification Appendix.
-        - m_session_time_left (int): Time left in session in seconds.
-        - m_session_duration (int): Session duration in seconds.
-        - m_pit_speed_limit (int): Pit speed limit in kilometers per hour.
-        - m_game_paused (int): Whether the game is paused – network game only.
-        - m_is_spectating (int): Whether the player is spectating.
-        - m_spectator_car_index (int): Index of the car being spectated.
-        - m_sli_pro_native_support (int): SLI Pro support - 0 = inactive, 1 = active.
-        - m_num_marshal_zones (int): Number of marshal zones to follow.
-        - m_marshal_zones (list): List of MarshalZone objects - see F1 23 UDP Specification Appendix.
-        - m_safety_car_status (int): Safety car status - see F1 23 UDP Specification Appendix.
-        - m_network_game (int): Network game status - 0 = offline, 1 = online.
-        - m_num_weather_forecast_samples (int): Number of weather samples to follow.
-        - m_weather_forecast_samples (list): List of WeatherForecastSample objects - see F1 23 UDP Specification Appendix.
-        - m_forecast_accuracy (int): Forecast accuracy - 0 = Perfect, 1 = Approximate.
-        - ... (Other attributes documented in the F1 23 UDP Specification Appendix)
+        - m_header (PacketHeader): Header information for the packet.
+        - m_weather (uint8): Weather condition (0 = clear, 1 = light cloud, 2 = overcast, 3 = light rain, 4 = heavy rain, 5 = storm).
+        - m_trackTemperature (int8): Track temperature in degrees Celsius.
+        - m_airTemperature (int8): Air temperature in degrees Celsius.
+        - m_totalLaps (uint8): Total number of laps in the race.
+        - m_trackLength (uint16): Track length in meters.
+        - m_sessionType (SessionType): Type of session (Refer SessionType enumeration).
+        - m_trackId (TrackID): Track identifier. (Refer TrackID enumeration)
+        - m_formula (uint8): Formula type (0 = F1 Modern, 1 = F1 Classic, 2 = F2, 3 = F1 Generic, 4 = Beta, 5 = Supercars,
+                           6 = Esports, 7 = F2 2021).
+        - m_sessionTimeLeft (uint16): Time left in session in seconds.
+        - m_sessionDuration (uint16): Session duration in seconds.
+        - m_pitSpeedLimit (uint8): Pit speed limit in kilometers per hour.
+        - m_gamePaused (uint8): Whether the game is paused in a network game.
+        - m_isSpectating (uint8): Whether the player is spectating.
+        - m_spectatorCarIndex (uint8): Index of the car being spectated.
+        - m_sliProNativeSupport (uint8): SLI Pro support status (0 = inactive, 1 = active).
+        - m_numMarshalZones (uint8): Number of marshal zones to follow.
+        - m_marshalZones (list[MarshalZone]): List of MarshalZone objects (max 21).
+        - m_safetyCarStatus (SafetyCarStatus): Safety car status (Refer SafetyCarStatus enumeration).
+        - m_networkGame (uint8): Network game status (0 = offline, 1 = online).
+        - m_numWeatherForecastSamples (uint8): Number of weather samples to follow.
+        - m_weatherForecastSamples (list[WeatherForecastSample]): List of WeatherForecastSample objects (max 56).
+        - m_forecastAccuracy (uint8): Forecast accuracy (0 = Perfect, 1 = Approximate).
+        - m_aiDifficulty (uint8): AI Difficulty rating (0-110).
+        - m_seasonLinkIdentifier (uint32): Identifier for the season (persists across saves).
+        - m_weekendLinkIdentifier (uint32): Identifier for the weekend (persists across saves).
+        - m_sessionLinkIdentifier (uint32): Identifier for the session (persists across saves).
+        - m_pitStopWindowIdealLap (uint8): Ideal lap to pit on for the current strategy (player).
+        - m_pitStopWindowLatestLap (uint8): Latest lap to pit on for the current strategy (player).
+        - m_pitStopRejoinPosition (uint8): Predicted position to rejoin at (player).
+        - m_steeringAssist (uint8): Steering assist status (0 = off, 1 = on).
+        - m_brakingAssist (uint8): Braking assist status (0 = off, 1 = low, 2 = medium, 3 = high).
+        - m_gearboxAssist (uint8): Gearbox assist status (1 = manual, 2 = manual & suggested gear, 3 = auto).
+        - m_pitAssist (uint8): Pit assist status (0 = off, 1 = on).
+        - m_pitReleaseAssist (uint8): Pit release assist status (0 = off, 1 = on).
+        - m_ERSAssist (uint8): ERS assist status (0 = off, 1 = on).
+        - m_DRSAssist (uint8): DRS assist status (0 = off, 1 = on).
+        - m_dynamicRacingLine (uint8): Dynamic racing line status (0 = off, 1 = corners only, 2 = full).
+        - m_dynamicRacingLineType (uint8): Dynamic racing line type (0 = 2D, 1 = 3D).
+        - m_gameMode (uint8): Game mode ID.
+        - m_ruleSet (uint8): Ruleset ID.
+        - m_timeOfDay (uint32): Local time of day in minutes since midnight.
+        - m_sessionLength (uint8): Session length.
+        - m_speedUnitsLeadPlayer (uint8): Speed units for the lead player (0 = MPH, 1 = KPH).
+        - m_temperatureUnitsLeadPlayer (uint8): Temperature units for the lead player (0 = Celsius, 1 = Fahrenheit).
+        - m_speedUnitsSecondaryPlayer (uint8): Speed units for the secondary player (0 = MPH, 1 = KPH).
+        - m_temperatureUnitsSecondaryPlayer (uint8): Temperature units for the secondary player (0 = Celsius, 1 = Fahrenheit).
+        - m_numSafetyCarPeriods (uint8): Number of safety car periods called during the session.
+        - m_numVirtualSafetyCarPeriods (uint8): Number of virtual safety car periods called.
+        - m_numRedFlagPeriods (uint8): Number of red flags called during the session.
     """
 
     class SafetyCarStatus(Enum):
@@ -2589,11 +2614,42 @@ class PacketEventData:
 
     class Buttons:
         """
-        The class representing the BUTTONS event. This is sent when any buttons on the controller are pressed.
-
-        Attributes:
-            buttonStatus (int): The status of the buttons.
+        Represents a packet containing button press information.
         """
+
+        # Bit mappings
+        CROSS_A = 0x00000001
+        TRIANGLE_Y = 0x00000002
+        CIRCLE_B = 0x00000004
+        SQUARE_X = 0x00000008
+        DPAD_LEFT = 0x00000010
+        DPAD_RIGHT = 0x00000020
+        DPAD_UP = 0x00000040
+        DPAD_DOWN = 0x00000080
+        OPTIONS_MENU = 0x00000100
+        L1_LB = 0x00000200
+        R1_RB = 0x00000400
+        L2_LT = 0x00000800
+        R2_RT = 0x00001000
+        LEFT_STICK_CLICK = 0x00002000
+        RIGHT_STICK_CLICK = 0x00004000
+        RIGHT_STICK_LEFT = 0x00008000
+        RIGHT_STICK_RIGHT = 0x00010000
+        RIGHT_STICK_UP = 0x00020000
+        RIGHT_STICK_DOWN = 0x00040000
+        SPECIAL = 0x00080000
+        UDP_ACTION_1 = 0x00100000
+        UDP_ACTION_2 = 0x00200000
+        UDP_ACTION_3 = 0x00400000
+        UDP_ACTION_4 = 0x00800000
+        UDP_ACTION_5 = 0x01000000
+        UDP_ACTION_6 = 0x02000000
+        UDP_ACTION_7 = 0x04000000
+        UDP_ACTION_8 = 0x08000000
+        UDP_ACTION_9 = 0x10000000
+        UDP_ACTION_10 = 0x20000000
+        UDP_ACTION_11 = 0x40000000
+        UDP_ACTION_12 = 0x80000000
 
         def __init__(self, data: bytes) -> None:
             """
@@ -2605,17 +2661,59 @@ class PacketEventData:
             Raises:
                 struct.error: If the binary data does not match the expected format.
             """
-            format_str = "<B"
+            format_str = "<I"
             self.buttonStatus = struct.unpack(format_str, data[0:struct.calcsize(format_str)])[0]
+
+        def isButtonPressed(self, button_flag: int) -> bool:
+            """
+            Checks if a specific button is pressed based on the given button flag.
+
+            Args:
+                button_flag (int): The button flag representing the button to check.
+
+            Returns:
+                bool: True if the button is pressed, False otherwise.
+
+            Example:
+                is_cross_pressed = button_packet.isButtonPressed(Buttons.CROSS_A)
+            """
+            return (self.buttonStatus & button_flag) != 0
+
+        def isUDPActionPressed(self, udp_action_code: int) -> bool:
+            """
+            Checks if a specific UDP custom action code is pressed.
+
+            Args:
+                udp_action_code (int): The UDP custom action code to check (from 1 to 12).
+
+            Returns:
+                bool: True if the UDP custom action code is pressed, False otherwise.
+
+            Example:
+                is_udp_action_pressed = button_packet.isUDPActionPressed(5)
+            """
+            if 1 <= udp_action_code <= 12:
+                # Calculate the UDP custom action code flag position in buttonStatus
+                # UDP action codes start from the 19th bit, so we add 19 to the action code
+                udp_flag = 1 << (udp_action_code + 19)
+                return self.isButtonPressed(udp_flag)
+            else:
+                raise ValueError("UDP action code must be in the range 1 to 12.")
 
         def __str__(self) -> str:
             """
-            Returns a string representation of the Buttons object.
+            Returns a string representation of the buttons pressed in the packet.
 
             Returns:
-                str: String representation of the object.
+                str: A string listing the buttons pressed.
+
+            Example:
+                button_string = str(button_packet)
+                print(button_string)
             """
-            return f"Buttons(buttonStatus={self.buttonStatus})"
+            pressed_buttons = [button_name for button_name in dir(self) if isinstance(getattr(self, button_name), int) and
+                            self.isButtonPressed(getattr(self, button_name))]
+            return "Pressed Buttons: " + ", ".join(pressed_buttons) + " " + str(self.buttonStatus)
 
         def toJSON(self) -> Dict[str, Any]:
             """

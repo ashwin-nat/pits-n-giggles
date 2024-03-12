@@ -44,10 +44,11 @@ import telemetry_data as TelData
 
 class TelemetryWebServer:
     def __init__(self,
-                port: int,
-                packet_capture_enabled: bool,
-                client_poll_interval_ms: int,
-                debug_mode: bool = False):
+        port: int,
+        packet_capture_enabled: bool,
+        client_poll_interval_ms: int,
+        debug_mode: bool,
+        num_adjacent_cars: int):
         """
         Initialize TelemetryServer.
 
@@ -55,7 +56,8 @@ class TelemetryWebServer:
             port (int): Port number for the server.
             packet_capture (bool) - True if packet capture is enabled
             client_refresh_interval_ms (int) - The interval at which the client is to poll the server for data
-            debug_mode (bool, optional): Enable debug mode. Defaults to False.
+            debug_mode (bool): Enable debug mode.
+            num_adjacent_cars (int): The number of cars adjacent to player to be included in telemetry-info response
         """
         self.m_app = Flask(__name__)
         self.m_app.config['PROPAGATE_EXCEPTIONS'] = True
@@ -63,6 +65,7 @@ class TelemetryWebServer:
         self.m_debug_mode = debug_mode
         self.m_packet_capture_enabled = packet_capture_enabled
         self.m_client_poll_interval_ms = client_poll_interval_ms
+        self.m_num_adjacent_cars = num_adjacent_cars
 
         # Define your endpoint
         @self.m_app.route('/telemetry-info')
@@ -73,7 +76,7 @@ class TelemetryWebServer:
             Returns:
                 str: Telemetry data in JSON format.
             """
-            telemetry_data = self.getTelemetryData()
+            telemetry_data = self.getRaceTelemetryInfo()
             return telemetry_data
 
         # Define your endpoint
@@ -97,18 +100,6 @@ class TelemetryWebServer:
                 str: JSON response indicating success or failure.
             """
             return self.saveTelemetryData()
-
-        @self.m_app.route('/clear-data')
-        def clearData() -> Dict:
-            """
-            Endpoint for saving telemetry packet capture.
-
-            Returns:
-                str: JSON response indicating success or failure.
-            """
-
-            TelData.clearData()
-            return {"clear-status" : "success"},HTTPStatus.OK
 
         @self.m_app.route('/driver-info', methods=['GET'])
         def driverInfo() -> Dict:
@@ -185,7 +176,7 @@ class TelemetryWebServer:
         """
         return value if value is not None else default_value
 
-    def getTelemetryData(self) -> Dict:
+    def getRaceTelemetryInfo(self) -> Dict:
         """
         Get telemetry data in JSON format.
 
@@ -194,7 +185,7 @@ class TelemetryWebServer:
         """
 
         # Fetch the data from the data stores
-        driver_data, fastest_lap_overall = TelData.getDriverData()
+        driver_data, fastest_lap_overall = TelData.getDriverData(self.m_num_adjacent_cars)
         circuit, track_temp, event_type, total_laps, curr_lap, \
             safety_car_status, weather_forecast_samples, pit_speed_limit, \
                     final_classification_received = TelData.getGlobals()

@@ -22,7 +22,7 @@
 
 import struct
 import time
-from typing import Optional, List, Tuple, Generator
+from typing import Optional, List, Tuple, Generator, Callable, Any
 import sys
 
 class F1PktCapFileHeader:
@@ -232,16 +232,13 @@ class F1PacketCapture:
             file_name(str): If specified, will parse the given file into this container
         """
         self.m_packet_history: List[F1PktCapMessage] = []
+        self.m_header = F1PktCapFileHeader(
+            major_version=self.major_ver,
+            minor_version=self.minor_ver,
+            num_packets=0,
+            is_little_endian=self.is_little_endian)
         if file_name:
             self.readFromFile(file_name, append=False)
-        else:
-            self.m_header = F1PktCapFileHeader(self.major_ver, self.minor_ver, 0, self.is_little_endian)
-
-    def clear(self):
-        """
-        Clear the packet history table
-        """
-        self.m_packet_history = []
 
     def add(self, data: bytes):
         """
@@ -263,64 +260,78 @@ class F1PacketCapture:
 
         return self.m_header.num_packets
 
-    def dumpToFile(self, file_name: Optional[str] = None, append: bool = False) -> Tuple[str, int, int]:
+    def dumpToFile(self,
+        file_name: Optional[str] = None,
+        progress_update_callback: Optional[Callable] = None,
+        progress_update_callback_arg: Optional[Any] = None) -> Tuple[str, int, int]:
         """
         Dump the packet history to a binary file.
 
-        Parameters:
-        - file_name (str, optional): Name of the file. If not provided, a timestamped filename will be generated.
-        - append (bool): If True, append to an existing file; otherwise, create a new file.
+        Arguments:
+            - file_name (str, optional): Name of the file. If not provided, a timestamped filename will be generated.
+            - progress_update_callback (Callable): If not None, will be called with two args (both int)
+                    - The current packet count
+                    - The total number of packets
+                    - The optional argument passed in
+            - progress_update_callback_arg (Any): Optional argument passed to the progress_update_callback
 
         Returns:
-        - str: The filename where the data is saved. None if nothing is written
-        - int: The number of packets written. 0 if nothing is written
-        - int: The number of bytes written. 0 if nothing is written
+            - str: The filename where the data is saved. None if nothing is written
+            - int: The number of packets written. 0 if nothing is written
+            - int: The number of bytes written. 0 if nothing is written
         """
 
         if len(self.m_packet_history) == 0:
             return None, 0, 0
-
-        mode = "ab" if append else "wb"
 
         if file_name is None:
             timestamp_str = time.strftime("%Y%m%d%H%M%S", time.localtime())
             file_name = f"capture_{timestamp_str}." + self.file_extension
 
         byte_count = 0
-        packet_count = len(self.m_packet_history)
+        total_packet_count = len(self.m_packet_history)
 
         # Construct the header
         header = F1PktCapFileHeader(
             major_version=self.major_ver,
             minor_version=self.minor_ver,
-            num_packets=packet_count,
+            num_packets=total_packet_count,
             is_little_endian=self.is_little_endian)
 
         # Write to file
-        with open(file_name, mode) as file:
+        with open(file_name, "wb") as file:
             # First, write the header
             file.write(header.to_bytes())
             # Next write all packets
-            for entry in self.m_packet_history:
+            for curr_packet_count, entry in enumerate(self.m_packet_history):
                 data_to_write = entry.to_bytes()
                 file.write(data_to_write)
                 byte_count += len(data_to_write)
+                if progress_update_callback:
+                    if progress_update_callback_arg:
+                        progress_update_callback(curr_packet_count, total_packet_count, progress_update_callback_arg)
+                    else:
+                        progress_update_callback(curr_packet_count, total_packet_count)
 
-        return file_name, packet_count, byte_count
+        return file_name, total_packet_count, byte_count
 
     def readFromFile(self, file_name: str, append:bool = False) -> None:
         """
         Read packet entries from a binary file and populate the packet history.
 
         Parameters:
-        - file_name (str): The name of the file to read from.
-        - append (bool): If true, will append the file contents into the existing table
-                            If false, will clear the table before reading the file
+            - file_name (str): The name of the file to read from.
+            - append (bool): If true, will append the file contents into the existing table
+                                If false, will clear the table before reading the file
+
+        Raises:
+            - ValueError: If the number of packets mentioned in the file does not match
+                the number of packets in the file body
         """
         # Clear existing entries before reading from file if not in append mode
 
         if not append:
-            self.m_packet_history.clear()
+            self.clear()
 
         with open(file_name, "rb") as file:
             # First, fetch the file header
@@ -345,6 +356,9 @@ class F1PacketCapture:
                 entry = F1PktCapMessage.from_bytes(entry_data, self.m_header.is_little_endian)
                 self.m_packet_history.append(entry)
 
+        if self.m_header.num_packets != len(self.m_packet_history):
+            raise ValueError("Number of packets in the file does not match the header. Possibly corrupt file")
+
     def getPackets(self) -> Generator[Tuple[float, bytes], None, None]:
         """
         Generate packets from the packet history.
@@ -362,3 +376,11 @@ class F1PacketCapture:
             float: Timestamp
         """
         return self.m_packet_history[0].m_timestamp if len(self.m_packet_history) > 0 else None
+
+    def clear(self) -> None:
+        """
+       Clear the packet history table and reset the number of packets.
+        """
+
+        self.m_packet_history.clear()
+        self.m_header.num_packets = 0
