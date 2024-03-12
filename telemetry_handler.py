@@ -34,6 +34,16 @@ from datetime import datetime
 import os
 import logging
 import json
+import csv
+import threading
+try:
+    from tqdm import tqdm
+except ImportError:
+    print("tqdm is not installed. Installing...")
+    import subprocess
+    subprocess.check_call(["pip3", "install", "tqdm"])
+    print("tqdm installation complete.")
+    from tqdm import tqdm
 
 class PacketCaptureMode(Enum):
     """Enum representing packet capture modes."""
@@ -49,6 +59,8 @@ g_overtakes_history = []
 g_overtakes_table_lock = Lock()
 g_post_race_data_autosave = False
 g_directory_mapping = {}
+g_udp_custom_action_code = None
+g_player_recorded_events_history = []
 
 class PktSaveStatus(Enum):
     """Enum representing packet save status."""
@@ -71,13 +83,15 @@ class GetOvertakesStatus(Enum):
     def __str__(self):
         return self.name
 
-def initAutosaves(post_race_data_autosave: bool):
+def initAutosaves(post_race_data_autosave: bool, udp_custom_action_code: Optional[int]):
     global g_overtakes_history
     global g_overtakes_table_lock
     global g_post_race_data_autosave
+    global g_udp_custom_action_code
     g_overtakes_history = []
     g_overtakes_table_lock = Lock()
     g_post_race_data_autosave = post_race_data_autosave
+    g_udp_custom_action_code = udp_custom_action_code
 
 def initDirectories():
 
@@ -99,6 +113,7 @@ def initDirectories():
     ts_prefix = datetime.now().strftime("%Y_%m_%d")
     g_directory_mapping['race-info'] = "data/" + ts_prefix + "/race-info/"
     g_directory_mapping['packet-captures'] = "data/" + ts_prefix + "/packet-captures/"
+    g_directory_mapping['player-markers'] = "data/" + ts_prefix + "/player-markers/"
 
     for directory in g_directory_mapping.values():
         ensureDirectoryExists(directory)
@@ -123,10 +138,7 @@ def addRawPacket(packet: List[bytes]):
     Add raw packet to the packet capture table.
 
     Parameters:
-    - packet (List[bytes]): The raw packet data.
-
-    Returns:
-    None
+        - packet (List[bytes]): The raw packet data.
     """
     global g_packet_capture_table
     global g_packet_capture_table_lock
@@ -148,6 +160,7 @@ def dumpPktCapToFile(file_name: Optional[str] = None, clear_db: bool = False, re
     Returns:
     Tuple[PktSaveStatus, str, int, int]: A tuple representing the save status, file name, number of packets, and number of bytes.
     """
+
     global g_pkt_cap_mode
 
     if g_pkt_cap_mode == PacketCaptureMode.DISABLED:
@@ -156,6 +169,25 @@ def dumpPktCapToFile(file_name: Optional[str] = None, clear_db: bool = False, re
     global g_packet_capture_table
     global g_packet_capture_table_lock
 
+    progress_bar = tqdm(
+        total=g_packet_capture_table.getNumPackets(),
+        desc='Saving Packets',
+        unit='packet',
+        mininterval=0.1
+    )
+
+    def progressBarUpdater(current_packets: int, total_packets: int, progress_bar: tqdm) -> None:
+        """
+        Updates the progress bar for the current packet out of the total packets.
+
+        Args:
+            current_packets (int): The current packet number.
+            total_packets (int): The total number of packets.
+            progress_bar (tqdm): The progress bar to be updated.
+        """
+
+        progress_bar.update(1)
+
     with g_packet_capture_table_lock:
         try:
             if not file_name:
@@ -163,7 +195,11 @@ def dumpPktCapToFile(file_name: Optional[str] = None, clear_db: bool = False, re
                 file_name = g_directory_mapping['packet-captures'] + \
                             'capture_' + getTimestampStr() + \
                             '.' + g_packet_capture_table.file_extension
-            file_name, num_packets, num_bytes = g_packet_capture_table.dumpToFile(file_name)
+            file_name, num_packets, num_bytes = g_packet_capture_table.dumpToFile(
+                file_name=file_name,
+                progress_update_callback=progressBarUpdater,
+                progress_update_callback_arg=progress_bar)
+
             if clear_db:
                 g_packet_capture_table.clear()
             if (file_name is not None) and (num_bytes > 0) and (num_packets > 0):
@@ -246,6 +282,74 @@ def writeDictToJsonFile(data_dict: Dict, file_name: str) -> None:
     """
     with open(file_name, 'w', encoding='utf-8') as json_file:
         json.dump(data_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
+
+def writeToCsvFile(g_custom_player_markers: List[str], custom_marker_file_name: str):
+    """
+    Write the given custom player markers to a CSV file.
+
+    Args:
+        g_custom_player_markers (list): The list of custom player markers to be written to the CSV file.
+        custom_marker_file_name (str): The name of the CSV file to write the markers to.
+    """
+
+    with open(custom_marker_file_name, 'w', encoding='utf-8', newline='') as file:
+        writer = csv.writer(file)
+        for marker in g_custom_player_markers:
+            writer.writerow(marker)
+
+def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
+    """
+    Write the contents of final_json, packet capture and player recorded events to a file.
+
+    Arguments:
+        final_json (Dict): Dictionary containing JSON data after final classification
+    """
+
+    global g_directory_mapping
+    global g_overtakes_table_lock
+    global g_directory_mapping
+    event_str = TelData.getEventInfoStr()
+    if not event_str:
+        return
+
+    # Capture the packets if required
+    global g_pkt_cap_mode
+    if g_pkt_cap_mode == PacketCaptureMode.ENABLED_WITH_AUTOSAVE:
+        if not file_name:
+            file_name = 'capture_' + event_str + getTimestampStr() + \
+                F1PacketCapture.file_extension
+            file_name = g_directory_mapping["packet-captures"] + file_name
+        dumpPktCapToFile(file_name=file_name,reason='Final Classification')
+
+    # Save the JSON data
+    global g_post_race_data_autosave
+    if g_post_race_data_autosave:
+        with g_overtakes_table_lock:
+            player_name = TelData.getPlayerName()
+            overtake_analyzer = OvertakeAnalyzer(
+                                    input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST,
+                                    input=g_overtakes_history)
+            overtake_analyzer.getFormattedString(driver_name=player_name, is_case_sensitive=True)
+            final_json['overtakes'] = {
+                'records' : g_overtakes_history
+            }
+            # Add the new keys directly to the top level of final_json
+            final_json['overtakes'].update(
+                overtake_analyzer.toJSON(
+                    driver_name=player_name,
+                    is_case_sensitive=True))
+        final_json_file_name = g_directory_mapping['race-info'] + 'race_info_' + \
+                event_str + getTimestampStr() + '.json'
+        writeDictToJsonFile(final_json, final_json_file_name)
+        logging.info("Wrote race info to " + final_json_file_name)
+
+    # Save the custom player recorded markers
+    global g_player_recorded_events_history
+    if g_player_recorded_events_history:
+        custom_marker_file_name = g_directory_mapping['race-info'] + 'custom_player_markers_' + \
+                event_str + getTimestampStr() + '.json'
+        writeToCsvFile(g_player_recorded_events_history, custom_marker_file_name)
+        logging.info("Wrote custom player markers to " + custom_marker_file_name)
 
 class F12023TelemetryHandler:
     """
@@ -370,8 +474,17 @@ class F12023TelemetryHandler:
         global g_overtakes_history
         global g_num_active_cars
         if packet.m_eventStringCode == PacketEventData.EventPacketType.BUTTON_STATUS:
-            # explicitly handle this bullshit first because this just adds unnecessary load
-            return
+            if (g_udp_custom_action_code is not None) and \
+                (packet.mEventDetails.isUDPActionPressed(g_udp_custom_action_code)):
+
+                logging.debug('UDP action ' + str(g_udp_custom_action_code) + ' pressed')
+                global g_player_recorded_events_history
+                player_recorded_event_str = TelData.getPlayerRecordedEventCsvStr(add_to_queue=True)
+                if player_recorded_event_str:
+                    g_player_recorded_events_history.append(player_recorded_event_str)
+                    logging.debug('Player recorded event: ' + player_recorded_event_str)
+                else:
+                    logging.error("Unable to generate player_recorded_event_str")
         elif packet.m_eventStringCode == PacketEventData.EventPacketType.FASTEST_LAP:
             TelData.processFastestLapUpdate(packet)
         elif packet.m_eventStringCode == PacketEventData.EventPacketType.SESSION_STARTED:
@@ -380,6 +493,7 @@ class F12023TelemetryHandler:
             # Clear the list regardless of event type
             with g_overtakes_table_lock:
                 g_overtakes_history.clear()
+                g_player_recorded_events_history.clear()
             logging.info("Received SESSION_STARTED")
         elif packet.m_eventStringCode == PacketEventData.EventPacketType.RETIREMENT:
             TelData.processRetirementEvent(packet)
@@ -425,49 +539,21 @@ class F12023TelemetryHandler:
 
         # Perform the auto save stuff only for races
         _, _, event_type_str, _, _, _, _, _, _ = TelData.getGlobals()
-        global g_overtakes_table_lock
-        global g_directory_mapping
-        supported_event_types = [str(SessionType.RACE), str(SessionType.RACE_2), str(SessionType.RACE_3)]
-        is_event_supported = False
-        for event_type in supported_event_types:
-            if event_type in event_type_str:
-                is_event_supported = True
+        unsupported_event_types = [
+            SessionType.PRACTICE_1,
+            SessionType.PRACTICE_2,
+            SessionType.PRACTICE_3,
+            SessionType.SHORT_PRACTICE,
+            SessionType.TIME_TRIAL,
+            SessionType.UNKNOWN
+        ]
+        is_event_supported = True
+        for event_type in unsupported_event_types:
+            if str(event_type) in event_type_str:
+                is_event_supported = False
                 break
         if is_event_supported:
-
-            global g_directory_mapping
-            event_str = TelData.getEventInfoStr()
-            if not event_str:
-                return
-            # Capture the packets if required
-            global g_pkt_cap_mode
-            if g_pkt_cap_mode == PacketCaptureMode.ENABLED_WITH_AUTOSAVE:
-                file_name = 'capture_' + event_str + getTimestampStr() + \
-                    F1PacketCapture.file_extension
-                file_name = g_directory_mapping["packet-captures"] + file_name
-                dumpPktCapToFile(file_name=file_name,reason='Final Classification')
-
-            # Save the JSON data
-            global g_post_race_data_autosave
-            if g_post_race_data_autosave:
-                with g_overtakes_table_lock:
-                    player_name = TelData.getPlayerName()
-                    overtake_analyzer = OvertakeAnalyzer(
-                                            input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST,
-                                            input=g_overtakes_history)
-                    overtake_analyzer.getFormattedString(driver_name=player_name, is_case_sensitive=True)
-                    final_json['overtakes'] = {
-                        'records' : g_overtakes_history
-                    }
-                    # Add the new keys directly to the top level of final_json
-                    final_json['overtakes'].update(
-                        overtake_analyzer.toJSON(
-                            driver_name=player_name,
-                            is_case_sensitive=True))
-                final_json_file_name = g_directory_mapping['race-info'] + 'race_info_' + \
-                        event_str + getTimestampStr() + '.json'
-                writeDictToJsonFile(final_json, final_json_file_name)
-                logging.info("Wrote race info to " + final_json_file_name)
+            postGameDumpToFile(final_json)
 
         return
 
