@@ -1,0 +1,106 @@
+[MASTER]
+
+# Specify additional builtins here separated by comma if necessary
+# ex: additional-builtins=foo,bar
+additional-builtins=
+
+# A comma-separated list of package or module names from where C extensions may be loaded.
+extension-pkg-whitelist=
+
+# Add files or directories to the blacklist. They should be base names, not paths.
+# ex: ignore=CVS
+ignore=
+
+# Add files or directories matching the regex patterns to the blacklist. The regex matches against base names, not paths.
+# ex: ignore-patterns=CVS
+ignore-patterns=
+
+# Python code to execute, usually for sys.path manipulation such as
+# pygtk.require().
+# ex: init-hook='import sys; sys.path.insert(0, "/path/to/your/modules/")'
+init-hook=
+
+# Use multiple processes to speed up Pylint. Specifying 0 will auto-detect the number of processors available to use.
+jobs=0
+
+# Pickle collected data for later comparisons.
+persistent=yes
+
+# When enabled, pylint would attempt to guess common misconfiguration and emit user-friendly hints instead of false-positive error messages
+suggestion-mode=yes
+
+# Add files or directories to the whitelist. They should be base names, not paths.
+# ex: include=test*.py,tests/*.py
+include=
+
+# Use a list of regexes for files or directories to skip checking.
+# ex: exclude=test/*.py,docs/*.py
+exclude=
+
+[MESSAGES CONTROL]
+
+# Only show warnings with the listed confidence levels. Leave empty to show all. Possible levels: HIGH, INFERENCE, INFERENCE_FAILURE, UNDEFINED.
+# confidence=
+
+# Disable the message, report, category or checker with the given id(s). You can either give multiple identifiers separated by comma (,) or put this option multiple times (only on the command line, not in the configuration file where it should appear only once).
+# ex: disable=locally-disabled, globally-disabled
+disable=
+
+# Enable the message, report, category or checker with the given id(s). You can either give multiple identifiers separated by comma (,) or put this option multiple times (only on the command line, not in the configuration file where it should appear only once).
+# ex: enable=unneeded-semicolon, trailing-newlines
+enable=
+
+# Only show warnings for the listed message codes. Leave empty to show all. You can also pass a comma separated string of message codes. For example, to display only the unused-argument and unused-variable messages, use --enable=all --disable=all,unused-argument,unused-variable
+# ex: pylint -f parseable -d all -e W0312,W0311,R0914 mymodule.py
+select=
+
+[REPORTS]
+
+# Set the output format. Available formats are text, parseable, colorized, json.
+output-format=text
+
+# Set the output format for parseable (minimal) mode. Available formats are pylint, parseable.
+parseable-output=
+
+[TYPECHECK]
+
+# List of decorators that produce context managers, such as contextlib.contextmanager. Add to this list to register other decorators that produce valid context managers.
+contextmanager-decorators=contextlib.contextmanager
+
+# List of members which are set dynamically and missed by pylint inference system, and so shouldn't trigger E1101 when accessed. Python regular expressions are accepted.
+generated-members=
+
+[VARIABLES]
+
+# List of additional names supposed to be defined in builtins. Remember that you should avoid to define new builtins when possible.
+# ex: additional-builtins=your_custom_function, your_custom_attribute
+additional-builtins=
+
+[FORMAT]
+
+# Maximum line length
+max-line-length=120
+
+# Format string used by `--msg-template` (only applicable if enabled)
+# format=
+
+# Make pylint assume sys.argv exists when running in a script
+no-implicit-str-concat=yes
+
+# Add a trailing newline to the end of the file
+# ensure-newline-eof=yes
+
+# Allow the body of a single clause compound statement to not be on the same line as the header if they fit on one line
+# single-line-if-stmt=no
+
+# Allow the body of a while or for loop to be on the same line as the loop header
+# single-line-loop=no
+
+[BASIC]
+
+# Naming conventions
+good-names=i,j,k,_  # for single-letter variables and underscore
+           Snake_Case_Variable
+           CamelCaseFunction
+           PascalCaseClass
+

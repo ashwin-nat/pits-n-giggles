@@ -21,12 +21,11 @@
 # SOFTWARE.
 
 import struct
-from typing import Tuple
 
 # ------------------ COMMON HEADER ---------------------------------------------
 
-header_format_string = "<HBBBBBQfIIBB"
-F1_23_PACKET_HEADER_LEN: int = struct.calcsize(header_format_string)
+HEADER_FORMAT_STRING = "<HBBBBBQfIIBB"
+F1_23_PACKET_HEADER_LEN: int = struct.calcsize(HEADER_FORMAT_STRING)
 
 '''
     H # packet format
@@ -45,8 +44,8 @@ F1_23_PACKET_HEADER_LEN: int = struct.calcsize(header_format_string)
 
 # ------------------ EVENT 0 - MOTION ------------------------------------------
 
-motion_format_string = "<ffffffhhhhhhffffff"
-F1_23_MOTION_PACKET_PER_CAR_LEN: int = struct.calcsize(motion_format_string)
+MOTION_FORMAT_STRING = "<ffffffhhhhhhffffff"
+F1_23_MOTION_PACKET_PER_CAR_LEN: int = struct.calcsize(MOTION_FORMAT_STRING)
 
 '''
     f # float - World space X position - metres
@@ -71,15 +70,15 @@ F1_23_MOTION_PACKET_PER_CAR_LEN: int = struct.calcsize(motion_format_string)
 
 # ------------------ EVENT 1 - SESSION------------------------------------------
 
-marshal_zone_format_str = "<fb"
-marshal_zone_packet_len = struct.calcsize(marshal_zone_format_str)
+MARSHAL_ZONE_FORMAT_STR = "<fb"
+marshal_zone_packet_len = struct.calcsize(MARSHAL_ZONE_FORMAT_STR)
 '''
     f # float - Fraction (0..1) of way through the lap the marshal zone starts
     b # int8  - -1 = invalid/unknown, 0 = none, 1 = green, 2 = blue, 3 = yellow
 '''
 
-weather_forecast_sample_format_str = "<BBBbbbbB"
-weather_forecast_sample_packet_len = struct.calcsize(weather_forecast_sample_format_str)
+WEATHER_FORECAST_SAMPLE_FORMAT_STR = "<BBBbbbbB"
+WEATHER_FORECAST_SAMPLE_PACKET_LEN = struct.calcsize(WEATHER_FORECAST_SAMPLE_FORMAT_STR)
 '''
     B # uint8  -    0 = unknown, 1 = P1, 2 = P2, 3 = P3, 4 = Short P, 5 = Q1
                 //  6 = Q2, 7 = Q3, 8 = Short Q, 9 = OSQ, 10 = R, 11 = R2
@@ -95,13 +94,13 @@ weather_forecast_sample_packet_len = struct.calcsize(weather_forecast_sample_for
 
 '''
 
-packet_session_section_0_format_str = ("<BbbbHBbBHHBBBBBB")
-F1_23_SESSION_SECTION_0_PACKET_LEN = struct.calcsize(packet_session_section_0_format_str)
+PACKET_SESSION_SECTION_0_FORMAT_STR = "<BbbbHBbBHHBBBBBB"
+F1_23_SESSION_SECTION_0_PACKET_LEN = struct.calcsize(PACKET_SESSION_SECTION_0_FORMAT_STR)
 
-packet_session_section_2_format_str = "<BBB"
-F1_23_SESSION_SECTION_2_PACKET_LEN = struct.calcsize(packet_session_section_2_format_str)
+PACKET_SESSION_SECTION_2_FORMAT_STR = "<BBB"
+F1_23_SESSION_SECTION_2_PACKET_LEN = struct.calcsize(PACKET_SESSION_SECTION_2_FORMAT_STR)
 
-packet_session_section_4_format_str = ("<"
+PACKET_SESSION_SECTION_4_FORMAT_STR = ("<"
     "B" # uint8   - 0 = Perfect, 1 = Approximate
     "B" # uint8   - AI Difficulty rating - 0-110
     "I" # uint32  - Identifier for season - persists across saves
@@ -132,7 +131,7 @@ packet_session_section_4_format_str = ("<"
     "B" # uint8    -       m_numVirtualSafetyCarPeriods;       // Number of virtual safety cars called
     "B" # uint8    -       m_numRedFlagPeriods;                // Number of red flags called during session
 )
-F1_23_SESSION_SECTION_4_PACKET_LEN = struct.calcsize(packet_session_section_4_format_str)
+F1_23_SESSION_SECTION_4_PACKET_LEN = struct.calcsize(PACKET_SESSION_SECTION_4_FORMAT_STR)
 
 '''
     # skipped header
@@ -209,7 +208,7 @@ F1_23_SESSION_SECTION_4_PACKET_LEN = struct.calcsize(packet_session_section_4_fo
 
 # ------------------ EVENT 2 - LAP DATA ----------------------------------------
 
-lap_time_packet_format_str = ("<"
+LAP_TIME_PACKET_FORMAT_STR = ("<"
     "I" # uint32 - Last lap time in milliseconds
     "I" # uint32 - Current time around the lap in milliseconds
     "H" # uint16 - Sector 1 time in milliseconds
@@ -241,10 +240,10 @@ lap_time_packet_format_str = ("<"
     "H" # uint16 - Time of the actual pit stop in ms
     "B" # uint8  - Whether the car should serve a penalty at this stop
 )
-F1_23_LAP_DATA_PACKET_PER_CAR_LEN:int = struct.calcsize(lap_time_packet_format_str)
+F1_23_LAP_DATA_PACKET_PER_CAR_LEN:int = struct.calcsize(LAP_TIME_PACKET_FORMAT_STR)
 
 # ------------------ EVENT 4 - PARTICIPANTS ----------------------------------------
-participant_format_string = ("<"
+PARTICIPANT_FORMAT_STRING = ("<"
     "B" # uint8      m_aiControlled;      // Whether the vehicle is AI (1) or Human (0) controlled
     "B" # uint8      m_driverId;       // Driver id - see appendix, 255 if network human
     "B" # uint8      m_networkId;       // Network id – unique identifier for network players
@@ -258,10 +257,10 @@ participant_format_string = ("<"
     "B" # uint8      m_showOnlineNames;   // The player's show online names setting, 0 = off, 1 = on
     "B" # uint8      m_platform;          // 1 = Steam, 3 = PlayStation, 4 = Xbox, 6 = Origin, 255 = unknown
 )
-F1_23_PER_PARTICIPANT_INFO_LEN = struct.calcsize(participant_format_string)
+F1_23_PER_PARTICIPANT_INFO_LEN = struct.calcsize(PARTICIPANT_FORMAT_STRING)
 
 # ------------------ EVENT 5 - CAR SETUPS ----------------------------------------
-car_setups_format_string = ("<"
+CAR_SETUPS_FORMAT_STRING = ("<"
     "B" # uint8     m_frontWing;                // Front wing aero
     "B" # uint8     m_rearWing;                 // Rear wing aero
     "B" # uint8     m_onThrottle;               // Differential adjustment on throttle (percentage)
@@ -285,7 +284,7 @@ car_setups_format_string = ("<"
     "f" # uint8     m_ballast;                  // Ballast
     "B" # float     m_fuelLoad;                 // Fuel load
 )
-F1_23_CAR_SETUPS_LEN = struct.calcsize(car_setups_format_string)
+F1_23_CAR_SETUPS_LEN = struct.calcsize(CAR_SETUPS_FORMAT_STRING)
 
 # ------------------ EVENT 6 - CAR TELEMETRY ----------------------------------------
 # car_telemetry_format_string = ("<"
@@ -307,7 +306,7 @@ F1_23_CAR_SETUPS_LEN = struct.calcsize(car_setups_format_string)
 #     "4B" # uint8     m_surfaceType[4];           // Driving surface, see appendices
 # )
 
-car_telemetry_format_string = ("<"
+CAR_TELEMETRY_FORMAT_STRING = ("<"
     "H" # uint16    m_speed;                    // Speed of car in kilometres per hour
     "f" # float     m_throttle;                 // Amount of throttle applied (0.0 to 1.0)
     "f" # float     m_steer;                    // Steering (-1.0 (full lock left) to 1.0 (full lock right))
@@ -325,11 +324,11 @@ car_telemetry_format_string = ("<"
     "4f" # float     m_tyresPressure[4];         // Tyres pressure (PSI)
     "4B" # uint8     m_surfaceType[4];           // Driving surface, see appendices
 )
-F1_23_CAR_TELEMETRY_LEN = struct.calcsize(car_telemetry_format_string)
+F1_23_CAR_TELEMETRY_LEN = struct.calcsize(CAR_TELEMETRY_FORMAT_STRING)
 
 # ------------------ EVENT 7 - CAR STATUS ----------------------------------------
 
-car_status_format_string = ("<"
+CAR_STATUS_FORMAT_STRING = ("<"
     "B" # uint8       m_tractionControl;          // Traction control - 0 = off, 1 = medium, 2 = full
     "B" # uint8       m_antiLockBrakes;           // 0 (off) - 1 (on)
     "B" # uint8       m_fuelMix;                  // Fuel mix - 0 = lean, 1 = standard, 2 = rich, 3 = max
@@ -367,11 +366,11 @@ car_status_format_string = ("<"
     "f" # float       m_ersDeployedThisLap;       // ERS energy deployed this lap
     "B" # uint8       m_networkPaused;            // Whether the car is paused in a network game
 )
-F1_23_CAR_STATUS_LEN = struct.calcsize(car_status_format_string)
+F1_23_CAR_STATUS_LEN = struct.calcsize(CAR_STATUS_FORMAT_STRING)
 
 # ------------------ EVENT 8 - FINAL CLASSIFICATION ----------------------------------------
 
-final_classification_per_car_format_string = ("<"
+FINAL_CLASSIFICATION_PER_CAR_FORMAT_STRING = ("<"
     "B" # uint8     m_position;              // Finishing position
     "B" # uint8     m_numLaps;               // Number of laps completed
     "B" # uint8     m_gridPosition;          // Grid position of the car
@@ -389,11 +388,11 @@ final_classification_per_car_format_string = ("<"
     "8B" # uint8     m_tyreStintsVisual[8];   // Visual tyres used by this driver
     "8B" # uint8     m_tyreStintsEndLaps[8];  // The lap number stints end on
 )
-F1_23_FINAL_CLASSIFICATION_PER_CAR_LEN = struct.calcsize(final_classification_per_car_format_string)
+F1_23_FINAL_CLASSIFICATION_PER_CAR_LEN = struct.calcsize(FINAL_CLASSIFICATION_PER_CAR_FORMAT_STRING)
 
 # ------------------ EVENT 9 - LOBBY INFO ----------------------------------------
 
-lobby_info_format_string = ("<"
+LOBBY_INFO_FORMAT_STRING = ("<"
     "B" # uint8     m_aiControlled;      // Whether the vehicle is AI (1) or Human (0) controlled
     "B" # uint8     m_teamId;            // Team id - see appendix (255 if no team currently selected)
     "B" # uint8     m_nationality;       // Nationality of the driver
@@ -403,11 +402,11 @@ lobby_info_format_string = ("<"
     "B" # uint8     m_carNumber;         // Car number of the player
     "B" # uint8     m_readyStatus;       // 0 = not ready, 1 = ready, 2 = spectating
 )
-F1_23_LOBBY_INFO_PER_PLAYER_LEN = struct.calcsize(lobby_info_format_string)
+F1_23_LOBBY_INFO_PER_PLAYER_LEN = struct.calcsize(LOBBY_INFO_FORMAT_STRING)
 
 # ------------------ EVENT 10 - CAR DAMAGE ----------------------------------------
 
-car_damage_packet_format_string = ("<"
+CAR_DAMAGE_PACKET_FORMAT_STRING = ("<"
     "4f" # float     m_tyresWear[4];                     // Tyre wear (percentage)
     "4B" # uint8     m_tyresDamage[4];                   // Tyre damage (percentage)
     "4B" # uint8     m_brakesDamage[4];                  // Brakes damage (percentage)
@@ -430,10 +429,10 @@ car_damage_packet_format_string = ("<"
     "B" # uint8     m_engineBlown;                      // Engine blown, 0 = OK, 1 = fault
     "B" # uint8     m_engineSeized;                     // Engine seized, 0 = OK, 1 = fault
 )
-F1_23_DAMAGE_PER_CAR_PACKET_LEN = struct.calcsize(car_damage_packet_format_string)
+F1_23_DAMAGE_PER_CAR_PACKET_LEN = struct.calcsize(CAR_DAMAGE_PACKET_FORMAT_STRING)
 
 # ------------------ EVENT 11 - SESSION HISTORY ----------------------------------------
-session_history_lap_history_data_format_string = ("<"
+SESSION_HISTORY_LAP_HISTORY_DATA_FORMAT_STRING = ("<"
     "I" # uint32    m_lapTimeInMS;           // Lap time in milliseconds
     "H" # uint16    m_sector1TimeInMS;       // Sector 1 time in milliseconds
     "B" # uint8     m_sector1TimeMinutes;    // Sector 1 whole minute part
@@ -444,16 +443,16 @@ session_history_lap_history_data_format_string = ("<"
     "B" # uint8     m_lapValidBitFlags;      // 0x01 bit set-lap valid,      0x02 bit set-sector 1 valid
                                     #    // 0x04 bit set-sector 2 valid, 0x08 bit set-sector 3 valid
 )
-F1_23_SESSION_HISTORY_LAP_HISTORY_DATA_LEN = struct.calcsize(session_history_lap_history_data_format_string)
+F1_23_SESSION_HISTORY_LAP_HISTORY_DATA_LEN = struct.calcsize(SESSION_HISTORY_LAP_HISTORY_DATA_FORMAT_STRING)
 
-session_history_tyre_stint_format_string = ("<"
+SESSION_HISTORY_TYRE_STINT_FORMAT_STRING = ("<"
     "B" # uint8     m_endLap;                // Lap the tyre usage ends on (255 of current tyre)
     "B" # uint8     m_tyreActualCompound;    // Actual tyres used by this driver
     "B" # uint8     m_tyreVisualCompound;    // Visual tyres used by this driver
 )
-F1_23_SESSION_HISTORY_TYRE_STINT_LEN = struct.calcsize(session_history_tyre_stint_format_string)
+F1_23_SESSION_HISTORY_TYRE_STINT_LEN = struct.calcsize(SESSION_HISTORY_TYRE_STINT_FORMAT_STRING)
 
-session_history_format_string = ("<"
+SESSION_HISTORY_FORMAT_STRING = ("<"
     "B" # uint8         m_carIdx;                   // Index of the car this lap data relates to
     "B" # uint8         m_numLaps;                  // Num laps in the data (including current partial lap)
     "B" # uint8         m_numTyreStints;            // Number of tyre stints in the data
@@ -463,10 +462,10 @@ session_history_format_string = ("<"
     "B" # uint8         m_bestSector2LapNum;        // Lap the best Sector 2 time was achieved on
     "B" # uint8         m_bestSector3LapNum;        // Lap the best Sector 3 time was achieved on
 )
-F1_23_SESSION_HISTORY_LEN = struct.calcsize(session_history_format_string)
+F1_23_SESSION_HISTORY_LEN = struct.calcsize(SESSION_HISTORY_FORMAT_STRING)
 
 # ------------------ EVENT 12 - TYRE SETS ----------------------------------------
-tyre_set_data_per_set_format_string = ("<"
+TYRE_SET_DATA_PER_SET_FORMAT_STRING = ("<"
     "B" # uint8     m_actualTyreCompound;    // Actual tyre compound used
     "B" # uint8     m_visualTyreCompound;    // Visual tyre compound used
     "B" # uint8     m_wear;                  // Tyre wear (percentage)
@@ -477,11 +476,11 @@ tyre_set_data_per_set_format_string = ("<"
     "h" # int16     m_lapDeltaTime;          // Lap delta time in milliseconds compared to fitted set
     "B" # uint8     m_fitted;                // Whether the set is fitted or not
 )
-F1_23_TYRE_SET_DATA_PER_SET_LEN = struct.calcsize(tyre_set_data_per_set_format_string)
+F1_23_TYRE_SET_DATA_PER_SET_LEN = struct.calcsize(TYRE_SET_DATA_PER_SET_FORMAT_STRING)
 
 # ------------------ EVENT 13 - MOTION EX ----------------------------------------
 
-motion_ex_format_string = ("<"
+MOTION_EX_FORMAT_STRING = ("<"
     # // Extra player car ONLY data
     "4f" # float         m_suspensionPosition[4];       // Note: All wheel arrays have the following order:
     "4f" # float         m_suspensionVelocity[4];       // RL, RR, FL, FR
@@ -504,4 +503,4 @@ motion_ex_format_string = ("<"
     "f" # float         m_frontWheelsAngle;            // Current front wheels angle in radians
     "4f" # float         m_wheelVertForce[4];           // Vertical forces for each wheel
 )
-F1_23_MOTION_EX_PACKET_LEN = struct.calcsize(motion_ex_format_string)
+F1_23_MOTION_EX_PACKET_LEN = struct.calcsize(MOTION_EX_FORMAT_STRING)

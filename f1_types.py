@@ -26,8 +26,8 @@
 
 from enum import Enum
 from typing import List, Any, Dict, Optional
-from f1_packet_info import *
 import struct
+from f1_packet_info import *
 
 # ------------------------- PRIVATE FUNCTIONS ----------------------------------
 
@@ -595,7 +595,7 @@ class PacketHeader:
         """
 
         # Unpack the data
-        unpacked_data = struct.unpack(header_format_string, data)
+        unpacked_data = struct.unpack(HEADER_FORMAT_STRING, data)
 
         # Assign values to individual variables
         self.m_packetFormat, self.m_gameYear, self.m_gameMajorVersion, self.m_gameMinorVersion, \
@@ -706,7 +706,7 @@ class CarMotionData:
         - m_pitch (float): Pitch angle in radians.
         - m_roll (float): Roll angle in radians.
         """
-        unpacked_data = struct.unpack(motion_format_string, data)
+        unpacked_data = struct.unpack(MOTION_FORMAT_STRING, data)
 
         self.m_worldPositionX, self.m_worldPositionY, self.m_worldPositionZ, \
         self.m_worldVelocityX, self.m_worldVelocityY, self.m_worldVelocityZ, \
@@ -888,7 +888,7 @@ class MarshalZone:
             data (bytes): List of raw bytes received as part of this
         """
 
-        unpacked_data = struct.unpack(marshal_zone_format_str, data)
+        unpacked_data = struct.unpack(MARSHAL_ZONE_FORMAT_STR, data)
         (
             self.m_zoneStart,   # float - Fraction (0..1) of way through the lap the marshal zone starts
             self.m_zoneFlag     # int8 - -1 = invalid/unknown, 0 = none, 1 = green, 2 = blue, 3 = yellow
@@ -1083,7 +1083,7 @@ class WeatherForecastSample:
             data (bytes): List of raw bytes received as part of this
         """
 
-        unpacked_data = struct.unpack(weather_forecast_sample_format_str, data)
+        unpacked_data = struct.unpack(WEATHER_FORECAST_SAMPLE_FORMAT_STR, data)
         (
             self.m_sessionType,                   # uint8
             self.m_timeOffset,                    # uint8
@@ -1354,7 +1354,7 @@ class PacketSessionData:
         # First, section 0
         section_0_raw_data = _extract_sublist(data, 0, F1_23_SESSION_SECTION_0_PACKET_LEN)
         byte_index_so_far = F1_23_SESSION_SECTION_0_PACKET_LEN
-        unpacked_data = struct.unpack(packet_session_section_0_format_str, section_0_raw_data)
+        unpacked_data = struct.unpack(PACKET_SESSION_SECTION_0_FORMAT_STR, section_0_raw_data)
         (
             self.m_weather,
             self.m_trackTemperature,
@@ -1392,7 +1392,7 @@ class PacketSessionData:
         # Section 2, till numWeatherForecastSamples
         section_2_raw_data = _extract_sublist(data, byte_index_so_far, byte_index_so_far + F1_23_SESSION_SECTION_2_PACKET_LEN)
         byte_index_so_far += F1_23_SESSION_SECTION_2_PACKET_LEN
-        unpacked_data = struct.unpack(packet_session_section_2_format_str, section_2_raw_data)
+        unpacked_data = struct.unpack(PACKET_SESSION_SECTION_2_FORMAT_STR, section_2_raw_data)
         (
             self.m_safetyCarStatus, #           // 0 = no safety car, 1 = full 2 = virtual, 3 = formation lap
             self.m_networkGame, #               // 0 = offline, 1 = online
@@ -1403,11 +1403,11 @@ class PacketSessionData:
         section_2_raw_data = None
 
         # Section 3 - weather forecast samples
-        section_3_size = weather_forecast_sample_packet_len * self.m_maxWeatherForecastSamples
+        section_3_size = WEATHER_FORECAST_SAMPLE_PACKET_LEN * self.m_maxWeatherForecastSamples
         section_3_raw_data = _extract_sublist(data, byte_index_so_far, byte_index_so_far+section_3_size)
         byte_index_so_far += section_3_size
         self.m_weatherForecastSamples: List[WeatherForecastSample] = []  # Array of weather forecast samples
-        for per_weather_sample_raw_data in _split_list(section_3_raw_data, weather_forecast_sample_packet_len):
+        for per_weather_sample_raw_data in _split_list(section_3_raw_data, WEATHER_FORECAST_SAMPLE_PACKET_LEN):
             self.m_weatherForecastSamples.append(WeatherForecastSample(per_weather_sample_raw_data))
         # Trim the unnecessary weatherForecastSamples
         self.m_weatherForecastSamples = self.m_weatherForecastSamples[:self.m_numWeatherForecastSamples]
@@ -1415,7 +1415,7 @@ class PacketSessionData:
 
         # Section 4 - rest of the packet
         section_4_raw_data = _extract_sublist(data, byte_index_so_far, byte_index_so_far+F1_23_SESSION_SECTION_4_PACKET_LEN)
-        unpacked_data = struct.unpack(packet_session_section_4_format_str, section_4_raw_data)
+        unpacked_data = struct.unpack(PACKET_SESSION_SECTION_4_FORMAT_STR, section_4_raw_data)
         (
             self.m_forecastAccuracy,                   # uint8
             self.m_aiDifficulty,                       # uint8
@@ -1754,7 +1754,7 @@ class LapData:
         Raises:
         - struct.error: If the binary data does not match the expected format.
         """
-        unpacked_data = struct.unpack(lap_time_packet_format_str, data)
+        unpacked_data = struct.unpack(LAP_TIME_PACKET_FORMAT_STR, data)
 
         # Assign the members from unpacked_data
         (
@@ -3181,7 +3181,7 @@ class ParticipantData:
         Raises:
             struct.error: If the binary data does not match the expected format.
         """
-        unpacked_data = struct.unpack(participant_format_string, data)
+        unpacked_data = struct.unpack(PARTICIPANT_FORMAT_STRING, data)
         (
             self.m_aiControlled,
             self.m_driverId,
@@ -3424,7 +3424,7 @@ class CarSetupData:
         Raises:
             struct.error: If the binary data does not match the expected format.
         """
-        unpacked_data = struct.unpack(car_setups_format_string, data)
+        unpacked_data = struct.unpack(CAR_SETUPS_FORMAT_STRING, data)
 
         (
             self.m_frontWing,
@@ -3643,7 +3643,7 @@ class CarTelemetryData:
         Raises:
             struct.error: If the binary data does not match the expected format.
         """
-        unpacked_data = struct.unpack(car_telemetry_format_string, data)
+        unpacked_data = struct.unpack(CAR_TELEMETRY_FORMAT_STRING, data)
         self.m_brakesTemperature = [0] * 4
         self.m_tyresSurfaceTemperature = [0] * 4
         self.m_tyresInnerTemperature = [0] * 4
@@ -3962,7 +3962,7 @@ class CarStatusData:
             self.m_ersHarvestedThisLapMGUH,
             self.m_ersDeployedThisLap,
             self.m_networkPaused
-        ) = struct.unpack(car_status_format_string, data)
+        ) = struct.unpack(CAR_STATUS_FORMAT_STRING, data)
 
         if ActualTyreCompound.isValid(self.m_actualTyreCompound):
             self.m_actualTyreCompound = ActualTyreCompound(self.m_actualTyreCompound)
@@ -4204,7 +4204,7 @@ class FinalClassificationData:
             self.m_tyreStintsEndLaps[5],
             self.m_tyreStintsEndLaps[6],
             self.m_tyreStintsEndLaps[7]
-        ) = struct.unpack(final_classification_per_car_format_string, data)
+        ) = struct.unpack(FINAL_CLASSIFICATION_PER_CAR_FORMAT_STRING, data)
 
         if ResultStatus.isValid(self.m_resultStatus):
             self.m_resultStatus = ResultStatus(self.m_resultStatus)
@@ -4369,7 +4369,7 @@ class LobbyInfoData:
             self.m_name,
             self.m_carNumber,
             self.m_readyStatus,
-        ) = struct.unpack(lobby_info_format_string, data)
+        ) = struct.unpack(LOBBY_INFO_FORMAT_STRING, data)
 
     def __str__(self) -> str:
         """
@@ -4480,7 +4480,7 @@ class CarDamageData:
             self.m_engineTCWear,
             self.m_engineBlown,
             self.m_engineSeized,
-        ) = struct.unpack(car_damage_packet_format_string, data)
+        ) = struct.unpack(CAR_DAMAGE_PACKET_FORMAT_STRING, data)
 
         self.m_drsFault = bool(self.m_drsFault)
         self.m_ersFault = bool(self.m_ersFault)
@@ -4636,7 +4636,7 @@ class LapHistoryData:
             self.m_sector3TimeInMS,
             self.m_sector3TimeMinutes,
             self.m_lapValidBitFlags,
-        ) = struct.unpack(session_history_lap_history_data_format_string, data)
+        ) = struct.unpack(SESSION_HISTORY_LAP_HISTORY_DATA_FORMAT_STRING, data)
 
     def __str__(self) -> str:
         """
@@ -4731,7 +4731,7 @@ class TyreStintHistoryData:
             self.m_endLap,
             self.m_tyreActualCompound,
             self.m_tyreVisualCompound,
-        ) = struct.unpack(session_history_tyre_stint_format_string, data)
+        ) = struct.unpack(SESSION_HISTORY_TYRE_STINT_FORMAT_STRING, data)
 
         if ActualTyreCompound.isValid(self.m_tyreActualCompound):
             self.m_tyreActualCompound = ActualTyreCompound(self.m_tyreActualCompound)
@@ -4802,7 +4802,7 @@ class PacketSessionHistoryData:
             self.m_bestSector1LapNum,
             self.m_bestSector2LapNum,
             self.m_bestSector3LapNum,
-        ) = struct.unpack(session_history_format_string, data[:F1_23_SESSION_HISTORY_LEN])
+        ) = struct.unpack(SESSION_HISTORY_FORMAT_STRING, data[:F1_23_SESSION_HISTORY_LEN])
         bytes_index_so_far = F1_23_SESSION_HISTORY_LEN
 
         self.m_lapHistoryData: List[LapHistoryData] = []
@@ -4913,7 +4913,7 @@ class TyreSetData:
             self.m_usableLife,
             self.m_lapDeltaTime,
             self.m_fitted,
-        ) = struct.unpack(tyre_set_data_per_set_format_string, data)
+        ) = struct.unpack(TYRE_SET_DATA_PER_SET_FORMAT_STRING, data)
 
         if ActualTyreCompound.isValid(self.m_actualTyreCompound):
             self.m_actualTyreCompound = ActualTyreCompound(self.m_actualTyreCompound)
@@ -5071,7 +5071,64 @@ class PacketMotionExData:
         """
         self.m_header = header
 
-        # ... (same initialization as provided in the code snippet)
+        self.m_suspensionPosition = [0.0] * 4
+        self.m_suspensionVelocity = [0.0] * 4
+        self.m_suspensionAcceleration = [0.0] * 4
+        self.m_wheelSpeed = [0.0] * 4
+        self.m_wheelSlipRatio = [0.0] * 4
+        self.m_wheelSlipAngle = [0.0] * 4
+        self.m_wheelLatForce = [0.0] * 4
+        self.m_wheelLongForce = [0.0] * 4
+        self.m_wheelVertForce = [0.0] * 4
+        (
+            self.m_suspensionPosition[0],           # array of floats
+            self.m_suspensionPosition[1],           # array of floats
+            self.m_suspensionPosition[2],           # array of floats
+            self.m_suspensionPosition[3],           # array of floats
+            self.m_suspensionVelocity[0],           # array of floats
+            self.m_suspensionVelocity[1],           # array of floats
+            self.m_suspensionVelocity[2],           # array of floats
+            self.m_suspensionVelocity[3],           # array of floats
+            self.m_suspensionAcceleration[0],       # array of floats
+            self.m_suspensionAcceleration[1],       # array of floats
+            self.m_suspensionAcceleration[2],       # array of floats
+            self.m_suspensionAcceleration[3],       # array of floats
+            self.m_wheelSpeed[0],                   # array of floats
+            self.m_wheelSpeed[1],                   # array of floats
+            self.m_wheelSpeed[2],                   # array of floats
+            self.m_wheelSpeed[3],                   # array of floats
+            self.m_wheelSlipRatio[0],               # array of floats
+            self.m_wheelSlipRatio[1],               # array of floats
+            self.m_wheelSlipRatio[2],               # array of floats
+            self.m_wheelSlipRatio[3],               # array of floats
+            self.m_wheelSlipAngle[0],               # array of floats
+            self.m_wheelSlipAngle[1],               # array of floats
+            self.m_wheelSlipAngle[2],               # array of floats
+            self.m_wheelSlipAngle[3],               # array of floats
+            self.m_wheelLatForce[0],                # array of floats
+            self.m_wheelLatForce[1],                # array of floats
+            self.m_wheelLatForce[2],                # array of floats
+            self.m_wheelLatForce[3],                # array of floats
+            self.m_wheelLongForce[0],               # array of floats
+            self.m_wheelLongForce[1],               # array of floats
+            self.m_wheelLongForce[2],               # array of floats
+            self.m_wheelLongForce[3],               # array of floats
+            self.m_heightOfCOGAboveGround,       # float
+            self.m_localVelocityX,               # float
+            self.m_localVelocityY,               # float
+            self.m_localVelocityZ,               # float
+            self.m_angularVelocityX,             # float
+            self.m_angularVelocityY,             # float
+            self.m_angularVelocityZ,             # float
+            self.m_angularAccelerationX,         # float
+            self.m_angularAccelerationY,         # float
+            self.m_angularAccelerationZ,         # float
+            self.m_frontWheelsAngle,             # float
+            self.m_wheelVertForce[0],               # array of floats
+            self.m_wheelVertForce[1],               # array of floats
+            self.m_wheelVertForce[2],               # array of floats
+            self.m_wheelVertForce[3],               # array of floats
+        ) = struct.unpack(MOTION_EX_FORMAT_STRING, data)
 
     def __str__(self) -> str:
         """
