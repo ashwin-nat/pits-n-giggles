@@ -28,7 +28,7 @@ import copy
 from f1_types import *
 import csv
 from io import StringIO
-from typing import Optional, Generator
+from typing import Optional, Generator, Tuple
 from collections import OrderedDict
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
