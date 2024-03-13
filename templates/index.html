@@ -843,7 +843,6 @@ SOFTWARE.
                                 fuelLoad = formatFloatWithTwoDecimals(fuelLoadVal);
                                 fuelLaps = formatFloatWithTwoDecimals(fuelLapsVal);
 
-
                                 if (index > 0 && "car-status-data" in data["per-lap-info"][index - 1]) {
                                     console.log("inside if. length: " + data["per-lap-info"].length + " index " + index);
                                     const fuelLoadValPrev = data["per-lap-info"][index - 1]["car-status-data"]["fuel-in-tank"];
