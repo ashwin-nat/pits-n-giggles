@@ -22,20 +22,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from telemetry_manager import F12023TelemetryManager
-from f1_types import *
-from packet_cap import F1PacketCapture
-from overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode
-import telemetry_data as TelData
-from threading import Lock
-from enum import Enum
-from typing import Optional, List, Tuple, Dict
-from datetime import datetime
+# -------------------------------------- IMPORTS -----------------------------------------------------------------------
 import os
-import logging
 import json
 import csv
-import threading
+import logging
+from datetime import datetime
+from enum import Enum
+from threading import Lock
+from typing import Optional, List, Tuple, Dict
+
 try:
     from tqdm import tqdm
 except ImportError:
@@ -45,22 +41,20 @@ except ImportError:
     print("tqdm installation complete.")
     from tqdm import tqdm
 
+from collections import namedtuple
+from telemetry_manager import F12023TelemetryManager
+from f1_types import *
+from packet_cap import F1PacketCapture
+from overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode
+import telemetry_data as TelData
+
 class PacketCaptureMode(Enum):
     """Enum representing packet capture modes."""
     DISABLED = 'disabled'
     ENABLED = 'enabled'
     ENABLED_WITH_AUTOSAVE = 'enabled-with-autosave'
 
-g_packet_capture_table = F1PacketCapture()
-g_packet_capture_table_lock = Lock()
-g_pkt_cap_mode = PacketCaptureMode.DISABLED
-g_num_active_cars = 0
-g_overtakes_history = []
-g_overtakes_table_lock = Lock()
-g_post_race_data_autosave = False
-g_directory_mapping = {}
-g_udp_custom_action_code = None
-g_player_recorded_events_history = []
+# -------------------------------------- TYPE DEFINITIONS --------------------------------------------------------------
 
 class PktSaveStatus(Enum):
     """Enum representing packet save status."""
@@ -83,13 +77,57 @@ class GetOvertakesStatus(Enum):
     def __str__(self):
         return self.name
 
+class PacketCaptureTable:
+    """Thread safe container for F1PacketCapture instance.
+    """
+
+    def __init__(self) -> None:
+        """
+        Initialize the object by creating a new F1PacketCapture instance and a Lock instance.
+        """
+        self.m_packet_capture = F1PacketCapture()
+        self.m_lock = Lock()
+
+    def add(self, packet: List[bytes]) -> None:
+        """
+        Add a packet to the packet list while acquiring a lock to ensure thread safety.
+
+        Parameters:
+            packet (List[bytes]): The packet to be added to the table.
+        """
+        with self.m_lock:
+            self.m_packet_capture.add(packet)
+
+    def getNumPackets(self) -> int:
+        """
+        Returns the number of packets captured by the packet capture object.
+        """
+        with self.m_lock:
+            return self.m_packet_capture.getNumPackets()
+
+class OvertakesHistory:
+
+    def __init__(self):
+
+        self.m_overtakes_history = []
+        self.m_lock = Lock()
+
+# -------------------------------------- GLOBALS -----------------------------------------------------------------------
+
+g_packet_capture_table = PacketCaptureTable()
+g_pkt_cap_mode = PacketCaptureMode.DISABLED
+g_num_active_cars = 0
+g_overtakes_history = OvertakesHistory()
+g_post_race_data_autosave = False
+g_directory_mapping = {}
+g_udp_custom_action_code = None
+g_player_recorded_events_history = []
+
+# -------------------------------------- INITIALIZATION ----------------------------------------------------------------
+
 def initAutosaves(post_race_data_autosave: bool, udp_custom_action_code: Optional[int]):
-    global g_overtakes_history
-    global g_overtakes_table_lock
     global g_post_race_data_autosave
     global g_udp_custom_action_code
-    g_overtakes_history = []
-    g_overtakes_table_lock = Lock()
     g_post_race_data_autosave = post_race_data_autosave
     g_udp_custom_action_code = udp_custom_action_code
 
@@ -118,7 +156,6 @@ def initDirectories():
     for directory in g_directory_mapping.values():
         ensureDirectoryExists(directory)
 
-
 def initPktCap(packet_capture_mode: PacketCaptureMode):
     """
     Initialize packet capture.
@@ -133,6 +170,8 @@ def initPktCap(packet_capture_mode: PacketCaptureMode):
     global g_pkt_cap_mode
     g_pkt_cap_mode = packet_capture_mode
 
+# -------------------------------------- UTILITIES ---------------------------------------------------------------------
+
 def addRawPacket(packet: List[bytes]):
     """
     Add raw packet to the packet capture table.
@@ -141,11 +180,15 @@ def addRawPacket(packet: List[bytes]):
         - packet (List[bytes]): The raw packet data.
     """
     global g_packet_capture_table
-    global g_packet_capture_table_lock
-    with g_packet_capture_table_lock:
-        g_packet_capture_table.add(packet)
+    g_packet_capture_table.add(packet)
 
 def getTimestampStr() -> str:
+    """
+    Get the current timestamp as a string formatted as year_month_day_hour_minute_second.
+
+    Returns:
+        str: A string representing the current timestamp.
+    """
     return datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 
 def dumpPktCapToFile(file_name: Optional[str] = None, clear_db: bool = False, reason: str = '') -> Tuple[PktSaveStatus, str, int, int]:
@@ -167,7 +210,6 @@ def dumpPktCapToFile(file_name: Optional[str] = None, clear_db: bool = False, re
         return PktSaveStatus.DISABLED, None, 0, 0
 
     global g_packet_capture_table
-    global g_packet_capture_table_lock
 
     progress_bar = tqdm(
         total=g_packet_capture_table.getNumPackets(),
@@ -188,20 +230,20 @@ def dumpPktCapToFile(file_name: Optional[str] = None, clear_db: bool = False, re
 
         progress_bar.update(1)
 
-    with g_packet_capture_table_lock:
+    with g_packet_capture_table.m_lock:
         try:
             if not file_name:
                 global g_directory_mapping
                 file_name = g_directory_mapping['packet-captures'] + \
                             'capture_' + getTimestampStr() + \
                             '.' + g_packet_capture_table.file_extension
-            file_name, num_packets, num_bytes = g_packet_capture_table.dumpToFile(
+            file_name, num_packets, num_bytes = g_packet_capture_table.m_packet_capture.dumpToFile(
                 file_name=file_name,
                 progress_update_callback=progressBarUpdater,
                 progress_update_callback_arg=progress_bar)
 
             if clear_db:
-                g_packet_capture_table.clear()
+                g_packet_capture_table.m_packet_capture.clear()
             if (file_name is not None) and (num_bytes > 0) and (num_packets > 0):
                 logging.info(
                     f"Dumped raw telemetry data. "
@@ -233,21 +275,20 @@ def getOvertakeJSON(driver_name: str=None) -> Tuple[GetOvertakesStatus, Dict]:
     """
     _, _, _, _, _, _, _, _, final_classification_received = TelData.getGlobals()
     global g_overtakes_history
-    global g_overtakes_table_lock
-    with g_overtakes_table_lock:
+    with g_overtakes_history.m_lock:
         if not final_classification_received:
-            if len(g_overtakes_history) == 0:
+            if len(g_overtakes_history.m_overtakes_history) == 0:
                 return GetOvertakesStatus.NO_DATA, {}
             else:
                 return GetOvertakesStatus.RACE_ONGOING, OvertakeAnalyzer(
                     input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST,
-                    input=g_overtakes_history).toJSON(
+                    input=g_overtakes_history.m_overtakes_history).toJSON(
                         driver_name=driver_name,
                         is_case_sensitive=True)
         else:
             return GetOvertakesStatus.RACE_COMPLETED, OvertakeAnalyzer(
                 input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST,
-                input=g_overtakes_history).toJSON(
+                input=g_overtakes_history.m_overtakes_history).toJSON(
                     driver_name=driver_name,
                     is_case_sensitive=True)
 
@@ -265,11 +306,10 @@ def printOvertakeData(file_name: str=None):
             input=file_name)
     else:
         global g_overtakes_history
-        global g_overtakes_table_lock
-        with g_overtakes_table_lock:
+        with g_overtakes_history.m_lock:
             overtake_analyzer = OvertakeAnalyzer(
                 input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST,
-                input=g_overtakes_history)
+                input=g_overtakes_history.m_overtakes_history)
     logging.info(overtake_analyzer.getFormattedString(driver_name=player_name, is_case_sensitive=True))
 
 def writeDictToJsonFile(data_dict: Dict, file_name: str) -> None:
@@ -306,7 +346,7 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
     """
 
     global g_directory_mapping
-    global g_overtakes_table_lock
+    global g_overtakes_history
     global g_directory_mapping
     event_str = TelData.getEventInfoStr()
     if not event_str:
@@ -324,14 +364,14 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
     # Save the JSON data
     global g_post_race_data_autosave
     if g_post_race_data_autosave:
-        with g_overtakes_table_lock:
+        with g_overtakes_history.m_lock:
             player_name = TelData.getPlayerName()
             overtake_analyzer = OvertakeAnalyzer(
                                     input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST,
-                                    input=g_overtakes_history)
+                                    input=g_overtakes_history.m_overtakes_history)
             overtake_analyzer.getFormattedString(driver_name=player_name, is_case_sensitive=True)
             final_json['overtakes'] = {
-                'records' : g_overtakes_history
+                'records' : g_overtakes_history.m_overtakes_history
             }
             # Add the new keys directly to the top level of final_json
             final_json['overtakes'].update(
@@ -350,6 +390,8 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
                 event_str + getTimestampStr() + '.json'
         writeToCsvFile(g_player_recorded_events_history, custom_marker_file_name)
         logging.info("Wrote custom player markers to " + custom_marker_file_name)
+
+# -------------------------------------- TELEMETRY PACKET HANDLERS -----------------------------------------------------
 
 class F12023TelemetryHandler:
     """
@@ -393,20 +435,16 @@ class F12023TelemetryHandler:
         None
         """
 
-        # self.m_manager.registerCallback(F1PacketType.MOTION, F12023TelemetryHandler.handleMotion)
         self.m_manager.registerCallback(F1PacketType.SESSION, F12023TelemetryHandler.handleSessionData)
         self.m_manager.registerCallback(F1PacketType.LAP_DATA, F12023TelemetryHandler.handleLapData)
         self.m_manager.registerCallback(F1PacketType.EVENT, F12023TelemetryHandler.handleEvent)
         self.m_manager.registerCallback(F1PacketType.PARTICIPANTS, F12023TelemetryHandler.handleParticipants)
-        # self.m_manager.registerCallback(F1PacketType.CAR_SETUPS, F12023TelemetryHandler.handleCarSetups)
         self.m_manager.registerCallback(F1PacketType.CAR_TELEMETRY, F12023TelemetryHandler.handleCarTelemetry)
         self.m_manager.registerCallback(F1PacketType.CAR_STATUS, F12023TelemetryHandler.handleCarStatus)
         self.m_manager.registerCallback(F1PacketType.FINAL_CLASSIFICATION, F12023TelemetryHandler.handleFinalClassification)
-        # self.m_manager.registerCallback(F1PacketType.LOBBY_INFO, F12023TelemetryHandler.handleLobbyInfo)
         self.m_manager.registerCallback(F1PacketType.CAR_DAMAGE, F12023TelemetryHandler.handleCarDamage)
         self.m_manager.registerCallback(F1PacketType.SESSION_HISTORY, F12023TelemetryHandler.handleSessionHistory)
         self.m_manager.registerCallback(F1PacketType.TYRE_SETS, F12023TelemetryHandler.handleTyreSets)
-        # self.m_manager.registerCallback(F1PacketType.MOTION_EX, F12023TelemetryHandler.handleMotionEx)
 
         if self.m_raw_packet_capture != PacketCaptureMode.DISABLED:
             self.m_manager.registerRawPacketCallback(F12023TelemetryHandler.handleRawPacket)
@@ -418,24 +456,8 @@ class F12023TelemetryHandler:
 
         Parameters:
         - packet (List[bytes]): The raw telemetry packet.
-
-        Returns:
-        None
         """
         addRawPacket(packet)
-
-    @staticmethod
-    def handleMotion(packet: PacketMotionData) -> None:
-        """
-        Handle motion telemetry packet.
-
-        Parameters:
-        - packet (PacketMotionData): The motion telemetry packet.
-
-        Returns:
-        None
-        """
-        return
 
     @staticmethod
     def handleSessionData(packet: PacketSessionData) -> None:
@@ -470,9 +492,10 @@ class F12023TelemetryHandler:
         Args:
             packet (PacketEventData): The parsed object containing the event data packet's contents
         """
-        global g_overtakes_table_lock
         global g_overtakes_history
         global g_num_active_cars
+
+        # UDP Custom Event - Add marker player markers list
         if packet.m_eventStringCode == PacketEventData.EventPacketType.BUTTON_STATUS:
             if (g_udp_custom_action_code is not None) and \
                 (packet.mEventDetails.isUDPActionPressed(g_udp_custom_action_code)):
@@ -485,55 +508,83 @@ class F12023TelemetryHandler:
                     logging.debug('Player recorded event: ' + player_recorded_event_str)
                 else:
                     logging.error("Unable to generate player_recorded_event_str")
+
+        # Fastest Lap - update data structures
         elif packet.m_eventStringCode == PacketEventData.EventPacketType.FASTEST_LAP:
             TelData.processFastestLapUpdate(packet)
+
+        # Session Started - Empty data structures
         elif packet.m_eventStringCode == PacketEventData.EventPacketType.SESSION_STARTED:
             g_num_active_cars = 0
             TelData.processSessionStarted()
             # Clear the list regardless of event type
-            with g_overtakes_table_lock:
-                g_overtakes_history.clear()
+            with g_overtakes_history.m_lock:
+                g_overtakes_history.m_overtakes_history.clear()
                 g_player_recorded_events_history.clear()
             logging.info("Received SESSION_STARTED")
+
+        # Retirement - Update data strucutres
         elif packet.m_eventStringCode == PacketEventData.EventPacketType.RETIREMENT:
             TelData.processRetirementEvent(packet)
+
+        # Overtake - Update overtake records list
         elif packet.m_eventStringCode == PacketEventData.EventPacketType.OVERTAKE:
             overtake_csv_str = TelData.getOvertakeString(packet.mEventDetails.overtakingVehicleIdx,
                                                         packet.mEventDetails.beingOvertakenVehicleIdx)
             if overtake_csv_str:
-                with g_overtakes_table_lock:
+                with g_overtakes_history.m_lock:
                     # Experimental input sanitizer
-                    if len(g_overtakes_history) > 0 and g_overtakes_history[-1] == overtake_csv_str:
+                    if len(g_overtakes_history.m_overtakes_history) > 0 and \
+                        g_overtakes_history.m_overtakes_history[-1] == overtake_csv_str:
                         logging.debug("not adding repeated overtake string " + overtake_csv_str)
                     else:
-                        g_overtakes_history.append(overtake_csv_str)
-        return
+                        g_overtakes_history.m_overtakes_history.append(overtake_csv_str)
 
     @staticmethod
     def handleParticipants(packet: PacketParticipantsData) -> None:
+        """
+        A static method to handle participants data packet.
+
+        Arguments:
+            - packet: PacketParticipantsData object
+        """
 
         TelData.processParticipantsUpdate(packet)
         return
 
     @staticmethod
-    def handleCarSetups(packet: PacketCarSetupData) -> None:
-
-        return
-
-    @staticmethod
     def handleCarTelemetry(packet: PacketCarTelemetryData) -> None:
+        """
+        Handle car telemetry data and process the car telemetry update.
+
+        Arguments
+            packet - PacketCarTelemetryData object
+        """
 
         TelData.processCarTelemetryUpdate(packet)
         return
 
     @staticmethod
     def handleCarStatus(packet: PacketCarStatusData) -> None:
+        """
+        Handle car status data and process the car status update.
+
+        Arguments
+            packet - PacketCarStatusData object
+        """
 
         TelData.processCarStatusUpdate(packet)
         return
 
     @staticmethod
     def handleFinalClassification(packet: PacketFinalClassificationData) -> None:
+        """
+        Handle and process the final classification packet. This is sent out at the end of the event when the game
+            displays the final classification table
+
+        Arguments
+            packet - PacketCarStatusData object
+        """
         logging.info('Received Final Classification Packet.')
         final_json = TelData.processFinalClassificationUpdate(packet)
 
@@ -558,29 +609,37 @@ class F12023TelemetryHandler:
         return
 
     @staticmethod
-    def handleLobbyInfo(packet: PacketLobbyInfoData) -> None:
-        # print('Received Lobby Info Packet. ' + str(packet))
-        return
-
-    @staticmethod
     def handleCarDamage(packet: PacketCarDamageData) -> None:
+        """
+        Handle car damage data and process the car damage update.
+
+        Arguments
+            packet - PacketCarDamageData object
+        """
 
         TelData.processCarDamageUpdate(packet)
         return
 
     @staticmethod
     def handleSessionHistory(packet: PacketSessionHistoryData) -> None:
+        """
+        Handle and process the session history update.
+
+        Arguments
+            packet - PacketSessionHistoryData object
+        """
 
         TelData.processSessionHistoryUpdate(packet)
         return
 
     @staticmethod
     def handleTyreSets(packet: PacketTyreSetsData) -> None:
+        """
+        Handle and process the tyre sets update.
+
+        Arguments
+            packet - PacketTyreSetsData object
+        """
 
         TelData.processTyreSetsUpdate(packet)
-        return
-
-    @staticmethod
-    def handleMotionEx(packet: PacketMotionExData) -> None:
-
         return

@@ -579,9 +579,9 @@ class DriverData:
             ResultStatus.RETIRED : "DNF"
         }
         for index, lap_data in enumerate(packet.m_LapData):
-
             if lap_data.m_resultStatus == ResultStatus.INVALID:
                 continue
+
             num_active_cars += 1
 
             # Fetch the driver's object
