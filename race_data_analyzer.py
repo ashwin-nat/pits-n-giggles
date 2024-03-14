@@ -129,7 +129,7 @@ def printSeparator(count=75):
 
     print('-' * count)
 
-def printTyreStintRecords(json_data):
+def getTyreStintRecords(json_data):
 
     class TyreStintRecords:
 
@@ -168,10 +168,19 @@ def printTyreStintRecords(json_data):
 
 
     tyre_stint_records = TyreStintRecords(json_data)
+    final_json = {}
     for compound, records in tyre_stint_records.m_records.items():
-        print ("Compound: " + compound)
-        print("    Longest stint of " + str(records["longest-stint-length"]) + " laps by " + records["longest-stint-driver-name"])
-        print("    Lowest tyre wear per lap of " + str(records["lowest-wear-per-lap-value"]) + "% by " + records["lowest-wear-per-lap-driver-name"])
+        final_json[compound] = {
+            'longest-tyre-stint' : {
+                'value' : records["longest-stint-length"],
+                'driver-name' : records["longest-stint-driver-name"]
+            },
+            'lowest-tyre-wear-per-lap' : {
+                'value' : records["lowest-wear-per-lap-value"],
+                'driver-name' : records["lowest-wear-per-lap-driver-name"]
+            }
+        }
+    return final_json
 
 def printStintHistoryForDriver(json_data, driver_name):
 

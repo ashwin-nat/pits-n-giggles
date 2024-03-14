@@ -47,6 +47,7 @@ from f1_types import *
 from packet_cap import F1PacketCapture
 from overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode
 import telemetry_data as TelData
+import race_analyzer as RaceAnalyzer
 
 class PacketCaptureMode(Enum):
     """Enum representing packet capture modes."""
@@ -337,6 +338,40 @@ def writeToCsvFile(g_custom_player_markers: List[str], custom_marker_file_name: 
         for marker in g_custom_player_markers:
             writer.writerow(marker)
 
+def addFunStatsToFinalClassificationJson(final_json: Dict[str, Any]) -> None:
+    """
+    Add the fun stats to the final classification JSON.
+
+    Arguments:
+        final_json (Dict): Dictionary containing JSON data after final classification
+    """
+
+    global g_overtakes_history
+
+    # First, overtake stats
+    final_json['overtakes'] = {
+        'records' : g_overtakes_history.m_overtakes_history
+    }
+
+    with g_overtakes_history.m_lock:
+        player_name = TelData.getPlayerName()
+        overtake_analyzer = OvertakeAnalyzer(
+            input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST,
+            input=g_overtakes_history.m_overtakes_history)
+        logging.info(overtake_analyzer.getFormattedString(driver_name=player_name, is_case_sensitive=True))
+        # Add the new keys directly to the top level of final_json
+        final_json['overtakes'].update(
+            overtake_analyzer.toJSON(
+                driver_name=player_name,
+                is_case_sensitive=True))
+
+    # Next, fastest lap and sector records
+    final_json['records'] = {
+        'fastest' : RaceAnalyzer.getFastestTimesJson(final_json),
+        'tyre-stats' : RaceAnalyzer.getTyreStintRecordsDict(final_json)
+    }
+
+
 def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
     """
     Write the contents of final_json, packet capture and player recorded events to a file.
@@ -370,14 +405,7 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
                                     input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST,
                                     input=g_overtakes_history.m_overtakes_history)
             overtake_analyzer.getFormattedString(driver_name=player_name, is_case_sensitive=True)
-            final_json['overtakes'] = {
-                'records' : g_overtakes_history.m_overtakes_history
-            }
-            # Add the new keys directly to the top level of final_json
-            final_json['overtakes'].update(
-                overtake_analyzer.toJSON(
-                    driver_name=player_name,
-                    is_case_sensitive=True))
+            addFunStatsToFinalClassificationJson(final_json)
         final_json_file_name = g_directory_mapping['race-info'] + 'race_info_' + \
                 event_str + getTimestampStr() + '.json'
         writeDictToJsonFile(final_json, final_json_file_name)
