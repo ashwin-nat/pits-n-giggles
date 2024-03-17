@@ -183,10 +183,12 @@ def getTyreStintRecordsDict(json_data: Dict[str, Any]):
                             # New longest stint
                             self.m_records[compound]["longest-stint-length"] = tyre_set_history_item["stint-length"]
                             self.m_records[compound]["longest-stint-driver-name"] = driver_data["driver-name"]
-                        tyre_wear_per_lap = float(tyre_set_data["wear"]) / tyre_set_history_item["stint-length"]
-                        if tyre_wear_per_lap < self.m_records[compound]["lowest-wear-per-lap-value"]:
-                            self.m_records[compound]["lowest-wear-per-lap-value"] = tyre_wear_per_lap
-                            self.m_records[compound]["lowest-wear-per-lap-driver-name"] = driver_data["driver-name"]
+                        # If the driver DNF's right after fitting new tyre set, wear will be 0. Ignore this
+                        if tyre_set_data["wear"] > 0:
+                            tyre_wear_per_lap = float(tyre_set_data["wear"]) / tyre_set_history_item["stint-length"]
+                            if tyre_wear_per_lap < self.m_records[compound]["lowest-wear-per-lap-value"]:
+                                self.m_records[compound]["lowest-wear-per-lap-value"] = tyre_wear_per_lap
+                                self.m_records[compound]["lowest-wear-per-lap-driver-name"] = driver_data["driver-name"]
 
     # Populate the final JSON and return
     tyre_stint_records = TyreStintRecords(json_data)

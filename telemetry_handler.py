@@ -23,6 +23,7 @@ SOFTWARE.
 """
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
+
 import os
 import json
 import csv
@@ -31,6 +32,7 @@ from datetime import datetime
 from enum import Enum
 from threading import Lock
 from typing import Optional, List, Tuple, Dict
+from collections import namedtuple
 
 try:
     from tqdm import tqdm
@@ -41,7 +43,6 @@ except ImportError:
     print("tqdm installation complete.")
     from tqdm import tqdm
 
-from collections import namedtuple
 from telemetry_manager import F12023TelemetryManager
 from f1_types import *
 from packet_cap import F1PacketCapture
@@ -49,13 +50,14 @@ from overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode
 import telemetry_data as TelData
 import race_analyzer as RaceAnalyzer
 
+# -------------------------------------- TYPE DEFINITIONS --------------------------------------------------------------
+
 class PacketCaptureMode(Enum):
     """Enum representing packet capture modes."""
     DISABLED = 'disabled'
     ENABLED = 'enabled'
     ENABLED_WITH_AUTOSAVE = 'enabled-with-autosave'
 
-# -------------------------------------- TYPE DEFINITIONS --------------------------------------------------------------
 
 class PktSaveStatus(Enum):
     """Enum representing packet save status."""
@@ -192,7 +194,10 @@ def getTimestampStr() -> str:
     """
     return datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 
-def dumpPktCapToFile(file_name: Optional[str] = None, clear_db: bool = False, reason: str = '') -> Tuple[PktSaveStatus, str, int, int]:
+def dumpPktCapToFile(
+        file_name: Optional[str] = None,
+        clear_db: bool = False,
+        reason: str = '') -> Tuple[PktSaveStatus, str, int, int]:
     """
     Dump packet capture data to a file.
 
@@ -202,7 +207,11 @@ def dumpPktCapToFile(file_name: Optional[str] = None, clear_db: bool = False, re
     - reason (str): Reason for dumping the packet capture data.
 
     Returns:
-    Tuple[PktSaveStatus, str, int, int]: A tuple representing the save status, file name, number of packets, and number of bytes.
+    Tuple[PktSaveStatus, str, int, int]: A tuple representing the
+        save status,
+        file name,
+        number of packets, and
+        number of bytes.
     """
 
     global g_pkt_cap_mode
@@ -399,13 +408,7 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
     # Save the JSON data
     global g_post_race_data_autosave
     if g_post_race_data_autosave:
-        with g_overtakes_history.m_lock:
-            player_name = TelData.getPlayerName()
-            overtake_analyzer = OvertakeAnalyzer(
-                                    input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST,
-                                    input=g_overtakes_history.m_overtakes_history)
-            overtake_analyzer.getFormattedString(driver_name=player_name, is_case_sensitive=True)
-            addFunStatsToFinalClassificationJson(final_json)
+        addFunStatsToFinalClassificationJson(final_json)
         final_json_file_name = g_directory_mapping['race-info'] + 'race_info_' + \
                 event_str + getTimestampStr() + '.json'
         writeDictToJsonFile(final_json, final_json_file_name)
@@ -430,17 +433,16 @@ class F12023TelemetryHandler:
     - m_raw_packet_capture (PacketCaptureMode): The raw packet capture mode.
     """
 
-    def __init__(self, port: int, raw_packet_capture: PacketCaptureMode = PacketCaptureMode.DISABLED,
-                 replay_server: bool = False) -> None:
+    def __init__(self,
+        port: int,
+        raw_packet_capture: PacketCaptureMode = PacketCaptureMode.DISABLED,
+        replay_server: bool = False) -> None:
         """
         Initialize F12023TelemetryHandler.
 
         Parameters:
-        - port (int): The port number for telemetry.
-        - raw_packet_capture (PacketCaptureMode): The mode for raw packet capture. Default is PacketCaptureMode.DISABLED.
-
-        Returns:
-        None
+            - port (int): The port number for telemetry.
+            - raw_packet_capture (PacketCaptureMode): The mode for raw packet capture
         """
         self.m_manager = F12023TelemetryManager(port, replay_server)
         self.m_raw_packet_capture = raw_packet_capture
@@ -458,9 +460,6 @@ class F12023TelemetryHandler:
     def registerCallbacks(self) -> None:
         """
         Register callback functions for different types of telemetry packets.
-
-        Returns:
-        None
         """
 
         self.m_manager.registerCallback(F1PacketType.SESSION, F12023TelemetryHandler.handleSessionData)
@@ -618,23 +617,22 @@ class F12023TelemetryHandler:
 
         # Perform the auto save stuff only for races
         _, _, event_type_str, _, _, _, _, _, _ = TelData.getGlobals()
-        unsupported_event_types = [
-            SessionType.PRACTICE_1,
-            SessionType.PRACTICE_2,
-            SessionType.PRACTICE_3,
-            SessionType.SHORT_PRACTICE,
-            SessionType.TIME_TRIAL,
-            SessionType.UNKNOWN
-        ]
-        is_event_supported = True
-        for event_type in unsupported_event_types:
-            if str(event_type) in event_type_str:
-                is_event_supported = False
-                break
-        if is_event_supported:
-            postGameDumpToFile(final_json)
-
-        return
+        if event_type_str:
+            unsupported_event_types = [
+                SessionType.PRACTICE_1,
+                SessionType.PRACTICE_2,
+                SessionType.PRACTICE_3,
+                SessionType.SHORT_PRACTICE,
+                SessionType.TIME_TRIAL,
+                SessionType.UNKNOWN
+            ]
+            is_event_supported = True
+            for event_type in unsupported_event_types:
+                if str(event_type) in event_type_str:
+                    is_event_supported = False
+                    break
+            if is_event_supported:
+                postGameDumpToFile(final_json)
 
     @staticmethod
     def handleCarDamage(packet: PacketCarDamageData) -> None:

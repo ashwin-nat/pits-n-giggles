@@ -20,6 +20,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# -------------------------------------- IMPORTS -----------------------------------------------------------------------
+
+from typing import Dict
+from http import HTTPStatus
+import logging
+
 try:
     from flask import Flask, render_template, request, jsonify
 except ImportError:
@@ -36,11 +42,11 @@ except ImportError:
     subprocess.check_call(["pip3", "install", "flask-cors"])
     print("flask-cors installation complete.")
     from flask_cors import CORS
+
 from telemetry_handler import dumpPktCapToFile, getOvertakeJSON, GetOvertakesStatus
-import logging
-from typing import Dict, List
-from http import HTTPStatus
 import telemetry_data as TelData
+
+# -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
 class TelemetryWebServer:
     def __init__(self,
@@ -130,7 +136,6 @@ class TelemetryWebServer:
 
             # Process parameters and generate response
             index = int(index)
-            logging.debug('received driver-info query for index ' + str(index))
             driver_info = TelData.getDriverInfoJsonByIndex(index)
             if driver_info:
                 # return jsonify(driver_info), HTTPStatus.OK

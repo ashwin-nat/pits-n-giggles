@@ -20,6 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# -------------------------------------- IMPORTS -----------------------------------------------------------------------
+
 import argparse
 import logging
 import socket
@@ -32,6 +34,7 @@ from typing import Set, Optional
 from telemetry_handler import initPktCap, PacketCaptureMode, initAutosaves, F12023TelemetryHandler, initDirectories
 from telemetry_server import TelemetryWebServer
 
+# -------------------------------------- FUNCTION DEFINITIONS ----------------------------------------------------------
 
 def initLogger(file_name: str = None, debug_mode: bool = False) -> logging.Logger:
     """Initialize and configure the logger.
@@ -72,7 +75,6 @@ def initLogger(file_name: str = None, debug_mode: bool = False) -> logging.Logge
 
     return logger
 
-
 def getLocalIpAddresses() -> Set[str]:
     """Get local IP addresses including '127.0.0.1' and 'localhost'.
 
@@ -80,10 +82,13 @@ def getLocalIpAddresses() -> Set[str]:
         Set[str]: Set of local IP addresses.
     """
     ip_addresses = {'127.0.0.1', 'localhost'}
-    for host_name in socket.gethostbyname_ex(socket.gethostname())[2]:
-        ip_addresses.add(host_name)
+    try:
+        for host_name in socket.gethostbyname_ex(socket.gethostname())[2]:
+            ip_addresses.add(host_name)
+    except socket.gaierror as e:
+        # Log the error or handle it as per your requirement
+        logging.warning(f"Error occurred: {e}. Using default IP addresses.")
     return ip_addresses
-
 
 def openWebPage(http_port: int) -> None:
     """Open the webpage on a new browser tab.
@@ -93,7 +98,6 @@ def openWebPage(http_port: int) -> None:
     """
     time.sleep(1)
     webbrowser.open(f'http://localhost:{http_port}', new=2)
-
 
 def httpServerTask(
         http_port: int,
@@ -131,7 +135,6 @@ def httpServerTask(
     logging.info(log_str)
     telemetry_server.run()
 
-
 def f1TelemetryServerTask(
         packet_capture: PacketCaptureMode,
         port_number: int,
@@ -153,6 +156,7 @@ def f1TelemetryServerTask(
     telemetry_client = F12023TelemetryHandler(port_number, packet_capture, replay_server)
     telemetry_client.run()
 
+# -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
 if __name__ == '__main__':
     # Initialize the ArgumentParser

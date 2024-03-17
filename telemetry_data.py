@@ -193,7 +193,6 @@ class DataPerDriver:
                 start_lap (int): The lap at which the tire set was fitted.
                 index (int): The index representing the fitted tire set.
             """
-            assert start_lap is not None
             self.m_start_lap = start_lap
             self.m_fitted_index = index
             self.m_end_lap = None
@@ -221,12 +220,20 @@ class DataPerDriver:
             self.m_car_status_packet: Optional[CarStatusData] = car_status
 
         def toJSON(self, lap_number : int) -> Dict[str, Any]:
+            """Dump this object into JSON
+
+            Args:
+                lap_number (int): The lap number corresponding to this history item
+
+            Returns:
+                Dict[str, Any]: The JSON dump
+            """
 
             return {
                 "lap-number" : lap_number,
                 "car-damage-data" : self.m_car_damage_packet.toJSON() if self.m_car_damage_packet else None,
-                "car-status-data" : self.m_car_status_packet.toJSON() if self.m_car_status_packet else None
-            }
+                "car-status-data" : self.m_car_status_packet.toJSON() if self.m_car_status_packet else None,
+             }
 
     def __init__(self):
         """
@@ -328,16 +335,15 @@ class DataPerDriver:
         # Return this fully prepped JSON
         return final_json
 
-    def onLapChange(self, old_lap_number: int) -> None:
+    def onLapChange(self,
+        old_lap_number: int) -> None:
         """
         Perform backup for the given lap change.
 
         Args:
             old_lap_number (int): The old lap number.
-
-        Returns:
-            None
         """
+
         # Check if the old lap number is already present in the backups
         if not old_lap_number in self.m_per_lap_backups:
             # Store the backup data for the old lap
@@ -381,11 +387,9 @@ class DataPerDriver:
                 current_stint = self.m_tyre_set_history[i]
                 next_stint = self.m_tyre_set_history[i + 1]
                 current_stint.m_end_lap = next_stint.m_start_lap - 1
-                assert current_stint.m_start_lap is not None
 
             # For the last tyre stint, get end lap num from session history
             self.m_tyre_set_history[-1].m_end_lap = self.m_packet_session_history.m_numLaps
-            assert self.m_tyre_set_history[-1].m_start_lap is not None
 
     def _cleanTyreStintHistory(self) -> None:
         """If consecutive entries with same start lap exist, only the last instance will be retained.
@@ -601,11 +605,13 @@ class DriverData:
                 if (obj_to_be_updated.m_current_lap == 1):
                     if (obj_to_be_updated.isZerothLapBackupDataAvailable()):
                         # Enter data for the zeroth lap
-                        obj_to_be_updated.onLapChange(old_lap_number=0)
+                        obj_to_be_updated.onLapChange(
+                            old_lap_number=0)
 
                 # Now, add shit only if there is change (this should handle lap 1 to lap 2 transition)
                 if (obj_to_be_updated.m_current_lap != lap_data.m_currentLapNum):
-                    obj_to_be_updated.onLapChange(old_lap_number=obj_to_be_updated.m_current_lap)
+                    obj_to_be_updated.onLapChange(
+                        old_lap_number=obj_to_be_updated.m_current_lap)
 
             # Now, update the current lap number and other shit
             obj_to_be_updated.m_current_lap =  lap_data.m_currentLapNum
@@ -711,7 +717,8 @@ class DriverData:
         for index, data in enumerate(packet.m_classificationData):
             obj_to_be_updated = self.m_driver_data.get(index, None)
             # Perform the final backup
-            obj_to_be_updated.onLapChange(data.m_numLaps)
+            obj_to_be_updated.onLapChange(
+                old_lap_number=data.m_numLaps)
             if obj_to_be_updated:
                 obj_to_be_updated.m_position = data.m_position
                 obj_to_be_updated.m_packet_final_classification = data
@@ -916,7 +923,8 @@ def processTyreSetsUpdate(packet: PacketTyreSetsData) -> None:
 
 # -------------------------------------- WEB API HANDLERS --------------------------------------------------------------
 
-def getGlobals(num_weather_forecast_samples=4) -> Tuple[str, int, str, int, int, str, List[WeatherForecastSample], int, bool]:
+def getGlobals(num_weather_forecast_samples=4) -> \
+    Tuple[str, int, str, int, int, str, List[WeatherForecastSample], int, bool]:
     """
     Retrieves the global info regarding the current session
 
@@ -935,18 +943,18 @@ def getGlobals(num_weather_forecast_samples=4) -> Tuple[str, int, str, int, int,
             8: Pit speed limit (int)
             9: Final Classification Received (bool)
     """
+    with _driver_data_lock: # we need this for current lap
+        player_index = _driver_data.m_player_index
+        curr_lap = _driver_data.m_driver_data[player_index].m_current_lap if player_index is not None else None
     with _globals_lock:
-        with _driver_data_lock: # we need this for current lap
-            player_index = _driver_data.m_player_index
-            curr_lap = _driver_data.m_driver_data[player_index].m_current_lap if player_index is not None else None
-            if _globals.m_weather_forecast_samples is not None:
-                weather_forecast_samples = _globals.m_weather_forecast_samples[:num_weather_forecast_samples]
-            else:
-                weather_forecast_samples = []
-            return (_globals.m_circuit, _globals.m_track_temp, _globals.m_event_type,
-                        _globals.m_total_laps, curr_lap, _globals.m_safety_car_status,
-                            weather_forecast_samples, _globals.m_pit_speed_limit,
-                                (True if _globals.m_packet_final_classification else False))
+        if _globals.m_weather_forecast_samples is not None:
+            weather_forecast_samples = _globals.m_weather_forecast_samples[:num_weather_forecast_samples]
+        else:
+            weather_forecast_samples = []
+        return (_globals.m_circuit, _globals.m_track_temp, _globals.m_event_type,
+                    _globals.m_total_laps, curr_lap, _globals.m_safety_car_status,
+                        weather_forecast_samples, _globals.m_pit_speed_limit,
+                            (True if _globals.m_packet_final_classification else False))
 
 def getDriverData(num_adjacent_cars: Optional[int] = 2) -> Tuple[List[DataPerDriver], str]:
     """Get the driver data for the race. During race, it returns
@@ -1166,7 +1174,6 @@ def getPlayerRecordedEventCsvStr(add_to_queue: bool = False) -> Optional[str]:
         with _driver_data_lock:
             player_data = _driver_data.m_driver_data.get(_driver_data.m_player_index, None)
             if player_data:
-                assert player_data.m_is_player is True
                 # CSV string - <track>,<event-type>,<lap-num>,<sector-num>
                 lap_num = player_data.m_current_lap
                 sector = player_data.m_packet_lap_data.m_sector
