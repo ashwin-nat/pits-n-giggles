@@ -537,7 +537,7 @@ SOFTWARE.
                     <th>Damage</th>
                 `;
                 const carDamageBody = carDamageTable.createTBody();
-                if ("car-damage" in data) {
+                if ("car-damage" in data && data["car-damage"] != null) {
                     // Front Left Wing Damage
                     const row1 = carDamageBody.insertRow();
                     row1.innerHTML = `
@@ -578,7 +578,7 @@ SOFTWARE.
                     <th>Damage</th>
                 `;
                 const tyreDamageBody = tyreDamageTable.createTBody();
-                if ("car-damage" in data) {
+                if ("car-damage" in data && data["car-damage"] != null) {
                     // Front Left Tyre Damage
                     const row1 = tyreDamageBody.insertRow();
                     row1.innerHTML = `
@@ -626,7 +626,7 @@ SOFTWARE.
                     <th>Wear</th>
                 `;
                 const tyreWearBody = tyreWearTable.createTBody();
-                if ("car-damage" in data) {
+                if ("car-damage" in data && data["car-damage"] != null) {
                     // Front Left Tyre Wear
                     const row1 = tyreWearBody.insertRow();
                     row1.innerHTML = `
@@ -679,7 +679,7 @@ SOFTWARE.
                 `;
 
                 const lapHistoryBody = lapHistoryTable.createTBody();
-                if ("session-history" in data) {
+                if ("session-history" in data && data["session-history"] != null) {
                     const lapHistoryData = data["session-history"]["lap-history-data"];
                     const bestLapNum = data["session-history"]["best-lap-time-lap-num"];
                     const bestSector1Num = data["session-history"]["best-sector-1-lap-num"];
@@ -743,7 +743,7 @@ SOFTWARE.
                     <th>Harvested - Total</th>
                 `;
                 const ersHistoryBody = ersHistoryTable.createTBody();
-                if ("per-lap-info" in data) {
+                if ("per-lap-info" in data && data["per-lap-info"] != null) {
                     const perLapHistoryData = data["per-lap-info"];
                     if (perLapHistoryData.length > 0) {
                         perLapHistoryData.forEach((lap, index) => {
@@ -824,7 +824,7 @@ SOFTWARE.
                     <th>Excess Laps Delta</th>
                 `;
                 const fuelHistoryBody = fuelHistoryTable.createTBody();
-                if ("per-lap-info" in data) {
+                if ("per-lap-info" in data && data["per-lap-info"] != null) {
                     const perLapHistoryData = data["per-lap-info"];
                     if (perLapHistoryData.length > 0) {
                         perLapHistoryData.forEach((lap, index) => {
@@ -894,7 +894,7 @@ SOFTWARE.
                 `;
 
                 const tyreStintHistoryBody = tyreStintHistoryTable.createTBody();
-                if ("tyre-set-history" in data) {
+                if ("tyre-set-history" in data && data["tyre-set-history"] != null) {
                     const tyreStintHistoryData = data["tyre-set-history"];
                     tyreStintHistoryData.forEach((stintData, index) => {
                         const row = tyreStintHistoryBody.insertRow();
@@ -908,7 +908,7 @@ SOFTWARE.
                         let tyreWear = "---";
                         let tyreWearPerLap = "---";
 
-                        if ("tyre-set-data" in stintData) {
+                        if ("tyre-set-data" in stintData && stintData["tyre-set-data"] != null) {
                             const tyreSetData = stintData["tyre-set-data"];
                             const tyreSetIndex = stintData["fitted-index"];
 
@@ -949,7 +949,7 @@ SOFTWARE.
                 const warningsPenaltiesHeaderRow = warningsPenaltiesHeader.insertRow();
                 warningsPenaltiesHeaderRow.innerHTML = '<th>Type</th><th>Value</th>';
                 const warningsPenaltiesBody = warningsPenaltiesTable.createTBody();
-                if ("lap-data" in data) {
+                if ("lap-data" in data && data["lap-data"] != null) {
                     const lapData = data["lap-data"];
                     const numPenalties = lapData["penalties"];
                     const totalWarnings = lapData["total-warnings"];

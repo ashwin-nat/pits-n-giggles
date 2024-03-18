@@ -384,6 +384,286 @@ class VisualTyreCompound(Enum):
             max_value = max(member.value for member in VisualTyreCompound)
             return min_value <= visual_tyre_compound <= max_value
 
+class Nationality(Enum):
+    """
+    Enum representing nationalities with corresponding IDs.
+    """
+    American = 1
+    Argentinean = 2
+    Australian = 3
+    Austrian = 4
+    Azerbaijani = 5
+    Bahraini = 6
+    Belgian = 7
+    Bolivian = 8
+    Brazilian = 9
+    British = 10
+    Bulgarian = 11
+    Cameroonian = 12
+    Canadian = 13
+    Chilean = 14
+    Chinese = 15
+    Colombian = 16
+    Costa_Rican = 17
+    Croatian = 18
+    Cypriot = 19
+    Czech = 20
+    Danish = 21
+    Dutch = 22
+    Ecuadorian = 23
+    English = 24
+    Emirian = 25
+    Estonian = 26
+    Finnish = 27
+    French = 28
+    German = 29
+    Ghanaian = 30
+    Greek = 31
+    Guatemalan = 32
+    Honduran = 33
+    Hong_Konger = 34
+    Hungarian = 35
+    Icelander = 36
+    Indian = 37
+    Indonesian = 38
+    Irish = 39
+    Israeli = 40
+    Italian = 41
+    Jamaican = 42
+    Japanese = 43
+    Jordanian = 44
+    Kuwaiti = 45
+    Latvian = 46
+    Lebanese = 47
+    Lithuanian = 48
+    Luxembourger = 49
+    Malaysian = 50
+    Maltese = 51
+    Mexican = 52
+    Monegasque = 53
+    New_Zealander = 54
+    Nicaraguan = 55
+    Northern_Irish = 56
+    Norwegian = 57
+    Omani = 58
+    Pakistani = 59
+    Panamanian = 60
+    Paraguayan = 61
+    Peruvian = 62
+    Polish = 63
+    Portuguese = 64
+    Qatari = 65
+    Romanian = 66
+    Russian = 67
+    Salvadoran = 68
+    Saudi = 69
+    Scottish = 70
+    Serbian = 71
+    Singaporean = 72
+    Slovakian = 73
+    Slovenian = 74
+    South_Korean = 75
+    South_African = 76
+    Spanish = 77
+    Swedish = 78
+    Swiss = 79
+    Thai = 80
+    Turkish = 81
+    Uruguayan = 82
+    Ukrainian = 83
+    Venezuelan = 84
+    Barbadian = 85
+    Welsh = 86
+    Vietnamese = 87
+
+    def __str__(self) -> str:
+        """
+        Returns the string representation of the Enum member.
+        """
+        return f"{self.name.replace('_', ' ')}"
+
+    @staticmethod
+    def isValid(nationality_code: int) -> bool:
+        """Check if the given nationality code is valid.
+
+        Args:
+            nationality_code (int): The nationality code to be validated.
+
+        Returns:
+            bool: True if valid.
+        """
+        if isinstance(nationality_code, Nationality):
+            return True  # It's already an instance of Nationality
+        else:
+            min_value = min(member.value for member in Nationality)
+            max_value = max(member.value for member in Nationality)
+            return min_value <= nationality_code <= max_value
+
+class Platform(Enum):
+    """
+    Enumeration representing different gaming platforms.
+    """
+    STEAM = 1
+    PLAYSTATION = 3
+    XBOX = 4
+    ORIGIN = 6
+    UNKNOWN = 255
+
+    def __str__(self) -> str:
+        """
+        Returns a human-readable string representation of the gaming platform.
+
+        Returns:
+            str: String representation of the gaming platform.
+        """
+        return {
+            Platform.STEAM: "Steam",
+            Platform.PLAYSTATION: "PlayStation",
+            Platform.XBOX: "Xbox",
+            Platform.ORIGIN: "Origin",
+            Platform.UNKNOWN: "Unknown",
+        }[self]
+
+    @staticmethod
+    def isValid(platform_type_code: int):
+        """Check if the given session type code is valid.
+
+        Args:
+            flag_type (int): The session type code to be validated.
+                Also supports type SessionType. Returns true in this case
+
+        Returns:
+            bool: true if valid
+        """
+        if isinstance(platform_type_code, Platform):
+            return True  # It's already an instance of SafetyCarStatus
+        else:
+            min_value = min(member.value for member in Platform)
+            max_value = max(member.value for member in Platform)
+            return min_value <= platform_type_code <= max_value
+
+class TeamID(Enum):
+    """
+    Enumeration representing the TeamID setting for the player.
+    """
+
+    MERCEDES = 0
+    FERRARI = 1
+    RED_BULL_RACING = 2
+    WILLIAMS = 3
+    ASTON_MARTIN = 4
+    ALPINE = 5
+    ALPHA_TAURI = 6
+    HAAS = 7
+    MCLAREN = 8
+    ALFA_ROMEO = 9
+    MERCEDES_2020 = 85
+    FERRARI_2020 = 86
+    RED_BULL_2020 = 87
+    WILLIAMS_2020 = 88
+    RACING_POINT_2020 = 89
+    RENAULT_2020 = 90
+    ALPHA_TAURI_2020 = 91
+    HAAS_2020 = 92
+    MCLAREN_2020 = 93
+    ALFA_ROMEO_2020 = 94
+    ASTON_MARTIN_DB11_V12 = 95
+    ASTON_MARTIN_VANTAGE_F1_EDITION = 96
+    ASTON_MARTIN_VANTAGE_SAFETY_CAR = 97
+    FERRARI_F8_TRIBUTO = 98
+    FERRARI_ROMA = 99
+    MCLAREN_720S = 100
+    MCLAREN_ARTURA = 101
+    MERCEDES_AMG_GT_BLACK_SERIES_SAFETY_CAR = 102
+    MERCEDES_AMG_GTR_PRO = 103
+    F1_CUSTOM_TEAM = 104
+    PREMA_21 = 106
+    UNI_VIRTUOSI_21 = 107
+    CARLIN_21 = 108
+    HITECH_21 = 109
+    ART_GP_21 = 110
+    MP_MOTORSPORT_21 = 111
+    CHAROUZ_21 = 112
+    DAMS_21 = 113
+    CAMPOS_21 = 114
+    BWT_21 = 115
+    TRIDENT_21 = 116
+    MERCEDES_AMG_GT_BLACK_SERIES = 117
+    MERCEDES_22 = 118
+    FERRARI_22 = 119
+    RED_BULL_RACING_22 = 120
+    WILLIAMS_22 = 121
+    ASTON_MARTIN_22 = 122
+    ALPINE_22 = 123
+    ALPHA_TAURI_22 = 124
+    HAAS_22 = 125
+    MCLAREN_22 = 126
+    ALFA_ROMEO_22 = 127
+    KONNERSPORT_22 = 128
+    KONNERSPORT = 129
+    PREMA_22 = 130
+    VIRTUOSI_22 = 131
+    CARLIN_22 = 132
+    MP_MOTORSPORT_22 = 133
+    CHAROUZ_22 = 134
+    DAMS_22 = 135
+    CAMPOS_22 = 136
+    VAN_AMERSFOORT_RACING_22 = 137
+    TRIDENT_22 = 138
+    HITECH_22 = 139
+    ART_GP_22 = 140
+
+    @staticmethod
+    def isValid(team_id: int) -> bool:
+        """Check if the given team ID is valid.
+
+        Args:
+            team_id (int): The team ID to be validated.
+
+        Returns:
+            bool: True if valid.
+        """
+        if isinstance(team_id, TeamID):
+            return True  # It's already an instance of TeamID
+        else:
+            for member in TeamID:
+                if team_id == member.value:
+                    return True
+            return False
+
+    def __str__(self) -> str:
+        """Return the string representation of the driver.
+
+        Returns:
+            str: String representation of the driver.
+        """
+        teams_mapping = {
+            0: "Mercedes", 1: "Ferrari", 2: "Red Bull Racing",
+            3: "Williams", 4: "Aston Martin", 5: "Alpine",
+            6: "Alpha Tauri", 7: "Haas", 8: "McLaren",
+            9: "Alfa Romeo", 85: "Mercedes 2020", 86: "Ferrari 2020",
+            87: "Red Bull 2020", 88: "Williams 2020", 89: "Racing Point 2020",
+            90: "Renault 2020", 91: "Alpha Tauri 2020", 92: "Haas 2020",
+            93: "McLaren 2020", 94: "Alfa Romeo 2020", 95: "Aston Martin DB11 V12",
+            96: "Aston Martin Vantage F1 Edition", 97: "Aston Martin Vantage Safety Car",
+            98: "Ferrari F8 Tributo", 99: "Ferrari Roma", 100: "McLaren 720S",
+            101: "McLaren Artura", 102: "Mercedes AMG GT Black Series Safety Car",
+            103: "Mercedes AMG GTR Pro", 104: "F1 Custom Team",
+            106: "Prema '21", 107: "Uni-Virtuosi '21", 108: "Carlin '21",
+            109: "Hitech '21", 110: "Art GP '21", 111: "MP Motorsport '21",
+            112: "Charouz '21", 113: "Dams '21", 114: "Campos '21",
+            115: "BWT '21", 116: "Trident '21", 117: "Mercedes AMG GT Black Series",
+            118: "Mercedes '22", 119: "Ferrari '22", 120: "Red Bull Racing '22",
+            121: "Williams '22", 122: "Aston Martin '22", 123: "Alpine '22",
+            124: "Alpha Tauri '22", 125: "Haas '22", 126: "McLaren '22",
+            127: "Alfa Romeo '22", 128: "Konnersport '22", 129: "Konnersport",
+            130: "Prema '22", 131: "Virtuosi '22", 132: "Carlin '22",
+            133: "MP Motorsport '22", 134: "Charouz '22", 135: "Dams '22",
+            136: "Campos '22", 137: "Van Amersfoort Racing '22", 138: "Trident '22",
+            139: "Hitech '22", 140: "Art GP '22"
+        }
+        return teams_mapping.get(self.value, "---")
+
 class F1Utils:
     """
     Utility class for Formula 1-related operations.
@@ -872,10 +1152,13 @@ class MarshalZone:
                 return min_value <= flag_type <= max_value
 
         def __str__(self):
-            if F1PacketType.isValid(self.value):
-                return self.name
-            else:
-                return 'Marshal Zone Flag type ' + str(self.value)
+            """Return the string representation of this object
+
+            Returns:
+                str: string representation
+            """
+
+            return self.name
 
     def __init__(self, data: bytes) -> None:
         """Unpack the given raw bytes into this object
@@ -2808,7 +3091,7 @@ class ParticipantData:
         m_aiControlled (bool): Whether the vehicle is AI (True) or Human (False) controlled.
         m_driverId (int): Driver id - see appendix, 255 if network human.
         networkId (int): Network id - unique identifier for network players.
-        m_teamId (ParticipantData.TeamID): See TeamID enumeration
+        m_teamId (TeamID): See TeamID enumeration
         m_myTeam (bool): My team flag - True = My Team, False = otherwise.
         m_raceNumber (int): Race number of the car.
         m_nationality (int): Nationality of the driver.
@@ -2816,126 +3099,11 @@ class ParticipantData:
                       Will be truncated with … (U+2026) if too long.
         m_yourTelemetry (TelemetrySetting): The player's UDP setting (see TelemetrySetting enumeration)
         m_showOnlineNames (bool): The player's show online names setting, False = off, True = on.
-        m_platform (ParticipantData.Platform): Gaming platform (see Platform enumeration).
+        m_platform (Platform): Gaming platform (see Platform enumeration).
 
         Note:
-            The m_platform attribute is an instance of ParticipantData.Platform.
+            The m_platform attribute is an instance of Platform.
     """
-
-    class Nationality(Enum):
-        """
-        Enum representing nationalities with corresponding IDs.
-        """
-        American = 1
-        Argentinean = 2
-        Australian = 3
-        Austrian = 4
-        Azerbaijani = 5
-        Bahraini = 6
-        Belgian = 7
-        Bolivian = 8
-        Brazilian = 9
-        British = 10
-        Bulgarian = 11
-        Cameroonian = 12
-        Canadian = 13
-        Chilean = 14
-        Chinese = 15
-        Colombian = 16
-        Costa_Rican = 17
-        Croatian = 18
-        Cypriot = 19
-        Czech = 20
-        Danish = 21
-        Dutch = 22
-        Ecuadorian = 23
-        English = 24
-        Emirian = 25
-        Estonian = 26
-        Finnish = 27
-        French = 28
-        German = 29
-        Ghanaian = 30
-        Greek = 31
-        Guatemalan = 32
-        Honduran = 33
-        Hong_Konger = 34
-        Hungarian = 35
-        Icelander = 36
-        Indian = 37
-        Indonesian = 38
-        Irish = 39
-        Israeli = 40
-        Italian = 41
-        Jamaican = 42
-        Japanese = 43
-        Jordanian = 44
-        Kuwaiti = 45
-        Latvian = 46
-        Lebanese = 47
-        Lithuanian = 48
-        Luxembourger = 49
-        Malaysian = 50
-        Maltese = 51
-        Mexican = 52
-        Monegasque = 53
-        New_Zealander = 54
-        Nicaraguan = 55
-        Northern_Irish = 56
-        Norwegian = 57
-        Omani = 58
-        Pakistani = 59
-        Panamanian = 60
-        Paraguayan = 61
-        Peruvian = 62
-        Polish = 63
-        Portuguese = 64
-        Qatari = 65
-        Romanian = 66
-        Russian = 67
-        Salvadoran = 68
-        Saudi = 69
-        Scottish = 70
-        Serbian = 71
-        Singaporean = 72
-        Slovakian = 73
-        Slovenian = 74
-        South_Korean = 75
-        South_African = 76
-        Spanish = 77
-        Swedish = 78
-        Swiss = 79
-        Thai = 80
-        Turkish = 81
-        Uruguayan = 82
-        Ukrainian = 83
-        Venezuelan = 84
-        Barbadian = 85
-        Welsh = 86
-        Vietnamese = 87
-
-        def __str__(self) -> str:
-            """
-            Returns the string representation of the Enum member.
-            """
-            return f"{self.name.replace('_', ' ')}"
-
-        @staticmethod
-        def isValid(telemetry_setting_code: int) -> bool:
-            """Check if the given nationality code is valid.
-
-            Args:
-                driver_id (int): The nationality code to be validated.
-
-            Returns:
-                bool: True if valid.
-            """
-            if isinstance(telemetry_setting_code, ParticipantData.Nationality):
-                return True  # It's already an instance of Nationality
-            else:
-                min_value = min(member.value for member in ParticipantData.Nationality)
-                max_value = max(member.value for member in ParticipantData.Nationality)
-                return min_value <= telemetry_setting_code <= max_value
 
     class TelemetrySetting(Enum):
         """
@@ -2974,170 +3142,6 @@ class ParticipantData:
                 max_value = max(member.value for member in ParticipantData.TelemetrySetting)
                 return min_value <= telemetry_setting_code <= max_value
 
-    class TeamID(Enum):
-        """
-        Enumeration representing the TeamID setting for the player.
-        """
-
-        MERCEDES = 0
-        FERRARI = 1
-        RED_BULL_RACING = 2
-        WILLIAMS = 3
-        ASTON_MARTIN = 4
-        ALPINE = 5
-        ALPHA_TAURI = 6
-        HAAS = 7
-        MCLAREN = 8
-        ALFA_ROMEO = 9
-        MERCEDES_2020 = 85
-        FERRARI_2020 = 86
-        RED_BULL_2020 = 87
-        WILLIAMS_2020 = 88
-        RACING_POINT_2020 = 89
-        RENAULT_2020 = 90
-        ALPHA_TAURI_2020 = 91
-        HAAS_2020 = 92
-        MCLAREN_2020 = 93
-        ALFA_ROMEO_2020 = 94
-        ASTON_MARTIN_DB11_V12 = 95
-        ASTON_MARTIN_VANTAGE_F1_EDITION = 96
-        ASTON_MARTIN_VANTAGE_SAFETY_CAR = 97
-        FERRARI_F8_TRIBUTO = 98
-        FERRARI_ROMA = 99
-        MCLAREN_720S = 100
-        MCLAREN_ARTURA = 101
-        MERCEDES_AMG_GT_BLACK_SERIES_SAFETY_CAR = 102
-        MERCEDES_AMG_GTR_PRO = 103
-        F1_CUSTOM_TEAM = 104
-        PREMA_21 = 106
-        UNI_VIRTUOSI_21 = 107
-        CARLIN_21 = 108
-        HITECH_21 = 109
-        ART_GP_21 = 110
-        MP_MOTORSPORT_21 = 111
-        CHAROUZ_21 = 112
-        DAMS_21 = 113
-        CAMPOS_21 = 114
-        BWT_21 = 115
-        TRIDENT_21 = 116
-        MERCEDES_AMG_GT_BLACK_SERIES = 117
-        MERCEDES_22 = 118
-        FERRARI_22 = 119
-        RED_BULL_RACING_22 = 120
-        WILLIAMS_22 = 121
-        ASTON_MARTIN_22 = 122
-        ALPINE_22 = 123
-        ALPHA_TAURI_22 = 124
-        HAAS_22 = 125
-        MCLAREN_22 = 126
-        ALFA_ROMEO_22 = 127
-        KONNERSPORT_22 = 128
-        KONNERSPORT = 129
-        PREMA_22 = 130
-        VIRTUOSI_22 = 131
-        CARLIN_22 = 132
-        MP_MOTORSPORT_22 = 133
-        CHAROUZ_22 = 134
-        DAMS_22 = 135
-        CAMPOS_22 = 136
-        VAN_AMERSFOORT_RACING_22 = 137
-        TRIDENT_22 = 138
-        HITECH_22 = 139
-        ART_GP_22 = 140
-
-        @staticmethod
-        def isValid(driver_id: int) -> bool:
-            """Check if the given driver ID is valid.
-
-            Args:
-                driver_id (int): The driver ID to be validated.
-
-            Returns:
-                bool: True if valid.
-            """
-            if isinstance(driver_id, ParticipantData.TeamID):
-                return True  # It's already an instance of TeamID
-            else:
-                min_value = min(member.value for member in ParticipantData.TeamID)
-                max_value = max(member.value for member in ParticipantData.TeamID)
-                return min_value <= driver_id <= max_value
-
-        def __str__(self) -> str:
-            """Return the string representation of the driver.
-
-            Returns:
-                str: String representation of the driver.
-            """
-            teams_mapping = {
-                0: "Mercedes", 1: "Ferrari", 2: "Red Bull Racing",
-                3: "Williams", 4: "Aston Martin", 5: "Alpine",
-                6: "Alpha Tauri", 7: "Haas", 8: "McLaren",
-                9: "Alfa Romeo", 85: "Mercedes 2020", 86: "Ferrari 2020",
-                87: "Red Bull 2020", 88: "Williams 2020", 89: "Racing Point 2020",
-                90: "Renault 2020", 91: "Alpha Tauri 2020", 92: "Haas 2020",
-                93: "McLaren 2020", 94: "Alfa Romeo 2020", 95: "Aston Martin DB11 V12",
-                96: "Aston Martin Vantage F1 Edition", 97: "Aston Martin Vantage Safety Car",
-                98: "Ferrari F8 Tributo", 99: "Ferrari Roma", 100: "McLaren 720S",
-                101: "McLaren Artura", 102: "Mercedes AMG GT Black Series Safety Car",
-                103: "Mercedes AMG GTR Pro", 104: "F1 Custom Team",
-                106: "Prema '21", 107: "Uni-Virtuosi '21", 108: "Carlin '21",
-                109: "Hitech '21", 110: "Art GP '21", 111: "MP Motorsport '21",
-                112: "Charouz '21", 113: "Dams '21", 114: "Campos '21",
-                115: "BWT '21", 116: "Trident '21", 117: "Mercedes AMG GT Black Series",
-                118: "Mercedes '22", 119: "Ferrari '22", 120: "Red Bull Racing '22",
-                121: "Williams '22", 122: "Aston Martin '22", 123: "Alpine '22",
-                124: "Alpha Tauri '22", 125: "Haas '22", 126: "McLaren '22",
-                127: "Alfa Romeo '22", 128: "Konnersport '22", 129: "Konnersport",
-                130: "Prema '22", 131: "Virtuosi '22", 132: "Carlin '22",
-                133: "MP Motorsport '22", 134: "Charouz '22", 135: "Dams '22",
-                136: "Campos '22", 137: "Van Amersfoort Racing '22", 138: "Trident '22",
-                139: "Hitech '22", 140: "Art GP '22"
-            }
-            return teams_mapping.get(self.value, "---")
-
-    class Platform(Enum):
-        """
-        Enumeration representing different gaming platforms.
-        """
-        STEAM = 1
-        PLAYSTATION = 3
-        XBOX = 4
-        ORIGIN = 6
-        UNKNOWN = 255
-
-        def __str__(self) -> str:
-            """
-            Returns a human-readable string representation of the gaming platform.
-
-            Returns:
-                str: String representation of the gaming platform.
-            """
-            return {
-                ParticipantData.Platform.STEAM: "Steam",
-                ParticipantData.Platform.PLAYSTATION: "PlayStation",
-                ParticipantData.Platform.XBOX: "Xbox",
-                ParticipantData.Platform.ORIGIN: "Origin",
-                ParticipantData.Platform.UNKNOWN: "Unknown",
-            }[self]
-
-        @staticmethod
-        def isValid(session_type_code: int):
-            """Check if the given session type code is valid.
-
-            Args:
-                flag_type (int): The session type code to be validated.
-                    Also supports type SessionType. Returns true in this case
-
-            Returns:
-                bool: true if valid
-            """
-            if isinstance(session_type_code, ParticipantData.Platform):
-                return True  # It's already an instance of SafetyCarStatus
-            else:
-                min_value = min(member.value for member in ParticipantData.Platform)
-                max_value = max(member.value for member in ParticipantData.Platform)
-                return min_value <= session_type_code <= max_value
-
     def __init__(self, data) -> None:
         """
         Initializes a ParticipantData object by unpacking the provided binary data.
@@ -3164,14 +3168,14 @@ class ParticipantData:
         ) = unpacked_data
 
         self.m_name = self.m_name.decode('utf-8').rstrip('\x00')
-        if ParticipantData.Platform.isValid(self.m_platform):
-            self.m_platform = ParticipantData.Platform(self.m_platform)
-        if ParticipantData.TeamID.isValid(self.m_teamId):
-            self.m_teamId = ParticipantData.TeamID(self.m_teamId)
+        if Platform.isValid(self.m_platform):
+            self.m_platform = Platform(self.m_platform)
+        if TeamID.isValid(self.m_teamId):
+            self.m_teamId = TeamID(self.m_teamId)
         if ParticipantData.TelemetrySetting.isValid(self.m_yourTelemetry):
             self.m_yourTelemetry = ParticipantData.TelemetrySetting(self.m_yourTelemetry)
-        if ParticipantData.Nationality.isValid(self.m_nationality):
-            self.m_nationality = ParticipantData.Nationality(self.m_nationality)
+        if Nationality.isValid(self.m_nationality):
+            self.m_nationality = Nationality(self.m_nationality)
         self.m_showOnlineNames = bool(self.m_showOnlineNames)
         self.m_myTeam = bool(self.m_myTeam)
         self.m_aiControlled = bool(self.m_aiControlled)
@@ -4311,6 +4315,39 @@ class LobbyInfoData:
         The class is designed to parse and represent lobby information data for a player.
     """
 
+    class ReadyStatus(Enum):
+        """
+        ENUM class for the marshal zone flag status
+        """
+
+        NOT_READY = 0
+        READY = 1
+        SPECTATING = 2
+
+        @staticmethod
+        def isValid(ready_status_code: int):
+            """Check if the given packet type is valid.
+
+            Args:
+                ready_status_code (int): The ready status code to be validated.
+                    Also supports type ReadyStatus. Returns true in this case
+
+            Returns:
+                bool: true if valid
+            """
+            if isinstance(ready_status_code, LobbyInfoData.ReadyStatus):
+                return True  # It's already an instance of LobbyInfoData.ReadyStatus
+            else:
+                min_value = min(member.value for member in LobbyInfoData.ReadyStatus)
+                max_value = max(member.value for member in LobbyInfoData.ReadyStatus)
+                return min_value <= ready_status_code <= max_value
+
+        def __str__(self):
+            if F1PacketType.isValid(self.value):
+                return self.name
+            else:
+                return 'Marshal Zone Flag type ' + str(self.value)
+
     def __init__(self, data) -> None:
         """
         Initializes LobbyInfoData with raw data.
@@ -4324,10 +4361,22 @@ class LobbyInfoData:
             self.m_teamId,
             self.m_nationality,
             self.m_platform,
-            self.m_name,
+            name_bytes,
             self.m_carNumber,
             self.m_readyStatus,
         ) = struct.unpack(LOBBY_INFO_FORMAT_STRING, data)
+
+        self.m_name = name_bytes.decode('utf-8', errors='replace').rstrip('\x00')
+
+        if TeamID.isValid(self.m_teamId):
+            self.m_teamId = TeamID(self.m_teamId)
+        if Nationality.isValid(self.m_nationality):
+            self.m_nationality = Nationality(self.m_nationality)
+        if Platform.isValid(self.m_platform):
+            self.m_platform = Platform(self.m_platform)
+        if LobbyInfoData.ReadyStatus.isValid(self.m_readyStatus):
+            self.m_readyStatus = LobbyInfoData.ReadyStatus(self.m_readyStatus)
+        self.m_aiControlled = bool(self.m_aiControlled)
 
     def __str__(self) -> str:
         """
