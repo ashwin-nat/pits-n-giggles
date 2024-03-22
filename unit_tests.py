@@ -139,6 +139,12 @@ class TestAdjacentPositions(F1TelemetryUnitTestsBase):
         expected_result = [i for i in range(1, 21)]
         self.assertEqual(result, expected_result)
 
+    def test_gp_full_table_p20_huge_num_adj_cars(self):
+        # Check for P20 in full table output
+        result = _getAdjacentPositions(position=20, total_cars=20, num_adjacent_cars=50)
+        expected_result = [i for i in range(1, 21)]
+        self.assertEqual(result, expected_result)
+
     def test_tt_1(self):
         # Time Trial - 1 car
         result = _getAdjacentPositions(position=1, total_cars=1, num_adjacent_cars=3)

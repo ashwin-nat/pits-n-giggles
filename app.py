@@ -20,6 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# -------------------------------------- IMPORTS -----------------------------------------------------------------------
+
 import argparse
 import logging
 import socket
@@ -27,11 +29,12 @@ import sys
 import threading
 import time
 import webbrowser
-from typing import Set
+from typing import Set, Optional
 
 from telemetry_handler import initPktCap, PacketCaptureMode, initAutosaves, F12023TelemetryHandler, initDirectories
 from telemetry_server import TelemetryWebServer
 
+# -------------------------------------- FUNCTION DEFINITIONS ----------------------------------------------------------
 
 def initLogger(file_name: str = None, debug_mode: bool = False) -> logging.Logger:
     """Initialize and configure the logger.
@@ -72,7 +75,6 @@ def initLogger(file_name: str = None, debug_mode: bool = False) -> logging.Logge
 
     return logger
 
-
 def getLocalIpAddresses() -> Set[str]:
     """Get local IP addresses including '127.0.0.1' and 'localhost'.
 
@@ -80,10 +82,13 @@ def getLocalIpAddresses() -> Set[str]:
         Set[str]: Set of local IP addresses.
     """
     ip_addresses = {'127.0.0.1', 'localhost'}
-    for host_name in socket.gethostbyname_ex(socket.gethostname())[2]:
-        ip_addresses.add(host_name)
+    try:
+        for host_name in socket.gethostbyname_ex(socket.gethostname())[2]:
+            ip_addresses.add(host_name)
+    except socket.gaierror as e:
+        # Log the error or handle it as per your requirement
+        logging.warning(f"Error occurred: {e}. Using default IP addresses.")
     return ip_addresses
-
 
 def openWebPage(http_port: int) -> None:
     """Open the webpage on a new browser tab.
@@ -94,9 +99,12 @@ def openWebPage(http_port: int) -> None:
     time.sleep(1)
     webbrowser.open(f'http://localhost:{http_port}', new=2)
 
-
-def httpServerTask(http_port: int, packet_capture_enabled: bool, client_poll_interval_ms: int,
-                   disable_browser_autoload: bool) -> None:
+def httpServerTask(
+        http_port: int,
+        packet_capture_enabled: bool,
+        client_poll_interval_ms: int,
+        disable_browser_autoload: bool,
+        num_adjacent_cars: int) -> None:
     """Entry point to start the HTTP server.
 
     Args:
@@ -104,6 +112,7 @@ def httpServerTask(http_port: int, packet_capture_enabled: bool, client_poll_int
         packet_capture_enabled (bool): Whether packet capture is enabled.
         client_poll_interval_ms (int): Client poll interval in milliseconds.
         disable_browser_autoload (bool): Whether to disable browser autoload.
+        num_adjacent_cars (int): The number of cars adjacent to player to be included in telemetry-info response
     """
     # Create a thread to open the webpage
     if not disable_browser_autoload:
@@ -114,7 +123,8 @@ def httpServerTask(http_port: int, packet_capture_enabled: bool, client_poll_int
         port=http_port,
         packet_capture_enabled=packet_capture_enabled,
         client_poll_interval_ms=client_poll_interval_ms,
-        debug_mode=False
+        debug_mode=False,
+        num_adjacent_cars=num_adjacent_cars
     )
     log_str = "Starting F1 2023 telemetry server. Open one of the below addresses in your browser\n"
     ip_addresses = getLocalIpAddresses()
@@ -125,10 +135,12 @@ def httpServerTask(http_port: int, packet_capture_enabled: bool, client_poll_int
     logging.info(log_str)
     telemetry_server.run()
 
-
-def f1TelemetryServerTask(packet_capture: PacketCaptureMode, port_number: int,
-                            replay_server: bool,
-                            post_race_data_autosave: bool) -> None:
+def f1TelemetryServerTask(
+        packet_capture: PacketCaptureMode,
+        port_number: int,
+        replay_server: bool,
+        post_race_data_autosave: bool,
+        udp_custom_action_code: Optional[int]) -> None:
     """Entry point to start the F1 23 telemetry server.
 
     Args:
@@ -140,10 +152,11 @@ def f1TelemetryServerTask(packet_capture: PacketCaptureMode, port_number: int,
     time.sleep(2)
     if packet_capture != PacketCaptureMode.DISABLED:
         initPktCap(packet_capture)
-    initAutosaves(post_race_data_autosave)
+    initAutosaves(post_race_data_autosave, udp_custom_action_code)
     telemetry_client = F12023TelemetryHandler(port_number, packet_capture, replay_server)
     telemetry_client.run()
 
+# -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
 if __name__ == '__main__':
     # Initialize the ArgumentParser
@@ -171,17 +184,30 @@ if __name__ == '__main__':
                         help='Write output to specified log file (append)')
     parser.add_argument('-d', '--debug', action='store_true',
                         help="Enable debug logs")
+    parser.add_argument('-u', '--udp-custom-action-code', type=int, default=None,
+                        metavar='UDP_CUSTOM_ACTION_NUMBER',
+                        help="UDP custom action code number for recording event markers")
+    parser.add_argument('-n', '--num-adjacent-cars', type=int, default=2, metavar='NUM_ADJ_CARS',
+                        help="How many cars adjacent to your car will be included in the UI during race. "
+                                "The total number of cars will be NUM_ADJ_CARS*2 + 1. "
+                                "A huge number implies that all cars are to be displayed")
 
     # Parse the command-line arguments
     args = parser.parse_args()
-    initDirectories()
+
     initLogger(file_name=args.log_file, debug_mode=args.debug)
+    if args.num_adjacent_cars < 0:
+        logging.error("--num-adjacent-cars cannot be negative")
+        sys.exit(1)
+    logging.info("Starting the app with the following options:")
+    for arg, value in vars(args).items():
+        logging.info(f"{arg}: {value}")
+    initDirectories()
 
     # First init the telemetry client on a main thread
     client_thread = threading.Thread(target=f1TelemetryServerTask,
                                     args=(args.packet_capture_mode, args.telemetry_port,
-                                        args.replay_server,
-                                           args.post_race_data_autosave))
+                                        args.replay_server, args.post_race_data_autosave, args.udp_custom_action_code))
     client_thread.daemon = True
     client_thread.start()
 
@@ -189,7 +215,7 @@ if __name__ == '__main__':
     packet_capture_enabled = \
         args.packet_capture_mode in [PacketCaptureMode.ENABLED, PacketCaptureMode.ENABLED_WITH_AUTOSAVE]
     httpServerTask(args.server_port, packet_capture_enabled, args.refresh_interval,
-                   args.disable_browser_autoload)
+                   args.disable_browser_autoload, args.num_adjacent_cars)
 
     # Set up a keyboard interrupt handler
     try:

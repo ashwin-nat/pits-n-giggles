@@ -20,9 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-
 import socket
-from packet_cap import F1PacketCapture, F1PktCapMessage
+from packet_cap import F1PacketCapture
 import argparse
 from tqdm import tqdm
 import struct
@@ -137,6 +136,9 @@ def main():
                 total_bytes += message_length
 
                 progress_bar.update(1)
+
+            print('\nSent ' + str(total_packets) + ' packets.')
+            print('Sent ' + str(total_bytes) + ' bytes.')
 
     except KeyboardInterrupt:
         print("Client terminated by user.")
