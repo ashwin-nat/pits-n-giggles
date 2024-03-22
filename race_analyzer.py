@@ -93,11 +93,15 @@ def getFastestTimesJson(json_data: Dict[str, Any], driver_data: Optional[Dict[st
         for driver_index, driver_data in enumerate(json_data["classification-data"]):
             session_history = driver_data.get("session-history", None)
             if session_history:
-                if not fastest_dict['driver-index'] and not fastest_dict['lap-number'] and not fastest_dict['time']:
+                if (fastest_dict['driver-index'] is None) or \
+                    (fastest_dict['lap-number'] is None) or \
+                        (fastest_dict['time'] is None):
                     fastest_lap_num = session_history[best_time_lap_num_key]
                     fastest_dict['driver-index'] = driver_index
                     fastest_dict['lap-number'] = fastest_lap_num
-                    fastest_dict['time'] = session_history["lap-history-data"][fastest_lap_num-1][best_time_key]
+                    fastest_lap_index = fastest_lap_num - 1
+                    if 0 >= fastest_lap_index > len(session_history["lap-history-data"]):
+                        fastest_dict['time'] = session_history["lap-history-data"][fastest_lap_num-1][best_time_key]
                 else:
                     best_time_lap_num = session_history[best_time_lap_num_key]
                     best_lap_time = session_history["lap-history-data"][best_time_lap_num-1][best_time_key]

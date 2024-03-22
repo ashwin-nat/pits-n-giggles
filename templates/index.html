@@ -159,7 +159,7 @@ SOFTWARE.
         }
 
         .drs-active {
-            color: #28a745;
+            color: #28a745 !important;
             /* Green font color for DRS active, no background change */
         }
 
@@ -465,6 +465,8 @@ SOFTWARE.
                 // Fix for DRS active styling
                 if (entry["drs"] === true) {
                     Array.from(row.cells).forEach(cell => cell.classList.add('drs-active'));
+                    row.classList.add('drs-active'); // Add class to the row
+                    nameLink.classList.add('drs-active')
                 }
             });
         }

@@ -342,10 +342,9 @@ def writeToCsvFile(g_custom_player_markers: List[str], custom_marker_file_name: 
         custom_marker_file_name (str): The name of the CSV file to write the markers to.
     """
 
-    with open(custom_marker_file_name, 'w', encoding='utf-8', newline='') as file:
-        writer = csv.writer(file)
+    with open(custom_marker_file_name, 'w', encoding='utf-8') as file:
         for marker in g_custom_player_markers:
-            writer.writerow(marker)
+            file.write(marker + '\n')
 
 def addFunStatsToFinalClassificationJson(final_json: Dict[str, Any]) -> None:
     """
@@ -391,7 +390,6 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
 
     global g_directory_mapping
     global g_overtakes_history
-    global g_directory_mapping
     event_str = TelData.getEventInfoStr()
     if not event_str:
         return
@@ -416,11 +414,12 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
 
     # Save the custom player recorded markers
     global g_player_recorded_events_history
-    if g_player_recorded_events_history:
+    if len(g_player_recorded_events_history) > 0:
         custom_marker_file_name = g_directory_mapping['race-info'] + 'custom_player_markers_' + \
-                event_str + getTimestampStr() + '.json'
+                event_str + getTimestampStr() + '.csv'
         writeToCsvFile(g_player_recorded_events_history, custom_marker_file_name)
-        logging.info("Wrote custom player markers to " + custom_marker_file_name)
+        logging.info(
+            f"Wrote {len(g_player_recorded_events_history)} custom player markers to {custom_marker_file_name}")
 
 # -------------------------------------- TELEMETRY PACKET HANDLERS -----------------------------------------------------
 
@@ -482,7 +481,7 @@ class F12023TelemetryHandler:
         Handle raw telemetry packet.
 
         Parameters:
-        - packet (List[bytes]): The raw telemetry packet.
+            acket (List[bytes]): The raw telemetry packet.
         """
         addRawPacket(packet)
 
@@ -492,10 +491,16 @@ class F12023TelemetryHandler:
         Handle session data telemetry packet.
 
         Parameters:
-        - packet (PacketSessionData): The session data telemetry packet.
+            packet (PacketSessionData): The session data telemetry packet.
         """
+
+        # TODO: clean up order of operations
+        if packet.m_sessionDuration == 0:
+            logging.info("Session duration is 0. clearing data structures")
+            TelData.processSessionStarted()
+
         if TelData.processSessionUpdate(packet):
-            logging.info("Session UID changed")
+            logging.info("Session UID changed. clearing data structures")
             TelData.processSessionStarted()
 
     @staticmethod
@@ -504,10 +509,7 @@ class F12023TelemetryHandler:
         Handle lap data telemetry packet.
 
         Parameters:
-        - packet (PacketLapData): The lap data telemetry packet.
-
-        Returns:
-        None
+            packet (PacketLapData): The lap data telemetry packet.
         """
 
         TelData.processLapDataUpdate(packet)

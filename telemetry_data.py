@@ -1167,7 +1167,7 @@ def getPlayerRecordedEventCsvStr(add_to_queue: bool = False) -> Optional[str]:
 
     Returns:
         Optional[str]: The recorded event string for the player in CSV format , or None if no player data is available.
-            (<track>,<event-type>,<lap-num>,<sector-num>)
+            (<track>,<event-type>,<lap-num>,<sector-num>,<curr-lap-time>,<curr-lap-percent>)
     """
 
     def _getPlayerRecordedEventCsvStr() -> Optional[str]:
@@ -1177,12 +1177,23 @@ def getPlayerRecordedEventCsvStr(add_to_queue: bool = False) -> Optional[str]:
                 # CSV string - <track>,<event-type>,<lap-num>,<sector-num>
                 lap_num = player_data.m_current_lap
                 sector = player_data.m_packet_lap_data.m_sector
+                curr_lap_time = F1Utils.millisecondsToMinutesSecondsMilliseconds(
+                    player_data.m_packet_lap_data.m_currentLapTimeInMS)
+                curr_lap_dist = player_data.m_packet_lap_data.m_lapDistance
             else:
                 return None
 
         with _globals_lock:
             if _globals.m_circuit is not None and _globals.m_event_type is not None:
-                return str(_globals.m_circuit) + ',' + str(_globals.m_event_type) + ',' + str(lap_num) + ',' + str(sector)
+                curr_lap_percent = F1Utils.floatToStr(
+                    float(curr_lap_dist)/float(_globals.m_packet_session.m_trackLength) * 100.0) + "%"
+                return \
+                    f"{_globals.m_circuit}, " \
+                    f"{_globals.m_event_type}, " \
+                    f"{str(lap_num)}, " \
+                    f"{str(sector)}, " \
+                    f"{curr_lap_time}, " \
+                    f"{curr_lap_percent}"
             else:
                 return None
 

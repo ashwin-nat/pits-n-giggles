@@ -853,19 +853,20 @@ class PacketHeader:
     The packet header structure is as follows:
 
     Attributes:
-        - m_packet_format (int): The format of the telemetry packet (2023).
-        - m_game_year (int): The game year, represented by the last two digits (e.g., 23).
-        - m_game_major_version (int): The game's major version (X.00).
-        - m_game_minor_version (int): The game's minor version (1.XX).
-        - m_packet_version (int): The version of this packet type, starting from 1.
-        - m_packet_id (F1PacketType): Identifier for the packet type. Refer the F1PacketType enumeration
-        - m_session_uid (int): Unique identifier for the session.
-        - m_session_time (float): Timestamp of the session.
-        - m_frame_identifier (int): Identifier for the frame the data was retrieved on.
-        - m_overall_frame_identifier (int): Overall identifier for the frame, not going back after flashbacks.
-        - m_player_car_index (int): Index of the player's car in the array.
-        - m_secondary_player_car_index (int): Index of the secondary player's car in the array (255 if no second player).
+        - m_packetFormat (int): The format of the telemetry packet (2023).
+        - m_gameYear (int): The game year, represented by the last two digits (e.g., 23).
+        - m_gameMajorVersion (int): The game's major version (X.00).
+        - m_gameMinorVersion (int): The game's minor version (1.XX).
+        - m_packetVersion (int): The version of this packet type, starting from 1.
+        - m_packetId (F1PacketType): Identifier for the packet type. Refer to the F1PacketType enumeration.
+        - m_sessionUID (int): Unique identifier for the session.
+        - m_sessionTime (float): Timestamp of the session.
+        - m_frameIdentifier (int): Identifier for the frame the data was retrieved on.
+        - m_overallFrameIdentifier (int): Overall identifier for the frame, not going back after flashbacks.
+        - m_playerCarIndex (int): Index of the player's car in the array.
+        - m_secondaryPlayerCarIndex (int): Index of the secondary player's car in the array (255 if no second player).
     """
+
     def __init__(self, data: bytes) -> None:
         """
         Initializes the PacketHeaderParser with the raw packet data.
@@ -873,6 +874,20 @@ class PacketHeader:
         Args:
             data (bytes): Raw binary data representing the packet header.
         """
+
+        # Declare all variables with types
+        self.m_packetFormat: int
+        self.m_gameYear: int
+        self.m_gameMajorVersion: int
+        self.m_gameMinorVersion: int
+        self.m_packetVersion: int
+        self.m_packetId: F1PacketType
+        self.m_sessionUID: int
+        self.m_sessionTime: float
+        self.m_frameIdentifier: int
+        self.m_overallFrameIdentifier: int
+        self.m_playerCarIndex: int
+        self.m_secondaryPlayerCarIndex: int
 
         # Unpack the data
         unpacked_data = struct.unpack(HEADER_FORMAT_STRING, data)
@@ -961,37 +976,42 @@ class CarMotionData:
 
         Args:
             data (List[bytes]): list containing the raw bytes for this packet
-
-        Attributes:
-        - m_world_position_x (float): World space X position - meters.
-        - m_world_position_y (float): World space Y position.
-        - m_world_position_z (float): World space Z position.
-        - m_world_velocity_x (float): Velocity in world space X – meters/s.
-        - m_world_velocity_y (float): Velocity in world space Y.
-        - m_world_velocity_z (float): Velocity in world space Z.
-        - m_world_forward_dir_x (int): World space forward X direction (normalised).
-        - m_world_forward_dir_y (int): World space forward Y direction (normalised).
-        - m_world_forward_dir_z (int): World space forward Z direction (normalised).
-        - m_world_right_dir_x (int): World space right X direction (normalised).
-        - m_world_right_dir_y (int): World space right Y direction (normalised).
-        - m_world_right_dir_z (int): World space right Z direction (normalised).
-        - m_g_force_lateral (float): Lateral G-Force component.
-        - m_g_force_longitudinal (float): Longitudinal G-Force component.
-        - m_g_force_vertical (float): Vertical G-Force component.
-        - m_yaw (float): Yaw angle in radians.
-        - m_pitch (float): Pitch angle in radians.
-        - m_roll (float): Roll angle in radians.
         """
-        unpacked_data = struct.unpack(MOTION_FORMAT_STRING, data)
 
+        # Declare the data type hints
+        self.m_worldPositionX: float
+        self.m_worldPositionY: float
+        self.m_worldPositionZ: float
+        self.m_worldVelocityX: float
+        self.m_worldVelocityY: float
+        self.m_worldVelocityZ: float
+        self.m_worldForwardDirX: int
+        self.m_worldForwardDirY: int
+        self.m_worldForwardDirZ: int
+        self.m_worldRightDirX: int
+        self.m_worldRightDirY: int
+        self.m_worldRightDirZ: int
+        self.m_gForceLateral: float
+        self.m_gForceLongitudinal: float
+        self.m_gForceVertical: float
+        self.m_yaw: float
+        self.m_pitch: float
+        self.m_roll: float
+
+        # Now, unpack the data and populate the members
         self.m_worldPositionX, self.m_worldPositionY, self.m_worldPositionZ, \
         self.m_worldVelocityX, self.m_worldVelocityY, self.m_worldVelocityZ, \
         self.m_worldForwardDirX, self.m_worldForwardDirY, self.m_worldForwardDirZ, \
         self.m_worldRightDirX, self.m_worldRightDirY, self.m_worldRightDirZ, \
         self.m_gForceLateral, self.m_gForceLongitudinal, self.m_gForceVertical, \
-        self.m_yaw, self.m_pitch, self.m_roll = unpacked_data
+        self.m_yaw, self.m_pitch, self.m_roll = struct.unpack(MOTION_FORMAT_STRING, data)
 
     def __str__(self) -> str:
+        """Return a formatted string representing the CarMotionData object
+
+        Returns:
+            str - string representation of this object
+        """
         return (
             f"CarMotionData("
             f"World Position: ({self.m_worldPositionX}, {self.m_worldPositionY}, {self.m_worldPositionZ}), "
@@ -1072,6 +1092,7 @@ class PacketMotionData:
         """
 
         self.m_header: PacketHeader = header       # PacketHeader
+
         if ((len(packet) % F1_23_MOTION_PACKET_PER_CAR_LEN) != 0):
             raise InvalidPacketLengthError("Received packet length " + str(len(packet)) + " is not a multiple of " +
                                             str(F1_23_MOTION_PACKET_PER_CAR_LEN))
@@ -1167,11 +1188,15 @@ class MarshalZone:
             data (bytes): List of raw bytes received as part of this
         """
 
-        unpacked_data = struct.unpack(MARSHAL_ZONE_FORMAT_STR, data)
+        # Declare the data type hints
+        self.m_zoneStart: float
+        self.m_zoneFlag: MarshalZone.MarshalZoneFlagType
+
+        # Parse the packet into the fields
         (
             self.m_zoneStart,   # float - Fraction (0..1) of way through the lap the marshal zone starts
             self.m_zoneFlag     # int8 - -1 = invalid/unknown, 0 = none, 1 = green, 2 = blue, 3 = yellow
-        ) = unpacked_data
+        ) = struct.unpack(MARSHAL_ZONE_FORMAT_STR, data)
 
         if MarshalZone.MarshalZoneFlagType.isValid(self.m_zoneFlag):
             self.m_zoneFlag = MarshalZone.MarshalZoneFlagType(self.m_zoneFlag)
@@ -1358,7 +1383,17 @@ class WeatherForecastSample:
             data (bytes): List of raw bytes received as part of this
         """
 
-        unpacked_data = struct.unpack(WEATHER_FORECAST_SAMPLE_FORMAT_STR, data)
+        # Declare the type hints
+        self.m_sessionType : int
+        self.m_timeOffset : int
+        self.m_weather : WeatherForecastSample.WeatherCondition
+        self.m_trackTemperature : int
+        self.m_trackTemperatureChange : WeatherForecastSample.TrackTemperatureChange
+        self.m_airTemperature : int
+        self.m_airTemperatureChange : WeatherForecastSample.AirTemperatureChange
+        self.m_rainPercentage : int
+
+        # Parse the packet into the fields
         (
             self.m_sessionType,                   # uint8
             self.m_timeOffset,                    # uint8
@@ -1368,8 +1403,9 @@ class WeatherForecastSample:
             self.m_airTemperature,                # int8
             self.m_airTemperatureChange,          # int8
             self.m_rainPercentage                 # uint8
-        ) = unpacked_data
+        ) = struct.unpack(WEATHER_FORECAST_SAMPLE_FORMAT_STR, data)
 
+        # Convert to typed enums wherever applicable
         if WeatherForecastSample.WeatherCondition.isValid(self.m_weather):
             self.m_weather = WeatherForecastSample.WeatherCondition(self.m_weather)
         if WeatherForecastSample.AirTemperatureChange.isValid(self.m_airTemperatureChange):
@@ -1380,6 +1416,11 @@ class WeatherForecastSample:
             self.m_sessionType = SessionType(self.m_sessionType)
 
     def __str__(self) -> str:
+        """A description of the entire function, its parameters, and its return types.
+
+        Returns:
+            str : string dump of this object
+        """
         return (
             f"WeatherForecastSample("
             f"Session Type: {str(self.m_sessionType)}, "
@@ -1594,6 +1635,57 @@ class PacketSessionData:
         """
         self.m_header: PacketHeader = header          # Header
 
+        # Declare the type hints
+        self.m_weather: int
+        self.m_trackTemperature: int
+        self.m_airTemperature: int
+        self.m_totalLaps: int
+        self.m_trackLength: float
+        self.m_sessionType: int
+        self.m_trackId: PacketSessionData.TrackID
+        self.m_formula: int
+        self.m_sessionTimeLeft: float
+        self.m_sessionDuration: float
+        self.m_pitSpeedLimit: float
+        self.m_gamePaused: bool
+        self.m_isSpectating: bool
+        self.m_spectatorCarIndex: int
+        self.m_sliProNativeSupport: int
+        self.m_numMarshalZones: int
+        self.m_marshalZones: List[MarshalZone]
+        self.m_safetyCarStatus : PacketSessionData.SafetyCarStatus
+        self.m_networkGame: bool
+        self.m_numWeatherForecastSamples: int
+        self.m_weatherForecastSamples: List[WeatherForecastSample]
+        self.m_forecastAccuracy : int
+        self.m_aiDifficulty: int
+        self.m_seasonLinkIdentifier: int
+        self.m_weekendLinkIdentifier: int
+        self.m_sessionLinkIdentifier: int
+        self.m_pitStopWindowIdealLap: int
+        self.m_pitStopWindowLatestLap: int
+        self.m_pitStopRejoinPosition: int
+        self.m_steeringAssist: int
+        self.m_brakingAssist: int
+        self.m_gearboxAssist: int
+        self.m_pitAssist: int
+        self.m_pitReleaseAssist: int
+        self.m_ERSAssist: int
+        self.m_DRSAssist: int
+        self.m_dynamicRacingLine: int
+        self.m_dynamicRacingLineType: int
+        self.m_gameMode: int
+        self.m_ruleSet: int
+        self.m_timeOfDay: int
+        self.m_sessionLength: int # TODO: make enum
+        self.m_speedUnitsLeadPlayer: int
+        self.m_temperatureUnitsLeadPlayer: int
+        self.m_speedUnitsSecondaryPlayer: int
+        self.m_temperatureUnitsSecondaryPlayer: int
+        self.m_numSafetyCarPeriods: int
+        self.m_numVirtualSafetyCarPeriods: int
+        self.m_numRedFlagPeriods: int
+
         self.m_maxMarshalZones = 21
         self.m_maxWeatherForecastSamples = 56
         # First, section 0
@@ -1693,6 +1785,12 @@ class PacketSessionData:
         ) = unpacked_data
 
     def __str__(self) -> str:
+        """
+        Return a string representation of the PacketSessionData object.
+
+        Returns:
+            str - string representation of this object
+        """
         marshal_zones_str = ", ".join(str(zone) for zone in self.m_marshalZones)
         weather_forecast_samples_str = ", ".join(str(sample) for sample in self.m_weatherForecastSamples)
 
@@ -1987,7 +2085,6 @@ class LapData:
         Raises:
         - struct.error: If the binary data does not match the expected format.
         """
-        unpacked_data = struct.unpack(LAP_TIME_PACKET_FORMAT_STR, data)
 
         # Assign the members from unpacked_data
         (
@@ -2020,7 +2117,7 @@ class LapData:
             self.m_pitLaneTimeInLaneInMS,
             self.m_pitStopTimerInMS,
             self.m_pitStopShouldServePen,
-        ) = unpacked_data
+        ) = struct.unpack(LAP_TIME_PACKET_FORMAT_STR, data)
 
         if LapData.DriverStatus.isValid(self.m_driverStatus):
             self.m_driverStatus = LapData.DriverStatus(self.m_driverStatus)
@@ -3167,7 +3264,7 @@ class ParticipantData:
             self.m_platform
         ) = unpacked_data
 
-        self.m_name = self.m_name.decode('utf-8').rstrip('\x00')
+        self.m_name = self.m_name.decode('utf-8', errors='replace').rstrip('\x00')
         if Platform.isValid(self.m_platform):
             self.m_platform = Platform(self.m_platform)
         if TeamID.isValid(self.m_teamId):
@@ -4361,12 +4458,12 @@ class LobbyInfoData:
             self.m_teamId,
             self.m_nationality,
             self.m_platform,
-            name_bytes,
+            self.m_name,
             self.m_carNumber,
             self.m_readyStatus,
         ) = struct.unpack(LOBBY_INFO_FORMAT_STRING, data)
 
-        self.m_name = name_bytes.decode('utf-8', errors='replace').rstrip('\x00')
+        self.m_name = self.m_name.decode('utf-8', errors='replace').rstrip('\x00')
 
         if TeamID.isValid(self.m_teamId):
             self.m_teamId = TeamID(self.m_teamId)
