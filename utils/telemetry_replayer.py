@@ -21,11 +21,19 @@
 # SOFTWARE.
 
 import socket
-from packet_cap import F1PacketCapture
 import argparse
 from tqdm import tqdm
 import struct
 import time
+import sys
+import os
+
+# Add the parent directory to the Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# Now perform the import
+from lib.packet_cap import F1PacketCapture
+
 
 def sendBytesUDP(data: bytes, udp_ip: str, udp_port: int) -> int:
     """Send the given list of bytes to the specified destination over UDP

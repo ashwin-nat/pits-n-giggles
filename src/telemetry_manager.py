@@ -20,8 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from f1_types import *
-from socket_receiver import UDPListener, TCPListener
+from lib.f1_types import *
+from lib.socket_receiver import UDPListener, TCPListener
 from typing import Callable
 import logging
 
@@ -147,19 +147,19 @@ class F12023TelemetryManager:
 
             # Get next UDP message (TCP in the case of replay server)
             raw_packet = self.m_server.getNextMessage()
-            if len(raw_packet) < F1_23_PACKET_HEADER_LEN:
+            if len(raw_packet) < PacketHeader.PACKET_LEN:
                 # skip incomplete packet
                 continue
 
             # Parse the header
-            header_raw = raw_packet[:F1_23_PACKET_HEADER_LEN]
+            header_raw = raw_packet[:PacketHeader.PACKET_LEN]
             header = PacketHeader(header_raw)
             if not header.is_supported_packet_type:
                 # Unsupported packet type, skip
                 continue
 
             # Parse the payload and call the registered callback
-            payload_raw = raw_packet[F1_23_PACKET_HEADER_LEN:]
+            payload_raw = raw_packet[PacketHeader.PACKET_LEN:]
             try:
                 packet = F12023TelemetryManager.packet_type_map[header.m_packetId](header, payload_raw)
             except InvalidPacketLengthError as e:

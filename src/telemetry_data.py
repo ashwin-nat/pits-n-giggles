@@ -25,10 +25,10 @@
 
 import threading
 import copy
-from f1_types import *
+from lib.f1_types import *
 import csv
 from io import StringIO
-from typing import Optional, Generator, Tuple
+from typing import Optional, Generator, Tuple, List, Dict, Any
 from collections import OrderedDict
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
@@ -113,9 +113,8 @@ class GlobalData:
         """
 
         ret_status = False
-        if self.m_packet_session:
-            if packet.m_header.m_sessionUID != self.m_packet_session.m_header.m_sessionUID:
-                ret_status = True
+        if self.m_packet_session and (packet.m_header.m_sessionUID != self.m_packet_session.m_header.m_sessionUID):
+            ret_status = True
 
         self.m_circuit = str(packet.m_trackId)
         self.m_track_temp = packet.m_trackTemperature
@@ -126,6 +125,7 @@ class GlobalData:
         self.m_weather_forecast_samples = packet.m_weatherForecastSamples
         self.m_pit_speed_limit = packet.m_pitSpeedLimit
         self.m_pit_speed_limit = packet.m_pitSpeedLimit
+        self.m_total_laps = packet.m_totalLaps
         self.m_packet_session = packet
         return ret_status
 
@@ -232,7 +232,7 @@ class DataPerDriver:
                 "lap-number" : lap_number,
                 "car-damage-data" : self.m_car_damage_packet.toJSON() if self.m_car_damage_packet else None,
                 "car-status-data" : self.m_car_status_packet.toJSON() if self.m_car_status_packet else None,
-             }
+            }
 
     def __init__(self):
         """
@@ -513,7 +513,7 @@ class DriverData:
         """
         Recomputes the fastest lap and updates the necessary fields
         """
-        # TODO - handle case where multiple cars have same fastest time.
+
         self.m_fastest_index = None
         fastest_time_ms = 500000000000 # cant be slower than this, right?
         for index, driver_data in self.m_driver_data.items():

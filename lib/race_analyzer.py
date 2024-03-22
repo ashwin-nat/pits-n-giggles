@@ -22,8 +22,6 @@
 
 
 from typing import Dict, Any, Optional
-from f1_types import F1Utils
-from overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode
 
 def getFastestTimesJson(json_data: Dict[str, Any], driver_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """

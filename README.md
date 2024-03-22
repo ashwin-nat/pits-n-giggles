@@ -36,27 +36,6 @@ What this tool can do is provide you with live telemetry data during a race so t
 2. Post Race Data Autosave:
    - This feature can be used to make the tool dump all post race data to a JSON file. It is also disabled by default.
 
-## Usage
-To develop your own app using the telemetry manager module:
-1. Import the telemetry manager module:
-    ```python
-    from telemetry_manager import F12023TelemetryManager
-    ```
-2. Create an instance of F12023TelemetryManager:
-    ```python
-    telemetry_manager = F12023TelemetryManager()
-    ```
-3. Register the callbacks for handling race data:
-    ```python
-    # Register callbacks
-    telemetry_manager.register_callback(your_callback_function)
-    ```
-4. Call the run method to start receiving and processing race data:
-    ```python
-    # Start receiving and processing race data
-    telemetry_manager.run()
-    ```
-
 ## Running the App
 - The app can be run using the following commands:
   - Run the app using Python:
@@ -84,3 +63,24 @@ To develop your own app using the telemetry manager module:
   - -r, --refresh-interval: How often the web page should refresh itself with new data. Default: 200
   - -l, --log-file: Write output to specified log file (append)
   - -d, --debug: Enable debug logs
+
+## Usage - To build your own app on top of this
+To develop your own app using the telemetry manager module:
+1. Import the telemetry manager module:
+    ```python
+    from telemetry_manager import F12023TelemetryManager
+    ```
+2. Create an instance of F12023TelemetryManager:
+    ```python
+    telemetry_manager = F12023TelemetryManager()
+    ```
+3. Register the callbacks for handling race data:
+    ```python
+    # Register callbacks
+    telemetry_manager.register_callback(your_callback_function)
+    ```
+4. Call the run method to start receiving and processing race data:
+    ```python
+    # Start receiving and processing race data
+    telemetry_manager.run()
+    ```

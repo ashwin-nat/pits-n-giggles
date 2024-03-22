@@ -23,14 +23,19 @@
 import unittest
 import os
 from tempfile import NamedTemporaryFile
-from telemetry_data import _getAdjacentPositions
-from packet_cap import F1PacketCapture, F1PktCapFileHeader
-from overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, OvertakeRecord, OvertakeRivalryKey
 from colorama import Fore, Style
 import random
 import cProfile
 import sys
 import json
+
+# Add the parent directory to the Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from lib.packet_cap import F1PacketCapture, F1PktCapFileHeader
+from src.telemetry_data import _getAdjacentPositions
+from lib.overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, OvertakeRecord, OvertakeRivalryKey
+
 # Initialize colorama
 from colorama import init
 init(autoreset=True)
