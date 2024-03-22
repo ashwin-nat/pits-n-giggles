@@ -31,8 +31,8 @@ import time
 import webbrowser
 from typing import Set, Optional
 
-from telemetry_handler import initPktCap, PacketCaptureMode, initAutosaves, F12023TelemetryHandler, initDirectories
-from telemetry_server import TelemetryWebServer
+from src.telemetry_handler import initPktCap, PacketCaptureMode, initAutosaves, F12023TelemetryHandler, initDirectories
+from src.telemetry_server import TelemetryWebServer
 
 # -------------------------------------- FUNCTION DEFINITIONS ----------------------------------------------------------
 

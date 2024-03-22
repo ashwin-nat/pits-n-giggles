@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 import socket
-from packet_cap import F1PacketCapture
+from ..lib.packet_cap import F1PacketCapture
 import argparse
 from tqdm import tqdm
 import struct

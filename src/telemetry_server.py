@@ -43,8 +43,8 @@ except ImportError:
     print("flask-cors installation complete.")
     from flask_cors import CORS
 
-from telemetry_handler import dumpPktCapToFile, getOvertakeJSON, GetOvertakesStatus
-import telemetry_data as TelData
+from src.telemetry_handler import dumpPktCapToFile, getOvertakeJSON, GetOvertakesStatus
+import src.telemetry_data as TelData
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -65,7 +65,7 @@ class TelemetryWebServer:
             debug_mode (bool): Enable debug mode.
             num_adjacent_cars (int): The number of cars adjacent to player to be included in telemetry-info response
         """
-        self.m_app = Flask(__name__)
+        self.m_app = Flask(__name__, template_folder='templates')
         self.m_app.config['PROPAGATE_EXCEPTIONS'] = True
         self.m_port = port
         self.m_debug_mode = debug_mode
@@ -162,6 +162,9 @@ class TelemetryWebServer:
             Returns:
                 str: HTML page content.
             """
+            import os
+            print('received req. ' + os.getcwd())
+            print('exists = ' + str(os.path.exists('index.html')))
             return render_template('index.html',
                 packet_capture_enabled=self.m_packet_capture_enabled,
                 client_poll_interval_ms=self.m_client_poll_interval_ms)

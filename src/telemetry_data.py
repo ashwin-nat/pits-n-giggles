@@ -25,10 +25,10 @@
 
 import threading
 import copy
-from f1_types import *
+from lib.f1_types import *
 import csv
 from io import StringIO
-from typing import Optional, Generator, Tuple
+from typing import Optional, Generator, Tuple, List, Dict, Any
 from collections import OrderedDict
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
@@ -113,9 +113,8 @@ class GlobalData:
         """
 
         ret_status = False
-        if self.m_packet_session:
-            if packet.m_header.m_sessionUID != self.m_packet_session.m_header.m_sessionUID:
-                ret_status = True
+        if self.m_packet_session and (packet.m_header.m_sessionUID != self.m_packet_session.m_header.m_sessionUID):
+            ret_status = True
 
         self.m_circuit = str(packet.m_trackId)
         self.m_track_temp = packet.m_trackTemperature

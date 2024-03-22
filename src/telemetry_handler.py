@@ -31,7 +31,7 @@ import logging
 from datetime import datetime
 from enum import Enum
 from threading import Lock
-from typing import Optional, List, Tuple, Dict
+from typing import Optional, List, Tuple, Dict, Any
 from collections import namedtuple
 
 try:
@@ -43,12 +43,12 @@ except ImportError:
     print("tqdm installation complete.")
     from tqdm import tqdm
 
-from telemetry_manager import F12023TelemetryManager
-from f1_types import *
-from packet_cap import F1PacketCapture
-from overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode
-import telemetry_data as TelData
-import race_analyzer as RaceAnalyzer
+from src.telemetry_manager import F12023TelemetryManager
+from lib.f1_types import *
+from lib.packet_cap import F1PacketCapture
+from lib.overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode
+import src.telemetry_data as TelData
+import lib.race_analyzer as RaceAnalyzer
 
 # -------------------------------------- TYPE DEFINITIONS --------------------------------------------------------------
 
