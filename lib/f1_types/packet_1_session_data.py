@@ -619,7 +619,7 @@ class PacketSessionData:
         self.m_header: PacketHeader = header          # Header
 
         # Declare the type hints
-        self.m_weather: int
+        self.m_weather: WeatherForecastSample.WeatherCondition
         self.m_trackTemperature: int
         self.m_airTemperature: int
         self.m_totalLaps: int
@@ -693,6 +693,8 @@ class PacketSessionData:
             self.m_sliProNativeSupport,
             self.m_numMarshalZones,
         ) = unpacked_data
+        if WeatherForecastSample.WeatherCondition.isValid(self.m_weather):
+            self.m_weather = WeatherForecastSample.WeatherCondition(self.m_weather)
         if PacketSessionData.TrackID.isValid(self.m_trackId):
             self.m_trackId = PacketSessionData.TrackID(self.m_trackId)
         if SessionType.isValid(self.m_sessionType):
