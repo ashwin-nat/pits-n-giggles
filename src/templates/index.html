@@ -187,7 +187,7 @@ SOFTWARE.
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background-color: #fefefe;
+            background-color: #181717;
             padding: 20px;
             border-radius: 10px;
             text-align: center;
@@ -201,8 +201,8 @@ SOFTWARE.
             /* Set overflow-y to auto to enable scrolling if the content exceeds the max height */
             overflow-y: auto;
 
-            /* Change font color to a darker shade */
-            color: #333;
+            /* Change font color to standard gold */
+            color: #fdd835;
         }
 
         .close {
@@ -246,13 +246,16 @@ SOFTWARE.
             width: 100%;
         }
 
-        .accordion-content p {
-            margin: 0;
-            padding: 8px;
+        .graph-canvas {
+            /* width: 900px !important; */
+            /* height: 900px !important; */
+            align-items: center;
         }
     </style>
     <script src="https://www.youtube.com/iframe_api"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
+    <!-- Include Chart.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
@@ -383,7 +386,7 @@ SOFTWARE.
                     updateGlobalInfo(data["circuit"], data["event-type"], data["track-temperature"], data["current-lap"],
                         data["total-laps"], data["safety-car-status"], data["fastest-lap-overall"],
                         data["pit-speed-limit"], {{ packet_capture_enabled | tojson }});
-                    updateWeatherTable(data["weather-forecast-samples"]);
+        updateWeatherTable(data["weather-forecast-samples"]);
                 })
                 .catch (error => {
             console.error('Error fetching data:', error);
@@ -525,6 +528,85 @@ SOFTWARE.
             function formatComponentName(component) {
                 // Convert component names to kebab-case
                 return component.toLowerCase().replace(/\s+/g, '-');
+            }
+
+            // Function to plot the graph with dark theme, truncated Y-axis values, and 10% excess
+            function plotGraph(canvas, data, label, xAxisLabel, yAxisLabel) {
+                var xData = data.map(entry => entry.x);
+                var yData = data.map(entry => entry.y);
+
+                // Calculate the range of the data
+                var yMin = Math.min(...yData);
+                var yMax = Math.max(...yData);
+
+                // Calculate the 30% excess
+                var excess = (yMax - yMin) * 0.3;
+
+                // Adjust the minimum and maximum values for the Y-axis scale with excess
+                var yMinWithExcess = yMin - excess;
+                var yMaxWithExcess = yMax + excess;
+
+                var ctx = canvas.getContext('2d');
+                var myChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: xData,
+                        datasets: [{
+                            label: label,
+                            data: yData,
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            xAxes: [{
+                                scaleLabel: {
+                                    display: true,
+                                    labelString: xAxisLabel,
+                                    fontColor: 'rgba(255, 255, 255, 0.8)'
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                },
+                                ticks: {
+                                    color: 'rgba(255, 255, 255, 0.8)'
+                                }
+                            }],
+                            yAxes: [{
+                                scaleLabel: {
+                                    display: true,
+                                    labelString: yAxisLabel,
+                                    fontColor: 'rgba(255, 255, 255, 0.8)'
+                                },
+                                beginAtZero: true,
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                },
+                                ticks: {
+                                    color: 'rgba(255, 255, 255, 0.8)'
+                                }
+                            }]
+                        },
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: 'rgba(255, 255, 255, 0.8)'
+                                }
+                            }
+                        },
+                        layout: {
+                            padding: {
+                                top: 10,
+                                right: 10,
+                                bottom: 10,
+                                left: 10
+                            }
+                        },
+                        responsive: true
+                    }
+                });
             }
 
             function getCarDamageContent(data) {
@@ -753,8 +835,6 @@ SOFTWARE.
                             const currentLapNum = lap["lap-number"];
                             if (currentLapNum == 0) {
                                 // Skip lap 0 for ERS, we want that only for fuel
-                                console.log("ERS: skipping lap 0. index=", index);
-
                                 // If this is the only lap info available, print the standard error message
                                 if (perLapHistoryData.length == 1) {
                                     row.innerHTML = '<td colspan="6">ERS data not available</td>';
@@ -762,7 +842,6 @@ SOFTWARE.
 
                                 return;
                             }
-                            console.log("ERS: Processing lap " + currentLapNum + ". index=", index);
                             let ersRemainingPerc = "---";
                             let ersDeployedPerc = "---";
                             let ersHarvestedMguHPerc = "---";
@@ -814,7 +893,9 @@ SOFTWARE.
             function getFuelHistoryContent(data) {
 
                 const fuelHistoryContent = document.createElement('div');
+                const fuelHistorySubDiv = document.createElement('div');
                 const fuelHistoryTable = document.createElement('table');
+                fuelHistorySubDiv.appendChild(fuelHistoryTable);
                 fuelHistoryTable.classList.add('fuel-damage-table');
                 const fuelHistoryHeader = fuelHistoryTable.createTHead();
                 const fuelHistoryHeaderRow = fuelHistoryHeader.insertRow();
@@ -826,6 +907,9 @@ SOFTWARE.
                     <th>Excess Laps Delta</th>
                 `;
                 const fuelHistoryBody = fuelHistoryTable.createTBody();
+                // Data array for plotting graph
+                let graphData = [];
+
                 if ("per-lap-info" in data && data["per-lap-info"] != null) {
                     const perLapHistoryData = data["per-lap-info"];
                     if (perLapHistoryData.length > 0) {
@@ -835,7 +919,7 @@ SOFTWARE.
 
                             let fuelLoad = "---";
                             let fuelLaps = "---";
-                            let fuelLoadDelta = "---";
+                            let usagePerLap = "---";
                             let fuelLapsDelta = "---";
 
                             if ("car-status-data" in lap) {
@@ -846,19 +930,23 @@ SOFTWARE.
                                 fuelLaps = formatFloatWithTwoDecimals(fuelLapsVal);
 
                                 if (index > 0 && "car-status-data" in data["per-lap-info"][index - 1]) {
-                                    console.log("inside if. length: " + data["per-lap-info"].length + " index " + index);
                                     const fuelLoadValPrev = data["per-lap-info"][index - 1]["car-status-data"]["fuel-in-tank"];
                                     const fuelLapsValPrev = data["per-lap-info"][index - 1]["car-status-data"]["fuel-remaining-laps"];
 
-                                    fuelLoadDelta = formatFloatWithTwoDecimalsSigned(fuelLoadValPrev - fuelLoadVal);
+                                    usagePerLap = formatFloatWithTwoDecimalsSigned(fuelLoadValPrev - fuelLoadVal);
                                     fuelLapsDelta = formatFloatWithTwoDecimalsSigned(fuelLapsValPrev - fuelLapsVal);
                                 }
+                            }
+
+                            // Push data to graphData array
+                            if (currentLapNum > 0) {
+                                graphData.push({ x: parseFloat(currentLapNum), y: parseFloat(usagePerLap) });
                             }
 
                             row.innerHTML = `
                                 <td>${currentLapNum}</td>
                                 <td>${fuelLoad}</td>
-                                <td>${fuelLoadDelta}</td>
+                                <td>${usagePerLap}</td>
                                 <td>${fuelLaps}</td>
                                 <td>${fuelLapsDelta}</td>
                             `;
@@ -872,7 +960,22 @@ SOFTWARE.
                     row.innerHTML = '<td colspan="6">ERS History data not available</td>';
                 }
 
-                fuelHistoryContent.appendChild(createAccordion('Fuel History', fuelHistoryTable));
+                // if (graphData.length > 0) {
+                //     // Create graph canvas
+                //     const elementId = 'fuelLoadGraph';
+                //     const graphCanvas = document.createElement('canvas');
+                //     graphCanvas.id = elementId;
+                //     graphCanvas.classList.add('graph-canvas');
+
+                //     // Plot graph
+                //     plotGraph(graphCanvas, graphData, 'Fuel Usage Per Lap Graph', 'Lap number', 'Fuel Usage (kg)');
+
+                //     const fuelGraphTable = document.createElement('table');
+                //     fuelGraphTable.classList.add('fuel-damage-table');
+                //     fuelGraphTable.appendChild(graphCanvas);
+                //     fuelHistorySubDiv.appendChild(graphCanvas);
+                // }
+                fuelHistoryContent.appendChild(createAccordion('Fuel History', fuelHistorySubDiv));
                 return fuelHistoryContent;
             }
 
