@@ -844,7 +844,7 @@ class PacketSessionData:
         """
 
         json_data = {
-            "weather": self.m_weather,
+            "weather": str(self.m_weather),
             "track-temperature": self.m_trackTemperature,
             "air-temperature": self.m_airTemperature,
             "total-laps": self.m_totalLaps,
