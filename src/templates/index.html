@@ -247,9 +247,10 @@ SOFTWARE.
         }
 
         .graph-canvas {
-            /* width: 900px !important; */
+            width: 900px !important;
             /* height: 900px !important; */
             align-items: center;
+            margin: auto;
         }
     </style>
     <script src="https://www.youtube.com/iframe_api"></script>
@@ -545,10 +546,12 @@ SOFTWARE.
                 // Adjust the minimum and maximum values for the Y-axis scale with excess
                 var yMinWithExcess = yMin - excess;
                 var yMaxWithExcess = yMax + excess;
+                console.log(yMinWithExcess, yMaxWithExcess);
 
                 var ctx = canvas.getContext('2d');
                 var myChart = new Chart(ctx, {
                     type: 'line',
+                    devicePixelRatio: 4,
                     data: {
                         labels: xData,
                         datasets: [{
@@ -561,33 +564,37 @@ SOFTWARE.
                     },
                     options: {
                         scales: {
-                            xAxes: [{
+                            x: {
                                 scaleLabel: {
                                     display: true,
                                     labelString: xAxisLabel,
                                     fontColor: 'rgba(255, 255, 255, 0.8)'
                                 },
                                 grid: {
-                                    color: 'rgba(255, 255, 255, 0.1)'
+                                    color: 'rgba(255, 255, 255, 0.1)',
+                                    borderColor: 'rgba(255, 255, 255, 0.1)' // Set color for x-axis grid lines
                                 },
                                 ticks: {
                                     color: 'rgba(255, 255, 255, 0.8)'
                                 }
-                            }],
-                            yAxes: [{
+                            },
+                            y: {
                                 scaleLabel: {
                                     display: true,
                                     labelString: yAxisLabel,
                                     fontColor: 'rgba(255, 255, 255, 0.8)'
                                 },
-                                beginAtZero: true,
                                 grid: {
-                                    color: 'rgba(255, 255, 255, 0.1)'
+                                    color: 'rgba(255, 255, 255, 0.1)',
+                                    borderColor: 'rgba(255, 255, 255, 0.1)' // Set color for y-axis grid lines
                                 },
                                 ticks: {
                                     color: 'rgba(255, 255, 255, 0.8)'
-                                }
-                            }]
+                                },
+                                beginAtZero: false,
+                                min: yMinWithExcess, // Set minimum value for Y-axis
+                                max: yMaxWithExcess, // Set maximum value for Y-axis
+                            }
                         },
                         plugins: {
                             legend: {
@@ -960,21 +967,22 @@ SOFTWARE.
                     row.innerHTML = '<td colspan="6">ERS History data not available</td>';
                 }
 
-                // if (graphData.length > 0) {
-                //     // Create graph canvas
-                //     const elementId = 'fuelLoadGraph';
-                //     const graphCanvas = document.createElement('canvas');
-                //     graphCanvas.id = elementId;
-                //     graphCanvas.classList.add('graph-canvas');
+                if (graphData.length > 0) {
+                    // Create graph canvas
 
-                //     // Plot graph
-                //     plotGraph(graphCanvas, graphData, 'Fuel Usage Per Lap Graph', 'Lap number', 'Fuel Usage (kg)');
+                    const graphDiv = document.createElement('div');
+                    const elementId = 'fuelLoadGraph';
+                    const graphCanvas = document.createElement('canvas');
+                    graphDiv.appendChild(graphCanvas);
+                    graphCanvas.id = elementId;
+                    graphDiv.classList.add('graph-canvas');
+                    // graphCanvas.classList.add('graph-canvas');
 
-                //     const fuelGraphTable = document.createElement('table');
-                //     fuelGraphTable.classList.add('fuel-damage-table');
-                //     fuelGraphTable.appendChild(graphCanvas);
-                //     fuelHistorySubDiv.appendChild(graphCanvas);
-                // }
+                    // Plot graph
+                    plotGraph(graphCanvas, graphData, 'Fuel Usage Per Lap Graph', 'Lap number', 'Fuel Usage (kg)');
+
+                    fuelHistorySubDiv.appendChild(graphDiv);
+                }
                 fuelHistoryContent.appendChild(createAccordion('Fuel History', fuelHistorySubDiv));
                 return fuelHistoryContent;
             }

@@ -74,10 +74,10 @@ To develop your own app using the telemetry manager module:
     ```python
     telemetry_manager = F12023TelemetryManager()
     ```
-3. Register the callbacks for handling race data:
+3. Register the callbacks for handling race data. Only register the packet types that you're interested in
     ```python
     # Register callbacks
-    telemetry_manager.register_callback(your_callback_function)
+    telemetry_manager.registerCallback(F1PacketType.SESSION, your_function)
     ```
 4. Call the run method to start receiving and processing race data:
     ```python
