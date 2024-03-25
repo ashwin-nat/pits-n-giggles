@@ -531,14 +531,29 @@ SOFTWARE.
                 return component.toLowerCase().replace(/\s+/g, '-');
             }
 
-            // Function to plot the graph with dark theme, truncated Y-axis values, and 10% excess
-            function plotGraph(canvas, data, label, xAxisLabel, yAxisLabel) {
-                var xData = data.map(entry => entry.x);
-                var yData = data.map(entry => entry.y);
+            // Function to plot the graph with dark theme, truncated Y-axis values, and 30% excess
+            function plotGraph(canvas, datasets, xAxisLabel, yAxisLabel, formatAsLapTime = false) {
+                // Convert data to lap time format if specified
+                if (formatAsLapTime) {
+                    datasets.forEach(dataset => {
+                        dataset.data.forEach(entry => {
+                            entry.lapTimeString = formatLapTime(entry.y); // Store lap time string for display
+                        });
+                    });
+                }
+
+                function formatLapTime(milliseconds) {
+                    var minutes = Math.floor(milliseconds / 60000);
+                    var seconds = Math.floor((milliseconds % 60000) / 1000);
+                    var millisecondsPart = (milliseconds % 1000).toFixed(3).padStart(3, '0');
+                    return minutes.toString().padStart(2, '0') + ":" + seconds.toString().padStart(2, '0') + "." + millisecondsPart;
+                }
+
+                var xData = datasets[0].data.map(entry => entry.x);
 
                 // Calculate the range of the data
-                var yMin = Math.min(...yData);
-                var yMax = Math.max(...yData);
+                var yMin = Math.min(...datasets.reduce((acc, dataset) => acc.concat(dataset.data.map(entry => entry.y)), []));
+                var yMax = Math.max(...datasets.reduce((acc, dataset) => acc.concat(dataset.data.map(entry => entry.y)), []));
 
                 // Calculate the 30% excess
                 var excess = (yMax - yMin) * 0.3;
@@ -546,21 +561,17 @@ SOFTWARE.
                 // Adjust the minimum and maximum values for the Y-axis scale with excess
                 var yMinWithExcess = yMin - excess;
                 var yMaxWithExcess = yMax + excess;
-                console.log(yMinWithExcess, yMaxWithExcess);
 
                 var ctx = canvas.getContext('2d');
                 var myChart = new Chart(ctx, {
                     type: 'line',
-                    devicePixelRatio: 4,
                     data: {
                         labels: xData,
-                        datasets: [{
-                            label: label,
-                            data: yData,
-                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                            borderColor: 'rgba(255, 99, 132, 1)',
-                            borderWidth: 1
-                        }]
+                        datasets: datasets.map(dataset => ({
+                            ...dataset,
+                            data: dataset.data.map(entry => entry.y), // Use numerical values for chart
+                            label: formatAsLapTime ? dataset.label + " (Lap Time)" : dataset.label // Update label if formatting as lap time
+                        }))
                     },
                     options: {
                         scales: {
@@ -571,8 +582,7 @@ SOFTWARE.
                                     fontColor: 'rgba(255, 255, 255, 0.8)'
                                 },
                                 grid: {
-                                    color: 'rgba(255, 255, 255, 0.1)',
-                                    borderColor: 'rgba(255, 255, 255, 0.1)' // Set color for x-axis grid lines
+                                    color: 'rgba(255, 255, 255, 0.1)'
                                 },
                                 ticks: {
                                     color: 'rgba(255, 255, 255, 0.8)'
@@ -584,22 +594,39 @@ SOFTWARE.
                                     labelString: yAxisLabel,
                                     fontColor: 'rgba(255, 255, 255, 0.8)'
                                 },
+                                beginAtZero: false,
+                                min: yMinWithExcess,
+                                max: yMaxWithExcess,
                                 grid: {
-                                    color: 'rgba(255, 255, 255, 0.1)',
-                                    borderColor: 'rgba(255, 255, 255, 0.1)' // Set color for y-axis grid lines
+                                    color: 'rgba(255, 255, 255, 0.1)'
                                 },
                                 ticks: {
-                                    color: 'rgba(255, 255, 255, 0.8)'
-                                },
-                                beginAtZero: false,
-                                min: yMinWithExcess, // Set minimum value for Y-axis
-                                max: yMaxWithExcess, // Set maximum value for Y-axis
+                                    color: 'rgba(255, 255, 255, 0.8)',
+                                    callback: function (value, index, values) {
+                                        // Format tick values as lap time if formatting as lap time is enabled
+                                        return formatAsLapTime ? formatLapTime(value) : value;
+                                    }
+                                }
                             }
                         },
                         plugins: {
                             legend: {
                                 labels: {
                                     color: 'rgba(255, 255, 255, 0.8)'
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        var label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            label += formatAsLapTime ? formatLapTime(context.parsed.y) : context.parsed.y;
+                                        }
+                                        return label;
+                                    }
                                 }
                             }
                         },
@@ -615,6 +642,8 @@ SOFTWARE.
                     }
                 });
             }
+
+
 
             function getCarDamageContent(data) {
 
@@ -756,7 +785,9 @@ SOFTWARE.
             function getLapHistoryContent(data) {
 
                 const lapHistoryContent = document.createElement('div');
+                const lapHistorySubDiv = document.createElement('div');
                 const lapHistoryTable = document.createElement('table');
+                lapHistorySubDiv.appendChild(lapHistoryTable);
                 lapHistoryTable.classList.add('lap-history-table');
 
                 const lapHistoryHeader = lapHistoryTable.createTHead();
@@ -770,6 +801,11 @@ SOFTWARE.
                 `;
 
                 const lapHistoryBody = lapHistoryTable.createTBody();
+                // Data arrays for plotting graph
+                let graphDataS1 = [];
+                let graphDataS2 = [];
+                let graphDataS3 = [];
+                let graphDataTotal = [];
                 if ("session-history" in data && data["session-history"] != null) {
                     const lapHistoryData = data["session-history"]["lap-history-data"];
                     const bestLapNum = data["session-history"]["best-lap-time-lap-num"];
@@ -808,13 +844,51 @@ SOFTWARE.
                         if (currentLapNum === bestLapNum) {
                             row.cells[4].style.color = '#32F129';
                         }
+
+                        // Insert into the data structure for the graph
+                        graphDataS1.push({ x: currentLapNum, y: lap["sector-1-time-in-ms"] });
+                        graphDataS2.push({ x: currentLapNum, y: lap["sector-2-time-in-ms"] });
+                        graphDataS3.push({ x: currentLapNum, y: lap["sector-3-time-in-ms"] });
+                        graphDataTotal.push({ x: currentLapNum, y: lap["lap-time-in-ms"] });
                     });
                 } else {
                     const row = lapHistoryBody.insertRow();
                     row.innerHTML = '<td colspan="5">Lap History data not available</td>';
                 }
 
-                lapHistoryContent.appendChild(createAccordion('Lap History', lapHistoryTable));
+                if (graphDataTotal.length > 0) {
+                    // Create graph canvas
+                    const graphDiv = document.createElement('div');
+                    const elementId = 'ersGraph';
+                    const graphCanvas = document.createElement('canvas');
+                    graphDiv.appendChild(graphCanvas);
+                    graphCanvas.id = elementId;
+                    graphDiv.classList.add('graph-canvas');
+                    // graphCanvas.classList.add('graph-canvas');
+
+                    // Plot graph
+                    var datasets = [
+                        {
+                            label: 'S1 Time',
+                            data: graphDataS1
+                        },
+                        {
+                            label: 'S2 Time',
+                            data: graphDataS2
+                        },
+                        {
+                            label: 'S3 Time',
+                            data: graphDataS3
+                        },
+                        {
+                            label: 'Lap Time',
+                            data: graphDataTotal
+                        }
+                    ];
+                    plotGraph(graphCanvas, datasets, 'Lap number', 'Time', true);
+                    lapHistorySubDiv.appendChild(graphDiv);
+                }
+                lapHistoryContent.appendChild(createAccordion('Lap History', lapHistorySubDiv));
                 return lapHistoryContent;
             }
 
@@ -822,7 +896,9 @@ SOFTWARE.
 
                 const ersHistoryContent = document.createElement('div');
                 const ersHistoryTable = document.createElement('table');
+                const ersHistorySubDiv = document.createElement('div');
                 ersHistoryTable.classList.add('ers-damage-table');
+                ersHistorySubDiv.appendChild(ersHistoryTable);
                 const ersHistoryHeader = ersHistoryTable.createTHead();
                 const ersHistoryHeaderRow = ersHistoryHeader.insertRow();
                 ersHistoryHeaderRow.innerHTML = `
@@ -834,6 +910,11 @@ SOFTWARE.
                     <th>Harvested - Total</th>
                 `;
                 const ersHistoryBody = ersHistoryTable.createTBody();
+                // Data arrays for plotting graph
+                let graphDataDeployed = [];
+                let graphDataRemaining = [];
+                let graphDataHarvested = [];
+
                 if ("per-lap-info" in data && data["per-lap-info"] != null) {
                     const perLapHistoryData = data["per-lap-info"];
                     if (perLapHistoryData.length > 0) {
@@ -873,6 +954,10 @@ SOFTWARE.
                                 ersHarvestedTotalPerc = formatFloatWithTwoDecimals(
                                     ((ersHarvestedThisLapMguHVal + ersHarvestedThisLapMguKVal) / maxErsCapacity)
                                     * 100) + "%";
+
+                                graphDataDeployed.push({ x: parseFloat(currentLapNum), y: ((ersDeployedThisLapVal / maxErsCapacity) * 100) });
+                                graphDataRemaining.push({ x: parseFloat(currentLapNum), y: ((ersRemainingVal / maxErsCapacity) * 100) });
+                                graphDataHarvested.push({ x: parseFloat(currentLapNum), y: (((ersHarvestedThisLapMguHVal + ersHarvestedThisLapMguKVal) / maxErsCapacity) * 100) });
                             }
 
                             row.innerHTML = `
@@ -893,7 +978,36 @@ SOFTWARE.
                     row.innerHTML = '<td colspan="6">ERS History data not available</td>';
                 }
 
-                ersHistoryContent.appendChild(createAccordion('ERS History', ersHistoryTable));
+                if (graphDataDeployed.length > 0) {
+                    // Create graph canvas
+                    const graphDiv = document.createElement('div');
+                    const elementId = 'ersGraph';
+                    const graphCanvas = document.createElement('canvas');
+                    graphDiv.appendChild(graphCanvas);
+                    graphCanvas.id = elementId;
+                    graphDiv.classList.add('graph-canvas');
+                    // graphCanvas.classList.add('graph-canvas');
+
+                    // Plot graph
+                    var datasets = [
+                        {
+                            label: 'ERS Deployed',
+                            data: graphDataDeployed
+                        },
+                        {
+                            label: 'ERS Remaining',
+                            data: graphDataRemaining
+                        },
+                        {
+                            label: 'ERS Harvested',
+                            data: graphDataHarvested
+                        }
+                    ];
+                    plotGraph(graphCanvas, datasets, 'Lap number', 'ERS (%)');
+
+                    ersHistorySubDiv.appendChild(graphDiv);
+                }
+                ersHistoryContent.appendChild(createAccordion('ERS History', ersHistorySubDiv));
                 return ersHistoryContent;
             }
 
@@ -979,7 +1093,13 @@ SOFTWARE.
                     // graphCanvas.classList.add('graph-canvas');
 
                     // Plot graph
-                    plotGraph(graphCanvas, graphData, 'Fuel Usage Per Lap Graph', 'Lap number', 'Fuel Usage (kg)');
+                    var datasets = [
+                        {
+                            label: 'Fuel Usage Per Lap Graph',
+                            data: graphData
+                        }
+                    ];
+                    plotGraph(graphCanvas, datasets, 'Lap number', 'Fuel Usage (kg)');
 
                     fuelHistorySubDiv.appendChild(graphDiv);
                 }
