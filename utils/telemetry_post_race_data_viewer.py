@@ -210,10 +210,16 @@ def getDriverInfoJsonByIndex(index):
         if not g_json_data:
             return final_json
 
-        # Add the primary data
-        final_json["index"] = index
-        driver_data = g_json_data["classification-data"][index]
+        driver_data = None
+        for driver in g_json_data["classification-data"]:
+            if driver["index"] == index:
+                driver_data = driver
+                break
 
+        if not driver_data:
+            return final_json
+
+        final_json["index"] = index
         final_json["is-player"] = driver_data["is-player"]
         final_json["driver-name"] = driver_data["driver-name"]
         final_json["track-position"] = driver_data["final-classification"]["position"]
