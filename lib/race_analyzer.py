@@ -22,6 +22,7 @@
 
 
 from typing import Dict, Any, Optional
+from lib.f1_types import F1Utils
 
 def getFastestTimesJson(json_data: Dict[str, Any], driver_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
@@ -45,25 +46,34 @@ def getFastestTimesJson(json_data: Dict[str, Any], driver_data: Optional[Dict[st
                     'driver-index'  : driver_index,
                     'lap-number'    : session_history["best-lap-time-lap-num"],
                     'time'          : session_history["lap-history-data"]\
-                                        [session_history["best-lap-time-lap-num"]-1]["lap-time-in-ms"]
+                                        [session_history["best-lap-time-lap-num"]-1]["lap-time-in-ms"],
+                    'time-str'      : F1Utils.millisecondsToMinutesSecondsMilliseconds(
+                                        session_history["lap-history-data"]\
+                                            [session_history["best-lap-time-lap-num"]-1]["lap-time-in-ms"])
                 },
                 's1' : {
                     'driver-index'  : driver_index,
                     'lap-number'    : session_history["best-sector-1-lap-num"],
                     'time'          : session_history["lap-history-data"]\
-                                        [session_history["best-sector-1-lap-num"]-1]["sector-1-time-in-ms"]
+                                        [session_history["best-sector-1-lap-num"]-1]["sector-1-time-in-ms"],
+                    'time-str'      : F1Utils.millisecondsToSecondsMilliseconds(session_history["lap-history-data"]\
+                                        [session_history["best-sector-1-lap-num"]-1]["sector-1-time-in-ms"])
                 },
                 's2' : {
                     'driver-index'  : driver_index,
                     'lap-number'    : session_history["best-sector-2-lap-num"],
                     'time'          : session_history["lap-history-data"]\
-                                        [session_history["best-sector-2-lap-num"]-1]["sector-2-time-in-ms"]
+                                        [session_history["best-sector-2-lap-num"]-1]["sector-2-time-in-ms"],
+                    'time-str'      : F1Utils.millisecondsToSecondsMilliseconds(session_history["lap-history-data"]\
+                                        [session_history["best-sector-2-lap-num"]-1]["sector-2-time-in-ms"])
                 },
                 's3' : {
                     'driver-index'  : driver_index,
                     'lap-number'    : session_history["best-sector-3-lap-num"],
                     'time'          : session_history["lap-history-data"]\
-                                        [session_history["best-sector-3-lap-num"]-1]["sector-3-time-in-ms"]
+                                        [session_history["best-sector-3-lap-num"]-1]["sector-3-time-in-ms"],
+                    'time-str'      : F1Utils.millisecondsToSecondsMilliseconds(session_history["lap-history-data"]\
+                                        [session_history["best-sector-3-lap-num"]-1]["sector-3-time-in-ms"])
                 },
             }
         else:
@@ -98,7 +108,7 @@ def getFastestTimesJson(json_data: Dict[str, Any], driver_data: Optional[Dict[st
                     fastest_dict['driver-index'] = driver_index
                     fastest_dict['lap-number'] = fastest_lap_num
                     fastest_lap_index = fastest_lap_num - 1
-                    if 0 >= fastest_lap_index > len(session_history["lap-history-data"]):
+                    if 0 <= fastest_lap_index < len(session_history["lap-history-data"]):
                         fastest_dict['time'] = session_history["lap-history-data"][fastest_lap_num-1][best_time_key]
                 else:
                     best_time_lap_num = session_history[best_time_lap_num_key]
@@ -109,7 +119,7 @@ def getFastestTimesJson(json_data: Dict[str, Any], driver_data: Optional[Dict[st
                         fastest_dict['time'] = best_lap_time
         return fastest_dict
 
-    return {
+    fastest_dict = {
         'lap' : getFastestTimesDict( json_data=json_data,
                                     best_time_lap_num_key="best-lap-time-lap-num",
                                     best_time_key="lap-time-in-ms"),
@@ -123,6 +133,12 @@ def getFastestTimesJson(json_data: Dict[str, Any], driver_data: Optional[Dict[st
                                     best_time_lap_num_key="best-sector-3-lap-num",
                                     best_time_key="sector-3-time-in-ms"),
     }
+    fastest_dict['lap']['time-str'] = F1Utils.millisecondsToMinutesSecondsMilliseconds(fastest_dict['lap']['time'])
+    fastest_dict['s1']['time-str'] = F1Utils.millisecondsToSecondsMilliseconds(fastest_dict['s1']['time'])
+    fastest_dict['s2']['time-str'] = F1Utils.millisecondsToSecondsMilliseconds(fastest_dict['s2']['time'])
+    fastest_dict['s3']['time-str'] = F1Utils.millisecondsToSecondsMilliseconds(fastest_dict['s3']['time'])
+
+    return fastest_dict
 
 def getTyreStintRecordsDict(json_data: Dict[str, Any]):
     """
