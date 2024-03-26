@@ -98,7 +98,7 @@ def getFastestTimesJson(json_data: Dict[str, Any], driver_data: Optional[Dict[st
                     fastest_dict['driver-index'] = driver_index
                     fastest_dict['lap-number'] = fastest_lap_num
                     fastest_lap_index = fastest_lap_num - 1
-                    if 0 >= fastest_lap_index > len(session_history["lap-history-data"]):
+                    if 0 <= fastest_lap_index < len(session_history["lap-history-data"]):
                         fastest_dict['time'] = session_history["lap-history-data"][fastest_lap_num-1][best_time_key]
                 else:
                     best_time_lap_num = session_history[best_time_lap_num_key]
