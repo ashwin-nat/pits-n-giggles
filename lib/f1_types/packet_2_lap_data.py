@@ -345,7 +345,7 @@ class LapData:
             "safety-car-delta": self.m_safetyCarDelta,
             "car-position": self.m_carPosition,
             "current-lap-num": self.m_currentLapNum,
-            "pit-status": str(self.m_pitStatus.value) if LapData.PitStatus.isValid(self.m_pitStatus) else self.m_pitStatus,
+            "pit-status": str(self.m_pitStatus) if LapData.PitStatus.isValid(self.m_pitStatus) else self.m_pitStatus,
             "num-pit-stops": self.m_numPitStops,
             "sector": str(self.m_sector.value) if LapData.Sector.isValid(self.m_sector) else self.m_sector,
             "current-lap-invalid": self.m_currentLapInvalid,

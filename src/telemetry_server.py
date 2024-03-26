@@ -223,10 +223,10 @@ class TelemetryWebServer:
 
         # Fill in the per driver data
         json_response["table-entries"] = []
-        fastest_lap_overall = "---"
+        # fastest_lap_overall = "---"
         for data_per_driver in driver_data:
-            if data_per_driver.m_is_fastest:
-                fastest_lap_overall = data_per_driver.m_best_lap
+            # if data_per_driver.m_is_fastest:
+            #     fastest_lap_overall = data_per_driver.m_best_lap
             json_response["table-entries"].append(
                 {
                     "position": self.getValueOrDefaultValue(data_per_driver.m_position),
