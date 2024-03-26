@@ -238,6 +238,7 @@ class DataPerDriver:
         """
         Init the data per driver fields
         """
+
         self.m_position: Optional[int] = None
         self.m_name: Optional[str] = None
         self.m_team: Optional[str] = None
@@ -289,7 +290,7 @@ class DataPerDriver:
         final_json = {}
 
         # Add the primary data
-        if index:
+        if index is not None:
             final_json["index"] = index
         final_json["is-player"] = self.m_is_player
         final_json["driver-name"] = self.m_name
