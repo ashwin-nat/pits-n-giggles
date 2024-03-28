@@ -131,7 +131,8 @@ def getTelemetryInfo():
             "total-laps": g_json_data["session-info"]["total-laps"],
             "current-lap": g_json_data["classification-data"][0]["lap-data"]["current-lap-num"],
             "safety-car-status": g_json_data["session-info"]["safety-car-status"],
-            "fastest-lap-overall": g_json_data["records"]["fastest"]["lap"]["time"],
+            "fastest-lap-overall": F1Utils.millisecondsToMinutesSecondsMilliseconds(
+                g_json_data["records"]["fastest"]["lap"]["time"]),
             "pit-speed-limit" : g_json_data["session-info"]["pit-speed-limit"],
             "weather-forecast-samples": [],
             "race-ended" : True
@@ -196,7 +197,8 @@ def getTelemetryInfo():
                     "dnf-status" : dnf_status_code,
                     "index" : index,
                     "telemetry-setting" : data_per_driver["participant-data"]["telemetry-setting"], # Already NULL checked
-                    "lap-progress" : None # NULL is supported
+                    "lap-progress" : None, # NULL is supported,
+                    "corner-cutting-warnings" : data_per_driver["lap-data"]["corner-cutting-warnings"]
                 }
             )
 
@@ -385,7 +387,13 @@ def start_ui():
         open_button.pack()
 
         # Run the Tkinter event loop
+        root.protocol("WM_DELETE_WINDOW", on_closing)  # Call on_closing when window is closed
         root.mainloop()
+
+def on_closing():
+    print("UI done")
+    os._exit(0)
+
 
 def openWebPage() -> None:
     """Open the webpage on a new browser tab.

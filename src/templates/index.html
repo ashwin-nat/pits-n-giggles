@@ -305,6 +305,7 @@ SOFTWARE.
                 <th>Team</th>
                 <th>Delta</th>
                 <th>ERS</th>
+                <th>Warnings</th>
                 <th>Best</th>
                 <th>Last</th>
                 <th>Tyre Info</th>
@@ -387,7 +388,7 @@ SOFTWARE.
                     updateGlobalInfo(data["circuit"], data["event-type"], data["track-temperature"], data["current-lap"],
                         data["total-laps"], data["safety-car-status"], data["fastest-lap-overall"],
                         data["pit-speed-limit"], {{ packet_capture_enabled | tojson }});
-        updateWeatherTable(data["weather-forecast-samples"]);
+                    updateWeatherTable(data["weather-forecast-samples"]);
                 })
                 .catch (error => {
             console.error('Error fetching data:', error);
@@ -437,6 +438,7 @@ SOFTWARE.
                 row.insertCell().textContent = entry["team"];
                 row.insertCell().textContent = entry["delta"];
                 row.insertCell().textContent = entry["ers"];
+                row.insertCell().textContent = entry["corner-cutting-warnings"];
                 row.insertCell().textContent = entry["best"];
                 row.insertCell().textContent = entry["last"];
 

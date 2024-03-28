@@ -250,7 +250,8 @@ class TelemetryWebServer:
                     "dnf-status" : self.getValueOrDefaultValue(data_per_driver.m_dnf_status_code),
                     "index" : self.getValueOrDefaultValue(data_per_driver.m_index),
                     "telemetry-setting" : data_per_driver.m_telemetry_restrictions, # Already NULL checked
-                    "lap-progress" : data_per_driver.m_lap_progress # NULL is supported
+                    "lap-progress" : data_per_driver.m_lap_progress, # NULL is supported
+                    "corner-cutting-warnings" : self.getValueOrDefaultValue(data_per_driver.m_corner_cutting_warnings)
                 }
             )
 

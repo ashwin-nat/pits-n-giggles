@@ -117,14 +117,14 @@ class OvertakesHistory:
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
-g_packet_capture_table = PacketCaptureTable()
-g_pkt_cap_mode = PacketCaptureMode.DISABLED
-g_num_active_cars = 0
-g_overtakes_history = OvertakesHistory()
-g_post_race_data_autosave = False
-g_directory_mapping = {}
-g_udp_custom_action_code = None
-g_player_recorded_events_history = []
+g_packet_capture_table: PacketCaptureTable = PacketCaptureTable()
+g_pkt_cap_mode: PacketCaptureMode = PacketCaptureMode.DISABLED
+g_num_active_cars: int = 0
+g_overtakes_history: OvertakesHistory = OvertakesHistory()
+g_post_race_data_autosave: bool = False
+g_directory_mapping: Dict[str, str] = {}
+g_udp_custom_action_code: Optional[int] = None
+g_player_recorded_events_history: List[TelData.CustomMarkerEntry] = []
 
 # -------------------------------------- INITIALIZATION ----------------------------------------------------------------
 
@@ -333,7 +333,7 @@ def writeDictToJsonFile(data_dict: Dict, file_name: str) -> None:
     with open(file_name, 'w', encoding='utf-8') as json_file:
         json.dump(data_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
 
-def writeToCsvFile(g_custom_player_markers: List[str], custom_marker_file_name: str):
+def writeToCsvFile(g_custom_player_markers: List[TelData.CustomMarkerEntry], custom_marker_file_name: str):
     """
     Write the given custom player markers to a CSV file.
 
@@ -344,7 +344,7 @@ def writeToCsvFile(g_custom_player_markers: List[str], custom_marker_file_name: 
 
     with open(custom_marker_file_name, 'w', encoding='utf-8') as file:
         for marker in g_custom_player_markers:
-            file.write(marker + '\n')
+            file.write(marker.toCSV() + '\n')
 
 def addFunStatsToFinalClassificationJson(final_json: Dict[str, Any]) -> None:
     """
@@ -390,6 +390,8 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
 
     global g_directory_mapping
     global g_overtakes_history
+    global g_player_recorded_events_history
+
     event_str = TelData.getEventInfoStr()
     if not event_str:
         return
@@ -407,13 +409,19 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
     global g_post_race_data_autosave
     if g_post_race_data_autosave:
         addFunStatsToFinalClassificationJson(final_json)
+
+        # Add the markers as well
+        final_json['custom-markers'] = []
+        if len(g_player_recorded_events_history) > 0:
+            for marker in g_player_recorded_events_history:
+                final_json['custom-markers'].append(marker.toJSON())
+
         final_json_file_name = g_directory_mapping['race-info'] + 'race_info_' + \
                 event_str + getTimestampStr() + '.json'
         writeDictToJsonFile(final_json, final_json_file_name)
         logging.info("Wrote race info to " + final_json_file_name)
 
     # Save the custom player recorded markers
-    global g_player_recorded_events_history
     if len(g_player_recorded_events_history) > 0:
         custom_marker_file_name = g_directory_mapping['race-info'] + 'custom_player_markers_' + \
                 event_str + getTimestampStr() + '.csv'
@@ -531,10 +539,10 @@ class F12023TelemetryHandler:
 
                 logging.debug('UDP action ' + str(g_udp_custom_action_code) + ' pressed')
                 global g_player_recorded_events_history
-                player_recorded_event_str = TelData.getPlayerRecordedEventCsvStr(add_to_queue=True)
-                if player_recorded_event_str:
-                    g_player_recorded_events_history.append(player_recorded_event_str)
-                    logging.debug('Player recorded event: ' + player_recorded_event_str)
+                custom_marker_obj = TelData.getCustomMarkerEntryObj(add_to_queue=True)
+                if custom_marker_obj:
+                    g_player_recorded_events_history.append(custom_marker_obj)
+                    logging.debug('Player recorded event: ' + str(custom_marker_obj))
                 else:
                     logging.error("Unable to generate player_recorded_event_str")
 

@@ -781,6 +781,76 @@ class DriverData:
         obj_to_be_updated = self.m_driver_data.get(index, None)
         return obj_to_be_updated.toJSON(index) if obj_to_be_updated else None
 
+class CustomMarkerEntry:
+    """Class representing the data points related to a custom time marker.
+    """
+
+    def __init__(self,
+        track: str,
+        event_type: str,
+        lap: int,
+        sector: LapData.Sector,
+        curr_lap_time: str,
+        curr_lap_perc: str):
+        """
+        Initializes a CustomMarkerEntry instance.
+
+        Parameters:
+            - track: A string representing the track name.
+            - event_type: A string representing the type of event.
+            - lap: An integer representing the lap number.
+            - sector: An instance of LapData.Sector enum representing the sector.
+            - curr_lap_time: A string representing the current lap time.
+            - curr_lap_perc: A string representing the current lap percentage.
+        """
+
+        self.m_track: str               = track
+        self.m_event_type: str          = event_type
+        self.m_lap: int                 = lap
+        self.m_sector: LapData.Sector   = sector
+        self.m_curr_lap_time: str       = curr_lap_time
+        self.m_curr_lap_percent: str    = curr_lap_perc
+
+    def toJSON(self) -> Dict[str, Any]:
+        """
+        Convert CustomMarkerEntry instance to a JSON-compatible dictionary.
+
+        Returns:
+            A dictionary representation of the CustomMarkerEntry.
+        """
+        return {
+            "track": self.m_track,
+            "event-type": self.m_event_type,
+            "lap": str(self.m_lap),
+            "sector": str(self.m_sector),
+            "curr-lap-time": self.m_curr_lap_time,
+            "curr-lap-percentage": self.m_curr_lap_percent
+        }
+
+    def toCSV(self) -> str:
+        """
+        Convert CustomMarkerEntry instance to a CSV string.
+
+        Returns:
+            A CSV string representation of the CustomMarkerEntry.
+        """
+        return \
+            f"{self.m_track}, " \
+            f"{self.m_event_type}, " \
+            f"{str(self.m_lap)}, " \
+            f"{str(self.m_sector)}, " \
+            f"{self.m_curr_lap_time}, " \
+            f"{self.m_curr_lap_percent}"
+
+    def __str__(self):
+        """
+        Return string representation of CustomMarkerEntry instance.
+
+        Returns:
+            A string representation of the CustomMarkerEntry instance.
+        """
+        return self.toCSV()
+
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
 _globals = GlobalData()
@@ -1005,10 +1075,13 @@ def getDriverData(num_adjacent_cars: Optional[int] = 2) -> Tuple[List[DataPerDri
             else:
                 temp_data.m_telemetry_restrictions = "N/A"
 
-            if temp_data.m_packet_lap_data and track_length:
-                temp_data.m_lap_progress = (temp_data.m_packet_lap_data.m_lapDistance / track_length) * 100.0
+            if temp_data.m_packet_lap_data:
+                temp_data.m_corner_cutting_warnings = temp_data.m_packet_lap_data.m_cornerCuttingWarnings
+                if track_length:
+                    temp_data.m_lap_progress = (temp_data.m_packet_lap_data.m_lapDistance / track_length) * 100.0
             else:
                 temp_data.m_lap_progress = None
+                temp_data.m_corner_cutting_warnings = None
 
             # Add this prepped record into the final list
             final_list.append(temp_data)
@@ -1197,6 +1270,60 @@ def getPlayerRecordedEventCsvStr(add_to_queue: bool = False) -> Optional[str]:
                 return None
 
     return _getPlayerRecordedEventCsvStr()
+
+def getCustomMarkerEntryObj(add_to_queue: bool = False) -> Optional[CustomMarkerEntry]:
+    """
+    Retrieves the custom marker entry object for the player.
+
+    Arguments:
+        add_to_queue (bool) - Whether the data must be added to the event queue to be sent to the UI
+
+    Returns:
+        CustomMarkerEntry: The custom marker entry object for the player. None if any data points is not available
+    """
+
+    with _driver_data_lock:
+        player_data = _driver_data.m_driver_data.get(_driver_data.m_player_index, None)
+        if player_data:
+            # CSV string - <track>,<event-type>,<lap-num>,<sector-num>
+            lap_num = player_data.m_current_lap
+            sector = player_data.m_packet_lap_data.m_sector
+            curr_lap_time = F1Utils.millisecondsToMinutesSecondsMilliseconds(
+                player_data.m_packet_lap_data.m_currentLapTimeInMS)
+            curr_lap_dist = player_data.m_packet_lap_data.m_lapDistance
+        else:
+            lap_num = None
+            sector = None
+            curr_lap_time = None
+            curr_lap_dist = None
+
+    with _globals_lock:
+        if _globals.m_circuit is not None and _globals.m_event_type is not None:
+            track = _globals.m_circuit
+            event_type = _globals.m_event_type
+            if curr_lap_dist is not None:
+                curr_lap_percent = F1Utils.floatToStr(
+                    float(curr_lap_dist)/float(_globals.m_packet_session.m_trackLength) * 100.0) + "%"
+            else:
+                curr_lap_percent = None
+        else:
+            track = None
+            event_type = None
+            curr_lap_percent = None
+
+    mandatory_vars = [track, event_type, lap_num, sector, curr_lap_time, curr_lap_percent]
+    if any(var is None for var in mandatory_vars):
+        return None
+    else:
+        return CustomMarkerEntry(
+            track=track,
+            event_type=event_type,
+            lap=lap_num,
+            sector=sector,
+            curr_lap_time=curr_lap_time,
+            curr_lap_perc=curr_lap_percent
+        )
+
 
 def _getAdjacentPositions(position:int, total_cars:int, num_adjacent_cars:int) -> List[int]:
     """Get the list of positions of the race that are to be returned to the UI.

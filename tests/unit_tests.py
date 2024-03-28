@@ -35,6 +35,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from lib.packet_cap import F1PacketCapture, F1PktCapFileHeader
 from src.telemetry_data import _getAdjacentPositions
 from lib.overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, OvertakeRecord, OvertakeRivalryKey
+from lib.race_analyzer import getFastestTimesJson
 
 # Initialize colorama
 from colorama import init
@@ -534,6 +535,120 @@ class TestOvertakeAnalyzerInvalidData(OvertakeAnalyzerUT):
 
         # Clean up the temporary file
         os.remove(temp_file.name)
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+class RaceAnalyzerUT(F1TelemetryUnitTestsBase):
+    pass
+
+class TestGetFastestTimesJson(RaceAnalyzerUT):
+
+    def test_getFastestTimesJson(self):
+        # Mock JSON data
+        json_data = {
+            "classification-data": [
+                {
+                    "session-history": {
+                        "best-lap-time-lap-num": 3,
+                        "best-sector-1-lap-num": 2,
+                        "best-sector-2-lap-num": 2,
+                        "best-sector-3-lap-num": 3,
+                        "lap-history-data": [
+                            {"lap-time-in-ms": 90000, "sector-1-time-in-ms": 20000, "sector-2-time-in-ms": 30000, "sector-3-time-in-ms": 40000},
+                            {"lap-time-in-ms": 88000, "sector-1-time-in-ms": 19000, "sector-2-time-in-ms": 29000, "sector-3-time-in-ms": 39000},
+                            {"lap-time-in-ms": 87000, "sector-1-time-in-ms": 19500, "sector-2-time-in-ms": 30500, "sector-3-time-in-ms": 38000}
+                        ]
+                    },
+                    "index": 0
+                },
+                {
+                    "session-history": {
+                        "best-lap-time-lap-num": 3,
+                        "best-sector-1-lap-num": 3,
+                        "best-sector-2-lap-num": 2,
+                        "best-sector-3-lap-num": 3,
+                        "lap-history-data": [
+                            {"lap-time-in-ms": 92000, "sector-1-time-in-ms": 21000, "sector-2-time-in-ms": 32000, "sector-3-time-in-ms": 39000},
+                            {"lap-time-in-ms": 89000, "sector-1-time-in-ms": 20000, "sector-2-time-in-ms": 30000, "sector-3-time-in-ms": 39000},
+                            {"lap-time-in-ms": 88000, "sector-1-time-in-ms": 19500, "sector-2-time-in-ms": 31000, "sector-3-time-in-ms": 37500}
+                        ]
+                    },
+                    "index": 1
+                },
+                {
+                    "session-history": {
+                        "best-lap-time-lap-num": 3,
+                        "best-sector-1-lap-num": 2,
+                        "best-sector-2-lap-num": 2,
+                        "best-sector-3-lap-num": 3,
+                        "lap-history-data": [
+                            {"lap-time-in-ms": 91000, "sector-1-time-in-ms": 19000, "sector-2-time-in-ms": 31000, "sector-3-time-in-ms": 41000},
+                            {"lap-time-in-ms": 90000, "sector-1-time-in-ms": 18000, "sector-2-time-in-ms": 30000, "sector-3-time-in-ms": 42000},
+                            {"lap-time-in-ms": 89000, "sector-1-time-in-ms": 19500, "sector-2-time-in-ms": 32000, "sector-3-time-in-ms": 37550}
+                        ]
+                    },
+                    "index": 2
+                },
+                {
+                    "session-history": {
+                        "best-lap-time-lap-num": 3,
+                        "best-sector-1-lap-num": 3,
+                        "best-sector-2-lap-num": 3,
+                        "best-sector-3-lap-num": 1,
+                        "lap-history-data": [
+                            {"lap-time-in-ms": 93000, "sector-1-time-in-ms": 20000, "sector-2-time-in-ms": 33000, "sector-3-time-in-ms": 40000},
+                            {"lap-time-in-ms": 92000, "sector-1-time-in-ms": 19500, "sector-2-time-in-ms": 32000, "sector-3-time-in-ms": 40500},
+                            {"lap-time-in-ms": 91000, "sector-1-time-in-ms": 19000, "sector-2-time-in-ms": 31000, "sector-3-time-in-ms": 41000}
+                        ]
+                    },
+                    "index": 3
+                },
+                {
+                    "session-history": {
+                        "best-lap-time-lap-num": 3,
+                        "best-sector-1-lap-num": 2,
+                        "best-sector-2-lap-num": 3,
+                        "best-sector-3-lap-num": 1,
+                        "lap-history-data": [
+                            {"lap-time-in-ms": 94000, "sector-1-time-in-ms": 21000, "sector-2-time-in-ms": 33000, "sector-3-time-in-ms": 40000},
+                            {"lap-time-in-ms": 93000, "sector-1-time-in-ms": 20000, "sector-2-time-in-ms": 32000, "sector-3-time-in-ms": 41000},
+                            {"lap-time-in-ms": 92000, "sector-1-time-in-ms": 20500, "sector-2-time-in-ms": 31000, "sector-3-time-in-ms": 40500}
+                        ]
+                    },
+                    "index": 4
+                }
+            ]
+        }
+
+        expected_result = {
+            'lap': {
+                'driver-index': 0,
+                'lap-number': 3,
+                'time': 87000,
+                'time-str': '01:27.000'
+            },
+            's1': {
+                'driver-index': 2,
+                'lap-number': 2,
+                'time': 18000,
+                'time-str': '18.000'
+            },
+            's2': {
+                'driver-index': 0,
+                'lap-number': 2,
+                'time': 29000,
+                'time-str': '29.000'
+            },
+            's3': {
+                'driver-index': 1,
+                'lap-number': 3,
+                'time': 37500,
+                'time-str': '37.500'
+            }
+        }
+
+        result = getFastestTimesJson(json_data)
+        self.assertEqual(result, expected_result)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
