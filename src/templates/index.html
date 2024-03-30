@@ -1033,23 +1033,38 @@ SOFTWARE.
                         `;
 
                         // Check and mark green for best sector 1
+                        const greenSectorColor = '#32F129';
+                        const redSectorColor = '#f12929';
+                        const fullLapValidBitMask = 1;
+                        const sector1ValidBitMask = 2;
+                        const sector2ValidBitMask = 4;
+                        const sector3ValidBitMask = 8;
+
                         if (currentLapNum === bestSector1Num) {
-                            row.cells[1].style.color = '#32F129';
+                            row.cells[1].style.color = greenSectorColor;
+                        } else if ((lap["lap-valid-bit-flags"] & sector1ValidBitMask) == 0) {
+                            row.cells[1].style.color = redSectorColor;
                         }
 
                         // Check and mark green for best sector 2
                         if (currentLapNum === bestSector2Num) {
-                            row.cells[2].style.color = '#32F129';
+                            row.cells[2].style.color = greenSectorColor;
+                        } else if ((lap["lap-valid-bit-flags"] & sector2ValidBitMask) == 0) {
+                            row.cells[2].style.color = redSectorColor;
                         }
 
                         // Check and mark green for best sector 3
                         if (currentLapNum === bestSector3Num) {
-                            row.cells[3].style.color = '#32F129';
+                            row.cells[3].style.color = greenSectorColor;
+                        } else if ((lap["lap-valid-bit-flags"] & sector3ValidBitMask) == 0) {
+                            row.cells[3].style.color = redSectorColor;
                         }
 
                         // Check and mark green for total time
                         if (currentLapNum === bestLapNum) {
-                            row.cells[4].style.color = '#32F129';
+                            row.cells[4].style.color = greenSectorColor;
+                        } else if ((lap["lap-valid-bit-flags"] & fullLapValidBitMask) == 0) {
+                            row.cells[4].style.color = redSectorColor;
                         }
 
                         // Insert into the data structure for the graph
