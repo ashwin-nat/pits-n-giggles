@@ -561,9 +561,8 @@ SOFTWARE.
                     const fastestDriverIndex = data["records"]["fastest"][searchKey]["driver-index"];
                     const fastestLapNum = data["records"]["fastest"][searchKey]["lap-number"];
                     const driverIndex = data["records"]["fastest"][searchKey]["driver-index"];
-                    const driverInfo = getDriverInfoFromIndex(data, driverIndex);
-                    const driverName = driverInfo["driver-name"];
-                    const teamName = driverInfo["team-name"];
+                    const driverName = data["records"]["fastest"][searchKey]["driver-name"];
+                    const teamName = data["records"]["fastest"][searchKey]["team-id"];
                     const row = timesRecordsTableBody.insertRow();
                     row.innerHTML = `
                         <td>${category}</td>
@@ -623,52 +622,59 @@ SOFTWARE.
                     const lowestTyreWearPerLapDriverName = compoundRecords["lowest-tyre-wear-per-lap"]["driver-name"];
                     const lowestTyreWearPerLap = compoundRecords["lowest-tyre-wear-per-lap"]["value"];
 
+                    const highestTyreWearDriverName = compoundRecords["highest-tyre-wear"]["driver-name"];
+                    const highestTyreWear = compoundRecords["highest-tyre-wear"]["value"];
+
                     const row1 = timesRecordsTableBody.insertRow();
                     const compoundCell1 = row1.insertCell();
                     compoundCell1.textContent = compound;
-                    compoundCell1.setAttribute('rowspan', '2'); // Merge cells vertically
+                    compoundCell1.setAttribute('rowspan', '3'); // Merge cells vertically
 
                     row1.insertCell().textContent = 'Longest Stint';
                     row1.insertCell().textContent = longestTyreStintDriverName;
-                    row1.insertCell().textContent = longestTyreStintLength;
+                    row1.insertCell().textContent = longestTyreStintLength + " laps";
 
                     const row2 = timesRecordsTableBody.insertRow();
                     row2.insertCell().textContent = 'Least Tyre Wear Per Lap';
                     row2.insertCell().textContent = lowestTyreWearPerLapDriverName;
-                    row2.insertCell().textContent = lowestTyreWearPerLap;
+                    row2.insertCell().textContent = formatFloatWithTwoDecimals(lowestTyreWearPerLap) + "%";
+
+                    const row3 = timesRecordsTableBody.insertRow();
+                    row3.insertCell().textContent = 'Highest Tyre Wear';
+                    row3.insertCell().textContent = highestTyreWearDriverName;
+                    row3.insertCell().textContent = highestTyreWear + "%";
                 }
 
+                const tyreStintRecordsContent = document.createElement('div');
+                const tyreStintRecordsSubDiv = document.createElement('div');
+                const tyreStintsRecordsTable = document.createElement('table');
+                tyreStintRecordsSubDiv.appendChild(tyreStintsRecordsTable);
+                tyreStintsRecordsTable.classList.add('tyre-stints-records-table');
 
-                    const tyreStintRecordsContent = document.createElement('div');
-                    const tyreStintRecordsSubDiv = document.createElement('div');
-                    const tyreStintsRecordsTable = document.createElement('table');
-                    tyreStintRecordsSubDiv.appendChild(tyreStintsRecordsTable);
-                    tyreStintsRecordsTable.classList.add('tyre-stints-records-table');
+                const tyreStintsRecordsHeader = tyreStintsRecordsTable.createTHead();
+                const headerRow = tyreStintsRecordsHeader.insertRow();
+                headerRow.innerHTML = `
+                    <th>Compound</th>
+                    <th>Category</th>
+                    <th>Driver</th>
+                    <th>Record</th>
+                `;
 
-                    const tyreStintsRecordsHeader = tyreStintsRecordsTable.createTHead();
-                    const headerRow = tyreStintsRecordsHeader.insertRow();
-                    headerRow.innerHTML = `
-                        <th>Compound</th>
-                        <th>Category</th>
-                        <th>Driver</th>
-                        <th>Record</th>
-                    `;
+                const tyreStintRecordsTableBody = tyreStintsRecordsTable.createTBody();
+                if ("records" in data && 'tyre-stats' in data["records"] && data["records"]["tyre-stats"] != null) {
 
-                    const tyreStintRecordsTableBody = tyreStintsRecordsTable.createTBody();
-                    if ("records" in data && 'tyre-stats' in data["records"] && data["records"]["tyre-stats"] != null) {
-
-                        const tyreStats = data["records"]["tyre-stats"];
-                        for (let compound in tyreStats) {
-                            const compoundRecords = tyreStats[compound];
-                            insertTyreStintRecordRow(data, tyreStintRecordsTableBody, compound, compoundRecords);
-                        }
-
-                    } else {
-                        const row = tyreStintRecordsTableBody.insertRow();
-                        row.innerHTML = '<td colspan="5">Tyre Stint Records data not available</td>';
+                    const tyreStats = data["records"]["tyre-stats"];
+                    for (let compound in tyreStats) {
+                        const compoundRecords = tyreStats[compound];
+                        insertTyreStintRecordRow(data, tyreStintRecordsTableBody, compound, compoundRecords);
                     }
-                    tyreStintRecordsContent.appendChild(createAccordion('Tyre Stint Records', tyreStintRecordsSubDiv));
-                    return tyreStintRecordsContent;
+
+                } else {
+                    const row = tyreStintRecordsTableBody.insertRow();
+                    row.innerHTML = '<td colspan="5">Tyre Stint Records data not available</td>';
+                }
+                tyreStintRecordsContent.appendChild(createAccordion('Tyre Stint Records', tyreStintRecordsSubDiv));
+                return tyreStintRecordsContent;
             }
 
             function getCustomMarkersContent(data) {

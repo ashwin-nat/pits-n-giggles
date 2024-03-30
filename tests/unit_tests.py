@@ -674,7 +674,11 @@ class TestGetFastestTimesJson(RaceAnalyzerUT):
                             {"lap-time-in-ms": 87000, "sector-1-time-in-ms": 19500, "sector-2-time-in-ms": 30500, "sector-3-time-in-ms": 38000}
                         ]
                     },
-                    "index": 0
+                    "index": 0,
+                    "driver-name" : "HAMILTON",
+                    "participant-data" : {
+                        "team-id" : "Mercedes"
+                    }
                 },
                 {
                     "session-history": {
@@ -688,7 +692,11 @@ class TestGetFastestTimesJson(RaceAnalyzerUT):
                             {"lap-time-in-ms": 88000, "sector-1-time-in-ms": 19500, "sector-2-time-in-ms": 31000, "sector-3-time-in-ms": 37500}
                         ]
                     },
-                    "index": 1
+                    "index": 1,
+                    "driver-name" : "VERSTAPPEN",
+                    "participant-data" : {
+                        "team-id" : "Red Bull"
+                    }
                 },
                 {
                     "session-history": {
@@ -702,7 +710,11 @@ class TestGetFastestTimesJson(RaceAnalyzerUT):
                             {"lap-time-in-ms": 89000, "sector-1-time-in-ms": 19500, "sector-2-time-in-ms": 32000, "sector-3-time-in-ms": 37550}
                         ]
                     },
-                    "index": 2
+                    "index": 2,
+                    "driver-name" : "LECLERC",
+                    "participant-data" : {
+                        "team-id" : "Ferrari"
+                    }
                 },
                 {
                     "session-history": {
@@ -716,7 +728,11 @@ class TestGetFastestTimesJson(RaceAnalyzerUT):
                             {"lap-time-in-ms": 91000, "sector-1-time-in-ms": 19000, "sector-2-time-in-ms": 31000, "sector-3-time-in-ms": 41000}
                         ]
                     },
-                    "index": 3
+                    "index": 3,
+                    "driver-name" : "NORRIS",
+                    "participant-data" : {
+                        "team-id" : "McLaren"
+                    }
                 },
                 {
                     "session-history": {
@@ -730,7 +746,11 @@ class TestGetFastestTimesJson(RaceAnalyzerUT):
                             {"lap-time-in-ms": 92000, "sector-1-time-in-ms": 20500, "sector-2-time-in-ms": 31000, "sector-3-time-in-ms": 40500}
                         ]
                     },
-                    "index": 4
+                    "index": 4,
+                    "driver-name" : "ALONSO",
+                    "participant-data" : {
+                        "team-id" : "Aston Martin"
+                    }
                 }
             ]
         }
@@ -738,24 +758,32 @@ class TestGetFastestTimesJson(RaceAnalyzerUT):
         expected_result = {
             'lap': {
                 'driver-index': 0,
+                'driver-name' : 'HAMILTON',
+                'team-id' : 'Mercedes',
                 'lap-number': 3,
                 'time': 87000,
                 'time-str': '01:27.000'
             },
             's1': {
                 'driver-index': 2,
+                'driver-name' : 'LECLERC',
+                'team-id' : 'Ferrari',
                 'lap-number': 2,
                 'time': 18000,
                 'time-str': '18.000'
             },
             's2': {
                 'driver-index': 0,
+                'driver-name' : 'HAMILTON',
+                'team-id' : 'Mercedes',
                 'lap-number': 2,
                 'time': 29000,
                 'time-str': '29.000'
             },
             's3': {
                 'driver-index': 1,
+                'driver-name' : 'VERSTAPPEN',
+                'team-id' : 'Red Bull',
                 'lap-number': 3,
                 'time': 37500,
                 'time-str': '37.500'

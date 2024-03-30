@@ -43,6 +43,8 @@ def getFastestTimesJson(json_data: Dict[str, Any], driver_data: Optional[Dict[st
         if session_history:
             return {
                 'lap' : {
+                    'driver-name'   : driver_data["driver-name"],
+                    'team-id'       : driver_data["participant-data"]["team-id"],
                     'driver-index'  : driver_index,
                     'lap-number'    : session_history["best-lap-time-lap-num"],
                     'time'          : session_history["lap-history-data"]\
@@ -52,6 +54,8 @@ def getFastestTimesJson(json_data: Dict[str, Any], driver_data: Optional[Dict[st
                                             [session_history["best-lap-time-lap-num"]-1]["lap-time-in-ms"])
                 },
                 's1' : {
+                    'driver-name'   : driver_data["driver-name"],
+                    'team-id'       : driver_data["participant-data"]["team-id"],
                     'driver-index'  : driver_index,
                     'lap-number'    : session_history["best-sector-1-lap-num"],
                     'time'          : session_history["lap-history-data"]\
@@ -60,6 +64,8 @@ def getFastestTimesJson(json_data: Dict[str, Any], driver_data: Optional[Dict[st
                                         [session_history["best-sector-1-lap-num"]-1]["sector-1-time-in-ms"])
                 },
                 's2' : {
+                    'driver-name'   : driver_data["driver-name"],
+                    'team-id'       : driver_data["participant-data"]["team-id"],
                     'driver-index'  : driver_index,
                     'lap-number'    : session_history["best-sector-2-lap-num"],
                     'time'          : session_history["lap-history-data"]\
@@ -68,6 +74,8 @@ def getFastestTimesJson(json_data: Dict[str, Any], driver_data: Optional[Dict[st
                                         [session_history["best-sector-2-lap-num"]-1]["sector-2-time-in-ms"])
                 },
                 's3' : {
+                    'driver-name'   : driver_data["driver-name"],
+                    'team-id'       : driver_data["participant-data"]["team-id"],
                     'driver-index'  : driver_index,
                     'lap-number'    : session_history["best-sector-3-lap-num"],
                     'time'          : session_history["lap-history-data"]\
@@ -106,6 +114,8 @@ def getFastestTimesJson(json_data: Dict[str, Any], driver_data: Optional[Dict[st
                     (fastest_dict['lap-number'] is None) or \
                         (fastest_dict['time'] is None):
                     fastest_lap_num = session_history[best_time_lap_num_key]
+                    fastest_dict['driver-name'] = driver_data["driver-name"]
+                    fastest_dict['team-id'] = driver_data["participant-data"]["team-id"]
                     fastest_dict['driver-index'] = driver_index
                     fastest_dict['lap-number'] = fastest_lap_num
                     fastest_lap_index = fastest_lap_num - 1
@@ -118,6 +128,8 @@ def getFastestTimesJson(json_data: Dict[str, Any], driver_data: Optional[Dict[st
                         fastest_dict['driver-index'] = driver_index
                         fastest_dict['lap-number'] = best_time_lap_num
                         fastest_dict['time'] = best_lap_time
+                        fastest_dict['driver-name'] = driver_data["driver-name"]
+                        fastest_dict['team-id'] = driver_data["participant-data"]["team-id"]
         return fastest_dict
 
     fastest_dict = {
@@ -193,6 +205,8 @@ def getTyreStintRecordsDict(json_data: Dict[str, Any]):
                         self.m_records[compound] = {
                             "longest-stint-driver-name" : driver_data["driver-name"],
                             "longest-stint-length" : tyre_set_history_item["stint-length"],
+                            "highest-wear-value" : tyre_set_data["wear"] ,
+                            "highest-wear-driver-name" : driver_data["driver-name"],
                             "lowest-wear-per-lap-driver-name" : driver_data["driver-name"],
                             "lowest-wear-per-lap-value" : \
                                     float(tyre_set_data["wear"])/tyre_set_history_item["stint-length"]
@@ -208,6 +222,9 @@ def getTyreStintRecordsDict(json_data: Dict[str, Any]):
                             if tyre_wear_per_lap < self.m_records[compound]["lowest-wear-per-lap-value"]:
                                 self.m_records[compound]["lowest-wear-per-lap-value"] = tyre_wear_per_lap
                                 self.m_records[compound]["lowest-wear-per-lap-driver-name"] = driver_data["driver-name"]
+                            if tyre_set_data["wear"] > self.m_records[compound]["highest-wear-value"]:
+                                self.m_records[compound]["highest-wear-value"] = tyre_set_data["wear"]
+                                self.m_records[compound]["highest-wear-driver-name"] = driver_data["driver-name"]
 
     # Populate the final JSON and return
     tyre_stint_records = TyreStintRecords(json_data)
@@ -221,6 +238,10 @@ def getTyreStintRecordsDict(json_data: Dict[str, Any]):
             'lowest-tyre-wear-per-lap' : {
                 'value' : records["lowest-wear-per-lap-value"],
                 'driver-name' : records["lowest-wear-per-lap-driver-name"]
+            },
+            'highest-tyre-wear' : {
+                'value' : records["highest-wear-value"],
+                'driver-name' : records["highest-wear-driver-name"]
             }
         }
     return final_json

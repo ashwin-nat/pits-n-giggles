@@ -362,25 +362,54 @@ class TelemetryWebServer:
                     "overtakes" : g_json_data.get("overtakes", None)
                 }, HTTPStatus.OK
 
-    def _checkUpdateRecords(self, g_json_data: Dict[str, Any], g_json_path: str):
+    def _checkUpdateRecords(self, json_data: Dict[str, Any], g_json_path: str):
 
         should_write = False
 
-        if "records" not in g_json_data:
-            g_json_data["records"] = {}
+        if "records" not in json_data:
+            json_data["records"] = {}
             should_write = True
 
-        if "fastest" not in g_json_data["records"]:
-            g_json_data["records"]["fastest"] = RaceAnalyzer.getFastestTimesJson(g_json_data)
+        if "fastest" not in json_data["records"]:
+            json_data["records"]["fastest"] = RaceAnalyzer.getFastestTimesJson(json_data)
+            should_write = True
+        should_recompute_fastest_records = False
+        expected_fastest_record_keys = [
+            'driver-index',
+            'driver-name',
+            'team-id',
+            'lap-number',
+            'time',
+            'time-str'
+        ]
+        for category, record in json_data["records"]["fastest"].items():
+            for key in expected_fastest_record_keys:
+                if key not in record:
+                    should_recompute_fastest_records = True
+                    break
+        if should_recompute_fastest_records:
+            json_data["records"]["fastest"] = RaceAnalyzer.getFastestTimesJson(json_data)
             should_write = True
 
-        if "tyre-stats" not in g_json_data["records"]:
-            g_json_data["records"]["tyre-stats"] = RaceAnalyzer.getTyreStintRecordsDict(g_json_data)
+
+        if "tyre-stats" not in json_data["records"]:
+            json_data["records"]["tyre-stats"] = RaceAnalyzer.getTyreStintRecordsDict(json_data)
+            should_write = True
+        tyre_stats_keys = ['longest-tyre-stint', 'lowest-tyre-wear-per-lap', 'highest-tyre-wear']
+        should_recompute_tyre_stats = False
+        for key in tyre_stats_keys:
+            # Loop through the compounds
+            for compound, tyre_stat_record in json_data["records"]["tyre-stats"].items():
+                if key not in tyre_stat_record:
+                    should_recompute_tyre_stats = True
+
+        if should_recompute_tyre_stats:
+            json_data["records"]["tyre-stats"] = RaceAnalyzer.getTyreStintRecordsDict(json_data)
             should_write = True
 
         should_recompute_overtakes = False
-        if "overtakes" not in g_json_data:
-            g_json_data["overtakes"] = {}
+        if "overtakes" not in json_data:
+            json_data["overtakes"] = {}
             should_write = True
             should_recompute_overtakes = True
 
@@ -390,20 +419,20 @@ class TelemetryWebServer:
             "most-heated-rivalries"
         ]
         for key in expected_keys:
-            if key not in g_json_data["overtakes"]:
+            if key not in json_data["overtakes"]:
                 should_recompute_overtakes = True
 
         if should_recompute_overtakes:
             overtake_records = OvertakeAnalyzer.OvertakeAnalyzer(
                 input_mode=OvertakeAnalyzer.OvertakeAnalyzerMode.INPUT_MODE_LIST_CSV,
-                input=g_json_data["overtakes"]["records"]).toJSON()
-            g_json_data["overtakes"] = g_json_data["overtakes"] | overtake_records
+                input=json_data["overtakes"]["records"]).toJSON()
+            json_data["overtakes"] = json_data["overtakes"] | overtake_records
             should_write = True
 
         if should_write:
             print('writing to file: ' + g_json_path)
             with open(g_json_path, 'w', encoding='utf-8') as f:
-                json.dump(g_json_data, f, ensure_ascii=False, indent=4)
+                json.dump(json_data, f, ensure_ascii=False, indent=4)
 
 
     def run(self):
