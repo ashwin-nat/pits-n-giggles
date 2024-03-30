@@ -279,8 +279,7 @@ SOFTWARE.
             <p id="trackTemperature">Track Temperature: </p>
             <p id="lapInformation">Lap: </p>
             <p id="safetyCarStatus" style="display: none;">Safety Car Status: </p>
-            <p><a href="#" id="getOvertakeInfo" class="motivationLink" style="display: none;">Get Overtake
-                    Information</a></p>
+            <p><a href="#" id="getRaceInfo" class="motivationLink">Get Race Information</a></p>
             <p><a href="#" id="saveTelemetryLink" class="motivationLink">Save telemetry packet capture</a></p>
         </div>
         <div class="time-box">
@@ -316,7 +315,7 @@ SOFTWARE.
 
     <div id="driverInfoModal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="closeDriverInfoModal()">&times;</span>
+            <span class="close" onclick="closeModal('driverInfoModal')">&times;</span>
             <h2 id="modalTitle">Driver Information</h2>
             <div id="modalContent" style="height: 90vh; overflow-y: auto;"></div>
         </div>
@@ -381,18 +380,21 @@ SOFTWARE.
         }
 
         function fetchDataAndDisplay() {
-            fetch('/telemetry-info')
+            const endpoint = "{{ 'player-telemetry-info' if player_only_telemetry else 'telemetry-info' }}";
+            fetch(endpoint)
                 .then(response => response.json())
                 .then(data => {
-                    updateRaceTable(data["table-entries"]);
+                    if ('table-entries' in data) {
+                        updateRaceTable(data["table-entries"]);
+                    }
                     updateGlobalInfo(data["circuit"], data["event-type"], data["track-temperature"], data["current-lap"],
                         data["total-laps"], data["safety-car-status"], data["fastest-lap-overall"],
                         data["pit-speed-limit"], {{ packet_capture_enabled | tojson }});
                     updateWeatherTable(data["weather-forecast-samples"]);
                 })
                 .catch (error => {
-            console.error('Error fetching data:', error);
-        });
+                    console.error('Error fetching data:', error);
+                });
         }
 
         function updateWeatherTable(weatherData) {
@@ -488,50 +490,249 @@ SOFTWARE.
                 });
         }
 
-        function openDriverInfoModal(data) {
+        function createAccordion(title, content) {
+            const accordion = document.createElement('div');
+            accordion.className = 'accordion';
+
+            const accordionTitle = document.createElement('button');
+            accordionTitle.className = 'accordion-title';
+            accordionTitle.innerText = title;
+
+            const accordionContent = document.createElement('div');
+            accordionContent.className = 'accordion-content';
+            accordionContent.appendChild(content);
+
+            accordion.appendChild(accordionTitle);
+            accordion.appendChild(accordionContent);
+
+            // Add event listener for the accordion
+            accordionTitle.addEventListener('click', function () {
+                accordion.classList.toggle('active');
+                if (accordion.classList.contains('active')) {
+                    // Set max-height to the scrollHeight only if the accordion is being opened
+                    accordionContent.style.maxHeight = accordionContent.scrollHeight + 'px';
+                } else {
+                    // Set max-height to 0 when the accordion is being closed
+                    accordionContent.style.maxHeight = null;
+                }
+            });
+
+            return accordion;
+        }
+
+        function formatLapTime(milliseconds) {
+            var minutes = Math.floor(milliseconds / 60000);
+            var seconds = Math.floor((milliseconds % 60000) / 1000);
+            var millisecondsPart = (milliseconds % 1000).toFixed(3).padStart(3, '0');
+            return minutes.toString().padStart(2, '0') + ":" + seconds.toString().padStart(2, '0') + "." + millisecondsPart;
+        }
+
+        function getDriverInfoFromIndex(data, index) {
+            const classificationData = data["classification-data"];
+
+            for (let i = 0; i < classificationData.length; i++) {
+                const driverData = classificationData[i];
+
+                if (driverData["index"] == index) {
+                    return {
+                        'driver-name': driverData["participant-data"]["name"],
+                        'team-name': driverData["participant-data"]["team-id"]
+                    };
+                }
+            }
+
+            // If the index is not found, return null values
+            return {
+                'driver-name': null,
+                'team-name': null
+            };
+        }
+
+        function openRaceInfoModal(data) {
+
             const modalContent = document.getElementById('modalContent');
             modalContent.innerHTML = '';
 
-            function createAccordion(title, content) {
-                const accordion = document.createElement('div');
-                accordion.className = 'accordion';
+            function getFastestTimesRecordsContent(data) {
 
-                const accordionTitle = document.createElement('button');
-                accordionTitle.className = 'accordion-title';
-                accordionTitle.innerText = title;
+                function insertFastestRow(data, timesRecordsTableBody, category, searchKey) {
 
-                const accordionContent = document.createElement('div');
-                accordionContent.className = 'accordion-content';
-                accordionContent.appendChild(content);
+                    const fastestLapTime = data["records"]["fastest"][searchKey]["time-str"];
+                    const fastestDriverIndex = data["records"]["fastest"][searchKey]["driver-index"];
+                    const fastestLapNum = data["records"]["fastest"][searchKey]["lap-number"];
+                    const driverIndex = data["records"]["fastest"][searchKey]["driver-index"];
+                    const driverInfo = getDriverInfoFromIndex(data, driverIndex);
+                    const driverName = driverInfo["driver-name"];
+                    const teamName = driverInfo["team-name"];
+                    const row = timesRecordsTableBody.insertRow();
+                    row.innerHTML = `
+                        <td>${category}</td>
+                        <td>${driverName}</td>
+                        <td>${teamName}</td>
+                        <td>${fastestLapNum}</td>
+                        <td>${fastestLapTime}</td>
+                    `;
+                }
 
-                accordion.appendChild(accordionTitle);
-                accordion.appendChild(accordionContent);
+                const timesRecordsContent = document.createElement('div');
+                const timesRecordsSubDiv = document.createElement('div');
+                const timesRecordsTable = document.createElement('table');
+                timesRecordsSubDiv.appendChild(timesRecordsTable);
+                timesRecordsTable.classList.add('times-records-table');
 
-                // Add event listener for the accordion
-                accordionTitle.addEventListener('click', function () {
-                    accordion.classList.toggle('active');
-                    if (accordion.classList.contains('active')) {
-                        // Set max-height to the scrollHeight only if the accordion is being opened
-                        accordionContent.style.maxHeight = accordionContent.scrollHeight + 'px';
-                    } else {
-                        // Set max-height to 0 when the accordion is being closed
-                        accordionContent.style.maxHeight = null;
+                const timesRecordsHeader = timesRecordsTable.createTHead();
+                const headerRow = timesRecordsHeader.insertRow();
+                headerRow.innerHTML = `
+                    <th>Category</th>
+                    <th>Driver</th>
+                    <th>Team</th>
+                    <th>Lap</th>
+                    <th>Time</th>
+                `;
+
+                const timesRecordsTableBody = timesRecordsTable.createTBody();
+                if ("records" in data && 'fastest' in data["records"] && data["records"]["fastest"] != null) {
+                    if ('lap' in data["records"]["fastest"]) {
+                        insertFastestRow(data, timesRecordsTableBody, "Lap", "lap");
                     }
-                });
+                    if ('s1' in data["records"]["fastest"]) {
+                        insertFastestRow(data, timesRecordsTableBody, "Sector 1", "s1");
+                    }
+                    if ('s2' in data["records"]["fastest"]) {
+                        insertFastestRow(data, timesRecordsTableBody, "Sector 2", "s2");
+                    }
+                    if ('s3' in data["records"]["fastest"]) {
+                        insertFastestRow(data, timesRecordsTableBody, "Sector 3", "s3");
+                    }
 
-                return accordion;
+                } else {
+                    const row = timesRecordsTableBody.insertRow();
+                    row.innerHTML = '<td colspan="5">Fastest Times Records data not available</td>';
+                }
+                timesRecordsContent.appendChild(createAccordion('Fastest Times Records', timesRecordsSubDiv));
+                return timesRecordsContent;
             }
 
-            function createRow(label, value) {
-                const row = document.createElement('p');
-                row.innerHTML = `<strong>${label}:</strong> ${value}`;
-                return row;
+            function getTyreStintRecordsContent(data) {
+
+                function insertTyreStintRecordRow(data, timesRecordsTableBody, compound, compoundRecords) {
+
+                    const longestTyreStintDriverName = compoundRecords["longest-tyre-stint"]["driver-name"];
+                    const longestTyreStintLength = compoundRecords["longest-tyre-stint"]["value"];
+
+                    const lowestTyreWearPerLapDriverName = compoundRecords["lowest-tyre-wear-per-lap"]["driver-name"];
+                    const lowestTyreWearPerLap = compoundRecords["lowest-tyre-wear-per-lap"]["value"];
+
+                    const row1 = timesRecordsTableBody.insertRow();
+                    const compoundCell1 = row1.insertCell();
+                    compoundCell1.textContent = compound;
+                    compoundCell1.setAttribute('rowspan', '2'); // Merge cells vertically
+
+                    row1.insertCell().textContent = 'Longest Stint';
+                    row1.insertCell().textContent = longestTyreStintDriverName;
+                    row1.insertCell().textContent = longestTyreStintLength;
+
+                    const row2 = timesRecordsTableBody.insertRow();
+                    row2.insertCell().textContent = 'Least Tyre Wear Per Lap';
+                    row2.insertCell().textContent = lowestTyreWearPerLapDriverName;
+                    row2.insertCell().textContent = lowestTyreWearPerLap;
+                }
+
+
+                    const tyreStintRecordsContent = document.createElement('div');
+                    const tyreStintRecordsSubDiv = document.createElement('div');
+                    const tyreStintsRecordsTable = document.createElement('table');
+                    tyreStintRecordsSubDiv.appendChild(tyreStintsRecordsTable);
+                    tyreStintsRecordsTable.classList.add('tyre-stints-records-table');
+
+                    const tyreStintsRecordsHeader = tyreStintsRecordsTable.createTHead();
+                    const headerRow = tyreStintsRecordsHeader.insertRow();
+                    headerRow.innerHTML = `
+                        <th>Compound</th>
+                        <th>Category</th>
+                        <th>Driver</th>
+                        <th>Record</th>
+                    `;
+
+                    const tyreStintRecordsTableBody = tyreStintsRecordsTable.createTBody();
+                    if ("records" in data && 'tyre-stats' in data["records"] && data["records"]["tyre-stats"] != null) {
+
+                        const tyreStats = data["records"]["tyre-stats"];
+                        for (let compound in tyreStats) {
+                            const compoundRecords = tyreStats[compound];
+                            insertTyreStintRecordRow(data, tyreStintRecordsTableBody, compound, compoundRecords);
+                        }
+
+                    } else {
+                        const row = tyreStintRecordsTableBody.insertRow();
+                        row.innerHTML = '<td colspan="5">Tyre Stint Records data not available</td>';
+                    }
+                    tyreStintRecordsContent.appendChild(createAccordion('Tyre Stint Records', tyreStintRecordsSubDiv));
+                    return tyreStintRecordsContent;
             }
 
-            function formatComponentName(component) {
-                // Convert component names to kebab-case
-                return component.toLowerCase().replace(/\s+/g, '-');
+            function getCustomMarkersContent(data) {
+
+                const customMarkersContent = document.createElement('div');
+                const customMarkersSubDiv = document.createElement('div');
+                const customMarkersTable = document.createElement('table');
+                customMarkersSubDiv.appendChild(customMarkersTable);
+                customMarkersTable.classList.add('tyre-stints-records-table');
+
+                const customMarkersHeader = customMarkersTable.createTHead();
+                const headerRow = customMarkersHeader.insertRow();
+                headerRow.innerHTML = `
+                    <th>Index</th>
+                    <th>Event</th>
+                    <th>Track</th>
+                    <th>Sector</th>
+                    <th>Lap Number</th>
+                    <th>Curr Lap Time</th>
+                    <th>Lap Percentage</th>
+                `;
+
+                const customMarkersTableBody = customMarkersTable.createTBody();
+                if ("custom-markers" in data && data["custom-markers"].length > 0) {
+
+                    data["custom-markers"].forEach(function(marker, index) {
+                        const row = customMarkersTableBody.insertRow();
+                        row.innerHTML = `
+                            <td>${index+1}</td>
+                            <td>${marker["event-type"]}</td>
+                            <td>${marker["track"]}</td>
+                            <td>${marker["sector"]}</td>
+                            <td>${marker["lap"]}</td>
+                            <td>${marker["curr-lap-time"]}</td>
+                            <td>${marker["curr-lap-percentage"]}</td>
+                        `;
+                    });
+
+                } else {
+                    const row = customMarkersTableBody.insertRow();
+                    row.innerHTML = '<td colspan="6">Custom Markers data not available</td>';
+                }
+                customMarkersContent.appendChild(createAccordion('Custom Markers', customMarkersSubDiv));
+                return customMarkersContent;
             }
+
+            // Fastest Times Records Table
+            modalContent.appendChild(getFastestTimesRecordsContent(data));
+
+            // Tyre Stints Records Table
+            modalContent.appendChild(getTyreStintRecordsContent(data));
+
+            // Custom Markers Table
+            modalContent.appendChild(getCustomMarkersContent(data));
+
+            // Finalise the data
+            const modalTitle = document.getElementById('modalTitle');
+            modalTitle.innerText = `Race Information`;
+
+            const modal = document.getElementById('driverInfoModal');
+            modal.style.display = 'block';
+        }
+
+        function openDriverInfoModal(data) {
 
             // Function to plot the graph with dark theme, truncated Y-axis values, and 30% excess
             function plotGraph(canvas, datasets, xAxisLabel, yAxisLabel, formatAsLapTime = false) {
@@ -542,13 +743,6 @@ SOFTWARE.
                             entry.lapTimeString = formatLapTime(entry.y); // Store lap time string for display
                         });
                     });
-                }
-
-                function formatLapTime(milliseconds) {
-                    var minutes = Math.floor(milliseconds / 60000);
-                    var seconds = Math.floor((milliseconds % 60000) / 1000);
-                    var millisecondsPart = (milliseconds % 1000).toFixed(3).padStart(3, '0');
-                    return minutes.toString().padStart(2, '0') + ":" + seconds.toString().padStart(2, '0') + "." + millisecondsPart;
                 }
 
                 var xData = datasets[0].data.map(entry => entry.x);
@@ -644,8 +838,6 @@ SOFTWARE.
                     }
                 });
             }
-
-
 
             function getCarDamageContent(data) {
 
@@ -818,6 +1010,13 @@ SOFTWARE.
                     lapHistoryData.forEach((lap, index) => {
                         const row = lapHistoryBody.insertRow();
                         const currentLapNum = index + 1;
+
+                        if (lap["lap-time-in-ms"] == 0 &&
+                            lap["sector-1-time-in-ms"] == 0 &&
+                            lap["sector-2-time-in-ms"] == 0 &&
+                            lap["sector-3-time-in-ms"] == 0) {
+                            return;
+                        }
 
                         row.innerHTML = `
                             <td>${currentLapNum}</td>
@@ -1249,6 +1448,9 @@ SOFTWARE.
                 return warningsPenaltiesContent;
             }
 
+            const modalContent = document.getElementById('modalContent');
+            modalContent.innerHTML = '';
+
             // Car Damage Table
             modalContent.appendChild(getCarDamageContent(data));
 
@@ -1281,8 +1483,8 @@ SOFTWARE.
             modal.style.display = 'block';
         }
 
-        function closeDriverInfoModal() {
-            const modal = document.getElementById('driverInfoModal');
+        function closeModal(elementId) {
+            const modal = document.getElementById(elementId);
             modal.style.display = 'none';
         }
 
@@ -1371,37 +1573,14 @@ SOFTWARE.
                 });
         });
 
-        document.getElementById("getOvertakeInfo").addEventListener("click", function () {
-            fetch('/overtake-info')
+        document.getElementById("getRaceInfo").addEventListener("click", function () {
+            fetch(`/race-info`)
                 .then(response => response.json())
                 .then(data => {
-
-                    if (data['status-code'] === 'SUCCESS') {
-                        const overtakeInfo = data['overtake-info'];
-                        const formattedOvertakeInfo = overtakeInfo.map(info => `${info['driver']} overtakes ${info['overtaken-driver']} at lap ${info['lap']}`);
-                        const formattedOvertakeList = formattedOvertakeInfo.join('<br>');
-
-                        Swal.fire({
-                            icon: 'info',
-                            title: 'Overtake Information',
-                            html: formattedOvertakeList,
-                            confirmButtonText: 'OK',
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error fetching overtake information!',
-                            text: JSON.stringify(data),
-                        });
-                    }
+                    openRaceInfoModal(data);
                 })
                 .catch(error => {
-                    console.error('Error fetching overtake information:', error);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error fetching overtake information!',
-                        text: 'Please check the console for more information.',
-                    });
+                    console.error('Error fetching race info:', error);
                 });
         });
 

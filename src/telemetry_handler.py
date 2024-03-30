@@ -46,7 +46,7 @@ except ImportError:
 from src.telemetry_manager import F12023TelemetryManager
 from lib.f1_types import *
 from lib.packet_cap import F1PacketCapture
-from lib.overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode
+from lib.overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, OvertakeRecord
 import src.telemetry_data as TelData
 import lib.race_analyzer as RaceAnalyzer
 
@@ -112,8 +112,47 @@ class OvertakesHistory:
 
     def __init__(self):
 
-        self.m_overtakes_history = []
-        self.m_lock = Lock()
+        self.m_overtakes_history: List[OvertakeRecord] = []
+        self.m_lock: Lock = Lock()
+
+    def insert(self, overtake_record: OvertakeRecord) -> None:
+        with self.m_lock:
+            if len(self.m_overtakes_history) == 0:
+                overtake_record.m_row_id = 0
+                self.m_overtakes_history.append(overtake_record)
+            else:
+                if self.m_overtakes_history[-1] == overtake_record:
+                    logging.debug("not adding repeated overtake record " + str(overtake_record))
+                else:
+                    overtake_record.m_row_id = len(self.m_overtakes_history)
+                    self.m_overtakes_history.append(overtake_record)
+
+class CustomMarkersHistory:
+
+    def __init__(self):
+
+        self.m_custom_markers_history: List[TelData.CustomMarkerEntry] = []
+        self.m_lock: Lock = Lock()
+
+    def insert(self, custom_marker_entry: TelData.CustomMarkerEntry) -> None:
+        with self.m_lock:
+            self.m_custom_markers_history.append(custom_marker_entry)
+
+    def clear(self) -> None:
+
+        with self.m_lock:
+            self.m_custom_markers_history.clear()
+
+    def getCount(self) -> int:
+
+        with self.m_lock:
+            return len(self.m_custom_markers_history)
+
+    def getJSONList(self) -> List[Dict[str, Any]]:
+
+        with self.m_lock:
+            return [entry.toJSON() for entry in self.m_custom_markers_history]
+
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -124,7 +163,7 @@ g_overtakes_history: OvertakesHistory = OvertakesHistory()
 g_post_race_data_autosave: bool = False
 g_directory_mapping: Dict[str, str] = {}
 g_udp_custom_action_code: Optional[int] = None
-g_player_recorded_events_history: List[TelData.CustomMarkerEntry] = []
+g_player_recorded_events_history: CustomMarkersHistory = CustomMarkersHistory()
 
 # -------------------------------------- INITIALIZATION ----------------------------------------------------------------
 
@@ -274,7 +313,7 @@ def dumpPktCapToFile(
             # Return the appropriate status
             return PktSaveStatus.OS_ERROR, None, 0, 0
 
-def getOvertakeJSON(driver_name: str=None) -> Tuple[GetOvertakesStatus, Dict]:
+def getOvertakeJSON(driver_name: str=None) -> Tuple[GetOvertakesStatus, Dict[str, Any]]:
     """Get the JSON value containing key overtake information
 
     Arguments:
@@ -291,16 +330,24 @@ def getOvertakeJSON(driver_name: str=None) -> Tuple[GetOvertakesStatus, Dict]:
                 return GetOvertakesStatus.NO_DATA, {}
             else:
                 return GetOvertakesStatus.RACE_ONGOING, OvertakeAnalyzer(
-                    input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST,
+                    input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST_OVERTAKE_RECORDS,
                     input=g_overtakes_history.m_overtakes_history).toJSON(
                         driver_name=driver_name,
                         is_case_sensitive=True)
         else:
             return GetOvertakesStatus.RACE_COMPLETED, OvertakeAnalyzer(
-                input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST,
+                input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST_OVERTAKE_RECORDS,
                 input=g_overtakes_history.m_overtakes_history).toJSON(
                     driver_name=driver_name,
                     is_case_sensitive=True)
+
+def getCustomMarkersJSON() -> List[Dict[str, Any]]:
+    """
+    Return a list of dictionaries containing custom markers in JSON format.
+    """
+
+    global g_player_recorded_events_history
+    return g_player_recorded_events_history.getJSONList()
 
 def printOvertakeData(file_name: str=None):
     """Print the overtake data
@@ -312,13 +359,13 @@ def printOvertakeData(file_name: str=None):
     player_name = TelData.getPlayerName()
     if file_name:
         overtake_analyzer = OvertakeAnalyzer(
-            input_mode=OvertakeAnalyzerMode.INPUT_MODE_FILE,
+            input_mode=OvertakeAnalyzerMode.INPUT_MODE_FILE_CSV,
             input=file_name)
     else:
         global g_overtakes_history
         with g_overtakes_history.m_lock:
             overtake_analyzer = OvertakeAnalyzer(
-                input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST,
+                input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST_OVERTAKE_RECORDS,
                 input=g_overtakes_history.m_overtakes_history)
     logging.info(overtake_analyzer.getFormattedString(driver_name=player_name, is_case_sensitive=True))
 
@@ -356,15 +403,12 @@ def addFunStatsToFinalClassificationJson(final_json: Dict[str, Any]) -> None:
 
     global g_overtakes_history
 
-    # First, overtake stats
-    final_json['overtakes'] = {
-        'records' : g_overtakes_history.m_overtakes_history
-    }
+    final_json['overtakes'] = {'records': [record.toJSON() for record in g_overtakes_history.m_overtakes_history]}
 
     with g_overtakes_history.m_lock:
         player_name = TelData.getPlayerName()
         overtake_analyzer = OvertakeAnalyzer(
-            input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST,
+            input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST_OVERTAKE_RECORDS,
             input=g_overtakes_history.m_overtakes_history)
         logging.info(overtake_analyzer.getFormattedString(driver_name=player_name, is_case_sensitive=True))
         # Add the new keys directly to the top level of final_json
@@ -412,8 +456,8 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
 
         # Add the markers as well
         final_json['custom-markers'] = []
-        if len(g_player_recorded_events_history) > 0:
-            for marker in g_player_recorded_events_history:
+        if g_player_recorded_events_history.getCount() > 0:
+            for marker in g_player_recorded_events_history.m_custom_markers_history:
                 final_json['custom-markers'].append(marker.toJSON())
 
         final_json_file_name = g_directory_mapping['race-info'] + 'race_info_' + \
@@ -422,7 +466,7 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
         logging.info("Wrote race info to " + final_json_file_name)
 
     # Save the custom player recorded markers
-    if len(g_player_recorded_events_history) > 0:
+    if g_player_recorded_events_history.getCount() > 0:
         custom_marker_file_name = g_directory_mapping['race-info'] + 'custom_player_markers_' + \
                 event_str + getTimestampStr() + '.csv'
         writeToCsvFile(g_player_recorded_events_history, custom_marker_file_name)
@@ -541,7 +585,7 @@ class F12023TelemetryHandler:
                 global g_player_recorded_events_history
                 custom_marker_obj = TelData.getCustomMarkerEntryObj(add_to_queue=True)
                 if custom_marker_obj:
-                    g_player_recorded_events_history.append(custom_marker_obj)
+                    g_player_recorded_events_history.insert(custom_marker_obj)
                     logging.debug('Player recorded event: ' + str(custom_marker_obj))
                 else:
                     logging.error("Unable to generate player_recorded_event_str")
@@ -557,7 +601,7 @@ class F12023TelemetryHandler:
             # Clear the list regardless of event type
             with g_overtakes_history.m_lock:
                 g_overtakes_history.m_overtakes_history.clear()
-                g_player_recorded_events_history.clear()
+            g_player_recorded_events_history.clear()
             logging.info("Received SESSION_STARTED")
 
         # Retirement - Update data strucutres
@@ -566,16 +610,10 @@ class F12023TelemetryHandler:
 
         # Overtake - Update overtake records list
         elif packet.m_eventStringCode == PacketEventData.EventPacketType.OVERTAKE:
-            overtake_csv_str = TelData.getOvertakeString(packet.mEventDetails.overtakingVehicleIdx,
+            overtake_obj = TelData.getOvertakeObj(packet.mEventDetails.overtakingVehicleIdx,
                                                         packet.mEventDetails.beingOvertakenVehicleIdx)
-            if overtake_csv_str:
-                with g_overtakes_history.m_lock:
-                    # Experimental input sanitizer
-                    if len(g_overtakes_history.m_overtakes_history) > 0 and \
-                        g_overtakes_history.m_overtakes_history[-1] == overtake_csv_str:
-                        logging.debug("not adding repeated overtake string " + overtake_csv_str)
-                    else:
-                        g_overtakes_history.m_overtakes_history.append(overtake_csv_str)
+            if overtake_obj:
+                g_overtakes_history.insert(overtake_obj)
 
     @staticmethod
     def handleParticipants(packet: PacketParticipantsData) -> None:

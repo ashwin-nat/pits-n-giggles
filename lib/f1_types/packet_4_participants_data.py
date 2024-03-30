@@ -221,6 +221,9 @@ class PacketParticipantsData:
         for participant_data_raw in _split_list(packet[1:], ParticipantData.PACKET_LEN):
             self.m_participants.append(ParticipantData(participant_data_raw))
 
+        # Trim the list
+        self.m_participants = self.m_participants[:self.m_numActiveCars]
+
     def __str__(self) -> str:
         """
         Returns a string representation of the PacketParticipantsData object.

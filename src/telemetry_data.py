@@ -26,10 +26,11 @@
 import threading
 import copy
 from lib.f1_types import *
-import csv
-from io import StringIO
+from lib.overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, OvertakeRecord
+from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from typing import Optional, Generator, Tuple, List, Dict, Any
 from collections import OrderedDict
+import logging
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -781,6 +782,28 @@ class DriverData:
         obj_to_be_updated = self.m_driver_data.get(index, None)
         return obj_to_be_updated.toJSON(index) if obj_to_be_updated else None
 
+    def getRaceInfoJSON(self) -> Dict[str, Any]:
+        """Get the race info JSON.
+
+        Returns:
+            Dict[str, Any]: Race info JSON
+        """
+
+        if self.m_race_completed and self.m_final_json:
+            return self.m_final_json
+        else:
+            final_json = {}
+            final_json["classification-data"] = self._getClassificationDataListJSON()
+            return final_json
+
+    def _getClassificationDataListJSON(self):
+        """
+        Return a list of dictionaries containing index, driver name, position, and participant data.
+        """
+
+        return [driver_data.toJSON(index) for index, driver_data in self.m_driver_data.items()]
+
+
 class CustomMarkerEntry:
     """Class representing the data points related to a custom time marker.
     """
@@ -1045,7 +1068,7 @@ def getDriverData(num_adjacent_cars: Optional[int] = 2) -> Tuple[List[DataPerDri
         fastest_lap_time = "---"
 
         # If the data is not yet available, return default values
-        if (_driver_data.m_player_index) is None or (_driver_data.m_num_active_cars is None):
+        if (_driver_data.m_player_index is None) or (_driver_data.m_num_active_cars is None):
             return final_list, fastest_lap_time
 
         # Compute the list of positions to be displayed
@@ -1142,6 +1165,44 @@ def getDriverData(num_adjacent_cars: Optional[int] = 2) -> Tuple[List[DataPerDri
 
         return final_list, fastest_lap_time
 
+def getPlayerDriverData() -> Tuple[DataPerDriver, str]:
+
+    with _globals_lock:
+        is_spectator_mode = _globals.m_is_spectating
+        track_length = _globals.m_packet_session.m_trackLength if _globals.m_packet_session else None
+    with _driver_data_lock:
+        final_list = []
+        fastest_lap_time = "---"
+
+        # If the data is not yet available, return default values
+        player_index = _driver_data.m_player_index
+        if (player_index is None) or (_driver_data.m_num_active_cars is None):
+            return None, fastest_lap_time
+
+        milliseconds_to_seconds_str = lambda ms: ("+" if ms >= 0 else "") + "{:.3f}".format(ms / 1000)
+
+        final_obj = copy.deepcopy(_driver_data.m_driver_data[player_index])
+        final_obj.m_is_fastest = True if (player_index == _driver_data.m_fastest_index) else False
+        if final_obj.m_ers_perc is not None:
+            final_obj.m_ers_perc = F1Utils.floatToStr(final_obj.m_ers_perc) + "%"
+        if final_obj.m_tyre_wear is not None:
+            final_obj.m_tyre_wear = F1Utils.floatToStr(final_obj.m_tyre_wear) + "%"
+        final_obj.m_index = player_index
+        if final_obj.m_telemetry_restrictions is not None:
+            final_obj.m_telemetry_restrictions = str(final_obj.m_telemetry_restrictions)
+        else:
+            final_obj.m_telemetry_restrictions = "N/A"
+        if final_obj.m_packet_lap_data:
+            final_obj.m_corner_cutting_warnings = final_obj.m_packet_lap_data.m_cornerCuttingWarnings
+            final_obj.m_delta = milliseconds_to_seconds_str(final_obj.m_packet_lap_data.m_deltaToCarInFrontInMS)
+            if track_length:
+                final_obj.m_lap_progress = (final_obj.m_packet_lap_data.m_lapDistance / track_length) * 100.0
+        else:
+            final_obj.m_lap_progress = None
+            final_obj.m_corner_cutting_warnings = None
+
+        return final_obj, fastest_lap_time
+
 def getDriverInfoJsonByIndex(index: int) -> Optional[Dict[str, Any]]:
     """Get the driver info JSON for the given index
 
@@ -1154,6 +1215,14 @@ def getDriverInfoJsonByIndex(index: int) -> Optional[Dict[str, Any]]:
 
     with _driver_data_lock:
         return _driver_data.getDriverInfoJsonByIndex(index)
+
+def getRaceInfo() -> Dict[str, Any]:
+    """
+    Returns the race information as a dictionary with string keys and any values.
+    """
+
+    with _driver_data_lock:
+        return _driver_data.getRaceInfoJSON()
 
 # -------------------------------------- UTILITIES ---------------------------------------------------------------------
 
@@ -1191,7 +1260,7 @@ def getDriverNameByIndex(index: int) -> str:
         driver_data = _driver_data.m_driver_data.get(index, None)
         return driver_data.m_name if driver_data else None
 
-def getOvertakeString(overtaking_car_index: int, being_overtaken_index: int) -> str:
+def getOvertakeObj(overtaking_car_index: int, being_overtaken_index: int) -> Optional[OvertakeRecord]:
     """Returns a CSV-formatted string containing overtake information
 
     Args:
@@ -1214,21 +1283,17 @@ def getOvertakeString(overtaking_car_index: int, being_overtaken_index: int) -> 
             return None
 
         # Prepare data for CSV writing
-        data = [
-            overtaking_car_obj.m_current_lap,
-            overtaking_car_obj.m_name,
-            being_overtaken_car_obj.m_current_lap,
-            being_overtaken_car_obj.m_name
-        ]
-
-        # Use CSV writer to handle quoting and escaping
-        csv_buffer = StringIO()
-        csv_writer = csv.writer(csv_buffer)
-        csv_writer.writerow(data)
-
-        # Get the CSV-formatted string
-        csv_string = csv_buffer.getvalue().strip()
-        return csv_string
+        if overtaking_car_obj.m_name is None or \
+            overtaking_car_obj.m_current_lap is None or \
+                being_overtaken_car_obj.m_name is None or \
+                    being_overtaken_car_obj.m_current_lap is None:
+            return None
+        return OvertakeRecord(
+            overtaking_driver_name=overtaking_car_obj.m_name,
+            overtaking_driver_lap=overtaking_car_obj.m_current_lap,
+            overtaken_driver_name=being_overtaken_car_obj.m_name,
+            overtaken_driver_lap=being_overtaken_car_obj.m_current_lap,
+        )
 
 def getPlayerRecordedEventCsvStr(add_to_queue: bool = False) -> Optional[str]:
     """

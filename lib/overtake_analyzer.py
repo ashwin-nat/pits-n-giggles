@@ -22,7 +22,7 @@
 
 import csv
 from collections import defaultdict
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict, Optional, Any
 from enum import Enum
 from io import StringIO
 import json
@@ -42,7 +42,7 @@ class OvertakeRecord:
     """
 
     def __init__(self, overtaking_driver_name: str, overtaking_driver_lap: int,
-                overtaken_driver_name: str, overtaken_driver_lap: int, row_id: int) -> None:
+                overtaken_driver_name: str, overtaken_driver_lap: int, row_id: Optional[int] = None) -> None:
         """
         Initialize an OvertakeRecord.
 
@@ -51,7 +51,7 @@ class OvertakeRecord:
             overtaking_driver_lap (int): The lap number when the overtaking occurred.
             overtaken_driver_name (str): The name of the driver being overtaken.
             overtaken_driver_lap (int): The lap number when the overtaken occurred.
-            row_id (int): The row ID from the CSV file
+            row_id (int): The row ID from the CSV file (optional, defaults to None)
         """
 
         self.m_overtaking_driver_name: str = overtaking_driver_name
@@ -73,14 +73,18 @@ class OvertakeRecord:
         if not isinstance(other, OvertakeRecord):
             return False
 
+        if self.m_row_id is not None and other.m_row_id is not None:
+            row_id_equal = (self.m_row_id == other.m_row_id)
+        else:
+            row_id_equal = True
+
         return (
             self.m_overtaking_driver_name == other.m_overtaking_driver_name
             and self.m_overtaking_driver_lap == other.m_overtaking_driver_lap
             and self.m_overtaken_driver_name == other.m_overtaken_driver_name
             and self.m_overtaken_driver_lap == other.m_overtaken_driver_lap
-            and self.m_row_id == other.m_row_id
+            and row_id_equal
         )
-
     def __lt__(self, other) -> bool:
         """
         Compare two OvertakeRecord objects based on m_row_id.
@@ -138,6 +142,21 @@ class OvertakeRecord:
             "m_overtaken_driver_lap=" + str(self.m_overtaken_driver_lap) + ", " +
             "m_row_id=" + str(self.m_row_id)
         )
+
+    def toJSON(self) -> Dict[str, Any]:
+        """Get the JSON representation of this object
+
+        Returns:
+            Dict[str, Any]: JSON dictionary
+        """
+
+        return {
+            "overtaking-driver-name": self.m_overtaking_driver_name,
+            "overtaking-driver-lap": self.m_overtaking_driver_lap,
+            "overtaken-driver-name": self.m_overtaken_driver_name,
+            "overtaken-driver-lap": self.m_overtaken_driver_lap,
+            "overtake-id" : self.m_row_id
+        }
 
 class OvertakeRivalryKey:
 
@@ -212,8 +231,9 @@ class OvertakeAnalyzerMode(Enum):
            or the list of csv strings
     """
 
-    INPUT_MODE_FILE=1,
-    INPUT_MODE_LIST=2,
+    INPUT_MODE_FILE_CSV=1,
+    INPUT_MODE_LIST_CSV=2,
+    INPUT_MODE_LIST_OVERTAKE_RECORDS=3
 
 class OvertakeAnalyzer:
     """
@@ -243,20 +263,31 @@ class OvertakeAnalyzer:
         Args:
             input_mode (OvertakeAnalyzerMode): Describes the type of input
             input (str): Context varies based on input_mode
-                INPUT_MODE_LIST - This is a list of all overtakes in csv format
-                INPUT_MODE_FILE - This is a JSON file containing all overtake records under the key
+                INPUT_MODE_LIST_CSV - This is a list of all overtakes in csv format
+                INPUT_MODE_FILE_CSV - This is a JSON file containing all overtake records under the key
+                INPUT_MODE_LIST_OVERTAKE_RECORDS - This is a list of all OvertakeRecords
         """
 
         self.m_input_mode: OvertakeAnalyzerMode = input_mode
         self.m_overtaking_counts: Dict[str, int] = defaultdict(int)
         self.m_being_overtaken_counts: Dict[str, int] = defaultdict(int)
         self.m_rivalry_records: Dict[OvertakeRivalryKey, List[OvertakeRecord]] = defaultdict(list)
-        if input_mode == OvertakeAnalyzerMode.INPUT_MODE_FILE:
-            self.__analyzeFile(file_name=input)
-        else:
+        if input_mode == OvertakeAnalyzerMode.INPUT_MODE_FILE_CSV:
+            self.__analyzeCsvFile(file_name=input)
+        elif input_mode == OvertakeAnalyzerMode.INPUT_MODE_LIST_CSV:
             self.__analyzeCsvList(csv_list=input)
+        else:
+            self.__analyzeListOvertakeRecords(overtake_records=input)
 
-    def __analyzeFile(self, file_name) -> None:
+    def __analyzeListOvertakeRecords(self, overtake_records: List[OvertakeRecord]) -> None:
+        """
+        Analyze overtaking data from the list of OvertakeRecords.
+        """
+
+        for record in overtake_records:
+            self.__processOvertakeRecord(record)
+
+    def __analyzeCsvFile(self, file_name) -> None:
         """
         Analyze overtaking data from the CSV file.
         """
@@ -273,7 +304,8 @@ class OvertakeAnalyzer:
             if not records or not isinstance(records, list):
                 raise ValueError('"records" key is missing or is not a list in the JSON.')
 
-            self.__analyze(data['overtakes']['records'], is_file=False)
+            # Analyze the input data
+            self.__analyze(data['overtakes']['records'])
 
     def __analyzeCsvList(self, csv_list: List[str]) -> None:
         """Parse and analyze the given CSV list into this object
@@ -284,15 +316,14 @@ class OvertakeAnalyzer:
 
         csv_data_string = '\n'.join(csv_list)
         csv_data_file = StringIO(csv_data_string)
-        self.__analyze(csv_data_file, is_file=False)
+        self.__analyze(csv_data_file)
 
-    def __analyze(self, data, is_file: bool) -> None:
+    def __analyze(self, data) -> None:
         """
         Analyze overtaking data from either a file or a list of strings.
 
         Args:
             data: Either a file object or a string containing CSV data.
-            is_file (bool): True if data is a file object, False if it's a string.
         """
         reader = csv.reader(data)
         # next(reader, None)  # Skip header row if present
@@ -303,27 +334,32 @@ class OvertakeAnalyzer:
             if row in [[''],[]]: # don't process empty lines
                 continue
             lap_overtaking, driver_overtaking, lap_being_overtaken, driver_being_overtaken = map(str.strip, row)
-
-            lap_overtaking = int(lap_overtaking)
-            lap_being_overtaken = int(lap_being_overtaken)
-
-            # Record overtakes in both directions
-            self.m_overtaking_counts[driver_overtaking] += 1
-            self.m_being_overtaken_counts[driver_being_overtaken] += 1
-
-            # Use the key type here since it supports bidirectional comparison
-            rivalry_key = OvertakeRivalryKey(
-                driver_1_name=driver_overtaking,
-                driver_2_name=driver_being_overtaken)
-
-            # Append the overtake into the rivalry table
-            self.m_rivalry_records[rivalry_key].append(OvertakeRecord(
-                    overtaking_driver_name=driver_overtaking,
-                    overtaken_driver_lap=lap_overtaking,
-                    overtaken_driver_name=driver_being_overtaken,
-                    overtaking_driver_lap=lap_being_overtaken,
-                    row_id=row_id))
+            self.__processOvertakeRecord(OvertakeRecord(
+                overtaking_driver_name=driver_overtaking,
+                overtaking_driver_lap=int(lap_overtaking),
+                overtaken_driver_name=driver_being_overtaken,
+                overtaken_driver_lap=int(lap_being_overtaken),
+                row_id=row_id))
             row_id += 1
+
+    def __processOvertakeRecord(self, overtake_record : OvertakeRecord) -> None:
+        """
+        Process an OvertakeRecord
+
+        Args:
+            overtake_record (OvertakeRecord): The OvertakeRecord to process
+        """
+        # Record overtakes in both directions
+        self.m_overtaking_counts[overtake_record.m_overtaking_driver_name] += 1
+        self.m_being_overtaken_counts[overtake_record.m_overtaken_driver_name] += 1
+
+        # Use the key type here since it supports bidirectional comparison
+        rivalry_key = OvertakeRivalryKey(
+            driver_1_name=overtake_record.m_overtaking_driver_name,
+            driver_2_name=overtake_record.m_overtaken_driver_name)
+
+        # Append the overtake into the rivalry table
+        self.m_rivalry_records[rivalry_key].append(overtake_record)
 
     def getMostOvertakes(self) -> Tuple[List[str], int]:
         """
@@ -438,12 +474,42 @@ class OvertakeAnalyzer:
             Dict[str, dict]: JSON dictionary.
         """
 
+        most_overtakes_drivers, overtakes_count = self.getMostOvertakes()
+        most_overtaken_driver, overtaken_count = self.getMostOvertaken()
+        most_heated_rivalries = self.getMostHeatedRivalries()
+
+        final_dict = {
+            "number-of-overtakes": self.getTotalNumberOfOvertakes(),
+            "most-overtakes": {"drivers": most_overtakes_drivers, "count": overtakes_count},
+            "most-overtaken": {"drivers": most_overtaken_driver, "count": overtaken_count},
+            "most-heated-rivalries": [
+                {
+                    # Extracting data from rivalry_key
+                    "driver1": rivalry_key.m_driver_1_name,
+                    "driver2": rivalry_key.m_driver_2_name,
+                    "overtakes": [
+                        {
+                            # Extracting data from each record in rivalry_data
+                            "overtaking-driver-name": record.m_overtaking_driver_name,
+                            "overtaking-driver-lap": record.m_overtaking_driver_lap,
+                            "overtaken-driver-name": record.m_overtaken_driver_name,
+                            "overtaken-driver-lap": record.m_overtaken_driver_lap,
+                        }
+                        for record in rivalry_data
+                    ],
+                }
+                for rivalry_key, rivalry_data in most_heated_rivalries.items()
+            ],
+        }
+
         if not driver_name:
+            return final_dict
+
+        else:
             most_overtakes_drivers, overtakes_count = self.getMostOvertakes()
             most_overtaken_driver, overtaken_count = self.getMostOvertaken()
             most_heated_rivalries = self.getMostHeatedRivalries()
-
-            return {
+            final_dict = {
                 "number-of-overtakes": self.getTotalNumberOfOvertakes(),
                 "most-overtakes": {"drivers": most_overtakes_drivers, "count": overtakes_count},
                 "most-overtaken": {"drivers": most_overtaken_driver, "count": overtaken_count},
@@ -466,17 +532,15 @@ class OvertakeAnalyzer:
                     for rivalry_key, rivalry_data in most_heated_rivalries.items()
                 ],
             }
-
-        else:
-            if driver_name not in self.m_overtaking_counts or driver_name not in self.m_being_overtaken_counts:
-                return {}
-            final_dict = {}
             final_dict["player-name"] = driver_name
-            final_dict["number-of-overtakes"] = self.m_overtaking_counts[driver_name]
-            final_dict["number-of-times-overtaken"] = self.m_being_overtaken_counts[driver_name]
-            player_most_heated_rivalries = self.getMostHeatedRivalries(
-                driver_name=driver_name,
-                is_case_sensitive=is_case_sensitive)
+            final_dict["number-of-times-player-overtaken"] = self.m_being_overtaken_counts[driver_name]
+            final_dict["number-of-times-player-overtakes"] = self.m_overtaking_counts[driver_name]
+            if self.m_overtaking_counts[driver_name] == 0 or self.m_being_overtaken_counts[driver_name] == 0:
+                player_most_heated_rivalries = None
+            elif self.m_overtaking_counts:
+                player_most_heated_rivalries = self.getMostHeatedRivalries(
+                    driver_name=driver_name,
+                    is_case_sensitive=is_case_sensitive)
 
             if player_most_heated_rivalries:
                 final_dict["player-most-heated-rivalries"] = [
@@ -498,36 +562,7 @@ class OvertakeAnalyzer:
                     for rivalry_key, rivalry_data in player_most_heated_rivalries.items()
                 ]
             else:
-                final_dict["most-heated-rivalries"] = {}
-
-            # final_dict["player-name"] = driver_name
-            # final_dict["is-player-in-most-heated-rivalries"] = any(driver_name in key for key in most_heated_rivalries)
-            # if not final_dict["is-player-in-most-heated-rivalries"]:
-            #     # Get the dict including the player name
-            #     player_most_heated_rivalries = self.getMostHeatedRivalries(
-            #         driver_name=driver_name,
-            #         is_case_sensitive=is_case_sensitive)
-            #     if player_most_heated_rivalries:
-            #         final_dict["player-most-heated-rivalries"] = [
-            #             {
-            #                 # Extracting data from rivalry_key
-            #                 "driver1": rivalry_key.m_driver_1_name,
-            #                 "driver2": rivalry_key.m_driver_2_name,
-            #                 "overtakes": [
-            #                     {
-            #                         # Extracting data from each record in rivalry_data
-            #                         "overtaking-driver-name": record.m_overtaking_driver_name,
-            #                         "overtaking-driver-lap": record.m_overtaking_driver_lap,
-            #                         "overtaken-driver-name": record.m_overtaken_driver_name,
-            #                         "overtaken-driver-lap": record.m_overtaken_driver_lap,
-            #                     }
-            #                     for record in rivalry_data
-            #                 ],
-            #             }
-            #             for rivalry_key, rivalry_data in player_most_heated_rivalries.items()
-            #         ]
-            #     else:
-            #         final_dict["player-most-heated-rivalries"] = []
+                final_dict["most-heated-rivalries"] = []
 
         return final_dict
 
@@ -658,5 +693,5 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    overtake_analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_FILE, args.file_name)
+    overtake_analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_FILE_CSV, args.file_name)
     print(overtake_analyzer.getFormattedString(driver_name=args.driver_name))

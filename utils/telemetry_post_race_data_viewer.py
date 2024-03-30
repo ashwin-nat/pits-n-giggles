@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 
-from typing import Dict
+from typing import Dict, Any
 from http import HTTPStatus
 import logging
 import json
@@ -38,6 +38,8 @@ import webbrowser
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from lib.f1_types import F1Utils, LapData, ResultStatus
+import lib.race_analyzer as RaceAnalyzer
+import lib.overtake_analyzer as OvertakeAnalyzer
 
 try:
     from flask import Flask, render_template, request, jsonify
@@ -57,6 +59,7 @@ except ImportError:
     from flask_cors import CORS
 
 g_json_data = {}
+g_json_path = ''
 g_json_lock = Lock()
 ui_initialized = False  # Flag to track if UI has been initialized
 
@@ -123,7 +126,19 @@ def getTelemetryInfo():
     # Init the global data onto the JSON repsonse
     with g_json_lock:
         if not g_json_data:
-            return {}
+            return {
+                "circuit": "---",
+                "current-lap": "---",
+                "event-type": "---",
+                "fastest-lap-overall": "---",
+                "pit-speed-limit": "---",
+                "race-ended": False,
+                "safety-car-status": "",
+                "table-entries": [],
+                "total-laps": "---",
+                "track-temperature": "---",
+                "weather-forecast-samples": []
+            }
         json_response = {
             "circuit": g_json_data["session-info"]["track-id"],
             "track-temperature": g_json_data["session-info"]["track-temperature"],
@@ -283,11 +298,12 @@ class TelemetryWebServer:
             print('received request')
             return render_template('index.html',
                 packet_capture_enabled=self.m_packet_capture_enabled,
-                client_poll_interval_ms=self.m_client_poll_interval_ms)
+                client_poll_interval_ms=self.m_client_poll_interval_ms,
+                player_only_telemetry=False)
 
         # Define your endpoint
         @self.m_app.route('/telemetry-info')
-        def telemetryInfo() -> Dict:
+        def telemetryInfo() -> Dict[str, Any]:
             """
             Endpoint for telemetry information.
 
@@ -297,7 +313,7 @@ class TelemetryWebServer:
             return getTelemetryInfo()
 
         @self.m_app.route('/driver-info', methods=['GET'])
-        def driverInfo() -> Dict:
+        def driverInfo() -> Dict[str, Any]:
             """
             Endpoint for saving telemetry packet capture.
 
@@ -335,6 +351,61 @@ class TelemetryWebServer:
                 }
                 return jsonify(error_response), HTTPStatus.BAD_REQUEST
 
+        @self.m_app.route('/race-info', methods=['GET'])
+        def raceInfo() -> Dict[str, Any]:
+
+            with g_json_lock:
+                self._checkUpdateRecords(g_json_data, g_json_path)
+                return {
+                    "records" : g_json_data.get("records", None),
+                    "classification-data" : g_json_data.get("classification-data", None),
+                    "overtakes" : g_json_data.get("overtakes", None)
+                }, HTTPStatus.OK
+
+    def _checkUpdateRecords(self, g_json_data: Dict[str, Any], g_json_path: str):
+
+        should_write = False
+
+        if "records" not in g_json_data:
+            g_json_data["records"] = {}
+            should_write = True
+
+        if "fastest" not in g_json_data["records"]:
+            g_json_data["records"]["fastest"] = RaceAnalyzer.getFastestTimesJson(g_json_data)
+            should_write = True
+
+        if "tyre-stats" not in g_json_data["records"]:
+            g_json_data["records"]["tyre-stats"] = RaceAnalyzer.getTyreStintRecordsDict(g_json_data)
+            should_write = True
+
+        should_recompute_overtakes = False
+        if "overtakes" not in g_json_data:
+            g_json_data["overtakes"] = {}
+            should_write = True
+            should_recompute_overtakes = True
+
+        expected_keys = [
+            "number-of-overtakes",
+            "number-of-times-overtaken",
+            "most-heated-rivalries"
+        ]
+        for key in expected_keys:
+            if key not in g_json_data["overtakes"]:
+                should_recompute_overtakes = True
+
+        if should_recompute_overtakes:
+            overtake_records = OvertakeAnalyzer.OvertakeAnalyzer(
+                input_mode=OvertakeAnalyzer.OvertakeAnalyzerMode.INPUT_MODE_LIST_CSV,
+                input=g_json_data["overtakes"]["records"]).toJSON()
+            g_json_data["overtakes"] = g_json_data["overtakes"] | overtake_records
+            should_write = True
+
+        if should_write:
+            print('writing to file: ' + g_json_path)
+            with open(g_json_path, 'w', encoding='utf-8') as f:
+                json.dump(g_json_data, f, ensure_ascii=False, indent=4)
+
+
     def run(self):
         """
         Run the TelemetryServer.
@@ -358,8 +429,10 @@ def open_file():
         f = open(file_path, encoding='utf-8')
         global g_json_lock
         global g_json_data
+        global g_json_path
         with g_json_lock:
             g_json_data = json.load(f)
+            g_json_path = file_path
         f.close()
     else:
         status_label.config(text="No file selected")
