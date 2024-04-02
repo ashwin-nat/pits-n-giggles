@@ -45,6 +45,7 @@ except ImportError:
 
 from src.telemetry_handler import dumpPktCapToFile, getOvertakeJSON, GetOvertakesStatus, getCustomMarkersJSON
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
+from lib.f1_types import F1Utils
 import src.telemetry_data as TelData
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
@@ -268,7 +269,11 @@ class TelemetryWebServer:
                     "position": self.getValueOrDefaultValue(data_per_driver.m_position),
                     "name": self.getValueOrDefaultValue(data_per_driver.m_name),
                     "team": self.getValueOrDefaultValue(data_per_driver.m_team),
-                    "delta": self.getDeltaPlusPenaltiesPlusPit(data_per_driver.m_delta,
+                    "delta": self.getDeltaPlusPenaltiesPlusPit(data_per_driver.m_delta_to_car_in_front,
+                                                               data_per_driver.m_penalties,
+                                                               data_per_driver.m_is_pitting,
+                                                               data_per_driver.m_dnf_status_code),
+                    "delta-to-leader": self.getDeltaPlusPenaltiesPlusPit(F1Utils.millisecondsToSecondsStr(data_per_driver.m_delta_to_leader),
                                                                data_per_driver.m_penalties,
                                                                data_per_driver.m_is_pitting,
                                                                data_per_driver.m_dnf_status_code),
@@ -343,7 +348,7 @@ class TelemetryWebServer:
                     "position": self.getValueOrDefaultValue(data_per_driver.m_position),
                     "name": self.getValueOrDefaultValue(data_per_driver.m_name),
                     "team": self.getValueOrDefaultValue(data_per_driver.m_team),
-                    "delta": self.getDeltaPlusPenaltiesPlusPit(data_per_driver.m_delta,
+                    "delta": self.getDeltaPlusPenaltiesPlusPit(data_per_driver.m_delta_to_car_in_front,
                                                                data_per_driver.m_penalties,
                                                                data_per_driver.m_is_pitting,
                                                                data_per_driver.m_dnf_status_code),

@@ -138,7 +138,7 @@ class DataPerDriver:
         m_position (Optional[int]): The current position of the driver in the race.
         m_name (Optional[str]): The name of the driver.
         m_team (Optional[str]): The team to which the driver belongs.
-        m_delta (Optional[str]): The time difference between the driver and the leader.
+        m_delta_to_car_in_front (Optional[str]): The time difference between the driver and the car in front.
         m_delta_to_leader (Optional[str]): The time difference to the race leader.
         m_ers_perc (Optional[float]): The percentage of ERS (Energy Recovery System) remaining.
         m_best_lap (Optional[str]): The best lap time achieved by the driver.
@@ -243,8 +243,8 @@ class DataPerDriver:
         self.m_position: Optional[int] = None
         self.m_name: Optional[str] = None
         self.m_team: Optional[str] = None
-        self.m_delta: Optional[str] = None
-        self.m_delta_to_leader: Optional[str] = None
+        self.m_delta_to_car_in_front: Optional[int] = None
+        self.m_delta_to_leader: Optional[int] = None
         self.m_ers_perc: Optional[float] = None
         self.m_best_lap: Optional[str] = None
         self.m_last_lap: Optional[str] = None
@@ -315,18 +315,8 @@ class DataPerDriver:
             final_json["lap-data"] = self.m_packet_lap_data.toJSON()
 
         # Insert the tyre set history
-        final_json["tyre-set-history"]= []
         self._computeTyreStintEndLaps()
-        for entry in self.m_tyre_set_history:
-            is_index_valid = 0 < entry.m_fitted_index < len(self.m_packet_tyre_sets.m_tyreSetData)
-            final_json["tyre-set-history"].append({
-                'start-lap' : entry.m_start_lap,
-                'end-lap' : entry.m_end_lap,
-                'stint-length' : (entry.m_end_lap+1-entry.m_start_lap),
-                'fitted-index' : entry.m_fitted_index,
-                'tyre-set-data' : self.m_packet_tyre_sets.m_tyreSetData[entry.m_fitted_index].toJSON() \
-                                    if is_index_valid else None
-            })
+        final_json["tyre-set-history"]= self._getTyreSetHistory()
 
         # Insert the per lap backup
         final_json["per-lap-info"] = []
@@ -335,6 +325,61 @@ class DataPerDriver:
 
         # Return this fully prepped JSON
         return final_json
+
+    def _getTyreSetHistory(self) -> List[Dict[str, Any]]:
+        """Get the list of tyre sets used in JSON format
+
+        Returns:
+            JSON list: JSON list containing multiple JSON objects, each representing one set of tyres used, in order.
+        """
+
+        tyre_set_history = []
+        for entry in self.m_tyre_set_history:
+            is_index_valid = 0 < entry.m_fitted_index < len(self.m_packet_tyre_sets.m_tyreSetData)
+            tyre_set_history.append({
+                'start-lap' : entry.m_start_lap,
+                'end-lap' : entry.m_end_lap,
+                'stint-length' : (entry.m_end_lap+1-entry.m_start_lap),
+                'fitted-index' : entry.m_fitted_index,
+                'tyre-set-data' : self.m_packet_tyre_sets.m_tyreSetData[entry.m_fitted_index].toJSON() \
+                                    if is_index_valid else None,
+                'tyre-wear-history' : self._getTyreWearHistoryJSON(entry.m_start_lap, entry.m_end_lap)
+            })
+
+        return tyre_set_history
+
+    def _getTyreWearHistoryJSON(self, start_lap : int, end_lap : int):
+        """
+        Generate JSON data for tyre wear history within specified lap range.
+
+        Args:
+            start_lap (int): The starting lap number.
+            end_lap (int): The ending lap number.
+
+        Returns:
+            list: A list of dictionaries containing lap number and tyre wear data.
+        """
+
+        range_of_laps = range(start_lap, end_lap + 1)
+        tyre_wear_history = []
+        for lap_number in range_of_laps:
+            if lap_number in self.m_per_lap_backups:
+                car_damage_data = self.m_per_lap_backups[lap_number].m_car_damage_packet
+                if car_damage_data:
+                    tyre_wear_history.append({
+                        'lap-number': lap_number,
+                        'front-right-wear': car_damage_data.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
+                        'front-left-wear': car_damage_data.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
+                        'rear-right-wear': car_damage_data.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
+                        'rear-left-wear': car_damage_data.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
+                    })
+                else:
+                    logging.debug('car damage data not available for lap %d driver %s'
+                                    %(lap_number, self.m_name))
+            else:
+                logging.debug('per lap backup not available for lap %d driver %s'
+                                %(lap_number, self.m_name))
+        return tyre_wear_history
 
     def onLapChange(self,
         old_lap_number: int) -> None:
@@ -596,7 +641,7 @@ class DriverData:
             obj_to_be_updated.m_position = lap_data.m_carPosition
             obj_to_be_updated.m_last_lap = F1Utils.millisecondsToMinutesSecondsMilliseconds(lap_data.m_lastLapTimeInMS) \
                 if (lap_data.m_lastLapTimeInMS > 0) else "---"
-            obj_to_be_updated.m_delta = lap_data.m_deltaToCarInFrontInMS
+            obj_to_be_updated.m_delta_to_car_in_front = lap_data.m_deltaToCarInFrontInMS
             obj_to_be_updated.m_delta_to_leader = lap_data.m_deltaToRaceLeaderInMS
             obj_to_be_updated.m_penalties = self._getPenaltyString(lap_data.m_penalties,
                                 lap_data.m_numUnservedDriveThroughPens, lap_data.m_numUnservedStopGoPens)
@@ -1116,7 +1161,7 @@ def getDriverData(num_adjacent_cars: Optional[int] = 2) -> Tuple[List[DataPerDri
         if is_spectator_mode:
             # just convert the deltas to str
             for data in final_list:
-                data.m_delta = milliseconds_to_seconds_str(data.m_delta)
+                data.m_delta_to_car_in_front = milliseconds_to_seconds_str(data.m_delta_to_car_in_front)
         else:
             # recompute the deltas if not spectator mode
             condition = lambda x: x.m_is_player == True
@@ -1124,23 +1169,23 @@ def getDriverData(num_adjacent_cars: Optional[int] = 2) -> Tuple[List[DataPerDri
 
             # case 1: player is in the absolute front of this pack
             if player_index == 0:
-                final_list[0].m_delta = "---"
+                final_list[0].m_delta_to_car_in_front = "---"
                 delta_so_far = 0
                 for data in final_list[1:]:
-                    delta_so_far += data.m_delta
-                    data.m_delta = milliseconds_to_seconds_str(delta_so_far)
+                    delta_so_far += data.m_delta_to_car_in_front
+                    data.m_delta_to_car_in_front = milliseconds_to_seconds_str(delta_so_far)
 
             # case 2: player is in the back of the pack
             # Iterate from back to front using reversed need to look at previous car's data for distance ahead
             elif player_index == len(final_list) - 1:
                 delta_so_far = 0
                 one_car_behind_index = len(final_list)-1
-                one_car_behind_delta = final_list[one_car_behind_index].m_delta
+                one_car_behind_delta = final_list[one_car_behind_index].m_delta_to_car_in_front
                 for data in reversed(final_list[:len(final_list)-1]):
                     delta_so_far -= one_car_behind_delta
-                    one_car_behind_delta = data.m_delta
-                    data.m_delta = milliseconds_to_seconds_str(delta_so_far)
-                final_list[len(final_list)-1].m_delta = "---"
+                    one_car_behind_delta = data.m_delta_to_car_in_front
+                    data.m_delta_to_car_in_front = milliseconds_to_seconds_str(delta_so_far)
+                final_list[len(final_list)-1].m_delta_to_car_in_front = "---"
 
             # case 3: player is somewhere in the middle of the pack
             else:
@@ -1148,20 +1193,20 @@ def getDriverData(num_adjacent_cars: Optional[int] = 2) -> Tuple[List[DataPerDri
                 # First, set the deltas for the cars ahead
                 delta_so_far = 0
                 one_car_behind_index = player_index
-                one_car_behind_delta = final_list[one_car_behind_index].m_delta
+                one_car_behind_delta = final_list[one_car_behind_index].m_delta_to_car_in_front
                 for data in reversed(final_list[:player_index]):
                     delta_so_far -= one_car_behind_delta
-                    one_car_behind_delta = data.m_delta
-                    data.m_delta = milliseconds_to_seconds_str(delta_so_far)
+                    one_car_behind_delta = data.m_delta_to_car_in_front
+                    data.m_delta_to_car_in_front = milliseconds_to_seconds_str(delta_so_far)
 
                 # Finally, set the deltas for the cars ahead
                 delta_so_far = 0
                 for data in final_list[player_index+1:]:
-                    delta_so_far += data.m_delta
-                    data.m_delta = milliseconds_to_seconds_str(delta_so_far)
+                    delta_so_far += data.m_delta_to_car_in_front
+                    data.m_delta_to_car_in_front = milliseconds_to_seconds_str(delta_so_far)
 
                 # finally set the delta for the player
-                final_list[player_index].m_delta = "---"
+                final_list[player_index].m_delta_to_car_in_front = "---"
 
         return final_list, fastest_lap_time
 
@@ -1194,7 +1239,7 @@ def getPlayerDriverData() -> Tuple[DataPerDriver, str]:
             final_obj.m_telemetry_restrictions = "N/A"
         if final_obj.m_packet_lap_data:
             final_obj.m_corner_cutting_warnings = final_obj.m_packet_lap_data.m_cornerCuttingWarnings
-            final_obj.m_delta = milliseconds_to_seconds_str(final_obj.m_packet_lap_data.m_deltaToCarInFrontInMS)
+            final_obj.m_delta_to_car_in_front = milliseconds_to_seconds_str(final_obj.m_packet_lap_data.m_deltaToCarInFrontInMS)
             if track_length:
                 final_obj.m_lap_progress = (final_obj.m_packet_lap_data.m_lapDistance / track_length) * 100.0
         else:

@@ -302,7 +302,7 @@ SOFTWARE.
                 <th>Position</th>
                 <th>Name</th>
                 <th>Team</th>
-                <th>Delta</th>
+                <th id="deltaLink" class="motivationLink">Delta</th>
                 <th>ERS</th>
                 <th>Warnings</th>
                 <th>Best</th>
@@ -324,6 +324,7 @@ SOFTWARE.
     <script>
         var player; // Define YT player
         let is24HourFormat = true; // Initial format
+        let relativeDelta = true; // Initial format
 
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('youtubeAudio', {
@@ -438,7 +439,11 @@ SOFTWARE.
                 nameCell.appendChild(nameLink);
 
                 row.insertCell().textContent = entry["team"];
-                row.insertCell().textContent = entry["delta"];
+                if (relativeDelta) {
+                    row.insertCell().textContent = entry["delta"];
+                } else {
+                    row.insertCell().textContent = entry["delta-to-leader"];
+                }
                 row.insertCell().textContent = entry["ers"];
                 row.insertCell().textContent = entry["corner-cutting-warnings"];
                 row.insertCell().textContent = entry["best"];
@@ -1081,7 +1086,7 @@ SOFTWARE.
                 if (graphDataTotal.length > 0) {
                     // Create graph canvas
                     const graphDiv = document.createElement('div');
-                    const elementId = 'ersGraph';
+                    const elementId = 'lapTimeGraph';
                     const graphCanvas = document.createElement('canvas');
                     graphDiv.appendChild(graphCanvas);
                     graphCanvas.id = elementId;
@@ -1332,7 +1337,9 @@ SOFTWARE.
             function getTyreStintHistoryContent(data) {
 
                 const tyreStintHistoryContent = document.createElement('div');
+                const tyreStintHistorySubDiv = document.createElement('div');
                 const tyreStintHistoryTable = document.createElement('table');
+                tyreStintHistorySubDiv.appendChild(tyreStintHistoryTable);
                 tyreStintHistoryTable.classList.add('tyre-stint-history-table');
 
                 const tyreStintHistoryHeader = tyreStintHistoryTable.createTHead();
@@ -1349,6 +1356,10 @@ SOFTWARE.
                 `;
 
                 const tyreStintHistoryBody = tyreStintHistoryTable.createTBody();
+                let graphDataFL = [];
+                let graphDataFR = [];
+                let graphDataRL = [];
+                let graphDataRR = [];
                 if ("tyre-set-history" in data && data["tyre-set-history"] != null) {
                     const tyreStintHistoryData = data["tyre-set-history"];
                     tyreStintHistoryData.forEach((stintData, index) => {
@@ -1376,6 +1387,29 @@ SOFTWARE.
                             tyreWearPerLap = formatFloatWithTwoDecimals(wearPerLap) + "%";
                         }
 
+                        if ("tyre-wear-history" in stintData && stintData["tyre-wear-history"].length > 0) {
+
+                            const wearHistory = stintData["tyre-wear-history"];
+                            wearHistory.forEach(wearData => {
+                                graphDataFL.push({
+                                    x: wearData["lap-number"],
+                                    y: formatFloatWithTwoDecimals(wearData["front-left-wear"])
+                                });
+                                graphDataFR.push({
+                                    x: wearData["lap-number"],
+                                    y: formatFloatWithTwoDecimals(wearData["front-right-wear"])
+                                });
+                                graphDataRL.push({
+                                    x: wearData["lap-number"],
+                                    y: formatFloatWithTwoDecimals(wearData["rear-left-wear"])
+                                });
+                                graphDataRR.push({
+                                    x: wearData["lap-number"],
+                                    y: formatFloatWithTwoDecimals(wearData["rear-right-wear"])
+                                });
+                            });
+                        }
+
                         row.innerHTML = `
                             <td>${stintId}</td>
                             <td>${stintStartLap}</td>
@@ -1391,7 +1425,42 @@ SOFTWARE.
                     const row = tyreStintHistoryBody.insertRow();
                     row.innerHTML = '<td colspan="8">Tyre Stint History data not available</td>';
                 }
-                tyreStintHistoryContent.appendChild(createAccordion('Tyre Stint History History', tyreStintHistoryTable));
+
+                if (graphDataFL.length > 0) {
+                    // Create graph canvas
+
+                    const graphDiv = document.createElement('div');
+                    const elementId = 'tyreWearGraph';
+                    const graphCanvas = document.createElement('canvas');
+                    graphDiv.appendChild(graphCanvas);
+                    graphCanvas.id = elementId;
+                    graphDiv.classList.add('graph-canvas');
+                    // graphCanvas.classList.add('graph-canvas');
+
+                    // Plot graph
+                    var datasets = [
+                        {
+                            label: 'Front Left Wear',
+                            data: graphDataFL
+                        },
+                        {
+                            label: 'Front Right Wear',
+                            data: graphDataFR
+                        },
+                        {
+                            label: 'Rear Left Wear',
+                            data: graphDataRL
+                        },
+                        {
+                            label: 'Rear Right Wear',
+                            data: graphDataRR
+                        }
+                    ];
+                    plotGraph(graphCanvas, datasets, 'Lap number', 'Tyre Wear %');
+                    tyreStintHistorySubDiv.appendChild(graphDiv);
+                }
+
+                tyreStintHistoryContent.appendChild(createAccordion('Tyre Stint History', tyreStintHistorySubDiv));
                 return tyreStintHistoryContent;
             }
 
@@ -1537,6 +1606,10 @@ SOFTWARE.
             updateLocalTime();
         }
 
+        function toggleDeltaFormat() {
+            relativeDelta = !relativeDelta;
+        }
+
         function formatFileSize(bytes) {
             const sizes = ['Bytes', 'kB', 'MB', 'GB', 'TB'];
 
@@ -1607,6 +1680,7 @@ SOFTWARE.
 
         // Add an event listener to the hyperlink
         document.getElementById('localTime').addEventListener('click', toggleTimeFormat);
+        document.getElementById('deltaLink').addEventListener('click', toggleDeltaFormat);
 
         // Fetch data at intervals specified from jinja
         setInterval(fetchDataAndDisplay, {{ client_poll_interval_ms | tojson | safe }});

@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 
-from typing import Dict, Any
+from typing import Dict, Any, List
 from http import HTTPStatus
 import logging
 import json
@@ -175,9 +175,10 @@ def getTelemetryInfo():
                 is_fastest = False
             position = data_per_driver["final-classification"]["position"]
             if position == 1:
-                delta = "---"
+                delta_relative = "---"
             else:
-                delta = F1Utils.millisecondsToSecondsMilliseconds(data_per_driver["lap-data"]["delta-to-race-leader-in-ms"])
+                delta_relative = F1Utils.millisecondsToSecondsMilliseconds(data_per_driver["lap-data"]["delta-to-race-leader-in-ms"])
+            delta_to_leader = delta_relative
             penalties = _getPenaltyString(
                 penalties_sec=data_per_driver["lap-data"]["penalties"],
                 num_dt=data_per_driver["lap-data"]["num-unserved-drive-through-pens"],
@@ -197,7 +198,8 @@ def getTelemetryInfo():
                     "position": position,
                     "name": data_per_driver["driver-name"],
                     "team": data_per_driver["participant-data"]["team-id"],
-                    "delta": getDeltaPlusPenaltiesPlusPit(delta, penalties, is_pitting, dnf_status_code),
+                    "delta": getDeltaPlusPenaltiesPlusPit(delta_relative, penalties, is_pitting, dnf_status_code),
+                    "delta-to-leader" : getDeltaPlusPenaltiesPlusPit(delta_to_leader, penalties, is_pitting, dnf_status_code),
                     "ers": F1Utils.floatToStr(ers_perc) + '%',
                     "best": data_per_driver["final-classification"]["best-lap-time-str"],
                     "last": data_per_driver["session-history"]["lap-history-data"][-1]["lap-time-str"],
@@ -355,14 +357,20 @@ class TelemetryWebServer:
         def raceInfo() -> Dict[str, Any]:
 
             with g_json_lock:
-                self._checkUpdateRecords(g_json_data, g_json_path)
+                should_write = False
+                should_write |= self._checkUpdateRecords(g_json_data)
+
+                if should_write:
+                    print('writing to file: ' + g_json_path)
+                    with open(g_json_path, 'w', encoding='utf-8') as f:
+                        json.dump(g_json_data, f, ensure_ascii=False, indent=4)
                 return {
                     "records" : g_json_data.get("records", None),
                     "classification-data" : g_json_data.get("classification-data", None),
                     "overtakes" : g_json_data.get("overtakes", None)
                 }, HTTPStatus.OK
 
-    def _checkUpdateRecords(self, json_data: Dict[str, Any], g_json_path: str):
+    def _checkUpdateRecords(self, json_data: Dict[str, Any]) -> bool:
 
         should_write = False
 
@@ -429,11 +437,7 @@ class TelemetryWebServer:
             json_data["overtakes"] = json_data["overtakes"] | overtake_records
             should_write = True
 
-        if should_write:
-            print('writing to file: ' + g_json_path)
-            with open(g_json_path, 'w', encoding='utf-8') as f:
-                json.dump(json_data, f, ensure_ascii=False, indent=4)
-
+        return should_write
 
     def run(self):
         """
@@ -451,18 +455,56 @@ class TelemetryWebServer:
             use_reloader=False,
             host='0.0.0.0')
 
+def checkRecomputeJSON(json_data : Dict[str, Any]) -> bool:
+
+    def _getTyreWearHistory(driver_data : Dict[str, Any]) -> List[Dict[str, Any]]:
+
+        tyre_wear_history = []
+        if "per-lap-info" in driver_data:
+            for lap_backup in driver_data["per-lap-info"]:
+                lap_number = lap_backup['lap-number']
+                if "car-damage-data" in lap_backup:
+                    tyre_wear_history.append({
+                        'lap-number' : lap_number,
+                        'front-left-wear' : lap_backup["car-damage-data"]["tyres-wear"][F1Utils.INDEX_FRONT_LEFT],
+                        'front-right-wear' : lap_backup["car-damage-data"]["tyres-wear"][F1Utils.INDEX_FRONT_RIGHT],
+                        'rear-left-wear' : lap_backup["car-damage-data"]["tyres-wear"][F1Utils.INDEX_REAR_LEFT],
+                        'rear-right-wear' : lap_backup["car-damage-data"]["tyres-wear"][F1Utils.INDEX_REAR_RIGHT],
+                    })
+        return tyre_wear_history
+
+    should_write = False
+    if "classification-data" in json_data:
+        for driver_data in json_data["classification-data"]:
+            if "tyre-set-history" in driver_data:
+                for tyre_stint in driver_data["tyre-set-history"]:
+                    if "tyre-wear-history" not in tyre_stint:
+                        should_write = True
+                        tyre_stint["tyre-wear-history"] = _getTyreWearHistory(driver_data)
+
+    return should_write
+
 def open_file():
     file_path = filedialog.askopenfilename()
     if file_path:
         status_label.config(text=f"Selected file: {file_path}")
-        f = open(file_path, encoding='utf-8')
-        global g_json_lock
-        global g_json_data
-        global g_json_path
-        with g_json_lock:
-            g_json_data = json.load(f)
-            g_json_path = file_path
-        f.close()
+        with open(file_path, 'r+', encoding='utf-8') as f:
+            global g_json_lock
+            global g_json_data
+            global g_json_path
+            with g_json_lock:
+                g_json_data = json.load(f)
+                g_json_path = file_path
+
+                should_write = False
+                should_write |= checkRecomputeJSON(g_json_data)
+
+                if should_write:
+                    print('writing to file: ' + g_json_path)
+                    f.seek(0)  # Move file pointer to the beginning
+                    f.truncate()  # Clear the file contents
+                    f.seek(0)  # Move file pointer to the beginning (again)
+                    json.dump(g_json_data, f, ensure_ascii=False, indent=4)
     else:
         status_label.config(text="No file selected")
 
