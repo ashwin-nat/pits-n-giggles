@@ -41,6 +41,26 @@ class OvertakeRecord:
     NOTE: The following comparisons based on row ID are supported. ==, <, >, <=, >=
     """
 
+    @staticmethod
+    def fromJSON(record: Dict[str, Any]) -> 'OvertakeRecord':
+        """
+        Create an OvertakeRecord object from a JSON object.
+
+        Args:
+            record (Dict[str, Any]): The JSON object to create the OvertakeRecord from.
+
+        Returns:
+            OvertakeRecord: The created OvertakeRecord object.
+        """
+
+        return OvertakeRecord(
+            overtaking_driver_name=record["overtaking-driver-name"],
+            overtaking_driver_lap=record["overtaking-driver-lap"],
+            overtaken_driver_name=record["overtaken-driver-name"],
+            overtaken_driver_lap=record["overtaken-driver-lap"],
+            row_id=record["overtake-id"])
+
+
     def __init__(self, overtaking_driver_name: str, overtaking_driver_lap: int,
                 overtaken_driver_name: str, overtaken_driver_lap: int, row_id: Optional[int] = None) -> None:
         """
@@ -233,7 +253,8 @@ class OvertakeAnalyzerMode(Enum):
 
     INPUT_MODE_FILE_CSV=1,
     INPUT_MODE_LIST_CSV=2,
-    INPUT_MODE_LIST_OVERTAKE_RECORDS=3
+    INPUT_MODE_LIST_OVERTAKE_RECORDS=3,
+    INPUT_MODE_LIST_OVERTAKE_RECORDS_JSON=4,
 
 class OvertakeAnalyzer:
     """
@@ -285,6 +306,8 @@ class OvertakeAnalyzer:
         """
 
         for record in overtake_records:
+            if self.m_input_mode == OvertakeAnalyzerMode.INPUT_MODE_LIST_OVERTAKE_RECORDS_JSON:
+                record = OvertakeRecord.fromJSON(record)
             self.__processOvertakeRecord(record)
 
     def __analyzeCsvFile(self, file_name) -> None:
