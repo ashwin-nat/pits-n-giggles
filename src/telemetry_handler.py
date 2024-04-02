@@ -128,31 +128,52 @@ class OvertakesHistory:
                     self.m_overtakes_history.append(overtake_record)
 
 class CustomMarkersHistory:
+    """Class representing the data points for a player's custom marker
+    """
 
     def __init__(self):
+        """Initialise the custom marker history tracker
+        """
 
         self.m_custom_markers_history: List[TelData.CustomMarkerEntry] = []
         self.m_lock: Lock = Lock()
 
     def insert(self, custom_marker_entry: TelData.CustomMarkerEntry) -> None:
+        """Insert the custom marker into the history table. THREAD SAFE
+
+        Args:
+            custom_marker_entry (TelData.CustomMarkerEntry): The marker object
+        """
+
         with self.m_lock:
             self.m_custom_markers_history.append(custom_marker_entry)
 
     def clear(self) -> None:
+        """Clear the history table. THREAD SAFE
+        """
 
         with self.m_lock:
             self.m_custom_markers_history.clear()
 
     def getCount(self) -> int:
+        """Get the number of markers in the history table. THREAD SAFE
+
+        Returns:
+            int: The count value
+        """
 
         with self.m_lock:
             return len(self.m_custom_markers_history)
 
     def getJSONList(self) -> List[Dict[str, Any]]:
+        """Get the list of JSON objects representing the marker objects. THREAD SAFE
+
+        Returns:
+            List[Dict[str, Any]]: The JSON list
+        """
 
         with self.m_lock:
             return [entry.toJSON() for entry in self.m_custom_markers_history]
-
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
