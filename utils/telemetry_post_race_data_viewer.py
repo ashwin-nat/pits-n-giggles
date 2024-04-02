@@ -33,6 +33,7 @@ from tkinter import filedialog
 import subprocess
 import time
 import webbrowser
+import socket
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -357,6 +358,13 @@ class TelemetryWebServer:
         def raceInfo() -> Dict[str, Any]:
 
             with g_json_lock:
+                global g_json_data
+                global g_json_path
+
+                if not g_json_data:
+                    return {}, HTTPStatus.OK
+
+
                 should_write = False
                 should_write |= self._checkUpdateRecords(g_json_data)
 
@@ -367,10 +375,20 @@ class TelemetryWebServer:
                 return {
                     "records" : g_json_data.get("records", None),
                     "classification-data" : g_json_data.get("classification-data", None),
-                    "overtakes" : g_json_data.get("overtakes", None)
+                    "overtakes" : g_json_data.get("overtakes", None),
+                    "custom-markers" : g_json_data.get("custom-markers", [])
                 }, HTTPStatus.OK
 
     def _checkUpdateRecords(self, json_data: Dict[str, Any]) -> bool:
+
+        def _isValidJson(data):
+            if isinstance(data, dict):
+                return True
+            try:
+                json.loads(data)
+                return True
+            except json.JSONDecodeError:
+                return False
 
         should_write = False
 
@@ -417,13 +435,14 @@ class TelemetryWebServer:
 
         should_recompute_overtakes = False
         if "overtakes" not in json_data:
-            json_data["overtakes"] = {}
+            json_data["overtakes"] = {
+                "records" : []
+            }
             should_write = True
             should_recompute_overtakes = True
 
         expected_keys = [
             "number-of-overtakes",
-            "number-of-times-overtaken",
             "most-heated-rivalries"
         ]
         for key in expected_keys:
@@ -431,11 +450,16 @@ class TelemetryWebServer:
                 should_recompute_overtakes = True
 
         if should_recompute_overtakes:
-            overtake_records = OvertakeAnalyzer.OvertakeAnalyzer(
-                input_mode=OvertakeAnalyzer.OvertakeAnalyzerMode.INPUT_MODE_LIST_CSV,
-                input=json_data["overtakes"]["records"]).toJSON()
-            json_data["overtakes"] = json_data["overtakes"] | overtake_records
-            should_write = True
+            if len(json_data["overtakes"]["records"]) > 0:
+                if _isValidJson(json_data["overtakes"]["records"][0]):
+                    overtake_analyzer_mode = OvertakeAnalyzer.OvertakeAnalyzerMode.INPUT_MODE_LIST_OVERTAKE_RECORDS_JSON
+                else:
+                    overtake_analyzer_mode = OvertakeAnalyzer.OvertakeAnalyzerMode.INPUT_MODE_LIST_CSV
+                overtake_records = OvertakeAnalyzer.OvertakeAnalyzer(
+                    input_mode=overtake_analyzer_mode,
+                    input=json_data["overtakes"]["records"]).toJSON()
+                json_data["overtakes"] = json_data["overtakes"] | overtake_records
+                should_write = True
 
         return should_write
 
@@ -457,12 +481,15 @@ class TelemetryWebServer:
 
 def checkRecomputeJSON(json_data : Dict[str, Any]) -> bool:
 
-    def _getTyreWearHistory(driver_data : Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _getTyreWearHistory(driver_data : Dict[str, Any], start_lap : int, end_lap : int) -> List[Dict[str, Any]]:
 
         tyre_wear_history = []
+        range_of_laps = range(start_lap, end_lap + 1)
         if "per-lap-info" in driver_data:
             for lap_backup in driver_data["per-lap-info"]:
                 lap_number = lap_backup['lap-number']
+                if lap_number not in range_of_laps:
+                    continue
                 if "car-damage-data" in lap_backup:
                     tyre_wear_history.append({
                         'lap-number' : lap_number,
@@ -480,7 +507,8 @@ def checkRecomputeJSON(json_data : Dict[str, Any]) -> bool:
                 for tyre_stint in driver_data["tyre-set-history"]:
                     if "tyre-wear-history" not in tyre_stint:
                         should_write = True
-                        tyre_stint["tyre-wear-history"] = _getTyreWearHistory(driver_data)
+                        tyre_stint["tyre-wear-history"] = _getTyreWearHistory(
+                            driver_data, tyre_stint["start-lap"], tyre_stint["end-lap"])
 
     return should_write
 
@@ -539,32 +567,44 @@ def on_closing():
     os._exit(0)
 
 
-def openWebPage() -> None:
+def openWebPage(port_number : int) -> None:
     """Open the webpage on a new browser tab.
+
+    Args:
+        port_number (int) : The port number of the server
 
     """
     time.sleep(1)
-    webbrowser.open('http://localhost:5000', new=2)
+    webbrowser.open('http://localhost:' + str(port_number), new=2)
+
+def find_free_port():
+    """Find an available port."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('localhost', 0))
+        return s.getsockname()[1]
 
 def main():
+
+    # Get port number
+    port_number = find_free_port()
+
     # Start Tkinter UI
     ui_thread = Thread(target=start_ui)
     ui_thread.start()
 
     # Open the webpage
-    webpage_thread = Thread(target=openWebPage)
+    webpage_thread = Thread(target=openWebPage, args=(port_number,))
     webpage_thread.start()
 
     # Start Flask server after Tkinter UI is initialized
+    print("Starting server. It can be accessed at http://localhost:" + str(port_number))
     server = TelemetryWebServer(
-        port=5000,
+        port=port_number,
         packet_capture_enabled=False,
-        client_poll_interval_ms=200,
+        client_poll_interval_ms=5000,
         debug_mode=True,
         num_adjacent_cars=20)
     server.run()
-
-
 
 if __name__ == "__main__":
     main()
