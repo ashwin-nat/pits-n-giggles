@@ -543,7 +543,7 @@ def start_ui():
         # Create the main window
         print("UI thread")
         root = tk.Tk()
-        root.title("F1 2023 Post race analyzer")
+        root.title("F1 Post race analyzer")
 
         # Create a frame for the content
         frame = tk.Frame(root)

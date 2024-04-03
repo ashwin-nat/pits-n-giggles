@@ -31,7 +31,7 @@ import time
 import webbrowser
 from typing import Set, Optional
 
-from src.telemetry_handler import initPktCap, PacketCaptureMode, initAutosaves, F12023TelemetryHandler, initDirectories
+from src.telemetry_handler import initPktCap, PacketCaptureMode, initAutosaves, F1TelemetryHandler, initDirectories
 from src.telemetry_server import TelemetryWebServer
 
 # -------------------------------------- FUNCTION DEFINITIONS ----------------------------------------------------------
@@ -126,7 +126,7 @@ def httpServerTask(
         debug_mode=False,
         num_adjacent_cars=num_adjacent_cars
     )
-    log_str = "Starting F1 2023 telemetry server. Open one of the below addresses in your browser\n"
+    log_str = "Starting F1 telemetry server. Open one of the below addresses in your browser\n"
     ip_addresses = getLocalIpAddresses()
     for ip_addr in ip_addresses:
         log_str += f"    http://{ip_addr}:{http_port}\n"
@@ -153,14 +153,14 @@ def f1TelemetryServerTask(
     if packet_capture != PacketCaptureMode.DISABLED:
         initPktCap(packet_capture)
     initAutosaves(post_race_data_autosave, udp_custom_action_code)
-    telemetry_client = F12023TelemetryHandler(port_number, packet_capture, replay_server)
+    telemetry_client = F1TelemetryHandler(port_number, packet_capture, replay_server)
     telemetry_client.run()
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
 if __name__ == '__main__':
     # Initialize the ArgumentParser
-    parser = argparse.ArgumentParser(description="F1 2023 Telemetry Client and Server")
+    parser = argparse.ArgumentParser(description="F1 Telemetry Client and Server")
 
     # Add command-line arguments with default values
     parser.add_argument('-p', '--packet-capture-mode', type=PacketCaptureMode,
