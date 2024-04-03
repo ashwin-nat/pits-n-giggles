@@ -26,13 +26,11 @@ SOFTWARE.
 
 import os
 import json
-import csv
 import logging
 from datetime import datetime
 from enum import Enum
 from threading import Lock
-from typing import Optional, List, Tuple, Dict, Any
-from collections import namedtuple
+from typing import Optional, List, Tuple, Dict, Any, Generator
 
 try:
     from tqdm import tqdm
@@ -109,13 +107,22 @@ class PacketCaptureTable:
             return self.m_packet_capture.getNumPackets()
 
 class OvertakesHistory:
+    """Class representing the history of all overtakes
+    """
 
     def __init__(self):
+        """Initialise the overtakes history tracker
+        """
 
         self.m_overtakes_history: List[OvertakeRecord] = []
         self.m_lock: Lock = Lock()
 
     def insert(self, overtake_record: OvertakeRecord) -> None:
+        """Insert the overtake into the history table. THREAD SAFE
+
+        Args:
+            overtake_record (OvertakeRecord): The overtake object
+        """
         with self.m_lock:
             if len(self.m_overtakes_history) == 0:
                 overtake_record.m_row_id = 0
@@ -175,6 +182,16 @@ class CustomMarkersHistory:
         with self.m_lock:
             return [entry.toJSON() for entry in self.m_custom_markers_history]
 
+    def getMarkers(self) -> Generator[TelData.CustomMarkerEntry]:
+        """
+        Generate markers from the history table.
+
+        Yields:
+        - Tuple[float, bytes]: A tuple containing timestamp (float) and data (bytes) for each packet.
+        """
+        for entry in self.m_custom_markers_history:
+            yield entry
+
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
 g_packet_capture_table: PacketCaptureTable = PacketCaptureTable()
@@ -214,7 +231,6 @@ def initDirectories():
     ts_prefix = datetime.now().strftime("%Y_%m_%d")
     g_directory_mapping['race-info'] = "data/" + ts_prefix + "/race-info/"
     g_directory_mapping['packet-captures'] = "data/" + ts_prefix + "/packet-captures/"
-    g_directory_mapping['player-markers'] = "data/" + ts_prefix + "/player-markers/"
 
     for directory in g_directory_mapping.values():
         ensureDirectoryExists(directory)
@@ -401,19 +417,6 @@ def writeDictToJsonFile(data_dict: Dict, file_name: str) -> None:
     with open(file_name, 'w', encoding='utf-8') as json_file:
         json.dump(data_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
 
-def writeToCsvFile(g_custom_player_markers: List[TelData.CustomMarkerEntry], custom_marker_file_name: str):
-    """
-    Write the given custom player markers to a CSV file.
-
-    Args:
-        g_custom_player_markers (list): The list of custom player markers to be written to the CSV file.
-        custom_marker_file_name (str): The name of the CSV file to write the markers to.
-    """
-
-    with open(custom_marker_file_name, 'w', encoding='utf-8') as file:
-        for marker in g_custom_player_markers:
-            file.write(marker.toCSV() + '\n')
-
 def addFunStatsToFinalClassificationJson(final_json: Dict[str, Any]) -> None:
     """
     Add the fun stats to the final classification JSON.
@@ -478,21 +481,13 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
         # Add the markers as well
         final_json['custom-markers'] = []
         if g_player_recorded_events_history.getCount() > 0:
-            for marker in g_player_recorded_events_history.m_custom_markers_history:
+            for marker in g_player_recorded_events_history.getMarkers():
                 final_json['custom-markers'].append(marker.toJSON())
 
         final_json_file_name = g_directory_mapping['race-info'] + 'race_info_' + \
                 event_str + getTimestampStr() + '.json'
         writeDictToJsonFile(final_json, final_json_file_name)
         logging.info("Wrote race info to " + final_json_file_name)
-
-    # Save the custom player recorded markers
-    if g_player_recorded_events_history.getCount() > 0:
-        custom_marker_file_name = g_directory_mapping['race-info'] + 'custom_player_markers_' + \
-                event_str + getTimestampStr() + '.csv'
-        writeToCsvFile(g_player_recorded_events_history, custom_marker_file_name)
-        logging.info(
-            f"Wrote {len(g_player_recorded_events_history)} custom player markers to {custom_marker_file_name}")
 
 # -------------------------------------- TELEMETRY PACKET HANDLERS -----------------------------------------------------
 
