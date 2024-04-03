@@ -27,7 +27,7 @@ import logging
 
 # ------------------------- CLASSES --------------------------------------------
 
-class F12023TelemetryManager:
+class F1TelemetryManager:
     """
     This class is used to act as the interface between the raw parsers and the user application layer.
     This class handles the following tasks
@@ -161,7 +161,7 @@ class F12023TelemetryManager:
             # Parse the payload and call the registered callback
             payload_raw = raw_packet[PacketHeader.PACKET_LEN:]
             try:
-                packet = F12023TelemetryManager.packet_type_map[header.m_packetId](header, payload_raw)
+                packet = F1TelemetryManager.packet_type_map[header.m_packetId](header, payload_raw)
             except InvalidPacketLengthError as e:
                 logging.error("Cannot parse packet of type " + header.m_packetId + ". Error = " + e)
             callback = self.m_callbacks.get(header.m_packetId, None)

@@ -26,8 +26,7 @@
 import threading
 import copy
 from lib.f1_types import *
-from lib.overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, OvertakeRecord
-from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
+from lib.overtake_analyzer import OvertakeRecord
 from typing import Optional, Generator, Tuple, List, Dict, Any
 from collections import OrderedDict
 import logging
@@ -475,12 +474,13 @@ class DriverData:
         Initialize the DriverData object.
         """
         self.m_driver_data: Dict[int, DataPerDriver] = {}
-        self.m_player_index: int = None
-        self.m_fastest_index: int = None
-        self.m_num_active_cars: int = None
-        self.m_num_dnf_cars: int = None
-        self.m_race_completed: bool = None
+        self.m_player_index: Optional[int] = None
+        self.m_fastest_index: Optional[int] = None
+        self.m_num_active_cars: Optional[int] = None
+        self.m_num_dnf_cars: Optional[int] = None
+        self.m_race_completed: Optional[bool] = None
         self.m_final_json: Dict[str, Any] = None
+        self.m_is_player_dnf : Optional[bool] = None
 
     def clear(self) -> None:
         """Clear this object. Clears the m_driver_data list and sets everything else to None
@@ -492,6 +492,19 @@ class DriverData:
         self.m_num_dnf_cars = None
         self.m_race_completed = None
         self.m_final_json = None
+        self.m_is_player_dnf = None
+
+    def setRaceOngoing(self) -> None:
+        """
+        Set the race as ongoing.
+        """
+        self.m_race_completed = False
+
+    def setRaceCompleted(self) -> None:
+        """
+        Set the race as completed.
+        """
+        self.m_race_completed = True
 
     def getIndexByTrackPosition(self, track_position) -> Tuple[Optional[int], Optional[DataPerDriver]]:
         """
@@ -665,6 +678,9 @@ class DriverData:
                     [LapData.PitStatus.PITTING, LapData.PitStatus.IN_PIT_AREA] else False
             obj_to_be_updated.m_num_pitstops = lap_data.m_numPitStops
             obj_to_be_updated.m_dnf_status_code = result_str_map.get(lap_data.m_resultStatus, "")
+            # If the player is retired, update the bool variable
+            if index == self.m_player_index and len(obj_to_be_updated.m_dnf_status_code) > 0:
+                self.m_is_player_dnf = True
 
             # Save a copy of the packet
             obj_to_be_updated.m_packet_lap_data = lap_data
@@ -694,6 +710,9 @@ class DriverData:
 
         obj_to_be_updated = self._getObjectByIndexCreate(packet.vehicleIdx)
         obj_to_be_updated.m_dnf_status_code = True
+
+        if packet.vehicleIdx == self.m_player_index:
+            self.m_is_player_dnf = True
 
     def processParticipantsUpdate(self, packet: PacketParticipantsData) -> None:
         """Process the participants update packet and update the necessary fields
@@ -758,7 +777,6 @@ class DriverData:
             Dict[str, Any]: JSON dict of all driver info
         """
 
-        _driver_data.m_race_completed = True
         final_json = packet.toJSON()
         for index, data in enumerate(packet.m_classificationData):
             obj_to_be_updated = self.m_driver_data.get(index, None)
@@ -934,7 +952,7 @@ def processSessionStarted() -> None:
     """
     with _driver_data_lock:
         _driver_data.clear()
-        _driver_data.m_race_completed = False
+        _driver_data.setRaceOngoing()
     with _globals_lock:
         _globals.m_packet_final_classification = None # Clear this because this is the start of the race
 
@@ -959,6 +977,7 @@ def processLapDataUpdate(packet: PacketLapData) -> None:
 
     with _driver_data_lock:
         _driver_data.processLapDataUpdate(packet)
+        _driver_data.setRaceOngoing()
 
 def processFastestLapUpdate(packet: PacketEventData) -> None:
     """Update the data structures with the fastest lap
@@ -999,6 +1018,7 @@ def processCarTelemetryUpdate(packet: PacketCarTelemetryData) -> None:
 
     with _driver_data_lock:
         _driver_data.processCarTelemetryUpdate(packet)
+        _driver_data.setRaceOngoing()
 
 def processCarStatusUpdate(packet: PacketCarStatusData) -> None:
     """Update the data structures with car status information
@@ -1009,6 +1029,7 @@ def processCarStatusUpdate(packet: PacketCarStatusData) -> None:
 
     with _driver_data_lock:
         _driver_data.processCarStatusUpdate(packet)
+        _driver_data.setRaceOngoing()
 
 def processFinalClassificationUpdate(packet: PacketFinalClassificationData) -> Dict[str, Any]:
     """Update the data structures with the final classification information
@@ -1023,6 +1044,7 @@ def processFinalClassificationUpdate(packet: PacketFinalClassificationData) -> D
 
     with _driver_data_lock:
         final_json = _driver_data.processFinalClassificationUpdate(packet)
+        _driver_data.setRaceCompleted()
     with _globals_lock:
         final_json["session-info"] = _globals.m_packet_session.toJSON() if _globals.m_packet_session else None
         _globals.m_packet_final_classification = packet
@@ -1037,6 +1059,7 @@ def processCarDamageUpdate(packet: PacketCarDamageData):
 
     with _driver_data_lock:
         _driver_data.processCarDamageUpdate(packet)
+        _driver_data.setRaceOngoing()
 
 def processSessionHistoryUpdate(packet: PacketSessionHistoryData):
     """Update the data structures with session history information
@@ -1047,6 +1070,7 @@ def processSessionHistoryUpdate(packet: PacketSessionHistoryData):
 
     with _driver_data_lock:
         _driver_data.processSessionHistoryUpdate(packet)
+        _driver_data.setRaceOngoing()
 
 def processTyreSetsUpdate(packet: PacketTyreSetsData) -> None:
     """Update the data structures with tyre history information
@@ -1057,6 +1081,7 @@ def processTyreSetsUpdate(packet: PacketTyreSetsData) -> None:
 
     with _driver_data_lock:
         _driver_data.processTyreSetsUpdate(packet)
+        _driver_data.setRaceOngoing()
 
 # -------------------------------------- WEB API HANDLERS --------------------------------------------------------------
 
@@ -1120,7 +1145,7 @@ def getDriverData(num_adjacent_cars: Optional[int] = 2) -> Tuple[List[DataPerDri
         player_position = _driver_data.m_driver_data[_driver_data.m_player_index].m_position
         total_cars = _driver_data.m_num_active_cars + \
                 (0 if _driver_data.m_num_dnf_cars is None else _driver_data.m_num_dnf_cars)
-        if _driver_data.m_race_completed or is_spectator_mode:
+        if _driver_data.m_race_completed or is_spectator_mode or _driver_data.m_is_player_dnf:
             positions = [i for i in range(1, _driver_data.m_num_active_cars+1)]
         else:
             positions = _getAdjacentPositions(player_position, total_cars, num_adjacent_cars)

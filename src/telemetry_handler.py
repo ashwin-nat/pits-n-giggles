@@ -41,7 +41,7 @@ except ImportError:
     print("tqdm installation complete.")
     from tqdm import tqdm
 
-from src.telemetry_manager import F12023TelemetryManager
+from src.telemetry_manager import F1TelemetryManager
 from lib.f1_types import *
 from lib.packet_cap import F1PacketCapture
 from lib.overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, OvertakeRecord
@@ -491,12 +491,12 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
 
 # -------------------------------------- TELEMETRY PACKET HANDLERS -----------------------------------------------------
 
-class F12023TelemetryHandler:
+class F1TelemetryHandler:
     """
-    Handles incoming F1 2023 telemetry data. Handles the various types of incoming packets
+    Handles incoming F1 telemetry data. Handles the various types of incoming packets
 
     Attributes:
-    - m_manager (F12023TelemetryManager): The telemetry manager instance.
+    - m_manager (F1TelemetryManager): The telemetry manager instance.
     - m_raw_packet_capture (PacketCaptureMode): The raw packet capture mode.
     """
 
@@ -505,13 +505,13 @@ class F12023TelemetryHandler:
         raw_packet_capture: PacketCaptureMode = PacketCaptureMode.DISABLED,
         replay_server: bool = False) -> None:
         """
-        Initialize F12023TelemetryHandler.
+        Initialize F1TelemetryHandler.
 
         Parameters:
             - port (int): The port number for telemetry.
             - raw_packet_capture (PacketCaptureMode): The mode for raw packet capture
         """
-        self.m_manager = F12023TelemetryManager(port, replay_server)
+        self.m_manager = F1TelemetryManager(port, replay_server)
         self.m_raw_packet_capture = raw_packet_capture
 
     def run(self):
@@ -529,19 +529,19 @@ class F12023TelemetryHandler:
         Register callback functions for different types of telemetry packets.
         """
 
-        self.m_manager.registerCallback(F1PacketType.SESSION, F12023TelemetryHandler.handleSessionData)
-        self.m_manager.registerCallback(F1PacketType.LAP_DATA, F12023TelemetryHandler.handleLapData)
-        self.m_manager.registerCallback(F1PacketType.EVENT, F12023TelemetryHandler.handleEvent)
-        self.m_manager.registerCallback(F1PacketType.PARTICIPANTS, F12023TelemetryHandler.handleParticipants)
-        self.m_manager.registerCallback(F1PacketType.CAR_TELEMETRY, F12023TelemetryHandler.handleCarTelemetry)
-        self.m_manager.registerCallback(F1PacketType.CAR_STATUS, F12023TelemetryHandler.handleCarStatus)
-        self.m_manager.registerCallback(F1PacketType.FINAL_CLASSIFICATION, F12023TelemetryHandler.handleFinalClassification)
-        self.m_manager.registerCallback(F1PacketType.CAR_DAMAGE, F12023TelemetryHandler.handleCarDamage)
-        self.m_manager.registerCallback(F1PacketType.SESSION_HISTORY, F12023TelemetryHandler.handleSessionHistory)
-        self.m_manager.registerCallback(F1PacketType.TYRE_SETS, F12023TelemetryHandler.handleTyreSets)
+        self.m_manager.registerCallback(F1PacketType.SESSION, F1TelemetryHandler.handleSessionData)
+        self.m_manager.registerCallback(F1PacketType.LAP_DATA, F1TelemetryHandler.handleLapData)
+        self.m_manager.registerCallback(F1PacketType.EVENT, F1TelemetryHandler.handleEvent)
+        self.m_manager.registerCallback(F1PacketType.PARTICIPANTS, F1TelemetryHandler.handleParticipants)
+        self.m_manager.registerCallback(F1PacketType.CAR_TELEMETRY, F1TelemetryHandler.handleCarTelemetry)
+        self.m_manager.registerCallback(F1PacketType.CAR_STATUS, F1TelemetryHandler.handleCarStatus)
+        self.m_manager.registerCallback(F1PacketType.FINAL_CLASSIFICATION, F1TelemetryHandler.handleFinalClassification)
+        self.m_manager.registerCallback(F1PacketType.CAR_DAMAGE, F1TelemetryHandler.handleCarDamage)
+        self.m_manager.registerCallback(F1PacketType.SESSION_HISTORY, F1TelemetryHandler.handleSessionHistory)
+        self.m_manager.registerCallback(F1PacketType.TYRE_SETS, F1TelemetryHandler.handleTyreSets)
 
         if self.m_raw_packet_capture != PacketCaptureMode.DISABLED:
-            self.m_manager.registerRawPacketCallback(F12023TelemetryHandler.handleRawPacket)
+            self.m_manager.registerRawPacketCallback(F1TelemetryHandler.handleRawPacket)
 
     @staticmethod
     def handleRawPacket(packet: List[bytes]) -> None:
