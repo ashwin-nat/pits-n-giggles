@@ -68,11 +68,11 @@ What this tool can do is provide you with live telemetry data during a race so t
 To develop your own app using the telemetry manager module:
 1. Import the telemetry manager module:
     ```python
-    from telemetry_manager import F12023TelemetryManager
+    from telemetry_manager import F1TelemetryManager
     ```
-2. Create an instance of F12023TelemetryManager:
+2. Create an instance of F1TelemetryManager:
     ```python
-    telemetry_manager = F12023TelemetryManager()
+    telemetry_manager = F1TelemetryManager()
     ```
 3. Register the callbacks for handling race data. Only register the packet types that you're interested in
     ```python

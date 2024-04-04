@@ -35,6 +35,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from lib.packet_cap import F1PacketCapture, F1PktCapFileHeader
 from src.telemetry_data import _getAdjacentPositions
 from lib.overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, OvertakeRecord, OvertakeRivalryKey
+from lib.race_analyzer import getFastestTimesJson
 
 # Initialize colorama
 from colorama import init
@@ -325,7 +326,122 @@ class TestF1PacketCaptureHeader(TestF1PacketCapture):
 class OvertakeAnalyzerUT(F1TelemetryUnitTestsBase):
     pass
 
-class TestOvertakeAnalyzerFile(OvertakeAnalyzerUT):
+class TestOvertakeAnalyzerListObj(OvertakeAnalyzerUT):
+    def setUp(self):
+        # Create a sample data set
+
+        # Updated sample data with integer values
+        self.sample_data = [
+            OvertakeRecord("HAMILTON", 1, "RUSSELL", 1, 0),
+            OvertakeRecord("PIASTRI", 1, "ALONSO", 1, 1),
+            OvertakeRecord("LECLERC", 2, "STROLL", 2, 2),
+            OvertakeRecord("TSUNODA", 2, "GASLY", 2, 3),
+            OvertakeRecord("PIASTRI", 3, "NORRIS", 3, 4),
+            OvertakeRecord("NORRIS", 3, "PIASTRI", 3, 5),
+            OvertakeRecord("HAMILTON", 4, "STROLL", 4, 6),
+            OvertakeRecord("RUSSELL", 5, "HAMILTON", 5, 7),
+        ]
+
+        # Initialize OvertakeAnalyzer with the temporary file
+        self.analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_LIST_OVERTAKE_RECORDS, self.sample_data)
+
+    def tearDown(self):
+        # No Op
+        return
+
+    def test_most_overtakes(self):
+        drivers, count = self.analyzer.getMostOvertakes()
+        expected_drivers = ['HAMILTON', 'PIASTRI']
+        self.assertEqual(len(drivers), 2)
+        self.assertEqual(count, 2)
+        for driver in expected_drivers:
+            self.assertIn(driver, drivers)
+
+    def test_most_overtaken(self):
+        drivers, count = self.analyzer.getMostOvertaken()
+        expected_drivers = ['STROLL']
+        self.assertEqual(count, 2)
+        for driver in expected_drivers:
+            self.assertIn(driver, drivers)
+
+    def assertOvertakeRecordInList(self, record, record_list, message=None):
+        record_str = str(record)
+        record_list_str = [str(r) for r in record_list]
+        error_message = f"{record_str} not found in {record_list_str}"
+        if message:
+            error_message = f"{message}: {error_message}"
+        self.assertIn(record, record_list, error_message)
+
+    def test_most_heated_rivalry(self):
+        rivalries_data = self.analyzer.getMostHeatedRivalries()
+        expected_rivalries = {
+            OvertakeRivalryKey('PIASTRI', 'NORRIS') : [
+                OvertakeRecord(
+                    overtaking_driver_name='PIASTRI',
+                    overtaking_driver_lap=3,
+                    overtaken_driver_name='NORRIS',
+                    overtaken_driver_lap=3,
+                    row_id=4),
+                OvertakeRecord(
+                    overtaking_driver_name='NORRIS',
+                    overtaking_driver_lap=3,
+                    overtaken_driver_name='PIASTRI',
+                    overtaken_driver_lap=3,
+                    row_id=5)
+            ],
+            OvertakeRivalryKey('HAMILTON', 'RUSSELL') : [
+                OvertakeRecord(
+                    overtaking_driver_name='HAMILTON',
+                    overtaking_driver_lap=1,
+                    overtaken_driver_name='RUSSELL',
+                    overtaken_driver_lap=1,
+                    row_id=0),
+                OvertakeRecord(
+                    overtaking_driver_name='RUSSELL',
+                    overtaking_driver_lap=5,
+                    overtaken_driver_name='HAMILTON',
+                    overtaken_driver_lap=5,
+                    row_id=7)
+            ]
+        }
+        for overtake_key, overtake_data in rivalries_data.items():
+            self.assertEqual(len(overtake_data), 2)
+            self.assertIn(overtake_key, expected_rivalries.keys())
+            for record in overtake_data:
+                # self.assertIn(record, expected_rivalries[overtake_key])
+                self.assertOvertakeRecordInList(record, expected_rivalries[overtake_key], message=f"Key: {overtake_key}")
+
+    def test_total_overtakes(self):
+        total_overtakes = self.analyzer.getTotalNumberOfOvertakes()
+        self.assertEqual(total_overtakes, 8)
+
+    def test_format_overtakes_involved(self):
+        expected_formatted_overtakes = [
+            "HAMILTON overtook RUSSELL in lap 1",
+            "PIASTRI overtook ALONSO in lap 1",
+            "LECLERC overtook STROLL in lap 2",
+            "TSUNODA overtook GASLY in lap 2",
+            "PIASTRI overtook NORRIS in lap 3",
+            "NORRIS overtook PIASTRI in lap 3",
+            "HAMILTON overtook STROLL in lap 4",
+            "RUSSELL overtook HAMILTON in lap 5",
+        ]
+
+        overtakes_data = [
+            OvertakeRecord("HAMILTON", 1, "RUSSELL", 1, 0),
+            OvertakeRecord("PIASTRI", 1, "ALONSO", 1, 1),
+            OvertakeRecord("LECLERC", 2, "STROLL", 2, 2),
+            OvertakeRecord("TSUNODA", 2, "GASLY", 2, 3),
+            OvertakeRecord("PIASTRI", 3, "NORRIS", 3, 4),
+            OvertakeRecord("NORRIS", 3, "PIASTRI", 3, 5),
+            OvertakeRecord("HAMILTON", 4, "STROLL", 4, 6),
+            OvertakeRecord("RUSSELL", 5, "HAMILTON", 5, 7),
+        ]
+
+        formatted_overtakes = self.analyzer.formatOvertakesInvolved(overtakes_data)
+        self.assertEqual(formatted_overtakes, expected_formatted_overtakes)
+
+class TestOvertakeAnalyzerFileCsv(OvertakeAnalyzerUT):
     def setUp(self):
         # Create a temporary CSV file with sample data
         self.sample_data = """
@@ -348,7 +464,7 @@ class TestOvertakeAnalyzerFile(OvertakeAnalyzerUT):
         self.temp_file.close()
 
         # Initialize OvertakeAnalyzer with the temporary file
-        self.analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_FILE, self.temp_file.name)
+        self.analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_FILE_CSV, self.temp_file.name)
 
     def tearDown(self):
         # Clean up the temporary file
@@ -446,7 +562,7 @@ class TestOvertakeAnalyzerFile(OvertakeAnalyzerUT):
         formatted_overtakes = self.analyzer.formatOvertakesInvolved(overtakes_data)
         self.assertEqual(formatted_overtakes, expected_formatted_overtakes)
 
-class TestOvertakeAnalyzerList(TestOvertakeAnalyzerFile):
+class TestOvertakeAnalyzerListCsv(OvertakeAnalyzerUT):
 
     def setUp(self):
         # Create a temporary CSV file with sample data
@@ -462,7 +578,7 @@ class TestOvertakeAnalyzerList(TestOvertakeAnalyzerFile):
         ]
 
         # Initialize OvertakeAnalyzer with the temporary file
-        self.analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_LIST, self.sample_data)
+        self.analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_LIST_CSV, self.sample_data)
 
     def tearDown(self):
         # Clean up the temporary file
@@ -477,11 +593,11 @@ class TestOvertakeAnalyzerEmptyInput(OvertakeAnalyzerUT):
         # Initialize OvertakeAnalyzer with the empty file
         from json.decoder import JSONDecodeError
         with self.assertRaises(JSONDecodeError):
-            analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_FILE, temp_file.name)
+            analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_FILE_CSV, temp_file.name)
 
     def test_empty_list_input(self):
         # Initialize OvertakeAnalyzer with an empty list
-        analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_LIST, [])
+        analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_LIST_CSV, [])
 
         # Test most overtakes
         drivers, count = analyzer.getMostOvertakes()
@@ -517,7 +633,7 @@ class TestOvertakeAnalyzerInvalidData(OvertakeAnalyzerUT):
 
         # Initializing OvertakeAnalyzer with invalid CSV data should raise a ValueError
         with self.assertRaises(ValueError):
-            analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_LIST, invalid_data)
+            analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_LIST_CSV, invalid_data)
 
     def test_invalid_data_handling_file(self):
         # Create a temporary CSV file with invalid data
@@ -530,10 +646,152 @@ class TestOvertakeAnalyzerInvalidData(OvertakeAnalyzerUT):
 
         # Initializing OvertakeAnalyzer with invalid CSV file should raise a ValueError
         with self.assertRaises(ValueError):
-            analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_FILE, temp_file.name)
+            analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_FILE_CSV, temp_file.name)
 
         # Clean up the temporary file
         os.remove(temp_file.name)
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+class RaceAnalyzerUT(F1TelemetryUnitTestsBase):
+    pass
+
+class TestGetFastestTimesJson(RaceAnalyzerUT):
+
+    def test_getFastestTimesJson(self):
+        # Mock JSON data
+        json_data = {
+            "classification-data": [
+                {
+                    "session-history": {
+                        "best-lap-time-lap-num": 3,
+                        "best-sector-1-lap-num": 2,
+                        "best-sector-2-lap-num": 2,
+                        "best-sector-3-lap-num": 3,
+                        "lap-history-data": [
+                            {"lap-time-in-ms": 90000, "sector-1-time-in-ms": 20000, "sector-2-time-in-ms": 30000, "sector-3-time-in-ms": 40000},
+                            {"lap-time-in-ms": 88000, "sector-1-time-in-ms": 19000, "sector-2-time-in-ms": 29000, "sector-3-time-in-ms": 39000},
+                            {"lap-time-in-ms": 87000, "sector-1-time-in-ms": 19500, "sector-2-time-in-ms": 30500, "sector-3-time-in-ms": 38000}
+                        ]
+                    },
+                    "index": 0,
+                    "driver-name" : "HAMILTON",
+                    "participant-data" : {
+                        "team-id" : "Mercedes"
+                    }
+                },
+                {
+                    "session-history": {
+                        "best-lap-time-lap-num": 3,
+                        "best-sector-1-lap-num": 3,
+                        "best-sector-2-lap-num": 2,
+                        "best-sector-3-lap-num": 3,
+                        "lap-history-data": [
+                            {"lap-time-in-ms": 92000, "sector-1-time-in-ms": 21000, "sector-2-time-in-ms": 32000, "sector-3-time-in-ms": 39000},
+                            {"lap-time-in-ms": 89000, "sector-1-time-in-ms": 20000, "sector-2-time-in-ms": 30000, "sector-3-time-in-ms": 39000},
+                            {"lap-time-in-ms": 88000, "sector-1-time-in-ms": 19500, "sector-2-time-in-ms": 31000, "sector-3-time-in-ms": 37500}
+                        ]
+                    },
+                    "index": 1,
+                    "driver-name" : "VERSTAPPEN",
+                    "participant-data" : {
+                        "team-id" : "Red Bull"
+                    }
+                },
+                {
+                    "session-history": {
+                        "best-lap-time-lap-num": 3,
+                        "best-sector-1-lap-num": 2,
+                        "best-sector-2-lap-num": 2,
+                        "best-sector-3-lap-num": 3,
+                        "lap-history-data": [
+                            {"lap-time-in-ms": 91000, "sector-1-time-in-ms": 19000, "sector-2-time-in-ms": 31000, "sector-3-time-in-ms": 41000},
+                            {"lap-time-in-ms": 90000, "sector-1-time-in-ms": 18000, "sector-2-time-in-ms": 30000, "sector-3-time-in-ms": 42000},
+                            {"lap-time-in-ms": 89000, "sector-1-time-in-ms": 19500, "sector-2-time-in-ms": 32000, "sector-3-time-in-ms": 37550}
+                        ]
+                    },
+                    "index": 2,
+                    "driver-name" : "LECLERC",
+                    "participant-data" : {
+                        "team-id" : "Ferrari"
+                    }
+                },
+                {
+                    "session-history": {
+                        "best-lap-time-lap-num": 3,
+                        "best-sector-1-lap-num": 3,
+                        "best-sector-2-lap-num": 3,
+                        "best-sector-3-lap-num": 1,
+                        "lap-history-data": [
+                            {"lap-time-in-ms": 93000, "sector-1-time-in-ms": 20000, "sector-2-time-in-ms": 33000, "sector-3-time-in-ms": 40000},
+                            {"lap-time-in-ms": 92000, "sector-1-time-in-ms": 19500, "sector-2-time-in-ms": 32000, "sector-3-time-in-ms": 40500},
+                            {"lap-time-in-ms": 91000, "sector-1-time-in-ms": 19000, "sector-2-time-in-ms": 31000, "sector-3-time-in-ms": 41000}
+                        ]
+                    },
+                    "index": 3,
+                    "driver-name" : "NORRIS",
+                    "participant-data" : {
+                        "team-id" : "McLaren"
+                    }
+                },
+                {
+                    "session-history": {
+                        "best-lap-time-lap-num": 3,
+                        "best-sector-1-lap-num": 2,
+                        "best-sector-2-lap-num": 3,
+                        "best-sector-3-lap-num": 1,
+                        "lap-history-data": [
+                            {"lap-time-in-ms": 94000, "sector-1-time-in-ms": 21000, "sector-2-time-in-ms": 33000, "sector-3-time-in-ms": 40000},
+                            {"lap-time-in-ms": 93000, "sector-1-time-in-ms": 20000, "sector-2-time-in-ms": 32000, "sector-3-time-in-ms": 41000},
+                            {"lap-time-in-ms": 92000, "sector-1-time-in-ms": 20500, "sector-2-time-in-ms": 31000, "sector-3-time-in-ms": 40500}
+                        ]
+                    },
+                    "index": 4,
+                    "driver-name" : "ALONSO",
+                    "participant-data" : {
+                        "team-id" : "Aston Martin"
+                    }
+                }
+            ]
+        }
+
+        expected_result = {
+            'lap': {
+                'driver-index': 0,
+                'driver-name' : 'HAMILTON',
+                'team-id' : 'Mercedes',
+                'lap-number': 3,
+                'time': 87000,
+                'time-str': '01:27.000'
+            },
+            's1': {
+                'driver-index': 2,
+                'driver-name' : 'LECLERC',
+                'team-id' : 'Ferrari',
+                'lap-number': 2,
+                'time': 18000,
+                'time-str': '18.000'
+            },
+            's2': {
+                'driver-index': 0,
+                'driver-name' : 'HAMILTON',
+                'team-id' : 'Mercedes',
+                'lap-number': 2,
+                'time': 29000,
+                'time-str': '29.000'
+            },
+            's3': {
+                'driver-index': 1,
+                'driver-name' : 'VERSTAPPEN',
+                'team-id' : 'Red Bull',
+                'lap-number': 3,
+                'time': 37500,
+                'time-str': '37.500'
+            }
+        }
+
+        result = getFastestTimesJson(json_data)
+        self.assertEqual(result, expected_result)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
