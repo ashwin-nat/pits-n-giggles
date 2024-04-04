@@ -107,7 +107,8 @@ def getFastestTimesJson(json_data: Dict[str, Any], driver_data: Optional[Dict[st
         }
 
         # TODO: handle scenario where multiple drivers have same fastest times
-        for driver_index, driver_data in enumerate(json_data["classification-data"]):
+        for driver_data in json_data["classification-data"]:
+            driver_index = driver_data["index"]
             session_history = driver_data.get("session-history", None)
             if session_history:
                 if (fastest_dict['driver-index'] is None) or \

@@ -1403,8 +1403,9 @@ SOFTWARE.
                             const tyreSetData = stintData["tyre-set-data"];
                             const tyreSetIndex = stintData["fitted-index"];
 
-                            compound = tyreSetData["actual-tyre-compound"];
-                            tyreSetId = `${compound} - ${tyreSetIndex}`;
+                            const actualCompound = tyreSetData["actual-tyre-compound"];
+                            compound = tyreSetData["visual-tyre-compound"];
+                            tyreSetId = `${actualCompound} - ${tyreSetIndex}`;
                             tyreWear = `${tyreSetData["wear"]} %`;
 
                             // Use parseFloat to ensure numerical calculation

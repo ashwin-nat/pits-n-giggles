@@ -140,6 +140,13 @@ def getTelemetryInfo():
                 "track-temperature": "---",
                 "weather-forecast-samples": []
             }
+        if "records" in g_json_data:
+            if "fastest" in g_json_data["records"]:
+                fastest_lap = g_json_data["records"]["fastest"]["lap"]["time-str"]
+            else:
+                fastest_lap = "---"
+        else:
+            fastest_lap = "---"
         json_response = {
             "circuit": g_json_data["session-info"]["track-id"],
             "track-temperature": g_json_data["session-info"]["track-temperature"],
@@ -147,8 +154,7 @@ def getTelemetryInfo():
             "total-laps": g_json_data["session-info"]["total-laps"],
             "current-lap": g_json_data["classification-data"][0]["lap-data"]["current-lap-num"],
             "safety-car-status": g_json_data["session-info"]["safety-car-status"],
-            "fastest-lap-overall": F1Utils.millisecondsToMinutesSecondsMilliseconds(
-                g_json_data["records"]["fastest"]["lap"]["time"]),
+            "fastest-lap-overall": fastest_lap,
             "pit-speed-limit" : g_json_data["session-info"]["pit-speed-limit"],
             "weather-forecast-samples": [],
             "race-ended" : True
@@ -364,14 +370,6 @@ class TelemetryWebServer:
                 if not g_json_data:
                     return {}, HTTPStatus.OK
 
-
-                should_write = False
-                should_write |= self._checkUpdateRecords(g_json_data)
-
-                if should_write:
-                    print('writing to file: ' + g_json_path)
-                    with open(g_json_path, 'w', encoding='utf-8') as f:
-                        json.dump(g_json_data, f, ensure_ascii=False, indent=4)
                 return {
                     "records" : g_json_data.get("records", None),
                     "classification-data" : g_json_data.get("classification-data", None),
@@ -481,6 +479,15 @@ class TelemetryWebServer:
 
 def checkRecomputeJSON(json_data : Dict[str, Any]) -> bool:
 
+    def _isValidJson(data):
+        if isinstance(data, dict):
+            return True
+        try:
+            json.loads(data)
+            return True
+        except json.JSONDecodeError:
+            return False
+
     def _getTyreWearHistory(driver_data : Dict[str, Any], start_lap : int, end_lap : int) -> List[Dict[str, Any]]:
 
         tyre_wear_history = []
@@ -509,6 +516,78 @@ def checkRecomputeJSON(json_data : Dict[str, Any]) -> bool:
                         should_write = True
                         tyre_stint["tyre-wear-history"] = _getTyreWearHistory(
                             driver_data, tyre_stint["start-lap"], tyre_stint["end-lap"])
+
+
+    if "records" not in json_data:
+        json_data["records"] = {
+            "fastest" : RaceAnalyzer.getFastestTimesJson(json_data),
+            "tyre-stats" : RaceAnalyzer.getTyreStintRecordsDict(json_data)
+        }
+        should_write = True
+
+    if "fastest" not in json_data["records"]:
+        json_data["records"]["fastest"] = RaceAnalyzer.getFastestTimesJson(json_data)
+        should_write = True
+    should_recompute_fastest_records = False
+    expected_fastest_record_keys = [
+        'driver-index',
+        'driver-name',
+        'team-id',
+        'lap-number',
+        'time',
+        'time-str'
+    ]
+    for category, record in json_data["records"]["fastest"].items():
+        for key in expected_fastest_record_keys:
+            if key not in record:
+                should_recompute_fastest_records = True
+                break
+    if should_recompute_fastest_records:
+        json_data["records"]["fastest"] = RaceAnalyzer.getFastestTimesJson(json_data)
+        should_write = True
+
+    if "tyre-stats" not in json_data["records"]:
+        json_data["records"]["tyre-stats"] = RaceAnalyzer.getTyreStintRecordsDict(json_data)
+        should_write = True
+    tyre_stats_keys = ['longest-tyre-stint', 'lowest-tyre-wear-per-lap', 'highest-tyre-wear']
+    should_recompute_tyre_stats = False
+    for key in tyre_stats_keys:
+        # Loop through the compounds
+        for compound, tyre_stat_record in json_data["records"]["tyre-stats"].items():
+            if key not in tyre_stat_record:
+                should_recompute_tyre_stats = True
+
+    if should_recompute_tyre_stats:
+        json_data["records"]["tyre-stats"] = RaceAnalyzer.getTyreStintRecordsDict(json_data)
+        should_write = True
+
+    should_recompute_overtakes = False
+    if "overtakes" not in json_data:
+        json_data["overtakes"] = {
+            "records" : []
+        }
+        should_write = True
+        should_recompute_overtakes = True
+
+    expected_keys = [
+        "number-of-overtakes",
+        "most-heated-rivalries"
+    ]
+    for key in expected_keys:
+        if key not in json_data["overtakes"]:
+            should_recompute_overtakes = True
+
+    if should_recompute_overtakes:
+        if len(json_data["overtakes"]["records"]) > 0:
+            if _isValidJson(json_data["overtakes"]["records"][0]):
+                overtake_analyzer_mode = OvertakeAnalyzer.OvertakeAnalyzerMode.INPUT_MODE_LIST_OVERTAKE_RECORDS_JSON
+            else:
+                overtake_analyzer_mode = OvertakeAnalyzer.OvertakeAnalyzerMode.INPUT_MODE_LIST_CSV
+            overtake_records = OvertakeAnalyzer.OvertakeAnalyzer(
+                input_mode=overtake_analyzer_mode,
+                input=json_data["overtakes"]["records"]).toJSON()
+            json_data["overtakes"] = json_data["overtakes"] | overtake_records
+            should_write = True
 
     return should_write
 
