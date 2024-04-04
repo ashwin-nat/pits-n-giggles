@@ -672,6 +672,7 @@ class F1Utils:
         INDEX_REAR_RIGHT (int): Index for the rear-right position in tyre/brake arrays/lists.
         INDEX_FRONT_LEFT (int): Index for the front-left position in tyre/brake arrays/lists.
         INDEX_FRONT_RIGHT (int): Index for the front-right position in tyre/brake arrays/lists.
+        PLAYER_INDEX_INVALID (int): The constant representing invalid player index
 
     Methods:
         millisecondsToMinutesSecondsMilliseconds(milliseconds) -> str:
@@ -701,6 +702,7 @@ class F1Utils:
     INDEX_REAR_RIGHT = 1
     INDEX_FRONT_LEFT = 2
     INDEX_FRONT_RIGHT = 3
+    PLAYER_INDEX_INVALID = 255
 
     @staticmethod
     def millisecondsToMinutesSecondsMilliseconds(milliseconds: int) -> str:

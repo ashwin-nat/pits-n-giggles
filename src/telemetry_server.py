@@ -84,7 +84,6 @@ class TelemetryWebServer:
             Returns:
                 str: Telemetry data in JSON format.
             """
-            # return self.sampleTelemetryInfoRsp() # TODO - remove
             return self.getRaceTelemetryInfo()
 
         @self.m_app.route('/player-telemetry-info')
@@ -95,7 +94,6 @@ class TelemetryWebServer:
             Returns:
                 str: Telemetry data in JSON format.
             """
-            # return self.sampleTelemetryInfoRsp() # TODO - remove
             return self.getPlayerTelemetryInfo()
 
         # Define your endpoint

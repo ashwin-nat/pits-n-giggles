@@ -54,15 +54,25 @@ What this tool can do is provide you with live telemetry data during a race so t
 
 ## Launch Options in app.py
 - The following launch options are available in app.py:
-  - -p, --packet-capture-mode: Packet capture mode (disabled, enabled, enabled-with-autosave). Default: disabled
-  - -t, --telemetry-port: Port number for F1 telemetry client. Default: 20777
-  - -s, --server-port: Port number for HTTP server. Default: 5000
-  - -f, --post-race-data-autosave: Autosave all race data into a JSON file at the end of the race
-  - --replay-server: Enable the TCP replay debug server
-  - --disable-browser-autoload: Set this flag to not open the browser tab automatically
-  - -r, --refresh-interval: How often the web page should refresh itself with new data. Default: 200
-  - -l, --log-file: Write output to specified log file (append)
-  - -d, --debug: Enable debug logs
+
+| Short Option | Long Option                      | Description                                                                                            | Default Value  |
+|--------------|----------------------------------|--------------------------------------------------------------------------------------------------------|----------------|
+| `-p`         | `--packet-capture-mode`          | Packet capture mode (disabled, enabled, enabled-with-autosave)                                        | `disabled`     |
+| `-t`         | `--telemetry-port`               | Port number for F1 telemetry client                                                                    | `20777`        |
+| `-s`         | `--server-port`                  | Port number for HTTP server                                                                            | `5000`         |
+| `-f`         | `--post-race-data-autosave`      | Autosave all race data into a JSON file at the end of the race                                         | N/A            |
+|              | `--replay-server`                | Enable the TCP replay debug server                                                                     | N/A            |
+|              | `--disable-browser-autoload`      | Set this flag to not open the browser tab automatically                                                | N/A            |
+| `-r`         | `--refresh-interval`             | How often the web page should refresh itself with new data                                              | `200`          |
+| `-l`         | `--log-file`                     | Write output to specified log file (append)                                                            | `None`         |
+| `-d`         | `--debug`                        | Enable debug logs                                                                                      | False          |
+| `-u`         | `--udp-custom-action-code`       | UDP custom action code number for recording event markers                                              | `None`         |
+| `-n`         | `--num-adjacent-cars`           | How many cars adjacent to your car will be included in the UI during race                              | `2`            |
+
+
+
+
+
 
 ## Usage - To build your own app on top of this
 To develop your own app using the telemetry manager module:

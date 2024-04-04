@@ -36,6 +36,49 @@ from src.telemetry_server import TelemetryWebServer
 
 # -------------------------------------- FUNCTION DEFINITIONS ----------------------------------------------------------
 
+def parseArgs() -> argparse.Namespace:
+    """Parse the command line args
+
+    Returns:
+        argparse.Namespace: The parsed args namespace
+    """
+
+    # Initialize the ArgumentParser
+    parser = argparse.ArgumentParser(description="F1 Telemetry Client and Server")
+
+    # Add command-line arguments with default values
+    parser.add_argument('-p', '--packet-capture-mode', type=PacketCaptureMode,
+                        choices=list(PacketCaptureMode),
+                        default=PacketCaptureMode.DISABLED,
+                        metavar='packet_capture_mode {"disabled", "enabled", "enabled-with-autosave"}',
+                        help="Packet capture mode (disabled, enabled, enabled-with-autosave)")
+    parser.add_argument('-t', '--telemetry-port', type=int, default=20777, metavar='TELEMETRY_PORT',
+                        help="Port number for F1 telemetry client")
+    parser.add_argument('-s', '--server-port', type=int, default=5000, metavar='SERVER_PORT',
+                        help="Port number for HTTP server")
+    parser.add_argument('-f', '--post-race-data-autosave', action='store_true',
+                        help="Autosave all race data into a JSON file at the end of the race")
+    parser.add_argument('--replay-server', action='store_true',
+                        help="Enable the TCP replay debug server")
+    parser.add_argument('--disable-browser-autoload', action='store_true',
+                        help="Set this flag to not open the browser tab automatically")
+    parser.add_argument('-r', '--refresh-interval', type=int, default=200, metavar='REFRESH_INTERVAL',
+                        help="How often the web page should refresh itself with new data")
+    parser.add_argument('-l', '--log-file', type=str, default=None, metavar='LOG_FILE',
+                        help='Write output to specified log file (append)')
+    parser.add_argument('-d', '--debug', action='store_true',
+                        help="Enable debug logs")
+    parser.add_argument('-u', '--udp-custom-action-code', type=int, default=None,
+                        metavar='UDP_CUSTOM_ACTION_NUMBER',
+                        help="UDP custom action code number for recording event markers")
+    parser.add_argument('-n', '--num-adjacent-cars', type=int, default=2, metavar='NUM_ADJ_CARS',
+                        help="How many cars adjacent to your car will be included in the UI during race. "
+                                "The total number of cars will be NUM_ADJ_CARS*2 + 1. "
+                                "A huge number implies that all cars are to be displayed")
+
+    # Parse the command-line arguments
+    return parser.parse_args()
+
 def initLogger(file_name: str = None, debug_mode: bool = False) -> logging.Logger:
     """Initialize and configure the logger.
 
@@ -160,40 +203,7 @@ def f1TelemetryServerTask(
 
 if __name__ == '__main__':
     # Initialize the ArgumentParser
-    parser = argparse.ArgumentParser(description="F1 Telemetry Client and Server")
-
-    # Add command-line arguments with default values
-    parser.add_argument('-p', '--packet-capture-mode', type=PacketCaptureMode,
-                        choices=list(PacketCaptureMode),
-                        default=PacketCaptureMode.DISABLED,
-                        metavar='packet_capture_mode {"disabled", "enabled", "enabled-with-autosave"}',
-                        help="Packet capture mode (disabled, enabled, enabled-with-autosave)")
-    parser.add_argument('-t', '--telemetry-port', type=int, default=20777, metavar='TELEMETRY_PORT',
-                        help="Port number for F1 telemetry client")
-    parser.add_argument('-s', '--server-port', type=int, default=5000, metavar='SERVER_PORT',
-                        help="Port number for HTTP server")
-    parser.add_argument('-f', '--post-race-data-autosave', action='store_true',
-                        help="Autosave all race data into a JSON file at the end of the race")
-    parser.add_argument('--replay-server', action='store_true',
-                        help="Enable the TCP replay debug server")
-    parser.add_argument('--disable-browser-autoload', action='store_true',
-                        help="Set this flag to not open the browser tab automatically")
-    parser.add_argument('-r', '--refresh-interval', type=int, default=200, metavar='REFRESH_INTERVAL',
-                        help="How often the web page should refresh itself with new data")
-    parser.add_argument('-l', '--log-file', type=str, default=None, metavar='LOG_FILE',
-                        help='Write output to specified log file (append)')
-    parser.add_argument('-d', '--debug', action='store_true',
-                        help="Enable debug logs")
-    parser.add_argument('-u', '--udp-custom-action-code', type=int, default=None,
-                        metavar='UDP_CUSTOM_ACTION_NUMBER',
-                        help="UDP custom action code number for recording event markers")
-    parser.add_argument('-n', '--num-adjacent-cars', type=int, default=2, metavar='NUM_ADJ_CARS',
-                        help="How many cars adjacent to your car will be included in the UI during race. "
-                                "The total number of cars will be NUM_ADJ_CARS*2 + 1. "
-                                "A huge number implies that all cars are to be displayed")
-
-    # Parse the command-line arguments
-    args = parser.parse_args()
+    args = parseArgs()
 
     initLogger(file_name=args.log_file, debug_mode=args.debug)
     if args.num_adjacent_cars < 0:

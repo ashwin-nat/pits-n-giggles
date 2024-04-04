@@ -361,6 +361,14 @@ class DataPerDriver:
 
         range_of_laps = range(start_lap, end_lap + 1)
         tyre_wear_history = []
+        if start_lap == 1:
+            tyre_wear_history.append({
+                'lap-number': 0,
+                'front-right-wear': self.m_per_lap_backups[0].m_car_damage_packet.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
+                'front-left-wear': self.m_per_lap_backups[0].m_car_damage_packet.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
+                'rear-right-wear': self.m_per_lap_backups[0].m_car_damage_packet.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
+                'rear-left-wear': self.m_per_lap_backups[0].m_car_damage_packet.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
+            })
         for lap_number in range_of_laps:
             if lap_number in self.m_per_lap_backups:
                 car_damage_data = self.m_per_lap_backups[lap_number].m_car_damage_packet
