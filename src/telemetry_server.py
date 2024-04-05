@@ -130,9 +130,6 @@ class TelemetryWebServer:
             # Access parameters using request.args
             index = request.args.get('index')
 
-            # TODO - remove
-            # return self.sampleDriverInfoRsp()
-
             # Check if only one parameter is provided
             if not index:
                 error_response = {
@@ -185,7 +182,7 @@ class TelemetryWebServer:
 
         # Render the HTML page
         @self.m_app.route('/obs-overlay')
-        def indexOverlay():
+        def obsOverlay():
             """
             Endpoint for the index page.
 
@@ -212,13 +209,6 @@ class TelemetryWebServer:
             str: The value as string or default string.
         """
         return value if value is not None else default_value
-
-    def getRaceInfo(self) -> Dict[str, Any]:
-        """
-        Returns a JSON object containing race information.
-        """
-
-
 
     def getRaceTelemetryInfo(self) -> Dict:
         """
@@ -258,10 +248,7 @@ class TelemetryWebServer:
 
         # Fill in the per driver data
         json_response["table-entries"] = []
-        # fastest_lap_overall = "---"
         for data_per_driver in driver_data:
-            # if data_per_driver.m_is_fastest:
-            #     fastest_lap_overall = data_per_driver.m_best_lap
             json_response["table-entries"].append(
                 {
                     "position": self.getValueOrDefaultValue(data_per_driver.m_position),
@@ -271,7 +258,8 @@ class TelemetryWebServer:
                                                                data_per_driver.m_penalties,
                                                                data_per_driver.m_is_pitting,
                                                                data_per_driver.m_dnf_status_code),
-                    "delta-to-leader": self.getDeltaPlusPenaltiesPlusPit(F1Utils.millisecondsToSecondsStr(data_per_driver.m_delta_to_leader),
+                    "delta-to-leader": self.getDeltaPlusPenaltiesPlusPit(
+                                F1Utils.millisecondsToSecondsStr(data_per_driver.m_delta_to_leader),
                                                                data_per_driver.m_penalties,
                                                                data_per_driver.m_is_pitting,
                                                                data_per_driver.m_dnf_status_code),

@@ -1137,12 +1137,12 @@ def getDriverData(num_adjacent_cars: Optional[int] = 2) -> Tuple[List[DataPerDri
         Tuple[List[DataPerDriver], str]: The final list of driver info and the fastest lap time
     """
 
-    # TODO: tidy up
     with _globals_lock:
         is_spectator_mode = _globals.m_is_spectating
         track_length = _globals.m_packet_session.m_trackLength if _globals.m_packet_session else None
+
     with _driver_data_lock:
-        final_list = []
+        final_list : List[DataPerDriver] = []
         fastest_lap_time = "---"
 
         # If the data is not yet available, return default values
@@ -1190,58 +1190,8 @@ def getDriverData(num_adjacent_cars: Optional[int] = 2) -> Tuple[List[DataPerDri
         if len(final_list) == 0:
             return final_list, fastest_lap_time
 
-        milliseconds_to_seconds_str = lambda ms: ("+" if ms >= 0 else "") + "{:.3f}".format(ms / 1000)
-        if is_spectator_mode:
-            # just convert the deltas to str
-            for data in final_list:
-                data.m_delta_to_car_in_front = milliseconds_to_seconds_str(data.m_delta_to_car_in_front)
         else:
-            # recompute the deltas if not spectator mode
-            condition = lambda x: x.m_is_player == True
-            player_index = next((index for index, item in enumerate(final_list) if condition(item)), None)
-
-            # case 1: player is in the absolute front of this pack
-            if player_index == 0:
-                final_list[0].m_delta_to_car_in_front = "---"
-                delta_so_far = 0
-                for data in final_list[1:]:
-                    delta_so_far += data.m_delta_to_car_in_front
-                    data.m_delta_to_car_in_front = milliseconds_to_seconds_str(delta_so_far)
-
-            # case 2: player is in the back of the pack
-            # Iterate from back to front using reversed need to look at previous car's data for distance ahead
-            elif player_index == len(final_list) - 1:
-                delta_so_far = 0
-                one_car_behind_index = len(final_list)-1
-                one_car_behind_delta = final_list[one_car_behind_index].m_delta_to_car_in_front
-                for data in reversed(final_list[:len(final_list)-1]):
-                    delta_so_far -= one_car_behind_delta
-                    one_car_behind_delta = data.m_delta_to_car_in_front
-                    data.m_delta_to_car_in_front = milliseconds_to_seconds_str(delta_so_far)
-                final_list[len(final_list)-1].m_delta_to_car_in_front = "---"
-
-            # case 3: player is somewhere in the middle of the pack
-            else:
-
-                # First, set the deltas for the cars ahead
-                delta_so_far = 0
-                one_car_behind_index = player_index
-                one_car_behind_delta = final_list[one_car_behind_index].m_delta_to_car_in_front
-                for data in reversed(final_list[:player_index]):
-                    delta_so_far -= one_car_behind_delta
-                    one_car_behind_delta = data.m_delta_to_car_in_front
-                    data.m_delta_to_car_in_front = milliseconds_to_seconds_str(delta_so_far)
-
-                # Finally, set the deltas for the cars ahead
-                delta_so_far = 0
-                for data in final_list[player_index+1:]:
-                    delta_so_far += data.m_delta_to_car_in_front
-                    data.m_delta_to_car_in_front = milliseconds_to_seconds_str(delta_so_far)
-
-                # finally set the delta for the player
-                final_list[player_index].m_delta_to_car_in_front = "---"
-
-        return final_list, fastest_lap_time
+            return _recomputeDeltas(final_list, is_spectator_mode), fastest_lap_time
 
 def getPlayerDriverData() -> Tuple[DataPerDriver, str]:
 
@@ -1508,3 +1458,67 @@ def _getAdjacentPositions(position:int, total_cars:int, num_adjacent_cars:int) -
 
     return list(range(lower_bound, upper_bound + 1))
 
+def _recomputeDeltas(driver_list : List[DataPerDriver], is_spectator_mode : bool) -> List[DataPerDriver]:
+    """Recompute the deltas for the list of driver data relative to the player
+
+    Args:
+        driver_list (List[DataPerDriver]): The list of driver data
+        is_spectator_mode (bool) : True if the game is in spectator mode
+
+    Returns:
+        List[DataPerDriver]: The list of driver data with deltas
+    """
+
+    driver_list[0].m_delta_to_car_in_front = "---"
+    milliseconds_to_seconds_str = lambda ms: ("+" if ms >= 0 else "") + "{:.3f}".format(ms / 1000)
+    if is_spectator_mode:
+        # just convert the deltas to str
+        for data in driver_list:
+            data.m_delta_to_car_in_front = milliseconds_to_seconds_str(data.m_delta_to_car_in_front)
+    else:
+        # recompute the deltas if not spectator mode
+        condition = lambda x: x.m_is_player == True
+        player_index = next((index for index, item in enumerate(driver_list) if condition(item)), None)
+
+        # case 1: player is in the absolute front of this pack
+        if player_index == 0:
+            driver_list[0].m_delta_to_car_in_front = "---"
+            delta_so_far = 0
+            for data in driver_list[1:]:
+                delta_so_far += data.m_delta_to_car_in_front
+                data.m_delta_to_car_in_front = milliseconds_to_seconds_str(delta_so_far)
+
+        # case 2: player is in the back of the pack
+        # Iterate from back to front using reversed need to look at previous car's data for distance ahead
+        elif player_index == len(driver_list) - 1:
+            delta_so_far = 0
+            one_car_behind_index = len(driver_list)-1
+            one_car_behind_delta = driver_list[one_car_behind_index].m_delta_to_car_in_front
+            for data in reversed(driver_list[:len(driver_list)-1]):
+                delta_so_far -= one_car_behind_delta
+                one_car_behind_delta = data.m_delta_to_car_in_front
+                data.m_delta_to_car_in_front = milliseconds_to_seconds_str(delta_so_far)
+            driver_list[len(driver_list)-1].m_delta_to_car_in_front = "---"
+
+        # case 3: player is somewhere in the middle of the pack
+        else:
+
+            # First, set the deltas for the cars ahead
+            delta_so_far = 0
+            one_car_behind_index = player_index
+            one_car_behind_delta = driver_list[one_car_behind_index].m_delta_to_car_in_front
+            for data in reversed(driver_list[:player_index]):
+                delta_so_far -= one_car_behind_delta
+                one_car_behind_delta = data.m_delta_to_car_in_front
+                data.m_delta_to_car_in_front = milliseconds_to_seconds_str(delta_so_far)
+
+            # Finally, set the deltas for the cars ahead
+            delta_so_far = 0
+            for data in driver_list[player_index+1:]:
+                delta_so_far += data.m_delta_to_car_in_front
+                data.m_delta_to_car_in_front = milliseconds_to_seconds_str(delta_so_far)
+
+            # finally set the delta for the player
+            driver_list[player_index].m_delta_to_car_in_front = "---"
+
+    return driver_list

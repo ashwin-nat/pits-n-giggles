@@ -562,12 +562,11 @@ class F1TelemetryHandler:
             packet (PacketSessionData): The session data telemetry packet.
         """
 
-        # TODO: clean up order of operations
         if packet.m_sessionDuration == 0:
             logging.info("Session duration is 0. clearing data structures")
             TelData.processSessionStarted()
 
-        if TelData.processSessionUpdate(packet):
+        elif TelData.processSessionUpdate(packet):
             logging.info("Session UID changed. clearing data structures")
             TelData.processSessionStarted()
 
