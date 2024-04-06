@@ -766,7 +766,7 @@ class DriverData:
 
         for index, car_status_data in enumerate(packet.m_carStatusData):
             obj_to_be_updated = self._getObjectByIndexCreate(index)
-            obj_to_be_updated.m_ers_perc = (car_status_data.m_ersStoreEnergy/CarStatusData.max_ers_store_energy) * 100.0
+            obj_to_be_updated.m_ers_perc = (car_status_data.m_ersStoreEnergy/CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0
             obj_to_be_updated.m_tyre_age = car_status_data.m_tyresAgeLaps
             obj_to_be_updated.m_tyre_compound_type = str(car_status_data.m_actualTyreCompound) + ' - ' + \
                 str(car_status_data.m_visualTyreCompound)

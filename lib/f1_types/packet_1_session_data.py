@@ -376,8 +376,7 @@ class PacketSessionData:
 
     Attributes:
         - m_header (PacketHeader): Header information for the packet.
-        - m_weather (uint8): Weather condition (0 = clear, 1 = light cloud, 2 = overcast, 3 = light rain,
-                                                4 = heavy rain, 5 = storm).
+        - m_weather (WeatherCondition): Refer to the mentioned enumeration.
         - m_trackTemperature (int8): Track temperature in degrees Celsius.
         - m_airTemperature (int8): Air temperature in degrees Celsius.
         - m_totalLaps (uint8): Total number of laps in the race.
@@ -609,6 +608,49 @@ class PacketSessionData:
                 max_value = max(member.value for member in PacketSessionData.TrackID)
                 return min_value <= track <= max_value
 
+    class FormulaType(Enum):
+        """An enumeration of formula types."""
+
+        F1_MODERN: int = 0
+        F1_CLASSIC: int = 1
+        F2: int = 2
+        F1_GENERIC: int = 3
+        BETA: int = 4
+        SUPERCARS: int = 5
+        ESPORTS: int = 6
+        F2_2021: int = 7
+
+        def __str__(self) -> str:
+            """Return a human-readable string representation of the formula type."""
+            return {
+                PacketSessionData.FormulaType.F1_MODERN: "F1 Modern",
+                PacketSessionData.FormulaType.F1_CLASSIC: "F1 Classic",
+                PacketSessionData.FormulaType.F2: "F2",
+                PacketSessionData.FormulaType.F1_GENERIC: "F1 Generic",
+                PacketSessionData.FormulaType.BETA: "Beta",
+                PacketSessionData.FormulaType.SUPERCARS: "Supercars",
+                PacketSessionData.FormulaType.ESPORTS: "Esports",
+                PacketSessionData.FormulaType.F2_2021: "F2 2021"
+            }[self]
+
+        @staticmethod
+        def isValid(formula_type_code: int):
+            """Check if the given formula type is valid.
+
+            Args:
+                formula_type_code (int): The safety car status to be validated.
+                    Also supports type FormulaType. Returns true in this case
+
+            Returns:
+                bool: true if valid
+            """
+            if isinstance(formula_type_code, PacketSessionData.FormulaType):
+                return True  # It's already an instance of SafetyCarStatus
+            else:
+                min_value = min(member.value for member in PacketSessionData.FormulaType)
+                max_value = max(member.value for member in PacketSessionData.FormulaType)
+                return min_value <= formula_type_code <= max_value
+
     def __init__(self, header, data) -> None:
         """Construct a PacketSessionData object
 
@@ -699,6 +741,8 @@ class PacketSessionData:
             self.m_trackId = PacketSessionData.TrackID(self.m_trackId)
         if SessionType.isValid(self.m_sessionType):
             self.m_sessionType = SessionType(self.m_sessionType)
+        if PacketSessionData.FormulaType.isValid(self.m_formula):
+            self.m_formula = PacketSessionData.FormulaType(self.m_formula)
 
         # Next section 1, marshalZones
         section_1_size = MarshalZone.PACKET_LEN * self.m_maxMarshalZones
@@ -788,8 +832,8 @@ class PacketSessionData:
             f"Total Laps: {self.m_totalLaps}, "
             f"Track Length: {self.m_trackLength}, "
             f"Session Type: {str(self.m_sessionType)}, "
-            f"Track ID: {self.m_trackId}, "
-            f"Formula: {self.m_formula}, "
+            f"Track ID: {str(self.m_trackId)}, "
+            f"Formula: {str(self.m_formula)}, "
             f"Session Time Left: {self.m_sessionTimeLeft}, "
             f"Session Duration: {self.m_sessionDuration}, "
             f"Pit Speed Limit: {self.m_pitSpeedLimit}, "
@@ -851,7 +895,7 @@ class PacketSessionData:
             "track-length": self.m_trackLength,
             "session-type": str(self.m_sessionType),
             "track-id": str(self.m_trackId),
-            "formula": self.m_formula,
+            "formula": str(self.m_formula),
             "session-time-left": self.m_sessionTimeLeft,
             "session-duration": self.m_sessionDuration,
             "pit-speed-limit": self.m_pitSpeedLimit,

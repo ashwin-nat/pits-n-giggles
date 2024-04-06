@@ -116,6 +116,7 @@ class CarStatusData:
         The class uses enum classes for certain attributes for better readability and type safety.
     """
 
+    MAX_ERS_STORE_ENERGY = 4000000.0 # Source: https://www.mercedes-amg-hpp.com/formula-1-engine-facts/#
     PACKET_FORMAT = ("<"
         "B" # uint8       m_tractionControl;          // Traction control - 0 = off, 1 = medium, 2 = full
         "B" # uint8       m_antiLockBrakes;           // 0 (off) - 1 (on)
@@ -263,7 +264,51 @@ class CarStatusData:
                 max_value = max(member.value for member in CarStatusData.ERSDeployMode)
                 return min_value <= ers_deploy_mode_code <= max_value
 
-    max_ers_store_energy = 4000000.0 # Source: https://www.mercedes-amg-hpp.com/formula-1-engine-facts/#
+    class TractionControlAssistMode(Enum):
+        """
+        Enumeration representing different Traction Control Assist modes.
+
+        Attributes:
+            NONE (int): No ERS deployment (0)
+            MEDIUM (int): Medium ERS deployment (1)
+            HOPLAP (int): Hotlap ERS deployment (2)
+            OVERTAKE (int): Overtake ERS deployment (3)
+
+            Note:
+                Each attribute represents a unique ERS deployment mode identified by an integer value.
+        """
+
+        OFF = 0
+        MEDIUM = 1
+        FULL = 2
+
+        def __str__(self) -> str:
+            """
+            Returns a human-readable string representation of the Traction Control Assist mode.
+
+            Returns:
+                str: String representation of the Traction Control Assist mode.
+            """
+            return self.name
+
+        @staticmethod
+        def isValid(traction_control_assist_mode: int) -> bool:
+            """
+            Check if the Traction Control Assist code maps to a valid enum value.
+
+            Args:
+                event_type (int): The Traction Control Assist code
+
+            Returns:
+                bool: True if the event type is valid, False otherwise.
+            """
+            if isinstance(traction_control_assist_mode, CarStatusData.TractionControlAssistMode):
+                return True  # It's already an instance of CarStatusData.TractionControlAssistMode
+            else:
+                # check if the integer value falls in range
+                min_value = min(member.value for member in CarStatusData.TractionControlAssistMode)
+                max_value = max(member.value for member in CarStatusData.TractionControlAssistMode)
+                return min_value <= traction_control_assist_mode <= max_value
 
     def __init__(self, data) -> None:
         """
@@ -300,6 +345,7 @@ class CarStatusData:
             self.m_networkPaused
         ) = struct.unpack(self.PACKET_FORMAT, data)
 
+        self.m_antiLockBrakes = bool(self.m_antiLockBrakes)
         if ActualTyreCompound.isValid(self.m_actualTyreCompound):
             self.m_actualTyreCompound = ActualTyreCompound(self.m_actualTyreCompound)
         if VisualTyreCompound.isValid(self.m_visualTyreCompound):
@@ -308,6 +354,8 @@ class CarStatusData:
             self.m_vehicleFiaFlags = CarStatusData.VehicleFIAFlags(self.m_vehicleFiaFlags)
         if CarStatusData.ERSDeployMode.isValid(self.m_ersDeployMode):
             self.m_ersDeployMode = CarStatusData.ERSDeployMode(self.m_ersDeployMode)
+        if CarStatusData.TractionControlAssistMode.isValid(self.m_tractionControl):
+            self.m_tractionControl = CarStatusData.TractionControlAssistMode(self.m_tractionControl)
 
     def __str__(self):
         """
@@ -354,7 +402,7 @@ class CarStatusData:
         """
 
         return {
-            "traction-control": self.m_tractionControl,
+            "traction-control": str(self.m_tractionControl),
             "anti-lock-brakes": self.m_antiLockBrakes,
             "fuel-mix": self.m_fuelMix,
             "front-brake-bias": self.m_frontBrakeBias,
@@ -378,6 +426,6 @@ class CarStatusData:
             "ers-harvested-this-lap-mguk": self.m_ersHarvestedThisLapMGUK,
             "ers-harvested-this-lap-mguh": self.m_ersHarvestedThisLapMGUH,
             "ers-deployed-this-lap": self.m_ersDeployedThisLap,
-            "ers-max-capacity" : self.max_ers_store_energy,
+            "ers-max-capacity" : self.MAX_ERS_STORE_ENERGY,
             "network-paused": self.m_networkPaused,
         }
