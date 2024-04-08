@@ -124,26 +124,28 @@ def getFastestTimesJson(json_data: Dict[str, Any], driver_data: Optional[Dict[st
                         fastest_dict['time'] = session_history["lap-history-data"][fastest_lap_num-1][best_time_key]
                 else:
                     best_time_lap_num = session_history[best_time_lap_num_key]
-                    best_lap_time = session_history["lap-history-data"][best_time_lap_num-1][best_time_key]
-                    if best_lap_time < fastest_dict['time']:
-                        fastest_dict['driver-index'] = driver_index
-                        fastest_dict['lap-number'] = best_time_lap_num
-                        fastest_dict['time'] = best_lap_time
-                        fastest_dict['driver-name'] = driver_data["driver-name"]
-                        fastest_dict['team-id'] = driver_data["participant-data"]["team-id"]
+                    best_time_lap_index = best_time_lap_num - 1
+                    if 0 <= best_time_lap_index < len(session_history["lap-history-data"]):
+                        best_lap_time = session_history["lap-history-data"][best_time_lap_index][best_time_key]
+                        if best_lap_time < fastest_dict['time']:
+                            fastest_dict['driver-index'] = driver_index
+                            fastest_dict['lap-number'] = best_time_lap_num
+                            fastest_dict['time'] = best_lap_time
+                            fastest_dict['driver-name'] = driver_data["driver-name"]
+                            fastest_dict['team-id'] = driver_data["participant-data"]["team-id"]
         return fastest_dict
 
     fastest_dict = {
-        'lap' : getFastestTimesDict( json_data=json_data,
+        'lap' : getFastestTimesDict(json_data=json_data,
                                     best_time_lap_num_key="best-lap-time-lap-num",
                                     best_time_key="lap-time-in-ms"),
-        's1' : getFastestTimesDict(  json_data=json_data,
+        's1' : getFastestTimesDict(json_data=json_data,
                                     best_time_lap_num_key="best-sector-1-lap-num",
                                     best_time_key="sector-1-time-in-ms"),
-        's2' : getFastestTimesDict(  json_data=json_data,
+        's2' : getFastestTimesDict(json_data=json_data,
                                     best_time_lap_num_key="best-sector-2-lap-num",
                                     best_time_key="sector-2-time-in-ms"),
-        's3' : getFastestTimesDict(  json_data=json_data,
+        's3' : getFastestTimesDict(json_data=json_data,
                                     best_time_lap_num_key="best-sector-3-lap-num",
                                     best_time_key="sector-3-time-in-ms"),
     }
