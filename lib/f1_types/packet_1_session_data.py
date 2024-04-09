@@ -162,6 +162,8 @@ class WeatherForecastSample:
             LIGHT_RAIN (int): Light rain weather condition.
             HEAVY_RAIN (int): Heavy rain weather condition.
             STORM (int): Stormy weather condition.
+            THUNDERSTORM (int) : Thunderstormy weather condition. (this is not documented,
+                but there is a value of 6 that may be sent. I'm just guessing here)
 
             Note:
                 Each attribute represents a unique weather condition identified by an integer value.
@@ -172,6 +174,7 @@ class WeatherForecastSample:
         LIGHT_RAIN = 3
         HEAVY_RAIN = 4
         STORM = 5
+        THUNDERSTORM = 6
 
         def __str__(self):
             """
@@ -187,6 +190,7 @@ class WeatherForecastSample:
                 WeatherForecastSample.WeatherCondition.LIGHT_RAIN: "Light Rain",
                 WeatherForecastSample.WeatherCondition.HEAVY_RAIN: "Heavy Rain",
                 WeatherForecastSample.WeatherCondition.STORM: "Storm",
+                WeatherForecastSample.WeatherCondition.THUNDERSTORM: "Thunderstorm",
             }[self]
 
         @staticmethod
