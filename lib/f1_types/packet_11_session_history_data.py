@@ -116,13 +116,13 @@ class LapHistoryData:
             "lap-time-str": F1Utils.millisecondsToMinutesSecondsMilliseconds(self.m_lapTimeInMS),
             "sector-1-time-in-ms": self.m_sector1TimeInMS,
             "sector-1-time-minutes": self.m_sector1TimeMinutes,
-            "sector-1-time-str" : F1Utils.millisecondsToSecondsStr(self.m_sector1TimeInMS),
+            "sector-1-time-str" : F1Utils.millisecondsToSecondsMilliseconds(self.m_sector1TimeInMS),
             "sector-2-time-in-ms": self.m_sector2TimeInMS,
             "sector-2-time-minutes": self.m_sector2TimeMinutes,
-            "sector-2-time-str": F1Utils.millisecondsToSecondsStr(self.m_sector2TimeInMS),
+            "sector-2-time-str": F1Utils.millisecondsToSecondsMilliseconds(self.m_sector2TimeInMS),
             "sector-3-time-in-ms": self.m_sector3TimeInMS,
             "sector-3-time-minutes": self.m_sector3TimeMinutes,
-            "sector-3-time-str": F1Utils.millisecondsToSecondsStr(self.m_sector3TimeInMS),
+            "sector-3-time-str": F1Utils.millisecondsToSecondsMilliseconds(self.m_sector3TimeInMS),
             "lap-valid-bit-flags": self.m_lapValidBitFlags,
         }
 

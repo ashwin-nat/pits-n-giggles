@@ -681,7 +681,7 @@ class F1Utils:
         millisecondsToSecondsMilliseconds(milliseconds) -> str:
             Convert milliseconds to a formatted string in the format "SS.SSS".
 
-        millisecondsToSecondsStr(milliseconds) -> str:
+        millisecondsToSecondsMilliseconds(milliseconds) -> str:
             Convert milliseconds to a formatted string in the format "SS.SSS".
 
         secondsToMinutesSecondsMilliseconds(seconds) -> str:
@@ -746,27 +746,6 @@ class F1Utils:
         seconds, milliseconds = divmod(milliseconds, 1000)
 
         return f"{seconds}.{milliseconds:03}"
-
-    @staticmethod
-    def millisecondsToSecondsStr(milliseconds: int) -> str:
-        """
-        Convert milliseconds to a formatted string in the format "SS.SSS".
-
-        Args:
-            milliseconds (int): The input time in milliseconds.
-
-        Returns:
-            str: The formatted time string.
-        """
-        if not isinstance(milliseconds, int):
-            raise ValueError("Input must be an integer representing milliseconds")
-
-        if milliseconds < 0:
-            raise ValueError("Input must be a non-negative integer")
-
-        total_seconds, milliseconds = divmod(milliseconds, 1000)
-
-        return f"{total_seconds:02}.{milliseconds:03}"
 
     @staticmethod
     def secondsToMinutesSecondsMilliseconds(seconds: float) -> str:
