@@ -326,6 +326,8 @@ SOFTWARE.
         var player; // Define YT player
         let is24HourFormat = true; // Initial format
         let relativeDelta = false; // Initial format
+        // Check if delta column needs to be displayed
+        const shouldHideDeltaColumn = {{ hide_delta_column | tojson | safe }};
 
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('youtubeAudio', {
@@ -440,13 +442,27 @@ SOFTWARE.
                 nameCell.appendChild(nameLink);
 
                 row.insertCell().textContent = entry["team"];
-                if (relativeDelta) {
-                    row.insertCell().textContent = entry["delta"];
-                } else {
-                    row.insertCell().textContent = entry["delta-to-leader"];
+                if (!shouldHideDeltaColumn) {
+                    if (relativeDelta) {
+                        row.insertCell().textContent = entry["delta"];
+                    } else {
+                        row.insertCell().textContent = entry["delta-to-leader"];
+                    }
                 }
                 row.insertCell().textContent = entry["ers"];
-                row.insertCell().textContent = entry["corner-cutting-warnings"];
+
+                // row.insertCell().textContent = entry["corner-cutting-warnings"];
+                const warningsPensCell = row.insertCell();
+                const dtPlusSg = entry["num-dt"] + "DT + " +
+                    entry["num-sg"] + "SG";
+
+                warningsPensCell.innerHTML =
+                    `Pens: ${entry["time-penalties"]} sec<br>` +
+                    `Warns: ${entry["corner-cutting-warnings"]}<br>` +
+                    `${dtPlusSg}`;
+                    // `DT: ${entry["num-dt"]}<br>` +
+                    // `SG: ${entry["num-sg"]}`;
+
                 row.insertCell().textContent = entry["best"];
                 row.insertCell().textContent = entry["last"];
 
@@ -1708,6 +1724,20 @@ SOFTWARE.
                 });
         });
 
+        function hideDeltaColumn() {
+            var raceTable = document.getElementById("raceTable");
+            var headers = raceTable.getElementsByTagName("th");
+
+            // Find the Delta column header
+            for (var i = 0; i < headers.length; i++) {
+                if (headers[i].textContent === "Delta") {
+                    headers[i].style.display = hideDeltaColumn ? "none" : "";
+                    break;
+                }
+            }
+        }
+
+
         // Add an event listener to the hyperlink
         document.getElementById('localTime').addEventListener('click', toggleTimeFormat);
         document.getElementById('deltaLink').addEventListener('click', toggleDeltaFormat);
@@ -1721,6 +1751,11 @@ SOFTWARE.
         // Initial fetch and display
         fetchDataAndDisplay();
         updateLocalTime();
+
+
+        if (shouldHideDeltaColumn) {
+            hideDeltaColumn();
+        }
 
     </script>
 </body>

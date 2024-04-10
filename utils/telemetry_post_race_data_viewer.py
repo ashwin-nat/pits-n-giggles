@@ -200,6 +200,10 @@ def getTelemetryInfo():
             ers_perc = data_per_driver["car-status"]["ers-store-energy"] / data_per_driver["car-status"]["ers-max-capacity"] * 100.0
             avg_tyre_wear = sum(data_per_driver["car-damage"]["tyres-wear"])/len(data_per_driver["car-damage"]["tyres-wear"])
 
+            time_pens = data_per_driver["lap-data"]["penalties"]
+            num_dt = data_per_driver["lap-data"]["num-unserved-drive-through-pens"]
+            num_sg = data_per_driver["lap-data"]["num-unserved-stop-go-pens"]
+
             json_response["table-entries"].append(
                 {
                     "position": position,
@@ -222,7 +226,10 @@ def getTelemetryInfo():
                     "index" : index,
                     "telemetry-setting" : data_per_driver["participant-data"]["telemetry-setting"], # Already NULL checked
                     "lap-progress" : None, # NULL is supported,
-                    "corner-cutting-warnings" : data_per_driver["lap-data"]["corner-cutting-warnings"]
+                    "corner-cutting-warnings" : data_per_driver["lap-data"]["corner-cutting-warnings"],
+                    "time-penalties" : time_pens,
+                    "num-dt" : num_dt,
+                    "num-sg" : num_sg
                 }
             )
 
@@ -308,7 +315,8 @@ class TelemetryWebServer:
             return render_template('index.html',
                 packet_capture_enabled=self.m_packet_capture_enabled,
                 client_poll_interval_ms=self.m_client_poll_interval_ms,
-                player_only_telemetry=False)
+                player_only_telemetry=False,
+                hide_delta_column=False)
 
         # Define your endpoint
         @self.m_app.route('/telemetry-info')
