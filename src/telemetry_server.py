@@ -178,7 +178,8 @@ class TelemetryWebServer:
             return render_template('index.html',
                 packet_capture_enabled=self.m_packet_capture_enabled,
                 client_poll_interval_ms=self.m_client_poll_interval_ms,
-                player_only_telemetry=False)
+                player_only_telemetry=False,
+                hide_delta_column=True)
 
         # Render the HTML page
         @self.m_app.route('/obs-overlay')
@@ -278,7 +279,10 @@ class TelemetryWebServer:
                     "index" : self.getValueOrDefaultValue(data_per_driver.m_index),
                     "telemetry-setting" : data_per_driver.m_telemetry_restrictions, # Already NULL checked
                     "lap-progress" : data_per_driver.m_lap_progress, # NULL is supported
-                    "corner-cutting-warnings" : self.getValueOrDefaultValue(data_per_driver.m_corner_cutting_warnings)
+                    "corner-cutting-warnings" : self.getValueOrDefaultValue(data_per_driver.m_corner_cutting_warnings),
+                    "time-penalties" : self.getValueOrDefaultValue(data_per_driver.m_time_penalties),
+                    "num-dt" : self.getValueOrDefaultValue(data_per_driver.m_num_dt),
+                    "num-sg" : self.getValueOrDefaultValue(data_per_driver.m_num_sg)
                 }
             )
 
@@ -353,7 +357,10 @@ class TelemetryWebServer:
                     "index" : self.getValueOrDefaultValue(data_per_driver.m_index),
                     "telemetry-setting" : data_per_driver.m_telemetry_restrictions, # Already NULL checked
                     "lap-progress" : data_per_driver.m_lap_progress, # NULL is supported
-                    "corner-cutting-warnings" : self.getValueOrDefaultValue(data_per_driver.m_corner_cutting_warnings)
+                    "corner-cutting-warnings" : self.getValueOrDefaultValue(data_per_driver.m_corner_cutting_warnings),
+                    "time-penalties" : self.getValueOrDefaultValue(data_per_driver.m_time_penalties),
+                    "num-dt" : self.getValueOrDefaultValue(data_per_driver.m_num_dt),
+                    "num-sg" : self.getValueOrDefaultValue(data_per_driver.m_num_sg),
                 }
             )
 

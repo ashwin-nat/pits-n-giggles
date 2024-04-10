@@ -308,7 +308,8 @@ class TelemetryWebServer:
             return render_template('index.html',
                 packet_capture_enabled=self.m_packet_capture_enabled,
                 client_poll_interval_ms=self.m_client_poll_interval_ms,
-                player_only_telemetry=False)
+                player_only_telemetry=False,
+                hide_delta_column=False)
 
         # Define your endpoint
         @self.m_app.route('/telemetry-info')

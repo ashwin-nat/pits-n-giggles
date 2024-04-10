@@ -1212,11 +1212,19 @@ def getDriverData(num_adjacent_cars: Optional[int] = 2) -> Tuple[List[DataPerDri
 
             if temp_data.m_packet_lap_data:
                 temp_data.m_corner_cutting_warnings = temp_data.m_packet_lap_data.m_cornerCuttingWarnings
+                temp_data.m_time_penalties = temp_data.m_packet_lap_data.m_penalties
+                temp_data.m_num_dt = temp_data.m_packet_lap_data.m_numUnservedDriveThroughPens
+                temp_data.m_num_sg = temp_data.m_packet_lap_data.m_numUnservedStopGoPens
                 if track_length:
                     temp_data.m_lap_progress = (temp_data.m_packet_lap_data.m_lapDistance / track_length) * 100.0
+                else:
+                    temp_data.m_lap_progress = None
             else:
                 temp_data.m_lap_progress = None
                 temp_data.m_corner_cutting_warnings = None
+                temp_data.m_time_penalties = None
+                temp_data.m_num_dt = None
+                temp_data.m_num_sg = None
 
             # Add this prepped record into the final list
             final_list.append(temp_data)
