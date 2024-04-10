@@ -245,7 +245,8 @@ class DataPerDriver:
         self.m_delta_to_car_in_front: Optional[int] = None
         self.m_delta_to_leader: Optional[int] = None
         self.m_ers_perc: Optional[float] = None
-        self.m_best_lap: Optional[str] = None
+        self.m_best_lap_str: Optional[str] = None
+        self.m_best_lap_ms: Optional[str] = None
         self.m_last_lap: Optional[str] = None
         self.m_tyre_wear: Optional[float] = None
         self.m_is_player: Optional[bool] = None
@@ -585,33 +586,56 @@ class DriverData:
         self.m_fastest_index = None
         fastest_time_ms = 500000000000 # cant be slower than this, right?
         for index, driver_data in self.m_driver_data.items():
-            if driver_data.m_best_lap is not None:
-                temp_lap_ms = F1Utils.timeStrToMilliseconds(driver_data.m_best_lap)
-                if temp_lap_ms > 0 and temp_lap_ms < fastest_time_ms:
-                    fastest_time_ms = temp_lap_ms
+            if driver_data.m_best_lap_str is not None:
+                if driver_data.m_best_lap_ms > 0 and driver_data.m_best_lap_ms < fastest_time_ms:
+                    fastest_time_ms = driver_data.m_best_lap_ms
                     self.m_fastest_index = index
 
-    def _shouldRecomputeFastestLap(self) -> bool:
-        """Whether fastest lap needs to be recomputed
+    def _shouldRecomputeFastestLap(self, driver_data: DataPerDriver) -> bool:
+        """
+        Check if the fastest lap needs to be recomputed based on a given driver's data.
+
+        Args:
+            driver_data (DataPerDriver): The data for the driver.
 
         Returns:
-            bool: True if recomputation is required
+            bool: True if the fastest lap needs to be recomputed, False otherwise.
         """
 
-        if (self.m_fastest_index is None) and (self.m_num_active_cars is not None):
-            count_null_best_times = 0
-            for curr_index, driver_data in _driver_data.m_driver_data.items():
-                if curr_index >= _driver_data.m_num_active_cars:
-                    continue
-                if driver_data.m_best_lap is None:
-                    count_null_best_times += 1
-            if count_null_best_times == 0:
-                # only recompute once all the best lap times are available
-                return True
-            else:
-                return False
+        # False if no data is available
+        if self.m_num_active_cars is None or self.m_num_active_cars == 0:
+            return False
+
+        # Driver data is not available
+        if driver_data.m_best_lap_str is None:
+            return False
+
+        # True if fastest lap has not been determined yet
+        if self.m_fastest_index is None:
+            return True
+
+        # Determine this guy's best lap
+        driver_best_lap_ms = None
+        if driver_data.m_packet_session_history:
+            # First option, session history data
+            best_lap_index: int = driver_data.m_packet_session_history.m_bestLapTimeLapNum - 1
+            if 0 <= best_lap_index < len(driver_data.m_packet_session_history.m_lapHistoryData):
+                if driver_data.m_packet_session_history.m_lapHistoryData[best_lap_index].isLapValid():
+                    driver_best_lap_ms = driver_data.m_packet_session_history.m_lapHistoryData[best_lap_index].m_lapTimeInMS
+        if driver_best_lap_ms is None:
+            # Second option, from the object itself
+            driver_best_lap_ms = driver_data.m_best_lap_ms
+
+        # False if this guy does not have a valid best lap
+        if driver_data.m_best_lap_ms is None:
+            return False
+
+        # Check if this guy's lap is faster than the best lap
+        if self.m_driver_data[self.m_fastest_index].m_best_lap_ms > driver_best_lap_ms:
+            return True
         else:
             return False
+
 
     def _updateTyreSetData(self, driver_data: DataPerDriver, fitted_index: int) -> None:
         """Update the current tyre set in the history list, if required.
@@ -644,6 +668,7 @@ class DriverData:
         """
 
         num_active_cars = 0
+        should_recompute = False
         result_str_map = {
             ResultStatus.DID_NOT_FINISH : "DNF",
             ResultStatus.DISQUALIFIED : "DSQ",
@@ -693,9 +718,15 @@ class DriverData:
             # Save a copy of the packet
             obj_to_be_updated.m_packet_lap_data = lap_data
 
+            # Check if fastest lap needs to be recomputed
+            if not should_recompute:
+                should_recompute = self._shouldRecomputeFastestLap(obj_to_be_updated)
+
         self.m_num_active_cars = num_active_cars
         # Recompute the fastest lap if required
-        if self._shouldRecomputeFastestLap():
+        # if self._shouldRecomputeFastestLap():
+        #     self._recomputeFastestLap()
+        if should_recompute:
             self._recomputeFastestLap()
 
     def processFastestLapUpdate(self, packet: PacketEventData.FastestLap) -> None:
@@ -706,7 +737,8 @@ class DriverData:
         """
 
         obj_to_be_updated = self._getObjectByIndexCreate(packet.vehicleIdx)
-        obj_to_be_updated.m_best_lap = F1Utils.floatSecondsToMinutesSecondsMilliseconds(packet.lapTime)
+        obj_to_be_updated.m_best_lap_str = F1Utils.floatSecondsToMinutesSecondsMilliseconds(packet.lapTime)
+        obj_to_be_updated.m_best_lap_ms = packet.lapTime
         self.m_fastest_index = packet.vehicleIdx
 
     def processRetirement(self, packet: PacketEventData.Retirement) -> None:
@@ -820,10 +852,12 @@ class DriverData:
         obj_to_be_updated = self._getObjectByIndexCreate(packet.m_carIdx)
         obj_to_be_updated.m_packet_session_history = packet
         if (packet.m_bestLapTimeLapNum > 0) and (packet.m_bestLapTimeLapNum <= packet.m_numLaps):
-            obj_to_be_updated.m_best_lap = F1Utils.millisecondsToMinutesSecondsMilliseconds(
-                packet.m_lapHistoryData[packet.m_bestLapTimeLapNum-1].m_lapTimeInMS)
+            obj_to_be_updated.m_best_lap_ms = packet.m_lapHistoryData[packet.m_bestLapTimeLapNum-1].m_lapTimeInMS
+            obj_to_be_updated.m_best_lap_str = F1Utils.millisecondsToMinutesSecondsMilliseconds(
+                obj_to_be_updated.m_best_lap_ms)
 
-        if self._shouldRecomputeFastestLap():
+        # if self._shouldRecomputeFastestLap():
+        if self._shouldRecomputeFastestLap(obj_to_be_updated):
             self._recomputeFastestLap()
 
     def processTyreSetsUpdate(self, packet: PacketTyreSetsData) -> None:
@@ -1160,7 +1194,7 @@ def getDriverData(num_adjacent_cars: Optional[int] = 2) -> Tuple[List[DataPerDri
 
         # Update the list data
         if _driver_data.m_fastest_index is not None:
-            fastest_lap_time = _driver_data.m_driver_data[_driver_data.m_fastest_index].m_best_lap
+            fastest_lap_time = _driver_data.m_driver_data[_driver_data.m_fastest_index].m_best_lap_str
         for position in positions:
             index, temp_data = _driver_data.getIndexByTrackPosition(position)
             if (index, temp_data) == (None, None):
@@ -1520,5 +1554,9 @@ def _recomputeDeltas(driver_list : List[DataPerDriver], is_spectator_mode : bool
 
             # finally set the delta for the player
             driver_list[player_index].m_delta_to_car_in_front = "---"
+
+        # Update the race leader's delta to car in front
+        if driver_list[0].m_position == 1:
+            driver_list[0].m_delta_to_car_in_front = "---"
 
     return driver_list
