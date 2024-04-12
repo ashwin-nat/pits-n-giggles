@@ -1204,7 +1204,7 @@ def processTyreSetsUpdate(packet: PacketTyreSetsData) -> None:
 
 # -------------------------------------- WEB API HANDLERS --------------------------------------------------------------
 
-def getGlobals(num_weather_forecast_samples=4) -> \
+def getGlobals(num_weather_forecast_samples=None) -> \
     Tuple[str, int, str, int, int, str, List[WeatherForecastSample], int, bool]:
     """
     Retrieves the global info regarding the current session
@@ -1229,7 +1229,10 @@ def getGlobals(num_weather_forecast_samples=4) -> \
         curr_lap = _driver_data.m_driver_data[player_index].m_current_lap if player_index is not None else None
     with _globals_lock:
         if _globals.m_weather_forecast_samples is not None:
-            weather_forecast_samples = _globals.m_weather_forecast_samples[:num_weather_forecast_samples]
+            if num_weather_forecast_samples is None:
+                weather_forecast_samples = _globals.m_weather_forecast_samples[:num_weather_forecast_samples]
+            else:
+                weather_forecast_samples = _globals.m_weather_forecast_samples
         else:
             weather_forecast_samples = []
         return (_globals.m_circuit, _globals.m_track_temp, _globals.m_event_type,

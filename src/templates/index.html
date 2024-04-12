@@ -69,7 +69,7 @@ SOFTWARE.
             border-radius: 10px;
             color: #fdd835;
             /* Text in gold */
-            font-size: 22px;
+            font-size: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -90,7 +90,7 @@ SOFTWARE.
             color: #fdd835;
             /* Gold text */
             border-spacing: 0;
-            font-size: 25.5px;
+            font-size: 24px;
         }
 
         th,
@@ -407,11 +407,20 @@ SOFTWARE.
             const weatherTableBody = document.querySelector('#weatherTable tbody');
             weatherTableBody.innerHTML = '';
 
+            let iterationCount = 0; // Counter to track the number of iterations
+            const maxWeatherSamples = 5;
             weatherData.forEach(data => {
-                const row = weatherTableBody.insertRow();
-                row.insertCell().textContent = data["time-offset"];
-                row.insertCell().textContent = data["rain-probability"];
-                row.insertCell().textContent = data["weather"];
+                if (iterationCount < maxWeatherSamples) {
+                    const row = weatherTableBody.insertRow();
+                    row.insertCell().textContent = data["time-offset"];
+                    row.insertCell().textContent = data["rain-probability"];
+                    row.insertCell().textContent = data["weather"];
+
+                    iterationCount++; // Increment the counter after each iteration
+                } else {
+                    // Break out of the loop if the maximum iterations (5) is reached
+                    return;
+                }
             });
         }
 
