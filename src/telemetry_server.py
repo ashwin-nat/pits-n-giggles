@@ -179,7 +179,7 @@ class TelemetryWebServer:
                 packet_capture_enabled=self.m_packet_capture_enabled,
                 client_poll_interval_ms=self.m_client_poll_interval_ms,
                 player_only_telemetry=False,
-                hide_delta_column=True)
+                live_data_mode=True)
 
         # Render the HTML page
         @self.m_app.route('/obs-overlay')
@@ -282,7 +282,8 @@ class TelemetryWebServer:
                     "corner-cutting-warnings" : self.getValueOrDefaultValue(data_per_driver.m_corner_cutting_warnings),
                     "time-penalties" : self.getValueOrDefaultValue(data_per_driver.m_time_penalties),
                     "num-dt" : self.getValueOrDefaultValue(data_per_driver.m_num_dt),
-                    "num-sg" : self.getValueOrDefaultValue(data_per_driver.m_num_sg)
+                    "num-sg" : self.getValueOrDefaultValue(data_per_driver.m_num_sg),
+                    "tyre-wear-prediction" : data_per_driver.getTyrePredictionsJSONList(data_per_driver.m_ideal_pit_stop_window)
                 }
             )
 

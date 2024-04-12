@@ -327,7 +327,7 @@ SOFTWARE.
         let is24HourFormat = true; // Initial format
         let relativeDelta = false; // Initial format
         // Check if delta column needs to be displayed
-        const shouldHideDeltaColumn = {{ hide_delta_column | tojson | safe }};
+        const shouldHideDeltaColumn         = {{ live_data_mode | tojson | safe }};
 
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('youtubeAudio', {
