@@ -340,7 +340,7 @@ class DataPerDriver:
                     self.m_tyre_wear_extrapolator.getTyreWearPrediction(next_pit_window).toJSON(),
                     self.m_tyre_wear_extrapolator.getTyreWearPrediction().toJSON(),
                 ]
-                if ret_list[0].lap_number == ret_list[1].lap_number:
+                if ret_list[0]["lap-number"] == ret_list[1]["lap-number"]:
                     return [ret_list[0]]
                 else:
                     return ret_list

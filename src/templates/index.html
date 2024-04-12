@@ -309,6 +309,7 @@ SOFTWARE.
                 <th>Best</th>
                 <th>Last</th>
                 <th>Tyre Info</th>
+                <th>Wear Prediction</th>
             </tr>
         </thead>
         <tbody></tbody>
@@ -328,6 +329,7 @@ SOFTWARE.
         let relativeDelta = false; // Initial format
         // Check if delta column needs to be displayed
         const shouldHideDeltaColumn         = {{ live_data_mode | tojson | safe }};
+        const shouldHidePredictionColumn    = !{{ live_data_mode | tojson | safe }};
 
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('youtubeAudio', {
@@ -470,6 +472,28 @@ SOFTWARE.
                 tyreInfoCell.innerHTML = `${entry["average-tyre-wear"]}<br>` +
                     `${entry["tyre-age"]} lap(s) ` + `(${entry["num-pitstops"]} pit)<br>` +
                     `${entry["tyre-compound"]}`;
+
+                    if (!shouldHidePredictionColumn) {
+                        let predictionHTML = ""; // Declare predictionHTML outside the loop
+                        predictionData = entry["tyre-wear-prediction"];
+                        console.log("populating prediction column");
+                        if (predictionData.length === 0) {
+                            predictionHTML = "N/A";
+                            console.log("prediction is not available");
+                        } else {
+                            predictionData.forEach((prediction, index) => {
+                                const flWear = prediction["fl-tyre-wear"];
+                                const frWear = prediction["fr-tyre-wear"];
+                                const rlWear = prediction["rl-tyre-wear"];
+                                const rrWear = prediction["rr-tyre-wear"];
+                                const lapNum = prediction["lap-number"];
+                                const avgWear = formatFloatWithTwoDecimals((flWear + frWear + rlWear + rrWear) / 4); // Corrected variable name
+                                predictionHTML += "Lap " + lapNum + ": " + avgWear + "%<br>"; // Concatenate prediction strings
+                            });
+                            console.log("finished populating prediction column");
+                        }
+                        row.insertCell().innerHTML = predictionHTML; // Set innerHTML outside the loop
+                    }
 
                 row.className = '';
                 if (entry["is-fastest"]) {
@@ -1724,14 +1748,14 @@ SOFTWARE.
                 });
         });
 
-        function hideDeltaColumn() {
+        function hideColumn(columnName) {
             var raceTable = document.getElementById("raceTable");
             var headers = raceTable.getElementsByTagName("th");
 
             // Find the Delta column header
             for (var i = 0; i < headers.length; i++) {
-                if (headers[i].textContent === "Delta") {
-                    headers[i].style.display = hideDeltaColumn ? "none" : "";
+                if (headers[i].textContent === columnName) {
+                    headers[i].style.display = hideColumn ? "none" : "";
                     break;
                 }
             }
@@ -1754,7 +1778,10 @@ SOFTWARE.
 
 
         if (shouldHideDeltaColumn) {
-            hideDeltaColumn();
+            hideColumn("Delta");
+        }
+        if (shouldHidePredictionColumn) {
+            hideColumn("Wear Prediction");
         }
 
     </script>
