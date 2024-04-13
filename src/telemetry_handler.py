@@ -322,7 +322,7 @@ def dumpPktCapToFile(
                 global g_directory_mapping
                 file_name = g_directory_mapping['packet-captures'] + \
                             'capture_' + getTimestampStr() + \
-                            '.' + g_packet_capture_table.file_extension
+                            '.' + F1PacketCapture.file_extension
             file_name, num_packets, num_bytes = g_packet_capture_table.m_packet_capture.dumpToFile(
                 file_name=file_name,
                 progress_update_callback=progressBarUpdater,
