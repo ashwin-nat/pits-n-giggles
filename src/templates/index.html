@@ -1368,6 +1368,64 @@ SOFTWARE.
                 return fuelHistoryContent;
             }
 
+            // Remove tyre sets that are not available and sort them by compound name
+            function getTyreSetsInfoContent(data) {
+
+                function sanitizeTyreSetData(tyre_set_data) {
+                    const available_tyres = tyre_set_data
+                        .filter(tyre => tyre.available === true)
+                        .map((tyre, index) => ({ ...tyre, index }));
+                    const sorted_tyres = available_tyres.sort(
+                        (a, b) => a["actual-tyre-compound"].localeCompare(b["actual-tyre-compound"]));
+                    return sorted_tyres;
+                }
+
+                const tyreSetsInfoContent = document.createElement('div');
+                const tyreSetsInfoTable = document.createElement('table');
+                tyreSetsInfoTable.classList.add('tyre-sets-info-table');
+                const tyreSetsInfoTableHeader = tyreSetsInfoTable.createTHead();
+                const tyreSetsInfoTableHeaderRow = tyreSetsInfoTableHeader.insertRow();
+                tyreSetsInfoTableHeaderRow.innerHTML = `
+                    <th>Index</th>
+                    <th>Compound</th>
+                    <th>Wear</th>
+                    <th>Lifespan</th>
+                    <th>Lap Delta</th>
+                `;
+                const tyreSetsInfoBody = tyreSetsInfoTable.createTBody();
+                if ("tyre-sets" in data && data["tyre-sets"] != null) {
+
+                    const tyreSetsInfoList = sanitizeTyreSetData(data["tyre-sets"]["tyre-set-data"]);
+                    if (tyreSetsInfoList.length > 0) {
+
+                        tyreSetsInfoList.forEach((tyreSet) => {
+                            console.log(tyreSet);
+                            const row = tyreSetsInfoBody.insertRow();
+                            row.innerHTML = `
+                                <td>${tyreSet["index"]}</td>
+                                <td>${tyreSet["actual-tyre-compound"] + " - " + tyreSet["visual-tyre-compound"]}</td>
+                                <td>${tyreSet["wear"]}</td>
+                                <td>${tyreSet["life-span"]} laps</td>
+                                <td>${formatFloatWithTwoDecimalsSigned(tyreSet["lap-delta-time"] / 1000)}s</td>
+                            `;
+
+                            if (tyreSet["fitted"]) {
+                                row.style.color = '#32F129';
+                            }
+                        });
+                    } else {
+                        const row = tyreSetsInfoBody.insertRow();
+                        row.innerHTML = '<td colspan="5">Tyre Sets data not available</td>';
+                    }
+
+                } else {
+                    const row = tyreSetsInfoBody.insertRow();
+                    row.innerHTML = '<td colspan="5">Tyre Sets data not available</td>';
+                }
+                tyreSetsInfoContent.appendChild(createAccordion('Tyre Sets', tyreSetsInfoTable));
+                return tyreSetsInfoContent;
+            }
+
             function getTyreStintHistoryContent(data) {
 
                 const tyreStintHistoryContent = document.createElement('div');
@@ -1597,6 +1655,9 @@ SOFTWARE.
 
             // Fuel history
             modalContent.appendChild(getFuelHistoryContent(data));
+
+            // Tyre sets info
+            modalContent.appendChild(getTyreSetsInfoContent(data));
 
             // Tyre Stint History
             modalContent.appendChild(getTyreStintHistoryContent(data));
