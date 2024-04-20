@@ -127,6 +127,7 @@ class TelemetryWebServer:
             Returns:
                 str: JSON response indicating success or failure.
             """
+
             # Access parameters using request.args
             index = request.args.get('index')
 

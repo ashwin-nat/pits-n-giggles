@@ -92,10 +92,11 @@ class TyreWearPerLap:
 
         return {
             "lap-number": self.lap_number,
-            "fl-tyre-wear": self.fl_tyre_wear,
-            "fr-tyre-wear": self.fr_tyre_wear,
-            "rl-tyre-wear": self.rl_tyre_wear,
-            "rr-tyre-wear": self.rr_tyre_wear,
+            "front-left-wear": self.fl_tyre_wear,
+            "front-right-wear": self.fr_tyre_wear,
+            "rear-left-wear": self.rl_tyre_wear,
+            "rear-right-wear": self.rr_tyre_wear,
+            "desc" : self.m_desc
         }
 
 class TyreWearExtrapolatorPerSegment:
@@ -151,11 +152,25 @@ class TyreWearExtrapolator:
         return ret_status
 
     def clear(self) -> None:
+        """Clear the tyre wear extrapolator's data
+        """
 
         self._initMembers([], total_laps=self.m_total_laps)
 
     def getTyreWearPrediction(self, lap_number: Optional[int] = None) -> TyreWearPerLap:
+        """Get the tyre wear prediction for the specified lap.
 
+        Args:
+            lap_number (Optional[int], optional): The lap number. If None, returns the tyre wear prediction for the
+                final lap
+
+        Raises:
+            IndexError: If the specified lap number is not available. Usually happens if the lap number is not within
+                the range of available laps, or if data is not sufficient
+
+        Returns:
+            TyreWearPerLap: The object containing the tyre wear prediction for the specified lap
+        """
         if lap_number is None:
             return self.m_predicted_tyre_wear[-1]
         else:
@@ -163,11 +178,16 @@ class TyreWearExtrapolator:
                 if point.lap_number == lap_number:
                     return point
 
-            raise IndexError("Lap number not found. Max lap number is " +
+            raise IndexError("Lap number " + str(lap_number) + "not found. Max lap number is " +
                              str(self.m_predicted_tyre_wear[-1].lap_number))
 
     @property
     def predicted_tyre_wear(self) -> List[TyreWearPerLap]:
+        """The list of predicted tyre wear
+
+        Returns:
+            List[TyreWearPerLap]: The list of objects representing the tyre wear per lap
+        """
         return self.m_predicted_tyre_wear
 
     def updateDataList(self, new_data: List[TyreWearPerLap]):
@@ -343,7 +363,7 @@ class TyreWearExtrapolator:
         # Update the predicted tyre wear data structure
         self._extrapolateTyreWear()
 
-
+# TODO: remove this
 if __name__ == "__main__":
 
     # Empty extrapolator

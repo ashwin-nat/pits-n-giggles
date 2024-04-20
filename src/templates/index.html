@@ -252,10 +252,11 @@ SOFTWARE.
             align-items: center;
             margin: auto;
         }
-
     </style>
     <script src="https://www.youtube.com/iframe_api"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
+    <!-- Include Moment.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
     <!-- Include Chart.js library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -328,8 +329,8 @@ SOFTWARE.
         let is24HourFormat = true; // Initial format
         let relativeDelta = false; // Initial format
         // Check if delta column needs to be displayed
-        const shouldHideDeltaColumn         = {{ live_data_mode | tojson | safe }};
-        const shouldHidePredictionColumn    = !{{ live_data_mode | tojson | safe }};
+        const shouldHideDeltaColumn = {{ live_data_mode | tojson | safe }};
+        const shouldHidePredictionColumn = !{{ live_data_mode | tojson | safe }};
 
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('youtubeAudio', {
@@ -396,11 +397,11 @@ SOFTWARE.
                     updateGlobalInfo(data["circuit"], data["event-type"], data["track-temperature"], data["current-lap"],
                         data["total-laps"], data["safety-car-status"], data["fastest-lap-overall"],
                         data["pit-speed-limit"], {{ packet_capture_enabled | tojson }});
-                    updateWeatherTable(data["weather-forecast-samples"]);
+        updateWeatherTable(data["weather-forecast-samples"]);
                 })
                 .catch (error => {
-                    console.error('Error fetching data:', error);
-                });
+            console.error('Error fetching data:', error);
+        });
         }
 
         function updateWeatherTable(weatherData) {
@@ -471,8 +472,8 @@ SOFTWARE.
                     `Pens: ${entry["time-penalties"]} sec<br>` +
                     `Warns: ${entry["corner-cutting-warnings"]}<br>` +
                     `${dtPlusSg}`;
-                    // `DT: ${entry["num-dt"]}<br>` +
-                    // `SG: ${entry["num-sg"]}`;
+                // `DT: ${entry["num-dt"]}<br>` +
+                // `SG: ${entry["num-sg"]}`;
 
                 row.insertCell().textContent = entry["best"];
                 row.insertCell().textContent = entry["last"];
@@ -482,27 +483,27 @@ SOFTWARE.
                     `${entry["tyre-age"]} lap(s) ` + `(${entry["num-pitstops"]} pit)<br>` +
                     `${entry["tyre-compound"]}`;
 
-                    if (!shouldHidePredictionColumn) {
-                        let predictionHTML = ""; // Declare predictionHTML outside the loop
-                        predictionData = entry["tyre-wear-prediction"];
-                        console.log("populating prediction column");
-                        if (predictionData.length === 0) {
-                            predictionHTML = "N/A";
-                            console.log("prediction is not available");
-                        } else {
-                            predictionData.forEach((prediction, index) => {
-                                const flWear = prediction["fl-tyre-wear"];
-                                const frWear = prediction["fr-tyre-wear"];
-                                const rlWear = prediction["rl-tyre-wear"];
-                                const rrWear = prediction["rr-tyre-wear"];
-                                const lapNum = prediction["lap-number"];
-                                const avgWear = formatFloatWithTwoDecimals((flWear + frWear + rlWear + rrWear) / 4); // Corrected variable name
-                                predictionHTML += "Lap " + lapNum + ": " + avgWear + "%<br>"; // Concatenate prediction strings
-                            });
-                            console.log("finished populating prediction column");
-                        }
-                        row.insertCell().innerHTML = predictionHTML; // Set innerHTML outside the loop
+                if (!shouldHidePredictionColumn) {
+                    let predictionHTML = ""; // Declare predictionHTML outside the loop
+                    predictionData = entry["tyre-wear-prediction"];
+                    // console.log("populating prediction column");
+                    if (predictionData.length === 0) {
+                        predictionHTML = "N/A";
+                        // console.log("prediction is not available");
+                    } else {
+                        predictionData.forEach((prediction, index) => {
+                            const flWear = prediction["front-left-wear"];
+                            const frWear = prediction["front-right-wear"];
+                            const rlWear = prediction["rear-left-wear"];
+                            const rrWear = prediction["rear-right-wear"];
+                            const lapNum = prediction["lap-number"];
+                            const avgWear = formatFloatWithTwoDecimals((flWear + frWear + rlWear + rrWear) / 4); // Corrected variable name
+                            predictionHTML += "Lap " + lapNum + ": " + avgWear + "%<br>"; // Concatenate prediction strings
+                        });
+                        // console.log("finished populating prediction column");
                     }
+                    row.insertCell().innerHTML = predictionHTML; // Set innerHTML outside the loop
+                }
 
                 row.className = '';
                 if (entry["is-fastest"]) {
@@ -755,10 +756,10 @@ SOFTWARE.
                 const customMarkersTableBody = customMarkersTable.createTBody();
                 if ("custom-markers" in data && data["custom-markers"].length > 0) {
 
-                    data["custom-markers"].forEach(function(marker, index) {
+                    data["custom-markers"].forEach(function (marker, index) {
                         const row = customMarkersTableBody.insertRow();
                         row.innerHTML = `
-                            <td>${index+1}</td>
+                            <td>${index + 1}</td>
                             <td>${marker["event-type"]}</td>
                             <td>${marker["track"]}</td>
                             <td>${marker["sector"]}</td>
@@ -846,6 +847,7 @@ SOFTWARE.
                     options: {
                         scales: {
                             x: {
+                                type: 'linear',
                                 scaleLabel: {
                                     display: true,
                                     labelString: xAxisLabel,
@@ -855,7 +857,9 @@ SOFTWARE.
                                     color: 'rgba(255, 255, 255, 0.1)'
                                 },
                                 ticks: {
-                                    color: 'rgba(255, 255, 255, 0.8)'
+                                    color: 'rgba(255, 255, 255, 0.8)',
+                                    stepSize: 1, // Ensure each lap number is displayed
+                                    precision: 0 // Round to whole numbers
                                 }
                             },
                             y: {
@@ -1176,7 +1180,7 @@ SOFTWARE.
                         }
                     ];
                     limits = {
-                        min : 0
+                        min: 0
                     }
                     const formatAsLapTime = true;
                     plotGraph(graphCanvas, datasets, 'Lap number', 'Time', formatAsLapTime, limits);
@@ -1398,7 +1402,7 @@ SOFTWARE.
                         }
                     ];
                     var limits = {
-                        min : 0
+                        min: 0
                     }
                     const formatAsLapTime = false;
                     plotGraph(graphCanvas, datasets, 'Lap number', 'Fuel Usage (kg)', formatAsLapTime, limits);
@@ -1523,22 +1527,28 @@ SOFTWARE.
                         if ("tyre-wear-history" in stintData && stintData["tyre-wear-history"].length > 0) {
 
                             const wearHistory = stintData["tyre-wear-history"];
+                            console.log("number of tyre wear history data points", wearHistory.length);
                             wearHistory.forEach(wearData => {
+                                console.log("wearData", wearData);
                                 graphDataFL.push({
                                     x: wearData["lap-number"],
-                                    y: formatFloatWithTwoDecimals(wearData["front-left-wear"])
+                                    y: formatFloatWithTwoDecimals(wearData["front-left-wear"]),
+                                    desc: wearData["desc"],
                                 });
                                 graphDataFR.push({
                                     x: wearData["lap-number"],
-                                    y: formatFloatWithTwoDecimals(wearData["front-right-wear"])
+                                    y: formatFloatWithTwoDecimals(wearData["front-right-wear"]),
+                                    desc: wearData["desc"],
                                 });
                                 graphDataRL.push({
                                     x: wearData["lap-number"],
-                                    y: formatFloatWithTwoDecimals(wearData["rear-left-wear"])
+                                    y: formatFloatWithTwoDecimals(wearData["rear-left-wear"]),
+                                    desc: wearData["desc"],
                                 });
                                 graphDataRR.push({
                                     x: wearData["lap-number"],
-                                    y: formatFloatWithTwoDecimals(wearData["rear-right-wear"])
+                                    y: formatFloatWithTwoDecimals(wearData["rear-right-wear"]),
+                                    desc: wearData["desc"],
                                 });
                             });
                         }
@@ -1590,9 +1600,12 @@ SOFTWARE.
                         }
                     ];
                     var limits = {
-                        min : 0,
+                        min: 0,
                     }
                     const formatAsLapTime = false;
+                    console.log("Before plotting tyre stint graph", datasets);
+                    console.log("Before plotting tyre stint graph - only FL", graphDataFL);
+                    console.log("Before plotting tyre stint graph - only FL (from datasets)", datasets[0]["data"]);
                     plotGraph(graphCanvas, datasets, 'Lap number', 'Tyre Wear %', formatAsLapTime, limits);
                     tyreStintHistorySubDiv.appendChild(graphDiv);
                 }
@@ -1853,6 +1866,11 @@ SOFTWARE.
         if (shouldHidePredictionColumn) {
             hideColumn("Wear Prediction");
         }
+
+        // Configure Chart.js to use Moment.js as the date adapter
+        // Chart.defaults.global.plugins.moment = {
+        //     locale: 'en' // Optional: set locale
+        // };
 
     </script>
 </body>

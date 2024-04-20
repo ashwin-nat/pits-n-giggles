@@ -387,6 +387,7 @@ class Nationality(Enum):
     """
     Enum representing nationalities with corresponding IDs.
     """
+    Unspecified = 0
     American = 1
     Argentinean = 2
     Australian = 3

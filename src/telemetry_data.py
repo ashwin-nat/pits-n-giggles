@@ -187,16 +187,27 @@ class DataPerDriver:
                                             Must be set using the _computeTyreStintEndLaps method
         """
 
-        def __init__(self, start_lap: int, index: int):
+        def __init__(self, start_lap: int, index: int, initial_tyre_wear: TyreWearPerLap):
             """Initialize the TyreSetHistoryEntry object. The m_end_lap attribute will be set to None
 
             Args:
                 start_lap (int): The lap at which the tire set was fitted.
                 index (int): The index representing the fitted tire set.
+                initial_tyre_wear (TyreWearPerLap): The starting tyre wear for this set (can be non 0 in case of reuse)
             """
-            self.m_start_lap = start_lap
-            self.m_fitted_index = index
-            self.m_end_lap = None
+            self.m_start_lap : int                          = start_lap
+            self.m_fitted_index : int                       = index
+            self.m_end_lap : int                            = None
+            self.m_tyre_wear_history : List[TyreWearPerLap] = [initial_tyre_wear]
+
+        def getTyreWearJSONList(self):
+            """Dump this object into JSON
+
+            Returns:
+                List[Dict[str, Any]]: The JSON dump
+            """
+
+            return [entry.toJSON() for entry in self.m_tyre_wear_history]
 
     class PerLapHistoryEntry:
         """
@@ -319,7 +330,7 @@ class DataPerDriver:
 
         # Insert the tyre set history
         self._computeTyreStintEndLaps()
-        final_json["tyre-set-history"]= self._getTyreSetHistory()
+        final_json["tyre-set-history"]= self._getTyreSetHistoryJSON()
 
         # Insert the per lap backup
         final_json["per-lap-info"] = []
@@ -329,27 +340,35 @@ class DataPerDriver:
         # Return this fully prepped JSON
         return final_json
 
-    def getTyrePredictionsJSONList(self, next_pit_window: Optional[int] = None) -> Dict[str, Any]:
+    def getTyrePredictionsJSONList(self, next_pit_window: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Get a JSON list with the tyre wear predictions
+
+        Args:
+            next_pit_window (Optional[int], optional): The next pit window lap number.
+                If None, then returns the predictions for final lap and half way through between current and final lap
+
+        Returns:
+            List[Dict[str, Any]]: List of JSON objects, each containing tyre wear predictions for a specific lap
+        """
 
         if self.m_tyre_wear_extrapolator.isDataSufficient():
-            if next_pit_window is not None:
-                if next_pit_window == 0:
-                    # In zero stop strategies, the game reports this value as 0
-                    next_pit_window = None
-                ret_list : List[TyreWearPerLap] = [
-                    self.m_tyre_wear_extrapolator.getTyreWearPrediction(next_pit_window).toJSON(),
-                    self.m_tyre_wear_extrapolator.getTyreWearPrediction().toJSON(),
-                ]
-                if ret_list[0]["lap-number"] == ret_list[1]["lap-number"]:
-                    return [ret_list[0]]
-                else:
-                    return ret_list
-            else:
+            if next_pit_window is None or next_pit_window == 0:
+                # Lets return the lap midway between current lap and final lap
+                next_pit_window = (self.m_current_lap + self.m_tyre_wear_extrapolator.m_total_laps) // 2
+            if next_pit_window == self.m_tyre_wear_extrapolator.m_total_laps:
+                # We are already in the final lap, so return the final prediction
                 return [self.m_tyre_wear_extrapolator.getTyreWearPrediction().toJSON()]
+            else:
+                # Return the tyre wear extrapolator predictions for the next pit window and final lap
+                return [
+                    self.m_tyre_wear_extrapolator.getTyreWearPrediction(next_pit_window).toJSON(),
+                    self.m_tyre_wear_extrapolator.getTyreWearPrediction().toJSON()
+                ]
         else:
+            # Data unavailable, return empty list
             return []
 
-    def _getTyreSetHistory(self) -> List[Dict[str, Any]]:
+    def _getTyreSetHistoryJSON(self) -> List[Dict[str, Any]]:
         """Get the list of tyre sets used in JSON format
 
         Returns:
@@ -366,7 +385,7 @@ class DataPerDriver:
                 'fitted-index' : entry.m_fitted_index,
                 'tyre-set-data' : self.m_packet_tyre_sets.m_tyreSetData[entry.m_fitted_index].toJSON() \
                                     if is_index_valid else None,
-                'tyre-wear-history' : self._getTyreWearHistoryJSON(entry.m_start_lap, entry.m_end_lap)
+                'tyre-wear-history' : entry.getTyreWearJSONList(),
             })
 
         return tyre_set_history
@@ -431,6 +450,18 @@ class DataPerDriver:
             car_status=self.m_packet_car_status
         )
 
+        # Add the tyre wear data into the tyre stint history
+        if old_lap_number > 0:
+            self.m_tyre_set_history[-1].m_tyre_wear_history.append(TyreWearPerLap(
+                lap_number=old_lap_number,
+                fl_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
+                fr_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
+                rl_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
+                rr_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
+                is_racing_lap=True,
+                desc="end of lap " + str(old_lap_number) + " backup"
+            ))
+
         # Add the tyre wear data into the extrapolator
         tyre_set_id = self._getCurrentTyreSetID()
         if tyre_set_id:
@@ -477,7 +508,59 @@ class DataPerDriver:
             self.m_packet_tyre_sets \
         else False
 
+    def updateTyreSetData(self, fitted_index: int) -> None:
+        """Update the current tyre set in the history list, if required.
+               NOTE: The tyre history is ignored if the player has disabled telemetry
+
+        Args:
+            fitted_index (int): The fitted tyre set index
+        """
+
+        # fuck those anti telemetry cunts
+        if self.m_telemetry_restrictions != ParticipantData.TelemetrySetting.PUBLIC:
+            return
+
+        # This can happen if tyre sets packets arrives before lap data packet
+        if self.m_current_lap is not None:
+            if len(self.m_tyre_set_history) == 0:
+                if 0 in self.m_per_lap_backups:
+                    # Start of race, enter the tyre wear data along with starting value
+                    initial_tyre_wear = TyreWearPerLap(
+                        lap_number=0,
+                        fl_tyre_wear=self.m_per_lap_backups[0].m_car_damage_packet.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
+                        fr_tyre_wear=self.m_per_lap_backups[0].m_car_damage_packet.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
+                        rl_tyre_wear=self.m_per_lap_backups[0].m_car_damage_packet.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
+                        rr_tyre_wear=self.m_per_lap_backups[0].m_car_damage_packet.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
+                        is_racing_lap=True,
+                        desc="end of zeroth lap data point"
+                    )
+                    self.m_tyre_set_history.append(DataPerDriver.TyreSetHistoryEntry(
+                                                start_lap=self.m_current_lap,
+                                                index=fitted_index,
+                                                initial_tyre_wear=initial_tyre_wear,
+                    ))
+            else:
+                if fitted_index != self.m_tyre_set_history[-1].m_fitted_index:
+                    current_tyre_wear = TyreWearPerLap(
+                        lap_number=self.m_current_lap,
+                        fl_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
+                        fr_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
+                        rl_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
+                        rr_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
+                        is_racing_lap=True,
+                        desc="tyre set change detected. key=" + str(self.m_packet_tyre_sets.getFittedTyreKey())
+                    )
+                    self.m_tyre_set_history.append(DataPerDriver.TyreSetHistoryEntry(
+                                            start_lap=self.m_current_lap,
+                                            index=fitted_index,
+                                            initial_tyre_wear=current_tyre_wear))
+
     def _getCurrentTyreSetID(self) -> Optional[str]:
+        """Get the unique ID key for the currently equipped tyre set
+
+        Returns:
+            Optional[str]: The tyre set key
+        """
 
         return self.m_packet_tyre_sets.getFittedTyreKey() if self.m_packet_tyre_sets else None
 
@@ -704,31 +787,12 @@ class DriverData:
         else:
             return False
 
-
-    def _updateTyreSetData(self, driver_data: DataPerDriver, fitted_index: int) -> None:
-        """Update the current tyre set in the history list, if required.
-               NOTE: The tyre history is ignored if the player has disabled telemetry
+    def processSessionUpdate(self, packet: PacketSessionData) -> None:
+        """Process the Session Update packet. Update the total laps and ideal pit window for the player
 
         Args:
-            driver_data (DataPerDriver): The driver data object
-            fitted_index (int): The fitted tyre set index
+            packet (PacketSessionData): The incoming parsed packet object
         """
-
-        # This can happen if tyre sets packets arrives before lap data packet
-        if driver_data.m_current_lap is not None:
-            # fuck those anti telemetry cunts
-            if driver_data.m_telemetry_restrictions == ParticipantData.TelemetrySetting.PUBLIC:
-                if len(driver_data.m_tyre_set_history) == 0:
-                    driver_data.m_tyre_set_history.append(DataPerDriver.TyreSetHistoryEntry(
-                                                start_lap=driver_data.m_current_lap,
-                                                index=fitted_index))
-                else:
-                    if fitted_index != driver_data.m_tyre_set_history[-1].m_fitted_index:
-                        driver_data.m_tyre_set_history.append(DataPerDriver.TyreSetHistoryEntry(
-                                                start_lap=driver_data.m_current_lap,
-                                                index=fitted_index))
-
-    def processSessionUpdate(self, packet: PacketSessionData) -> None:
 
         self.m_total_laps = packet.m_totalLaps
         self.m_ideal_pit_stop_window = packet.m_pitStopWindowIdealLap
@@ -946,7 +1010,7 @@ class DriverData:
         obj_to_be_updated.m_tyre_life_remaining_laps = packet.m_tyreSetData[packet.m_fittedIdx].m_lifeSpan
 
         # Update the tyre set history
-        self._updateTyreSetData(driver_data=obj_to_be_updated, fitted_index=packet.m_fittedIdx)
+        obj_to_be_updated.updateTyreSetData(fitted_index=packet.m_fittedIdx)
 
     def getDriverInfoJsonByIndex(self, index: int) -> Optional[Dict[str, Any]]:
         """Get the driver info JSON for the specified index.
@@ -981,7 +1045,6 @@ class DriverData:
         """
 
         return [driver_data.toJSON(index) for index, driver_data in self.m_driver_data.items()]
-
 
 class CustomMarkerEntry:
     """Class representing the data points related to a custom time marker.
