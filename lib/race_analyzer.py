@@ -200,28 +200,32 @@ def getTyreStintRecordsDict(json_data: Dict[str, Any]):
                     if not "tyre-set-data" in tyre_set_history_item or tyre_set_history_item["tyre-set-data"] is None:
                         continue
                     tyre_set_data = tyre_set_history_item["tyre-set-data"]
+                    stint_length = tyre_set_history_item["stint-length"]
                     compound = tyre_set_data["actual-tyre-compound"]
                     if isinstance(compound, int):
                         # cunts who have telemetry disabled can fuck themselves
                         continue
+                    if not stint_length:
+                        # Skip if either 0 or None
+                        continue
                     if compound not in self.m_records:
                         self.m_records[compound] = {
                             "longest-stint-driver-name" : driver_data["driver-name"],
-                            "longest-stint-length" : tyre_set_history_item["stint-length"],
+                            "longest-stint-length" : stint_length,
                             "highest-wear-value" : tyre_set_data["wear"] ,
                             "highest-wear-driver-name" : driver_data["driver-name"],
                             "lowest-wear-per-lap-driver-name" : driver_data["driver-name"],
                             "lowest-wear-per-lap-value" : \
-                                    float(tyre_set_data["wear"])/tyre_set_history_item["stint-length"]
+                                    float(tyre_set_data["wear"])/stint_length
                         }
                     else:
-                        if tyre_set_history_item["stint-length"] > self.m_records[compound]["longest-stint-length"]:
+                        if stint_length > self.m_records[compound]["longest-stint-length"]:
                             # New longest stint
-                            self.m_records[compound]["longest-stint-length"] = tyre_set_history_item["stint-length"]
+                            self.m_records[compound]["longest-stint-length"] = stint_length
                             self.m_records[compound]["longest-stint-driver-name"] = driver_data["driver-name"]
                         # If the driver DNF's right after fitting new tyre set, wear will be 0. Ignore this
                         if tyre_set_data["wear"] > 0:
-                            tyre_wear_per_lap = float(tyre_set_data["wear"]) / tyre_set_history_item["stint-length"]
+                            tyre_wear_per_lap = float(tyre_set_data["wear"]) / stint_length
                             if tyre_wear_per_lap < self.m_records[compound]["lowest-wear-per-lap-value"]:
                                 self.m_records[compound]["lowest-wear-per-lap-value"] = tyre_wear_per_lap
                                 self.m_records[compound]["lowest-wear-per-lap-driver-name"] = driver_data["driver-name"]
