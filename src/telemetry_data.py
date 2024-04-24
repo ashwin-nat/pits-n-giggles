@@ -27,6 +27,7 @@ import threading
 import copy
 from lib.f1_types import *
 from lib.overtake_analyzer import OvertakeRecord
+from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from typing import Optional, Generator, Tuple, List, Dict, Any
 from collections import OrderedDict
 import logging
@@ -1231,11 +1232,17 @@ def getDriverData(num_adjacent_cars: Optional[int] = 2) -> Tuple[List[DataPerDri
             return _recomputeDeltas(final_list, is_spectator_mode), fastest_lap_time
 
 def getPlayerDriverData() -> Tuple[DataPerDriver, str]:
+    """Same as getDriverData, but only returns one row
+
+    Returns:
+        Tuple[DataPerDriver, str]: _description_
+    """
+
+    # TODO - can this be replaced with getDriverData(num_adjacent_cars=0)?
 
     with _globals_lock:
         track_length = _globals.m_packet_session.m_trackLength if _globals.m_packet_session else None
     with _driver_data_lock:
-        final_list = []
         fastest_lap_time = "---"
 
         # If the data is not yet available, return default values
@@ -1286,7 +1293,14 @@ def getRaceInfo() -> Dict[str, Any]:
     """
 
     with _driver_data_lock:
-        return _driver_data.getRaceInfoJSON()
+        final_json = _driver_data.getRaceInfoJSON()
+    if "records" not in final_json:
+        final_json['records'] = {
+            'fastest' : getFastestTimesJson(final_json),
+            'tyre-stats' : getTyreStintRecordsDict(final_json)
+        }
+    return final_json
+
 
 # -------------------------------------- UTILITIES ---------------------------------------------------------------------
 
