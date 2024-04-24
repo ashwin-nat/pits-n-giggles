@@ -476,7 +476,7 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
     # Save the JSON data
     global g_post_race_data_autosave
     if g_post_race_data_autosave:
-        addFunStatsToFinalClassificationJson(final_json)
+        # addFunStatsToFinalClassificationJson(final_json)
 
         # Add the markers as well
         final_json['custom-markers'] = []

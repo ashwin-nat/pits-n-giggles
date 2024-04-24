@@ -545,7 +545,7 @@ def checkRecomputeJSON(json_data : Dict[str, Any]) -> bool:
         'time',
         'time-str'
     ]
-    for category, record in json_data["records"]["fastest"].items():
+    for _, record in json_data["records"]["fastest"].items():
         for key in expected_fastest_record_keys:
             if key not in record:
                 should_recompute_fastest_records = True
@@ -614,12 +614,12 @@ def open_file():
                 should_write = False
                 should_write |= checkRecomputeJSON(g_json_data)
 
-                if should_write:
-                    print('writing to file: ' + g_json_path)
-                    f.seek(0)  # Move file pointer to the beginning
-                    f.truncate()  # Clear the file contents
-                    f.seek(0)  # Move file pointer to the beginning (again)
-                    json.dump(g_json_data, f, ensure_ascii=False, indent=4)
+                # if should_write:
+                #     print('writing to file: ' + g_json_path)
+                #     f.seek(0)  # Move file pointer to the beginning
+                #     f.truncate()  # Clear the file contents
+                #     f.seek(0)  # Move file pointer to the beginning (again)
+                #     json.dump(g_json_data, f, ensure_ascii=False, indent=4)
     else:
         status_label.config(text="No file selected")
 
