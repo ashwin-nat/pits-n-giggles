@@ -309,11 +309,14 @@ class DataPerDriver:
         # Per lap backup
         self.m_per_lap_backups: Dict[int, DataPerDriver.PerLapHistoryEntry] = {}
 
-    def toJSON(self, index: Optional[int] = None) -> Dict[str, Any]:
+    def toJSON(self,
+               index: Optional[int] = None,
+               include_tyre_wear_prediction : Optional[bool] = False) -> Dict[str, Any]:
         """Get a JSON representation of this DataPerDriver object
 
         Args:
             index (int): The index number. Defaults to None.
+            include_tyre_wear_prediction (Optional[bool]): Whether to include the tyre wear prediction
 
         Returns:
             Dict[str, Any]: The JSON dict
@@ -353,6 +356,10 @@ class DataPerDriver:
         for lap_number, backup_entry in self._getNextLapBackup():
             final_json["per-lap-info"].append(backup_entry.toJSON(lap_number))
 
+        if include_tyre_wear_prediction:
+            # final_json["tyre-wear-predictions"] = self.getTyrePredictionsJSONList()
+            pass # TODO - implement
+
         # Return this fully prepped JSON
         return final_json
 
@@ -370,8 +377,8 @@ class DataPerDriver:
         if self.m_tyre_wear_extrapolator.isDataSufficient():
             if next_pit_window is None or (next_pit_window == 0) or (next_pit_window < self.m_current_lap):
                 # Lets return the lap midway between current lap and final lap
-                next_pit_window = (self.m_current_lap + self.m_tyre_wear_extrapolator.m_total_laps) // 2
-            if next_pit_window == self.m_tyre_wear_extrapolator.m_total_laps:
+                next_pit_window = (self.m_current_lap + self.m_tyre_wear_extrapolator.total_laps) // 2
+            if next_pit_window == self.m_tyre_wear_extrapolator.total_laps:
                 # We are already in the final lap, so return the final prediction
                 return [self.m_tyre_wear_extrapolator.getTyreWearPrediction().toJSON()]
             else:

@@ -189,6 +189,15 @@ class TyreWearExtrapolator:
         """
         return self.m_predicted_tyre_wear
 
+    @property
+    def total_laps(self) -> int:
+        """The total number of laps in the race
+
+        Returns:
+            int: The total number of laps in the race
+        """
+        return self.m_total_laps
+
     def updateDataList(self, new_data: List[TyreWearPerLap]):
         """
         Update the extrapolator with new data during the race.
@@ -246,7 +255,14 @@ class TyreWearExtrapolator:
         return len(self.m_initial_data)
 
     def _initMembers(self, initial_data: List[TyreWearPerLap], total_laps: int) -> None:
+        """Initialise the member variables. Can be called multiple times to reuse the extrapolator object
 
+        Args:
+            initial_data (List[TyreWearPerLap]): List of TyreWearPerLap data points. Can be empty
+            total_laps (int): The total number of laps in this race
+        """
+
+        assert total_laps is not None
         self.m_initial_data : List[TyreWearPerLap] = initial_data
         self.m_intervals : List[List[TyreWearPerLap]] = self._segmentData(initial_data)
         self.m_total_laps : int = total_laps
@@ -259,7 +275,35 @@ class TyreWearExtrapolator:
         self.m_fr_regression : LinearRegression = None
         self.m_rl_regression : LinearRegression = None
         self.m_rr_regression : LinearRegression = None
-        self._performInitialComputations()
+
+        # Can't init the data models if there is no data
+        if len(self.m_initial_data) == 0:
+            return
+
+        # Combine all laps, excluding non-racing laps
+        racing_data = [point for interval in self.m_intervals \
+                       if all(point.is_racing_lap for point in interval) for point in interval]
+
+        # Fit linear regression model for each tyre using racing data
+        self.m_fl_regression = LinearRegression().fit(
+            np.array([point.lap_number for point in racing_data]).reshape(-1, 1),
+            np.array([point.fl_tyre_wear for point in racing_data])
+        )
+        self.m_fr_regression = LinearRegression().fit(
+            np.array([point.lap_number for point in racing_data]).reshape(-1, 1),
+            np.array([point.fr_tyre_wear for point in racing_data])
+        )
+        self.m_rl_regression = LinearRegression().fit(
+            np.array([point.lap_number for point in racing_data]).reshape(-1, 1),
+            np.array([point.rl_tyre_wear for point in racing_data])
+        )
+        self.m_rr_regression = LinearRegression().fit(
+            np.array([point.lap_number for point in racing_data]).reshape(-1, 1),
+            np.array([point.rr_tyre_wear for point in racing_data])
+        )
+
+        # Update the predicted tyre wear data structure
+        self._extrapolateTyreWear()
 
     def _extrapolateTyreWear(self) -> List[TyreWearPerLap]:
         """Extrapolate the tyre wear for the remaining laps of the race
@@ -325,138 +369,3 @@ class TyreWearExtrapolator:
             intervals.append(data[start_index:end_index+1])
 
         return intervals
-
-    def _performInitialComputations(self) -> None:
-        """Initialise the regression models for each tyre
-        """
-        # TODO: remove this function
-
-        # Can't init the data models if there is no data
-        if len(self.m_initial_data) == 0:
-            return
-
-        # Combine all laps, excluding non-racing laps
-        racing_data = [point for interval in self.m_intervals \
-                       if all(point.is_racing_lap for point in interval) for point in interval]
-
-        # Fit linear regression model for each tyre using racing data
-        self.m_fl_regression = LinearRegression().fit(
-            np.array([point.lap_number for point in racing_data]).reshape(-1, 1),
-            np.array([point.fl_tyre_wear for point in racing_data])
-        )
-        self.m_fr_regression = LinearRegression().fit(
-            np.array([point.lap_number for point in racing_data]).reshape(-1, 1),
-            np.array([point.fr_tyre_wear for point in racing_data])
-        )
-        self.m_rl_regression = LinearRegression().fit(
-            np.array([point.lap_number for point in racing_data]).reshape(-1, 1),
-            np.array([point.rl_tyre_wear for point in racing_data])
-        )
-        self.m_rr_regression = LinearRegression().fit(
-            np.array([point.lap_number for point in racing_data]).reshape(-1, 1),
-            np.array([point.rr_tyre_wear for point in racing_data])
-        )
-
-        # Update the predicted tyre wear data structure
-        self._extrapolateTyreWear()
-
-# TODO: remove this
-if __name__ == "__main__":
-
-    # Empty extrapolator
-    TOTAL_LAPS = 20
-
-    def _emptyExtrapolator(total_laps):
-        empty_extrapolator = TyreWearExtrapolator([], total_laps)
-        print("empty object")
-        empty_extrapolator.updateDataLap(TyreWearPerLap(1, 2, 2, 2, 2, is_racing_lap=True))
-        print("After 1 lap. is sufficient: " + str(empty_extrapolator.isDataSufficient()))
-        empty_extrapolator.updateDataLap(TyreWearPerLap(2, 4, 4, 4, 4, is_racing_lap=True))
-        empty_remaining_tyre_wear = empty_extrapolator.predicted_tyre_wear
-        for point in empty_remaining_tyre_wear:
-            print(str(point))
-
-    def _fullDataTc1(total_laps):
-        # Example usage
-        initial_data = [
-            TyreWearPerLap(1, 10, 11, 12, 13),
-            TyreWearPerLap(2, 12, 13, 14, 15),
-            TyreWearPerLap(3, 15, 16, 17, 18),
-            TyreWearPerLap(4, 18, 19, 20, 21),
-            TyreWearPerLap(5, 20, 21, 22, 23),
-            TyreWearPerLap(6, 22, 23, 24, 25, is_racing_lap=False),  # Safety car lap
-            TyreWearPerLap(7, 22, 23, 24, 25, is_racing_lap=False),  # Safety car lap
-            TyreWearPerLap(8, 22, 23, 24, 25, is_racing_lap=False),  # Safety car lap
-            TyreWearPerLap(9, 23, 24, 25, 26),
-            TyreWearPerLap(10, 24, 25, 26, 27),
-            TyreWearPerLap(11, 25, 26, 27, 28),
-            TyreWearPerLap(12, 26, 27, 28, 29),
-            TyreWearPerLap(13, 27, 28, 29, 30),
-            TyreWearPerLap(14, 28, 29, 30, 31),
-            TyreWearPerLap(15, 29, 30, 31, 32)
-        ]  # Sample initial tyre wear data for the first 15 laps
-
-        extrapolator = TyreWearExtrapolator(initial_data, total_laps)
-        print("Predictions based on initial data")
-        print("Extrapolated tyre wear for remaining laps:")
-        # remaining_tyre_wear = extrapolator.extrapolateTyreWear()
-        remaining_tyre_wear = extrapolator.predicted_tyre_wear
-        for point in remaining_tyre_wear:
-            # print(f"Lap {point.lap_number}: FL {point.fl_tyre_wear}, FR {point.fr_tyre_wear}, RL {point.rl_tyre_wear}, RR {point.rr_tyre_wear}")
-            print(str(point))
-
-        new_data = [
-            TyreWearPerLap(16, 30, 31, 32, 33, is_racing_lap=False),
-            TyreWearPerLap(17, 32, 33, 34, 35, is_racing_lap=False),
-            TyreWearPerLap(18, 34, 35, 36, 37, is_racing_lap=False),
-        ]
-
-        for lap_data in new_data:
-            extrapolator.updateDataLap(lap_data)
-            # remaining_tyre_wear = extrapolator.extrapolateTyreWear()
-            remaining_tyre_wear = extrapolator.predicted_tyre_wear
-            print("Last lap number: " + str(lap_data.lap_number))
-            print("Extrapolated tyre wear for remaining laps:")
-            for point in remaining_tyre_wear:
-                # print(f"Lap {point.lap_number}: FL {point.fl_tyre_wear}, FR {point.fr_tyre_wear}, RL {point.rl_tyre_wear}, RR {point.rr_tyre_wear}")
-                print(str(point))
-
-    def _zeroLapTc(total_laps):
-        zero_lap_extrapolator = TyreWearExtrapolator([], 0)
-        print("is sufficient = " + str(zero_lap_extrapolator.isDataSufficient()))
-
-    def _realDataTc(total_laps):
-
-        total_laps = 5
-        data = [
-            TyreWearPerLap(0,0.0,0.0,0.0,0.0),
-            TyreWearPerLap(1,2.401949167251587,2.276975154876709,3.420997142791748,2.82375431060791),
-            TyreWearPerLap(2,5.029486656188965,4.771495819091797,5.891158580780029,5.243369102478027),
-            TyreWearPerLap(3,7.701445579528809,7.31258487701416,8.327430725097656,7.614562034606934),
-            TyreWearPerLap(4,10.348953247070312,9.826332092285156,10.76635456085205,9.974536895751953),
-            TyreWearPerLap(5,13.130508422851562,12.452241897583008,13.403026580810547,12.56920051574707),
-        ]
-        extrapolator = TyreWearExtrapolator([], total_laps)
-
-        for lap_data in data:
-            extrapolator.updateDataLap(lap_data)
-            print("Added data for lap " + str(lap_data.lap_number))
-            if extrapolator.isDataSufficient():
-                remaining_tyre_wear = extrapolator.predicted_tyre_wear
-                for point in remaining_tyre_wear:
-                    print(str(point))
-            else:
-                print("Data insufficient for extrapolation")
-            print('-' * 30)
-
-
-    test_cases = [
-        # _emptyExtrapolator,
-        # _fullDataTc1,
-        # _zeroLapTc,
-        _realDataTc,
-    ]
-
-    for tc in test_cases:
-        tc(TOTAL_LAPS)
-        print('-' * 50)
