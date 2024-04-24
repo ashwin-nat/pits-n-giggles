@@ -125,7 +125,7 @@ class TyreWearExtrapolator:
             new data points are added
     """
 
-    def __init__(self, initial_data: List[TyreWearPerLap], total_laps: int, should_print=False):
+    def __init__(self, initial_data: List[TyreWearPerLap], total_laps: int):
         """
         Initialize a TyreWearExtrapolator object.
 
@@ -134,7 +134,6 @@ class TyreWearExtrapolator:
             total_laps (int): Total number of laps in the race.
         """
 
-        self.m_should_print = should_print
         self._initMembers(initial_data, total_laps)
 
     def isDataSufficient(self) -> bool:
@@ -220,12 +219,10 @@ class TyreWearExtrapolator:
                 laps, np.array([point.rr_tyre_wear for point in racing_data])
             )
 
+            assert self.m_initial_data[-1].lap_number is not None
+            assert self.m_total_laps is not None
             self.m_remaining_laps = self.m_total_laps - self.m_initial_data[-1].lap_number
             self._extrapolateTyreWear()
-
-            if self.m_should_print:
-                print("Inserted tyre wear for lap " + str(racing_data[-1].lap_number) +
-                        " num samples = " + str(self.getNumSamples()) + " num predictions = " + str(len(self.m_predicted_tyre_wear)))
 
     def updateDataLap(self, new_data: TyreWearPerLap):
         """
