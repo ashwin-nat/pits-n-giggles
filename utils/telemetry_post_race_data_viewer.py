@@ -41,23 +41,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from lib.f1_types import F1Utils, LapData, ResultStatus
 import lib.race_analyzer as RaceAnalyzer
 import lib.overtake_analyzer as OvertakeAnalyzer
-
-try:
-    from flask import Flask, render_template, request, jsonify
-except ImportError:
-    print("Flask is not installed. Installing...")
-    import subprocess
-    subprocess.check_call(["pip3", "install", "flask"])
-    print("Flask installation complete.")
-    from flask import Flask, render_template, request, jsonify
-try:
-    from flask_cors import CORS
-except ImportError:
-    print("flask-cors is not installed. Installing...")
-    import subprocess
-    subprocess.check_call(["pip3", "install", "flask-cors"])
-    print("flask-cors installation complete.")
-    from flask_cors import CORS
+from flask import Flask, render_template, request, jsonify
+from flask_cors import CORS
 
 g_json_data = {}
 g_json_path = ''

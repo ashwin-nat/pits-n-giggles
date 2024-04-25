@@ -20,15 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from typing import List, Tuple, Optional, Dict, Any
-try:
-    from sklearn.linear_model import LinearRegression
-except ImportError:
-    print("scikit-learn is not installed. Installing...")
-    import subprocess
-    subprocess.check_call(["pip3", "install", "scikit-learn"])
-    print("scikit-learn installation complete.")
-    from sklearn.linear_model import LinearRegression
+from typing import List, Tuple, Optional, Dict, Any, Generator
+from sklearn.linear_model import LinearRegression
 import numpy as np
 
 class TyreWearPerLap:
@@ -192,13 +185,14 @@ class TyreWearExtrapolator:
                              str(self.m_predicted_tyre_wear[-1].lap_number))
 
     @property
-    def predicted_tyre_wear(self) -> List[TyreWearPerLap]:
-        """The list of predicted tyre wear
+    def predicted_tyre_wear(self) -> Generator[TyreWearPerLap, None, None]:
+        """Generate predicted tyre wear objects
 
-        Returns:
-            List[TyreWearPerLap]: The list of objects representing the tyre wear per lap
+        Yields:
+            TyreWearPerLap: The object representing the tyre wear per lap
         """
-        return self.m_predicted_tyre_wear
+        for tyre_wear in self.m_predicted_tyre_wear:
+            yield tyre_wear
 
     @property
     def total_laps(self) -> int:

@@ -502,10 +502,6 @@ class DataPerDriver:
         # Add the tyre wear data into the extrapolator
         tyre_set_id = self._getCurrentTyreSetID()
         if tyre_set_id:
-            # Clear the extrapolator if tyre set has been changed
-            if self._hasTyreSetChanged():
-                logging.debug("Tyre set change detected for " + self.m_name)
-                self.m_tyre_wear_extrapolator.clear()
             self.m_tyre_wear_extrapolator.updateDataLap(TyreWearPerLap(
                 lap_number=old_lap_number,
                 fl_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
@@ -513,20 +509,8 @@ class DataPerDriver:
                 rl_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
                 rr_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
                 is_racing_lap=True,
-                desc=self._getCurrentTyreSetID()
+                desc=tyre_set_id
             ))
-
-    def _hasTyreSetChanged(self) -> bool:
-        """Check if the driver has changed tyre sets (has pitted)
-
-        Returns:
-            bool: True if this lap has a changed tyre set
-        """
-
-        if len(self.m_tyre_wear_extrapolator.m_initial_data) > 0:
-            return self.m_tyre_wear_extrapolator.m_initial_data[-1].m_desc != self._getCurrentTyreSetID()
-        else:
-            return False
 
     def isZerothLapBackupDataAvailable(self) -> bool:
         """
@@ -556,6 +540,7 @@ class DataPerDriver:
 
         # This can happen if tyre sets packets arrives before lap data packet
         if self.m_current_lap is not None:
+            fitted_tyre_set_key = self._getCurrentTyreSetID()
             if len(self.m_tyre_set_history) == 0:
                 if 0 in self.m_per_lap_backups:
                     # Start of race, enter the tyre wear data along with starting value
@@ -571,8 +556,8 @@ class DataPerDriver:
                     self.m_tyre_set_history.append(DataPerDriver.TyreSetHistoryEntry(
                                                 start_lap=self.m_current_lap,
                                                 index=fitted_index,
+                                                tyre_set_key=fitted_tyre_set_key,
                                                 initial_tyre_wear=initial_tyre_wear,
-                                                tyre_set_key=self.m_packet_tyre_sets.getFittedTyreSetKey()
                     ))
             else:
                 if fitted_index != self.m_tyre_set_history[-1].m_fitted_index:
@@ -585,16 +570,17 @@ class DataPerDriver:
                         rl_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
                         rr_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
                         is_racing_lap=True,
-                        desc="tyre set change detected. key=" + str(self.m_packet_tyre_sets.getFittedTyreSetKey())
+                        desc="tyre set change detected. key=" + str(fitted_tyre_set_key)
                     )
                     self.m_tyre_set_history.append(DataPerDriver.TyreSetHistoryEntry(
                                                 start_lap=lap_number,
                                                 index=fitted_index,
+                                                tyre_set_key=fitted_tyre_set_key,
                                                 initial_tyre_wear=initial_tyre_wear,
-                                                tyre_set_key=self.m_packet_tyre_sets.getFittedTyreSetKey()
                     ))
 
                     # Tyre set change detected. clear the extrapolation data
+                    old_key = self.m_tyre_wear_extrapolator.m_initial_data[-1].m_desc
                     self.m_tyre_wear_extrapolator.clear()
                     self.m_tyre_wear_extrapolator.updateDataLap(initial_tyre_wear)
 

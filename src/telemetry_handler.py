@@ -31,16 +31,7 @@ from datetime import datetime
 from enum import Enum
 from threading import Lock
 from typing import Optional, List, Tuple, Dict, Any, Generator
-
-try:
-    from tqdm import tqdm
-except ImportError:
-    print("tqdm is not installed. Installing...")
-    import subprocess
-    subprocess.check_call(["pip3", "install", "tqdm"])
-    print("tqdm installation complete.")
-    from tqdm import tqdm
-
+from tqdm import tqdm
 from src.telemetry_manager import F1TelemetryManager
 from lib.f1_types import *
 from lib.packet_cap import F1PacketCapture

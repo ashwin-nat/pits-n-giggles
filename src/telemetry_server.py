@@ -25,24 +25,8 @@
 from typing import Dict, Any
 from http import HTTPStatus
 import logging
-
-try:
-    from flask import Flask, render_template, request, jsonify
-except ImportError:
-    print("Flask is not installed. Installing...")
-    import subprocess
-    subprocess.check_call(["pip3", "install", "flask"])
-    print("Flask installation complete.")
-    from flask import Flask, render_template, request, jsonify
-try:
-    from flask_cors import CORS
-except ImportError:
-    print("flask-cors is not installed. Installing...")
-    import subprocess
-    subprocess.check_call(["pip3", "install", "flask-cors"])
-    print("flask-cors installation complete.")
-    from flask_cors import CORS
-
+from flask import Flask, render_template, request, jsonify
+from flask_cors import CORS
 from src.telemetry_handler import dumpPktCapToFile, getOvertakeJSON, GetOvertakesStatus, getCustomMarkersJSON
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.f1_types import F1Utils
