@@ -311,12 +311,14 @@ class DataPerDriver:
 
     def toJSON(self,
                index: Optional[int] = None,
-               include_tyre_wear_prediction : Optional[bool] = False) -> Dict[str, Any]:
+               include_tyre_wear_prediction : Optional[bool] = False,
+               selected_pit_stop_lap : Optional[int] = None) -> Dict[str, Any]:
         """Get a JSON representation of this DataPerDriver object
 
         Args:
             index (int): The index number. Defaults to None.
             include_tyre_wear_prediction (Optional[bool]): Whether to include the tyre wear prediction
+            selected_pit_stop_lap (Optional[int]): The lap number of the selected pit stop
 
         Returns:
             Dict[str, Any]: The JSON dict
@@ -357,8 +359,18 @@ class DataPerDriver:
             final_json["per-lap-info"].append(backup_entry.toJSON(lap_number))
 
         if include_tyre_wear_prediction:
-            # final_json["tyre-wear-predictions"] = self.getTyrePredictionsJSONList()
-            pass # TODO - implement
+            if self.m_tyre_wear_extrapolator.isDataSufficient():
+                final_json["tyre-wear-predictions"] = {
+                    "status" : True,
+                    "desc" : "Data is sufficient for extrapolation",
+                    "predictions": [item.toJSON() for item in self.m_tyre_wear_extrapolator.predicted_tyre_wear],
+                    "selected-pit-stop-lap": selected_pit_stop_lap
+                }
+            else:
+                final_json["tyre-wear-predictions"] = {
+                    "status" : False,
+                    "desc" : "Insufficient data for extrapolation"
+                }
 
         # Return this fully prepped JSON
         return final_json
@@ -1051,7 +1063,19 @@ class DriverData:
         """
 
         obj_to_be_updated = self.m_driver_data.get(index, None)
-        return obj_to_be_updated.toJSON(index) if obj_to_be_updated else None
+        if self.m_race_completed:
+            include_wear_prediction = False
+            selected_pit_stop_lap = None
+        else:
+            include_wear_prediction = True
+            if obj_to_be_updated.m_is_player:
+                if self.m_ideal_pit_stop_window < obj_to_be_updated.m_current_lap:
+                    selected_pit_stop_lap = None
+                else:
+                    selected_pit_stop_lap = self.m_ideal_pit_stop_window
+            else:
+                selected_pit_stop_lap = None
+        return obj_to_be_updated.toJSON(index, include_wear_prediction, selected_pit_stop_lap) if obj_to_be_updated else None
 
     def getRaceInfoJSON(self) -> Dict[str, Any]:
         """Get the race info JSON.

@@ -397,7 +397,7 @@ SOFTWARE.
                     updateGlobalInfo(data["circuit"], data["event-type"], data["track-temperature"], data["current-lap"],
                         data["total-laps"], data["safety-car-status"], data["fastest-lap-overall"],
                         data["pit-speed-limit"], {{ packet_capture_enabled | tojson }});
-        updateWeatherTable(data["weather-forecast-samples"]);
+                    updateWeatherTable(data["weather-forecast-samples"]);
                 })
                 .catch (error => {
             console.error('Error fetching data:', error);
@@ -463,7 +463,6 @@ SOFTWARE.
                 }
                 row.insertCell().textContent = entry["ers"];
 
-                // row.insertCell().textContent = entry["corner-cutting-warnings"];
                 const warningsPensCell = row.insertCell();
                 const dtPlusSg = entry["num-dt"] + "DT + " +
                     entry["num-sg"] + "SG";
@@ -472,8 +471,6 @@ SOFTWARE.
                     `Pens: ${entry["time-penalties"]} sec<br>` +
                     `Warns: ${entry["corner-cutting-warnings"]}<br>` +
                     `${dtPlusSg}`;
-                // `DT: ${entry["num-dt"]}<br>` +
-                // `SG: ${entry["num-sg"]}`;
 
                 row.insertCell().textContent = entry["best"];
                 row.insertCell().textContent = entry["last"];
@@ -486,10 +483,8 @@ SOFTWARE.
                 if (!shouldHidePredictionColumn) {
                     let predictionHTML = ""; // Declare predictionHTML outside the loop
                     predictionData = entry["tyre-wear-prediction"];
-                    // console.log("populating prediction column");
                     if (predictionData.length === 0) {
                         predictionHTML = "N/A";
-                        // console.log("prediction is not available");
                     } else {
                         predictionData.forEach((prediction, index) => {
                             const flWear = prediction["front-left-wear"];
@@ -500,7 +495,6 @@ SOFTWARE.
                             const avgWear = formatFloatWithTwoDecimals((flWear + frWear + rlWear + rrWear) / 4); // Corrected variable name
                             predictionHTML += "Lap " + lapNum + ": " + avgWear + "%<br>"; // Concatenate prediction strings
                         });
-                        // console.log("finished populating prediction column");
                     }
                     row.insertCell().innerHTML = predictionHTML; // Set innerHTML outside the loop
                 }
@@ -1443,7 +1437,6 @@ SOFTWARE.
                     if (tyreSetsInfoList.length > 0) {
 
                         tyreSetsInfoList.forEach((tyreSet) => {
-                            console.log(tyreSet);
                             const row = tyreSetsInfoBody.insertRow();
                             row.innerHTML = `
                                 <td>${tyreSet["index"]}</td>
@@ -1468,6 +1461,60 @@ SOFTWARE.
                 }
                 tyreSetsInfoContent.appendChild(createAccordion('Tyre Sets', tyreSetsInfoTable));
                 return tyreSetsInfoContent;
+            }
+
+            function getTyreWearPredictionsContent(data) {
+
+                const tyreWearPredictionsInfoContent = document.createElement('div');
+                const tyreWearPredictionsInfoTable = document.createElement('table');
+                tyreWearPredictionsInfoTable.classList.add('tyre-wear-predictions-info-table');
+                const tyreWearPredictionsInfoTableHeader = tyreWearPredictionsInfoTable.createTHead();
+                const tyreWearPredictionsInfoTableHeaderRow = tyreWearPredictionsInfoTableHeader.insertRow();
+                tyreWearPredictionsInfoTableHeaderRow.innerHTML = `
+                    <th>Lap</th>
+                    <th>FL</th>
+                    <th>FR</th>
+                    <th>RL</th>
+                    <th>RR</th>
+                    <th>Average</th>
+                `;
+                const tyreWearPredictionsInfoBody = tyreWearPredictionsInfoTable.createTBody();
+                if ("tyre-wear-predictions" in data && data["tyre-wear-predictions"] != null) {
+
+                    const predictionsList = data["tyre-wear-predictions"]["predictions"];
+                    const selectedPitStopLap = data["tyre-wear-predictions"]["selected-pit-stop-lap"];
+                    if (predictionsList.length > 0) {
+
+                        predictionsList.forEach((prediction) => {
+                            const row = tyreWearPredictionsInfoBody.insertRow();
+                            const fl  = prediction["front-left-wear"];
+                            const fr  = prediction["front-right-wear"];
+                            const rl  = prediction["rear-left-wear"];
+                            const rr  = prediction["rear-right-wear"];
+                            const avg = (fl + fr + rl + rr) / 4;
+                            const lap = prediction["lap-number"];
+                            row.innerHTML = `
+                                <td>${lap}</td>
+                                <td>${formatFloatWithTwoDecimals(fl)}%</td>
+                                <td>${formatFloatWithTwoDecimals(fr)}%</td>
+                                <td>${formatFloatWithTwoDecimals(rl)}%</td>
+                                <td>${formatFloatWithTwoDecimals(rr)}%</td>
+                                <td>${formatFloatWithTwoDecimals(avg)}%</td>
+                            `;
+
+                            //TODO: Add logic to highlight selected pit stop
+                        });
+                    } else {
+                        const row = tyreWearPredictionsInfoBody.insertRow();
+                        row.innerHTML = '<td colspan="6">Tyre Wear Predictions data not available</td>';
+                    }
+
+                } else {
+                    const row = tyreWearPredictionsInfoBody.insertRow();
+                    row.innerHTML = '<td colspan="6">Tyre Wear Predictions data not available</td>';
+                }
+                tyreWearPredictionsInfoContent.appendChild(createAccordion('Tyre Wear Predictions', tyreWearPredictionsInfoTable));
+                return tyreWearPredictionsInfoContent;
             }
 
             function getTyreStintHistoryContent(data) {
@@ -1527,9 +1574,7 @@ SOFTWARE.
                         if ("tyre-wear-history" in stintData && stintData["tyre-wear-history"].length > 0) {
 
                             const wearHistory = stintData["tyre-wear-history"];
-                            console.log("number of tyre wear history data points", wearHistory.length);
                             wearHistory.forEach(wearData => {
-                                console.log("wearData", wearData);
                                 graphDataFL.push({
                                     x: wearData["lap-number"],
                                     y: formatFloatWithTwoDecimals(wearData["front-left-wear"]),
@@ -1578,7 +1623,6 @@ SOFTWARE.
                     graphDiv.appendChild(graphCanvas);
                     graphCanvas.id = elementId;
                     graphDiv.classList.add('graph-canvas');
-                    // graphCanvas.classList.add('graph-canvas');
 
                     // Plot graph
                     var datasets = [
@@ -1603,9 +1647,6 @@ SOFTWARE.
                         min: 0,
                     }
                     const formatAsLapTime = false;
-                    console.log("Before plotting tyre stint graph", datasets);
-                    console.log("Before plotting tyre stint graph - only FL", graphDataFL);
-                    console.log("Before plotting tyre stint graph - only FL (from datasets)", datasets[0]["data"]);
                     plotGraph(graphCanvas, datasets, 'Lap number', 'Tyre Wear %', formatAsLapTime, limits);
                     tyreStintHistorySubDiv.appendChild(graphDiv);
                 }
@@ -1691,6 +1732,9 @@ SOFTWARE.
             const modalContent = document.getElementById('modalContent');
             modalContent.innerHTML = '';
 
+            const tyreWearPredictionsAvailable = "tyre-wear-predictions" in data &&
+                (data["tyre-wear-predictions"]["status"] == true);
+
             // Car Damage Table
             modalContent.appendChild(getCarDamageContent(data));
 
@@ -1711,6 +1755,11 @@ SOFTWARE.
 
             // Tyre sets info
             modalContent.appendChild(getTyreSetsInfoContent(data));
+
+            // Predictions
+            if (tyreWearPredictionsAvailable) {
+                modalContent.appendChild(getTyreWearPredictionsContent(data));
+            }
 
             // Tyre Stint History
             modalContent.appendChild(getTyreStintHistoryContent(data));
