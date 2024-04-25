@@ -203,6 +203,15 @@ class TyreWearExtrapolator:
         """
         return self.m_total_laps
 
+    @property
+    def remaining_laps(self) -> int:
+        """The number of laps remaining in the race
+
+        Returns:
+            int: The number of laps remaining in the race
+        """
+        return self.m_remaining_laps
+
     def updateDataList(self, new_data: List[TyreWearPerLap]):
         """
         Update the extrapolator with new data during the race.
@@ -210,11 +219,18 @@ class TyreWearExtrapolator:
         Args:
             new_data (List[TyreWearPerLap]): New tyre wear data.
         """
+
+        # nop if total_laps is None - This happens in quali
+        if self.m_total_laps is None:
+            return
+
+        # Insert the data, recompute the segments
         self.m_initial_data.extend(new_data)
         self.m_intervals = self._segmentData(self.m_initial_data)
         racing_data = [point for interval in self.m_intervals \
                        if all(point.is_racing_lap for point in interval) for point in interval]
 
+        # Recompute the regression models
         if racing_data:
             laps = np.array([point.lap_number for point in racing_data]).reshape(-1, 1)
             self.m_fl_regression = LinearRegression().fit(

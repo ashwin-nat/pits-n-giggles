@@ -386,7 +386,7 @@ class DataPerDriver:
             List[Dict[str, Any]]: List of JSON objects, each containing tyre wear predictions for a specific lap
         """
 
-        if self.m_tyre_wear_extrapolator.isDataSufficient():
+        if self.m_tyre_wear_extrapolator.isDataSufficient() and (self.m_tyre_wear_extrapolator.remaining_laps > 0):
             if next_pit_window is None or (next_pit_window == 0) or (next_pit_window < self.m_current_lap):
                 # Lets return the lap midway between current lap and final lap
                 next_pit_window = (self.m_current_lap + self.m_tyre_wear_extrapolator.total_laps) // 2
