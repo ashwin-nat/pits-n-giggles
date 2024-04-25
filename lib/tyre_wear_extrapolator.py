@@ -150,6 +150,10 @@ class TyreWearExtrapolator:
             bool: True if sufficient
         """
 
+        # m_total_laps will be None in quali
+        if self.m_total_laps is None:
+            return False
+
         racing_data = [point for interval in self.m_intervals \
                        if all(point.is_racing_lap for point in interval) for point in interval]
         ret_status = (len(racing_data) > 1)
@@ -266,10 +270,9 @@ class TyreWearExtrapolator:
 
         Args:
             initial_data (List[TyreWearPerLap]): List of TyreWearPerLap data points. Can be empty
-            total_laps (int): The total number of laps in this race
+            total_laps (int): The total number of laps in this race (None in quali)
         """
 
-        assert total_laps is not None
         self.m_initial_data : List[TyreWearPerLap] = initial_data
         self.m_intervals : List[List[TyreWearPerLap]] = self._segmentData(initial_data)
         self.m_total_laps : int = total_laps
