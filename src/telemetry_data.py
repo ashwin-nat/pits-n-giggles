@@ -576,6 +576,9 @@ class DataPerDriver:
         if old_lap_number in self.m_per_lap_backups:
             return
 
+        if not self.m_tyre_set_history:
+            return
+
         # Store the backup data for the old lap
         self.m_per_lap_backups[old_lap_number] = DataPerDriver.PerLapHistoryEntry(
             car_damage=self.m_packet_car_damage,
