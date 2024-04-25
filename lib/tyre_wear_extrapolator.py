@@ -21,7 +21,14 @@
 # SOFTWARE.
 
 from typing import List, Tuple, Optional, Dict, Any
-from sklearn.linear_model import LinearRegression
+try:
+    from sklearn.linear_model import LinearRegression
+except ImportError:
+    print("scikit-learn is not installed. Installing...")
+    import subprocess
+    subprocess.check_call(["pip3", "install", "scikit-learn"])
+    print("scikit-learn installation complete.")
+    from sklearn.linear_model import LinearRegression
 import numpy as np
 
 class TyreWearPerLap:
