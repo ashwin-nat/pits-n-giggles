@@ -203,6 +203,15 @@ class TyreWearExtrapolator:
         """
         return self.m_total_laps
 
+    @total_laps.setter
+    def total_laps(self, value: int):
+        """Set the total number of laps in the race
+
+        Args:
+            value (int): The total number of laps in the race
+        """
+        self.m_total_laps = value
+
     @property
     def remaining_laps(self) -> int:
         """The number of laps remaining in the race
@@ -220,12 +229,14 @@ class TyreWearExtrapolator:
             new_data (List[TyreWearPerLap]): New tyre wear data.
         """
 
-        # nop if total_laps is None - This happens in quali
+        # Insert the data,
+        self.m_initial_data.extend(new_data)
+
+        # This happens in quali
         if self.m_total_laps is None:
             return
 
-        # Insert the data, recompute the segments
-        self.m_initial_data.extend(new_data)
+        # Recompute the segments
         self.m_intervals = self._segmentData(self.m_initial_data)
         racing_data = [point for interval in self.m_intervals \
                        if all(point.is_racing_lap for point in interval) for point in interval]

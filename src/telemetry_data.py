@@ -580,7 +580,6 @@ class DataPerDriver:
                     ))
 
                     # Tyre set change detected. clear the extrapolation data
-                    old_key = self.m_tyre_wear_extrapolator.m_initial_data[-1].m_desc
                     self.m_tyre_wear_extrapolator.clear()
                     self.m_tyre_wear_extrapolator.updateDataLap(initial_tyre_wear)
 
@@ -823,8 +822,17 @@ class DriverData:
             packet (PacketSessionData): The incoming parsed packet object
         """
 
-        self.m_total_laps = packet.m_totalLaps
         self.m_ideal_pit_stop_window = packet.m_pitStopWindowIdealLap
+
+        # First time total laps notification has arrived after driver info (out of order)
+        if (self.m_total_laps is None) and (packet.m_totalLaps > 0):
+
+            # First update the total laps
+            self.m_total_laps = packet.m_totalLaps
+
+            # Next, update in all extrapolator objects
+            for driver_data in self.m_driver_data.values():
+                driver_data.m_tyre_wear_extrapolator.total_laps = self.m_total_laps
 
     def processLapDataUpdate(self, packet: PacketLapData) -> None:
         """Process the lap data packet and update the necessary fields
