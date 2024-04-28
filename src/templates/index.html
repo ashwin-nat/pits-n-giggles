@@ -1564,7 +1564,7 @@ SOFTWARE.
                             const actualCompound = tyreSetData["actual-tyre-compound"];
                             compound = tyreSetData["visual-tyre-compound"];
                             tyreSetId = `${actualCompound} - ${tyreSetIndex}`;
-                            tyreWear = `${tyreSetData["wear"]} %`;
+                            tyreWear = `${formatFloatWithTwoDecimals(tyreSetData["wear"])}%`;
 
                             // Use parseFloat to ensure numerical calculation
                             const wearPerLap = parseFloat(tyreSetData["wear"]) / parseFloat(stintData["stint-length"]);
@@ -1739,7 +1739,7 @@ SOFTWARE.
             modalContent.appendChild(getCarDamageContent(data));
 
             // Tyre Damage Table
-            modalContent.appendChild(getTyreDamageContent(data));
+            // modalContent.appendChild(getTyreDamageContent(data));
 
             // Tyre Wear Table
             modalContent.appendChild(getTyreWearContent(data));
@@ -1757,9 +1757,7 @@ SOFTWARE.
             modalContent.appendChild(getTyreSetsInfoContent(data));
 
             // Predictions
-            if (tyreWearPredictionsAvailable) {
-                modalContent.appendChild(getTyreWearPredictionsContent(data));
-            }
+            modalContent.appendChild(getTyreWearPredictionsContent(data));
 
             // Tyre Stint History
             modalContent.appendChild(getTyreStintHistoryContent(data));

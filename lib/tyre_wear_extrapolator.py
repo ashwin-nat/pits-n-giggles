@@ -96,6 +96,7 @@ class TyreWearPerLap:
             "front-right-wear": self.fr_tyre_wear,
             "rear-left-wear": self.rl_tyre_wear,
             "rear-right-wear": self.rr_tyre_wear,
+            "average" : self.m_average,
             "desc" : self.m_desc
         }
 

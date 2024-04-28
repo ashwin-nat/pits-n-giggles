@@ -387,18 +387,35 @@ class DataPerDriver:
         """
 
         if self.m_tyre_wear_extrapolator.isDataSufficient() and (self.m_tyre_wear_extrapolator.remaining_laps > 0):
+            predictions_list = []
+
+            # Input sanitization
             if next_pit_window is None or (next_pit_window == 0) or (next_pit_window < self.m_current_lap):
                 # Lets return the lap midway between current lap and final lap
                 next_pit_window = (self.m_current_lap + self.m_tyre_wear_extrapolator.total_laps) // 2
+
+            # This happens in the last lap
             if next_pit_window == self.m_tyre_wear_extrapolator.total_laps:
                 # We are already in the final lap, so return the final prediction
-                return [self.m_tyre_wear_extrapolator.getTyreWearPrediction().toJSON()]
+                predictions_list.append(self.m_tyre_wear_extrapolator.getTyreWearPrediction().toJSON())
             else:
-                # Return the tyre wear extrapolator predictions for the next pit window and final lap
-                return [
-                    self.m_tyre_wear_extrapolator.getTyreWearPrediction(next_pit_window).toJSON(),
-                    self.m_tyre_wear_extrapolator.getTyreWearPrediction().toJSON()
-                ]
+
+                # Add prediction for next window if available
+                pit_lap_prediction = self.m_tyre_wear_extrapolator.getTyreWearPrediction(next_pit_window)
+                if next_pit_window:
+                    predictions_list.append(pit_lap_prediction.toJSON())
+                else:
+                    logging.error("Prediction for lap " + str(next_pit_window) + " not available. Curr lap = " +
+                                str(self.m_current_lap))
+
+                # Add final lap prediction if available
+                final_lap_prediction = self.m_tyre_wear_extrapolator.getTyreWearPrediction()
+                if final_lap_prediction:
+                    predictions_list.append(final_lap_prediction.toJSON())
+                else:
+                    logging.error("Prediction for final lap not available. Curr lap = " +
+                                str(self.m_current_lap))
+            return predictions_list
         else:
             # Data unavailable, return empty list
             return []
@@ -423,6 +440,9 @@ class DataPerDriver:
                 'tyre-wear-history' : entry.getTyreWearJSONList(),
                 'tyre-set-key' : entry.m_tyre_set_key
             })
+            # Overwrite the tyre sets wear to actual recent float value
+            if len(tyre_set_history[-1]['tyre-wear-history']):
+                tyre_set_history[-1]['tyre-set-data']['wear'] = tyre_set_history[-1]['tyre-wear-history'][-1]['average']
 
         return tyre_set_history
 
