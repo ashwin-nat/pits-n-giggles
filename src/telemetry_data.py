@@ -508,7 +508,7 @@ class DataPerDriver:
         )
 
         # Add the tyre wear data into the tyre stint history
-        if old_lap_number > 0:
+        if (old_lap_number > 0) and (len(self.m_tyre_set_history) > 0):
             self.m_tyre_set_history[-1].m_tyre_wear_history.append(TyreWearPerLap(
                 lap_number=old_lap_number,
                 fl_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
