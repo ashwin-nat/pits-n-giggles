@@ -441,7 +441,7 @@ class DataPerDriver:
                 'tyre-set-key' : entry.m_tyre_set_key
             })
             # Overwrite the tyre sets wear to actual recent float value
-            if len(tyre_set_history[-1]['tyre-wear-history']):
+            if (len(tyre_set_history[-1]['tyre-wear-history']) > 0) and (tyre_set_history[-1]['tyre-set-data']):
                 tyre_set_history[-1]['tyre-set-data']['wear'] = tyre_set_history[-1]['tyre-wear-history'][-1]['average']
 
         return tyre_set_history
