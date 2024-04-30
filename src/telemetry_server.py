@@ -208,7 +208,7 @@ class TelemetryWebServer:
         driver_data, fastest_lap_overall = TelData.getDriverData(self.m_num_adjacent_cars)
         circuit, track_temp, event_type, total_laps, curr_lap, \
             safety_car_status, weather_forecast_samples, pit_speed_limit, \
-                    final_classification_received = TelData.getGlobals()
+                    final_classification_received, is_spectator_mode = TelData.getGlobals()
 
         # Init the global data onto the JSON repsonse
         json_response = {
@@ -221,7 +221,8 @@ class TelemetryWebServer:
             "fastest-lap-overall": fastest_lap_overall,
             "pit-speed-limit" : self.getValueOrDefaultValue(pit_speed_limit),
             "weather-forecast-samples": [],
-            "race-ended" : self.getValueOrDefaultValue(final_classification_received, False)
+            "race-ended" : self.getValueOrDefaultValue(final_classification_received, False),
+            "is-spectating" : self.getValueOrDefaultValue(is_spectator_mode, False)
         }
         for sample in weather_forecast_samples:
             json_response["weather-forecast-samples"].append(
@@ -235,6 +236,8 @@ class TelemetryWebServer:
         # Fill in the per driver data
         json_response["table-entries"] = []
         for data_per_driver in driver_data:
+            if not hasattr(data_per_driver, 'm_best_lap_delta'):
+                logging.error("m_best_lap_delta not found")
             json_response["table-entries"].append(
                 {
                     "position": self.getValueOrDefaultValue(data_per_driver.m_position),
@@ -251,7 +254,9 @@ class TelemetryWebServer:
                                                                data_per_driver.m_dnf_status_code),
                     "ers": self.getValueOrDefaultValue(data_per_driver.m_ers_perc),
                     "best": self.getValueOrDefaultValue(data_per_driver.m_best_lap_str),
+                    "best-lap-delta" : self.getValueOrDefaultValue(data_per_driver.m_best_lap_delta),
                     "last": self.getValueOrDefaultValue(data_per_driver.m_last_lap),
+                    "last-lap-delta" : self.getValueOrDefaultValue(data_per_driver.m_last_lap_delta),
                     "is-fastest": self.getValueOrDefaultValue(data_per_driver.m_is_fastest),
                     "is-player": self.getValueOrDefaultValue(data_per_driver.m_is_player),
                     "average-tyre-wear": self.getValueOrDefaultValue(data_per_driver.m_tyre_wear),
@@ -286,7 +291,7 @@ class TelemetryWebServer:
         player_driver_data, fastest_lap_overall = TelData.getPlayerDriverData()
         circuit, track_temp, event_type, total_laps, curr_lap, \
             safety_car_status, weather_forecast_samples, pit_speed_limit, \
-                    final_classification_received = TelData.getGlobals()
+                    final_classification_received, is_spectator_mode = TelData.getGlobals()
 
         # Init the global data onto the JSON repsonse
         json_response = {
@@ -299,7 +304,8 @@ class TelemetryWebServer:
             "fastest-lap-overall": fastest_lap_overall,
             "pit-speed-limit" : self.getValueOrDefaultValue(pit_speed_limit),
             "weather-forecast-samples": [],
-            "race-ended" : self.getValueOrDefaultValue(final_classification_received, False)
+            "race-ended" : self.getValueOrDefaultValue(final_classification_received, False),
+            "is-spectating" : self.getValueOrDefaultValue(is_spectator_mode, False)
         }
         for sample in weather_forecast_samples:
             json_response["weather-forecast-samples"].append(

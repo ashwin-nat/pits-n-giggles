@@ -302,13 +302,12 @@ SOFTWARE.
         <thead>
             <tr>
                 <th>Position</th>
-                <th>Name</th>
-                <th>Team</th>
+                <th>Driver</th>
                 <th id="deltaLink" class="motivationLink">Delta</th>
                 <th>ERS</th>
                 <th>Warnings</th>
-                <th>Best</th>
-                <th>Last</th>
+                <th id="bestLapLink" class="motivationLink">Best</th>
+                <th id="lastLapLink" class="motivationLink">Last</th>
                 <th>Tyre Info</th>
                 <th>Wear Prediction</th>
             </tr>
@@ -328,6 +327,8 @@ SOFTWARE.
         var player; // Define YT player
         let is24HourFormat = true; // Initial format
         let relativeDelta = false; // Initial format
+        let lastLapAbsoluteFormat = false; // Initial format
+        let bestLapAbsoluteFormat = true; // Initial format
         // Check if delta column needs to be displayed
         const shouldHideDeltaColumn = {{ live_data_mode | tojson | safe }};
         const shouldHidePredictionColumn = !{{ live_data_mode | tojson | safe }};
@@ -426,6 +427,17 @@ SOFTWARE.
         }
 
         function updateRaceTable(entries) {
+
+            function truncateName(name) {
+
+                const maxLength = 25;
+                if (name.length > maxLength) {
+                    return name.substring(0, maxLength - 3) + '...';
+                } else {
+                    return name;
+                }
+            }
+
             const tableBody = document.querySelector('#raceTable tbody');
             tableBody.innerHTML = '';
 
@@ -439,7 +451,9 @@ SOFTWARE.
                 // Create a clickable link for the driver's name
                 const nameCell = row.insertCell();
                 const nameLink = document.createElement('a');
-                nameLink.textContent = entry["name"];
+                nameLink.innerHTML =    `${truncateName(entry["name"])}` +
+                                        `<br>` +
+                                        `${truncateName(entry["team"])}`;
                 nameLink.href = '#'; // Set a placeholder href value
 
                 // Get the computed style of the row and apply it to the hyperlink
@@ -453,7 +467,6 @@ SOFTWARE.
                 };
                 nameCell.appendChild(nameLink);
 
-                row.insertCell().textContent = entry["team"];
                 if (!shouldHideDeltaColumn) {
                     if (relativeDelta) {
                         row.insertCell().textContent = entry["delta"];
@@ -472,8 +485,17 @@ SOFTWARE.
                     `Warns: ${entry["corner-cutting-warnings"]}<br>` +
                     `${dtPlusSg}`;
 
-                row.insertCell().textContent = entry["best"];
-                row.insertCell().textContent = entry["last"];
+                if (bestLapAbsoluteFormat || entry["is-spectating"]) {
+                    row.insertCell().textContent = entry["best"];
+                } else {
+                    row.insertCell().textContent = entry["best-lap-delta"];
+                }
+
+                if (lastLapAbsoluteFormat || entry["is-spectating"]) {
+                    row.insertCell().textContent = entry["last"];
+                } else {
+                    row.insertCell().textContent = entry["last-lap-delta"];
+                }
 
                 const tyreInfoCell = row.insertCell();
                 tyreInfoCell.innerHTML = `${entry["average-tyre-wear"]}<br>` +
@@ -1767,7 +1789,7 @@ SOFTWARE.
 
             // Finalise the data
             const modalTitle = document.getElementById('modalTitle');
-            modalTitle.innerText = `Driver Information - ${data["driver-name"]}`;
+            modalTitle.innerText = `Driver Information - ${data["driver-name"]} (${data["index"]})`;
 
             const modal = document.getElementById('driverInfoModal');
             modal.style.display = 'block';
@@ -1782,11 +1804,11 @@ SOFTWARE.
             safety_car_status, fastest_lap, pit_speed_limit, packet_capture_enabled) {
 
             document.getElementById('tableTitle').textContent = `${event_type} - ${circuit}`;
-            document.getElementById('trackTemperature').textContent = `Track Temperature: ${track_temp}°C`;
+            document.getElementById('trackTemperature').textContent = `Track Temperature: ${track_temp} °C`;
             document.getElementById('lapInformation').textContent = `Lap: ${curr_lap}/${total_laps}`;
             document.getElementById('safetyCarStatus').textContent = `Safety Car Status: ${safety_car_status}`;
             document.getElementById('fastestLapOverall').textContent = `Fastest Lap Overall: ${fastest_lap}`;
-            document.getElementById('pitSpeedLimit').textContent = `Pit Lane Speed Limit: ${pit_speed_limit}`;
+            document.getElementById('pitSpeedLimit').textContent = `Pit Lane Speed Limit: ${pit_speed_limit} kmph`;
 
             const saveTelemetryLink = document.getElementById('saveTelemetryLink');
             saveTelemetryLink.style.display = packet_capture_enabled ? 'inline' : 'none';
@@ -1808,6 +1830,14 @@ SOFTWARE.
 
         function toggleDeltaFormat() {
             relativeDelta = !relativeDelta;
+        }
+
+        function toggleLastLapFormat() {
+            lastLapAbsoluteFormat = !lastLapAbsoluteFormat;
+        }
+
+        function toggleBestLapFormat() {
+            bestLapAbsoluteFormat = !bestLapAbsoluteFormat;
         }
 
         function formatFileSize(bytes) {
@@ -1895,6 +1925,8 @@ SOFTWARE.
         // Add an event listener to the hyperlink
         document.getElementById('localTime').addEventListener('click', toggleTimeFormat);
         document.getElementById('deltaLink').addEventListener('click', toggleDeltaFormat);
+        document.getElementById('lastLapLink').addEventListener('click', toggleLastLapFormat);
+        document.getElementById('bestLapLink').addEventListener('click', toggleBestLapFormat);
 
         // Fetch data at intervals specified from jinja
         setInterval(fetchDataAndDisplay, {{ client_poll_interval_ms | tojson | safe }});
