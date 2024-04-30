@@ -252,6 +252,20 @@ SOFTWARE.
             align-items: center;
             margin: auto;
         }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 5px;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            z-index: 9999;
+        }
     </style>
     <script src="https://www.youtube.com/iframe_api"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
@@ -360,6 +374,30 @@ SOFTWARE.
         function stopAudio() {
             // Pause the audio
             player.pauseVideo();
+        }
+
+        function showToast(message) {
+            // Create a new div element for the toast
+            var toast = document.createElement('div');
+            toast.classList.add('toast');
+
+            // Set the message content
+            toast.innerText = message;
+
+            // Append the toast to the document body
+            document.body.appendChild(toast);
+
+            // Show the toast
+            toast.style.opacity = 1;
+
+            // Hide the toast after 3 seconds
+            setTimeout(function() {
+                toast.style.opacity = 0;
+                // Remove the toast from the document after it fades out
+                setTimeout(function() {
+                document.body.removeChild(toast);
+                }, 300);
+            }, 3000);
         }
 
         function formatFloatWithTwoDecimals(floatNumber) {
@@ -1826,18 +1864,22 @@ SOFTWARE.
         function toggleTimeFormat() {
             is24HourFormat = !is24HourFormat;
             updateLocalTime();
+            showToast("Time Format Changed to " + (is24HourFormat ? "24 Hour Format" : "12 Hour Format"));
         }
 
         function toggleDeltaFormat() {
             relativeDelta = !relativeDelta;
+            showToast("Delta Format Changed to " + (relativeDelta ? "Relative" : "Absolute"));
         }
 
         function toggleLastLapFormat() {
             lastLapAbsoluteFormat = !lastLapAbsoluteFormat;
+            showToast("Last Lap Format Changed to " + (lastLapAbsoluteFormat ? "Absolute" : "Relative"));
         }
 
         function toggleBestLapFormat() {
             bestLapAbsoluteFormat = !bestLapAbsoluteFormat;
+            showToast("Best Lap Format Changed to " + (bestLapAbsoluteFormat ? "Absolute" : "Relative"));
         }
 
         function formatFileSize(bytes) {
