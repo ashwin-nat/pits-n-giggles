@@ -236,8 +236,6 @@ class TelemetryWebServer:
         # Fill in the per driver data
         json_response["table-entries"] = []
         for data_per_driver in driver_data:
-            if not hasattr(data_per_driver, 'm_best_lap_delta'):
-                logging.error("m_best_lap_delta not found")
             json_response["table-entries"].append(
                 {
                     "position": self.getValueOrDefaultValue(data_per_driver.m_position),
@@ -273,7 +271,9 @@ class TelemetryWebServer:
                     "time-penalties" : self.getValueOrDefaultValue(data_per_driver.m_time_penalties),
                     "num-dt" : self.getValueOrDefaultValue(data_per_driver.m_num_dt),
                     "num-sg" : self.getValueOrDefaultValue(data_per_driver.m_num_sg),
-                    "tyre-wear-prediction" : data_per_driver.getTyrePredictionsJSONList(data_per_driver.m_ideal_pit_stop_window)
+                    "tyre-wear-prediction" : data_per_driver.getTyrePredictionsJSONList(data_per_driver.m_ideal_pit_stop_window),
+                    "fuel-load-kg" : self.getValueOrDefaultValue(data_per_driver.m_fuel_load_kg),
+                    "fuel-laps-remaining" : self.getValueOrDefaultValue(data_per_driver.m_fuel_laps_remaining),
                 }
             )
 
@@ -323,8 +323,6 @@ class TelemetryWebServer:
         else:
             driver_data = []
         for data_per_driver in driver_data:
-            # if data_per_driver.m_is_fastest:
-            #     fastest_lap_overall = data_per_driver.m_best_lap
             json_response["table-entries"].append(
                 {
                     "position": self.getValueOrDefaultValue(data_per_driver.m_position),
@@ -353,6 +351,9 @@ class TelemetryWebServer:
                     "time-penalties" : self.getValueOrDefaultValue(data_per_driver.m_time_penalties),
                     "num-dt" : self.getValueOrDefaultValue(data_per_driver.m_num_dt),
                     "num-sg" : self.getValueOrDefaultValue(data_per_driver.m_num_sg),
+                    "tyre-wear-prediction" : data_per_driver.getTyrePredictionsJSONList(data_per_driver.m_ideal_pit_stop_window),
+                    "fuel-load-kg" : self.getValueOrDefaultValue(data_per_driver.m_fuel_load_kg),
+                    "fuel-laps-remaining" : self.getValueOrDefaultValue(data_per_driver.m_fuel_laps_remaining),
                 }
             )
 

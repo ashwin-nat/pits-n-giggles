@@ -129,6 +129,7 @@ class GlobalData:
         self.m_pit_speed_limit = packet.m_pitSpeedLimit
         self.m_total_laps = packet.m_totalLaps
         self.m_packet_session = packet
+        self.m_is_spectating = packet.m_isSpectating
         return ret_status
 
 class DataPerDriver:
@@ -165,6 +166,8 @@ class DataPerDriver:
             List of TyreSetHistoryEntry objects, representing the driver's tire set history.
         m_tyre_wear_extrapolator (TyreWearExtrapolator): Predicts the tyre wear for upcoming laps
         m_curr_lap_sc_status (PacketSessionData.SafetyCarStatus): The current lap's safety car status
+        m_fuel_load_kg (float): The current fuel load (in kg)
+        m_fuel_laps_remaining (float): Number of laps remaining with current fuel load
 
         m_packet_lap_data (Optional[LapData]): Copy of LapData packet for the driver.
         m_packet_participant_data (Optional[ParticipantData]): Copy of ParticipantData packet for the driver.
@@ -295,6 +298,8 @@ class DataPerDriver:
         self.m_tyre_set_history: List[DataPerDriver.TyreSetHistoryEntry] = []
         self.m_tyre_wear_extrapolator: TyreWearExtrapolator = TyreWearExtrapolator([], total_laps=total_laps)
         self.m_curr_lap_sc_status: Optional[PacketSessionData.SafetyCarStatus] = None
+        self.m_fuel_load_kg: Optional[float] = None
+        self.m_fuel_laps_remaining: Optional[float] = None
 
         # packet copies
         self.m_packet_lap_data: Optional[LapData] = None
@@ -997,6 +1002,8 @@ class DriverData:
             obj_to_be_updated.m_drs_allowed = bool(car_status_data.m_drsAllowed)
             obj_to_be_updated.m_drs_distance = car_status_data.m_drsActivationDistance
             obj_to_be_updated.m_packet_car_status = car_status_data
+            obj_to_be_updated.m_fuel_load_kg = car_status_data.m_fuelInTank
+            obj_to_be_updated.m_fuel_laps_remaining = car_status_data.m_fuelRemainingLaps
 
     def processFinalClassificationUpdate(self, packet: PacketFinalClassificationData) -> Dict[str, Any]:
         """Process the final classification update packet and update the necessary fields.
@@ -1805,19 +1812,20 @@ def _recomputeDeltas(
         # Set the last lap delta and best lap delta
         for data in driver_list:
             if data.m_is_player:
-                data.m_last_lap_delta = "---"
-                data.m_best_lap_delta = "---"
+                data.m_last_lap_delta = data.m_last_lap
+                data.m_best_lap_delta = data.m_best_lap_str
             else:
-                if player_last_lap_ms is not None and data.m_last_lap != "---":
+                if player_last_lap_ms is not None and data.m_last_lap != "---" and data.m_last_lap is not None:
                     try:
-                        data.m_last_lap_delta = milliseconds_to_seconds_str(F1Utils.timeStrToMilliseconds(data.m_last_lap) - player_last_lap_ms)
+                        data.m_last_lap_delta = milliseconds_to_seconds_str(
+                            F1Utils.timeStrToMilliseconds(data.m_last_lap) - player_last_lap_ms)
                     except Exception as e:
                         # Handle the exception here
                         logging.error("Input: " + str(data.m_last_lap) + " An error occurred:", e)
                 else:
                     data.m_last_lap_delta = "---"
 
-                if fastest_lap_ms is not None and data.m_best_lap_ms != 0:
+                if fastest_lap_ms is not None and data.m_best_lap_ms != 0 and data.m_best_lap_ms is not None:
                     try:
                         data.m_best_lap_delta = milliseconds_to_seconds_str(data.m_best_lap_ms - fastest_lap_ms)
                     except Exception as e:
