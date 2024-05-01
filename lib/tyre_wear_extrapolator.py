@@ -161,19 +161,16 @@ class TyreWearExtrapolator:
 
         self._initMembers([], total_laps=self.m_total_laps)
 
-    def getTyreWearPrediction(self, lap_number: Optional[int] = None) -> TyreWearPerLap:
+    def getTyreWearPrediction(self, lap_number: Optional[int] = None) -> Optional[TyreWearPerLap]:
         """Get the tyre wear prediction for the specified lap.
 
         Args:
             lap_number (Optional[int], optional): The lap number. If None, returns the tyre wear prediction for the
                 final lap
 
-        Raises:
-            IndexError: If the specified lap number is not available. Usually happens if the lap number is not within
-                the range of available laps, or if data is not sufficient
-
         Returns:
-            TyreWearPerLap: The object containing the tyre wear prediction for the specified lap
+            Optional[TyreWearPerLap]: The object containing the tyre wear prediction for the specified lap.
+                None if the specified lap number is not available
         """
         if lap_number is None:
             return self.m_predicted_tyre_wear[-1]
@@ -181,9 +178,7 @@ class TyreWearExtrapolator:
             for point in self.m_predicted_tyre_wear:
                 if point.lap_number == lap_number:
                     return point
-
-            raise IndexError("Lap number " + str(lap_number) + "not found. Max lap number is " +
-                             str(self.m_predicted_tyre_wear[-1].lap_number))
+            return None
 
     @property
     def predicted_tyre_wear(self) -> Generator[TyreWearPerLap, None, None]:
@@ -276,7 +271,8 @@ class TyreWearExtrapolator:
 
         self.updateDataList([new_data])
 
-    def getNumSamples(self) -> int:
+    @property
+    def num_samples(self) -> int:
         """
         Get the number of samples from the regression models and ensure they are equal before returning the number of samples from the front left regression model.
         """

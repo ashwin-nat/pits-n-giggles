@@ -393,6 +393,11 @@ class DataPerDriver:
 
         if self.m_tyre_wear_extrapolator.isDataSufficient() and (self.m_tyre_wear_extrapolator.remaining_laps > 0):
             predictions_list = []
+            log_error = lambda: logging.error(
+                f"{str(self.m_name)}: Prediction for lap {str(next_pit_window)} not available. "
+                    "Curr lap = {str(self.m_current_lap)} "
+                    "Num Samples = {self.m_tyre_wear_extrapolator.num_samples}"
+)
 
             # Input sanitization
             if next_pit_window is None or (next_pit_window == 0) or (next_pit_window < self.m_current_lap):
@@ -402,7 +407,11 @@ class DataPerDriver:
             # This happens in the last lap
             if next_pit_window == self.m_tyre_wear_extrapolator.total_laps:
                 # We are already in the final lap, so return the final prediction
-                predictions_list.append(self.m_tyre_wear_extrapolator.getTyreWearPrediction().toJSON())
+                predicted_tyre_wear = self.m_tyre_wear_extrapolator.getTyreWearPrediction()
+                if predicted_tyre_wear:
+                    predictions_list.append(predicted_tyre_wear.toJSON())
+                else:
+                    log_error()
             else:
 
                 # Add prediction for next window if available
@@ -410,16 +419,14 @@ class DataPerDriver:
                 if next_pit_window:
                     predictions_list.append(pit_lap_prediction.toJSON())
                 else:
-                    logging.error("Prediction for lap " + str(next_pit_window) + " not available. Curr lap = " +
-                                str(self.m_current_lap))
+                    log_error()
 
                 # Add final lap prediction if available
                 final_lap_prediction = self.m_tyre_wear_extrapolator.getTyreWearPrediction()
                 if final_lap_prediction:
                     predictions_list.append(final_lap_prediction.toJSON())
                 else:
-                    logging.error("Prediction for final lap not available. Curr lap = " +
-                                str(self.m_current_lap))
+                    log_error()
             return predictions_list
         else:
             # Data unavailable, return empty list

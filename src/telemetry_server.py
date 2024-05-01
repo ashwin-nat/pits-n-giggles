@@ -261,7 +261,8 @@ class TelemetryWebServer:
                     "tyre-age": self.getValueOrDefaultValue(data_per_driver.m_tyre_age),
                     "tyre-life-remaining" : self.getValueOrDefaultValue(data_per_driver.m_tyre_life_remaining_laps),
                     "tyre-compound": self.getValueOrDefaultValue(data_per_driver.m_tyre_compound_type),
-                    "drs": self.getDRSValue(data_per_driver.m_drs_activated, data_per_driver.m_drs_allowed),
+                    "drs": self.getDRSValue(data_per_driver.m_drs_activated, data_per_driver.m_drs_allowed,
+                                            data_per_driver.m_drs_distance),
                     "num-pitstops": self.getValueOrDefaultValue(data_per_driver.m_num_pitstops),
                     "dnf-status" : self.getValueOrDefaultValue(data_per_driver.m_dnf_status_code),
                     "index" : self.getValueOrDefaultValue(data_per_driver.m_index),
@@ -341,7 +342,8 @@ class TelemetryWebServer:
                     "tyre-age": self.getValueOrDefaultValue(data_per_driver.m_tyre_age),
                     "tyre-life-remaining" : self.getValueOrDefaultValue(data_per_driver.m_tyre_life_remaining_laps),
                     "tyre-compound": self.getValueOrDefaultValue(data_per_driver.m_tyre_compound_type),
-                    "drs": self.getDRSValue(data_per_driver.m_drs_activated, data_per_driver.m_drs_allowed),
+                    "drs": self.getDRSValue(data_per_driver.m_drs_activated, data_per_driver.m_drs_allowed,
+                                            data_per_driver.m_drs_distance),
                     "num-pitstops": self.getValueOrDefaultValue(data_per_driver.m_num_pitstops),
                     "dnf-status" : self.getValueOrDefaultValue(data_per_driver.m_dnf_status_code),
                     "index" : self.getValueOrDefaultValue(data_per_driver.m_index),
@@ -351,12 +353,12 @@ class TelemetryWebServer:
                     "time-penalties" : self.getValueOrDefaultValue(data_per_driver.m_time_penalties),
                     "num-dt" : self.getValueOrDefaultValue(data_per_driver.m_num_dt),
                     "num-sg" : self.getValueOrDefaultValue(data_per_driver.m_num_sg),
-                    "tyre-wear-prediction" : data_per_driver.getTyrePredictionsJSONList(data_per_driver.m_ideal_pit_stop_window),
+                    "tyre-wear-prediction" : data_per_driver.getTyrePredictionsJSONList(
+                        data_per_driver.m_ideal_pit_stop_window),
                     "fuel-load-kg" : self.getValueOrDefaultValue(data_per_driver.m_fuel_load_kg),
                     "fuel-laps-remaining" : self.getValueOrDefaultValue(data_per_driver.m_fuel_laps_remaining),
                 }
             )
-
 
         return json_response
 
@@ -416,19 +418,21 @@ class TelemetryWebServer:
 
     def getDRSValue(self,
             drs_activated: bool,
-            drs_available: bool) -> bool:
+            drs_available: bool,
+            drs_distance: int) -> bool:
         """
         Get DRS value.
 
         Args:
             drs_activated (bool): Whether DRS is activated.
             drs_available (bool): Whether DRS is available.
+            drs_distance (int): Distance to DRS zone start.
 
         Returns:
             bool: True if DRS is activated or available or has non-zero distance, False otherwise.
         """
-        # return True if (drs_activated or drs_available or (drs_distance > 0)) else False
-        return True if (drs_activated or drs_available) else False
+
+        return True if (drs_activated or drs_available or (drs_distance > 0)) else False
 
     def _checkUpdateRecords(self, json_data: Dict[str, Any]):
         """
