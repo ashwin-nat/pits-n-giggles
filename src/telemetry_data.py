@@ -1763,7 +1763,7 @@ def _recomputeDeltas(
     if is_spectator_mode:
         # just convert the deltas to str
         for data in driver_list:
-            if data.m_delta_to_car_in_front is not None and not isinstance(data.m_delta_to_car_in_front, str):
+            if data.m_delta_to_car_in_front is not None and isinstance(data.m_delta_to_car_in_front, int):
                 data.m_delta_to_car_in_front = milliseconds_to_seconds_str(data.m_delta_to_car_in_front)
             else:
                 data.m_delta_to_car_in_front = "---"
