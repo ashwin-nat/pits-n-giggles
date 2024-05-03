@@ -168,6 +168,8 @@ class DataPerDriver:
         m_curr_lap_sc_status (PacketSessionData.SafetyCarStatus): The current lap's safety car status
         m_fuel_load_kg (float): The current fuel load (in kg)
         m_fuel_laps_remaining (float): Number of laps remaining with current fuel load
+        m_fl_wing_damage (int): Left front wing damage
+        m_fr_wing_damage (int): Right front wing damage
 
         m_packet_lap_data (Optional[LapData]): Copy of LapData packet for the driver.
         m_packet_participant_data (Optional[ParticipantData]): Copy of ParticipantData packet for the driver.
@@ -300,6 +302,8 @@ class DataPerDriver:
         self.m_curr_lap_sc_status: Optional[PacketSessionData.SafetyCarStatus] = None
         self.m_fuel_load_kg: Optional[float] = None
         self.m_fuel_laps_remaining: Optional[float] = None
+        self.m_fl_wing_damage: Optional[int] = None
+        self.m_fr_wing_damage: Optional[int] = None
 
         # packet copies
         self.m_packet_lap_data: Optional[LapData] = None
@@ -1045,8 +1049,10 @@ class DriverData:
         """
         for index, car_damage in enumerate(packet.m_carDamageData):
             obj_to_be_updated = self._getObjectByIndexCreate(index)
-            obj_to_be_updated.m_tyre_wear = sum(car_damage.m_tyresWear)/len(car_damage.m_tyresWear)
             obj_to_be_updated.m_packet_car_damage = car_damage
+            obj_to_be_updated.m_tyre_wear = sum(car_damage.m_tyresWear)/len(car_damage.m_tyresWear)
+            obj_to_be_updated.m_fl_wing_damage = car_damage.m_frontLeftWingDamage
+            obj_to_be_updated.m_fr_wing_damage = car_damage.m_frontRightWingDamage
 
     def processSessionHistoryUpdate(self, packet: PacketSessionHistoryData) -> None:
         """Process the session history update packet and update the necessary fields
@@ -1695,7 +1701,6 @@ def getCustomMarkerEntryObj(add_to_queue: bool = False) -> Optional[CustomMarker
             curr_lap_time=curr_lap_time,
             curr_lap_perc=curr_lap_percent
         )
-
 
 def _getAdjacentPositions(position:int, total_cars:int, num_adjacent_cars:int) -> List[int]:
     """Get the list of positions of the race that are to be returned to the UI.

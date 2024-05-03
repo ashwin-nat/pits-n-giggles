@@ -324,6 +324,7 @@ SOFTWARE.
                 <th id="lastLapLink" class="motivationLink">Last</th>
                 <th>Tyre Info</th>
                 <th>Wear Prediction</th>
+                <th>Wing Damage</th>
             </tr>
         </thead>
         <tbody></tbody>
@@ -558,6 +559,16 @@ SOFTWARE.
                     }
                     row.insertCell().innerHTML = predictionHTML; // Set innerHTML outside the loop
                 }
+
+                // Wing damage key will always be present
+                let flWingDamage = entry["fl-wing-damage"] == null ? "N/A" :
+                    formatFloatWithTwoDecimals(entry["fl-wing-damage"]) + "%";
+                let frWingDamage = entry["fr-wing-damage"] == null ? "N/A" :
+                    formatFloatWithTwoDecimals(entry["fr-wing-damage"]) + "%";
+                row.insertCell().innerHTML = `
+                    FL: ${flWingDamage}<br>
+                    FR: ${frWingDamage}
+                `;;
 
                 row.className = '';
                 if (entry["is-fastest"]) {

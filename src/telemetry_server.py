@@ -22,7 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from http import HTTPStatus
 import logging
 from flask import Flask, render_template, request, jsonify
@@ -182,8 +182,8 @@ class TelemetryWebServer:
                 player_only_telemetry=True)
 
     def getValueOrDefaultValue(self,
-            value: str,
-            default_value: str ='---') -> str:
+            value: Optional[Any],
+            default_value: str ='---') -> Optional[Any]:
         """
         Get value or default as string.
 
@@ -192,7 +192,7 @@ class TelemetryWebServer:
             default_value (str, optional): Default value if the input is None. Defaults to '---'.
 
         Returns:
-            str: The value as string or default string.
+            str: The value as is or default string if None.
         """
         return value if value is not None else default_value
 
@@ -275,6 +275,8 @@ class TelemetryWebServer:
                     "tyre-wear-prediction" : data_per_driver.getTyrePredictionsJSONList(data_per_driver.m_ideal_pit_stop_window),
                     "fuel-load-kg" : self.getValueOrDefaultValue(data_per_driver.m_fuel_load_kg),
                     "fuel-laps-remaining" : self.getValueOrDefaultValue(data_per_driver.m_fuel_laps_remaining),
+                    "fl-wing-damage" : data_per_driver.m_fl_wing_damage, # NULL is supported
+                    "fr-wing-damage" : data_per_driver.m_fr_wing_damage, # NULL is supported
                 }
             )
 
