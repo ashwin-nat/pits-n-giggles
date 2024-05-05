@@ -1501,11 +1501,20 @@ def getPlayerDriverData() -> Tuple[DataPerDriver, str]:
         if final_obj.m_packet_lap_data:
             final_obj.m_corner_cutting_warnings = final_obj.m_packet_lap_data.m_cornerCuttingWarnings
             final_obj.m_delta_to_car_in_front = milliseconds_to_seconds_str(final_obj.m_packet_lap_data.m_deltaToCarInFrontInMS)
+            final_obj.m_time_penalties = final_obj.m_packet_lap_data.m_penalties
+            final_obj.m_num_dt = final_obj.m_packet_lap_data.m_numUnservedDriveThroughPens
+            final_obj.m_num_sg = final_obj.m_packet_lap_data.m_numUnservedStopGoPens
             if track_length:
                 final_obj.m_lap_progress = (final_obj.m_packet_lap_data.m_lapDistance / track_length) * 100.0
         else:
             final_obj.m_lap_progress = None
             final_obj.m_corner_cutting_warnings = None
+            final_obj.m_time_penalties = None
+            final_obj.m_num_dt = None
+            final_obj.m_num_sg = None
+        final_obj.m_best_lap_delta = final_obj.m_best_lap_str
+        final_obj.m_last_lap_delta = final_obj.m_last_lap
+        final_obj.m_ideal_pit_stop_window = _driver_data.m_ideal_pit_stop_window
 
         return final_obj, fastest_lap_time
 

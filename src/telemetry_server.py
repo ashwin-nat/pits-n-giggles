@@ -179,7 +179,8 @@ class TelemetryWebServer:
             return render_template('index.html',
                 packet_capture_enabled=self.m_packet_capture_enabled,
                 client_poll_interval_ms=self.m_client_poll_interval_ms,
-                player_only_telemetry=True)
+                player_only_telemetry=True,
+                live_data_mode=True)
 
     def getValueOrDefaultValue(self,
             value: Optional[Any],
@@ -335,9 +336,16 @@ class TelemetryWebServer:
                                                                data_per_driver.m_penalties,
                                                                data_per_driver.m_is_pitting,
                                                                data_per_driver.m_dnf_status_code),
+                    "delta-to-leader": self.getDeltaPlusPenaltiesPlusPit(
+                                F1Utils.millisecondsToSecondsMilliseconds(data_per_driver.m_delta_to_leader),
+                                                               data_per_driver.m_penalties,
+                                                               data_per_driver.m_is_pitting,
+                                                               data_per_driver.m_dnf_status_code),
                     "ers": self.getValueOrDefaultValue(data_per_driver.m_ers_perc),
                     "best": self.getValueOrDefaultValue(data_per_driver.m_best_lap_str),
+                    "best-lap-delta" : self.getValueOrDefaultValue(data_per_driver.m_best_lap_delta),
                     "last": self.getValueOrDefaultValue(data_per_driver.m_last_lap),
+                    "last-lap-delta" : self.getValueOrDefaultValue(data_per_driver.m_last_lap_delta),
                     "is-fastest": self.getValueOrDefaultValue(data_per_driver.m_is_fastest),
                     "is-player": self.getValueOrDefaultValue(data_per_driver.m_is_player),
                     "average-tyre-wear": self.getValueOrDefaultValue(data_per_driver.m_tyre_wear),
@@ -355,10 +363,11 @@ class TelemetryWebServer:
                     "time-penalties" : self.getValueOrDefaultValue(data_per_driver.m_time_penalties),
                     "num-dt" : self.getValueOrDefaultValue(data_per_driver.m_num_dt),
                     "num-sg" : self.getValueOrDefaultValue(data_per_driver.m_num_sg),
-                    "tyre-wear-prediction" : data_per_driver.getTyrePredictionsJSONList(
-                        data_per_driver.m_ideal_pit_stop_window),
+                    "tyre-wear-prediction" : data_per_driver.getTyrePredictionsJSONList(data_per_driver.m_ideal_pit_stop_window),
                     "fuel-load-kg" : self.getValueOrDefaultValue(data_per_driver.m_fuel_load_kg),
                     "fuel-laps-remaining" : self.getValueOrDefaultValue(data_per_driver.m_fuel_laps_remaining),
+                    "fl-wing-damage" : data_per_driver.m_fl_wing_damage, # NULL is supported
+                    "fr-wing-damage" : data_per_driver.m_fr_wing_damage, # NULL is supported
                 }
             )
 
