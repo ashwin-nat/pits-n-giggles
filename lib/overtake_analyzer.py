@@ -715,6 +715,8 @@ if __name__ == "__main__":
     parser.add_argument("--driver-name", type=str, help="Name of the driver whose specific info is required")
 
     args = parser.parse_args()
-
-    overtake_analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_FILE_CSV, args.file_name)
+    import json
+    with open(args.file_name, 'r+', encoding='utf-8') as f:
+        json_data = json.load(f)
+    overtake_analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_LIST_OVERTAKE_RECORDS_JSON, json_data["overtakes"]["records"])
     print(overtake_analyzer.getFormattedString(driver_name=args.driver_name))

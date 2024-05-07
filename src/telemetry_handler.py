@@ -467,7 +467,11 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
     # Save the JSON data
     global g_post_race_data_autosave
     if g_post_race_data_autosave:
-        # addFunStatsToFinalClassificationJson(final_json)
+        # Add the overtakes as well
+        with g_overtakes_history.m_lock:
+            final_json['overtakes'] = {
+                'records': [record.toJSON() for record in g_overtakes_history.m_overtakes_history]
+            }
 
         # Add the markers as well
         final_json['custom-markers'] = []

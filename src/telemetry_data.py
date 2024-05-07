@@ -557,9 +557,9 @@ class DataPerDriver:
         """
 
         return True if \
-            self.m_packet_car_damage and \
-            self.m_packet_car_status and \
-            self.m_packet_tyre_sets \
+            self.m_packet_car_damage is not None and \
+            self.m_packet_car_status is not None and \
+            self.m_packet_tyre_sets is not None \
         else False
 
     def updateTyreSetData(self, fitted_index: int) -> None:

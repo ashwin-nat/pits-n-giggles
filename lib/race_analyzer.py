@@ -205,6 +205,7 @@ def getTyreStintRecordsDict(json_data: Dict[str, Any]):
                     if isinstance(compound, int):
                         # cunts who have telemetry disabled can fuck themselves
                         continue
+                    compound = tyre_set_data["actual-tyre-compound"] + ' - ' + tyre_set_data["visual-tyre-compound"]
                     if not stint_length:
                         # Skip if either 0 or None
                         continue
