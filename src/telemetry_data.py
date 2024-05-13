@@ -397,11 +397,10 @@ class DataPerDriver:
 
         if self.m_tyre_wear_extrapolator.isDataSufficient() and (self.m_tyre_wear_extrapolator.remaining_laps > 0):
             predictions_list = []
-            log_error = lambda: logging.error(
+            log_error_lambda = lambda: logging.error(
                 f"{str(self.m_name)}: Prediction for lap {str(next_pit_window)} not available. "
                     "Curr lap = {str(self.m_current_lap)} "
-                    "Num Samples = {self.m_tyre_wear_extrapolator.num_samples}"
-)
+                    "Num Samples = {self.m_tyre_wear_extrapolator.num_samples}")
 
             # Input sanitization
             if next_pit_window is None or (next_pit_window == 0) or (next_pit_window < self.m_current_lap):
@@ -415,22 +414,25 @@ class DataPerDriver:
                 if predicted_tyre_wear:
                     predictions_list.append(predicted_tyre_wear.toJSON())
                 else:
-                    log_error()
+                    log_error_lambda()
             else:
 
                 # Add prediction for next window if available
                 pit_lap_prediction = self.m_tyre_wear_extrapolator.getTyreWearPrediction(next_pit_window)
-                if next_pit_window:
-                    predictions_list.append(pit_lap_prediction.toJSON())
+                if pit_lap_prediction:
+                    if next_pit_window:
+                        predictions_list.append(pit_lap_prediction.toJSON())
+                    else:
+                        log_error_lambda()
                 else:
-                    log_error()
+                    log_error_lambda()
 
                 # Add final lap prediction if available
                 final_lap_prediction = self.m_tyre_wear_extrapolator.getTyreWearPrediction()
                 if final_lap_prediction:
                     predictions_list.append(final_lap_prediction.toJSON())
                 else:
-                    log_error()
+                    log_error_lambda()
             return predictions_list
         else:
             # Data unavailable, return empty list
