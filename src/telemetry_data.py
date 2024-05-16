@@ -170,6 +170,7 @@ class DataPerDriver:
         m_fuel_laps_remaining (float): Number of laps remaining with current fuel load
         m_fl_wing_damage (int): Left front wing damage
         m_fr_wing_damage (int): Right front wing damage
+        m_rear_wing_damage (int): Rear wing damage
 
         m_packet_lap_data (Optional[LapData]): Copy of LapData packet for the driver.
         m_packet_participant_data (Optional[ParticipantData]): Copy of ParticipantData packet for the driver.
@@ -304,6 +305,7 @@ class DataPerDriver:
         self.m_fuel_laps_remaining: Optional[float] = None
         self.m_fl_wing_damage: Optional[int] = None
         self.m_fr_wing_damage: Optional[int] = None
+        self.m_rear_wing_damage: Optional[int] = None
 
         # packet copies
         self.m_packet_lap_data: Optional[LapData] = None
@@ -959,7 +961,7 @@ class DriverData:
         """
 
         obj_to_be_updated = self._getObjectByIndexCreate(packet.vehicleIdx)
-        obj_to_be_updated.m_dnf_status_code = True
+        obj_to_be_updated.m_dnf_status_code = 'DNF'
 
         if packet.vehicleIdx == self.m_player_index:
             self.m_is_player_dnf = True
@@ -1055,6 +1057,7 @@ class DriverData:
             obj_to_be_updated.m_tyre_wear = sum(car_damage.m_tyresWear)/len(car_damage.m_tyresWear)
             obj_to_be_updated.m_fl_wing_damage = car_damage.m_frontLeftWingDamage
             obj_to_be_updated.m_fr_wing_damage = car_damage.m_frontRightWingDamage
+            obj_to_be_updated.m_rear_wing_damage = car_damage.m_rearWingDamage
 
     def processSessionHistoryUpdate(self, packet: PacketSessionHistoryData) -> None:
         """Process the session history update packet and update the necessary fields

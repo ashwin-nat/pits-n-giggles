@@ -278,6 +278,7 @@ class TelemetryWebServer:
                     "fuel-laps-remaining" : self.getValueOrDefaultValue(data_per_driver.m_fuel_laps_remaining),
                     "fl-wing-damage" : data_per_driver.m_fl_wing_damage, # NULL is supported
                     "fr-wing-damage" : data_per_driver.m_fr_wing_damage, # NULL is supported
+                    "rear-wing-damage" : data_per_driver.m_rear_wing_damage, # NULL is supported
                 }
             )
 

@@ -565,10 +565,13 @@ SOFTWARE.
                     formatFloatWithTwoDecimals(entry["fl-wing-damage"]) + "%";
                 let frWingDamage = entry["fr-wing-damage"] == null ? "N/A" :
                     formatFloatWithTwoDecimals(entry["fr-wing-damage"]) + "%";
+                let rearWingDamage = entry["rear-wing-damage"] == null ? "N/A" :
+                    formatFloatWithTwoDecimals(entry["rear-wing-damage"]) + "%";
                 row.insertCell().innerHTML = `
                     FL: ${flWingDamage}<br>
-                    FR: ${frWingDamage}
-                `;;
+                    FR: ${frWingDamage}<br>
+                    RW: ${rearWingDamage}
+                `;
 
                 row.className = '';
                 if (entry["is-fastest"]) {
@@ -1550,7 +1553,9 @@ SOFTWARE.
                     <th>Average</th>
                 `;
                 const tyreWearPredictionsInfoBody = tyreWearPredictionsInfoTable.createTBody();
-                if ("tyre-wear-predictions" in data && data["tyre-wear-predictions"] != null) {
+                if ("tyre-wear-predictions" in data && data["tyre-wear-predictions"] != null &&
+                    "predictions" in data["tyre-wear-predictions"] &&
+                        data["tyre-wear-predictions"]["predictions"] != null) {
 
                     const predictionsList = data["tyre-wear-predictions"]["predictions"];
                     const selectedPitStopLap = data["tyre-wear-predictions"]["selected-pit-stop-lap"];
