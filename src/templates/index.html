@@ -293,6 +293,7 @@ SOFTWARE.
         <div class="race-info-box">
             <h2 id="tableTitle">F1 Telemetry Live</h2>
             <p id="trackTemperature">Track Temperature: </p>
+            <p id="airTemperature">Air Temperature: </p>
             <p id="lapInformation">Lap: </p>
             <p id="safetyCarStatus" style="display: none;">Safety Car Status: </p>
             <p><a href="#" id="getRaceInfo" class="motivationLink">Get Race Information</a></p>
@@ -1859,6 +1860,7 @@ SOFTWARE.
 
             document.getElementById('tableTitle').textContent = `${event_type} - ${circuit}`;
             document.getElementById('trackTemperature').textContent = `Track Temperature: ${track_temp} °C`;
+            document.getElementById('airTemperature').textContent = `Air Temperature: ${track_temp} °C`;
             document.getElementById('lapInformation').textContent = `Lap: ${curr_lap}/${total_laps}`;
             document.getElementById('safetyCarStatus').textContent = `Safety Car Status: ${safety_car_status}`;
             document.getElementById('fastestLapOverall').textContent = `Fastest Lap Overall: ${fastest_lap}`;

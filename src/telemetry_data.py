@@ -43,6 +43,7 @@ class GlobalData:
          - m_circuit (str): The current circuit name
          - m_event_type (str): The current event type
          - m_track_temp (int): The current track temperature
+         - m_air_temp (int): The current air temperature
          - m_total_laps (int): The total number of laps in the current event
          - m_safety_car_status (PacketSessionData.SafetyCarStatus): Current safety car status enum
          - m_is_spectating (bool): Whether the user is currently spectating
@@ -61,6 +62,7 @@ class GlobalData:
         self.m_circuit : Optional[str] = None
         self.m_event_type : Optional[str] = None
         self.m_track_temp : Optional[int] = None
+        self.m_air_temp : Optional[int] = None
         self.m_total_laps : Optional[int] = None
         self.m_safety_car_status : Optional[PacketSessionData.SafetyCarStatus] = None
         self.m_is_spectating : Optional[bool] = None
@@ -80,6 +82,7 @@ class GlobalData:
             f"GlobalData(m_circuit={self.m_circuit}, "
             f"m_event_type={self.m_event_type}, "
             f"m_track_temp={self.m_track_temp}, "
+            f"m_air_temp={self.m_air_temp}, "
             f"m_total_laps={self.m_total_laps}, "
             f"m_safety_car_status={str(self.m_safety_car_status)}, "
             f"m_is_spectating={str(self.m_is_spectating)}"
@@ -96,6 +99,7 @@ class GlobalData:
         self.m_circuit = None
         self.m_event_type = None
         self.m_track_temp = None
+        self.m_air_temp = None
         self.m_total_laps = None
         self.m_safety_car_status = None
         self.m_is_spectating = None
@@ -120,7 +124,7 @@ class GlobalData:
 
         self.m_circuit = str(packet.m_trackId)
         self.m_track_temp = packet.m_trackTemperature
-        self.m_track_temp = packet.m_trackTemperature
+        self.m_air_temp = packet.m_airTemperature
         self.m_event_type = str(packet.m_sessionType)
         self.m_event_type = str(packet.m_sessionType)
         self.m_weather_forecast_samples = packet.m_weatherForecastSamples
@@ -1359,7 +1363,7 @@ def processTyreSetsUpdate(packet: PacketTyreSetsData) -> None:
 # -------------------------------------- WEB API HANDLERS --------------------------------------------------------------
 
 def getGlobals(num_weather_forecast_samples=None) -> \
-    Tuple[str, int, str, int, int, str, List[WeatherForecastSample], int, bool]:
+    Tuple[str, int, str, int, int, str, List[WeatherForecastSample], int, bool, bool, int]:
     """
     Retrieves the global info regarding the current session
 
@@ -1367,7 +1371,7 @@ def getGlobals(num_weather_forecast_samples=None) -> \
     - num_weather_forecast_samples (int): Number of weather forecast samples to retrieve (default is 4).
 
     Returns:
-        Tuple[str, int, str, int, int, str, List[WeatherForecastSample]]:
+        Tuple[str, int, str, int, int, str, List[WeatherForecastSample], int, bool, bool, int]:
             1:  Circuit name (str)
             2:  Track temperature (int)
             3:  Event type (str)
@@ -1378,6 +1382,7 @@ def getGlobals(num_weather_forecast_samples=None) -> \
             8:  Pit speed limit (int)
             9:  Final Classification Received (bool)
             10: Is Spectator Mode (bool)
+            11: Air temperature (int)
     """
     with _driver_data_lock: # we need this for current lap
         player_index = _driver_data.m_player_index
@@ -1393,7 +1398,8 @@ def getGlobals(num_weather_forecast_samples=None) -> \
         return (_globals.m_circuit, _globals.m_track_temp, _globals.m_event_type,
                     _globals.m_total_laps, curr_lap, _globals.m_safety_car_status,
                         weather_forecast_samples, _globals.m_pit_speed_limit,
-                            (True if _globals.m_packet_final_classification else False), _globals.m_is_spectating)
+                            (True if _globals.m_packet_final_classification else False), _globals.m_is_spectating,
+                                _globals.m_air_temp)
 
 def getDriverData(num_adjacent_cars: Optional[int] = 2) -> Tuple[List[DataPerDriver], str]:
     """Get the driver data for the race. During race, it returns

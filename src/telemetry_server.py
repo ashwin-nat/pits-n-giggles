@@ -209,12 +209,13 @@ class TelemetryWebServer:
         driver_data, fastest_lap_overall = TelData.getDriverData(self.m_num_adjacent_cars)
         circuit, track_temp, event_type, total_laps, curr_lap, \
             safety_car_status, weather_forecast_samples, pit_speed_limit, \
-                    final_classification_received, is_spectator_mode = TelData.getGlobals()
+                    final_classification_received, is_spectator_mode, air_temp = TelData.getGlobals()
 
         # Init the global data onto the JSON repsonse
         json_response = {
             "circuit": self.getValueOrDefaultValue(circuit),
             "track-temperature": self.getValueOrDefaultValue(track_temp),
+            "air-temperature": self.getValueOrDefaultValue(air_temp),
             "event-type": self.getValueOrDefaultValue(event_type),
             "total-laps": self.getValueOrDefaultValue(total_laps),
             "current-lap": self.getValueOrDefaultValue(curr_lap),
@@ -296,12 +297,13 @@ class TelemetryWebServer:
         player_driver_data, fastest_lap_overall = TelData.getPlayerDriverData()
         circuit, track_temp, event_type, total_laps, curr_lap, \
             safety_car_status, weather_forecast_samples, pit_speed_limit, \
-                    final_classification_received, is_spectator_mode = TelData.getGlobals()
+                    final_classification_received, is_spectator_mode, air_temp = TelData.getGlobals()
 
         # Init the global data onto the JSON repsonse
         json_response = {
             "circuit": self.getValueOrDefaultValue(circuit),
             "track-temperature": self.getValueOrDefaultValue(track_temp),
+            "air-temperature": self.getValueOrDefaultValue(air_temp),
             "event-type": self.getValueOrDefaultValue(event_type),
             "total-laps": self.getValueOrDefaultValue(total_laps),
             "current-lap": self.getValueOrDefaultValue(curr_lap),

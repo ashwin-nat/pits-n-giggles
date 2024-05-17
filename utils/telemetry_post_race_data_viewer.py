@@ -123,6 +123,7 @@ def getTelemetryInfo():
                 "table-entries": [],
                 "total-laps": "---",
                 "track-temperature": "---",
+                "air-temperature" : "---",
                 "weather-forecast-samples": []
             }
         if "records" in g_json_data:
@@ -135,6 +136,7 @@ def getTelemetryInfo():
         json_response = {
             "circuit": g_json_data["session-info"]["track-id"],
             "track-temperature": g_json_data["session-info"]["track-temperature"],
+            "air-temperature" : g_json_data["session-info"]["air-temperature"],
             "event-type": g_json_data["session-info"]["session-type"],
             "total-laps": g_json_data["session-info"]["total-laps"],
             "current-lap": g_json_data["classification-data"][0]["lap-data"]["current-lap-num"],
