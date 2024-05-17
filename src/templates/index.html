@@ -292,12 +292,34 @@ SOFTWARE.
         </div>
         <div class="race-info-box">
             <h2 id="tableTitle">F1 Telemetry Live</h2>
-            <p id="trackTemperature">Track Temperature: </p>
-            <p id="airTemperature">Air Temperature: </p>
-            <p id="lapInformation">Lap: </p>
-            <p id="safetyCarStatus" style="display: none;">Safety Car Status: </p>
-            <p><a href="#" id="getRaceInfo" class="motivationLink">Get Race Information</a></p>
-            <p><a href="#" id="saveTelemetryLink" class="motivationLink">Save telemetry packet capture</a></p>
+            <table>
+                <tr>
+                    <td>Track Temperature</td>
+                    <td id="trackTemperature"></td>
+                </tr>
+                <tr>
+                    <td>Air Temperature</td>
+                    <td id="airTemperature"></td>
+                </tr>
+                <tr>
+                    <td>Lap</td>
+                    <td id="lapInformation"></td>
+                </tr>
+                <tr id="safetyCarRow">
+                    <td>Safety Car Status:</td>
+                    <td id="safetyCarStatus"></td>
+                </tr>
+                <tr>
+                    <td colspan="2">
+                        <a href="#" id="getRaceInfo" class="motivationLink">Get Race Information</a>
+                    </td>
+                </tr>
+                <tr id="saveTelemetryLinkRow">
+                    <td colspan="2">
+                        <a href="#" id="saveTelemetryLink" class="motivationLink">Save telemetry packet capture</a>
+                    </td>
+                </tr>
+            </table>
         </div>
         <div class="time-box">
             <p id="localTime" class="motivationLink">Local Time: </p>
@@ -1858,15 +1880,23 @@ SOFTWARE.
         function updateGlobalInfo(circuit, event_type, track_temp, curr_lap, total_laps,
             safety_car_status, fastest_lap, pit_speed_limit, packet_capture_enabled) {
 
-            document.getElementById('tableTitle').textContent = `${event_type} - ${circuit}`;
-            document.getElementById('trackTemperature').textContent = `Track Temperature: ${track_temp} °C`;
-            document.getElementById('airTemperature').textContent = `Air Temperature: ${track_temp} °C`;
-            document.getElementById('lapInformation').textContent = `Lap: ${curr_lap}/${total_laps}`;
-            document.getElementById('safetyCarStatus').textContent = `Safety Car Status: ${safety_car_status}`;
-            document.getElementById('fastestLapOverall').textContent = `Fastest Lap Overall: ${fastest_lap}`;
-            document.getElementById('pitSpeedLimit').textContent = `Pit Lane Speed Limit: ${pit_speed_limit} kmph`;
+            // document.getElementById('tableTitle').textContent = `${event_type} - ${circuit}`;
+            // document.getElementById('trackTemperature').textContent = `Track Temperature: ${track_temp} °C`;
+            // document.getElementById('airTemperature').textContent = `Air Temperature: ${track_temp} °C`;
+            // document.getElementById('lapInformation').textContent = `Lap: ${curr_lap}/${total_laps}`;
+            // document.getElementById('safetyCarStatus').textContent = `Safety Car Status: ${safety_car_status}`;
+            // document.getElementById('fastestLapOverall').textContent = `Fastest Lap Overall: ${fastest_lap}`;
+            // document.getElementById('pitSpeedLimit').textContent = `Pit Lane Speed Limit: ${pit_speed_limit} kmph`;
 
-            const saveTelemetryLink = document.getElementById('saveTelemetryLink');
+            document.getElementById('tableTitle').textContent = `${event_type} - ${circuit}`;
+            document.getElementById('trackTemperature').textContent = `${track_temp} °C`;
+            document.getElementById('airTemperature').textContent = `${track_temp} °C`;
+            document.getElementById('lapInformation').textContent = `${curr_lap}/${total_laps}`;
+            document.getElementById('safetyCarStatus').textContent = `${safety_car_status}`;
+            document.getElementById('fastestLapOverall').textContent = `${fastest_lap}`;
+            document.getElementById('pitSpeedLimit').textContent = `${pit_speed_limit} kmph`;
+
+            const saveTelemetryLink = document.getElementById('saveTelemetryLinkRow');
             saveTelemetryLink.style.display = packet_capture_enabled ? 'inline' : 'none';
         }
 
