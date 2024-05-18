@@ -22,27 +22,11 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from http import HTTPStatus
 import logging
-
-try:
-    from flask import Flask, render_template, request, jsonify
-except ImportError:
-    print("Flask is not installed. Installing...")
-    import subprocess
-    subprocess.check_call(["pip3", "install", "flask"])
-    print("Flask installation complete.")
-    from flask import Flask, render_template, request, jsonify
-try:
-    from flask_cors import CORS
-except ImportError:
-    print("flask-cors is not installed. Installing...")
-    import subprocess
-    subprocess.check_call(["pip3", "install", "flask-cors"])
-    print("flask-cors installation complete.")
-    from flask_cors import CORS
-
+from flask import Flask, render_template, request, jsonify
+from flask_cors import CORS
 from src.telemetry_handler import dumpPktCapToFile, getOvertakeJSON, GetOvertakesStatus, getCustomMarkersJSON
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.f1_types import F1Utils
@@ -127,6 +111,7 @@ class TelemetryWebServer:
             Returns:
                 str: JSON response indicating success or failure.
             """
+
             # Access parameters using request.args
             index = request.args.get('index')
 
@@ -178,7 +163,8 @@ class TelemetryWebServer:
             return render_template('index.html',
                 packet_capture_enabled=self.m_packet_capture_enabled,
                 client_poll_interval_ms=self.m_client_poll_interval_ms,
-                player_only_telemetry=False)
+                player_only_telemetry=False,
+                live_data_mode=True)
 
         # Render the HTML page
         @self.m_app.route('/obs-overlay')
@@ -193,11 +179,12 @@ class TelemetryWebServer:
             return render_template('index.html',
                 packet_capture_enabled=self.m_packet_capture_enabled,
                 client_poll_interval_ms=self.m_client_poll_interval_ms,
-                player_only_telemetry=True)
+                player_only_telemetry=True,
+                live_data_mode=True)
 
     def getValueOrDefaultValue(self,
-            value: str,
-            default_value: str ='---') -> str:
+            value: Optional[Any],
+            default_value: str ='---') -> Optional[Any]:
         """
         Get value or default as string.
 
@@ -206,7 +193,7 @@ class TelemetryWebServer:
             default_value (str, optional): Default value if the input is None. Defaults to '---'.
 
         Returns:
-            str: The value as string or default string.
+            str: The value as is or default string if None.
         """
         return value if value is not None else default_value
 
@@ -222,12 +209,13 @@ class TelemetryWebServer:
         driver_data, fastest_lap_overall = TelData.getDriverData(self.m_num_adjacent_cars)
         circuit, track_temp, event_type, total_laps, curr_lap, \
             safety_car_status, weather_forecast_samples, pit_speed_limit, \
-                    final_classification_received = TelData.getGlobals()
+                    final_classification_received, is_spectator_mode, air_temp = TelData.getGlobals()
 
         # Init the global data onto the JSON repsonse
         json_response = {
             "circuit": self.getValueOrDefaultValue(circuit),
             "track-temperature": self.getValueOrDefaultValue(track_temp),
+            "air-temperature": self.getValueOrDefaultValue(air_temp),
             "event-type": self.getValueOrDefaultValue(event_type),
             "total-laps": self.getValueOrDefaultValue(total_laps),
             "current-lap": self.getValueOrDefaultValue(curr_lap),
@@ -235,7 +223,8 @@ class TelemetryWebServer:
             "fastest-lap-overall": fastest_lap_overall,
             "pit-speed-limit" : self.getValueOrDefaultValue(pit_speed_limit),
             "weather-forecast-samples": [],
-            "race-ended" : self.getValueOrDefaultValue(final_classification_received, False)
+            "race-ended" : self.getValueOrDefaultValue(final_classification_received, False),
+            "is-spectating" : self.getValueOrDefaultValue(is_spectator_mode, False)
         }
         for sample in weather_forecast_samples:
             json_response["weather-forecast-samples"].append(
@@ -265,20 +254,32 @@ class TelemetryWebServer:
                                                                data_per_driver.m_dnf_status_code),
                     "ers": self.getValueOrDefaultValue(data_per_driver.m_ers_perc),
                     "best": self.getValueOrDefaultValue(data_per_driver.m_best_lap_str),
+                    "best-lap-delta" : self.getValueOrDefaultValue(data_per_driver.m_best_lap_delta),
                     "last": self.getValueOrDefaultValue(data_per_driver.m_last_lap),
+                    "last-lap-delta" : self.getValueOrDefaultValue(data_per_driver.m_last_lap_delta),
                     "is-fastest": self.getValueOrDefaultValue(data_per_driver.m_is_fastest),
                     "is-player": self.getValueOrDefaultValue(data_per_driver.m_is_player),
                     "average-tyre-wear": self.getValueOrDefaultValue(data_per_driver.m_tyre_wear),
                     "tyre-age": self.getValueOrDefaultValue(data_per_driver.m_tyre_age),
                     "tyre-life-remaining" : self.getValueOrDefaultValue(data_per_driver.m_tyre_life_remaining_laps),
                     "tyre-compound": self.getValueOrDefaultValue(data_per_driver.m_tyre_compound_type),
-                    "drs": self.getDRSValue(data_per_driver.m_drs_activated, data_per_driver.m_drs_allowed),
+                    "drs": self.getDRSValue(data_per_driver.m_drs_activated, data_per_driver.m_drs_allowed,
+                                            data_per_driver.m_drs_distance),
                     "num-pitstops": self.getValueOrDefaultValue(data_per_driver.m_num_pitstops),
                     "dnf-status" : self.getValueOrDefaultValue(data_per_driver.m_dnf_status_code),
                     "index" : self.getValueOrDefaultValue(data_per_driver.m_index),
                     "telemetry-setting" : data_per_driver.m_telemetry_restrictions, # Already NULL checked
                     "lap-progress" : data_per_driver.m_lap_progress, # NULL is supported
-                    "corner-cutting-warnings" : self.getValueOrDefaultValue(data_per_driver.m_corner_cutting_warnings)
+                    "corner-cutting-warnings" : self.getValueOrDefaultValue(data_per_driver.m_corner_cutting_warnings),
+                    "time-penalties" : self.getValueOrDefaultValue(data_per_driver.m_time_penalties),
+                    "num-dt" : self.getValueOrDefaultValue(data_per_driver.m_num_dt),
+                    "num-sg" : self.getValueOrDefaultValue(data_per_driver.m_num_sg),
+                    "tyre-wear-prediction" : data_per_driver.getTyrePredictionsJSONList(data_per_driver.m_ideal_pit_stop_window),
+                    "fuel-load-kg" : self.getValueOrDefaultValue(data_per_driver.m_fuel_load_kg),
+                    "fuel-laps-remaining" : self.getValueOrDefaultValue(data_per_driver.m_fuel_laps_remaining),
+                    "fl-wing-damage" : data_per_driver.m_fl_wing_damage, # NULL is supported
+                    "fr-wing-damage" : data_per_driver.m_fr_wing_damage, # NULL is supported
+                    "rear-wing-damage" : data_per_driver.m_rear_wing_damage, # NULL is supported
                 }
             )
 
@@ -296,12 +297,13 @@ class TelemetryWebServer:
         player_driver_data, fastest_lap_overall = TelData.getPlayerDriverData()
         circuit, track_temp, event_type, total_laps, curr_lap, \
             safety_car_status, weather_forecast_samples, pit_speed_limit, \
-                    final_classification_received = TelData.getGlobals()
+                    final_classification_received, is_spectator_mode, air_temp = TelData.getGlobals()
 
         # Init the global data onto the JSON repsonse
         json_response = {
             "circuit": self.getValueOrDefaultValue(circuit),
             "track-temperature": self.getValueOrDefaultValue(track_temp),
+            "air-temperature": self.getValueOrDefaultValue(air_temp),
             "event-type": self.getValueOrDefaultValue(event_type),
             "total-laps": self.getValueOrDefaultValue(total_laps),
             "current-lap": self.getValueOrDefaultValue(curr_lap),
@@ -309,7 +311,8 @@ class TelemetryWebServer:
             "fastest-lap-overall": fastest_lap_overall,
             "pit-speed-limit" : self.getValueOrDefaultValue(pit_speed_limit),
             "weather-forecast-samples": [],
-            "race-ended" : self.getValueOrDefaultValue(final_classification_received, False)
+            "race-ended" : self.getValueOrDefaultValue(final_classification_received, False),
+            "is-spectating" : self.getValueOrDefaultValue(is_spectator_mode, False)
         }
         for sample in weather_forecast_samples:
             json_response["weather-forecast-samples"].append(
@@ -327,8 +330,6 @@ class TelemetryWebServer:
         else:
             driver_data = []
         for data_per_driver in driver_data:
-            # if data_per_driver.m_is_fastest:
-            #     fastest_lap_overall = data_per_driver.m_best_lap
             json_response["table-entries"].append(
                 {
                     "position": self.getValueOrDefaultValue(data_per_driver.m_position),
@@ -338,25 +339,40 @@ class TelemetryWebServer:
                                                                data_per_driver.m_penalties,
                                                                data_per_driver.m_is_pitting,
                                                                data_per_driver.m_dnf_status_code),
+                    "delta-to-leader": self.getDeltaPlusPenaltiesPlusPit(
+                                F1Utils.millisecondsToSecondsMilliseconds(data_per_driver.m_delta_to_leader),
+                                                               data_per_driver.m_penalties,
+                                                               data_per_driver.m_is_pitting,
+                                                               data_per_driver.m_dnf_status_code),
                     "ers": self.getValueOrDefaultValue(data_per_driver.m_ers_perc),
                     "best": self.getValueOrDefaultValue(data_per_driver.m_best_lap_str),
+                    "best-lap-delta" : self.getValueOrDefaultValue(data_per_driver.m_best_lap_delta),
                     "last": self.getValueOrDefaultValue(data_per_driver.m_last_lap),
+                    "last-lap-delta" : self.getValueOrDefaultValue(data_per_driver.m_last_lap_delta),
                     "is-fastest": self.getValueOrDefaultValue(data_per_driver.m_is_fastest),
                     "is-player": self.getValueOrDefaultValue(data_per_driver.m_is_player),
                     "average-tyre-wear": self.getValueOrDefaultValue(data_per_driver.m_tyre_wear),
                     "tyre-age": self.getValueOrDefaultValue(data_per_driver.m_tyre_age),
                     "tyre-life-remaining" : self.getValueOrDefaultValue(data_per_driver.m_tyre_life_remaining_laps),
                     "tyre-compound": self.getValueOrDefaultValue(data_per_driver.m_tyre_compound_type),
-                    "drs": self.getDRSValue(data_per_driver.m_drs_activated, data_per_driver.m_drs_allowed),
+                    "drs": self.getDRSValue(data_per_driver.m_drs_activated, data_per_driver.m_drs_allowed,
+                                            data_per_driver.m_drs_distance),
                     "num-pitstops": self.getValueOrDefaultValue(data_per_driver.m_num_pitstops),
                     "dnf-status" : self.getValueOrDefaultValue(data_per_driver.m_dnf_status_code),
                     "index" : self.getValueOrDefaultValue(data_per_driver.m_index),
                     "telemetry-setting" : data_per_driver.m_telemetry_restrictions, # Already NULL checked
                     "lap-progress" : data_per_driver.m_lap_progress, # NULL is supported
-                    "corner-cutting-warnings" : self.getValueOrDefaultValue(data_per_driver.m_corner_cutting_warnings)
+                    "corner-cutting-warnings" : self.getValueOrDefaultValue(data_per_driver.m_corner_cutting_warnings),
+                    "time-penalties" : self.getValueOrDefaultValue(data_per_driver.m_time_penalties),
+                    "num-dt" : self.getValueOrDefaultValue(data_per_driver.m_num_dt),
+                    "num-sg" : self.getValueOrDefaultValue(data_per_driver.m_num_sg),
+                    "tyre-wear-prediction" : data_per_driver.getTyrePredictionsJSONList(data_per_driver.m_ideal_pit_stop_window),
+                    "fuel-load-kg" : self.getValueOrDefaultValue(data_per_driver.m_fuel_load_kg),
+                    "fuel-laps-remaining" : self.getValueOrDefaultValue(data_per_driver.m_fuel_laps_remaining),
+                    "fl-wing-damage" : data_per_driver.m_fl_wing_damage, # NULL is supported
+                    "fr-wing-damage" : data_per_driver.m_fr_wing_damage, # NULL is supported
                 }
             )
-
 
         return json_response
 
@@ -416,19 +432,21 @@ class TelemetryWebServer:
 
     def getDRSValue(self,
             drs_activated: bool,
-            drs_available: bool) -> bool:
+            drs_available: bool,
+            drs_distance: int) -> bool:
         """
         Get DRS value.
 
         Args:
             drs_activated (bool): Whether DRS is activated.
             drs_available (bool): Whether DRS is available.
+            drs_distance (int): Distance to DRS zone start.
 
         Returns:
             bool: True if DRS is activated or available or has non-zero distance, False otherwise.
         """
-        # return True if (drs_activated or drs_available or (drs_distance > 0)) else False
-        return True if (drs_activated or drs_available) else False
+
+        return True if (drs_activated or drs_available or (drs_distance > 0)) else False
 
     def _checkUpdateRecords(self, json_data: Dict[str, Any]):
         """

@@ -190,5 +190,30 @@ class PacketTyreSetsData:
         }
         if include_header:
             json_data["header"] = self.m_header.toJSON()
-
         return json_data
+
+    def getFittedTyreSetKey(self) -> Optional[str]:
+        """Key containing tyre set ID and actual compound name
+
+        Returns:
+            Optional[str]: Key if fitted index is valid, else None
+        """
+
+        if self.m_fittedIdx == 255:
+            return None
+        return str(self.m_fittedIdx) + "." + str(self.m_tyreSetData[self.m_fittedIdx].m_actualTyreCompound)
+
+    def getTyreSetKey(self, index) -> Optional[str]:
+        """Key containing tyre set ID and actual compound name for the given index
+
+        Arguments:
+            index (int): Tyre set index
+
+        Returns:
+            Optional[str]: Key if index is valid, else None
+        """
+
+        if 0 <= index < len(self.m_tyreSetData):
+            return str(index) + "." + str(self.m_tyreSetData[index].m_actualTyreCompound)
+        else:
+            return None

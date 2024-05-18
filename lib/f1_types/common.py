@@ -387,6 +387,7 @@ class Nationality(Enum):
     """
     Enum representing nationalities with corresponding IDs.
     """
+    Unspecified = 0
     American = 1
     Argentinean = 2
     Australian = 3
@@ -792,6 +793,29 @@ class F1Utils:
         milliseconds = total_milliseconds % 1000
 
         return f"{minutes:02}:{seconds:02}.{milliseconds:03}"
+
+    @staticmethod
+    def floatSecondsToSecondsMilliseconds(seconds: float) -> str:
+        """
+        Convert float seconds to a formatted string in the format "MM:SS.SSS".
+
+        Args:
+            seconds (float): The input time in seconds.
+
+        Returns:
+            str: The formatted time string.
+        """
+        if not isinstance(seconds, float):
+            raise ValueError("Input must be a float representing seconds")
+
+        if seconds < 0:
+            raise ValueError("Input must be a non-negative float")
+
+        total_milliseconds = int(seconds * 1000)
+        _, seconds = divmod(total_milliseconds // 1000, 60)
+        milliseconds = total_milliseconds % 1000
+
+        return f"{seconds}.{milliseconds:03}"
 
     @staticmethod
     def timeStrToMilliseconds(time_str: str) -> int:

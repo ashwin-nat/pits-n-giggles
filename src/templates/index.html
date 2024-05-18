@@ -253,9 +253,24 @@ SOFTWARE.
             margin: auto;
         }
 
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 5px;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            z-index: 9999;
+        }
     </style>
     <script src="https://www.youtube.com/iframe_api"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
+    <!-- Include Moment.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
     <!-- Include Chart.js library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -277,17 +292,56 @@ SOFTWARE.
         </div>
         <div class="race-info-box">
             <h2 id="tableTitle">F1 Telemetry Live</h2>
-            <p id="trackTemperature">Track Temperature: </p>
-            <p id="lapInformation">Lap: </p>
-            <p id="safetyCarStatus" style="display: none;">Safety Car Status: </p>
-            <p><a href="#" id="getRaceInfo" class="motivationLink">Get Race Information</a></p>
-            <p><a href="#" id="saveTelemetryLink" class="motivationLink">Save telemetry packet capture</a></p>
+            <table>
+                <tr>
+                    <td>Track Temperature</td>
+                    <td id="trackTemperature"></td>
+                </tr>
+                <tr>
+                    <td>Air Temperature</td>
+                    <td id="airTemperature"></td>
+                </tr>
+                <tr>
+                    <td>Lap</td>
+                    <td id="lapInformation"></td>
+                </tr>
+                <tr id="safetyCarRow">
+                    <td>Safety Car Status:</td>
+                    <td id="safetyCarStatus"></td>
+                </tr>
+                <tr>
+                    <td colspan="2">
+                        <a href="#" id="getRaceInfo" class="motivationLink">Get Race Information</a>
+                    </td>
+                </tr>
+                <tr id="saveTelemetryLinkRow">
+                    <td colspan="2">
+                        <a href="#" id="saveTelemetryLink" class="motivationLink">Save telemetry packet capture</a>
+                    </td>
+                </tr>
+            </table>
         </div>
         <div class="time-box">
-            <p id="localTime" class="motivationLink">Local Time: </p>
-            <p id="fastestLapOverall">Fastest Lap Overall: </p>
-            <p id="pitSpeedLimit">Pit Lane Speed Limit: </p>
-            <a href="javascript:void(0);" id="motivationLink" class="motivationLink">Click here for motivation</a>
+            <h2>Other info</h2>
+            <table>
+                <tr>
+                    <td id="localTimeNameLink" class="motivationLink">Local Time (24H)</td>
+                    <td id="localTimeValueLink" class="motivationLink"></td>
+                </tr>
+                <tr>
+                    <td>Fastest Lap Overall</td>
+                    <td id="fastestLapOverall"></td>
+                </tr>
+                <tr>
+                    <td>Pit Lane Speed Limit</td>
+                    <td id="pitSpeedLimit"></td>
+                </tr>
+                <tr>
+                    <td colspan="2">
+                        <a href="javascript:void(0);" id="motivationLink" class="motivationLink">Click here for motivation</a>
+                    </td>
+                </tr>
+            </table>
         </div>
     </div>
 
@@ -301,14 +355,15 @@ SOFTWARE.
         <thead>
             <tr>
                 <th>Position</th>
-                <th>Name</th>
-                <th>Team</th>
+                <th>Driver</th>
                 <th id="deltaLink" class="motivationLink">Delta</th>
                 <th>ERS</th>
                 <th>Warnings</th>
-                <th>Best</th>
-                <th>Last</th>
+                <th id="bestLapLink" class="motivationLink">Best</th>
+                <th id="lastLapLink" class="motivationLink">Last</th>
                 <th>Tyre Info</th>
+                <th>Wear Prediction</th>
+                <th>Wing Damage</th>
             </tr>
         </thead>
         <tbody></tbody>
@@ -326,6 +381,11 @@ SOFTWARE.
         var player; // Define YT player
         let is24HourFormat = true; // Initial format
         let relativeDelta = false; // Initial format
+        let lastLapAbsoluteFormat = false; // Initial format
+        let bestLapAbsoluteFormat = true; // Initial format
+        // Check if delta column needs to be displayed
+        const shouldHideDeltaColumn = {{ live_data_mode | tojson | safe }};
+        const shouldHidePredictionColumn = !{{ live_data_mode | tojson | safe }};
 
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('youtubeAudio', {
@@ -354,6 +414,30 @@ SOFTWARE.
         function stopAudio() {
             // Pause the audio
             player.pauseVideo();
+        }
+
+        function showToast(message) {
+            // Create a new div element for the toast
+            var toast = document.createElement('div');
+            toast.classList.add('toast');
+
+            // Set the message content
+            toast.innerText = message;
+
+            // Append the toast to the document body
+            document.body.appendChild(toast);
+
+            // Show the toast
+            toast.style.opacity = 1;
+
+            // Hide the toast after 3 seconds
+            setTimeout(function() {
+                toast.style.opacity = 0;
+                // Remove the toast from the document after it fades out
+                setTimeout(function() {
+                document.body.removeChild(toast);
+                }, 300);
+            }, 3000);
         }
 
         function formatFloatWithTwoDecimals(floatNumber) {
@@ -395,8 +479,8 @@ SOFTWARE.
                     updateWeatherTable(data["weather-forecast-samples"]);
                 })
                 .catch (error => {
-                    console.error('Error fetching data:', error);
-                });
+            console.error('Error fetching data:', error);
+        });
         }
 
         function updateWeatherTable(weatherData) {
@@ -421,6 +505,17 @@ SOFTWARE.
         }
 
         function updateRaceTable(entries) {
+
+            function truncateName(name) {
+
+                const maxLength = 25;
+                if (name.length > maxLength) {
+                    return name.substring(0, maxLength - 3) + '...';
+                } else {
+                    return name;
+                }
+            }
+
             const tableBody = document.querySelector('#raceTable tbody');
             tableBody.innerHTML = '';
 
@@ -434,7 +529,9 @@ SOFTWARE.
                 // Create a clickable link for the driver's name
                 const nameCell = row.insertCell();
                 const nameLink = document.createElement('a');
-                nameLink.textContent = entry["name"];
+                nameLink.innerHTML =    `${truncateName(entry["name"])}` +
+                                        `<br>` +
+                                        `${truncateName(entry["team"])}`;
                 nameLink.href = '#'; // Set a placeholder href value
 
                 // Get the computed style of the row and apply it to the hyperlink
@@ -448,21 +545,72 @@ SOFTWARE.
                 };
                 nameCell.appendChild(nameLink);
 
-                row.insertCell().textContent = entry["team"];
-                if (relativeDelta) {
-                    row.insertCell().textContent = entry["delta"];
-                } else {
-                    row.insertCell().textContent = entry["delta-to-leader"];
+                if (!shouldHideDeltaColumn) {
+                    if (relativeDelta) {
+                        row.insertCell().textContent = entry["delta"];
+                    } else {
+                        row.insertCell().textContent = entry["delta-to-leader"];
+                    }
                 }
                 row.insertCell().textContent = entry["ers"];
-                row.insertCell().textContent = entry["corner-cutting-warnings"];
-                row.insertCell().textContent = entry["best"];
-                row.insertCell().textContent = entry["last"];
+
+                const warningsPensCell = row.insertCell();
+                const dtPlusSg = entry["num-dt"] + "DT + " +
+                    entry["num-sg"] + "SG";
+
+                warningsPensCell.innerHTML =
+                    `Pens: ${entry["time-penalties"]} sec<br>` +
+                    `Warns: ${entry["corner-cutting-warnings"]}<br>` +
+                    `${dtPlusSg}`;
+
+                if (bestLapAbsoluteFormat || entry["is-spectating"]) {
+                    row.insertCell().textContent = entry["best"];
+                } else {
+                    row.insertCell().textContent = entry["best-lap-delta"];
+                }
+
+                if (lastLapAbsoluteFormat || entry["is-spectating"]) {
+                    row.insertCell().textContent = entry["last"];
+                } else {
+                    row.insertCell().textContent = entry["last-lap-delta"];
+                }
 
                 const tyreInfoCell = row.insertCell();
                 tyreInfoCell.innerHTML = `${entry["average-tyre-wear"]}<br>` +
                     `${entry["tyre-age"]} lap(s) ` + `(${entry["num-pitstops"]} pit)<br>` +
                     `${entry["tyre-compound"]}`;
+
+                if (!shouldHidePredictionColumn) {
+                    let predictionHTML = ""; // Declare predictionHTML outside the loop
+                    predictionData = entry["tyre-wear-prediction"];
+                    if (predictionData.length === 0) {
+                        predictionHTML = "N/A";
+                    } else {
+                        predictionData.forEach((prediction, index) => {
+                            const flWear = prediction["front-left-wear"];
+                            const frWear = prediction["front-right-wear"];
+                            const rlWear = prediction["rear-left-wear"];
+                            const rrWear = prediction["rear-right-wear"];
+                            const lapNum = prediction["lap-number"];
+                            const avgWear = formatFloatWithTwoDecimals((flWear + frWear + rlWear + rrWear) / 4); // Corrected variable name
+                            predictionHTML += "Lap " + lapNum + ": " + avgWear + "%<br>"; // Concatenate prediction strings
+                        });
+                    }
+                    row.insertCell().innerHTML = predictionHTML; // Set innerHTML outside the loop
+                }
+
+                // Wing damage key will always be present
+                let flWingDamage = entry["fl-wing-damage"] == null ? "N/A" :
+                    formatFloatWithTwoDecimals(entry["fl-wing-damage"]) + "%";
+                let frWingDamage = entry["fr-wing-damage"] == null ? "N/A" :
+                    formatFloatWithTwoDecimals(entry["fr-wing-damage"]) + "%";
+                let rearWingDamage = entry["rear-wing-damage"] == null ? "N/A" :
+                    formatFloatWithTwoDecimals(entry["rear-wing-damage"]) + "%";
+                row.insertCell().innerHTML = `
+                    FL: ${flWingDamage}<br>
+                    FR: ${frWingDamage}<br>
+                    RW: ${rearWingDamage}
+                `;
 
                 row.className = '';
                 if (entry["is-fastest"]) {
@@ -715,10 +863,10 @@ SOFTWARE.
                 const customMarkersTableBody = customMarkersTable.createTBody();
                 if ("custom-markers" in data && data["custom-markers"].length > 0) {
 
-                    data["custom-markers"].forEach(function(marker, index) {
+                    data["custom-markers"].forEach(function (marker, index) {
                         const row = customMarkersTableBody.insertRow();
                         row.innerHTML = `
-                            <td>${index+1}</td>
+                            <td>${index + 1}</td>
                             <td>${marker["event-type"]}</td>
                             <td>${marker["track"]}</td>
                             <td>${marker["sector"]}</td>
@@ -806,6 +954,7 @@ SOFTWARE.
                     options: {
                         scales: {
                             x: {
+                                type: 'linear',
                                 scaleLabel: {
                                     display: true,
                                     labelString: xAxisLabel,
@@ -815,7 +964,9 @@ SOFTWARE.
                                     color: 'rgba(255, 255, 255, 0.1)'
                                 },
                                 ticks: {
-                                    color: 'rgba(255, 255, 255, 0.8)'
+                                    color: 'rgba(255, 255, 255, 0.8)',
+                                    stepSize: 1, // Ensure each lap number is displayed
+                                    precision: 0 // Round to whole numbers
                                 }
                             },
                             y: {
@@ -1136,7 +1287,7 @@ SOFTWARE.
                         }
                     ];
                     limits = {
-                        min : 0
+                        min: 0
                     }
                     const formatAsLapTime = true;
                     plotGraph(graphCanvas, datasets, 'Lap number', 'Time', formatAsLapTime, limits);
@@ -1358,7 +1509,7 @@ SOFTWARE.
                         }
                     ];
                     var limits = {
-                        min : 0
+                        min: 0
                     }
                     const formatAsLapTime = false;
                     plotGraph(graphCanvas, datasets, 'Lap number', 'Fuel Usage (kg)', formatAsLapTime, limits);
@@ -1399,7 +1550,6 @@ SOFTWARE.
                     if (tyreSetsInfoList.length > 0) {
 
                         tyreSetsInfoList.forEach((tyreSet) => {
-                            console.log(tyreSet);
                             const row = tyreSetsInfoBody.insertRow();
                             row.innerHTML = `
                                 <td>${tyreSet["index"]}</td>
@@ -1424,6 +1574,62 @@ SOFTWARE.
                 }
                 tyreSetsInfoContent.appendChild(createAccordion('Tyre Sets', tyreSetsInfoTable));
                 return tyreSetsInfoContent;
+            }
+
+            function getTyreWearPredictionsContent(data) {
+
+                const tyreWearPredictionsInfoContent = document.createElement('div');
+                const tyreWearPredictionsInfoTable = document.createElement('table');
+                tyreWearPredictionsInfoTable.classList.add('tyre-wear-predictions-info-table');
+                const tyreWearPredictionsInfoTableHeader = tyreWearPredictionsInfoTable.createTHead();
+                const tyreWearPredictionsInfoTableHeaderRow = tyreWearPredictionsInfoTableHeader.insertRow();
+                tyreWearPredictionsInfoTableHeaderRow.innerHTML = `
+                    <th>Lap</th>
+                    <th>FL</th>
+                    <th>FR</th>
+                    <th>RL</th>
+                    <th>RR</th>
+                    <th>Average</th>
+                `;
+                const tyreWearPredictionsInfoBody = tyreWearPredictionsInfoTable.createTBody();
+                if ("tyre-wear-predictions" in data && data["tyre-wear-predictions"] != null &&
+                    "predictions" in data["tyre-wear-predictions"] &&
+                        data["tyre-wear-predictions"]["predictions"] != null) {
+
+                    const predictionsList = data["tyre-wear-predictions"]["predictions"];
+                    const selectedPitStopLap = data["tyre-wear-predictions"]["selected-pit-stop-lap"];
+                    if (predictionsList.length > 0) {
+
+                        predictionsList.forEach((prediction) => {
+                            const row = tyreWearPredictionsInfoBody.insertRow();
+                            const fl  = prediction["front-left-wear"];
+                            const fr  = prediction["front-right-wear"];
+                            const rl  = prediction["rear-left-wear"];
+                            const rr  = prediction["rear-right-wear"];
+                            const avg = (fl + fr + rl + rr) / 4;
+                            const lap = prediction["lap-number"];
+                            row.innerHTML = `
+                                <td>${lap}</td>
+                                <td>${formatFloatWithTwoDecimals(fl)}%</td>
+                                <td>${formatFloatWithTwoDecimals(fr)}%</td>
+                                <td>${formatFloatWithTwoDecimals(rl)}%</td>
+                                <td>${formatFloatWithTwoDecimals(rr)}%</td>
+                                <td>${formatFloatWithTwoDecimals(avg)}%</td>
+                            `;
+
+                            //TODO: Add logic to highlight selected pit stop
+                        });
+                    } else {
+                        const row = tyreWearPredictionsInfoBody.insertRow();
+                        row.innerHTML = '<td colspan="6">Tyre Wear Predictions data not available</td>';
+                    }
+
+                } else {
+                    const row = tyreWearPredictionsInfoBody.insertRow();
+                    row.innerHTML = '<td colspan="6">Tyre Wear Predictions data not available</td>';
+                }
+                tyreWearPredictionsInfoContent.appendChild(createAccordion('Tyre Wear Predictions', tyreWearPredictionsInfoTable));
+                return tyreWearPredictionsInfoContent;
             }
 
             function getTyreStintHistoryContent(data) {
@@ -1473,7 +1679,7 @@ SOFTWARE.
                             const actualCompound = tyreSetData["actual-tyre-compound"];
                             compound = tyreSetData["visual-tyre-compound"];
                             tyreSetId = `${actualCompound} - ${tyreSetIndex}`;
-                            tyreWear = `${tyreSetData["wear"]} %`;
+                            tyreWear = `${formatFloatWithTwoDecimals(tyreSetData["wear"])}%`;
 
                             // Use parseFloat to ensure numerical calculation
                             const wearPerLap = parseFloat(tyreSetData["wear"]) / parseFloat(stintData["stint-length"]);
@@ -1486,19 +1692,23 @@ SOFTWARE.
                             wearHistory.forEach(wearData => {
                                 graphDataFL.push({
                                     x: wearData["lap-number"],
-                                    y: formatFloatWithTwoDecimals(wearData["front-left-wear"])
+                                    y: formatFloatWithTwoDecimals(wearData["front-left-wear"]),
+                                    desc: wearData["desc"],
                                 });
                                 graphDataFR.push({
                                     x: wearData["lap-number"],
-                                    y: formatFloatWithTwoDecimals(wearData["front-right-wear"])
+                                    y: formatFloatWithTwoDecimals(wearData["front-right-wear"]),
+                                    desc: wearData["desc"],
                                 });
                                 graphDataRL.push({
                                     x: wearData["lap-number"],
-                                    y: formatFloatWithTwoDecimals(wearData["rear-left-wear"])
+                                    y: formatFloatWithTwoDecimals(wearData["rear-left-wear"]),
+                                    desc: wearData["desc"],
                                 });
                                 graphDataRR.push({
                                     x: wearData["lap-number"],
-                                    y: formatFloatWithTwoDecimals(wearData["rear-right-wear"])
+                                    y: formatFloatWithTwoDecimals(wearData["rear-right-wear"]),
+                                    desc: wearData["desc"],
                                 });
                             });
                         }
@@ -1528,7 +1738,6 @@ SOFTWARE.
                     graphDiv.appendChild(graphCanvas);
                     graphCanvas.id = elementId;
                     graphDiv.classList.add('graph-canvas');
-                    // graphCanvas.classList.add('graph-canvas');
 
                     // Plot graph
                     var datasets = [
@@ -1550,7 +1759,7 @@ SOFTWARE.
                         }
                     ];
                     var limits = {
-                        min : 0,
+                        min: 0,
                     }
                     const formatAsLapTime = false;
                     plotGraph(graphCanvas, datasets, 'Lap number', 'Tyre Wear %', formatAsLapTime, limits);
@@ -1638,11 +1847,14 @@ SOFTWARE.
             const modalContent = document.getElementById('modalContent');
             modalContent.innerHTML = '';
 
+            const tyreWearPredictionsAvailable = "tyre-wear-predictions" in data &&
+                (data["tyre-wear-predictions"]["status"] == true);
+
             // Car Damage Table
             modalContent.appendChild(getCarDamageContent(data));
 
             // Tyre Damage Table
-            modalContent.appendChild(getTyreDamageContent(data));
+            // modalContent.appendChild(getTyreDamageContent(data));
 
             // Tyre Wear Table
             modalContent.appendChild(getTyreWearContent(data));
@@ -1659,6 +1871,9 @@ SOFTWARE.
             // Tyre sets info
             modalContent.appendChild(getTyreSetsInfoContent(data));
 
+            // Predictions
+            modalContent.appendChild(getTyreWearPredictionsContent(data));
+
             // Tyre Stint History
             modalContent.appendChild(getTyreStintHistoryContent(data));
 
@@ -1667,7 +1882,7 @@ SOFTWARE.
 
             // Finalise the data
             const modalTitle = document.getElementById('modalTitle');
-            modalTitle.innerText = `Driver Information - ${data["driver-name"]}`;
+            modalTitle.innerText = `Driver Information - ${data["driver-name"]} (${data["index"]})`;
 
             const modal = document.getElementById('driverInfoModal');
             modal.style.display = 'block';
@@ -1681,14 +1896,23 @@ SOFTWARE.
         function updateGlobalInfo(circuit, event_type, track_temp, curr_lap, total_laps,
             safety_car_status, fastest_lap, pit_speed_limit, packet_capture_enabled) {
 
-            document.getElementById('tableTitle').textContent = `${event_type} - ${circuit}`;
-            document.getElementById('trackTemperature').textContent = `Track Temperature: ${track_temp}°C`;
-            document.getElementById('lapInformation').textContent = `Lap: ${curr_lap}/${total_laps}`;
-            document.getElementById('safetyCarStatus').textContent = `Safety Car Status: ${safety_car_status}`;
-            document.getElementById('fastestLapOverall').textContent = `Fastest Lap Overall: ${fastest_lap}`;
-            document.getElementById('pitSpeedLimit').textContent = `Pit Lane Speed Limit: ${pit_speed_limit}`;
+            // document.getElementById('tableTitle').textContent = `${event_type} - ${circuit}`;
+            // document.getElementById('trackTemperature').textContent = `Track Temperature: ${track_temp} °C`;
+            // document.getElementById('airTemperature').textContent = `Air Temperature: ${track_temp} °C`;
+            // document.getElementById('lapInformation').textContent = `Lap: ${curr_lap}/${total_laps}`;
+            // document.getElementById('safetyCarStatus').textContent = `Safety Car Status: ${safety_car_status}`;
+            // document.getElementById('fastestLapOverall').textContent = `Fastest Lap Overall: ${fastest_lap}`;
+            // document.getElementById('pitSpeedLimit').textContent = `Pit Lane Speed Limit: ${pit_speed_limit} kmph`;
 
-            const saveTelemetryLink = document.getElementById('saveTelemetryLink');
+            document.getElementById('tableTitle').textContent = `${event_type} - ${circuit}`;
+            document.getElementById('trackTemperature').textContent = `${track_temp} °C`;
+            document.getElementById('airTemperature').textContent = `${track_temp} °C`;
+            document.getElementById('lapInformation').textContent = `${curr_lap}/${total_laps}`;
+            document.getElementById('safetyCarStatus').textContent = `${safety_car_status}`;
+            document.getElementById('fastestLapOverall').textContent = `${fastest_lap}`;
+            document.getElementById('pitSpeedLimit').textContent = `${pit_speed_limit} kmph`;
+
+            const saveTelemetryLink = document.getElementById('saveTelemetryLinkRow');
             saveTelemetryLink.style.display = packet_capture_enabled ? 'inline' : 'none';
         }
 
@@ -1698,16 +1922,34 @@ SOFTWARE.
                 hour12: !is24HourFormat
             };
             const timeString = now.toLocaleTimeString('en-US', options);
-            document.getElementById('localTime').textContent = `Local Time: ${timeString}`;
+            // document.getElementById('localTime').textContent = `Local Time: ${timeString}`;
+            if (is24HourFormat) {
+                document.getElementById('localTimeNameLink').textContent = `Local Time (24H)`;
+            } else {
+                document.getElementById('localTimeNameLink').textContent = `Local Time (12H)`;
+            }
+            document.getElementById('localTimeValueLink').textContent = `Local Time: ${timeString}`;
         }
 
         function toggleTimeFormat() {
             is24HourFormat = !is24HourFormat;
             updateLocalTime();
+            showToast("Time Format Changed to " + (is24HourFormat ? "24 Hour Format" : "12 Hour Format"));
         }
 
         function toggleDeltaFormat() {
             relativeDelta = !relativeDelta;
+            showToast("Delta Format Changed to " + (relativeDelta ? "Relative" : "Absolute"));
+        }
+
+        function toggleLastLapFormat() {
+            lastLapAbsoluteFormat = !lastLapAbsoluteFormat;
+            showToast("Last Lap Format Changed to " + (lastLapAbsoluteFormat ? "Absolute" : "Relative"));
+        }
+
+        function toggleBestLapFormat() {
+            bestLapAbsoluteFormat = !bestLapAbsoluteFormat;
+            showToast("Best Lap Format Changed to " + (bestLapAbsoluteFormat ? "Absolute" : "Relative"));
         }
 
         function formatFileSize(bytes) {
@@ -1778,9 +2020,27 @@ SOFTWARE.
                 });
         });
 
+        function hideColumn(columnName) {
+            var raceTable = document.getElementById("raceTable");
+            var headers = raceTable.getElementsByTagName("th");
+
+            // Find the Delta column header
+            for (var i = 0; i < headers.length; i++) {
+                if (headers[i].textContent === columnName) {
+                    headers[i].style.display = hideColumn ? "none" : "";
+                    break;
+                }
+            }
+        }
+
+
         // Add an event listener to the hyperlink
-        document.getElementById('localTime').addEventListener('click', toggleTimeFormat);
+        // document.getElementById('localTime').addEventListener('click', toggleTimeFormat);
+        document.getElementById('localTimeNameLink').addEventListener('click', toggleTimeFormat);
+        document.getElementById('localTimeValueLink').addEventListener('click', toggleTimeFormat);
         document.getElementById('deltaLink').addEventListener('click', toggleDeltaFormat);
+        document.getElementById('lastLapLink').addEventListener('click', toggleLastLapFormat);
+        document.getElementById('bestLapLink').addEventListener('click', toggleBestLapFormat);
 
         // Fetch data at intervals specified from jinja
         setInterval(fetchDataAndDisplay, {{ client_poll_interval_ms | tojson | safe }});
@@ -1791,6 +2051,19 @@ SOFTWARE.
         // Initial fetch and display
         fetchDataAndDisplay();
         updateLocalTime();
+
+
+        if (shouldHideDeltaColumn) {
+            hideColumn("Delta");
+        }
+        if (shouldHidePredictionColumn) {
+            hideColumn("Wear Prediction");
+        }
+
+        // Configure Chart.js to use Moment.js as the date adapter
+        // Chart.defaults.global.plugins.moment = {
+        //     locale: 'en' // Optional: set locale
+        // };
 
     </script>
 </body>

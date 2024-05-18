@@ -31,16 +31,7 @@ from datetime import datetime
 from enum import Enum
 from threading import Lock
 from typing import Optional, List, Tuple, Dict, Any, Generator
-
-try:
-    from tqdm import tqdm
-except ImportError:
-    print("tqdm is not installed. Installing...")
-    import subprocess
-    subprocess.check_call(["pip3", "install", "tqdm"])
-    print("tqdm installation complete.")
-    from tqdm import tqdm
-
+from tqdm import tqdm
 from src.telemetry_manager import F1TelemetryManager
 from lib.f1_types import *
 from lib.packet_cap import F1PacketCapture
@@ -359,7 +350,7 @@ def getOvertakeJSON(driver_name: str=None) -> Tuple[GetOvertakesStatus, Dict[str
     Returns:
         Tuple[GetOvertakesStatus, Dict]: Status, JSON value (may be empty)
     """
-    _, _, _, _, _, _, _, _, final_classification_received = TelData.getGlobals()
+    _, _, _, _, _, _, _, _, final_classification_received, _, _ = TelData.getGlobals()
     global g_overtakes_history
     with g_overtakes_history.m_lock:
         if not final_classification_received:
@@ -476,7 +467,11 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
     # Save the JSON data
     global g_post_race_data_autosave
     if g_post_race_data_autosave:
-        # addFunStatsToFinalClassificationJson(final_json)
+        # Add the overtakes as well
+        with g_overtakes_history.m_lock:
+            final_json['overtakes'] = {
+                'records': [record.toJSON() for record in g_overtakes_history.m_overtakes_history]
+            }
 
         # Add the markers as well
         final_json['custom-markers'] = []
@@ -679,7 +674,7 @@ class F1TelemetryHandler:
         final_json = TelData.processFinalClassificationUpdate(packet)
 
         # Perform the auto save stuff only for races
-        _, _, event_type_str, _, _, _, _, _, _ = TelData.getGlobals()
+        _, _, event_type_str, _, _, _, _, _, _, _, _ = TelData.getGlobals()
         if event_type_str:
             unsupported_event_types = [
                 SessionType.PRACTICE_1,

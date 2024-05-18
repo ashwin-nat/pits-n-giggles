@@ -41,23 +41,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from lib.f1_types import F1Utils, LapData, ResultStatus
 import lib.race_analyzer as RaceAnalyzer
 import lib.overtake_analyzer as OvertakeAnalyzer
-
-try:
-    from flask import Flask, render_template, request, jsonify
-except ImportError:
-    print("Flask is not installed. Installing...")
-    import subprocess
-    subprocess.check_call(["pip3", "install", "flask"])
-    print("Flask installation complete.")
-    from flask import Flask, render_template, request, jsonify
-try:
-    from flask_cors import CORS
-except ImportError:
-    print("flask-cors is not installed. Installing...")
-    import subprocess
-    subprocess.check_call(["pip3", "install", "flask-cors"])
-    print("flask-cors installation complete.")
-    from flask_cors import CORS
+from flask import Flask, render_template, request, jsonify
+from flask_cors import CORS
 
 g_json_data = {}
 g_json_path = ''
@@ -138,6 +123,7 @@ def getTelemetryInfo():
                 "table-entries": [],
                 "total-laps": "---",
                 "track-temperature": "---",
+                "air-temperature" : "---",
                 "weather-forecast-samples": []
             }
         if "records" in g_json_data:
@@ -150,6 +136,7 @@ def getTelemetryInfo():
         json_response = {
             "circuit": g_json_data["session-info"]["track-id"],
             "track-temperature": g_json_data["session-info"]["track-temperature"],
+            "air-temperature" : g_json_data["session-info"]["air-temperature"],
             "event-type": g_json_data["session-info"]["session-type"],
             "total-laps": g_json_data["session-info"]["total-laps"],
             "current-lap": g_json_data["classification-data"][0]["lap-data"]["current-lap-num"],
@@ -200,13 +187,18 @@ def getTelemetryInfo():
             ers_perc = data_per_driver["car-status"]["ers-store-energy"] / data_per_driver["car-status"]["ers-max-capacity"] * 100.0
             avg_tyre_wear = sum(data_per_driver["car-damage"]["tyres-wear"])/len(data_per_driver["car-damage"]["tyres-wear"])
 
+            time_pens = data_per_driver["lap-data"]["penalties"]
+            num_dt = data_per_driver["lap-data"]["num-unserved-drive-through-pens"]
+            num_sg = data_per_driver["lap-data"]["num-unserved-stop-go-pens"]
+
             json_response["table-entries"].append(
                 {
                     "position": position,
                     "name": data_per_driver["driver-name"],
                     "team": data_per_driver["participant-data"]["team-id"],
                     "delta": getDeltaPlusPenaltiesPlusPit(delta_relative, penalties, is_pitting, dnf_status_code),
-                    "delta-to-leader" : getDeltaPlusPenaltiesPlusPit(delta_to_leader, penalties, is_pitting, dnf_status_code),
+                    "delta-to-leader" : getDeltaPlusPenaltiesPlusPit(
+                                            delta_to_leader, penalties, is_pitting, dnf_status_code),
                     "ers": F1Utils.floatToStr(ers_perc) + '%',
                     "best": data_per_driver["final-classification"]["best-lap-time-str"],
                     "last": data_per_driver["session-history"]["lap-history-data"][-1]["lap-time-str"],
@@ -215,14 +207,18 @@ def getTelemetryInfo():
                     "average-tyre-wear": F1Utils.floatToStr(avg_tyre_wear) + "%",
                     "tyre-age": data_per_driver["car-status"]["tyres-age-laps"],
                     "tyre-life-remaining" : "---",
-                    "tyre-compound": data_per_driver["car-status"]["actual-tyre-compound"] + ' - ' + data_per_driver["car-status"]["visual-tyre-compound"],
+                    "tyre-compound": data_per_driver["car-status"]["actual-tyre-compound"] + ' - ' +
+                                        data_per_driver["car-status"]["visual-tyre-compound"],
                     "drs": False,
                     "num-pitstops": data_per_driver["final-classification"]["num-pit-stops"],
                     "dnf-status" : dnf_status_code,
                     "index" : index,
                     "telemetry-setting" : data_per_driver["participant-data"]["telemetry-setting"], # Already NULL checked
                     "lap-progress" : None, # NULL is supported,
-                    "corner-cutting-warnings" : data_per_driver["lap-data"]["corner-cutting-warnings"]
+                    "corner-cutting-warnings" : data_per_driver["lap-data"]["corner-cutting-warnings"],
+                    "time-penalties" : time_pens,
+                    "num-dt" : num_dt,
+                    "num-sg" : num_sg
                 }
             )
 
@@ -308,7 +304,8 @@ class TelemetryWebServer:
             return render_template('index.html',
                 packet_capture_enabled=self.m_packet_capture_enabled,
                 client_poll_interval_ms=self.m_client_poll_interval_ms,
-                player_only_telemetry=False)
+                player_only_telemetry=False,
+                live_data_mode=False)
 
         # Define your endpoint
         @self.m_app.route('/telemetry-info')
@@ -605,13 +602,6 @@ def open_file():
 
                 should_write = False
                 should_write |= checkRecomputeJSON(g_json_data)
-
-                # if should_write:
-                #     print('writing to file: ' + g_json_path)
-                #     f.seek(0)  # Move file pointer to the beginning
-                #     f.truncate()  # Clear the file contents
-                #     f.seek(0)  # Move file pointer to the beginning (again)
-                #     json.dump(g_json_data, f, ensure_ascii=False, indent=4)
     else:
         status_label.config(text="No file selected")
 
