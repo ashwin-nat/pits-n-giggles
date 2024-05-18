@@ -322,10 +322,26 @@ SOFTWARE.
             </table>
         </div>
         <div class="time-box">
-            <p id="localTime" class="motivationLink">Local Time: </p>
-            <p id="fastestLapOverall">Fastest Lap Overall: </p>
-            <p id="pitSpeedLimit">Pit Lane Speed Limit: </p>
-            <a href="javascript:void(0);" id="motivationLink" class="motivationLink">Click here for motivation</a>
+            <h2>Other info</h2>
+            <table>
+                <tr>
+                    <td id="localTimeNameLink" class="motivationLink">Local Time (24H)</td>
+                    <td id="localTimeValueLink" class="motivationLink"></td>
+                </tr>
+                <tr>
+                    <td>Fastest Lap Overall</td>
+                    <td id="fastestLapOverall"></td>
+                </tr>
+                <tr>
+                    <td>Pit Lane Speed Limit</td>
+                    <td id="pitSpeedLimit"></td>
+                </tr>
+                <tr>
+                    <td colspan="2">
+                        <a href="javascript:void(0);" id="motivationLink" class="motivationLink">Click here for motivation</a>
+                    </td>
+                </tr>
+            </table>
         </div>
     </div>
 
@@ -1906,7 +1922,13 @@ SOFTWARE.
                 hour12: !is24HourFormat
             };
             const timeString = now.toLocaleTimeString('en-US', options);
-            document.getElementById('localTime').textContent = `Local Time: ${timeString}`;
+            // document.getElementById('localTime').textContent = `Local Time: ${timeString}`;
+            if (is24HourFormat) {
+                document.getElementById('localTimeNameLink').textContent = `Local Time (24H)`;
+            } else {
+                document.getElementById('localTimeNameLink').textContent = `Local Time (12H)`;
+            }
+            document.getElementById('localTimeValueLink').textContent = `Local Time: ${timeString}`;
         }
 
         function toggleTimeFormat() {
@@ -2013,7 +2035,9 @@ SOFTWARE.
 
 
         // Add an event listener to the hyperlink
-        document.getElementById('localTime').addEventListener('click', toggleTimeFormat);
+        // document.getElementById('localTime').addEventListener('click', toggleTimeFormat);
+        document.getElementById('localTimeNameLink').addEventListener('click', toggleTimeFormat);
+        document.getElementById('localTimeValueLink').addEventListener('click', toggleTimeFormat);
         document.getElementById('deltaLink').addEventListener('click', toggleDeltaFormat);
         document.getElementById('lastLapLink').addEventListener('click', toggleLastLapFormat);
         document.getElementById('bestLapLink').addEventListener('click', toggleBestLapFormat);
