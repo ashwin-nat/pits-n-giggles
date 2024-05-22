@@ -466,7 +466,7 @@ SOFTWARE.
         }
 
         function fetchDataAndDisplay() {
-            const endpoint = "{{ 'player-telemetry-info' if player_only_telemetry else 'telemetry-info' }}";
+            const endpoint = "telemetry-info?num-adjacent-cars={{ num_adjacent_cars }}";
             fetch(endpoint)
                 .then(response => response.json())
                 .then(data => {
@@ -1913,7 +1913,9 @@ SOFTWARE.
             document.getElementById('pitSpeedLimit').textContent = `${pit_speed_limit} kmph`;
 
             const saveTelemetryLink = document.getElementById('saveTelemetryLinkRow');
-            saveTelemetryLink.style.display = packet_capture_enabled ? 'inline' : 'none';
+            if (!packet_capture_enabled) {
+                saveTelemetryLink.style.display = 'none';
+            }
         }
 
         function updateLocalTime() {

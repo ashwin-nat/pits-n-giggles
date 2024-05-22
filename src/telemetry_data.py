@@ -1559,6 +1559,19 @@ def getRaceInfo() -> Dict[str, Any]:
 
 # -------------------------------------- UTILITIES ---------------------------------------------------------------------
 
+def isDriverIndexValid(index: int) -> bool:
+    """Check if the given index is a valid driver index
+
+    Args:
+        index (int): Index of the driver
+
+    Returns:
+        bool: True if valid
+    """
+
+    with _driver_data_lock:
+        return True if index in _driver_data.m_driver_data else False
+
 def getEventInfoStr() -> Optional[str]:
     """Returns a string with the following format
             <event-type> _ <circuit> _
