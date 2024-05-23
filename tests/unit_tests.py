@@ -33,7 +33,7 @@ import json
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from lib.packet_cap import F1PacketCapture, F1PktCapFileHeader
-from src.telemetry_data import _getAdjacentPositions
+from src.telemetry_web_api import DriversListRsp
 from lib.overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, OvertakeRecord, OvertakeRivalryKey
 from lib.race_analyzer import getFastestTimesJson
 
@@ -87,85 +87,85 @@ class TestAdjacentPositions(F1TelemetryUnitTestsBase):
 
     def test_gp_p1(self):
         # GP - Check for pole position
-        result = _getAdjacentPositions(position=1, total_cars=20, num_adjacent_cars=3)
+        result = DriversListRsp.getAdjacentPositions(position=1, total_cars=20, num_adjacent_cars=3)
         expected_result = [i for i in range(1, 8)]
         self.assertCountEqual(result, expected_result)
 
     def test_gp_p2(self):
         # Check for P2
-        result = _getAdjacentPositions(position=1, total_cars=20, num_adjacent_cars=3)
+        result = DriversListRsp.getAdjacentPositions(position=1, total_cars=20, num_adjacent_cars=3)
         expected_result = [i for i in range(1, 8)]
         self.assertEqual(result, expected_result)
 
     def test_gp_midfield(self):
         # Check for P10
-        result = _getAdjacentPositions(position=10, total_cars=20, num_adjacent_cars=3)
+        result = DriversListRsp.getAdjacentPositions(position=10, total_cars=20, num_adjacent_cars=3)
         expected_result = [i for i in range(7, 14)]
         self.assertEqual(result, expected_result)
 
     def test_gp_p20(self):
         # Check for P20
-        result = _getAdjacentPositions(position=20, total_cars=20, num_adjacent_cars=3)
+        result = DriversListRsp.getAdjacentPositions(position=20, total_cars=20, num_adjacent_cars=3)
         expected_result = [i for i in range(14, 21)]
         self.assertEqual(result, expected_result)
 
     def test_gp_p19(self):
         # Check for P19
-        result = _getAdjacentPositions(position=19, total_cars=20, num_adjacent_cars=3)
+        result = DriversListRsp.getAdjacentPositions(position=19, total_cars=20, num_adjacent_cars=3)
         expected_result = [i for i in range(14, 21)]
         self.assertEqual(result, expected_result)
 
     def test_gp_full_table_p1(self):
         # Check for P1 in full table output
-        result = _getAdjacentPositions(position=1, total_cars=20, num_adjacent_cars=20)
+        result = DriversListRsp.getAdjacentPositions(position=1, total_cars=20, num_adjacent_cars=20)
         expected_result = [i for i in range(1, 21)]
         self.assertEqual(result, expected_result)
 
     def test_gp_full_table_p2(self):
         # Check for P2 in full table output
-        result = _getAdjacentPositions(position=2, total_cars=20, num_adjacent_cars=20)
+        result = DriversListRsp.getAdjacentPositions(position=2, total_cars=20, num_adjacent_cars=20)
         expected_result = [i for i in range(1, 21)]
         self.assertEqual(result, expected_result)
 
     def test_gp_full_table_p10(self):
         # Check for P10 in full table output
-        result = _getAdjacentPositions(position=10, total_cars=20, num_adjacent_cars=20)
+        result = DriversListRsp.getAdjacentPositions(position=10, total_cars=20, num_adjacent_cars=20)
         expected_result = [i for i in range(1, 21)]
         self.assertEqual(result, expected_result)
 
     def test_gp_full_table_p19(self):
         # Check for P19 in full table output
-        result = _getAdjacentPositions(position=19, total_cars=20, num_adjacent_cars=20)
+        result = DriversListRsp.getAdjacentPositions(position=19, total_cars=20, num_adjacent_cars=20)
         expected_result = [i for i in range(1, 21)]
         self.assertEqual(result, expected_result)
 
     def test_gp_full_table_p20(self):
         # Check for P20 in full table output
-        result = _getAdjacentPositions(position=20, total_cars=20, num_adjacent_cars=20)
+        result = DriversListRsp.getAdjacentPositions(position=20, total_cars=20, num_adjacent_cars=20)
         expected_result = [i for i in range(1, 21)]
         self.assertEqual(result, expected_result)
 
     def test_gp_full_table_p20_huge_num_adj_cars(self):
         # Check for P20 in full table output
-        result = _getAdjacentPositions(position=20, total_cars=20, num_adjacent_cars=50)
+        result = DriversListRsp.getAdjacentPositions(position=20, total_cars=20, num_adjacent_cars=50)
         expected_result = [i for i in range(1, 21)]
         self.assertEqual(result, expected_result)
 
     def test_tt_1(self):
         # Time Trial - 1 car
-        result = _getAdjacentPositions(position=1, total_cars=1, num_adjacent_cars=3)
+        result = DriversListRsp.getAdjacentPositions(position=1, total_cars=1, num_adjacent_cars=3)
         expected_result = [1]
         self.assertEqual(result, expected_result)
 
     def test_tt_2(self):
         # Time Trial - 2 cars
-        result = _getAdjacentPositions(position=1, total_cars=2, num_adjacent_cars=3)
+        result = DriversListRsp.getAdjacentPositions(position=1, total_cars=2, num_adjacent_cars=3)
         expected_result = [1,2]
         self.assertEqual(result, expected_result)
 
     def test_tt_3(self):
         # Time Trial - 3 cars
-        result = _getAdjacentPositions(position=1, total_cars=3, num_adjacent_cars=3)
+        result = DriversListRsp.getAdjacentPositions(position=1, total_cars=3, num_adjacent_cars=3)
         expected_result = [1,2,3]
         self.assertEqual(result, expected_result)
 

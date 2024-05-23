@@ -350,7 +350,7 @@ def getOvertakeJSON(driver_name: str=None) -> Tuple[GetOvertakesStatus, Dict[str
     Returns:
         Tuple[GetOvertakesStatus, Dict]: Status, JSON value (may be empty)
     """
-    _, _, _, _, _, _, _, _, final_classification_received, _, _ = TelData.getGlobals()
+    final_classification_received = True if TelData.getGlobals().m_packet_final_classification else False
     global g_overtakes_history
     with g_overtakes_history.m_lock:
         if not final_classification_received:
@@ -674,7 +674,7 @@ class F1TelemetryHandler:
         final_json = TelData.processFinalClassificationUpdate(packet)
 
         # Perform the auto save stuff only for races
-        _, _, event_type_str, _, _, _, _, _, _, _, _ = TelData.getGlobals()
+        event_type_str = TelData.getGlobals().m_event_type
         if event_type_str:
             unsupported_event_types = [
                 SessionType.PRACTICE_1,

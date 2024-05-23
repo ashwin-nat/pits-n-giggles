@@ -1362,44 +1362,18 @@ def processTyreSetsUpdate(packet: PacketTyreSetsData) -> None:
 
 # -------------------------------------- WEB API HANDLERS --------------------------------------------------------------
 
-def getGlobals(num_weather_forecast_samples=None) -> \
-    Tuple[str, int, str, int, int, str, List[WeatherForecastSample], int, bool, bool, int]:
+def getGlobals(num_weather_forecast_samples=None) -> GlobalData:
     """
-    Retrieves the global info regarding the current session
+    Returns a copy of the GlobalData object
 
     Parameters:
     - num_weather_forecast_samples (int): Number of weather forecast samples to retrieve (default is 4).
 
     Returns:
-        Tuple[str, int, str, int, int, str, List[WeatherForecastSample], int, bool, bool, int]:
-            1:  Circuit name (str)
-            2:  Track temperature (int)
-            3:  Event type (str)
-            4:  Total number of laps in the race (int)
-            5:  Current lap of the player (int or None if player index is None)
-            6:  Safety car status (str)
-            7:  List of weather forecast samples (List[WeatherForecastSample])
-            8:  Pit speed limit (int)
-            9:  Final Classification Received (bool)
-            10: Is Spectator Mode (bool)
-            11: Air temperature (int)
+        GlobalData: A copy of the GlobalData object
     """
-    with _driver_data_lock: # we need this for current lap
-        player_index = _driver_data.m_player_index
-        curr_lap = _driver_data.m_driver_data[player_index].m_current_lap if player_index is not None else None
     with _globals_lock:
-        if _globals.m_weather_forecast_samples is not None:
-            if num_weather_forecast_samples is None:
-                weather_forecast_samples = _globals.m_weather_forecast_samples[:num_weather_forecast_samples]
-            else:
-                weather_forecast_samples = _globals.m_weather_forecast_samples
-        else:
-            weather_forecast_samples = []
-        return (_globals.m_circuit, _globals.m_track_temp, _globals.m_event_type,
-                    _globals.m_total_laps, curr_lap, _globals.m_safety_car_status,
-                        weather_forecast_samples, _globals.m_pit_speed_limit,
-                            (True if _globals.m_packet_final_classification else False), _globals.m_is_spectating,
-                                _globals.m_air_temp)
+        return copy.deepcopy(_globals)
 
 def getDriverData(num_adjacent_cars: Optional[int] = 2) -> Tuple[List[DataPerDriver], str]:
     """Get the driver data for the race. During race, it returns
@@ -1734,153 +1708,3 @@ def getCustomMarkerEntryObj(add_to_queue: bool = False) -> Optional[CustomMarker
             curr_lap_time=curr_lap_time,
             curr_lap_perc=curr_lap_percent
         )
-
-def _getAdjacentPositions(position:int, total_cars:int, num_adjacent_cars:int) -> List[int]:
-    """Get the list of positions of the race that are to be returned to the UI.
-        It will include the player's position plus/minus num_adjacent_cars
-
-    Args:
-        position (int): Track position of the player
-        total_cars (int): Total number of cars in the race.
-        num_adjacent_cars (int): Number of adjacent cars to be displayed.
-
-    Returns:
-        List[int]: The final list of track positions to be displayed
-    """
-    if not (1 <= position <= total_cars):
-        return []
-
-    min_valid_lower_bound = 1
-    max_valid_upper_bound = total_cars
-
-    # In time trial, total_cars will be lower than num_adjacent_cars
-    if num_adjacent_cars >= total_cars:
-        num_adjacent_cars = total_cars
-        lower_bound = min_valid_lower_bound
-        upper_bound = max_valid_upper_bound
-
-    # GP scenario, lower bound and upper bound are off input position by num_adjacent_cars
-    else:
-        lower_bound = position - num_adjacent_cars
-        upper_bound = position + num_adjacent_cars
-
-    # now correct if lower and upper bounds have become invalid
-    if lower_bound < min_valid_lower_bound:
-        # lower bound is negative, need to shift the entire window right
-        upper_bound += min_valid_lower_bound - lower_bound
-        lower_bound = min_valid_lower_bound
-    if upper_bound > total_cars:
-        # upper bound is greater than limit, need to shift the entire window left
-        lower_bound = lower_bound - (upper_bound - total_cars)
-        upper_bound = max_valid_upper_bound
-
-    return list(range(lower_bound, upper_bound + 1))
-
-def _recomputeDeltas(
-        driver_list : List[DataPerDriver],
-        is_spectator_mode : bool,
-        fastest_lap_time : str) -> List[DataPerDriver]:
-    """Recompute the deltas for the list of driver data relative to the player
-
-    Args:
-        driver_list (List[DataPerDriver]): The list of driver data
-        is_spectator_mode (bool) : True if the game is in spectator mode
-        fastest_lap_time (str) : The fastest lap time. "---" if not available
-
-    Returns:
-        List[DataPerDriver]: The list of driver data with deltas
-    """
-
-    driver_list[0].m_delta_to_car_in_front = "---"
-    milliseconds_to_seconds_str = lambda ms: ("+" if ms >= 0 else "") + "{:.3f}".format(ms / 1000)
-    if is_spectator_mode:
-        # just convert the deltas to str
-        for data in driver_list:
-            if data.m_delta_to_car_in_front is not None and isinstance(data.m_delta_to_car_in_front, int):
-                data.m_delta_to_car_in_front = milliseconds_to_seconds_str(data.m_delta_to_car_in_front)
-            else:
-                data.m_delta_to_car_in_front = "---"
-            data.m_last_lap_delta = "---"
-            data.m_best_lap_delta = "---"
-    else:
-        # recompute the deltas if not spectator mode
-        condition = lambda x: x.m_is_player == True
-        player_index = next((index for index, item in enumerate(driver_list) if condition(item)), None)
-        if driver_list[player_index].m_last_lap == "---":
-            player_last_lap_ms = None
-        else:
-            player_last_lap_ms = F1Utils.timeStrToMilliseconds(driver_list[player_index].m_last_lap)
-        fastest_lap_ms = driver_list[player_index].m_best_lap_ms
-
-        # case 1: player is in the absolute front of this pack
-        if player_index == 0:
-            driver_list[0].m_delta_to_car_in_front = "---"
-            delta_so_far = 0
-            for data in driver_list[1:]:
-                delta_so_far += data.m_delta_to_car_in_front
-                data.m_delta_to_car_in_front = milliseconds_to_seconds_str(delta_so_far)
-
-        # case 2: player is in the back of the pack
-        # Iterate from back to front using reversed need to look at previous car's data for distance ahead
-        elif player_index == len(driver_list) - 1:
-            delta_so_far = 0
-            one_car_behind_index = len(driver_list)-1
-            one_car_behind_delta = driver_list[one_car_behind_index].m_delta_to_car_in_front
-            for data in reversed(driver_list[:len(driver_list)-1]):
-                delta_so_far -= one_car_behind_delta
-                one_car_behind_delta = data.m_delta_to_car_in_front
-                data.m_delta_to_car_in_front = milliseconds_to_seconds_str(delta_so_far)
-            driver_list[len(driver_list)-1].m_delta_to_car_in_front = "---"
-
-        # case 3: player is somewhere in the middle of the pack
-        else:
-
-            # First, set the deltas for the cars ahead
-            delta_so_far = 0
-            one_car_behind_index = player_index
-            one_car_behind_delta = driver_list[one_car_behind_index].m_delta_to_car_in_front
-            for data in reversed(driver_list[:player_index]):
-                delta_so_far -= one_car_behind_delta
-                one_car_behind_delta = data.m_delta_to_car_in_front
-                data.m_delta_to_car_in_front = milliseconds_to_seconds_str(delta_so_far)
-
-            # Finally, set the deltas for the cars ahead
-            delta_so_far = 0
-            for data in driver_list[player_index+1:]:
-                delta_so_far += data.m_delta_to_car_in_front
-                data.m_delta_to_car_in_front = milliseconds_to_seconds_str(delta_so_far)
-
-            # finally set the delta for the player
-            driver_list[player_index].m_delta_to_car_in_front = "---"
-
-        # Update the race leader's delta to car in front
-        if driver_list[0].m_position == 1:
-            driver_list[0].m_delta_to_car_in_front = "---"
-
-        # Set the last lap delta and best lap delta
-        for data in driver_list:
-            if data.m_is_player:
-                data.m_last_lap_delta = data.m_last_lap
-                data.m_best_lap_delta = data.m_best_lap_str
-            else:
-                if player_last_lap_ms is not None and data.m_last_lap != "---" and data.m_last_lap is not None:
-                    try:
-                        data.m_last_lap_delta = milliseconds_to_seconds_str(
-                            F1Utils.timeStrToMilliseconds(data.m_last_lap) - player_last_lap_ms)
-                    except Exception as e:
-                        # Handle the exception here
-                        logging.error("Input: " + str(data.m_last_lap) + " An error occurred:", e)
-                else:
-                    data.m_last_lap_delta = "---"
-
-                if fastest_lap_ms is not None and data.m_best_lap_ms != 0 and data.m_best_lap_ms is not None:
-                    try:
-                        data.m_best_lap_delta = milliseconds_to_seconds_str(data.m_best_lap_ms - fastest_lap_ms)
-                    except Exception as e:
-                        # Handle the exception here
-                        logging.error("Input: " + str(data.m_best_lap_ms) + " An error occurred:", e)
-                else:
-                    data.m_best_lap_delta = "---"
-
-    return driver_list
-
