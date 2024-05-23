@@ -58,17 +58,15 @@ class TelemetryWebApiRspBase:
 class RaceInfoRsp(TelemetryWebApiRspBase):
     """This class will prepare the live race telemetry info response. Use toJSON() method to get the JSON rsp
     """
-    def __init__(self, num_adjacent_cars: int) -> None:
+    def __init__(self) -> None:
         """Initialse the member variables by fetching necessary data from the data store
 
-        Args:
-            num_adjacent_cars (int): The number of cars adjacent to player to be included in the response
         """
 
         # self.m_driver_data, self.m_fastest_lap_overall = TelData.getDriverData(num_adjacent_cars)
         self.m_globals = TelData.getGlobals()
         track_length = self.m_globals.m_packet_session.m_trackLength if self.m_globals.m_packet_session else None
-        self.m_driver_list_rsp = DriversListRsp(num_adjacent_cars, self.m_globals.m_is_spectating, track_length)
+        self.m_driver_list_rsp = DriversListRsp(self.m_globals.m_is_spectating, track_length)
         self.m_curr_lap = self.m_driver_list_rsp.getCurrentLap()
         if self.m_globals.m_weather_forecast_samples is None:
             self.m_globals.m_weather_forecast_samples = []
@@ -236,16 +234,14 @@ class DriversListRsp(TelemetryWebApiRspBase):
     Drivers list response class.
     """
 
-    def __init__(self, num_adjacent_cars: int, is_spectator_mode: bool, track_length: int):
+    def __init__(self, is_spectator_mode: bool, track_length: int):
         """Get the drivers list and prepare the rsp fields
 
         Args:
-            num_adjacent_cars (int): The number of cars adjacent to player to be included in the response
             is_spectator_mode (bool): Whether the player is in spectator mode
             track_length (int): The length of the track
         """
 
-        self.m_num_adjacent_cars : int = num_adjacent_cars
         self.m_is_spectator_mode : bool = is_spectator_mode
         self.m_track_length : int = track_length
         self.m_final_list : List[TelData.DataPerDriver] = []
@@ -268,11 +264,11 @@ class DriversListRsp(TelemetryWebApiRspBase):
                     "position": self.getValueOrDefaultValue(data_per_driver.m_position),
                     "name": self.getValueOrDefaultValue(data_per_driver.m_name),
                     "team": self.getValueOrDefaultValue(data_per_driver.m_team),
-                    "delta": self._getDeltaPlusPenaltiesPlusPit(data_per_driver.m_delta_to_car_in_front,
+                    "delta": self.__getDeltaPlusPenaltiesPlusPit(data_per_driver.m_delta_to_car_in_front,
                                                                data_per_driver.m_penalties,
                                                                data_per_driver.m_is_pitting,
                                                                data_per_driver.m_dnf_status_code),
-                    "delta-to-leader": self._getDeltaPlusPenaltiesPlusPit(
+                    "delta-to-leader": self.__getDeltaPlusPenaltiesPlusPit(
                                 F1Utils.millisecondsToSecondsMilliseconds(data_per_driver.m_delta_to_leader),
                                                                data_per_driver.m_penalties,
                                                                data_per_driver.m_is_pitting,
@@ -288,7 +284,7 @@ class DriversListRsp(TelemetryWebApiRspBase):
                     "tyre-age": self.getValueOrDefaultValue(data_per_driver.m_tyre_age),
                     "tyre-life-remaining" : self.getValueOrDefaultValue(data_per_driver.m_tyre_life_remaining_laps),
                     "tyre-compound": self.getValueOrDefaultValue(data_per_driver.m_tyre_compound_type),
-                    "drs": self._getDRSValue(data_per_driver.m_drs_activated, data_per_driver.m_drs_allowed,
+                    "drs": self.__getDRSValue(data_per_driver.m_drs_activated, data_per_driver.m_drs_allowed,
                                             data_per_driver.m_drs_distance),
                     "num-pitstops": self.getValueOrDefaultValue(data_per_driver.m_num_pitstops),
                     "dnf-status" : self.getValueOrDefaultValue(data_per_driver.m_dnf_status_code),
@@ -330,7 +326,7 @@ class DriversListRsp(TelemetryWebApiRspBase):
 
             assert False, "Could not find player"
 
-    def _getDeltaPlusPenaltiesPlusPit(self,
+    def __getDeltaPlusPenaltiesPlusPit(self,
             delta: str,
             penalties: str,
             is_pitting: bool,
@@ -357,7 +353,7 @@ class DriversListRsp(TelemetryWebApiRspBase):
         else:
             return "---"
 
-    def _getDRSValue(self,
+    def __getDRSValue(self,
             drs_activated: bool,
             drs_available: bool,
             drs_distance: int) -> bool:
@@ -384,19 +380,11 @@ class DriversListRsp(TelemetryWebApiRspBase):
             if (TelData._driver_data.m_player_index is None) or (TelData._driver_data.m_num_active_cars is None):
                 return
 
-            # Compute the list of positions to be displayed
-            player_position = TelData._driver_data.m_driver_data[TelData._driver_data.m_player_index].m_position
-            total_cars = TelData._driver_data.m_num_active_cars + \
-                    (0 if TelData._driver_data.m_num_dnf_cars is None else TelData._driver_data.m_num_dnf_cars)
-            if TelData._driver_data.m_race_completed or self.m_is_spectator_mode or TelData._driver_data.m_is_player_dnf:
-                positions = [i for i in range(1, TelData._driver_data.m_num_active_cars+1)]
-            else:
-                positions = self.getAdjacentPositions(player_position, total_cars, self.m_num_adjacent_cars)
-
             # Update the list data
             if TelData._driver_data.m_fastest_index is not None:
                 self.m_fastest_lap = TelData._driver_data.m_driver_data[
                                         TelData._driver_data.m_fastest_index].m_best_lap_str
+            positions = [i for i in range(1, TelData._driver_data.m_num_active_cars+1)]
             for position in positions:
                 index, temp_data = TelData._driver_data.getIndexByTrackPosition(position)
                 if (index, temp_data) == (None, None):
@@ -539,45 +527,3 @@ class DriversListRsp(TelemetryWebApiRspBase):
                             logging.error("Input: " + str(data.m_best_lap_ms) + " An error occurred:", e)
                     else:
                         data.m_best_lap_delta = "---"
-
-    @staticmethod
-    def getAdjacentPositions(position:int, total_cars:int, num_adjacent_cars:int) -> List[int]:
-        """Get the list of positions of the race that are to be returned to the UI.
-            It will include the player's position plus/minus num_adjacent_cars
-
-        Args:
-            position (int): Track position of the player
-            total_cars (int): Total number of cars in the race.
-            num_adjacent_cars (int): Number of adjacent cars to be displayed.
-
-        Returns:
-            List[int]: The final list of track positions to be displayed
-        """
-        if not (1 <= position <= total_cars):
-            return []
-
-        min_valid_lower_bound = 1
-        max_valid_upper_bound = total_cars
-
-        # In time trial, total_cars will be lower than num_adjacent_cars
-        if num_adjacent_cars >= total_cars:
-            num_adjacent_cars = total_cars
-            lower_bound = min_valid_lower_bound
-            upper_bound = max_valid_upper_bound
-
-        # GP scenario, lower bound and upper bound are off input position by num_adjacent_cars
-        else:
-            lower_bound = position - num_adjacent_cars
-            upper_bound = position + num_adjacent_cars
-
-        # now correct if lower and upper bounds have become invalid
-        if lower_bound < min_valid_lower_bound:
-            # lower bound is negative, need to shift the entire window right
-            upper_bound += min_valid_lower_bound - lower_bound
-            lower_bound = min_valid_lower_bound
-        if upper_bound > total_cars:
-            # upper bound is greater than limit, need to shift the entire window left
-            lower_bound = lower_bound - (upper_bound - total_cars)
-            upper_bound = max_valid_upper_bound
-
-        return list(range(lower_bound, upper_bound + 1))

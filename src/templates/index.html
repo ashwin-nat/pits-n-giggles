@@ -465,13 +465,46 @@ SOFTWARE.
             }
         }
 
+        function getPlayerPosition(data) {
+            let tableEntries = data["table-entries"];
+            let playerPosition = null;
+
+            for (let i = 0; i < tableEntries.length; i++) {
+                let entry = tableEntries[i];
+                if (entry["is-player"]) {
+                    playerPosition = entry["position"];
+                    break; // Breaks out of the loop once player position is found
+                }
+            }
+
+            return playerPosition;
+        }
+
+        function getRelevantRaceTableRows(data) {
+
+            if (data["table-entries"].length == 0) {
+                return [];
+            }
+            if (data["is-spectating"]) {
+                return data["table-entries"];
+            }
+            const numAdjacentCars = {{ num_adjacent_cars }};
+            const totalCars = data["table-entries"].length;
+            const playerPosition = getPlayerPosition(data);
+            relevantPositions = getAdjacentPositions(playerPosition, totalCars, numAdjacentCars);
+
+            const lowerIndex = relevantPositions[0] - 1;
+            const upperIndex = relevantPositions[relevantPositions.length -1];
+            console.log(`Lower index: ${lowerIndex}, Upper index: ${upperIndex}`);
+            return data["table-entries"].slice(lowerIndex, upperIndex);
+        }
+
         function fetchDataAndDisplay() {
-            const endpoint = "telemetry-info?num-adjacent-cars={{ num_adjacent_cars }}";
-            fetch(endpoint)
+            fetch("telemetry-info")
                 .then(response => response.json())
                 .then(data => {
                     if ('table-entries' in data) {
-                        updateRaceTable(data["table-entries"]);
+                        updateRaceTable(getRelevantRaceTableRows(data));
                     }
                     updateGlobalInfo(data["circuit"], data["event-type"], data["track-temperature"], data["current-lap"],
                         data["total-laps"], data["safety-car-status"], data["fastest-lap-overall"],
@@ -2035,6 +2068,40 @@ SOFTWARE.
             }
         }
 
+        function getAdjacentPositions(position, total_cars, num_adjacent_cars) {
+            if (!(1 <= position && position <= total_cars)) {
+                return [];
+            }
+
+            let min_valid_lower_bound = 1;
+            let max_valid_upper_bound = total_cars;
+
+            // In time trial, total_cars will be lower than num_adjacent_cars
+            if (num_adjacent_cars >= total_cars) {
+                num_adjacent_cars = total_cars;
+                var lower_bound = min_valid_lower_bound;
+                var upper_bound = max_valid_upper_bound;
+            }
+            // GP scenario, lower bound and upper bound are off input position by num_adjacent_cars
+            else {
+                var lower_bound = position - num_adjacent_cars;
+                var upper_bound = position + num_adjacent_cars;
+            }
+
+            // now correct if lower and upper bounds have become invalid
+            if (lower_bound < min_valid_lower_bound) {
+                // lower bound is negative, need to shift the entire window right
+                upper_bound += min_valid_lower_bound - lower_bound;
+                lower_bound = min_valid_lower_bound;
+            }
+            if (upper_bound > total_cars) {
+                // upper bound is greater than limit, need to shift the entire window left
+                lower_bound = lower_bound - (upper_bound - total_cars);
+                upper_bound = max_valid_upper_bound;
+            }
+
+            return Array.from({ length: upper_bound - lower_bound + 1 }, (_, i) => lower_bound + i);
+        }
 
         // Add an event listener to the hyperlink
         // document.getElementById('localTime').addEventListener('click', toggleTimeFormat);
@@ -2061,11 +2128,6 @@ SOFTWARE.
         if (shouldHidePredictionColumn) {
             hideColumn("Wear Prediction");
         }
-
-        // Configure Chart.js to use Moment.js as the date adapter
-        // Chart.defaults.global.plugins.moment = {
-        //     locale: 'en' // Optional: set locale
-        // };
 
     </script>
 </body>

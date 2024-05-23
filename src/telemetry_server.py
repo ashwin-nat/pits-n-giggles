@@ -70,15 +70,7 @@ class TelemetryWebServer:
                 str: Telemetry data in JSON format.
             """
 
-            # Access parameters using request.args
-            num_adjacent_cars = request.args.get('num-adjacent-cars')
-
-            # Validate the parameter
-            error_response = self.validateIntGetRequestParam(num_adjacent_cars, 'num-adjacent-cars')
-            if error_response:
-                return error_response, HTTPStatus.BAD_REQUEST
-
-            return TelWebAPI.RaceInfoRsp(int(num_adjacent_cars)).toJSON(), HTTPStatus.OK
+            return TelWebAPI.RaceInfoRsp().toJSON(), HTTPStatus.OK
 
         # Define your endpoint
         @self.m_app.route('/race-info')
