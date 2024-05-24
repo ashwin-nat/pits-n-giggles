@@ -1941,13 +1941,12 @@ SOFTWARE.
                 hour12: !is24HourFormat
             };
             const timeString = now.toLocaleTimeString('en-US', options);
-            // document.getElementById('localTime').textContent = `Local Time: ${timeString}`;
             if (is24HourFormat) {
                 document.getElementById('localTimeNameLink').textContent = `Local Time (24H)`;
             } else {
                 document.getElementById('localTimeNameLink').textContent = `Local Time (12H)`;
             }
-            document.getElementById('localTimeValueLink').textContent = `Local Time: ${timeString}`;
+            document.getElementById('localTimeValueLink').textContent = `${timeString}`;
         }
 
         function toggleTimeFormat() {
