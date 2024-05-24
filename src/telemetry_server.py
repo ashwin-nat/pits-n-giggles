@@ -22,16 +22,17 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Callable
 from http import HTTPStatus
 import logging
-from flask import Flask, render_template, request, jsonify
-from flask_cors import CORS
-from src.telemetry_handler import dumpPktCapToFile, getOvertakeJSON, GetOvertakesStatus, getCustomMarkersJSON
-from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
-from lib.f1_types import F1Utils
+from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask_socketio import SocketIO
 import src.telemetry_data as TelData
 import src.telemetry_web_api as TelWebAPI
+
+# -------------------------------------- GLOBALS -----------------------------------------------------------------------
+
+_web_server : Optional["TelemetryWebServer"] = None
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -39,26 +40,34 @@ class TelemetryWebServer:
     def __init__(self,
         port: int,
         packet_capture_enabled: bool,
-        client_poll_interval_ms: int,
+        client_update_interval_ms: int,
         debug_mode: bool,
-        num_adjacent_cars: int):
+        num_adjacent_cars: int,
+        socketio_task: Callable):
         """
         Initialize TelemetryServer.
 
         Args:
             port (int): Port number for the server.
             packet_capture (bool) - True if packet capture is enabled
-            client_refresh_interval_ms (int) - The interval at which the client is to poll the server for data
+            client_update_interval_ms (int) - The interval at which the client should be updated with new data
             debug_mode (bool): Enable debug mode.
             num_adjacent_cars (int): The number of cars adjacent to player to be included in telemetry-info response
         """
-        self.m_app = Flask(__name__, template_folder='templates')
+        self.m_app = Flask(__name__, template_folder='templates', static_folder='static')
         self.m_app.config['PROPAGATE_EXCEPTIONS'] = True
         self.m_port = port
         self.m_debug_mode = debug_mode
         self.m_packet_capture_enabled = packet_capture_enabled
-        self.m_client_poll_interval_ms = client_poll_interval_ms
+        self.m_client_update_interval_ms = client_update_interval_ms
         self.m_num_adjacent_cars = num_adjacent_cars
+        self.m_socketio = SocketIO(
+            app=self.m_app,
+            async_mode=None,
+            logger=False,
+            engineio_logger=False,
+        )
+        self.m_socketio_task = socketio_task
 
         # Define your endpoint
         @self.m_app.route('/telemetry-info')
@@ -135,7 +144,7 @@ class TelemetryWebServer:
 
             return render_template('index.html',
                 packet_capture_enabled=self.m_packet_capture_enabled,
-                client_poll_interval_ms=self.m_client_poll_interval_ms,
+                client_poll_interval_ms=0, # deprecated since we've moved to socketio
                 num_adjacent_cars=self.m_num_adjacent_cars,
                 live_data_mode=True)
 
@@ -151,8 +160,8 @@ class TelemetryWebServer:
 
             return render_template('index.html',
                 packet_capture_enabled=self.m_packet_capture_enabled,
-                client_poll_interval_ms=self.m_client_poll_interval_ms,
-                num_adjacent_cars=1,
+                client_poll_interval_ms=0, # deprecated since we've moved to socketio
+                num_adjacent_cars=0,
                 live_data_mode=True)
 
         # Render the HTML page
@@ -167,9 +176,18 @@ class TelemetryWebServer:
 
             return render_template('index.html',
                 packet_capture_enabled=self.m_packet_capture_enabled,
-                client_poll_interval_ms=self.m_client_poll_interval_ms,
+                client_poll_interval_ms=0, # deprecated since we've moved to socketio
                 num_adjacent_cars=22,
                 live_data_mode=True)
+
+        # Socketio endpoints
+        @self.m_socketio.on('connect')
+        def handleConnect():
+            logging.debug("Client connected")
+
+        @self.m_socketio.on('disconnect')
+        def handleDisconnect():
+            logging.debug("Client disconnected")
 
     def validateIntGetRequestParam(self, param: Any, param_name: str) -> Optional[Dict[str, Any]]:
         """
@@ -208,9 +226,53 @@ class TelemetryWebServer:
         werkzeug_logger = logging.getLogger('werkzeug')
         werkzeug_logger.setLevel(logging.ERROR)
 
-        self.m_app.run(
+        if self.m_socketio_task:
+            self.m_socketio.start_background_task(self.m_socketio_task, self.m_client_update_interval_ms)
+        self.m_socketio.run(
+            app=self.m_app,
             debug=self.m_debug_mode,
             port=self.m_port,
-            threaded=True,
-            use_reloader=self.m_debug_mode,
+            use_reloader=False,
             host='0.0.0.0')
+
+# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+
+def initTelemetryWebServer(
+    port: int,
+    packet_capture_enabled: bool,
+    client_update_interval_ms: int,
+    debug_mode: bool,
+    num_adjacent_cars: int) -> None:
+    """Initialize the web server
+
+    Args:
+        port (int): Port number
+        packet_capture_enabled (bool): Should enable packet capture
+        client_update_interval_ms (int): How often the client will be updated with new info
+        debug_mode (bool): Debug enabled if true
+        num_adjacent_cars (int): Number of adjacent cars to be displayed in the telemetry table
+    """
+
+    global _web_server
+    _web_server = TelemetryWebServer(
+        port=port,
+        packet_capture_enabled=packet_capture_enabled,
+        client_update_interval_ms=client_update_interval_ms,
+        debug_mode=debug_mode,
+        num_adjacent_cars=num_adjacent_cars,
+        socketio_task=clientUpdaterTask
+    )
+    _web_server.run()
+
+def clientUpdaterTask(update_interval_ms: int) -> None:
+    """Task to update clients with telemetry data
+
+    Args:
+        update_interval_ms (int): Update interval in milliseconds
+    """
+
+    global _web_server
+    sleep_duration = update_interval_ms / 1000
+    while True:
+        _web_server.m_socketio.emit('race-table-update', TelWebAPI.RaceInfoRsp().toJSON())
+        _web_server.m_socketio.sleep(sleep_duration)

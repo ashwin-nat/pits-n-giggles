@@ -305,7 +305,8 @@ class TelemetryWebServer:
                 packet_capture_enabled=self.m_packet_capture_enabled,
                 client_poll_interval_ms=self.m_client_poll_interval_ms,
                 player_only_telemetry=False,
-                live_data_mode=False)
+                live_data_mode=False,
+                num_adjacent_cars=22)
 
         # Define your endpoint
         @self.m_app.route('/telemetry-info')

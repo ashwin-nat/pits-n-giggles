@@ -32,7 +32,7 @@ import webbrowser
 from typing import Set, Optional
 
 from src.telemetry_handler import initPktCap, PacketCaptureMode, initAutosaves, F1TelemetryHandler, initDirectories
-from src.telemetry_server import TelemetryWebServer
+from src.telemetry_server import initTelemetryWebServer
 
 # -------------------------------------- FUNCTION DEFINITIONS ----------------------------------------------------------
 
@@ -145,7 +145,7 @@ def openWebPage(http_port: int) -> None:
 def httpServerTask(
         http_port: int,
         packet_capture_enabled: bool,
-        client_poll_interval_ms: int,
+        client_update_interval_ms: int,
         disable_browser_autoload: bool,
         num_adjacent_cars: int) -> None:
     """Entry point to start the HTTP server.
@@ -153,7 +153,7 @@ def httpServerTask(
     Args:
         http_port (int): Port number for the HTTP server.
         packet_capture_enabled (bool): Whether packet capture is enabled.
-        client_poll_interval_ms (int): Client poll interval in milliseconds.
+        client_update_interval_ms (int): Client poll interval in milliseconds.
         disable_browser_autoload (bool): Whether to disable browser autoload.
         num_adjacent_cars (int): The number of cars adjacent to player to be included in telemetry-info response
     """
@@ -162,13 +162,6 @@ def httpServerTask(
         webpage_open_thread = threading.Thread(target=openWebPage, args=(http_port,))
         webpage_open_thread.start()
 
-    telemetry_server = TelemetryWebServer(
-        port=http_port,
-        packet_capture_enabled=packet_capture_enabled,
-        client_poll_interval_ms=client_poll_interval_ms,
-        debug_mode=False,
-        num_adjacent_cars=num_adjacent_cars
-    )
     log_str = "Starting F1 telemetry server. Open one of the below addresses in your browser\n"
     ip_addresses = getLocalIpAddresses()
     for ip_addr in ip_addresses:
@@ -176,7 +169,14 @@ def httpServerTask(
     log_str += "NOTE: The tables will be empty until the red lights appear on the screen before the race start\n"
     log_str += "That is when the game starts sending telemetry data"
     logging.info(log_str)
-    telemetry_server.run()
+
+    initTelemetryWebServer(
+        port=http_port,
+        packet_capture_enabled=packet_capture_enabled,
+        client_update_interval_ms=client_update_interval_ms,
+        debug_mode=False,
+        num_adjacent_cars=num_adjacent_cars
+    )
 
 def f1TelemetryServerTask(
         packet_capture: PacketCaptureMode,
