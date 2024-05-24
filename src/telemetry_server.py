@@ -85,7 +85,7 @@ class TelemetryWebServer:
         self.m_num_adjacent_cars = num_adjacent_cars
         self.m_socketio = SocketIO(
             app=self.m_app,
-            async_mode=None,
+            async_mode="gevent",
             # logger=socketio_logger,
         )
         self.m_socketio_task = socketio_task
@@ -244,17 +244,19 @@ class TelemetryWebServer:
         """
 
         # Disable Werkzeug request logging
-        werkzeug_logger = logging.getLogger('werkzeug')
-        werkzeug_logger.setLevel(logging.ERROR)
+        logging.getLogger('werkzeug').setLevel(logging.ERROR)
+        logging.getLogger('socketio').setLevel(logging.ERROR)
+        logging.getLogger('engineio').setLevel(logging.ERROR)
+        logging.getLogger('gevent').setLevel(logging.ERROR)
+        logging.getLogger('websocket').setLevel(logging.ERROR)
 
         if self.m_socketio_task:
             self.m_socketio.start_background_task(self.m_socketio_task, self.m_client_update_interval_ms)
         self.m_socketio.run(
             app=self.m_app,
-            debug=self.m_debug_mode,
+            debug=False,
             port=self.m_port,
-            use_reloader=False,
-            host='0.0.0.0')
+            use_reloader=False)
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
