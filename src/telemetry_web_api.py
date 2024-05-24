@@ -369,6 +369,8 @@ class DriversListRsp(TelemetryWebApiRspBase):
             bool: True if DRS is activated or available or has non-zero distance, False otherwise.
         """
 
+        if (drs_activated is None) or (drs_available is None) or (drs_distance is None):
+            return False
         return True if (drs_activated or drs_available or (drs_distance > 0)) else False
 
     def __initDriverList(self) -> None:

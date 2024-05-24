@@ -499,21 +499,25 @@ SOFTWARE.
             return data["table-entries"].slice(lowerIndex, upperIndex);
         }
 
+        function displayData(data) {
+            if ('table-entries' in data) {
+                updateRaceTable(getRelevantRaceTableRows(data));
+            }
+            updateGlobalInfo(data["circuit"], data["event-type"], data["track-temperature"], data["current-lap"],
+                data["total-laps"], data["safety-car-status"], data["fastest-lap-overall"],
+                data["pit-speed-limit"], {{ packet_capture_enabled | tojson }});
+            updateWeatherTable(data["weather-forecast-samples"]);
+        }
+
         function fetchDataAndDisplay() {
             fetch("telemetry-info")
                 .then(response => response.json())
                 .then(data => {
-                    if ('table-entries' in data) {
-                        updateRaceTable(getRelevantRaceTableRows(data));
-                    }
-                    updateGlobalInfo(data["circuit"], data["event-type"], data["track-temperature"], data["current-lap"],
-                        data["total-laps"], data["safety-car-status"], data["fastest-lap-overall"],
-                        data["pit-speed-limit"], {{ packet_capture_enabled | tojson }});
-                    updateWeatherTable(data["weather-forecast-samples"]);
+                    displayData(data);
                 })
                 .catch (error => {
-            console.error('Error fetching data:', error);
-        });
+                    console.error('Error fetching data:', error);
+                });
         }
 
         function updateWeatherTable(weatherData) {
@@ -2104,7 +2108,6 @@ SOFTWARE.
         }
 
         // Add an event listener to the hyperlink
-        // document.getElementById('localTime').addEventListener('click', toggleTimeFormat);
         document.getElementById('localTimeNameLink').addEventListener('click', toggleTimeFormat);
         document.getElementById('localTimeValueLink').addEventListener('click', toggleTimeFormat);
         document.getElementById('deltaLink').addEventListener('click', toggleDeltaFormat);
