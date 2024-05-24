@@ -465,7 +465,7 @@ SOFTWARE.
             if (data["table-entries"].length == 0) {
                 return [];
             }
-            if (data["is-spectating"]) {
+            if (data["is-spectating"] || data["race-ended"]) {
                 return data["table-entries"];
             }
             const numAdjacentCars = {{ num_adjacent_cars }};

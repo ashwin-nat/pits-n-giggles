@@ -36,6 +36,15 @@ _web_server : Optional["TelemetryWebServer"] = None
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
+# class NoPayloadFormatter(logging.Formatter):
+#     def format(self, record):
+#         # Check if the log message contains JSON payload
+#         if "engineio.response" in record.getMessage():
+#             # Replace the JSON payload with a message indicating it was omitted
+#             return "Response payload omitted"
+#         # For other log messages, use the default formatting
+#         return super().format(record)
+
 class TelemetryWebServer:
     def __init__(self,
         port: int,
@@ -54,6 +63,19 @@ class TelemetryWebServer:
             debug_mode (bool): Enable debug mode.
             num_adjacent_cars (int): The number of cars adjacent to player to be included in telemetry-info response
         """
+
+        # # Create a custom logger for SocketIO
+        # socketio_logger = logging.getLogger("socketio")
+        # socketio_logger.setLevel(logging.INFO)
+        # socketio_logger.addHandler(logging.StreamHandler())
+
+        # # Create a custom formatter
+        # formatter = NoPayloadFormatter()
+
+        # # Set the formatter for the socketio logger
+        # for handler in socketio_logger.handlers:
+        #     handler.setFormatter(formatter)
+
         self.m_app = Flask(__name__, template_folder='templates', static_folder='static')
         self.m_app.config['PROPAGATE_EXCEPTIONS'] = True
         self.m_port = port
@@ -64,8 +86,7 @@ class TelemetryWebServer:
         self.m_socketio = SocketIO(
             app=self.m_app,
             async_mode=None,
-            logger=False,
-            engineio_logger=False,
+            # logger=socketio_logger,
         )
         self.m_socketio_task = socketio_task
 
