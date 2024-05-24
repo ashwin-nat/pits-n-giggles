@@ -25,7 +25,7 @@
 from typing import Dict, Any, Optional, Callable
 from http import HTTPStatus
 import logging
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO
 import src.telemetry_data as TelData
 import src.telemetry_web_api as TelWebAPI

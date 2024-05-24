@@ -554,4 +554,15 @@ check-str-concat-over-line-jumps=no
 [MASTER]
 
 # Add the modules to the ignored list
-ignored-modules=lib.f1_types
+ignored-modules=
+    lib.f1_types,
+    lib.socket_receiver,
+    lib.packet_cap,
+    lib.overtake_analyzer,
+    lib.race_analyzer,
+    lib.tyre_wear_extrapolator
+
+disable=
+    import-error,
+    global-statement,
+    global-variable-not-assigned

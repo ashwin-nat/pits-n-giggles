@@ -20,42 +20,33 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import json
 import logging
 from typing import Dict, Any, Optional, List
-from lib.f1_types import *
-from lib.overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, OvertakeRecord
+from lib.f1_types import F1Utils
 import lib.race_analyzer as RaceAnalyzer
 import src.telemetry_data as TelData
 from src.telemetry_handler import dumpPktCapToFile, getOvertakeJSON, GetOvertakesStatus, getCustomMarkersJSON
 
+# ------------------------- UTILITIES ----------------------------------------------------------------------------------
+
+def _getValueOrDefaultValue(
+    value: Optional[Any],
+    default_value: str ='---') -> Optional[Any]:
+    """
+    Get value or default as string.
+
+    Args:
+        value: The value to check.
+        default_value (str, optional): Default value if the input is None. Defaults to '---'.
+
+    Returns:
+        str: The value as is or default string if None.
+    """
+    return value if value is not None else default_value
+
 # ------------------------- API - CLASSES ------------------------------------------------------------------------------
 
-class TelemetryWebApiRspBase:
-    """The base API response class. Contains common methods and fields
-    """
-
-    def __init__(self):
-        """Dummy constructor. Should never be used directly
-        """
-        return
-
-    def getValueOrDefaultValue(self,
-            value: Optional[Any],
-            default_value: str ='---') -> Optional[Any]:
-        """
-        Get value or default as string.
-
-        Args:
-            value: The value to check.
-            default_value (str, optional): Default value if the input is None. Defaults to '---'.
-
-        Returns:
-            str: The value as is or default string if None.
-        """
-        return value if value is not None else default_value
-
-class RaceInfoRsp(TelemetryWebApiRspBase):
+class RaceInfoRsp:
     """This class will prepare the live race telemetry info response. Use toJSON() method to get the JSON rsp
     """
     def __init__(self) -> None:
@@ -80,15 +71,14 @@ class RaceInfoRsp(TelemetryWebApiRspBase):
 
         globals_json = {
             # First, global fields
-            "circuit": self.getValueOrDefaultValue(self.m_globals.m_circuit),
-            "track-temperature": self.getValueOrDefaultValue(self.m_globals.m_track_temp),
-            "air-temperature": self.getValueOrDefaultValue(self.m_globals.m_air_temp),
-            "event-type": self.getValueOrDefaultValue(self.m_globals.m_event_type),
-            "total-laps": self.getValueOrDefaultValue(self.m_globals.m_total_laps),
-            "current-lap": self.getValueOrDefaultValue(self.m_curr_lap),
-            "safety-car-status": str(self.getValueOrDefaultValue(self.m_globals.m_safety_car_status, default_value="")),
-            "pit-speed-limit" : self.getValueOrDefaultValue(self.m_globals.m_pit_speed_limit),
-            "pit-speed-limit": self.getValueOrDefaultValue(self.m_globals.m_pit_speed_limit),
+            "circuit": _getValueOrDefaultValue(self.m_globals.m_circuit),
+            "track-temperature": _getValueOrDefaultValue(self.m_globals.m_track_temp),
+            "air-temperature": _getValueOrDefaultValue(self.m_globals.m_air_temp),
+            "event-type": _getValueOrDefaultValue(self.m_globals.m_event_type),
+            "total-laps": _getValueOrDefaultValue(self.m_globals.m_total_laps),
+            "current-lap": _getValueOrDefaultValue(self.m_curr_lap),
+            "safety-car-status": str(_getValueOrDefaultValue(self.m_globals.m_safety_car_status, default_value="")),
+            "pit-speed-limit": _getValueOrDefaultValue(self.m_globals.m_pit_speed_limit),
             "weather-forecast-samples": [
                 {
                     "time-offset": str(sample.m_timeOffset),
@@ -96,15 +86,15 @@ class RaceInfoRsp(TelemetryWebApiRspBase):
                     "rain-probability": str(sample.m_rainPercentage)
                 } for sample in self.m_globals.m_weather_forecast_samples
             ],
-            "race-ended" : True if self.m_globals.m_packet_final_classification else False,
-            "is-spectating" : self.getValueOrDefaultValue(self.m_globals.m_is_spectating, False),
+            "race-ended" : bool(self.m_globals.m_packet_final_classification),
+            "is-spectating" : _getValueOrDefaultValue(self.m_globals.m_is_spectating, False),
         }
 
         driver_list_json = self.m_driver_list_rsp.toJSON()
         globals_json.update(driver_list_json)
         return globals_json
 
-class SavePacketCaptureRsp(TelemetryWebApiRspBase):
+class SavePacketCaptureRsp:
     """
     Save packet capture response class.
     """
@@ -128,14 +118,14 @@ class SavePacketCaptureRsp(TelemetryWebApiRspBase):
         """
 
         return {
-            "is-success" : (True if self.m_file_name else False),
+            "is-success" : bool(self.m_file_name),
             "status-code" : str(self.m_status_code),
-            "file-name" : self.getValueOrDefaultValue(self.m_file_name, ""),
-            "num-packets" : self.getValueOrDefaultValue(self.m_num_packets, default_value=0),
-            "num-bytes" : self.getValueOrDefaultValue(self.m_num_bytes, default_value=0)
+            "file-name" : _getValueOrDefaultValue(self.m_file_name, ""),
+            "num-packets" : _getValueOrDefaultValue(self.m_num_packets, default_value=0),
+            "num-bytes" : _getValueOrDefaultValue(self.m_num_bytes, default_value=0)
         }
 
-class OverallRaceStatsRsp(TelemetryWebApiRspBase):
+class OverallRaceStatsRsp:
     """
     Overall race stats response class.
     """
@@ -162,11 +152,7 @@ class OverallRaceStatsRsp(TelemetryWebApiRspBase):
                 self.m_rsp["records"]["fastest"] = None
 
         if "tyre-stats" not in self.m_rsp["records"]:
-            try:
-                self.m_rsp["records"]["tyre-stats"] = RaceAnalyzer.getTyreStintRecordsDict(self.m_rsp)
-            except:
-                logging.debug('Failed to get tyre stats JSON')
-                self.m_rsp["records"]["tyre-stats"] = None
+            self.m_rsp["records"]["tyre-stats"] = RaceAnalyzer.getTyreStintRecordsDict(self.m_rsp)
 
         should_recompute_overtakes = False
         if "overtakes" not in self.m_rsp:
@@ -199,7 +185,7 @@ class OverallRaceStatsRsp(TelemetryWebApiRspBase):
 
         return self.m_rsp
 
-class DriverInfoRsp(TelemetryWebApiRspBase):
+class DriverInfoRsp:
     """
     Driver info response class.
     """
@@ -229,7 +215,7 @@ class DriverInfoRsp(TelemetryWebApiRspBase):
 
 # ------------------------- HELPER - CLASSES ---------------------------------------------------------------------------
 
-class DriversListRsp(TelemetryWebApiRspBase):
+class DriversListRsp:
     """
     Drivers list response class.
     """
@@ -261,9 +247,9 @@ class DriversListRsp(TelemetryWebApiRspBase):
         return {
             "table-entries": [
                 {
-                    "position": self.getValueOrDefaultValue(data_per_driver.m_position),
-                    "name": self.getValueOrDefaultValue(data_per_driver.m_name),
-                    "team": self.getValueOrDefaultValue(data_per_driver.m_team),
+                    "position": _getValueOrDefaultValue(data_per_driver.m_position),
+                    "name": _getValueOrDefaultValue(data_per_driver.m_name),
+                    "team": _getValueOrDefaultValue(data_per_driver.m_team),
                     "delta": self.__getDeltaPlusPenaltiesPlusPit(data_per_driver.m_delta_to_car_in_front,
                                                                data_per_driver.m_penalties,
                                                                data_per_driver.m_is_pitting,
@@ -273,38 +259,38 @@ class DriversListRsp(TelemetryWebApiRspBase):
                                                                data_per_driver.m_penalties,
                                                                data_per_driver.m_is_pitting,
                                                                data_per_driver.m_dnf_status_code),
-                    "ers": self.getValueOrDefaultValue(data_per_driver.m_ers_perc),
-                    "best": self.getValueOrDefaultValue(data_per_driver.m_best_lap_str),
-                    "best-lap-delta" : self.getValueOrDefaultValue(data_per_driver.m_best_lap_delta),
-                    "last": self.getValueOrDefaultValue(data_per_driver.m_last_lap),
-                    "last-lap-delta" : self.getValueOrDefaultValue(data_per_driver.m_last_lap_delta),
-                    "is-fastest": self.getValueOrDefaultValue(data_per_driver.m_is_fastest),
-                    "is-player": self.getValueOrDefaultValue(data_per_driver.m_is_player),
-                    "average-tyre-wear": self.getValueOrDefaultValue(data_per_driver.m_tyre_wear),
-                    "tyre-age": self.getValueOrDefaultValue(data_per_driver.m_tyre_age),
-                    "tyre-life-remaining" : self.getValueOrDefaultValue(data_per_driver.m_tyre_life_remaining_laps),
-                    "tyre-compound": self.getValueOrDefaultValue(data_per_driver.m_tyre_compound_type),
+                    "ers": _getValueOrDefaultValue(data_per_driver.m_ers_perc),
+                    "best": _getValueOrDefaultValue(data_per_driver.m_best_lap_str),
+                    "best-lap-delta" : _getValueOrDefaultValue(data_per_driver.m_best_lap_delta),
+                    "last": _getValueOrDefaultValue(data_per_driver.m_last_lap),
+                    "last-lap-delta" : _getValueOrDefaultValue(data_per_driver.m_last_lap_delta),
+                    "is-fastest": _getValueOrDefaultValue(data_per_driver.m_is_fastest),
+                    "is-player": _getValueOrDefaultValue(data_per_driver.m_is_player),
+                    "average-tyre-wear": _getValueOrDefaultValue(data_per_driver.m_tyre_wear),
+                    "tyre-age": _getValueOrDefaultValue(data_per_driver.m_tyre_age),
+                    "tyre-life-remaining" : _getValueOrDefaultValue(data_per_driver.m_tyre_life_remaining_laps),
+                    "tyre-compound": _getValueOrDefaultValue(data_per_driver.m_tyre_compound_type),
                     "drs": self.__getDRSValue(data_per_driver.m_drs_activated, data_per_driver.m_drs_allowed,
                                             data_per_driver.m_drs_distance),
-                    "num-pitstops": self.getValueOrDefaultValue(data_per_driver.m_num_pitstops),
-                    "dnf-status" : self.getValueOrDefaultValue(data_per_driver.m_dnf_status_code),
-                    "index" : self.getValueOrDefaultValue(data_per_driver.m_index),
+                    "num-pitstops": _getValueOrDefaultValue(data_per_driver.m_num_pitstops),
+                    "dnf-status" : _getValueOrDefaultValue(data_per_driver.m_dnf_status_code),
+                    "index" : _getValueOrDefaultValue(data_per_driver.m_index),
                     "telemetry-setting" : data_per_driver.m_telemetry_restrictions, # Already NULL checked
                     "lap-progress" : data_per_driver.m_lap_progress, # NULL is supported
-                    "corner-cutting-warnings" : self.getValueOrDefaultValue(data_per_driver.m_corner_cutting_warnings),
-                    "time-penalties" : self.getValueOrDefaultValue(data_per_driver.m_time_penalties),
-                    "num-dt" : self.getValueOrDefaultValue(data_per_driver.m_num_dt),
-                    "num-sg" : self.getValueOrDefaultValue(data_per_driver.m_num_sg),
+                    "corner-cutting-warnings" : _getValueOrDefaultValue(data_per_driver.m_corner_cutting_warnings),
+                    "time-penalties" : _getValueOrDefaultValue(data_per_driver.m_time_penalties),
+                    "num-dt" : _getValueOrDefaultValue(data_per_driver.m_num_dt),
+                    "num-sg" : _getValueOrDefaultValue(data_per_driver.m_num_sg),
                     "tyre-wear-prediction" : data_per_driver.getTyrePredictionsJSONList(
                         data_per_driver.m_ideal_pit_stop_window),
-                    "fuel-load-kg" : self.getValueOrDefaultValue(data_per_driver.m_fuel_load_kg),
-                    "fuel-laps-remaining" : self.getValueOrDefaultValue(data_per_driver.m_fuel_laps_remaining),
+                    "fuel-load-kg" : _getValueOrDefaultValue(data_per_driver.m_fuel_load_kg),
+                    "fuel-laps-remaining" : _getValueOrDefaultValue(data_per_driver.m_fuel_laps_remaining),
                     "fl-wing-damage" : data_per_driver.m_fl_wing_damage, # NULL is supported
                     "fr-wing-damage" : data_per_driver.m_fr_wing_damage, # NULL is supported
                     "rear-wing-damage" : data_per_driver.m_rear_wing_damage, # NULL is supported
                 } for data_per_driver in self.m_final_list
             ],
-            "fastest-lap-overall" : self.getValueOrDefaultValue(self.m_fastest_lap)
+            "fastest-lap-overall" : _getValueOrDefaultValue(self.m_fastest_lap)
         }
 
     def getCurrentLap(self) -> Optional[int]:
@@ -319,12 +305,7 @@ class DriversListRsp(TelemetryWebApiRspBase):
 
         if self.m_is_spectator_mode:
             return self.m_final_list[0].m_current_lap
-        else:
-            for driver_data in self.m_final_list:
-                if driver_data.m_is_player:
-                    return driver_data.m_current_lap
-
-            assert False, "Could not find player"
+        return next((driver_data.m_current_lap for driver_data in self.m_final_list if driver_data.m_is_player), None)
 
     def __getDeltaPlusPenaltiesPlusPit(self,
             delta: str,
@@ -346,12 +327,11 @@ class DriversListRsp(TelemetryWebApiRspBase):
 
         if len(dnf_status_code) > 0:
             return dnf_status_code
-        elif is_pitting:
+        if is_pitting:
             return "PIT " + penalties
-        elif delta is not None:
+        if delta is not None:
             return delta + " " + penalties
-        else:
-            return "---"
+        return "---"
 
     def __getDRSValue(self,
             drs_activated: bool,
@@ -371,7 +351,7 @@ class DriversListRsp(TelemetryWebApiRspBase):
 
         if (drs_activated is None) or (drs_available is None) or (drs_distance is None):
             return False
-        return True if (drs_activated or drs_available or (drs_distance > 0)) else False
+        return bool(drs_activated or drs_available or (drs_distance > 0))
 
     def __initDriverList(self) -> None:
         """Initialise the fields
@@ -386,14 +366,14 @@ class DriversListRsp(TelemetryWebApiRspBase):
             if TelData._driver_data.m_fastest_index is not None:
                 self.m_fastest_lap = TelData._driver_data.m_driver_data[
                                         TelData._driver_data.m_fastest_index].m_best_lap_str
-            positions = [i for i in range(1, TelData._driver_data.m_num_active_cars+1)]
+            positions = list(range(1, TelData._driver_data.m_num_active_cars + 1))
             for position in positions:
                 index, temp_data = TelData._driver_data.getIndexByTrackPosition(position)
                 if (index, temp_data) == (None, None):
                     return
 
                 temp_data.m_index = index
-                temp_data.m_is_fastest = True if (index == TelData._driver_data.m_fastest_index) else False
+                temp_data.m_is_fastest = (index == TelData._driver_data.m_fastest_index)
                 if temp_data.m_is_player:
                     temp_data.m_ideal_pit_stop_window = TelData._driver_data.m_ideal_pit_stop_window
                 else:
@@ -432,28 +412,24 @@ class DriversListRsp(TelemetryWebApiRspBase):
                 driver_data.m_num_dt = None
                 driver_data.m_num_sg = None
 
-    def _recomputeDeltas(self) -> List[TelData.DataPerDriver]:
+    def _recomputeDeltas(self):
         """Recompute the deltas for the list of driver data relative to the player
-
-        Returns:
-            List[DataPerDriver]: The list of driver data with deltas
         """
 
+        # pylint: disable=too-many-branches
         self.m_final_list[0].m_delta_to_car_in_front = "---"
-        milliseconds_to_seconds_str = lambda ms: ("+" if ms >= 0 else "") + "{:.3f}".format(ms / 1000)
         if self.m_is_spectator_mode:
             # just convert the deltas to str
             for data in self.m_final_list:
                 if data.m_delta_to_car_in_front is not None and isinstance(data.m_delta_to_car_in_front, int):
-                    data.m_delta_to_car_in_front = milliseconds_to_seconds_str(data.m_delta_to_car_in_front)
+                    data.m_delta_to_car_in_front = self._millisecondsToSecondsStr(data.m_delta_to_car_in_front)
                 else:
                     data.m_delta_to_car_in_front = "---"
                 data.m_last_lap_delta = "---"
                 data.m_best_lap_delta = "---"
         else:
             # recompute the deltas if not spectator mode
-            condition = lambda x: x.m_is_player == True
-            player_index = next((index for index, item in enumerate(self.m_final_list) if condition(item)), None)
+            player_index = next((index for index, item in enumerate(self.m_final_list) if item.m_is_player), None)
             if self.m_final_list[player_index].m_last_lap == "---":
                 player_last_lap_ms = None
             else:
@@ -466,7 +442,7 @@ class DriversListRsp(TelemetryWebApiRspBase):
                 delta_so_far = 0
                 for data in self.m_final_list[1:]:
                     delta_so_far += data.m_delta_to_car_in_front
-                    data.m_delta_to_car_in_front = milliseconds_to_seconds_str(delta_so_far)
+                    data.m_delta_to_car_in_front = self._millisecondsToSecondsStr(delta_so_far)
 
             # case 2: player is in the back of the pack
             # Iterate from back to front using reversed need to look at previous car's data for distance ahead
@@ -477,7 +453,7 @@ class DriversListRsp(TelemetryWebApiRspBase):
                 for data in reversed(self.m_final_list[:len(self.m_final_list)-1]):
                     delta_so_far -= one_car_behind_delta
                     one_car_behind_delta = data.m_delta_to_car_in_front
-                    data.m_delta_to_car_in_front = milliseconds_to_seconds_str(delta_so_far)
+                    data.m_delta_to_car_in_front = self._millisecondsToSecondsStr(delta_so_far)
                 self.m_final_list[len(self.m_final_list)-1].m_delta_to_car_in_front = "---"
 
             # case 3: player is somewhere in the middle of the pack
@@ -490,13 +466,13 @@ class DriversListRsp(TelemetryWebApiRspBase):
                 for data in reversed(self.m_final_list[:player_index]):
                     delta_so_far -= one_car_behind_delta
                     one_car_behind_delta = data.m_delta_to_car_in_front
-                    data.m_delta_to_car_in_front = milliseconds_to_seconds_str(delta_so_far)
+                    data.m_delta_to_car_in_front = self._millisecondsToSecondsStr(delta_so_far)
 
                 # Finally, set the deltas for the cars ahead
                 delta_so_far = 0
                 for data in self.m_final_list[player_index+1:]:
                     delta_so_far += data.m_delta_to_car_in_front
-                    data.m_delta_to_car_in_front = milliseconds_to_seconds_str(delta_so_far)
+                    data.m_delta_to_car_in_front = self._millisecondsToSecondsStr(delta_so_far)
 
                 # finally set the delta for the player
                 self.m_final_list[player_index].m_delta_to_car_in_front = "---"
@@ -512,20 +488,26 @@ class DriversListRsp(TelemetryWebApiRspBase):
                     data.m_best_lap_delta = data.m_best_lap_str
                 else:
                     if player_last_lap_ms is not None and data.m_last_lap != "---" and data.m_last_lap is not None:
-                        try:
-                            data.m_last_lap_delta = milliseconds_to_seconds_str(
-                                F1Utils.timeStrToMilliseconds(data.m_last_lap) - player_last_lap_ms)
-                        except Exception as e:
-                            # Handle the exception here
-                            logging.error("Input: " + str(data.m_last_lap) + " An error occurred:", e)
+                        data.m_last_lap_delta = self._millisecondsToSecondsStr(
+                            F1Utils.timeStrToMilliseconds(data.m_last_lap) - player_last_lap_ms)
                     else:
                         data.m_last_lap_delta = "---"
 
                     if fastest_lap_ms is not None and data.m_best_lap_ms != 0 and data.m_best_lap_ms is not None:
-                        try:
-                            data.m_best_lap_delta = milliseconds_to_seconds_str(data.m_best_lap_ms - fastest_lap_ms)
-                        except Exception as e:
-                            # Handle the exception here
-                            logging.error("Input: " + str(data.m_best_lap_ms) + " An error occurred:", e)
+                        data.m_best_lap_delta = self._millisecondsToSecondsStr(data.m_best_lap_ms - fastest_lap_ms)
                     else:
                         data.m_best_lap_delta = "---"
+
+    def _millisecondsToSecondsStr(self, ms: float) -> str:
+        """
+        Convert milliseconds to a formatted string representing seconds.
+
+        Args:
+            ms (float): Time duration in milliseconds.
+
+        Returns:
+            str: Formatted string representing the time duration in seconds.
+        """
+        sign = "+" if ms >= 0 else ""
+        seconds = ms / 1000
+        return f"{sign}{seconds:.3f}"

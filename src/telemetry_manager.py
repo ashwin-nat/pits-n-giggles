@@ -20,10 +20,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from lib.f1_types import *
-from lib.socket_receiver import UDPListener, TCPListener
 from typing import Callable
 import logging
+from lib.socket_receiver import UDPListener, TCPListener
+from lib.f1_types import F1PacketType, PacketHeader, PacketMotionData, PacketSessionData, PacketLapData, \
+    PacketEventData, PacketParticipantsData, PacketCarSetupData, PacketCarTelemetryData, PacketCarStatusData, \
+    PacketFinalClassificationData, PacketLobbyInfoData, PacketCarDamageData, PacketSessionHistoryData, \
+    PacketTyreSetsData, PacketMotionExData, InvalidPacketLengthError
+
 
 # ------------------------- CLASSES --------------------------------------------
 
@@ -139,7 +143,7 @@ class F1TelemetryManager:
         """
 
         if self.m_replay_server:
-            logging.info("REPLAY SERVER MODE. PORT = " + str(self.m_port_number))
+            logging.info("REPLAY SERVER MODE. PORT = %s", self.m_port_number)
 
         # counter = 0
         # Run the client indefinitely

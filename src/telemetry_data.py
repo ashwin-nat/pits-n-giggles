@@ -28,7 +28,10 @@ import copy
 from typing import Optional, Generator, Tuple, List, Dict, Any
 from collections import OrderedDict
 import logging
-from lib.f1_types import *
+from lib.f1_types import PacketSessionData, PacketLapData, LapData, CarTelemetryData, ParticipantData, \
+    PacketEventData, PacketParticipantsData, PacketCarTelemetryData, PacketCarStatusData, FinalClassificationData, \
+    PacketFinalClassificationData, PacketCarDamageData, PacketSessionHistoryData, ResultStatus, PacketTyreSetsData, \
+    F1Utils, WeatherForecastSample, CarDamageData, CarStatusData
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.overtake_analyzer import OvertakeRecord
 from lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
@@ -403,10 +406,14 @@ class DataPerDriver:
 
         if self.m_tyre_wear_extrapolator.isDataSufficient() and (self.m_tyre_wear_extrapolator.remaining_laps > 0):
             predictions_list = []
+            # pylint: disable=unnecessary-lambda-assignment
             log_error_lambda = lambda: logging.error(
-                f"{str(self.m_name)}: Prediction for lap {str(next_pit_window)} not available. "
-                    "Curr lap = {str(self.m_current_lap)} "
-                    "Num Samples = {self.m_tyre_wear_extrapolator.num_samples}")
+                "%s: Prediction for lap %s not available. Curr lap = %s Num Samples = %s",
+                self.m_name,
+                next_pit_window,
+                self.m_current_lap,
+                self.m_tyre_wear_extrapolator.num_samples
+            )
 
             # Input sanitization
             if next_pit_window is None or (next_pit_window == 0) or (next_pit_window < self.m_current_lap):
@@ -440,9 +447,8 @@ class DataPerDriver:
                 else:
                     log_error_lambda()
             return predictions_list
-        else:
-            # Data unavailable, return empty list
-            return []
+        # Data unavailable, return empty list
+        return []
 
     def _getTyreSetHistoryJSON(self) -> List[Dict[str, Any]]:
         """Get the list of tyre sets used in JSON format
@@ -504,11 +510,9 @@ class DataPerDriver:
                         'rear-left-wear': car_damage_data.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
                     })
                 else:
-                    logging.debug('car damage data not available for lap %d driver %s'
-                                    %(lap_number, self.m_name))
+                    logging.debug('car damage data not available for lap %d driver %s', lap_number, self.m_name)
             else:
-                logging.debug('per lap backup not available for lap %d driver %s'
-                                %(lap_number, self.m_name))
+                logging.debug('per lap backup not available for lap %d driver %s', lap_number, self.m_name)
         return tyre_wear_history
 
     def onLapChange(self,
@@ -564,11 +568,12 @@ class DataPerDriver:
             bool - True if zeroth lap backup data is available
         """
 
-        return True if \
-            self.m_packet_car_damage is not None and \
-            self.m_packet_car_status is not None and \
-            self.m_packet_tyre_sets is not None \
-        else False
+        return bool(
+            self.m_packet_car_damage and
+            self.m_packet_car_status and
+            self.m_packet_tyre_sets
+        )
+
 
     def updateTyreSetData(self, fitted_index: int) -> None:
         """Update the current tyre set in the history list, if required.
@@ -603,29 +608,28 @@ class DataPerDriver:
                                                 tyre_set_key=fitted_tyre_set_key,
                                                 initial_tyre_wear=initial_tyre_wear,
                     ))
-            else:
-                if fitted_index != self.m_tyre_set_history[-1].m_fitted_index:
-                    lap_number = self.m_current_lap - 1
-                    # create a new tyre set entry with initial data.
-                    initial_tyre_wear = TyreWearPerLap(
-                        lap_number=lap_number,
-                        fl_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
-                        fr_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
-                        rl_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
-                        rr_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
-                        is_racing_lap=True,
-                        desc="tyre set change detected. key=" + str(fitted_tyre_set_key)
-                    )
-                    self.m_tyre_set_history.append(DataPerDriver.TyreSetHistoryEntry(
-                                                start_lap=lap_number,
-                                                index=fitted_index,
-                                                tyre_set_key=fitted_tyre_set_key,
-                                                initial_tyre_wear=initial_tyre_wear,
-                    ))
+            elif fitted_index != self.m_tyre_set_history[-1].m_fitted_index:
+                lap_number = self.m_current_lap - 1
+                # create a new tyre set entry with initial data.
+                initial_tyre_wear = TyreWearPerLap(
+                    lap_number=lap_number,
+                    fl_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
+                    fr_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
+                    rl_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
+                    rr_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
+                    is_racing_lap=True,
+                    desc="tyre set change detected. key=" + str(fitted_tyre_set_key)
+                )
+                self.m_tyre_set_history.append(DataPerDriver.TyreSetHistoryEntry(
+                                            start_lap=lap_number,
+                                            index=fitted_index,
+                                            tyre_set_key=fitted_tyre_set_key,
+                                            initial_tyre_wear=initial_tyre_wear,
+                ))
 
-                    # Tyre set change detected. clear the extrapolation data
-                    self.m_tyre_wear_extrapolator.clear()
-                    self.m_tyre_wear_extrapolator.updateDataLap(initial_tyre_wear)
+                # Tyre set change detected. clear the extrapolation data
+                self.m_tyre_wear_extrapolator.clear()
+                self.m_tyre_wear_extrapolator.updateDataLap(initial_tyre_wear)
 
     def _getCurrentTyreSetID(self) -> Optional[str]:
         """Get the unique ID key for the currently equipped tyre set
@@ -738,12 +742,12 @@ class DriverData:
         """
         self.m_race_completed = True
 
-    def getIndexByTrackPosition(self, track_position) -> Tuple[Optional[int], Optional[DataPerDriver]]:
+    def getIndexByTrackPosition(self, track_position: int) -> Tuple[Optional[int], Optional[DataPerDriver]]:
         """
         Get the driver index and data based on the provided track position.
 
         Args:
-            track_position: The track position to search for.
+            track_position(int): The track position to search for.
 
         Returns:
             Tuple[Optional[int], Optional[DataPerDriver]]: A tuple containing the driver index and corresponding
@@ -854,10 +858,7 @@ class DriverData:
             return False
 
         # Check if this guy's lap is faster than the best lap
-        if self.m_driver_data[self.m_fastest_index].m_best_lap_ms > driver_best_lap_ms:
-            return True
-        else:
-            return False
+        return self.m_driver_data[self.m_fastest_index].m_best_lap_ms > driver_best_lap_ms
 
     def processSessionUpdate(self, packet: PacketSessionData) -> None:
         """Process the Session Update packet. Update the total laps and ideal pit window for the player
@@ -925,8 +926,8 @@ class DriverData:
 
             # Now, update the current lap number and other shit
             obj_to_be_updated.m_current_lap =  lap_data.m_currentLapNum
-            obj_to_be_updated.m_is_pitting = True if lap_data.m_pitStatus in \
-                    [LapData.PitStatus.PITTING, LapData.PitStatus.IN_PIT_AREA] else False
+            obj_to_be_updated.m_is_pitting = lap_data.m_pitStatus in \
+                [LapData.PitStatus.PITTING, LapData.PitStatus.IN_PIT_AREA]
             obj_to_be_updated.m_num_pitstops = lap_data.m_numPitStops
             obj_to_be_updated.m_dnf_status_code = result_str_map.get(lap_data.m_resultStatus, "")
             # If the player is retired, update the bool variable
@@ -1129,10 +1130,7 @@ class DriverData:
 
         if self.m_race_completed and self.m_final_json:
             return self.m_final_json
-        else:
-            final_json = {}
-            final_json["classification-data"] = self._getClassificationDataListJSON()
-            return final_json
+        return {"classification-data" : self._getClassificationDataListJSON()}
 
     def _getClassificationDataListJSON(self):
         """
@@ -1413,7 +1411,7 @@ def isDriverIndexValid(index: int) -> bool:
     """
 
     with _driver_data_lock:
-        return True if index in _driver_data.m_driver_data else False
+        return index in _driver_data.m_driver_data
 
 def getEventInfoStr() -> Optional[str]:
     """Returns a string with the following format
@@ -1425,8 +1423,7 @@ def getEventInfoStr() -> Optional[str]:
     with _globals_lock:
         if _globals.m_event_type and _globals.m_circuit:
             return (_globals.m_event_type + "_" + _globals.m_circuit).replace(' ', '_') + '_'
-        else:
-            return None
+        return None
 
 def getPlayerName() -> Optional[str]:
     """Get the player's name.
@@ -1484,53 +1481,9 @@ def getOvertakeObj(overtaking_car_index: int, being_overtaken_index: int) -> Opt
             overtaken_driver_lap=being_overtaken_car_obj.m_current_lap,
         )
 
-def getPlayerRecordedEventCsvStr(add_to_queue: bool = False) -> Optional[str]:
-    """
-    Retrieves the recorded event string for the player.
-
-    Arguments:
-        add_to_queue (bool) - Whether the data must be added to the event queue to be sent to the UI
-
-    Returns:
-        Optional[str]: The recorded event string for the player in CSV format , or None if no player data is available.
-            (<track>,<event-type>,<lap-num>,<sector-num>,<curr-lap-time>,<curr-lap-percent>)
-    """
-
-    def _getPlayerRecordedEventCsvStr() -> Optional[str]:
-        with _driver_data_lock:
-            player_data = _driver_data.m_driver_data.get(_driver_data.m_player_index, None)
-            if player_data:
-                # CSV string - <track>,<event-type>,<lap-num>,<sector-num>
-                lap_num = player_data.m_current_lap
-                sector = player_data.m_packet_lap_data.m_sector
-                curr_lap_time = F1Utils.millisecondsToMinutesSecondsMilliseconds(
-                    player_data.m_packet_lap_data.m_currentLapTimeInMS)
-                curr_lap_dist = player_data.m_packet_lap_data.m_lapDistance
-            else:
-                return None
-
-        with _globals_lock:
-            if _globals.m_circuit is not None and _globals.m_event_type is not None:
-                curr_lap_percent = F1Utils.floatToStr(
-                    float(curr_lap_dist)/float(_globals.m_packet_session.m_trackLength) * 100.0) + "%"
-                return \
-                    f"{_globals.m_circuit}, " \
-                    f"{_globals.m_event_type}, " \
-                    f"{str(lap_num)}, " \
-                    f"{str(sector)}, " \
-                    f"{curr_lap_time}, " \
-                    f"{curr_lap_percent}"
-            else:
-                return None
-
-    return _getPlayerRecordedEventCsvStr()
-
-def getCustomMarkerEntryObj(add_to_queue: bool = False) -> Optional[CustomMarkerEntry]:
+def getCustomMarkerEntryObj() -> Optional[CustomMarkerEntry]:
     """
     Retrieves the custom marker entry object for the player.
-
-    Arguments:
-        add_to_queue (bool) - Whether the data must be added to the event queue to be sent to the UI
 
     Returns:
         CustomMarkerEntry: The custom marker entry object for the player. None if any data points is not available
@@ -1568,12 +1521,11 @@ def getCustomMarkerEntryObj(add_to_queue: bool = False) -> Optional[CustomMarker
     mandatory_vars = [track, event_type, lap_num, sector, curr_lap_time, curr_lap_percent]
     if any(var is None for var in mandatory_vars):
         return None
-    else:
-        return CustomMarkerEntry(
-            track=track,
-            event_type=event_type,
-            lap=lap_num,
-            sector=sector,
-            curr_lap_time=curr_lap_time,
-            curr_lap_perc=curr_lap_percent
-        )
+    return CustomMarkerEntry(
+        track=track,
+        event_type=event_type,
+        lap=lap_num,
+        sector=sector,
+        curr_lap_time=curr_lap_time,
+        curr_lap_perc=curr_lap_percent
+    )
