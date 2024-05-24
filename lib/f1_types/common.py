@@ -96,11 +96,7 @@ class F1PacketType(Enum):
 
         if isinstance(packet_type, F1PacketType):
             return True  # It's already an instance of F1PacketType
-        else:
-            # check if the integer value falls in range
-            min_value = min(member.value for member in F1PacketType)
-            max_value = max(member.value for member in F1PacketType)
-            return min_value <= packet_type <= max_value
+        return any(packet_type == member.value for member in F1PacketType)
 
     def __str__(self) -> str:
         """to_string method
@@ -110,8 +106,7 @@ class F1PacketType(Enum):
         """
         if F1PacketType.isValid(self.value):
             return self.name
-        else:
-            return 'packet type ' + str(self.value)
+        return 'packet type ' + str(self.value)
 
 class ResultStatus(Enum):
     """
@@ -139,10 +134,7 @@ class ResultStatus(Enum):
         """
         if isinstance(result_status, ResultStatus):
             return True  # It's already an instance of ResultStatus
-        else:
-            min_value = min(member.value for member in ResultStatus)
-            max_value = max(member.value for member in ResultStatus)
-            return min_value <= result_status <= max_value
+        return any(result_status == member.value for member in ResultStatus)
 
     def __str__(self) -> str:
         """
@@ -195,10 +187,7 @@ class SessionType(Enum):
         """
         if isinstance(session_type, SessionType):
             return True  # It's already an instance of SessionType
-        else:
-            min_value = min(member.value for member in SessionType)
-            max_value = max(member.value for member in SessionType)
-            return min_value <= session_type <= max_value
+        return any(session_type == member.value for member in SessionType)
 
     def __str__(self):
         """
@@ -296,18 +285,14 @@ class ActualTyreCompound(Enum):
         Check if the input event type string maps to a valid enum value.
 
         Args:
-            event_type (int): The actual tyre compound code
+            actual_tyre_compound (int): The actual tyre compound code
 
         Returns:
             bool: True if the event type is valid, False otherwise.
         """
         if isinstance(actual_tyre_compound, ActualTyreCompound):
             return True  # It's already an instance of ActualTyreCompound
-        else:
-            # check if the integer value falls in range
-            min_value = min(member.value for member in ActualTyreCompound)
-            max_value = max(member.value for member in ActualTyreCompound)
-            return min_value <= actual_tyre_compound <= max_value
+        return any(actual_tyre_compound == member.value for member in ActualTyreCompound)
 
 class VisualTyreCompound(Enum):
     """
@@ -370,18 +355,14 @@ class VisualTyreCompound(Enum):
         Check if the input event type string maps to a valid enum value.
 
         Args:
-            event_type (int): The actual tyre compound code
+            visual_tyre_compound (int): The visual tyre compound code
 
         Returns:
             bool: True if the event type is valid, False otherwise.
         """
         if isinstance(visual_tyre_compound, VisualTyreCompound):
             return True  # It's already an instance of VisualTyreCompound
-        else:
-            # check if the integer value falls in range
-            min_value = min(member.value for member in VisualTyreCompound)
-            max_value = max(member.value for member in VisualTyreCompound)
-            return min_value <= visual_tyre_compound <= max_value
+        return any(visual_tyre_compound == member.value for member in VisualTyreCompound)
 
 class Nationality(Enum):
     """
@@ -494,10 +475,7 @@ class Nationality(Enum):
         """
         if isinstance(nationality_code, Nationality):
             return True  # It's already an instance of Nationality
-        else:
-            min_value = min(member.value for member in Nationality)
-            max_value = max(member.value for member in Nationality)
-            return min_value <= nationality_code <= max_value
+        return any(nationality_code == member.value for member in Nationality)
 
 class Platform(Enum):
     """
@@ -529,18 +507,15 @@ class Platform(Enum):
         """Check if the given session type code is valid.
 
         Args:
-            flag_type (int): The session type code to be validated.
-                Also supports type SessionType. Returns true in this case
+            platform_type_code (int): The platform type code to be validated.
+                Also supports type Platform. Returns true in this case
 
         Returns:
             bool: true if valid
         """
         if isinstance(platform_type_code, Platform):
-            return True  # It's already an instance of SafetyCarStatus
-        else:
-            min_value = min(member.value for member in Platform)
-            max_value = max(member.value for member in Platform)
-            return min_value <= platform_type_code <= max_value
+            return True  # It's already an instance of Platform
+        return any(platform_type_code == member.value for member in Platform)
 
 class TeamID(Enum):
     """
@@ -625,11 +600,7 @@ class TeamID(Enum):
         """
         if isinstance(team_id, TeamID):
             return True  # It's already an instance of TeamID
-        else:
-            for member in TeamID:
-                if team_id == member.value:
-                    return True
-            return False
+        return any(team_id == member.value for member in TeamID)
 
     def __str__(self) -> str:
         """Return the string representation of the driver.
@@ -828,8 +799,8 @@ class F1Utils:
         Returns:
             int: The time in milliseconds.
         """
-        minutes, seconds_with_milliseconds = map(str, time_str.split(':'))
-        seconds, milliseconds = map(int, seconds_with_milliseconds.split('.'))
+        minutes, seconds_with_milliseconds = [str(item) for item in time_str.split(':')]
+        seconds, milliseconds = [int(item) for item in seconds_with_milliseconds.split('.')]
         total_milliseconds = int(minutes) * 60 * 1000 + seconds * 1000 + milliseconds
         return total_milliseconds
 

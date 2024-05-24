@@ -24,8 +24,9 @@
 ## All classes in supported in this library are documented with the members, but it is still recommended to read the
 ## official document. https://answers.ea.com/t5/General-Discussion/F1-23-UDP-Specification/m-p/12633159
 
-from .common import *
-from .common import _split_list, _extract_sublist
+import struct
+from typing import Dict, Any
+from .common import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 

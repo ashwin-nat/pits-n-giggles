@@ -24,8 +24,10 @@
 ## All classes in supported in this library are documented with the members, but it is still recommended to read the
 ## official document. https://answers.ea.com/t5/General-Discussion/F1-23-UDP-Specification/m-p/12633159
 
-from .common import *
-from .common import _split_list, _extract_sublist
+import struct
+from typing import Dict, List, Any
+from enum import Enum
+from .common import _split_list, PacketHeader, F1PacketType, TeamID, Nationality, Platform
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -146,16 +148,12 @@ class LobbyInfoData:
             """
             if isinstance(ready_status_code, LobbyInfoData.ReadyStatus):
                 return True  # It's already an instance of LobbyInfoData.ReadyStatus
-            else:
-                min_value = min(member.value for member in LobbyInfoData.ReadyStatus)
-                max_value = max(member.value for member in LobbyInfoData.ReadyStatus)
-                return min_value <= ready_status_code <= max_value
+            return any(ready_status_code == member.value for member in LobbyInfoData.ReadyStatus)
 
         def __str__(self):
             if F1PacketType.isValid(self.value):
                 return self.name
-            else:
-                return 'Marshal Zone Flag type ' + str(self.value)
+            return 'Marshal Zone Flag type ' + str(self.value)
 
     def __init__(self, data) -> None:
         """

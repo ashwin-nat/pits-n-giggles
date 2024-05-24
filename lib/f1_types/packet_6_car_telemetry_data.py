@@ -24,8 +24,9 @@
 ## All classes in supported in this library are documented with the members, but it is still recommended to read the
 ## official document. https://answers.ea.com/t5/General-Discussion/F1-23-UDP-Specification/m-p/12633159
 
-from .common import *
-from .common import _split_list, _extract_sublist
+import struct
+from typing import Dict, Any, List
+from .common import _split_list, PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -81,20 +82,23 @@ class PacketCarTelemetryData:
         """
 
         telemetry_data_str = ", ".join(str(telemetry) for telemetry in self.m_carTelemetryData)
-        mfdPanelIndex_to_string = lambda value: {
+        mfd_panel_index_to_string_dict = {
             255: "MFD closed Single player, race",
             0: "Car setup",
             1: "Pits",
             2: "Damage",
             3: "Engine",
             4: "Temperatures",
-        }.get(value, f"Unknown state: {value}")
+        }
+        mfd_panel_string = mfd_panel_index_to_string_dict.get(self.m_mfdPanelIndex, str(self.m_mfdPanelIndex))
+        mfd_panel_string_secondary = mfd_panel_index_to_string_dict.get(self.m_mfdPanelIndexSecondaryPlayer,
+                                                                        str(self.m_mfdPanelIndexSecondaryPlayer))
         return (
             f"PacketCarTelemetryData("
             f"Header: {str(self.m_header)}, "
             f"Car Telemetry Data: [{telemetry_data_str}], "
-            f"MFD Panel Index: {mfdPanelIndex_to_string(self.m_mfdPanelIndex)}), "
-            f"MFD Panel Index Secondary: {mfdPanelIndex_to_string(self.m_mfdPanelIndex)}), "
+            f"MFD Panel Index: {mfd_panel_string}), "
+            f"MFD Panel Index Secondary: {mfd_panel_string_secondary}), "
             f"Suggested Gear: {self.m_suggestedGear}"
         )
 

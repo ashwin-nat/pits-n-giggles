@@ -24,8 +24,10 @@
 ## All classes in supported in this library are documented with the members, but it is still recommended to read the
 ## official document. https://answers.ea.com/t5/General-Discussion/F1-23-UDP-Specification/m-p/12633159
 
-from .common import *
-from .common import _split_list, _extract_sublist
+import struct
+from typing import Dict, Any, List
+from enum import Enum
+from .common import _split_list, _extract_sublist, SessionType, PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -70,10 +72,7 @@ class MarshalZone:
             """
             if isinstance(flag_type, MarshalZone.MarshalZoneFlagType):
                 return True  # It's already an instance of MarshalZone.MarshalZoneFlagType
-            else:
-                min_value = min(member.value for member in MarshalZone.MarshalZoneFlagType)
-                max_value = max(member.value for member in MarshalZone.MarshalZoneFlagType)
-                return min_value <= flag_type <= max_value
+            return any(flag_type == member.value for member in MarshalZone.MarshalZoneFlagType)
 
         def __str__(self):
             """Return the string representation of this object
@@ -198,7 +197,7 @@ class WeatherForecastSample:
             """Check if the given weather type code is valid.
 
             Args:
-                flag_type (int): The weather type code to be validated.
+                weather_type_code (int): The weather type code to be validated.
                     Also supports type WeatherCondition. Returns true in this case
 
             Returns:
@@ -206,10 +205,7 @@ class WeatherForecastSample:
             """
             if isinstance(weather_type_code, WeatherForecastSample.WeatherCondition):
                 return True  # It's already an instance of WeatherForecastSample.WeatherCondition
-            else:
-                min_value = min(member.value for member in WeatherForecastSample.WeatherCondition)
-                max_value = max(member.value for member in WeatherForecastSample.WeatherCondition)
-                return min_value <= weather_type_code <= max_value
+            return any(weather_type_code == member.value for member in  WeatherForecastSample.WeatherCondition)
 
     class TrackTemperatureChange(Enum):
         """
@@ -245,7 +241,7 @@ class WeatherForecastSample:
             """Check if the given temperature change code is valid.
 
             Args:
-                flag_type (int): The temperature change code to be validated.
+                temp_change_code (int): The temperature change code to be validated.
                     Also supports type TrackTemperatureChange. Returns true in this case
 
             Returns:
@@ -253,10 +249,9 @@ class WeatherForecastSample:
             """
             if isinstance(temp_change_code, WeatherForecastSample.TrackTemperatureChange):
                 return True  # It's already an instance of WeatherForecastSample.TrackTemperatureChange
-            else:
-                min_value = min(member.value for member in WeatherForecastSample.TrackTemperatureChange)
-                max_value = max(member.value for member in WeatherForecastSample.TrackTemperatureChange)
-                return min_value <= temp_change_code <= max_value
+            min_value = min(member.value for member in WeatherForecastSample.TrackTemperatureChange)
+            max_value = max(member.value for member in WeatherForecastSample.TrackTemperatureChange)
+            return min_value <= temp_change_code <= max_value
 
     class AirTemperatureChange(Enum):
         """
@@ -279,7 +274,7 @@ class WeatherForecastSample:
             """Check if the given air temperature change code is valid.
 
             Args:
-                flag_type (int): The air temperature change to be validated.
+                air_temp_change_code (int): The air temperature change to be validated.
                     Also supports type AirTemperatureChange. Returns true in this case
 
             Returns:
@@ -287,10 +282,9 @@ class WeatherForecastSample:
             """
             if isinstance(air_temp_change_code, WeatherForecastSample.AirTemperatureChange):
                 return True  # It's already an instance of WeatherForecastSample.AirTemperatureChange
-            else:
-                min_value = min(member.value for member in WeatherForecastSample.AirTemperatureChange)
-                max_value = max(member.value for member in WeatherForecastSample.AirTemperatureChange)
-                return min_value <= air_temp_change_code <= max_value
+            min_value = min(member.value for member in WeatherForecastSample.AirTemperatureChange)
+            max_value = max(member.value for member in WeatherForecastSample.AirTemperatureChange)
+            return min_value <= air_temp_change_code <= max_value
 
         def __str__(self):
             return {
@@ -521,7 +515,7 @@ class PacketSessionData:
             """Check if the given safety car status is valid.
 
             Args:
-                flag_type (int): The safety car status to be validated.
+                safety_car_status_code (int): The safety car status to be validated.
                     Also supports type SafetyCarStatus. Returns true in this case
 
             Returns:
@@ -529,10 +523,9 @@ class PacketSessionData:
             """
             if isinstance(safety_car_status_code, PacketSessionData.SafetyCarStatus):
                 return True  # It's already an instance of SafetyCarStatus
-            else:
-                min_value = min(member.value for member in PacketSessionData.SafetyCarStatus)
-                max_value = max(member.value for member in PacketSessionData.SafetyCarStatus)
-                return min_value <= safety_car_status_code <= max_value
+            min_value = min(member.value for member in PacketSessionData.SafetyCarStatus)
+            max_value = max(member.value for member in PacketSessionData.SafetyCarStatus)
+            return min_value <= safety_car_status_code <= max_value
 
         def __str__(self):
             """
@@ -599,7 +592,7 @@ class PacketSessionData:
             """Check if the given circuit code is valid.
 
             Args:
-                flag_type (int): The circuit code to be validated.
+                track (int): The circuit code to be validated.
                     Also supports type TrackID. Returns true in this case
 
             Returns:
@@ -607,10 +600,9 @@ class PacketSessionData:
             """
             if isinstance(track, PacketSessionData.TrackID):
                 return True  # It's already an instance of TrackID
-            else:
-                min_value = min(member.value for member in PacketSessionData.TrackID)
-                max_value = max(member.value for member in PacketSessionData.TrackID)
-                return min_value <= track <= max_value
+            min_value = min(member.value for member in PacketSessionData.TrackID)
+            max_value = max(member.value for member in PacketSessionData.TrackID)
+            return min_value <= track <= max_value
 
     class FormulaType(Enum):
         """An enumeration of formula types."""
@@ -650,10 +642,7 @@ class PacketSessionData:
             """
             if isinstance(formula_type_code, PacketSessionData.FormulaType):
                 return True  # It's already an instance of SafetyCarStatus
-            else:
-                min_value = min(member.value for member in PacketSessionData.FormulaType)
-                max_value = max(member.value for member in PacketSessionData.FormulaType)
-                return min_value <= formula_type_code <= max_value
+            return any(formula_type_code == member.value for member in  PacketSessionData.FormulaType)
 
     def __init__(self, header, data) -> None:
         """Construct a PacketSessionData object

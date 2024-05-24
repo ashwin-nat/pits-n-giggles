@@ -24,8 +24,10 @@
 ## All classes in supported in this library are documented with the members, but it is still recommended to read the
 ## official document. https://answers.ea.com/t5/General-Discussion/F1-23-UDP-Specification/m-p/12633159
 
-from .common import *
-from .common import _split_list, _extract_sublist
+import struct
+from typing import Dict, Any, List
+from enum import Enum
+from .common import _split_list, PacketHeader, Platform, Nationality, TeamID
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -92,17 +94,14 @@ class ParticipantData:
             """Check if the given telemetry setting code is valid.
 
             Args:
-                driver_id (int): The telemetry setting code to be validated.
+                telemetry_setting_code (int): The telemetry setting code to be validated.
 
             Returns:
                 bool: True if valid.
             """
             if isinstance(telemetry_setting_code, ParticipantData.TelemetrySetting):
                 return True  # It's already an instance of TelemetrySetting
-            else:
-                min_value = min(member.value for member in ParticipantData.TelemetrySetting)
-                max_value = max(member.value for member in ParticipantData.TelemetrySetting)
-                return min_value <= telemetry_setting_code <= max_value
+            return any(telemetry_setting_code == member.value for member in  ParticipantData.TelemetrySetting)
 
     def __init__(self, data) -> None:
         """

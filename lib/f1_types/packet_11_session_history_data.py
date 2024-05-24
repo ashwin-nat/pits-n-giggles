@@ -24,8 +24,10 @@
 ## All classes in supported in this library are documented with the members, but it is still recommended to read the
 ## official document. https://answers.ea.com/t5/General-Discussion/F1-23-UDP-Specification/m-p/12633159
 
-from .common import *
-from .common import _split_list, _extract_sublist
+from __future__ import annotations
+import struct
+from typing import Dict, Any, List
+from .common import _split_list, _extract_sublist, F1Utils, ActualTyreCompound, VisualTyreCompound, PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -97,11 +99,16 @@ class LapHistoryData:
         """
 
         return (
-            f"Lap Time: {self.m_lapTimeInMS} ms, Sector 1 Time: {self.m_sector1TimeInMS} ms, Sector 1 Minutes: {self.m_sector1TimeMinutes}, "
-            f"Sector 2 Time: {self.m_sector2TimeInMS} ms, Sector 2 Minutes: {self.m_sector2TimeMinutes}, "
-            f"Sector 3 Time: {self.m_sector3TimeInMS} ms, Sector 3 Minutes: {self.m_sector3TimeMinutes}, "
+            f"Lap Time: {self.m_lapTimeInMS} ms, "
+            f"Sector 1 Time: {self.m_sector1TimeInMS} ms, "
+            f"Sector 1 Minutes: {self.m_sector1TimeMinutes}, "
+            f"Sector 2 Time: {self.m_sector2TimeInMS} ms, "
+            f"Sector 2 Minutes: {self.m_sector2TimeMinutes}, "
+            f"Sector 3 Time: {self.m_sector3TimeInMS} ms, "
+            f"Sector 3 Minutes: {self.m_sector3TimeMinutes}, "
             f"Lap Valid Bit Flags: {self.m_lapValidBitFlags}"
         )
+
 
     def toJSON(self) -> Dict[str, Any]:
         """

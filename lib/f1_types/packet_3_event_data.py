@@ -24,8 +24,10 @@
 ## All classes in supported in this library are documented with the members, but it is still recommended to read the
 ## official document. https://answers.ea.com/t5/General-Discussion/F1-23-UDP-Specification/m-p/12633159
 
-from .common import *
-from .common import _split_list, _extract_sublist
+import struct
+from enum import Enum
+from typing import Dict, Any
+from .common import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -296,10 +298,7 @@ class PacketEventData:
                 """
                 if isinstance(penalty_type, PacketEventData.Penalty.PenaltyType):
                     return True  # It's already an instance of SafetyCarStatus
-                else:
-                    min_value = min(member.value for member in PacketEventData.Penalty.PenaltyType)
-                    max_value = max(member.value for member in PacketEventData.Penalty.PenaltyType)
-                    return min_value <= penalty_type <= max_value
+                return any(penalty_type == member.value for member in  PacketEventData.Penalty.PenaltyType)
 
         class InfringementType(Enum):
             """Enum class representing different infringements in motorsports."""
@@ -377,10 +376,7 @@ class PacketEventData:
                 """
                 if isinstance(infringement_type, PacketEventData.Penalty.InfringementType):
                     return True  # It's already an instance of SafetyCarStatus
-                else:
-                    min_value = min(member.value for member in PacketEventData.Penalty.InfringementType)
-                    max_value = max(member.value for member in PacketEventData.Penalty.InfringementType)
-                    return min_value <= infringement_type <= max_value
+                return any(infringement_type == member.value for member in  PacketEventData.Penalty.InfringementType)
 
         def __init__(self, data: bytes):
             """Parse the penalty event packet into this object
@@ -764,8 +760,7 @@ class PacketEventData:
                 # UDP action codes start from the 19th bit, so we add 19 to the action code
                 udp_flag = 1 << (udp_action_code + 19)
                 return self.isButtonPressed(udp_flag)
-            else:
-                raise ValueError("UDP action code must be in the range 1 to 12.")
+            raise ValueError("UDP action code must be in the range 1 to 12.")
 
         def __str__(self) -> str:
             """

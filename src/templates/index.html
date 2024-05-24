@@ -475,7 +475,6 @@ SOFTWARE.
 
             const lowerIndex = relevantPositions[0] - 1;
             const upperIndex = relevantPositions[relevantPositions.length -1];
-            console.log(`Lower index: ${lowerIndex}, Upper index: ${upperIndex}`);
             return data["table-entries"].slice(lowerIndex, upperIndex);
         }
 
@@ -2121,10 +2120,6 @@ SOFTWARE.
         });
 
         // Receive details from server
-        socket.on('newnumber', function (msg) {
-            console.log("Received number" + msg.number);
-        });
-
         socket.on('race-table-update', function (data) {
             displayData(data);
         });

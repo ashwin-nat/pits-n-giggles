@@ -24,8 +24,10 @@
 ## All classes in supported in this library are documented with the members, but it is still recommended to read the
 ## official document. https://answers.ea.com/t5/General-Discussion/F1-23-UDP-Specification/m-p/12633159
 
-from .common import *
-from .common import _split_list, _extract_sublist
+import struct
+from typing import Dict, List, Any
+from enum import Enum
+from .common import _split_list, PacketHeader, ActualTyreCompound, VisualTyreCompound
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -206,11 +208,7 @@ class CarStatusData:
             """
             if isinstance(fia_flag_code, CarStatusData.VehicleFIAFlags):
                 return True  # It's already an instance of CarStatusData.VehicleFIAFlags
-            else:
-                # check if the integer value falls in range
-                min_value = min(member.value for member in CarStatusData.VehicleFIAFlags)
-                max_value = max(member.value for member in CarStatusData.VehicleFIAFlags)
-                return min_value <= fia_flag_code <= max_value
+            return any(fia_flag_code == member.value for member in CarStatusData.VehicleFIAFlags)
 
     class ERSDeployMode(Enum):
         """
@@ -251,18 +249,14 @@ class CarStatusData:
             Check if the ERS deploy mode code maps to a valid enum value.
 
             Args:
-                event_type (int): The ERS deploy mode code
+                ers_deploy_mode_code (int): The ERS deploy mode code
 
             Returns:
                 bool: True if the event type is valid, False otherwise.
             """
             if isinstance(ers_deploy_mode_code, CarStatusData.ERSDeployMode):
                 return True  # It's already an instance of CarStatusData.ERSDeployMode
-            else:
-                # check if the integer value falls in range
-                min_value = min(member.value for member in CarStatusData.ERSDeployMode)
-                max_value = max(member.value for member in CarStatusData.ERSDeployMode)
-                return min_value <= ers_deploy_mode_code <= max_value
+            return any(ers_deploy_mode_code == member.value for member in CarStatusData.ERSDeployMode)
 
     class TractionControlAssistMode(Enum):
         """
@@ -297,18 +291,14 @@ class CarStatusData:
             Check if the Traction Control Assist code maps to a valid enum value.
 
             Args:
-                event_type (int): The Traction Control Assist code
+                traction_control_assist_mode (int): The Traction Control Assist code
 
             Returns:
                 bool: True if the event type is valid, False otherwise.
             """
             if isinstance(traction_control_assist_mode, CarStatusData.TractionControlAssistMode):
                 return True  # It's already an instance of CarStatusData.TractionControlAssistMode
-            else:
-                # check if the integer value falls in range
-                min_value = min(member.value for member in CarStatusData.TractionControlAssistMode)
-                max_value = max(member.value for member in CarStatusData.TractionControlAssistMode)
-                return min_value <= traction_control_assist_mode <= max_value
+            return any(traction_control_assist_mode == member.value for member in CarStatusData.TractionControlAssistMode)
 
     def __init__(self, data) -> None:
         """

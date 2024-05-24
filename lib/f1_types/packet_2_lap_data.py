@@ -24,8 +24,10 @@
 ## All classes in supported in this library are documented with the members, but it is still recommended to read the
 ## official document. https://answers.ea.com/t5/General-Discussion/F1-23-UDP-Specification/m-p/12633159
 
-from .common import *
-from .common import _split_list, _extract_sublist
+import struct
+from typing import Dict, List, Any
+from enum import Enum
+from .common import _split_list, _extract_sublist, ResultStatus, F1Utils, PacketHeader, InvalidPacketLengthError
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -124,10 +126,7 @@ class LapData:
             """
             if isinstance(driver_status, LapData.DriverStatus):
                 return True  # It's already an instance of DriverStatus
-            else:
-                min_value = min(member.value for member in LapData.DriverStatus)
-                max_value = max(member.value for member in LapData.DriverStatus)
-                return min_value <= driver_status <= max_value
+            return any(driver_status == member.value for member in  LapData.DriverStatus)
 
         def __str__(self) -> str:
             """
@@ -165,10 +164,7 @@ class LapData:
             """
             if isinstance(pit_status, LapData.PitStatus):
                 return True  # It's already an instance of PitStatus
-            else:
-                min_value = min(member.value for member in LapData.PitStatus)
-                max_value = max(member.value for member in LapData.PitStatus)
-                return min_value <= pit_status <= max_value
+            return any(pit_status == member.value for member in  LapData.PitStatus)
 
         def __str__(self) -> str:
             """
@@ -205,10 +201,8 @@ class LapData:
             """
             if isinstance(sector, LapData.Sector):
                 return True  # It's already an instance of Sector
-            else:
-                min_value = min(member.value for member in LapData.Sector)
-                max_value = max(member.value for member in LapData.Sector)
-                return min_value <= sector <= max_value
+            return any(sector == member.value for member in  LapData.Sector)
+
 
         def __str__(self) -> str:
             """
