@@ -594,7 +594,7 @@ class F1TelemetryHandler:
 
                 logging.debug('UDP action %d pressed', g_udp_custom_action_code)
                 global g_player_recorded_events_history
-                custom_marker_obj = TelData.getCustomMarkerEntryObj(add_to_queue=True)
+                custom_marker_obj = TelData.getCustomMarkerEntryObj()
                 if custom_marker_obj:
                     g_player_recorded_events_history.insert(custom_marker_obj)
                     logging.debug('Player recorded event: %s', str(custom_marker_obj))

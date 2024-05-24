@@ -130,7 +130,7 @@ def getLocalIpAddresses() -> Set[str]:
             ip_addresses.add(host_name)
     except socket.gaierror as e:
         # Log the error or handle it as per your requirement
-        logging.warning(f"Error occurred: {e}. Using default IP addresses.")
+        logging.warning("Error occurred: %s. Using default IP addresses.", e)
     return ip_addresses
 
 def openWebPage(http_port: int) -> None:
@@ -191,6 +191,7 @@ def f1TelemetryServerTask(
         port_number (int): Port number for the telemetry client.
         replay_server (bool): Whether to enable the TCP replay debug server.
         post_race_data_autosave (bool): Whether to autosave race data at the end of the race.
+        udp_custom_action_code (Optional[int]): UDP custom action code.
     """
     time.sleep(2)
     if packet_capture != PacketCaptureMode.DISABLED:
@@ -199,9 +200,9 @@ def f1TelemetryServerTask(
     telemetry_client = F1TelemetryHandler(port_number, packet_capture, replay_server)
     telemetry_client.run()
 
-# -------------------------------------- ENTRY POINT -------------------------------------------------------------------
+def main() -> None:
+    """Entry point for the application."""
 
-if __name__ == '__main__':
     # Initialize the ArgumentParser
     args = parseArgs()
 
@@ -211,7 +212,8 @@ if __name__ == '__main__':
         sys.exit(1)
     logging.info("Starting the app with the following options:")
     for arg, value in vars(args).items():
-        logging.info(f"{arg}: {value}")
+        logging.info("%s: %s", arg, value)
+
     initDirectories()
 
     # First init the telemetry client on a main thread
@@ -234,3 +236,8 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         logging.info("Ctrl+C pressed. Exiting...")
         sys.exit()
+
+# -------------------------------------- ENTRY POINT -------------------------------------------------------------------
+
+if __name__ == '__main__':
+    main()
