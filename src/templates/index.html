@@ -1448,7 +1448,7 @@ SOFTWARE.
                 fuelHistoryHeaderRow.innerHTML = `
                     <th>Lap</th>
                     <th>Fuel Load (kg)</th>
-                    <th>Usage Per Lap</th>
+                    <th>Usage Per Lap (kg)</th>
                     <th>Excess Laps</th>
                     <th>Excess Laps Delta</th>
                 `;
@@ -1479,7 +1479,7 @@ SOFTWARE.
                                     const fuelLoadValPrev = data["per-lap-info"][index - 1]["car-status-data"]["fuel-in-tank"];
                                     const fuelLapsValPrev = data["per-lap-info"][index - 1]["car-status-data"]["fuel-remaining-laps"];
 
-                                    usagePerLap = formatFloatWithTwoDecimalsSigned(fuelLoadValPrev - fuelLoadVal);
+                                    usagePerLap = formatFloatWithTwoDecimals(fuelLoadValPrev - fuelLoadVal);
                                     fuelLapsDelta = formatFloatWithTwoDecimalsSigned(fuelLapsValPrev - fuelLapsVal);
                                 }
                             }
