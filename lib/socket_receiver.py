@@ -23,7 +23,7 @@
 import socket
 import struct
 
-class UDPListener(object):
+class UDPListener():
     """This class represents a UDP client.
 
     Attributes:
@@ -58,10 +58,10 @@ class UDPListener(object):
         Returns:
             bytes: The raw bytes that were received
         """
-        message, src = self.m_socket.recvfrom(self.m_buffer_size)
+        message, _ = self.m_socket.recvfrom(self.m_buffer_size)
         return message
 
-class TCPListener(object):
+class TCPListener():
     """This class represents a TCP server.
 
     Attributes:

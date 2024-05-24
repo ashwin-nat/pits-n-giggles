@@ -174,11 +174,7 @@ class TyreWearExtrapolator:
         """
         if lap_number is None:
             return self.m_predicted_tyre_wear[-1]
-        else:
-            for point in self.m_predicted_tyre_wear:
-                if point.lap_number == lap_number:
-                    return point
-            return None
+        return next((point for point in self.m_predicted_tyre_wear if point.lap_number == lap_number), None)
 
     @property
     def predicted_tyre_wear(self) -> Generator[TyreWearPerLap, None, None]:
@@ -187,8 +183,7 @@ class TyreWearExtrapolator:
         Yields:
             TyreWearPerLap: The object representing the tyre wear per lap
         """
-        for tyre_wear in self.m_predicted_tyre_wear:
-            yield tyre_wear
+        yield from self.m_predicted_tyre_wear
 
     @property
     def total_laps(self) -> int:
@@ -333,12 +328,8 @@ class TyreWearExtrapolator:
         # Update the predicted tyre wear data structure
         self._extrapolateTyreWear()
 
-    def _extrapolateTyreWear(self) -> List[TyreWearPerLap]:
-        """Extrapolate the tyre wear for the remaining laps of the race
-
-        Returns:
-            List[TyreWearPerLap]: List of TyreWearPerLap objects containing predicted tyre wear
-                    at the end of the each lap till the end of the race
+    def _extrapolateTyreWear(self) -> None:
+        """Extrapolate the tyre wear for the remaining laps of the race and stores in m_predicted_tyre_wear
         """
 
         # No more predictions to do. give the actual data

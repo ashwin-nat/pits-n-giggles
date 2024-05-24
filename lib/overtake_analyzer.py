@@ -251,10 +251,10 @@ class OvertakeAnalyzerMode(Enum):
            or the list of csv strings
     """
 
-    INPUT_MODE_FILE_CSV=1,
-    INPUT_MODE_LIST_CSV=2,
-    INPUT_MODE_LIST_OVERTAKE_RECORDS=3,
-    INPUT_MODE_LIST_OVERTAKE_RECORDS_JSON=4,
+    INPUT_MODE_FILE_CSV=1
+    INPUT_MODE_LIST_CSV=2
+    INPUT_MODE_LIST_OVERTAKE_RECORDS=3
+    INPUT_MODE_LIST_OVERTAKE_RECORDS_JSON=4
 
 class OvertakeAnalyzer:
     """
@@ -277,13 +277,13 @@ class OvertakeAnalyzer:
         toJSON() -> Dict. Returns a JSON dictionary containing the results of the above methods (except)
     """
 
-    def __init__(self, input_mode: OvertakeAnalyzerMode, input: str):
+    def __init__(self, input_mode: OvertakeAnalyzerMode, input_data: str):
         """
         Initialize OvertakeAnalyzer.
 
         Args:
             input_mode (OvertakeAnalyzerMode): Describes the type of input
-            input (str): Context varies based on input_mode
+            input_data (str): Context varies based on input_mode
                 INPUT_MODE_LIST_CSV - This is a list of all overtakes in csv format
                 INPUT_MODE_FILE_CSV - This is a JSON file containing all overtake records under the key
                 INPUT_MODE_LIST_OVERTAKE_RECORDS - This is a list of all OvertakeRecords
@@ -294,11 +294,11 @@ class OvertakeAnalyzer:
         self.m_being_overtaken_counts: Dict[str, int] = defaultdict(int)
         self.m_rivalry_records: Dict[OvertakeRivalryKey, List[OvertakeRecord]] = defaultdict(list)
         if input_mode == OvertakeAnalyzerMode.INPUT_MODE_FILE_CSV:
-            self.__analyzeCsvFile(file_name=input)
+            self.__analyzeCsvFile(file_name=input_data)
         elif input_mode == OvertakeAnalyzerMode.INPUT_MODE_LIST_CSV:
-            self.__analyzeCsvList(csv_list=input)
+            self.__analyzeCsvList(csv_list=input_data)
         else:
-            self.__analyzeListOvertakeRecords(overtake_records=input)
+            self.__analyzeListOvertakeRecords(overtake_records=input_data)
 
     def __analyzeListOvertakeRecords(self, overtake_records: List[OvertakeRecord]) -> None:
         """
@@ -341,12 +341,12 @@ class OvertakeAnalyzer:
         csv_data_file = StringIO(csv_data_string)
         self.__analyze(csv_data_file)
 
-    def __analyze(self, data) -> None:
+    def __analyze(self, data: List[str]) -> None:
         """
         Analyze overtaking data from either a file or a list of strings.
 
         Args:
-            data: Either a file object or a string containing CSV data.
+            data: List of CSV data
         """
         reader = csv.reader(data)
         # next(reader, None)  # Skip header row if present
@@ -356,7 +356,8 @@ class OvertakeAnalyzer:
             row = [s.strip() for s in row]
             if row in [[''],[]]: # don't process empty lines
                 continue
-            lap_overtaking, driver_overtaking, lap_being_overtaken, driver_being_overtaken = map(str.strip, row)
+            lap_overtaking, driver_overtaking, lap_being_overtaken, driver_being_overtaken = \
+                [col.strip() for col in row]
             self.__processOvertakeRecord(OvertakeRecord(
                 overtaking_driver_name=driver_overtaking,
                 overtaking_driver_lap=int(lap_overtaking),
@@ -528,64 +529,66 @@ class OvertakeAnalyzer:
         if not driver_name:
             return final_dict
 
+        most_overtakes_drivers, overtakes_count = self.getMostOvertakes()
+        most_overtaken_driver, overtaken_count = self.getMostOvertaken()
+        most_heated_rivalries = self.getMostHeatedRivalries()
+        # pylint: disable=dict-init-mutate
+        final_dict = {
+            "number-of-overtakes": self.getTotalNumberOfOvertakes(),
+            "most-overtakes": {"drivers": most_overtakes_drivers, "count": overtakes_count},
+            "most-overtaken": {"drivers": most_overtaken_driver, "count": overtaken_count},
+            "most-heated-rivalries": [
+                {
+                    # Extracting data from rivalry_key
+                    "driver1": rivalry_key.m_driver_1_name,
+                    "driver2": rivalry_key.m_driver_2_name,
+                    "overtakes": [
+                        {
+                            # Extracting data from each record in rivalry_data
+                            "overtaking-driver-name": record.m_overtaking_driver_name,
+                            "overtaking-driver-lap": record.m_overtaking_driver_lap,
+                            "overtaken-driver-name": record.m_overtaken_driver_name,
+                            "overtaken-driver-lap": record.m_overtaken_driver_lap,
+                        }
+                        for record in rivalry_data
+                    ],
+                }
+                for rivalry_key, rivalry_data in most_heated_rivalries.items()
+            ],
+        }
+        final_dict["player-name"] = driver_name
+        final_dict["number-of-times-player-overtaken"] = self.m_being_overtaken_counts[driver_name]
+        final_dict["number-of-times-player-overtakes"] = self.m_overtaking_counts[driver_name]
+        if self.m_overtaking_counts[driver_name] == 0 or self.m_being_overtaken_counts[driver_name] == 0:
+            player_most_heated_rivalries = None
+        elif self.m_overtaking_counts:
+            player_most_heated_rivalries = self.getMostHeatedRivalries(
+                driver_name=driver_name,
+                is_case_sensitive=is_case_sensitive)
         else:
-            most_overtakes_drivers, overtakes_count = self.getMostOvertakes()
-            most_overtaken_driver, overtaken_count = self.getMostOvertaken()
-            most_heated_rivalries = self.getMostHeatedRivalries()
-            final_dict = {
-                "number-of-overtakes": self.getTotalNumberOfOvertakes(),
-                "most-overtakes": {"drivers": most_overtakes_drivers, "count": overtakes_count},
-                "most-overtaken": {"drivers": most_overtaken_driver, "count": overtaken_count},
-                "most-heated-rivalries": [
-                    {
-                        # Extracting data from rivalry_key
-                        "driver1": rivalry_key.m_driver_1_name,
-                        "driver2": rivalry_key.m_driver_2_name,
-                        "overtakes": [
-                            {
-                                # Extracting data from each record in rivalry_data
-                                "overtaking-driver-name": record.m_overtaking_driver_name,
-                                "overtaking-driver-lap": record.m_overtaking_driver_lap,
-                                "overtaken-driver-name": record.m_overtaken_driver_name,
-                                "overtaken-driver-lap": record.m_overtaken_driver_lap,
-                            }
-                            for record in rivalry_data
-                        ],
-                    }
-                    for rivalry_key, rivalry_data in most_heated_rivalries.items()
-                ],
-            }
-            final_dict["player-name"] = driver_name
-            final_dict["number-of-times-player-overtaken"] = self.m_being_overtaken_counts[driver_name]
-            final_dict["number-of-times-player-overtakes"] = self.m_overtaking_counts[driver_name]
-            if self.m_overtaking_counts[driver_name] == 0 or self.m_being_overtaken_counts[driver_name] == 0:
-                player_most_heated_rivalries = None
-            elif self.m_overtaking_counts:
-                player_most_heated_rivalries = self.getMostHeatedRivalries(
-                    driver_name=driver_name,
-                    is_case_sensitive=is_case_sensitive)
+            player_most_heated_rivalries = None
 
-            if player_most_heated_rivalries:
-                final_dict["player-most-heated-rivalries"] = [
-                    {
-                        # Extracting data from rivalry_key
-                        "driver1": rivalry_key.m_driver_1_name,
-                        "driver2": rivalry_key.m_driver_2_name,
-                        "overtakes": [
-                            {
-                                # Extracting data from each record in rivalry_data
-                                "overtaking-driver-name": record.m_overtaking_driver_name,
-                                "overtaking-driver-lap": record.m_overtaking_driver_lap,
-                                "overtaken-driver-name": record.m_overtaken_driver_name,
-                                "overtaken-driver-lap": record.m_overtaken_driver_lap,
-                            }
-                            for record in rivalry_data
-                        ],
-                    }
-                    for rivalry_key, rivalry_data in player_most_heated_rivalries.items()
-                ]
-            else:
-                final_dict["most-heated-rivalries"] = []
+        if player_most_heated_rivalries:
+            final_dict["player-most-heated-rivalries"] = [
+                {
+                    # Extracting data from rivalry_key
+                    "driver1": rivalry_key.m_driver_1_name,
+                    "driver2": rivalry_key.m_driver_2_name,
+                    "overtakes": [
+                        {
+                            # Extracting data from each record in rivalry_data
+                            "overtaking-driver-name": record.m_overtaking_driver_name,
+                            "overtaking-driver-lap": record.m_overtaking_driver_lap,
+                            "overtaken-driver-name": record.m_overtaken_driver_name,
+                            "overtaken-driver-lap": record.m_overtaken_driver_lap,
+                        }
+                        for record in rivalry_data
+                    ],
+                }
+                for rivalry_key, rivalry_data in player_most_heated_rivalries.items()
+            ]
+        else:
+            final_dict["most-heated-rivalries"] = []
 
         return final_dict
 
@@ -706,7 +709,6 @@ class OvertakeAnalyzer:
         return False, final_str
 
 if __name__ == "__main__":
-    import sys
     import argparse
 
     # Parse the command line args
@@ -715,7 +717,6 @@ if __name__ == "__main__":
     parser.add_argument("--driver-name", type=str, help="Name of the driver whose specific info is required")
 
     args = parser.parse_args()
-    import json
     with open(args.file_name, 'r+', encoding='utf-8') as f:
         json_data = json.load(f)
     overtake_analyzer = OvertakeAnalyzer(OvertakeAnalyzerMode.INPUT_MODE_LIST_OVERTAKE_RECORDS_JSON, json_data["overtakes"]["records"])

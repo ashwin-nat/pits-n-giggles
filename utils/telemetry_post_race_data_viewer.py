@@ -453,7 +453,7 @@ class TelemetryWebServer:
                     overtake_analyzer_mode = OvertakeAnalyzer.OvertakeAnalyzerMode.INPUT_MODE_LIST_CSV
                 overtake_records = OvertakeAnalyzer.OvertakeAnalyzer(
                     input_mode=overtake_analyzer_mode,
-                    input=json_data["overtakes"]["records"]).toJSON()
+                    input_data=json_data["overtakes"]["records"]).toJSON()
                 json_data["overtakes"] = json_data["overtakes"] | overtake_records
                 should_write = True
 
@@ -583,7 +583,7 @@ def checkRecomputeJSON(json_data : Dict[str, Any]) -> bool:
                 overtake_analyzer_mode = OvertakeAnalyzer.OvertakeAnalyzerMode.INPUT_MODE_LIST_CSV
             overtake_records = OvertakeAnalyzer.OvertakeAnalyzer(
                 input_mode=overtake_analyzer_mode,
-                input=json_data["overtakes"]["records"]).toJSON()
+                input_data=json_data["overtakes"]["records"]).toJSON()
             json_data["overtakes"] = json_data["overtakes"] | overtake_records
             should_write = True
 

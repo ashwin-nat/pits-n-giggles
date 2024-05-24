@@ -359,13 +359,13 @@ def getOvertakeJSON(driver_name: str=None) -> Tuple[GetOvertakesStatus, Dict[str
             else:
                 return GetOvertakesStatus.RACE_ONGOING, OvertakeAnalyzer(
                     input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST_OVERTAKE_RECORDS,
-                    input=g_overtakes_history.m_overtakes_history).toJSON(
+                    input_data=g_overtakes_history.m_overtakes_history).toJSON(
                         driver_name=driver_name,
                         is_case_sensitive=True)
         else:
             return GetOvertakesStatus.RACE_COMPLETED, OvertakeAnalyzer(
                 input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST_OVERTAKE_RECORDS,
-                input=g_overtakes_history.m_overtakes_history).toJSON(
+                input_data=g_overtakes_history.m_overtakes_history).toJSON(
                     driver_name=driver_name,
                     is_case_sensitive=True)
 
@@ -388,13 +388,13 @@ def printOvertakeData(file_name: str=None):
     if file_name:
         overtake_analyzer = OvertakeAnalyzer(
             input_mode=OvertakeAnalyzerMode.INPUT_MODE_FILE_CSV,
-            input=file_name)
+            input_data=file_name)
     else:
         global g_overtakes_history
         with g_overtakes_history.m_lock:
             overtake_analyzer = OvertakeAnalyzer(
                 input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST_OVERTAKE_RECORDS,
-                input=g_overtakes_history.m_overtakes_history)
+                input_data=g_overtakes_history.m_overtakes_history)
     logging.info(overtake_analyzer.getFormattedString(driver_name=player_name, is_case_sensitive=True))
 
 def writeDictToJsonFile(data_dict: Dict, file_name: str) -> None:
@@ -424,7 +424,7 @@ def addFunStatsToFinalClassificationJson(final_json: Dict[str, Any]) -> None:
         player_name = TelData.getPlayerName()
         overtake_analyzer = OvertakeAnalyzer(
             input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST_OVERTAKE_RECORDS,
-            input=g_overtakes_history.m_overtakes_history)
+            input_data=g_overtakes_history.m_overtakes_history)
         logging.info(overtake_analyzer.getFormattedString(driver_name=player_name, is_case_sensitive=True))
         # Add the new keys directly to the top level of final_json
         final_json['overtakes'].update(

@@ -146,8 +146,8 @@ class F1PktCapFileHeader:
         """
         result = struct.unpack(F1PktCapFileHeader.HEADER_STRUCT_STR, data)
         (
-            magic_number,
-            reserved_byte,
+            _, # magic_number,
+            _, # reserved_byte,
             version_packed,
             num_packets
         ) = result

@@ -84,8 +84,7 @@ def getFastestTimesJson(json_data: Dict[str, Any], driver_data: Optional[Dict[st
                                         [session_history["best-sector-3-lap-num"]-1]["sector-3-time-in-ms"])
                 },
             }
-        else:
-            return None
+        return None
 
     def getFastestTimesDict(json_data: Dict[str, Any], best_time_lap_num_key: str, best_time_key: str):
         """

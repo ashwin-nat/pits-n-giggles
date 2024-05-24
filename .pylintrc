@@ -434,7 +434,7 @@ max-statements = 100 # Using a high number because some of the packets have a lo
 max-attributes = 100 # Using a high number because some of the packets have a lot of fields
 
 # Maximum number of statements in a try-block
-max-try-statements = 7
+max-try-statements = 15
 
 [CLASSES]
 
@@ -550,3 +550,8 @@ check-str-concat-over-line-jumps=no
 # suggestions which would get split by a code formatter (e.g., black). Will
 # default to the setting for ``max-line-length``.
 #max-line-length-suggestions=
+
+[MASTER]
+
+# Add the modules to the ignored list
+ignored-modules=lib.f1_types
