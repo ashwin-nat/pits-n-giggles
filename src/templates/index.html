@@ -32,6 +32,8 @@ SOFTWARE.
     <title id="pageTitle">Pits n' Giggles</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Bangers&display=swap"
         rel="stylesheet">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+
     <style>
         /* Your existing styles */
         body {
@@ -267,12 +269,9 @@ SOFTWARE.
             z-index: 9999;
         }
     </style>
-    <script src="https://www.youtube.com/iframe_api"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
-    <!-- Include Moment.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
-    <!-- Include Chart.js library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js"></script>
 </head>
 
 <body>
@@ -336,20 +335,9 @@ SOFTWARE.
                     <td>Pit Lane Speed Limit</td>
                     <td id="pitSpeedLimit"></td>
                 </tr>
-                <tr>
-                    <td colspan="2">
-                        <a href="javascript:void(0);" id="motivationLink" class="motivationLink">Click here for motivation</a>
-                    </td>
-                </tr>
             </table>
         </div>
     </div>
-
-    <!-- YouTube iframe for audio, set to play when the link is clicked -->
-    <iframe id="youtubeAudio" class="youtube-audio" width="0" height="0"
-        src="https://www.youtube.com/embed/2L7Qm2hBJ6o?start=38&enablejsapi=1" frameborder="0"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-        allowfullscreen></iframe>
 
     <table id="raceTable">
         <thead>
@@ -386,14 +374,6 @@ SOFTWARE.
         // Check if delta column needs to be displayed
         const shouldHideDeltaColumn = {{ live_data_mode | tojson | safe }};
         const shouldHidePredictionColumn = !{{ live_data_mode | tojson | safe }};
-
-        function onYouTubeIframeAPIReady() {
-            player = new YT.Player('youtubeAudio', {
-                events: {
-                    'onReady': onPlayerReady
-                }
-            });
-        }
 
         function onPlayerReady(event) {
             var motivationLink = document.getElementById("motivationLink");
@@ -2115,15 +2095,15 @@ SOFTWARE.
         document.getElementById('bestLapLink').addEventListener('click', toggleBestLapFormat);
 
         // Fetch data at intervals specified from jinja
-        setInterval(fetchDataAndDisplay, {{ client_poll_interval_ms | tojson | safe }});
+        if (!{{ live_data_mode | tojson | safe }}) {
+            setInterval(fetchDataAndDisplay, {{ client_poll_interval_ms | tojson | safe }});
+            // Initial fetch and display
+            fetchDataAndDisplay();
+        }
 
         // Update local time every second
         setInterval(updateLocalTime, 1000);
-
-        // Initial fetch and display
-        fetchDataAndDisplay();
         updateLocalTime();
-
 
         if (shouldHideDeltaColumn) {
             hideColumn("Delta");
@@ -2131,6 +2111,25 @@ SOFTWARE.
         if (shouldHidePredictionColumn) {
             hideColumn("Wear Prediction");
         }
+
+        var socket = io.connect('http://' + document.domain + ':' + location.port, {
+            reconnection: true,           // Enables reconnection
+            reconnectionAttempts: Infinity, // Number of attempts before giving up (Infinity means never stop trying)
+            reconnectionDelay: 1000,      // Initial delay before reconnection (in ms)
+            reconnectionDelayMax: 5000,   // Maximum delay between reconnections (in ms)
+            randomizationFactor: 0.5,     // Randomization factor to prevent reconnection storms
+            timeout: 20000                // Connection timeout before giving up (in ms)
+        });
+
+        // Receive details from server
+        socket.on('newnumber', function (msg) {
+            console.log("Received number" + msg.number);
+        });
+
+        socket.on('race-table-update', function (data) {
+            displayData(data);
+        });
+
 
     </script>
 </body>
