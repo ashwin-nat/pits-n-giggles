@@ -35,7 +35,8 @@ from .common import (
     Platform,
     TeamID,
     F1Utils,
-    PacketHeader
+    PacketHeader,
+    TrackID
 )
 from .packet_0_car_motion_data import PacketMotionData, CarMotionData
 from .packet_1_session_data import MarshalZone, WeatherForecastSample, PacketSessionData
@@ -67,6 +68,7 @@ __all__ = [
     "TeamID",
     "F1Utils",
     "PacketHeader",
+    "TrackID",
 
     # Packet 0 - car motion
     "PacketMotionData",

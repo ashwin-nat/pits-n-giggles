@@ -31,7 +31,7 @@ import logging
 from lib.f1_types import PacketSessionData, PacketLapData, LapData, CarTelemetryData, ParticipantData, \
     PacketEventData, PacketParticipantsData, PacketCarTelemetryData, PacketCarStatusData, FinalClassificationData, \
     PacketFinalClassificationData, PacketCarDamageData, PacketSessionHistoryData, ResultStatus, PacketTyreSetsData, \
-    F1Utils, WeatherForecastSample, CarDamageData, CarStatusData
+    F1Utils, WeatherForecastSample, CarDamageData, CarStatusData, TrackID
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.overtake_analyzer import OvertakeRecord
 from lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
@@ -699,6 +699,7 @@ class DriverData:
         m_final_json (Dict[str, Any]): Dictionary containing the final JSON data for the driver.
         m_total_laps (int): The total number of laps in this race
         m_ideal_pit_stop_window (int): The ideal pit stop window for the player, according to the selected strategy
+        m_track_id (TrackID): The track ID of the event
     """
 
     def __init__(self):
@@ -715,6 +716,7 @@ class DriverData:
         self.m_is_player_dnf : Optional[bool] = None
         self.m_total_laps : Optional[int] = None
         self.m_ideal_pit_stop_window : Optional[int] = None
+        self.m_track_id : Optional[TrackID] = None
 
     def clear(self) -> None:
         """Clear this object. Clears the m_driver_data list and sets everything else to None
@@ -729,6 +731,7 @@ class DriverData:
         self.m_is_player_dnf = None
         self.m_total_laps = None
         self.m_ideal_pit_stop_window = None
+        self.m_track_id = None
 
     def setRaceOngoing(self) -> None:
         """
@@ -848,7 +851,8 @@ class DriverData:
             best_lap_index: int = driver_data.m_packet_session_history.m_bestLapTimeLapNum - 1
             if 0 <= best_lap_index < len(driver_data.m_packet_session_history.m_lapHistoryData):
                 if driver_data.m_packet_session_history.m_lapHistoryData[best_lap_index].isLapValid():
-                    driver_best_lap_ms = driver_data.m_packet_session_history.m_lapHistoryData[best_lap_index].m_lapTimeInMS
+                    driver_best_lap_ms = \
+                        driver_data.m_packet_session_history.m_lapHistoryData[best_lap_index].m_lapTimeInMS
         if driver_best_lap_ms is None:
             # Second option, from the object itself
             driver_best_lap_ms = driver_data.m_best_lap_ms
@@ -868,6 +872,7 @@ class DriverData:
         """
 
         self.m_ideal_pit_stop_window = packet.m_pitStopWindowIdealLap
+        self.m_track_id = packet.m_trackId
 
         # First time total laps notification has arrived after driver info (out of order)
         if (self.m_total_laps is None) and (packet.m_totalLaps > 0):
@@ -1119,7 +1124,13 @@ class DriverData:
                     selected_pit_stop_lap = self.m_ideal_pit_stop_window
             else:
                 selected_pit_stop_lap = None
-        return obj_to_be_updated.toJSON(index, include_wear_prediction, selected_pit_stop_lap) if obj_to_be_updated else None
+        if not obj_to_be_updated:
+            return None
+        final_json = obj_to_be_updated.toJSON(index, include_wear_prediction, selected_pit_stop_lap)
+        final_json["circuit"] = str(self.m_track_id)
+        final_json["is-finish-line-after-pit-garage"] = F1Utils.isFinishLineAfterPitGarage(self.m_track_id) \
+            if self.m_track_id is not None else None
+        return final_json
 
     def getRaceInfoJSON(self) -> Dict[str, Any]:
         """Get the race info JSON.

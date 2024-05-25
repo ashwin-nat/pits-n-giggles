@@ -1780,6 +1780,12 @@ SOFTWARE.
                     const formatAsLapTime = false;
                     plotGraph(graphCanvas, datasets, 'Lap number', 'Tyre Wear %', formatAsLapTime, limits);
                     tyreStintHistorySubDiv.appendChild(graphDiv);
+                    if ("is-finish-line-after-pit-garage" in data && data["is-finish-line-after-pit-garage"] === true) {
+                        const tyreStintHistoryFootNote = document.createElement('p');
+                        tyreStintHistoryFootNote.textContent =
+                            "Cannot get fully reliable data for this circuit. Blame EA/Codemasters, not me";
+                        tyreStintHistorySubDiv.appendChild(tyreStintHistoryFootNote);
+                    }
                 }
 
                 tyreStintHistoryContent.appendChild(createAccordion('Tyre Stint History', tyreStintHistorySubDiv));
