@@ -25,7 +25,7 @@
 ## official document. https://answers.ea.com/t5/General-Discussion/F1-23-UDP-Specification/m-p/12633159
 
 from enum import Enum
-from typing import List, Any, Dict, Optional
+from typing import List, Any, Dict, Optional, Set
 import struct
 
 # ------------------------- PRIVATE FUNCTIONS ----------------------------------
@@ -635,6 +635,73 @@ class TeamID(Enum):
         }
         return teams_mapping.get(self.value, "---")
 
+class TrackID(Enum):
+    """
+    Enum class representing F1 track IDs and their corresponding names.
+    """
+    Melbourne = 0
+    Paul_Ricard = 1
+    Shanghai = 2
+    Sakhir_Bahrain = 3
+    Catalunya = 4
+    Monaco = 5
+    Montreal = 6
+    Silverstone = 7
+    Hockenheim = 8
+    Hungaroring = 9
+    Spa = 10
+    Monza = 11
+    Singapore = 12
+    Suzuka = 13
+    Abu_Dhabi = 14
+    Texas = 15
+    Brazil = 16
+    Austria = 17
+    Sochi = 18
+    Mexico = 19
+    Baku_Azerbaijan = 20
+    Sakhir_Short = 21
+    Silverstone_Short = 22
+    Texas_Short = 23
+    Suzuka_Short = 24
+    Hanoi = 25
+    Zandvoort = 26
+    Imola = 27
+    Portimao = 28
+    Jeddah = 29
+    Miami = 30
+    Las_Vegas = 31
+    Losail = 32
+
+    def __str__(self):
+        """
+        Returns a string representation of the track.
+        """
+        return {
+            "Paul_Ricard": "Paul Ricard",
+            "Sakhir_Bahrain": "Sakhir (Bahrain)",
+            "Abu_Dhabi": "Abu Dhabi",
+            "Baku_Azerbaijan": "Baku (Azerbaijan)",
+            "Portimao": "Portimão"
+        }.get(self.name, self.name.replace("_", " "))
+
+    @staticmethod
+    def isValid(track: int):
+        """Check if the given circuit code is valid.
+
+        Args:
+            track (int): The circuit code to be validated.
+                Also supports type TrackID. Returns true in this case
+
+        Returns:
+            bool: true if valid
+        """
+        if isinstance(track, TrackID):
+            return True  # It's already an instance of TrackID
+        min_value = min(member.value for member in TrackID)
+        max_value = max(member.value for member in TrackID)
+        return min_value <= track <= max_value
+
 class F1Utils:
     """
     Utility class for Formula 1-related operations.
@@ -675,6 +742,43 @@ class F1Utils:
     INDEX_FRONT_LEFT = 2
     INDEX_FRONT_RIGHT = 3
     PLAYER_INDEX_INVALID = 255
+
+    # TRACKS_WHERE_FINISH_LINE_BEFORE_PIT_GARAGE : Set[TrackID] = {
+    #     TrackID.Sakhir_Bahrain, # Yes
+    #     TrackID.Jeddah, # Yes
+    #     # TrackID.Melbourne,
+    #     TrackID.Baku_Azerbaijan, # Yes
+    #     TrackID.Miami, # Yes
+    #     TrackID.Imola, # Yes
+    #     # TrackID.Monaco,
+    #     TrackID.Catalunya, # Yes
+    #     # TrackID.Montreal,
+    #     TrackID.Austria, # Yes
+    #     TrackID.Silverstone, # Yes
+    #     TrackID.Hungaroring, # Yes
+    #     TrackID.Spa, # Yes
+    #     TrackID.Zandvoort, # Yes
+    #     TrackID.Monza, # Yes
+    #     TrackID.Singapore, # Yes
+    #     TrackID.Suzuka, # Yes
+    #     # TrackID.Losail,
+    #     TrackID.Texas, # Yes
+    #     TrackID.Mexico, # Yes
+    #     TrackID.Brazil, # Yes
+    #     TrackID.Las_Vegas, # Yes
+    #     TrackID.Abu_Dhabi, # Yes
+    #     TrackID.Shanghai, # Yes
+    #     # TrackID.Paul_Ricard,
+    #     TrackID.Portimao, # Yes
+    # }
+
+    TRACKS_WHERE_FINISH_LINE_AFTER_PIT_GARAGE : Set[TrackID] = {
+        TrackID.Melbourne,
+        TrackID.Monaco,
+        TrackID.Montreal,
+        TrackID.Losail,
+        TrackID.Paul_Ricard,
+    }
 
     @staticmethod
     def millisecondsToMinutesSecondsMilliseconds(milliseconds: int) -> str:
@@ -818,6 +922,19 @@ class F1Utils:
         """
         format_string = "{:." + str(num_dec_places) + "f}"
         return format_string.format(float_val)
+
+    @staticmethod
+    def isFinishLineAfterPitGarage(track_id: TrackID) -> bool:
+        """In this track, is the finish line after the pit garage?
+
+        Args:
+            track_id (TrackID): The track ID enum (assumed to be valid)
+
+        Returns:
+            bool: True if finish line after pit garage, else False
+        """
+
+        return (track_id in F1Utils.TRACKS_WHERE_FINISH_LINE_AFTER_PIT_GARAGE)
 
 # -------------------- HEADER PARSING ------------------------------------------
 

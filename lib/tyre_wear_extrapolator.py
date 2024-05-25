@@ -72,7 +72,8 @@ class TyreWearPerLap:
             f"FR {self.fr_tyre_wear}, "
             f"RL {self.rl_tyre_wear}, "
             f"RR {self.rr_tyre_wear}, "
-            f"Average {self.m_average}"
+            f"Average {self.m_average}, "
+            f"Desc: {str(self.m_desc)}"
         )
 
     @property

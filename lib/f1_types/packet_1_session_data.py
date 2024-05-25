@@ -27,7 +27,7 @@
 import struct
 from typing import Dict, Any, List
 from enum import Enum
-from .common import _split_list, _extract_sublist, SessionType, PacketHeader
+from .common import _split_list, _extract_sublist, SessionType, PacketHeader, TrackID
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -537,73 +537,6 @@ class PacketSessionData:
 
             return self.name
 
-    class TrackID(Enum):
-        """
-        Enum class representing F1 track IDs and their corresponding names.
-        """
-        Melbourne = 0
-        Paul_Ricard = 1
-        Shanghai = 2
-        Sakhir_Bahrain = 3
-        Catalunya = 4
-        Monaco = 5
-        Montreal = 6
-        Silverstone = 7
-        Hockenheim = 8
-        Hungaroring = 9
-        Spa = 10
-        Monza = 11
-        Singapore = 12
-        Suzuka = 13
-        Abu_Dhabi = 14
-        Texas = 15
-        Brazil = 16
-        Austria = 17
-        Sochi = 18
-        Mexico = 19
-        Baku_Azerbaijan = 20
-        Sakhir_Short = 21
-        Silverstone_Short = 22
-        Texas_Short = 23
-        Suzuka_Short = 24
-        Hanoi = 25
-        Zandvoort = 26
-        Imola = 27
-        Portimao = 28
-        Jeddah = 29
-        Miami = 30
-        Las_Vegas = 31
-        Losail = 32
-
-        def __str__(self):
-            """
-            Returns a string representation of the track.
-            """
-            return {
-                "Paul_Ricard": "Paul Ricard",
-                "Sakhir_Bahrain": "Sakhir (Bahrain)",
-                "Abu_Dhabi": "Abu Dhabi",
-                "Baku_Azerbaijan": "Baku (Azerbaijan)",
-                "Portimao": "Portimão"
-            }.get(self.name, self.name.replace("_", " "))
-
-        @staticmethod
-        def isValid(track: int):
-            """Check if the given circuit code is valid.
-
-            Args:
-                track (int): The circuit code to be validated.
-                    Also supports type TrackID. Returns true in this case
-
-            Returns:
-                bool: true if valid
-            """
-            if isinstance(track, PacketSessionData.TrackID):
-                return True  # It's already an instance of TrackID
-            min_value = min(member.value for member in PacketSessionData.TrackID)
-            max_value = max(member.value for member in PacketSessionData.TrackID)
-            return min_value <= track <= max_value
-
     class FormulaType(Enum):
         """An enumeration of formula types."""
 
@@ -660,7 +593,7 @@ class PacketSessionData:
         self.m_totalLaps: int
         self.m_trackLength: float
         self.m_sessionType: int
-        self.m_trackId: PacketSessionData.TrackID
+        self.m_trackId: TrackID
         self.m_formula: int
         self.m_sessionTimeLeft: float
         self.m_sessionDuration: float
@@ -730,8 +663,8 @@ class PacketSessionData:
         ) = unpacked_data
         if WeatherForecastSample.WeatherCondition.isValid(self.m_weather):
             self.m_weather = WeatherForecastSample.WeatherCondition(self.m_weather)
-        if PacketSessionData.TrackID.isValid(self.m_trackId):
-            self.m_trackId = PacketSessionData.TrackID(self.m_trackId)
+        if TrackID.isValid(self.m_trackId):
+            self.m_trackId = TrackID(self.m_trackId)
         if SessionType.isValid(self.m_sessionType):
             self.m_sessionType = SessionType(self.m_sessionType)
         if PacketSessionData.FormulaType.isValid(self.m_formula):
