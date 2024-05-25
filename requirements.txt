@@ -6,4 +6,4 @@ numpy==1.26.4
 prettytable==3.10.0
 scikit_learn==1.4.1.post1
 tqdm==4.66.2
-gevent=24.2.1
+gevent==24.2.1
