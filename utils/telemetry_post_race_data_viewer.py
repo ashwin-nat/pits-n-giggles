@@ -138,6 +138,7 @@ def getTelemetryInfo():
             "track-temperature": g_json_data["session-info"]["track-temperature"],
             "air-temperature" : g_json_data["session-info"]["air-temperature"],
             "event-type": g_json_data["session-info"]["session-type"],
+            "session-time-left" : 0,
             "total-laps": g_json_data["session-info"]["total-laps"],
             "current-lap": g_json_data["classification-data"][0]["lap-data"]["current-lap-num"],
             "safety-car-status": g_json_data["session-info"]["safety-car-status"],

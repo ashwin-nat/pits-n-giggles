@@ -595,9 +595,9 @@ class PacketSessionData:
         self.m_sessionType: int
         self.m_trackId: TrackID
         self.m_formula: int
-        self.m_sessionTimeLeft: float
-        self.m_sessionDuration: float
-        self.m_pitSpeedLimit: float
+        self.m_sessionTimeLeft: int
+        self.m_sessionDuration: int
+        self.m_pitSpeedLimit: int
         self.m_gamePaused: bool
         self.m_isSpectating: bool
         self.m_spectatorCarIndex: int

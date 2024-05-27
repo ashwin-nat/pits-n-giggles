@@ -304,6 +304,10 @@ SOFTWARE.
                     <td>Lap</td>
                     <td id="lapInformation"></td>
                 </tr>
+                <tr id="sessionTimeLeftRow">
+                    <td>Session Time Left</td>
+                    <td id="sessionTimeLeft"></td>
+                </tr>
                 <tr id="safetyCarRow">
                     <td>Safety Car Status:</td>
                     <td id="safetyCarStatus"></td>
@@ -484,7 +488,7 @@ SOFTWARE.
             }
             updateGlobalInfo(data["circuit"], data["event-type"], data["track-temperature"], data["current-lap"],
                 data["total-laps"], data["safety-car-status"], data["fastest-lap-overall"],
-                data["pit-speed-limit"], {{ packet_capture_enabled | tojson }});
+                data["pit-speed-limit"], data["session-time-left"], {{ packet_capture_enabled | tojson }});
             updateWeatherTable(data["weather-forecast-samples"]);
         }
 
@@ -1915,16 +1919,43 @@ SOFTWARE.
             modal.style.display = 'none';
         }
 
-        function updateGlobalInfo(circuit, event_type, track_temp, curr_lap, total_laps,
-            safety_car_status, fastest_lap, pit_speed_limit, packet_capture_enabled) {
+        function formatSecondsToMMSS(seconds) {
+            // Ensure the input is a number
+            if (typeof seconds !== 'number' || seconds < 0) {
+                throw new Error('Input should be a non-negative integer representing seconds.');
+            }
 
-            // document.getElementById('tableTitle').textContent = `${event_type} - ${circuit}`;
-            // document.getElementById('trackTemperature').textContent = `Track Temperature: ${track_temp} °C`;
-            // document.getElementById('airTemperature').textContent = `Air Temperature: ${track_temp} °C`;
-            // document.getElementById('lapInformation').textContent = `Lap: ${curr_lap}/${total_laps}`;
-            // document.getElementById('safetyCarStatus').textContent = `Safety Car Status: ${safety_car_status}`;
-            // document.getElementById('fastestLapOverall').textContent = `Fastest Lap Overall: ${fastest_lap}`;
-            // document.getElementById('pitSpeedLimit').textContent = `Pit Lane Speed Limit: ${pit_speed_limit} kmph`;
+            // Calculate minutes and remaining seconds
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+
+            // Format minutes and seconds with leading zeros if necessary
+            const formattedMinutes = String(minutes).padStart(2, '0');
+            const formattedSeconds = String(remainingSeconds).padStart(2, '0');
+
+            // Return formatted time string
+            return `${formattedMinutes}:${formattedSeconds}`;
+        }
+
+        function shouldShowSessionTimeLeft(eventType) {
+            switch(eventType) {
+                case "Practice 1":
+                case "Practice 2":
+                case "Practice 3":
+                case "Short Practice":
+                case "Qualifying 1":
+                case "Qualifying 2":
+                case "Qualifying 3":
+                case "Short Qualifying":
+                case "One Shot Qualifying":
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        function updateGlobalInfo(circuit, event_type, track_temp, curr_lap, total_laps,
+            safety_car_status, fastest_lap, pit_speed_limit, sessionTimeLeft, packet_capture_enabled) {
 
             document.getElementById('tableTitle').textContent = `${event_type} - ${circuit}`;
             document.getElementById('trackTemperature').textContent = `${track_temp} °C`;
@@ -1937,6 +1968,14 @@ SOFTWARE.
             const saveTelemetryLink = document.getElementById('saveTelemetryLinkRow');
             if (!packet_capture_enabled) {
                 saveTelemetryLink.style.display = 'none';
+            }
+
+            let sessionTimeLeftRow = document.getElementById('sessionTimeLeftRow');
+            if (shouldShowSessionTimeLeft(event_type)) {
+                sessionTimeLeftRow.style.display = '';
+                document.getElementById('sessionTimeLeft').textContent = `${formatSecondsToMMSS(sessionTimeLeft)}`;
+            } else {
+                sessionTimeLeftRow.style.display = 'none';
             }
         }
 
