@@ -223,7 +223,11 @@ class TelemetryWebServer:
 
         @self.m_socketio.on('driver-info')
         def handleDriverInfo(data: Dict[str, Any]):
+            """SocketIO endpoint to handle driver info request
 
+            Args:
+                data (Dict[str, Any]): The JSON response. Will contain the key "error" in case of failure
+            """
             response = None
             index = data.get("index", None)
             error_response = self.validateIntGetRequestParam(index, "index")
