@@ -924,7 +924,7 @@ class F1Utils:
         return format_string.format(float_val)
 
     @staticmethod
-    def getLapTimeStr(minutes_part: int, milliseconds_part: int) -> str:
+    def getLapTimeStrSplit(minutes_part: int, milliseconds_part: int) -> str:
         """Format the lap time string. (What a fuck all system of representing lap time)
 
         Args:
@@ -948,6 +948,24 @@ class F1Utils:
         if minutes_part == 0:
             return f"{seconds}.{remaining_milliseconds:03}"
         return f"{minutes_part:02}:{seconds:02}.{remaining_milliseconds:03}"
+
+    @staticmethod
+    def getLapTimeStr(milliseconds: int) -> str:
+        """Format the lap time string. (What a fuck all system of representing lap time)
+
+        Args:
+            milliseconds (int): The time in milliseconds
+
+        Returns:
+            str: String in the format of MM:SS.MS
+        """
+
+        seconds, ms = divmod(milliseconds, 1000)  # Get seconds and remaining milliseconds
+        minutes, seconds = divmod(seconds, 60)    # Get minutes and remaining seconds
+
+        if minutes > 0:
+            return f"{int(minutes):02}:{int(seconds):02}.{int(ms):03}"
+        return f"{int(seconds):02}.{int(ms):03}"
 
     @staticmethod
     def isFinishLineAfterPitGarage(track_id: TrackID) -> bool:

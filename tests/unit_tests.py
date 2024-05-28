@@ -704,6 +704,10 @@ class TestGetFastestTimesJson(RaceAnalyzerUT):
         }
 
         result = getFastestTimesJson(json_data)
+        self.assertEqual(result['s1'], expected_result['s1'])
+        self.assertEqual(result['s2'], expected_result['s2'])
+        self.assertEqual(result['s3'], expected_result['s3'])
+        self.assertEqual(result['lap'], expected_result['lap'])
         self.assertEqual(result, expected_result)
 
 # ----------------------------------------------------------------------------------------------------------------------

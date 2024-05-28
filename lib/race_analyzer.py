@@ -147,7 +147,7 @@ def getFastestTimesJson(json_data: Dict[str, Any], driver_data: Optional[Dict[st
 
         if value is None:
             return None
-        return F1Utils.millisecondsToSecondsMilliseconds(value)
+        return F1Utils.getLapTimeStr(value)
 
     fastest_dict = {
         'lap' : getFastestTimesDict(json_data=json_data,
