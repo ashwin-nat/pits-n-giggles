@@ -665,9 +665,7 @@ SOFTWARE.
         function handleDriverInfoClick(index) {
 
             if ({{ live_data_mode | tojson | safe }}) {
-                socket.emit('driver-info', {
-                    index: index
-                });
+                socket.emit('driver-info', {index: index});
             } else {
                 fetch(`/driver-info?index=${index}`)
                     .then(response => response.json())
@@ -2097,7 +2095,7 @@ SOFTWARE.
 
         document.getElementById("getRaceInfo").addEventListener("click", function () {
             if ({{ live_data_mode | tojson | safe }}) {
-                socket.emit('race-info');
+                socket.emit('race-info', {'message' : 'dummy'});
             } else {
                 fetch(`/race-info`)
                     .then(response => response.json())

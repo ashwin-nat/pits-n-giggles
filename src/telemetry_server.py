@@ -204,14 +204,21 @@ class TelemetryWebServer:
         # Socketio endpoints
         @self.m_socketio.on('connect')
         def handleConnect():
+            """SocketIO endpoint for handling client connection
+            """
             logging.debug("Client connected")
 
         @self.m_socketio.on('disconnect')
         def handleDisconnect():
+            """SocketIO endpoint for handling client disconnection
+            """
             logging.debug("Client disconnected")
 
         @self.m_socketio.on('race-info')
-        def handeRaceInfo():
+        # pylint: disable=unused-argument
+        def handeRaceInfo(dummy_arg: Any):
+            """SocketIO endpoint to handle race info request
+            """
             emit("race-info-response", TelWebAPI.OverallRaceStatsRsp().toJSON(), broadcast=False)
 
         @self.m_socketio.on('driver-info')
