@@ -427,6 +427,9 @@ class PacketSessionData:
         - m_numRedFlagPeriods (uint8): Number of red flags called during the session.
     """
 
+    F1_23_MAX_NUM_WEATHER_FORECAST_SAMPLES = 56
+    F1_23_MAX_NUM_MARSHAL_ZONES = 21
+
     PACKET_FORMAT_SECTION_0 = ("<"
         "B" # uint8           m_weather;                  // Weather - 0 = clear, 1 = light cloud, 2 = overcast
             #                                         // 3 = light rain, 4 = heavy rain, 5 = storm
@@ -637,8 +640,8 @@ class PacketSessionData:
         self.m_numVirtualSafetyCarPeriods: int
         self.m_numRedFlagPeriods: int
 
-        self.m_maxMarshalZones = 21
-        self.m_maxWeatherForecastSamples = 56
+        self.m_maxMarshalZones = self.F1_23_MAX_NUM_MARSHAL_ZONES
+        self.m_maxWeatherForecastSamples = self.F1_23_MAX_NUM_WEATHER_FORECAST_SAMPLES
         # First, section 0
         section_0_raw_data = _extract_sublist(data, 0, self.PACKET_LEN_SECTION_0)
         byte_index_so_far = self.PACKET_LEN_SECTION_0

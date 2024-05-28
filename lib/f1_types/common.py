@@ -924,6 +924,30 @@ class F1Utils:
         return format_string.format(float_val)
 
     @staticmethod
+    def getLapTimeStr(minutes_part: int, milliseconds_part: int) -> str:
+        """Format the lap time string. (What a fuck all system of representing lap time)
+
+        Args:
+            minutes_part (int): The minutes part of the lap time
+            milliseconds_part (int): The remainder of the lap time, in milliseconds
+
+        Returns:
+            str: String in the format of MM:SS.MS
+        """
+
+        # Convert total milliseconds to seconds and the remaining milliseconds
+        total_seconds = milliseconds_part / 1000.0
+
+        # Get the seconds part (without minutes)
+        seconds = int(total_seconds)
+
+        # Get the remaining milliseconds part
+        remaining_milliseconds = int(milliseconds_part % 1000)
+
+        # Format the string
+        return f"{minutes_part:02}:{seconds:02}.{remaining_milliseconds:03}"
+
+    @staticmethod
     def isFinishLineAfterPitGarage(track_id: TrackID) -> bool:
         """In this track, is the finish line after the pit garage?
 
