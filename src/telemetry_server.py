@@ -26,7 +26,7 @@ from typing import Dict, Any, Optional, Callable
 from http import HTTPStatus
 import logging
 from flask import Flask, render_template, request, jsonify
-from flask_socketio import SocketIO
+from flask_socketio import SocketIO, emit
 import src.telemetry_data as TelData
 import src.telemetry_web_api as TelWebAPI
 
@@ -210,6 +210,28 @@ class TelemetryWebServer:
         def handleDisconnect():
             logging.debug("Client disconnected")
 
+        @self.m_socketio.on('race-info')
+        def handeRaceInfo():
+            emit("race-info-response", TelWebAPI.OverallRaceStatsRsp().toJSON(), broadcast=False)
+
+        @self.m_socketio.on('driver-info')
+        def handleDriverInfo(data: Dict[str, Any]):
+
+            response = None
+            index = data.get("index", None)
+            error_response = self.validateIntGetRequestParam(index, "index")
+            if error_response:
+                emit("driver-info-response", error_response, broadcast=False)
+                response = error_response
+            elif not TelData.isDriverIndexValid(index):
+                response = {
+                    'error' : 'Invalid parameter value',
+                    'message' : 'Invalid index'
+                }
+            else:
+                response = TelWebAPI.DriverInfoRsp(index).toJSON()
+            emit("driver-info-response", response, broadcast=False)
+
     def validateIntGetRequestParam(self, param: Any, param_name: str) -> Optional[Dict[str, Any]]:
         """
         Validate integer get request parameter.
@@ -230,7 +252,7 @@ class TelemetryWebServer:
             }
 
         # Check if the provided value for index is numeric
-        if not param.isdigit():
+        if not isinstance(param, int) and not param.isdigit():
             return {
                 'error': 'Invalid parameter value',
                 'message': f'"{param_name}" parameter must be numeric'

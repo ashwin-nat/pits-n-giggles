@@ -132,7 +132,22 @@ def getFastestTimesJson(json_data: Dict[str, Any], driver_data: Optional[Dict[st
                             fastest_dict['time'] = best_lap_time
                             fastest_dict['driver-name'] = driver_data["driver-name"]
                             fastest_dict['team-id'] = driver_data["participant-data"]["team-id"]
-        return fastest_dict
+        return fastest_dict if any(value is not None for value in fastest_dict.values()) else None
+
+    def getFastestTimeStr(value : Optional[int]) -> Optional[str]:
+        """
+        Converts the given value to a string in minutes:seconds.milliseconds format.
+
+        Arguments:
+            - value: The value to convert
+
+        Returns:
+            A string in minutes:seconds.milliseconds format
+        """
+
+        if value is None:
+            return None
+        return F1Utils.millisecondsToSecondsMilliseconds(value)
 
     fastest_dict = {
         'lap' : getFastestTimesDict(json_data=json_data,
@@ -148,10 +163,14 @@ def getFastestTimesJson(json_data: Dict[str, Any], driver_data: Optional[Dict[st
                                     best_time_lap_num_key="best-sector-3-lap-num",
                                     best_time_key="sector-3-time-in-ms"),
     }
-    fastest_dict['lap']['time-str'] = F1Utils.millisecondsToMinutesSecondsMilliseconds(fastest_dict['lap']['time'])
-    fastest_dict['s1']['time-str'] = F1Utils.millisecondsToSecondsMilliseconds(fastest_dict['s1']['time'])
-    fastest_dict['s2']['time-str'] = F1Utils.millisecondsToSecondsMilliseconds(fastest_dict['s2']['time'])
-    fastest_dict['s3']['time-str'] = F1Utils.millisecondsToSecondsMilliseconds(fastest_dict['s3']['time'])
+    if fastest_dict['lap'] is not None:
+        fastest_dict['lap']['time-str'] = getFastestTimeStr(fastest_dict['lap']['time'])
+    if fastest_dict['s1'] is not None:
+        fastest_dict['s1']['time-str'] = getFastestTimeStr(fastest_dict['s1']['time'])
+    if fastest_dict['s2'] is not None:
+        fastest_dict['s2']['time-str'] = getFastestTimeStr(fastest_dict['s2']['time'])
+    if fastest_dict['s3'] is not None:
+        fastest_dict['s3']['time-str'] = getFastestTimeStr(fastest_dict['s3']['time'])
 
     return fastest_dict
 

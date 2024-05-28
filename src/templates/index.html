@@ -663,14 +663,21 @@ SOFTWARE.
         }
 
         function handleDriverInfoClick(index) {
-            fetch(`/driver-info?index=${index}`)
-                .then(response => response.json())
-                .then(data => {
-                    openDriverInfoModal(data);
-                })
-                .catch(error => {
-                    console.error('Error fetching driver info:', error);
+
+            if ({{ live_data_mode | tojson | safe }}) {
+                socket.emit('driver-info', {
+                    index: index
                 });
+            } else {
+                fetch(`/driver-info?index=${index}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        openDriverInfoModal(data);
+                    })
+                    .catch(error => {
+                        console.error('Error fetching driver info:', error);
+                    });
+            }
         }
 
         function createAccordion(title, content) {
@@ -756,6 +763,19 @@ SOFTWARE.
                     `;
                 }
 
+                function isFastestRecordAvailable(data) {
+
+                    if ("records" in data &&
+                        'fastest' in data["records"] &&
+                        data["records"]["fastest"]["lap"] != null &&
+                        data["records"]["fastest"]["s1"] != null &&
+                        data["records"]["fastest"]["s2"] != null &&
+                        data["records"]["fastest"]["s3"] != null) {
+                        return true;
+                    }
+                    return false;
+                }
+
                 const timesRecordsContent = document.createElement('div');
                 const timesRecordsSubDiv = document.createElement('div');
                 const timesRecordsTable = document.createElement('table');
@@ -773,7 +793,7 @@ SOFTWARE.
                 `;
 
                 const timesRecordsTableBody = timesRecordsTable.createTBody();
-                if ("records" in data && 'fastest' in data["records"] && data["records"]["fastest"] != null) {
+                if (isFastestRecordAvailable(data)) {
                     if ('lap' in data["records"]["fastest"]) {
                         insertFastestRow(data, timesRecordsTableBody, "Lap", "lap");
                     }
@@ -786,7 +806,6 @@ SOFTWARE.
                     if ('s3' in data["records"]["fastest"]) {
                         insertFastestRow(data, timesRecordsTableBody, "Sector 3", "s3");
                     }
-
                 } else {
                     const row = timesRecordsTableBody.insertRow();
                     row.innerHTML = '<td colspan="5">Fastest Times Records data not available</td>';
@@ -828,6 +847,10 @@ SOFTWARE.
                     row3.insertCell().textContent = highestTyreWear + "%";
                 }
 
+                function isObjectEmpty(obj) {
+                    return obj && Object.keys(obj).length === 0 && obj.constructor === Object;
+                }
+
                 const tyreStintRecordsContent = document.createElement('div');
                 const tyreStintRecordsSubDiv = document.createElement('div');
                 const tyreStintsRecordsTable = document.createElement('table');
@@ -844,7 +867,8 @@ SOFTWARE.
                 `;
 
                 const tyreStintRecordsTableBody = tyreStintsRecordsTable.createTBody();
-                if ("records" in data && 'tyre-stats' in data["records"] && data["records"]["tyre-stats"] != null) {
+                if ("records" in data && 'tyre-stats' in data["records"] && data["records"]["tyre-stats"] != null &&
+                    !isObjectEmpty(data["records"]["tyre-stats"])) {
 
                     const tyreStats = data["records"]["tyre-stats"];
                     for (let compound in tyreStats) {
@@ -854,7 +878,7 @@ SOFTWARE.
 
                 } else {
                     const row = tyreStintRecordsTableBody.insertRow();
-                    row.innerHTML = '<td colspan="5">Tyre Stint Records data not available</td>';
+                    row.innerHTML = '<td colspan="4">Tyre Stint Records data not available</td>';
                 }
                 tyreStintRecordsContent.appendChild(createAccordion('Tyre Stint Records', tyreStintRecordsSubDiv));
                 return tyreStintRecordsContent;
@@ -2072,14 +2096,18 @@ SOFTWARE.
         });
 
         document.getElementById("getRaceInfo").addEventListener("click", function () {
-            fetch(`/race-info`)
-                .then(response => response.json())
-                .then(data => {
-                    openRaceInfoModal(data);
-                })
-                .catch(error => {
-                    console.error('Error fetching race info:', error);
-                });
+            if ({{ live_data_mode | tojson | safe }}) {
+                socket.emit('race-info');
+            } else {
+                fetch(`/race-info`)
+                    .then(response => response.json())
+                    .then(data => {
+                        openRaceInfoModal(data);
+                    })
+                    .catch(error => {
+                        console.error('Error fetching race info:', error);
+                    });
+            }
         });
 
         function hideColumn(columnName) {
@@ -2167,6 +2195,22 @@ SOFTWARE.
         // Receive details from server
         socket.on('race-table-update', function (data) {
             displayData(data);
+        });
+
+        socket.on('race-info-response', function (data) {
+            if (!('error' in data)) {
+                openRaceInfoModal(data);
+            } else {
+                console.log("Received error for race-info request", data);
+            }
+        });
+
+        socket.on('driver-info-response', function (data) {
+            if (!('error' in data)) {
+                openDriverInfoModal(data);
+            } else {
+                console.log("Received error for driver-info request", data);
+            }
         });
 
 
