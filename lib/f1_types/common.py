@@ -197,22 +197,7 @@ class SessionType23(Enum):
         Returns:
             str: String representation of the SessionType23.
         """
-        return {
-            SessionType23.UNKNOWN : "N/A",
-            SessionType23.PRACTICE_1 : "Practice 1",
-            SessionType23.PRACTICE_2 : "Practice 2",
-            SessionType23.PRACTICE_3 : "Practice 3",
-            SessionType23.SHORT_PRACTICE : "Short Practice",
-            SessionType23.QUALIFYING_1 : "Qualifying 1",
-            SessionType23.QUALIFYING_2 : "Qualifying 2",
-            SessionType23.QUALIFYING_3 : "Qualifying 3",
-            SessionType23.SHORT_QUALIFYING : "Short Qualifying",
-            SessionType23.ONE_SHOT_QUALIFYING : "One Shot Qualifying",
-            SessionType23.RACE  : "Race",
-            SessionType23.RACE_2  : "Race 2",
-            SessionType23.RACE_3  : "Race 3",
-            SessionType23.TIME_TRIAL  : "Time Trial",
-        }.get(self, " ")
+        return self.name.replace('_', ' ').title()
 
 class SessionType24(Enum):
     UNKNOWN = 0
@@ -256,6 +241,42 @@ class SessionType24(Enum):
 
         Returns:
             str: String representation of the SessionType24.
+        """
+        return self.name.replace('_', ' ').title()
+
+class SessionLength(Enum):
+    """
+    Enum class representing F1 session lengths.
+    """
+    NONE = 0
+    VERY_SHORT = 2
+    SHORT = 3
+    MEDIUM = 4
+    MEDIUM_LONG = 5
+    LONG = 6
+    FULL = 7
+
+    @staticmethod
+    def isValid(session_type: int):
+        """
+        Check if the given session type is valid.
+
+        Args:
+            session_type (int): The session type to be validated.
+
+        Returns:
+            bool: True if valid
+        """
+        if isinstance(session_type, SessionType23):
+            return True  # It's already an instance of SessionType23
+        return any(session_type == member.value for member in SessionType23)
+
+    def __str__(self):
+        """
+        Return a string representation of the SessionType23 with spaces.
+
+        Returns:
+            str: String representation of the SessionType23.
         """
         return self.name.replace('_', ' ').title()
 
@@ -729,6 +750,47 @@ class TractionControlAssistMode(Enum):
         if isinstance(traction_control_assist_mode, TractionControlAssistMode):
             return True  # It's already an instance of TractionControlAssistMode
         return any(traction_control_assist_mode == member.value for member in TractionControlAssistMode)
+
+class GearboxAssistMode(Enum):
+    """
+    Enumeration representing different Gearbox Control Assist modes.
+
+    Attributes:
+        MANAUL: Off
+        MANUAL_WITH_SUGGESTED_GEAR: Manual Transmission with suggested gear
+        AUTO: Full assist
+
+        Note:
+            Each attribute represents a unique ERS deployment mode identified by an integer value.
+    """
+
+    MANAUL = 1
+    MANUAL_WITH_SUGGESTED_GEAR = 2
+    AUTO = 3
+
+    def __str__(self) -> str:
+        """
+        Returns a human-readable string representation of the Traction Control Assist mode.
+
+        Returns:
+            str: String representation of the Traction Control Assist mode.
+        """
+        return self.name.replace('_', ' ').title()
+
+    @staticmethod
+    def isValid(gearbox_assist_code: int) -> bool:
+        """
+        Check if the Gearbox Control Assist code maps to a valid enum value.
+
+        Args:
+            gearbox_assist_code (int): The Gearbox Assist code
+
+        Returns:
+            bool: True if the event type is valid, False otherwise.
+        """
+        if isinstance(gearbox_assist_code, GearboxAssistMode):
+            return True  # It's already an instance of GearboxAssistMode
+        return any(gearbox_assist_code == member.value for member in GearboxAssistMode)
 
 class TeamID(Enum):
     """

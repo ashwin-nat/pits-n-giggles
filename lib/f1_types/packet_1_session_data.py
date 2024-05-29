@@ -27,7 +27,8 @@
 import struct
 from typing import Dict, Any, List
 from enum import Enum
-from .common import _split_list, _extract_sublist, SessionType23, SessionType24, PacketHeader, TrackID, SafetyCarType
+from .common import _split_list, _extract_sublist, SessionType23, SessionType24, PacketHeader, TrackID, SafetyCarType, \
+    GearboxAssistMode, SessionLength
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -406,7 +407,7 @@ class PacketSessionData:
         - m_pitStopRejoinPosition (uint8): Predicted position to rejoin at (player).
         - m_steeringAssist (uint8): Steering assist status (0 = off, 1 = on).
         - m_brakingAssist (uint8): Braking assist status (0 = off, 1 = low, 2 = medium, 3 = high).
-        - m_gearboxAssist (uint8): Gearbox assist status (1 = manual, 2 = manual & suggested gear, 3 = auto).
+        - m_gearboxAssist (GearboxAssistMode): Gearbox assist mode (Refer GearboxAssistMode enumeration).
         - m_pitAssist (uint8): Pit assist status (0 = off, 1 = on).
         - m_pitReleaseAssist (uint8): Pit release assist status (0 = off, 1 = on).
         - m_ERSAssist (uint8): ERS assist status (0 = off, 1 = on).
@@ -416,7 +417,7 @@ class PacketSessionData:
         - m_gameMode (uint8): Game mode ID.
         - m_ruleSet (uint8): Ruleset ID.
         - m_timeOfDay (uint32): Local time of day in minutes since midnight.
-        - m_sessionLength (uint8): Session length.
+        - m_sessionLength (SessionLength): Session length. (Refer SessionLength enumeration).
         - m_speedUnitsLeadPlayer (uint8): Speed units for the lead player (0 = MPH, 1 = KPH).
         - m_temperatureUnitsLeadPlayer (uint8): Temperature units for the lead player (0 = Celsius, 1 = Fahrenheit).
         - m_speedUnitsSecondaryPlayer (uint8): Speed units for the secondary player (0 = MPH, 1 = KPH).
@@ -611,7 +612,7 @@ class PacketSessionData:
         self.m_pitStopRejoinPosition: int
         self.m_steeringAssist: int
         self.m_brakingAssist: int
-        self.m_gearboxAssist: int # TODO: make enum
+        self.m_gearboxAssist: GearboxAssistMode
         self.m_pitAssist: int
         self.m_pitReleaseAssist: int
         self.m_ERSAssist: int
@@ -621,7 +622,7 @@ class PacketSessionData:
         self.m_gameMode: int
         self.m_ruleSet: int
         self.m_timeOfDay: int
-        self.m_sessionLength: int # TODO: make enum
+        self.m_sessionLength: SessionLength # TODO: make enum
         self.m_speedUnitsLeadPlayer: int
         self.m_temperatureUnitsLeadPlayer: int
         self.m_speedUnitsSecondaryPlayer: int
@@ -770,6 +771,10 @@ class PacketSessionData:
             self.m_numRedFlagPeriods,                # uint8
         ) = unpacked_data
         section_4_raw_data = None
+        if GearboxAssistMode.isValid(self.m_gearboxAssist):
+            self.m_gearboxAssist = GearboxAssistMode(self.m_gearboxAssist)
+        if SessionLength.isValid(self.m_sessionLength):
+            self.m_sessionLength = SessionLength(self.m_sessionLength)
 
         # Section 5 - F1 24 specific stuff
         if header.m_gameYear == 24:

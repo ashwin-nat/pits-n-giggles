@@ -41,6 +41,8 @@ from .common import (
     PacketHeader,
     TrackID,
     TractionControlAssistMode,
+    GearboxAssistMode,
+    SessionLength,
 )
 from .packet_0_car_motion_data import PacketMotionData, CarMotionData
 from .packet_1_session_data import MarshalZone, WeatherForecastSample, PacketSessionData
@@ -77,6 +79,8 @@ __all__ = [
     "PacketHeader",
     "TrackID",
     "TractionControlAssistMode",
+    "GearboxAssistMode",
+    "SessionLength",
 
     # Packet 0 - car motion
     "PacketMotionData",
