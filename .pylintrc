@@ -428,7 +428,7 @@ max-returns=11
 max-branches = 20
 
 # Maximum number of statements in function / method body
-max-statements = 100 # Using a high number because some of the packets have a lot of fields
+max-statements = 200 # Using a high number because some of the packets have a lot of fields
 
 # Maximum number of attributes for a class (see R0902).
 max-attributes = 100 # Using a high number because some of the packets have a lot of fields

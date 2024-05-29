@@ -27,7 +27,7 @@
 import struct
 from enum import Enum
 from typing import Dict, Any
-from .common import PacketHeader
+from .common import PacketHeader, SafetyCarEventType, SafetyCarType
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -106,6 +106,12 @@ class PacketEventData:
 
         # Overtake: Overtake occurred
         OVERTAKE = "OVTK"
+
+        # Safety car: Various safety car related events
+        SAFETY_CAR = "SCAR"
+
+        # Collion: Inter-car collision event
+        COLLISION = "COLL"
 
         @staticmethod
         def isValid(event_type: str) -> bool:
@@ -835,6 +841,99 @@ class PacketEventData:
                 "being-overtaken-vehicle-idx": self.beingOvertakenVehicleIdx
             }
 
+    class SafetyCarEvent:
+        """
+        The class representing the safety car event. Refer to the various safety car event types.
+
+        Attributes:
+            m_safety_car_type (SafetyCarType): Refer SafetyCarType enumeration
+            m_event_type (SafetyCarEventType): Refer SafetyCarEventType enumeration
+        """
+
+        def __init__(self, data: bytes) -> None:
+            """
+            Initializes an Overtake object by unpacking the provided binary data.
+
+            Parameters:
+                data (bytes): Binary data to be unpacked.
+
+            Raises:
+                struct.error: If the binary data does not match the expected format.
+            """
+            format_str = "<BB"
+            self.m_safety_car_type, self.m_event_type = struct.unpack(format_str,
+                data[0:struct.calcsize(format_str)])
+            if SafetyCarType.isValid(self.m_safety_car_type):
+                self.m_safety_car_type = SafetyCarType(self.m_safety_car_type)
+            if SafetyCarEventType.isValid(self.m_event_type):
+                self.m_event_type = SafetyCarEventType(self.m_event_type)
+
+        def __str__(self) -> str:
+            """
+            Returns a string representation of the SafetyCar object.
+
+            Returns:
+                str: String representation of the object.
+            """
+            return f"SafetyCarEvent(safety_car_type={str(self.m_safety_car_type)}, " \
+                f"event_type={str(self.m_event_type)})"
+
+        def toJSON(self) -> Dict[str, Any]:
+            """
+            Convert the Overtake instance to a JSON-compatible dictionary.
+
+            Returns:
+                Dict[str, Any]: JSON-compatible dictionary representing the Overtake instance.
+            """
+            return {
+                "safety-car-type" : str(self.m_safety_car_type),
+                "safety-car-event-type" : str(self.m_event_type)
+            }
+
+    class Collision:
+        """
+        The class representing the COLLISION event. This is sent when one vehicle overtakes another.
+
+        Attributes:
+            m_vehicle_1_index (int): The index of the overtaking vehicle.
+            m_vehicle_2_index (int): The index of the vehicle being overtaken.
+        """
+
+        def __init__(self, data: bytes) -> None:
+            """
+            Initializes a Collision object by unpacking the provided binary data.
+
+            Parameters:
+                data (bytes): Binary data to be unpacked.
+
+            Raises:
+                struct.error: If the binary data does not match the expected format.
+            """
+            format_str = "<BB"
+            self.m_vehicle_1_index, self.m_vehicle_2_index = struct.unpack(format_str,
+                data[0:struct.calcsize(format_str)])
+
+        def __str__(self) -> str:
+            """
+            Returns a string representation of the Collision object.
+
+            Returns:
+                str: String representation of the object.
+            """
+            return f"Collision(m_vehicle_1_index={str(self.m_vehicle_1_index)}, " \
+                f"m_vehicle_2_index={str(self.m_vehicle_2_index)})"
+
+        def toJSON(self) -> Dict[str, Any]:
+            """
+            Convert the Collision instance to a JSON-compatible dictionary.
+
+            Returns:
+                Dict[str, Any]: JSON-compatible dictionary representing the Collision instance.
+            """
+            return {
+                "vehicle-1-index": self.m_vehicle_1_index,
+                "vehicle-2-index": self.m_vehicle_2_index
+            }
 
     # Mappings between the event type and the type of object to parse into
     event_type_map = {
@@ -856,7 +955,9 @@ class PacketEventData:
         EventPacketType.FLASHBACK: Flashback,
         EventPacketType.BUTTON_STATUS: Buttons,
         EventPacketType.RED_FLAG: None,
-        EventPacketType.OVERTAKE: Overtake
+        EventPacketType.OVERTAKE: Overtake,
+        EventPacketType.SAFETY_CAR: SafetyCarEvent,
+        EventPacketType.COLLISION: Collision
     }
 
     def __init__(self, header: PacketHeader, packet: bytes) -> None:

@@ -71,6 +71,7 @@ class RaceInfoRsp:
 
         globals_json = {
             # First, global fields
+            "f1-game-year" : _getValueOrDefaultValue(self.m_globals.m_game_year, None),
             "circuit": _getValueOrDefaultValue(self.m_globals.m_circuit),
             "track-temperature": _getValueOrDefaultValue(self.m_globals.m_track_temp),
             "air-temperature": _getValueOrDefaultValue(self.m_globals.m_air_temp),

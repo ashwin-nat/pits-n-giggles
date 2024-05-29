@@ -82,6 +82,7 @@ class F1PacketType(Enum):
     SESSION_HISTORY = 11
     TYRE_SETS = 12
     MOTION_EX = 13
+    TIME_TRIAL = 14
 
     @staticmethod
     def isValid(packet_type) -> bool:
@@ -155,7 +156,7 @@ class ResultStatus(Enum):
         }
         return status_mapping.get(self.value, "---")
 
-class SessionType(Enum):
+class SessionType23(Enum):
     """
     Enum class representing F1 session types.
     """
@@ -185,33 +186,78 @@ class SessionType(Enum):
         Returns:
             bool: True if valid
         """
-        if isinstance(session_type, SessionType):
-            return True  # It's already an instance of SessionType
-        return any(session_type == member.value for member in SessionType)
+        if isinstance(session_type, SessionType23):
+            return True  # It's already an instance of SessionType23
+        return any(session_type == member.value for member in SessionType23)
 
     def __str__(self):
         """
-        Return a string representation of the SessionType with spaces.
+        Return a string representation of the SessionType23 with spaces.
 
         Returns:
-            str: String representation of the SessionType.
+            str: String representation of the SessionType23.
         """
         return {
-            SessionType.UNKNOWN : "N/A",
-            SessionType.PRACTICE_1 : "Practice 1",
-            SessionType.PRACTICE_2 : "Practice 2",
-            SessionType.PRACTICE_3 : "Practice 3",
-            SessionType.SHORT_PRACTICE : "Short Practice",
-            SessionType.QUALIFYING_1 : "Qualifying 1",
-            SessionType.QUALIFYING_2 : "Qualifying 2",
-            SessionType.QUALIFYING_3 : "Qualifying 3",
-            SessionType.SHORT_QUALIFYING : "Short Qualifying",
-            SessionType.ONE_SHOT_QUALIFYING : "One Shot Qualifying",
-            SessionType.RACE  : "Race",
-            SessionType.RACE_2  : "Race 2",
-            SessionType.RACE_3  : "Race 3",
-            SessionType.TIME_TRIAL  : "Time Trial",
+            SessionType23.UNKNOWN : "N/A",
+            SessionType23.PRACTICE_1 : "Practice 1",
+            SessionType23.PRACTICE_2 : "Practice 2",
+            SessionType23.PRACTICE_3 : "Practice 3",
+            SessionType23.SHORT_PRACTICE : "Short Practice",
+            SessionType23.QUALIFYING_1 : "Qualifying 1",
+            SessionType23.QUALIFYING_2 : "Qualifying 2",
+            SessionType23.QUALIFYING_3 : "Qualifying 3",
+            SessionType23.SHORT_QUALIFYING : "Short Qualifying",
+            SessionType23.ONE_SHOT_QUALIFYING : "One Shot Qualifying",
+            SessionType23.RACE  : "Race",
+            SessionType23.RACE_2  : "Race 2",
+            SessionType23.RACE_3  : "Race 3",
+            SessionType23.TIME_TRIAL  : "Time Trial",
         }.get(self, " ")
+
+class SessionType24(Enum):
+    UNKNOWN = 0
+    PRACTICE_1 = 1
+    PRACTICE_2 = 2
+    PRACTICE_3 = 3
+    SHORT_PRACTICE = 4
+    QUALIFYING_1 = 5
+    QUALIFYING_2 = 6
+    QUALIFYING_3 = 7
+    SHORT_QUALIFYING = 8
+    ONE_SHOT_QUALIFYING = 9
+    SPRINT_SHOOTOUT_1 = 10
+    SPRINT_SHOOTOUT_2 = 11
+    SPRINT_SHOOTOUT_3 = 12
+    SHORT_SPRINT_SHOOTOUT = 13
+    ONE_SHOT_SPRINT_SHOOTOUT = 14
+    RACE = 15
+    RACE_2 = 16
+    RACE_3 = 17
+    TIME_TRIAL = 18
+
+    @staticmethod
+    def isValid(session_type: int):
+        """
+        Check if the given session type is valid.
+
+        Args:
+            session_type (int): The session type to be validated.
+
+        Returns:
+            bool: True if valid
+        """
+        if isinstance(session_type, SessionType24):
+            return True  # It's already an instance of SessionType24
+        return any(session_type == member.value for member in SessionType24)
+
+    def __str__(self):
+        """
+        Return a string representation of the SessionType24 with spaces.
+
+        Returns:
+            str: String representation of the SessionType24.
+        """
+        return self.name.replace('_', ' ').title()
 
 class ActualTyreCompound(Enum):
     """
@@ -363,6 +409,98 @@ class VisualTyreCompound(Enum):
         if isinstance(visual_tyre_compound, VisualTyreCompound):
             return True  # It's already an instance of VisualTyreCompound
         return any(visual_tyre_compound == member.value for member in VisualTyreCompound)
+
+class SafetyCarType(Enum):
+    """
+    Enumeration representing different safety car statuses.
+
+    Attributes:
+        NO_SAFETY_CAR (int): No safety car on the track.
+        FULL_SAFETY_CAR (int): Full safety car deployed.
+        VIRTUAL_SAFETY_CAR (int): Virtual safety car deployed.
+        FORMATION_LAP (int): Formation lap in progress.
+
+        Note:
+            Each attribute represents a unique safety car status identified by an integer value.
+    """
+
+    NO_SAFETY_CAR = 0
+    FULL_SAFETY_CAR = 1
+    VIRTUAL_SAFETY_CAR = 2
+    FORMATION_LAP = 3
+
+    @staticmethod
+    def isValid(safety_car_status_code: int):
+        """Check if the given safety car status is valid.
+
+        Args:
+            safety_car_status_code (int): The safety car status to be validated.
+                Also supports type SafetyCarStatus. Returns true in this case
+
+        Returns:
+            bool: true if valid
+        """
+        if isinstance(safety_car_status_code, SafetyCarType):
+            return True  # It's already an instance of SafetyCarType
+        min_value = min(member.value for member in SafetyCarType)
+        max_value = max(member.value for member in SafetyCarType)
+        return min_value <= safety_car_status_code <= max_value
+
+    def __str__(self):
+        """
+        Returns a human-readable string representation of the safety car status.
+
+        Returns:
+            str: String representation of the safety car status.
+        """
+
+        return self.name
+
+class SafetyCarEventType(Enum):
+    """
+    Enumeration representing different safety car statuses.
+
+    Attributes:
+        DEPLOYED (int): Safety car deployed
+        RETURNING (int): Safety car returning
+        RETURNED (int): Safety car returned
+        RESUME_RACE (int): Resume race
+
+        Note:
+            Each attribute represents a unique safety car status identified by an integer value.
+    """
+
+    DEPLOYED = 0
+    RETURNING = 1
+    RETURNED = 2
+    RESUME_RACE = 3
+
+    @staticmethod
+    def isValid(safety_car_status_code: int):
+        """Check if the given safety car status is valid.
+
+        Args:
+            safety_car_status_code (int): The safety car status to be validated.
+                Also supports type SafetyCarEventType. Returns true in this case
+
+        Returns:
+            bool: true if valid
+        """
+        if isinstance(safety_car_status_code, SafetyCarEventType):
+            return True  # It's already an instance of SafetyCarEventType
+        min_value = min(member.value for member in SafetyCarEventType)
+        max_value = max(member.value for member in SafetyCarEventType)
+        return min_value <= safety_car_status_code <= max_value
+
+    def __str__(self):
+        """
+        Returns a human-readable string representation of the safety car status.
+
+        Returns:
+            str: String representation of the safety car status.
+        """
+
+        return self.name
 
 class Nationality(Enum):
     """
@@ -516,6 +654,81 @@ class Platform(Enum):
         if isinstance(platform_type_code, Platform):
             return True  # It's already an instance of Platform
         return any(platform_type_code == member.value for member in Platform)
+
+class TelemetrySetting(Enum):
+    """
+    Enumeration representing the telemetry setting for the player.
+    """
+
+    RESTRICTED = 0
+    PUBLIC = 1
+
+    def __str__(self) -> str:
+        """
+        Returns a human-readable string representation of the telemetry setting.
+
+        Returns:
+            str: String representation of the telemetry setting.
+        """
+        return {
+            TelemetrySetting.RESTRICTED: "Restricted",
+            TelemetrySetting.PUBLIC: "Public",
+        }.get(self)
+
+    @staticmethod
+    def isValid(telemetry_setting_code: int) -> bool:
+        """Check if the given telemetry setting code is valid.
+
+        Args:
+            telemetry_setting_code (int): The telemetry setting code to be validated.
+
+        Returns:
+            bool: True if valid.
+        """
+        if isinstance(telemetry_setting_code, TelemetrySetting):
+            return True  # It's already an instance of TelemetrySetting
+        return any(telemetry_setting_code == member.value for member in  TelemetrySetting)
+
+class TractionControlAssistMode(Enum):
+    """
+    Enumeration representing different Traction Control Assist modes.
+
+    Attributes:
+        OFF: Off
+        MEDIUM: Medium
+        FULL: Full
+
+        Note:
+            Each attribute represents a unique ERS deployment mode identified by an integer value.
+    """
+
+    OFF = 0
+    MEDIUM = 1
+    FULL = 2
+
+    def __str__(self) -> str:
+        """
+        Returns a human-readable string representation of the Traction Control Assist mode.
+
+        Returns:
+            str: String representation of the Traction Control Assist mode.
+        """
+        return self.name
+
+    @staticmethod
+    def isValid(traction_control_assist_mode: int) -> bool:
+        """
+        Check if the Traction Control Assist code maps to a valid enum value.
+
+        Args:
+            traction_control_assist_mode (int): The Traction Control Assist code
+
+        Returns:
+            bool: True if the event type is valid, False otherwise.
+        """
+        if isinstance(traction_control_assist_mode, TractionControlAssistMode):
+            return True  # It's already an instance of TractionControlAssistMode
+        return any(traction_control_assist_mode == member.value for member in TractionControlAssistMode)
 
 class TeamID(Enum):
     """

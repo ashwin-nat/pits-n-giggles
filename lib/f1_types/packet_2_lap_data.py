@@ -66,7 +66,7 @@ class LapData:
         m_pitStopShouldServePen (uint8): Whether the car should serve a penalty at this stop.
     """
 
-    PACKET_FORMAT = ("<"
+    PACKET_FORMAT_23 = ("<"
         "I" # uint32 - Last lap time in milliseconds
         "I" # uint32 - Current time around the lap in milliseconds
         "H" # uint16 - Sector 1 time in milliseconds
@@ -98,7 +98,13 @@ class LapData:
         "H" # uint16 - Time of the actual pit stop in ms
         "B" # uint8  - Whether the car should serve a penalty at this stop
     )
-    PACKET_LEN:int = struct.calcsize(PACKET_FORMAT)
+    PACKET_LEN_23:int = struct.calcsize(PACKET_FORMAT_23)
+
+    PACKET_FORMAT_EXTRA_24 = ("<"
+        "f" #float    m_speedTrapFastestSpeed;     // Fastest speed through speed trap for this car in kmph
+        "B" # uint8    m_speedTrapFastestLap;       // Lap no the fastest speed was achieved, 255 = not set
+    )
+    PACKET_LEN_EXTRA_24 = struct.calcsize(PACKET_FORMAT_EXTRA_24)
 
     class DriverStatus(Enum):
         """
@@ -218,18 +224,20 @@ class LapData:
             }
             return sector_mapping.get(self.value, "---")
 
-    def __init__(self, data) -> None:
+    def __init__(self, data: bytes, game_year: int) -> None:
         """
         Initialize LapData instance by unpacking binary data.
 
         Args:
         - data (bytes): Binary data containing lap information.
+        - game_year (int): The year of the game.
 
         Raises:
         - struct.error: If the binary data does not match the expected format.
         """
 
         # Assign the members from unpacked_data
+        common_fields_raw_data = _extract_sublist(data, 0, self.PACKET_FORMAT_23)
         (
             self.m_lastLapTimeInMS,
             self.m_currentLapTimeInMS,
@@ -260,7 +268,7 @@ class LapData:
             self.m_pitLaneTimeInLaneInMS,
             self.m_pitStopTimerInMS,
             self.m_pitStopShouldServePen,
-        ) = struct.unpack(self.PACKET_FORMAT, data)
+        ) = struct.unpack(self.PACKET_FORMAT_23, common_fields_raw_data)
 
         if LapData.DriverStatus.isValid(self.m_driverStatus):
             self.m_driverStatus = LapData.DriverStatus(self.m_driverStatus)
@@ -272,6 +280,17 @@ class LapData:
             self.m_sector = LapData.Sector(self.m_sector)
         self.m_currentLapInvalid = bool(self.m_currentLapInvalid)
         self.m_pitLaneTimerActive = bool(self.m_pitLaneTimerActive)
+
+        if game_year == 24:
+            f1_24_fields_raw_data = _extract_sublist(data, self.PACKET_LEN_23,
+                                                     self.PACKET_LEN_23 + self.PACKET_LEN_EXTRA_24)
+            (
+                self.m_speedTrapFastestSpeed,
+                self.m_SpeedTrapFastestLap,
+            ) = struct.unpack(self.PACKET_FORMAT_EXTRA_24, f1_24_fields_raw_data)
+        else:
+            self.m_SpeedTrapFastestLap = 0
+            self.m_speedTrapFastestSpeed = 0.0
 
     def __str__(self) -> str:
         """
@@ -354,7 +373,9 @@ class LapData:
             "pit-lane-timer-active": self.m_pitLaneTimerActive,
             "pit-lane-time-in-lane-in-ms": self.m_pitLaneTimeInLaneInMS,
             "pit-stop-timer-in-ms": self.m_pitStopTimerInMS,
-            "pit-stop-should-serve-pen": self.m_pitStopShouldServePen
+            "pit-stop-should-serve-pen": self.m_pitStopShouldServePen,
+            "speed-trap-fastest-speed" : self.m_speedTrapFastestSpeed,
+            "speed-trap-fastest-lap" : self.m_SpeedTrapFastestLap,
         }
 
 class PacketLapData:
@@ -380,7 +401,7 @@ class PacketLapData:
         self.m_header: PacketHeader = header
         self.m_LapData: List[LapData] = []  # LapData[22]
         self.m_LapDataCount = 22
-        len_of_lap_data_array = self.m_LapDataCount * LapData.PACKET_LEN
+        len_of_lap_data_array = self.m_LapDataCount * LapData.PACKET_LEN_23
 
         # 2 extra bytes for the two uint8 that follow LapData
         expected_len = (len_of_lap_data_array + 2)
@@ -390,8 +411,8 @@ class PacketLapData:
             )
 
         lap_data_packet_raw = _extract_sublist(packet, 0, len_of_lap_data_array)
-        for lap_data_packet in _split_list(lap_data_packet_raw, LapData.PACKET_LEN):
-            self.m_LapData.append(LapData(lap_data_packet))
+        for lap_data_packet in _split_list(lap_data_packet_raw, LapData.PACKET_LEN_23):
+            self.m_LapData.append(LapData(lap_data_packet, header.m_gameYear))
 
         time_trial_section_raw = _extract_sublist(packet, len_of_lap_data_array, len(packet))
         unpacked_data = struct.unpack('<bb', time_trial_section_raw)

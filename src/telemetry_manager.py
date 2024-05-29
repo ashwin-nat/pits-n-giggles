@@ -26,7 +26,7 @@ from lib.socket_receiver import UDPListener, TCPListener
 from lib.f1_types import F1PacketType, PacketHeader, PacketMotionData, PacketSessionData, PacketLapData, \
     PacketEventData, PacketParticipantsData, PacketCarSetupData, PacketCarTelemetryData, PacketCarStatusData, \
     PacketFinalClassificationData, PacketLobbyInfoData, PacketCarDamageData, PacketSessionHistoryData, \
-    PacketTyreSetsData, PacketMotionExData, InvalidPacketLengthError
+    PacketTyreSetsData, PacketMotionExData, InvalidPacketLengthError, PacketTimeTrialData
 
 
 # ------------------------- CLASSES --------------------------------------------
@@ -55,6 +55,7 @@ class F1TelemetryManager:
         F1PacketType.SESSION_HISTORY : PacketSessionHistoryData,
         F1PacketType.TYRE_SETS : PacketTyreSetsData,
         F1PacketType.MOTION_EX : PacketMotionExData,
+        F1PacketType.TIME_TRIAL : PacketTimeTrialData,
     }
 
     def __init__(self, port_number: int, replay_server: bool = False):

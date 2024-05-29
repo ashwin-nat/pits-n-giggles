@@ -27,7 +27,7 @@
 import struct
 from typing import Dict, List, Any
 from enum import Enum
-from .common import _split_list, PacketHeader, ActualTyreCompound, VisualTyreCompound
+from .common import _split_list, PacketHeader, ActualTyreCompound, VisualTyreCompound, TractionControlAssistMode
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -258,48 +258,6 @@ class CarStatusData:
                 return True  # It's already an instance of CarStatusData.ERSDeployMode
             return any(ers_deploy_mode_code == member.value for member in CarStatusData.ERSDeployMode)
 
-    class TractionControlAssistMode(Enum):
-        """
-        Enumeration representing different Traction Control Assist modes.
-
-        Attributes:
-            NONE (int): No ERS deployment (0)
-            MEDIUM (int): Medium ERS deployment (1)
-            HOPLAP (int): Hotlap ERS deployment (2)
-            OVERTAKE (int): Overtake ERS deployment (3)
-
-            Note:
-                Each attribute represents a unique ERS deployment mode identified by an integer value.
-        """
-
-        OFF = 0
-        MEDIUM = 1
-        FULL = 2
-
-        def __str__(self) -> str:
-            """
-            Returns a human-readable string representation of the Traction Control Assist mode.
-
-            Returns:
-                str: String representation of the Traction Control Assist mode.
-            """
-            return self.name
-
-        @staticmethod
-        def isValid(traction_control_assist_mode: int) -> bool:
-            """
-            Check if the Traction Control Assist code maps to a valid enum value.
-
-            Args:
-                traction_control_assist_mode (int): The Traction Control Assist code
-
-            Returns:
-                bool: True if the event type is valid, False otherwise.
-            """
-            if isinstance(traction_control_assist_mode, CarStatusData.TractionControlAssistMode):
-                return True  # It's already an instance of CarStatusData.TractionControlAssistMode
-            return any(traction_control_assist_mode == member.value for member in CarStatusData.TractionControlAssistMode)
-
     def __init__(self, data) -> None:
         """
         Initializes CarStatusData with raw data.
@@ -344,8 +302,8 @@ class CarStatusData:
             self.m_vehicleFiaFlags = CarStatusData.VehicleFIAFlags(self.m_vehicleFiaFlags)
         if CarStatusData.ERSDeployMode.isValid(self.m_ersDeployMode):
             self.m_ersDeployMode = CarStatusData.ERSDeployMode(self.m_ersDeployMode)
-        if CarStatusData.TractionControlAssistMode.isValid(self.m_tractionControl):
-            self.m_tractionControl = CarStatusData.TractionControlAssistMode(self.m_tractionControl)
+        if TractionControlAssistMode.isValid(self.m_tractionControl):
+            self.m_tractionControl = TractionControlAssistMode(self.m_tractionControl)
 
     def __str__(self):
         """

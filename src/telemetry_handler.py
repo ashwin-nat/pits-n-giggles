@@ -36,7 +36,7 @@ from src.telemetry_manager import F1TelemetryManager
 from lib.f1_types import F1PacketType, PacketSessionData, PacketLapData, \
     PacketEventData, PacketParticipantsData, PacketCarTelemetryData, PacketCarStatusData, \
     PacketFinalClassificationData, PacketCarDamageData, PacketSessionHistoryData, \
-    PacketTyreSetsData, SessionType
+    PacketTyreSetsData, SessionType23
 from lib.packet_cap import F1PacketCapture
 from lib.overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, OvertakeRecord
 import src.telemetry_data as TelData
@@ -674,13 +674,14 @@ class F1TelemetryHandler:
         # Perform the auto save stuff only for races
         event_type_str = TelData.getGlobals().m_event_type
         if event_type_str:
+            # TODO - update for F1 24
             unsupported_event_types = [
-                SessionType.PRACTICE_1,
-                SessionType.PRACTICE_2,
-                SessionType.PRACTICE_3,
-                SessionType.SHORT_PRACTICE,
-                SessionType.TIME_TRIAL,
-                SessionType.UNKNOWN
+                SessionType23.PRACTICE_1,
+                SessionType23.PRACTICE_2,
+                SessionType23.PRACTICE_3,
+                SessionType23.SHORT_PRACTICE,
+                SessionType23.TIME_TRIAL,
+                SessionType23.UNKNOWN
             ]
             is_event_supported = True
             for event_type in unsupported_event_types:
