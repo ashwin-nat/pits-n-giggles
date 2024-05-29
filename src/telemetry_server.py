@@ -25,7 +25,7 @@
 from typing import Dict, Any, Optional, Callable
 from http import HTTPStatus
 import logging
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_socketio import SocketIO, emit
 import src.telemetry_data as TelData
 import src.telemetry_web_api as TelWebAPI
@@ -91,6 +91,15 @@ class TelemetryWebServer:
         self.m_socketio_task = socketio_task
 
         # Define your endpoint
+        @self.m_app.route('/favicon.ico')
+        def favicon():
+            """Return the favicon file
+
+            Returns:
+                file: Favicon file
+            """
+            return send_from_directory('static', 'favicon.ico', mimetype='image/vnd.microsoft.icon')
+
         @self.m_app.route('/telemetry-info')
         def telemetryInfo() -> Dict:
             """
