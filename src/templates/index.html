@@ -483,8 +483,9 @@ SOFTWARE.
         }
 
         function displayData(data) {
+            const gameYear = "game-year" in data ? data["game-year"] : 2023;
             if ('table-entries' in data) {
-                updateRaceTable(getRelevantRaceTableRows(data));
+                updateRaceTable(getRelevantRaceTableRows(data), gameYear);
             }
             updateGlobalInfo(data["circuit"], data["event-type"], data["track-temperature"], data["current-lap"],
                 data["total-laps"], data["safety-car-status"], data["fastest-lap-overall"],
@@ -524,7 +525,7 @@ SOFTWARE.
             });
         }
 
-        function updateRaceTable(entries) {
+        function updateRaceTable(entries, gameYear) {
 
             function truncateName(name) {
 
@@ -572,7 +573,12 @@ SOFTWARE.
                         row.insertCell().textContent = entry["delta-to-leader"];
                     }
                 }
-                row.insertCell().textContent = entry["ers"];
+                if (gameYear == 2023) {
+                    row.insertCell().textContent = entry["ers"];
+                } else {
+                    row.insertCell().innerHTML = `${entry["ers"]}<br>${entry["ers-mode"]}`;
+                }
+                const ersCell = row.insertCell();
 
                 const warningsPensCell = row.insertCell();
                 const dtPlusSg = entry["num-dt"] + "DT + " +

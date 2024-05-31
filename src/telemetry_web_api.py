@@ -22,7 +22,7 @@
 
 import logging
 from typing import Dict, Any, Optional, List
-from lib.f1_types import F1Utils
+from lib.f1_types import F1Utils, CarStatusData
 import lib.race_analyzer as RaceAnalyzer
 import src.telemetry_data as TelData
 from src.telemetry_handler import dumpPktCapToFile, getOvertakeJSON, GetOvertakesStatus, getCustomMarkersJSON
@@ -263,6 +263,14 @@ class DriversListRsp:
                                                                data_per_driver.m_is_pitting,
                                                                data_per_driver.m_dnf_status_code),
                     "ers": _getValueOrDefaultValue(data_per_driver.m_ers_perc),
+                    "ers-mode" : _getValueOrDefaultValue(str(data_per_driver.m_packet_car_status.ERSDeployMode)
+                                                         if data_per_driver.m_packet_car_status else None),
+                    "ers-harvested-by-mguk-this-lap" : (((data_per_driver.m_packet_car_status.m_ersHarvestedThisLapMGUK
+                                                          if data_per_driver.m_packet_car_status else 0.0) /
+                                                            CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0),
+                    "ers-deployed-this-lap" : ((data_per_driver.m_packet_car_status.m_ersDeployedThisLap
+                                                if data_per_driver.m_packet_car_status else 0.0) /
+                                                    CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0,
                     "best": _getValueOrDefaultValue(data_per_driver.m_best_lap_str),
                     "best-lap-delta" : _getValueOrDefaultValue(data_per_driver.m_best_lap_delta),
                     "last": _getValueOrDefaultValue(data_per_driver.m_last_lap),
