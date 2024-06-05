@@ -265,7 +265,7 @@ class TelemetryWebServer:
         """
 
         # Check if only one parameter is provided
-        if not param:
+        if param is None:
             return {
                 'error': 'Invalid parameters',
                 'message': f'Provide "{param_name}" parameter'
