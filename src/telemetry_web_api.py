@@ -216,6 +216,42 @@ class DriverInfoRsp:
 
         return self.m_rsp
 
+class ThrottleBrakeUpdate:
+    """
+    Throttle brake update class.
+    """
+
+    def __init__(self):
+        """Get the throttle brake update and prepare the rsp fields
+
+        Args:
+            throttle (float): The throttle value
+            brake (float): The brake value
+        """
+
+        with TelData._driver_data_lock:
+            player_data = TelData._driver_data.m_driver_data.get(TelData._driver_data.m_player_index, None)
+
+            if player_data and player_data.m_packet_car_telemetry:
+                self.m_throttle = player_data.m_packet_car_telemetry.m_throttle
+                self.m_brake = player_data.m_packet_car_telemetry.m_brake
+            else:
+                self.m_throttle = 0
+                self.m_brake = 0
+
+    def toJSON(self) -> Dict[str, Any]:
+        """Dump this object into JSON
+
+        Returns:
+            Dict[str, Any]: The JSON dump
+        """
+
+        # The UI expects 0 to 100
+        return {
+            "throttle": (self.m_throttle * 100),
+            "brake": (self.m_brake * 100)
+        }
+
 # ------------------------- HELPER - CLASSES ---------------------------------------------------------------------------
 
 class DriversListRsp:
