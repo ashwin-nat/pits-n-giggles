@@ -629,7 +629,7 @@ class PacketSessionData:
         self.m_dynamicRacingLine: int
         self.m_dynamicRacingLineType: int
         self.m_gameMode: int
-        self.m_ruleSet: int
+        self.m_ruleSet: int # TODO: make enum
         self.m_timeOfDay: int
         self.m_sessionLength: int # TODO: make enum
         self.m_speedUnitsLeadPlayer: int

@@ -22,7 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Dict, Any, Optional, Callable
+from typing import Dict, Any, Optional, Callable, List, Tuple
 from http import HTTPStatus
 import logging
 from flask import Flask, render_template, request, jsonify, send_from_directory
@@ -52,7 +52,7 @@ class TelemetryWebServer:
         client_update_interval_ms: int,
         debug_mode: bool,
         num_adjacent_cars: int,
-        socketio_task: Callable):
+        socketio_tasks: List[Tuple[Callable, Any]]):
         """
         Initialize TelemetryServer.
 
@@ -62,6 +62,7 @@ class TelemetryWebServer:
             client_update_interval_ms (int) - The interval at which the client should be updated with new data
             debug_mode (bool): Enable debug mode.
             num_adjacent_cars (int): The number of cars adjacent to player to be included in telemetry-info response
+            socketio_tasks (List[Tuple[Callable, Any]]): List of tasks to be executed by the SocketIO server
         """
 
         # # Create a custom logger for SocketIO
@@ -88,7 +89,7 @@ class TelemetryWebServer:
             async_mode="gevent",
             # logger=socketio_logger,
         )
-        self.m_socketio_task = socketio_task
+        self.m_socketio_tasks = socketio_tasks
 
         # Define your endpoint
         @self.m_app.route('/favicon.ico')
@@ -177,6 +178,18 @@ class TelemetryWebServer:
                 client_poll_interval_ms=0, # deprecated since we've moved to socketio
                 num_adjacent_cars=self.m_num_adjacent_cars,
                 live_data_mode=True)
+
+        # Render the HTML page
+        @self.m_app.route('/stream-overlay')
+        def throttleBrakeOverlay():
+            """
+            Endpoint for the index page.
+
+            Returns:
+                str: HTML page content.
+            """
+
+            return render_template('stream-overlay.html')
 
         # Render the HTML page
         @self.m_app.route('/obs-overlay')
@@ -292,8 +305,10 @@ class TelemetryWebServer:
         logging.getLogger('gevent').setLevel(logging.ERROR)
         logging.getLogger('websocket').setLevel(logging.ERROR)
 
-        if self.m_socketio_task:
-            self.m_socketio.start_background_task(self.m_socketio_task, self.m_client_update_interval_ms)
+        if self.m_socketio_tasks:
+            for callback, arg in self.m_socketio_tasks:
+                # self.m_socketio.start_background_task(self.m_socketio_tasks, self.m_client_update_interval_ms)
+                self.m_socketio.start_background_task(callback, arg)
         self.m_socketio.run(
             app=self.m_app,
             debug=False,
@@ -325,7 +340,10 @@ def initTelemetryWebServer(
         client_update_interval_ms=client_update_interval_ms,
         debug_mode=debug_mode,
         num_adjacent_cars=num_adjacent_cars,
-        socketio_task=clientUpdaterTask
+        socketio_tasks=[
+            (clientUpdaterTask, client_update_interval_ms),
+            (throttleBrakeUpdaterTask, 60)
+        ]
     )
     _web_server.run()
 
@@ -340,4 +358,17 @@ def clientUpdaterTask(update_interval_ms: int) -> None:
     sleep_duration = update_interval_ms / 1000
     while True:
         _web_server.m_socketio.emit('race-table-update', TelWebAPI.RaceInfoRsp().toJSON())
+        _web_server.m_socketio.sleep(sleep_duration)
+
+def throttleBrakeUpdaterTask(update_interval_ms: int) -> None:
+    """Task to update clients with throttle and brake data
+
+    Args:
+        update_interval_ms (int): Update interval in milliseconds
+    """
+
+    global _web_server
+    sleep_duration = update_interval_ms / 1000
+    while True:
+        _web_server.m_socketio.emit('throttle-brake-update', TelWebAPI.ThrottleBrakeUpdate().toJSON())
         _web_server.m_socketio.sleep(sleep_duration)

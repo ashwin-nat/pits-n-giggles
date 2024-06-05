@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Car Throttle and Brake Graph</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-streaming"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #000000;
+            margin: 0;
+            padding: 0;
+        }
+        canvas {
+            background-color: #000000;
+            border: 1px solid #444;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="carGraph" width="800" height="400"></canvas>
+    <script>
+        let carGraph;
+
+        function initializeGraph() {
+            const ctx = document.getElementById('carGraph').getContext('2d');
+            const initialDataPoints = 10;  // Number of initial data points with value 0
+            const now = Date.now();
+
+            const data = {
+                datasets: [
+                    {
+                        label: 'Throttle',
+                        borderColor: 'green',
+                        backgroundColor: 'rgba(0, 255, 0, 0)',
+                        fill: false,
+                        pointRadius: 0,  // No point markers
+                        pointHoverRadius: 0,  // No point markers on hover
+                        borderWidth: 5,  // Thicker line
+                        data: Array.from({ length: initialDataPoints }, (_, i) => ({
+                            x: now - (initialDataPoints - i) * 1000,
+                            y: 0
+                        }))
+                    },
+                    {
+                        label: 'Brake',
+                        borderColor: 'red',
+                        backgroundColor: 'rgba(255, 0, 0, 0)',
+                        fill: false,
+                        pointRadius: 0,  // No point markers
+                        pointHoverRadius: 0,  // No point markers on hover
+                        borderWidth: 5,  // Thicker line
+                        data: Array.from({ length: initialDataPoints }, (_, i) => ({
+                            x: now - (initialDataPoints - i) * 1000,
+                            y: 0
+                        }))
+                    }
+                ]
+            };
+
+            const config = {
+                type: 'line',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 0
+                    },
+                    scales: {
+                        x: {
+                            type: 'realtime',
+                            realtime: {
+                                delay: 0,
+                                onRefresh: function(chart) {
+                                    // Nothing to do here
+                                }
+                            },
+                            grid: {
+                                display: false  // Hide grid lines
+                            },
+                            ticks: {
+                                display: false  // Hide axis labels
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            max: 105,
+                            min: 0,
+                            grid: {
+                                display: false  // Hide grid lines
+                            },
+                            ticks: {
+                                display: false  // Hide axis labels
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false  // Hide legend
+                        }
+                    }
+                }
+            };
+
+            carGraph = new Chart(ctx, config);
+        }
+
+        function updateGraph(throttle, brake) {
+            const now = Date.now();
+            carGraph.data.datasets[0].data.push({
+                x: now,
+                y: throttle
+            });
+            carGraph.data.datasets[1].data.push({
+                x: now,
+                y: brake
+            });
+            carGraph.update('quiet');
+        }
+
+        // Initialize the graph when the window loads
+        window.onload = function() {
+            initializeGraph();
+        }
+
+        var socket = io.connect('http://' + document.domain + ':' + location.port, {
+            reconnection: true,           // Enables reconnection
+            reconnectionAttempts: Infinity, // Number of attempts before giving up (Infinity means never stop trying)
+            reconnectionDelay: 1000,      // Initial delay before reconnection (in ms)
+            reconnectionDelayMax: 5000,   // Maximum delay between reconnections (in ms)
+            randomizationFactor: 0.5,     // Randomization factor to prevent reconnection storms
+            timeout: 20000                // Connection timeout before giving up (in ms)
+        });
+
+        // Receive details from server
+        socket.on('throttle-brake-update', function (data) {
+            updateGraph(data.throttle, data.brake);
+        });
+
+    </script>
+</body>
+</html>
