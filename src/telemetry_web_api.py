@@ -22,7 +22,7 @@
 
 import logging
 from typing import Dict, Any, Optional, List
-from lib.f1_types import F1Utils
+from lib.f1_types import F1Utils, LapHistoryData, PacketSessionHistoryData
 import lib.race_analyzer as RaceAnalyzer
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 import src.telemetry_data as TelData
@@ -266,10 +266,7 @@ class PlayerTelemetryOverlayUpdate:
         """
 
         self.m_curr_lap = player_data.m_current_lap if player_data else None
-        if player_data:
-            self.m_session_history = player_data.m_packet_session_history
-        else:
-            self.m_session_history = None
+        self.m_lap_time_history = LapTimeHistory(player_data)
 
     def __initTyreWear(self, player_data: Optional[TelData.DataPerDriver]) -> None:
         """Prepares the player's tyre wear data.
@@ -339,7 +336,7 @@ class PlayerTelemetryOverlayUpdate:
                     "rain-probability": sample.m_rainPercentage
                 } for sample in self.m_weather_forecast_samples
             ],
-            "session-history": self.m_session_history.toJSON() if self.m_session_history else None,
+            "lap-time-history" : self.m_lap_time_history.toJSON(),
             "car-telemetry" : {
                 # The UI expects 0 to 100
                 "throttle": (self.m_throttle * 100),
@@ -657,3 +654,124 @@ class DriversListRsp:
         sign = "+" if ms >= 0 else ""
         seconds = ms / 1000
         return f"{sign}{seconds:.3f}"
+
+class LapTimeInfo(LapHistoryData):
+    """Lap time info per lap. Contains Lap info breakdown and tyre set used
+
+    Attributes:
+        m_lapTimeInMS (int): Lap time in milliseconds.
+        m_sector1TimeInMS (int): Sector 1 time in milliseconds.
+        m_sector1TimeMinutes (int): Sector 1 whole minute part.
+        m_sector2TimeInMS (int): Sector 2 time in milliseconds.
+        m_sector2TimeMinutes (int): Sector 2 whole minute part.
+        m_sector3TimeInMS (int): Sector 3 time in milliseconds.
+        m_sector3TimeMinutes (int): Sector 3 whole minute part.
+        m_lapValidBitFlags (int): Bit flags representing lap and sector validity.
+        m_tyre_set_info (TelData.DataPerDriver.TyreSetInfo): The tyre set used.
+    """
+    # pylint: disable=super-init-not-called
+    def __init__(self,
+                 lap_history_data: LapHistoryData,
+                 tyre_set_info: TelData.DataPerDriver.TyreSetInfo,
+                 lap_number: int) -> None:
+        """
+        Initializes LapTimeInfo with an existing LapHistoryData object, tyre set info and lap number.
+
+        Args:
+            lap_history_data (LapHistoryData): An instance of LapHistoryData.
+            tyre_set_info (TelData.DataPerDriver.TyreSetInfo): The tyre set info for this lap
+            lap_number (int): The lap number for this lap
+        """
+        # Initialize the base class attributes by copying from the existing LapHistoryData instance
+        self.m_lapTimeInMS = lap_history_data.m_lapTimeInMS
+        self.m_sector1TimeInMS = lap_history_data.m_sector1TimeInMS
+        self.m_sector1TimeMinutes = lap_history_data.m_sector1TimeMinutes
+        self.m_sector2TimeInMS = lap_history_data.m_sector2TimeInMS
+        self.m_sector2TimeMinutes = lap_history_data.m_sector2TimeMinutes
+        self.m_sector3TimeInMS = lap_history_data.m_sector3TimeInMS
+        self.m_sector3TimeMinutes = lap_history_data.m_sector3TimeMinutes
+        self.m_lapValidBitFlags = lap_history_data.m_lapValidBitFlags
+
+        # Initialize the additional attributes
+        self.m_tyre_set_info = tyre_set_info
+        self.m_lap_number = lap_number
+
+    def __str__(self) -> str:
+        """
+        Returns a string representation of LapTimeInfo.
+
+        Returns:
+            str: String representation of LapTimeInfo.
+        """
+        base_str = super().__str__()
+        return f"{base_str}, Tyre Set Info: {str(self.m_tyre_set_info)}, Lap Number: {str(self.m_lap_number)}"
+
+    def toJSON(self) -> Dict[str, Any]:
+        """
+        Convert the LapTimeInfo instance to a JSON-compatible dictionary with kebab-case keys.
+
+        Returns:
+            Dict[str, Any]: JSON-compatible dictionary with kebab-case keys representing the LapTimeInfo instance.
+        """
+        base_json = super().toJSON()
+        base_json["tyre-set-info"] = self.m_tyre_set_info.toJSON() if self.m_tyre_set_info else None
+        base_json["lap-number"] = self.m_lap_number
+        return base_json
+
+class LapTimeHistory:
+    """Class representing lap time history data along with tyre set used
+
+    Attributes:
+        m_fastest_lap_number (int): Fastest lap number.
+        m_fastest_s1_lap_number (int): Fastest sector 1 lap number.
+        m_fastest_s2_lap_number (int): Fastest sector 2 lap number.
+        m_fastest_s3_lap_number (int): Fastest sector 3 lap number.
+        m_lap_time_history_data (List[LapTimeInfo]): List of LapTimeInfo objects representing lap time history data.
+    """
+
+    def __init__(self, driver_data: Optional[TelData.DataPerDriver] = None) -> None:
+        """
+        Initializes LapTimeHistory with an optional DataPerDriver object.
+
+        Args:
+            driver_data (Optional[TelData.DataPerDriver], optional): An instance of DataPerDriver. Defaults to None.
+        """
+
+        if driver_data is None:
+            self.m_fastest_lap_number: int = None
+
+        if driver_data is None or driver_data.m_packet_session_history is None:
+            self.m_fastest_lap_number: int = None
+            self.m_fastest_s1_lap_number: int = None
+            self.m_fastest_s2_lap_number: int = None
+            self.m_fastest_s3_lap_number: int = None
+            self.m_lap_time_history_data: List[LapHistoryData] = []
+            return
+
+        self.m_fastest_lap_number: int      = driver_data.m_packet_session_history.m_bestLapTimeLapNum
+        self.m_fastest_s1_lap_number: int   = driver_data.m_packet_session_history.m_bestSector1LapNum
+        self.m_fastest_s2_lap_number: int   = driver_data.m_packet_session_history.m_bestSector2LapNum
+        self.m_fastest_s3_lap_number: int   = driver_data.m_packet_session_history.m_bestSector3LapNum
+        self.m_lap_time_history_data: List[LapHistoryData] = []
+
+        for index, lap_info in enumerate(driver_data.m_packet_session_history.m_lapHistoryData):
+            lap_number = index + 1
+            self.m_lap_time_history_data.append(LapTimeInfo(
+                lap_history_data=lap_info,
+                tyre_set_info=driver_data.getTyreSetInfoAtLap(lap_num=lap_number),
+                lap_number=lap_number))
+
+    def toJSON(self) -> Dict[str, Any]:
+        """
+        Convert the LapTimeHistory instance to a JSON-compatible dictionary with kebab-case keys.
+
+        Returns:
+            Dict[str, Any]: JSON-compatible dictionary with kebab-case keys representing the LapTimeHistory instance.
+        """
+        return {
+            "fastest-lap-number": self.m_fastest_lap_number,
+            "fastest-s1-lap-number": self.m_fastest_s1_lap_number,
+            "fastest-s2-lap-number": self.m_fastest_s2_lap_number,
+            "fastest-s3-lap-number": self.m_fastest_s3_lap_number,
+            "lap-time-history-data": [lap_time_info.toJSON() for lap_time_info in self.m_lap_time_history_data]
+        }
