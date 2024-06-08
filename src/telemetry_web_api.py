@@ -655,7 +655,7 @@ class DriversListRsp:
         seconds = ms / 1000
         return f"{sign}{seconds:.3f}"
 
-class LapTimeInfo(LapHistoryData):
+class LapTimeInfo():
     """Lap time info per lap. Contains Lap info breakdown and tyre set used
 
     Attributes:
@@ -713,10 +713,22 @@ class LapTimeInfo(LapHistoryData):
         Returns:
             Dict[str, Any]: JSON-compatible dictionary with kebab-case keys representing the LapTimeInfo instance.
         """
-        base_json = super().toJSON()
-        base_json["tyre-set-info"] = self.m_tyre_set_info.toJSON() if self.m_tyre_set_info else None
-        base_json["lap-number"] = self.m_lap_number
-        return base_json
+        return {
+            "lap-time-in-ms": self.m_lapTimeInMS,
+            "lap-time-str": F1Utils.millisecondsToMinutesSecondsMilliseconds(self.m_lapTimeInMS),
+            "sector-1-time-in-ms": self.m_sector1TimeInMS,
+            "sector-1-time-minutes": self.m_sector1TimeMinutes,
+            "sector-1-time-str" : F1Utils.getLapTimeStrSplit(self.m_sector1TimeMinutes, self.m_sector1TimeInMS),
+            "sector-2-time-in-ms": self.m_sector2TimeInMS,
+            "sector-2-time-minutes": self.m_sector2TimeMinutes,
+            "sector-2-time-str": F1Utils.getLapTimeStrSplit(self.m_sector2TimeMinutes, self.m_sector2TimeInMS),
+            "sector-3-time-in-ms": self.m_sector3TimeInMS,
+            "sector-3-time-minutes": self.m_sector3TimeMinutes,
+            "sector-3-time-str": F1Utils.getLapTimeStrSplit(self.m_sector3TimeMinutes, self.m_sector3TimeInMS),
+            "lap-valid-bit-flags": self.m_lapValidBitFlags,
+            "tyre-set-info" : self.m_tyre_set_info.toJSON() if self.m_tyre_set_info else None,
+            "lap-number": self.m_lap_number
+        }
 
 class LapTimeHistory:
     """Class representing lap time history data along with tyre set used
