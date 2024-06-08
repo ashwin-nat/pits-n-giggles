@@ -28,7 +28,7 @@
             gap: 10px;
             width: 90%;
             height: 90%;
-            background-color: transparent; /* Transparent background */
+            background-color: #000000; /* Transparent background */
         }
 
         .graph {
@@ -342,15 +342,15 @@
             }
             }
 
-        function updateLapTimeTable(sessionHistory) {
+        function updateLapTimeTable(lapTimeHistory) {
 
             const lapTimeTable = document.getElementById('lapTimeTable');
             clearTable(lapTimeTable, clearHeader=true);
-            if (sessionHistory === null) {
+            if (lapTimeHistory === null) {
                 return;
             }
 
-            function addLapTimeRow(lapTimeTable, lapNumber, lapData, isFastest) {
+            function addLapTimeRow(lapTimeTable, lapNumber, lapData, isFastest, compound) {
                 function getValidTimeStr(timeMs, timeStr) {
 
                     if (timeMs === 0) {
@@ -370,8 +370,8 @@
                 lapTimeCell.innerHTML = getValidTimeStr(lapData["lap-time-in-ms"], lapData["lap-time-str"]);
             }
 
-            const fastestLapNum     = sessionHistory['best-lap-time-lap-num'];
-            const lapHistoryData    = sessionHistory['lap-history-data'];
+            const fastestLapNum     = lapTimeHistory['fastest-lap-number'];
+            const lapHistoryData    = lapTimeHistory['lap-time-history-data'];
             const numRows           = 5;
 
             let count = 0;
@@ -380,11 +380,13 @@
                 const lapNumber = i + 1;
                 const lapData   = lapHistoryData[i];
                 const isFastest = (lapNumber === fastestLapNum);
+                const compound = lapData["tyre-set-info"] !== null ? lapData["tyre-set-info"]["visual-tyre-compound"] : "";
                 addLapTimeRow(
                     lapTimeTable,
                     lapNumber,
                     lapData,
-                    isFastest);
+                    isFastest,
+                    compound);
             }
         }
 
@@ -446,7 +448,7 @@
             updateTyreWearTable(data["tyre-wear"]);
             updateThrottleBrakeGraph(data["car-telemetry"]["throttle"], data["car-telemetry"]["brake"]);
             updatePenaltiesTable(data["penalties"]);
-            updateLapTimeTable(data["session-history"]);
+            updateLapTimeTable(data["lap-time-history"]);
             updateWeatherTable(data["weather-forecast-samples"]);
         });
     </script>

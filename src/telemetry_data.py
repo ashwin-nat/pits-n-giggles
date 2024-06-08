@@ -31,7 +31,8 @@ import logging
 from lib.f1_types import PacketSessionData, PacketLapData, LapData, CarTelemetryData, ParticipantData, \
     PacketEventData, PacketParticipantsData, PacketCarTelemetryData, PacketCarStatusData, FinalClassificationData, \
     PacketFinalClassificationData, PacketCarDamageData, PacketSessionHistoryData, ResultStatus, PacketTyreSetsData, \
-    F1Utils, WeatherForecastSample, CarDamageData, CarStatusData, TrackID, SafetyCarType, TelemetrySetting
+    F1Utils, WeatherForecastSample, CarDamageData, CarStatusData, TrackID, ActualTyreCompound, VisualTyreCompound, \
+    SafetyCarType, TelemetrySetting
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.overtake_analyzer import OvertakeRecord
 from lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
@@ -195,6 +196,58 @@ class DataPerDriver:
             Copy of FinalClassificationData packet for the driver.
     """
 
+    class TyreSetInfo:
+        """
+        Class that models the data describing a tyre set.
+
+        Attributes:
+            m_actual_tyre_compound (ActualTyreCompound): The actual compound of the tyre.
+            m_visual_tyre_compound (VisualTyreCompound): The visual compound of the tyre.
+            m_tyre_set_id (int): The ID of the tyre set.
+            m_tyre_age_laps (int): The age of the tyre in laps.
+        """
+        def __init__(self,
+                     actual_tyre_compound: ActualTyreCompound,
+                     visual_tyre_compound: VisualTyreCompound,
+                     tyre_set_id: int,
+                     tyre_age_laps: int):
+
+            self.m_actual_tyre_compound = actual_tyre_compound
+            self.m_visual_tyre_compound = visual_tyre_compound
+            self.m_tyre_set_id = tyre_set_id
+            self.m_tyre_age_laps = tyre_age_laps
+
+        def toJSON(self) -> Dict[str, Any]:
+            """Get the JSON representation of this object
+
+            Returns:
+                Dict[str, Any]: The JSON representation
+            """
+            return {
+                'actual-tyre-compound': str(self.m_actual_tyre_compound),
+                'visual-tyre-compound': str(self.m_visual_tyre_compound),
+                'tyre-set-id': self.m_tyre_set_id,
+                'tyre-age-laps': self.m_tyre_age_laps
+            }
+
+        def __repr__(self) -> str:
+            """
+            Returns a string representation of the object suitable for debugging.
+            """
+            return f"TyreSetInfo(actual_tyre_compound={str(self.m_actual_tyre_compound)}, " \
+                f"visual_tyre_compound={str(self.m_visual_tyre_compound)}, " \
+                f"tyre_set_id={self.m_tyre_set_id}, " \
+                f"tyre_age_laps={self.m_tyre_age_laps})"
+
+        def __str__(self) -> str:
+            """
+            Returns a string representation of the object suitable for end-users.
+            """
+            return f"Tyre Set ID: {self.m_tyre_set_id}, " \
+                f"Actual Compound: {str(self.m_actual_tyre_compound)}, " \
+                f"Visual Compound: {str(self.m_visual_tyre_compound)}, " \
+                f"Tyre Age (laps): {self.m_tyre_age_laps}"
+
     class TyreSetHistoryEntry:
         """
         Class that models the data stored per entry in the tyre set history list.
@@ -245,23 +298,28 @@ class DataPerDriver:
         Attributes:
             m_car_damage_packet (CarDamageData): The Car damage packet
             m_car_status_packet (CarStatusData): The Car Status packet
-            m_sc_status (SafetyCarStatus): The lap's safety car status
+            m_tyre_sets_packet (Optional[PacketTyreSetsData]): The Tyre Sets packet
+            m_sc_status (PacketSessionData.SafetyCarStatus): The lap's safety car status
         """
 
         def __init__(self,
                      car_damage : CarDamageData,
                      car_status : CarStatusData,
-                     sc_status  : SafetyCarType):
+                     sc_status  : SafetyCarType,
+                     tyre_sets  : PacketTyreSetsData):
             """Init the backup entry object
 
             Args:
                 car_damage (CarDamageData): The Car damage packet
                 car_status (CarStatusData): The Car Status packet
+                sc_status (PacketSessionData.SafetyCarStatus): The lap's safety car status
+                tyre_sets (PacketTyreSetsData): The Tyre Sets packet
             """
 
             self.m_car_damage_packet: Optional[CarDamageData] = car_damage
             self.m_car_status_packet: Optional[CarStatusData] = car_status
-            self.m_sc_status: Optional[SafetyCarType] = sc_status
+            self.m_sc_status: Optional[PacketSessionData.SafetyCarStatus] = sc_status
+            self.m_tyre_sets_packet: Optional[PacketTyreSetsData] = tyre_sets
 
         def toJSON(self, lap_number : int) -> Dict[str, Any]:
             """Dump this object into JSON
@@ -277,6 +335,8 @@ class DataPerDriver:
                 "lap-number" : lap_number,
                 "car-damage-data" : self.m_car_damage_packet.toJSON() if self.m_car_damage_packet else None,
                 "car-status-data" : self.m_car_status_packet.toJSON() if self.m_car_status_packet else None,
+                "safety-car-status" : self.m_sc_status if self.m_sc_status else None,
+                "tyre-sets-data" : self.m_tyre_sets_packet.toJSON() if self.m_tyre_sets_packet else None
             }
 
     def __init__(self, total_laps):
@@ -536,7 +596,8 @@ class DataPerDriver:
         self.m_per_lap_backups[old_lap_number] = DataPerDriver.PerLapHistoryEntry(
             car_damage=self.m_packet_car_damage,
             car_status=self.m_packet_car_status,
-            sc_status=self.m_curr_lap_sc_status
+            sc_status=self.m_curr_lap_sc_status,
+            tyre_sets=self.m_packet_tyre_sets
         )
 
         # Add the tyre wear data into the tyre stint history
@@ -552,7 +613,7 @@ class DataPerDriver:
             ))
 
         # Add the tyre wear data into the extrapolator
-        tyre_set_id = self._getCurrentTyreSetID()
+        tyre_set_id = self._getCurrentTyreSetKey()
         if tyre_set_id:
             self.m_tyre_wear_extrapolator.updateDataLap(TyreWearPerLap(
                 lap_number=old_lap_number,
@@ -593,7 +654,7 @@ class DataPerDriver:
 
         # This can happen if tyre sets packets arrives before lap data packet
         if self.m_current_lap is not None:
-            fitted_tyre_set_key = self._getCurrentTyreSetID()
+            fitted_tyre_set_key = self._getCurrentTyreSetKey()
             if len(self.m_tyre_set_history) == 0:
                 if 0 in self.m_per_lap_backups:
                     # Start of race, enter the tyre wear data along with starting value
@@ -635,7 +696,7 @@ class DataPerDriver:
                 self.m_tyre_wear_extrapolator.clear()
                 self.m_tyre_wear_extrapolator.updateDataLap(initial_tyre_wear)
 
-    def _getCurrentTyreSetID(self) -> Optional[str]:
+    def _getCurrentTyreSetKey(self) -> Optional[str]:
         """Get the unique ID key for the currently equipped tyre set
 
         Returns:
@@ -643,6 +704,15 @@ class DataPerDriver:
         """
 
         return self.m_packet_tyre_sets.getFittedTyreSetKey() if self.m_packet_tyre_sets else None
+
+    def _getCurrentTyreSetID(self) -> Optional[int]:
+        """Get the ID/index for the currently equipped tyre set
+
+        Returns:
+            Optional[int]: The tyre set ID
+        """
+
+        return self.m_packet_tyre_sets.m_fittedIdx if self.m_packet_tyre_sets else None
 
     def _getNextLapBackup(self) -> Generator[Tuple[int, PerLapHistoryEntry], None, None]:
         """
@@ -688,6 +758,42 @@ class DataPerDriver:
 
         # Update the history list
         self.m_tyre_set_history = cleaned_tyre_set_history_list
+
+    def getTyreSetInfoAtLap(self, lap_num: Optional[int] = None) -> Optional[TyreSetInfo]:
+        """Get the tyre set info at the specified lap number
+
+        Args:
+            lap_num (Optional[int]): The lap number. If None, uses current lap number
+
+        Returns:
+            Optional[TyreSetInfo]: The tyre set info. None if data not found or invalid lap num
+        """
+
+        if lap_num is None:
+            lap_num = self.m_current_lap
+
+        if lap_num == self.m_current_lap and self.m_packet_car_status:
+            return DataPerDriver.TyreSetInfo(
+                actual_tyre_compound=self.m_packet_car_status.m_actualTyreCompound,
+                visual_tyre_compound=self.m_packet_car_status.m_visualTyreCompound,
+                tyre_set_id=self._getCurrentTyreSetID(),
+                tyre_age_laps=self.m_packet_car_status.m_tyresAgeLaps
+            )
+        elif (lap_num < self.m_current_lap) and (lap_num in self.m_per_lap_backups):
+            backup_at_lap       = self.m_per_lap_backups[lap_num]
+            backup_car_status   = backup_at_lap.m_car_status_packet
+            backup_tyre_sets    = backup_at_lap.m_tyre_sets_packet
+            if not backup_car_status or not backup_tyre_sets:
+                return None
+            return DataPerDriver.TyreSetInfo(
+                actual_tyre_compound=backup_car_status.m_actualTyreCompound,
+                visual_tyre_compound=backup_car_status.m_visualTyreCompound,
+                tyre_set_id=backup_tyre_sets.m_fittedIdx,
+                tyre_age_laps=backup_car_status.m_tyresAgeLaps
+            )
+
+        return None
+
 
 class DriverData:
     """
