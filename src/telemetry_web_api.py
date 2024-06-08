@@ -22,7 +22,7 @@
 
 import logging
 from typing import Dict, Any, Optional, List
-from lib.f1_types import F1Utils, LapHistoryData, PacketSessionHistoryData
+from lib.f1_types import F1Utils, LapHistoryData
 import lib.race_analyzer as RaceAnalyzer
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 import src.telemetry_data as TelData
@@ -669,7 +669,7 @@ class LapTimeInfo(LapHistoryData):
         m_lapValidBitFlags (int): Bit flags representing lap and sector validity.
         m_tyre_set_info (TelData.DataPerDriver.TyreSetInfo): The tyre set used.
     """
-    # pylint: disable=super-init-not-called
+
     def __init__(self,
                  lap_history_data: LapHistoryData,
                  tyre_set_info: TelData.DataPerDriver.TyreSetInfo,

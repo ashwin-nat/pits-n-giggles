@@ -774,7 +774,7 @@ class DataPerDriver:
                 tyre_set_id=self._getCurrentTyreSetID(),
                 tyre_age_laps=self.m_packet_car_status.m_tyresAgeLaps
             )
-        elif (lap_num < self.m_current_lap) and (lap_num in self.m_per_lap_backups):
+        if (lap_num < self.m_current_lap) and (lap_num in self.m_per_lap_backups):
             backup_at_lap       = self.m_per_lap_backups[lap_num]
             backup_car_status   = backup_at_lap.m_car_status_packet
             backup_tyre_sets    = backup_at_lap.m_tyre_sets_packet
