@@ -1018,35 +1018,6 @@ class F1Utils:
     INDEX_FRONT_RIGHT = 3
     PLAYER_INDEX_INVALID = 255
 
-    # TRACKS_WHERE_FINISH_LINE_BEFORE_PIT_GARAGE : Set[TrackID] = {
-    #     TrackID.Sakhir_Bahrain, # Yes
-    #     TrackID.Jeddah, # Yes
-    #     # TrackID.Melbourne,
-    #     TrackID.Baku_Azerbaijan, # Yes
-    #     TrackID.Miami, # Yes
-    #     TrackID.Imola, # Yes
-    #     # TrackID.Monaco,
-    #     TrackID.Catalunya, # Yes
-    #     # TrackID.Montreal,
-    #     TrackID.Austria, # Yes
-    #     TrackID.Silverstone, # Yes
-    #     TrackID.Hungaroring, # Yes
-    #     TrackID.Spa, # Yes
-    #     TrackID.Zandvoort, # Yes
-    #     TrackID.Monza, # Yes
-    #     TrackID.Singapore, # Yes
-    #     TrackID.Suzuka, # Yes
-    #     # TrackID.Losail,
-    #     TrackID.Texas, # Yes
-    #     TrackID.Mexico, # Yes
-    #     TrackID.Brazil, # Yes
-    #     TrackID.Las_Vegas, # Yes
-    #     TrackID.Abu_Dhabi, # Yes
-    #     TrackID.Shanghai, # Yes
-    #     # TrackID.Paul_Ricard,
-    #     TrackID.Portimao, # Yes
-    # }
-
     TRACKS_WHERE_FINISH_LINE_AFTER_PIT_GARAGE : Set[TrackID] = {
         TrackID.Melbourne,
         TrackID.Monaco,

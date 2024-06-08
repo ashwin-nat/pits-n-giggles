@@ -24,6 +24,7 @@ import logging
 from typing import Dict, Any, Optional, List
 from lib.f1_types import F1Utils, CarStatusData
 import lib.race_analyzer as RaceAnalyzer
+from lib.tyre_wear_extrapolator import TyreWearPerLap
 import src.telemetry_data as TelData
 from src.telemetry_handler import dumpPktCapToFile, getOvertakeJSON, GetOvertakesStatus, getCustomMarkersJSON
 
@@ -216,28 +217,110 @@ class DriverInfoRsp:
 
         return self.m_rsp
 
-class ThrottleBrakeUpdate:
+class PlayerTelemetryOverlayUpdate:
     """
-    Throttle brake update class.
+    Player telemetry overlay update class.
     """
 
     def __init__(self):
-        """Get the throttle brake update and prepare the rsp fields
-
-        Args:
-            throttle (float): The throttle value
-            brake (float): The brake value
+        """Get the player telemetry data and prep the fields
         """
 
-        with TelData._driver_data_lock:
-            player_data = TelData._driver_data.m_driver_data.get(TelData._driver_data.m_player_index, None)
+        with TelData._globals_lock:
+            self.m_track_temp               = TelData._globals.m_track_temp
+            self.m_air_temp                 = TelData._globals.m_air_temp
+            self.m_weather_forecast_samples = TelData._globals.m_weather_forecast_samples
+            if self.m_weather_forecast_samples is None:
+                self.m_weather_forecast_samples = []
+            self.m_circuit                  = TelData._globals.m_circuit
+            self.m_total_laps               = TelData._globals.m_total_laps
 
-            if player_data and player_data.m_packet_car_telemetry:
-                self.m_throttle = player_data.m_packet_car_telemetry.m_throttle
-                self.m_brake = player_data.m_packet_car_telemetry.m_brake
-            else:
-                self.m_throttle = 0
-                self.m_brake = 0
+        with TelData._driver_data_lock:
+            self.m_next_pit_window          = TelData._driver_data.m_ideal_pit_stop_window
+            player_data = TelData._driver_data.m_driver_data[TelData._driver_data.m_player_index] \
+                if TelData._driver_data.m_player_index in TelData._driver_data.m_driver_data else None
+
+        self.__initCarTelemetry(player_data)
+        self.__initLapTimes(player_data)
+        self.__initTyreWear(player_data)
+        self.__initPenalties(player_data)
+
+    def __initCarTelemetry(self, player_data: Optional[TelData.DataPerDriver]) -> None:
+        """Prepares the car telemetry data.
+
+        Args:
+            player_data (Optional[TelData.DataPerDriver]): The player's DataPerDriver object
+        """
+
+        if player_data and player_data.m_packet_car_telemetry:
+            self.m_throttle = player_data.m_packet_car_telemetry.m_throttle
+            self.m_brake = player_data.m_packet_car_telemetry.m_brake
+        else:
+            self.m_throttle = 0
+            self.m_brake = 0
+
+    def __initLapTimes(self, player_data: Optional[TelData.DataPerDriver]) -> None:
+        """Prepares the player's lap history data.
+
+        Args:
+            player_data (Optional[TelData.DataPerDriver]): The player's DataPerDriver object
+        """
+
+        self.m_curr_lap = player_data.m_current_lap if player_data else None
+        if player_data:
+            self.m_session_history = player_data.m_packet_session_history
+        else:
+            self.m_session_history = None
+
+    def __initTyreWear(self, player_data: Optional[TelData.DataPerDriver]) -> None:
+        """Prepares the player's tyre wear data.
+
+        Args:
+            player_data (Optional[TelData.DataPerDriver]): The player's DataPerDriver object
+        """
+
+        if player_data and player_data.m_packet_car_damage:
+            self.m_tyre_wear = TyreWearPerLap(
+                lap_number=self.m_curr_lap,
+                fl_tyre_wear=player_data.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
+                fr_tyre_wear=player_data.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
+                rl_tyre_wear=player_data.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
+                rr_tyre_wear=player_data.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
+                is_racing_lap=True,
+                desc="Curr tyre wear"
+            )
+            self.m_tyre_wear_predictions = player_data.getTyrePredictionsJSONList(self.m_next_pit_window)
+        else:
+            self.m_tyre_wear = TyreWearPerLap(
+                lap_number=0,
+                fl_tyre_wear=0,
+                fr_tyre_wear=0,
+                rl_tyre_wear=0,
+                rr_tyre_wear=0,
+                is_racing_lap=True,
+                desc="No data"
+            )
+            self.m_tyre_wear_predictions = []
+
+    def __initPenalties(self, player_data: Optional[TelData.DataPerDriver]) -> None:
+        """Prepares the player's penalties data.
+
+        Args:
+            player_data (Optional[TelData.DataPerDriver]): The player's DataPerDriver object
+        """
+
+        if player_data and player_data.m_packet_lap_data:
+            self.m_penalties = player_data.m_packet_lap_data.m_penalties
+            self.m_total_warnings = player_data.m_packet_lap_data.m_totalWarnings
+            self.m_corner_cutting_warnings = player_data.m_packet_lap_data.m_cornerCuttingWarnings
+            self.m_num_dt = player_data.m_packet_lap_data.m_numUnservedDriveThroughPens
+            self.m_num_sg = player_data.m_packet_lap_data.m_numUnservedStopGoPens
+        else:
+            self.m_penalties = 0
+            self.m_total_warnings = 0
+            self.m_corner_cutting_warnings = 0
+            self.m_num_dt = 0
+            self.m_num_sg = 0
 
     def toJSON(self) -> Dict[str, Any]:
         """Dump this object into JSON
@@ -246,10 +329,35 @@ class ThrottleBrakeUpdate:
             Dict[str, Any]: The JSON dump
         """
 
-        # The UI expects 0 to 100
         return {
-            "throttle": (self.m_throttle * 100),
-            "brake": (self.m_brake * 100)
+            "circuit" : self.m_circuit,
+            "track-temp": self.m_track_temp,
+            "air-temp": self.m_air_temp,
+            "weather-forecast-samples": [
+                {
+                    "time-offset": sample.m_timeOffset,
+                    "weather": str(sample.m_weather),
+                    "rain-probability": sample.m_rainPercentage
+                } for sample in self.m_weather_forecast_samples
+            ],
+            "session-history": self.m_session_history.toJSON() if self.m_session_history else None,
+            "car-telemetry" : {
+                # The UI expects 0 to 100
+                "throttle": (self.m_throttle * 100),
+                "brake": (self.m_brake * 100)
+            },
+            "tyre-wear" : {
+                "current" : self.m_tyre_wear.toJSON(),
+                "predictions" : self.m_tyre_wear_predictions,
+                "pit-window" : self.m_next_pit_window
+            },
+            "penalties" : {
+                "time-penalties": self.m_penalties,
+                "total-warnings": self.m_total_warnings,
+                "corner-cutting-warnings": self.m_corner_cutting_warnings,
+                "unserved-drive-through-pens": self.m_num_dt,
+                "unserved-stop-go-pens": self.m_num_sg
+            }
         }
 
 # ------------------------- HELPER - CLASSES ---------------------------------------------------------------------------
