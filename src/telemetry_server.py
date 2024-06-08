@@ -180,7 +180,7 @@ class TelemetryWebServer:
                 live_data_mode=True)
 
         # Render the HTML page
-        @self.m_app.route('/stream-overlay')
+        @self.m_app.route('/player-stream-overlay')
         def throttleBrakeOverlay():
             """
             Endpoint for the index page.
@@ -189,23 +189,7 @@ class TelemetryWebServer:
                 str: HTML page content.
             """
 
-            return render_template('stream-overlay.html')
-
-        # Render the HTML page
-        @self.m_app.route('/obs-overlay')
-        def obsOverlay():
-            """
-            Endpoint for the index page.
-
-            Returns:
-                str: HTML page content.
-            """
-
-            return render_template('index.html',
-                packet_capture_enabled=self.m_packet_capture_enabled,
-                client_poll_interval_ms=0, # deprecated since we've moved to socketio
-                num_adjacent_cars=0,
-                live_data_mode=True)
+            return render_template('player-stream-overlay.html')
 
         # Render the HTML page
         @self.m_app.route('/full')
@@ -370,5 +354,5 @@ def throttleBrakeUpdaterTask(update_interval_ms: int) -> None:
     global _web_server
     sleep_duration = update_interval_ms / 1000
     while True:
-        _web_server.m_socketio.emit('throttle-brake-update', TelWebAPI.ThrottleBrakeUpdate().toJSON())
+        _web_server.m_socketio.emit('player-overlay-update', TelWebAPI.PlayerTelemetryOverlayUpdate().toJSON())
         _web_server.m_socketio.sleep(sleep_duration)

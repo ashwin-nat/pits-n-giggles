@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F1 Telemetry Overlay</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-streaming"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align items to the top */
+            height: 100vh;
+            background-color: transparent; /* Transparent background */
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 10px;
+            width: 90%;
+            height: 90%;
+            background-color: transparent; /* Transparent background */
+        }
+
+        .graph {
+            background-color: #000000;
+            border: 1px solid #444;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #penaltiesWeatherDiv {
+            margin: 0;
+            padding: 0;
+        }
+
+        #penaltiesTable {
+            table-layout: auto;
+            border-collapse: separate; /* Change to separate */
+            border-spacing: 0; /* Ensure there is no space between table cells */
+            width: 200px; /* Set the desired width here */
+            border: 1px solid #000; /* Outer border for the table */
+        }
+
+        #penaltiesTable td {
+            padding: 2px 5px;
+            border: none; /* Remove borders from table cells */
+        }
+
+        #penaltiesTable td:first-child {
+            text-align: right;
+            padding-right: 10px;
+        }
+
+        #penaltiesTable td:last-child {
+            text-align: left;
+            padding-left: 10px;
+        }
+
+        #lapTimeTable {
+            width: 50px;
+        }
+
+        #weatherTable {
+            width: 400px;
+        }
+
+        .table {
+            background-color: transparent; /* Transparent background */
+            border: 1px solid #444;
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align items to the top */
+        }
+
+        .highlighted-row {
+            border: 2px solid;
+            border-image: linear-gradient(to right, #4CAF50, #2196F3);
+            border-image-slice: 1;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            border: 1px solid #555;
+            padding: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div id="graphDiv" class="graph">
+            <canvas id="carGraph" width="400" height="200"></canvas>
+        </div>
+        <div id="tyreWearDiv" class="table">
+            <table id="tyreWearTable">
+                <tr>
+                    <th>Lap</th>
+                    <th>FL</th>
+                    <th>FR</th>
+                    <th>RL</th>
+                    <th>RR</th>
+                </tr>
+            </table>
+        </div>
+        <div id="lapTimeDiv" class="table">
+            <table id="lapTimeTable">
+            </table>
+        </div>
+        <div id="penaltiesWeatherDiv" class="table">
+            <table id="penaltiesTable">
+                <tr>
+                    <td>Penalties</td>
+                    <td id="penaltiesValue">+30 sec</td>
+                </tr>
+                <tr>
+                    <td>CCW</td>
+                    <td id="ccwValue">15</td>
+                </tr>
+                <tr>
+                    <td>Other Warn</td>
+                    <td id="otherWarnValue">12</td>
+                </tr>
+                <tr>
+                    <td>DT</td>
+                    <td id="dtValue">2</td>
+                </tr>
+                <tr>
+                    <td>SG</td>
+                    <td id="sgValue">3</td>
+                </tr>
+            </table>
+            <table id="weatherTable">
+                <tr>
+                    <th>Time offset</td>
+                    <th>Rain Probability</th>
+                    <th>Weather</th>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        function formatFloatWithTwoDecimals(floatNumber) {
+            if (typeof floatNumber !== 'number' || isNaN(floatNumber)) {
+                console.error('Invalid input. Please provide a valid number.');
+                return null;
+            }
+
+            // Use toFixed to round to two decimal places and convert to string
+            return floatNumber.toFixed(2);
+        }
+
+        let carGraph;
+
+        function initializeGraph() {
+            const ctx = document.getElementById('carGraph').getContext('2d');
+            const initialDataPoints = 10;  // Number of initial data points with value 0
+            const now = Date.now();
+
+            const data = {
+                datasets: [
+                    {
+                        label: 'Throttle',
+                        borderColor: 'green',
+                        backgroundColor: 'rgba(0, 255, 0, 0)',
+                        fill: false,
+                        pointRadius: 0,  // No point markers
+                        pointHoverRadius: 0,  // No point markers on hover
+                        borderWidth: 3,  // Thicker line
+                        data: Array.from({ length: initialDataPoints }, (_, i) => ({
+                            x: now - (initialDataPoints - i) * 1000,
+                            y: 0
+                        }))
+                    },
+                    {
+                        label: 'Brake',
+                        borderColor: 'red',
+                        backgroundColor: 'rgba(255, 0, 0, 0)',
+                        fill: false,
+                        pointRadius: 0,  // No point markers
+                        pointHoverRadius: 0,  // No point markers on hover
+                        borderWidth: 3,  // Thicker line
+                        data: Array.from({ length: initialDataPoints }, (_, i) => ({
+                            x: now - (initialDataPoints - i) * 1000,
+                            y: 0
+                        }))
+                    }
+                ]
+            };
+
+            const config = {
+                type: 'line',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 0
+                    },
+                    scales: {
+                        x: {
+                            type: 'realtime',
+                            realtime: {
+                                delay: 0,
+                                onRefresh: function (chart) {
+                                    // Nothing to do here
+                                }
+                            },
+                            grid: {
+                                display: false  // Hide grid lines
+                            },
+                            ticks: {
+                                display: false  // Hide axis labels
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            max: 105,
+                            min: 0,
+                            grid: {
+                                display: false  // Hide grid lines
+                            },
+                            ticks: {
+                                display: false  // Hide axis labels
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false  // Hide legend
+                        }
+                    }
+                }
+            };
+
+            carGraph = new Chart(ctx, config);
+        }
+
+        function updateThrottleBrakeGraph(throttle, brake) {
+            const now = Date.now();
+            carGraph.data.datasets[0].data.push({
+                x: now,
+                y: throttle
+            });
+            carGraph.data.datasets[1].data.push({
+                x: now,
+                y: brake
+            });
+            carGraph.update('quiet');
+        }
+
+        function clearTable(tableElement, clearHeader = false) {
+            // const tableElement = document.getElementById(tableId);
+            const minTableRowsCount = clearHeader ? 0 : 1;
+
+            while (tableElement.rows.length > minTableRowsCount) {
+                tableElement.deleteRow(minTableRowsCount); // delete the first row after the header
+            }
+        }
+
+        function updateTyreWearTable(tyreWear) {
+
+            const tyreWearTable = document.getElementById('tyreWearTable');
+            // Clear all rows except the header
+            clearTable(tyreWearTable);
+
+            function addTyreWearRow(tyreWearTable, lapNumber, frontLeft, frontRight, rearLeft, rearRight, shouldHighlight) {
+
+                // Create a new row
+                const row = tyreWearTable.insertRow();
+
+                // Create and insert cells
+                const lapNumCell = row.insertCell(0);
+                const flCell = row.insertCell(1);
+                const frCell = row.insertCell(2);
+                const rlCell = row.insertCell(3);
+                const rrCell = row.insertCell(4);
+
+                // Fill the cells with the provided data
+                lapNumCell.innerHTML = lapNumber;
+                flCell.innerHTML = formatFloatWithTwoDecimals(frontLeft) + "%";
+                frCell.innerHTML = formatFloatWithTwoDecimals(frontRight) + "%";
+                rlCell.innerHTML = formatFloatWithTwoDecimals(rearLeft) + "%";
+                rrCell.innerHTML = formatFloatWithTwoDecimals(rearRight) + "%";
+
+                if (shouldHighlight) {
+                    row.classList.add('highlighted-row');
+                }
+            }
+
+            const current = tyreWear['current'];
+            if (current['lap-number'] !== 0) {
+                addTyreWearRow(
+                    tyreWearTable,
+                    current['lap-number'],
+                    current['front-left-wear'],
+                    current['front-right-wear'],
+                    current['rear-left-wear'],
+                    current['rear-right-wear'],
+                    false
+                );
+
+                let predictions = tyreWear['predictions'];
+                const pitWindow = tyreWear['pit-window'];
+                if (predictions.length >=1 && predictions[0]['lap-number'] != current['lap-number']) {
+                    predictions.forEach((prediction) => {
+
+                        let shouldHighlight = false;
+                        if (pitWindow !== null && prediction['lap-number'] === pitWindow) {
+                            shouldHighlight = true;
+                        }
+                        addTyreWearRow(
+                            tyreWearTable,
+                            prediction['lap-number'],
+                            prediction['front-left-wear'],
+                            prediction['front-right-wear'],
+                            prediction['rear-left-wear'],
+                            prediction['rear-right-wear'],
+                            shouldHighlight
+                        );
+                    });
+                }
+            }
+            }
+
+        function updateLapTimeTable(sessionHistory) {
+
+            const lapTimeTable = document.getElementById('lapTimeTable');
+            clearTable(lapTimeTable, clearHeader=true);
+            if (sessionHistory === null) {
+                return;
+            }
+
+            function addLapTimeRow(lapTimeTable, lapNumber, lapData, isFastest) {
+                function getValidTimeStr(timeMs, timeStr) {
+
+                    if (timeMs === 0) {
+                        return "---";
+                    } else {
+                        return timeStr;
+                    }
+                }
+
+                // Create a new row and cells
+                const row = lapTimeTable.insertRow();
+                const lapNumCell    = row.insertCell(0);
+                const lapTimeCell   = row.insertCell(1);
+
+                // Fill the cells with the provided data
+                lapNumCell.innerHTML = lapNumber;
+                lapTimeCell.innerHTML = getValidTimeStr(lapData["lap-time-in-ms"], lapData["lap-time-str"]);
+            }
+
+            const fastestLapNum     = sessionHistory['best-lap-time-lap-num'];
+            const lapHistoryData    = sessionHistory['lap-history-data'];
+            const numRows           = 5;
+
+            let count = 0;
+            for (i=lapHistoryData.length-2; i>=0 && count < numRows; i--, count++) {
+
+                const lapNumber = i + 1;
+                const lapData   = lapHistoryData[i];
+                const isFastest = (lapNumber === fastestLapNum);
+                addLapTimeRow(
+                    lapTimeTable,
+                    lapNumber,
+                    lapData,
+                    isFastest);
+            }
+        }
+
+        function updatePenaltiesTable(penalties) {
+            const penaltiesCell = document.getElementById('penaltiesValue');
+            const ccwCell = document.getElementById('ccwValue');
+            const otherWarnCell = document.getElementById('otherWarnValue');
+            const dtCell = document.getElementById('dtValue');
+            const sgCell = document.getElementById('sgValue');
+
+            // Ensure the elements exist before updating
+            if (penaltiesCell && ccwCell && otherWarnCell && dtCell && sgCell) {
+                penaltiesCell.innerText = penalties["time-penalties"];
+                ccwCell.innerText = penalties["corner-cutting-warnings"];
+                otherWarnCell.innerText = penalties["total-warnings"] - penalties["corner-cutting-warnings"];
+                dtCell.innerText = penalties["unserved-drive-through-pens"];
+                sgCell.innerText = penalties["unserved-stop-go-pens"];
+            } else {
+                console.error('One or more penalty table cells are not found in the DOM.');
+            }
+        }
+
+        function updateWeatherTable(weatherForecastSamples) {
+
+            const weatherTable = document.getElementById('weatherTable');
+            function addWeatherForecastSampleRow(weatherTable, timeOffset, rainProbability, weatherType) {
+
+                // Create a new row and cells
+                const row = weatherTable.insertRow();
+                const timeOffsetCell        = row.insertCell(0);
+                const rainProbabilityCell   = row.insertCell(1);
+                const weatherTypeCell       = row.insertCell(2);
+
+                // Fill the cells with the provided data
+                timeOffsetCell.innerText        = timeOffset + ' min';
+                rainProbabilityCell.innerText   = rainProbability + "%";
+                weatherTypeCell.innerText       = weatherType;
+            }
+
+            clearTable(weatherTable, clearHeader=false);
+            let iterationCount = 0; // Counter to track the number of iterations
+            const maxWeatherSamples = 5;
+            for (let i=0, count=0; i<weatherForecastSamples.length && count<maxWeatherSamples; i++,count++) {
+                const sample = weatherForecastSamples[i];
+                addWeatherForecastSampleRow(
+                    weatherTable,
+                    sample['time-offset'],
+                    sample['rain-probability'],
+                    sample['weather']
+                );
+            }
+        }
+
+        initializeGraph();
+
+        const socket = io();
+
+        socket.on('player-overlay-update', function (data) {
+            updateTyreWearTable(data["tyre-wear"]);
+            updateThrottleBrakeGraph(data["car-telemetry"]["throttle"], data["car-telemetry"]["brake"]);
+            updatePenaltiesTable(data["penalties"]);
+            updateLapTimeTable(data["session-history"]);
+            updateWeatherTable(data["weather-forecast-samples"]);
+        });
+    </script>
+</body>
+
+</html>
