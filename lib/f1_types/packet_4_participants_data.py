@@ -83,6 +83,7 @@ class ParticipantData:
         "H" # uint16     m_techLevel          // F1 World tech level
         "B" # uint8      m_platform;          // 1 = Steam, 3 = PlayStation, 4 = Xbox, 6 = Origin, 255 = unknown
     )
+    PACKET_LEN_24 = struct.calcsize(PACKET_FORMAT_24)
 
     def __init__(self, data: bytes, game_year: int) -> None:
         """
@@ -112,7 +113,7 @@ class ParticipantData:
             ) = unpacked_data
             self.m_techLevel = 0
         else:
-            unpacked_data = struct.unpack(self.PACKET_FORMAT_23, data)
+            unpacked_data = struct.unpack(self.PACKET_FORMAT_24, data)
             (
                 self.m_aiControlled,
                 self.m_driverId,
@@ -219,7 +220,8 @@ class PacketParticipantsData:
         self.m_numActiveCars: int = struct.unpack("<B", packet[0:1])[0]
         self.m_participants: List[ParticipantData] = []            # ParticipantData[22]
 
-        for participant_data_raw in _split_list(packet[1:], ParticipantData.PACKET_LEN_23):
+        packet_len = ParticipantData.PACKET_LEN_23 if (header.m_gameYear == 23) else ParticipantData.PACKET_LEN_24
+        for participant_data_raw in _split_list(packet[1:], packet_len):
             self.m_participants.append(ParticipantData(participant_data_raw, header.m_gameYear))
 
         # Trim the list

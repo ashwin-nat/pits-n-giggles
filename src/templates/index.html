@@ -573,12 +573,11 @@ SOFTWARE.
                         row.insertCell().textContent = entry["delta-to-leader"];
                     }
                 }
-                if (gameYear == 2023) {
+                if (gameYear == 23) {
                     row.insertCell().textContent = entry["ers"];
                 } else {
                     row.insertCell().innerHTML = `${entry["ers"]}<br>${entry["ers-mode"]}`;
                 }
-                const ersCell = row.insertCell();
 
                 const warningsPensCell = row.insertCell();
                 const dtPlusSg = entry["num-dt"] + "DT + " +

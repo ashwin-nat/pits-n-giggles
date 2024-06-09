@@ -100,11 +100,47 @@ class LapData:
     )
     PACKET_LEN_23:int = struct.calcsize(PACKET_FORMAT_23)
 
-    PACKET_FORMAT_EXTRA_24 = ("<"
-        "f" #float    m_speedTrapFastestSpeed;     // Fastest speed through speed trap for this car in kmph
-        "B" # uint8    m_speedTrapFastestLap;       // Lap no the fastest speed was achieved, 255 = not set
+    PACKET_FORMAT_24:str = ("<"
+        "I" # uint32   m_lastLapTimeInMS;                // Last lap time in milliseconds
+        "I" # uint32   m_currentLapTimeInMS;      // Current time around the lap in milliseconds
+        "H" # uint16   m_sector1TimeMSPart;         // Sector 1 time milliseconds part
+        "B" # uint8    m_sector1TimeMinutesPart;    // Sector 1 whole minute part
+        "H" # uint16   m_sector2TimeMSPart;         // Sector 2 time milliseconds part
+        "B" # uint8    m_sector2TimeMinutesPart;    // Sector 2 whole minute part
+        "H" # uint16   m_deltaToCarInFrontMSPart;   // Time delta to car in front milliseconds part
+        "B" # uint8    m_deltaToCarInFrontMinutesPart; // Time delta to car in front whole minute part
+        "H" # uint16   m_deltaToRaceLeaderMSPart;      // Time delta to race leader milliseconds part
+        "B" # uint8    m_deltaToRaceLeaderMinutesPart; // Time delta to race leader whole minute part
+        "f" # float    m_lapDistance;         // Distance vehicle is around current lap in metres – could
+                      #  // be negative if line hasn’t been crossed yet
+        "f" # float    m_totalDistance;         // Total distance travelled in session in metres – could
+                      #  // be negative if line hasn’t been crossed yet
+        "f" # float    m_safetyCarDelta;            // Delta in seconds for safety car
+        "B" # uint8   # m_carPosition;                // Car race position
+        "B" # uint8    m_currentLapNum;         // Current lap number
+        "B" # uint8    m_pitStatus;                 // 0 = none, 1 = pitting, 2 = in pit area
+        "B" # uint8    m_numPitStops;                 // Number of pit stops taken in this race
+        "B" # uint8    m_sector;                    // 0 = sector1, 1 = sector2, 2 = sector3
+        "B" # uint8    m_currentLapInvalid;         // Current lap invalid - 0 = valid, 1 = invalid
+        "B" # uint8    m_penalties;                 // Accumulated time penalties in seconds to be added
+        "B" # uint8    m_totalWarnings;             // Accumulated number of warnings issued
+        "B" # uint8    m_cornerCuttingWarnings;     // Accumulated number of corner cutting warnings issued
+        "B" # uint8    m_numUnservedDriveThroughPens;  // Num drive through pens left to serve
+        "B" # uint8    m_numUnservedStopGoPens;        // Num stop go pens left to serve
+        "B" # uint8    m_gridPosition;              // Grid position the vehicle started the race in
+        "B" # uint8    m_driverStatus;              // Status of driver - 0 = in garage, 1 = flying lap
+                      #                      // 2 = in lap, 3 = out lap, 4 = on track
+        "B" # uint8    m_resultStatus;              // Result status - 0 = invalid, 1 = inactive, 2 = active
+                      #                      // 3 = finished, 4 = didnotfinish, 5 = disqualified
+                      #                      // 6 = not classified, 7 = retired
+        "B" # uint8    m_pitLaneTimerActive;          // Pit lane timing, 0 = inactive, 1 = active
+        "H" # uint16   m_pitLaneTimeInLaneInMS;        // If active, the current time spent in the pit lane in ms
+        "H" # uint16   m_pitStopTimerInMS;             // Time of the actual pit stop in ms
+        "B" # uint8    m_pitStopShouldServePen;        // Whether the car should serve a penalty at this stop
+        "f" # float    m_speedTrapFastestSpeed;     // Fastest speed through speed trap for this car in kmph
+        "B" # uint8   # m_speedTrapFastestLap;       // Lap no the fastest speed was achieved, 255 = not set
     )
-    PACKET_LEN_EXTRA_24 = struct.calcsize(PACKET_FORMAT_EXTRA_24)
+    PACKET_LEN_24:int = struct.calcsize(PACKET_FORMAT_24)
 
     class DriverStatus(Enum):
         """
@@ -237,38 +273,80 @@ class LapData:
         """
 
         # Assign the members from unpacked_data
-        common_fields_raw_data = _extract_sublist(data, 0, self.PACKET_FORMAT_23)
-        (
-            self.m_lastLapTimeInMS,
-            self.m_currentLapTimeInMS,
-            self.m_sector1TimeInMS,
-            self.m_sector1TimeMinutes,
-            self.m_sector2TimeInMS,
-            self.m_sector2TimeMinutes,
-            self.m_deltaToCarInFrontInMS,
-            self.m_deltaToRaceLeaderInMS,
-            self.m_lapDistance,
-            self.m_totalDistance,
-            self.m_safetyCarDelta,
-            self.m_carPosition,
-            self.m_currentLapNum,
-            self.m_pitStatus,
-            self.m_numPitStops,
-            self.m_sector,
-            self.m_currentLapInvalid,
-            self.m_penalties,
-            self.m_totalWarnings,
-            self.m_cornerCuttingWarnings,
-            self.m_numUnservedDriveThroughPens,
-            self.m_numUnservedStopGoPens,
-            self.m_gridPosition,
-            self.m_driverStatus,
-            self.m_resultStatus,
-            self.m_pitLaneTimerActive,
-            self.m_pitLaneTimeInLaneInMS,
-            self.m_pitStopTimerInMS,
-            self.m_pitStopShouldServePen,
-        ) = struct.unpack(self.PACKET_FORMAT_23, common_fields_raw_data)
+        if game_year == 23:
+            raw_data = _extract_sublist(data, 0, self.PACKET_LEN_23)
+            (
+                self.m_lastLapTimeInMS,
+                self.m_currentLapTimeInMS,
+                self.m_sector1TimeInMS,
+                self.m_sector1TimeMinutes,
+                self.m_sector2TimeInMS,
+                self.m_sector2TimeMinutes,
+                self.m_deltaToCarInFrontInMS,
+                self.m_deltaToRaceLeaderInMS,
+                self.m_lapDistance,
+                self.m_totalDistance,
+                self.m_safetyCarDelta,
+                self.m_carPosition,
+                self.m_currentLapNum,
+                self.m_pitStatus,
+                self.m_numPitStops,
+                self.m_sector,
+                self.m_currentLapInvalid,
+                self.m_penalties,
+                self.m_totalWarnings,
+                self.m_cornerCuttingWarnings,
+                self.m_numUnservedDriveThroughPens,
+                self.m_numUnservedStopGoPens,
+                self.m_gridPosition,
+                self.m_driverStatus,
+                self.m_resultStatus,
+                self.m_pitLaneTimerActive,
+                self.m_pitLaneTimeInLaneInMS,
+                self.m_pitStopTimerInMS,
+                self.m_pitStopShouldServePen,
+            ) = struct.unpack(self.PACKET_FORMAT_23, raw_data)
+            self.m_deltaToCarInFrontMinutes: int = 0
+            self.m_deltaToRaceLeaderMinutes: int = 0
+            self.m_speedTrapFastestSpeed: float = 0
+            self.m_speedTrapFastestLap: int = 0
+        else: # 24
+            raw_data = _extract_sublist(data, 0, self.PACKET_LEN_24)
+            (
+                self.m_lastLapTimeInMS,
+                self.m_currentLapTimeInMS,
+                self.m_sector1TimeInMS,
+                self.m_sector1TimeMinutes,
+                self.m_sector2TimeInMS,
+                self.m_sector2TimeMinutes,
+                self.m_deltaToCarInFrontInMS,
+                self.m_deltaToCarInFrontMinutes,
+                self.m_deltaToRaceLeaderInMS,
+                self.m_deltaToRaceLeaderMinutes,
+                self.m_lapDistance,
+                self.m_totalDistance,
+                self.m_safetyCarDelta,
+                self.m_carPosition,
+                self.m_currentLapNum,
+                self.m_pitStatus,
+                self.m_numPitStops,
+                self.m_sector,
+                self.m_currentLapInvalid,
+                self.m_penalties,
+                self.m_totalWarnings,
+                self.m_cornerCuttingWarnings,
+                self.m_numUnservedDriveThroughPens,
+                self.m_numUnservedStopGoPens,
+                self.m_gridPosition,
+                self.m_driverStatus,
+                self.m_resultStatus,
+                self.m_pitLaneTimerActive,
+                self.m_pitLaneTimeInLaneInMS,
+                self.m_pitStopTimerInMS,
+                self.m_pitStopShouldServePen,
+                self.m_speedTrapFastestSpeed,
+                self.m_speedTrapFastestLap
+            ) = struct.unpack(self.PACKET_FORMAT_24, raw_data)
 
         if LapData.DriverStatus.isValid(self.m_driverStatus):
             self.m_driverStatus = LapData.DriverStatus(self.m_driverStatus)
@@ -280,17 +358,6 @@ class LapData:
             self.m_sector = LapData.Sector(self.m_sector)
         self.m_currentLapInvalid = bool(self.m_currentLapInvalid)
         self.m_pitLaneTimerActive = bool(self.m_pitLaneTimerActive)
-
-        if game_year == 24:
-            f1_24_fields_raw_data = _extract_sublist(data, self.PACKET_LEN_23,
-                                                     self.PACKET_LEN_23 + self.PACKET_LEN_EXTRA_24)
-            (
-                self.m_speedTrapFastestSpeed,
-                self.m_SpeedTrapFastestLap,
-            ) = struct.unpack(self.PACKET_FORMAT_EXTRA_24, f1_24_fields_raw_data)
-        else:
-            self.m_SpeedTrapFastestLap = 0
-            self.m_speedTrapFastestSpeed = 0.0
 
     def __str__(self) -> str:
         """
@@ -375,7 +442,7 @@ class LapData:
             "pit-stop-timer-in-ms": self.m_pitStopTimerInMS,
             "pit-stop-should-serve-pen": self.m_pitStopShouldServePen,
             "speed-trap-fastest-speed" : self.m_speedTrapFastestSpeed,
-            "speed-trap-fastest-lap" : self.m_SpeedTrapFastestLap,
+            "speed-trap-fastest-lap" : self.m_speedTrapFastestLap,
         }
 
 class PacketLapData:
@@ -401,7 +468,12 @@ class PacketLapData:
         self.m_header: PacketHeader = header
         self.m_LapData: List[LapData] = []  # LapData[22]
         self.m_LapDataCount = 22
-        len_of_lap_data_array = self.m_LapDataCount * LapData.PACKET_LEN_23
+        if header.m_gameYear == 23:
+            lap_data_obj_size = LapData.PACKET_LEN_23
+            len_of_lap_data_array = self.m_LapDataCount * LapData.PACKET_LEN_23
+        else: # 24
+            lap_data_obj_size = LapData.PACKET_LEN_24
+            len_of_lap_data_array = self.m_LapDataCount * LapData.PACKET_LEN_24
 
         # 2 extra bytes for the two uint8 that follow LapData
         expected_len = (len_of_lap_data_array + 2)
@@ -411,7 +483,7 @@ class PacketLapData:
             )
 
         lap_data_packet_raw = _extract_sublist(packet, 0, len_of_lap_data_array)
-        for lap_data_packet in _split_list(lap_data_packet_raw, LapData.PACKET_LEN_23):
+        for lap_data_packet in _split_list(lap_data_packet_raw, lap_data_obj_size):
             self.m_LapData.append(LapData(lap_data_packet, header.m_gameYear))
 
         time_trial_section_raw = _extract_sublist(packet, len_of_lap_data_array, len(packet))

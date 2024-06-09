@@ -168,7 +168,7 @@ class F1TelemetryManager:
             try:
                 packet = F1TelemetryManager.packet_type_map[header.m_packetId](header, payload_raw)
             except InvalidPacketLengthError as e:
-                logging.error("Cannot parse packet of type " + header.m_packetId + ". Error = " + e)
+                logging.error("Cannot parse packet of type %s. Error = %s", str(header.m_packetId), str(e))
             callback = self.m_callbacks.get(header.m_packetId, None)
             if callback:
                 callback(packet)

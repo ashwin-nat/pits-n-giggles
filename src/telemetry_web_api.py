@@ -404,7 +404,7 @@ class DriversListRsp:
                                                                data_per_driver.m_is_pitting,
                                                                data_per_driver.m_dnf_status_code),
                     "ers": _getValueOrDefaultValue(data_per_driver.m_ers_perc),
-                    "ers-mode" : _getValueOrDefaultValue(str(data_per_driver.m_packet_car_status.ERSDeployMode)
+                    "ers-mode" : _getValueOrDefaultValue(str(data_per_driver.m_packet_car_status.m_ersDeployMode)
                                                          if data_per_driver.m_packet_car_status else None),
                     "ers-harvested-by-mguk-this-lap" : (((data_per_driver.m_packet_car_status.m_ersHarvestedThisLapMGUK
                                                           if data_per_driver.m_packet_car_status else 0.0) /

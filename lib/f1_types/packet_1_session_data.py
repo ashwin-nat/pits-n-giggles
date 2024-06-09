@@ -524,7 +524,7 @@ class PacketSessionData:
         "B" # uint8    m_affectsLicenceLevelSolo;          // 0 = Off, 1 = On
         "B" # uint8    m_affectsLicenceLevelMP;            // 0 = Off, 1 = On
         "B" # uint8    m_numSessionsInWeekend;             // Number of session in following array
-        "4B" # uint8    m_weekendStructure[12];             // List of session types to show weekend
+        "12B" # uint8    m_weekendStructure[12];             // List of session types to show weekend
                                # // structure - see appendix for types
         "f" # float    m_sector2LapDistanceStart;          // Distance in m around track where sector 2 starts
         "f" # float    m_sector3LapDistanceStart;          // Distance in m around track where sector 3 starts
@@ -737,7 +737,7 @@ class PacketSessionData:
         section_3_raw_data = None
 
         # Section 4 - rest of the packet
-        section_4_raw_data = _extract_sublist(data, byte_index_so_far, byte_index_so_far+self.PACKET_LEN_SECTION_5)
+        section_4_raw_data = _extract_sublist(data, byte_index_so_far, byte_index_so_far+self.PACKET_LEN_SECTION_4)
         byte_index_so_far += self.PACKET_LEN_SECTION_4
         unpacked_data = struct.unpack(self.PACKET_FORMAT_SECTION_4, section_4_raw_data)
         (
@@ -807,7 +807,18 @@ class PacketSessionData:
                 self.m_affectsLicenceLevelSolo,
                 self.m_affectsLicenceLevelMP,
                 self.m_numSessionsInWeekend,
-                self.m_weekendStructure,
+                self.m_weekendStructure[0],
+                self.m_weekendStructure[1],
+                self.m_weekendStructure[2],
+                self.m_weekendStructure[3],
+                self.m_weekendStructure[4],
+                self.m_weekendStructure[5],
+                self.m_weekendStructure[6],
+                self.m_weekendStructure[7],
+                self.m_weekendStructure[8],
+                self.m_weekendStructure[9],
+                self.m_weekendStructure[10],
+                self.m_weekendStructure[11],
                 self.m_sector2LapDistanceStart,
                 self.m_sector3LapDistanceStart,
             ) = unpacked_data
