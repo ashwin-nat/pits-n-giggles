@@ -1006,7 +1006,7 @@ class PacketSessionData:
             "affects-license-level-solo" : self.m_affectsLicenceLevelSolo,
             "affects-license-level-mp" : self.m_affectsLicenceLevelMP,
             "num-sessions-in-weekend" : str(self.m_numSessionsInWeekend),
-            "weekend-structure" : [str(session_id) for session_id in self.m_numSessionsInWeekend],
+            "weekend-structure" : [str(weekend) for weekend in self.m_weekendStructure],
             "sector-2-lap-distance-start" : str(self.m_sector2LapDistanceStart),
             "sector-3-lap-distance-start" : str(self.m_sector3LapDistanceStart),
         }
