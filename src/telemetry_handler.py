@@ -194,6 +194,7 @@ g_post_race_data_autosave: bool = False
 g_directory_mapping: Dict[str, str] = {}
 g_udp_custom_action_code: Optional[int] = None
 g_player_recorded_events_history: CustomMarkersHistory = CustomMarkersHistory()
+g_completed_session_uid_set: set[int] = set()
 
 # -------------------------------------- INITIALIZATION ----------------------------------------------------------------
 
@@ -668,8 +669,12 @@ class F1TelemetryHandler:
         Arguments
             packet - PacketCarStatusData object
         """
+        global g_completed_session_uid_set
+        if packet.m_header.m_sessionUID in g_completed_session_uid_set:
+            logging.debug('Session UID %d final classification already processed.', packet.m_header.m_sessionUID)
         logging.info('Received Final Classification Packet.')
         final_json = TelData.processFinalClassificationUpdate(packet)
+        g_completed_session_uid_set.add(packet.m_header.m_sessionUID)
 
         # Perform the auto save stuff only for races
         event_type_str = TelData.getGlobals().m_event_type

@@ -66,6 +66,7 @@ class PacketCarSetupData:
         else: # 24
             packet_len = CarSetupData.PACKET_LEN_24
             car_setups_raw_data = _extract_sublist(packet, 0, packet_len*22)
+            car_setups_raw_data = _split_list(car_setups_raw_data, packet_len)
             self.m_nextFrontWingValue: float = struct.unpack("<f", packet[packet_len*22:])[0]
         for setup_per_car_raw_data in car_setups_raw_data:
             self.m_carSetups.append(CarSetupData(setup_per_car_raw_data, header.m_gameYear))

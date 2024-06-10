@@ -470,46 +470,30 @@ class DataPerDriver:
 
         if self.m_tyre_wear_extrapolator.isDataSufficient() and (self.m_tyre_wear_extrapolator.remaining_laps > 0):
             predictions_list = []
-            # pylint: disable=unnecessary-lambda-assignment
-            log_error_lambda = lambda: logging.error(
-                "%s: Prediction for lap %s not available. Curr lap = %s Num Samples = %s",
-                self.m_name,
-                next_pit_window,
-                self.m_current_lap,
-                self.m_tyre_wear_extrapolator.num_samples
-            )
 
             # Input sanitization
             if next_pit_window is None or (next_pit_window == 0) or (next_pit_window < self.m_current_lap):
                 # Lets return the lap midway between current lap and final lap
                 next_pit_window = (self.m_current_lap + self.m_tyre_wear_extrapolator.total_laps) // 2
 
+            # NOTE: Flashbacks or delayed telemetry starts can cause the prediction to not be available.
             # This happens in the last lap
             if next_pit_window == self.m_tyre_wear_extrapolator.total_laps:
                 # We are already in the final lap, so return the final prediction
                 predicted_tyre_wear = self.m_tyre_wear_extrapolator.getTyreWearPrediction()
                 if predicted_tyre_wear:
                     predictions_list.append(predicted_tyre_wear.toJSON())
-                else:
-                    log_error_lambda()
             else:
 
                 # Add prediction for next window if available
                 pit_lap_prediction = self.m_tyre_wear_extrapolator.getTyreWearPrediction(next_pit_window)
-                if pit_lap_prediction:
-                    if next_pit_window:
-                        predictions_list.append(pit_lap_prediction.toJSON())
-                    else:
-                        log_error_lambda()
-                else:
-                    log_error_lambda()
+                if pit_lap_prediction and next_pit_window:
+                    predictions_list.append(pit_lap_prediction.toJSON())
 
                 # Add final lap prediction if available
                 final_lap_prediction = self.m_tyre_wear_extrapolator.getTyreWearPrediction()
                 if final_lap_prediction:
                     predictions_list.append(final_lap_prediction.toJSON())
-                else:
-                    log_error_lambda()
             return predictions_list
         # Data unavailable, return empty list
         return []
