@@ -23,7 +23,6 @@
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
 from typing import Callable
-import logging
 from lib.socket_receiver import UDPListener, TCPListener
 from lib.f1_types import F1PacketType, PacketHeader, PacketMotionData, PacketSessionData, PacketLapData, \
     PacketEventData, PacketParticipantsData, PacketCarSetupData, PacketCarTelemetryData, PacketCarStatusData, \
