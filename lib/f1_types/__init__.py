@@ -20,23 +20,26 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-## NOTE: Please refer to the F1 23 UDP specification document to understand fully how the telemetry data works.
-## All classes in supported in this library are documented with the members, but it is still recommended to read the
-## official document. https://answers.ea.com/t5/General-Discussion/F1-23-UDP-Specification/m-p/12633159
 
 from .common import (
     InvalidPacketLengthError,
     F1PacketType,
     ResultStatus,
-    SessionType,
+    SessionType23,
+    SessionType24,
     ActualTyreCompound,
     VisualTyreCompound,
+    SafetyCarType,
+    TelemetrySetting,
     Nationality,
     Platform,
     TeamID,
     F1Utils,
     PacketHeader,
-    TrackID
+    TrackID,
+    TractionControlAssistMode,
+    GearboxAssistMode,
+    SessionLength,
 )
 from .packet_0_car_motion_data import PacketMotionData, CarMotionData
 from .packet_1_session_data import MarshalZone, WeatherForecastSample, PacketSessionData
@@ -52,7 +55,7 @@ from .packet_10_car_damage_data import PacketCarDamageData, CarDamageData
 from .packet_11_session_history_data import PacketSessionHistoryData, TyreStintHistoryData, LapHistoryData
 from .packet_12_tyre_sets_packet import PacketTyreSetsData, TyreSetData
 from .packet_13_motion_ex_data import PacketMotionExData
-
+from .packet_14_time_trial_data import PacketTimeTrialData, TimeTrialDataSet
 
 # Import other packet classes here
 __all__ = [
@@ -60,15 +63,21 @@ __all__ = [
     "InvalidPacketLengthError",
     "F1PacketType",
     "ResultStatus",
-    "SessionType",
+    "SessionType23",
+    "SessionType24",
     "ActualTyreCompound",
     "VisualTyreCompound",
+    "SafetyCarType",
+    "TelemetrySetting",
     "Nationality",
     "Platform",
     "TeamID",
     "F1Utils",
     "PacketHeader",
     "TrackID",
+    "TractionControlAssistMode",
+    "GearboxAssistMode",
+    "SessionLength",
 
     # Packet 0 - car motion
     "PacketMotionData",
@@ -125,4 +134,8 @@ __all__ = [
 
     # Packet 13 - Motion Ex
     "PacketMotionExData",
+
+    # Packet 14 - Time Trial
+    "PacketTimeTrialData",
+    "TimeTrialDataSet"
 ]

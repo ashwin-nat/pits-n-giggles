@@ -20,13 +20,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-## NOTE: Please refer to the F1 23 UDP specification document to understand fully how the telemetry data works.
-## All classes in supported in this library are documented with the members, but it is still recommended to read the
-## official document. https://answers.ea.com/t5/General-Discussion/F1-23-UDP-Specification/m-p/12633159
 
 import struct
 from typing import Dict, Any
-from .common import PacketHeader
+from .common import PacketHeader, _extract_sublist
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -56,10 +53,14 @@ class PacketMotionExData:
         m_angularAccelerationZ (float): Angular acceleration around the Z-axis.
         m_frontWheelsAngle (float): Current front wheels angle in radians.
         m_wheelVertForce (List[float]): Vertical forces for each wheel.
-
+        m_frontAeroHeight (float): Front plank edge height above road surface
+        m_rearAeroHeight (float): Rear plank edge height above road surface
+        m_frontRollAngle (float): Roll angle of the front suspension
+        m_rearRollAngle (float): Roll angle of the rear suspension
+        m_chassisYaw (float): Yaw angle of the chassis relative to the direction of motion - radians
     """
 
-    PACKET_FORMAT = ("<"
+    PACKET_FORMAT_23 = ("<"
         # // Extra player car ONLY data
         "4f" # float         m_suspensionPosition[4];       // Note: All wheel arrays have the following order:
         "4f" # float         m_suspensionVelocity[4];       // RL, RR, FL, FR
@@ -80,9 +81,19 @@ class PacketMotionExData:
         "f" # float         m_angularAccelerationY;	// Angular acceleration y-component
         "f" # float         m_angularAccelerationZ;        // Angular acceleration z-component
         "f" # float         m_frontWheelsAngle;            // Current front wheels angle in radians
-        "4f" # float         m_wheelVertForce[4];           // Vertical forces for each wheel
+        "4f" # float        m_wheelVertForce[4];           // Vertical forces for each wheel
     )
-    PACKET_LEN = struct.calcsize(PACKET_FORMAT)
+    PACKET_LEN_23 = struct.calcsize(PACKET_FORMAT_23)
+
+    PACKET_FORMAT_24_EXTRA = ("<"
+        "f" # float         m_frontAeroHeight;             // Front plank edge height above road surface
+        "f" # float         m_rearAeroHeight;              // Rear plank edge height above road surface
+        "f" # float         m_frontRollAngle;              // Roll angle of the front suspension
+        "f" # float         m_rearRollAngle;               // Roll angle of the rear suspension
+        "f" # float         m_chassisYaw;                  // Yaw angle of the chassis relative to the direction
+                                                        #  // of motion - radians)
+    )
+    PACKET_LEN_EXTRA_24 = struct.calcsize(PACKET_FORMAT_24_EXTRA)
 
     def __init__(self, header: PacketHeader, data: bytes) -> None:
         """
@@ -152,7 +163,24 @@ class PacketMotionExData:
             self.m_wheelVertForce[1],               # array of floats
             self.m_wheelVertForce[2],               # array of floats
             self.m_wheelVertForce[3],               # array of floats
-        ) = struct.unpack(self.PACKET_FORMAT, data)
+
+        ) = struct.unpack(self.PACKET_FORMAT_23, _extract_sublist(data, 0, self.PACKET_LEN_23))
+
+        if header.m_gameYear == 24:
+            (
+                self.m_frontAeroHeight,             # float
+                self.m_rearAeroHeight,              # float
+                self.m_frontRollAngle,              # float
+                self.m_rearRollAngle,               # float
+                self.m_chassisYaw,                  # float
+            ) = struct.unpack(self.PACKET_FORMAT_24_EXTRA,
+                              _extract_sublist(data, self.PACKET_LEN_23, self.PACKET_LEN_23 + self.PACKET_LEN_EXTRA_24))
+        else:
+            self.m_frontAeroHeight: float = 0
+            self.m_rearAeroHeight: float = 0
+            self.m_frontRollAngle: float = 0
+            self.m_rearRollAngle: float = 0
+            self.m_chassisYaw: float = 0
 
     def __str__(self) -> str:
         """
@@ -177,7 +205,12 @@ class PacketMotionExData:
             f"Angular Velocity (X, Y, Z): ({self.m_angularVelocityX}, {self.m_angularVelocityY}, {self.m_angularVelocityZ}), "
             f"Angular Acceleration (X, Y, Z): ({self.m_angularAccelerationX}, {self.m_angularAccelerationY}, {self.m_angularAccelerationZ}), "
             f"Front Wheels Angle: {self.m_frontWheelsAngle}, "
-            f"Wheel Vertical Force: {str(self.m_wheelVertForce)}"
+            f"Wheel Vertical Force: {str(self.m_wheelVertForce)}, "
+            f"Front AERO Height: {self.m_frontAeroHeight}, "
+            f"Rear AERO Height: {self.m_rearAeroHeight}, "
+            f"Front Roll Angle: {self.m_frontRollAngle}, "
+            f"Rear Roll Angle: {self.m_rearRollAngle}, "
+            f"Chassis Yaw: {self.m_chassisYaw}"
         )
 
     def toJSON(self, include_header: bool=False) -> Dict[str, Any]:
@@ -212,6 +245,11 @@ class PacketMotionExData:
             ),
             "front-wheels-angle": self.m_frontWheelsAngle,
             "wheel-vert-force": self.m_wheelVertForce,
+            "front-aero-height": self.m_frontAeroHeight,
+            "rear-aero-height": self.m_rearAeroHeight,
+            "front-roll-angle": self.m_frontRollAngle,
+            "rear-roll-angle": self.m_rearRollAngle,
+            "chassis-yaw": self.m_chassisYaw
         }
         if include_header:
             json_data["header"] = self.m_header.toJSON()

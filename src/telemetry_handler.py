@@ -36,7 +36,7 @@ from src.telemetry_manager import F1TelemetryManager
 from lib.f1_types import F1PacketType, PacketSessionData, PacketLapData, \
     PacketEventData, PacketParticipantsData, PacketCarTelemetryData, PacketCarStatusData, \
     PacketFinalClassificationData, PacketCarDamageData, PacketSessionHistoryData, \
-    PacketTyreSetsData, SessionType
+    PacketTyreSetsData, SessionType23, SessionType24
 from lib.packet_cap import F1PacketCapture
 from lib.overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, OvertakeRecord
 import src.telemetry_data as TelData
@@ -194,6 +194,7 @@ g_post_race_data_autosave: bool = False
 g_directory_mapping: Dict[str, str] = {}
 g_udp_custom_action_code: Optional[int] = None
 g_player_recorded_events_history: CustomMarkersHistory = CustomMarkersHistory()
+g_completed_session_uid_set: set[int] = set()
 
 # -------------------------------------- INITIALIZATION ----------------------------------------------------------------
 
@@ -668,25 +669,44 @@ class F1TelemetryHandler:
         Arguments
             packet - PacketCarStatusData object
         """
+        global g_completed_session_uid_set
+        if packet.m_header.m_sessionUID in g_completed_session_uid_set:
+            logging.debug('Session UID %d final classification already processed.', packet.m_header.m_sessionUID)
+            return
         logging.info('Received Final Classification Packet.')
         final_json = TelData.processFinalClassificationUpdate(packet)
+        g_completed_session_uid_set.add(packet.m_header.m_sessionUID)
 
         # Perform the auto save stuff only for races
         event_type_str = TelData.getGlobals().m_event_type
         if event_type_str:
-            unsupported_event_types = [
-                SessionType.PRACTICE_1,
-                SessionType.PRACTICE_2,
-                SessionType.PRACTICE_3,
-                SessionType.SHORT_PRACTICE,
-                SessionType.TIME_TRIAL,
-                SessionType.UNKNOWN
+            unsupported_event_types_f1_23 = [
+                SessionType23.PRACTICE_1,
+                SessionType23.PRACTICE_2,
+                SessionType23.PRACTICE_3,
+                SessionType23.SHORT_PRACTICE,
+                SessionType23.TIME_TRIAL,
+                SessionType23.UNKNOWN
+            ]
+            unsupported_event_types_f1_24 = [
+                SessionType24.PRACTICE_1,
+                SessionType24.PRACTICE_2,
+                SessionType24.PRACTICE_3,
+                SessionType24.SHORT_PRACTICE,
+                SessionType24.TIME_TRIAL,
+                SessionType24.UNKNOWN
             ]
             is_event_supported = True
-            for event_type in unsupported_event_types:
-                if str(event_type) in event_type_str:
-                    is_event_supported = False
-                    break
+            if packet.m_header.m_gameYear == 23:
+                for event_type in unsupported_event_types_f1_23:
+                    if str(event_type) in event_type_str:
+                        is_event_supported = False
+                        break
+            else:
+                for event_type in unsupported_event_types_f1_24:
+                    if str(event_type) in event_type_str:
+                        is_event_supported = False
+                        break
             if is_event_supported:
                 postGameDumpToFile(final_json)
 

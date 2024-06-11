@@ -22,7 +22,7 @@
 
 import logging
 from typing import Dict, Any, Optional, List
-from lib.f1_types import F1Utils, LapHistoryData
+from lib.f1_types import F1Utils, LapHistoryData, CarStatusData
 import lib.race_analyzer as RaceAnalyzer
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 import src.telemetry_data as TelData
@@ -72,6 +72,7 @@ class RaceInfoRsp:
 
         globals_json = {
             # First, global fields
+            "f1-game-year" : _getValueOrDefaultValue(self.m_globals.m_game_year, None),
             "circuit": _getValueOrDefaultValue(self.m_globals.m_circuit),
             "track-temperature": _getValueOrDefaultValue(self.m_globals.m_track_temp),
             "air-temperature": _getValueOrDefaultValue(self.m_globals.m_air_temp),
@@ -403,6 +404,14 @@ class DriversListRsp:
                                                                data_per_driver.m_is_pitting,
                                                                data_per_driver.m_dnf_status_code),
                     "ers": _getValueOrDefaultValue(data_per_driver.m_ers_perc),
+                    "ers-mode" : _getValueOrDefaultValue(str(data_per_driver.m_packet_car_status.m_ersDeployMode)
+                                                         if data_per_driver.m_packet_car_status else None),
+                    "ers-harvested-by-mguk-this-lap" : (((data_per_driver.m_packet_car_status.m_ersHarvestedThisLapMGUK
+                                                          if data_per_driver.m_packet_car_status else 0.0) /
+                                                            CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0),
+                    "ers-deployed-this-lap" : ((data_per_driver.m_packet_car_status.m_ersDeployedThisLap
+                                                if data_per_driver.m_packet_car_status else 0.0) /
+                                                    CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0,
                     "best": _getValueOrDefaultValue(data_per_driver.m_best_lap_str),
                     "best-lap-delta" : _getValueOrDefaultValue(data_per_driver.m_best_lap_delta),
                     "last": _getValueOrDefaultValue(data_per_driver.m_last_lap),
@@ -669,7 +678,6 @@ class LapTimeInfo():
         m_lapValidBitFlags (int): Bit flags representing lap and sector validity.
         m_tyre_set_info (TelData.DataPerDriver.TyreSetInfo): The tyre set used.
     """
-
     def __init__(self,
                  lap_history_data: LapHistoryData,
                  tyre_set_info: TelData.DataPerDriver.TyreSetInfo,

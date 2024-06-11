@@ -26,7 +26,7 @@ from lib.socket_receiver import UDPListener, TCPListener
 from lib.f1_types import F1PacketType, PacketHeader, PacketMotionData, PacketSessionData, PacketLapData, \
     PacketEventData, PacketParticipantsData, PacketCarSetupData, PacketCarTelemetryData, PacketCarStatusData, \
     PacketFinalClassificationData, PacketLobbyInfoData, PacketCarDamageData, PacketSessionHistoryData, \
-    PacketTyreSetsData, PacketMotionExData, InvalidPacketLengthError
+    PacketTyreSetsData, PacketMotionExData, InvalidPacketLengthError, PacketTimeTrialData
 
 
 # ------------------------- CLASSES --------------------------------------------
@@ -55,6 +55,7 @@ class F1TelemetryManager:
         F1PacketType.SESSION_HISTORY : PacketSessionHistoryData,
         F1PacketType.TYRE_SETS : PacketTyreSetsData,
         F1PacketType.MOTION_EX : PacketMotionExData,
+        F1PacketType.TIME_TRIAL : PacketTimeTrialData,
     }
 
     def __init__(self, port_number: int, replay_server: bool = False):
@@ -167,7 +168,7 @@ class F1TelemetryManager:
             try:
                 packet = F1TelemetryManager.packet_type_map[header.m_packetId](header, payload_raw)
             except InvalidPacketLengthError as e:
-                logging.error("Cannot parse packet of type " + header.m_packetId + ". Error = " + e)
+                logging.error("Cannot parse packet of type %s. Error = %s", str(header.m_packetId), str(e))
             callback = self.m_callbacks.get(header.m_packetId, None)
             if callback:
                 callback(packet)

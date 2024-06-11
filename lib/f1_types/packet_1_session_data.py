@@ -20,14 +20,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-## NOTE: Please refer to the F1 23 UDP specification document to understand fully how the telemetry data works.
-## All classes in supported in this library are documented with the members, but it is still recommended to read the
-## official document. https://answers.ea.com/t5/General-Discussion/F1-23-UDP-Specification/m-p/12633159
 
 import struct
 from typing import Dict, Any, List
 from enum import Enum
-from .common import _split_list, _extract_sublist, SessionType, PacketHeader, TrackID
+from .common import _split_list, _extract_sublist, SessionType23, SessionType24, PacketHeader, TrackID, SafetyCarType, \
+    GearboxAssistMode, SessionLength
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -329,8 +327,8 @@ class WeatherForecastSample:
             self.m_airTemperatureChange = WeatherForecastSample.AirTemperatureChange(self.m_airTemperatureChange)
         if WeatherForecastSample.TrackTemperatureChange.isValid(self.m_trackTemperatureChange):
             self.m_trackTemperatureChange = WeatherForecastSample.TrackTemperatureChange(self.m_trackTemperatureChange)
-        if SessionType.isValid(self.m_sessionType):
-            self.m_sessionType = SessionType(self.m_sessionType)
+        if SessionType23.isValid(self.m_sessionType):
+            self.m_sessionType = SessionType23(self.m_sessionType)
 
     def __str__(self) -> str:
         """A description of the entire function, its parameters, and its return types.
@@ -406,7 +404,7 @@ class PacketSessionData:
         - m_pitStopRejoinPosition (uint8): Predicted position to rejoin at (player).
         - m_steeringAssist (uint8): Steering assist status (0 = off, 1 = on).
         - m_brakingAssist (uint8): Braking assist status (0 = off, 1 = low, 2 = medium, 3 = high).
-        - m_gearboxAssist (uint8): Gearbox assist status (1 = manual, 2 = manual & suggested gear, 3 = auto).
+        - m_gearboxAssist (GearboxAssistMode): Gearbox assist mode (Refer GearboxAssistMode enumeration).
         - m_pitAssist (uint8): Pit assist status (0 = off, 1 = on).
         - m_pitReleaseAssist (uint8): Pit release assist status (0 = off, 1 = on).
         - m_ERSAssist (uint8): ERS assist status (0 = off, 1 = on).
@@ -416,7 +414,7 @@ class PacketSessionData:
         - m_gameMode (uint8): Game mode ID.
         - m_ruleSet (uint8): Ruleset ID.
         - m_timeOfDay (uint32): Local time of day in minutes since midnight.
-        - m_sessionLength (uint8): Session length.
+        - m_sessionLength (SessionLength): Session length. (Refer SessionLength enumeration).
         - m_speedUnitsLeadPlayer (uint8): Speed units for the lead player (0 = MPH, 1 = KPH).
         - m_temperatureUnitsLeadPlayer (uint8): Temperature units for the lead player (0 = Celsius, 1 = Fahrenheit).
         - m_speedUnitsSecondaryPlayer (uint8): Speed units for the secondary player (0 = MPH, 1 = KPH).
@@ -429,6 +427,8 @@ class PacketSessionData:
 
     F1_23_MAX_NUM_WEATHER_FORECAST_SAMPLES = 56
     F1_23_MAX_NUM_MARSHAL_ZONES = 21
+    F1_24_MAX_NUM_WEATHER_FORECAST_SAMPLES = 64
+    F1_24_MAX_NUM_MARSHAL_ZONES = 21
 
     PACKET_FORMAT_SECTION_0 = ("<"
         "B" # uint8           m_weather;                  // Weather - 0 = clear, 1 = light cloud, 2 = overcast
@@ -462,7 +462,7 @@ class PacketSessionData:
     PACKET_LEN_SECTION_2 = struct.calcsize(PACKET_FORMAT_SECTION_2)
 
     PACKET_FORMAT_SECTION_4 = ("<"
-        "B" # uint8   - 0 = Perfect, 1 = Approximate
+        "B" # uint8   - Weather prediction type. 0 = Perfect, 1 = Approximate
         "B" # uint8   - AI Difficulty rating - 0-110
         "I" # uint32  - Identifier for season - persists across saves
         "I" # uint32  - Identifier for weekend - persists across saves
@@ -494,51 +494,39 @@ class PacketSessionData:
     )
     PACKET_LEN_SECTION_4 = struct.calcsize(PACKET_FORMAT_SECTION_4)
 
-    class SafetyCarStatus(Enum):
-        """
-        Enumeration representing different safety car statuses.
-
-        Attributes:
-            NO_SAFETY_CAR (int): No safety car on the track.
-            FULL_SAFETY_CAR (int): Full safety car deployed.
-            VIRTUAL_SAFETY_CAR (int): Virtual safety car deployed.
-            FORMATION_LAP (int): Formation lap in progress.
-
-            Note:
-                Each attribute represents a unique safety car status identified by an integer value.
-        """
-
-        NO_SAFETY_CAR = 0
-        FULL_SAFETY_CAR = 1
-        VIRTUAL_SAFETY_CAR = 2
-        FORMATION_LAP = 3
-
-        @staticmethod
-        def isValid(safety_car_status_code: int):
-            """Check if the given safety car status is valid.
-
-            Args:
-                safety_car_status_code (int): The safety car status to be validated.
-                    Also supports type SafetyCarStatus. Returns true in this case
-
-            Returns:
-                bool: true if valid
-            """
-            if isinstance(safety_car_status_code, PacketSessionData.SafetyCarStatus):
-                return True  # It's already an instance of SafetyCarStatus
-            min_value = min(member.value for member in PacketSessionData.SafetyCarStatus)
-            max_value = max(member.value for member in PacketSessionData.SafetyCarStatus)
-            return min_value <= safety_car_status_code <= max_value
-
-        def __str__(self):
-            """
-            Returns a human-readable string representation of the safety car status.
-
-            Returns:
-                str: String representation of the safety car status.
-            """
-
-            return self.name
+    # This is only for F1 24
+    PACKET_FORMAT_SECTION_5 = ("<"
+        "B" # uint8   - car equal performance. 0 = off, 1 = on
+        "B" # uint8    m_recoveryMode;              	// 0 = None, 1 = Flashbacks, 2 = Auto-recovery
+        "B" # uint8    m_flashbackLimit;            	// 0 = Low, 1 = Medium, 2 = High, 3 = Unlimited
+        "B" # uint8    m_surfaceType;               	// 0 = Simplified, 1 = Realistic
+        "B" # uint8    m_lowFuelMode;               	// 0 = Easy, 1 = Hard
+        "B" # uint8    m_raceStarts;			// 0 = Manual, 1 = Assisted
+        "B" # uint8    m_tyreTemperature;           	// 0 = Surface only, 1 = Surface & Carcass
+        "B" # uint8    m_pitLaneTyreSim;            	// 0 = On, 1 = Off
+        "B" # uint8    m_carDamage;                 	// 0 = Off, 1 = Reduced, 2 = Standard, 3 = Simulation
+        "B" # uint8    m_carDamageRate;                    // 0 = Reduced, 1 = Standard, 2 = Simulation
+        "B" # uint8    m_collisions;                       // 0 = Off, 1 = Player-to-Player Off, 2 = On
+        "B" # uint8    m_collisionsOffForFirstLapOnly;     // 0 = Disabled, 1 = Enabled
+        "B" # uint8    m_mpUnsafePitRelease;               // 0 = On, 1 = Off (Multiplayer)
+        "B" # uint8    m_mpOffForGriefing;                 // 0 = Disabled, 1 = Enabled (Multiplayer)
+        "B" # uint8    m_cornerCuttingStringency;          // 0 = Regular, 1 = Strict
+        "B" # uint8    m_parcFermeRules;                   // 0 = Off, 1 = On
+        "B" # uint8    m_pitStopExperience;                // 0 = Automatic, 1 = Broadcast, 2 = Immersive
+        "B" # uint8    m_safetyCar;                        // 0 = Off, 1 = Reduced, 2 = Standard, 3 = Increased
+        "B" # uint8    m_safetyCarExperience;              // 0 = Broadcast, 1 = Immersive
+        "B" # uint8    m_formationLap;                     // 0 = Off, 1 = On
+        "B" # uint8    m_formationLapExperience;           // 0 = Broadcast, 1 = Immersive
+        "B" # uint8    m_redFlags;                         // 0 = Off, 1 = Reduced, 2 = Standard, 3 = Increased
+        "B" # uint8    m_affectsLicenceLevelSolo;          // 0 = Off, 1 = On
+        "B" # uint8    m_affectsLicenceLevelMP;            // 0 = Off, 1 = On
+        "B" # uint8    m_numSessionsInWeekend;             // Number of session in following array
+        "12B" # uint8    m_weekendStructure[12];             // List of session types to show weekend
+                               # // structure - see appendix for types
+        "f" # float    m_sector2LapDistanceStart;          // Distance in m around track where sector 2 starts
+        "f" # float    m_sector3LapDistanceStart;          // Distance in m around track where sector 3 starts
+    )
+    PACKET_LEN_SECTION_5 = struct.calcsize(PACKET_FORMAT_SECTION_5)
 
     class FormulaType(Enum):
         """An enumeration of formula types."""
@@ -577,10 +565,10 @@ class PacketSessionData:
                 bool: true if valid
             """
             if isinstance(formula_type_code, PacketSessionData.FormulaType):
-                return True  # It's already an instance of SafetyCarStatus
+                return True  # It's already an instance of FormulaType
             return any(formula_type_code == member.value for member in  PacketSessionData.FormulaType)
 
-    def __init__(self, header, data) -> None:
+    def __init__(self, header: PacketHeader, data: bytes) -> None:
         """Construct a PacketSessionData object
 
         Args:
@@ -594,7 +582,7 @@ class PacketSessionData:
         self.m_trackTemperature: int
         self.m_airTemperature: int
         self.m_totalLaps: int
-        self.m_trackLength: float
+        self.m_trackLength: int
         self.m_sessionType: int
         self.m_trackId: TrackID
         self.m_formula: int
@@ -607,7 +595,7 @@ class PacketSessionData:
         self.m_sliProNativeSupport: int
         self.m_numMarshalZones: int
         self.m_marshalZones: List[MarshalZone]
-        self.m_safetyCarStatus : PacketSessionData.SafetyCarStatus
+        self.m_safetyCarStatus : SafetyCarType
         self.m_networkGame: bool
         self.m_numWeatherForecastSamples: int
         self.m_weatherForecastSamples: List[WeatherForecastSample]
@@ -621,17 +609,17 @@ class PacketSessionData:
         self.m_pitStopRejoinPosition: int
         self.m_steeringAssist: int
         self.m_brakingAssist: int
-        self.m_gearboxAssist: int
+        self.m_gearboxAssist: GearboxAssistMode
         self.m_pitAssist: int
         self.m_pitReleaseAssist: int
         self.m_ERSAssist: int
         self.m_DRSAssist: int
         self.m_dynamicRacingLine: int
         self.m_dynamicRacingLineType: int
-        self.m_gameMode: int
-        self.m_ruleSet: int # TODO: make enum
+        self.m_gameMode: int # TODO: make enum
+        self.m_ruleSet: int # TOOD: make enum
         self.m_timeOfDay: int
-        self.m_sessionLength: int # TODO: make enum
+        self.m_sessionLength: SessionLength # TODO: make enum
         self.m_speedUnitsLeadPlayer: int
         self.m_temperatureUnitsLeadPlayer: int
         self.m_speedUnitsSecondaryPlayer: int
@@ -640,8 +628,41 @@ class PacketSessionData:
         self.m_numVirtualSafetyCarPeriods: int
         self.m_numRedFlagPeriods: int
 
+        # F1 24 specific stuff
+        self.m_equalCarPerformance: bool
+        self.m_recoveryMode: int                # TODO: make enum // 0 = None, 1 = Flashbacks, 2 = Auto-recovery
+        self.m_flashbackLimit: int              # TODO: make enum // 0 = Low, 1 = Medium, 2 = High, 3 = Unlimited
+        self.m_surfaceType: int                 # TODO: make enum // 0 = Simplified, 1 = Realistic
+        self.m_lowFuelMode: int                 # TODO: make enum // 0 = Easy, 1 = Hard
+        self.m_raceStarts: int                  # TODO: make enum // 0 = Manual, 1 = Assisted
+        self.m_tyreTemperatureMode: int             # TODO: make enum // 0 = Surface only, 1 = Surface & Carcass
+        self.m_pitLaneTyreSim:bool
+        self.m_carDamage: int                   # TODO: make enum // 0 = Off, 1 = Reduced, 2 = Standard, 3 = Simulation
+        self.m_carDamageRate:int                # TODO: make enum // 0 = Reduced, 1 = Standard, 2 = Simulation
+        self.m_collisions:int                   # TODO: make enum // 0 = Off, 1 = Player-to-Player Off, 2 = On
+        self.m_collisionsOffForFirstLapOnly: bool
+        self.m_mpUnsafePitRelease:bool          # TODO: check EA forum to see the values     // 0 = On, 1 = Off (Multiplayer)
+        self.m_mpOffForGriefing: bool           # Multiplayer only
+        self.m_cornerCuttingStringency: int     # TODO: make enum // 0 = Regular, 1 = Strict
+        self.m_parcFermeRules: bool
+        self.m_pitStopExperience: int           # TODO: make enum // 0 = Automatic, 1 = Broadcast, 2 = Immersive
+        self.m_safetyCar: int                   # TODO: make enum // 0 = Off, 1 = Reduced, 2 = Standard, 3 = Increased
+        self.m_safetyCarExperience: int         # TODO: make enum // 0 = Broadcast, 1 = Immersive
+        self.m_formationLap: bool
+        self.m_formationLapExperience: int      # TODO: make enum // 0 = Broadcast, 1 = Immersive
+        self.m_redFlags: int                    # TODO: make enum // 0 = Off, 1 = Reduced, 2 = Standard, 3 = Increased
+        self.m_affectsLicenceLevelSolo: bool
+        self.m_affectsLicenceLevelMP: bool
+        self.m_numSessionsInWeekend: int         # // Number of session in following array
+        self.m_weekendStructure: List[SessionType24] # List of SessionType24 enums in this weekend
+        self.m_sector2LapDistanceStart: float    # // Distance in m around track where sector 2 starts
+        self.m_sector3LapDistanceStart: float    # // Distance in m around track where sector 3
+
         self.m_maxMarshalZones = self.F1_23_MAX_NUM_MARSHAL_ZONES
-        self.m_maxWeatherForecastSamples = self.F1_23_MAX_NUM_WEATHER_FORECAST_SAMPLES
+        if header.m_gameYear == 23:
+            self.m_maxWeatherForecastSamples = self.F1_23_MAX_NUM_WEATHER_FORECAST_SAMPLES
+        else:
+            self.m_maxWeatherForecastSamples = self.F1_24_MAX_NUM_WEATHER_FORECAST_SAMPLES
         # First, section 0
         section_0_raw_data = _extract_sublist(data, 0, self.PACKET_LEN_SECTION_0)
         byte_index_so_far = self.PACKET_LEN_SECTION_0
@@ -668,8 +689,12 @@ class PacketSessionData:
             self.m_weather = WeatherForecastSample.WeatherCondition(self.m_weather)
         if TrackID.isValid(self.m_trackId):
             self.m_trackId = TrackID(self.m_trackId)
-        if SessionType.isValid(self.m_sessionType):
-            self.m_sessionType = SessionType(self.m_sessionType)
+
+        if header.m_gameYear == 23 and SessionType23.isValid(self.m_sessionType):
+            self.m_sessionType = SessionType23(self.m_sessionType)
+        elif header.m_gameYear == 24 and SessionType24.isValid(self.m_sessionType):
+            self.m_sessionType = SessionType24(self.m_sessionType)
+
         if PacketSessionData.FormulaType.isValid(self.m_formula):
             self.m_formula = PacketSessionData.FormulaType(self.m_formula)
 
@@ -693,8 +718,8 @@ class PacketSessionData:
             self.m_networkGame, #               // 0 = offline, 1 = online
             self.m_numWeatherForecastSamples # // Number of weather samples to follow
         ) = unpacked_data
-        if PacketSessionData.SafetyCarStatus.isValid(self.m_safetyCarStatus):
-            self.m_safetyCarStatus = PacketSessionData.SafetyCarStatus(self.m_safetyCarStatus)
+        if SafetyCarType.isValid(self.m_safetyCarStatus):
+            self.m_safetyCarStatus = SafetyCarType(self.m_safetyCarStatus)
         section_2_raw_data = None
 
         # Section 3 - weather forecast samples
@@ -710,6 +735,7 @@ class PacketSessionData:
 
         # Section 4 - rest of the packet
         section_4_raw_data = _extract_sublist(data, byte_index_so_far, byte_index_so_far+self.PACKET_LEN_SECTION_4)
+        byte_index_so_far += self.PACKET_LEN_SECTION_4
         unpacked_data = struct.unpack(self.PACKET_FORMAT_SECTION_4, section_4_raw_data)
         (
             self.m_forecastAccuracy,                   # uint8
@@ -741,6 +767,91 @@ class PacketSessionData:
             self.m_numVirtualSafetyCarPeriods,       # uint8
             self.m_numRedFlagPeriods,                # uint8
         ) = unpacked_data
+        section_4_raw_data = None
+        if GearboxAssistMode.isValid(self.m_gearboxAssist):
+            self.m_gearboxAssist = GearboxAssistMode(self.m_gearboxAssist)
+        if SessionLength.isValid(self.m_sessionLength):
+            self.m_sessionLength = SessionLength(self.m_sessionLength)
+
+        # Section 5 - F1 24 specific stuff
+        if header.m_gameYear == 24:
+            self.m_weekendStructure = [0] * 12
+            section_5_raw_data = _extract_sublist(data, byte_index_so_far, byte_index_so_far+self.PACKET_LEN_SECTION_5)
+            unpacked_data = struct.unpack(self.PACKET_FORMAT_SECTION_5, section_5_raw_data)
+            (
+                self.m_equalCarPerformance,
+                self.m_recoveryMode,
+                self.m_flashbackLimit,
+                self.m_surfaceType,
+                self.m_lowFuelMode,
+                self.m_raceStarts,
+                self.m_tyreTemperatureMode,
+                self.m_pitLaneTyreSim,
+                self.m_carDamage,
+                self.m_carDamageRate,
+                self.m_collisions,
+                self.m_collisionsOffForFirstLapOnly,
+                self.m_mpUnsafePitRelease,
+                self.m_mpOffForGriefing,
+                self.m_cornerCuttingStringency,
+                self.m_parcFermeRules,
+                self.m_pitStopExperience,
+                self.m_safetyCar,
+                self.m_safetyCarExperience,
+                self.m_formationLap,
+                self.m_formationLapExperience,
+                self.m_redFlags,
+                self.m_affectsLicenceLevelSolo,
+                self.m_affectsLicenceLevelMP,
+                self.m_numSessionsInWeekend,
+                self.m_weekendStructure[0],
+                self.m_weekendStructure[1],
+                self.m_weekendStructure[2],
+                self.m_weekendStructure[3],
+                self.m_weekendStructure[4],
+                self.m_weekendStructure[5],
+                self.m_weekendStructure[6],
+                self.m_weekendStructure[7],
+                self.m_weekendStructure[8],
+                self.m_weekendStructure[9],
+                self.m_weekendStructure[10],
+                self.m_weekendStructure[11],
+                self.m_sector2LapDistanceStart,
+                self.m_sector3LapDistanceStart,
+            ) = unpacked_data
+
+            self.m_weekendStructure = self.m_weekendStructure[:self.m_numSessionsInWeekend]
+            for session_id in self.m_weekendStructure:
+                session_id = SessionType24(session_id)
+        else:
+            self.m_equalCarPerformance = 0
+            self.m_recoveryMode = 0
+            self.m_flashbackLimit = 0
+            self.m_surfaceType = 0
+            self.m_lowFuelMode = 0
+            self.m_raceStarts = 0
+            self.m_tyreTemperatureMode = 0
+            self.m_pitLaneTyreSim = 0
+            self.m_carDamage = 0
+            self.m_carDamageRate = 0
+            self.m_collisions = 0
+            self.m_collisionsOffForFirstLapOnly = 0
+            self.m_mpUnsafePitRelease = 0
+            self.m_mpOffForGriefing = 0
+            self.m_cornerCuttingStringency = 0
+            self.m_parcFermeRules = 0
+            self.m_pitStopExperience = 0
+            self.m_safetyCar = 0
+            self.m_safetyCarExperience = 0
+            self.m_formationLap = 0
+            self.m_formationLapExperience = 0
+            self.m_redFlags = 0
+            self.m_affectsLicenceLevelSolo = 0
+            self.m_affectsLicenceLevelMP = 0
+            self.m_numSessionsInWeekend = 0
+            self.m_weekendStructure = [0] * 12
+            self.m_sector2LapDistanceStart = 0.0
+            self.m_sector3LapDistanceStart = 0.0
 
     def __str__(self) -> str:
         """
@@ -848,7 +959,7 @@ class PacketSessionData:
             "pit-stop-rejoin-position": self.m_pitStopRejoinPosition,
             "steering-assist": self.m_steeringAssist,
             "braking-assist": self.m_brakingAssist,
-            "gearbox-assist": self.m_gearboxAssist,
+            "gearbox-assist": str(self.m_gearboxAssist),
             "pit-assist": self.m_pitAssist,
             "pit-release-assist": self.m_pitReleaseAssist,
             "ers-assist": self.m_ERSAssist,
@@ -858,14 +969,43 @@ class PacketSessionData:
             "game-mode": self.m_gameMode,
             "rule-set": self.m_ruleSet,
             "time-of-day": self.m_timeOfDay,
-            "session-length": self.m_sessionLength,
+            "session-length": str(self.m_sessionLength),
             "speed-units-lead-player": self.m_speedUnitsLeadPlayer,
             "temp-units-lead-player": self.m_temperatureUnitsLeadPlayer,
             "speed-units-secondary-player": self.m_speedUnitsSecondaryPlayer,
             "temp-units-secondary-player": self.m_temperatureUnitsSecondaryPlayer,
             "num-safety-car-periods": self.m_numSafetyCarPeriods,
             "num-virtual-safety-car-periods": self.m_numVirtualSafetyCarPeriods,
-            "num-red-flag-periods": self.m_numRedFlagPeriods
+            "num-red-flag-periods": self.m_numRedFlagPeriods,
+
+            "equal-car-performance" : str(self.m_equalCarPerformance),
+            "recovery-mode" : str(self.m_recoveryMode),
+            "flashback-limit" : str(self.m_flashbackLimit),
+            "surface-type" : str(self.m_surfaceType),
+            "low-fuel-mode" : str(self.m_lowFuelMode),
+            "race-starts" : str(self.m_raceStarts),
+            "tyre-temperature-mode" : str(self.m_tyreTemperatureMode),
+            "pit-lane-tyre-sim" : str(self.m_pitLaneTyreSim),
+            "car-damage" : str(self.m_carDamage),
+            "car-damage-rate" : str(self.m_carDamageRate),
+            "collisions" : str(self.m_collisions),
+            "collisions-off-for-first-lap-only": self.m_collisionsOffForFirstLapOnly,
+            "mp-unsafe-pit-release" : self.m_mpUnsafePitRelease,
+            "mp-off-for-griefing" : self.m_mpOffForGriefing,
+            "corner-cutting-stringency" : str(self.m_cornerCuttingStringency),
+            "parc-ferme-rules" : self.m_parcFermeRules,
+            "pit-stop-experience" : self.m_pitStopExperience,
+            "safety-car-setting" : str(self.m_safetyCar),
+            "safety-car-experience" : str(self.m_safetyCarExperience),
+            "formation-lap" : self.m_formationLap,
+            "formation-lap-experience" : str(self.m_formationLapExperience),
+            "red-flags-setting" : str(self.m_redFlags),
+            "affects-license-level-solo" : self.m_affectsLicenceLevelSolo,
+            "affects-license-level-mp" : self.m_affectsLicenceLevelMP,
+            "num-sessions-in-weekend" : str(self.m_numSessionsInWeekend),
+            "weekend-structure" : [str(weekend) for weekend in self.m_weekendStructure],
+            "sector-2-lap-distance-start" : str(self.m_sector2LapDistanceStart),
+            "sector-3-lap-distance-start" : str(self.m_sector3LapDistanceStart),
         }
         if include_header:
             json_data["header"] = self.m_header.toJSON()

@@ -20,14 +20,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-## NOTE: Please refer to the F1 23 UDP specification document to understand fully how the telemetry data works.
-## All classes in supported in this library are documented with the members, but it is still recommended to read the
-## official document. https://answers.ea.com/t5/General-Discussion/F1-23-UDP-Specification/m-p/12633159
 
 import struct
 from typing import Dict, Any, List
-from enum import Enum
-from .common import _split_list, PacketHeader, Platform, Nationality, TeamID
+from .common import _split_list, PacketHeader, Platform, Nationality, TeamID, TelemetrySetting
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -53,7 +49,7 @@ class ParticipantData:
             The m_platform attribute is an instance of Platform.
     """
 
-    PACKET_FORMAT = ("<"
+    PACKET_FORMAT_23 = ("<"
         "B" # uint8      m_aiControlled;      // Whether the vehicle is AI (1) or Human (0) controlled
         "B" # uint8      m_driverId;       // Driver id - see appendix, 255 if network human
         "B" # uint8      m_networkId;       // Network id – unique identifier for network players
@@ -61,80 +57,82 @@ class ParticipantData:
         "B" # uint8      m_myTeam;            // My team flag – 1 = My Team, 0 = otherwise
         "B" # uint8      m_raceNumber;        // Race number of the car
         "B" # uint8      m_nationality;       // Nationality of the driver
-        "48s" # char       m_name[48];          // Name of participant in UTF-8 format – null terminated
+        "48s" # char     m_name[48];          // Name of participant in UTF-8 format – null terminated
                                         # // Will be truncated with … (U+2026) if too long
         "B" # uint8      m_yourTelemetry;     // The player's UDP setting, 0 = restricted, 1 = public
         "B" # uint8      m_showOnlineNames;   // The player's show online names setting, 0 = off, 1 = on
         "B" # uint8      m_platform;          // 1 = Steam, 3 = PlayStation, 4 = Xbox, 6 = Origin, 255 = unknown
     )
-    PACKET_LEN = struct.calcsize(PACKET_FORMAT)
+    PACKET_LEN_23 = struct.calcsize(PACKET_FORMAT_23)
 
-    class TelemetrySetting(Enum):
-        """
-        Enumeration representing the telemetry setting for the player.
-        """
+    PACKET_FORMAT_24 = ("<"
+        "B" # uint8      m_aiControlled;      // Whether the vehicle is AI (1) or Human (0) controlled
+        "B" # uint8      m_driverId;       // Driver id - see appendix, 255 if network human
+        "B" # uint8      m_networkId;       // Network id – unique identifier for network players
+        "B" # uint8      m_teamId;            // Team id - see appendix
+        "B" # uint8      m_myTeam;            // My team flag – 1 = My Team, 0 = otherwise
+        "B" # uint8      m_raceNumber;        // Race number of the car
+        "B" # uint8      m_nationality;       // Nationality of the driver
+        "48s" # char     m_name[48];          // Name of participant in UTF-8 format – null terminated
+                                        # // Will be truncated with … (U+2026) if too long
+        "B" # uint8      m_yourTelemetry;     // The player's UDP setting, 0 = restricted, 1 = public
+        "B" # uint8      m_showOnlineNames;   // The player's show online names setting, 0 = off, 1 = on
+        "H" # uint16     m_techLevel          // F1 World tech level
+        "B" # uint8      m_platform;          // 1 = Steam, 3 = PlayStation, 4 = Xbox, 6 = Origin, 255 = unknown
+    )
+    PACKET_LEN_24 = struct.calcsize(PACKET_FORMAT_24)
 
-        RESTRICTED = 0
-        PUBLIC = 1
-
-        def __str__(self) -> str:
-            """
-            Returns a human-readable string representation of the telemetry setting.
-
-            Returns:
-                str: String representation of the telemetry setting.
-            """
-            return {
-                ParticipantData.TelemetrySetting.RESTRICTED: "Restricted",
-                ParticipantData.TelemetrySetting.PUBLIC: "Public",
-            }.get(self)
-
-        @staticmethod
-        def isValid(telemetry_setting_code: int) -> bool:
-            """Check if the given telemetry setting code is valid.
-
-            Args:
-                telemetry_setting_code (int): The telemetry setting code to be validated.
-
-            Returns:
-                bool: True if valid.
-            """
-            if isinstance(telemetry_setting_code, ParticipantData.TelemetrySetting):
-                return True  # It's already an instance of TelemetrySetting
-            return any(telemetry_setting_code == member.value for member in  ParticipantData.TelemetrySetting)
-
-    def __init__(self, data) -> None:
+    def __init__(self, data: bytes, game_year: int) -> None:
         """
         Initializes a ParticipantData object by unpacking the provided binary data.
 
         Parameters:
             data (bytes): Binary data to be unpacked.
+            game_year (int): Year of the game.
 
         Raises:
             struct.error: If the binary data does not match the expected format.
         """
-        unpacked_data = struct.unpack(self.PACKET_FORMAT, data)
-        (
-            self.m_aiControlled,
-            self.m_driverId,
-            self.networkId,
-            self.m_teamId,
-            self.m_myTeam,
-            self.m_raceNumber,
-            self.m_nationality,
-            self.m_name,
-            self.m_yourTelemetry,
-            self.m_showOnlineNames,
-            self.m_platform
-        ) = unpacked_data
+        if game_year == 23:
+            unpacked_data = struct.unpack(self.PACKET_FORMAT_23, data)
+            (
+                self.m_aiControlled,
+                self.m_driverId,
+                self.networkId,
+                self.m_teamId,
+                self.m_myTeam,
+                self.m_raceNumber,
+                self.m_nationality,
+                self.m_name,
+                self.m_yourTelemetry,
+                self.m_showOnlineNames,
+                self.m_platform
+            ) = unpacked_data
+            self.m_techLevel = 0
+        else:
+            unpacked_data = struct.unpack(self.PACKET_FORMAT_24, data)
+            (
+                self.m_aiControlled,
+                self.m_driverId,
+                self.networkId,
+                self.m_teamId,
+                self.m_myTeam,
+                self.m_raceNumber,
+                self.m_nationality,
+                self.m_name,
+                self.m_yourTelemetry,
+                self.m_showOnlineNames,
+                self.m_techLevel,
+                self.m_platform
+            ) = unpacked_data
 
         self.m_name = self.m_name.decode('utf-8', errors='replace').rstrip('\x00')
         if Platform.isValid(self.m_platform):
             self.m_platform = Platform(self.m_platform)
         if TeamID.isValid(self.m_teamId):
             self.m_teamId = TeamID(self.m_teamId)
-        if ParticipantData.TelemetrySetting.isValid(self.m_yourTelemetry):
-            self.m_yourTelemetry = ParticipantData.TelemetrySetting(self.m_yourTelemetry)
+        if TelemetrySetting.isValid(self.m_yourTelemetry):
+            self.m_yourTelemetry = TelemetrySetting(self.m_yourTelemetry)
         if Nationality.isValid(self.m_nationality):
             self.m_nationality = Nationality(self.m_nationality)
         self.m_showOnlineNames = bool(self.m_showOnlineNames)
@@ -160,6 +158,7 @@ class ParticipantData:
             f"m_name={self.m_name}, "
             f"m_yourTelemetry={str(self.m_yourTelemetry)}, "
             f"m_showOnlineNames={str(self.m_showOnlineNames)}, "
+            f"m_techLevel={str(self.m_techLevel)}, "
             f"m_platform={str(self.m_platform)})"
         )
 
@@ -182,6 +181,7 @@ class ParticipantData:
             "name": self.m_name,
             "telemetry-setting": str(self.m_yourTelemetry),
             "show-online-names": self.m_showOnlineNames,
+            "tech-level" : self.m_techLevel,
             "platform": str(self.m_platform)
         }
 
@@ -217,8 +217,9 @@ class PacketParticipantsData:
         self.m_numActiveCars: int = struct.unpack("<B", packet[0:1])[0]
         self.m_participants: List[ParticipantData] = []            # ParticipantData[22]
 
-        for participant_data_raw in _split_list(packet[1:], ParticipantData.PACKET_LEN):
-            self.m_participants.append(ParticipantData(participant_data_raw))
+        packet_len = ParticipantData.PACKET_LEN_23 if (header.m_gameYear == 23) else ParticipantData.PACKET_LEN_24
+        for participant_data_raw in _split_list(packet[1:], packet_len):
+            self.m_participants.append(ParticipantData(participant_data_raw, header.m_gameYear))
 
         # Trim the list
         self.m_participants = self.m_participants[:self.m_numActiveCars]

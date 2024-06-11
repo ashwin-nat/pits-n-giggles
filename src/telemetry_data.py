@@ -31,7 +31,8 @@ import logging
 from lib.f1_types import PacketSessionData, PacketLapData, LapData, CarTelemetryData, ParticipantData, \
     PacketEventData, PacketParticipantsData, PacketCarTelemetryData, PacketCarStatusData, FinalClassificationData, \
     PacketFinalClassificationData, PacketCarDamageData, PacketSessionHistoryData, ResultStatus, PacketTyreSetsData, \
-    F1Utils, WeatherForecastSample, CarDamageData, CarStatusData, TrackID, ActualTyreCompound, VisualTyreCompound
+    F1Utils, WeatherForecastSample, CarDamageData, CarStatusData, TrackID, ActualTyreCompound, VisualTyreCompound, \
+    SafetyCarType, TelemetrySetting
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.overtake_analyzer import OvertakeRecord
 from lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
@@ -48,13 +49,14 @@ class GlobalData:
          - m_track_temp (int): The current track temperature
          - m_air_temp (int): The current air temperature
          - m_total_laps (int): The total number of laps in the current event
-         - m_safety_car_status (PacketSessionData.SafetyCarStatus): Current safety car status enum
+         - m_safety_car_status (SafetyCarStatus): Current safety car status enum
          - m_is_spectating (bool): Whether the user is currently spectating
          - m_spectator_car_index (int): Which car the user is spectating
          - m_weather_forecast_samples (List[WeatherForecastSample]): The list of weather forecast samples
          - m_pit_speed_limit (int): The Pit Lane speed limit (in kmph)
          - m_packet_final_classification (PacketFinalClassificationData): The final classification packet
          - m_packet_session (PacketSessionData): Copy of the last saved session packet
+         - m_game_year (int): The current game year
     """
 
     def __init__(self):
@@ -67,13 +69,14 @@ class GlobalData:
         self.m_track_temp : Optional[int] = None
         self.m_air_temp : Optional[int] = None
         self.m_total_laps : Optional[int] = None
-        self.m_safety_car_status : Optional[PacketSessionData.SafetyCarStatus] = None
+        self.m_safety_car_status : Optional[SafetyCarType] = None
         self.m_is_spectating : Optional[bool] = None
         self.m_spectator_car_index : Optional[int] = None
         self.m_weather_forecast_samples : Optional[List[WeatherForecastSample]] = None
         self.m_pit_speed_limit : Optional[int] = None
         self.m_packet_session: Optional[PacketSessionData] = None
         self.m_packet_final_classification : Optional[PacketFinalClassificationData] = None
+        self.m_game_year : Optional[int] = None
 
     def __str__(self) -> str:
         """Dump the GlobalData object to a readable string
@@ -111,6 +114,7 @@ class GlobalData:
         self.m_pit_speed_limit = None
         self.m_packet_final_classification = None
         self.m_packet_session = None
+        self.m_game_year = None
 
     def processSessionUpdate(self, packet: PacketSessionData) -> bool:
         """Populates the fields from the session data packet
@@ -137,6 +141,7 @@ class GlobalData:
         self.m_total_laps = packet.m_totalLaps
         self.m_packet_session = packet
         self.m_is_spectating = packet.m_isSpectating
+        self.m_game_year = packet.m_header.m_gameYear
         return ret_status
 
 class DataPerDriver:
@@ -167,12 +172,12 @@ class DataPerDriver:
         m_num_pitstops (Optional[int]): The number of pitstops made by the driver.
         m_dnf_status_code (Optional[str]): Status code indicating if the driver did not finish the race.
         m_tyre_life_remaining_laps (Optional[int]): The remaining laps the tires are expected to last.
-        m_telemetry_restrictions (Optional[ParticipantData.TelemetrySetting]):
+        m_telemetry_restrictions (Optional[TelemetrySetting]):
             Telemetry settings indicating the level of data available for the driver.
         m_tyre_set_history (List[DataPerDriver.TyreSetHistoryEntry]):
             List of TyreSetHistoryEntry objects, representing the driver's tire set history.
         m_tyre_wear_extrapolator (TyreWearExtrapolator): Predicts the tyre wear for upcoming laps
-        m_curr_lap_sc_status (PacketSessionData.SafetyCarStatus): The current lap's safety car status
+        m_curr_lap_sc_status (SafetyCarStatus): The current lap's safety car status
         m_fuel_load_kg (float): The current fuel load (in kg)
         m_fuel_laps_remaining (float): Number of laps remaining with current fuel load
         m_fl_wing_damage (int): Left front wing damage
@@ -300,7 +305,7 @@ class DataPerDriver:
         def __init__(self,
                      car_damage : CarDamageData,
                      car_status : CarStatusData,
-                     sc_status  : PacketSessionData.SafetyCarStatus,
+                     sc_status  : SafetyCarType,
                      tyre_sets  : PacketTyreSetsData):
             """Init the backup entry object
 
@@ -363,10 +368,10 @@ class DataPerDriver:
         self.m_num_pitstops: Optional[int] = None
         self.m_dnf_status_code: Optional[str] = None
         self.m_tyre_life_remaining_laps: Optional[int] = None
-        self.m_telemetry_restrictions: Optional[ParticipantData.TelemetrySetting] = None
+        self.m_telemetry_restrictions: Optional[TelemetrySetting] = None
         self.m_tyre_set_history: List[DataPerDriver.TyreSetHistoryEntry] = []
         self.m_tyre_wear_extrapolator: TyreWearExtrapolator = TyreWearExtrapolator([], total_laps=total_laps)
-        self.m_curr_lap_sc_status: Optional[PacketSessionData.SafetyCarStatus] = None
+        self.m_curr_lap_sc_status: Optional[SafetyCarType] = None
         self.m_fuel_load_kg: Optional[float] = None
         self.m_fuel_laps_remaining: Optional[float] = None
         self.m_fl_wing_damage: Optional[int] = None
@@ -465,46 +470,30 @@ class DataPerDriver:
 
         if self.m_tyre_wear_extrapolator.isDataSufficient() and (self.m_tyre_wear_extrapolator.remaining_laps > 0):
             predictions_list = []
-            # pylint: disable=unnecessary-lambda-assignment
-            log_error_lambda = lambda: logging.error(
-                "%s: Prediction for lap %s not available. Curr lap = %s Num Samples = %s",
-                self.m_name,
-                next_pit_window,
-                self.m_current_lap,
-                self.m_tyre_wear_extrapolator.num_samples
-            )
 
             # Input sanitization
             if next_pit_window is None or (next_pit_window == 0) or (next_pit_window < self.m_current_lap):
                 # Lets return the lap midway between current lap and final lap
                 next_pit_window = (self.m_current_lap + self.m_tyre_wear_extrapolator.total_laps) // 2
 
+            # NOTE: Flashbacks or delayed telemetry starts can cause the prediction to not be available.
             # This happens in the last lap
             if next_pit_window == self.m_tyre_wear_extrapolator.total_laps:
                 # We are already in the final lap, so return the final prediction
                 predicted_tyre_wear = self.m_tyre_wear_extrapolator.getTyreWearPrediction()
                 if predicted_tyre_wear:
                     predictions_list.append(predicted_tyre_wear.toJSON())
-                else:
-                    log_error_lambda()
             else:
 
                 # Add prediction for next window if available
                 pit_lap_prediction = self.m_tyre_wear_extrapolator.getTyreWearPrediction(next_pit_window)
-                if pit_lap_prediction:
-                    if next_pit_window:
-                        predictions_list.append(pit_lap_prediction.toJSON())
-                    else:
-                        log_error_lambda()
-                else:
-                    log_error_lambda()
+                if pit_lap_prediction and next_pit_window:
+                    predictions_list.append(pit_lap_prediction.toJSON())
 
                 # Add final lap prediction if available
                 final_lap_prediction = self.m_tyre_wear_extrapolator.getTyreWearPrediction()
                 if final_lap_prediction:
                     predictions_list.append(final_lap_prediction.toJSON())
-                else:
-                    log_error_lambda()
             return predictions_list
         # Data unavailable, return empty list
         return []
@@ -644,7 +633,7 @@ class DataPerDriver:
         """
 
         # fuck those anti telemetry cunts
-        if self.m_telemetry_restrictions != ParticipantData.TelemetrySetting.PUBLIC:
+        if self.m_telemetry_restrictions != TelemetrySetting.PUBLIC:
             return
 
         # This can happen if tyre sets packets arrives before lap data packet
@@ -805,6 +794,7 @@ class DriverData:
         m_total_laps (int): The total number of laps in this race
         m_ideal_pit_stop_window (int): The ideal pit stop window for the player, according to the selected strategy
         m_track_id (TrackID): The track ID of the event
+        m_game_year (int): The game year
     """
 
     def __init__(self):
@@ -822,6 +812,7 @@ class DriverData:
         self.m_total_laps : Optional[int] = None
         self.m_ideal_pit_stop_window : Optional[int] = None
         self.m_track_id : Optional[TrackID] = None
+        self.m_game_year : Optional[int] = None
 
     def clear(self) -> None:
         """Clear this object. Clears the m_driver_data list and sets everything else to None
@@ -837,6 +828,7 @@ class DriverData:
         self.m_total_laps = None
         self.m_ideal_pit_stop_window = None
         self.m_track_id = None
+        self.m_game_year = None
 
     def setRaceOngoing(self) -> None:
         """
@@ -978,6 +970,7 @@ class DriverData:
 
         self.m_ideal_pit_stop_window = packet.m_pitStopWindowIdealLap
         self.m_track_id = packet.m_trackId
+        self.m_game_year = packet.m_header.m_gameYear
 
         # First time total laps notification has arrived after driver info (out of order)
         if (self.m_total_laps is None) and (packet.m_totalLaps > 0):
@@ -1157,6 +1150,7 @@ class DriverData:
                 obj_to_be_updated.m_packet_final_classification = data
                 final_json["classification-data"][index] = obj_to_be_updated.toJSON(index)
         final_json['classification-data'] = sorted(final_json['classification-data'], key=lambda x: x['track-position'])
+        final_json['game-year'] = self.m_game_year
         self.m_final_json = final_json
         return final_json
 

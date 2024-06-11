@@ -20,13 +20,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-## NOTE: Please refer to the F1 23 UDP specification document to understand fully how the telemetry data works.
-## All classes in supported in this library are documented with the members, but it is still recommended to read the
-## official document. https://answers.ea.com/t5/General-Discussion/F1-23-UDP-Specification/m-p/12633159
 
 import struct
 from typing import Dict, Any, List
-from .common import _split_list, PacketHeader
+from .common import _split_list, PacketHeader, _extract_sublist
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -58,8 +55,18 @@ class PacketCarSetupData:
         self.m_header: PacketHeader = header
         self.m_carSetups: List[CarSetupData] = []
 
-        for setup_per_car_raw_data in _split_list(packet, CarSetupData.PACKET_LEN):
-            self.m_carSetups.append(CarSetupData(setup_per_car_raw_data))
+        packet_len = CarSetupData.PACKET_LEN_23 if (header.m_gameYear == 23) else CarSetupData.PACKET_LEN_24
+        if header.m_gameYear == 23:
+            packet_len = CarSetupData.PACKET_LEN_23
+            car_setups_raw_data = _split_list(packet, packet_len)
+            self.m_nextFrontWingValue: float = 0.0
+        else: # 24
+            packet_len = CarSetupData.PACKET_LEN_24
+            car_setups_raw_data = _extract_sublist(packet, 0, packet_len*22)
+            car_setups_raw_data = _split_list(car_setups_raw_data, packet_len)
+            self.m_nextFrontWingValue: float = struct.unpack("<f", packet[packet_len*22:])[0]
+        for setup_per_car_raw_data in car_setups_raw_data:
+            self.m_carSetups.append(CarSetupData(setup_per_car_raw_data, header.m_gameYear))
 
     def __str__(self) -> str:
         """
@@ -119,7 +126,7 @@ class CarSetupData:
         m_fuelLoad (float): Fuel load.
     """
 
-    PACKET_FORMAT = ("<"
+    PACKET_FORMAT_23 = ("<"
         "B" # uint8     m_frontWing;                // Front wing aero
         "B" # uint8     m_rearWing;                 // Rear wing aero
         "B" # uint8     m_onThrottle;               // Differential adjustment on throttle (percentage)
@@ -143,9 +150,36 @@ class CarSetupData:
         "f" # uint8     m_ballast;                  // Ballast
         "B" # float     m_fuelLoad;                 // Fuel load
     )
-    PACKET_LEN = struct.calcsize(PACKET_FORMAT)
+    PACKET_LEN_23 = struct.calcsize(PACKET_FORMAT_23)
 
-    def __init__(self, data: bytes) -> None:
+    PACKET_FORMAT_24 = ("<"
+        "B" # uint8     m_frontWing;                // Front wing aero
+        "B" # uint8     m_rearWing;                 // Rear wing aero
+        "B" # uint8     m_onThrottle;               // Differential adjustment on throttle (percentage)
+        "B" # uint8     m_offThrottle;              // Differential adjustment off throttle (percentage)
+        "f" # float     m_frontCamber;              // Front camber angle (suspension geometry)
+        "f" # float     m_rearCamber;               // Rear camber angle (suspension geometry)
+        "f" # float     m_frontToe;                 // Front toe angle (suspension geometry)
+        "f" # float     m_rearToe;                  // Rear toe angle (suspension geometry)
+        "B" # uint8     m_frontSuspension;          // Front suspension
+        "B" # uint8     m_rearSuspension;           // Rear suspension
+        "B" # uint8     m_frontAntiRollBar;         // Front anti-roll bar
+        "B" # uint8     m_rearAntiRollBar;          // Front anti-roll bar
+        "B" # uint8     m_frontSuspensionHeight;    // Front ride height
+        "B" # uint8     m_rearSuspensionHeight;     // Rear ride height
+        "B" # uint8     m_brakePressure;            // Brake pressure (percentage)
+        "B" # uint8     m_brakeBias;                // Brake bias (percentage)
+        "B" # uint8     m_engineBraking;            // Engine braking (percentage)
+        "f" # float     m_rearLeftTyrePressure;     // Rear left tyre pressure (PSI)
+        "f" # float     m_rearRightTyrePressure;    // Rear right tyre pressure (PSI)
+        "f" # float     m_frontLeftTyrePressure;    // Front left tyre pressure (PSI)
+        "f" # float     m_frontRightTyrePressure;   // Front right tyre pressure (PSI)
+        "B" # uint8     m_ballast;                  // Ballast
+        "f" # float     m_fuelLoad;                 // Fuel load
+    )
+    PACKET_LEN_24 = struct.calcsize(PACKET_FORMAT_24)
+
+    def __init__(self, data: bytes, game_year: int) -> None:
         """
         Initializes a CarSetupData object by unpacking the provided binary data.
 
@@ -155,32 +189,61 @@ class CarSetupData:
         Raises:
             struct.error: If the binary data does not match the expected format.
         """
-        unpacked_data = struct.unpack(self.PACKET_FORMAT, data)
 
-        (
-            self.m_frontWing,
-            self.m_rearWing,
-            self.m_onThrottle,
-            self.m_offThrottle,
-            self.m_frontCamber,
-            self.m_rearCamber,
-            self.m_frontToe,
-            self.m_rearToe,
-            self.m_frontSuspension,
-            self.m_rearSuspension,
-            self.m_frontAntiRollBar,
-            self.m_rearAntiRollBar,
-            self.m_frontSuspensionHeight,
-            self.m_rearSuspensionHeight,
-            self.m_brakePressure,
-            self.m_brakeBias,
-            self.m_rearLeftTyrePressure,
-            self.m_rearRightTyrePressure,
-            self.m_frontLeftTyrePressure,
-            self.m_frontRightTyrePressure,
-            self.m_ballast,
-            self.m_fuelLoad,
-        ) = unpacked_data
+        if game_year == 23:
+            unpacked_data = struct.unpack(self.PACKET_FORMAT_23, data)
+            (
+                self.m_frontWing,
+                self.m_rearWing,
+                self.m_onThrottle,
+                self.m_offThrottle,
+                self.m_frontCamber,
+                self.m_rearCamber,
+                self.m_frontToe,
+                self.m_rearToe,
+                self.m_frontSuspension,
+                self.m_rearSuspension,
+                self.m_frontAntiRollBar,
+                self.m_rearAntiRollBar,
+                self.m_frontSuspensionHeight,
+                self.m_rearSuspensionHeight,
+                self.m_brakePressure,
+                self.m_brakeBias,
+                self.m_rearLeftTyrePressure,
+                self.m_rearRightTyrePressure,
+                self.m_frontLeftTyrePressure,
+                self.m_frontRightTyrePressure,
+                self.m_ballast,
+                self.m_fuelLoad,
+            ) = unpacked_data
+            self.m_engineBraking = 0
+        else:
+            unpacked_data = struct.unpack(self.PACKET_FORMAT_24, data)
+            (
+                self.m_frontWing,
+                self.m_rearWing,
+                self.m_onThrottle,
+                self.m_offThrottle,
+                self.m_frontCamber,
+                self.m_rearCamber,
+                self.m_frontToe,
+                self.m_rearToe,
+                self.m_frontSuspension,
+                self.m_rearSuspension,
+                self.m_frontAntiRollBar,
+                self.m_rearAntiRollBar,
+                self.m_frontSuspensionHeight,
+                self.m_rearSuspensionHeight,
+                self.m_brakePressure,
+                self.m_brakeBias,
+                self.m_engineBraking,
+                self.m_rearLeftTyrePressure,
+                self.m_rearRightTyrePressure,
+                self.m_frontLeftTyrePressure,
+                self.m_frontRightTyrePressure,
+                self.m_ballast,
+                self.m_fuelLoad,
+            ) = unpacked_data
 
     def __str__(self) -> str:
         """
