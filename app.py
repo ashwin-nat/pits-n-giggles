@@ -23,16 +23,21 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import argparse
-import logging
 import socket
 import sys
 import threading
 import time
 import webbrowser
+import logging
 from typing import Set, Optional
 
 from src.telemetry_handler import initPktCap, PacketCaptureMode, initAutosaves, F1TelemetryHandler, initDirectories
 from src.telemetry_server import initTelemetryWebServer
+from src.png_logger import initLogger
+
+# -------------------------------------- GLOBALS -----------------------------------------------------------------------
+
+png_logger: Optional[logging.Logger] = None
 
 # -------------------------------------- FUNCTION DEFINITIONS ----------------------------------------------------------
 
@@ -79,45 +84,6 @@ def parseArgs() -> argparse.Namespace:
     # Parse the command-line arguments
     return parser.parse_args()
 
-def initLogger(file_name: str = None, debug_mode: bool = False) -> logging.Logger:
-    """Initialize and configure the logger.
-
-    Args:
-        file_name (str, optional): The name of the log file. Defaults to None.
-        debug_mode (bool, optional): Whether to enable debug mode. Defaults to False.
-
-    Returns:
-        logging.Logger: The configured logger.
-    """
-    # Create a formatter with a time-based format
-    format_str = '%(asctime)s [%(levelname)s] [%(filename)s:%(lineno)d] - %(message)s' if debug_mode else \
-                 '%(asctime)s [%(levelname)s] - %(message)s'
-    formatter = logging.Formatter(format_str)
-
-    # Create a lock to make the logger thread-safe
-    lock = threading.Lock()
-
-    # Create the logger
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG if debug_mode else logging.INFO)
-
-    # Create console handler and set the formatter
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(formatter)
-    logger.addHandler(console_handler)
-
-    # Add file handler if a file name is provided
-    if file_name:
-        file_handler = logging.FileHandler(file_name)
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
-
-    # Add lock to the logger to make it thread-safe
-    logger.addHandler(logging.NullHandler())
-    logger._lock = lock
-
-    return logger
-
 def getLocalIpAddresses() -> Set[str]:
     """Get local IP addresses including '127.0.0.1' and 'localhost'.
 
@@ -130,7 +96,7 @@ def getLocalIpAddresses() -> Set[str]:
             ip_addresses.add(host_name)
     except socket.gaierror as e:
         # Log the error or handle it as per your requirement
-        logging.warning("Error occurred: %s. Using default IP addresses.", e)
+        png_logger.warning("Error occurred: %s. Using default IP addresses.", e)
     return ip_addresses
 
 def openWebPage(http_port: int) -> None:
@@ -168,7 +134,7 @@ def httpServerTask(
         log_str += f"    http://{ip_addr}:{http_port}\n"
     log_str += "NOTE: The tables will be empty until the red lights appear on the screen before the race start\n"
     log_str += "That is when the game starts sending telemetry data"
-    logging.info(log_str)
+    png_logger.info(log_str)
 
     initTelemetryWebServer(
         port=http_port,
@@ -203,16 +169,17 @@ def f1TelemetryServerTask(
 def main() -> None:
     """Entry point for the application."""
 
+    global png_logger
     # Initialize the ArgumentParser
     args = parseArgs()
 
-    initLogger(file_name=args.log_file, debug_mode=args.debug)
+    png_logger = initLogger(file_name=args.log_file, debug_mode=args.debug)
     if args.num_adjacent_cars < 0:
-        logging.error("--num-adjacent-cars cannot be negative")
+        png_logger.error("--num-adjacent-cars cannot be negative")
         sys.exit(1)
-    logging.info("Starting the app with the following options:")
+    png_logger.info("Starting the app with the following options:")
     for arg, value in vars(args).items():
-        logging.info("%s: %s", arg, value)
+        png_logger.info("%s: %s", arg, value)
 
     initDirectories()
 
@@ -234,7 +201,7 @@ def main() -> None:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        logging.info("Ctrl+C pressed. Exiting...")
+        png_logger.info("Ctrl+C pressed. Exiting...")
         sys.exit()
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------

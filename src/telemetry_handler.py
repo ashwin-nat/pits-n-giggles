@@ -26,21 +26,21 @@ SOFTWARE.
 
 import os
 import json
-import logging
 from datetime import datetime
 from enum import Enum
 from threading import Lock
 from typing import Optional, List, Tuple, Dict, Any, Generator
 from tqdm import tqdm
-from src.telemetry_manager import F1TelemetryManager
 from lib.f1_types import F1PacketType, PacketSessionData, PacketLapData, \
     PacketEventData, PacketParticipantsData, PacketCarTelemetryData, PacketCarStatusData, \
     PacketFinalClassificationData, PacketCarDamageData, PacketSessionHistoryData, \
     PacketTyreSetsData, SessionType23, SessionType24
 from lib.packet_cap import F1PacketCapture
 from lib.overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, OvertakeRecord
-import src.telemetry_data as TelData
 import lib.race_analyzer as RaceAnalyzer
+import src.telemetry_data as TelData
+from src.telemetry_manager import F1TelemetryManager
+from src.png_logger import getLogger
 
 # -------------------------------------- TYPE DEFINITIONS --------------------------------------------------------------
 
@@ -122,7 +122,7 @@ class OvertakesHistory:
                 overtake_record.m_row_id = 0
                 self.m_overtakes_history.append(overtake_record)
             elif self.m_overtakes_history[-1] == overtake_record:
-                logging.debug("not adding repeated overtake record %s", str(overtake_record))
+                png_logger.debug("not adding repeated overtake record %s", str(overtake_record))
             else:
                 overtake_record.m_row_id = len(self.m_overtakes_history)
                 self.m_overtakes_history.append(overtake_record)
@@ -195,6 +195,7 @@ g_directory_mapping: Dict[str, str] = {}
 g_udp_custom_action_code: Optional[int] = None
 g_player_recorded_events_history: CustomMarkersHistory = CustomMarkersHistory()
 g_completed_session_uid_set: set[int] = set()
+png_logger = getLogger()
 
 # -------------------------------------- INITIALIZATION ----------------------------------------------------------------
 
@@ -218,7 +219,7 @@ def initDirectories():
         """
         if not os.path.exists(directory):
             os.makedirs(directory, exist_ok=True)
-            logging.info("Directory '%s' created.", directory)
+            png_logger.info("Directory '%s' created.", directory)
 
     global g_directory_mapping
     ts_prefix = datetime.now().strftime("%Y_%m_%d")
@@ -325,7 +326,7 @@ def dumpPktCapToFile(
             if clear_db:
                 g_packet_capture_table.m_packet_capture.clear()
             if (file_name is not None) and (num_bytes > 0) and (num_packets > 0):
-                logging.info(
+                png_logger.info(
                     "Dumped raw telemetry data. "
                     "File Name: %s, "
                     "Number of Packets: %s, "
@@ -340,7 +341,7 @@ def dumpPktCapToFile(
         # pylint: disable=broad-except
         except Exception as e:
             # Log the exception
-            logging.error("An error occurred while dumping telemetry data: %s", e)
+            png_logger.error("An error occurred while dumping telemetry data: %s", e)
 
             # Return the appropriate status
             return PktSaveStatus.OS_ERROR, None, 0, 0
@@ -397,7 +398,7 @@ def printOvertakeData(file_name: str=None):
             overtake_analyzer = OvertakeAnalyzer(
                 input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST_OVERTAKE_RECORDS,
                 input_data=g_overtakes_history.m_overtakes_history)
-    logging.info(overtake_analyzer.getFormattedString(driver_name=player_name, is_case_sensitive=True))
+    png_logger.info(overtake_analyzer.getFormattedString(driver_name=player_name, is_case_sensitive=True))
 
 def writeDictToJsonFile(data_dict: Dict, file_name: str) -> None:
     """
@@ -427,7 +428,7 @@ def addFunStatsToFinalClassificationJson(final_json: Dict[str, Any]) -> None:
         overtake_analyzer = OvertakeAnalyzer(
             input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST_OVERTAKE_RECORDS,
             input_data=g_overtakes_history.m_overtakes_history)
-        logging.info(overtake_analyzer.getFormattedString(driver_name=player_name, is_case_sensitive=True))
+        png_logger.info(overtake_analyzer.getFormattedString(driver_name=player_name, is_case_sensitive=True))
         # Add the new keys directly to the top level of final_json
         final_json['overtakes'].update(
             overtake_analyzer.toJSON(
@@ -484,7 +485,7 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
         final_json_file_name = g_directory_mapping['race-info'] + 'race_info_' + \
                 event_str + getTimestampStr() + '.json'
         writeDictToJsonFile(final_json, final_json_file_name)
-        logging.info("Wrote race info to %s", final_json_file_name)
+        png_logger.info("Wrote race info to %s", final_json_file_name)
 
 # -------------------------------------- TELEMETRY PACKET HANDLERS -----------------------------------------------------
 
@@ -560,11 +561,11 @@ class F1TelemetryHandler:
         """
 
         if packet.m_sessionDuration == 0:
-            logging.info("Session duration is 0. clearing data structures")
+            png_logger.info("Session duration is 0. clearing data structures")
             TelData.processSessionStarted()
 
         elif TelData.processSessionUpdate(packet):
-            logging.info("Session UID changed. clearing data structures")
+            png_logger.info("Session UID changed. clearing data structures")
             TelData.processSessionStarted()
 
     @staticmethod
@@ -593,14 +594,14 @@ class F1TelemetryHandler:
             if (g_udp_custom_action_code is not None) and \
                 (packet.mEventDetails.isUDPActionPressed(g_udp_custom_action_code)):
 
-                logging.debug('UDP action %d pressed', g_udp_custom_action_code)
+                png_logger.debug('UDP action %d pressed', g_udp_custom_action_code)
                 global g_player_recorded_events_history
                 custom_marker_obj = TelData.getCustomMarkerEntryObj()
                 if custom_marker_obj:
                     g_player_recorded_events_history.insert(custom_marker_obj)
-                    logging.debug('Player recorded event: %s', str(custom_marker_obj))
+                    png_logger.debug('Player recorded event: %s', str(custom_marker_obj))
                 else:
-                    logging.error("Unable to generate player_recorded_event_str")
+                    png_logger.error("Unable to generate player_recorded_event_str")
 
         # Fastest Lap - update data structures
         elif packet.m_eventStringCode == PacketEventData.EventPacketType.FASTEST_LAP:
@@ -614,7 +615,7 @@ class F1TelemetryHandler:
             with g_overtakes_history.m_lock:
                 g_overtakes_history.m_overtakes_history.clear()
             g_player_recorded_events_history.clear()
-            logging.info("Received SESSION_STARTED")
+            png_logger.info("Received SESSION_STARTED")
 
         # Retirement - Update data strucutres
         elif packet.m_eventStringCode == PacketEventData.EventPacketType.RETIREMENT:
@@ -671,9 +672,9 @@ class F1TelemetryHandler:
         """
         global g_completed_session_uid_set
         if packet.m_header.m_sessionUID in g_completed_session_uid_set:
-            logging.debug('Session UID %d final classification already processed.', packet.m_header.m_sessionUID)
+            png_logger.debug('Session UID %d final classification already processed.', packet.m_header.m_sessionUID)
             return
-        logging.info('Received Final Classification Packet.')
+        png_logger.info('Received Final Classification Packet.')
         final_json = TelData.processFinalClassificationUpdate(packet)
         g_completed_session_uid_set.add(packet.m_header.m_sessionUID)
 

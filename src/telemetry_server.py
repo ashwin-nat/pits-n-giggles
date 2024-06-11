@@ -29,21 +29,14 @@ from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_socketio import SocketIO, emit
 import src.telemetry_data as TelData
 import src.telemetry_web_api as TelWebAPI
+from src.png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
 _web_server : Optional["TelemetryWebServer"] = None
+png_logger = getLogger()
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
-
-# class NoPayloadFormatter(logging.Formatter):
-#     def format(self, record):
-#         # Check if the log message contains JSON payload
-#         if "engineio.response" in record.getMessage():
-#             # Replace the JSON payload with a message indicating it was omitted
-#             return "Response payload omitted"
-#         # For other log messages, use the default formatting
-#         return super().format(record)
 
 class TelemetryWebServer:
     def __init__(self,
@@ -65,18 +58,6 @@ class TelemetryWebServer:
             socketio_tasks (List[Tuple[Callable, Any]]): List of tasks to be executed by the SocketIO server
         """
 
-        # # Create a custom logger for SocketIO
-        # socketio_logger = logging.getLogger("socketio")
-        # socketio_logger.setLevel(logging.INFO)
-        # socketio_logger.addHandler(logging.StreamHandler())
-
-        # # Create a custom formatter
-        # formatter = NoPayloadFormatter()
-
-        # # Set the formatter for the socketio logger
-        # for handler in socketio_logger.handlers:
-        #     handler.setFormatter(formatter)
-
         self.m_app = Flask(__name__, template_folder='templates', static_folder='static')
         self.m_app.config['PROPAGATE_EXCEPTIONS'] = True
         self.m_port = port
@@ -87,7 +68,6 @@ class TelemetryWebServer:
         self.m_socketio = SocketIO(
             app=self.m_app,
             async_mode="gevent",
-            # logger=socketio_logger,
         )
         self.m_socketio_tasks = socketio_tasks
 
@@ -212,13 +192,13 @@ class TelemetryWebServer:
         def handleConnect():
             """SocketIO endpoint for handling client connection
             """
-            logging.debug("Client connected")
+            png_logger.debug("Client connected")
 
         @self.m_socketio.on('disconnect')
         def handleDisconnect():
             """SocketIO endpoint for handling client disconnection
             """
-            logging.debug("Client disconnected")
+            png_logger.debug("Client disconnected")
 
         @self.m_socketio.on('race-info')
         # pylint: disable=unused-argument
@@ -291,7 +271,6 @@ class TelemetryWebServer:
 
         if self.m_socketio_tasks:
             for callback, arg in self.m_socketio_tasks:
-                # self.m_socketio.start_background_task(self.m_socketio_tasks, self.m_client_update_interval_ms)
                 self.m_socketio.start_background_task(callback, arg)
         self.m_socketio.run(
             app=self.m_app,

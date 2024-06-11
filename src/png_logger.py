@@ -1,0 +1,75 @@
+# MIT License
+#
+# Copyright (c) [2024] [Ashwin Natarajan]
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# -------------------------------------- IMPORTS -----------------------------------------------------------------------
+
+import logging
+import threading
+
+# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+
+def initLogger(file_name: str = None, debug_mode: bool = False) -> logging.Logger:
+    """Initialize and configure the logger.
+
+    Args:
+        file_name (str, optional): The name of the log file. Defaults to None.
+        debug_mode (bool, optional): Whether to enable debug mode. Defaults to False.
+
+    Returns:
+        logging.Logger: The configured logger.
+    """
+    # Create a formatter with a time-based format
+    format_str = '%(asctime)s [%(levelname)s] [%(filename)s:%(lineno)d] - %(message)s' if debug_mode else \
+                 '%(asctime)s [%(levelname)s] - %(message)s'
+    formatter = logging.Formatter(format_str)
+
+    # Create a lock to make the logger thread-safe
+    lock = threading.Lock()
+
+    # Create the logger
+    png_logger = logging.getLogger('png')
+    png_logger.setLevel(logging.DEBUG if debug_mode else logging.INFO)
+
+    # Create console handler and set the formatter
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    png_logger.addHandler(console_handler)
+
+    # Add file handler if a file name is provided
+    if file_name:
+        file_handler = logging.FileHandler(file_name)
+        file_handler.setFormatter(formatter)
+        png_logger.addHandler(file_handler)
+
+    # Add lock to the logger to make it thread-safe
+    png_logger.addHandler(logging.NullHandler())
+    png_logger._lock = lock
+
+    return png_logger
+
+def getLogger() -> logging.Logger:
+    """Get the PNG logger
+
+    Returns:
+        logging.Logger: The logger object
+    """
+    return logging.getLogger('png')

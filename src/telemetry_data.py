@@ -27,7 +27,6 @@ import threading
 import copy
 from typing import Optional, Generator, Tuple, List, Dict, Any
 from collections import OrderedDict
-import logging
 from lib.f1_types import PacketSessionData, PacketLapData, LapData, CarTelemetryData, ParticipantData, \
     PacketEventData, PacketParticipantsData, PacketCarTelemetryData, PacketCarStatusData, FinalClassificationData, \
     PacketFinalClassificationData, PacketCarDamageData, PacketSessionHistoryData, ResultStatus, PacketTyreSetsData, \
@@ -36,6 +35,7 @@ from lib.f1_types import PacketSessionData, PacketLapData, LapData, CarTelemetry
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.overtake_analyzer import OvertakeRecord
 from lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
+from src.png_logger import getLogger
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -558,9 +558,9 @@ class DataPerDriver:
                         'rear-left-wear': car_damage_data.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
                     })
                 else:
-                    logging.debug('car damage data not available for lap %d driver %s', lap_number, self.m_name)
+                    png_logger.debug('car damage data not available for lap %d driver %s', lap_number, self.m_name)
             else:
-                logging.debug('per lap backup not available for lap %d driver %s', lap_number, self.m_name)
+                png_logger.debug('per lap backup not available for lap %d driver %s', lap_number, self.m_name)
         return tyre_wear_history
 
     def onLapChange(self,
@@ -1325,6 +1325,7 @@ _globals = GlobalData()
 _driver_data = DriverData()
 _globals_lock = threading.Lock()
 _driver_data_lock = threading.Lock()
+png_logger = getLogger()
 
 # -------------------------------------- TELEMETRY PACKET HANDLERS -----------------------------------------------------
 
