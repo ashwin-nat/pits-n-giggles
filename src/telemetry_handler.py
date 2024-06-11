@@ -672,6 +672,7 @@ class F1TelemetryHandler:
         global g_completed_session_uid_set
         if packet.m_header.m_sessionUID in g_completed_session_uid_set:
             logging.debug('Session UID %d final classification already processed.', packet.m_header.m_sessionUID)
+            return
         logging.info('Received Final Classification Packet.')
         final_json = TelData.processFinalClassificationUpdate(packet)
         g_completed_session_uid_set.add(packet.m_header.m_sessionUID)
