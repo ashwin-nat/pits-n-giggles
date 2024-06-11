@@ -20,6 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# ------------------------- IMPORTS ------------------------------------------------------------------------------------
+
 from typing import Callable
 import logging
 from lib.socket_receiver import UDPListener, TCPListener
@@ -27,9 +29,13 @@ from lib.f1_types import F1PacketType, PacketHeader, PacketMotionData, PacketSes
     PacketEventData, PacketParticipantsData, PacketCarSetupData, PacketCarTelemetryData, PacketCarStatusData, \
     PacketFinalClassificationData, PacketLobbyInfoData, PacketCarDamageData, PacketSessionHistoryData, \
     PacketTyreSetsData, PacketMotionExData, InvalidPacketLengthError, PacketTimeTrialData
+from src.png_logger import getLogger
 
+# ------------------------- GLOBALS ------------------------------------------------------------------------------------
 
-# ------------------------- CLASSES --------------------------------------------
+png_logger = getLogger()
+
+# ------------------------- CLASSES ------------------------------------------------------------------------------------
 
 class F1TelemetryManager:
     """
@@ -144,7 +150,7 @@ class F1TelemetryManager:
         """
 
         if self.m_replay_server:
-            logging.info("REPLAY SERVER MODE. PORT = %s", self.m_port_number)
+            png_logger.info("REPLAY SERVER MODE. PORT = %s", self.m_port_number)
 
         # counter = 0
         # Run the client indefinitely
@@ -168,7 +174,7 @@ class F1TelemetryManager:
             try:
                 packet = F1TelemetryManager.packet_type_map[header.m_packetId](header, payload_raw)
             except InvalidPacketLengthError as e:
-                logging.error("Cannot parse packet of type %s. Error = %s", str(header.m_packetId), str(e))
+                png_logger.error("Cannot parse packet of type %s. Error = %s", str(header.m_packetId), str(e))
             callback = self.m_callbacks.get(header.m_packetId, None)
             if callback:
                 callback(packet)
