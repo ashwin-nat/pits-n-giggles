@@ -53,8 +53,12 @@ class PacketLobbyInfoData:
         self.m_header: PacketHeader = header
         self.m_numPlayers: int = struct.unpack("<B", packet[:1])[0]
         self.m_lobbyPlayers: List[LobbyInfoData] = []
+        if header.m_gameYear == 23:
+            packet_len = LobbyInfoData.PACKET_LEN_23
+        else: # 24
+            packet_len = LobbyInfoData.PACKET_LEN_24
 
-        for lobby_info_per_player_raw_data in _split_list(packet[1:], LobbyInfoData.PACKET_LEN_23):
+        for lobby_info_per_player_raw_data in _split_list(packet[1:], packet_len):
             self.m_lobbyPlayers.append(LobbyInfoData(lobby_info_per_player_raw_data, header.m_gameYear))
 
         # Trim the list
