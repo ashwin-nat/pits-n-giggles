@@ -34,6 +34,7 @@ from lib.f1_types import PacketSessionData, PacketLapData, LapData, CarTelemetry
     SafetyCarType, TelemetrySetting
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.overtake_analyzer import OvertakeRecord
+from lib.collisions_analyzer import CollisionRecord
 from lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
 from src.png_logger import getLogger
 
@@ -1558,7 +1559,7 @@ def getDriverNameByIndex(index: int) -> str:
         return driver_data.m_name if driver_data else None
 
 def getOvertakeObj(overtaking_car_index: int, being_overtaken_index: int) -> Optional[OvertakeRecord]:
-    """Returns a CSV-formatted string containing overtake information
+    """Returns an overtake object containing overtake information
 
     Args:
         overtaking_car_index (int): The index of the overtaking car
@@ -1590,6 +1591,39 @@ def getOvertakeObj(overtaking_car_index: int, being_overtaken_index: int) -> Opt
             overtaking_driver_lap=overtaking_car_obj.m_current_lap,
             overtaken_driver_name=being_overtaken_car_obj.m_name,
             overtaken_driver_lap=being_overtaken_car_obj.m_current_lap,
+        )
+
+def getCollisionObj(driver_1_index: int, driver_2_index: int) -> Optional[CollisionRecord]:
+    """Returns a collision object containing collision information
+
+    Args:
+        driver_1_index (int): The index of the first driver
+        driver_2_index (int): The index of the second driver
+
+    Returns:
+        Optional[CollisionRecord]: A collision object containing collision information
+    """
+    with _driver_data_lock:
+        if not _driver_data.m_driver_data:
+            return None
+        driver_1_obj = _driver_data.m_driver_data.get(driver_1_index, None)
+        driver_2_obj = _driver_data.m_driver_data.get(driver_2_index, None)
+        if driver_1_obj is None or driver_2_obj is None:
+            return None
+
+        if driver_1_obj.m_name is None or \
+            driver_1_obj.m_current_lap is None or \
+                driver_2_obj.m_name is None or \
+                    driver_2_obj.m_current_lap is None:
+            return None
+
+        return CollisionRecord(
+            driver_1_name=driver_1_obj.m_name,
+            driver_1_lap=driver_1_obj.m_current_lap,
+            driver_1_index=driver_1_index,
+            driver_2_name=driver_2_obj.m_name,
+            driver_2_lap=driver_2_obj.m_current_lap,
+            driver_2_index=driver_2_index
         )
 
 def getCustomMarkerEntryObj() -> Optional[CustomMarkerEntry]:
