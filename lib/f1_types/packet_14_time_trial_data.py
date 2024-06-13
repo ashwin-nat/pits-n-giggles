@@ -136,11 +136,12 @@ class PacketTimeTrialData:
 
     """
 
-    def __init__(self, data: bytes, header: PacketHeader) -> None:
+    def __init__(self, header: PacketHeader, data: bytes) -> None:
         """
         Initializes a PacketTimeTrialData object by unpacking the provided binary data.
 
         Parameters:
+            header (PacketHeader): The packet header
             data (bytes): Binary data to be unpacked.
 
         Raises:
@@ -151,17 +152,17 @@ class PacketTimeTrialData:
 
         # First, the Player session best data set
         bytes_so_far = 0
-        raw_data = _extract_sublist(data, 0, TimeTrialDataSet.PACKET_LEN)
+        raw_data = _extract_sublist(data, 0, bytes_so_far + TimeTrialDataSet.PACKET_LEN)
         bytes_so_far += TimeTrialDataSet.PACKET_LEN
         self.m_playerSessionBestDataSet = TimeTrialDataSet(raw_data)
 
         # Next, the personal best data set
-        raw_data = _extract_sublist(data, bytes_so_far, TimeTrialDataSet.PACKET_LEN)
+        raw_data = _extract_sublist(data, bytes_so_far, bytes_so_far + TimeTrialDataSet.PACKET_LEN)
         bytes_so_far += TimeTrialDataSet.PACKET_LEN
         self.m_personalBestDataSet = TimeTrialDataSet(raw_data)
 
         # Finally, the rival data set
-        raw_data = _extract_sublist(data, bytes_so_far, TimeTrialDataSet.PACKET_LEN)
+        raw_data = _extract_sublist(data, bytes_so_far, bytes_so_far + TimeTrialDataSet.PACKET_LEN)
         bytes_so_far += TimeTrialDataSet.PACKET_LEN
         self.m_rivalSessionBestDataSet = TimeTrialDataSet(raw_data)
 

@@ -24,6 +24,8 @@
 
 import logging
 import threading
+import sys
+import io
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -49,14 +51,14 @@ def initLogger(file_name: str = None, debug_mode: bool = False) -> logging.Logge
     png_logger = logging.getLogger('png')
     png_logger.setLevel(logging.DEBUG if debug_mode else logging.INFO)
 
-    # Create console handler and set the formatter
-    console_handler = logging.StreamHandler()
+    # Create console handler with UTF-8 encoding
+    console_handler = logging.StreamHandler(stream=io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8'))
     console_handler.setFormatter(formatter)
     png_logger.addHandler(console_handler)
 
     # Add file handler if a file name is provided
     if file_name:
-        file_handler = logging.FileHandler(file_name)
+        file_handler = logging.FileHandler(file_name, encoding='utf-8')
         file_handler.setFormatter(formatter)
         png_logger.addHandler(file_handler)
 
