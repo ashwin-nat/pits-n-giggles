@@ -128,51 +128,6 @@ class OvertakesHistory:
                 overtake_record.m_row_id = len(self.m_overtakes_history)
                 self.m_overtakes_history.append(overtake_record)
 
-class CollisionsHistory:
-    """Class representing the history of all collisions
-    """
-
-    def __init__(self):
-        """Initialise the collisions history tracker
-        """
-
-        self.m_collisions_history: List[CollisionRecord] = []
-        self.m_lock: Lock = Lock()
-
-    def clear(self) -> None:
-        """Clear the history table. THREAD SAFE
-        """
-
-        with self.m_lock:
-            self.m_collisions_history.clear()
-
-    def insert(self, collision_record: CollisionRecord) -> None:
-        """Insert the collision into the history table. THREAD SAFE
-
-        Args:
-            collision_record (CollisionRecord): The collision object
-        """
-
-        with self.m_lock:
-            if len(self.m_collisions_history) == 0:
-                collision_record.m_row_id = 0
-                self.m_collisions_history.append(collision_record)
-            else:
-                collision_record.m_row_id = len(self.m_collisions_history)
-                self.m_collisions_history.append(collision_record)
-
-    def getCollisionAnalyzer(self) -> CollisionAnayzer:
-        """Get the collision analyzer object
-
-        Returns:
-            CollisionAnayzer: The collision analyzer object
-        """
-
-        with self.m_lock:
-            return CollisionAnayzer(
-                input_mode=CollisionAnalyzerMode.INPUT_MODE_LIST_COLLISION_RECORDS,
-                input_data=self.m_collisions_history)
-
 class CustomMarkersHistory:
     """Class representing the data points for a player's custom marker
     """
@@ -236,7 +191,6 @@ g_packet_capture_table: PacketCaptureTable = PacketCaptureTable()
 g_pkt_cap_mode: PacketCaptureMode = PacketCaptureMode.DISABLED
 g_num_active_cars: int = 0
 g_overtakes_history: OvertakesHistory = OvertakesHistory()
-g_collisions_history: CollisionsHistory = CollisionsHistory()
 g_post_race_data_autosave: bool = False
 g_directory_mapping: Dict[str, str] = {}
 g_udp_custom_action_code: Optional[int] = None
@@ -427,37 +381,6 @@ def getCustomMarkersJSON() -> List[Dict[str, Any]]:
     global g_player_recorded_events_history
     return g_player_recorded_events_history.getJSONList()
 
-def printOvertakeData(file_name: str=None):
-    """Print the overtake data
-
-    Args:
-        file_name (str): Name of the csv file with the overtake data. If None, directly gets the data from the list
-    """
-
-    player_name = TelData.getPlayerName()
-    if file_name:
-        overtake_analyzer = OvertakeAnalyzer(
-            input_mode=OvertakeAnalyzerMode.INPUT_MODE_FILE_CSV,
-            input_data=file_name)
-    else:
-        global g_overtakes_history
-        with g_overtakes_history.m_lock:
-            overtake_analyzer = OvertakeAnalyzer(
-                input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST_OVERTAKE_RECORDS,
-                input_data=g_overtakes_history.m_overtakes_history)
-    png_logger.info(overtake_analyzer.getFormattedString(driver_name=player_name, is_case_sensitive=True))
-
-def printCollisionStats() -> None:
-    """Print the collision stats
-    """
-
-    global g_collisions_history
-    collisions_analyzer = g_collisions_history.getCollisionAnalyzer()
-    png_logger.info("Total number of collisions: %d", collisions_analyzer.getNumCollisions())
-    most_collision_drivers, collisions_count = collisions_analyzer.getMostCollisions()
-    for _, driver_name in most_collision_drivers:
-        png_logger.info("Most collisions %s: %d", driver_name, collisions_count)
-
 def writeDictToJsonFile(data_dict: Dict, file_name: str) -> None:
     """
     Write a dictionary containing JSON data to a file.
@@ -468,37 +391,6 @@ def writeDictToJsonFile(data_dict: Dict, file_name: str) -> None:
     """
     with open(file_name, 'w', encoding='utf-8') as json_file:
         json.dump(data_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
-
-def addFunStatsToFinalClassificationJson(final_json: Dict[str, Any]) -> None:
-    """
-    Add the fun stats to the final classification JSON.
-
-    Arguments:
-        final_json (Dict): Dictionary containing JSON data after final classification
-    """
-
-    global g_overtakes_history
-
-    final_json['overtakes'] = {'records': [record.toJSON() for record in g_overtakes_history.m_overtakes_history]}
-
-    with g_overtakes_history.m_lock:
-        player_name = TelData.getPlayerName()
-        overtake_analyzer = OvertakeAnalyzer(
-            input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST_OVERTAKE_RECORDS,
-            input_data=g_overtakes_history.m_overtakes_history)
-        png_logger.info(overtake_analyzer.getFormattedString(driver_name=player_name, is_case_sensitive=True))
-        # Add the new keys directly to the top level of final_json
-        final_json['overtakes'].update(
-            overtake_analyzer.toJSON(
-                driver_name=player_name,
-                is_case_sensitive=True))
-
-    # Next, fastest lap and sector records
-    final_json['records'] = {
-        'fastest' : RaceAnalyzer.getFastestTimesJson(final_json),
-        'tyre-stats' : RaceAnalyzer.getTyreStintRecordsDict(final_json)
-    }
-
 
 def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
     """
@@ -539,6 +431,12 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
         if g_player_recorded_events_history.getCount() > 0:
             for marker in g_player_recorded_events_history.getMarkers():
                 final_json['custom-markers'].append(marker.toJSON())
+
+        # Next, fastest lap and sector records
+        final_json['records'] = {
+            'fastest' : RaceAnalyzer.getFastestTimesJson(final_json),
+            'tyre-stats' : RaceAnalyzer.getTyreStintRecordsDict(final_json)
+        }
 
         final_json_file_name = g_directory_mapping['race-info'] + 'race_info_' + \
                 event_str + getTimestampStr() + '.json'
@@ -686,13 +584,10 @@ class F1TelemetryHandler:
                                                         packet.mEventDetails.beingOvertakenVehicleIdx)
             if overtake_obj:
                 g_overtakes_history.insert(overtake_obj)
-        elif packet.m_eventStringCode == PacketEventData.EventPacketType.COLLISION:
-            collision_obj = TelData.getCollisionObj(packet.mEventDetails.m_vehicle_1_index,
-                                                      packet.mEventDetails.m_vehicle_2_index)
-            if collision_obj:
-                g_collisions_history.insert(collision_obj)
-                png_logger.debug("Collision: %s", str(collision_obj))
 
+        # Collision - Update collision records list
+        elif packet.m_eventStringCode == PacketEventData.EventPacketType.COLLISION:
+            TelData.processCollisionsEvent(packet.mEventDetails)
 
     @staticmethod
     def handleParticipants(packet: PacketParticipantsData) -> None:
@@ -776,7 +671,6 @@ class F1TelemetryHandler:
                         break
             if is_event_supported:
                 postGameDumpToFile(final_json)
-                printCollisionStats()
 
     @staticmethod
     def handleCarDamage(packet: PacketCarDamageData) -> None:

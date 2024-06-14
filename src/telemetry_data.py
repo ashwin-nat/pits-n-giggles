@@ -34,7 +34,7 @@ from lib.f1_types import PacketSessionData, PacketLapData, LapData, CarTelemetry
     SafetyCarType, TelemetrySetting
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.overtake_analyzer import OvertakeRecord
-from lib.collisions_analyzer import CollisionRecord
+from lib.collisions_analyzer import CollisionRecord, CollisionAnayzer, CollisionAnalyzerMode
 from lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
 from src.png_logger import getLogger
 
@@ -184,6 +184,7 @@ class DataPerDriver:
         m_fl_wing_damage (int): Left front wing damage
         m_fr_wing_damage (int): Right front wing damage
         m_rear_wing_damage (int): Rear wing damage
+        m_collision_records (List[CollisionRecord]): List of CollisionRecord objects for the driver.
 
         m_packet_lap_data (Optional[LapData]): Copy of LapData packet for the driver.
         m_packet_participant_data (Optional[ParticipantData]): Copy of ParticipantData packet for the driver.
@@ -378,6 +379,7 @@ class DataPerDriver:
         self.m_fl_wing_damage: Optional[int] = None
         self.m_fr_wing_damage: Optional[int] = None
         self.m_rear_wing_damage: Optional[int] = None
+        self.m_collision_records: List[CollisionRecord] = []
 
         # packet copies
         self.m_packet_lap_data: Optional[LapData] = None
@@ -796,6 +798,7 @@ class DriverData:
         m_ideal_pit_stop_window (int): The ideal pit stop window for the player, according to the selected strategy
         m_track_id (TrackID): The track ID of the event
         m_game_year (int): The game year
+        m_collision_records (List[CollisionRecord]): List of collision records
     """
 
     def __init__(self):
@@ -814,6 +817,7 @@ class DriverData:
         self.m_ideal_pit_stop_window : Optional[int] = None
         self.m_track_id : Optional[TrackID] = None
         self.m_game_year : Optional[int] = None
+        self.m_collision_records : List[CollisionRecord] = []
 
     def clear(self) -> None:
         """Clear this object. Clears the m_driver_data list and sets everything else to None
@@ -830,6 +834,7 @@ class DriverData:
         self.m_ideal_pit_stop_window = None
         self.m_track_id = None
         self.m_game_year = None
+        self.m_collision_records.clear()
 
     def setRaceOngoing(self) -> None:
         """
@@ -1230,6 +1235,9 @@ class DriverData:
         final_json["circuit"] = str(self.m_track_id)
         final_json["is-finish-line-after-pit-garage"] = F1Utils.isFinishLineAfterPitGarage(self.m_track_id) \
             if self.m_track_id is not None else None
+
+        # Collisions stats
+        final_json["collisions"] = self._getCollisionStatsJSON()
         return final_json
 
     def getRaceInfoJSON(self) -> Dict[str, Any]:
@@ -1243,12 +1251,70 @@ class DriverData:
             return self.m_final_json
         return {"classification-data" : self._getClassificationDataListJSON()}
 
+    def processCollisionEvent(self, packet: PacketEventData.Collision) -> None:
+        """Process the collision event update packet and update the necessary fields
+
+        Args:
+            packet (PacketEventData.Collision): The collision event update packet
+        """
+
+        collision_obj = self._getCollisionObj(packet.m_vehicle_1_index, packet.m_vehicle_2_index)
+        if collision_obj:
+            self.m_driver_data[packet.m_vehicle_1_index].m_collision_records.append(collision_obj)
+            self.m_driver_data[packet.m_vehicle_2_index].m_collision_records.append(collision_obj)
+            self.m_collision_records.append(collision_obj)
+
+    def _getCollisionObj(self, driver_1_index: int, driver_2_index: int) -> Optional[CollisionRecord]:
+        """Returns a collision object containing collision information
+
+        Args:
+            driver_1_index (int): The index of the first driver
+            driver_2_index (int): The index of the second driver
+
+        Returns:
+            Optional[CollisionRecord]: A collision object containing collision information
+        """
+
+        if not self.m_driver_data:
+            return None
+        driver_1_obj = self.m_driver_data.get(driver_1_index, None)
+        driver_2_obj = self.m_driver_data.get(driver_2_index, None)
+        if driver_1_obj is None or driver_2_obj is None:
+            return None
+
+        if driver_1_obj.m_name is None or \
+            driver_1_obj.m_current_lap is None or \
+                driver_2_obj.m_name is None or \
+                    driver_2_obj.m_current_lap is None:
+            return None
+
+        return CollisionRecord(
+            driver_1_name=driver_1_obj.m_name,
+            driver_1_lap=driver_1_obj.m_current_lap,
+            driver_1_index=driver_1_index,
+            driver_2_name=driver_2_obj.m_name,
+            driver_2_lap=driver_2_obj.m_current_lap,
+            driver_2_index=driver_2_index
+        )
+
     def _getClassificationDataListJSON(self):
         """
         Return a list of dictionaries containing index, driver name, position, and participant data.
         """
 
         return [driver_data.toJSON(index) for index, driver_data in self.m_driver_data.items()]
+
+    def _getCollisionStatsJSON(self) -> Dict[str, Any]:
+        """Get the collision stats JSON.
+
+        Returns:
+            Dict[str, Any]: Collision stats JSON
+        """
+
+        collision_analyzer = CollisionAnayzer(
+            input_mode=CollisionAnalyzerMode.INPUT_MODE_LIST_COLLISION_RECORDS,
+            input_data=self.m_collision_records)
+        return collision_analyzer.toJSON()
 
 class CustomMarkerEntry:
     """Class representing the data points related to a custom time marker.
@@ -1386,6 +1452,16 @@ def processRetirementEvent(packet: PacketEventData) -> None:
     with _driver_data_lock:
         _driver_data.processRetirement(packet.mEventDetails)
 
+def processCollisionsEvent(packet: PacketEventData.Collision)-> None:
+    """Update the data structures with collisions event udpate.
+
+    Args:
+        packet (PacketEventData.Collision): The collision update packet
+    """
+
+    with _driver_data_lock:
+        _driver_data.processCollisionEvent(packet)
+
 def processParticipantsUpdate(packet: PacketParticipantsData) -> None:
     """Update the data strucutre with participants information
 
@@ -1395,6 +1471,7 @@ def processParticipantsUpdate(packet: PacketParticipantsData) -> None:
 
     with _driver_data_lock:
         _driver_data.processParticipantsUpdate(packet)
+
 
 def processCarTelemetryUpdate(packet: PacketCarTelemetryData) -> None:
     """Update the data structure with the car telemetry information

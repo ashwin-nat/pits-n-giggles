@@ -254,10 +254,12 @@ class PlayerTelemetryOverlayUpdate:
 
         if player_data and player_data.m_packet_car_telemetry:
             self.m_throttle = player_data.m_packet_car_telemetry.m_throttle
-            self.m_brake = player_data.m_packet_car_telemetry.m_brake
+            self.m_brake    = player_data.m_packet_car_telemetry.m_brake
+            self.m_steering = player_data.m_packet_car_telemetry.m_steer
         else:
             self.m_throttle = 0
-            self.m_brake = 0
+            self.m_brake    = 0
+            self.m_steering = 0
 
     def __initLapTimes(self, player_data: Optional[TelData.DataPerDriver]) -> None:
         """Prepares the player's lap history data.
@@ -341,7 +343,8 @@ class PlayerTelemetryOverlayUpdate:
             "car-telemetry" : {
                 # The UI expects 0 to 100
                 "throttle": (self.m_throttle * 100),
-                "brake": (self.m_brake * 100)
+                "brake": (self.m_brake * 100),
+                "steering" : (self.m_steering * 100),
             },
             "tyre-wear" : {
                 "current" : self.m_tyre_wear.toJSON(),

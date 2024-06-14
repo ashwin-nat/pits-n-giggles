@@ -200,16 +200,20 @@ class CollisionRecord:
 
 class CollisionPairKey:
 
-    def __init__(self, driver_1_index: int, driver_2_index: int) -> None:
+    def __init__(self, driver_1_index: int, driver_1_name: str, driver_2_index: int, driver_2_name: str) -> None:
         """
         Initialize an OvertakeRivalryPair instance with the given driver indices.
 
         Args:
             driver_1_index (int): The index of the first driver in the pair.
-            driver_2_index (int): The index of the second driver in the pair.
+            driver_1_name (str): The name of the first driver in the pair.
+            driver_2_index (int): The index of the second driver in the pair.\
+            driver_2_name (str): The name of the second driver in the pair.
         """
         self.m_driver_1_index: int = driver_1_index
+        self.m_driver_1_name: str = driver_1_name
         self.m_driver_2_index: int = driver_2_index
+        self.m_driver_2_name: str = driver_2_name
 
     def __eq__(self, other: "CollisionPairKey") -> bool:
         """
@@ -243,19 +247,19 @@ class CollisionPairKey:
         Returns:
             str: A string representation of the OvertakeRivalryPair.
         """
-        return "(" + self.m_driver_1_index + ", " + self.m_driver_2_index + ")"
+        return "(" + str(self.m_driver_1_index) + ", " + str(self.m_driver_2_index) + ")"
 
-    def __contains__(self, player_name: str) -> bool:
+    def __contains__(self, driver_index: int) -> bool:
         """
-        Check if the given player name is present in the CollisionPairKey.
+        Check if the given driver index is present in the CollisionPairKey.
 
         Args:
-            player_name (str): The name of the player to check.
+            driver_index (int): The driver index to check
 
         Returns:
-            bool: True if the player name is present, False otherwise.
+            bool: True if the driver index is present, False otherwise.
         """
-        return player_name in (self.m_driver_1_index, self.m_driver_2_index)
+        return driver_index in (self.m_driver_1_index, self.m_driver_2_index)
 
     def getDrivers(self) -> tuple[str, str]:
         """
@@ -293,7 +297,8 @@ class CollisionAnayzer:
 
         self.m_input_mode: CollisionAnalyzerMode = input_mode
         self.m_collision_counts: Dict[Tuple[int,str], int] = defaultdict(int) # Key is (index,name)
-        self.m_rivalry_records: Dict[CollisionPairKey, List[CollisionRecord]] = defaultdict(list)
+        self.m_collision_pair_records: Dict[CollisionPairKey, List[CollisionRecord]] = defaultdict(list)
+        self.m_collision_records: List[CollisionRecord] = []
         if input_mode == CollisionAnalyzerMode.INPUT_MODE_FILE_CSV:
             self.__analyzeCsvFile(file_name=input_data)
         elif input_mode == CollisionAnalyzerMode.INPUT_MODE_LIST_CSV:
@@ -359,8 +364,13 @@ class CollisionAnayzer:
         # Use the key type here since it supports bidirectional comparison
         collision_pair_key = CollisionPairKey(
             driver_1_index=record.m_driver_1_index,
-            driver_2_index=record.m_driver_2_index)
-        self.m_rivalry_records[collision_pair_key].append(record)
+            driver_1_name=record.m_driver_1_name,
+            driver_2_index=record.m_driver_2_index,
+            driver_2_name=record.m_driver_2_name)
+        self.m_collision_pair_records[collision_pair_key].append(record)
+
+        # Add to the raw records list
+        self.m_collision_records.append(record)
 
     def __analyze(self, data: List[str]) -> None:
         """
@@ -417,3 +427,62 @@ class CollisionAnayzer:
         """
 
         return sum(self.m_collision_counts.values())
+
+    def getMostCollidedPairsJSON(self) -> Dict[str, Any]:
+        """
+        Get the most collided pair of drivers in JSON format.
+
+        Returns:
+            Dict[str, Any]: The JSON dictionary containing the most collided pair of drivers.
+                Contains the following keys:
+                    - "count": The number of collisions
+                    - "collision-pairs": A list of pairs of driver IDs and names. Each items contains the following keys
+                        - "driver-1-index": The index of the first driver
+                        - "driver-1-name": The name of the first driver
+                        - "driver-2-index": The index of the second driver
+                        - "driver-2-name": The name of the second driver
+        """
+
+        if not self.m_collision_counts:
+            return {
+                "count": 0,
+                "collision-pairs": []
+            }
+
+        max_collisions_count = max(len(records) for records in self.m_collision_pair_records.values())
+        return {
+            "count": max_collisions_count,
+            "collision-pairs": [
+                {
+                    "driver-1-index": collision_pair.m_driver_1_index,
+                    "driver-1-name": collision_pair.m_driver_1_name,
+                    "driver-2-index": collision_pair.m_driver_2_index,
+                    "driver-2-name": collision_pair.m_driver_2_name
+                }
+                for collision_pair, records_list in self.m_collision_pair_records.items()
+                if len(records_list) == max_collisions_count
+            ]
+        }
+
+    def toJSON(self) -> Dict[str, Any]:
+        """Get the JSON representation of this object
+
+        Returns:
+            Dict[str, Any]: JSON dictionary
+        """
+
+        return {
+            "most-collided-pairs" : self.getMostCollidedPairsJSON(),
+            "collision-pairs": [
+                {
+                    "driver-1-index": key.m_driver_1_index,
+                    "driver-1-name": key.m_driver_1_name,
+                    "driver-2-index": key.m_driver_2_index,
+                    "driver-2-name": key.m_driver_2_name,
+                    "num-collisions": len(list_of_collisions),
+                    "collisions": [collision.toJSON() for collision in list_of_collisions],
+                }
+                for key, list_of_collisions in self.m_collision_pair_records.items()
+            ],
+            "records" : [record.toJSON() for record in self.m_collision_records],
+        }
