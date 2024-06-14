@@ -23,7 +23,7 @@
 
 import struct
 from typing import Dict, Any, List
-from .common import _split_list, PacketHeader, Platform, Nationality, TeamID, TelemetrySetting
+from .common import _split_list, PacketHeader, Platform, Nationality, TeamID23, TeamID24, TelemetrySetting
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -129,8 +129,10 @@ class ParticipantData:
         self.m_name = self.m_name.decode('utf-8', errors='replace').rstrip('\x00')
         if Platform.isValid(self.m_platform):
             self.m_platform = Platform(self.m_platform)
-        if TeamID.isValid(self.m_teamId):
-            self.m_teamId = TeamID(self.m_teamId)
+        if game_year == 23 and TeamID23.isValid(self.m_teamId):
+            self.m_teamId = TeamID23(self.m_teamId)
+        elif TeamID24.isValid(self.m_teamId):
+            self.m_teamId = TeamID24(self.m_teamId)
         if TelemetrySetting.isValid(self.m_yourTelemetry):
             self.m_yourTelemetry = TelemetrySetting(self.m_yourTelemetry)
         if Nationality.isValid(self.m_nationality):

@@ -807,9 +807,9 @@ class GearboxAssistMode(Enum):
             return True  # It's already an instance of GearboxAssistMode
         return any(gearbox_assist_code == member.value for member in GearboxAssistMode)
 
-class TeamID(Enum):
+class TeamID23(Enum):
     """
-    Enumeration representing the TeamID setting for the player.
+    Enumeration representing the TeamID setting for the player (F1 2023)
     """
 
     MERCEDES = 0
@@ -888,9 +888,9 @@ class TeamID(Enum):
         Returns:
             bool: True if valid.
         """
-        if isinstance(team_id, TeamID):
-            return True  # It's already an instance of TeamID
-        return any(team_id == member.value for member in TeamID)
+        if isinstance(team_id, TeamID23):
+            return True  # It's already an instance of TeamID23
+        return any(team_id == member.value for member in TeamID23)
 
     def __str__(self) -> str:
         """Return the string representation of the driver.
@@ -924,6 +924,54 @@ class TeamID(Enum):
             139: "Hitech '22", 140: "Art GP '22"
         }
         return teams_mapping.get(self.value, "---")
+
+class TeamID24(Enum):
+    """
+    Enumeration representing the TeamID setting for the player (F1 2023)
+    """
+    MERCEDES = 0
+    FERRARI = 1
+    RED_BULL_RACING = 2
+    WILLIAMS = 3
+    ASTON_MARTIN = 4
+    ALPINE = 5
+    RB = 6
+    HAAS = 7
+    MCLAREN = 8
+    SAUBER = 9
+    F1_GENERIC = 41
+    F1_CUSTOM_TEAM = 104
+    ART_GP_23 = 143
+    CAMPOS_23 = 144
+    CARLIN_23 = 145
+    PHM_23 = 146
+    DAMS_23 = 147
+    HITECH_23 = 148
+    MP_MOTORSPORT_23 = 149
+    PREMA_23 = 150
+    TRIDENT_23 = 151
+    VAN_AMERSFOORT_RACING_23 = 152
+    VIRTUOSI_23 = 153
+
+    def __str__(self) -> str:
+        """
+        Returns the string representation of the enum member with each word capitalized.
+        """
+        return ' '.join(word.capitalize() for word in self.name.split('_'))
+
+    @staticmethod
+    def isValid(team_id: int) -> bool:
+        """Check if the given team ID is valid.
+
+        Args:
+            team_id (int): The team ID to be validated.
+
+        Returns:
+            bool: True if valid.
+        """
+        if isinstance(team_id, TeamID24):
+            return True  # It's already an instance of TeamID24
+        return any(team_id == member.value for member in TeamID24)
 
 class TrackID(Enum):
     """
