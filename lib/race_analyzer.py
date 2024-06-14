@@ -24,6 +24,24 @@
 from typing import Dict, Any, Optional
 from lib.f1_types import F1Utils
 
+def _isATwat(driver_data: Dict[str, Any]) -> bool:
+    """
+    Check if a given driver is a Twat.
+
+    Arguments:
+        - driver_data: A dictionary containing the driver data
+
+    Returns:
+        True if the driver is a Twat, False otherwise
+    """
+
+    # Let's simplify this. skip player if telemetry is off. fuck 'em
+    if 'participant-data' not in driver_data:
+        return True
+    if driver_data['participant-data']['telemetry-setting'] == "Restricted":
+        return True
+    return False
+
 def getFastestTimesJson(json_data: Dict[str, Any], driver_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     Generate the fastest lap and sector times for a given driver from the provided JSON data.
@@ -107,6 +125,8 @@ def getFastestTimesJson(json_data: Dict[str, Any], driver_data: Optional[Dict[st
 
         # TODO: handle scenario where multiple drivers have same fastest times
         for driver_data in json_data["classification-data"]:
+            if _isATwat(driver_data):
+                continue
             driver_index = driver_data["index"]
             session_history = driver_data.get("session-history", None)
             if session_history:
@@ -214,6 +234,8 @@ def getTyreStintRecordsDict(json_data: Dict[str, Any]):
             """
 
             for driver_data in json_data["classification-data"]:
+                if _isATwat(driver_data):
+                    continue
                 for tyre_set_history_item in driver_data["tyre-set-history"]:
                     if not "tyre-set-data" in tyre_set_history_item or tyre_set_history_item["tyre-set-data"] is None:
                         continue
