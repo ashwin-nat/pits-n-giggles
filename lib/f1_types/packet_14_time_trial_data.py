@@ -23,7 +23,7 @@
 
 import struct
 from typing import Dict, Any
-from .common import PacketHeader, TeamID, TractionControlAssistMode, _extract_sublist, F1Utils
+from .common import PacketHeader, TeamID24, TractionControlAssistMode, _extract_sublist, F1Utils
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -32,7 +32,7 @@ class TimeTrialDataSet:
 
     Attributes:
         m_carIdx (uint8): Index of the car this data relates to
-        m_teamId (TeamID): Team id - see appendix
+        m_teamId (TeamID24): Team id - see appendix
         m_lapTimeInMS (uint32): Lap time in milliseconds
         m_sector1TimeInMS (uint32): Sector 1 time in milliseconds
         m_sector2TimeInMS (uint32): Sector 2 time in milliseconds
@@ -87,8 +87,9 @@ class TimeTrialDataSet:
             self.m_isValid,
         ) = unpacked_data
 
-        if TeamID.isValid(self.m_teamId):
-            self.m_teamID = TeamID(self.m_teamId)
+        # No ned to check game year, since this packet type is not available in F1 23
+        if TeamID24.isValid(self.m_teamId):
+            self.m_teamID = TeamID24(self.m_teamID)
         if TractionControlAssistMode.isValid(self.m_tractionControl):
             self.m_tractionControl = TractionControlAssistMode(self.m_tractionControl)
         self.m_antiLockBrakes = bool(self.m_antiLockBrakes)

@@ -24,7 +24,7 @@
 import struct
 from typing import Dict, List, Any
 from enum import Enum
-from .common import _split_list, PacketHeader, F1PacketType, TeamID, Nationality, Platform, TelemetrySetting
+from .common import _split_list, PacketHeader, F1PacketType, TeamID23, TeamID24, Nationality, Platform, TelemetrySetting
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -196,8 +196,10 @@ class LobbyInfoData:
 
         self.m_name = self.m_name.decode('utf-8', errors='replace').rstrip('\x00')
 
-        if TeamID.isValid(self.m_teamId):
-            self.m_teamId = TeamID(self.m_teamId)
+        if game_year == 23 and TeamID23.isValid(self.m_teamId):
+            self.m_teamId = TeamID23(self.m_teamId)
+        elif TeamID24.isValid(self.m_teamId):
+            self.m_teamId = TeamID24(self.m_teamId)
         if Nationality.isValid(self.m_nationality):
             self.m_nationality = Nationality(self.m_nationality)
         if Platform.isValid(self.m_platform):
