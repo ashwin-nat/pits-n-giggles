@@ -147,6 +147,10 @@
                     <td>SG</td>
                     <td id="sgValue">3</td>
                 </tr>
+                <tr id="collisionsRow">
+                    <td>Collisions</td>
+                    <td id="collisionsValue">0</td>
+                </tr>
             </table>
             <table id="weatherTable">
                 <tr>
@@ -390,22 +394,29 @@
             }
         }
 
-        function updatePenaltiesTable(penalties) {
+        function updatePenaltiesTable(penalties, gameYear) {
             const penaltiesCell = document.getElementById('penaltiesValue');
             const ccwCell = document.getElementById('ccwValue');
             const otherWarnCell = document.getElementById('otherWarnValue');
             const dtCell = document.getElementById('dtValue');
             const sgCell = document.getElementById('sgValue');
+            const collisionsCell = document.getElementById('collisionsValue');
 
             // Ensure the elements exist before updating
-            if (penaltiesCell && ccwCell && otherWarnCell && dtCell && sgCell) {
+            if (penaltiesCell && ccwCell && otherWarnCell && dtCell && sgCell && collisionsCell) {
                 penaltiesCell.innerText = penalties["time-penalties"];
                 ccwCell.innerText = penalties["corner-cutting-warnings"];
                 otherWarnCell.innerText = penalties["total-warnings"] - penalties["corner-cutting-warnings"];
                 dtCell.innerText = penalties["unserved-drive-through-pens"];
                 sgCell.innerText = penalties["unserved-stop-go-pens"];
+                collisionsCell.innerText = penalties["collisions"];
             } else {
                 console.error('One or more penalty table cells are not found in the DOM.');
+            }
+
+            if (gameYear == 23) {
+                const collisionsRow = document.getElementById('collisionsRow');
+                collisionsRow.style.display = 'none';
             }
         }
 
@@ -447,7 +458,7 @@
         socket.on('player-overlay-update', function (data) {
             updateTyreWearTable(data["tyre-wear"]);
             updateThrottleBrakeGraph(data["car-telemetry"]["throttle"], data["car-telemetry"]["brake"]);
-            updatePenaltiesTable(data["penalties"]);
+            updatePenaltiesTable(data["penalties"], data["f1-game-year"]);
             updateLapTimeTable(data["lap-time-history"]);
             updateWeatherTable(data["weather-forecast-samples"]);
         });

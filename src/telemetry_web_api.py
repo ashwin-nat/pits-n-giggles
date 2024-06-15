@@ -234,6 +234,7 @@ class PlayerTelemetryOverlayUpdate:
                 self.m_weather_forecast_samples = []
             self.m_circuit                  = TelData._globals.m_circuit
             self.m_total_laps               = TelData._globals.m_total_laps
+            self.m_game_year                = TelData._globals.m_game_year
 
         with TelData._driver_data_lock:
             self.m_next_pit_window          = TelData._driver_data.m_ideal_pit_stop_window
@@ -314,12 +315,14 @@ class PlayerTelemetryOverlayUpdate:
             self.m_corner_cutting_warnings = player_data.m_packet_lap_data.m_cornerCuttingWarnings
             self.m_num_dt = player_data.m_packet_lap_data.m_numUnservedDriveThroughPens
             self.m_num_sg = player_data.m_packet_lap_data.m_numUnservedStopGoPens
+            self.m_num_collisions = len(player_data.m_collision_records)
         else:
             self.m_penalties = 0
             self.m_total_warnings = 0
             self.m_corner_cutting_warnings = 0
             self.m_num_dt = 0
             self.m_num_sg = 0
+            self.m_num_collisions = 0
 
     def toJSON(self) -> Dict[str, Any]:
         """Dump this object into JSON
@@ -329,6 +332,7 @@ class PlayerTelemetryOverlayUpdate:
         """
 
         return {
+            "f1-game-year" : self.m_game_year,
             "circuit" : self.m_circuit,
             "track-temp": self.m_track_temp,
             "air-temp": self.m_air_temp,
@@ -356,7 +360,8 @@ class PlayerTelemetryOverlayUpdate:
                 "total-warnings": self.m_total_warnings,
                 "corner-cutting-warnings": self.m_corner_cutting_warnings,
                 "unserved-drive-through-pens": self.m_num_dt,
-                "unserved-stop-go-pens": self.m_num_sg
+                "unserved-stop-go-pens": self.m_num_sg,
+                "num-collisions" : self.m_num_collisions
             }
         }
 
