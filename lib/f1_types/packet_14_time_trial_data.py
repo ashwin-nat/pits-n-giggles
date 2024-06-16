@@ -89,7 +89,7 @@ class TimeTrialDataSet:
 
         # No ned to check game year, since this packet type is not available in F1 23
         if TeamID24.isValid(self.m_teamId):
-            self.m_teamID = TeamID24(self.m_teamID)
+            self.m_teamId = TeamID24(self.m_teamId)
         if TractionControlAssistMode.isValid(self.m_tractionControl):
             self.m_tractionControl = TractionControlAssistMode(self.m_tractionControl)
         self.m_antiLockBrakes = bool(self.m_antiLockBrakes)
