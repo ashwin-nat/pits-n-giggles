@@ -37,7 +37,6 @@ from lib.f1_types import F1PacketType, PacketSessionData, PacketLapData, \
     PacketTyreSetsData, SessionType23, SessionType24
 from lib.packet_cap import F1PacketCapture
 from lib.overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, OvertakeRecord
-from lib.collisions_analyzer import CollisionAnayzer, CollisionAnalyzerMode, CollisionRecord
 import lib.race_analyzer as RaceAnalyzer
 import src.telemetry_data as TelData
 from src.telemetry_manager import F1TelemetryManager
