@@ -590,7 +590,8 @@ class TestGetFastestTimesJson(RaceAnalyzerUT):
                     "index": 0,
                     "driver-name" : "HAMILTON",
                     "participant-data" : {
-                        "team-id" : "Mercedes"
+                        "team-id" : "Mercedes",
+                        "telemetry-setting" : "Public"
                     }
                 },
                 {
@@ -608,7 +609,8 @@ class TestGetFastestTimesJson(RaceAnalyzerUT):
                     "index": 1,
                     "driver-name" : "VERSTAPPEN",
                     "participant-data" : {
-                        "team-id" : "Red Bull"
+                        "team-id" : "Red Bull",
+                        "telemetry-setting" : "Public"
                     }
                 },
                 {
@@ -626,7 +628,8 @@ class TestGetFastestTimesJson(RaceAnalyzerUT):
                     "index": 2,
                     "driver-name" : "LECLERC",
                     "participant-data" : {
-                        "team-id" : "Ferrari"
+                        "team-id" : "Ferrari",
+                        "telemetry-setting" : "Public"
                     }
                 },
                 {
@@ -644,7 +647,8 @@ class TestGetFastestTimesJson(RaceAnalyzerUT):
                     "index": 3,
                     "driver-name" : "NORRIS",
                     "participant-data" : {
-                        "team-id" : "McLaren"
+                        "team-id" : "McLaren",
+                        "telemetry-setting" : "Public"
                     }
                 },
                 {
@@ -662,7 +666,8 @@ class TestGetFastestTimesJson(RaceAnalyzerUT):
                     "index": 4,
                     "driver-name" : "ALONSO",
                     "participant-data" : {
-                        "team-id" : "Aston Martin"
+                        "team-id" : "Aston Martin",
+                        "telemetry-setting" : "Public"
                     }
                 }
             ]
