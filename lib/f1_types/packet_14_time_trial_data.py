@@ -23,7 +23,7 @@
 
 import struct
 from typing import Dict, Any
-from .common import PacketHeader, TeamID24, TractionControlAssistMode, _extract_sublist, F1Utils
+from .common import PacketHeader, TeamID24, TractionControlAssistMode, _extract_sublist, F1Utils, GearboxAssistMode
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -80,7 +80,7 @@ class TimeTrialDataSet:
             self.m_sector2TimeInMS,
             self.m_sector3TimeInMS,
             self.m_tractionControl,
-            self.m_gearboxAssist, # TODO: make enum
+            self.m_gearboxAssist,
             self.m_antiLockBrakes,
             self.m_equalCarPerformance,
             self.m_customSetup,
@@ -92,6 +92,8 @@ class TimeTrialDataSet:
             self.m_teamId = TeamID24(self.m_teamId)
         if TractionControlAssistMode.isValid(self.m_tractionControl):
             self.m_tractionControl = TractionControlAssistMode(self.m_tractionControl)
+        if GearboxAssistMode.isValid(self.m_gearboxAssist):
+            self.m_gearboxAssist = GearboxAssistMode(self.m_gearboxAssist)
         self.m_antiLockBrakes = bool(self.m_antiLockBrakes)
         self.m_equalCarPerformance = bool(self.m_equalCarPerformance)
         self.m_customSetup = bool(self.m_customSetup)
