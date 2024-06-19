@@ -589,9 +589,35 @@ SOFTWARE.
                     `${dtPlusSg}`;
 
                 if (bestLapAbsoluteFormat || entry["is-spectating"]) {
-                    row.insertCell().textContent = entry["best"];
+                    if (gameYear == 23) {
+                        row.insertCell().textContent = entry["best"];
+                    } else {
+                        let speedTrapValue;
+                        if (entry["speed-trap-record-kmph"] != null) {
+                            speedTrapValue = formatFloatWithTwoDecimals(entry["speed-trap-record-kmph"]) + ' kmph';
+                        } else {
+                            speedTrapValue = "---";
+                        }
+                        row.insertCell().innerHTML = `
+                            ${entry["best"]}<br>
+                            ${speedTrapValue}
+                        `;
+                    }
                 } else {
-                    row.insertCell().textContent = entry["best-lap-delta"];
+                    if (gameYear == 23) {
+                        row.insertCell().textContent = entry["best-lap-delta"];
+                    } else {
+                        let speedTrapValue;
+                        if (entry["speed-trap-record-kmph"] != null) {
+                            speedTrapValue = formatFloatWithTwoDecimals(entry["speed-trap-record-kmph"]) + ' kmph';
+                        } else {
+                            speedTrapValue = "---";
+                        }
+                        row.insertCell().innerHTML = `
+                            ${entry["best-lap-delta"]}<br>
+                            ${speedTrapValue}
+                        `;
+                    }
                 }
 
                 if (lastLapAbsoluteFormat || entry["is-spectating"]) {
@@ -1987,7 +2013,11 @@ SOFTWARE.
             document.getElementById('tableTitle').textContent = `${event_type} - ${circuit}`;
             document.getElementById('trackTemperature').textContent = `${track_temp} °C`;
             document.getElementById('airTemperature').textContent = `${track_temp} °C`;
-            document.getElementById('lapInformation').textContent = `${curr_lap}/${total_laps}`;
+            if (total_laps === "---") {
+                document.getElementById('lapInformation').textContent = `${curr_lap}`;
+            } else {
+                document.getElementById('lapInformation').textContent = `${curr_lap}/${total_laps}`;
+            }
             document.getElementById('safetyCarStatus').textContent = `${safety_car_status}`;
             document.getElementById('fastestLapOverall').textContent = `${fastest_lap}`;
             document.getElementById('pitSpeedLimit').textContent = `${pit_speed_limit} kmph`;
