@@ -448,6 +448,8 @@ class DriversListRsp:
                     "fl-wing-damage" : data_per_driver.m_fl_wing_damage, # NULL is supported
                     "fr-wing-damage" : data_per_driver.m_fr_wing_damage, # NULL is supported
                     "rear-wing-damage" : data_per_driver.m_rear_wing_damage, # NULL is supported
+                    "speed-trap-record-kmph" : data_per_driver.m_packet_lap_data.m_speedTrapFastestSpeed if \
+                        data_per_driver.m_packet_lap_data else None # NULL is supported
                 } for data_per_driver in self.m_final_list
             ],
             "fastest-lap-overall" : _getValueOrDefaultValue(self.m_fastest_lap)
