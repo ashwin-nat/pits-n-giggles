@@ -137,6 +137,7 @@
             padding: 10px;
             text-align: center;
         }
+
     </style>
 </head>
 
@@ -187,6 +188,10 @@
                 <tr>
                     <td>SG</td>
                     <td id="sgValue">3</td>
+                </tr>
+                <tr>
+                    <td>Speed Trap</td>
+                    <td id="speedTrapValue">1.0 kmph</td>
                 </tr>
             </table>
             <table id="weatherTable">
@@ -294,7 +299,9 @@
             carGraph = new Chart(ctx, config);
         }
 
-        function updateThrottleBrakeGraph(throttle, brake) {
+        function updateCarTelemetryOverlay(carTelemetryData) {
+            const throttle = carTelemetryData["throttle"];
+            const brake = carTelemetryData["brake"];
             const now = Date.now();
             carGraph.data.datasets[0].data.push({
                 x: now,
@@ -423,19 +430,22 @@
             }
         }
 
-        function updatePenaltiesTable(penalties) {
+        function updatePenaltiesStatsTable(stats) {
             const penaltiesCell = document.getElementById('penaltiesValue');
             const ccwCell = document.getElementById('ccwValue');
             const otherWarnCell = document.getElementById('otherWarnValue');
             const dtCell = document.getElementById('dtValue');
             const sgCell = document.getElementById('sgValue');
+            const speedTrapCell = document.getElementById('speedTrapValue');
 
-            if (penaltiesCell && ccwCell && otherWarnCell && dtCell && sgCell && collisionsCell) {
-                penaltiesCell.innerText = penalties["time-penalties"];
-                ccwCell.innerText = penalties["corner-cutting-warnings"];
-                otherWarnCell.innerText = penalties["total-warnings"] - penalties["corner-cutting-warnings"];
-                dtCell.innerText = penalties["unserved-drive-through-pens"];
-                sgCell.innerText = penalties["unserved-stop-go-pens"];
+            if (penaltiesCell && ccwCell && otherWarnCell && dtCell && sgCell && speedTrapCell) {
+                penaltiesCell.innerText = stats["time-penalties"];
+                ccwCell.innerText = stats["corner-cutting-warnings"];
+                otherWarnCell.innerText = stats["total-warnings"] - stats["corner-cutting-warnings"];
+                dtCell.innerText = stats["unserved-drive-through-pens"];
+                sgCell.innerText = stats["unserved-stop-go-pens"];
+                speedTrapCell.innerText = ((stats["speed-trap-record"] != null) ?
+                    (formatFloatWithTwoDecimals(stats["speed-trap-record"]) + ' kmph') : ('N/A'));
             } else {
                 console.error('One or more penalty table cells are not found in the DOM.');
             }
@@ -473,8 +483,8 @@
 
         socket.on('player-overlay-update', function (data) {
             updateTyreWearTable(data["tyre-wear"]);
-            updateThrottleBrakeGraph(data["car-telemetry"]["throttle"], data["car-telemetry"]["brake"]);
-            updatePenaltiesTable(data["penalties"]);
+            updateCarTelemetryOverlay(data["car-telemetry"]);
+            updatePenaltiesStatsTable(data["penalties-and-stats"]);
             updateLapTimeTable(data["lap-time-history"]);
             updateWeatherTable(data["weather-forecast-samples"]);
         });
