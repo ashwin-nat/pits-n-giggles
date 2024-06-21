@@ -269,8 +269,10 @@ class PlayerTelemetryOverlayUpdate:
             player_data (Optional[TelData.DataPerDriver]): The player's DataPerDriver object
         """
 
-        self.m_curr_lap = player_data.m_current_lap if player_data else None
-        self.m_lap_time_history = LapTimeHistory(player_data)
+        self.m_curr_lap: Optional[int] = player_data.m_current_lap if player_data else None
+        self.m_lap_time_history: LapTimeHistory = LapTimeHistory(player_data)
+        self.m_speed_trap_record: Optional[float] = player_data.m_packet_lap_data.m_speedTrapFastestSpeed \
+            if player_data and player_data.m_packet_lap_data else None
 
     def __initTyreWear(self, player_data: Optional[TelData.DataPerDriver]) -> None:
         """Prepares the player's tyre wear data.
@@ -355,13 +357,14 @@ class PlayerTelemetryOverlayUpdate:
                 "predictions" : self.m_tyre_wear_predictions,
                 "pit-window" : self.m_next_pit_window
             },
-            "penalties" : {
+            "penalties-and-stats" : {
                 "time-penalties": self.m_penalties,
                 "total-warnings": self.m_total_warnings,
                 "corner-cutting-warnings": self.m_corner_cutting_warnings,
                 "unserved-drive-through-pens": self.m_num_dt,
                 "unserved-stop-go-pens": self.m_num_sg,
-                "num-collisions" : self.m_num_collisions
+                "num-collisions" : self.m_num_collisions,
+                "speed-trap-record": self.m_speed_trap_record,
             }
         }
 
