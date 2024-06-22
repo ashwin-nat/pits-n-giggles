@@ -16,7 +16,7 @@
             justify-content: center;
             align-items: flex-start;
             height: 100vh;
-            background-color: transparent;
+            background-color: #000000;
             margin: 0;
             padding: 0;
         }
@@ -41,7 +41,27 @@
         .graph {
             background-color: #000000;
             border: 1px solid #444;
-            flex: 1;
+            position: relative;
+        }
+
+        #graphSteeringDiv {
+            display: grid;
+            grid-template-rows: auto 1fr; /* Two rows: top for steeringDiv, bottom for graphDiv */
+            width: 100%;
+            height: 100%;
+        }
+
+        #steeringDiv {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #333; /* Example background color */
+        }
+
+        #steeringIndicator {
+            width: 3%; /* Adjust the width of the indicator */
+            height: 20px; /* Set the height of the indicator */
+            background-color: #0000FF; /* Indicator color */
             position: relative;
         }
 
@@ -55,7 +75,7 @@
             flex-direction: row;
             justify-content: left;
             align-items: flex-end;
-            width: 100px;
+            width: 10%;
             margin-left: 10px;
         }
 
@@ -143,9 +163,14 @@
 
 <body>
     <div class="container">
-        <div class="graph-container">
-            <div id="graphDiv" class="graph">
-                <canvas id="graphCanvas"></canvas>
+        <div id="carTelemetry" class="graph-container">
+            <div id="graphSteeringDiv">
+                <div id="steeringDiv">
+                    <div id="steeringIndicator"></div>
+                </div>
+                <div id="graphDiv" class="graph">
+                    <canvas id="graphCanvas"></canvas>
+                </div>
             </div>
             <div id="throttleBrakeDiv">
                 <div id="throttleBar" class="bar"></div>
@@ -248,6 +273,19 @@
                             x: now - (initialDataPoints - i) * 1000,
                             y: 0
                         }))
+                    },
+                    {
+                        label: 'Brake',
+                        borderColor: 'blue',
+                        backgroundColor: 'rgba(0, 0, 255, 0)',
+                        fill: false,
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
+                        borderWidth: 3,
+                        data: Array.from({ length: initialDataPoints }, (_, i) => ({
+                            x: now - (initialDataPoints - i) * 1000,
+                            y: 0
+                        }))
                     }
                 ]
             };
@@ -300,8 +338,22 @@
         }
 
         function updateCarTelemetryOverlay(carTelemetryData) {
+
+            function transformSteeringInput(input, inputMin, inputMax, outputMin, outputMax) {
+
+                // Perform the linear transformation
+                let slope = (outputMax - outputMin) / (inputMax - inputMin);
+                let intercept = outputMin - slope * inputMin;
+
+                // Calculate the transformed value
+                let output = slope * input + intercept;
+
+                return output;
+            }
+
             const throttle = carTelemetryData["throttle"];
             const brake = carTelemetryData["brake"];
+            const steering = carTelemetryData["steering"];
             const now = Date.now();
             carGraph.data.datasets[0].data.push({
                 x: now,
@@ -311,6 +363,10 @@
                 x: now,
                 y: brake
             });
+            carGraph.data.datasets[2].data.push({
+                x: now,
+                y: transformSteeringInput(steering, -100.0, 100.0, 0.0, 100.0) // transform steering to 0 to 100 scale
+            });
             carGraph.update('quiet');
 
             const throttleBar = document.getElementById('throttleBar');
@@ -318,6 +374,13 @@
 
             throttleBar.style.height = `${throttle}%`;
             brakeBar.style.height = `${brake}%`;
+
+            // Update steering indicator position
+            const steeringIndicator = document.getElementById('steeringIndicator');
+            const steeringDiv = document.getElementById('steeringDiv');
+
+            // Set the position of the steeringIndicator within the steeringDiv
+            steeringIndicator.style.left = `${transformSteeringInput(steering, -100.0, 100.0, -48, 48)}%`;
         }
 
         function clearTable(tableElement, clearHeader = false) {
