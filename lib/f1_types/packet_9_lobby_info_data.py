@@ -53,13 +53,13 @@ class PacketLobbyInfoData:
         self.m_header: PacketHeader = header
         self.m_numPlayers: int = struct.unpack("<B", packet[:1])[0]
         self.m_lobbyPlayers: List[LobbyInfoData] = []
-        if header.m_gameYear == 23:
+        if header.m_packetFormat == 2023:
             packet_len = LobbyInfoData.PACKET_LEN_23
         else: # 24
             packet_len = LobbyInfoData.PACKET_LEN_24
 
         for lobby_info_per_player_raw_data in _split_list(packet[1:], packet_len):
-            self.m_lobbyPlayers.append(LobbyInfoData(lobby_info_per_player_raw_data, header.m_gameYear))
+            self.m_lobbyPlayers.append(LobbyInfoData(lobby_info_per_player_raw_data, header.m_packetFormat))
 
         # Trim the list
         self.m_lobbyPlayers = self.m_lobbyPlayers[:self.m_numPlayers]
@@ -156,7 +156,7 @@ class LobbyInfoData:
                 return self.name
             return 'Marshal Zone Flag type ' + str(self.value)
 
-    def __init__(self, data: bytes, game_year: int) -> None:
+    def __init__(self, data: bytes, packet_format: int) -> None:
         """
         Initializes LobbyInfoData with raw data.
 
@@ -165,7 +165,7 @@ class LobbyInfoData:
             game_year (int): Year of the game.
         """
 
-        if game_year == 23:
+        if packet_format == 2023:
             (
                 self.m_aiControlled,
                 self.m_teamId,
@@ -196,7 +196,7 @@ class LobbyInfoData:
 
         self.m_name = self.m_name.decode('utf-8', errors='replace').rstrip('\x00')
 
-        if game_year == 23 and TeamID23.isValid(self.m_teamId):
+        if packet_format == 23 and TeamID23.isValid(self.m_teamId):
             self.m_teamId = TeamID23(self.m_teamId)
         elif TeamID24.isValid(self.m_teamId):
             self.m_teamId = TeamID24(self.m_teamId)
