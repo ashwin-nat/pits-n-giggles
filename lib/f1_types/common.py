@@ -957,6 +957,8 @@ class TeamID24(Enum):
         """
         Returns the string representation of the enum member with each word capitalized.
         """
+        if self == TeamID24.RB:
+            return 'VCARB'
         return ' '.join(word.capitalize() for word in self.name.split('_'))
 
     @staticmethod
