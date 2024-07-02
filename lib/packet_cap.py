@@ -357,7 +357,8 @@ class F1PacketCapture:
                 self.m_packet_history.append(entry)
 
         if self.m_header.num_packets != len(self.m_packet_history):
-            raise ValueError("Number of packets in the file does not match the header. Possibly corrupt file")
+            print(f"[WARN]: Number of packets in the file {self.m_header.num_packets} does not match the header "
+                             f"{len(self.m_packet_history)}. Possibly corrupt file", file=sys.stderr)
 
     def getPackets(self) -> Generator[Tuple[float, bytes], None, None]:
         """
