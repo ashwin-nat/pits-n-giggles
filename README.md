@@ -1,7 +1,11 @@
 # Pits n' Giggles
 
+## Games supported
+- F1 2023
+- F1 2024
+
 ## Introduction
-Tired of seeing every car zoom past you in that F1 23 online lobby? Well this tool can't really help you with that.<br>
+Tired of seeing every car zoom past you in that F1 online lobby? Well this tool can't really help you with that.<br>
 (TBH you just need a better gaming chair. There can't be any other reason, right?)
 
 What this tool can do is provide you with live telemetry data during a race so that you can make more informed decisions.
