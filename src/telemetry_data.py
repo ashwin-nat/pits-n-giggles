@@ -781,6 +781,17 @@ class DataPerDriver:
 
         return None
 
+    def getCollisionStatsJSON(self) -> Dict[str, Any]:
+        """Get the collision stats JSON.
+
+        Returns:
+            Dict[str, Any]: Collision stats JSON
+        """
+
+        collision_analyzer = CollisionAnayzer(
+            input_mode=CollisionAnalyzerMode.INPUT_MODE_LIST_COLLISION_RECORDS,
+            input_data=self.m_collision_records)
+        return collision_analyzer.toJSON()
 
 class DriverData:
     """
@@ -1216,28 +1227,28 @@ class DriverData:
             Optional[Dict[str, Any]]: Driver info JSON. None if invalid index or data not yet available
         """
 
-        obj_to_be_updated = self.m_driver_data.get(index, None)
+        driver_info_obj = self.m_driver_data.get(index, None)
         if self.m_race_completed:
             include_wear_prediction = False
             selected_pit_stop_lap = None
         else:
             include_wear_prediction = True
-            if obj_to_be_updated.m_is_player:
-                if self.m_ideal_pit_stop_window < obj_to_be_updated.m_current_lap:
+            if driver_info_obj.m_is_player:
+                if self.m_ideal_pit_stop_window < driver_info_obj.m_current_lap:
                     selected_pit_stop_lap = None
                 else:
                     selected_pit_stop_lap = self.m_ideal_pit_stop_window
             else:
                 selected_pit_stop_lap = None
-        if not obj_to_be_updated:
+        if not driver_info_obj:
             return None
-        final_json = obj_to_be_updated.toJSON(index, include_wear_prediction, selected_pit_stop_lap)
+        final_json = driver_info_obj.toJSON(index, include_wear_prediction, selected_pit_stop_lap)
         final_json["circuit"] = str(self.m_track_id)
         final_json["is-finish-line-after-pit-garage"] = F1Utils.isFinishLineAfterPitGarage(self.m_track_id) \
             if self.m_track_id is not None else None
 
         # Collisions stats
-        final_json["collisions"] = self._getCollisionStatsJSON()
+        final_json["collisions"] = driver_info_obj.getCollisionStatsJSON()
         return final_json
 
     def getRaceInfoJSON(self) -> Dict[str, Any]:
@@ -1304,7 +1315,7 @@ class DriverData:
 
         return [driver_data.toJSON(index) for index, driver_data in self.m_driver_data.items()]
 
-    def _getCollisionStatsJSON(self) -> Dict[str, Any]:
+    def getCollisionStatsJSON(self) -> Dict[str, Any]:
         """Get the collision stats JSON.
 
         Returns:

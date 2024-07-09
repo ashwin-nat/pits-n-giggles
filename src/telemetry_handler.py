@@ -585,7 +585,7 @@ class F1TelemetryHandler:
                 g_overtakes_history.insert(overtake_obj)
 
         # Collision - Update collision records list
-        elif packet.m_eventStringCode == PacketEventData.EventPacketType.COLLISION:
+        elif packet.m_eventCode == PacketEventData.EventPacketType.COLLISION:
             TelData.processCollisionsEvent(packet.mEventDetails)
 
     @staticmethod
