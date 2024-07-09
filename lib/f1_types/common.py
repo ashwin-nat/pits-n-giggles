@@ -655,6 +655,7 @@ class Platform(Enum):
     """
     Enumeration representing different gaming platforms.
     """
+    NONE = 0
     STEAM = 1
     PLAYSTATION = 3
     XBOX = 4
@@ -669,6 +670,7 @@ class Platform(Enum):
             str: String representation of the gaming platform.
         """
         return {
+            Platform.NONE: "N/A",
             Platform.STEAM: "Steam",
             Platform.PLAYSTATION: "PlayStation",
             Platform.XBOX: "Xbox",
@@ -1406,3 +1408,82 @@ class PacketHeader:
             "player-car-index": self.m_playerCarIndex,
             "secondary-player-car-index": self.m_secondaryPlayerCarIndex
         }
+
+    def __eq__(self, other: Any) -> bool:
+        """Check if this PacketHeader is equal to another.
+
+        Args:
+            other (Any): The object to compare against.
+
+        Returns:
+            bool: True if equal, False otherwise.
+        """
+        if not isinstance(other, PacketHeader):
+            return NotImplemented
+
+        return (self.m_packetFormat == other.m_packetFormat and
+                self.m_gameYear == other.m_gameYear and
+                self.m_gameMajorVersion == other.m_gameMajorVersion and
+                self.m_gameMinorVersion == other.m_gameMinorVersion and
+                self.m_packetVersion == other.m_packetVersion and
+                self.m_packetId == other.m_packetId and
+                self.m_sessionUID == other.m_sessionUID and
+                self.m_sessionTime == other.m_sessionTime and
+                self.m_frameIdentifier == other.m_frameIdentifier and
+                self.m_overallFrameIdentifier == other.m_overallFrameIdentifier and
+                self.m_playerCarIndex == other.m_playerCarIndex and
+                self.m_secondaryPlayerCarIndex == other.m_secondaryPlayerCarIndex)
+
+    def __ne__(self, other: Any) -> bool:
+        """Check if this PacketHeader is not equal to another.
+
+        Args:
+            other (Any): The object to compare against.
+
+        Returns:
+            bool: True if not equal, False otherwise.
+        """
+        return not self.__eq__(other)
+
+    @classmethod
+    def from_values(cls, packet_format: int, game_year: int, game_major_version: int,
+                    game_minor_version: int, packet_version: int, packet_type: F1PacketType,
+                    session_uid: int, session_time: float, frame_identifier: int,
+                    overall_frame_identifier: int, player_car_index: int,
+                    secondary_player_car_index: int) -> 'PacketHeader':
+        """Create a PacketHeader object from individual values.
+
+        Args:
+            packet_format (int): The format of the telemetry packet.
+            game_year (int): The game year.
+            game_major_version (int): The game's major version.
+            game_minor_version (int): The game's minor version.
+            packet_version (int): The version of this packet type.
+            packet_type (F1PacketType): Identifier for the packet type.
+            session_uid (int): Unique identifier for the session.
+            session_time (float): Timestamp of the session.
+            frame_identifier (int): Identifier for the frame.
+            overall_frame_identifier (int): Overall identifier for the frame.
+            player_car_index (int): Index of the player's car.
+            secondary_player_car_index (int): Index of the secondary player's car.
+
+        Returns:
+            PacketHeader: A PacketHeader object initialized with the given values.
+        """
+        return cls(struct.pack(cls.PACKET_FORMAT, packet_format, game_year, game_major_version,
+                               game_minor_version, packet_version, packet_type.value, session_uid,
+                               session_time, frame_identifier, overall_frame_identifier,
+                               player_car_index, secondary_player_car_index))
+
+    def to_bytes(self) -> bytes:
+        """Converts the PacketHeader object to bytes.
+
+        Returns:
+            bytes: The raw binary data representing the packet header.
+        """
+        return struct.pack(self.PACKET_FORMAT, self.m_packetFormat, self.m_gameYear,
+                           self.m_gameMajorVersion, self.m_gameMinorVersion,
+                           self.m_packetVersion, self.m_packetId.value, self.m_sessionUID,
+                           self.m_sessionTime, self.m_frameIdentifier,
+                           self.m_overallFrameIdentifier, self.m_playerCarIndex,
+                           self.m_secondaryPlayerCarIndex)

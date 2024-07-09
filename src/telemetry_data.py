@@ -996,7 +996,7 @@ class DriverData:
             ResultStatus.DISQUALIFIED : "DSQ",
             ResultStatus.RETIRED : "DNF"
         }
-        for index, lap_data in enumerate(packet.m_LapData):
+        for index, lap_data in enumerate(packet.m_lapData):
             if lap_data.m_resultStatus == ResultStatus.INVALID:
                 continue
 

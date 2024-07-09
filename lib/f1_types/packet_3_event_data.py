@@ -47,6 +47,9 @@ class PacketEventData:
         Enum class representing different event types.
         """
 
+        # None: No event
+        NONE = "N/A"
+
         # Session Started: Sent when the session starts
         SESSION_STARTED = "SSTA"
 
@@ -176,6 +179,30 @@ class PacketEventData:
                 "lap-time": self.lapTime,
             }
 
+        def __eq__(self, other: "PacketEventData.FastestLap") -> bool:
+            """
+            Checks if two FastestLap objects are equal.
+
+            Parameters:
+                other (PacketEventData.FastestLap): The other FastestLap object to compare with.
+
+            Returns:
+                bool: True if the FastestLap objects are equal, False otherwise.
+            """
+            return self.vehicleIdx == other.vehicleIdx and self.lapTime == other.lapTime
+
+        def __ne__(self, other: "PacketEventData.FastestLap") -> bool:
+            """
+            Checks if two FastestLap objects are not equal.
+
+            Parameters:
+                other (PacketEventData.FastestLap): The other FastestLap object to compare with.
+
+            Returns:
+                bool: True if the FastestLap objects are not equal, False otherwise.
+            """
+            return not self.__eq__(other)
+
     class Retirement:
         """
         The class representing the RETIREMENT event. This is sent when any driver retires or DNF's
@@ -199,6 +226,30 @@ class PacketEventData:
             return {
                 "vehicle-idx": self.vehicleIdx,
             }
+
+        def __eq__(self, other: "PacketEventData.Retirement") -> bool:
+            """
+            Checks if two Retirement objects are equal.
+
+            Parameters:
+                other (PacketEventData.Retirement): The other Retirement object to compare with.
+
+            Returns:
+                bool: True if the Retirement objects are equal, False otherwise.
+            """
+            return self.vehicleIdx == other.vehicleIdx
+
+        def __ne__(self, other: "PacketEventData.Retirement") -> bool:
+            """
+            Checks if two Retirement objects are not equal.
+
+            Parameters:
+                other (PacketEventData.Retirement): The other Retirement object to compare with.
+
+            Returns:
+                bool: True if the Retirement objects are not equal, False otherwise.
+            """
+            return not self.__eq__(other)
 
     class TeamMateInPits:
         """
@@ -225,6 +276,30 @@ class PacketEventData:
                 "vehicle-idx": self.vehicleIdx,
             }
 
+        def __eq__(self, other: "PacketEventData.TeamMateInPits") -> bool:
+            """
+            Checks if two TeamMateInPits objects are equal.
+
+            Parameters:
+                other (PacketEventData.TeamMateInPits): The other TeamMateInPits object to compare with.
+
+            Returns:
+                bool: True if the TeamMateInPits objects are equal, False otherwise.
+            """
+            return self.vehicleIdx == other.vehicleIdx
+
+        def __ne__(self, other: "PacketEventData.TeamMateInPits") -> bool:
+            """
+            Checks if two TeamMateInPits objects are not equal.
+
+            Parameters:
+                other (PacketEventData.TeamMateInPits): The other TeamMateInPits object to compare with.
+
+            Returns:
+                bool: True if the TeamMateInPits objects are not equal, False otherwise.
+            """
+            return not self.__eq__(other)
+
     class RaceWinner:
         """
         The class representing the RACE WINNER event. This is sent when the race winner crosses the finish line
@@ -248,6 +323,30 @@ class PacketEventData:
             return {
                 "vehicle-idx": self.vehicleIdx,
             }
+
+        def __eq__(self, other: "PacketEventData.RaceWinner") -> bool:
+            """
+            Checks if two RaceWinner objects are equal.
+
+            Parameters:
+                other (PacketEventData.RaceWinner): The other RaceWinner object to compare with.
+
+            Returns:
+                bool: True if the RaceWinner objects are equal, False otherwise.
+            """
+            return self.vehicleIdx == other.vehicleIdx
+
+        def __ne__(self, other: "PacketEventData.RaceWinner") -> bool:
+            """
+            Checks if two RaceWinner objects are not equal.
+
+            Parameters:
+                other (PacketEventData.RaceWinner): The other RaceWinner object to compare with.
+
+            Returns:
+                bool: True if the RaceWinner objects are not equal, False otherwise.
+            """
+            return not self.__eq__(other)
 
     class Penalty:
         """
@@ -427,6 +526,38 @@ class PacketEventData:
                 "places-gained": self.placesGained
             }
 
+        def __eq__(self, other: "PacketEventData.Penalty") -> bool:
+            """
+            Check if two Penalty objects are equal.
+
+            Args:
+                other (PacketEventData.Penalty): The other Penalty object to compare with.
+
+            Returns:
+                bool: True if the Penalty objects are equal, False otherwise.
+            """
+            return (
+                self.penaltyType == other.penaltyType
+                and self.infringementType == other.infringementType
+                and self.vehicleIdx == other.vehicleIdx
+                and self.otherVehicleIdx == other.otherVehicleIdx
+                and self.time == other.time
+                and self.lapNum == other.lapNum
+                and self.placesGained == other.placesGained
+            )
+
+        def __ne__(self, other: "PacketEventData.Penalty") -> bool:
+            """
+            Check if two Penalty objects are not equal.
+
+            Args:
+                other (PacketEventData.Penalty): The other Penalty object to compare with.
+
+            Returns:
+                bool: True if the Penalty objects are not equal, False otherwise.
+            """
+            return not self.__eq__(other)
+
     class SpeedTrap:
         """
         The class representing the SPEED TRAP event. This is sent when a car is caught speeding by the speed trap.
@@ -495,6 +626,39 @@ class PacketEventData:
                 "fastest-speed-in-session": self.fastestSpeedInSession
             }
 
+        def __eq__(self, other: "PacketEventData.SpeedTrap") -> bool:
+            """
+            Check if two SpeedTrap objects are equal.
+
+            Args:
+                other (PacketEventData.SpeedTrap): The other SpeedTrap object to compare with.
+
+            Returns:
+                bool: True if the SpeedTrap objects are equal, False otherwise.
+            """
+
+            return (
+                self.vehicleIdx == other.vehicleIdx
+                and self.speed == other.speed
+                and self.isOverallFastestInSession == other.isOverallFastestInSession
+                and self.isDriverFastestInSession == other.isDriverFastestInSession
+                and self.fastestVehicleIdxInSession == other.fastestVehicleIdxInSession
+                and self.fastestSpeedInSession == other.fastestSpeedInSession
+            )
+
+        def __ne__(self, other: "PacketEventData.SpeedTrap") -> bool:
+            """
+            Check if two SpeedTrap objects are not equal.
+
+            Args:
+                other (PacketEventData.SpeedTrap): The other SpeedTrap object to compare with.
+
+            Returns:
+                bool: True if the SpeedTrap objects are not equal, False otherwise.
+            """
+
+            return not self.__eq__(other)
+
     class StartLights:
         """
         The class representing the START LIGHTS event. This is sent when the start lights sequence begins.
@@ -535,6 +699,19 @@ class PacketEventData:
             """
 
             return {"num-lights": self.numLights}
+
+        def __eq__(self, other: "PacketEventData.StartLights") -> bool:
+            """
+            Check if two StartLights objects are equal.
+
+            Args:
+                other (PacketEventData.StartLights): The other StartLights object to compare with.
+
+            Returns:
+                bool: True if the StartLights objects are equal, False otherwise.
+            """
+
+            return self.numLights == other.numLights
 
     class DriveThroughPenaltyServed:
         """
@@ -581,6 +758,30 @@ class PacketEventData:
                 "vehicle-idx": self.vehicleIdx
             }
 
+        def __eq__(self, other: "PacketEventData.DriveThroughPenaltyServed") -> bool:
+            """
+            Check if two DriveThroughPenaltyServed objects are equal.
+
+            Args:
+                other (PacketEventData.DriveThroughPenaltyServed): The other DriveThroughPenaltyServed object to compare with.
+
+            Returns:
+                bool: True if the DriveThroughPenaltyServed objects are equal, False otherwise.
+            """
+            return self.vehicleIdx == other.vehicleIdx
+
+        def __ne__(self, other: "PacketEventData.DriveThroughPenaltyServed") -> bool:
+            """
+            Check if two DriveThroughPenaltyServed objects are not equal.
+
+            Args:
+                other (PacketEventData.DriveThroughPenaltyServed): The other DriveThroughPenaltyServed object to compare with.
+
+            Returns:
+                bool: True if the DriveThroughPenaltyServed objects are not equal, False otherwise.
+            """
+            return not self.__eq__(other)
+
     class StopGoPenaltyServed:
         """
         The class representing the STOP-GO PENALTY SERVED event.
@@ -625,6 +826,30 @@ class PacketEventData:
             return {
                 "vehicle-idx": self.vehicleIdx
             }
+
+        def __eq__(self, other: "PacketEventData.StopGoPenaltyServed") -> bool:
+            """
+            Check if two StopGoPenaltyServed objects are equal.
+
+            Args:
+                other (PacketEventData.StopGoPenaltyServed): The other StopGoPenaltyServed object to compare with.
+
+            Returns:
+                bool: True if the StopGoPenaltyServed objects are equal, False otherwise.
+            """
+            return self.vehicleIdx == other.vehicleIdx
+
+        def __ne__(self, other: "PacketEventData.StopGoPenaltyServed") -> bool:
+            """
+            Check if two StopGoPenaltyServed objects are not equal.
+
+            Args:
+                other (PacketEventData.StopGoPenaltyServed): The other StopGoPenaltyServed object to compare with.
+
+            Returns:
+                bool: True if the StopGoPenaltyServed objects are not equal, False otherwise.
+            """
+            return not self.__eq__(other)
 
     class Flashback:
         """
@@ -676,6 +901,31 @@ class PacketEventData:
                 "flashback-frame-identifier": self.flashbackFrameIdentifier,
                 "flashback-session-time": self.flashbackSessionTime
             }
+
+        def __eq__(self, other: "PacketEventData.Flashback") -> bool:
+            """
+            Check if two Flashback objects are equal.
+
+            Args:
+                other (PacketEventData.Flashback): The other Flashback object to compare with.
+
+            Returns:
+                bool: True if the Flashback objects are equal, False otherwise.
+            """
+            return self.flashbackFrameIdentifier == other.flashbackFrameIdentifier and \
+                self.flashbackSessionTime == other.flashbackSessionTime
+
+        def __ne__(self, other: "PacketEventData.Flashback") -> bool:
+            """
+            Check if two Flashback objects are not equal.
+
+            Args:
+                other (PacketEventData.Flashback): The other Flashback object to compare with.
+
+            Returns:
+                bool: True if the Flashback objects are not equal, False otherwise.
+            """
+            return not self.__eq__(other)
 
     class Buttons:
         """
@@ -793,6 +1043,32 @@ class PacketEventData:
                 "button-status": self.buttonStatus
             }
 
+        def __eq__(self, other: "PacketEventData.Buttons") -> bool:
+            """
+            Check if two Buttons objects are equal.
+
+            Args:
+                other (PacketEventData.Buttons): The other Buttons object to compare with.
+
+            Returns:
+                bool: True if the Buttons objects are equal, False otherwise.
+            """
+
+            return self.buttonStatus == other.buttonStatus
+
+        def __ne__(self, other: "PacketEventData.Buttons") -> bool:
+            """
+            Check if two Buttons objects are not equal.
+
+            Args:
+                other (PacketEventData.Buttons): The other Buttons object to compare with.
+
+            Returns:
+                bool: True if the Buttons objects are not equal, False otherwise.
+            """
+
+            return self.buttonStatus != other.buttonStatus
+
     class Overtake:
         """
         The class representing the OVERTAKE event. This is sent when one vehicle overtakes another.
@@ -837,6 +1113,34 @@ class PacketEventData:
                 "overtaking-vehicle-idx": self.overtakingVehicleIdx,
                 "being-overtaken-vehicle-idx": self.beingOvertakenVehicleIdx
             }
+
+        def __eq__(self, other: "PacketEventData.Overtake") -> bool:
+            """
+            Check if two Overtake objects are equal.
+
+            Args:
+                other (PacketEventData.Overtake): The other Overtake object to compare with.
+
+            Returns:
+                bool: True if the Overtake objects are equal, False otherwise.
+            """
+
+            return self.overtakingVehicleIdx == other.overtakingVehicleIdx and \
+                self.beingOvertakenVehicleIdx == other.beingOvertakenVehicleIdx
+
+        def __ne__(self, other: "PacketEventData.Overtake") -> bool:
+            """
+            Check if two Overtake objects are not equal.
+
+            Args:
+                other (PacketEventData.Overtake): The other Overtake object to compare with.
+
+            Returns:
+                bool: True if the Overtake objects are not equal, False otherwise.
+            """
+
+            return self.overtakingVehicleIdx != other.overtakingVehicleIdx or \
+                self.beingOvertakenVehicleIdx != other.beingOvertakenVehicleIdx
 
     class SafetyCarEvent:
         """
@@ -887,6 +1191,34 @@ class PacketEventData:
                 "safety-car-event-type" : str(self.m_event_type)
             }
 
+        def __eq__(self, other: "PacketEventData.SafetyCarEvent") -> bool:
+            """
+            Check if two SafetyCarEvent objects are equal.
+
+            Args:
+                other (PacketEventData.SafetyCarEvent): The other SafetyCarEvent object to compare with.
+
+            Returns:
+                bool: True if the SafetyCarEvent objects are equal, False otherwise.
+            """
+
+            return self.m_safety_car_type == other.m_safety_car_type and \
+                self.m_event_type == other.m_event_type
+
+        def __ne__(self, other: "PacketEventData.SafetyCarEvent") -> bool:
+            """
+            Check if two SafetyCarEvent objects are not equal.
+
+            Args:
+                other (PacketEventData.SafetyCarEvent): The other SafetyCarEvent object to compare with.
+
+            Returns:
+                bool: True if the SafetyCarEvent objects are not equal, False otherwise.
+            """
+
+            return self.m_safety_car_type != other.m_safety_car_type or \
+                self.m_event_type != other.m_event_type
+
     class Collision:
         """
         The class representing the COLLISION event. This is sent when one vehicle overtakes another.
@@ -932,6 +1264,33 @@ class PacketEventData:
                 "vehicle-2-index": self.m_vehicle_2_index
             }
 
+        def __eq__(self, other: "PacketEventData.Collision") -> bool:
+            """
+            Check if two Collision objects are equal.
+
+            Args:
+                other (PacketEventData.Collision): The other Collision object to compare with.
+
+            Returns:
+                bool: True if the Collision objects are equal, False otherwise.
+            """
+
+            return self.m_vehicle_1_index == other.m_vehicle_1_index and \
+                self.m_vehicle_2_index == other.m_vehicle_2_index
+
+        def __ne__(self, other: "PacketEventData.Collision") -> bool:
+            """
+            Check if two Collision objects are not equal.
+
+            Args:
+                other (PacketEventData.Collision): The other Collision object to compare with.
+
+            Returns:
+                bool: True if the Collision objects are not equal, False otherwise.
+            """
+
+            return not self.__eq__(other)
+
     # Mappings between the event type and the type of object to parse into
     event_type_map = {
         EventPacketType.SESSION_STARTED: None,
@@ -969,16 +1328,19 @@ class PacketEventData:
         """
 
         self.m_header: PacketHeader = header       # PacketHeader
-        self.m_eventStringCode: str = ""                         # char[4]
+        self.m_eventStringCode: str = ""           # char[4]
 
+        # Parse the event string and prep the enum
         self.m_eventStringCode = struct.unpack('4s', packet[0:4])[0].decode('ascii')
         if PacketEventData.EventPacketType.isValid(self.m_eventStringCode):
-            self.m_eventStringCode = PacketEventData.EventPacketType(self.m_eventStringCode)
+            self.m_eventCode = PacketEventData.EventPacketType(self.m_eventStringCode)
         else:
-            raise TypeError("Unsupported Event Type " + self.m_eventStringCode)
+            self.m_eventCode = PacketEventData.EventPacketType.NONE
+            raise TypeError("Unsupported Event Type " + self.m_eventCode)
 
-        if PacketEventData.event_type_map.get(self.m_eventStringCode, None):
-            self.mEventDetails = PacketEventData.event_type_map[self.m_eventStringCode](packet[4:])
+        # Parse the optional data, if any
+        if PacketEventData.event_type_map.get(self.m_eventCode, None):
+            self.mEventDetails = PacketEventData.event_type_map[self.m_eventCode](packet[4:])
         else:
             self.mEventDetails = None
 
@@ -990,7 +1352,7 @@ class PacketEventData:
         """
 
         event_str = (f"Event: {str(self.mEventDetails)}") if self.mEventDetails else ""
-        return f"PacketEventData(Header: {str(self.m_header)}, Event String Code: {self.m_eventStringCode}, {event_str})"
+        return f"PacketEventData(Header: {str(self.m_header)}, Event String Code: {self.m_eventCode}, {event_str})"
 
     def toJSON(self, include_header: bool=False) -> Dict[str, Any]:
         """Convert this PacketEventData object into a JSON friendly dict
@@ -1009,3 +1371,30 @@ class PacketEventData:
         if include_header:
             json_data["header"] = self.m_header.toJSON()
         return json_data
+
+    def __eq__(self, other: "PacketEventData") -> bool:
+        """
+        Check if two PacketEventData objects are equal.
+
+        Args:
+            other (PacketEventData): The other PacketEventData object to compare with.
+
+        Returns:
+            bool: True if the PacketEventData objects are equal, False otherwise.
+        """
+
+        return self.m_eventCode == other.m_eventCode and \
+            self.mEventDetails == other.mEventDetails
+
+    def __ne__(self, other: "PacketEventData") -> bool:
+        """
+        Check if two PacketEventData objects are not equal.
+
+        Args:
+            other (PacketEventData): The other PacketEventData object to compare with.
+
+        Returns:
+            bool: True if the PacketEventData objects are not equal, False otherwise.
+        """
+
+        return not self.__eq__(other)

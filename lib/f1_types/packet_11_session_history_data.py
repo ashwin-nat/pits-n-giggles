@@ -106,7 +106,6 @@ class LapHistoryData:
             f"Lap Valid Bit Flags: {self.m_lapValidBitFlags}"
         )
 
-
     def toJSON(self) -> Dict[str, Any]:
         """
         Convert the LapHistoryData instance to a JSON-compatible dictionary with kebab-case keys.
@@ -165,6 +164,39 @@ class LapHistoryData:
         """
 
         return self.m_lapValidBitFlags & LapHistoryData.FULL_LAP_VALID_BIT_MASK
+
+    def __eq__(self, other: "LapHistoryData") -> bool:
+        """Check if two LapHistoryData objects are equal
+
+        Args:
+            other (LapHistoryData): The object to compare to
+
+        Returns:
+            bool: True if the objects are equal, False otherwise
+        """
+
+        return (
+            self.m_lapTimeInMS == other.m_lapTimeInMS
+            and self.m_sector1TimeInMS == other.m_sector1TimeInMS
+            and self.m_sector1TimeMinutes == other.m_sector1TimeMinutes
+            and self.m_sector2TimeInMS == other.m_sector2TimeInMS
+            and self.m_sector2TimeMinutes == other.m_sector2TimeMinutes
+            and self.m_sector3TimeInMS == other.m_sector3TimeInMS
+            and self.m_sector3TimeMinutes == other.m_sector3TimeMinutes
+            and self.m_lapValidBitFlags == other.m_lapValidBitFlags
+        )
+
+    def __ne__(self, other: "LapHistoryData") -> bool:
+        """Check if two LapHistoryData objects are not equal
+
+        Args:
+            other (LapHistoryData): The object to compare to
+
+        Returns:
+            bool: True if the objects are not equal, False otherwise
+        """
+
+        return not self.__eq__(other)
 
 class TyreStintHistoryData:
     """
@@ -230,6 +262,34 @@ class TyreStintHistoryData:
             "tyre-actual-compound": str(self.m_tyreActualCompound),
             "tyre-visual-compound": str(self.m_tyreVisualCompound),
         }
+
+    def __eq__(self, other: "TyreStintHistoryData") -> bool:
+        """Check if two TyreStintHistoryData objects are equal
+
+        Args:
+            other (TyreStintHistoryData): The object to compare to
+
+        Returns:
+            bool: True if the objects are equal, False otherwise
+        """
+
+        return (
+            self.m_endLap == other.m_endLap
+            and self.m_tyreActualCompound == other.m_tyreActualCompound
+            and self.m_tyreVisualCompound == other.m_tyreVisualCompound
+        )
+
+    def __ne__(self, other: "TyreStintHistoryData") -> bool:
+        """Check if two TyreStintHistoryData objects are not equal
+
+        Args:
+            other (TyreStintHistoryData): The object to compare to
+
+        Returns:
+            bool: True if the objects are not equal, False otherwise
+        """
+
+        return not self.__eq__(other)
 
 class PacketSessionHistoryData:
     """
@@ -353,3 +413,39 @@ class PacketSessionHistoryData:
             json_data["header"] = self.m_header.toJSON()
 
         return json_data
+
+    def __eq__(self, other: "PacketSessionHistoryData") -> bool:
+        """
+        Compare two PacketSessionHistoryData instances for equality.
+
+        Parameters:
+            - other (PacketSessionHistoryData): The other PacketSessionHistoryData instance to compare with.
+
+        Returns:
+            bool: True if the two PacketSessionHistoryData instances are equal, False otherwise.
+        """
+
+        return (
+            self.m_carIdx == other.m_carIdx
+            and self.m_numLaps == other.m_numLaps
+            and self.m_numTyreStints == other.m_numTyreStints
+            and self.m_bestLapTimeLapNum == other.m_bestLapTimeLapNum
+            and self.m_bestSector1LapNum == other.m_bestSector1LapNum
+            and self.m_bestSector2LapNum == other.m_bestSector2LapNum
+            and self.m_bestSector3LapNum == other.m_bestSector3LapNum
+            and self.m_lapHistoryData == other.m_lapHistoryData
+            and self.m_tyreStintsHistoryData == other.m_tyreStintsHistoryData
+        )
+
+    def __ne__(self, other: "PacketSessionHistoryData") -> bool:
+        """
+        Compare two PacketSessionHistoryData instances for inequality.
+
+        Parameters:
+            - other (PacketSessionHistoryData): The other PacketSessionHistoryData instance to compare with.
+
+        Returns:
+            bool: True if the two PacketSessionHistoryData instances are not equal, False otherwise.
+        """
+
+        return not self.__eq__(other)

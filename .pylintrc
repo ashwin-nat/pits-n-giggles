@@ -111,8 +111,9 @@ disable=
     consider-using-assignment-expr,
     consider-using-alias,
     consider-alternative-union-syntax,
-    duplicate-code
-
+    duplicate-code,
+    too-many-arguments,
+    too-many-locals
 
 [REPORTS]
 
@@ -415,9 +416,6 @@ max-spelling-suggestions=2
 
 [DESIGN]
 
-# Maximum number of arguments for function / method
-max-args = 9
-
 # Maximum number of locals for function / method body
 max-locals = 19
 
@@ -550,6 +548,7 @@ check-str-concat-over-line-jumps=no
 # suggestions which would get split by a code formatter (e.g., black). Will
 # default to the setting for ``max-line-length``.
 #max-line-length-suggestions=
+
 
 [MASTER]
 

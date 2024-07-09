@@ -32,6 +32,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # ----------------------------------------------------------------------------------------------------------------------
 
 class CustomTestResult(unittest.TextTestResult):
+    """Class to format test results in color
+    """
     def startTest(self, test):
         super().startTest(test)
         test_class_name = test.getFullTestName()
@@ -52,7 +54,9 @@ class CustomTestResult(unittest.TextTestResult):
         print(f" {Fore.RED}[ERROR]{Style.RESET_ALL}")
 
 class F1TelemetryUnitTestsBase(unittest.TestCase):
-
+    """
+    Base class for all unit tests.
+    """
     def shortDescription(self):
         return self._testMethodName
 

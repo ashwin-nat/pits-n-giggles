@@ -125,6 +125,116 @@ class TimeTrialDataSet:
             "is-valid": self.m_isValid
         }
 
+    def __eq__(self, other: "TimeTrialDataSet") -> bool:
+        """Check if two TimeTrialDataSets are equal
+
+        Args:
+            other (TimeTrialDataSet): The other TimeTrialDataSet
+
+        Returns:
+            bool: True if the TimeTrialDataSets are equal, False otherwise
+        """
+
+        return (
+            self.m_carIdx == other.m_carIdx and
+            self.m_teamId == other.m_teamId and
+            self.m_lapTimeInMS == other.m_lapTimeInMS and
+            self.m_sector1TimeInMS == other.m_sector1TimeInMS and
+            self.m_sector2TimeInMS == other.m_sector2TimeInMS and
+            self.m_sector3TimeInMS == other.m_sector3TimeInMS and
+            self.m_tractionControl == other.m_tractionControl and
+            self.m_gearboxAssist == other.m_gearboxAssist and
+            self.m_antiLockBrakes == other.m_antiLockBrakes and
+            self.m_equalCarPerformance == other.m_equalCarPerformance and
+            self.m_customSetup == other.m_customSetup and
+            self.m_isValid == other.m_isValid
+        )
+
+    def __ne__(self, other: "TimeTrialDataSet") -> bool:
+        """Check if two TimeTrialDataSets are not equal
+
+        Args:
+            other (TimeTrialDataSet): The other TimeTrialDataSet
+
+        Returns:
+            bool: True if the TimeTrialDataSets are not equal, False otherwise
+        """
+
+        return not self.__eq__(other)
+
+    def to_bytes(self) -> bytes:
+        """Serialize the TimeTrialDataSet object to bytes based on PACKET_FORMAT.
+
+        Returns:
+            bytes: The serialized TimeTrialDataSet object
+        """
+
+        return struct.pack(self.PACKET_FORMAT,
+            self.m_carIdx,
+            self.m_teamId.value,
+            self.m_lapTimeInMS,
+            self.m_sector1TimeInMS,
+            self.m_sector2TimeInMS,
+            self.m_sector3TimeInMS,
+            self.m_tractionControl.value,
+            self.m_gearboxAssist.value,
+            self.m_antiLockBrakes,
+            self.m_equalCarPerformance,
+            self.m_customSetup,
+            self.m_isValid,
+        )
+
+    @classmethod
+    def from_values(cls,
+                    car_index: int,
+                    team_id: TeamID24,
+                    lap_time_in_ms: int,
+                    sector1_time_in_ms: int,
+                    sector2_time_in_ms: int,
+                    sector3_time_in_ms: int,
+                    traction_control: TractionControlAssistMode,
+                    gearbox_assist: GearboxAssistMode,
+                    anti_lock_brakes: bool,
+                    equal_car_performance: bool,
+                    custom_setup: bool,
+                    is_valid: bool) -> "TimeTrialDataSet":
+        """Create a new TimeTrialDataSet object from the provided values
+
+        Args:
+            car_index (int): The car index
+            team_id (TeamID24): The team id
+            lap_time_in_ms (int): The lap time in milliseconds
+            sector1_time_in_ms (int): The sector 1 time in milliseconds
+            sector2_time_in_ms (int): The sector 2 time in milliseconds
+            sector3_time_in_ms (int): The sector 3 time in milliseconds
+            traction_control (TractionControlAssistMode): The traction control assist mode
+            gearbox_assist (GearboxAssistMode): The gearbox assist mode
+            anti_lock_brakes (bool): Whether or not the anti-lock brakes are enabled
+            equal_car_performance (bool): Whether or not the equal car performance mode is enabled
+            custom_setup (bool): Whether or not the custom setup mode is enabled
+            is_valid (bool): Whether or not the data is valid
+
+        Returns:
+            TimeTrialDataSet: A new TimeTrialDataSet object
+        """
+
+        return cls(
+            struct.pack(cls.PACKET_FORMAT,
+                car_index,
+                team_id.value,
+                lap_time_in_ms,
+                sector1_time_in_ms,
+                sector2_time_in_ms,
+                sector3_time_in_ms,
+                traction_control.value,
+                gearbox_assist.value,
+                anti_lock_brakes,
+                equal_car_performance,
+                custom_setup,
+                is_valid
+            )
+        )
+
 class PacketTimeTrialData:
     """Class representing the Time Trial Data Packet.
 
@@ -185,3 +295,71 @@ class PacketTimeTrialData:
             json_data["header"] = self.m_header.toJSON()
 
         return json_data
+
+    def __eq__(self, other: "PacketTimeTrialData") -> bool:
+        """Check if two PacketTimeTrialData objects are equal
+
+        Args:
+            other (PacketTimeTrialData): The other PacketTimeTrialData object to compare with
+
+        Returns:
+            bool: True if the PacketTimeTrialData objects are equal, False otherwise
+        """
+
+        return (
+            self.m_header == other.m_header and
+            self.m_playerSessionBestDataSet == other.m_playerSessionBestDataSet and
+            self.m_personalBestDataSet == other.m_personalBestDataSet and
+            self.m_rivalSessionBestDataSet == other.m_rivalSessionBestDataSet
+        )
+
+    def __ne__(self, other: "PacketTimeTrialData") -> bool:
+        """Check if two PacketTimeTrialData objects are not equal
+
+        Args:
+            other (PacketTimeTrialData): The other PacketTimeTrialData object to compare with
+
+        Returns:
+            bool: True if the PacketTimeTrialData objects are not equal, False otherwise
+        """
+
+        return not self.__eq__(other)
+
+    def to_bytes(self) -> bytes:
+        """Get the binary representation of this object
+
+        Returns:
+            bytes: The binary representation of this object
+        """
+
+        return (
+            self.m_header.to_bytes() +
+            self.m_playerSessionBestDataSet.to_bytes() +
+            self.m_personalBestDataSet.to_bytes() +
+            self.m_rivalSessionBestDataSet.to_bytes()
+        )
+
+    @classmethod
+    def from_values(cls,
+                    header: PacketHeader,
+                    player_session_best_data_set: TimeTrialDataSet,
+                    personal_best_data_set: TimeTrialDataSet,
+                    rival_session_best_data_set: TimeTrialDataSet) -> "PacketTimeTrialData":
+        """Create a new PacketTimeTrialData object from the provided values
+
+        Args:
+            header (PacketHeader): The packet header
+            player_session_best_data_set (TimeTrialDataSet): The player session best data set
+            personal_best_data_set (TimeTrialDataSet): The personal best data set
+            rival_session_best_data_set (TimeTrialDataSet): The rival data set
+
+        Returns:
+            PacketTimeTrialData: A new PacketTimeTrialData object
+        """
+
+        return cls(
+            header,
+            player_session_best_data_set.to_bytes() +
+            personal_best_data_set.to_bytes() +
+            rival_session_best_data_set.to_bytes()
+        )
