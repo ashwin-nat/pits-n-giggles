@@ -23,6 +23,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+from readerwriterlock import rwlock
 import threading
 import copy
 from typing import Optional, Generator, Tuple, List, Dict, Any
@@ -1401,8 +1402,8 @@ class CustomMarkerEntry:
 
 _globals = GlobalData()
 _driver_data = DriverData()
-_globals_lock = threading.Lock()
-_driver_data_lock = threading.Lock()
+_globals_lock: rwlock.RWLockFair = rwlock.RWLockFair()
+_driver_data_lock: rwlock.RWLockFair = rwlock.RWLockFair()
 png_logger = getLogger()
 
 # -------------------------------------- TELEMETRY PACKET HANDLERS -----------------------------------------------------
@@ -1411,10 +1412,10 @@ def processSessionStarted() -> None:
     """
     Reset the data structures when SESSION_STARTED has been received
     """
-    with _driver_data_lock:
+    with _driver_data_lock.gen_wlock():
         _driver_data.clear()
         _driver_data.setRaceOngoing()
-    with _globals_lock:
+    with _globals_lock.gen_wlock():
         _globals.m_packet_final_classification = None # Clear this because this is the start of the race
 
 def processSessionUpdate(packet: PacketSessionData) -> bool:
@@ -1426,9 +1427,9 @@ def processSessionUpdate(packet: PacketSessionData) -> bool:
         bool - True if all data needs to be reset
     """
 
-    with _driver_data_lock:
+    with _driver_data_lock.gen_wlock():
         _driver_data.processSessionUpdate(packet)
-    with _globals_lock:
+    with _globals_lock.gen_wlock():
         return _globals.processSessionUpdate(packet)
 
 def processLapDataUpdate(packet: PacketLapData) -> None:
@@ -1438,7 +1439,7 @@ def processLapDataUpdate(packet: PacketLapData) -> None:
         packet (PacketLapData): Lap Data packet
     """
 
-    with _driver_data_lock:
+    with _driver_data_lock.gen_wlock():
         if _driver_data.m_total_laps is not None:
             _driver_data.processLapDataUpdate(packet)
             _driver_data.setRaceOngoing()
@@ -1450,7 +1451,7 @@ def processFastestLapUpdate(packet: PacketEventData) -> None:
         packet (PacketEventData): Fastest lap Event packet
     """
 
-    with _driver_data_lock:
+    with _driver_data_lock.gen_wlock():
         _driver_data.processFastestLapUpdate(packet.mEventDetails)
 
 def processRetirementEvent(packet: PacketEventData) -> None:
@@ -1460,7 +1461,7 @@ def processRetirementEvent(packet: PacketEventData) -> None:
         packet (PacketEventData): Retirement event packet
     """
 
-    with _driver_data_lock:
+    with _driver_data_lock.gen_wlock():
         _driver_data.processRetirement(packet.mEventDetails)
 
 def processCollisionsEvent(packet: PacketEventData.Collision)-> None:
@@ -1470,7 +1471,7 @@ def processCollisionsEvent(packet: PacketEventData.Collision)-> None:
         packet (PacketEventData.Collision): The collision update packet
     """
 
-    with _driver_data_lock:
+    with _driver_data_lock.gen_wlock():
         _driver_data.processCollisionEvent(packet)
 
 def processParticipantsUpdate(packet: PacketParticipantsData) -> None:
@@ -1480,7 +1481,7 @@ def processParticipantsUpdate(packet: PacketParticipantsData) -> None:
         packet (PacketParticipantsData): The pariticpants info packet
     """
 
-    with _driver_data_lock:
+    with _driver_data_lock.gen_wlock():
         _driver_data.processParticipantsUpdate(packet)
 
 
@@ -1491,7 +1492,7 @@ def processCarTelemetryUpdate(packet: PacketCarTelemetryData) -> None:
         packet (PacketCarTelemetryData): The car telemetry update packet
     """
 
-    with _driver_data_lock:
+    with _driver_data_lock.gen_wlock():
         _driver_data.processCarTelemetryUpdate(packet)
         _driver_data.setRaceOngoing()
 
@@ -1502,7 +1503,7 @@ def processCarStatusUpdate(packet: PacketCarStatusData) -> None:
         packet (PacketCarStatusData): The car status update packet
     """
 
-    with _driver_data_lock:
+    with _driver_data_lock.gen_wlock():
         _driver_data.processCarStatusUpdate(packet)
         _driver_data.setRaceOngoing()
 
@@ -1517,10 +1518,10 @@ def processFinalClassificationUpdate(packet: PacketFinalClassificationData) -> D
         Dict[str, Any]: Driver data JSON
     """
 
-    with _driver_data_lock:
+    with _driver_data_lock.gen_wlock():
         final_json = _driver_data.processFinalClassificationUpdate(packet)
         _driver_data.setRaceCompleted()
-    with _globals_lock:
+    with _globals_lock.gen_wlock():
         final_json["session-info"] = _globals.m_packet_session.toJSON() if _globals.m_packet_session else None
         _globals.m_packet_final_classification = packet
     return final_json
@@ -1532,7 +1533,7 @@ def processCarDamageUpdate(packet: PacketCarDamageData):
         packet (PacketCarDamageData): The car damage update packet
     """
 
-    with _driver_data_lock:
+    with _driver_data_lock.gen_wlock():
         _driver_data.processCarDamageUpdate(packet)
         _driver_data.setRaceOngoing()
 
@@ -1543,7 +1544,7 @@ def processSessionHistoryUpdate(packet: PacketSessionHistoryData):
         packet (PacketSessionHistoryData): The session history update packet
     """
 
-    with _driver_data_lock:
+    with _driver_data_lock.gen_wlock():
         _driver_data.processSessionHistoryUpdate(packet)
         _driver_data.setRaceOngoing()
 
@@ -1554,7 +1555,7 @@ def processTyreSetsUpdate(packet: PacketTyreSetsData) -> None:
         packet (PacketTyreSetsData): The tyre history update packet
     """
 
-    with _driver_data_lock:
+    with _driver_data_lock.gen_wlock():
         _driver_data.processTyreSetsUpdate(packet)
         _driver_data.setRaceOngoing()
 
@@ -1567,7 +1568,7 @@ def getGlobals() -> GlobalData:
     Returns:
         GlobalData: A copy of the GlobalData object
     """
-    with _globals_lock:
+    with _globals_lock.gen_rlock():
         return copy.deepcopy(_globals)
 
 def getDriverInfoJsonByIndex(index: int) -> Optional[Dict[str, Any]]:
@@ -1580,7 +1581,7 @@ def getDriverInfoJsonByIndex(index: int) -> Optional[Dict[str, Any]]:
         Optional[Dict[str, Any]]: The driver info JSON
     """
 
-    with _driver_data_lock:
+    with _driver_data_lock.gen_rlock():
         return _driver_data.getDriverInfoJsonByIndex(index)
 
 def getRaceInfo() -> Dict[str, Any]:
@@ -1588,7 +1589,7 @@ def getRaceInfo() -> Dict[str, Any]:
     Returns the race information as a dictionary with string keys and any values.
     """
 
-    with _driver_data_lock:
+    with _driver_data_lock.gen_rlock():
         final_json = _driver_data.getRaceInfoJSON()
     if "records" not in final_json:
         final_json['records'] = {
@@ -1610,7 +1611,7 @@ def isDriverIndexValid(index: int) -> bool:
         bool: True if valid
     """
 
-    with _driver_data_lock:
+    with _driver_data_lock.gen_rlock():
         return index in _driver_data.m_driver_data
 
 def getEventInfoStr() -> Optional[str]:
@@ -1620,7 +1621,7 @@ def getEventInfoStr() -> Optional[str]:
     Returns:
         Optional[str]: The event type string (ends with an underscore), or None if no data is available
     """
-    with _globals_lock:
+    with _globals_lock.gen_rlock():
         if _globals.m_event_type and _globals.m_circuit:
             return (_globals.m_event_type + "_" + _globals.m_circuit).replace(' ', '_') + '_'
         return None
@@ -1632,7 +1633,7 @@ def getPlayerName() -> Optional[str]:
         Optional[str]: Player's name. None if not found (can be in spectator mode or
                             before PNG has received sufficient data)
     """
-    with _driver_data_lock:
+    with _driver_data_lock.gen_rlock():
         player_data = _driver_data.m_driver_data.get(_driver_data.m_player_index, None)
         return player_data.m_name if player_data else None
 
@@ -1642,7 +1643,7 @@ def getDriverNameByIndex(index: int) -> str:
     Returns:
         str: Driver's name. None if not found (can be before PNG has received sufficient data)
     """
-    with _driver_data_lock:
+    with _driver_data_lock.gen_rlock():
         driver_data = _driver_data.m_driver_data.get(index, None)
         return driver_data.m_name if driver_data else None
 
@@ -1660,7 +1661,7 @@ def getOvertakeObj(overtaking_car_index: int, being_overtaken_index: int) -> Opt
             - Current Lap number of car being overtaken
             - Name of driver of car being overtaken
     """
-    with _driver_data_lock:
+    with _driver_data_lock.gen_rlock():
         if not _driver_data.m_driver_data:
             return None
         overtaking_car_obj = _driver_data.m_driver_data.get(overtaking_car_index, None)
@@ -1691,7 +1692,7 @@ def getCollisionObj(driver_1_index: int, driver_2_index: int) -> Optional[Collis
     Returns:
         Optional[CollisionRecord]: A collision object containing collision information
     """
-    with _driver_data_lock:
+    with _driver_data_lock.gen_rlock():
         if not _driver_data.m_driver_data:
             return None
         driver_1_obj = _driver_data.m_driver_data.get(driver_1_index, None)
@@ -1722,7 +1723,7 @@ def getCustomMarkerEntryObj() -> Optional[CustomMarkerEntry]:
         CustomMarkerEntry: The custom marker entry object for the player. None if any data points is not available
     """
 
-    with _driver_data_lock:
+    with _driver_data_lock.gen_rlock():
         player_data = _driver_data.m_driver_data.get(_driver_data.m_player_index, None)
         if player_data:
             # CSV string - <track>,<event-type>,<lap-num>,<sector-num>
@@ -1737,7 +1738,7 @@ def getCustomMarkerEntryObj() -> Optional[CustomMarkerEntry]:
             curr_lap_time = None
             curr_lap_dist = None
 
-    with _globals_lock:
+    with _globals_lock.gen_rlock():
         if _globals.m_circuit is not None and _globals.m_event_type is not None:
             track = _globals.m_circuit
             event_type = _globals.m_event_type

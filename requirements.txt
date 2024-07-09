@@ -2,8 +2,8 @@ colorama==0.4.6
 Flask==3.0.3
 Flask_Cors==4.0.0
 Flask_SocketIO==5.3.6
-numpy==1.26.4
+numpy==2.0.0
 prettytable==3.10.0
+readerwriterlock==1.0.9
 scikit_learn==1.4.1.post1
 tqdm==4.66.2
-gevent==24.2.1

@@ -226,7 +226,7 @@ class PlayerTelemetryOverlayUpdate:
         """Get the player telemetry data and prep the fields
         """
 
-        with TelData._globals_lock:
+        with TelData._globals_lock.gen_rlock():
             self.m_track_temp               = TelData._globals.m_track_temp
             self.m_air_temp                 = TelData._globals.m_air_temp
             self.m_weather_forecast_samples = TelData._globals.m_weather_forecast_samples
@@ -236,7 +236,7 @@ class PlayerTelemetryOverlayUpdate:
             self.m_total_laps               = TelData._globals.m_total_laps
             self.m_game_year                = TelData._globals.m_game_year
 
-        with TelData._driver_data_lock:
+        with TelData._driver_data_lock.gen_rlock():
             self.m_next_pit_window          = TelData._driver_data.m_ideal_pit_stop_window
             player_data = TelData._driver_data.m_driver_data[TelData._driver_data.m_player_index] \
                 if TelData._driver_data.m_player_index in TelData._driver_data.m_driver_data else None
@@ -522,7 +522,7 @@ class DriversListRsp:
         """Initialise the fields
         """
 
-        with TelData._driver_data_lock:
+        with TelData._driver_data_lock.gen_rlock():
             # Do the bare mimnimum within this block so that we can unlock the mutex ASAP
             if (TelData._driver_data.m_player_index is None) or (TelData._driver_data.m_num_active_cars is None):
                 return
