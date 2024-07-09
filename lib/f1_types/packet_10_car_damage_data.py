@@ -184,6 +184,162 @@ class CarDamageData:
             "engine-seized": self.m_engineSeized,
         }
 
+    def __eq__(self, other: "CarDamageData") -> bool:
+        """
+        Check if two CarDamageData instances are equal.
+
+        Args:
+            other (CarDamageData): The other CarDamageData instance to compare with.
+
+        Returns:
+            bool: True if the CarDamageData instances are equal, False otherwise.
+        """
+
+        return (
+            self.m_tyresWear == other.m_tyresWear and
+            self.m_tyresDamage == other.m_tyresDamage and
+            self.m_brakesDamage == other.m_brakesDamage and
+            self.m_frontLeftWingDamage == other.m_frontLeftWingDamage and
+            self.m_frontRightWingDamage == other.m_frontRightWingDamage and
+            self.m_rearWingDamage == other.m_rearWingDamage and
+            self.m_floorDamage == other.m_floorDamage and
+            self.m_diffuserDamage == other.m_diffuserDamage and
+            self.m_sidepodDamage == other.m_sidepodDamage and
+            self.m_drsFault == other.m_drsFault and
+            self.m_ersFault == other.m_ersFault and
+            self.m_gearBoxDamage == other.m_gearBoxDamage and
+            self.m_engineDamage == other.m_engineDamage and
+            self.m_engineMGUHWear == other.m_engineMGUHWear and
+            self.m_engineESWear == other.m_engineESWear and
+            self.m_engineCEWear == other.m_engineCEWear and
+            self.m_engineICEWear == other.m_engineICEWear and
+            self.m_engineMGUKWear == other.m_engineMGUKWear and
+            self.m_engineTCWear == other.m_engineTCWear and
+            self.m_engineBlown == other.m_engineBlown and
+            self.m_engineSeized == other.m_engineSeized
+        )
+
+    def __ne__(self, other: "CarDamageData") -> bool:
+        """
+        Check if two CarDamageData instances are not equal.
+
+        Args:
+            other (CarDamageData): The other CarDamageData instance to compare with.
+
+        Returns:
+            bool: True if the CarDamageData instances are not equal, False otherwise.
+        """
+        return not self.__eq__(other)
+
+    def to_bytes(self) -> bytes:
+        """
+        Convert the CarDamageData instance to bytes.
+
+        Returns:
+            bytes: Bytes representing the CarDamageData instance.
+        """
+
+        return struct.pack(self.PACKET_FORMAT,
+            self.m_tyresWear[0],
+            self.m_tyresWear[1],
+            self.m_tyresWear[2],
+            self.m_tyresWear[3],
+            self.m_tyresDamage[0],
+            self.m_tyresDamage[1],
+            self.m_tyresDamage[2],
+            self.m_tyresDamage[3],
+            self.m_brakesDamage[0],
+            self.m_brakesDamage[1],
+            self.m_brakesDamage[2],
+            self.m_brakesDamage[3],
+            self.m_frontLeftWingDamage,
+            self.m_frontRightWingDamage,
+            self.m_rearWingDamage,
+            self.m_floorDamage,
+            self.m_diffuserDamage,
+            self.m_sidepodDamage,
+            self.m_drsFault,
+            self.m_ersFault,
+            self.m_gearBoxDamage,
+            self.m_engineDamage,
+            self.m_engineMGUHWear,
+            self.m_engineESWear,
+            self.m_engineCEWear,
+            self.m_engineICEWear,
+            self.m_engineMGUKWear,
+            self.m_engineTCWear,
+            self.m_engineBlown,
+            self.m_engineSeized,
+        )
+
+    @classmethod
+    def from_values(cls,
+        tyres_wear: List[float],
+        tyres_damage: List[int],
+        brakes_damage: List[int],
+        fl_wing_damage: int,
+        fr_wing_damage: int,
+        rear_wing_damage: int,
+        floor_damage: int,
+        diffuser_damage: int,
+        sidepod_damage: int,
+        drs_fault: bool,
+        ers_fault: bool,
+        gear_box_damage: int,
+        engine_damage: int,
+        engine_mguh_wear: int,
+        engine_es_wear: int,
+        engine_ce_wear: int,
+        engine_ice_wear: int,
+        engine_mguk_wear: int,
+        engine_tc_wear: int,
+        engine_blown: bool,
+        engine_seized: bool) -> "CarDamageData":
+
+        """
+        Create a CarDamageData object from individual values.
+
+        Args:
+            Too many to document for a test method
+
+        Returns:
+            CarDamageData: A new CarDamageData object with the provided values.
+        """
+
+        return cls(struct.pack(cls.PACKET_FORMAT,
+            tyres_wear[0],
+            tyres_wear[1],
+            tyres_wear[2],
+            tyres_wear[3],
+            tyres_damage[0],
+            tyres_damage[1],
+            tyres_damage[2],
+            tyres_damage[3],
+            brakes_damage[0],
+            brakes_damage[1],
+            brakes_damage[2],
+            brakes_damage[3],
+            fl_wing_damage,
+            fr_wing_damage,
+            rear_wing_damage,
+            floor_damage,
+            diffuser_damage,
+            sidepod_damage,
+            drs_fault,
+            ers_fault,
+            gear_box_damage,
+            engine_damage,
+            engine_mguh_wear,
+            engine_es_wear,
+            engine_ce_wear,
+            engine_ice_wear,
+            engine_mguk_wear,
+            engine_tc_wear,
+            engine_blown,
+            engine_seized,
+        ))
+
+
 class PacketCarDamageData:
     """
     Class representing the packet for car damage data.
@@ -239,3 +395,56 @@ class PacketCarDamageData:
             json_data["header"] = self.m_header.toJSON()
 
         return json_data
+
+    def __eq__(self, other: "PacketCarDamageData") -> bool:
+        """
+        Checks if two PacketCarDamageData objects are equal.
+
+        Arguments:
+            other (Any): The object to compare with.
+
+        Returns:
+            bool: True if the objects are equal, False otherwise.
+        """
+
+        return (
+            self.m_header == other.m_header and
+            self.m_carDamageData == other.m_carDamageData
+        )
+
+    def __ne__(self, other: "PacketCarDamageData") -> bool:
+        """
+        Checks if two PacketCarDamageData objects are not equal.
+
+        Arguments:
+            other (Any): The object to compare with.
+
+        Returns:
+            bool: True if the objects are not equal, False otherwise.
+        """
+
+        return not self.__eq__(other)
+
+    def to_bytes(self) -> bytes:
+        """
+        Convert the PacketCarDamageData instance to raw bytes.
+
+        Returns:
+            bytes: Raw bytes representing the packet for car damage data.
+        """
+
+        return self.m_header.to_bytes() + b"".join([car_data.to_bytes() for car_data in self.m_carDamageData])
+
+    @classmethod
+    def from_values(cls, header: PacketHeader, car_damage_data: List[CarDamageData]) -> "PacketCarDamageData":
+        """Create a PacketCarDamageData object from individual values.
+
+        Args:
+            header (PacketHeader): The header of the packet.
+            car_damage_data (List[CarDamageData]): List of CarDamageData objects for each car.
+
+        Returns:
+            PacketCarDamageData: A new PacketCarDamageData object.
+        """
+
+        return cls(header, b"".join([car_data.to_bytes() for car_data in car_damage_data]))

@@ -27,74 +27,6 @@ from .common import _split_list, PacketHeader, F1Utils, ResultStatus
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
-class PacketFinalClassificationData:
-    """
-    Class representing the packet for final classification data.
-
-    Attributes:
-        m_header (PacketHeader): Header information.
-        m_numCars (int): Number of cars in the final classification.
-        m_classificationData (List[FinalClassificationData]): List of final classification data for each car.
-
-    Note:
-        The class is designed to parse and represent the final classification data packet.
-    """
-
-    max_cars = 22
-
-    def __init__(self, header: PacketHeader, packet: bytes) -> None:
-        """
-        Initializes PacketFinalClassificationData with raw data.
-
-        Args:
-            header (PacketHeader): Header information for the packet.
-            packet (bytes): Raw data representing the packet for final classification data.
-        """
-
-        self.m_header: PacketHeader = header
-        self.m_numCars: int = struct.unpack("<B", packet[0:1])[0]
-        self.m_classificationData: List[FinalClassificationData] = []
-
-        for classification_per_car_raw_data in _split_list(packet[1:], FinalClassificationData.PACKET_LEN):
-            self.m_classificationData.append(FinalClassificationData(classification_per_car_raw_data))
-
-        # strip the non-applicable data
-        self.m_classificationData = self.m_classificationData[:self.m_numCars]
-
-    def __str__(self) -> str:
-        """
-        Returns a string representation of PacketFinalClassificationData.
-
-        Returns:
-            str: String representation of PacketFinalClassificationData.
-        """
-
-        classification_data_str = ", ".join(str(data) for data in self.m_classificationData[:self.m_numCars])
-        return (
-            f"PacketFinalClassificationData("
-            f"Number of Cars: {self.m_numCars}, "
-            f"Classification Data: [{classification_data_str}])"
-        )
-
-    def toJSON(self, include_header: bool=False) -> Dict[str, Any]:
-        """
-        Convert the PacketFinalClassificationData instance to a JSON-compatible dictionary with kebab-case keys.
-
-        Arguments:
-            - include_header - Whether the header dump must be included in the JSON
-
-        Returns:
-            Dict[str, Any]: JSON-compatible dictionary with kebab-case keys representing the PacketFinalClassificationData instance.
-        """
-
-        json_data = {
-            "num-cars": self.m_numCars,
-            "classification-data": [data.toJSON() for data in self.m_classificationData[:self.m_numCars]],
-        }
-        if include_header:
-            json_data["header"] = self.m_header.toJSON()
-        return json_data
-
 class FinalClassificationData:
     """
     Class representing final classification data for a car in a race.
@@ -251,3 +183,332 @@ class FinalClassificationData:
             "tyre-stints-visual": self.m_tyreStintsVisual,
             "tyre-stints-end-laps": self.m_tyreStintsEndLaps,
         }
+
+    def __eq__(self, other: "FinalClassificationData") -> bool:
+        """
+        Check if two FinalClassificationData instances are equal.
+
+        Args:
+            other (FinalClassificationData): The other FinalClassificationData instance to compare with.
+
+        Returns:
+            bool: True if the FinalClassificationData instances are equal, False otherwise.
+        """
+
+        return (
+            self.m_position == other.m_position and
+            self.m_numLaps == other.m_numLaps and
+            self.m_gridPosition == other.m_gridPosition and
+            self.m_points == other.m_points and
+            self.m_numPitStops == other.m_numPitStops and
+            self.m_resultStatus == other.m_resultStatus and
+            self.m_bestLapTimeInMS == other.m_bestLapTimeInMS and
+            self.m_totalRaceTime == other.m_totalRaceTime and
+            self.m_penaltiesTime == other.m_penaltiesTime and
+            self.m_numPenalties == other.m_numPenalties and
+            self.m_numTyreStints == other.m_numTyreStints and
+            self.m_tyreStintsActual == other.m_tyreStintsActual and
+            self.m_tyreStintsVisual == other.m_tyreStintsVisual and
+            self.m_tyreStintsEndLaps == other.m_tyreStintsEndLaps
+        )
+
+    def __ne__(self, other: "FinalClassificationData") -> bool:
+        """
+        Check if two FinalClassificationData instances are not equal.
+
+        Args:
+            other (FinalClassificationData): The other FinalClassificationData instance to compare with.
+
+        Returns:
+            bool: True if the FinalClassificationData instances are not equal, False otherwise.
+        """
+
+        return not self.__eq__(other)
+
+    def to_bytes(self) -> bytes:
+        """Serialize the FinalClassificationData object to bytes based on PACKET_FORMAT.
+
+        Returns:
+            bytes: The serialized bytes.
+        """
+
+        def pad_array(arr: List[int]) -> List[int]:
+            """
+            Pads an array of integers with 0's if it has fewer than 8 items.
+
+            Args:
+                arr (List[int]): The input array of integers.
+
+            Returns:
+                List[int]: A new array of integers, padded with 0's to a length of 8.
+            """
+
+            # Create a new array with the elements of the input array
+            new_arr = arr[:]
+
+            # Pad the new array with 0's if it has fewer than 8 items
+            while len(new_arr) < 8:
+                new_arr.append(0)
+
+            return new_arr
+
+        tyre_stints_visual = pad_array(self.m_tyreStintsVisual)
+        tyre_stints_actual = pad_array(self.m_tyreStintsActual)
+        tyre_stints_end_laps = pad_array(self.m_tyreStintsEndLaps)
+
+        return struct.pack(self.PACKET_FORMAT,
+            self.m_position,
+            self.m_numLaps,
+            self.m_gridPosition,
+            self.m_points,
+            self.m_numPitStops,
+            self.m_resultStatus.value,
+            self.m_bestLapTimeInMS,
+            self.m_totalRaceTime,
+            self.m_penaltiesTime,
+            self.m_numPenalties,
+            self.m_numTyreStints,
+            tyre_stints_actual[0],
+            tyre_stints_actual[1],
+            tyre_stints_actual[2],
+            tyre_stints_actual[3],
+            tyre_stints_actual[4],
+            tyre_stints_actual[5],
+            tyre_stints_actual[6],
+            tyre_stints_actual[7],
+            tyre_stints_visual[0],
+            tyre_stints_visual[1],
+            tyre_stints_visual[2],
+            tyre_stints_visual[3],
+            tyre_stints_visual[4],
+            tyre_stints_visual[5],
+            tyre_stints_visual[6],
+            tyre_stints_visual[7],
+            tyre_stints_end_laps[0],
+            tyre_stints_end_laps[1],
+            tyre_stints_end_laps[2],
+            tyre_stints_end_laps[3],
+            tyre_stints_end_laps[4],
+            tyre_stints_end_laps[5],
+            tyre_stints_end_laps[6],
+            tyre_stints_end_laps[7]
+        )
+
+    @classmethod
+    def from_values(cls,
+            position: int,
+            num_laps: int,
+            grid_position: int,
+            points: int,
+            num_pit_stops: int,
+            result_status: ResultStatus,
+            best_lap_time_in_ms: int,
+            total_race_time: float,
+            penalties_time: int,
+            num_penalties: int,
+            num_tyre_stints: int,
+            # tyre_stints_actual,  # array of 8
+            tyre_stints_actual_0: int,
+            tyre_stints_actual_1: int,
+            tyre_stints_actual_2: int,
+            tyre_stints_actual_3: int,
+            tyre_stints_actual_4: int,
+            tyre_stints_actual_5: int,
+            tyre_stints_actual_6: int,
+            tyre_stints_actual_7: int,
+            # tyre_stints_visual,  # array of 8
+            tyre_stints_visual_0: int,
+            tyre_stints_visual_1: int,
+            tyre_stints_visual_2: int,
+            tyre_stints_visual_3: int,
+            tyre_stints_visual_4: int,
+            tyre_stints_visual_5: int,
+            tyre_stints_visual_6: int,
+            tyre_stints_visual_7: int,
+            # tyre_stints_end_laps,  # array of 8
+            tyre_stints_end_laps_0: int,
+            tyre_stints_end_laps_1: int,
+            tyre_stints_end_laps_2: int,
+            tyre_stints_end_laps_3: int,
+            tyre_stints_end_laps_4: int,
+            tyre_stints_end_laps_5: int,
+            tyre_stints_end_laps_6: int,
+            tyre_stints_end_laps_7: int) -> "FinalClassificationData":
+        """Create a new FinalClassificationData object from the given values.
+
+        Args:
+            Too many args to list.
+
+        Returns:
+            FinalClassificationData: A new FinalClassificationData object initialized with the provided values.
+        """
+
+        return cls(struct.pack(cls.PACKET_FORMAT,
+            position,
+            num_laps,
+            grid_position,
+            points,
+            num_pit_stops,
+            result_status.value,
+            best_lap_time_in_ms,
+            total_race_time,
+            penalties_time,
+            num_penalties,
+            num_tyre_stints,
+            # tyre_stints_actual,  # array of 8
+            tyre_stints_actual_0,
+            tyre_stints_actual_1,
+            tyre_stints_actual_2,
+            tyre_stints_actual_3,
+            tyre_stints_actual_4,
+            tyre_stints_actual_5,
+            tyre_stints_actual_6,
+            tyre_stints_actual_7,
+            # tyre_stints_visual,  # array of 8
+            tyre_stints_visual_0,
+            tyre_stints_visual_1,
+            tyre_stints_visual_2,
+            tyre_stints_visual_3,
+            tyre_stints_visual_4,
+            tyre_stints_visual_5,
+            tyre_stints_visual_6,
+            tyre_stints_visual_7,
+            # tyre_stints_end_laps,  # array of 8
+            tyre_stints_end_laps_0,
+            tyre_stints_end_laps_1,
+            tyre_stints_end_laps_2,
+            tyre_stints_end_laps_3,
+            tyre_stints_end_laps_4,
+            tyre_stints_end_laps_5,
+            tyre_stints_end_laps_6,
+            tyre_stints_end_laps_7
+        ))
+
+class PacketFinalClassificationData:
+    """
+    Class representing the packet for final classification data.
+
+    Attributes:
+        m_header (PacketHeader): Header information.
+        m_numCars (int): Number of cars in the final classification.
+        m_classificationData (List[FinalClassificationData]): List of final classification data for each car.
+
+    Note:
+        The class is designed to parse and represent the final classification data packet.
+    """
+
+    max_cars = 22
+
+    def __init__(self, header: PacketHeader, packet: bytes) -> None:
+        """
+        Initializes PacketFinalClassificationData with raw data.
+
+        Args:
+            header (PacketHeader): Header information for the packet.
+            packet (bytes): Raw data representing the packet for final classification data.
+        """
+
+        self.m_header: PacketHeader = header
+        self.m_numCars: int = struct.unpack("<B", packet[0:1])[0]
+        self.m_classificationData: List[FinalClassificationData] = []
+
+        for classification_per_car_raw_data in _split_list(packet[1:], FinalClassificationData.PACKET_LEN):
+            self.m_classificationData.append(FinalClassificationData(classification_per_car_raw_data))
+
+        # strip the non-applicable data
+        self.m_classificationData = self.m_classificationData[:self.m_numCars]
+
+    def __str__(self) -> str:
+        """
+        Returns a string representation of PacketFinalClassificationData.
+
+        Returns:
+            str: String representation of PacketFinalClassificationData.
+        """
+
+        classification_data_str = ", ".join(str(data) for data in self.m_classificationData[:self.m_numCars])
+        return (
+            f"PacketFinalClassificationData("
+            f"Number of Cars: {self.m_numCars}, "
+            f"Classification Data: [{classification_data_str}])"
+        )
+
+    def toJSON(self, include_header: bool=False) -> Dict[str, Any]:
+        """
+        Convert the PacketFinalClassificationData instance to a JSON-compatible dictionary with kebab-case keys.
+
+        Arguments:
+            - include_header - Whether the header dump must be included in the JSON
+
+        Returns:
+            Dict[str, Any]: JSON-compatible dictionary with kebab-case keys representing the PacketFinalClassificationData instance.
+        """
+
+        json_data = {
+            "num-cars": self.m_numCars,
+            "classification-data": [data.toJSON() for data in self.m_classificationData[:self.m_numCars]],
+        }
+        if include_header:
+            json_data["header"] = self.m_header.toJSON()
+        return json_data
+
+    def __eq__(self, other: "PacketFinalClassificationData") -> bool:
+        """
+        Compares two PacketFinalClassificationData objects.
+
+        Args:
+            other (PacketFinalClassificationData): The other PacketFinalClassificationData object to compare with.
+
+        Returns:
+            bool: True if the two objects are equal, False otherwise.
+        """
+
+        if not isinstance(other, PacketFinalClassificationData):
+            return False
+        if self.m_numCars != other.m_numCars:
+            return False
+        if self.m_classificationData != other.m_classificationData:
+            return False
+        return True
+
+    def __ne__(self, other: "PacketFinalClassificationData") -> bool:
+        """
+        Compares two PacketFinalClassificationData objects.
+
+        Args:
+            other (PacketFinalClassificationData): The other PacketFinalClassificationData object to compare with.
+
+        Returns:
+            bool: True if the two objects are not equal, False otherwise.
+        """
+
+        return not self.__eq__(other)
+
+    def to_bytes(self) -> bytes:
+        """
+        Convert the PacketFinalClassificationData instance to bytes.
+
+        Returns:
+            bytes: Bytes representing the PacketFinalClassificationData instance.
+        """
+
+        return self.m_header.to_bytes() + \
+            struct.pack("<B", self.m_numCars) + b"".join([data.to_bytes() for data in self.m_classificationData])
+
+    @classmethod
+    def from_values(cls,
+                    header: PacketHeader,
+                    num_cars: int,
+                    classification_data: List[FinalClassificationData]) -> "PacketFinalClassificationData":
+        """Create a PacketFinalClassificationData object from individual values.
+
+        Args:
+            header (PacketHeader): The header of the telemetry packet.
+            num_cars (int): Number of cars in the final classification.
+            classification_data (List[FinalClassificationData]): List of FinalClassificationData objects containing data for all cars on track.
+
+        Returns:
+            PacketFinalClassificationData: A PacketFinalClassificationData object initialized with the provided values.
+        """
+
+        return cls(header, struct.pack("<B", num_cars) + b''.join([data.to_bytes() for data in classification_data]))

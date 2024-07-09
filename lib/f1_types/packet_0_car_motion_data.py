@@ -169,6 +169,104 @@ class CarMotionData:
             }
         }
 
+    def __eq__(self, other: Any) -> bool:
+        """Check if this CarMotionData is equal to another.
+
+        Args:
+            other (Any): The object to compare against.
+
+        Returns:
+            bool: True if equal, False otherwise.
+        """
+        if not isinstance(other, CarMotionData):
+            return NotImplemented
+        return (
+            self.m_worldPositionX == other.m_worldPositionX and
+            self.m_worldPositionY == other.m_worldPositionY and
+            self.m_worldPositionZ == other.m_worldPositionZ and
+            self.m_worldVelocityX == other.m_worldVelocityX and
+            self.m_worldVelocityY == other.m_worldVelocityY and
+            self.m_worldVelocityZ == other.m_worldVelocityZ and
+            self.m_worldForwardDirX == other.m_worldForwardDirX and
+            self.m_worldForwardDirY == other.m_worldForwardDirY and
+            self.m_worldForwardDirZ == other.m_worldForwardDirZ and
+            self.m_worldRightDirX == other.m_worldRightDirX and
+            self.m_worldRightDirY == other.m_worldRightDirY and
+            self.m_worldRightDirZ == other.m_worldRightDirZ and
+            self.m_gForceLateral == other.m_gForceLateral and
+            self.m_gForceLongitudinal == other.m_gForceLongitudinal and
+            self.m_gForceVertical == other.m_gForceVertical and
+            self.m_yaw == other.m_yaw and
+            self.m_pitch == other.m_pitch and
+            self.m_roll == other.m_roll
+        )
+
+    def __ne__(self, other: Any) -> bool:
+        """Check if this CarMotionData is not equal to another.
+
+        Args:
+            other (Any): The object to compare against.
+
+        Returns:
+            bool: True if not equal, False otherwise.
+        """
+        return not self.__eq__(other)
+
+    def to_bytes(self) -> bytes:
+        """Serialize the CarMotionData object to bytes based on PACKET_FORMAT.
+
+        Returns:
+            bytes: The serialized bytes.
+        """
+        return struct.pack(self.PACKET_FORMAT,
+                           self.m_worldPositionX, self.m_worldPositionY, self.m_worldPositionZ,
+                           self.m_worldVelocityX, self.m_worldVelocityY, self.m_worldVelocityZ,
+                           self.m_worldForwardDirX, self.m_worldForwardDirY, self.m_worldForwardDirZ,
+                           self.m_worldRightDirX, self.m_worldRightDirY, self.m_worldRightDirZ,
+                           self.m_gForceLateral, self.m_gForceLongitudinal, self.m_gForceVertical,
+                           self.m_yaw, self.m_pitch, self.m_roll)
+
+    @classmethod
+    def from_values(cls, world_position_x: float, world_position_y: float, world_position_z: float,
+                    world_velocity_x: float, world_velocity_y: float, world_velocity_z: float,
+                    world_forward_dir_x: int, world_forward_dir_y: int, world_forward_dir_z: int,
+                    world_right_dir_x: int, world_right_dir_y: int, world_right_dir_z: int,
+                    g_force_lateral: float, g_force_longitudinal: float, g_force_vertical: float,
+                    yaw: float, pitch: float, roll: float) -> 'CarMotionData':
+        """Create a CarMotionData object from individual values.
+
+        Args:
+            world_position_x (float): World space X position - metres
+            world_position_y (float): World space Y position - metres
+            world_position_z (float): World space Z position - metres
+            world_velocity_x (float): Velocity in world space X - metres/s
+            world_velocity_y (float): Velocity in world space Y - metres/s
+            world_velocity_z (float): Velocity in world space Z - metres/s
+            world_forward_dir_x (int): World space forward X direction (normalised)
+            world_forward_dir_y (int): World space forward Y direction (normalised)
+            world_forward_dir_z (int): World space forward X direction (normalised)
+            world_right_dir_x (int): World space right X direction (normalised)
+            world_right_dir_y (int): World space right Y direction (normalised)
+            world_right_dir_z (int): World space right Z direction (normalised)
+            g_force_lateral (float): Lateral G-Force component
+            g_force_longitudinal (float): Longitudinal G-Force component
+            g_force_vertical (float): Vertical G-Force component
+            yaw (float): Yaw angle in radians
+            pitch (float): Pitch angle in radians
+            roll (float): Roll angle in radians
+
+        Returns:
+            CarMotionData: A CarMotionData object initialized with the provided values.
+        """
+        data = struct.pack(CarMotionData.PACKET_FORMAT,
+                           world_position_x, world_position_y, world_position_z,
+                           world_velocity_x, world_velocity_y, world_velocity_z,
+                           world_forward_dir_x, world_forward_dir_y, world_forward_dir_z,
+                           world_right_dir_x, world_right_dir_y, world_right_dir_z,
+                           g_force_lateral, g_force_longitudinal, g_force_vertical,
+                           yaw, pitch, roll)
+        return cls(data)
+
 class PacketMotionData:
     """A class for parsing the Motion Data Packet of a telemetry packet in a racing game.
 
@@ -233,3 +331,49 @@ class PacketMotionData:
             json_data["header"] = self.m_header.toJSON()
 
         return json_data
+
+    def __eq__(self, other: Any) -> bool:
+        """Check if this PacketMotionData is equal to another.
+
+        Args:
+            other (Any): The object to compare against.
+
+        Returns:
+            bool: True if equal, False otherwise.
+        """
+        if not isinstance(other, PacketMotionData):
+            return NotImplemented
+
+        return self.m_header == other.m_header and self.m_carMotionData == other.m_carMotionData
+
+    def __ne__(self, other: Any) -> bool:
+        """Check if this PacketMotionData is not equal to another.
+
+        Args:
+            other (Any): The object to compare against.
+
+        Returns:
+            bool: True if not equal, False otherwise.
+        """
+        return not self.__eq__(other)
+
+    def to_bytes(self) -> bytes:
+        """Serialize the PacketMotionData object to bytes based on PACKET_FORMAT.
+
+        Returns:
+            bytes: The serialized bytes.
+        """
+        return self.m_header.to_bytes() + b''.join([car.to_bytes() for car in self.m_carMotionData])
+
+    @classmethod
+    def from_values(cls, header: PacketHeader, car_motion_data: List[CarMotionData]) -> 'PacketMotionData':
+        """Create a PacketMotionData object from individual values.
+
+        Args:
+            header (PacketHeader): The header of the telemetry packet.
+            car_motion_data (List[CarMotionData]): List of CarMotionData objects containing data for all cars on track.
+
+        Returns:
+            PacketMotionData: A PacketMotionData object initialized with the provided values.
+        """
+        return cls(header, b''.join([car.to_bytes() for car in car_motion_data]))

@@ -61,6 +61,8 @@ class LapData:
         m_pitLaneTimeInLaneInMS (uint16): If active, the current time spent in the pit lane in ms.
         m_pitStopTimerInMS (uint16): Time of the actual pit stop in ms.
         m_pitStopShouldServePen (uint8): Whether the car should serve a penalty at this stop.
+        m_speedTrapFastestSpeed (float): Fastest speed trap speed in kmph.
+        m_speedTrapFastestLap (uint8): Fastest speed trap lap number.
     """
 
     PACKET_FORMAT_23 = ("<"
@@ -270,6 +272,7 @@ class LapData:
         """
 
         # Assign the members from unpacked_data
+        self.m_gameYear = game_year
         if game_year == 23:
             raw_data = _extract_sublist(data, 0, self.PACKET_LEN_23)
             (
@@ -442,6 +445,66 @@ class LapData:
             "speed-trap-fastest-lap" : self.m_speedTrapFastestLap,
         }
 
+    def __eq__(self, other: object) -> bool:
+        """
+        Check if two LapData instances are equal.
+
+        Args:
+            other (object): The object to compare with.
+
+        Returns:
+            bool: True if both instances are equal, False otherwise.
+        """
+        if not isinstance(other, LapData):
+            return False
+
+        return (
+            self.m_gameYear == other.m_gameYear and
+            self.m_lastLapTimeInMS == other.m_lastLapTimeInMS and
+            self.m_currentLapTimeInMS == other.m_currentLapTimeInMS and
+            self.m_sector1TimeInMS == other.m_sector1TimeInMS and
+            self.m_sector1TimeMinutes == other.m_sector1TimeMinutes and
+            self.m_sector2TimeInMS == other.m_sector2TimeInMS and
+            self.m_sector2TimeMinutes == other.m_sector2TimeMinutes and
+            self.m_deltaToCarInFrontInMS == other.m_deltaToCarInFrontInMS and
+            self.m_deltaToRaceLeaderInMS == other.m_deltaToRaceLeaderInMS and
+            self.m_lapDistance == other.m_lapDistance and
+            self.m_totalDistance == other.m_totalDistance and
+            self.m_safetyCarDelta == other.m_safetyCarDelta and
+            self.m_carPosition == other.m_carPosition and
+            self.m_currentLapNum == other.m_currentLapNum and
+            self.m_pitStatus == other.m_pitStatus and
+            self.m_numPitStops == other.m_numPitStops and
+            self.m_sector == other.m_sector and
+            self.m_currentLapInvalid == other.m_currentLapInvalid and
+            self.m_penalties == other.m_penalties and
+            self.m_totalWarnings == other.m_totalWarnings and
+            self.m_cornerCuttingWarnings == other.m_cornerCuttingWarnings and
+            self.m_numUnservedDriveThroughPens == other.m_numUnservedDriveThroughPens and
+            self.m_numUnservedStopGoPens == other.m_numUnservedStopGoPens and
+            self.m_gridPosition == other.m_gridPosition and
+            self.m_driverStatus == other.m_driverStatus and
+            self.m_resultStatus == other.m_resultStatus and
+            self.m_pitLaneTimerActive == other.m_pitLaneTimerActive and
+            self.m_pitLaneTimeInLaneInMS == other.m_pitLaneTimeInLaneInMS and
+            self.m_pitStopTimerInMS == other.m_pitStopTimerInMS and
+            self.m_pitStopShouldServePen == other.m_pitStopShouldServePen and
+            self.m_speedTrapFastestSpeed == other.m_speedTrapFastestSpeed and
+            self.m_speedTrapFastestLap == other.m_speedTrapFastestLap
+        )
+
+    def __ne__(self, other: object) -> bool:
+        """
+        Check if two LapData instances are not equal.
+
+        Args:
+            other (object): The object to compare with.
+
+        Returns:
+            bool: True if both instances are not equal, False otherwise.
+        """
+        return not self.__eq__(other)
+
 class PacketLapData:
     """Class representing the incoming PacketLapData.
 
@@ -463,14 +526,14 @@ class PacketLapData:
             - InvalidPacketLengthError: If the received packet length is not as expected.
         """
         self.m_header: PacketHeader = header
-        self.m_LapData: List[LapData] = []  # LapData[22]
-        self.m_LapDataCount = 22
+        self.m_lapData: List[LapData] = []  # LapData[22]
+        self.m_lapDataCount = 22
         if header.m_gameYear == 23:
             lap_data_obj_size = LapData.PACKET_LEN_23
-            len_of_lap_data_array = self.m_LapDataCount * LapData.PACKET_LEN_23
+            len_of_lap_data_array = self.m_lapDataCount * LapData.PACKET_LEN_23
         else: # 24
             lap_data_obj_size = LapData.PACKET_LEN_24
-            len_of_lap_data_array = self.m_LapDataCount * LapData.PACKET_LEN_24
+            len_of_lap_data_array = self.m_lapDataCount * LapData.PACKET_LEN_24
 
         # 2 extra bytes for the two uint8 that follow LapData
         expected_len = (len_of_lap_data_array + 2)
@@ -481,7 +544,7 @@ class PacketLapData:
 
         lap_data_packet_raw = _extract_sublist(packet, 0, len_of_lap_data_array)
         for lap_data_packet in _split_list(lap_data_packet_raw, lap_data_obj_size):
-            self.m_LapData.append(LapData(lap_data_packet, header.m_gameYear))
+            self.m_lapData.append(LapData(lap_data_packet, header.m_gameYear))
 
         time_trial_section_raw = _extract_sublist(packet, len_of_lap_data_array, len(packet))
         unpacked_data = struct.unpack('<bb', time_trial_section_raw)
@@ -497,7 +560,7 @@ class PacketLapData:
         Returns:
         - str: String representation of PacketLapData.
         """
-        lap_data_str = ", ".join(str(data) for data in self.m_LapData)
+        lap_data_str = ", ".join(str(data) for data in self.m_lapData)
         return f"PacketLapData(Header: {str(self.m_header)}, Car Lap Data: [{lap_data_str}])"
 
     def toJSON(self, include_header: bool=False) -> Dict[str, Any]:
@@ -512,11 +575,43 @@ class PacketLapData:
         """
 
         json_data = {
-            "lap-data": [lap_data.toJSON() for lap_data in self.m_LapData],
-            "lap-data-count": self.m_LapDataCount,
+            "lap-data": [lap_data.toJSON() for lap_data in self.m_lapData],
+            "lap-data-count": self.m_lapDataCount,
             "time-trial-pb-car-idx": int(self.m_timeTrialPBCarIdx),
             "time-trial-rival-car-idx": int(self.m_timeTrialRivalCarIdx),
         }
         if include_header:
             json_data["header"] = self.m_header.toJSON()
         return json_data
+
+    def __eq__(self, other: object) -> bool:
+        """
+        Check if two PacketLapData instances are equal.
+
+        Args:
+            other (object): The object to compare with.
+
+        Returns:
+            bool: True if both instances are equal, False otherwise.
+        """
+        if not isinstance(other, PacketLapData):
+            return False
+
+        return (
+            self.m_header == other.m_header and
+            self.m_lapData == other.m_lapData and
+            self.m_timeTrialPBCarIdx == other.m_timeTrialPBCarIdx and
+            self.m_timeTrialRivalCarIdx == other.m_timeTrialRivalCarIdx
+        )
+
+    def __ne__(self, other: object) -> bool:
+        """
+        Check if two PacketLapData instances are not equal.
+
+        Args:
+            other (object): The object to compare with.
+
+        Returns:
+            bool: True if both instances are not equal, False otherwise.
+        """
+        return not self.__eq__(other)

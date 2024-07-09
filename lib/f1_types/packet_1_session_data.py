@@ -22,7 +22,7 @@
 
 
 import struct
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Union
 from enum import Enum
 from .common import _split_list, _extract_sublist, SessionType23, SessionType24, PacketHeader, TrackID, SafetyCarType, \
     GearboxAssistMode, SessionLength
@@ -102,7 +102,36 @@ class MarshalZone:
             self.m_zoneFlag = MarshalZone.MarshalZoneFlagType(self.m_zoneFlag)
 
     def __str__(self) -> str:
+        """Return the string representation of this object
+
+        Returns:
+            str: string representation
+        """
         return f"MarshalZone(Start: {self.m_zoneStart}, Flag: {self.m_zoneFlag})"
+
+    def __eq__(self, other: "MarshalZone") -> bool:
+        """Checks if two MarshalZone objects are equal.
+
+        Args:
+            other (MarshalZone): The other MarshalZone object to compare with.
+
+        Returns:
+            bool: True if the two objects are equal, False otherwise.
+        """
+        if not isinstance(other, MarshalZone):
+            return False
+        return self.m_zoneStart == other.m_zoneStart and self.m_zoneFlag == other.m_zoneFlag
+
+    def __ne__(self, other: "MarshalZone") -> bool:
+        """Checks if two MarshalZone objects are not equal.
+
+        Args:
+            other (MarshalZone): The other MarshalZone object to compare with.
+
+        Returns:
+            bool: True if the two objects are not equal, False otherwise.
+        """
+        return not self.__eq__(other)
 
     def toJSON(self) -> Dict[str, Any]:
         """Converts the MarshalZone object to a dictionary suitable for JSON serialization.
@@ -115,6 +144,29 @@ class MarshalZone:
             "zone-start": self.m_zoneStart,
             "zone-flag": str(self.m_zoneFlag)
         }
+
+    def to_bytes(self) -> bytes:
+        """Converts the MarshalZone object to raw bytes.
+
+        Returns:
+            bytes: A list of bytes representing the raw data.
+        """
+
+        return struct.pack(self.PACKET_FORMAT, self.m_zoneStart, self.m_zoneFlag)
+
+    @classmethod
+    def from_values(cls, zone_start: float, zone_flag: MarshalZoneFlagType) -> "MarshalZone":
+        """Creates a new MarshalZone object from the given values.
+
+        Args:
+            zone_start (float): Fraction (0..1) of the way through the lap the marshal zone starts.
+            zone_flag (MarshalZone.MarshalZoneFlagType): Refer to the enum type for various options
+
+        Returns:
+            MarshalZone: A new MarshalZone object
+        """
+
+        return cls(struct.pack(cls.PACKET_FORMAT, zone_start, zone_flag))
 
 class WeatherForecastSample:
     """
@@ -348,6 +400,42 @@ class WeatherForecastSample:
             f"Rain Percentage: {self.m_rainPercentage})"
         )
 
+    def __eq__(self, other: "WeatherForecastSample") -> bool:
+        """Checks if two WeatherForecastSample objects are equal.
+
+        Args:
+            other (WeatherForecastSample): The other WeatherForecastSample object to compare with.
+
+        Returns:
+            bool: True if the objects are equal, False otherwise.
+        """
+
+        if not isinstance(other, WeatherForecastSample):
+            return False
+
+        return (
+            self.m_sessionType == other.m_sessionType and
+            self.m_timeOffset == other.m_timeOffset and
+            self.m_weather == other.m_weather and
+            self.m_trackTemperature == other.m_trackTemperature and
+            self.m_trackTemperatureChange == other.m_trackTemperatureChange and
+            self.m_airTemperature == other.m_airTemperature and
+            self.m_airTemperatureChange == other.m_airTemperatureChange and
+            self.m_rainPercentage == other.m_rainPercentage
+        )
+
+    def __ne__(self, other: "WeatherForecastSample") -> bool:
+        """Checks if two WeatherForecastSample objects are not equal.
+
+        Args:
+            other (WeatherForecastSample): The other WeatherForecastSample object to compare with.
+
+        Returns:
+            bool: True if the objects are not equal, False otherwise.
+        """
+
+        return not self.__eq__(other)
+
     def toJSON(self) -> Dict[str, Any]:
         """Converts the WeatherForecastSample object to a dictionary suitable for JSON serialization.
 
@@ -365,6 +453,64 @@ class WeatherForecastSample:
             "air-temperature-change": str(self.m_airTemperatureChange),
             "rain-percentage": self.m_rainPercentage
         }
+
+    def to_bytes(self) -> bytes:
+        """Converts the WeatherForecastSample object to raw bytes.
+
+        Returns:
+            bytes: A list of bytes representing the raw data.
+        """
+
+        return struct.pack(self.PACKET_FORMAT,
+            self.m_sessionType,
+            self.m_timeOffset,
+            self.m_weather.value,
+            self.m_trackTemperature,
+            self.m_trackTemperatureChange.value,
+            self.m_airTemperature,
+            self.m_airTemperatureChange.value,
+            self.m_rainPercentage
+        )
+
+    @classmethod
+    def from_values(cls,
+                    session_type: Union[SessionType23, SessionType24],
+                    time_offset: int,
+                    weather: WeatherCondition,
+                    track_temp: int,
+                    track_temp_change: TrackTemperatureChange,
+                    air_temp: int,
+                    air_temp_change: AirTemperatureChange,
+                    rain_percentage: int) -> "WeatherForecastSample":
+        """
+        Creates a new WeatherForecastSample object from the given values
+
+        Args:
+            session_type (Union[SessionType23, SessionType24]): Session type enum
+            time_offset (int): Time offset in minutes
+            weather (WeaetherCondition): Weather enum
+            track_temp (int): Track temp in celsius
+            track_temp_change (TrackTemperatureChange): Track temp change enum
+            air_temp (int): Air temp in celsius
+            air_temp_change (AirTemperatureChange): Air temp change enum
+            rain_percentage (int): Probability percentage of rain
+
+        Returns:
+            WeatherForecastSample: _description_
+        """
+
+        return cls(
+            struct.pack(WeatherForecastSample.PACKET_FORMAT,
+                session_type.value,
+                time_offset,
+                weather.value,
+                track_temp,
+                track_temp_change.value,
+                air_temp,
+                air_temp_change.value,
+                rain_percentage
+            )
+        )
 
 class PacketSessionData:
     """
@@ -1010,3 +1156,299 @@ class PacketSessionData:
         if include_header:
             json_data["header"] = self.m_header.toJSON()
         return json_data
+
+    def __eq__(self, other: "PacketSessionData") -> bool:
+        """
+        Check for equality between two PacketSessionData objects.
+
+        Args:
+            other (object): The other object to compare against.
+
+        Returns:
+            bool: True if both PacketSessionData objects are equal, False otherwise.
+        """
+        if not isinstance(other, PacketSessionData):
+            return NotImplemented
+
+        if self.m_header != other.m_header:
+            return False
+
+        if not self.__eq_f1_23(other):
+            return False
+
+        if self.m_header.m_gameYear == 24:
+            return self.__eq_f1_24(other)
+
+        return True
+
+    def __eq_f1_23(self, other: "PacketSessionData") -> bool:
+        """
+        Check the F1 23 specific stuff
+
+        Args:
+            other (object): The other object to compare against.
+
+        Returns:
+            bool: True if both PacketSessionData objects are equal, False otherwise.
+        """
+        if not isinstance(other, PacketSessionData):
+            return NotImplemented
+
+        return (
+            self.m_weather == other.m_weather and
+            self.m_trackTemperature == other.m_trackTemperature and
+            self.m_airTemperature == other.m_airTemperature and
+            self.m_totalLaps == other.m_totalLaps and
+            self.m_trackLength == other.m_trackLength and
+            self.m_sessionType == other.m_sessionType and
+            self.m_trackId == other.m_trackId and
+            self.m_formula == other.m_formula and
+            self.m_sessionTimeLeft == other.m_sessionTimeLeft and
+            self.m_sessionDuration  == other.m_sessionDuration and
+            self.m_pitSpeedLimit == other.m_pitSpeedLimit and
+            self.m_gamePaused == other.m_gamePaused and
+            self.m_isSpectating == other.m_isSpectating and
+            self.m_spectatorCarIndex == other.m_spectatorCarIndex and
+            self.m_sliProNativeSupport == other.m_sliProNativeSupport and
+            self.m_numMarshalZones == other.m_numMarshalZones and
+            self.m_marshalZones == other.m_marshalZones and
+            self.m_safetyCarStatus == other.m_safetyCarStatus and
+            self.m_networkGame == other.m_networkGame and
+            self.m_numWeatherForecastSamples == other.m_numWeatherForecastSamples and
+            self.m_weatherForecastSamples == other.m_weatherForecastSamples and
+            self.m_forecastAccuracy == other.m_forecastAccuracy and
+            self.m_aiDifficulty == other.m_aiDifficulty and
+            self.m_seasonLinkIdentifier == other.m_seasonLinkIdentifier and
+            self.m_weekendLinkIdentifier == other.m_weekendLinkIdentifier and
+            self.m_sessionLinkIdentifier == other.m_sessionLinkIdentifier and
+            self.m_pitStopWindowIdealLap == other.m_pitStopWindowIdealLap and
+            self.m_pitStopWindowLatestLap == other.m_pitStopWindowLatestLap and
+            self.m_pitStopRejoinPosition == other.m_pitStopRejoinPosition and
+            self.m_steeringAssist == other.m_steeringAssist and
+            self.m_brakingAssist == other.m_brakingAssist and
+            self.m_gearboxAssist == other.m_gearboxAssist and
+            self.m_pitAssist == other.m_pitAssist and
+            self.m_pitReleaseAssist == other.m_pitReleaseAssist and
+            self.m_ERSAssist == other.m_ERSAssist and
+            self.m_DRSAssist == other.m_DRSAssist and
+            self.m_dynamicRacingLine == other.m_dynamicRacingLine and
+            self.m_dynamicRacingLineType == other.m_dynamicRacingLineType and
+            self.m_gameMode == other.m_gameMode and
+            self.m_ruleSet == other.m_ruleSet and
+            self.m_timeOfDay == other.m_timeOfDay and
+            self.m_sessionLength == other.m_sessionLength and
+            self.m_speedUnitsLeadPlayer == other.m_speedUnitsLeadPlayer and
+            self.m_temperatureUnitsLeadPlayer == other.m_temperatureUnitsLeadPlayer and
+            self.m_speedUnitsSecondaryPlayer == other.m_speedUnitsSecondaryPlayer and
+            self.m_temperatureUnitsSecondaryPlayer == other.m_temperatureUnitsSecondaryPlayer and
+            self.m_numSafetyCarPeriods == other.m_numSafetyCarPeriods and
+            self.m_numVirtualSafetyCarPeriods == other.m_numVirtualSafetyCarPeriods and
+            self.m_numRedFlagPeriods == other.m_numRedFlagPeriods
+        )
+
+    def __eq_f1_24(self, other: "PacketSessionData") -> bool:
+        """
+        Check the F1 24 specific stuff
+
+        Args:
+            other (object): The other object to compare against.
+
+        Returns:
+            bool: True if both PacketSessionData objects are equal, False otherwise.
+        """
+        return (
+                self.m_equalCarPerformance == other.m_equalCarPerformance and
+                self.m_recoveryMode == other.m_recoveryMode and
+                self.m_flashbackLimit == other.m_flashbackLimit and
+                self.m_surfaceType == other.m_surfaceType and
+                self.m_lowFuelMode == other.m_lowFuelMode and
+                self.m_raceStarts == other.m_raceStarts and
+                self.m_tyreTemperatureMode == other.m_tyreTemperatureMode and
+                self.m_pitLaneTyreSim == other.m_pitLaneTyreSim and
+                self.m_carDamage == other.m_carDamage and
+                self.m_carDamageRate == other.m_carDamageRate and
+                self.m_collisions == other.m_collisions and
+                self.m_collisionsOffForFirstLapOnly == other.m_collisionsOffForFirstLapOnly and
+                self.m_mpUnsafePitRelease == other.m_mpUnsafePitRelease and
+                self.m_mpOffForGriefing == other.m_mpOffForGriefing and
+                self.m_cornerCuttingStringency == other.m_cornerCuttingStringency and
+                self.m_parcFermeRules == other.m_parcFermeRules and
+                self.m_pitStopExperience == other.m_pitStopExperience and
+                self.m_safetyCar == other.m_safetyCar and
+                self.m_safetyCarExperience == other.m_safetyCarExperience and
+                self.m_formationLap == other.m_formationLap and
+                self.m_formationLapExperience == other.m_formationLapExperience and
+                self.m_redFlags == other.m_redFlags and
+                self.m_affectsLicenceLevelSolo == other.m_affectsLicenceLevelSolo and
+                self.m_affectsLicenceLevelMP == other.m_affectsLicenceLevelMP and
+                self.m_numSessionsInWeekend == other.m_numSessionsInWeekend and
+                self.m_weekendStructure == other.m_weekendStructure and
+                self.m_sector2LapDistanceStart == other.m_sector2LapDistanceStart and
+                self.m_sector3LapDistanceStart == other.m_sector3LapDistanceStart
+            )
+
+    # def to_bytes(self) -> bytes:
+    #     """
+    #     Converts the PacketSessionData object to raw bytes.
+
+    #     Returns:
+    #         bytes: The list of raw bytes
+    #     """
+
+    #     raw_bytes = self.m_header.to_bytes()
+    #     raw_bytes += self.__to_bytes_section_0()
+    #     raw_bytes += self.__to_bytes_section_1()
+    #     raw_bytes += self.__to_bytes_section_2()
+    #     raw_bytes += self.__to_bytes_section_3()
+    #     raw_bytes += self.__to_bytes_section_4()
+    #     raw_bytes += self.__to_bytes_section_5()
+
+    #     return raw_bytes
+
+
+    # def __to_bytes_section_0(self) -> bytes:
+    #     """Serialse section 0
+
+    #     Returns:
+    #         bytes: Section 0 bytes
+    #     """
+
+    #     return struct.pack(self.PACKET_FORMAT_SECTION_0,
+    #         self.m_weather,
+    #         self.m_trackTemperature,
+    #         self.m_airTemperature,
+    #         self.m_totalLaps,
+    #         self.m_trackLength,
+    #         self.m_sessionType,
+    #         self.m_trackId,
+    #         self.m_formula,
+    #         self.m_sessionTimeLeft,
+    #         self.m_sessionDuration,
+    #         self.m_pitSpeedLimit,
+    #         self.m_gamePaused,
+    #         self.m_isSpectating,
+    #         self.m_spectatorCarIndex,
+    #         self.m_sliProNativeSupport,
+    #         self.m_numMarshalZones
+    #     )
+
+    # def __to_bytes_section_1(self) -> bytes:
+    #     """Serialse section 1 - marshal zones
+
+    #     Returns:
+    #         bytes: Section 1 bytes
+    #     """
+
+    #     num_empty_marshal_zones =  self.m_maxMarshalZones - self.m_numMarshalZones
+    #     marshal_zones_bytes =  b''.join([marshal_zone.to_bytes() for marshal_zone in self.m_marshalZones])
+
+    #     for _ in range(num_empty_marshal_zones):
+    #         marshal_zones_bytes += MarshalZone.from_values(0, MarshalZone.MarshalZoneFlagType.NONE).to_bytes()
+    #     return marshal_zones_bytes
+
+    # def __to_bytes_section_2(self) -> bytes:
+    #     """Serialse section 2
+
+    #     Returns:
+    #         bytes: Section 2 bytes
+    #     """
+
+    #     return struct.pack(self.PACKET_FORMAT_SECTION_2,
+    #         self.m_safetyCarStatus,
+    #         self.m_networkGame,
+    #         self.m_numWeatherForecastSamples
+    #     )
+
+    # def __to_bytes_section_3(self) -> bytes:
+    #     """Serialse section 3 - weather forecast samples
+
+    #     Returns:
+    #         bytes: Section 3 bytes
+    #     """
+
+    #     num_empty_weather_forecast_samples =  self.m_maxWeatherForecastSamples - self.m_numWeatherForecastSamples
+    #     weather_forecast_bytes =  b''.join([marshal_zone.to_bytes() for marshal_zone in self.m_marshalZones])
+
+    #     for _ in range(num_empty_weather_forecast_samples):
+    #         weather_forecast_bytes += MarshalZone.from_values(0, MarshalZone.MarshalZoneFlagType.NONE).to_bytes()
+    #     return weather_forecast_bytes
+
+    # def __to_bytes_section_4(self) -> bytes:
+    #     """Serialse section 4
+
+    #     Returns:
+    #         bytes: Section 4 bytes
+    #     """
+
+    #     return struct.pack(self.PACKET_FORMAT_SECTION_4,
+    #         self.m_forecastAccuracy, #"B" # uint8   - Weather prediction type. 0 = Perfect, 1 = Approximate
+    #         self.m_aiDifficulty, # "B" # uint8   - AI Difficulty rating - 0-110
+    #         self.m_seasonLinkIdentifier, # "I" # uint32  - Identifier for season - persists across saves
+    #         self.m_weekendLinkIdentifier, # "I" # uint32  - Identifier for weekend - persists across saves
+    #         self.m_sessionLinkIdentifier, # "I" # uint32  - Identifier for session - persists across saves
+    #         self.m_pitStopWindowIdealLap, # "B" # uint8   - Ideal lap to pit on for current strategy (player)
+    #         self.m_pitStopWindowLatestLap, #"B" # uint8   - Latest lap to pit on for current strategy (player)
+    #         self.m_pitStopRejoinPosition, # "B" # uint8   - Predicted position to rejoin at (player)
+    #         self.m_steeringAssist, # "B" # uint8   -m_steeringAssist;            // 0 = off, 1 = on
+    #         self.m_brakingAssist, # "B" # uint8   -       m_brakingAssist;             // 0 = off, 1 = low, 2 = medium, 3 = high
+    #         self.m_gearboxAssist.value, #"B" # uint8   -        m_gearboxAssist;             // 1 = manual, 2 = manual & suggested gear, 3 = auto
+    #         self.m_pitAssist, # "B" # uint8    -       m_pitAssist;                 // 0 = off, 1 = on
+    #         self.m_pitReleaseAssist, # "B" # uint8    -       m_pitReleaseAssist;          // 0 = off, 1 = on
+    #         self.m_ERSAssist, # "B" # uint8    -       m_ERSAssist;                 // 0 = off, 1 = on
+    #         self.m_DRSAssist, # "B" # uint8    -       m_DRSAssist;                 // 0 = off, 1 = on
+    #         self.m_dynamicRacingLine, # "B" # uint8    -       m_dynamicRacingLine;         // 0 = off, 1 = corners only, 2 = full
+    #         self.m_dynamicRacingLineType, # "B" # uint8    -       m_dynamicRacingLineType;     // 0 = 2D, 1 = 3D
+    #         self.m_gameMode, # "B" # uint8    -       m_gameMode;                  // Game mode id - see appendix
+    #         self.m_ruleSet, # "B" # uint8    -       m_ruleSet;                   // Ruleset - see appendix
+    #         self.m_timeOfDay, # "I" # uint32   - Local time of day - minutes since midnight
+    #         self.m_timeOfDay, # "B" # uint8    - m_sessionLength;             // 0 = None, 2 = Very Short, 3 = Short, 4 = Medium
+    #                                                     # // 5 = Medium Long, 6 = Long, 7 = Full
+    #         self.m_speedUnitsLeadPlayer, # "B" # uint8    -       m_speedUnitsLeadPlayer;             // 0 = MPH, 1 = KPH
+    #         self.m_temperatureUnitsLeadPlayer, # "B" # uint8    -       m_temperatureUnitsLeadPlayer;       // 0 = Celsius, 1 = Fahrenheit
+    #         self.m_speedUnitsSecondaryPlayer, # "B" # uint8    -       m_speedUnitsSecondaryPlayer;        // 0 = MPH, 1 = KPH
+    #         self.m_temperatureUnitsSecondaryPlayer, # "B" # uint8    -       m_temperatureUnitsSecondaryPlayer;  // 0 = Celsius, 1 = Fahrenheit
+    #         self.m_numSafetyCarPeriods, # "B" # uint8    -       m_numSafetyCarPeriods;              // Number of safety cars called during session
+    #         self.m_numVirtualSafetyCarPeriods, # "B" # uint8    -       m_numVirtualSafetyCarPeriods;       // Number of virtual safety cars called
+    #         self.m_numRedFlagPeriods, # "B" # uint8    -       m_numRedFlagPeriods;                // Number of red flags called during session
+    #     )
+
+    # def __to_bytes_section_5(self) -> bytes:
+    #     """Serialse section 5 (F1 24 specific)
+
+    #     Returns:
+    #         bytes: Section 5 bytes
+    #     """
+
+    #     if self.m_header.m_gameYear == 23:
+    #         return b''
+
+    #     return struct.pack(self.PACKET_FORMAT_SECTION_4,
+    #         self.m_equalCarPerformance,
+    #         self.m_recoveryMode,
+    #         self.m_flashbackLimit,
+    #         self.m_surfaceType,
+    #         self.m_lowFuelMode,
+    #         self.m_raceStarts,
+    #         self.m_tyreTemperatureMode,
+    #         self.m_pitLaneTyreSim,
+    #         self.m_carDamage,
+    #         self.m_carDamageRate,
+    #         self.m_collisions,
+    #         self.m_collisionsOffForFirstLapOnly,
+    #         self.m_mpUnsafePitRelease,
+    #         self.m_mpOffForGriefing,
+    #         self.m_cornerCuttingStringency,
+    #         self.m_parcFermeRules,
+    #         self.m_pitStopExperience,
+    #         self.m_safetyCar,
+    #         self.m_safetyCarExperience,
+    #         self.m_formationLap,
+    #         self.m_formationLapExperience,
+    #         self.m_redFlags,
+    #         self.m_affectsLicenceLevelSolo,
+    #         self.m_affectsLicenceLevelSolo,
+    #         self.m_numSessionsInWeekend,
+    #         *self.m_weekendStructure,
+    #         self.m_sector2LapDistanceStart,
+    #         self.m_sector3LapDistanceStart
+    #     )

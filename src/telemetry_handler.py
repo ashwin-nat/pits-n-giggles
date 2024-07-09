@@ -546,7 +546,7 @@ class F1TelemetryHandler:
         global g_collisions_history
 
         # UDP Custom Event - Add marker player markers list
-        if packet.m_eventStringCode == PacketEventData.EventPacketType.BUTTON_STATUS:
+        if packet.m_eventCode == PacketEventData.EventPacketType.BUTTON_STATUS:
             if (g_udp_custom_action_code is not None) and \
                 (packet.mEventDetails.isUDPActionPressed(g_udp_custom_action_code)):
 
@@ -560,11 +560,11 @@ class F1TelemetryHandler:
                     png_logger.error("Unable to generate player_recorded_event_str")
 
         # Fastest Lap - update data structures
-        elif packet.m_eventStringCode == PacketEventData.EventPacketType.FASTEST_LAP:
+        elif packet.m_eventCode == PacketEventData.EventPacketType.FASTEST_LAP:
             TelData.processFastestLapUpdate(packet)
 
         # Session Started - Empty data structures
-        elif packet.m_eventStringCode == PacketEventData.EventPacketType.SESSION_STARTED:
+        elif packet.m_eventCode == PacketEventData.EventPacketType.SESSION_STARTED:
             g_num_active_cars = 0
             TelData.processSessionStarted()
             # Clear the list regardless of event type
@@ -574,11 +574,11 @@ class F1TelemetryHandler:
             png_logger.info("Received SESSION_STARTED")
 
         # Retirement - Update data strucutres
-        elif packet.m_eventStringCode == PacketEventData.EventPacketType.RETIREMENT:
+        elif packet.m_eventCode == PacketEventData.EventPacketType.RETIREMENT:
             TelData.processRetirementEvent(packet)
 
         # Overtake - Update overtake records list
-        elif packet.m_eventStringCode == PacketEventData.EventPacketType.OVERTAKE:
+        elif packet.m_eventCode == PacketEventData.EventPacketType.OVERTAKE:
             overtake_obj = TelData.getOvertakeObj(packet.mEventDetails.overtakingVehicleIdx,
                                                         packet.mEventDetails.beingOvertakenVehicleIdx)
             if overtake_obj:

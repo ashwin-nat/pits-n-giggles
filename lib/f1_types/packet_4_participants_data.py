@@ -22,7 +22,7 @@
 
 
 import struct
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Union, Optional
 from .common import _split_list, PacketHeader, Platform, Nationality, TeamID23, TeamID24, TelemetrySetting
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -93,6 +93,7 @@ class ParticipantData:
         Raises:
             struct.error: If the binary data does not match the expected format.
         """
+        self.m_gameYear = game_year
         if game_year == 23:
             unpacked_data = struct.unpack(self.PACKET_FORMAT_23, data)
             (
@@ -187,6 +188,149 @@ class ParticipantData:
             "platform": str(self.m_platform)
         }
 
+    def to_bytes(self) -> bytes:
+        """
+        Convert the ParticipantData instance to bytes.
+
+        Returns:
+            bytes: Bytes representation of the ParticipantData instance.
+        """
+        if self.m_gameYear == 23:
+            return struct.pack(self.PACKET_FORMAT_23,
+                self.m_aiControlled,
+                self.m_driverId,
+                self.networkId,
+                self.m_teamId.value,
+                self.m_myTeam,
+                self.m_raceNumber,
+                self.m_nationality.value,
+                self.m_name.encode('utf-8'),
+                self.m_yourTelemetry.value,
+                self.m_showOnlineNames,
+                self.m_platform.value
+            )
+        return struct.pack(self.PACKET_FORMAT_24,
+            self.m_aiControlled,
+            self.m_driverId,
+            self.networkId,
+            self.m_teamId.value,
+            self.m_myTeam,
+            self.m_raceNumber,
+            self.m_nationality.value,
+            self.m_name.encode('utf-8'),
+            self.m_yourTelemetry.value,
+            self.m_showOnlineNames,
+            self.m_techLevel,
+            self.m_platform.value
+        )
+
+    def __eq__(self, other: "ParticipantData") -> bool:
+        """
+        Checks if two ParticipantData objects are equal.
+
+        Args:
+            other (ParticipantData): The other ParticipantData object to compare with.
+
+        Returns:
+            bool: True if the objects are equal, False otherwise.
+        """
+        return (
+            self.m_gameYear == other.m_gameYear and
+            self.m_aiControlled == other.m_aiControlled and
+            self.m_driverId == other.m_driverId and
+            self.networkId == other.networkId and
+            self.m_teamId == other.m_teamId and
+            self.m_myTeam == other.m_myTeam and
+            self.m_raceNumber == other.m_raceNumber and
+            self.m_nationality == other.m_nationality and
+            self.m_name == other.m_name and
+            self.m_yourTelemetry == other.m_yourTelemetry and
+            self.m_showOnlineNames == other.m_showOnlineNames and
+            self.m_techLevel == other.m_techLevel and
+            self.m_platform == other.m_platform
+        )
+
+    def __ne__(self, other: "ParticipantData") -> bool:
+        """
+        Checks if two ParticipantData objects are not equal.
+
+        Args:
+            other (ParticipantData): The other ParticipantData object to compare with.
+
+        Returns:
+            bool: True if the objects are not equal, False otherwise.
+        """
+        return not self.__eq__(other)
+
+    @classmethod
+    def from_values(cls,
+                    header: PacketHeader,
+                    ai_controlled: bool,
+                    driver_id: int,
+                    network_id: int,
+                    team_id: Union[TeamID23, TeamID24],
+                    my_team: bool,
+                    race_number: int,
+                    nationality: Nationality,
+                    name: str,
+                    your_telemetry: TelemetrySetting,
+                    show_online_names: bool,
+                    platform: Platform,
+                    tech_level: Optional[int] = 0
+                    ) -> "ParticipantData":
+        """
+        Creates a new ParticipantData object with the provided values.
+
+        Args:
+            header (PacketHeader): Header containing general information about the packet.
+            ai_controlled (bool): Whether the car is an AI car or not.
+            driver_id (int): ID of the car's driver.
+            network_id (int): ID of the car on the network.
+            team_id (Union[TeamID23, TeamID24]): ID of the car's team.
+            my_team (bool): Whether the car is on its team or not.
+            race_number (int): Race number of the car.
+            nationality (Nationality): Nationality of the car.
+            name (str): Name of the car.
+            your_telemetry (TelemetrySetting): Your telemetry setting.
+            show_online_names (bool): Whether to show online names or not.
+            platform (Platform): Platform of the car.
+            tech_level (Optional[int], optional): Tech level of the car. Defaults to 0. Will only be considered for 24
+
+        Returns:
+            ParticipantData: A new ParticipantData object with the provided values.
+        """
+
+        if header.m_gameYear == 23:
+            data = struct.pack(ParticipantData.PACKET_FORMAT_23,
+                ai_controlled,
+                driver_id,
+                network_id,
+                team_id.value,
+                my_team,
+                race_number,
+                nationality.value,
+                name.encode('utf-8'),
+                your_telemetry.value,
+                show_online_names,
+                platform.value
+            )
+        else:
+            data = struct.pack(ParticipantData.PACKET_FORMAT_24,
+                ai_controlled,
+                driver_id,
+                network_id,
+                team_id.value,
+                my_team,
+                race_number,
+                nationality.value,
+                name.encode('utf-8'),
+                your_telemetry.value,
+                show_online_names,
+                tech_level,
+                platform.value
+            )
+        return cls(data, header.m_gameYear)
+
 class PacketParticipantsData:
     """
     A class representing participant data in a racing simulation.
@@ -260,3 +404,73 @@ class PacketParticipantsData:
         if include_header:
             json_data["header"] = self.m_header.toJSON()
         return json_data
+
+    def to_bytes(self) -> bytes:
+        """
+        Convert the PacketParticipantsData instance to a bytes object.
+
+        Returns:
+            bytes: Bytes object representing the PacketParticipantsData instance.
+        """
+
+        return (
+            self.m_header.to_bytes() +
+            struct.pack("<B", self.m_numActiveCars) +
+            b''.join([participant.to_bytes() for participant in self.m_participants]))
+
+    @classmethod
+    def from_values(cls,
+                    header: PacketHeader,
+                    num_active_cars: int,
+                    participants: List[ParticipantData]) -> "PacketParticipantsData":
+        """
+        Create a new PacketParticipantsData instance with the provided values.
+
+        Parameters:
+            - header (PacketHeader): Header containing general information about the packet.
+            - num_active_cars (int): Number of active cars in the data - should match the number of cars on HUD.
+            - participants (List[ParticipantData]): List of ParticipantData objects representing information
+                about each participant in the race.
+
+                Note:
+                    The length of participants should not exceed max_participants.
+
+        Returns:
+            PacketParticipantsData: A new PacketParticipantsData instance with the provided values.
+        """
+
+        return cls(header,
+                   struct.pack("<B", num_active_cars) +
+                        b''.join([participant.to_bytes() for participant in participants]))
+
+    def __eq__(self, other: "PacketParticipantsData") -> bool:
+        """
+        Compare two PacketParticipantsData instances for equality.
+
+        Parameters:
+            - other (PacketParticipantsData): The other PacketParticipantsData instance to compare with.
+
+        Returns:
+            bool: True if the two instances are equal, False otherwise.
+        """
+
+        if not isinstance(other, PacketParticipantsData):
+            return False
+        return (
+            self.m_header == other.m_header and
+            self.m_numActiveCars == other.m_numActiveCars and
+            self.m_participants == other.m_participants
+        )
+
+    def __ne__(self, other: "PacketParticipantsData") -> bool:
+        """
+        Compare two PacketParticipantsData instances for inequality.
+
+        Parameters:
+            - other (PacketParticipantsData): The other PacketParticipantsData instance to compare with.
+
+        Returns:
+            bool: True if the two instances are not equal, False otherwise.
+        """
+
+        return not self.__eq__(other)

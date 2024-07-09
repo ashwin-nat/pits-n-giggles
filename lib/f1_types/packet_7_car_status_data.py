@@ -28,57 +28,6 @@ from .common import _split_list, PacketHeader, ActualTyreCompound, VisualTyreCom
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
-class PacketCarStatusData:
-    """
-    Class containing details on car statuses for all the cars in the race.
-
-    Attributes:
-        - m_header(PacketHeader) - packet header info
-        - m_carStatusData(List[CarStatusData]) - List of statuses of every car
-    """
-
-    def __init__(self, header: PacketHeader, packet: bytes) -> None:
-        """Initialise the object from the raw bytes list
-
-        Args:
-            header (PacketHeader): Object containing header info
-            packet (bytes): List of bytes representing the packet payload
-        """
-
-        self.m_header: PacketHeader = header
-        self.m_carStatusData: List[CarStatusData] = []               # CarStatusData[22]
-
-        for status_per_car_raw_data in _split_list(packet, CarStatusData.PACKET_LEN):
-            self.m_carStatusData.append(CarStatusData(status_per_car_raw_data))
-
-    def __str__(self) -> str:
-        """Generate a human readable string of this object's contents
-
-        Returns:
-            str: Printable/Loggable string
-        """
-
-        status_data_str = ", ".join(str(status) for status in self.m_carStatusData)
-        return f"PacketCarStatusData(Header: {str(self.m_header)}, Car Status Data: [{status_data_str}])"
-
-    def toJSON(self, include_header: bool=False) -> Dict[str, Any]:
-        """
-        Convert the PacketCarStatusData instance to a JSON-compatible dictionary.
-
-        Arguments:
-            - include_header - Whether the header dump must be included in the JSON
-        Returns:
-            Dict[str, Any]: JSON-compatible dictionary representing the PacketCarStatusData instance.
-        """
-
-        json_data = {
-            "car-status-data": [car_status_data.toJSON() for car_status_data in self.m_carStatusData],
-        }
-        if include_header:
-            json_data["header"] = self.m_header.toJSON()
-
-        return json_data
-
 class CarStatusData:
     """
     Class representing car status data.
@@ -291,6 +240,8 @@ class CarStatusData:
         ) = struct.unpack(self.PACKET_FORMAT, data)
 
         self.m_antiLockBrakes = bool(self.m_antiLockBrakes)
+        self.m_pitLimiterStatus = bool(self.m_pitLimiterStatus)
+        self.m_networkPaused = bool(self.m_networkPaused)
         if ActualTyreCompound.isValid(self.m_actualTyreCompound):
             self.m_actualTyreCompound = ActualTyreCompound(self.m_actualTyreCompound)
         if VisualTyreCompound.isValid(self.m_visualTyreCompound):
@@ -374,3 +325,252 @@ class CarStatusData:
             "ers-max-capacity" : self.MAX_ERS_STORE_ENERGY,
             "network-paused": self.m_networkPaused,
         }
+
+    def __eq__(self, other: "CarStatusData") -> bool:
+        """
+        Check if two CarStatusData instances are equal.
+
+        Args:
+            other (CarStatusData): The other CarStatusData instance.
+
+        Returns:
+            bool: True if the two CarStatusData instances are equal, False otherwise.
+        """
+
+        return (
+            self.m_tractionControl == other.m_tractionControl and
+            self.m_antiLockBrakes == other.m_antiLockBrakes and
+            self.m_fuelMix == other.m_fuelMix and
+            self.m_frontBrakeBias == other.m_frontBrakeBias and
+            self.m_pitLimiterStatus == other.m_pitLimiterStatus and
+            self.m_fuelInTank == other.m_fuelInTank and
+            self.m_fuelCapacity == other.m_fuelCapacity and
+            self.m_fuelRemainingLaps == other.m_fuelRemainingLaps and
+            self.m_maxRPM == other.m_maxRPM and
+            self.m_idleRPM == other.m_idleRPM and
+            self.m_maxGears == other.m_maxGears and
+            self.m_drsAllowed == other.m_drsAllowed and
+            self.m_drsActivationDistance == other.m_drsActivationDistance and
+            self.m_actualTyreCompound == other.m_actualTyreCompound and
+            self.m_visualTyreCompound == other.m_visualTyreCompound and
+            self.m_tyresAgeLaps == other.m_tyresAgeLaps and
+            self.m_vehicleFiaFlags == other.m_vehicleFiaFlags and
+            self.m_enginePowerICE == other.m_enginePowerICE and
+            self.m_enginePowerMGUK == other.m_enginePowerMGUK and
+            self.m_ersStoreEnergy == other.m_ersStoreEnergy and
+            self.m_ersDeployMode == other.m_ersDeployMode and
+            self.m_ersHarvestedThisLapMGUK == other.m_ersHarvestedThisLapMGUK and
+            self.m_ersHarvestedThisLapMGUH == other.m_ersHarvestedThisLapMGUH and
+            self.m_ersDeployedThisLap == other.m_ersDeployedThisLap and
+            self.m_networkPaused == other.m_networkPaused
+        )
+
+    def __ne__(self, other: "CarStatusData") -> bool:
+        """
+        Check if two CarStatusData instances are not equal.
+
+        Args:
+            other (CarStatusData): The other CarStatusData instance.
+
+        Returns:
+            bool: True if the two CarStatusData instances are not equal, False otherwise.
+        """
+
+        return not self.__eq__(other)
+
+    def to_bytes(self) -> bytes:
+        """Serialize the CarStatusData object to bytes based on PACKET_FORMAT.
+
+        Returns:
+            bytes: The serialized bytes.
+        """
+
+        return struct.pack(self.PACKET_FORMAT,
+            self.m_tractionControl.value,
+            self.m_antiLockBrakes,
+            self.m_fuelMix,
+            self.m_frontBrakeBias,
+            self.m_pitLimiterStatus,
+            self.m_fuelInTank,
+            self.m_fuelCapacity,
+            self.m_fuelRemainingLaps,
+            self.m_maxRPM,
+            self.m_idleRPM,
+            self.m_maxGears,
+            self.m_drsAllowed,
+            self.m_drsActivationDistance,
+            self.m_actualTyreCompound.value,
+            self.m_visualTyreCompound.value,
+            self.m_tyresAgeLaps,
+            self. m_vehicleFiaFlags.value,
+            self.m_enginePowerICE,
+            self.m_enginePowerMGUK,
+            self.m_ersStoreEnergy,
+            self.m_ersDeployMode.value,
+            self.m_ersHarvestedThisLapMGUK,
+            self.m_ersHarvestedThisLapMGUH,
+            self.m_ersDeployedThisLap,
+            self.m_networkPaused
+        )
+
+    @classmethod
+    def from_values(cls,
+        traction_control: TractionControlAssistMode,
+        anti_lock_brakes: bool,
+        fuel_mix: int,
+        front_brake_bias: int,
+        pit_limiter_status: bool,
+        fuel_in_tank: float,
+        fuel_capacity: float,
+        fuel_remaining_laps: float,
+        max_rpm: int,
+        idle_rpm: int,
+        max_gears: int,
+        drs_allowed: int,
+        drs_activation_distance: int,
+        actual_tyre_compound: ActualTyreCompound,
+        visual_tyre_compound: VisualTyreCompound,
+        tyres_age_laps: int,
+        m_vehicle_fia_flags: VehicleFIAFlags,
+        engine_power_ice: float,
+        engine_power_mguk: float,
+        ers_store_energy: float,
+        ers_deploy_mode: ERSDeployMode,
+        ers_harvested_this_lap_mguk: float,
+        ers_harvested_this_lap_mguh: float,
+        ers_deployed_this_lap: float,
+        network_paused) -> "CarStatusData":
+        """
+        Create a new CarStatusData object from the provided values.
+
+        Args:
+            Too many arguments to document for a test method
+
+        Returns:
+            CarStatusData: The created CarStatusData object.
+        """
+
+        return cls(struct.pack(cls.PACKET_FORMAT,
+            traction_control.value,
+            anti_lock_brakes,
+            fuel_mix,
+            front_brake_bias,
+            pit_limiter_status,
+            fuel_in_tank,
+            fuel_capacity,
+            fuel_remaining_laps,
+            max_rpm,
+            idle_rpm,
+            max_gears,
+            drs_allowed,
+            drs_activation_distance,
+            actual_tyre_compound.value,
+            visual_tyre_compound.value,
+            tyres_age_laps,
+            m_vehicle_fia_flags.value,
+            engine_power_ice,
+            engine_power_mguk,
+            ers_store_energy,
+            ers_deploy_mode.value,
+            ers_harvested_this_lap_mguk,
+            ers_harvested_this_lap_mguh,
+            ers_deployed_this_lap,
+            network_paused)
+        )
+
+class PacketCarStatusData:
+    """
+    Class containing details on car statuses for all the cars in the race.
+
+    Attributes:
+        - m_header(PacketHeader) - packet header info
+        - m_carStatusData(List[CarStatusData]) - List of statuses of every car
+    """
+
+    def __init__(self, header: PacketHeader, packet: bytes) -> None:
+        """Initialise the object from the raw bytes list
+
+        Args:
+            header (PacketHeader): Object containing header info
+            packet (bytes): List of bytes representing the packet payload
+        """
+
+        self.m_header: PacketHeader = header
+        self.m_carStatusData: List[CarStatusData] = []               # CarStatusData[22]
+
+        for status_per_car_raw_data in _split_list(packet, CarStatusData.PACKET_LEN):
+            self.m_carStatusData.append(CarStatusData(status_per_car_raw_data))
+
+    def __str__(self) -> str:
+        """Generate a human readable string of this object's contents
+
+        Returns:
+            str: Printable/Loggable string
+        """
+
+        status_data_str = ", ".join(str(status) for status in self.m_carStatusData)
+        return f"PacketCarStatusData(Header: {str(self.m_header)}, Car Status Data: [{status_data_str}])"
+
+    def toJSON(self, include_header: bool=False) -> Dict[str, Any]:
+        """
+        Convert the PacketCarStatusData instance to a JSON-compatible dictionary.
+
+        Arguments:
+            - include_header - Whether the header dump must be included in the JSON
+        Returns:
+            Dict[str, Any]: JSON-compatible dictionary representing the PacketCarStatusData instance.
+        """
+
+        json_data = {
+            "car-status-data": [car_status_data.toJSON() for car_status_data in self.m_carStatusData],
+        }
+        if include_header:
+            json_data["header"] = self.m_header.toJSON()
+
+        return json_data
+
+    def __eq__(self, other: "PacketCarStatusData") -> bool:
+        """Check if two objects are equal
+
+        Args:
+            other (PacketCarStatusData): The object to compare to
+
+        Returns:
+            bool: True if the objects are equal, False otherwise
+        """
+
+        return self.m_header == other.m_header and self.m_carStatusData == other.m_carStatusData
+
+    def __ne__(self, other: "PacketCarStatusData") -> bool:
+        """Check if two objects are not equal
+
+        Args:
+            other (PacketCarStatusData): The object to compare to
+
+        Returns:
+            bool: True if the objects are not equal, False otherwise
+        """
+
+        return not self.__eq__(other)
+
+    def to_bytes(self) -> bytes:
+        """Convert the PacketCarStatusData instance to raw bytes
+
+        Returns:
+            bytes: Raw bytes representing the PacketCarStatusData instance
+        """
+
+        return self.m_header.to_bytes() + b"".join([car_status_data.to_bytes() for car_status_data in self.m_carStatusData])
+
+    @classmethod
+    def from_values(cls, header: PacketHeader, car_status_data: List[CarStatusData]) -> "PacketCarStatusData":
+        """Create a PacketCarStatusData object from individual values.
+
+        Args:
+            header (PacketHeader): The header of the telemetry packet.
+            car_status_data (List[CarStatusData]): List of CarStatusData objects containing data for all cars on track.
+
+        Returns:
+            PacketCarStatusData: A PacketCarStatusData object initialized with the provided values.
+        """
+        return cls(header, b''.join([car.to_bytes() for car in car_status_data]))

@@ -255,3 +255,59 @@ class PacketMotionExData:
             json_data["header"] = self.m_header.toJSON()
 
         return json_data
+
+    def __eq__(self, other: "PacketMotionExData") -> bool:
+        """
+        Compare two PacketMotionExData instances for equality.
+
+        Arguments:
+            - other (PacketMotionExData): The other PacketMotionExData instance to compare with.
+
+        Returns:
+            bool: True if the two PacketMotionExData instances are equal, False otherwise.
+        """
+
+        if not isinstance(other, PacketMotionExData):
+            return False
+
+        return (
+            self.m_header == other.m_header and
+            self.m_suspensionPosition == other.m_suspensionPosition and
+            self.m_suspensionVelocity == other.m_suspensionVelocity and
+            self.m_suspensionAcceleration == other.m_suspensionAcceleration and
+            self.m_wheelSpeed == other.m_wheelSpeed and
+            self.m_wheelSlipRatio == other.m_wheelSlipRatio and
+            self.m_wheelSlipAngle == other.m_wheelSlipAngle and
+            self.m_wheelLatForce == other.m_wheelLatForce and
+            self.m_wheelLongForce == other.m_wheelLongForce and
+            self.m_heightOfCOGAboveGround == other.m_heightOfCOGAboveGround and
+            self.m_localVelocityX == other.m_localVelocityX and
+            self.m_localVelocityY == other.m_localVelocityY and
+            self.m_localVelocityZ == other.m_localVelocityZ and
+            self.m_angularVelocityX == other.m_angularVelocityX and
+            self.m_angularVelocityY == other.m_angularVelocityY and
+            self.m_angularVelocityZ == other.m_angularVelocityZ and
+            self.m_angularAccelerationX == other.m_angularAccelerationX and
+            self.m_angularAccelerationY == other.m_angularAccelerationY and
+            self.m_angularAccelerationZ == other.m_angularAccelerationZ and
+            self.m_frontWheelsAngle == other.m_frontWheelsAngle and
+            self.m_wheelVertForce == other.m_wheelVertForce and
+            self.m_frontAeroHeight == other.m_frontAeroHeight and
+            self.m_rearAeroHeight == other.m_rearAeroHeight and
+            self.m_frontRollAngle == other.m_frontRollAngle and
+            self.m_rearRollAngle == other.m_rearRollAngle and
+            self.m_chassisYaw == other.m_chassisYaw
+        )
+
+    def __ne__(self, other: "PacketMotionExData") -> bool:
+        """
+        Compare two PacketMotionExData instances for inequality.
+
+        Arguments:
+            - other (PacketMotionExData): The other PacketMotionExData instance to compare with.
+
+        Returns:
+            bool: True if the two PacketMotionExData instances are not equal, False otherwise.
+        """
+
+        return not self.__eq__(other)

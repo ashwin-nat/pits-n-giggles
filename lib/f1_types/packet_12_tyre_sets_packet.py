@@ -22,8 +22,9 @@
 
 
 import struct
-from typing import Dict, List, Any, Optional
-from .common import _split_list, _extract_sublist, PacketHeader, VisualTyreCompound, ActualTyreCompound
+from typing import Dict, List, Any, Optional, Union
+from .common import _split_list, _extract_sublist, PacketHeader, VisualTyreCompound, ActualTyreCompound, \
+    SessionType23, SessionType24
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -63,14 +64,16 @@ class TyreSetData:
     )
     PACKET_LEN = struct.calcsize(PACKET_FORMAT)
 
-    def __init__(self, data) -> None:
+    def __init__(self, data: bytes, game_year: int) -> None:
         """
         Initializes TyreSetData with raw data.
 
         Args:
             data (bytes): Raw data representing information about a tyre set.
+            game_year (int): The current game year.
         """
 
+        self.m_gameYear = game_year
         (
             self.m_actualTyreCompound,
             self.m_visualTyreCompound,
@@ -87,6 +90,10 @@ class TyreSetData:
             self.m_actualTyreCompound = ActualTyreCompound(self.m_actualTyreCompound)
         if VisualTyreCompound.isValid(self.m_visualTyreCompound):
             self.m_visualTyreCompound = VisualTyreCompound(self.m_visualTyreCompound)
+        if self.m_gameYear == 23 and SessionType23.isValid(self.m_recommendedSession):
+            self.m_recommendedSession = SessionType23(self.m_recommendedSession)
+        elif self.m_gameYear == 24 and SessionType24.isValid(self.m_recommendedSession):
+            self.m_recommendedSession = SessionType24(self.m_recommendedSession)
         self.m_fitted = bool(self.m_fitted)
 
     def __str__(self) -> str:
@@ -117,12 +124,109 @@ class TyreSetData:
             "visual-tyre-compound": str(self.m_visualTyreCompound),
             "wear": self.m_wear,
             "available": bool(self.m_available),
-            "recommended-session": self.m_recommendedSession,
+            "recommended-session": str(self.m_recommendedSession),
             "life-span": self.m_lifeSpan,
             "usable-life": self.m_usableLife,
             "lap-delta-time": self.m_lapDeltaTime,
             "fitted": bool(self.m_fitted),
         }
+
+    def __eq__(self, other: "TyreSetData") -> bool:
+        """
+        Returns whether the TyreSetData instances are equal.
+
+        Args:
+            other (TyreSetData): The TyreSetData instance to compare with.
+
+        Returns:
+            bool: True if the TyreSetData instances are equal, False otherwise.
+        """
+
+        return (
+            self.m_actualTyreCompound == other.m_actualTyreCompound and \
+            self.m_visualTyreCompound == other.m_visualTyreCompound and \
+            self.m_wear == other.m_wear and \
+            self.m_available == other.m_available and \
+            self.m_recommendedSession == other.m_recommendedSession and \
+            self.m_lifeSpan == other.m_lifeSpan and \
+            self.m_usableLife == other.m_usableLife and \
+            self.m_lapDeltaTime == other.m_lapDeltaTime and \
+            self.m_fitted == other.m_fitted
+        )
+
+    def __ne__(self, other: "TyreSetData") -> bool:
+        """
+        Returns whether the TyreSetData instances are not equal.
+
+        Args:
+            other (TyreSetData): The TyreSetData instance to compare with.
+
+        Returns:
+            bool: True if the TyreSetData instances are not equal, False otherwise.
+        """
+
+        return not self.__eq__(other)
+
+    def to_bytes(self) -> bytes:
+        """
+        Serialize the TyreSetData object to bytes based on PACKET_FORMAT.
+
+        Returns:
+            bytes: Serialized bytes representation of the TyreSetData object
+        """
+
+        return struct.pack(self.PACKET_FORMAT,
+            self.m_actualTyreCompound.value,
+            self.m_visualTyreCompound.value,
+            self.m_wear,
+            self.m_available,
+            self.m_recommendedSession.value,
+            self.m_lifeSpan,
+            self.m_usableLife,
+            self.m_lapDeltaTime,
+            self.m_fitted,
+        )
+
+    @classmethod
+    def from_values(cls,
+                game_year: int,
+                actual_tyre_compound: ActualTyreCompound,
+                visual_tyre_compound: VisualTyreCompound,
+                wear: int,
+                available: bool,
+                recommended_session: Union[SessionType23, SessionType24],
+                life_span: int,
+                usable_life: int,
+                lap_delta_time: int,
+                fitted: bool) -> bool:
+        """
+        Creates a new TyreSetData object from the given values
+
+        Args:
+            game_year (int): Game year
+            actual_tyre_compound (ActualTyreCompound): Actual tyre compound
+            visual_tyre_compound (VisualTyreCompound): Visual tyre compound
+            wear (int): Wear percentage
+            available (bool): Available
+            recommended_session (Union[SessionType23, SessionType24]): Recommended session
+            life_span (int): Life span
+            usable_life (int): Usable life
+            lap_delta_time (int): Lap delta time
+            fitted (bool): Fitted
+
+        Returns:
+            TyreSetData: New TyreSetData object
+        """
+        return cls(struct.pack(cls.PACKET_FORMAT,
+            actual_tyre_compound.value,
+            visual_tyre_compound.value,
+            wear,
+            available,
+            recommended_session.value,
+            life_span,
+            usable_life,
+            lap_delta_time,
+            fitted), game_year)
 
 class PacketTyreSetsData:
     """
@@ -135,9 +239,9 @@ class PacketTyreSetsData:
         m_fittedIdx (int): Index into the array of the fitted tyre.
 
     """
-    max_tyre_sets = 20
+    MAX_TYRE_SETS = 20
 
-    def __init__(self, header, data) -> None:
+    def __init__(self, header: PacketHeader, data: bytes) -> None:
         """
         Initializes PacketTyreSetsData with raw data.
 
@@ -150,10 +254,10 @@ class PacketTyreSetsData:
         self.m_carIdx: int = struct.unpack("<B", data[0:1])[0]
         self.m_tyreSetData: List[TyreSetData] = []
 
-        tyre_set_data_full_len = PacketTyreSetsData.max_tyre_sets * TyreSetData.PACKET_LEN
+        tyre_set_data_full_len = PacketTyreSetsData.MAX_TYRE_SETS * TyreSetData.PACKET_LEN
         full_tyre_set_data_raw = _extract_sublist(data, 1, 1 + tyre_set_data_full_len)
         for tyre_set_data_raw in _split_list(full_tyre_set_data_raw, TyreSetData.PACKET_LEN):
-            self.m_tyreSetData.append(TyreSetData(tyre_set_data_raw))
+            self.m_tyreSetData.append(TyreSetData(tyre_set_data_raw, header.m_gameYear))
 
         self.m_fittedIdx = struct.unpack("<B", data[(1 + tyre_set_data_full_len):])[0]
 
@@ -214,3 +318,69 @@ class PacketTyreSetsData:
         if 0 <= index < len(self.m_tyreSetData):
             return str(index) + "." + str(self.m_tyreSetData[index].m_actualTyreCompound)
         return None
+
+    def __eq__(self, other: "PacketTyreSetsData") -> bool:
+        """Check if two objects are equal
+
+        Args:
+            other (PacketTyreSetsData): The object to compare to
+
+        Returns:
+            bool: True if the objects are equal, False otherwise
+        """
+
+        return (
+            self.m_header == other.m_header and
+            self.m_carIdx == other.m_carIdx and
+            self.m_tyreSetData == other.m_tyreSetData and
+            self.m_fittedIdx == other.m_fittedIdx and
+            self.getFittedTyreSetKey() == other.getFittedTyreSetKey()
+        )
+
+    def __ne__(self, other: "PacketTyreSetsData") -> bool:
+        """Check if two objects are not equal
+
+        Args:
+            other (PacketTyreSetsData): The object to compare to
+
+        Returns:
+            bool: True if the objects are not equal, False otherwise
+        """
+
+        return not self.__eq__(other)
+
+    def to_bytes(self) -> bytes:
+        """Serialize the PacketTyreSetsData object to bytes based on PACKET_FORMAT.
+
+        Returns:
+            bytes: Serialized bytes representation of the PacketTyreSetsData object
+        """
+
+        raw_bytes = self.m_header.to_bytes() + struct.pack("<B", self.m_carIdx)
+        raw_bytes += b"".join([tyre_set_data.to_bytes() for tyre_set_data in self.m_tyreSetData])
+        raw_bytes += struct.pack("<B", self.m_fittedIdx)
+        return raw_bytes
+
+    @classmethod
+    def from_values(cls,
+                    header: PacketHeader,
+                    car_index: int,
+                    tyre_set_data: List[TyreSetData],
+                    fitted_index: int) -> "PacketTyreSetsData":
+        """Create a PacketTyreSetsData object from values.
+
+        Args:
+            header (PacketHeader): The header of the telemetry packet
+            car_index (int): The index of the car
+            tyre_set_data (List[TyreSetData]): List of TyreSetData objects containing data for all cars on track
+            fitted_index (int): The index of the fitted tyre set
+
+        Returns:
+            PacketTyreSetsData: The created PacketTyreSetsData object
+        """
+
+        return cls(header, (
+            struct.pack("<B", car_index) +
+            b"".join([tyre_set_data.to_bytes() for tyre_set_data in tyre_set_data]) +
+            struct.pack("<B", fitted_index)
+        ))

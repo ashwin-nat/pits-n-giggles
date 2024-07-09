@@ -19,19 +19,18 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-# pylint: skip-file
 
 import unittest
 import os
 import cProfile
 import sys
+import random
+from colorama import init
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from lib.overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, OvertakeRecord, OvertakeRivalryKey
-from lib.race_analyzer import getFastestTimesJson
-
+# pylint: disable=unused-import wrong-import-position
 from tests_base import F1TelemetryUnitTestsBase, CustomTestResult
 from tests_pcap import FullPCapTests, TestF1PacketCaptureHeader
 from tests_overtake_analyzer import \
@@ -41,14 +40,33 @@ from tests_overtake_analyzer import \
     TestOvertakeAnalyzerEmptyInput, \
     TestOvertakeAnalyzerInvalidData
 from tests_race_analyzer import TestGetFastestTimesJson
+from f1_types import \
+    TestPacketCarMotionData, \
+    TestPacketSessionData, \
+    TestPacketLapData, \
+    TestPacketEventData, \
+    TestPacketParticipantsData, \
+    TestPacketCarSetupData, \
+    TestPacketCarTelemetryData, \
+    TestPacketCarStatusData, \
+    TestPacketFinalClassificationData, \
+    TestPacketLobbyInfoData, \
+    TestPacketCarDamageData, \
+    TestPacketSessionHistoryData, \
+    TestPacketTyreSetsData, \
+    TestPacketMotionExData, \
+    TestPacketTimeTrialData
 
 # Initialize colorama
-from colorama import init
 init(autoreset=True)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
 def runTests():
+    """
+    Run all unit tests
+    """
+    random.seed()
     unittest.main(testRunner=unittest.TextTestRunner(resultclass=CustomTestResult))
 
 if __name__ == '__main__':
