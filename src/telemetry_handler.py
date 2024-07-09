@@ -380,26 +380,6 @@ def getCustomMarkersJSON() -> List[Dict[str, Any]]:
     global g_player_recorded_events_history
     return g_player_recorded_events_history.getJSONList()
 
-def printOvertakeData(file_name: str=None):
-    """Print the overtake data
-
-    Args:
-        file_name (str): Name of the csv file with the overtake data. If None, directly gets the data from the list
-    """
-
-    player_name = TelData.getPlayerName()
-    if file_name:
-        overtake_analyzer = OvertakeAnalyzer(
-            input_mode=OvertakeAnalyzerMode.INPUT_MODE_FILE_CSV,
-            input_data=file_name)
-    else:
-        global g_overtakes_history
-        with g_overtakes_history.m_lock:
-            overtake_analyzer = OvertakeAnalyzer(
-                input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST_OVERTAKE_RECORDS,
-                input_data=g_overtakes_history.m_overtakes_history)
-    png_logger.info(overtake_analyzer.getFormattedString(driver_name=player_name, is_case_sensitive=True))
-
 def writeDictToJsonFile(data_dict: Dict, file_name: str) -> None:
     """
     Write a dictionary containing JSON data to a file.
@@ -410,37 +390,6 @@ def writeDictToJsonFile(data_dict: Dict, file_name: str) -> None:
     """
     with open(file_name, 'w', encoding='utf-8') as json_file:
         json.dump(data_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
-
-def addFunStatsToFinalClassificationJson(final_json: Dict[str, Any]) -> None:
-    """
-    Add the fun stats to the final classification JSON.
-
-    Arguments:
-        final_json (Dict): Dictionary containing JSON data after final classification
-    """
-
-    global g_overtakes_history
-
-    final_json['overtakes'] = {'records': [record.toJSON() for record in g_overtakes_history.m_overtakes_history]}
-
-    with g_overtakes_history.m_lock:
-        player_name = TelData.getPlayerName()
-        overtake_analyzer = OvertakeAnalyzer(
-            input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST_OVERTAKE_RECORDS,
-            input_data=g_overtakes_history.m_overtakes_history)
-        png_logger.info(overtake_analyzer.getFormattedString(driver_name=player_name, is_case_sensitive=True))
-        # Add the new keys directly to the top level of final_json
-        final_json['overtakes'].update(
-            overtake_analyzer.toJSON(
-                driver_name=player_name,
-                is_case_sensitive=True))
-
-    # Next, fastest lap and sector records
-    final_json['records'] = {
-        'fastest' : RaceAnalyzer.getFastestTimesJson(final_json),
-        'tyre-stats' : RaceAnalyzer.getTyreStintRecordsDict(final_json)
-    }
-
 
 def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
     """
@@ -481,6 +430,12 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
         if g_player_recorded_events_history.getCount() > 0:
             for marker in g_player_recorded_events_history.getMarkers():
                 final_json['custom-markers'].append(marker.toJSON())
+
+        # Next, fastest lap and sector records
+        final_json['records'] = {
+            'fastest' : RaceAnalyzer.getFastestTimesJson(final_json),
+            'tyre-stats' : RaceAnalyzer.getTyreStintRecordsDict(final_json)
+        }
 
         final_json_file_name = g_directory_mapping['race-info'] + 'race_info_' + \
                 event_str + getTimestampStr() + '.json'
@@ -588,6 +543,7 @@ class F1TelemetryHandler:
         """
         global g_overtakes_history
         global g_num_active_cars
+        global g_collisions_history
 
         # UDP Custom Event - Add marker player markers list
         if packet.m_eventCode == PacketEventData.EventPacketType.BUTTON_STATUS:
@@ -627,6 +583,10 @@ class F1TelemetryHandler:
                                                         packet.mEventDetails.beingOvertakenVehicleIdx)
             if overtake_obj:
                 g_overtakes_history.insert(overtake_obj)
+
+        # Collision - Update collision records list
+        elif packet.m_eventCode == PacketEventData.EventPacketType.COLLISION:
+            TelData.processCollisionsEvent(packet.mEventDetails)
 
     @staticmethod
     def handleParticipants(packet: PacketParticipantsData) -> None:

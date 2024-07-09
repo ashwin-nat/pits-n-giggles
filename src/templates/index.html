@@ -1186,6 +1186,52 @@ SOFTWARE.
                 return tyreDamageContent;
             }
 
+            function getCollisionsContent(data) {
+
+                function getOtherDriverName(index, data) {
+
+                    if (index == data["driver-1-index"]) {
+                        return data["driver-2-name"];
+                    } else {
+                        return data["driver-1-name"];
+                    }
+                }
+
+                const collisionsContent = document.createElement('div');
+                const collisionsTable = document.createElement('table');
+                collisionsTable.classList.add('collisions-table');
+                const collisionsHeader = collisionsTable.createTHead();
+                const collisionsBody = collisionsTable.createTBody();
+                if ("collisions" in data) {
+                    console.log(data["collisions"]);
+                    const playerIndex = data["index"];
+                    // Collision count
+                    const row1 = collisionsBody.insertRow();
+                    const collisionsCount = data["collisions"]["records"].length;
+                    row1.innerHTML = `
+                        <td>Total count</td>
+                        <td>${collisionsCount}</td>
+                    `;
+
+                    const count = data["collisions"]["most-collided-pairs"]["count"];
+                    const collisionPairs = data["collisions"]["most-collided-pairs"]["collision-pairs"];
+                    collisionPairs.forEach((pair) => {
+                        const otherDriverName = getOtherDriverName(playerIndex, pair);
+                        const row = collisionsBody.insertRow();
+                        row.innerHTML = `
+                            <td>Collisions with ${otherDriverName}</td>
+                            <td>${count}</td>
+                        `;
+                    });
+
+                } else {
+                    const row = collisionsBody.insertRow();
+                    row.innerHTML = '<td colspan="2">Collisions data not available</td>';
+                }
+                collisionsContent.appendChild(createAccordion('Collisions', collisionsTable));
+                return collisionsContent;
+            }
+
             function getTyreWearContent(data) {
 
                 const tyreWearContent = document.createElement('div');
@@ -1958,6 +2004,9 @@ SOFTWARE.
 
             // Warning and Penalties Table
             modalContent.appendChild(getWarningsAndPenaltiesContent(data));
+
+            // Collisions
+            modalContent.appendChild(getCollisionsContent(data));
 
             // Finalise the data
             const modalTitle = document.getElementById('modalTitle');

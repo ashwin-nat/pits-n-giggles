@@ -80,6 +80,9 @@ class SimpleApp:
         self.root = root
         self.root.title("F1 Telemetry Recorder")
 
+        # Set the default window size
+        self.root.geometry("400x300")
+
         self.clear_button = tk.Button(root, text="Clear Memory", command=self.clear_memory)
         self.clear_button.pack(pady=10)
 

@@ -154,7 +154,12 @@ class OvertakeRecord:
         return self.m_row_id >= other.m_row_id
 
     def __str__(self) -> str:
+        """
+        Get the string representation of this object.
 
+        Returns:
+            str: The string representation of this object.
+        """
         return (
             "m_overtaking_driver_name=" + self.m_overtaking_driver_name + ", " +
             "m_overtaking_driver_lap=" + str(self.m_overtaking_driver_lap) + ", " +

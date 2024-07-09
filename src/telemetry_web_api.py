@@ -234,6 +234,7 @@ class PlayerTelemetryOverlayUpdate:
                 self.m_weather_forecast_samples = []
             self.m_circuit                  = TelData._globals.m_circuit
             self.m_total_laps               = TelData._globals.m_total_laps
+            self.m_game_year                = TelData._globals.m_game_year
 
         with TelData._driver_data_lock:
             self.m_next_pit_window          = TelData._driver_data.m_ideal_pit_stop_window
@@ -254,10 +255,12 @@ class PlayerTelemetryOverlayUpdate:
 
         if player_data and player_data.m_packet_car_telemetry:
             self.m_throttle = player_data.m_packet_car_telemetry.m_throttle
-            self.m_brake = player_data.m_packet_car_telemetry.m_brake
+            self.m_brake    = player_data.m_packet_car_telemetry.m_brake
+            self.m_steering = player_data.m_packet_car_telemetry.m_steer
         else:
             self.m_throttle = 0
-            self.m_brake = 0
+            self.m_brake    = 0
+            self.m_steering = 0
 
     def __initLapTimes(self, player_data: Optional[TelData.DataPerDriver]) -> None:
         """Prepares the player's lap history data.
@@ -314,12 +317,14 @@ class PlayerTelemetryOverlayUpdate:
             self.m_corner_cutting_warnings = player_data.m_packet_lap_data.m_cornerCuttingWarnings
             self.m_num_dt = player_data.m_packet_lap_data.m_numUnservedDriveThroughPens
             self.m_num_sg = player_data.m_packet_lap_data.m_numUnservedStopGoPens
+            self.m_num_collisions = len(player_data.m_collision_records)
         else:
             self.m_penalties = 0
             self.m_total_warnings = 0
             self.m_corner_cutting_warnings = 0
             self.m_num_dt = 0
             self.m_num_sg = 0
+            self.m_num_collisions = 0
 
     def toJSON(self) -> Dict[str, Any]:
         """Dump this object into JSON
@@ -329,6 +334,7 @@ class PlayerTelemetryOverlayUpdate:
         """
 
         return {
+            "f1-game-year" : self.m_game_year,
             "circuit" : self.m_circuit,
             "track-temp": self.m_track_temp,
             "air-temp": self.m_air_temp,
@@ -343,7 +349,8 @@ class PlayerTelemetryOverlayUpdate:
             "car-telemetry" : {
                 # The UI expects 0 to 100
                 "throttle": (self.m_throttle * 100),
-                "brake": (self.m_brake * 100)
+                "brake": (self.m_brake * 100),
+                "steering" : (self.m_steering * 100),
             },
             "tyre-wear" : {
                 "current" : self.m_tyre_wear.toJSON(),
@@ -356,6 +363,7 @@ class PlayerTelemetryOverlayUpdate:
                 "corner-cutting-warnings": self.m_corner_cutting_warnings,
                 "unserved-drive-through-pens": self.m_num_dt,
                 "unserved-stop-go-pens": self.m_num_sg,
+                "num-collisions" : self.m_num_collisions,
                 "speed-trap-record": self.m_speed_trap_record,
             }
         }

@@ -151,7 +151,8 @@ class F1TelemetryManager:
         if self.m_replay_server:
             png_logger.info("REPLAY SERVER MODE. PORT = %s", self.m_port_number)
 
-        # counter = 0
+        should_parse_packet = sum(1 for callback in self.m_callbacks.values() if callback is not None) > 0
+
         # Run the client indefinitely
         while True:
 
@@ -159,6 +160,12 @@ class F1TelemetryManager:
             raw_packet = self.m_server.getNextMessage()
             if len(raw_packet) < PacketHeader.PACKET_LEN:
                 # skip incomplete packet
+                continue
+
+            if self.m_raw_packet_callback:
+                self.m_raw_packet_callback(raw_packet)
+
+            if not should_parse_packet:
                 continue
 
             # Parse the header
@@ -177,5 +184,4 @@ class F1TelemetryManager:
             callback = self.m_callbacks.get(header.m_packetId, None)
             if callback:
                 callback(packet)
-            if self.m_raw_packet_callback:
-                self.m_raw_packet_callback(raw_packet)
+
