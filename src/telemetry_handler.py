@@ -442,6 +442,22 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
         writeDictToJsonFile(final_json, final_json_file_name)
         png_logger.info("Wrote race info to %s", final_json_file_name)
 
+def clearAllDataStructures() -> None:
+    """
+    Clear all data structures.
+    """
+
+    global g_num_active_cars
+    global g_overtakes_history
+    global g_player_recorded_events_history
+
+    g_num_active_cars = 0
+    TelData.processSessionStarted()
+    with g_overtakes_history.m_lock:
+        g_overtakes_history.m_overtakes_history.clear()
+    g_player_recorded_events_history.clear()
+    g_completed_session_uid_set.clear()
+
 # -------------------------------------- TELEMETRY PACKET HANDLERS -----------------------------------------------------
 
 class F1TelemetryHandler:
@@ -517,11 +533,11 @@ class F1TelemetryHandler:
 
         if packet.m_sessionDuration == 0:
             png_logger.info("Session duration is 0. clearing data structures")
-            TelData.processSessionStarted()
+            clearAllDataStructures()
 
         elif TelData.processSessionUpdate(packet):
             png_logger.info("Session UID changed. clearing data structures")
-            TelData.processSessionStarted()
+            clearAllDataStructures()
 
     @staticmethod
     def handleLapData(packet: PacketLapData) -> None:
@@ -565,13 +581,14 @@ class F1TelemetryHandler:
 
         # Session Started - Empty data structures
         elif packet.m_eventCode == PacketEventData.EventPacketType.SESSION_STARTED:
-            g_num_active_cars = 0
-            TelData.processSessionStarted()
-            # Clear the list regardless of event type
-            with g_overtakes_history.m_lock:
-                g_overtakes_history.m_overtakes_history.clear()
-            g_player_recorded_events_history.clear()
-            png_logger.info("Received SESSION_STARTED")
+            # g_num_active_cars = 0
+            # TelData.processSessionStarted()
+            # # Clear the list regardless of event type
+            # with g_overtakes_history.m_lock:
+            #     g_overtakes_history.m_overtakes_history.clear()
+            # g_player_recorded_events_history.clear()
+            # png_logger.info("Received SESSION_STARTED")
+            clearAllDataStructures()
 
         # Retirement - Update data strucutres
         elif packet.m_eventCode == PacketEventData.EventPacketType.RETIREMENT:
