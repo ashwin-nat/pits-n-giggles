@@ -23,16 +23,15 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from readerwriterlock import rwlock
-import threading
 import copy
 from typing import Optional, Generator, Tuple, List, Dict, Any
 from collections import OrderedDict
+from readerwriterlock import rwlock
 from lib.f1_types import PacketSessionData, PacketLapData, LapData, CarTelemetryData, ParticipantData, \
     PacketEventData, PacketParticipantsData, PacketCarTelemetryData, PacketCarStatusData, FinalClassificationData, \
     PacketFinalClassificationData, PacketCarDamageData, PacketSessionHistoryData, ResultStatus, PacketTyreSetsData, \
     F1Utils, WeatherForecastSample, CarDamageData, CarStatusData, TrackID, ActualTyreCompound, VisualTyreCompound, \
-    SafetyCarType, TelemetrySetting
+    SafetyCarType, TelemetrySetting, PacketMotionData, CarMotionData
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.overtake_analyzer import OvertakeRecord
 from lib.collisions_analyzer import CollisionRecord, CollisionAnayzer, CollisionAnalyzerMode
@@ -391,6 +390,7 @@ class DataPerDriver:
         self.m_packet_session_history: Optional[PacketSessionHistoryData] = None
         self.m_packet_tyre_sets: Optional[PacketTyreSetsData] = None
         self.m_packet_final_classification: Optional[FinalClassificationData] = None
+        self.m_packet_motion: Optional[CarMotionData] = None
 
         # Per lap backup
         self.m_per_lap_backups: Dict[int, DataPerDriver.PerLapHistoryEntry] = {}
@@ -1218,6 +1218,19 @@ class DriverData:
         # Update the tyre set history
         obj_to_be_updated.updateTyreSetData(fitted_index=packet.m_fittedIdx)
 
+    def processMotionUpdate(self, packet: PacketMotionData) -> None:
+        """Process the motion update packet and update the necessary fields
+
+        Args:
+            packet (PacketMotionData): The motion update packet
+        """
+
+        for index, motion_data in enumerate(packet.m_carMotionData):
+            obj_to_be_updated = self._getObjectByIndexCreate(index)
+            obj_to_be_updated.m_packet_motion = motion_data
+        obj_to_be_updated = self._getObjectByIndexCreate(packet.m_carIdx)
+        obj_to_be_updated.m_packet_motion = packet
+
     def getDriverInfoJsonByIndex(self, index: int) -> Optional[Dict[str, Any]]:
         """Get the driver info JSON for the specified index.
 
@@ -1558,6 +1571,16 @@ def processTyreSetsUpdate(packet: PacketTyreSetsData) -> None:
     with _driver_data_lock.gen_wlock():
         _driver_data.processTyreSetsUpdate(packet)
         _driver_data.setRaceOngoing()
+
+def processMotionUpdate(packet: PacketMotionData) -> None:
+    """Update the data structures with motion information
+
+    Args:
+        packet (PacketMotionData): The motion update packet
+    """
+
+    with _driver_data_lock.gen_wlock():
+        _driver_data.processMotionUpdate(packet)
 
 # -------------------------------------- WEB API HANDLERS --------------------------------------------------------------
 

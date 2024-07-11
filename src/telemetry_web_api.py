@@ -245,6 +245,7 @@ class PlayerTelemetryOverlayUpdate:
         self.__initLapTimes(player_data)
         self.__initTyreWear(player_data)
         self.__initPenalties(player_data)
+        self.__initGForce(player_data)
 
     def __initCarTelemetry(self, player_data: Optional[TelData.DataPerDriver]) -> None:
         """Prepares the car telemetry data.
@@ -326,6 +327,22 @@ class PlayerTelemetryOverlayUpdate:
             self.m_num_sg = 0
             self.m_num_collisions = 0
 
+    def __initGForce(self, player_data: Optional[TelData.DataPerDriver]) -> None:
+        """Prepares the player's g-force data.
+
+        Args:
+            player_data (Optional[TelData.DataPerDriver]): The player's DataPerDriver object
+        """
+
+        if player_data and player_data.m_packet_motion:
+            self.m_g_force_lat = player_data.m_packet_motion.m_gForceLateral
+            self.m_g_force_vert = player_data.m_packet_motion.m_gForceVertical
+            self.m_g_force_long = player_data.m_packet_motion.m_gForceLongitudinal
+        else:
+            self.m_g_force_lat = 0
+            self.m_g_force_vert = 0
+            self.m_g_force_long = 0
+
     def toJSON(self) -> Dict[str, Any]:
         """Dump this object into JSON
 
@@ -365,6 +382,11 @@ class PlayerTelemetryOverlayUpdate:
                 "unserved-stop-go-pens": self.m_num_sg,
                 "num-collisions" : self.m_num_collisions,
                 "speed-trap-record": self.m_speed_trap_record,
+            },
+            "g-force": {
+                "lat": self.m_g_force_lat,
+                "vert": self.m_g_force_vert,
+                "long": self.m_g_force_long
             }
         }
 

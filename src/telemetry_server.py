@@ -22,7 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Dict, Any, Optional, Callable, List, Tuple
+from typing import Dict, Any, Optional, Callable, List, Tuple, Set
 from http import HTTPStatus
 import logging
 from flask import Flask, render_template, request, jsonify, send_from_directory
@@ -35,6 +35,8 @@ from src.png_logger import getLogger
 
 _web_server : Optional["TelemetryWebServer"] = None
 png_logger = getLogger()
+_race_table_clients : Set[str] = set()
+_player_overlay_clients : Set[str] = set()
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -199,6 +201,8 @@ class TelemetryWebServer:
             """SocketIO endpoint for handling client disconnection
             """
             png_logger.debug("Client disconnected")
+            _player_overlay_clients.discard(request.sid)
+            _race_table_clients.discard(request.sid)
 
         @self.m_socketio.on('race-info')
         # pylint: disable=unused-argument
@@ -228,6 +232,16 @@ class TelemetryWebServer:
             else:
                 response = TelWebAPI.DriverInfoRsp(index).toJSON()
             emit("driver-info-response", response, broadcast=False)
+
+        @self.m_socketio.on('register-client')
+        def handleClientRegistration(data):
+            """SocketIO endpoint to handle client registration
+            """
+            png_logger.debug('Client registered. SID = %s Type = %s', request.sid, data['type'])
+            if data['type'] == 'player-stream-overlay':
+                _player_overlay_clients.add(request.sid)
+            elif data['type'] == 'race-table':
+                _race_table_clients.add(request.sid)
 
     def validateIntGetRequestParam(self, param: Any, param_name: str) -> Optional[Dict[str, Any]]:
         """
@@ -304,13 +318,13 @@ def initTelemetryWebServer(
         debug_mode=debug_mode,
         num_adjacent_cars=num_adjacent_cars,
         socketio_tasks=[
-            (clientUpdaterTask, client_update_interval_ms),
-            (throttleBrakeUpdaterTask, 60)
+            (raceTableClientUpdaterTask, client_update_interval_ms),
+            (playerTelemetryOverlayUpdaterTask, 60)
         ]
     )
     _web_server.run()
 
-def clientUpdaterTask(update_interval_ms: int) -> None:
+def raceTableClientUpdaterTask(update_interval_ms: int) -> None:
     """Task to update clients with telemetry data
 
     Args:
@@ -318,20 +332,23 @@ def clientUpdaterTask(update_interval_ms: int) -> None:
     """
 
     global _web_server
+    global _race_table_clients
     sleep_duration = update_interval_ms / 1000
     while True:
-        _web_server.m_socketio.emit('race-table-update', TelWebAPI.RaceInfoRsp().toJSON())
+        if len(_race_table_clients) > 0:
+            _web_server.m_socketio.emit('race-table-update', TelWebAPI.RaceInfoRsp().toJSON())
         _web_server.m_socketio.sleep(sleep_duration)
 
-def throttleBrakeUpdaterTask(update_interval_ms: int) -> None:
-    """Task to update clients with throttle and brake data
-
+def playerTelemetryOverlayUpdaterTask(update_interval_ms: int) -> None:
+    """Task to update clients with player telemetry overlay data
     Args:
         update_interval_ms (int): Update interval in milliseconds
     """
 
     global _web_server
+    global _player_overlay_clients
     sleep_duration = update_interval_ms / 1000
     while True:
-        _web_server.m_socketio.emit('player-overlay-update', TelWebAPI.PlayerTelemetryOverlayUpdate().toJSON())
+        if len(_player_overlay_clients) > 0:
+            _web_server.m_socketio.emit('player-overlay-update', TelWebAPI.PlayerTelemetryOverlayUpdate().toJSON())
         _web_server.m_socketio.sleep(sleep_duration)

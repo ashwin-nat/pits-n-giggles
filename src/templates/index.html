@@ -2274,6 +2274,10 @@ SOFTWARE.
             timeout: 20000                // Connection timeout before giving up (in ms)
         });
 
+        socket.on('connect', function () {
+            socket.emit('register-client', { type: 'race-table' });
+        });
+
         // Receive details from server
         socket.on('race-table-update', function (data) {
             displayData(data);

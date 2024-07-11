@@ -553,6 +553,10 @@
         initializeGraph();
 
         const socket = io();
+        // Emit a custom event to register client type upon connection
+        socket.on('connect', function () {
+            socket.emit('register-client', { type: 'player-stream-overlay' });
+        });
 
         socket.on('player-overlay-update', function (data) {
             updateTyreWearTable(data["tyre-wear"]);

@@ -33,7 +33,7 @@ from typing import Optional, List, Tuple, Dict, Any, Generator
 from tqdm import tqdm
 from lib.f1_types import F1PacketType, PacketSessionData, PacketLapData, \
     PacketEventData, PacketParticipantsData, PacketCarTelemetryData, PacketCarStatusData, \
-    PacketFinalClassificationData, PacketCarDamageData, PacketSessionHistoryData, \
+    PacketFinalClassificationData, PacketCarDamageData, PacketSessionHistoryData, PacketMotionData, \
     PacketTyreSetsData, SessionType23, SessionType24
 from lib.packet_cap import F1PacketCapture
 from lib.overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, OvertakeRecord
@@ -720,3 +720,14 @@ class F1TelemetryHandler:
         """
 
         TelData.processTyreSetsUpdate(packet)
+
+    @staticmethod
+    def handleMotion(packet: PacketMotionData) -> None:
+        """
+        Handle and process the motion data update.
+
+        Arguments
+            packet - PacketMotionData object
+        """
+
+        TelData.processMotionUpdate(packet)
