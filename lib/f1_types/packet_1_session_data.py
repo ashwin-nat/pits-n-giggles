@@ -343,11 +343,12 @@ class WeatherForecastSample:
                 WeatherForecastSample.AirTemperatureChange.NO_CHANGE: "No Temperature Change",
             }[self]
 
-    def __init__(self, data: bytes) -> None:
+    def __init__(self, data: bytes, game_year: int) -> None:
         """Unpack the given raw bytes into this object
 
         Args:
             data (bytes): List of raw bytes received as part of this
+            game_year (int): The year of the game
         """
 
         # Declare the type hints
@@ -379,8 +380,10 @@ class WeatherForecastSample:
             self.m_airTemperatureChange = WeatherForecastSample.AirTemperatureChange(self.m_airTemperatureChange)
         if WeatherForecastSample.TrackTemperatureChange.isValid(self.m_trackTemperatureChange):
             self.m_trackTemperatureChange = WeatherForecastSample.TrackTemperatureChange(self.m_trackTemperatureChange)
-        if SessionType23.isValid(self.m_sessionType):
+        if game_year == 23 and SessionType23.isValid(self.m_sessionType):
             self.m_sessionType = SessionType23(self.m_sessionType)
+        elif game_year == 24 and SessionType24.isValid(self.m_sessionType):
+            self.m_sessionType = SessionType24(self.m_sessionType)
 
     def __str__(self) -> str:
         """A description of the entire function, its parameters, and its return types.
@@ -474,6 +477,7 @@ class WeatherForecastSample:
 
     @classmethod
     def from_values(cls,
+                    game_year: int,
                     session_type: Union[SessionType23, SessionType24],
                     time_offset: int,
                     weather: WeatherCondition,
@@ -486,6 +490,7 @@ class WeatherForecastSample:
         Creates a new WeatherForecastSample object from the given values
 
         Args:
+            game_year (int): Game year
             session_type (Union[SessionType23, SessionType24]): Session type enum
             time_offset (int): Time offset in minutes
             weather (WeaetherCondition): Weather enum
@@ -509,7 +514,8 @@ class WeatherForecastSample:
                 air_temp,
                 air_temp_change.value,
                 rain_percentage
-            )
+            ),
+            game_year
         )
 
 class PacketSessionData:
@@ -874,7 +880,7 @@ class PacketSessionData:
         byte_index_so_far += section_3_size
         self.m_weatherForecastSamples: List[WeatherForecastSample] = []  # Array of weather forecast samples
         for per_weather_sample_raw_data in _split_list(section_3_raw_data, WeatherForecastSample.PACKET_LEN):
-            self.m_weatherForecastSamples.append(WeatherForecastSample(per_weather_sample_raw_data))
+            self.m_weatherForecastSamples.append(WeatherForecastSample(per_weather_sample_raw_data, header.m_gameYear))
         # Trim the unnecessary weatherForecastSamples
         self.m_weatherForecastSamples = self.m_weatherForecastSamples[:self.m_numWeatherForecastSamples]
         section_3_raw_data = None

@@ -1228,8 +1228,6 @@ class DriverData:
         for index, motion_data in enumerate(packet.m_carMotionData):
             obj_to_be_updated = self._getObjectByIndexCreate(index)
             obj_to_be_updated.m_packet_motion = motion_data
-        obj_to_be_updated = self._getObjectByIndexCreate(packet.m_carIdx)
-        obj_to_be_updated.m_packet_motion = packet
 
     def getDriverInfoJsonByIndex(self, index: int) -> Optional[Dict[str, Any]]:
         """Get the driver info JSON for the specified index.

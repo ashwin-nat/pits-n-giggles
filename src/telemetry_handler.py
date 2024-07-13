@@ -508,6 +508,7 @@ class F1TelemetryHandler:
         self.m_manager.registerCallback(F1PacketType.CAR_DAMAGE, F1TelemetryHandler.handleCarDamage)
         self.m_manager.registerCallback(F1PacketType.SESSION_HISTORY, F1TelemetryHandler.handleSessionHistory)
         self.m_manager.registerCallback(F1PacketType.TYRE_SETS, F1TelemetryHandler.handleTyreSets)
+        self.m_manager.registerCallback(F1PacketType.MOTION, F1TelemetryHandler.handleMotion)
 
         if self.m_raw_packet_capture != PacketCaptureMode.DISABLED:
             self.m_manager.registerRawPacketCallback(F1TelemetryHandler.handleRawPacket)
