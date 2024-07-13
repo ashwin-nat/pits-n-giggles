@@ -332,7 +332,7 @@ class TestPacketSessionData(F1TypesTest):
             "num-weather-forecast-samples": 3,
             "weather-forecast-samples": [
                 {
-                    "session-type": "15",
+                    "session-type": "Race",
                     "time-offset": 0,
                     "weather": "Light Cloud",
                     "track-temperature": 27,
@@ -342,7 +342,7 @@ class TestPacketSessionData(F1TypesTest):
                     "rain-percentage": 14
                 },
                 {
-                    "session-type": "15",
+                    "session-type": "Race",
                     "time-offset": 5,
                     "weather": "Light Cloud",
                     "track-temperature": 27,
@@ -352,7 +352,7 @@ class TestPacketSessionData(F1TypesTest):
                     "rain-percentage": 14
                 },
                 {
-                    "session-type": "15",
+                    "session-type": "Race",
                     "time-offset": 10,
                     "weather": "Light Cloud",
                     "track-temperature": 27,
