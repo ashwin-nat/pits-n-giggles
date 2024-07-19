@@ -576,7 +576,11 @@ SOFTWARE.
                 if (gameYear == 23) {
                     row.insertCell().textContent = entry["ers"];
                 } else {
+                    if ("ers-mode" in entry) {
                     row.insertCell().innerHTML = `${entry["ers"]}<br>${entry["ers-mode"]}`;
+                    } else {
+                        row.insertCell().textContent = entry["ers"];
+                    }
                 }
 
                 const warningsPensCell = row.insertCell();

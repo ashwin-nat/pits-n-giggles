@@ -23,7 +23,7 @@
 
 import struct
 from typing import Dict, Any, List
-from .common import _split_list, PacketHeader, F1Utils, ResultStatus
+from .common import _split_list, PacketHeader, F1Utils, ResultStatus, ActualTyreCompound, VisualTyreCompound
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -131,6 +131,15 @@ class FinalClassificationData:
         self.m_tyreStintsVisual     = self.m_tyreStintsVisual[:self.m_numTyreStints]
         self.m_tyreStintsEndLaps    = self.m_tyreStintsEndLaps[:self.m_numTyreStints]
 
+        # Make tyre stint values as enum
+        self.m_tyreStintsActual = [ActualTyreCompound(compound) \
+                                    if ActualTyreCompound.isValid(compound) \
+                                        else compound for compound in self.m_tyreStintsActual]
+
+        self.m_tyreStintsVisual = [VisualTyreCompound(compound) \
+                                    if VisualTyreCompound.isValid(compound) \
+                                        else compound for compound in self.m_tyreStintsVisual]
+
     def __str__(self):
         """
         Returns a string representation of FinalClassificationData.
@@ -179,8 +188,8 @@ class FinalClassificationData:
             "penalties-time": self.m_penaltiesTime,
             "num-penalties": self.m_numPenalties,
             "num-tyre-stints": self.m_numTyreStints,
-            "tyre-stints-actual": self.m_tyreStintsActual,
-            "tyre-stints-visual": self.m_tyreStintsVisual,
+            "tyre-stints-actual": [str(compound) for compound in self.m_tyreStintsActual],
+            "tyre-stints-visual": [str(compound) for compound in self.m_tyreStintsVisual],
             "tyre-stints-end-laps": self.m_tyreStintsEndLaps,
         }
 
@@ -232,7 +241,7 @@ class FinalClassificationData:
             bytes: The serialized bytes.
         """
 
-        def pad_array(arr: List[int]) -> List[int]:
+        def pad_array(arr: List[Any]) -> List[Any]:
             """
             Pads an array of integers with 0's if it has fewer than 8 items.
 
@@ -252,8 +261,8 @@ class FinalClassificationData:
 
             return new_arr
 
-        tyre_stints_visual = pad_array(self.m_tyreStintsVisual)
-        tyre_stints_actual = pad_array(self.m_tyreStintsActual)
+        tyre_stints_visual: List[VisualTyreCompound] = pad_array(self.m_tyreStintsVisual)
+        tyre_stints_actual: List[ActualTyreCompound] = pad_array(self.m_tyreStintsActual)
         tyre_stints_end_laps = pad_array(self.m_tyreStintsEndLaps)
 
         return struct.pack(self.PACKET_FORMAT,
@@ -268,22 +277,22 @@ class FinalClassificationData:
             self.m_penaltiesTime,
             self.m_numPenalties,
             self.m_numTyreStints,
-            tyre_stints_actual[0],
-            tyre_stints_actual[1],
-            tyre_stints_actual[2],
-            tyre_stints_actual[3],
-            tyre_stints_actual[4],
-            tyre_stints_actual[5],
-            tyre_stints_actual[6],
-            tyre_stints_actual[7],
-            tyre_stints_visual[0],
-            tyre_stints_visual[1],
-            tyre_stints_visual[2],
-            tyre_stints_visual[3],
-            tyre_stints_visual[4],
-            tyre_stints_visual[5],
-            tyre_stints_visual[6],
-            tyre_stints_visual[7],
+            tyre_stints_actual[0].value if ActualTyreCompound.isValid(tyre_stints_actual[0]) else 0,
+            tyre_stints_actual[1].value if ActualTyreCompound.isValid(tyre_stints_actual[1]) else 0,
+            tyre_stints_actual[2].value if ActualTyreCompound.isValid(tyre_stints_actual[2]) else 0,
+            tyre_stints_actual[3].value if ActualTyreCompound.isValid(tyre_stints_actual[3]) else 0,
+            tyre_stints_actual[4].value if ActualTyreCompound.isValid(tyre_stints_actual[4]) else 0,
+            tyre_stints_actual[5].value if ActualTyreCompound.isValid(tyre_stints_actual[5]) else 0,
+            tyre_stints_actual[6].value if ActualTyreCompound.isValid(tyre_stints_actual[6]) else 0,
+            tyre_stints_actual[7].value if ActualTyreCompound.isValid(tyre_stints_actual[7]) else 0,
+            tyre_stints_visual[0].value if VisualTyreCompound.isValid(tyre_stints_visual[0]) else 0,
+            tyre_stints_visual[1].value if VisualTyreCompound.isValid(tyre_stints_visual[1]) else 0,
+            tyre_stints_visual[2].value if VisualTyreCompound.isValid(tyre_stints_visual[2]) else 0,
+            tyre_stints_visual[3].value if VisualTyreCompound.isValid(tyre_stints_visual[3]) else 0,
+            tyre_stints_visual[4].value if VisualTyreCompound.isValid(tyre_stints_visual[4]) else 0,
+            tyre_stints_visual[5].value if VisualTyreCompound.isValid(tyre_stints_visual[5]) else 0,
+            tyre_stints_visual[6].value if VisualTyreCompound.isValid(tyre_stints_visual[6]) else 0,
+            tyre_stints_visual[7].value if VisualTyreCompound.isValid(tyre_stints_visual[7]) else 0,
             tyre_stints_end_laps[0],
             tyre_stints_end_laps[1],
             tyre_stints_end_laps[2],
@@ -308,23 +317,23 @@ class FinalClassificationData:
             num_penalties: int,
             num_tyre_stints: int,
             # tyre_stints_actual,  # array of 8
-            tyre_stints_actual_0: int,
-            tyre_stints_actual_1: int,
-            tyre_stints_actual_2: int,
-            tyre_stints_actual_3: int,
-            tyre_stints_actual_4: int,
-            tyre_stints_actual_5: int,
-            tyre_stints_actual_6: int,
-            tyre_stints_actual_7: int,
+            tyre_stints_actual_0: ActualTyreCompound,
+            tyre_stints_actual_1: ActualTyreCompound,
+            tyre_stints_actual_2: ActualTyreCompound,
+            tyre_stints_actual_3: ActualTyreCompound,
+            tyre_stints_actual_4: ActualTyreCompound,
+            tyre_stints_actual_5: ActualTyreCompound,
+            tyre_stints_actual_6: ActualTyreCompound,
+            tyre_stints_actual_7: ActualTyreCompound,
             # tyre_stints_visual,  # array of 8
-            tyre_stints_visual_0: int,
-            tyre_stints_visual_1: int,
-            tyre_stints_visual_2: int,
-            tyre_stints_visual_3: int,
-            tyre_stints_visual_4: int,
-            tyre_stints_visual_5: int,
-            tyre_stints_visual_6: int,
-            tyre_stints_visual_7: int,
+            tyre_stints_visual_0: VisualTyreCompound,
+            tyre_stints_visual_1: VisualTyreCompound,
+            tyre_stints_visual_2: VisualTyreCompound,
+            tyre_stints_visual_3: VisualTyreCompound,
+            tyre_stints_visual_4: VisualTyreCompound,
+            tyre_stints_visual_5: VisualTyreCompound,
+            tyre_stints_visual_6: VisualTyreCompound,
+            tyre_stints_visual_7: VisualTyreCompound,
             # tyre_stints_end_laps,  # array of 8
             tyre_stints_end_laps_0: int,
             tyre_stints_end_laps_1: int,
@@ -356,23 +365,23 @@ class FinalClassificationData:
             num_penalties,
             num_tyre_stints,
             # tyre_stints_actual,  # array of 8
-            tyre_stints_actual_0,
-            tyre_stints_actual_1,
-            tyre_stints_actual_2,
-            tyre_stints_actual_3,
-            tyre_stints_actual_4,
-            tyre_stints_actual_5,
-            tyre_stints_actual_6,
-            tyre_stints_actual_7,
+            tyre_stints_actual_0.value if ActualTyreCompound.isValid(tyre_stints_actual_0) else 0,
+            tyre_stints_actual_1.value if ActualTyreCompound.isValid(tyre_stints_actual_1) else 0,
+            tyre_stints_actual_2.value if ActualTyreCompound.isValid(tyre_stints_actual_2) else 0,
+            tyre_stints_actual_3.value if ActualTyreCompound.isValid(tyre_stints_actual_3) else 0,
+            tyre_stints_actual_4.value if ActualTyreCompound.isValid(tyre_stints_actual_4) else 0,
+            tyre_stints_actual_5.value if ActualTyreCompound.isValid(tyre_stints_actual_5) else 0,
+            tyre_stints_actual_6.value if ActualTyreCompound.isValid(tyre_stints_actual_6) else 0,
+            tyre_stints_actual_7.value if ActualTyreCompound.isValid(tyre_stints_actual_7) else 0,
             # tyre_stints_visual,  # array of 8
-            tyre_stints_visual_0,
-            tyre_stints_visual_1,
-            tyre_stints_visual_2,
-            tyre_stints_visual_3,
-            tyre_stints_visual_4,
-            tyre_stints_visual_5,
-            tyre_stints_visual_6,
-            tyre_stints_visual_7,
+            tyre_stints_visual_0.value if VisualTyreCompound.isValid(tyre_stints_visual_0) else 0,
+            tyre_stints_visual_1.value if VisualTyreCompound.isValid(tyre_stints_visual_1) else 0,
+            tyre_stints_visual_2.value if VisualTyreCompound.isValid(tyre_stints_visual_2) else 0,
+            tyre_stints_visual_3.value if VisualTyreCompound.isValid(tyre_stints_visual_3) else 0,
+            tyre_stints_visual_4.value if VisualTyreCompound.isValid(tyre_stints_visual_4) else 0,
+            tyre_stints_visual_5.value if VisualTyreCompound.isValid(tyre_stints_visual_5) else 0,
+            tyre_stints_visual_6.value if VisualTyreCompound.isValid(tyre_stints_visual_6) else 0,
+            tyre_stints_visual_7.value if VisualTyreCompound.isValid(tyre_stints_visual_7) else 0,
             # tyre_stints_end_laps,  # array of 8
             tyre_stints_end_laps_0,
             tyre_stints_end_laps_1,

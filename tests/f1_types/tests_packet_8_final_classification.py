@@ -22,7 +22,7 @@
 
 import random
 from lib.f1_types import FinalClassificationData, PacketFinalClassificationData, F1PacketType, \
-    PacketHeader, ResultStatus
+    PacketHeader, ResultStatus, VisualTyreCompound, ActualTyreCompound
 from .tests_parser_base import F1TypesTest
 
 class TestPacketFinalClassificationData(F1TypesTest):
@@ -99,10 +99,10 @@ class TestPacketFinalClassificationData(F1TypesTest):
                     "num-penalties": 0,
                     "num-tyre-stints": 1,
                     "tyre-stints-actual": [
-                        18
+                        "C3"
                     ],
                     "tyre-stints-visual": [
-                        16
+                        "Soft"
                     ],
                     "tyre-stints-end-laps": [
                         255
@@ -123,10 +123,10 @@ class TestPacketFinalClassificationData(F1TypesTest):
                     "num-penalties": 0,
                     "num-tyre-stints": 1,
                     "tyre-stints-actual": [
-                        18
+                        "C3"
                     ],
                     "tyre-stints-visual": [
-                        16
+                        "Soft"
                     ],
                     "tyre-stints-end-laps": [
                         255
@@ -147,10 +147,10 @@ class TestPacketFinalClassificationData(F1TypesTest):
                     "num-penalties": 0,
                     "num-tyre-stints": 1,
                     "tyre-stints-actual": [
-                        18
+                        "C3"
                     ],
                     "tyre-stints-visual": [
-                        16
+                        "Soft"
                     ],
                     "tyre-stints-end-laps": [
                         255
@@ -171,10 +171,10 @@ class TestPacketFinalClassificationData(F1TypesTest):
                     "num-penalties": 0,
                     "num-tyre-stints": 1,
                     "tyre-stints-actual": [
-                        18
+                        "C3"
                     ],
                     "tyre-stints-visual": [
-                        16
+                        "Soft"
                     ],
                     "tyre-stints-end-laps": [
                         255
@@ -195,10 +195,10 @@ class TestPacketFinalClassificationData(F1TypesTest):
                     "num-penalties": 0,
                     "num-tyre-stints": 1,
                     "tyre-stints-actual": [
-                        18
+                        "C3"
                     ],
                     "tyre-stints-visual": [
-                        16
+                        "Soft"
                     ],
                     "tyre-stints-end-laps": [
                         255
@@ -219,10 +219,10 @@ class TestPacketFinalClassificationData(F1TypesTest):
                     "num-penalties": 0,
                     "num-tyre-stints": 1,
                     "tyre-stints-actual": [
-                        18
+                        "C3"
                     ],
                     "tyre-stints-visual": [
-                        16
+                        "Soft"
                     ],
                     "tyre-stints-end-laps": [
                         255
@@ -243,10 +243,10 @@ class TestPacketFinalClassificationData(F1TypesTest):
                     "num-penalties": 0,
                     "num-tyre-stints": 1,
                     "tyre-stints-actual": [
-                        18
+                        "C3"
                     ],
                     "tyre-stints-visual": [
-                        16
+                        "Soft"
                     ],
                     "tyre-stints-end-laps": [
                         255
@@ -267,10 +267,10 @@ class TestPacketFinalClassificationData(F1TypesTest):
                     "num-penalties": 0,
                     "num-tyre-stints": 1,
                     "tyre-stints-actual": [
-                        18
+                        "C3"
                     ],
                     "tyre-stints-visual": [
-                        16
+                        "Soft"
                     ],
                     "tyre-stints-end-laps": [
                         255
@@ -291,10 +291,10 @@ class TestPacketFinalClassificationData(F1TypesTest):
                     "num-penalties": 0,
                     "num-tyre-stints": 1,
                     "tyre-stints-actual": [
-                        18
+                        "C3"
                     ],
                     "tyre-stints-visual": [
-                        16
+                        "Soft"
                     ],
                     "tyre-stints-end-laps": [
                         255
@@ -315,10 +315,10 @@ class TestPacketFinalClassificationData(F1TypesTest):
                     "num-penalties": 0,
                     "num-tyre-stints": 1,
                     "tyre-stints-actual": [
-                        18
+                        "C3"
                     ],
                     "tyre-stints-visual": [
-                        16
+                        "Soft"
                     ],
                     "tyre-stints-end-laps": [
                         255
@@ -339,10 +339,10 @@ class TestPacketFinalClassificationData(F1TypesTest):
                     "num-penalties": 0,
                     "num-tyre-stints": 1,
                     "tyre-stints-actual": [
-                        18
+                        "C3"
                     ],
                     "tyre-stints-visual": [
-                        16
+                        "Soft"
                     ],
                     "tyre-stints-end-laps": [
                         255
@@ -363,10 +363,10 @@ class TestPacketFinalClassificationData(F1TypesTest):
                     "num-penalties": 0,
                     "num-tyre-stints": 1,
                     "tyre-stints-actual": [
-                        18
+                        "C3"
                     ],
                     "tyre-stints-visual": [
-                        16
+                        "Soft"
                     ],
                     "tyre-stints-end-laps": [
                         255
@@ -387,10 +387,10 @@ class TestPacketFinalClassificationData(F1TypesTest):
                     "num-penalties": 0,
                     "num-tyre-stints": 1,
                     "tyre-stints-actual": [
-                        18
+                        "C3"
                     ],
                     "tyre-stints-visual": [
-                        16
+                        "Soft"
                     ],
                     "tyre-stints-end-laps": [
                         255
@@ -411,10 +411,10 @@ class TestPacketFinalClassificationData(F1TypesTest):
                     "num-penalties": 0,
                     "num-tyre-stints": 1,
                     "tyre-stints-actual": [
-                        18
+                        "C3"
                     ],
                     "tyre-stints-visual": [
-                        16
+                        "Soft"
                     ],
                     "tyre-stints-end-laps": [
                         255
@@ -435,10 +435,10 @@ class TestPacketFinalClassificationData(F1TypesTest):
                     "num-penalties": 0,
                     "num-tyre-stints": 1,
                     "tyre-stints-actual": [
-                        18
+                        "C3"
                     ],
                     "tyre-stints-visual": [
-                        16
+                        "Soft"
                     ],
                     "tyre-stints-end-laps": [
                         255
@@ -459,10 +459,10 @@ class TestPacketFinalClassificationData(F1TypesTest):
                     "num-penalties": 0,
                     "num-tyre-stints": 1,
                     "tyre-stints-actual": [
-                        18
+                        "C3"
                     ],
                     "tyre-stints-visual": [
-                        16
+                        "Soft"
                     ],
                     "tyre-stints-end-laps": [
                         255
@@ -483,10 +483,10 @@ class TestPacketFinalClassificationData(F1TypesTest):
                     "num-penalties": 0,
                     "num-tyre-stints": 1,
                     "tyre-stints-actual": [
-                        18
+                        "C3"
                     ],
                     "tyre-stints-visual": [
-                        16
+                        "Soft"
                     ],
                     "tyre-stints-end-laps": [
                         255
@@ -507,10 +507,10 @@ class TestPacketFinalClassificationData(F1TypesTest):
                     "num-penalties": 0,
                     "num-tyre-stints": 1,
                     "tyre-stints-actual": [
-                        18
+                        "C3"
                     ],
                     "tyre-stints-visual": [
-                        16
+                        "Soft"
                     ],
                     "tyre-stints-end-laps": [
                         255
@@ -531,10 +531,10 @@ class TestPacketFinalClassificationData(F1TypesTest):
                     "num-penalties": 0,
                     "num-tyre-stints": 1,
                     "tyre-stints-actual": [
-                        18
+                        "C3"
                     ],
                     "tyre-stints-visual": [
-                        16
+                        "Soft"
                     ],
                     "tyre-stints-end-laps": [
                         255
@@ -555,10 +555,10 @@ class TestPacketFinalClassificationData(F1TypesTest):
                     "num-penalties": 0,
                     "num-tyre-stints": 1,
                     "tyre-stints-actual": [
-                        18
+                        "C3"
                     ],
                     "tyre-stints-visual": [
-                        16
+                        "Soft"
                     ],
                     "tyre-stints-end-laps": [
                         255
@@ -592,23 +592,23 @@ class TestPacketFinalClassificationData(F1TypesTest):
             num_penalties=random.randrange(0,20),
             num_tyre_stints=random.randrange(0,8),
             # tyre_stints_actual,  # array of 8
-            tyre_stints_actual_0=random.randrange(0,22),
-            tyre_stints_actual_1=random.randrange(0,22),
-            tyre_stints_actual_2=random.randrange(0,22),
-            tyre_stints_actual_3=random.randrange(0,22),
-            tyre_stints_actual_4=random.randrange(0,22),
-            tyre_stints_actual_5=random.randrange(0,22),
-            tyre_stints_actual_6=random.randrange(0,22),
-            tyre_stints_actual_7=random.randrange(0,22),
+            tyre_stints_actual_0=random.choice(list(ActualTyreCompound)),
+            tyre_stints_actual_1=random.choice(list(ActualTyreCompound)),
+            tyre_stints_actual_2=random.choice(list(ActualTyreCompound)),
+            tyre_stints_actual_3=random.choice(list(ActualTyreCompound)),
+            tyre_stints_actual_4=random.choice(list(ActualTyreCompound)),
+            tyre_stints_actual_5=random.choice(list(ActualTyreCompound)),
+            tyre_stints_actual_6=random.choice(list(ActualTyreCompound)),
+            tyre_stints_actual_7=random.choice(list(ActualTyreCompound)),
             # tyre_stints_visual,  # array of 8
-            tyre_stints_visual_0=random.randrange(0,22),
-            tyre_stints_visual_1=random.randrange(0,22),
-            tyre_stints_visual_2=random.randrange(0,22),
-            tyre_stints_visual_3=random.randrange(0,22),
-            tyre_stints_visual_4=random.randrange(0,22),
-            tyre_stints_visual_5=random.randrange(0,22),
-            tyre_stints_visual_6=random.randrange(0,22),
-            tyre_stints_visual_7=random.randrange(0,22),
+            tyre_stints_visual_0=random.choice(list(VisualTyreCompound)),
+            tyre_stints_visual_1=random.choice(list(VisualTyreCompound)),
+            tyre_stints_visual_2=random.choice(list(VisualTyreCompound)),
+            tyre_stints_visual_3=random.choice(list(VisualTyreCompound)),
+            tyre_stints_visual_4=random.choice(list(VisualTyreCompound)),
+            tyre_stints_visual_5=random.choice(list(VisualTyreCompound)),
+            tyre_stints_visual_6=random.choice(list(VisualTyreCompound)),
+            tyre_stints_visual_7=random.choice(list(VisualTyreCompound)),
             # tyre_stints_end_laps,  # array of 8
             tyre_stints_end_laps_0=random.randrange(0,22),
             tyre_stints_end_laps_1=random.randrange(0,22),
