@@ -25,7 +25,7 @@ import struct
 from typing import Dict, Any, List, Union
 from enum import Enum
 from .common import _split_list, _extract_sublist, SessionType23, SessionType24, PacketHeader, TrackID, SafetyCarType, \
-    GearboxAssistMode, SessionLength
+    GearboxAssistMode, SessionLength, GameMode, RuleSet
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -768,10 +768,10 @@ class PacketSessionData:
         self.m_DRSAssist: int
         self.m_dynamicRacingLine: int
         self.m_dynamicRacingLineType: int
-        self.m_gameMode: int # TODO: make enum
-        self.m_ruleSet: int # TOOD: make enum
+        self.m_gameMode: GameMode
+        self.m_ruleSet: RuleSet
         self.m_timeOfDay: int
-        self.m_sessionLength: SessionLength # TODO: make enum
+        self.m_sessionLength: SessionLength
         self.m_speedUnitsLeadPlayer: int
         self.m_temperatureUnitsLeadPlayer: int
         self.m_speedUnitsSecondaryPlayer: int
@@ -924,6 +924,10 @@ class PacketSessionData:
             self.m_gearboxAssist = GearboxAssistMode(self.m_gearboxAssist)
         if SessionLength.isValid(self.m_sessionLength):
             self.m_sessionLength = SessionLength(self.m_sessionLength)
+        if GameMode.isValid(self.m_gameMode):
+            self.m_gameMode = GameMode(self.m_gameMode)
+        if RuleSet.isValid(self.m_ruleSet):
+            self.m_ruleSet = RuleSet(self.m_ruleSet)
 
         # Section 5 - F1 24 specific stuff
         if header.m_gameYear == 24:
@@ -1056,8 +1060,8 @@ class PacketSessionData:
             f"DRS Assist: {self.m_DRSAssist}, "
             f"Dynamic Racing Line: {self.m_dynamicRacingLine}, "
             f"Dynamic Racing Line Type: {self.m_dynamicRacingLineType}, "
-            f"Game Mode: {self.m_gameMode}, "
-            f"Rule Set: {self.m_ruleSet}, "
+            f"Game Mode: {str(self.m_gameMode)}, "
+            f"Rule Set: {str(self.m_ruleSet)}, "
             f"Time of Day: {self.m_timeOfDay}, "
             f"Session Length: {self.m_sessionLength}, "
             f"Speed Units Lead Player: {self.m_speedUnitsLeadPlayer}, "
@@ -1118,8 +1122,8 @@ class PacketSessionData:
             "drs-assist": self.m_DRSAssist,
             "dynamic-racing-line": self.m_dynamicRacingLine,
             "dynamic-racing-line-type": self.m_dynamicRacingLineType,
-            "game-mode": self.m_gameMode,
-            "rule-set": self.m_ruleSet,
+            "game-mode": str(self.m_gameMode),
+            "rule-set": str(self.m_ruleSet),
             "time-of-day": self.m_timeOfDay,
             "session-length": str(self.m_sessionLength),
             "speed-units-lead-player": self.m_speedUnitsLeadPlayer,

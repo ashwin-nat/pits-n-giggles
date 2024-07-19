@@ -1044,6 +1044,124 @@ class TrackID(Enum):
         max_value = max(member.value for member in TrackID)
         return min_value <= track <= max_value
 
+class GameMode(Enum):
+    """
+    Enum representing various game modes.
+
+    Attributes:
+        EVENT_MODE (int): Event Mode
+        GRAND_PRIX (int): Grand Prix
+        GRAND_PRIX_23 (int): Grand Prix ‘23
+        TIME_TRIAL (int): Time Trial
+        SPLITSCREEN (int): Splitscreen
+        ONLINE_CUSTOM (int): Online Custom
+        ONLINE_LEAGUE (int): Online League
+        CAREER_INVITATIONAL (int): Career Invitational
+        CHAMPIONSHIP_INVITATIONAL (int): Championship Invitational
+        CHAMPIONSHIP (int): Championship
+        ONLINE_CHAMPIONSHIP (int): Online Championship
+        ONLINE_WEEKLY_EVENT (int): Online Weekly Event
+        STORY_MODE (int): Story Mode
+        CAREER_22 (int): Career ‘22
+        CAREER_22_ONLINE (int): Career ’22 Online
+        CAREER_23 (int): Career ‘23
+        CAREER_23_ONLINE (int): Career ’23 Online
+        DRIVER_CAREER_24 (int): Driver Career ‘24
+        CAREER_24_ONLINE (int): Career ’24 Online
+        MY_TEAM_CAREER_24 (int): My Team Career ‘24
+        CURATED_CAREER_24 (int): Curated Career ‘24
+        BENCHMARK (int): Benchmark
+    """
+
+    EVENT_MODE = 0
+    GRAND_PRIX = 3
+    GRAND_PRIX_23 = 4
+    TIME_TRIAL = 5
+    SPLITSCREEN = 6
+    ONLINE_CUSTOM = 7
+    ONLINE_LEAGUE = 8
+    CAREER_INVITATIONAL = 11
+    CHAMPIONSHIP_INVITATIONAL = 12
+    CHAMPIONSHIP = 13
+    ONLINE_CHAMPIONSHIP = 14
+    ONLINE_WEEKLY_EVENT = 15
+    STORY_MODE = 17
+    CAREER_22 = 19
+    CAREER_22_ONLINE = 20
+    CAREER_23 = 21
+    CAREER_23_ONLINE = 22
+    DRIVER_CAREER_24 = 23
+    CAREER_24_ONLINE = 24
+    MY_TEAM_CAREER_24 = 25
+    CURATED_CAREER_24 = 26
+    BENCHMARK = 127
+
+    def __str__(self) -> str:
+        """Return a user-friendly string representation of the mode."""
+        return self.name.replace("_", " ").title()
+
+    @staticmethod
+    def isValid(mode: int):
+        """Check if the given mode is valid.
+
+        Args:
+            mode (int): The mode to be validated.
+
+        Returns:
+            bool: true if valid
+        """
+        if isinstance(mode, GameMode):
+            return True  # It's already an instance of GameMode
+        min_value = min(member.value for member in GameMode)
+        max_value = max(member.value for member in GameMode)
+        return min_value <= mode <= max_value
+
+class RuleSet(Enum):
+    """
+    Enum representing various rulesets.
+
+    Attributes:
+        PRACTICE_QUALIFYING (int): Practice & Qualifying
+        RACE (int): Race
+        TIME_TRIAL (int): Time Trial
+        TIME_ATTACK (int): Time Attack
+        CHECKPOINT_CHALLENGE (int): Checkpoint Challenge
+        AUTOCROSS (int): Autocross
+        DRIFT (int): Drift
+        AVERAGE_SPEED_ZONE (int): Average Speed Zone
+        RIVAL_DUEL (int): Rival Duel
+    """
+
+    PRACTICE_QUALIFYING = 0
+    RACE = 1
+    TIME_TRIAL = 2
+    TIME_ATTACK = 4
+    CHECKPOINT_CHALLENGE = 6
+    AUTOCROSS = 8
+    DRIFT = 9
+    AVERAGE_SPEED_ZONE = 10
+    RIVAL_DUEL = 11
+
+    def __str__(self) -> str:
+        """Return a user-friendly string representation of the ruleset."""
+        return self.name.replace("_", " & ").title()
+
+    @staticmethod
+    def isValid(rule_set: int):
+        """Check if the given mode is valid.
+
+        Args:
+            rule_set (int): The rule_set to be validated.
+
+        Returns:
+            bool: true if valid
+        """
+        if isinstance(rule_set, RuleSet):
+            return True  # It's already an instance of RuleSet
+        min_value = min(member.value for member in RuleSet)
+        max_value = max(member.value for member in RuleSet)
+        return min_value <= rule_set <= max_value
+
 class F1Utils:
     """
     Utility class for Formula 1-related operations.
