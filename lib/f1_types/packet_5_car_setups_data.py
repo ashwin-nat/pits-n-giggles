@@ -176,6 +176,39 @@ class CarSetupData:
                 self.m_fuelLoad,
             ) = unpacked_data
 
+    def isValid(self) -> bool:
+        """
+        Returns whether the CarSetupData object is valid.
+
+        Returns:
+            bool: True if the object is valid, False otherwise.
+        """
+
+        return not(
+            self.m_frontWing == 0 and
+            self.m_rearWing == 0 and
+            self.m_onThrottle == 0 and
+            self.m_offThrottle == 0 and
+            self.m_frontCamber == 0 and
+            self.m_rearCamber == 0 and
+            self.m_frontToe == 0 and
+            self.m_rearToe == 0 and
+            self.m_frontSuspension == 0 and
+            self.m_rearSuspension == 0 and
+            self.m_frontAntiRollBar == 0 and
+            self.m_rearAntiRollBar == 0 and
+            self.m_frontSuspensionHeight == 0 and
+            self.m_rearSuspensionHeight == 0 and
+            self.m_brakePressure == 0 and
+            self.m_brakeBias == 0 and
+            self.m_rearLeftTyrePressure == 0 and
+            self.m_rearRightTyrePressure == 0 and
+            self.m_frontLeftTyrePressure == 0 and
+            self.m_frontRightTyrePressure == 0 and
+            self.m_ballast == 0 and
+            self.m_fuelLoad == 0
+        )
+
     def __str__(self) -> str:
         """
         Returns a string representation of the CarSetupData object.
@@ -242,7 +275,8 @@ class CarSetupData:
             "front-left-tyre-pressure": self.m_frontLeftTyrePressure,
             "front-right-tyre-pressure": self.m_frontRightTyrePressure,
             "ballast": self.m_ballast,
-            "fuel-load": self.m_fuelLoad
+            "fuel-load": self.m_fuelLoad,
+            "is-valid" : self.isValid()
         }
 
     def __eq__(self, other: "CarSetupData") -> bool:

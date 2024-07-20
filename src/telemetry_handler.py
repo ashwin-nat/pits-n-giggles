@@ -34,7 +34,7 @@ from tqdm import tqdm
 from lib.f1_types import F1PacketType, PacketSessionData, PacketLapData, \
     PacketEventData, PacketParticipantsData, PacketCarTelemetryData, PacketCarStatusData, \
     PacketFinalClassificationData, PacketCarDamageData, PacketSessionHistoryData, PacketMotionData, \
-    PacketTyreSetsData, SessionType23, SessionType24
+    PacketTyreSetsData, PacketCarSetupData, SessionType23, SessionType24
 from lib.packet_cap import F1PacketCapture
 from lib.overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, OvertakeRecord
 import lib.race_analyzer as RaceAnalyzer
@@ -509,6 +509,7 @@ class F1TelemetryHandler:
         self.m_manager.registerCallback(F1PacketType.SESSION_HISTORY, F1TelemetryHandler.handleSessionHistory)
         self.m_manager.registerCallback(F1PacketType.TYRE_SETS, F1TelemetryHandler.handleTyreSets)
         self.m_manager.registerCallback(F1PacketType.MOTION, F1TelemetryHandler.handleMotion)
+        self.m_manager.registerCallback(F1PacketType.CAR_SETUPS, F1TelemetryHandler.handleCarSetups)
 
         if self.m_raw_packet_capture != PacketCaptureMode.DISABLED:
             self.m_manager.registerRawPacketCallback(F1TelemetryHandler.handleRawPacket)
@@ -582,13 +583,6 @@ class F1TelemetryHandler:
 
         # Session Started - Empty data structures
         elif packet.m_eventCode == PacketEventData.EventPacketType.SESSION_STARTED:
-            # g_num_active_cars = 0
-            # TelData.processSessionStarted()
-            # # Clear the list regardless of event type
-            # with g_overtakes_history.m_lock:
-            #     g_overtakes_history.m_overtakes_history.clear()
-            # g_player_recorded_events_history.clear()
-            # png_logger.info("Received SESSION_STARTED")
             clearAllDataStructures()
 
         # Retirement - Update data strucutres
@@ -732,3 +726,14 @@ class F1TelemetryHandler:
         """
 
         TelData.processMotionUpdate(packet)
+
+    @staticmethod
+    def handleCarSetups(packet: PacketCarSetupData) -> None:
+        """
+        Handle and process the car setup data update.
+
+        Arguments
+            packet - PacketCarSetupData object
+        """
+
+        TelData.processCarSetupsUpdate(packet)

@@ -1284,6 +1284,44 @@ SOFTWARE.
                 return tyreWearContent;
             }
 
+            function getCarSetupContent(data) {
+
+                function kebabToTitleCase(str) {
+                    return str
+                        .split('-')          // Split the string by the hyphen
+                        .map(word => word.charAt(0).toUpperCase() + word.slice(1)) // Capitalize the first letter of each word
+                        .join(' ');          // Join the words with a space
+                }
+
+                const carSetupContent = document.createElement('div');
+                const carSetupTable = document.createElement('table');
+                carSetupTable.classList.add('car-setup-table');
+                const carSetupBody = carSetupTable.createTBody();
+
+                if ("car-setup" in data && data["car-setup"] != null) {
+                    if (!data["car-setup"]["is-valid"]) {
+                        const row = carSetupBody.insertRow();
+                        row.innerHTML = '<td colspan="2">Car setup data not available</td>';
+                    } else {
+                        for (const key in data["car-setup"]) {
+                            if (key !== 'is-valid') {
+                                const value = data["car-setup"][key];
+                                const row = carSetupBody.insertRow();
+                                row.innerHTML = `
+                                    <td>${kebabToTitleCase(key)}</td>
+                                    <td>${value}</td>
+                                `;
+                            }
+                        }
+                    }
+                } else {
+                    const row = carSetupBody.insertRow();
+                    row.innerHTML = '<td colspan="2">Car setup data not available</td>';
+                }
+                carSetupContent.appendChild(createAccordion('Car Setup', carSetupTable));
+                return carSetupContent;
+            }
+
             function getLapHistoryContent(data) {
 
                 const lapHistoryContent = document.createElement('div');
@@ -2011,6 +2049,9 @@ SOFTWARE.
 
             // Collisions
             modalContent.appendChild(getCollisionsContent(data));
+
+            // Setup
+            modalContent.appendChild(getCarSetupContent(data));
 
             // Finalise the data
             const modalTitle = document.getElementById('modalTitle');

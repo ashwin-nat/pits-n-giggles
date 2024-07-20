@@ -102,7 +102,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -127,7 +128,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -152,7 +154,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -177,7 +180,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -202,7 +206,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -227,7 +232,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -252,7 +258,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -277,7 +284,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 12,
@@ -302,7 +310,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 24.899999618530273,
                     "front-right-tyre-pressure": 24.899999618530273,
                     "ballast": 6,
-                    "fuel-load": 10.0
+                    "fuel-load": 10.0,
+                    "is-valid": True
                 },
                 {
                     "front-wing": 0,
@@ -327,7 +336,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -352,7 +362,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -377,7 +388,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -402,7 +414,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -427,7 +440,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -452,7 +466,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -477,7 +492,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -502,7 +518,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -527,7 +544,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -552,7 +570,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -577,7 +596,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -602,7 +622,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -627,7 +648,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 }
             ]
         }
@@ -667,7 +689,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -692,7 +715,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -717,7 +741,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -742,7 +767,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -767,7 +793,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -792,7 +819,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -817,7 +845,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -842,7 +871,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -867,7 +897,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -892,7 +923,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -917,7 +949,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -942,7 +975,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -967,7 +1001,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -992,7 +1027,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -1017,7 +1053,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -1042,7 +1079,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -1067,7 +1105,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -1092,7 +1131,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -1117,7 +1157,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 25,
@@ -1142,7 +1183,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 22.799999237060547,
                     "front-right-tyre-pressure": 22.799999237060547,
                     "ballast": 6,
-                    "fuel-load": 20.0
+                    "fuel-load": 20.0,
+                    "is-valid": True
                 },
                 {
                     "front-wing": 0,
@@ -1167,7 +1209,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 },
                 {
                     "front-wing": 0,
@@ -1192,7 +1235,8 @@ class TestPacketCarSetupData(F1TypesTest):
                     "front-left-tyre-pressure": 0.0,
                     "front-right-tyre-pressure": 0.0,
                     "ballast": 0,
-                    "fuel-load": 0.0
+                    "fuel-load": 0.0,
+                    "is-valid": False
                 }
             ]
         }
