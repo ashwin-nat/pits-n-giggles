@@ -257,6 +257,7 @@
             const initialDataPoints = 10;
             const now = Date.now();
 
+            const lineThickness = 8;
             const data = {
                 datasets: [
                     {
@@ -266,7 +267,8 @@
                         fill: false,
                         pointRadius: 0,
                         pointHoverRadius: 0,
-                        borderWidth: 6,
+                        borderWidth: lineThickness,
+                        tension: 0.3,  // Add this line for smoothing
                         data: Array.from({ length: initialDataPoints }, (_, i) => ({
                             x: now - (initialDataPoints - i) * 1000,
                             y: 0
@@ -279,7 +281,8 @@
                         fill: false,
                         pointRadius: 0,
                         pointHoverRadius: 0,
-                        borderWidth: 6,
+                        borderWidth: lineThickness,
+                        tension: 0.3,  // Add this line for smoothing
                         data: Array.from({ length: initialDataPoints }, (_, i) => ({
                             x: now - (initialDataPoints - i) * 1000,
                             y: 0
@@ -292,7 +295,8 @@
                         fill: false,
                         pointRadius: 0,
                         pointHoverRadius: 0,
-                        borderWidth: 6,
+                        borderWidth: lineThickness,
+                        tension: 0.3,  // Add this line for smoothing
                         data: Array.from({ length: initialDataPoints }, (_, i) => ({
                             x: now - (initialDataPoints - i) * 1000,
                             y: 0
