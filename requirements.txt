@@ -39,7 +39,7 @@ mistune==3.0.2
 nbclient==0.10.0
 nbconvert==7.16.4
 nbformat==5.10.4
-numpy==1.23.5
+numpy==1.26.4
 packaging==24.1
 pandocfilters==1.5.1
 parso==0.8.4
