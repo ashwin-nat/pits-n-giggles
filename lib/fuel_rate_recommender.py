@@ -174,10 +174,6 @@ class FuelRateRecommender:
         self._recompute()
 
     def _recompute(self) -> None:
-        """Recompute the current and target fuel rate
-        """
-
-    def _recompute(self) -> None:
         """Recompute the current and target fuel rate."""
 
         if not self.isDataSufficient():
@@ -186,8 +182,11 @@ class FuelRateRecommender:
         # Calculate the current fuel rate based on the last two laps
         if len(self.m_fuel_remaining_history) > 1:
             last_lap_fuel = self.m_fuel_remaining_history[-1].m_fuel_remaining
-            second_last_lap_fuel = self.m_fuel_remaining_history[-2].m_fuel_remaining
-            self.m_curr_fuel_rate = second_last_lap_fuel - last_lap_fuel
+            last_lap_number = self.m_fuel_remaining_history[-1].m_lap_number
+            zeroth_lap_fuel = self.m_fuel_remaining_history[0].m_fuel_remaining
+            zeroth_lap_number = self.m_fuel_remaining_history[0].m_lap_number
+            self.m_curr_fuel_rate = (zeroth_lap_fuel - last_lap_fuel) / \
+                (last_lap_number - zeroth_lap_number)
 
         # Estimate remaining fuel after all laps
         current_fuel = self.m_fuel_remaining_history[-1].m_fuel_remaining
