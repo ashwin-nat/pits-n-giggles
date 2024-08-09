@@ -99,7 +99,8 @@ class FuelRateRecommender:
             bool: True if sufficient
         """
 
-        return len(self.m_fuel_remaining_history) >= 2 # We need 2 data points since we also include 0th lap data point
+        # We need 2 data points since we also include 0th lap data point
+        return (len(self.m_fuel_remaining_history) >= 2) and (self.m_total_laps is not None)
 
     def clear(self) -> None:
         """Clear the fuel rate extrapolator's data
