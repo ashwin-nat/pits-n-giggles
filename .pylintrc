@@ -113,7 +113,9 @@ disable=
     consider-alternative-union-syntax,
     duplicate-code,
     too-many-arguments,
-    too-many-locals
+    too-many-locals,
+    too-many-public-methods,
+    no-name-in-module
 
 [REPORTS]
 
