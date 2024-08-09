@@ -797,6 +797,34 @@ class DataPerDriver:
             input_data=self.m_collision_records)
         return collision_analyzer.toJSON()
 
+    def getFuelStatsJSON(self) -> Dict[str, Any]:
+        """Get the fuel stats JSON.
+
+        Returns:
+            Dict[str, Any]: Fuel stats JSON
+        """
+
+        if self.m_packet_car_status:
+            return {
+                "fuel-capacity" : self.m_packet_car_status.m_fuelCapacity,
+                "fuel-mix" : str(self.m_packet_car_status.m_fuelMix),
+                "fuel-remaining-laps" : self.m_packet_car_status.m_fuelRemainingLaps,
+                "fuel-in-tank" : self.m_packet_car_status.m_fuelInTank,
+                "curr-fuel-rate" :0.0,
+                "last-lap-fuel-used" : 0.0,
+                "target-fuel-rate" : 0.0
+            }
+
+        return {
+            "fuel-capacity" : 0.0,
+            "fuel-mix" : 0,
+            "fuel-remaining-laps" : 0.0,
+            "fuel-in-tank" : 0.0,
+            "curr-fuel-rate" : 0.0,
+            "last-lap-fuel-used" : 0.0,
+            "target-fuel-rate" : 0.0
+        }
+
 class DriverData:
     """
     Class that models the data for multiple race drivers.

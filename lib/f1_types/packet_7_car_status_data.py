@@ -64,6 +64,7 @@ class CarStatusData:
         The class uses enum classes for certain attributes for better readability and type safety.
     """
 
+    MIN_FUEL_KG = 0.2 # Source: Trust me bro
     MAX_ERS_STORE_ENERGY = 4000000.0 # Source: https://www.mercedes-amg-hpp.com/formula-1-engine-facts/#
     PACKET_FORMAT = ("<"
         "B" # uint8       m_tractionControl;          // Traction control - 0 = off, 1 = medium, 2 = full
@@ -204,6 +205,49 @@ class CarStatusData:
                 return True  # It's already an instance of CarStatusData.ERSDeployMode
             return any(ers_deploy_mode_code == member.value for member in CarStatusData.ERSDeployMode)
 
+    class FuelMix(Enum):
+        """
+        Enumeration representing different ERS deployment modes.
+
+        Attributes:
+            LEAN (int) - (0)
+            STANDARD (int) - (1)
+            RICH (int) - (2)
+            MAX (int) - (3)
+
+            Note:
+                Each attribute represents a unique fuel mix mode identified by an integer value.
+        """
+
+        LEAN = 0
+        STANDARD = 1
+        RICH = 2
+        MAX = 3
+
+        def __str__(self) -> str:
+            """
+            Returns a human-readable string representation of the ERS deployment mode.
+
+            Returns:
+                str: String representation of the ERS deployment mode.
+            """
+            return self.name.title()
+
+        @staticmethod
+        def isValid(fuel_mix_code: int) -> bool:
+            """
+            Check if the fuel mix code maps to a valid enum value.
+
+            Args:
+                fuel_mix_code (int): The ERS deploy mode code
+
+            Returns:
+                bool: True if the event type is valid, False otherwise.
+            """
+            if isinstance(fuel_mix_code, CarStatusData.FuelMix):
+                return True  # It's already an instance of CarStatusData.FuelMix
+            return any(fuel_mix_code == member.value for member in CarStatusData.FuelMix)
+
     def __init__(self, data) -> None:
         """
         Initializes CarStatusData with raw data.
@@ -252,6 +296,8 @@ class CarStatusData:
             self.m_ersDeployMode = CarStatusData.ERSDeployMode(self.m_ersDeployMode)
         if TractionControlAssistMode.isValid(self.m_tractionControl):
             self.m_tractionControl = TractionControlAssistMode(self.m_tractionControl)
+        if CarStatusData.FuelMix.isValid(self.m_fuelMix):
+            self.m_fuelMix = CarStatusData.FuelMix(self.m_fuelMix)
 
     def __str__(self):
         """
@@ -264,7 +310,7 @@ class CarStatusData:
             f"CarStatusData("
             f"m_tractionControl={self.m_tractionControl}, "
             f"m_antiLockBrakes={self.m_antiLockBrakes}, "
-            f"m_fuelMix={self.m_fuelMix}, "
+            f"m_fuelMix={str(self.m_fuelMix)}, "
             f"m_frontBrakeBias={self.m_frontBrakeBias}, "
             f"m_pitLimiterStatus={self.m_pitLimiterStatus}, "
             f"m_fuelInTank={self.m_fuelInTank}, "
@@ -300,7 +346,7 @@ class CarStatusData:
         return {
             "traction-control": str(self.m_tractionControl),
             "anti-lock-brakes": self.m_antiLockBrakes,
-            "fuel-mix": self.m_fuelMix,
+            "fuel-mix": str(self.m_fuelMix),
             "front-brake-bias": self.m_frontBrakeBias,
             "pit-limiter-status": self.m_pitLimiterStatus,
             "fuel-in-tank": self.m_fuelInTank,
@@ -388,7 +434,7 @@ class CarStatusData:
         return struct.pack(self.PACKET_FORMAT,
             self.m_tractionControl.value,
             self.m_antiLockBrakes,
-            self.m_fuelMix,
+            self.m_fuelMix.value,
             self.m_frontBrakeBias,
             self.m_pitLimiterStatus,
             self.m_fuelInTank,
@@ -417,7 +463,7 @@ class CarStatusData:
     def from_values(cls,
         traction_control: TractionControlAssistMode,
         anti_lock_brakes: bool,
-        fuel_mix: int,
+        fuel_mix: FuelMix,
         front_brake_bias: int,
         pit_limiter_status: bool,
         fuel_in_tank: float,
@@ -453,7 +499,7 @@ class CarStatusData:
         return cls(struct.pack(cls.PACKET_FORMAT,
             traction_control.value,
             anti_lock_brakes,
-            fuel_mix,
+            fuel_mix.value,
             front_brake_bias,
             pit_limiter_status,
             fuel_in_tank,

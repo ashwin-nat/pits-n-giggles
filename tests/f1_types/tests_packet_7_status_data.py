@@ -84,7 +84,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "FULL",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 58,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 13.416583061218262,
@@ -112,7 +112,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "MEDIUM",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 58,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 13.466639518737793,
@@ -140,7 +140,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "MEDIUM",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 58,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 13.596580505371094,
@@ -168,7 +168,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "MEDIUM",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 58,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 13.337425231933594,
@@ -196,7 +196,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "MEDIUM",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 58,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 13.12730884552002,
@@ -224,7 +224,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "MEDIUM",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 58,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 13.47005558013916,
@@ -252,7 +252,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "MEDIUM",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 58,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 13.192207336425781,
@@ -280,7 +280,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "MEDIUM",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 58,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 13.407796859741211,
@@ -308,7 +308,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "MEDIUM",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 58,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 13.395916938781738,
@@ -336,7 +336,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "MEDIUM",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 58,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 13.122811317443848,
@@ -364,7 +364,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "MEDIUM",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 58,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 13.243243217468262,
@@ -392,7 +392,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "MEDIUM",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 58,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 13.377389907836914,
@@ -420,7 +420,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "MEDIUM",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 58,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 13.447090148925781,
@@ -448,7 +448,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "MEDIUM",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 58,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 13.480649948120117,
@@ -476,7 +476,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "MEDIUM",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 58,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 13.55793571472168,
@@ -504,7 +504,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "MEDIUM",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 58,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 13.60971736907959,
@@ -532,7 +532,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "MEDIUM",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 58,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 13.535649299621582,
@@ -560,7 +560,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "MEDIUM",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 58,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 13.531001091003418,
@@ -588,7 +588,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "MEDIUM",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 58,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 13.674324989318848,
@@ -616,7 +616,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "OFF",
                     "anti-lock-brakes": False,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 52,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 13.199999809265137,
@@ -644,7 +644,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "OFF",
                     "anti-lock-brakes": False,
-                    "fuel-mix": 0,
+                    "fuel-mix": "Lean",
                     "front-brake-bias": 0,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 0.0,
@@ -672,7 +672,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "OFF",
                     "anti-lock-brakes": False,
-                    "fuel-mix": 0,
+                    "fuel-mix": "Lean",
                     "front-brake-bias": 0,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 0.0,
@@ -716,7 +716,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "FULL",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 57,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 37.99118423461914,
@@ -744,7 +744,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "FULL",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 57,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 39.567787170410156,
@@ -772,7 +772,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "FULL",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 57,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 39.48393249511719,
@@ -800,7 +800,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "FULL",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 57,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 38.23781967163086,
@@ -828,7 +828,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "FULL",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 57,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 37.99118423461914,
@@ -856,7 +856,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "FULL",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 57,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 39.40017318725586,
@@ -884,7 +884,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "FULL",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 57,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 39.23295593261719,
@@ -912,7 +912,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "FULL",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 57,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 39.567787170410156,
@@ -940,7 +940,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "FULL",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 57,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 38.65077590942383,
@@ -968,7 +968,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "FULL",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 57,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 38.073299407958984,
@@ -996,7 +996,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "FULL",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 57,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 38.40271759033203,
@@ -1024,7 +1024,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "FULL",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 57,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 38.073299407958984,
@@ -1052,7 +1052,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "FULL",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 57,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 38.40271759033203,
@@ -1080,7 +1080,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "FULL",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 57,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 39.25654983520508,
@@ -1108,7 +1108,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "FULL",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 57,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 38.031524658203125,
@@ -1136,7 +1136,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "FULL",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 57,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 39.69634246826172,
@@ -1164,7 +1164,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "FULL",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 57,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 39.199913024902344,
@@ -1192,7 +1192,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "FULL",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 54,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 37.663639068603516,
@@ -1220,7 +1220,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "FULL",
                     "anti-lock-brakes": True,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 53,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 36.36803436279297,
@@ -1248,7 +1248,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "OFF",
                     "anti-lock-brakes": False,
-                    "fuel-mix": 1,
+                    "fuel-mix": "Standard",
                     "front-brake-bias": 56,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 37.50000762939453,
@@ -1276,7 +1276,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "OFF",
                     "anti-lock-brakes": False,
-                    "fuel-mix": 0,
+                    "fuel-mix": "Lean",
                     "front-brake-bias": 0,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 0.0,
@@ -1304,7 +1304,7 @@ class TestPacketCarStatusData(F1TypesTest):
                 {
                     "traction-control": "OFF",
                     "anti-lock-brakes": False,
-                    "fuel-mix": 0,
+                    "fuel-mix": "Lean",
                     "front-brake-bias": 0,
                     "pit-limiter-status": False,
                     "fuel-in-tank": 0.0,
@@ -1347,7 +1347,7 @@ class TestPacketCarStatusData(F1TypesTest):
         return CarStatusData.from_values(
             traction_control=random.choice(list(TractionControlAssistMode)),
             anti_lock_brakes=F1TypesTest.getRandomBool(),
-            fuel_mix=random.randrange(0,3),
+            fuel_mix=random.choice(list(CarStatusData.FuelMix)),
             front_brake_bias=random.randrange(50,70),
             pit_limiter_status=F1TypesTest.getRandomBool(),
             fuel_in_tank=F1TypesTest.getRandomFloat(),
