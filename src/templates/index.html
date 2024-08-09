@@ -669,16 +669,23 @@ SOFTWARE.
                 `;
 
                 // Fuel info
-                const currFuelRate = formatFloatWithTwoDecimals(entry["fuel-stats"]["curr-fuel-rate"]) + " kg";
+                const currFuelRate = entry["fuel-stats"]["curr-fuel-rate"] !== null
+                    ? formatFloatWithTwoDecimals(entry["fuel-stats"]["curr-fuel-rate"]) + " kg/lap"
+                    : "N/A";
+                const targetFuelRate = entry["fuel-stats"]["target-fuel-rate"] !== null
+                    ? formatFloatWithTwoDecimals(entry["fuel-stats"]["target-fuel-rate"]) + " kg/lap"
+                    : "N/A";
+                const lastLapFuelUsed = entry["fuel-stats"]["last-lap-fuel-used"] !== null
+                    ? formatFloatWithTwoDecimals(entry["fuel-stats"]["last-lap-fuel-used"]) + " kg"
+                    : "N/A";
+
                 const currFuelLoad = formatFloatWithTwoDecimals(entry["fuel-stats"]["fuel-in-tank"]) + " kg";
-                const lastLapFuelUsed = formatFloatWithTwoDecimals(entry["fuel-stats"]["last-lap-fuel-used"]) + " kg";
-                const targetFuelRate = formatFloatWithTwoDecimals(entry["fuel-stats"]["target-fuel-rate"]) + " kg";
                 const fuelMix = entry["fuel-stats"]["fuel-mix"];
                 const remainingLaps = formatFloatWithTwoDecimalsSigned(entry["fuel-stats"]["fuel-remaining-laps"]) + " laps";
                 row.insertCell().innerHTML = `
-                    ${currFuelLoad}<br>
-                    ${fuelMix}<br>
-                    ${remainingLaps}
+                    Curr: ${currFuelRate}<br>
+                    Last: ${lastLapFuelUsed}<br>
+                    Tgt: ${targetFuelRate}<br>
                 `;
 
                 row.className = '';

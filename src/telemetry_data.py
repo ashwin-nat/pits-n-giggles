@@ -36,6 +36,7 @@ from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.overtake_analyzer import OvertakeRecord
 from lib.collisions_analyzer import CollisionRecord, CollisionAnayzer, CollisionAnalyzerMode
 from lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
+from lib.fuel_rate_recommender import FuelRateRecommender
 from src.png_logger import getLogger
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
@@ -185,6 +186,7 @@ class DataPerDriver:
         m_fr_wing_damage (int): Right front wing damage
         m_rear_wing_damage (int): Rear wing damage
         m_collision_records (List[CollisionRecord]): List of CollisionRecord objects for the driver.
+        m_fuel_rate_recommender (Optional[FuelRateRecommender]): Fuel usage rate recommender for the driver.
 
         m_packet_lap_data (Optional[LapData]): Copy of LapData packet for the driver.
         m_packet_participant_data (Optional[ParticipantData]): Copy of ParticipantData packet for the driver.
@@ -380,6 +382,8 @@ class DataPerDriver:
         self.m_fr_wing_damage: Optional[int] = None
         self.m_rear_wing_damage: Optional[int] = None
         self.m_collision_records: List[CollisionRecord] = []
+        self.m_fuel_rate_recommender: FuelRateRecommender = FuelRateRecommender([], total_laps=total_laps,
+                                                                                min_fuel_kg=CarStatusData.MIN_FUEL_KG)
 
         # packet copies
         self.m_packet_lap_data: Optional[LapData] = None
@@ -616,6 +620,9 @@ class DataPerDriver:
                 desc=tyre_set_id
             ))
 
+        # Fuel stuff
+        self.m_fuel_rate_recommender.add(self.m_packet_car_status.m_fuelInTank, old_lap_number)
+
     def isZerothLapBackupDataAvailable(self) -> bool:
         """
         Checks if zeroth lap backup data is available.
@@ -629,7 +636,6 @@ class DataPerDriver:
             self.m_packet_car_status and
             self.m_packet_tyre_sets
         )
-
 
     def updateTyreSetData(self, fitted_index: int) -> None:
         """Update the current tyre set in the history list, if required.
@@ -810,9 +816,9 @@ class DataPerDriver:
                 "fuel-mix" : str(self.m_packet_car_status.m_fuelMix),
                 "fuel-remaining-laps" : self.m_packet_car_status.m_fuelRemainingLaps,
                 "fuel-in-tank" : self.m_packet_car_status.m_fuelInTank,
-                "curr-fuel-rate" :0.0,
-                "last-lap-fuel-used" : 0.0,
-                "target-fuel-rate" : 0.0
+                "curr-fuel-rate" :self.m_fuel_rate_recommender.curr_fuel_rate,
+                "last-lap-fuel-used" : self.m_fuel_rate_recommender.fuel_used_last_lap,
+                "target-fuel-rate" : self.m_fuel_rate_recommender.target_fuel_rate
             }
 
         return {
@@ -1030,6 +1036,7 @@ class DriverData:
             # Next, update in all extrapolator objects
             for driver_data in self.m_driver_data.values():
                 driver_data.m_tyre_wear_extrapolator.total_laps = self.m_total_laps
+                driver_data.m_fuel_rate_recommender.total_laps = self.m_total_laps
 
     def processLapDataUpdate(self, packet: PacketLapData) -> None:
         """Process the lap data packet and update the necessary fields
