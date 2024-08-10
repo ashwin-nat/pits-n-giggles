@@ -356,7 +356,7 @@ SOFTWARE.
                 <th>Tyre Info</th>
                 <th>Wear Prediction</th>
                 <th>Wing Damage</th>
-                <th>Fuel Info</th>
+                <th>Fuel Rates</th>
             </tr>
         </thead>
         <tbody></tbody>
@@ -670,21 +670,18 @@ SOFTWARE.
 
                 // Fuel info
                 const currFuelRate = entry["fuel-stats"]["curr-fuel-rate"] !== null
-                    ? formatFloatWithTwoDecimals(entry["fuel-stats"]["curr-fuel-rate"]) + " kg/lap"
+                    ? formatFloatWithTwoDecimals(entry["fuel-stats"]["curr-fuel-rate"])
                     : "N/A";
                 const targetFuelRate = entry["fuel-stats"]["target-fuel-rate"] !== null
-                    ? formatFloatWithTwoDecimals(entry["fuel-stats"]["target-fuel-rate"]) + " kg/lap"
+                    ? formatFloatWithTwoDecimals(entry["fuel-stats"]["target-fuel-rate"])
                     : "N/A";
                 const lastLapFuelUsed = entry["fuel-stats"]["last-lap-fuel-used"] !== null
-                    ? formatFloatWithTwoDecimals(entry["fuel-stats"]["last-lap-fuel-used"]) + " kg"
+                    ? formatFloatWithTwoDecimals(entry["fuel-stats"]["last-lap-fuel-used"])
                     : "N/A";
 
-                const currFuelLoad = formatFloatWithTwoDecimals(entry["fuel-stats"]["fuel-in-tank"]) + " kg";
-                const fuelMix = entry["fuel-stats"]["fuel-mix"];
-                const remainingLaps = formatFloatWithTwoDecimalsSigned(entry["fuel-stats"]["fuel-remaining-laps"]) + " laps";
                 row.insertCell().innerHTML = `
-                    Curr: ${currFuelRate}<br>
                     Last: ${lastLapFuelUsed}<br>
+                    Curr: ${currFuelRate}<br>
                     Tgt: ${targetFuelRate}<br>
                 `;
 
