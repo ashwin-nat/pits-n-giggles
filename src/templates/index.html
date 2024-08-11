@@ -379,6 +379,8 @@ SOFTWARE.
         // Check if delta column needs to be displayed
         const shouldHideDeltaColumn = {{ live_data_mode | tojson | safe }};
         const shouldHidePredictionColumn = !{{ live_data_mode | tojson | safe }};
+        const shouldHideFuelColumn = !{{ live_data_mode | tojson | safe }};
+        const shouldHideLastLapColumn = !{{ live_data_mode | tojson | safe }};
 
         function onPlayerReady(event) {
             var motivationLink = document.getElementById("motivationLink");
@@ -625,10 +627,12 @@ SOFTWARE.
                     }
                 }
 
-                if (lastLapAbsoluteFormat || entry["is-spectating"]) {
-                    row.insertCell().textContent = entry["last"];
-                } else {
-                    row.insertCell().textContent = entry["last-lap-delta"];
+                if (!shouldHideLastLapColumn) {
+                    if (lastLapAbsoluteFormat || entry["is-spectating"]) {
+                        row.insertCell().textContent = entry["last"];
+                    } else {
+                        row.insertCell().textContent = entry["last-lap-delta"];
+                    }
                 }
 
                 const tyreInfoCell = row.insertCell();
@@ -668,22 +672,24 @@ SOFTWARE.
                     RW: ${rearWingDamage}
                 `;
 
-                // Fuel info
-                const currFuelRate = entry["fuel-stats"]["curr-fuel-rate"] !== null
-                    ? formatFloatWithTwoDecimals(entry["fuel-stats"]["curr-fuel-rate"])
-                    : "N/A";
-                const targetFuelRate = entry["fuel-stats"]["target-fuel-rate"] !== null
-                    ? formatFloatWithTwoDecimals(entry["fuel-stats"]["target-fuel-rate"])
-                    : "N/A";
-                const lastLapFuelUsed = entry["fuel-stats"]["last-lap-fuel-used"] !== null
-                    ? formatFloatWithTwoDecimals(entry["fuel-stats"]["last-lap-fuel-used"])
-                    : "N/A";
+                if (!shouldHideFuelColumn) {
+                    // Fuel info
+                    const currFuelRate = entry["fuel-stats"]["curr-fuel-rate"] !== null
+                        ? formatFloatWithTwoDecimals(entry["fuel-stats"]["curr-fuel-rate"])
+                        : "N/A";
+                    const targetFuelRate = entry["fuel-stats"]["target-fuel-rate"] !== null
+                        ? formatFloatWithTwoDecimals(entry["fuel-stats"]["target-fuel-rate"])
+                        : "N/A";
+                    const lastLapFuelUsed = entry["fuel-stats"]["last-lap-fuel-used"] !== null
+                        ? formatFloatWithTwoDecimals(entry["fuel-stats"]["last-lap-fuel-used"])
+                        : "N/A";
 
-                row.insertCell().innerHTML = `
-                    Last: ${lastLapFuelUsed}<br>
-                    Curr: ${currFuelRate}<br>
-                    Tgt: ${targetFuelRate}<br>
-                `;
+                    row.insertCell().innerHTML = `
+                        Last: ${lastLapFuelUsed}<br>
+                        Curr: ${currFuelRate}<br>
+                        Tgt: ${targetFuelRate}<br>
+                    `;
+                }
 
                 row.className = '';
                 if (entry["is-fastest"]) {
@@ -2326,6 +2332,12 @@ SOFTWARE.
         }
         if (shouldHidePredictionColumn) {
             hideColumn("Wear Prediction");
+        }
+        if (shouldHideFuelColumn) {
+            hideColumn("Fuel Rates");
+        }
+        if (shouldHideLastLapColumn) {
+            hideColumn("Last");
         }
 
         var socket = io.connect('http://' + document.domain + ':' + location.port, {
