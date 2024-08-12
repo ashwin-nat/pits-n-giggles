@@ -297,7 +297,7 @@ class DataPerDriver:
 
     class PerLapHistoryEntry:
         """
-        Class that captures one lap's backup data
+        Class that captures one lap's snapshot data
 
         Attributes:
             m_car_damage_packet (CarDamageData): The Car damage packet
@@ -311,7 +311,7 @@ class DataPerDriver:
                      car_status : CarStatusData,
                      sc_status  : SafetyCarType,
                      tyre_sets  : PacketTyreSetsData):
-            """Init the backup entry object
+            """Init the snapshot entry object
 
             Args:
                 car_damage (CarDamageData): The Car damage packet
@@ -397,8 +397,8 @@ class DataPerDriver:
         self.m_packet_motion: Optional[CarMotionData] = None
         self.m_packet_car_setup: Optional[CarSetupData] = None
 
-        # Per lap backup
-        self.m_per_lap_backups: Dict[int, DataPerDriver.PerLapHistoryEntry] = {}
+        # Per lap snapshot
+        self.m_per_lap_snapshots: Dict[int, DataPerDriver.PerLapHistoryEntry] = {}
 
     def toJSON(self,
                index: Optional[int] = None,
@@ -446,10 +446,10 @@ class DataPerDriver:
         self._computeTyreStintEndLaps()
         final_json["tyre-set-history"]= self._getTyreSetHistoryJSON()
 
-        # Insert the per lap backup
+        # Insert the per lap snapshot
         final_json["per-lap-info"] = []
-        for lap_number, backup_entry in self._getNextLapBackup():
-            final_json["per-lap-info"].append(backup_entry.toJSON(lap_number))
+        for lap_number, snapshot_entry in self._getNextLapSnapshot():
+            final_json["per-lap-info"].append(snapshot_entry.toJSON(lap_number))
 
         if include_tyre_wear_prediction:
             if self.m_tyre_wear_extrapolator.isDataSufficient():
@@ -552,14 +552,14 @@ class DataPerDriver:
         if start_lap == 1:
             tyre_wear_history.append({
                 'lap-number': 0,
-                'front-right-wear': self.m_per_lap_backups[0].m_car_damage_packet.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
-                'front-left-wear': self.m_per_lap_backups[0].m_car_damage_packet.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
-                'rear-right-wear': self.m_per_lap_backups[0].m_car_damage_packet.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
-                'rear-left-wear': self.m_per_lap_backups[0].m_car_damage_packet.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
+                'front-right-wear': self.m_per_lap_snapshots[0].m_car_damage_packet.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
+                'front-left-wear': self.m_per_lap_snapshots[0].m_car_damage_packet.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
+                'rear-right-wear': self.m_per_lap_snapshots[0].m_car_damage_packet.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
+                'rear-left-wear': self.m_per_lap_snapshots[0].m_car_damage_packet.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
             })
         for lap_number in range_of_laps:
-            if lap_number in self.m_per_lap_backups:
-                car_damage_data = self.m_per_lap_backups[lap_number].m_car_damage_packet
+            if lap_number in self.m_per_lap_snapshots:
+                car_damage_data = self.m_per_lap_snapshots[lap_number].m_car_damage_packet
                 if car_damage_data:
                     tyre_wear_history.append({
                         'lap-number': lap_number,
@@ -571,24 +571,24 @@ class DataPerDriver:
                 else:
                     png_logger.debug('car damage data not available for lap %d driver %s', lap_number, self.m_name)
             else:
-                png_logger.debug('per lap backup not available for lap %d driver %s', lap_number, self.m_name)
+                png_logger.debug('per lap snapshot not available for lap %d driver %s', lap_number, self.m_name)
         return tyre_wear_history
 
     def onLapChange(self,
         old_lap_number: int) -> None:
         """
-        Perform backup for the given lap change.
+        Perform snapshot for the given lap change.
 
         Args:
             old_lap_number (int): The old lap number.
         """
 
-        # Check if the old lap number is already present in the backups (lap already processed)
-        if old_lap_number in self.m_per_lap_backups:
+        # Check if the old lap number is already present in the snapshots (lap already processed)
+        if old_lap_number in self.m_per_lap_snapshots:
             return
 
-        # Store the backup data for the old lap
-        self.m_per_lap_backups[old_lap_number] = DataPerDriver.PerLapHistoryEntry(
+        # Store the snapshot data for the old lap
+        self.m_per_lap_snapshots[old_lap_number] = DataPerDriver.PerLapHistoryEntry(
             car_damage=self.m_packet_car_damage,
             car_status=self.m_packet_car_status,
             sc_status=self.m_curr_lap_sc_status,
@@ -604,7 +604,7 @@ class DataPerDriver:
                 rl_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
                 rr_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
                 is_racing_lap=True,
-                desc="end of lap " + str(old_lap_number) + " backup"
+                desc="end of lap " + str(old_lap_number) + " snapshot"
             ))
 
         # Add the tyre wear data into the extrapolator
@@ -623,12 +623,12 @@ class DataPerDriver:
         # Fuel stuff
         self.m_fuel_rate_recommender.add(self.m_packet_car_status.m_fuelInTank, old_lap_number)
 
-    def isZerothLapBackupDataAvailable(self) -> bool:
+    def isZerothLapSnapshotDataAvailable(self) -> bool:
         """
-        Checks if zeroth lap backup data is available.
+        Checks if zeroth lap snapshot data is available.
 
         Returns:
-            bool - True if zeroth lap backup data is available
+            bool - True if zeroth lap snapshot data is available
         """
 
         return bool(
@@ -653,14 +653,14 @@ class DataPerDriver:
         if self.m_current_lap is not None:
             fitted_tyre_set_key = self._getCurrentTyreSetKey()
             if len(self.m_tyre_set_history) == 0:
-                if 0 in self.m_per_lap_backups:
+                if 0 in self.m_per_lap_snapshots:
                     # Start of race, enter the tyre wear data along with starting value
                     initial_tyre_wear = TyreWearPerLap(
                         lap_number=0,
-                        fl_tyre_wear=self.m_per_lap_backups[0].m_car_damage_packet.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
-                        fr_tyre_wear=self.m_per_lap_backups[0].m_car_damage_packet.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
-                        rl_tyre_wear=self.m_per_lap_backups[0].m_car_damage_packet.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
-                        rr_tyre_wear=self.m_per_lap_backups[0].m_car_damage_packet.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
+                        fl_tyre_wear=self.m_per_lap_snapshots[0].m_car_damage_packet.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
+                        fr_tyre_wear=self.m_per_lap_snapshots[0].m_car_damage_packet.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
+                        rl_tyre_wear=self.m_per_lap_snapshots[0].m_car_damage_packet.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
+                        rr_tyre_wear=self.m_per_lap_snapshots[0].m_car_damage_packet.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
                         is_racing_lap=True,
                         desc="end of zeroth lap data point"
                     )
@@ -711,15 +711,15 @@ class DataPerDriver:
 
         return self.m_packet_tyre_sets.m_fittedIdx if self.m_packet_tyre_sets else None
 
-    def _getNextLapBackup(self) -> Generator[Tuple[int, PerLapHistoryEntry], None, None]:
+    def _getNextLapSnapshot(self) -> Generator[Tuple[int, PerLapHistoryEntry], None, None]:
         """
-        Returns a generator for each lap's backup in order.
+        Returns a generator for each lap's snapshot in order.
 
         Yields:
-            Tuple[int, PerLapHistoryEntry]: Tuple containing lap number and backup data for each lap.
+            Tuple[int, PerLapHistoryEntry]: Tuple containing lap number and snapshot data for each lap.
         """
-        for lap_number in sorted(self.m_per_lap_backups.keys()):
-            yield lap_number, self.m_per_lap_backups[lap_number]
+        for lap_number in sorted(self.m_per_lap_snapshots.keys()):
+            yield lap_number, self.m_per_lap_snapshots[lap_number]
 
     def _computeTyreStintEndLaps(self) -> None:
         """
@@ -776,17 +776,17 @@ class DataPerDriver:
                 tyre_set_id=self._getCurrentTyreSetID(),
                 tyre_age_laps=self.m_packet_car_status.m_tyresAgeLaps
             )
-        if (lap_num < self.m_current_lap) and (lap_num in self.m_per_lap_backups):
-            backup_at_lap       = self.m_per_lap_backups[lap_num]
-            backup_car_status   = backup_at_lap.m_car_status_packet
-            backup_tyre_sets    = backup_at_lap.m_tyre_sets_packet
-            if not backup_car_status or not backup_tyre_sets:
+        if (lap_num < self.m_current_lap) and (lap_num in self.m_per_lap_snapshots):
+            snapshot_at_lap       = self.m_per_lap_snapshots[lap_num]
+            snapshot_car_status   = snapshot_at_lap.m_car_status_packet
+            snapshot_tyre_sets    = snapshot_at_lap.m_tyre_sets_packet
+            if not snapshot_car_status or not snapshot_tyre_sets:
                 return None
             return DataPerDriver.TyreSetInfo(
-                actual_tyre_compound=backup_car_status.m_actualTyreCompound,
-                visual_tyre_compound=backup_car_status.m_visualTyreCompound,
-                tyre_set_id=backup_tyre_sets.m_fittedIdx,
-                tyre_age_laps=backup_car_status.m_tyresAgeLaps
+                actual_tyre_compound=snapshot_car_status.m_actualTyreCompound,
+                visual_tyre_compound=snapshot_car_status.m_visualTyreCompound,
+                tyre_set_id=snapshot_tyre_sets.m_fittedIdx,
+                tyre_age_laps=snapshot_car_status.m_tyresAgeLaps
             )
 
         return None
@@ -1070,10 +1070,10 @@ class DriverData:
             obj_to_be_updated.m_penalties = self._getPenaltyString(lap_data.m_penalties,
                                 lap_data.m_numUnservedDriveThroughPens, lap_data.m_numUnservedStopGoPens)
 
-            # Update the per lap backup data structure if lap info is available
+            # Update the per lap snapshot data structure if lap info is available
             if (obj_to_be_updated.m_current_lap is not None):
                 if (obj_to_be_updated.m_current_lap == 1):
-                    if (obj_to_be_updated.isZerothLapBackupDataAvailable()):
+                    if (obj_to_be_updated.isZerothLapSnapshotDataAvailable()):
                         # Enter data for the zeroth lap
                         obj_to_be_updated.onLapChange(
                             old_lap_number=0)
@@ -1198,7 +1198,7 @@ class DriverData:
         final_json = packet.toJSON()
         for index, data in enumerate(packet.m_classificationData):
             obj_to_be_updated = self.m_driver_data.get(index, None)
-            # Perform the final backup
+            # Perform the final snapshot
             obj_to_be_updated.onLapChange(
                 old_lap_number=data.m_numLaps)
             if obj_to_be_updated:
