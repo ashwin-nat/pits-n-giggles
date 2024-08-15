@@ -2035,6 +2035,53 @@ SOFTWARE.
                 return warningsPenaltiesContent;
             }
 
+            function getWarningsAndPenaltiesHistoryContent(data) {
+
+                const warningsPenaltiesHistoryContent = document.createElement('div');
+                const warningsPenaltiesHistoryTable = document.createElement('table');
+                warningsPenaltiesHistoryTable.classList.add('warnings-penalties-damage-table');
+                const warningsPenaltiesHistoryHeader = warningsPenaltiesHistoryTable.createTHead();
+                const warningsPenaltiesHistoryHeaderRow = warningsPenaltiesHistoryHeader.insertRow();
+                warningsPenaltiesHistoryHeaderRow.innerHTML = `
+                    <th>Lap</th>
+                    <th>Sector</th>
+                    <th>Lap %</th>
+                    <th>Type</th>
+                    <th>Value</th>
+                `;
+                const warningsPenaltiesHistoryBody = warningsPenaltiesHistoryTable.createTBody();
+                if ("warning-penalty-history" in data && data["warning-penalty-history"] != null) {
+                    const warningsPenaltyHistoryList = data["warning-penalty-history"];
+                    if (warningsPenaltyHistoryList.length == 0) {
+                        const row = warningsPenaltiesHistoryBody.insertRow();
+                        row.innerHTML = '<td colspan="5">No Warnings or Penalites</td>';
+                    } else {
+                        warningsPenaltyHistoryList.forEach(data => {
+                            const entryType     = data["entry-type"];
+                            const oldValue      = data["old-value"];
+                            const newValue      = data["new-value"];
+                            const lapNumber     = data["lap-number"];
+                            const sectorNumber  = data["sector-number"];
+                            const lapProgressPercent = data["lap-progress-percent"];
+
+                            const row = warningsPenaltiesHistoryBody.insertRow();
+                            row.innerHTML = `
+                                <td>${lapNumber}</td>
+                                <td>${sectorNumber}</td>
+                                <td>${formatFloatWithTwoDecimals(lapProgressPercent)} %</td>
+                                <td>${entryType}</td>
+                                <td>${oldValue} --> ${newValue}</td>
+                            `;
+                        });
+                    }
+                } else {
+                    const row = warningsPenaltiesHistoryBody.insertRow();
+                    row.innerHTML = '<td colspan="5">No Warnings or Penalites</td>';
+                }
+                warningsPenaltiesHistoryContent.appendChild(createAccordion('Warnings & Penalties History', warningsPenaltiesHistoryTable));
+                return warningsPenaltiesHistoryContent;
+            }
+
             const modalContent = document.getElementById('modalContent');
             modalContent.innerHTML = '';
 
@@ -2070,6 +2117,9 @@ SOFTWARE.
 
             // Warning and Penalties Table
             modalContent.appendChild(getWarningsAndPenaltiesContent(data));
+
+            // Warning and Penalties History Table
+            modalContent.appendChild(getWarningsAndPenaltiesHistoryContent(data));
 
             // Collisions
             modalContent.appendChild(getCollisionsContent(data));
