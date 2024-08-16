@@ -2047,14 +2047,15 @@ SOFTWARE.
                     <th>Sector</th>
                     <th>Lap %</th>
                     <th>Type</th>
-                    <th>Value</th>
+                    <th>Old Value</th>
+                    <th>New Value</th>
                 `;
                 const warningsPenaltiesHistoryBody = warningsPenaltiesHistoryTable.createTBody();
                 if ("warning-penalty-history" in data && data["warning-penalty-history"] != null) {
                     const warningsPenaltyHistoryList = data["warning-penalty-history"];
                     if (warningsPenaltyHistoryList.length == 0) {
                         const row = warningsPenaltiesHistoryBody.insertRow();
-                        row.innerHTML = '<td colspan="5">No Warnings or Penalites</td>';
+                        row.innerHTML = '<td colspan="6">No Warnings or Penalites</td>';
                     } else {
                         warningsPenaltyHistoryList.forEach(data => {
                             const entryType     = data["entry-type"];
@@ -2070,13 +2071,14 @@ SOFTWARE.
                                 <td>${sectorNumber}</td>
                                 <td>${formatFloatWithTwoDecimals(lapProgressPercent)} %</td>
                                 <td>${entryType}</td>
-                                <td>${oldValue} --> ${newValue}</td>
+                                <td>${oldValue}</td>
+                                <td>${newValue}</td>
                             `;
                         });
                     }
                 } else {
                     const row = warningsPenaltiesHistoryBody.insertRow();
-                    row.innerHTML = '<td colspan="5">No Warnings or Penalites</td>';
+                    row.innerHTML = '<td colspan="6">No Warnings or Penalites</td>';
                 }
                 warningsPenaltiesHistoryContent.appendChild(createAccordion('Warnings & Penalties History', warningsPenaltiesHistoryTable));
                 return warningsPenaltiesHistoryContent;
@@ -2190,7 +2192,7 @@ SOFTWARE.
             document.getElementById('fastestLapOverall').textContent = `${fastest_lap}`;
             document.getElementById('pitSpeedLimit').textContent = `${pit_speed_limit} kmph`;
 
-            const saveTelemetryLink = document.getElementById('saveTelemetryLinkRow');
+            let saveTelemetryLink = document.getElementById('saveTelemetryLinkRow');
             if (!packet_capture_enabled) {
                 saveTelemetryLink.style.display = 'none';
             }
@@ -2201,6 +2203,11 @@ SOFTWARE.
                 document.getElementById('sessionTimeLeft').textContent = `${formatSecondsToMMSS(sessionTimeLeft)}`;
             } else {
                 sessionTimeLeftRow.style.display = 'none';
+            }
+
+            let safetyCarRow = document.getElementById('safetyCarRow');
+            if (!live_data_mode) {
+                safetyCarRow.style.display = 'none';
             }
         }
 

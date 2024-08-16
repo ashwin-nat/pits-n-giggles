@@ -381,7 +381,7 @@ class DataPerDriver:
                 Returns:
                     str: The name of the entry type
                 """
-                return self.name
+                return self.name.replace('_', ' ').title()
 
         def __init__(self,
                      entry_type: EntryType,
@@ -405,6 +405,7 @@ class DataPerDriver:
                 lap_progress_percent (float): The lap progress percent
             """
 
+            assert old_value != new_value
             self.m_entry_type: DataPerDriver.WarningPenaltyEntry.EntryType = entry_type
             self.m_old_value: int = old_value
             self.m_new_value: int = new_value
@@ -929,7 +930,7 @@ class DataPerDriver:
             full_lap_distance (int): The distance of the entire lap in metres
         """
 
-        other_warnings = lap_data.m_totalWarnings - lap_data.m_cornerCuttingWarnings
+        curr_other_warnings = lap_data.m_totalWarnings - lap_data.m_cornerCuttingWarnings
         lap_progress_percent=(lap_data.m_lapDistance/float(full_lap_distance))*100.0
         if not self.m_packet_lap_data:
             # If any penalties/warnings exist, set it
@@ -944,12 +945,12 @@ class DataPerDriver:
                     distance_from_start=lap_data.m_lapDistance,
                     lap_progress_percent=lap_progress_percent
                     ))
-            if other_warnings > 0:
+            if curr_other_warnings > 0:
                 # Add other warnings
                 self.m_warning_penalty_history.append(DataPerDriver.WarningPenaltyEntry(
                     entry_type=DataPerDriver.WarningPenaltyEntry.EntryType.OTHER_WARNING,
                     old_value=0,
-                    new_value=other_warnings,
+                    new_value=curr_other_warnings,
                     lap_num=lap_data.m_currentLapNum,
                     sector_number=lap_data.m_sector,
                     distance_from_start=lap_data.m_lapDistance,
@@ -989,6 +990,8 @@ class DataPerDriver:
                     lap_progress_percent=lap_progress_percent
                     ))
         else:
+            old_other_warnings  = self.m_packet_lap_data.m_totalWarnings - \
+                self.m_packet_lap_data.m_cornerCuttingWarnings
             # If there is a diff in corner cutting warnings, add it
             if lap_data.m_cornerCuttingWarnings != self.m_packet_lap_data.m_cornerCuttingWarnings:
                 self.m_warning_penalty_history.append(DataPerDriver.WarningPenaltyEntry(
@@ -1001,11 +1004,11 @@ class DataPerDriver:
                     lap_progress_percent=lap_progress_percent
                     ))
             # If there is a diff in other warnings, add it
-            if self.m_packet_lap_data.m_totalWarnings != lap_data.m_totalWarnings:
+            if curr_other_warnings != old_other_warnings:
                 self.m_warning_penalty_history.append(DataPerDriver.WarningPenaltyEntry(
                     entry_type=DataPerDriver.WarningPenaltyEntry.EntryType.OTHER_WARNING,
-                    old_value=self.m_packet_lap_data.m_totalWarnings - self.m_packet_lap_data.m_cornerCuttingWarnings,
-                    new_value=other_warnings,
+                    old_value=old_other_warnings,
+                    new_value=curr_other_warnings,
                     lap_num=lap_data.m_currentLapNum,
                     sector_number=lap_data.m_sector,
                     distance_from_start=lap_data.m_lapDistance,

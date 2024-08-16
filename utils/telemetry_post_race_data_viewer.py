@@ -262,6 +262,12 @@ def getDriverInfoJsonByIndex(index):
         # Insert the per lap backup
         final_json["per-lap-info"] = driver_data["per-lap-info"]
 
+        # Insert the warnings and penalties
+        if "warning-penalty-history" in driver_data:
+            final_json["warning-penalty-history"] = driver_data["warning-penalty-history"]
+        else:
+            final_json["warning-penalty-history"] = []
+
         # Return this fully prepped JSON
         return final_json
 
