@@ -2170,7 +2170,10 @@ SOFTWARE.
                 case "Qualifying 2":
                 case "Qualifying 3":
                 case "Short Qualifying":
-                case "One Shot Qualifying":
+                case "Sprint Shootout 1":
+                case "Sprint Shootout 2":
+                case "Sprint Shootout 3":
+                case "Short Sprint Shootout":
                     return true;
                 default:
                     return false;
@@ -2206,7 +2209,7 @@ SOFTWARE.
             }
 
             let safetyCarRow = document.getElementById('safetyCarRow');
-            if (!live_data_mode) {
+            if (!({{ live_data_mode | tojson | safe }})) {
                 safetyCarRow.style.display = 'none';
             }
         }
