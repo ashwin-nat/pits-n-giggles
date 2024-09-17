@@ -540,15 +540,13 @@ SOFTWARE.
                 }
             }
 
-            const tableBody = document.querySelector('#raceTable tbody');
-            tableBody.innerHTML = '';
+            function addPositionInfo(row, entry) {
 
-            entries.forEach(entry => {
-                const row = tableBody.insertRow();
-
-                // Position column
                 const positionCell = row.insertCell();
                 positionCell.textContent = entry["position"];
+            }
+
+            function addNameInfo(row, entry) {
 
                 // Create a clickable link for the driver's name
                 const nameCell = row.insertCell();
@@ -568,6 +566,9 @@ SOFTWARE.
                     handleDriverInfoClick(entry["index"]);
                 };
                 nameCell.appendChild(nameLink);
+            }
+
+            function addDeltaInfo(row, entry) {
 
                 if (!shouldHideDeltaColumn) {
                     if (relativeDelta) {
@@ -585,6 +586,9 @@ SOFTWARE.
                         row.insertCell().textContent = entry["ers"];
                     }
                 }
+            }
+
+            function addWarningsPensInfo(row, entry) {
 
                 const warningsPensCell = row.insertCell();
                 const dtPlusSg = entry["num-dt"] + "DT + " +
@@ -594,6 +598,9 @@ SOFTWARE.
                     `Pens: ${entry["time-penalties"]} sec<br>` +
                     `Warns: ${entry["corner-cutting-warnings"]}<br>` +
                     `${dtPlusSg}`;
+            }
+
+            function addBestLapInfo(row, entry) {
 
                 if (bestLapAbsoluteFormat || entry["is-spectating"]) {
                     if (gameYear == 23) {
@@ -626,6 +633,9 @@ SOFTWARE.
                         `;
                     }
                 }
+            }
+
+            function addLastLapInfo(row, entry) {
 
                 if (!shouldHideLastLapColumn) {
                     if (lastLapAbsoluteFormat || entry["is-spectating"]) {
@@ -634,11 +644,17 @@ SOFTWARE.
                         row.insertCell().textContent = entry["last-lap-delta"];
                     }
                 }
+            }
+
+            function addCurrTyreInfo(row, entry) {
 
                 const tyreInfoCell = row.insertCell();
                 tyreInfoCell.innerHTML = `${entry["average-tyre-wear"]}<br>` +
                     `${entry["tyre-age"]} lap(s) ` + `(${entry["num-pitstops"]} pit)<br>` +
                     `${entry["tyre-compound"]}`;
+            }
+
+            function addTyrePredictionInfo(row, entry) {
 
                 if (!shouldHidePredictionColumn) {
                     let predictionHTML = ""; // Declare predictionHTML outside the loop
@@ -658,6 +674,9 @@ SOFTWARE.
                     }
                     row.insertCell().innerHTML = predictionHTML; // Set innerHTML outside the loop
                 }
+            }
+
+            function addDamageInfo(row, entry) {
 
                 // Wing damage key will always be present
                 let flWingDamage = entry["fl-wing-damage"] == null ? "N/A" :
@@ -671,6 +690,9 @@ SOFTWARE.
                     FR: ${frWingDamage}<br>
                     RW: ${rearWingDamage}
                 `;
+            }
+
+            function addFuelInfo(row, entry) {
 
                 if (!shouldHideFuelColumn) {
                     // Fuel info
@@ -690,7 +712,11 @@ SOFTWARE.
                         Tgt: ${targetFuelRate}<br>
                     `;
                 }
+            }
 
+            function formatRow(row, entry) {
+
+                // Add the required styles
                 row.className = '';
                 if (entry["is-fastest"]) {
                     row.classList.add('fastest-lap');
@@ -718,6 +744,30 @@ SOFTWARE.
                     row.classList.add('drs-active'); // Add class to the row
                     nameLink.classList.add('drs-active')
                 }
+            }
+
+            const tableBody = document.querySelector('#raceTable tbody');
+            tableBody.innerHTML = '';
+
+            entries.forEach(entry => {
+
+                // Create a row for this entry
+                const row = tableBody.insertRow();
+
+                // Populate the row
+                addPositionInfo(row, entry);
+                addNameInfo(row, entry);
+                addDeltaInfo(row, entry);
+                addWarningsPensInfo(row, entry);
+                addBestLapInfo(row, entry);
+                addLastLapInfo(row, entry);
+                addCurrTyreInfo(row, entry);
+                addTyrePredictionInfo(row, entry);
+                addDamageInfo(row, entry);
+                addFuelInfo(row, entry);
+
+                // Add the styles
+                formatRow(row, entry);
             });
         }
 
