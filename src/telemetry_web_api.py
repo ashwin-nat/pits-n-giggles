@@ -284,22 +284,22 @@ class PlayerTelemetryOverlayUpdate:
 
         if player_data and player_data.m_packet_car_damage:
             self.m_tyre_wear = TyreWearPerLap(
-                lap_number=self.m_curr_lap,
                 fl_tyre_wear=player_data.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
                 fr_tyre_wear=player_data.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
                 rl_tyre_wear=player_data.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
                 rr_tyre_wear=player_data.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
+                lap_number=self.m_curr_lap,
                 is_racing_lap=True,
                 desc="Curr tyre wear"
             )
             self.m_tyre_wear_predictions = player_data.getTyrePredictionsJSONList(self.m_next_pit_window)
         else:
             self.m_tyre_wear = TyreWearPerLap(
-                lap_number=0,
                 fl_tyre_wear=0,
                 fr_tyre_wear=0,
                 rl_tyre_wear=0,
                 rr_tyre_wear=0,
+                lap_number=0,
                 is_racing_lap=True,
                 desc="No data"
             )
@@ -451,7 +451,6 @@ class DriversListRsp:
                     "last-lap-delta" : _getValueOrDefaultValue(data_per_driver.m_last_lap_delta),
                     "is-fastest": _getValueOrDefaultValue(data_per_driver.m_is_fastest),
                     "is-player": _getValueOrDefaultValue(data_per_driver.m_is_player),
-                    "average-tyre-wear": _getValueOrDefaultValue(data_per_driver.m_tyre_wear),
                     "tyre-age": _getValueOrDefaultValue(data_per_driver.m_tyre_age),
                     "tyre-life-remaining" : _getValueOrDefaultValue(data_per_driver.m_tyre_life_remaining_laps),
                     "tyre-compound": _getValueOrDefaultValue(data_per_driver.m_tyre_compound_type),
@@ -466,8 +465,14 @@ class DriversListRsp:
                     "time-penalties" : _getValueOrDefaultValue(data_per_driver.m_time_penalties),
                     "num-dt" : _getValueOrDefaultValue(data_per_driver.m_num_dt),
                     "num-sg" : _getValueOrDefaultValue(data_per_driver.m_num_sg),
-                    "tyre-wear-prediction" : data_per_driver.getTyrePredictionsJSONList(
-                        data_per_driver.m_ideal_pit_stop_window),
+                    "tyre-info" : {
+                        "wear-prediction" : data_per_driver.getTyrePredictionsJSONList(
+                            data_per_driver.m_ideal_pit_stop_window),
+                        "current-wear" : data_per_driver.getCurrentTyreWearJSON(),
+                        "tyre-age": _getValueOrDefaultValue(data_per_driver.m_tyre_age),
+                        "tyre-life-remaining" : _getValueOrDefaultValue(data_per_driver.m_tyre_life_remaining_laps),
+                        "tyre-compound": _getValueOrDefaultValue(data_per_driver.m_tyre_compound_type),
+                    },
                     "fuel-load-kg" : _getValueOrDefaultValue(data_per_driver.m_fuel_load_kg),
                     "fuel-laps-remaining" : _getValueOrDefaultValue(data_per_driver.m_fuel_laps_remaining),
                     "fl-wing-damage" : data_per_driver.m_fl_wing_damage, # NULL is supported
@@ -577,8 +582,6 @@ class DriversListRsp:
         for driver_data in self.m_final_list:
             if driver_data.m_ers_perc is not None:
                 driver_data.m_ers_perc = F1Utils.floatToStr(driver_data.m_ers_perc) + "%"
-            if driver_data.m_tyre_wear is not None:
-                driver_data.m_tyre_wear = F1Utils.floatToStr(driver_data.m_tyre_wear) + "%"
             if driver_data.m_telemetry_restrictions is not None:
                 driver_data.m_telemetry_restrictions = str(driver_data.m_telemetry_restrictions)
             else:
