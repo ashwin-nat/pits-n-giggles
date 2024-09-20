@@ -36,23 +36,24 @@ class TyreWearPerLap:
         is_racing_lap (bool): Whether it's a racing lap or not. (non SC/VSC lap)
     """
     def __init__(self,
-        lap_number: int,
         fl_tyre_wear: float,
         fr_tyre_wear: float,
         rl_tyre_wear: float,
         rr_tyre_wear: float,
-        is_racing_lap: bool = True,
+        lap_number: Optional[int] = None,
+        is_racing_lap: Optional[bool] = True,
         desc: Optional[str] = None):
         """
         Initialize a TyreWearPerLap object.
 
         Args:
-            lap_number (int): Lap number.
             fl_tyre_wear (float): Front left tyre wear percentage.
             fr_tyre_wear (float): Front right tyre wear percentage.
             rl_tyre_wear (float): Rear left tyre wear percentage.
             rr_tyre_wear (float): Rear right tyre wear percentage.
+            lap_number (int, optional): Lap number. Defaults to None.
             is_racing_lap (bool, optional): Whether it's a racing lap or not. Defaults to True.
+            desc (str, optional): Description of the lap. Defaults to None.
         """
         self.lap_number: int        = lap_number
         self.fl_tyre_wear: float    = fl_tyre_wear
@@ -67,7 +68,7 @@ class TyreWearPerLap:
         Returns a string representation of the TyreWearPerLap object.
         """
         return (
-            f"Lap {self.lap_number}: "
+            f"Lap {str(self.lap_number)}: "
             f"FL {self.fl_tyre_wear}, "
             f"FR {self.fr_tyre_wear}, "
             f"RL {self.rl_tyre_wear}, "
@@ -351,13 +352,12 @@ class TyreWearExtrapolator:
                 rr_wear = self.m_rr_regression.predict([[lap]])[0]
 
                 self.m_predicted_tyre_wear.append(TyreWearPerLap(
-                    lap_number=lap,
                     fl_tyre_wear=fl_wear,
                     fr_tyre_wear=fr_wear,
                     rl_tyre_wear=rl_wear,
-                    rr_tyre_wear=rr_wear
+                    rr_tyre_wear=rr_wear,
+                    lap_number=lap,
                 ))
-
 
     def _segmentData(self, data: List[TyreWearPerLap]) -> List[List[TyreWearPerLap]]:
         """

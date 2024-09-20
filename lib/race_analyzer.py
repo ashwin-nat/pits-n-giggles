@@ -32,7 +32,7 @@ def _isATwat(driver_data: Dict[str, Any]) -> bool:
         - driver_data: A dictionary containing the driver data
 
     Returns:
-        True if the driver is a Twat, False otherwise
+        True if the driver is indeed a Twat, False otherwise
     """
 
     # Let's simplify this. skip player if telemetry is off. fuck 'em

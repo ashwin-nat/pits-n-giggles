@@ -353,8 +353,8 @@ SOFTWARE.
                 <th>Warnings</th>
                 <th id="bestLapLink" class="motivationLink">Best</th>
                 <th id="lastLapLink" class="motivationLink">Last</th>
-                <th>Tyre Info</th>
-                <th>Wear Prediction</th>
+                <th id="tyreInfoLink" class="motivationLink">Tyre Info</th>
+                <th id="wearPredictionLink" class="motivationLink">Wear Prediction</th>
                 <th>Wing Damage</th>
                 <th>Fuel Rates</th>
             </tr>
@@ -371,37 +371,18 @@ SOFTWARE.
     </div>
 
     <script>
-        var player; // Define YT player
-        let is24HourFormat = true; // Initial format
-        let relativeDelta = false; // Initial format
-        let lastLapAbsoluteFormat = false; // Initial format
-        let bestLapAbsoluteFormat = true; // Initial format
+        // Initial constants
+        let is24HourFormat;
+        let relativeDelta;
+        let lastLapAbsoluteFormat;
+        let bestLapAbsoluteFormat;
+        let tyreWearAverageFormat;
+
         // Check if delta column needs to be displayed
         const shouldHideDeltaColumn = {{ live_data_mode | tojson | safe }};
         const shouldHidePredictionColumn = !{{ live_data_mode | tojson | safe }};
         const shouldHideFuelColumn = !{{ live_data_mode | tojson | safe }};
         const shouldHideLastLapColumn = !{{ live_data_mode | tojson | safe }};
-
-        function onPlayerReady(event) {
-            var motivationLink = document.getElementById("motivationLink");
-            motivationLink.addEventListener("click", playAudio);
-
-            // Simulate a click to auto play the video when the page loads
-            motivationLink.click();
-        }
-
-        function playAudio() {
-            // Play the audio
-            player.playVideo();
-
-            // Set a timeout to stop the audio after 5000 milliseconds (5 seconds)
-            setTimeout(stopAudio, 5000);
-        }
-
-        function stopAudio() {
-            // Pause the audio
-            player.pauseVideo();
-        }
 
         function showToast(message) {
             // Create a new div element for the toast
@@ -540,6 +521,32 @@ SOFTWARE.
                 }
             }
 
+            function getMaxTyreWear(wearData) {
+                const relevantKeys = {
+                    "front-left-wear": "FL",
+                    "front-right-wear": "FR",
+                    "rear-left-wear": "RL",
+                    "rear-right-wear": "RR"
+                };
+
+                let maxKey = null;
+                let maxValue = -Infinity;
+
+                // Iterate only through relevant keys
+                for (const key in relevantKeys) {
+                    if (key in wearData && wearData[key] > maxValue) {
+                        maxValue = wearData[key];
+                        maxKey = key;
+                    }
+                }
+
+                // Return the result as a JSON object with max-key shortened and max-wear
+                return {
+                    "max-key": relevantKeys[maxKey],  // Use the shortened version
+                    "max-wear": maxValue
+                };
+            }
+
             function addPositionInfo(row, entry) {
 
                 const positionCell = row.insertCell();
@@ -566,6 +573,7 @@ SOFTWARE.
                     handleDriverInfoClick(entry["index"]);
                 };
                 nameCell.appendChild(nameLink);
+                return nameLink;
             }
 
             function addDeltaInfo(row, entry) {
@@ -603,7 +611,7 @@ SOFTWARE.
             function addBestLapInfo(row, entry) {
 
                 if (bestLapAbsoluteFormat || entry["is-spectating"]) {
-                    if (gameYear == 23) {
+                    if (    gameYear == 23) {
                         row.insertCell().textContent = entry["best"];
                     } else {
                         let speedTrapValue;
@@ -649,7 +657,24 @@ SOFTWARE.
             function addCurrTyreInfo(row, entry) {
 
                 const tyreInfoCell = row.insertCell();
-                tyreInfoCell.innerHTML = `${entry["average-tyre-wear"]}<br>` +
+                const tyreInfoData = entry["tyre-info"];
+                const currTyreWearData = tyreInfoData["current-wear"];
+                let tyreWearText = "";
+                if (tyreWearAverageFormat) {
+                    if (currTyreWearData) {
+                        tyreWearText = formatFloatWithTwoDecimals(currTyreWearData["average"]) + "%";
+                    } else {
+                        tyreWearText = "N/A";
+                    }
+                } else {
+                    if (currTyreWearData) {
+                        maxTyreWearData = getMaxTyreWear(currTyreWearData);
+                        tyreWearText = `${maxTyreWearData["max-key"]}: ${formatFloatWithTwoDecimals(maxTyreWearData["max-wear"])}%`
+                    } else {
+                        tyreWearText = "N/A";
+                    }
+                }
+                tyreInfoCell.innerHTML = `${tyreWearText}<br>` +
                     `${entry["tyre-age"]} lap(s) ` + `(${entry["num-pitstops"]} pit)<br>` +
                     `${entry["tyre-compound"]}`;
             }
@@ -657,22 +682,24 @@ SOFTWARE.
             function addTyrePredictionInfo(row, entry) {
 
                 if (!shouldHidePredictionColumn) {
-                    let predictionHTML = ""; // Declare predictionHTML outside the loop
-                    predictionData = entry["tyre-wear-prediction"];
+                    let predictionHTML = "";
+                    predictionData = entry["tyre-info"]["wear-prediction"];
                     if (predictionData.length === 0) {
                         predictionHTML = "N/A";
                     } else {
                         predictionData.forEach((prediction, index) => {
-                            const flWear = prediction["front-left-wear"];
-                            const frWear = prediction["front-right-wear"];
-                            const rlWear = prediction["rear-left-wear"];
-                            const rrWear = prediction["rear-right-wear"];
                             const lapNum = prediction["lap-number"];
-                            const avgWear = formatFloatWithTwoDecimals((flWear + frWear + rlWear + rrWear) / 4); // Corrected variable name
-                            predictionHTML += "Lap " + lapNum + ": " + avgWear + "%<br>"; // Concatenate prediction strings
+                            if (tyreWearAverageFormat) {
+                                predictionHTML += "Lap " + lapNum + ": " + prediction["average"] + "%<br>";
+                            } else {
+                                const maxWearInfo = getMaxTyreWear(prediction);
+                                const maxWear = formatFloatWithTwoDecimals(maxWearInfo["max-wear"]);
+                                const maxKey = maxWearInfo["max-key"];
+                                predictionHTML += "Lap " + lapNum + ": " + maxKey + " - " + maxWear + "%<br>";
+                            }
                         });
                     }
-                    row.insertCell().innerHTML = predictionHTML; // Set innerHTML outside the loop
+                    row.insertCell().innerHTML = predictionHTML;
                 }
             }
 
@@ -714,7 +741,7 @@ SOFTWARE.
                 }
             }
 
-            function formatRow(row, entry) {
+            function formatRow(row, entry, nameLink) {
 
                 // Add the required styles
                 row.className = '';
@@ -756,7 +783,7 @@ SOFTWARE.
 
                 // Populate the row
                 addPositionInfo(row, entry);
-                addNameInfo(row, entry);
+                let nameLink = addNameInfo(row, entry);
                 addDeltaInfo(row, entry);
                 addWarningsPensInfo(row, entry);
                 addBestLapInfo(row, entry);
@@ -767,7 +794,7 @@ SOFTWARE.
                 addFuelInfo(row, entry);
 
                 // Add the styles
-                formatRow(row, entry);
+                formatRow(row, entry, nameLink);
             });
         }
 
@@ -2230,21 +2257,31 @@ SOFTWARE.
             is24HourFormat = !is24HourFormat;
             updateLocalTime();
             showToast("Time Format Changed to " + (is24HourFormat ? "24 Hour Format" : "12 Hour Format"));
+            savePreferences();
         }
 
         function toggleDeltaFormat() {
             relativeDelta = !relativeDelta;
             showToast("Delta Format Changed to " + (relativeDelta ? "Relative" : "Absolute"));
+            savePreferences();
         }
 
         function toggleLastLapFormat() {
             lastLapAbsoluteFormat = !lastLapAbsoluteFormat;
             showToast("Last Lap Format Changed to " + (lastLapAbsoluteFormat ? "Absolute" : "Relative"));
+            savePreferences();
         }
 
         function toggleBestLapFormat() {
             bestLapAbsoluteFormat = !bestLapAbsoluteFormat;
             showToast("Best Lap Format Changed to " + (bestLapAbsoluteFormat ? "Absolute" : "Relative"));
+            savePreferences();
+        }
+
+        function toggleTyreWearFormat() {
+            tyreWearAverageFormat = !tyreWearAverageFormat;
+            showToast("Tyre wear format changed to " + (tyreWearAverageFormat ? "Average" : "Max"));
+            savePreferences();
         }
 
         function formatFileSize(bytes) {
@@ -2373,6 +2410,8 @@ SOFTWARE.
         document.getElementById('deltaLink').addEventListener('click', toggleDeltaFormat);
         document.getElementById('lastLapLink').addEventListener('click', toggleLastLapFormat);
         document.getElementById('bestLapLink').addEventListener('click', toggleBestLapFormat);
+        document.getElementById('tyreInfoLink').addEventListener('click', toggleTyreWearFormat);
+        document.getElementById('wearPredictionLink').addEventListener('click', toggleTyreWearFormat);
 
         // Fetch data at intervals specified from jinja
         if (!{{ live_data_mode | tojson | safe }}) {
@@ -2397,6 +2436,65 @@ SOFTWARE.
         if (shouldHideLastLapColumn) {
             hideColumn("Last");
         }
+
+        function loadPreferences() {
+            let missingPreference = false;
+
+            // Load or assign default values, and track if any value is missing
+            if (localStorage.getItem('is24HourFormat') !== null) {
+                is24HourFormat = localStorage.getItem('is24HourFormat') === 'true';
+            } else {
+                is24HourFormat = true;
+                missingPreference = true;
+            }
+
+            if (localStorage.getItem('relativeDelta') !== null) {
+                relativeDelta = localStorage.getItem('relativeDelta') === 'true';
+            } else {
+                relativeDelta = false;
+                missingPreference = true;
+            }
+
+            if (localStorage.getItem('lastLapAbsoluteFormat') !== null) {
+                lastLapAbsoluteFormat = localStorage.getItem('lastLapAbsoluteFormat') === 'true';
+            } else {
+                lastLapAbsoluteFormat = false;
+                missingPreference = true;
+            }
+
+            if (localStorage.getItem('bestLapAbsoluteFormat') !== null) {
+                bestLapAbsoluteFormat = localStorage.getItem('bestLapAbsoluteFormat') === 'true';
+            } else {
+                bestLapAbsoluteFormat = true;
+                missingPreference = true;
+            }
+
+            if (localStorage.getItem('tyreWearAverageFormat') !== null) {
+                tyreWearAverageFormat = localStorage.getItem('tyreWearAverageFormat') === 'true';
+            } else {
+                tyreWearAverageFormat = false;
+                missingPreference = true;
+            }
+
+            // If any preference was missing, save all current preferences
+            if (missingPreference) {
+                savePreferences();
+            }
+        }
+
+        function savePreferences() {
+            localStorage.setItem('is24HourFormat', is24HourFormat);
+            localStorage.setItem('relativeDelta', relativeDelta);
+            localStorage.setItem('lastLapAbsoluteFormat', lastLapAbsoluteFormat);
+            localStorage.setItem('bestLapAbsoluteFormat', bestLapAbsoluteFormat);
+            localStorage.setItem('tyreWearAverageFormat', tyreWearAverageFormat);
+        }
+
+        // Load preferences on page load
+        window.onload = function() {
+            loadPreferences();
+        };
+
 
         var socket = io.connect('http://' + document.domain + ':' + location.port, {
             reconnection: true,           // Enables reconnection
