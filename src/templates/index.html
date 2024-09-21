@@ -690,12 +690,12 @@ SOFTWARE.
                         predictionData.forEach((prediction, index) => {
                             const lapNum = prediction["lap-number"];
                             if (tyreWearAverageFormat) {
-                                predictionHTML += "Lap " + lapNum + ": " + prediction["average"] + "%<br>";
+                                predictionHTML += "L" + lapNum + ": " + prediction["average"] + "%<br>";
                             } else {
                                 const maxWearInfo = getMaxTyreWear(prediction);
                                 const maxWear = formatFloatWithTwoDecimals(maxWearInfo["max-wear"]);
                                 const maxKey = maxWearInfo["max-key"];
-                                predictionHTML += "Lap " + lapNum + ": " + maxKey + " - " + maxWear + "%<br>";
+                                predictionHTML += "L" + lapNum + ": " + maxKey + " - " + maxWear + "%<br>";
                             }
                         });
                     }
