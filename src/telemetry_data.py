@@ -1177,9 +1177,9 @@ class DriverData:
         penalty_string += ")"
         return penalty_string
 
-    def _getObjectByIndexCreate(self, index: int) -> DataPerDriver:
+    def _getObjectByIndex(self, index: int) -> DataPerDriver:
         """Looks up and retrieves the object at the specified index.
-                If not found, creates the object, inserts into the dict and returns
+            If not found, creates the object, inserts into the dict, and returns it.
 
         Args:
             index (int): The driver index
@@ -1187,11 +1187,8 @@ class DriverData:
         Returns:
             DataPerDriver: The data object associated with the given index
         """
-
-        # create index if not found
-        if index not in self.m_driver_data:
-            self.m_driver_data[index] = DataPerDriver(self.m_total_laps)
-        return self.m_driver_data[index]
+        # Use setdefault to insert a new DataPerDriver if the index is not found, avoiding multiple lookups
+        return self.m_driver_data.setdefault(index, DataPerDriver(self.m_total_laps))
 
     def _recomputeFastestLap(self) -> None:
         """
@@ -1293,7 +1290,7 @@ class DriverData:
             num_active_cars += 1
 
             # Fetch the driver's object
-            obj_to_be_updated = self._getObjectByIndexCreate(index)
+            obj_to_be_updated = self._getObjectByIndex(index)
 
             # Update the position, time and other fields
             obj_to_be_updated.m_position = lap_data.m_carPosition
@@ -1346,7 +1343,7 @@ class DriverData:
             packet (PacketEventData.FastestLap): The fastest lap update object
         """
 
-        obj_to_be_updated = self._getObjectByIndexCreate(packet.vehicleIdx)
+        obj_to_be_updated = self._getObjectByIndex(packet.vehicleIdx)
         obj_to_be_updated.m_best_lap_str = F1Utils.floatSecondsToMinutesSecondsMilliseconds(packet.lapTime)
         obj_to_be_updated.m_best_lap_ms = packet.lapTime
         self.m_fastest_index = packet.vehicleIdx
@@ -1358,7 +1355,7 @@ class DriverData:
             packet (PacketEventData.Retirement): The retirement update object
         """
 
-        obj_to_be_updated = self._getObjectByIndexCreate(packet.vehicleIdx)
+        obj_to_be_updated = self._getObjectByIndex(packet.vehicleIdx)
         obj_to_be_updated.m_dnf_status_code = 'DNF'
 
         if packet.vehicleIdx == self.m_player_index:
@@ -1372,7 +1369,7 @@ class DriverData:
         """
 
         for index, participant in enumerate(packet.m_participants):
-            obj_to_be_updated = self._getObjectByIndexCreate(index)
+            obj_to_be_updated = self._getObjectByIndex(index)
             obj_to_be_updated.m_name = participant.m_name
             obj_to_be_updated.m_team = str(participant.m_teamId)
             if (index == packet.m_header.m_playerCarIndex):
@@ -1391,7 +1388,7 @@ class DriverData:
         """
 
         for index, car_telemetry_data in enumerate(packet.m_carTelemetryData):
-            obj_to_be_updated = self._getObjectByIndexCreate(index)
+            obj_to_be_updated = self._getObjectByIndex(index)
             obj_to_be_updated.m_drs_activated = bool(car_telemetry_data.m_drs)
             obj_to_be_updated.m_tyre_inner_temp = \
                     sum(car_telemetry_data.m_tyresInnerTemperature)/len(car_telemetry_data.m_tyresInnerTemperature)
@@ -1407,7 +1404,7 @@ class DriverData:
         """
 
         for index, car_status_data in enumerate(packet.m_carStatusData):
-            obj_to_be_updated = self._getObjectByIndexCreate(index)
+            obj_to_be_updated = self._getObjectByIndex(index)
             obj_to_be_updated.m_ers_perc = (car_status_data.m_ersStoreEnergy/CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0
             obj_to_be_updated.m_tyre_age = car_status_data.m_tyresAgeLaps
             obj_to_be_updated.m_tyre_compound_type = str(car_status_data.m_actualTyreCompound) + ' - ' + \
@@ -1451,7 +1448,7 @@ class DriverData:
             packet (PacketCarDamageData): The car damage update packet
         """
         for index, car_damage in enumerate(packet.m_carDamageData):
-            obj_to_be_updated = self._getObjectByIndexCreate(index)
+            obj_to_be_updated = self._getObjectByIndex(index)
             obj_to_be_updated.m_packet_car_damage = car_damage
             obj_to_be_updated.m_tyre_wear = TyreWearPerLap(
                 fl_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
@@ -1471,7 +1468,7 @@ class DriverData:
             packet (PacketSessionHistoryData): The session history update packet
         """
 
-        obj_to_be_updated = self._getObjectByIndexCreate(packet.m_carIdx)
+        obj_to_be_updated = self._getObjectByIndex(packet.m_carIdx)
         obj_to_be_updated.m_packet_session_history = packet
         if (packet.m_bestLapTimeLapNum > 0) and (packet.m_bestLapTimeLapNum <= packet.m_numLaps):
             obj_to_be_updated.m_best_lap_ms = packet.m_lapHistoryData[packet.m_bestLapTimeLapNum-1].m_lapTimeInMS
@@ -1489,7 +1486,7 @@ class DriverData:
             packet (PacketTyreSetsData): The tyre sets update packet
         """
 
-        obj_to_be_updated = self._getObjectByIndexCreate(packet.m_carIdx)
+        obj_to_be_updated = self._getObjectByIndex(packet.m_carIdx)
         obj_to_be_updated.m_packet_tyre_sets = packet
         obj_to_be_updated.m_tyre_life_remaining_laps = packet.m_tyreSetData[packet.m_fittedIdx].m_lifeSpan
 
@@ -1504,7 +1501,7 @@ class DriverData:
         """
 
         for index, motion_data in enumerate(packet.m_carMotionData):
-            obj_to_be_updated = self._getObjectByIndexCreate(index)
+            obj_to_be_updated = self._getObjectByIndex(index)
             obj_to_be_updated.m_packet_motion = motion_data
 
     def processCarSetupsUpdate(self, packet: PacketCarSetupData) -> None:
@@ -1515,7 +1512,7 @@ class DriverData:
         """
 
         for index, car_setup in enumerate(packet.m_carSetups):
-            obj_to_be_updated = self._getObjectByIndexCreate(index)
+            obj_to_be_updated = self._getObjectByIndex(index)
             obj_to_be_updated.m_packet_car_setup = car_setup
 
     def getDriverInfoJsonByIndex(self, index: int) -> Optional[Dict[str, Any]]:
