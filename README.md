@@ -74,10 +74,6 @@ What this tool can do is provide you with live telemetry data during a race so t
 | `-n`         | `--num-adjacent-cars`           | How many cars adjacent to your car will be included in the UI during race                              | `2`            |
 
 
-
-
-
-
 ## Usage - To build your own app on top of this
 To develop your own app using the telemetry manager module:
 1. Import the telemetry manager module:
@@ -98,3 +94,6 @@ To develop your own app using the telemetry manager module:
     # Start receiving and processing race data
     telemetry_manager.run()
     ```
+
+## Credits
+For a few of the charts/graphs in the UI, credits to [F1TelemetryData](https://x.com/F1TelemetryData) on twitter
