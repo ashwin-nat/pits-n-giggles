@@ -179,6 +179,7 @@ class OverallRaceStatsRsp:
             self.m_rsp["overtakes"] = self.m_rsp["overtakes"] | overtake_records
 
         self.m_rsp["custom-markers"] = getCustomMarkersJSON()
+        self.m_rsp["position-history"] = DriversListRsp(is_spectator_mode=True).getPositionHistoryJSON()
 
     def toJSON(self) -> Dict[str, Any]:
         """Dump this object into JSON
@@ -397,12 +398,12 @@ class DriversListRsp:
     Drivers list response class.
     """
 
-    def __init__(self, is_spectator_mode: bool, track_length: int):
+    def __init__(self, is_spectator_mode: bool, track_length: Optional[int] = None):
         """Get the drivers list and prepare the rsp fields
 
         Args:
             is_spectator_mode (bool): Whether the player is in spectator mode
-            track_length (int): The length of the track
+            track_length (Optional[int], optional): The track length. Defaults to None.
         """
 
         self.m_is_spectator_mode : bool = is_spectator_mode
@@ -499,6 +500,18 @@ class DriversListRsp:
         if self.m_is_spectator_mode:
             return self.m_final_list[0].m_current_lap
         return next((driver_data.m_current_lap for driver_data in self.m_final_list if driver_data.m_is_player), None)
+
+    def getPositionHistoryJSON(self) -> List[Dict[str, Any]]:
+        """Get position history.
+
+        Returns:
+            List[Dict[str, Any]]: The position history JSON
+        """
+
+        if not self.m_final_list:
+            return []
+
+        return [data_per_driver.getPositionHistoryJSON() for data_per_driver in self.m_final_list]
 
     def __getDeltaPlusPenaltiesPlusPit(self,
             delta: str,

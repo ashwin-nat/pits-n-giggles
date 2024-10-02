@@ -406,7 +406,8 @@ class TelemetryWebServer:
                     "records" : g_json_data.get("records", None),
                     "classification-data" : g_json_data.get("classification-data", None),
                     "overtakes" : g_json_data.get("overtakes", None),
-                    "custom-markers" : g_json_data.get("custom-markers", [])
+                    "custom-markers" : g_json_data.get("custom-markers", []),
+                    "position-history" : g_json_data.get("position-history", []),
                 }, HTTPStatus.OK
 
     def _checkUpdateRecords(self, json_data: Dict[str, Any]) -> bool:
