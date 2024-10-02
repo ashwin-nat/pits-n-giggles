@@ -41,6 +41,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from lib.f1_types import F1Utils, LapData, ResultStatus
 import lib.race_analyzer as RaceAnalyzer
 import lib.overtake_analyzer as OvertakeAnalyzer
+from lib.tyre_wear_extrapolator import TyreWearPerLap
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 
@@ -108,6 +109,24 @@ def getDeltaPlusPenaltiesPlusPit(
         return "---"
 
 def getTelemetryInfo():
+
+    def getTyreWearJSON(data_per_driver: Dict[str, Any]):
+        if "car-damage" not in data_per_driver:
+            return TyreWearPerLap(
+                fl_tyre_wear=None,
+                fr_tyre_wear=None,
+                rl_tyre_wear=None,
+                rr_tyre_wear=None,
+                desc="curr tyre wear"
+            ).toJSON()
+        else:
+            return TyreWearPerLap(
+                fl_tyre_wear=data_per_driver["car-damage"]["tyres-wear"][F1Utils.INDEX_FRONT_LEFT],
+                fr_tyre_wear=data_per_driver["car-damage"]["tyres-wear"][F1Utils.INDEX_FRONT_RIGHT],
+                rl_tyre_wear=data_per_driver["car-damage"]["tyres-wear"][F1Utils.INDEX_REAR_LEFT],
+                rr_tyre_wear=data_per_driver["car-damage"]["tyres-wear"][F1Utils.INDEX_REAR_RIGHT],
+                desc="curr tyre wear"
+            ).toJSON()
 
     # Init the global data onto the JSON repsonse
     with g_json_lock:
@@ -219,7 +238,15 @@ def getTelemetryInfo():
                     "corner-cutting-warnings" : data_per_driver["lap-data"]["corner-cutting-warnings"],
                     "time-penalties" : time_pens,
                     "num-dt" : num_dt,
-                    "num-sg" : num_sg
+                    "num-sg" : num_sg,
+                    "tyre-info" : {
+                        "wear-prediction" : [],
+                        "current-wear" : getTyreWearJSON(data_per_driver),
+                        "tyre-age": data_per_driver["car-status"]["tyres-age-laps"],
+                        "tyre-life-remaining" : None,
+                        "tyre-compound": data_per_driver["car-status"]["actual-tyre-compound"] + ' - ' +
+                                        data_per_driver["car-status"]["visual-tyre-compound"],
+                    },
                 }
             )
 
