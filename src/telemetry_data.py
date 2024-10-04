@@ -1483,7 +1483,9 @@ class DriverData:
         """
 
         final_json = packet.toJSON()
-        final_json["position-history"] = []
+        is_position_history_supported = isPositionHistorySupported()
+        if is_position_history_supported:
+            final_json["position-history"] = []
         for index, data in enumerate(packet.m_classificationData):
             obj_to_be_updated = self.m_driver_data.get(index, None)
             # Perform the final snapshot
@@ -1493,9 +1495,8 @@ class DriverData:
                 obj_to_be_updated.m_position = data.m_position
                 obj_to_be_updated.m_packet_final_classification = data
                 final_json["classification-data"][index] = obj_to_be_updated.toJSON(index)
-                final_json["position-history"].append(
-                    obj_to_be_updated.getPositionHistoryJSON()
-                )
+                if is_position_history_supported:
+                    final_json["position-history"].append(obj_to_be_updated.getPositionHistoryJSON())
         final_json['classification-data'] = sorted(final_json['classification-data'], key=lambda x: x['track-position'])
         final_json['game-year'] = self.m_game_year
         self.m_final_json = final_json
@@ -2003,27 +2004,6 @@ def getEventInfoStr() -> Optional[str]:
             return (_globals.m_event_type + "_" + _globals.m_circuit).replace(' ', '_') + '_'
         return None
 
-def getPlayerName() -> Optional[str]:
-    """Get the player's name.
-
-    Returns:
-        Optional[str]: Player's name. None if not found (can be in spectator mode or
-                            before PNG has received sufficient data)
-    """
-    with _driver_data_lock.gen_rlock():
-        player_data = _driver_data.m_driver_data.get(_driver_data.m_player_index, None)
-        return player_data.m_name if player_data else None
-
-def getDriverNameByIndex(index: int) -> str:
-    """Get the driver's name for the given index
-
-    Returns:
-        str: Driver's name. None if not found (can be before PNG has received sufficient data)
-    """
-    with _driver_data_lock.gen_rlock():
-        driver_data = _driver_data.m_driver_data.get(index, None)
-        return driver_data.m_name if driver_data else None
-
 def getOvertakeObj(overtaking_car_index: int, being_overtaken_index: int) -> Optional[OvertakeRecord]:
     """Returns an overtake object containing overtake information
 
@@ -2057,39 +2037,6 @@ def getOvertakeObj(overtaking_car_index: int, being_overtaken_index: int) -> Opt
             overtaking_driver_lap=overtaking_car_obj.m_current_lap,
             overtaken_driver_name=being_overtaken_car_obj.m_name,
             overtaken_driver_lap=being_overtaken_car_obj.m_current_lap,
-        )
-
-def getCollisionObj(driver_1_index: int, driver_2_index: int) -> Optional[CollisionRecord]:
-    """Returns a collision object containing collision information
-
-    Args:
-        driver_1_index (int): The index of the first driver
-        driver_2_index (int): The index of the second driver
-
-    Returns:
-        Optional[CollisionRecord]: A collision object containing collision information
-    """
-    with _driver_data_lock.gen_rlock():
-        if not _driver_data.m_driver_data:
-            return None
-        driver_1_obj = _driver_data.m_driver_data.get(driver_1_index, None)
-        driver_2_obj = _driver_data.m_driver_data.get(driver_2_index, None)
-        if driver_1_obj is None or driver_2_obj is None:
-            return None
-
-        if driver_1_obj.m_name is None or \
-            driver_1_obj.m_current_lap is None or \
-                driver_2_obj.m_name is None or \
-                    driver_2_obj.m_current_lap is None:
-            return None
-
-        return CollisionRecord(
-            driver_1_name=driver_1_obj.m_name,
-            driver_1_lap=driver_1_obj.m_current_lap,
-            driver_1_index=driver_1_index,
-            driver_2_name=driver_2_obj.m_name,
-            driver_2_lap=driver_2_obj.m_current_lap,
-            driver_2_index=driver_2_index
         )
 
 def getCustomMarkerEntryObj() -> Optional[CustomMarkerEntry]:
@@ -2140,3 +2087,16 @@ def getCustomMarkerEntryObj() -> Optional[CustomMarkerEntry]:
         curr_lap_time=curr_lap_time,
         curr_lap_perc=curr_lap_percent
     )
+
+def isPositionHistorySupported() -> bool:
+    """Returns whether the position history is supported for the given event type
+        Position history is only supported in race events
+
+    Returns:
+        bool: True if the position history is supported, False otherwise
+    """
+
+    with _globals_lock.gen_rlock():
+        if "Race" in _globals.m_event_type:
+            return True
+        return False

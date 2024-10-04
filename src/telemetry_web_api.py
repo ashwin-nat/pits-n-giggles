@@ -179,7 +179,8 @@ class OverallRaceStatsRsp:
             self.m_rsp["overtakes"] = self.m_rsp["overtakes"] | overtake_records
 
         self.m_rsp["custom-markers"] = getCustomMarkersJSON()
-        self.m_rsp["position-history"] = DriversListRsp(is_spectator_mode=True).getPositionHistoryJSON()
+        if TelData.isPositionHistorySupported():
+            self.m_rsp["position-history"] = DriversListRsp(is_spectator_mode=True).getPositionHistoryJSON()
 
     def toJSON(self) -> Dict[str, Any]:
         """Dump this object into JSON
