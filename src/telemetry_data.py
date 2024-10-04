@@ -954,6 +954,20 @@ class DataPerDriver:
                 break
         return ret
 
+    def _isAnyLapDataInSnashotNone(self) -> bool:
+        """Check if any lap data in the snapshot is None
+
+        Returns:
+            bool: True if any lap data in the snapshot is None
+        """
+
+        ret = False
+        for snapshot in self.m_per_lap_snapshots.values():
+            if snapshot.m_lap_data is None:
+                ret = True
+                break
+        return ret
+
     def getPositionHistoryJSON(self) -> Dict[str, Any]:
         """Get the position history JSON.
 
@@ -972,7 +986,7 @@ class DataPerDriver:
                 }
                 for lap_number, snapshot_record in self._getNextLapSnapshot()
             ]
-        } if not self._isAnyLapDataInSnashotNone() else {}
+        }
 
     def updateLapDataPacketCopy(self, lap_data: LapData, full_lap_distance: int) -> None:
         """Add to the warning/penalty history if required and update the lap data packet copy
