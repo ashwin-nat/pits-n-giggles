@@ -638,6 +638,7 @@ def open_file():
 
                 should_write = False
                 should_write |= checkRecomputeJSON(g_json_data)
+        print("Opened file: " + file_path)
     else:
         status_label.config(text="No file selected")
 

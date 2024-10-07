@@ -1142,90 +1142,125 @@ SOFTWARE.
                     };
 
                     // Create the chart with the plugin included
-                    var myChart = new Chart(ctx, {
-                        type: 'line',
-                        data: {
-                            labels: xData,
-                            datasets: datasets.map((dataset, index) => ({
-                                ...dataset,
-                                data: dataset.data.map(entry => entry.y), // Use numerical values for chart
-                                label: dataset.label, // Update label
-                                borderColor: dataset.borderColor || defaultColors[index % defaultColors.length], // Select custom or default color
-                                backgroundColor: dataset.backgroundColor || defaultColors[index % defaultColors.length].replace('1)', '0.2)') // Default transparent background color
-                            }))
-                        },
-                        options: {
-                            scales: {
-                                x: {
-                                    type: 'linear',
-                                    scaleLabel: {
-                                        display: true,
-                                        labelString: xAxisLabel,
-                                        fontColor: 'rgba(255, 255, 255, 0.8)'
-                                    },
-                                    title: { // Use `title` instead of `scaleLabel`
-                                        display: true,
-                                        text: xAxisLabel, // Your x-axis label
-                                        color: 'rgba(255, 255, 255, 0.8)',
-                                        font: {
-                                            size: 16 // Set your desired font size here
-                                        }
-                                    },
-                                    grid: {
-                                        color: 'rgba(255, 255, 255, 0.1)'
-                                    },
-                                    ticks: {
-                                        color: 'rgba(255, 255, 255, 0.8)',
-                                        stepSize: 1,
-                                        precision: 0
-                                    }
-                                },
-                                y: {
-                                    scaleLabel: {
-                                        display: true,
-                                        labelString: yAxisLabel,
-                                        fontColor: 'rgba(255, 255, 255, 0.8)',
-                                    },
-                                    title: { // Use `title` instead of `scaleLabel`
-                                        display: true,
-                                        text: yAxisLabel, // Your y-axis label
-                                        color: 'rgba(255, 255, 255, 0.8)',
-                                        font: {
-                                            size: 16 // Set your desired font size here
-                                        }
-                                    },
-                                    beginAtZero: false,
-                                    min: 1,  // Start Y-axis at 1
-                                    grid: {
-                                        color: 'rgba(255, 255, 255, 0.1)'
-                                    },
-                                    ticks: {
-                                        color: 'rgba(255, 255, 255, 0.8)',
-                                        stepSize: 5, // Set step size for ticks
-                                        callback: function(value) {
-                                            return value % 5 === 0 ? value : null; // Only show multiples of 5
-                                        }
-                                    },
-                                    reverse: true
-                                }
-                            },
-                            plugins: {
-                                legend: {
-                                    display: false // Disable the legend
-                                }
-                            },
-                            layout: {
-                                padding: {
-                                    top: 50,
-                                    right: 50,
-                                    bottom: 10,
-                                    left: 10
-                                }
-                            },
-                            responsive: true
-                        },
-                        plugins: [endLabelPlugin] // Register the plugin
-                    });
+var myChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: xData,
+        datasets: datasets.map((dataset, index) => ({
+            ...dataset,
+            data: dataset.data.map(entry => entry.y), // Use numerical values for chart
+            label: dataset.label, // Update label
+            borderColor: dataset.borderColor || defaultColors[index % defaultColors.length], // Select custom or default color
+            backgroundColor: dataset.backgroundColor || defaultColors[index % defaultColors.length].replace('1)', '0.2)'), // Default transparent background color
+            borderWidth: 2, // Default line width
+        }))
+    },
+    options: {
+        scales: {
+            x: {
+                type: 'linear',
+                title: {
+                    display: true,
+                    text: xAxisLabel,
+                    color: 'rgba(255, 255, 255, 0.8)',
+                    font: {
+                        size: 16
+                    }
+                },
+                grid: {
+                    color: 'rgba(255, 255, 255, 0.1)'
+                },
+                ticks: {
+                    color: 'rgba(255, 255, 255, 0.8)',
+                    stepSize: 1,
+                    precision: 0
+                }
+            },
+            y: {
+                title: {
+                    display: true,
+                    text: yAxisLabel,
+                    color: 'rgba(255, 255, 255, 0.8)',
+                    font: {
+                        size: 16
+                    }
+                },
+                beginAtZero: false,
+                min: 1,
+                grid: {
+                    color: 'rgba(255, 255, 255, 0.1)'
+                },
+                ticks: {
+                    color: 'rgba(255, 255, 255, 0.8)',
+                    stepSize: 5,
+                    callback: function(value) {
+                        return value % 5 === 0 ? value : null;
+                    }
+                },
+                reverse: true
+            }
+        },
+        hover: {
+            mode: 'dataset',
+            intersect: false
+        },
+        onHover: function(event, activeElements) {
+            const chartArea = myChart.chartArea;
+            const mouseX = event.native.clientX;
+            const mouseY = event.native.clientY;
+
+            // Check if the mouse is outside the chart area
+            if (mouseX < chartArea.left || mouseX > chartArea.right || mouseY < chartArea.top || mouseY > chartArea.bottom) {
+                // Reset all lines when mouse leaves the chart area
+                myChart.data.datasets.forEach((dataset) => {
+                    dataset.borderWidth = 2; // Reset to default width
+                    dataset.borderColor = dataset.borderColor.replace('0.3)', '1)'); // Reset to full opacity
+                    dataset.shadowBlur = 0; // Remove shadow
+                });
+                myChart.update(); // Update the chart
+                return; // Exit early if outside chart
+            }
+
+            const activeDatasetIndex = activeElements.length ? activeElements[0].datasetIndex : null;
+
+            myChart.data.datasets.forEach((dataset, index) => {
+                if (index === activeDatasetIndex) {
+                    // Highlight hovered line
+                    dataset.borderWidth = 6;
+                    dataset.borderColor = dataset.borderColor.replace('0.3)', '1)');
+                    dataset.shadowBlur = 10;
+                    dataset.shadowColor = 'rgba(0, 0, 0, 0.8)';
+                } else {
+                    // Dim non-hovered lines
+                    dataset.borderWidth = 2;
+                    dataset.borderColor = dataset.borderColor.replace('1)', '0.3)');
+                    dataset.shadowBlur = 0;
+                }
+            });
+
+            myChart.update(); // Update chart with new styles
+        },
+        plugins: {
+            legend: {
+                display: false // Disable the legend
+            }
+        },
+        layout: {
+            padding: {
+                top: 50,
+                right: 50,
+                bottom: 10,
+                left: 10
+            }
+        },
+        responsive: true
+    },
+    plugins: [endLabelPlugin] // Register the end label plugin
+});
+
+
+
+
                 }
 
                 const positionHistoryGraphContent = document.createElement('div');
