@@ -145,6 +145,7 @@ class GlobalData:
         self.m_packet_session = packet
         self.m_is_spectating = packet.m_isSpectating
         self.m_game_year = packet.m_header.m_gameYear
+        self.m_safety_car_status = packet.m_safetyCarStatus
         return ret_status
 
 class DataPerDriver:
@@ -166,7 +167,8 @@ class DataPerDriver:
         m_current_lap (Optional[int]): The current lap the driver is on.
         m_penalties (Optional[str]): Penalties accumulated by the driver.
         m_tyre_age (Optional[int]): The age of the driver's current set of tires.
-        m_tyre_compound_type (Optional[str]): The type of tire compound being used by the driver.
+        m_tyre_vis_compound (Optional[VisualTyreCompound]): The visual type of tyre compound being used by the driver.
+        m_tyre_act_compound (Optional[ActualTyreCompound]): The actual type of tyre compound being used by the driver.
         m_tyre_surface_temp (Optional[float]): The surface temperature of the driver's tires.
         m_tyre_inner_temp (Optional[float]): The inner temperature of the driver's tires.
         m_is_pitting (Optional[bool]): Indicates whether the driver is currently in the pit lane.
@@ -343,7 +345,7 @@ class DataPerDriver:
                 "lap-number" : lap_number,
                 "car-damage-data" : self.m_car_damage_packet.toJSON() if self.m_car_damage_packet else None,
                 "car-status-data" : self.m_car_status_packet.toJSON() if self.m_car_status_packet else None,
-                "safety-car-status" : self.m_sc_status if self.m_sc_status else None,
+                "safety-car-status" : str(self.m_sc_status) if self.m_sc_status else None,
                 "tyre-sets-data" : self.m_tyre_sets_packet.toJSON() if self.m_tyre_sets_packet else None,
                 "lap-data" : self.m_lap_data.toJSON() if self.m_lap_data else None,
             }
@@ -455,7 +457,8 @@ class DataPerDriver:
         self.m_current_lap: Optional[int] = None
         self.m_penalties: Optional[str] = None
         self.m_tyre_age: Optional[int] = None
-        self.m_tyre_compound_type: Optional[str] = None
+        self.m_tyre_vis_compound: Optional[VisualTyreCompound] = None
+        self.m_tyre_act_compound: Optional[ActualTyreCompound] = None
         self.m_tyre_surface_temp: Optional[float] = None
         self.m_tyre_inner_temp: Optional[float] = None
         self.m_is_pitting: Optional[bool] = None
@@ -1324,6 +1327,10 @@ class DriverData:
                 driver_data.m_tyre_wear_extrapolator.total_laps = self.m_total_laps
                 driver_data.m_fuel_rate_recommender.total_laps = self.m_total_laps
 
+        # Update the SC status for all drivers
+        for driver_data in self.m_driver_data.values():
+            driver_data.m_curr_lap_sc_status = packet.m_safetyCarStatus
+
     def processLapDataUpdate(self, packet: PacketLapData) -> None:
         """Process the lap data packet and update the necessary fields
 
@@ -1463,8 +1470,8 @@ class DriverData:
             obj_to_be_updated = self._getObjectByIndex(index)
             obj_to_be_updated.m_ers_perc = (car_status_data.m_ersStoreEnergy/CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0
             obj_to_be_updated.m_tyre_age = car_status_data.m_tyresAgeLaps
-            obj_to_be_updated.m_tyre_compound_type = str(car_status_data.m_actualTyreCompound) + ' - ' + \
-                str(car_status_data.m_visualTyreCompound)
+            obj_to_be_updated.m_tyre_vis_compound = car_status_data.m_visualTyreCompound
+            obj_to_be_updated.m_tyre_act_compound = car_status_data.m_actualTyreCompound
             obj_to_be_updated.m_drs_allowed = bool(car_status_data.m_drsAllowed)
             obj_to_be_updated.m_drs_distance = car_status_data.m_drsActivationDistance
             obj_to_be_updated.m_packet_car_status = car_status_data

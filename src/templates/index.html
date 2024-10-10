@@ -308,10 +308,6 @@ SOFTWARE.
                     <td>Session Time Left</td>
                     <td id="sessionTimeLeft"></td>
                 </tr>
-                <tr id="safetyCarRow">
-                    <td>Safety Car Status:</td>
-                    <td id="safetyCarStatus"></td>
-                </tr>
                 <tr>
                     <td colspan="2">
                         <a href="#" id="getRaceInfo" class="motivationLink">Get Race Information</a>
@@ -656,6 +652,15 @@ SOFTWARE.
 
             function addCurrTyreInfo(row, entry) {
 
+                function getTyreCompoundStr(visualTyreCompound, actualTyreCompound) {
+
+                    if (visualTyreCompound == "Inters" || visualTyreCompound == "Wet") {
+                        return visualTyreCompound;
+                    } else {
+                        return actualTyreCompound + " - " + visualTyreCompound;
+                    }
+                }
+
                 const tyreInfoCell = row.insertCell();
                 const tyreInfoData = entry["tyre-info"];
                 const currTyreWearData = tyreInfoData["current-wear"];
@@ -674,9 +679,11 @@ SOFTWARE.
                         tyreWearText = "N/A";
                     }
                 }
+
+                const tyreCompound = getTyreCompoundStr(tyreInfoData["visual-tyre-compound"], tyreInfoData["actual-tyre-compound"]);
                 tyreInfoCell.innerHTML = `${tyreWearText}<br>` +
-                    `${entry["tyre-age"]} lap(s) ` + `(${entry["num-pitstops"]} pit)<br>` +
-                    `${entry["tyre-compound"]}`;
+                    `${tyreInfoData["tyre-age"]} lap(s) ` + `(${entry["num-pitstops"]} pit)<br>` +
+                    `${tyreCompound}`;
             }
 
             function addTyrePredictionInfo(row, entry) {
@@ -2530,7 +2537,6 @@ SOFTWARE.
             } else {
                 document.getElementById('lapInformation').textContent = `${curr_lap}/${total_laps}`;
             }
-            document.getElementById('safetyCarStatus').textContent = `${safety_car_status}`;
             document.getElementById('fastestLapOverall').textContent = `${fastest_lap}`;
             document.getElementById('pitSpeedLimit').textContent = `${pit_speed_limit} kmph`;
 
@@ -2545,11 +2551,6 @@ SOFTWARE.
                 document.getElementById('sessionTimeLeft').textContent = `${formatSecondsToMMSS(sessionTimeLeft)}`;
             } else {
                 sessionTimeLeftRow.style.display = 'none';
-            }
-
-            let safetyCarRow = document.getElementById('safetyCarRow');
-            if (!({{ live_data_mode | tojson | safe }})) {
-                safetyCarRow.style.display = 'none';
             }
         }
 

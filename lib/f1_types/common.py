@@ -422,7 +422,6 @@ class VisualTyreCompound(Enum):
             VisualTyreCompound.HARD: "Hard",
             VisualTyreCompound.INTER: "Inters",
             VisualTyreCompound.WET: "Wet",
-            # VisualTyreCompound.WET_CLASSIC: "Wet (Classic)",
             VisualTyreCompound.WET_CLASSIC: "Wet",
             VisualTyreCompound.SUPER_SOFT: "Super Soft (F2 '19)",
             VisualTyreCompound.SOFT_F2: "Soft (F2 '19)",
@@ -490,7 +489,7 @@ class SafetyCarType(Enum):
             str: String representation of the safety car status.
         """
 
-        return self.name
+        return self.name.replace('_', ' ').title()
 
 class SafetyCarEventType(Enum):
     """

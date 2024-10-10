@@ -227,8 +227,6 @@ def getTelemetryInfo():
                     "average-tyre-wear": F1Utils.floatToStr(avg_tyre_wear) + "%",
                     "tyre-age": data_per_driver["car-status"]["tyres-age-laps"],
                     "tyre-life-remaining" : "---",
-                    "tyre-compound": data_per_driver["car-status"]["actual-tyre-compound"] + ' - ' +
-                                        data_per_driver["car-status"]["visual-tyre-compound"],
                     "drs": False,
                     "num-pitstops": data_per_driver["final-classification"]["num-pit-stops"],
                     "dnf-status" : dnf_status_code,
@@ -244,8 +242,8 @@ def getTelemetryInfo():
                         "current-wear" : getTyreWearJSON(data_per_driver),
                         "tyre-age": data_per_driver["car-status"]["tyres-age-laps"],
                         "tyre-life-remaining" : None,
-                        "tyre-compound": data_per_driver["car-status"]["actual-tyre-compound"] + ' - ' +
-                                        data_per_driver["car-status"]["visual-tyre-compound"],
+                        "actual-tyre-compound" : data_per_driver["car-status"]["actual-tyre-compound"],
+                        "visual-tyre-compound" : data_per_driver["car-status"]["visual-tyre-compound"],
                     },
                 }
             )
