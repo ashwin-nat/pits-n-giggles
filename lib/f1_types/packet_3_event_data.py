@@ -152,7 +152,7 @@ class PacketEventData:
                 struct.error: If the binary data does not match the expected format.
             """
             format_str = "<Bf"
-            unpacked_data = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
+            unpacked_data = struct.unpack(format_str, data[:struct.calcsize(format_str)])
             (
                 self.vehicleIdx,
                 self.lapTime
@@ -211,7 +211,7 @@ class PacketEventData:
         """
         def __init__(self, data):
             format_str = "<B"
-            self.vehicleIdx = struct.unpack(format_str, data[0:struct.calcsize(format_str)])[0]
+            self.vehicleIdx = struct.unpack(format_str, data[: struct.calcsize(format_str)])[0]
 
         def __str__(self):
             return f"Retirement(vehicleIdx={self.vehicleIdx})"
@@ -260,7 +260,9 @@ class PacketEventData:
         """
         def __init__(self, data):
             format_str = "<B"
-            self.vehicleIdx = struct.unpack(format_str, data[0:struct.calcsize(format_str)])[0]
+            self.vehicleIdx = struct.unpack(
+                format_str, data[: struct.calcsize(format_str)]
+            )[0]
 
         def __str__(self):
             return f"TeamMateInPits(vehicleIdx={self.vehicleIdx})"
@@ -308,7 +310,7 @@ class PacketEventData:
         """
         def __init__(self, data):
             format_str = "<B"
-            self.vehicleIdx = struct.unpack(format_str, data[0:struct.calcsize(format_str)])[0]
+            self.vehicleIdx = struct.unpack(format_str, data[: struct.calcsize(format_str)])[0]
 
         def __str__(self):
             return f"RaceWinner(vehicleIdx={self.vehicleIdx})"
@@ -488,7 +490,7 @@ class PacketEventData:
             """
 
             format_str = "<BBBBBBB"
-            unpacked_data = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
+            unpacked_data = struct.unpack(format_str, data[:struct.calcsize(format_str)])
             (
                 self.penaltyType,
                 self.infringementType,
@@ -581,7 +583,7 @@ class PacketEventData:
                 struct.error: If the binary data does not match the expected format.
             """
             format_str = "<BfBBBf"
-            unpacked_data = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
+            unpacked_data = struct.unpack(format_str, data[:struct.calcsize(format_str)])
             (
                 self.vehicleIdx,
                 self.speed,
@@ -678,7 +680,7 @@ class PacketEventData:
             """
 
             format_str = "<B"
-            self.numLights = struct.unpack(format_str, data[0:struct.calcsize(format_str)])[0]
+            self.numLights = struct.unpack(format_str, data[:struct.calcsize(format_str)])[0]
 
         def __str__(self) -> str:
             """
@@ -734,7 +736,7 @@ class PacketEventData:
             """
 
             format_str = "<B"
-            self.vehicleIdx = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
+            self.vehicleIdx = struct.unpack(format_str, data[:struct.calcsize(format_str)])
 
         def __str__(self) -> str:
             """
@@ -803,7 +805,7 @@ class PacketEventData:
             """
 
             format_str = "<B"
-            self.vehicleIdx = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
+            self.vehicleIdx = struct.unpack(format_str, data[:struct.calcsize(format_str)])
 
         def __str__(self) -> str:
             """
@@ -872,7 +874,7 @@ class PacketEventData:
             """
 
             format_str = "<If"
-            unpacked_data = struct.unpack(format_str, data[0:struct.calcsize(format_str)])
+            unpacked_data = struct.unpack(format_str, data[:struct.calcsize(format_str)])
             (
                 self.flashbackFrameIdentifier,
                 self.flashbackSessionTime
@@ -977,7 +979,7 @@ class PacketEventData:
                 struct.error: If the binary data does not match the expected format.
             """
             format_str = "<I"
-            self.buttonStatus = struct.unpack(format_str, data[0:struct.calcsize(format_str)])[0]
+            self.buttonStatus = struct.unpack(format_str, data[:struct.calcsize(format_str)])[0]
 
         def isButtonPressed(self, button_flag: int) -> bool:
             """
@@ -1089,8 +1091,8 @@ class PacketEventData:
                 struct.error: If the binary data does not match the expected format.
             """
             format_str = "<BB"
-            self.overtakingVehicleIdx, self.beingOvertakenVehicleIdx = struct.unpack(format_str,
-                data[0:struct.calcsize(format_str)])
+            self.overtakingVehicleIdx, self.beingOvertakenVehicleIdx = \
+                struct.unpack(format_str, data[:struct.calcsize(format_str)])
 
         def __str__(self) -> str:
             """
@@ -1162,8 +1164,7 @@ class PacketEventData:
                 struct.error: If the binary data does not match the expected format.
             """
             format_str = "<BB"
-            self.m_safety_car_type, self.m_event_type = struct.unpack(format_str,
-                data[0:struct.calcsize(format_str)])
+            self.m_safety_car_type, self.m_event_type = struct.unpack(format_str, data[:struct.calcsize(format_str)])
             if SafetyCarType.isValid(self.m_safety_car_type):
                 self.m_safety_car_type = SafetyCarType(self.m_safety_car_type)
             if SafetyCarEventType.isValid(self.m_event_type):
@@ -1239,8 +1240,7 @@ class PacketEventData:
                 struct.error: If the binary data does not match the expected format.
             """
             format_str = "<BB"
-            self.m_vehicle_1_index, self.m_vehicle_2_index = struct.unpack(format_str,
-                data[0:struct.calcsize(format_str)])
+            self.m_vehicle_1_index, self.m_vehicle_2_index = struct.unpack(format_str, data[:struct.calcsize(format_str)])
 
         def __str__(self) -> str:
             """
@@ -1331,15 +1331,15 @@ class PacketEventData:
         self.m_eventStringCode: str = ""           # char[4]
 
         # Parse the event string and prep the enum
-        self.m_eventStringCode = struct.unpack('4s', packet[0:4])[0].decode('ascii')
+        self.m_eventStringCode = struct.unpack('4s', packet[:4])[0].decode('ascii')
         if PacketEventData.EventPacketType.isValid(self.m_eventStringCode):
             self.m_eventCode = PacketEventData.EventPacketType(self.m_eventStringCode)
         else:
             self.m_eventCode = PacketEventData.EventPacketType.NONE
-            raise TypeError("Unsupported Event Type " + self.m_eventCode)
+            raise TypeError(f"Unsupported Event Type {self.m_eventCode}")
 
         # Parse the optional data, if any
-        if PacketEventData.event_type_map.get(self.m_eventCode, None):
+        if PacketEventData.event_type_map.get(self.m_eventCode):
             self.mEventDetails = PacketEventData.event_type_map[self.m_eventCode](packet[4:])
         else:
             self.mEventDetails = None

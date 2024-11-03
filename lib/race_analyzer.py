@@ -38,9 +38,7 @@ def _isATwat(driver_data: Dict[str, Any]) -> bool:
     # Let's simplify this. skip player if telemetry is off. fuck 'em
     if 'participant-data' not in driver_data:
         return True
-    if driver_data['participant-data']['telemetry-setting'] == "Restricted":
-        return True
-    return False
+    return driver_data['participant-data']['telemetry-setting'] == "Restricted"
 
 def getFastestTimesJson(json_data: Dict[str, Any], driver_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
@@ -165,9 +163,7 @@ def getFastestTimesJson(json_data: Dict[str, Any], driver_data: Optional[Dict[st
             A string in minutes:seconds.milliseconds format
         """
 
-        if value is None:
-            return None
-        return F1Utils.getLapTimeStr(value)
+        return None if value is None else F1Utils.getLapTimeStr(value)
 
     fastest_dict = {
         'lap' : getFastestTimesDict(json_data=json_data,
@@ -205,6 +201,8 @@ def getTyreStintRecordsDict(json_data: Dict[str, Any]):
         - final_json: A JSON object containing the longest tyre stint and lowest tyre wear per lap for each compound.
     """
 
+
+
     class TyreStintRecords:
         """Class that computes and stores tyre stint records
         """
@@ -237,7 +235,9 @@ def getTyreStintRecordsDict(json_data: Dict[str, Any]):
                 if _isATwat(driver_data):
                     continue
                 for tyre_set_history_item in driver_data["tyre-set-history"]:
-                    if not "tyre-set-data" in tyre_set_history_item or tyre_set_history_item["tyre-set-data"] is None:
+                    # if ("tyre-set-data" not in tyre_set_history_item) or \
+                    #     (tyre_set_history_item["tyre-set-data"] is None):
+                    if (tyre_set_history_item.get("tyre-set-data") is None):
                         continue
                     tyre_set_data = tyre_set_history_item["tyre-set-data"]
                     stint_length = tyre_set_history_item["stint-length"]
@@ -274,22 +274,23 @@ def getTyreStintRecordsDict(json_data: Dict[str, Any]):
                                 self.m_records[compound]["highest-wear-value"] = tyre_set_data["wear"]
                                 self.m_records[compound]["highest-wear-driver-name"] = driver_data["driver-name"]
 
+
     # Populate the final JSON and return
     tyre_stint_records = TyreStintRecords(json_data)
-    final_json = {}
-    for compound, records in tyre_stint_records.m_records.items():
-        final_json[compound] = {
-            'longest-tyre-stint' : {
-                'value' : records["longest-stint-length"],
-                'driver-name' : records["longest-stint-driver-name"]
+    return {
+        compound: {
+            'longest-tyre-stint': {
+                'value': records["longest-stint-length"],
+                'driver-name': records["longest-stint-driver-name"],
             },
-            'lowest-tyre-wear-per-lap' : {
-                'value' : records["lowest-wear-per-lap-value"],
-                'driver-name' : records["lowest-wear-per-lap-driver-name"]
+            'lowest-tyre-wear-per-lap': {
+                'value': records["lowest-wear-per-lap-value"],
+                'driver-name': records["lowest-wear-per-lap-driver-name"],
             },
-            'highest-tyre-wear' : {
-                'value' : records["highest-wear-value"],
-                'driver-name' : records["highest-wear-driver-name"]
-            }
+            'highest-tyre-wear': {
+                'value': records["highest-wear-value"],
+                'driver-name': records["highest-wear-driver-name"],
+            },
         }
-    return final_json
+        for compound, records in tyre_stint_records.m_records.items()
+    }

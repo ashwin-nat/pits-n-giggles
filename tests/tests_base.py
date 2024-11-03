@@ -100,4 +100,4 @@ class F1TelemetryUnitTestsBase(unittest.TestCase):
                     print(f"Changed key: {key_name}  Expected value: {expected_value}  Actual value: {actual_value}")
             else:
                 print(json.dumps(differences, indent=4))
-            raise AssertionError("JSON objects are not equal.")
+            raise AssertionError(f"JSON objects are not equal.\n {json.dumps(differences, indent=4)}")

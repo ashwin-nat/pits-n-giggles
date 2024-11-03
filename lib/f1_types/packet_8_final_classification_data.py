@@ -343,6 +343,7 @@ class FinalClassificationData:
             tyre_stints_end_laps_5: int,
             tyre_stints_end_laps_6: int,
             tyre_stints_end_laps_7: int) -> "FinalClassificationData":
+        # sourcery skip: low-code-quality
         """Create a new FinalClassificationData object from the given values.
 
         Args:
@@ -418,12 +419,15 @@ class PacketFinalClassificationData:
         """
 
         self.m_header: PacketHeader = header
-        self.m_numCars: int = struct.unpack("<B", packet[0:1])[0]
+        self.m_numCars: int = struct.unpack("<B", packet[:1])[0]
         self.m_classificationData: List[FinalClassificationData] = []
 
-        for classification_per_car_raw_data in _split_list(packet[1:], FinalClassificationData.PACKET_LEN):
-            self.m_classificationData.append(FinalClassificationData(classification_per_car_raw_data))
-
+        self.m_classificationData.extend(
+            FinalClassificationData(classification_per_car_raw_data)
+            for classification_per_car_raw_data in _split_list(
+                packet[1:], FinalClassificationData.PACKET_LEN
+            )
+        )
         # strip the non-applicable data
         self.m_classificationData = self.m_classificationData[:self.m_numCars]
 
@@ -476,9 +480,7 @@ class PacketFinalClassificationData:
             return False
         if self.m_numCars != other.m_numCars:
             return False
-        if self.m_classificationData != other.m_classificationData:
-            return False
-        return True
+        return self.m_classificationData == other.m_classificationData
 
     def __ne__(self, other: "PacketFinalClassificationData") -> bool:
         """

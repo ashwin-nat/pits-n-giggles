@@ -344,7 +344,7 @@ class TestPacketLobbyInfoData(F1TypesTest):
             "lobby-players": [
                 {
                     "ai-controlled": False,
-                    "team-id": "255",
+                    "team-id": "MY_TEAM",
                     "nationality": "Unspecified",
                     "platform": "Steam",
                     "name": "Milk\u00a0Sheik",

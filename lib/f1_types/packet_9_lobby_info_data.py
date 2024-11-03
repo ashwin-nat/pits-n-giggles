@@ -99,7 +99,7 @@ class LobbyInfoData:
         def __str__(self):
             if F1PacketType.isValid(self.value):
                 return self.name
-            return 'Marshal Zone Flag type ' + str(self.value)
+            return f'Marshal Zone Flag type {str(self.value)}'
 
     def __init__(self, data: bytes, packet_format: int) -> None:
         """
@@ -333,9 +333,12 @@ class PacketLobbyInfoData:
         else: # 24
             packet_len = LobbyInfoData.PACKET_LEN_24
 
-        for lobby_info_per_player_raw_data in _split_list(packet[1:], packet_len):
-            self.m_lobbyPlayers.append(LobbyInfoData(lobby_info_per_player_raw_data, header.m_packetFormat))
-
+        self.m_lobbyPlayers.extend(
+            LobbyInfoData(lobby_info_per_player_raw_data, header.m_packetFormat)
+            for lobby_info_per_player_raw_data in _split_list(
+                packet[1:], packet_len
+            )
+        )
         # Trim the list
         self.m_lobbyPlayers = self.m_lobbyPlayers[:self.m_numPlayers]
 

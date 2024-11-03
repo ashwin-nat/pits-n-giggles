@@ -544,8 +544,12 @@ class PacketCarStatusData:
         self.m_header: PacketHeader = header
         self.m_carStatusData: List[CarStatusData] = []               # CarStatusData[22]
 
-        for status_per_car_raw_data in _split_list(packet, CarStatusData.PACKET_LEN):
-            self.m_carStatusData.append(CarStatusData(status_per_car_raw_data))
+        self.m_carStatusData.extend(
+            CarStatusData(status_per_car_raw_data)
+            for status_per_car_raw_data in _split_list(
+                packet, CarStatusData.PACKET_LEN
+            )
+        )
 
     def __str__(self) -> str:
         """Generate a human readable string of this object's contents

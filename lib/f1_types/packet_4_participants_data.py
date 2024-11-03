@@ -360,13 +360,14 @@ class PacketParticipantsData:
         """
 
         self.m_header: PacketHeader = header         # PacketHeader
-        self.m_numActiveCars: int = struct.unpack("<B", packet[0:1])[0]
+        self.m_numActiveCars: int = struct.unpack("<B", packet[:1])[0]
         self.m_participants: List[ParticipantData] = []            # ParticipantData[22]
 
         packet_len = ParticipantData.PACKET_LEN_23 if (header.m_gameYear == 23) else ParticipantData.PACKET_LEN_24
-        for participant_data_raw in _split_list(packet[1:], packet_len):
-            self.m_participants.append(ParticipantData(participant_data_raw, header.m_gameYear))
-
+        self.m_participants.extend(
+            ParticipantData(participant_data_raw, header.m_gameYear)
+            for participant_data_raw in _split_list(packet[1:], packet_len)
+        )
         # Trim the list
         self.m_participants = self.m_participants[:self.m_numActiveCars]
 

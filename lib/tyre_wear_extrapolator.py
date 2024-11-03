@@ -232,31 +232,35 @@ class TyreWearExtrapolator:
         # Recompute the segments
         self.m_intervals = self._segmentData(self.m_initial_data)
         racing_data = [point for interval in self.m_intervals \
-                       if all(point.is_racing_lap for point in interval) for point in interval]
+                           if all(point.is_racing_lap for point in interval) for point in interval]
 
         # Recompute the regression models
         if racing_data:
-            laps = np.array([point.lap_number for point in racing_data]).reshape(-1, 1)
-            self.m_fl_regression = LinearRegression().fit(
-                laps, np.array([point.fl_tyre_wear for point in racing_data])
-            )
+            self._extracted_from_updateDataList_23(racing_data)
 
-            self.m_fr_regression = LinearRegression().fit(
-                laps, np.array([point.fr_tyre_wear for point in racing_data])
-            )
+    # TODO Rename this here and in `updateDataList`
+    def _extracted_from_updateDataList_23(self, racing_data):
+        laps = np.array([point.lap_number for point in racing_data]).reshape(-1, 1)
+        self.m_fl_regression = LinearRegression().fit(
+            laps, np.array([point.fl_tyre_wear for point in racing_data])
+        )
 
-            self.m_rl_regression = LinearRegression().fit(
-                laps, np.array([point.rl_tyre_wear for point in racing_data])
-            )
+        self.m_fr_regression = LinearRegression().fit(
+            laps, np.array([point.fr_tyre_wear for point in racing_data])
+        )
 
-            self.m_rr_regression = LinearRegression().fit(
-                laps, np.array([point.rr_tyre_wear for point in racing_data])
-            )
+        self.m_rl_regression = LinearRegression().fit(
+            laps, np.array([point.rl_tyre_wear for point in racing_data])
+        )
 
-            assert self.m_initial_data[-1].lap_number is not None
-            assert self.m_total_laps is not None
-            self.m_remaining_laps = self.m_total_laps - self.m_initial_data[-1].lap_number
-            self._extrapolateTyreWear()
+        self.m_rr_regression = LinearRegression().fit(
+            laps, np.array([point.rr_tyre_wear for point in racing_data])
+        )
+
+        assert self.m_initial_data[-1].lap_number is not None
+        assert self.m_total_laps is not None
+        self.m_remaining_laps = self.m_total_laps - self.m_initial_data[-1].lap_number
+        self._extrapolateTyreWear()
 
     def updateDataLap(self, new_data: TyreWearPerLap):
         """
@@ -302,12 +306,12 @@ class TyreWearExtrapolator:
         self.m_rr_regression : LinearRegression = None
 
         # Can't init the data models if there is no data
-        if len(self.m_initial_data) == 0:
+        if not self.m_initial_data:
             return
 
         # Combine all laps, excluding non-racing laps
         racing_data = [point for interval in self.m_intervals \
-                       if all(point.is_racing_lap for point in interval) for point in interval]
+                           if all(point.is_racing_lap for point in interval) for point in interval]
 
         # Fit linear regression model for each tyre using racing data
         self.m_fl_regression = LinearRegression().fit(
@@ -370,7 +374,6 @@ class TyreWearExtrapolator:
             List[List[TyreWearPerLap]]: Segmented intervals.
         """
 
-        intervals = []
         segment_indices : List[Tuple[int, int]] = []
         is_racing_mode = None
         curr_start_index = None
@@ -385,7 +388,7 @@ class TyreWearExtrapolator:
                 is_racing_mode = point.is_racing_lap
         segment_indices.append((curr_start_index, len(data)-1))
 
-        for start_index, end_index in segment_indices:
-            intervals.append(data[start_index:end_index+1])
-
-        return intervals
+        return [
+            data[start_index : end_index + 1]
+            for start_index, end_index in segment_indices
+        ]

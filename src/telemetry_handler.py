@@ -223,8 +223,8 @@ def initDirectories():
 
     global g_directory_mapping
     ts_prefix = datetime.now().strftime("%Y_%m_%d")
-    g_directory_mapping['race-info'] = "data/" + ts_prefix + "/race-info/"
-    g_directory_mapping['packet-captures'] = "data/" + ts_prefix + "/packet-captures/"
+    g_directory_mapping['race-info'] = f"data/{ts_prefix}/race-info/"
+    g_directory_mapping['packet-captures'] = f"data/{ts_prefix}/packet-captures/"
 
     for directory in g_directory_mapping.values():
         ensureDirectoryExists(directory)
@@ -411,8 +411,7 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
     global g_pkt_cap_mode
     if g_pkt_cap_mode == PacketCaptureMode.ENABLED_WITH_AUTOSAVE:
         if not file_name:
-            file_name = 'capture_' + event_str + getTimestampStr() + \
-                F1PacketCapture.file_extension
+            file_name = f'capture_{event_str}{getTimestampStr()}{F1PacketCapture.file_extension}'
             file_name = g_directory_mapping["packet-captures"] + file_name
         dumpPktCapToFile(file_name=file_name,reason='Final Classification')
 
@@ -653,29 +652,29 @@ class F1TelemetryHandler:
         # Perform the auto save stuff only for races
         event_type_str = TelData.getGlobals().m_event_type
         if event_type_str:
-            unsupported_event_types_f1_23 = [
-                SessionType23.PRACTICE_1,
-                SessionType23.PRACTICE_2,
-                SessionType23.PRACTICE_3,
-                SessionType23.SHORT_PRACTICE,
-                SessionType23.TIME_TRIAL,
-                SessionType23.UNKNOWN
-            ]
-            unsupported_event_types_f1_24 = [
-                SessionType24.PRACTICE_1,
-                SessionType24.PRACTICE_2,
-                SessionType24.PRACTICE_3,
-                SessionType24.SHORT_PRACTICE,
-                SessionType24.TIME_TRIAL,
-                SessionType24.UNKNOWN
-            ]
             is_event_supported = True
             if packet.m_header.m_gameYear == 23:
+                unsupported_event_types_f1_23 = [
+                    SessionType23.PRACTICE_1,
+                    SessionType23.PRACTICE_2,
+                    SessionType23.PRACTICE_3,
+                    SessionType23.SHORT_PRACTICE,
+                    SessionType23.TIME_TRIAL,
+                    SessionType23.UNKNOWN
+                ]
                 for event_type in unsupported_event_types_f1_23:
                     if str(event_type) in event_type_str:
                         is_event_supported = False
                         break
             else:
+                unsupported_event_types_f1_24 = [
+                    SessionType24.PRACTICE_1,
+                    SessionType24.PRACTICE_2,
+                    SessionType24.PRACTICE_3,
+                    SessionType24.SHORT_PRACTICE,
+                    SessionType24.TIME_TRIAL,
+                    SessionType24.UNKNOWN
+                ]
                 for event_type in unsupported_event_types_f1_24:
                     if str(event_type) in event_type_str:
                         is_event_supported = False

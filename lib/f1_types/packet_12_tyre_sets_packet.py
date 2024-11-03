@@ -251,14 +251,17 @@ class PacketTyreSetsData:
         """
 
         self.m_header: PacketHeader = header
-        self.m_carIdx: int = struct.unpack("<B", data[0:1])[0]
+        self.m_carIdx: int = struct.unpack("<B", data[:1])[0]
         self.m_tyreSetData: List[TyreSetData] = []
 
         tyre_set_data_full_len = PacketTyreSetsData.MAX_TYRE_SETS * TyreSetData.PACKET_LEN
         full_tyre_set_data_raw = _extract_sublist(data, 1, 1 + tyre_set_data_full_len)
-        for tyre_set_data_raw in _split_list(full_tyre_set_data_raw, TyreSetData.PACKET_LEN):
-            self.m_tyreSetData.append(TyreSetData(tyre_set_data_raw, header.m_gameYear))
-
+        self.m_tyreSetData.extend(
+            TyreSetData(tyre_set_data_raw, header.m_gameYear)
+            for tyre_set_data_raw in _split_list(
+                full_tyre_set_data_raw, TyreSetData.PACKET_LEN
+            )
+        )
         self.m_fittedIdx = struct.unpack("<B", data[(1 + tyre_set_data_full_len):])[0]
 
     def __str__(self) -> str:
@@ -303,7 +306,7 @@ class PacketTyreSetsData:
 
         if self.m_fittedIdx == 255:
             return None
-        return str(self.m_fittedIdx) + "." + str(self.m_tyreSetData[self.m_fittedIdx].m_actualTyreCompound)
+        return f"{str(self.m_fittedIdx)}.{str(self.m_tyreSetData[self.m_fittedIdx].m_actualTyreCompound)}"
 
     def getTyreSetKey(self, index) -> Optional[str]:
         """Key containing tyre set ID and actual compound name for the given index
@@ -316,7 +319,7 @@ class PacketTyreSetsData:
         """
 
         if 0 <= index < len(self.m_tyreSetData):
-            return str(index) + "." + str(self.m_tyreSetData[index].m_actualTyreCompound)
+            return f"{str(index)}.{str(self.m_tyreSetData[index].m_actualTyreCompound)}"
         return None
 
     def __eq__(self, other: "PacketTyreSetsData") -> bool:

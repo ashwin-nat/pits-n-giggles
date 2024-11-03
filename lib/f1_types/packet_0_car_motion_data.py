@@ -296,12 +296,15 @@ class PacketMotionData:
         self.m_header: PacketHeader = header       # PacketHeader
 
         if ((len(packet) % CarMotionData.PACKET_LEN) != 0):
-            raise InvalidPacketLengthError("Received packet length " + str(len(packet)) + " is not a multiple of " +
-                                            str(CarMotionData.PACKET_LEN))
+            raise InvalidPacketLengthError(
+                f"Received packet length {len(packet)} is not a multiple of {str(CarMotionData.PACKET_LEN)}"
+            )
         self.m_carMotionData: List[CarMotionData] = []
         motion_data_packet_per_car = _split_list(packet, CarMotionData.PACKET_LEN)
-        for motion_data_packet in motion_data_packet_per_car:
-            self.m_carMotionData.append(CarMotionData(motion_data_packet))
+        self.m_carMotionData.extend(
+            CarMotionData(motion_data_packet)
+            for motion_data_packet in motion_data_packet_per_car
+        )
 
     def __str__(self) -> str:
         """

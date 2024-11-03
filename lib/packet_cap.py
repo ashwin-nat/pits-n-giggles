@@ -191,8 +191,8 @@ class F1PktCapMessage:
         Returns:
         - bytes: Serialized bytes representation of the entry.
         """
-        timestamp_bytes = struct.pack(self.m_endianness_str + 'f', self.m_timestamp)
-        data_length_bytes = struct.pack(self.m_endianness_str + 'I', len(self.m_data))
+        timestamp_bytes = struct.pack(f'{self.m_endianness_str}f', self.m_timestamp)
+        data_length_bytes = struct.pack(f'{self.m_endianness_str}I', len(self.m_data))
         return timestamp_bytes + data_length_bytes + self.m_data
 
     @classmethod
@@ -211,7 +211,7 @@ class F1PktCapMessage:
         """
         # Rest of the code remains the same
         endianness_str = '<' if is_little_endian else '>'
-        timestamp, length = struct.unpack(endianness_str + 'fI', data[:8])
+        timestamp, length = struct.unpack(f'{endianness_str}fI', data[:8])
         payload = data[8:]
         if len(payload) != length:
             raise ValueError(f"Data length mismatch. Header length: {length}, Actual length: {len(payload)}")
@@ -286,7 +286,7 @@ class F1PacketCapture:
 
         if file_name is None:
             timestamp_str = time.strftime("%Y%m%d%H%M%S", time.localtime())
-            file_name = f"capture_{timestamp_str}." + self.file_extension
+            file_name = f"capture_{timestamp_str}.{self.file_extension}"
 
         byte_count = 0
         total_packet_count = len(self.m_packet_history)
@@ -345,7 +345,7 @@ class F1PacketCapture:
 
                 timestamp_bytes = entry_header_bytes[:4]
                 data_length_bytes = entry_header_bytes[4:]
-                data_length = struct.unpack(endianness_str + 'I', data_length_bytes)[0]
+                data_length = struct.unpack(f'{endianness_str}I', data_length_bytes)[0]
 
                 payload = file.read(data_length)
 

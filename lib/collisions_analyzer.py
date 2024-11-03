@@ -172,13 +172,13 @@ class CollisionRecord:
             str: The string representation of this object.
         """
         return (
-            "m_driver_1_name=" + self.m_driver_1_name + ", " +
-            "m_driver_1_lap=" + str(self.m_driver_1_lap) + ", " +
-            "m_driver_1_index=" + str(self.m_driver_1_index) + ", " +
-            "m_driver_2_name=" + self.m_driver_2_name + ", " +
-            "m_driver_2_lap=" + str(self.m_driver_2_lap) + ", " +
-            "m_driver_2_index=" + str(self.m_driver_2_index) + ", " +
-            "m_row_id=" + str(self.m_row_id)
+            f"m_driver_1_name={self.m_driver_1_name},"
+            f"m_driver_1_lap={self.m_driver_1_lap},"
+            f"m_driver_1_index={self.m_driver_1_index},"
+            f"m_driver_2_name={self.m_driver_2_name}"
+            f"m_driver_2_lap={self.m_driver_2_lap},"
+            f"m_driver_2_index={self.m_driver_2_index}"
+            f"m_row_id={self.m_row_id}"
         )
 
     def toJSON(self) -> Dict[str, Any]:
@@ -247,7 +247,7 @@ class CollisionPairKey:
         Returns:
             str: A string representation of the OvertakeRivalryPair.
         """
-        return "(" + str(self.m_driver_1_index) + ", " + str(self.m_driver_2_index) + ")"
+        return f"({str(self.m_driver_1_index)}, {str(self.m_driver_2_index)})"
 
     def __contains__(self, driver_index: int) -> bool:
         """
@@ -303,8 +303,6 @@ class CollisionAnayzer:
             self.__analyzeCsvFile(file_name=input_data)
         elif input_mode == CollisionAnalyzerMode.INPUT_MODE_LIST_CSV:
             self.__analyzeCsvList(csv_list=input_data)
-        elif input_mode == CollisionAnalyzerMode.INPUT_MODE_LIST_COLLISION_RECORDS_JSON:
-            self.__analyzeListCollisionRecords(collision_records=input_data)
         else:
             self.__analyzeListCollisionRecords(collision_records=input_data)
 

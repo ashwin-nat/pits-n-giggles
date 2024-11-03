@@ -151,7 +151,7 @@ class F1TelemetryManager:
         if self.m_replay_server:
             png_logger.info("REPLAY SERVER MODE. PORT = %s", self.m_port_number)
 
-        should_parse_packet = sum(1 for callback in self.m_callbacks.values() if callback is not None) > 0
+        should_parse_packet = (sum(callback is not None for callback in self.m_callbacks.values()) > 0)
 
         # Run the client indefinitely
         while True:
