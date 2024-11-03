@@ -196,14 +196,6 @@ def main() -> None:
     httpServerTask(args.server_port, packet_capture_enabled, args.refresh_interval,
                    args.disable_browser_autoload, args.num_adjacent_cars)
 
-    # Set up a keyboard interrupt handler
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        png_logger.info("Ctrl+C pressed. Exiting...")
-        sys.exit()
-
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
 if __name__ == '__main__':

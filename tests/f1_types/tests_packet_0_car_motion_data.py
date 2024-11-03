@@ -810,7 +810,7 @@ class TestPacketCarMotionData(F1TypesTest):
         payload_bytes = serialised_test_obj[PacketHeader.PACKET_LEN:]
         parsed_obj = PacketMotionData(parsed_header, payload_bytes)
         self.assertEqual(generated_test_obj, parsed_obj)
-        self.assertEqual(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
 
     def test_f1_24_random(self):
         """
@@ -830,7 +830,7 @@ class TestPacketCarMotionData(F1TypesTest):
         payload_bytes = serialised_test_obj[PacketHeader.PACKET_LEN:]
         parsed_obj = PacketMotionData(parsed_header, payload_bytes)
         self.assertEqual(generated_test_obj, parsed_obj)
-        self.assertEqual(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
 
     def test_f1_23_actual(self):
         """
@@ -839,7 +839,7 @@ class TestPacketCarMotionData(F1TypesTest):
 
         parsed_packet = PacketMotionData(self.m_header_23, self.m_packet_23_24)
         parsed_json = parsed_packet.toJSON()
-        self.assertEqual(self.m_expected_json_23_24, parsed_json)
+        self.jsonComparisionUtil(self.m_expected_json_23_24, parsed_json)
 
     def test_f1_24_actual(self):
         """
@@ -848,7 +848,7 @@ class TestPacketCarMotionData(F1TypesTest):
 
         parsed_packet = PacketMotionData(self.m_header_24, self.m_packet_23_24)
         parsed_json = parsed_packet.toJSON()
-        self.assertEqual(self.m_expected_json_23_24, parsed_json)
+        self.jsonComparisionUtil(self.m_expected_json_23_24, parsed_json)
 
     def _generateRandomCarMotionData(self) -> CarMotionData:
         """Generate a random CarMotionData object

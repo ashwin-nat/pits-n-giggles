@@ -48,7 +48,7 @@ class TestPacketEventData(F1TypesTest):
 
         parsed_packet = PacketEventData(random_header, raw_packet)
         parsed_json = parsed_packet.toJSON()
-        self.assertEqual(expected_json, parsed_json)
+        self.jsonComparisionUtil(expected_json, parsed_json)
 
     def test_f1_24_fastest_lap(self):
         """
@@ -67,5 +67,5 @@ class TestPacketEventData(F1TypesTest):
 
         parsed_packet = PacketEventData(random_header, raw_packet)
         parsed_json = parsed_packet.toJSON()
-        self.assertEqual(expected_json, parsed_json)
+        self.jsonComparisionUtil(expected_json, parsed_json)
 

@@ -380,6 +380,47 @@ SOFTWARE.
         const shouldHideFuelColumn = !{{ live_data_mode | tojson | safe }};
         const shouldHideLastLapColumn = !{{ live_data_mode | tojson | safe }};
 
+        function formatLapTime(milliseconds) {
+            // Check if the input is 0 or null
+            if (milliseconds === 0 || milliseconds === null) {
+                return "---";
+            }
+            var minutes = Math.floor(milliseconds / 60000);
+            var seconds = Math.floor((milliseconds % 60000) / 1000);
+            var millisecondsPart = milliseconds % 1000;
+            return minutes.toString().padStart(2, '0') + ":" +
+                seconds.toString().padStart(2, '0') + "." +
+                millisecondsPart.toString().padStart(3, '0'); // Ensure it's 3 digits
+        }
+
+        function formatLapDelta(lapTime, playerLapTime, isPlayer) {
+
+            function formatDelta(delta) {
+                // Determine the sign
+                const sign = delta >= 0 ? '+' : '-';
+
+                // Get the absolute value of delta for formatting
+                const absDelta = Math.abs(delta);
+
+                // Calculate seconds and milliseconds
+                const seconds = Math.floor(absDelta / 1000);
+                const milliseconds = absDelta % 1000;
+
+                // Format the string as "±seconds.milliseconds"
+                return sign + seconds + '.' + milliseconds.toString().padStart(3, '0'); // Ensure milliseconds are 3 digits
+            }
+
+            if (isPlayer) {
+                return formatLapTime(playerLapTime);
+            }
+
+            if (lapTime === 0 || lapTime === null || playerLapTime === 0 || playerLapTime === null) {
+                return "---";
+            }
+
+            return formatDelta(lapTime - playerLapTime);
+        }
+
         function showToast(message) {
             // Create a new div element for the toast
             var toast = document.createElement('div');
@@ -435,8 +476,9 @@ SOFTWARE.
 
             for (let i = 0; i < tableEntries.length; i++) {
                 let entry = tableEntries[i];
-                if (entry["is-player"]) {
-                    playerPosition = entry["position"];
+                const driverInfo = entry["driver-info"];
+                if (driverInfo["is-player"]) {
+                    playerPosition = driverInfo["position"];
                     break; // Breaks out of the loop once player position is found
                 }
             }
@@ -543,20 +585,20 @@ SOFTWARE.
                 };
             }
 
-            function addPositionInfo(row, entry) {
+            function addPositionInfo(row, driverInfo) {
 
                 const positionCell = row.insertCell();
-                positionCell.textContent = entry["position"];
+                positionCell.textContent = driverInfo["position"];
             }
 
-            function addNameInfo(row, entry) {
+            function addNameInfo(row, driverInfo) {
 
                 // Create a clickable link for the driver's name
                 const nameCell = row.insertCell();
                 const nameLink = document.createElement('a');
-                nameLink.innerHTML =    `${truncateName(entry["name"])}` +
+                nameLink.innerHTML =    `${truncateName(driverInfo["name"])}` +
                                         `<br>` +
-                                        `${truncateName(entry["team"])}`;
+                                        `${truncateName(driverInfo["team"])}`;
                 nameLink.href = '#'; // Set a placeholder href value
 
                 // Get the computed style of the row and apply it to the hyperlink
@@ -566,91 +608,99 @@ SOFTWARE.
 
                 nameLink.style.textDecoration = 'underline'; // Add standard link underline
                 nameLink.onclick = function () {
-                    handleDriverInfoClick(entry["index"]);
+                    handleDriverInfoClick(driverInfo["index"]);
                 };
                 nameCell.appendChild(nameLink);
                 return nameLink;
             }
 
-            function addDeltaInfo(row, entry) {
+            function addDeltaInfo(row, deltaInfo) {
 
                 if (!shouldHideDeltaColumn) {
                     if (relativeDelta) {
-                        row.insertCell().textContent = entry["delta"];
+                        row.insertCell().textContent = deltaInfo["delta"];
                     } else {
-                        row.insertCell().textContent = entry["delta-to-leader"];
-                    }
-                }
-                if (gameYear == 23) {
-                    row.insertCell().textContent = entry["ers"];
-                } else {
-                    if ("ers-mode" in entry) {
-                    row.insertCell().innerHTML = `${entry["ers"]}<br>${entry["ers-mode"]}`;
-                    } else {
-                        row.insertCell().textContent = entry["ers"];
+                        row.insertCell().textContent = deltaInfo["delta-to-leader"];
                     }
                 }
             }
 
-            function addWarningsPensInfo(row, entry) {
+            function addErsInfo(row, ersInfo) {
+                if (gameYear == 23) {
+                    row.insertCell().textContent = ersInfo["ers-percent"];
+                } else {
+                    if ("ers-mode" in ersInfo) {
+                        row.insertCell().innerHTML = `${ersInfo["ers-percent"]}<br>${ersInfo["ers-mode"]}`;
+                    } else {
+                        row.insertCell().textContent = ersInfo["ers-percent"];
+                    }
+                }
+            }
+
+            function addWarningsPensInfo(row, warnsPensInfo) {
 
                 const warningsPensCell = row.insertCell();
-                const dtPlusSg = entry["num-dt"] + "DT + " +
-                    entry["num-sg"] + "SG";
+                const dtPlusSg = warnsPensInfo["num-dt"] + "DT + " +
+                    warnsPensInfo["num-sg"] + "SG";
 
                 warningsPensCell.innerHTML =
-                    `Pens: ${entry["time-penalties"]} sec<br>` +
-                    `Warns: ${entry["corner-cutting-warnings"]}<br>` +
+                    `Pens: ${warnsPensInfo["time-penalties"]} sec<br>` +
+                    `Warns: ${warnsPensInfo["corner-cutting-warnings"]}<br>` +
                     `${dtPlusSg}`;
             }
 
-            function addBestLapInfo(row, entry) {
+            function addBestLapInfo(row, lapInfo, isPlayer, isSpectating) {
 
-                if (bestLapAbsoluteFormat || entry["is-spectating"]) {
-                    if (    gameYear == 23) {
-                        row.insertCell().textContent = entry["best"];
+                if (bestLapAbsoluteFormat || isSpectating) {
+                    const lapStr = formatLapTime(lapInfo["best-lap-ms"]);
+                    if (gameYear == 23) {
+                        row.insertCell().textContent = lapStr;
                     } else {
                         let speedTrapValue;
-                        if (entry["speed-trap-record-kmph"] != null) {
-                            speedTrapValue = formatFloatWithTwoDecimals(entry["speed-trap-record-kmph"]) + ' kmph';
+                        if (lapInfo["speed-trap-record-kmph"] != null) {
+                            speedTrapValue = formatFloatWithTwoDecimals(
+                                lapInfo["speed-trap-record-kmph"]) + ' kmph';
                         } else {
                             speedTrapValue = "---";
                         }
                         row.insertCell().innerHTML = `
-                            ${entry["best"]}<br>
+                            ${formatLapTime(lapInfo["best-lap-ms"])}<br>
                             ${speedTrapValue}
                         `;
                     }
                 } else {
+                    const lapDeltaStr = formatLapDelta(lapInfo["best-lap-ms"],
+                            lapInfo["best-lap-ms-overall"], isPlayer);
                     if (gameYear == 23) {
-                        row.insertCell().textContent = entry["best-lap-delta"];
+                        row.insertCell().textContent = lapDeltaStr;
                     } else {
                         let speedTrapValue;
-                        if (entry["speed-trap-record-kmph"] != null) {
-                            speedTrapValue = formatFloatWithTwoDecimals(entry["speed-trap-record-kmph"]) + ' kmph';
+                        if (lapInfo["speed-trap-record-kmph"] != null) {
+                            speedTrapValue = formatFloatWithTwoDecimals(lapInfo["speed-trap-record-kmph"]) + ' kmph';
                         } else {
                             speedTrapValue = "---";
                         }
                         row.insertCell().innerHTML = `
-                            ${entry["best-lap-delta"]}<br>
+                            ${lapDeltaStr}<br>
                             ${speedTrapValue}
                         `;
                     }
                 }
             }
 
-            function addLastLapInfo(row, entry) {
+            function addLastLapInfo(row, lapInfo, isPlayer, isSpectating) {
 
                 if (!shouldHideLastLapColumn) {
-                    if (lastLapAbsoluteFormat || entry["is-spectating"]) {
-                        row.insertCell().textContent = entry["last"];
+                    if (lastLapAbsoluteFormat || isSpectating) {
+                        row.insertCell().textContent = formatLapTime(lapInfo["best-lap-ms"]);
                     } else {
-                        row.insertCell().textContent = entry["last-lap-delta"];
+                        row.insertCell().textContent = formatLapDelta(lapInfo["last-lap-ms"],
+                            lapInfo["last-lap-ms-player"], isPlayer);;
                     }
                 }
             }
 
-            function addCurrTyreInfo(row, entry) {
+            function addCurrTyreInfo(row, tyreInfoData) {
 
                 function getTyreCompoundStr(visualTyreCompound, actualTyreCompound) {
 
@@ -662,7 +712,6 @@ SOFTWARE.
                 }
 
                 const tyreInfoCell = row.insertCell();
-                const tyreInfoData = entry["tyre-info"];
                 const currTyreWearData = tyreInfoData["current-wear"];
                 let tyreWearText = "";
                 if (tyreWearAverageFormat) {
@@ -682,15 +731,14 @@ SOFTWARE.
 
                 const tyreCompound = getTyreCompoundStr(tyreInfoData["visual-tyre-compound"], tyreInfoData["actual-tyre-compound"]);
                 tyreInfoCell.innerHTML = `${tyreWearText}<br>` +
-                    `${tyreInfoData["tyre-age"]} lap(s) ` + `(${entry["num-pitstops"]} pit)<br>` +
+                    `${tyreInfoData["tyre-age"]} lap(s) ` + `(${tyreInfoData["num-pitstops"]} pit)<br>` +
                     `${tyreCompound}`;
             }
 
-            function addTyrePredictionInfo(row, entry) {
+            function addTyrePredictionInfo(row, predictionData) {
 
                 if (!shouldHidePredictionColumn) {
                     let predictionHTML = "";
-                    predictionData = entry["tyre-info"]["wear-prediction"];
                     if (predictionData.length === 0) {
                         predictionHTML = "N/A";
                     } else {
@@ -710,15 +758,15 @@ SOFTWARE.
                 }
             }
 
-            function addDamageInfo(row, entry) {
+            function addDamageInfo(row, damageInfo) {
 
                 // Wing damage key will always be present
-                let flWingDamage = entry["fl-wing-damage"] == null ? "N/A" :
-                    formatFloatWithTwoDecimals(entry["fl-wing-damage"]) + "%";
-                let frWingDamage = entry["fr-wing-damage"] == null ? "N/A" :
-                    formatFloatWithTwoDecimals(entry["fr-wing-damage"]) + "%";
-                let rearWingDamage = entry["rear-wing-damage"] == null ? "N/A" :
-                    formatFloatWithTwoDecimals(entry["rear-wing-damage"]) + "%";
+                let flWingDamage = damageInfo["fl-wing-damage"] == null ? "N/A" :
+                    formatFloatWithTwoDecimals(damageInfo["fl-wing-damage"]) + "%";
+                let frWingDamage = damageInfo["fr-wing-damage"] == null ? "N/A" :
+                    formatFloatWithTwoDecimals(damageInfo["fr-wing-damage"]) + "%";
+                let rearWingDamage = damageInfo["rear-wing-damage"] == null ? "N/A" :
+                    formatFloatWithTwoDecimals(damageInfo["rear-wing-damage"]) + "%";
                 row.insertCell().innerHTML = `
                     FL: ${flWingDamage}<br>
                     FR: ${frWingDamage}<br>
@@ -726,18 +774,18 @@ SOFTWARE.
                 `;
             }
 
-            function addFuelInfo(row, entry) {
+            function addFuelInfo(row, fuelInfo) {
 
                 if (!shouldHideFuelColumn) {
                     // Fuel info
-                    const currFuelRate = entry["fuel-stats"]["curr-fuel-rate"] !== null
-                        ? formatFloatWithTwoDecimals(entry["fuel-stats"]["curr-fuel-rate"])
+                    const currFuelRate = fuelInfo["curr-fuel-rate"] !== null
+                        ? formatFloatWithTwoDecimals(fuelInfo["curr-fuel-rate"])
                         : "N/A";
-                    const targetFuelRate = entry["fuel-stats"]["target-fuel-rate"] !== null
-                        ? formatFloatWithTwoDecimals(entry["fuel-stats"]["target-fuel-rate"])
+                    const targetFuelRate = fuelInfo["target-fuel-rate"] !== null
+                        ? formatFloatWithTwoDecimals(fuelInfo["target-fuel-rate"])
                         : "N/A";
-                    const lastLapFuelUsed = entry["fuel-stats"]["last-lap-fuel-used"] !== null
-                        ? formatFloatWithTwoDecimals(entry["fuel-stats"]["last-lap-fuel-used"])
+                    const lastLapFuelUsed = fuelInfo["last-lap-fuel-used"] !== null
+                        ? formatFloatWithTwoDecimals(fuelInfo["last-lap-fuel-used"])
                         : "N/A";
 
                     row.insertCell().innerHTML = `
@@ -752,7 +800,7 @@ SOFTWARE.
 
                 // Add the required styles
                 row.className = '';
-                if (entry["is-fastest"]) {
+                if (entry["driver-info"]["is-fastest"]) {
                     row.classList.add('fastest-lap');
                 }
 
@@ -768,12 +816,12 @@ SOFTWARE.
                     // Default case if none of the cases match
                 }
 
-                if (entry["is-player"]) {
+                if (entry["driver-info"]["is-player"]) {
                     row.classList.add('player-row'); // Apply the player-row class to the row
                 }
 
                 // Fix for DRS active styling
-                if (entry["drs"] === true) {
+                if (entry["driver-info"]["drs"] === true) {
                     Array.from(row.cells).forEach(cell => cell.classList.add('drs-active'));
                     row.classList.add('drs-active'); // Add class to the row
                     nameLink.classList.add('drs-active')
@@ -787,18 +835,21 @@ SOFTWARE.
 
                 // Create a row for this entry
                 const row = tableBody.insertRow();
+                const isPlayer = entry["driver-info"]["is-player"];
+                const isSpectating = entry["driver-info"]["is-spectating"];
 
                 // Populate the row
-                addPositionInfo(row, entry);
-                let nameLink = addNameInfo(row, entry);
-                addDeltaInfo(row, entry);
-                addWarningsPensInfo(row, entry);
-                addBestLapInfo(row, entry);
-                addLastLapInfo(row, entry);
-                addCurrTyreInfo(row, entry);
-                addTyrePredictionInfo(row, entry);
-                addDamageInfo(row, entry);
-                addFuelInfo(row, entry);
+                addPositionInfo(row, entry["driver-info"]);
+                let nameLink = addNameInfo(row, entry["driver-info"]);
+                addDeltaInfo(row, entry["delta-info"]);
+                addErsInfo(row, entry["ers-info"]);
+                addWarningsPensInfo(row, entry["warns-pens-info"]);
+                addBestLapInfo(row, entry["lap-info"], isPlayer, isSpectating);
+                addLastLapInfo(row, entry["lap-info"], isPlayer);
+                addCurrTyreInfo(row, entry["tyre-info"]);
+                addTyrePredictionInfo(row, entry["tyre-info"]["wear-prediction"]);
+                addDamageInfo(row, entry["damage-info"]);
+                addFuelInfo(row, entry["fuel-info"]);
 
                 // Add the styles
                 formatRow(row, entry, nameLink);
@@ -849,13 +900,6 @@ SOFTWARE.
             });
 
             return accordion;
-        }
-
-        function formatLapTime(milliseconds) {
-            var minutes = Math.floor(milliseconds / 60000);
-            var seconds = Math.floor((milliseconds % 60000) / 1000);
-            var millisecondsPart = (milliseconds % 1000).toFixed(3).padStart(3, '0');
-            return minutes.toString().padStart(2, '0') + ":" + seconds.toString().padStart(2, '0') + "." + millisecondsPart;
         }
 
         function getDriverInfoFromIndex(data, index) {
@@ -1264,10 +1308,6 @@ SOFTWARE.
                         },
                         plugins: [endLabelPlugin] // Register the end label plugin
                     });
-
-
-
-
                 }
 
                 const positionHistoryGraphContent = document.createElement('div');
@@ -2537,7 +2577,7 @@ SOFTWARE.
             } else {
                 document.getElementById('lapInformation').textContent = `${curr_lap}/${total_laps}`;
             }
-            document.getElementById('fastestLapOverall').textContent = `${fastest_lap}`;
+            document.getElementById('fastestLapOverall').textContent = `${formatLapTime(fastest_lap)}`;
             document.getElementById('pitSpeedLimit').textContent = `${pit_speed_limit} kmph`;
 
             let saveTelemetryLink = document.getElementById('saveTelemetryLinkRow');

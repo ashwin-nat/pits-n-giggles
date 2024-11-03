@@ -25,6 +25,8 @@ import unittest
 import os
 from colorama import Fore, Style
 import sys
+import json
+from deepdiff import DeepDiff
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -73,3 +75,29 @@ class F1TelemetryUnitTestsBase(unittest.TestCase):
             test_class = parent_class
 
         return '.'.join(test_hierarchy)
+
+    def jsonComparisionUtil(self, expected_json, actual_json) -> None:
+        """
+        Compares two JSON objects and prints differences if they are not equal.
+
+        Args:
+            expected_json (dict): The expected JSON object.
+            actual_json (dict): The actual JSON object to compare.
+
+        Raises:
+            AssertionError: If the two JSON objects are not equal.
+        """
+        differences = DeepDiff(expected_json, actual_json, ignore_order=True)
+
+        if differences:
+            print("Differences found:")
+            if 'values_changed' in differences:
+                for key, change in differences['values_changed'].items():
+                    # Extract the key name and expected/actual values
+                    key_name = key.replace("root", "").strip("[]'")  # Clean up the key name
+                    expected_value = change['old_value']
+                    actual_value = change['new_value']
+                    print(f"Changed key: {key_name}  Expected value: {expected_value}  Actual value: {actual_value}")
+            else:
+                print(json.dumps(differences, indent=4))
+            raise AssertionError("JSON objects are not equal.")

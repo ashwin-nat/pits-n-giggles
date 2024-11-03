@@ -718,7 +718,491 @@ class PacketSessionData:
             """
             if isinstance(formula_type_code, PacketSessionData.FormulaType):
                 return True  # It's already an instance of FormulaType
-            return any(formula_type_code == member.value for member in  PacketSessionData.FormulaType)
+            return any(formula_type_code == member.value for member in \
+                PacketSessionData.FormulaType)
+
+    class RecoveryMode(Enum):
+        """
+        ENUM class for the recovery type modes
+        """
+        NONE = 0
+        FLASHBACKS = 1
+        AUTO_RECOVERY = 2
+
+        @staticmethod
+        def isValid(flag_type: int):
+            """Check if the given recovery mode is valid.
+
+            Args:
+                flag_type (int): The flag code to be validated. Also supports type RecoveryMode.
+                    Returns true in this case
+
+            Returns:
+                bool: true if valid
+            """
+            if isinstance(flag_type, PacketSessionData.RecoveryMode):
+                return True  # It's already an instance of PacketSessionData.RecoveryMode
+            return any(flag_type == member.value for member in PacketSessionData.RecoveryMode)
+
+        def __str__(self):
+            """Return the string representation of this object
+
+            Returns:
+                str: string representation
+            """
+
+            return self.name
+
+    class FlashbackLimit(Enum):
+        """
+        ENUM class for the flashback limit types
+        """
+        LOW = 0
+        MEDIUM = 1
+        HIGH = 2
+        UNLIMITED = 3
+
+        @staticmethod
+        def isValid(flag_type: int):
+            """Check if the given flashback limit type is valid.
+
+            Args:
+                flag_type (int): The flag code to be validated. Also supports type FlashbackLimit.
+                    Returns true in this case
+
+            Returns:
+                bool: true if valid
+            """
+            if isinstance(flag_type, PacketSessionData.FlashbackLimit):
+                return True  # It's already an instance of PacketSessionData.FlashbackLimit
+            return any(flag_type == member.value for member in PacketSessionData.FlashbackLimit)
+
+        def __str__(self):
+            """Return the string representation of this object
+
+            Returns:
+                str: string representation
+            """
+
+            return self.name
+
+    class SurfaceType(Enum):
+        """
+        ENUM class for the surface types
+        """
+        SIMPLIFIED = 0
+        REALISTIC = 1
+
+        @staticmethod
+        def isValid(flag_type: int):
+            """Check if the given surface type is valid.
+
+            Args:
+                flag_type (int): The flag code to be validated. Also supports type SurfaceType.
+                    Returns true in this case
+
+            Returns:
+                bool: true if valid
+            """
+            if isinstance(flag_type, PacketSessionData.SurfaceType):
+                return True  # It's already an instance of PacketSessionData.SurfaceType
+            return any(flag_type == member.value for member in PacketSessionData.SurfaceType)
+
+        def __str__(self):
+            """Return the string representation of this object
+
+            Returns:
+                str: string representation
+            """
+
+            return self.name
+
+    class LowFuelMode(Enum):
+        """
+        ENUM class for the low fuel mode types
+        """
+        EASY = 0
+        HARD = 1
+
+        @staticmethod
+        def isValid(flag_type: int):
+            """Check if the given low fuel mode is valid.
+
+            Args:
+                flag_type (int): The low fuel mode to be validated. Also supports type LowFuelMode.
+                    Returns true in this case
+
+            Returns:
+                bool: true if valid
+            """
+            if isinstance(flag_type, PacketSessionData.LowFuelMode):
+                return True  # It's already an instance of PacketSessionData.LowFuelMode
+            return any(flag_type == member.value for member in PacketSessionData.LowFuelMode)
+
+        def __str__(self):
+            """Return the string representation of this object
+
+            Returns:
+                str: string representation
+            """
+
+            return self.name
+
+    class RaceStartsMode(Enum):
+        """
+        ENUM class for the race starts mode types
+        """
+        MANUAL = 0
+        ASSISTED = 1
+
+        @staticmethod
+        def isValid(flag_type: int):
+            """Check if the given race starts mode is valid.
+
+            Args:
+                flag_type (int): The race starts mode to be validated. Also supports type
+                    RaceStartsMode. Returns true in this case
+
+            Returns:
+                bool: true if valid
+            """
+            if isinstance(flag_type, PacketSessionData.RaceStartsMode):
+                return True  # It's already an instance of PacketSessionData.RaceStartsMode
+            return any(flag_type == member.value for member in PacketSessionData.RaceStartsMode)
+
+        def __str__(self):
+            """Return the string representation of this object
+
+            Returns:
+                str: string representation
+            """
+
+            return self.name
+
+    class TyreTemperatureMode(Enum):
+        """
+        ENUM class for the tyre temperature mode types
+        """
+        SURFACE_ONLY = 0
+        SURFACE_AND_CARCASS = 1
+
+        @staticmethod
+        def isValid(flag_type: int):
+            """Check if the given tyre temperature mode is valid.
+
+            Args:
+                flag_type (int): The tyre temperature mode to be validated. Also supports type
+                    TyreTemperatureMode. Returns true in this case
+
+            Returns:
+                bool: true if valid
+            """
+            if isinstance(flag_type, PacketSessionData.TyreTemperatureMode):
+                return True  # It's already an instance of PacketSessionData.TyreTemperatureMode
+            return any(flag_type == member.value for member in PacketSessionData.TyreTemperatureMode)
+
+        def __str__(self):
+            """Return the string representation of this object
+
+            Returns:
+                str: string representation
+            """
+
+            return self.name
+
+    class CarDamageMode(Enum):
+        """
+        ENUM class for the car damage mode types
+        """
+        OFF = 0
+        REDUCED = 1
+        STANDARD = 2
+        SIMULATION = 3
+
+        @staticmethod
+        def isValid(flag_type: int):
+            """Check if the given car damage mode is valid.
+
+            Args:
+                flag_type (int): The car damage mode to be validated. Also supports type
+                    CarDamageMode. Returns true in this case
+
+            Returns:
+                bool: true if valid
+            """
+            if isinstance(flag_type, PacketSessionData.CarDamageMode):
+                return True  # It's already an instance of PacketSessionData.CarDamageMode
+            return any(flag_type == member.value for member in PacketSessionData.CarDamageMode)
+
+        def __str__(self):
+            """Return the string representation of this object
+
+            Returns:
+                str: string representation
+            """
+
+            return self.name
+
+    class CarDamageRate(Enum):
+        """
+        ENUM class for the car damage rate types
+        """
+        REDUCED = 0
+        STANDARD = 1
+        SIMULATION = 2
+
+        @staticmethod
+        def isValid(flag_type: int):
+            """Check if the given car damage rate is valid.
+
+            Args:
+                flag_type (int): The car damage rate to be validated. Also supports type
+                    CarDamageRate. Returns true in this case
+
+            Returns:
+                bool: true if valid
+            """
+            if isinstance(flag_type, PacketSessionData.CarDamageRate):
+                return True  # It's already an instance of PacketSessionData.CarDamageRate
+            return any(flag_type == member.value for member in PacketSessionData.CarDamageRate)
+
+        def __str__(self):
+            """Return the string representation of this object
+
+            Returns:
+                str: string representation
+            """
+
+            return self.name
+
+    class CollisionsMode(Enum):
+        """
+        ENUM class for the collisions mode types
+        """
+        OFF = 0
+        PLAYER_TO_PLAYER_OFF = 1
+        ON = 2
+
+        @staticmethod
+        def isValid(flag_type: int):
+            """Check if the given collisions mode is valid.
+
+            Args:
+                flag_type (int): The collisions mode to be validated. Also supports type
+                    CollisionsMode. Returns true in this case
+
+            Returns:
+                bool: true if valid
+            """
+            if isinstance(flag_type, PacketSessionData.CollisionsMode):
+                return True  # It's already an instance of PacketSessionData.CollisionsMode
+            return any(flag_type == member.value for member in PacketSessionData.CollisionsMode)
+
+        def __str__(self):
+            """Return the string representation of this object
+
+            Returns:
+                str: string representation
+            """
+
+            return self.name
+
+    class CornerCuttingStringency(Enum):
+        """
+        ENUM class for the corner cutting stringency types
+        """
+        REGULAR = 0
+        STRICT = 1
+
+        @staticmethod
+        def isValid(flag_type: int):
+            """Check if the given corner cutting stringency is valid.
+
+            Args:
+                flag_type (int): The corner cutting stringency to be validated. Also supports type
+                    CornerCuttingStringency. Returns true in this case
+
+            Returns:
+                bool: true if valid
+            """
+            if isinstance(flag_type, PacketSessionData.CornerCuttingStringency):
+                return True  # It's already an instance of PacketSessionData.CornerCuttingStringency
+            return any(flag_type == member.value for member in
+                       PacketSessionData.CornerCuttingStringency)
+
+        def __str__(self):
+            """Return the string representation of this object
+
+            Returns:
+                str: string representation
+            """
+
+            return self.name
+
+    class PitStopExperience(Enum):
+        """
+        ENUM class for the pit stop experience types
+        """
+        AUTOMATIC = 0
+        BROADCAST = 1
+        IMMERSIVE = 2
+
+        @staticmethod
+        def isValid(flag_type: int):
+            """Check if the given pit stop experience is valid.
+
+            Args:
+                flag_type (int): The pit stop experience to be validated. Also supports type
+                    PitStopExperience. Returns true in this case
+
+            Returns:
+                bool: true if valid
+            """
+            if isinstance(flag_type, PacketSessionData.PitStopExperience):
+                return True  # It's already an instance of PacketSessionData.PitStopExperience
+            return any(flag_type == member.value for member in
+                       PacketSessionData.PitStopExperience)
+
+        def __str__(self):
+            """Return the string representation of this object
+
+            Returns:
+                str: string representation
+            """
+
+            return self.name
+
+    class SafetyCarSetting(Enum):
+        """
+        ENUM class for the safety car setting types
+        """
+        OFF = 0
+        REDUCED = 1
+        STANDARD = 2
+        INCREASED = 3
+
+        @staticmethod
+        def isValid(flag_type: int):
+            """Check if the given safety car setting is valid.
+
+            Args:
+                flag_type (int): The safety car setting to be validated. Also supports type
+                    SafetyCarSetting. Returns true in this case
+
+            Returns:
+                bool: true if valid
+            """
+            if isinstance(flag_type, PacketSessionData.SafetyCarSetting):
+                return True  # It's already an instance of PacketSessionData.SafetyCarSetting
+            return any(flag_type == member.value for member in
+                       PacketSessionData.SafetyCarSetting)
+
+        def __str__(self):
+            """Return the string representation of this object
+
+            Returns:
+                str: string representation
+            """
+
+            return self.name
+
+    class SafetyCarExperience(Enum):
+        """
+        ENUM class for the safety car experience types
+        """
+        BROADCAST = 0
+        IMMERSIVE = 1
+
+        @staticmethod
+        def isValid(flag_type: int):
+            """Check if the given safety car experience is valid.
+
+            Args:
+                flag_type (int): The safety car experience to be validated. Also supports type
+                    SafetyCarExperience. Returns true in this case
+
+            Returns:
+                bool: true if valid
+            """
+            if isinstance(flag_type, PacketSessionData.SafetyCarExperience):
+                return True  # It's already an instance of PacketSessionData.SafetyCarExperience
+            return any(flag_type == member.value for member in
+                       PacketSessionData.SafetyCarExperience)
+
+        def __str__(self):
+            """Return the string representation of this object
+
+            Returns:
+                str: string representation
+            """
+
+            return self.name
+
+    class FormationLapExperience(Enum):
+        """
+        ENUM class for the formation lap experience types
+        """
+        BROADCAST = 0
+        IMMERSIVE = 1
+
+        @staticmethod
+        def isValid(flag_type: int):
+            """Check if the given formation lap experience is valid.
+
+            Args:
+                flag_type (int): The formation lap experience to be validated. Also supports type
+                    FormationLapExperience. Returns true in this case
+
+            Returns:
+                bool: true if valid
+            """
+            if isinstance(flag_type, PacketSessionData.FormationLapExperience):
+                return True  # It's already an instance of PacketSessionData.FormationLapExperience
+            return any(flag_type == member.value for member in
+                       PacketSessionData.FormationLapExperience)
+
+        def __str__(self):
+            """Return the string representation of this object
+
+            Returns:
+                str: string representation
+            """
+
+            return self.name
+
+    class RedFlagsSetting(Enum):
+        """
+        ENUM class for the red flags setting types
+        """
+        OFF = 0
+        REDUCED = 1
+        STANDARD = 2
+        INCREASED = 3
+
+        @staticmethod
+        def isValid(flag_type: int):
+            """Check if the given red flags setting is valid.
+
+            Args:
+                flag_type (int): The red flags setting to be validated. Also supports type
+                    RedFlagsSetting. Returns true in this case
+
+            Returns:
+                bool: true if valid
+            """
+            if isinstance(flag_type, PacketSessionData.RedFlagsSetting):
+                return True  # It's already an instance of PacketSessionData.RedFlagsSetting
+            return any(flag_type == member.value for member in
+                       PacketSessionData.RedFlagsSetting)
+
+        def __str__(self):
+            """Return the string representation of this object
+
+            Returns:
+                str: string representation
+            """
+
+            return self.name
 
     def __init__(self, header: PacketHeader, data: bytes) -> None:
         """Construct a PacketSessionData object
@@ -782,27 +1266,27 @@ class PacketSessionData:
 
         # F1 24 specific stuff
         self.m_equalCarPerformance: bool
-        self.m_recoveryMode: int                # TODO: make enum // 0 = None, 1 = Flashbacks, 2 = Auto-recovery
-        self.m_flashbackLimit: int              # TODO: make enum // 0 = Low, 1 = Medium, 2 = High, 3 = Unlimited
-        self.m_surfaceType: int                 # TODO: make enum // 0 = Simplified, 1 = Realistic
-        self.m_lowFuelMode: int                 # TODO: make enum // 0 = Easy, 1 = Hard
-        self.m_raceStarts: int                  # TODO: make enum // 0 = Manual, 1 = Assisted
-        self.m_tyreTemperatureMode: int             # TODO: make enum // 0 = Surface only, 1 = Surface & Carcass
+        self.m_recoveryMode: PacketSessionData.RecoveryMode
+        self.m_flashbackLimit: PacketSessionData.FlashbackLimit
+        self.m_surfaceType: PacketSessionData.SurfaceType
+        self.m_lowFuelMode: PacketSessionData.LowFuelMode
+        self.m_raceStarts: PacketSessionData.RaceStartsMode
+        self.m_tyreTemperatureMode: PacketSessionData.TyreTemperatureMode
         self.m_pitLaneTyreSim:bool
-        self.m_carDamage: int                   # TODO: make enum // 0 = Off, 1 = Reduced, 2 = Standard, 3 = Simulation
-        self.m_carDamageRate:int                # TODO: make enum // 0 = Reduced, 1 = Standard, 2 = Simulation
-        self.m_collisions:int                   # TODO: make enum // 0 = Off, 1 = Player-to-Player Off, 2 = On
+        self.m_carDamage: PacketSessionData.CarDamageMode
+        self.m_carDamageRate: PacketSessionData.CarDamageRate
+        self.m_collisions: PacketSessionData.CollisionsMode
         self.m_collisionsOffForFirstLapOnly: bool
-        self.m_mpUnsafePitRelease:bool          # TODO: check EA forum to see the values     // 0 = On, 1 = Off (Multiplayer)
-        self.m_mpOffForGriefing: bool           # Multiplayer only
-        self.m_cornerCuttingStringency: int     # TODO: make enum // 0 = Regular, 1 = Strict
+        self.m_mpUnsafePitRelease:bool
+        self.m_mpOffForGriefing: bool
+        self.m_cornerCuttingStringency: PacketSessionData.CornerCuttingStringency
         self.m_parcFermeRules: bool
-        self.m_pitStopExperience: int           # TODO: make enum // 0 = Automatic, 1 = Broadcast, 2 = Immersive
-        self.m_safetyCar: int                   # TODO: make enum // 0 = Off, 1 = Reduced, 2 = Standard, 3 = Increased
-        self.m_safetyCarExperience: int         # TODO: make enum // 0 = Broadcast, 1 = Immersive
+        self.m_pitStopExperience: PacketSessionData.PitStopExperience
+        self.m_safetyCar: PacketSessionData.SafetyCarSetting
+        self.m_safetyCarExperience: PacketSessionData.SafetyCarExperience
         self.m_formationLap: bool
-        self.m_formationLapExperience: int      # TODO: make enum // 0 = Broadcast, 1 = Immersive
-        self.m_redFlags: int                    # TODO: make enum // 0 = Off, 1 = Reduced, 2 = Standard, 3 = Increased
+        self.m_formationLapExperience: PacketSessionData.FormationLapExperience
+        self.m_redFlags: PacketSessionData.RedFlagsSetting
         self.m_affectsLicenceLevelSolo: bool
         self.m_affectsLicenceLevelMP: bool
         self.m_numSessionsInWeekend: int         # // Number of session in following array
@@ -1009,6 +1493,42 @@ class PacketSessionData:
             self.m_sector2LapDistanceStart = 0.0
             self.m_sector3LapDistanceStart = 0.0
 
+        # Convert into enum types if supported
+        if PacketSessionData.RecoveryMode.isValid(self.m_recoveryMode):
+            self.m_recoveryMode = PacketSessionData.RecoveryMode(self.m_recoveryMode)
+        if PacketSessionData.FlashbackLimit.isValid(self.m_flashbackLimit):
+            self.m_flashbackLimit = PacketSessionData.FlashbackLimit(self.m_flashbackLimit)
+        if PacketSessionData.SurfaceType.isValid(self.m_surfaceType):
+            self.m_surfaceType = PacketSessionData.SurfaceType(self.m_surfaceType)
+        if PacketSessionData.LowFuelMode.isValid(self.m_lowFuelMode):
+            self.m_lowFuelMode = PacketSessionData.LowFuelMode(self.m_lowFuelMode)
+        if PacketSessionData.RaceStartsMode.isValid(self.m_raceStarts):
+            self.m_raceStarts = PacketSessionData.RaceStartsMode(self.m_raceStarts)
+        if PacketSessionData.TyreTemperatureMode(self.m_tyreTemperatureMode):
+            self.m_tyreTemperatureMode = PacketSessionData.TyreTemperatureMode(
+                self.m_tyreTemperatureMode)
+        if PacketSessionData.CarDamageMode.isValid(self.m_carDamage):
+            self.m_carDamage = PacketSessionData.CarDamageMode(self.m_carDamage)
+        if PacketSessionData.CarDamageRate.isValid(self.m_carDamageRate):
+            self.m_carDamageRate = PacketSessionData.CarDamageRate(self.m_carDamageRate)
+        if PacketSessionData.CollisionsMode.isValid(self.m_collisions):
+            self.m_collisions = PacketSessionData.CollisionsMode(self.m_collisions)
+        if PacketSessionData.CornerCuttingStringency.isValid(self.m_cornerCuttingStringency):
+            self.m_cornerCuttingStringency = PacketSessionData.CornerCuttingStringency(
+                self.m_cornerCuttingStringency)
+        if PacketSessionData.PitStopExperience.isValid(self.m_pitStopExperience):
+            self.m_pitStopExperience = PacketSessionData.PitStopExperience(self.m_pitStopExperience)
+        if PacketSessionData.SafetyCarSetting.isValid(self.m_safetyCar):
+            self.m_safetyCar = PacketSessionData.SafetyCarSetting(self.m_safetyCar)
+        if PacketSessionData.SafetyCarExperience.isValid(self.m_safetyCarExperience):
+            self.m_safetyCarExperience = PacketSessionData.SafetyCarExperience(
+                self.m_safetyCarExperience)
+        if PacketSessionData.FormationLapExperience.isValid(self.m_formationLapExperience):
+            self.m_formationLapExperience = PacketSessionData.FormationLapExperience(
+                self.m_formationLapExperience)
+        if PacketSessionData.RedFlagsSetting.isValid(self.m_redFlags):
+            self.m_redFlags = PacketSessionData.RedFlagsSetting(self.m_redFlags)
+
     def __str__(self) -> str:
         """
         Return a string representation of the PacketSessionData object.
@@ -1150,7 +1670,7 @@ class PacketSessionData:
             "mp-off-for-griefing" : self.m_mpOffForGriefing,
             "corner-cutting-stringency" : str(self.m_cornerCuttingStringency),
             "parc-ferme-rules" : self.m_parcFermeRules,
-            "pit-stop-experience" : self.m_pitStopExperience,
+            "pit-stop-experience" : str(self.m_pitStopExperience),
             "safety-car-setting" : str(self.m_safetyCar),
             "safety-car-experience" : str(self.m_safetyCarExperience),
             "formation-lap" : self.m_formationLap,
@@ -1296,169 +1816,3 @@ class PacketSessionData:
                 self.m_sector2LapDistanceStart == other.m_sector2LapDistanceStart and
                 self.m_sector3LapDistanceStart == other.m_sector3LapDistanceStart
             )
-
-    # def to_bytes(self) -> bytes:
-    #     """
-    #     Converts the PacketSessionData object to raw bytes.
-
-    #     Returns:
-    #         bytes: The list of raw bytes
-    #     """
-
-    #     raw_bytes = self.m_header.to_bytes()
-    #     raw_bytes += self.__to_bytes_section_0()
-    #     raw_bytes += self.__to_bytes_section_1()
-    #     raw_bytes += self.__to_bytes_section_2()
-    #     raw_bytes += self.__to_bytes_section_3()
-    #     raw_bytes += self.__to_bytes_section_4()
-    #     raw_bytes += self.__to_bytes_section_5()
-
-    #     return raw_bytes
-
-
-    # def __to_bytes_section_0(self) -> bytes:
-    #     """Serialse section 0
-
-    #     Returns:
-    #         bytes: Section 0 bytes
-    #     """
-
-    #     return struct.pack(self.PACKET_FORMAT_SECTION_0,
-    #         self.m_weather,
-    #         self.m_trackTemperature,
-    #         self.m_airTemperature,
-    #         self.m_totalLaps,
-    #         self.m_trackLength,
-    #         self.m_sessionType,
-    #         self.m_trackId,
-    #         self.m_formula,
-    #         self.m_sessionTimeLeft,
-    #         self.m_sessionDuration,
-    #         self.m_pitSpeedLimit,
-    #         self.m_gamePaused,
-    #         self.m_isSpectating,
-    #         self.m_spectatorCarIndex,
-    #         self.m_sliProNativeSupport,
-    #         self.m_numMarshalZones
-    #     )
-
-    # def __to_bytes_section_1(self) -> bytes:
-    #     """Serialse section 1 - marshal zones
-
-    #     Returns:
-    #         bytes: Section 1 bytes
-    #     """
-
-    #     num_empty_marshal_zones =  self.m_maxMarshalZones - self.m_numMarshalZones
-    #     marshal_zones_bytes =  b''.join([marshal_zone.to_bytes() for marshal_zone in self.m_marshalZones])
-
-    #     for _ in range(num_empty_marshal_zones):
-    #         marshal_zones_bytes += MarshalZone.from_values(0, MarshalZone.MarshalZoneFlagType.NONE).to_bytes()
-    #     return marshal_zones_bytes
-
-    # def __to_bytes_section_2(self) -> bytes:
-    #     """Serialse section 2
-
-    #     Returns:
-    #         bytes: Section 2 bytes
-    #     """
-
-    #     return struct.pack(self.PACKET_FORMAT_SECTION_2,
-    #         self.m_safetyCarStatus,
-    #         self.m_networkGame,
-    #         self.m_numWeatherForecastSamples
-    #     )
-
-    # def __to_bytes_section_3(self) -> bytes:
-    #     """Serialse section 3 - weather forecast samples
-
-    #     Returns:
-    #         bytes: Section 3 bytes
-    #     """
-
-    #     num_empty_weather_forecast_samples =  self.m_maxWeatherForecastSamples - self.m_numWeatherForecastSamples
-    #     weather_forecast_bytes =  b''.join([marshal_zone.to_bytes() for marshal_zone in self.m_marshalZones])
-
-    #     for _ in range(num_empty_weather_forecast_samples):
-    #         weather_forecast_bytes += MarshalZone.from_values(0, MarshalZone.MarshalZoneFlagType.NONE).to_bytes()
-    #     return weather_forecast_bytes
-
-    # def __to_bytes_section_4(self) -> bytes:
-    #     """Serialse section 4
-
-    #     Returns:
-    #         bytes: Section 4 bytes
-    #     """
-
-    #     return struct.pack(self.PACKET_FORMAT_SECTION_4,
-    #         self.m_forecastAccuracy, #"B" # uint8   - Weather prediction type. 0 = Perfect, 1 = Approximate
-    #         self.m_aiDifficulty, # "B" # uint8   - AI Difficulty rating - 0-110
-    #         self.m_seasonLinkIdentifier, # "I" # uint32  - Identifier for season - persists across saves
-    #         self.m_weekendLinkIdentifier, # "I" # uint32  - Identifier for weekend - persists across saves
-    #         self.m_sessionLinkIdentifier, # "I" # uint32  - Identifier for session - persists across saves
-    #         self.m_pitStopWindowIdealLap, # "B" # uint8   - Ideal lap to pit on for current strategy (player)
-    #         self.m_pitStopWindowLatestLap, #"B" # uint8   - Latest lap to pit on for current strategy (player)
-    #         self.m_pitStopRejoinPosition, # "B" # uint8   - Predicted position to rejoin at (player)
-    #         self.m_steeringAssist, # "B" # uint8   -m_steeringAssist;            // 0 = off, 1 = on
-    #         self.m_brakingAssist, # "B" # uint8   -       m_brakingAssist;             // 0 = off, 1 = low, 2 = medium, 3 = high
-    #         self.m_gearboxAssist.value, #"B" # uint8   -        m_gearboxAssist;             // 1 = manual, 2 = manual & suggested gear, 3 = auto
-    #         self.m_pitAssist, # "B" # uint8    -       m_pitAssist;                 // 0 = off, 1 = on
-    #         self.m_pitReleaseAssist, # "B" # uint8    -       m_pitReleaseAssist;          // 0 = off, 1 = on
-    #         self.m_ERSAssist, # "B" # uint8    -       m_ERSAssist;                 // 0 = off, 1 = on
-    #         self.m_DRSAssist, # "B" # uint8    -       m_DRSAssist;                 // 0 = off, 1 = on
-    #         self.m_dynamicRacingLine, # "B" # uint8    -       m_dynamicRacingLine;         // 0 = off, 1 = corners only, 2 = full
-    #         self.m_dynamicRacingLineType, # "B" # uint8    -       m_dynamicRacingLineType;     // 0 = 2D, 1 = 3D
-    #         self.m_gameMode, # "B" # uint8    -       m_gameMode;                  // Game mode id - see appendix
-    #         self.m_ruleSet, # "B" # uint8    -       m_ruleSet;                   // Ruleset - see appendix
-    #         self.m_timeOfDay, # "I" # uint32   - Local time of day - minutes since midnight
-    #         self.m_timeOfDay, # "B" # uint8    - m_sessionLength;             // 0 = None, 2 = Very Short, 3 = Short, 4 = Medium
-    #                                                     # // 5 = Medium Long, 6 = Long, 7 = Full
-    #         self.m_speedUnitsLeadPlayer, # "B" # uint8    -       m_speedUnitsLeadPlayer;             // 0 = MPH, 1 = KPH
-    #         self.m_temperatureUnitsLeadPlayer, # "B" # uint8    -       m_temperatureUnitsLeadPlayer;       // 0 = Celsius, 1 = Fahrenheit
-    #         self.m_speedUnitsSecondaryPlayer, # "B" # uint8    -       m_speedUnitsSecondaryPlayer;        // 0 = MPH, 1 = KPH
-    #         self.m_temperatureUnitsSecondaryPlayer, # "B" # uint8    -       m_temperatureUnitsSecondaryPlayer;  // 0 = Celsius, 1 = Fahrenheit
-    #         self.m_numSafetyCarPeriods, # "B" # uint8    -       m_numSafetyCarPeriods;              // Number of safety cars called during session
-    #         self.m_numVirtualSafetyCarPeriods, # "B" # uint8    -       m_numVirtualSafetyCarPeriods;       // Number of virtual safety cars called
-    #         self.m_numRedFlagPeriods, # "B" # uint8    -       m_numRedFlagPeriods;                // Number of red flags called during session
-    #     )
-
-    # def __to_bytes_section_5(self) -> bytes:
-    #     """Serialse section 5 (F1 24 specific)
-
-    #     Returns:
-    #         bytes: Section 5 bytes
-    #     """
-
-    #     if self.m_header.m_gameYear == 23:
-    #         return b''
-
-    #     return struct.pack(self.PACKET_FORMAT_SECTION_4,
-    #         self.m_equalCarPerformance,
-    #         self.m_recoveryMode,
-    #         self.m_flashbackLimit,
-    #         self.m_surfaceType,
-    #         self.m_lowFuelMode,
-    #         self.m_raceStarts,
-    #         self.m_tyreTemperatureMode,
-    #         self.m_pitLaneTyreSim,
-    #         self.m_carDamage,
-    #         self.m_carDamageRate,
-    #         self.m_collisions,
-    #         self.m_collisionsOffForFirstLapOnly,
-    #         self.m_mpUnsafePitRelease,
-    #         self.m_mpOffForGriefing,
-    #         self.m_cornerCuttingStringency,
-    #         self.m_parcFermeRules,
-    #         self.m_pitStopExperience,
-    #         self.m_safetyCar,
-    #         self.m_safetyCarExperience,
-    #         self.m_formationLap,
-    #         self.m_formationLapExperience,
-    #         self.m_redFlags,
-    #         self.m_affectsLicenceLevelSolo,
-    #         self.m_affectsLicenceLevelSolo,
-    #         self.m_numSessionsInWeekend,
-    #         *self.m_weekendStructure,
-    #         self.m_sector2LapDistanceStart,
-    #         self.m_sector3LapDistanceStart
-    #     )

@@ -54,7 +54,7 @@ class TestPacketFinalClassificationData(F1TypesTest):
         payload_bytes = serialised_test_obj[PacketHeader.PACKET_LEN:]
         parsed_obj = PacketFinalClassificationData(parsed_header, payload_bytes)
         self.assertEqual(generated_test_obj, parsed_obj)
-        self.assertEqual(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
 
     def test_f1_23_random(self):
         """
@@ -73,7 +73,7 @@ class TestPacketFinalClassificationData(F1TypesTest):
         payload_bytes = serialised_test_obj[PacketHeader.PACKET_LEN:]
         parsed_obj = PacketFinalClassificationData(parsed_header, payload_bytes)
         self.assertEqual(generated_test_obj, parsed_obj)
-        self.assertEqual(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
 
     def test_f1_23_actual(self):
         """
@@ -569,7 +569,7 @@ class TestPacketFinalClassificationData(F1TypesTest):
 
         parsed_packet = PacketFinalClassificationData(self.m_header_23, raw_packet)
         parsed_json = parsed_packet.toJSON()
-        self.assertEqual(expected_json, parsed_json)
+        self.jsonComparisionUtil(expected_json, parsed_json)
 
     def _generateRandomFinalClassificationData(self) -> FinalClassificationData:
         """

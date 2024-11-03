@@ -8,3 +8,5 @@ launch.json
 *.json
 *.f1pcap
 *.txt
+build/*
+dist/*

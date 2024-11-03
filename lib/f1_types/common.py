@@ -489,7 +489,7 @@ class SafetyCarType(Enum):
             str: String representation of the safety car status.
         """
 
-        return self.name.replace('_', ' ').title()
+        return self.name
 
 class SafetyCarEventType(Enum):
     """
@@ -878,6 +878,7 @@ class TeamID23(Enum):
     TRIDENT_22 = 138
     HITECH_22 = 139
     ART_GP_22 = 140
+    MY_TEAM = 255
 
     @staticmethod
     def isValid(team_id: int) -> bool:
@@ -922,7 +923,7 @@ class TeamID23(Enum):
             130: "Prema '22", 131: "Virtuosi '22", 132: "Carlin '22",
             133: "MP Motorsport '22", 134: "Charouz '22", 135: "Dams '22",
             136: "Campos '22", 137: "Van Amersfoort Racing '22", 138: "Trident '22",
-            139: "Hitech '22", 140: "Art GP '22"
+            139: "Hitech '22", 140: "Art GP '22", 255: "My Team"
         }
         return teams_mapping.get(self.value, "---")
 
@@ -953,6 +954,7 @@ class TeamID24(Enum):
     TRIDENT_23 = 151
     VAN_AMERSFOORT_RACING_23 = 152
     VIRTUOSI_23 = 153
+    MY_TEAM = 255
 
     def __str__(self) -> str:
         """
@@ -960,6 +962,8 @@ class TeamID24(Enum):
         """
         if self == TeamID24.RB:
             return 'VCARB'
+        if self == TeamID24.MY_TEAM:
+            return 'MY TEAM'
         return ' '.join(word.capitalize() for word in self.name.split('_'))
 
     @staticmethod

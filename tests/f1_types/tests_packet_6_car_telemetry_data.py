@@ -55,7 +55,7 @@ class TestPacketCarTelemetryData(F1TypesTest):
         payload_bytes = serialised_test_obj[PacketHeader.PACKET_LEN:]
         parsed_obj = PacketCarTelemetryData(parsed_header, payload_bytes)
         self.assertEqual(generated_test_obj, parsed_obj)
-        self.assertEqual(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
 
     def test_f1_23_random(self):
         """
@@ -76,7 +76,7 @@ class TestPacketCarTelemetryData(F1TypesTest):
         payload_bytes = serialised_test_obj[PacketHeader.PACKET_LEN:]
         parsed_obj = PacketCarTelemetryData(parsed_header, payload_bytes)
         self.assertEqual(generated_test_obj, parsed_obj)
-        self.assertEqual(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
 
     def test_f1_23_actual(self):
         """
@@ -1018,7 +1018,7 @@ class TestPacketCarTelemetryData(F1TypesTest):
 
         parsed_packet = PacketCarTelemetryData(self.m_header_23, raw_packet)
         parsed_json = parsed_packet.toJSON()
-        self.assertEqual(expected_json, parsed_json)
+        self.jsonComparisionUtil(expected_json, parsed_json)
 
     def test_f1_24_actual(self):
         """
@@ -1960,7 +1960,7 @@ class TestPacketCarTelemetryData(F1TypesTest):
 
         parsed_packet = PacketCarTelemetryData(self.m_header_24, raw_packet)
         parsed_json = parsed_packet.toJSON()
-        self.assertEqual(expected_json, parsed_json)
+        self.jsonComparisionUtil(expected_json, parsed_json)
 
     def _generateRandomCarTelemetryData(self) -> CarTelemetryData:
         """

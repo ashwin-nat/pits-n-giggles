@@ -160,8 +160,8 @@ class DataPerDriver:
         m_delta_to_car_in_front (Optional[str]): The time difference between the driver and the car in front.
         m_delta_to_leader (Optional[str]): The time difference to the race leader.
         m_ers_perc (Optional[float]): The percentage of ERS (Energy Recovery System) remaining.
-        m_best_lap (Optional[str]): The best lap time achieved by the driver.
-        m_last_lap (Optional[str]): The time taken for the last lap completed by the driver.
+        m_best_lap_ms (Optional[int]): The best lap time achieved by the driver.
+        m_last_lap_ms (Optional[int]): The time taken for the last lap completed by the driver in ms.
         m_tyre_wear (Optional[TyreWearPerLap]): The level of wear on the driver's tires.
         m_is_player (Optional[bool]): Indicates whether the driver is the player.
         m_current_lap (Optional[int]): The current lap the driver is on.
@@ -449,9 +449,8 @@ class DataPerDriver:
         self.m_delta_to_car_in_front: Optional[int] = None
         self.m_delta_to_leader: Optional[int] = None
         self.m_ers_perc: Optional[float] = None
-        self.m_best_lap_str: Optional[str] = None
         self.m_best_lap_ms: Optional[str] = None
-        self.m_last_lap: Optional[str] = None
+        self.m_last_lap_ms: Optional[int] = None
         self.m_tyre_wear: Optional[TyreWearPerLap] = None
         self.m_is_player: Optional[bool] = None
         self.m_current_lap: Optional[int] = None
@@ -1256,10 +1255,9 @@ class DriverData:
         self.m_fastest_index = None
         fastest_time_ms = 500000000000 # cant be slower than this, right?
         for index, driver_data in self.m_driver_data.items():
-            if driver_data.m_best_lap_str is not None:
-                if driver_data.m_best_lap_ms > 0 and driver_data.m_best_lap_ms < fastest_time_ms:
-                    fastest_time_ms = driver_data.m_best_lap_ms
-                    self.m_fastest_index = index
+            if (driver_data.m_best_lap_ms) and driver_data.m_best_lap_ms < fastest_time_ms:
+                fastest_time_ms = driver_data.m_best_lap_ms
+                self.m_fastest_index = index
 
     def _shouldRecomputeFastestLap(self, driver_data: DataPerDriver) -> bool:
         """
@@ -1277,7 +1275,7 @@ class DriverData:
             return False
 
         # Driver data is not available
-        if driver_data.m_best_lap_str is None:
+        if driver_data.m_best_lap_ms == 0:
             return False
 
         # True if fastest lap has not been determined yet
@@ -1356,8 +1354,7 @@ class DriverData:
 
             # Update the position, time and other fields
             obj_to_be_updated.m_position = lap_data.m_carPosition
-            obj_to_be_updated.m_last_lap = F1Utils.millisecondsToMinutesSecondsMilliseconds(lap_data.m_lastLapTimeInMS) \
-                if (lap_data.m_lastLapTimeInMS > 0) else "---"
+            obj_to_be_updated.m_last_lap_ms = lap_data.m_lastLapTimeInMS
             obj_to_be_updated.m_delta_to_car_in_front = lap_data.m_deltaToCarInFrontInMS
             obj_to_be_updated.m_delta_to_leader = lap_data.m_deltaToRaceLeaderInMS
             obj_to_be_updated.m_penalties = self._getPenaltyString(lap_data.m_penalties,
@@ -1406,7 +1403,6 @@ class DriverData:
         """
 
         obj_to_be_updated = self._getObjectByIndex(packet.vehicleIdx)
-        obj_to_be_updated.m_best_lap_str = F1Utils.floatSecondsToMinutesSecondsMilliseconds(packet.lapTime)
         obj_to_be_updated.m_best_lap_ms = packet.lapTime
         self.m_fastest_index = packet.vehicleIdx
 
@@ -1540,8 +1536,6 @@ class DriverData:
         obj_to_be_updated.m_packet_session_history = packet
         if (packet.m_bestLapTimeLapNum > 0) and (packet.m_bestLapTimeLapNum <= packet.m_numLaps):
             obj_to_be_updated.m_best_lap_ms = packet.m_lapHistoryData[packet.m_bestLapTimeLapNum-1].m_lapTimeInMS
-            obj_to_be_updated.m_best_lap_str = F1Utils.millisecondsToMinutesSecondsMilliseconds(
-                obj_to_be_updated.m_best_lap_ms)
 
         # if self._shouldRecomputeFastestLap():
         if self._shouldRecomputeFastestLap(obj_to_be_updated):
