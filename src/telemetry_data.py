@@ -299,7 +299,7 @@ class DataPerDriver:
 
             return [entry.toJSON() for entry in self.m_tyre_wear_history]
 
-    class PerLapHistoryEntry:
+    class PerLapSnapshotEntry:
         """
         Class that captures one lap's snapshot data
 
@@ -348,6 +348,7 @@ class DataPerDriver:
                 "car-status-data" : self.m_car_status_packet.toJSON() if self.m_car_status_packet else None,
                 "safety-car-status" : str(self.m_sc_status) if self.m_sc_status else None,
                 "tyre-sets-data" : self.m_tyre_sets_packet.toJSON() if self.m_tyre_sets_packet else None,
+                "track-position" : self.m_track_position or None
             }
 
     class WarningPenaltyEntry:
@@ -494,7 +495,7 @@ class DataPerDriver:
         self.m_packet_car_setup: Optional[CarSetupData] = None
 
         # Per lap snapshot
-        self.m_per_lap_snapshots: Dict[int, DataPerDriver.PerLapHistoryEntry] = {}
+        self.m_per_lap_snapshots: Dict[int, DataPerDriver.PerLapSnapshotEntry] = {}
 
     def toJSON(self,
                index: Optional[int] = None,
@@ -697,7 +698,7 @@ class DataPerDriver:
             return
 
         # Store the snapshot data for the old lap
-        self.m_per_lap_snapshots[old_lap_number] = DataPerDriver.PerLapHistoryEntry(
+        self.m_per_lap_snapshots[old_lap_number] = DataPerDriver.PerLapSnapshotEntry(
             car_damage=self.m_packet_car_damage,
             car_status=self.m_packet_car_status,
             sc_status=self.m_curr_lap_sc_status,
@@ -822,7 +823,7 @@ class DataPerDriver:
 
         return self.m_packet_tyre_sets.m_fittedIdx if self.m_packet_tyre_sets else None
 
-    def _getNextLapSnapshot(self) -> Generator[Tuple[int, PerLapHistoryEntry], None, None]:
+    def _getNextLapSnapshot(self) -> Generator[Tuple[int, PerLapSnapshotEntry], None, None]:
         """
         Returns a generator for each lap's snapshot in order.
 
