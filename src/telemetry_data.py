@@ -306,6 +306,7 @@ class DataPerDriver:
         Attributes:
             m_car_damage_packet (CarDamageData): The Car damage packet
             m_car_status_packet (CarStatusData): The Car Status packet
+            m_track_position (int): The lap's track position
             m_tyre_sets_packet (Optional[PacketTyreSetsData]): The Tyre Sets packet
             m_sc_status (PacketSessionData.SafetyCarStatus): The lap's safety car status
         """
@@ -315,7 +316,7 @@ class DataPerDriver:
                      car_status : CarStatusData,
                      sc_status  : SafetyCarType,
                      tyre_sets  : PacketTyreSetsData,
-                     lap_data : LapData):
+                     track_position: int):
             """Init the snapshot entry object
 
             Args:
@@ -329,7 +330,7 @@ class DataPerDriver:
             self.m_car_status_packet: CarStatusData = car_status
             self.m_sc_status: SafetyCarType = sc_status
             self.m_tyre_sets_packet: PacketTyreSetsData = tyre_sets
-            self.m_lap_data: LapData = lap_data
+            self.m_track_position: int = track_position
 
         def toJSON(self, lap_number : int) -> Dict[str, Any]:
             """Dump this object into JSON
@@ -347,7 +348,6 @@ class DataPerDriver:
                 "car-status-data" : self.m_car_status_packet.toJSON() if self.m_car_status_packet else None,
                 "safety-car-status" : str(self.m_sc_status) if self.m_sc_status else None,
                 "tyre-sets-data" : self.m_tyre_sets_packet.toJSON() if self.m_tyre_sets_packet else None,
-                "lap-data" : self.m_lap_data.toJSON() if self.m_lap_data else None,
             }
 
     class WarningPenaltyEntry:
@@ -702,7 +702,7 @@ class DataPerDriver:
             car_status=self.m_packet_car_status,
             sc_status=self.m_curr_lap_sc_status,
             tyre_sets=self.m_packet_tyre_sets,
-            lap_data=self.m_packet_lap_data
+            track_position=self.m_position
         )
 
         # Add the tyre wear data into the tyre stint history
@@ -714,7 +714,7 @@ class DataPerDriver:
                 rr_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
                 lap_number=old_lap_number,
                 is_racing_lap=True,
-                desc="end of lap " + str(old_lap_number) + " snapshot"
+                desc=f"end of lap {old_lap_number} snapshot"
             ))
 
         # Add the tyre wear data into the extrapolator
@@ -745,7 +745,7 @@ class DataPerDriver:
             self.m_packet_car_damage and
             self.m_packet_car_status and
             self.m_packet_tyre_sets and
-            self.m_packet_lap_data
+            self.m_position
         )
 
     def updateTyreSetData(self, fitted_index: int) -> None:
@@ -942,34 +942,6 @@ class DataPerDriver:
             "target-fuel-rate" : 0.0
         }
 
-    def _isAnyLapDataInSnashotNone(self) -> bool:
-        """Check if any lap data in the snapshot is None
-
-        Returns:
-            bool: True if any lap data in the snapshot is None
-        """
-
-        ret = False
-        for snapshot in self.m_per_lap_snapshots.values():
-            if snapshot.m_lap_data is None:
-                ret = True
-                break
-        return ret
-
-    def _isAnyLapDataInSnashotNone(self) -> bool:
-        """Check if any lap data in the snapshot is None
-
-        Returns:
-            bool: True if any lap data in the snapshot is None
-        """
-
-        ret = False
-        for snapshot in self.m_per_lap_snapshots.values():
-            if snapshot.m_lap_data is None:
-                ret = True
-                break
-        return ret
-
     def getPositionHistoryJSON(self) -> Dict[str, Any]:
         """Get the position history JSON.
 
@@ -984,7 +956,7 @@ class DataPerDriver:
             "driver-position-history": [
                 {
                     "lap-number": lap_number,
-                    "position": snapshot_record.m_lap_data.m_carPosition
+                    "position": snapshot_record.m_track_position
                 }
                 for lap_number, snapshot_record in self._getNextLapSnapshot()
             ]
@@ -1494,12 +1466,13 @@ class DriverData:
             # Perform the final snapshot
             obj_to_be_updated.onLapChange(
                 old_lap_number=data.m_numLaps)
-            if obj_to_be_updated:
-                obj_to_be_updated.m_position = data.m_position
-                obj_to_be_updated.m_packet_final_classification = data
-                final_json["classification-data"][index] = obj_to_be_updated.toJSON(index)
-                if is_position_history_supported:
-                    final_json["position-history"].append(obj_to_be_updated.getPositionHistoryJSON())
+            # Sometimes, lapInfo is unreliable. update the track position
+            obj_to_be_updated.m_per_lap_snapshots[data.m_numLaps].m_track_position = data.m_position
+            obj_to_be_updated.m_position = data.m_position
+            obj_to_be_updated.m_packet_final_classification = data
+            final_json["classification-data"][index] = obj_to_be_updated.toJSON(index)
+            if is_position_history_supported:
+                final_json["position-history"].append(obj_to_be_updated.getPositionHistoryJSON())
         final_json['classification-data'] = sorted(final_json['classification-data'], key=lambda x: x['track-position'])
         final_json['game-year'] = self.m_game_year
         self.m_final_json = final_json
