@@ -79,6 +79,22 @@ SOFTWARE.
             line-height: 1;
         }
 
+        #settingsButton {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: transparent;
+            border: none;
+            color: #fdd835; /* Gold color */
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 10;  /* Ensure button is on top */
+        }
+
+        #settingsButton:hover {
+            color: #fff; /* White color on hover */
+        }
+
         .race-info-box {
             line-height: 0.5;
         }
@@ -182,6 +198,7 @@ SOFTWARE.
             height: 100%;
             /* Add background opacity */
             background-color: rgba(31, 30, 30, 0.9);
+            z-index: 1000;
         }
 
         .modal-content {
@@ -205,6 +222,7 @@ SOFTWARE.
 
             /* Change font color to standard gold */
             color: #fdd835;
+            z-index: 1000;
         }
 
         .close {
@@ -268,6 +286,66 @@ SOFTWARE.
             transition: opacity 0.3s ease-in-out;
             z-index: 9999;
         }
+
+        .settings-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: 'Roboto', sans-serif;
+            font-size: 24px;
+            color: #fdd835;
+        }
+
+        .settings-table td,
+        .settings-table th {
+            border: 1px solid #fdd835;
+            padding: 10px;
+            text-align: center; /* Default alignment for cells */
+        }
+
+        /* Align all cells in the first column to the right */
+        .settings-table td:nth-child(1),
+        .settings-table th:nth-child(1) {
+            text-align: right;
+            padding-right: 10px; /* Adds a bit of space between text and cell border */
+        }
+
+        /* Align all cells in the second column to the left */
+        .settings-table td:nth-child(2),
+        .settings-table th:nth-child(2) {
+            text-align: left;
+            padding-left: 10px; /* Adds a bit of space between text and cell border */
+        }
+
+        /* Style for the team name input */
+        .team-name-input {
+            width: 100%;
+            height: 100%;
+            padding: 8px;
+            font-family: 'Roboto', sans-serif;
+            font-size: 20px;
+            color: #fdd835;
+            background-color: #2e2e2e;
+            border: 1px solid #fdd835;
+            border-radius: 5px;
+        }
+
+        /* Apply button styling */
+        .apply-button {
+            margin-top: 15px;
+            padding: 10px 20px;
+            background-color: #fdd835;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .apply-button:hover {
+            background-color: #e5c22e;
+        }
+
+
     </style>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -321,6 +399,7 @@ SOFTWARE.
             </table>
         </div>
         <div class="time-box">
+            <button id="settingsButton">⚙️</button>
             <h2>Other info</h2>
             <table>
                 <tr>
@@ -367,18 +446,27 @@ SOFTWARE.
     </div>
 
     <script>
-        // Initial constants
+        // Init globals
         let is24HourFormat;
         let relativeDelta;
         let lastLapAbsoluteFormat;
         let bestLapAbsoluteFormat;
         let tyreWearAverageFormat;
+        let myTeamName;
 
         // Check if delta column needs to be displayed
         const shouldHideDeltaColumn = {{ live_data_mode | tojson | safe }};
         const shouldHidePredictionColumn = !{{ live_data_mode | tojson | safe }};
         const shouldHideFuelColumn = !{{ live_data_mode | tojson | safe }};
         const shouldHideLastLapColumn = !{{ live_data_mode | tojson | safe }};
+
+        function getTeamName(teamId) {
+            if ("MY_TEAM" == teamId) {
+                return myTeamName;
+            } else {
+                return teamId;
+            }
+        }
 
         function formatLapTime(milliseconds) {
             // Check if the input is 0 or null
@@ -598,7 +686,7 @@ SOFTWARE.
                 const nameLink = document.createElement('a');
                 nameLink.innerHTML =    `${truncateName(driverInfo["name"])}` +
                                         `<br>` +
-                                        `${truncateName(driverInfo["team"])}`;
+                                        `${truncateName(getTeamName(driverInfo["team"]))}`;
                 nameLink.href = '#'; // Set a placeholder href value
 
                 // Get the computed style of the row and apply it to the hyperlink
@@ -745,7 +833,7 @@ SOFTWARE.
                         predictionData.forEach((prediction, index) => {
                             const lapNum = prediction["lap-number"];
                             if (tyreWearAverageFormat) {
-                                predictionHTML += "L" + lapNum + ": " + prediction["average"] + "%<br>";
+                                predictionHTML += "L" + lapNum + ": " + formatFloatWithTwoDecimals(prediction["average"]) + "%<br>";
                             } else {
                                 const maxWearInfo = getMaxTyreWear(prediction);
                                 const maxWear = formatFloatWithTwoDecimals(maxWearInfo["max-wear"]);
@@ -911,7 +999,7 @@ SOFTWARE.
                 if (driverData["index"] == index) {
                     return {
                         'driver-name': driverData["participant-data"]["name"],
-                        'team-name': driverData["participant-data"]["team-id"]
+                        'team-name': getTeamName(driverData["participant-data"]["team-id"])
                     };
                 }
             }
@@ -937,7 +1025,7 @@ SOFTWARE.
                     const fastestLapNum = data["records"]["fastest"][searchKey]["lap-number"];
                     const driverIndex = data["records"]["fastest"][searchKey]["driver-index"];
                     const driverName = data["records"]["fastest"][searchKey]["driver-name"];
-                    const teamName = data["records"]["fastest"][searchKey]["team-id"];
+                    const teamName = getTeamName(data["records"]["fastest"][searchKey]["team-id"]);
                     const row = timesRecordsTableBody.insertRow();
                     row.innerHTML = `
                         <td>${category}</td>
@@ -1131,10 +1219,8 @@ SOFTWARE.
                         'Williams': 'rgba(100,196,255, 1)',          // Blue
                         'Sauber': 'rgba(82,226,82,1)'
                     };
-
-                    return teamColors[teamName] || null; // Return gray if team not found
+                    return teamColors[teamName] || null;
                 }
-
 
                 function plotGraphPositionHistory(canvas, datasets, xAxisLabel, yAxisLabel) {
                     var xData = datasets[0].data.map(entry => entry.x);
@@ -1333,7 +1419,7 @@ SOFTWARE.
                             return name.substring(0, 3).toUpperCase();
                         }
                         const name = driverInfo["name"];
-                        const team = driverInfo["team"];
+                        const team = getTeamName(driverInfo["team"]);
                         const driverPositionHistory = driverInfo["driver-position-history"];
                         let positionHistoryArray = [];
                         driverPositionHistory.forEach((perLapRecord) => {
@@ -2528,6 +2614,94 @@ SOFTWARE.
             modal.style.display = 'none';
         }
 
+        function openSettingsModal() {
+            const modalContent = document.getElementById('modalContent');
+            modalContent.innerHTML = '';  // Clear previous content
+
+            const settingsDiv = document.createElement('div');
+            const settingsTable = document.createElement('table');
+            settingsTable.classList.add('settings-table');
+            const settingsBody = settingsTable.createTBody();
+
+            // First row: Team Name
+            let teamNameRow = settingsBody.insertRow();
+            teamNameRow.innerHTML = `
+                <td>My Team Name</td>
+                <td><input type="text" class="team-name-input" id="teamNameInput" value="${myTeamName}"></td>
+            `;
+
+            // Radio button rows
+
+            // Time Format
+            let timeFormatRow = settingsBody.insertRow();
+            timeFormatRow.innerHTML = `
+                <td>Time Format</td>
+                <td>
+                    <label><input type="radio" name="timeFormat" value="12" ${!is24HourFormat ? 'checked' : ''}> 12 hours</label>
+                    <label><input type="radio" name="timeFormat" value="24" ${is24HourFormat  ? 'checked' : ''}> 24 hours</label>
+                </td>
+            `;
+
+            // Lap Time Format
+            let lastLapTimeFormatRow = settingsBody.insertRow();
+            lastLapTimeFormatRow.innerHTML = `
+                <td>Last Lap Time Format</td>
+                <td>
+                    <label><input type="radio" name="lastLapTimeFormat" value="absolute" ${lastLapAbsoluteFormat  ? 'checked' : ''}> Absolute</label>
+                    <label><input type="radio" name="lastLapTimeFormat" value="relative" ${!lastLapAbsoluteFormat ? 'checked' : ''}> Relative</label>
+                </td>
+            `;
+
+            // Best Lap Time Format
+            let bestLapTimeFormatRow = settingsBody.insertRow();
+            bestLapTimeFormatRow.innerHTML = `
+                <td>Best Lap Time Format</td>
+                <td>
+                    <label><input type="radio" name="bestLapTimeFormat" value="absolute" ${bestLapAbsoluteFormat  ? 'checked' : ''}> Absolute</label>
+                    <label><input type="radio" name="bestLapTimeFormat" value="relative" ${!bestLapAbsoluteFormat ? 'checked' : ''}> Relative</label>
+                </td>
+            `;
+
+            // Tyre Wear Format
+            let tyreWearFormatRow = settingsBody.insertRow();
+            tyreWearFormatRow.innerHTML = `
+                <td>Tyre Wear Format</td>
+                <td>
+                    <label><input type="radio" name="tyreWearFormat" value="average" ${tyreWearAverageFormat  ? 'checked' : ''}> Average</label>
+                    <label><input type="radio" name="tyreWearFormat" value="max" ${!tyreWearAverageFormat  ? 'checked' : ''}> Max</label>
+                </td>
+            `;
+
+            // Append the table to the settingsDiv
+            settingsDiv.appendChild(settingsTable);
+
+            // Apply Button
+            const applyButton = document.createElement('button');
+            applyButton.innerText = 'Apply';
+            applyButton.classList.add('apply-button');
+            applyButton.onclick = function() {
+                // Collect and log the selected settings
+                myTeamName = document.getElementById('teamNameInput').value;
+                is24HourFormat = (document.querySelector('input[name="timeFormat"]:checked').value === "24") ? (true) : (false);
+                lastLapAbsoluteFormat = (document.querySelector('input[name="lastLapTimeFormat"]:checked').value === "absolute") ? (true) : (false);
+                bestLapAbsoluteFormat = (document.querySelector('input[name="bestLapTimeFormat"]:checked').value === "absolute") ? (true) : (false);
+                tyreWearAverageFormat = (document.querySelector('input[name="tyreWearFormat"]:checked').value === "average") ? (true) : (false);
+
+                console.log("Settings Applied:", { myTeamName, is24HourFormat, lastLapAbsoluteFormat, bestLapAbsoluteFormat, tyreWearAverageFormat });
+                showToast("Settings applied and saved!");
+                savePreferences();
+            };
+            settingsDiv.appendChild(applyButton);
+
+            // Finalize modal content
+            const modalTitle = document.getElementById('modalTitle');
+            modalTitle.innerText = `App Settings`;
+            modalContent.appendChild(settingsDiv);
+
+            const modal = document.getElementById('driverInfoModal');
+            modal.style.display = 'block';
+        }
+
         function formatSecondsToMMSS(seconds) {
             // Ensure the input is a number
             if (typeof seconds !== 'number' || seconds < 0) {
@@ -2711,6 +2885,11 @@ SOFTWARE.
             }
         });
 
+        document.getElementById("settingsButton").addEventListener("click", function () {
+            event.preventDefault();  // Prevent any default behavior that might interfere
+            openSettingsModal();
+        });
+
         function hideColumn(columnName) {
             var raceTable = document.getElementById("raceTable");
             var headers = raceTable.getElementsByTagName("th");
@@ -2831,10 +3010,18 @@ SOFTWARE.
                 missingPreference = true;
             }
 
+            myTeamName = localStorage.getItem('myTeamName');
+            if ((myTeamName === null) || (myTeamName === "")) {
+                myTeamName = "Custom Team";
+                missingPreference = true;
+            }
+
             // If any preference was missing, save all current preferences
             if (missingPreference) {
                 savePreferences();
             }
+
+            console.log("Loaded Preferences:", { myTeamName, is24HourFormat, lastLapAbsoluteFormat, bestLapAbsoluteFormat, tyreWearAverageFormat, relativeDelta });
         }
 
         function savePreferences() {
@@ -2843,6 +3030,9 @@ SOFTWARE.
             localStorage.setItem('lastLapAbsoluteFormat', lastLapAbsoluteFormat);
             localStorage.setItem('bestLapAbsoluteFormat', bestLapAbsoluteFormat);
             localStorage.setItem('tyreWearAverageFormat', tyreWearAverageFormat);
+            localStorage.setItem('myTeamName', myTeamName);
+
+            console.log("Saved Preferences:", { myTeamName, is24HourFormat, lastLapAbsoluteFormat, bestLapAbsoluteFormat, tyreWearAverageFormat, relativeDelta });
         }
 
         // Load preferences on page load

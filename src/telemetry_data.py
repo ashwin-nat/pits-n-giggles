@@ -2098,6 +2098,4 @@ def isPositionHistorySupported() -> bool:
     """
 
     with _globals_lock.gen_rlock():
-        if "Race" in _globals.m_event_type:
-            return True
-        return False
+        return bool(_globals.m_event_type and "Race" in _globals.m_event_type)

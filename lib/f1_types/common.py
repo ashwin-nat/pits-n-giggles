@@ -923,7 +923,7 @@ class TeamID23(Enum):
             130: "Prema '22", 131: "Virtuosi '22", 132: "Carlin '22",
             133: "MP Motorsport '22", 134: "Charouz '22", 135: "Dams '22",
             136: "Campos '22", 137: "Van Amersfoort Racing '22", 138: "Trident '22",
-            139: "Hitech '22", 140: "Art GP '22", 255: "My Team"
+            139: "Hitech '22", 140: "Art GP '22", 255: "MY_TEAM"
         }
         return teams_mapping.get(self.value, "---")
 
@@ -963,7 +963,7 @@ class TeamID24(Enum):
         if self == TeamID24.RB:
             return 'VCARB'
         if self == TeamID24.MY_TEAM:
-            return 'MY TEAM'
+            return 'MY_TEAM'
         return ' '.join(word.capitalize() for word in self.name.split('_'))
 
     @staticmethod
