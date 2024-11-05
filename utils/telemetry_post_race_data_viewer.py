@@ -161,7 +161,7 @@ def getTelemetryInfo():
             }
         if "records" in g_json_data:
             if "fastest" in g_json_data["records"]:
-                fastest_lap = g_json_data["records"]["fastest"]["lap"]["time-str"]
+                fastest_lap = g_json_data["records"]["fastest"]["lap"]["time"]
             else:
                 fastest_lap = "---"
         else:
