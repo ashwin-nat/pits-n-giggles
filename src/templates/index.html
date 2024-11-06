@@ -502,8 +502,13 @@ SOFTWARE.
                 return formatLapTime(playerLapTime);
             }
 
-            if (lapTime === 0 || lapTime === null || playerLapTime === 0 || playerLapTime === null) {
+            if (lapTime === 0 || lapTime === null) {
                 return "---";
+            }
+
+            if(playerLapTime === 0 || playerLapTime === null) {
+                // player has not set a lap yet. so show absolute value
+                return formatLapTime(lapTime);
             }
 
             return formatDelta(lapTime - playerLapTime);
@@ -758,7 +763,7 @@ SOFTWARE.
                     }
                 } else {
                     const lapDeltaStr = formatLapDelta(lapInfo["best-lap-ms"],
-                            lapInfo["best-lap-ms-overall"], isPlayer);
+                            lapInfo["best-lap-ms-player"], isPlayer);
                     if (gameYear == 23) {
                         row.insertCell().textContent = lapDeltaStr;
                     } else {

@@ -115,9 +115,7 @@ class RaceInfoRsp:
         for table_entry in table_entries_json:
             if table_entry["driver-info"]["is-player"]:
                 player_entry = table_entry
-            if table_entry["driver-info"]["is-fastest"]:
-                fastest_entry = table_entry
-            if player_entry is not None and fastest_entry is not None:
+            if player_entry:
                 # Found the items, break
                 break
 
@@ -127,12 +125,11 @@ class RaceInfoRsp:
                 # Update last lap time for player in every object
                 if table_entry["driver-info"]["index"] != player_entry["driver-info"]["index"]:
                     table_entry["lap-info"]["last-lap-ms-player"] = player_entry["lap-info"]["last-lap-ms"]
+                    table_entry["lap-info"]["best-lap-ms-player"] = player_entry["lap-info"]["best-lap-ms"]
                 else:
                     table_entry["lap-info"]["last-lap-ms-player"] = table_entry["lap-info"]["last-lap-ms"]
-                if fastest_entry and (table_entry["driver-info"]["index"] != fastest_entry["driver-info"]["index"]):
-                    table_entry["lap-info"]["best-lap-ms-overall"] = player_entry["lap-info"]["best-lap-ms"]
-                else:
-                    table_entry["lap-info"]["best-lap-ms-overall"] = table_entry["lap-info"]["best-lap-ms"]
+                    table_entry["lap-info"]["best-lap-ms-player"] = table_entry["lap-info"]["best-lap-ms"]
+
 
 class SavePacketCaptureRsp:
     """
