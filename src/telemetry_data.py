@@ -39,6 +39,7 @@ from lib.collisions_analyzer import CollisionRecord, CollisionAnayzer, Collision
 from lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
 from lib.fuel_rate_recommender import FuelRateRecommender
 from src.png_logger import getLogger
+from lib.inter_thread_communicator import InterThreadCommunicator, ITCMessage
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -2073,3 +2074,11 @@ def isPositionHistorySupported() -> bool:
 
     with _globals_lock.gen_rlock():
         return bool(_globals.m_event_type and "Race" in _globals.m_event_type)
+
+def processStreamUpdateButtonPress(custom_marker_obj: CustomMarkerEntry) -> None:
+    """Processes the stream update button press event
+    """
+
+    InterThreadCommunicator().send("stream-update", ITCMessage(
+        m_message_type=ITCMessage.MessageType.CUSTOM_MARKER,
+        m_message=custom_marker_obj))

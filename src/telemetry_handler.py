@@ -576,6 +576,8 @@ class F1TelemetryHandler:
                 else:
                     png_logger.error("Unable to generate player_recorded_event_str")
 
+                # TelData.processStreamUpdateButtonPress(packet)
+
         # Fastest Lap - update data structures
         elif packet.m_eventCode == PacketEventData.EventPacketType.FASTEST_LAP:
             TelData.processFastestLapUpdate(packet)

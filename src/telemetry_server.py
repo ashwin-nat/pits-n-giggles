@@ -30,6 +30,7 @@ from flask_socketio import SocketIO, emit
 import src.telemetry_data as TelData
 import src.telemetry_web_api as TelWebAPI
 from src.png_logger import getLogger
+from lib.inter_thread_communicator import InterThreadCommunicator
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -319,7 +320,8 @@ def initTelemetryWebServer(
         num_adjacent_cars=num_adjacent_cars,
         socketio_tasks=[
             (raceTableClientUpdaterTask, client_update_interval_ms),
-            (playerTelemetryOverlayUpdaterTask, 60)
+            (playerTelemetryOverlayUpdaterTask, 60),
+            (streamUpdaterTask, 1000)
         ]
     )
     _web_server.run()
@@ -351,4 +353,18 @@ def playerTelemetryOverlayUpdaterTask(update_interval_ms: int) -> None:
     while True:
         if len(_player_overlay_clients) > 0:
             _web_server.m_socketio.emit('player-overlay-update', TelWebAPI.PlayerTelemetryOverlayUpdate().toJSON())
+        _web_server.m_socketio.sleep(sleep_duration)
+
+def streamUpdaterTask(update_interval_ms: int) -> None:
+    """Task to update clients with telemetry data
+
+    Args:
+        update_interval_ms (int): Update interval in milliseconds
+    """
+
+    sleep_duration = update_interval_ms / 1000
+    while True:
+        frame_id = InterThreadCommunicator().receive("stream-update")
+        if frame_id is not None:
+            png_logger.info(f"Received stream update button press {frame_id}")
         _web_server.m_socketio.sleep(sleep_duration)
