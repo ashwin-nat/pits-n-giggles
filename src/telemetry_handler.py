@@ -188,12 +188,10 @@ class CustomMarkersHistory:
 
 g_packet_capture_table: PacketCaptureTable = PacketCaptureTable()
 g_pkt_cap_mode: PacketCaptureMode = PacketCaptureMode.DISABLED
-g_num_active_cars: int = 0
 g_overtakes_history: OvertakesHistory = OvertakesHistory()
 g_post_race_data_autosave: bool = False
 g_directory_mapping: Dict[str, str] = {}
 g_udp_custom_action_code: Optional[int] = None
-g_player_recorded_events_history: CustomMarkersHistory = CustomMarkersHistory()
 g_completed_session_uid_set: set[int] = set()
 png_logger = getLogger()
 
@@ -372,13 +370,6 @@ def getOvertakeJSON(driver_name: str=None) -> Tuple[GetOvertakesStatus, Dict[str
                 driver_name=driver_name,
                 is_case_sensitive=True)
 
-def getCustomMarkersJSON() -> List[Dict[str, Any]]:
-    """
-    Return a list of dictionaries containing custom markers in JSON format.
-    """
-
-    global g_player_recorded_events_history
-    return g_player_recorded_events_history.getJSONList()
 
 def writeDictToJsonFile(data_dict: Dict, file_name: str) -> None:
     """
@@ -401,7 +392,6 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
 
     global g_directory_mapping
     global g_overtakes_history
-    global g_player_recorded_events_history
 
     event_str = TelData.getEventInfoStr()
     if not event_str:
@@ -424,12 +414,6 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
                 'records': [record.toJSON() for record in g_overtakes_history.m_overtakes_history]
             }
 
-        # Add the markers as well
-        final_json['custom-markers'] = []
-        if g_player_recorded_events_history.getCount() > 0:
-            for marker in g_player_recorded_events_history.getMarkers():
-                final_json['custom-markers'].append(marker.toJSON())
-
         # Next, fastest lap and sector records
         final_json['records'] = {
             'fastest' : RaceAnalyzer.getFastestTimesJson(final_json),
@@ -446,15 +430,11 @@ def clearAllDataStructures() -> None:
     Clear all data structures.
     """
 
-    global g_num_active_cars
     global g_overtakes_history
-    global g_player_recorded_events_history
 
-    g_num_active_cars = 0
     TelData.processSessionStarted()
     with g_overtakes_history.m_lock:
         g_overtakes_history.m_overtakes_history.clear()
-    g_player_recorded_events_history.clear()
     g_completed_session_uid_set.clear()
 
 # -------------------------------------- TELEMETRY PACKET HANDLERS -----------------------------------------------------
@@ -559,8 +539,6 @@ class F1TelemetryHandler:
             packet (PacketEventData): The parsed object containing the event data packet's contents
         """
         global g_overtakes_history
-        global g_num_active_cars
-        global g_collisions_history
 
         # UDP Custom Event - Add marker player markers list
         if packet.m_eventCode == PacketEventData.EventPacketType.BUTTON_STATUS:
@@ -568,13 +546,7 @@ class F1TelemetryHandler:
                 (packet.mEventDetails.isUDPActionPressed(g_udp_custom_action_code)):
 
                 png_logger.debug('UDP action %d pressed', g_udp_custom_action_code)
-                global g_player_recorded_events_history
-                custom_marker_obj = TelData.getCustomMarkerEntryObj()
-                if custom_marker_obj:
-                    g_player_recorded_events_history.insert(custom_marker_obj)
-                    png_logger.debug('Player recorded event: %s', str(custom_marker_obj))
-                else:
-                    png_logger.error("Unable to generate player_recorded_event_str")
+                TelData.processCustomMarkerCreate()
 
                 # TelData.processStreamUpdateButtonPress(packet)
 

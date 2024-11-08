@@ -28,7 +28,7 @@ from lib.f1_types import F1Utils, LapHistoryData, CarStatusData
 import lib.race_analyzer as RaceAnalyzer
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 import src.telemetry_data as TelData
-from src.telemetry_handler import dumpPktCapToFile, getOvertakeJSON, GetOvertakesStatus, getCustomMarkersJSON
+from src.telemetry_handler import dumpPktCapToFile, getOvertakeJSON, GetOvertakesStatus
 
 # ------------------------- UTILITIES ----------------------------------------------------------------------------------
 
@@ -213,7 +213,7 @@ class OverallRaceStatsRsp:
             _, overtake_records = getOvertakeJSON()
             self.m_rsp["overtakes"] = self.m_rsp["overtakes"] | overtake_records
 
-        self.m_rsp["custom-markers"] = getCustomMarkersJSON()
+        self.m_rsp["custom-markers"] = TelData.getCustomMarkersJSON()
         if TelData.isPositionHistorySupported():
             self.m_rsp["position-history"] = DriversListRsp(is_spectator_mode=True).getPositionHistoryJSON()
 

@@ -40,6 +40,7 @@ from lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
 from lib.fuel_rate_recommender import FuelRateRecommender
 from src.png_logger import getLogger
 from lib.inter_thread_communicator import InterThreadCommunicator, ITCMessage
+from lib.custom_marker_tracker import CustomMarkerEntry, CustomMarkersHistory
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -1662,76 +1663,6 @@ class DriverData:
             input_data=self.m_collision_records)
         return collision_analyzer.toJSON()
 
-class CustomMarkerEntry:
-    """Class representing the data points related to a custom time marker.
-    """
-
-    def __init__(self,
-        track: str,
-        event_type: str,
-        lap: int,
-        sector: LapData.Sector,
-        curr_lap_time: str,
-        curr_lap_perc: str):
-        """
-        Initializes a CustomMarkerEntry instance.
-
-        Parameters:
-            - track: A string representing the track name.
-            - event_type: A string representing the type of event.
-            - lap: An integer representing the lap number.
-            - sector: An instance of LapData.Sector enum representing the sector.
-            - curr_lap_time: A string representing the current lap time.
-            - curr_lap_perc: A string representing the current lap percentage.
-        """
-
-        self.m_track: str               = track
-        self.m_event_type: str          = event_type
-        self.m_lap: int                 = lap
-        self.m_sector: LapData.Sector   = sector
-        self.m_curr_lap_time: str       = curr_lap_time
-        self.m_curr_lap_percent: str    = curr_lap_perc
-
-    def toJSON(self) -> Dict[str, Any]:
-        """
-        Convert CustomMarkerEntry instance to a JSON-compatible dictionary.
-
-        Returns:
-            A dictionary representation of the CustomMarkerEntry.
-        """
-        return {
-            "track": self.m_track,
-            "event-type": self.m_event_type,
-            "lap": str(self.m_lap),
-            "sector": str(self.m_sector),
-            "curr-lap-time": self.m_curr_lap_time,
-            "curr-lap-percentage": self.m_curr_lap_percent
-        }
-
-    def toCSV(self) -> str:
-        """
-        Convert CustomMarkerEntry instance to a CSV string.
-
-        Returns:
-            A CSV string representation of the CustomMarkerEntry.
-        """
-        return \
-            f"{self.m_track}, " \
-            f"{self.m_event_type}, " \
-            f"{str(self.m_lap)}, " \
-            f"{str(self.m_sector)}, " \
-            f"{self.m_curr_lap_time}, " \
-            f"{self.m_curr_lap_percent}"
-
-    def __str__(self):
-        """
-        Return string representation of CustomMarkerEntry instance.
-
-        Returns:
-            A string representation of the CustomMarkerEntry instance.
-        """
-        return self.toCSV()
-
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
 _globals = GlobalData()
@@ -1739,6 +1670,7 @@ _driver_data = DriverData()
 _globals_lock: rwlock.RWLockFair = rwlock.RWLockFair()
 _driver_data_lock: rwlock.RWLockFair = rwlock.RWLockFair()
 png_logger = getLogger()
+_custom_markers_history = CustomMarkersHistory()
 
 # -------------------------------------- TELEMETRY PACKET HANDLERS -----------------------------------------------------
 
@@ -1746,11 +1678,9 @@ def processSessionStarted() -> None:
     """
     Reset the data structures when SESSION_STARTED has been received
     """
+    clearDataStructures()
     with _driver_data_lock.gen_wlock():
-        _driver_data.clear()
         _driver_data.setRaceOngoing()
-    with _globals_lock.gen_wlock():
-        _globals.m_packet_final_classification = None # Clear this because this is the start of the race
 
 def processSessionUpdate(packet: PacketSessionData) -> bool:
     """Update the data strctures with session data
@@ -1764,7 +1694,10 @@ def processSessionUpdate(packet: PacketSessionData) -> bool:
     with _driver_data_lock.gen_wlock():
         _driver_data.processSessionUpdate(packet)
     with _globals_lock.gen_wlock():
-        return _globals.processSessionUpdate(packet)
+        should_clear = _globals.processSessionUpdate(packet)
+    if should_clear:
+        clearDataStructures()
+
 
 def processLapDataUpdate(packet: PacketLapData) -> None:
     """Update the data structures with lap data
@@ -1858,6 +1791,7 @@ def processFinalClassificationUpdate(packet: PacketFinalClassificationData) -> D
     with _globals_lock.gen_wlock():
         final_json["session-info"] = _globals.m_packet_session.toJSON() if _globals.m_packet_session else None
         _globals.m_packet_final_classification = packet
+    final_json['custom-markers'] = _custom_markers_history.getJSONList()
     return final_json
 
 def processCarDamageUpdate(packet: PacketCarDamageData):
@@ -1912,6 +1846,19 @@ def processCarSetupsUpdate(packet: PacketCarSetupData) -> None:
 
     with _driver_data_lock.gen_wlock():
         _driver_data.processCarSetupsUpdate(packet)
+
+def processCustomMarkerCreate() -> None:
+    """Update the data structures with custom marker information
+    """
+
+    custom_marker_obj = getCustomMarkerEntryObj()
+    if custom_marker_obj:
+        _custom_markers_history.insert(custom_marker_obj)
+        # InterThreadCommunicator().send("stream-update", ITCMessage(
+        #     m_message_type=ITCMessage.MessageType.CUSTOM_MARKER,
+        #     m_message=custom_marker_obj))
+    else:
+        png_logger.warning("Unable to generate player_recorded_event_str")
 
 # -------------------------------------- UTILTIES ----------------------------------------------------------------------
 
@@ -2042,11 +1989,11 @@ def getCustomMarkerEntryObj() -> Optional[CustomMarkerEntry]:
         if _globals.m_circuit is not None and _globals.m_event_type is not None:
             track = _globals.m_circuit
             event_type = _globals.m_event_type
-            if curr_lap_dist is not None:
-                curr_lap_percent = F1Utils.floatToStr(
-                    float(curr_lap_dist)/float(_globals.m_packet_session.m_trackLength) * 100.0) + "%"
-            else:
-                curr_lap_percent = None
+            curr_lap_percent = (
+                f"{F1Utils.floatToStr(float(curr_lap_dist) / float(_globals.m_packet_session.m_trackLength) * 100.0)}%"
+                if curr_lap_dist is not None
+                else None
+            )
         else:
             track = None
             event_type = None
@@ -2063,6 +2010,12 @@ def getCustomMarkerEntryObj() -> Optional[CustomMarkerEntry]:
         curr_lap_time=curr_lap_time,
         curr_lap_perc=curr_lap_percent
     )
+
+def getCustomMarkersJSON() -> List[Dict[str, Any]]:
+    """Returns a list of dictionaries containing custom markers in JSON format.
+    """
+
+    return _custom_markers_history.getJSONList()
 
 def isPositionHistorySupported() -> bool:
     """Returns whether the position history is supported for the given event type
@@ -2082,3 +2035,12 @@ def processStreamUpdateButtonPress(custom_marker_obj: CustomMarkerEntry) -> None
     InterThreadCommunicator().send("stream-update", ITCMessage(
         m_message_type=ITCMessage.MessageType.CUSTOM_MARKER,
         m_message=custom_marker_obj))
+
+def clearDataStructures() -> None:
+    """Clears the data structures
+    """
+    with _driver_data_lock.gen_wlock():
+        _driver_data.clear()
+    with _globals_lock.gen_wlock():
+        _globals.clear()
+    _custom_markers_history.clear()
