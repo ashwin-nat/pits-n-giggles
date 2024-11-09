@@ -38,9 +38,9 @@ from lib.overtake_analyzer import OvertakeRecord
 from lib.collisions_analyzer import CollisionRecord, CollisionAnayzer, CollisionAnalyzerMode
 from lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
 from lib.fuel_rate_recommender import FuelRateRecommender
-from src.png_logger import getLogger
 from lib.inter_thread_communicator import InterThreadCommunicator, ITCMessage
 from lib.custom_marker_tracker import CustomMarkerEntry, CustomMarkersHistory
+from src.png_logger import getLogger
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -1687,7 +1687,6 @@ def processSessionUpdate(packet: PacketSessionData) -> bool:
     Args:
         packet (PacketSessionData): Session data packet
 
-    Returns:
         bool - True if all data needs to be reset
     """
 
@@ -1697,7 +1696,7 @@ def processSessionUpdate(packet: PacketSessionData) -> bool:
         should_clear = _globals.processSessionUpdate(packet)
     if should_clear:
         clearDataStructures()
-
+    return should_clear
 
 def processLapDataUpdate(packet: PacketLapData) -> None:
     """Update the data structures with lap data

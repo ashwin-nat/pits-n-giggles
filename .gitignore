@@ -10,3 +10,4 @@ launch.json
 *.txt
 build/*
 dist/*
+png-venv/

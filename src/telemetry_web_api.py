@@ -664,7 +664,6 @@ class DriversListRsp:
         """Recompute the deltas for the list of driver data relative to the player
         """
 
-        # pylint: disable=too-many-branches
         self.m_final_list[0].m_delta_to_car_in_front = "---"
         if self.m_is_spectator_mode:
             # just convert the deltas to str
