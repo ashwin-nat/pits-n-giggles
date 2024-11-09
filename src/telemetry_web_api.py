@@ -98,22 +98,19 @@ class RaceInfoRsp:
 
         driver_list_json = self.m_driver_list_rsp.toJSON()
         globals_json.update(driver_list_json)
-        self._updatePlayerLapTimes(globals_json["table-entries"], self.m_globals.m_is_spectating)
+        self._updatePlayerLapTimes(globals_json["table-entries"])
         return globals_json
 
     def _updatePlayerLapTimes(self,
-                              table_entries_json: List[Dict[str, Any]],
-                              is_spectating: bool) -> None:
+                              table_entries_json: List[Dict[str, Any]]) -> None:
         """Update the lap-info key's contents
 
         Args:
             table_entries_json (List[Dict[str, Any]]): The "table-entries" list
-            is_spectating (bool): True if the session is in spectate mode
         """
 
         # First, find the player entry and fastest entry in the list
         player_entry    = None
-        fastest_entry   = None
         for table_entry in table_entries_json:
             if table_entry["driver-info"]["is-player"]:
                 player_entry = table_entry
@@ -123,7 +120,7 @@ class RaceInfoRsp:
 
         # Supporting only single player entry, split screen unsupported. player_entry should've been found by now
         for table_entry in table_entries_json:
-            if not is_spectating:
+            if player_entry:
                 # Update last lap time for player in every object
                 if table_entry["driver-info"]["index"] != player_entry["driver-info"]["index"]:
                     table_entry["lap-info"]["last-lap-ms-player"] = player_entry["lap-info"]["last-lap-ms"]
@@ -499,7 +496,7 @@ class DriversListRsp:
                         "last-lap-ms" : data_per_driver.m_last_lap_ms,
                         "best-lap-ms" : data_per_driver.m_best_lap_ms,
                         "last-lap-ms-player" : 0,
-                        "best-lap-ms-overall" : 0,
+                        "best-lap-ms-player" : 0,
                         "lap-progress" : data_per_driver.m_lap_progress, # NULL is supported
                         "speed-trap-record-kmph" : data_per_driver.m_packet_lap_data.m_speedTrapFastestSpeed if \
                             data_per_driver.m_packet_lap_data else None, # NULL is supported

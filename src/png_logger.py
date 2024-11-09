@@ -26,6 +26,7 @@ import logging
 import threading
 import sys
 import io
+import os
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -58,6 +59,7 @@ def initLogger(file_name: str = None, debug_mode: bool = False) -> logging.Logge
 
     # Add file handler if a file name is provided
     if file_name:
+        _clearFileIfRequired(file_name)
         file_handler = logging.FileHandler(file_name, encoding='utf-8')
         file_handler.setFormatter(formatter)
         png_logger.addHandler(file_handler)
@@ -75,3 +77,12 @@ def getLogger() -> logging.Logger:
         logging.Logger: The logger object
     """
     return logging.getLogger('png')
+
+def _clearFileIfRequired(file_name: str) -> None:
+    """Clear the file if it is larger than 1 MB."""
+
+    if os.path.exists(file_name):
+        file_size = os.path.getsize(file_name)
+        if file_size > 1000000:
+            os.remove(file_name)
+            print(f"File {file_name} cleared.")
