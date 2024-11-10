@@ -10,6 +10,9 @@ Tired of seeing every car zoom past you in that F1 online lobby? Well this tool 
 
 What this tool can do is provide you with live telemetry data during a race so that you can make more informed decisions.
 
+## Direct executable download (Windows)
+You can download the exe file and skip python setup [from here](https://github.com/ashwin-nat/pits-n-giggles/releases)
+
 ## Prerequisites
 - Python
   - [Python Setup Guide for Windows](https://www.python.org/downloads/windows/)
