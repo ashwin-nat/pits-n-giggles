@@ -8,11 +8,21 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-REM Install prerequisites using pip
+REM Check if virtual environment exists, create if not
+if not exist "png-venv" (
+    echo Creating virtual environment "png-venv"...
+    python -m venv png-venv
+)
+
+REM Activate virtual environment
+call png-venv\Scripts\activate
+
+REM Upgrade pip and install prerequisites
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 
 REM Run the Python script
-python -O app.py --packet-capture-mode disabled --telemetry-port 20777 --server-port 5000 --post-race-data-autosave --log-file png.log --udp-custom-action-code 12 --refresh-interval 60
+python -O app.py
 
 REM Pause to keep the command prompt window open
 pause

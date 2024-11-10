@@ -30,11 +30,12 @@ import os
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def initLogger(file_name: str = None, debug_mode: bool = False) -> logging.Logger:
+def initLogger(file_name: str = None, max_size: int = 1000000, debug_mode: bool = False) -> logging.Logger:
     """Initialize and configure the logger.
 
     Args:
         file_name (str, optional): The name of the log file. Defaults to None.
+        max_size (int, optional): The maximum size of the log file in bytes. Defaults to 1000000.
         debug_mode (bool, optional): Whether to enable debug mode. Defaults to False.
 
     Returns:
@@ -59,7 +60,7 @@ def initLogger(file_name: str = None, debug_mode: bool = False) -> logging.Logge
 
     # Add file handler if a file name is provided
     if file_name:
-        _clearFileIfRequired(file_name)
+        _clearFileIfRequired(file_name, max_size)
         file_handler = logging.FileHandler(file_name, encoding='utf-8')
         file_handler.setFormatter(formatter)
         png_logger.addHandler(file_handler)
@@ -78,11 +79,16 @@ def getLogger() -> logging.Logger:
     """
     return logging.getLogger('png')
 
-def _clearFileIfRequired(file_name: str) -> None:
-    """Clear the file if it is larger than 1 MB."""
+def _clearFileIfRequired(file_name: str, max_size: int) -> None:
+    """Clear the file if it is larger than 1 MB.
+
+    Args:
+        file_name (str): The name of the file to clear.
+        max_size (int): The maximum size of the file in bytes.
+    """
 
     if os.path.exists(file_name):
         file_size = os.path.getsize(file_name)
-        if file_size > 1000000:
+        if file_size > max_size:
             os.remove(file_name)
             print(f"File {file_name} cleared.")

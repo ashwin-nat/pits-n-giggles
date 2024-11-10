@@ -34,6 +34,7 @@ from typing import Set, Optional
 from src.telemetry_handler import initPktCap, PacketCaptureMode, initAutosaves, F1TelemetryHandler, initDirectories
 from src.telemetry_server import initTelemetryWebServer
 from src.png_logger import initLogger
+from src.config import load_config
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -52,34 +53,9 @@ def parseArgs() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="F1 Telemetry Client and Server")
 
     # Add command-line arguments with default values
-    parser.add_argument('-p', '--packet-capture-mode', type=PacketCaptureMode,
-                        choices=list(PacketCaptureMode),
-                        default=PacketCaptureMode.DISABLED,
-                        metavar='packet_capture_mode {"disabled", "enabled", "enabled-with-autosave"}',
-                        help="Packet capture mode (disabled, enabled, enabled-with-autosave)")
-    parser.add_argument('-t', '--telemetry-port', type=int, default=20777, metavar='TELEMETRY_PORT',
-                        help="Port number for F1 telemetry client")
-    parser.add_argument('-s', '--server-port', type=int, default=5000, metavar='SERVER_PORT',
-                        help="Port number for HTTP server")
-    parser.add_argument('-f', '--post-race-data-autosave', action='store_true',
-                        help="Autosave all race data into a JSON file at the end of the race")
-    parser.add_argument('--replay-server', action='store_true',
-                        help="Enable the TCP replay debug server")
-    parser.add_argument('--disable-browser-autoload', action='store_true',
-                        help="Set this flag to not open the browser tab automatically")
-    parser.add_argument('-r', '--refresh-interval', type=int, default=200, metavar='REFRESH_INTERVAL',
-                        help="How often the web page should refresh itself with new data")
-    parser.add_argument('-l', '--log-file', type=str, default=None, metavar='LOG_FILE',
-                        help='Write output to specified log file (append)')
-    parser.add_argument('-d', '--debug', action='store_true',
-                        help="Enable debug logs")
-    parser.add_argument('-u', '--udp-custom-action-code', type=int, default=None,
-                        metavar='UDP_CUSTOM_ACTION_NUMBER',
-                        help="UDP custom action code number for recording event markers")
-    parser.add_argument('-n', '--num-adjacent-cars', type=int, default=2, metavar='NUM_ADJ_CARS',
-                        help="How many cars adjacent to your car will be included in the UI during race. "
-                                "The total number of cars will be NUM_ADJ_CARS*2 + 1. "
-                                "A huge number implies that all cars are to be displayed")
+    parser.add_argument("config_file", nargs="?", default="png_config.ini", help="Configuration file name (optional)")
+    parser.add_argument("--debug", action="store_true", help="Enable debug mode")
+    parser.add_argument('--replay-server', action='store_true', help="Enable the TCP replay debug server")
 
     # Parse the command-line arguments
     return parser.parse_args()
@@ -172,29 +148,30 @@ def main() -> None:
     global png_logger
     # Initialize the ArgumentParser
     args = parseArgs()
+    config = load_config(args.config_file)
 
-    png_logger = initLogger(file_name=args.log_file, debug_mode=args.debug)
-    if args.num_adjacent_cars < 0:
+    png_logger = initLogger(file_name=config.log_file, max_size=config.log_file_size, debug_mode=args.debug)
+    if config.num_adjacent_cars < 0:
         png_logger.error("--num-adjacent-cars cannot be negative")
         sys.exit(1)
     png_logger.info("Starting the app with the following options:")
-    for arg, value in vars(args).items():
-        png_logger.info("%s: %s", arg, value)
+    png_logger.info(config)
 
     initDirectories()
 
     # First init the telemetry client on a main thread
     client_thread = threading.Thread(target=f1TelemetryServerTask,
-                                    args=(args.packet_capture_mode, args.telemetry_port,
-                                        args.replay_server, args.post_race_data_autosave, args.udp_custom_action_code))
+                                    args=(config.packet_capture_mode, config.telemetry_port,
+                                        args.replay_server, config.post_race_data_autosave,
+                                        config.udp_custom_action_code))
     client_thread.daemon = True
     client_thread.start()
 
     # Run the HTTP server on the main thread. Flask does not like running on separate threads
     packet_capture_enabled = \
-        args.packet_capture_mode in [PacketCaptureMode.ENABLED, PacketCaptureMode.ENABLED_WITH_AUTOSAVE]
-    httpServerTask(args.server_port, packet_capture_enabled, args.refresh_interval,
-                   args.disable_browser_autoload, args.num_adjacent_cars)
+        config.packet_capture_mode in [PacketCaptureMode.ENABLED, PacketCaptureMode.ENABLED_WITH_AUTOSAVE]
+    httpServerTask(config.server_port, packet_capture_enabled, config.refresh_interval,
+                   config.disable_browser_autoload, config.num_adjacent_cars)
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 

@@ -41,14 +41,9 @@ import lib.race_analyzer as RaceAnalyzer
 import src.telemetry_data as TelData
 from src.telemetry_manager import F1TelemetryManager
 from src.png_logger import getLogger
+from src.config import PacketCaptureMode
 
 # -------------------------------------- TYPE DEFINITIONS --------------------------------------------------------------
-
-class PacketCaptureMode(Enum):
-    """Enum representing packet capture modes."""
-    DISABLED = 'disabled'
-    ENABLED = 'enabled'
-    ENABLED_WITH_AUTOSAVE = 'enabled-with-autosave'
 
 
 class PktSaveStatus(Enum):
@@ -203,8 +198,14 @@ def initAutosaves(post_race_data_autosave: bool, udp_custom_action_code: Optiona
     g_post_race_data_autosave = post_race_data_autosave
     g_udp_custom_action_code = udp_custom_action_code
 
-def initDirectories():
+def initDirectories() -> None:
+    """
+    Initialize the necessary directories for storing race information and packet captures.
+    This function creates a directory structure based on the current date if it does not already exist.
 
+    Returns:
+        None
+    """
     def ensureDirectoryExists(directory: str) -> None:
         """
         Ensure that the specified directory exists. If it doesn't, create it along with any missing parent directories.

@@ -8,5 +8,18 @@ else
     exit 1
 fi
 
+# Check if virtual environment exists, create if not
+if [ ! -d "png-venv" ]; then
+    echo "Creating virtual environment 'png-venv'..."
+    python -m venv png-venv
+fi
+
+# Activate virtual environment
+source png-venv/bin/activate
+
+# Upgrade pip and install prerequisites
+python -m pip install --upgrade pip
 pip install -r requirements.txt
-python -O app.py --packet-capture-mode disabled --telemetry-port 20777 --server-port 5000 --post-race-data-autosave --log-file png.log --udp-custom-action-code 12 --refresh-interval 60
+
+# Run the Python script
+python -O app.py
