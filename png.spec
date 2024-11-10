@@ -1,6 +1,9 @@
 import os
 from pathlib import Path
 
+app_name = 'pits_n_giggles'
+app_ver = '1.0.0'
+
 # Helper function to join paths correctly
 def get_data_paths():
     base_src_path = Path('src')
@@ -16,6 +19,9 @@ def get_data_paths():
 
 def get_icon_path():
     return str(Path('src/static/favicon.ico'))
+
+def get_name():
+    return app_name + '_' + app_ver
 
 # Use get_data_paths function to ensure correct path handling
 a = Analysis(
@@ -40,7 +46,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='pits_n_giggles',
+    name=get_name(),
     icon=get_icon_path(),  # Set the icon path here
     debug=False,
     bootloader_ignore_signals=False,
