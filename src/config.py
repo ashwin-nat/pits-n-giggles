@@ -88,7 +88,7 @@ _default_config = {
     },
     'Capture': {
         'packet_capture_mode': PacketCaptureMode.DISABLED,  # Enum (which can be converted to string for INI storage)
-        'post_race_data_autosave': False,  # Boolean
+        'post_race_data_autosave': True,  # Boolean
     },
     'Display': {
         'refresh_interval': 200,  # Integer
