@@ -13,6 +13,9 @@ What this tool can do is provide you with live telemetry data during a race so t
 ## Direct executable download (Windows)
 You can download the exe file and skip python setup [from here](https://github.com/ashwin-nat/pits-n-giggles/releases)
 
+## Direct executable download (Mac)
+Not yet supported because I need a mac to build an executable for mac platforms and I do not own one.
+
 ## Prerequisites
 - Python
   - [Python Setup Guide for Windows](https://www.python.org/downloads/windows/)
