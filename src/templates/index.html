@@ -1905,7 +1905,8 @@ SOFTWARE.
                                 tyreCompound = getTyreCompoundStr(lap["tyre-set-info"]["tyre-set"]["visual-tyre-compound"],
                                     lap["tyre-set-info"]["tyre-set"]["actual-tyre-compound"]);
                                 if (tyreWearAverageFormat) {
-                                    tyreWear = lap["tyre-set-info"]["tyre-wear"]["average"];
+                                    tyreWear = formatFloatWithTwoDecimals(lap["tyre-set-info"]["tyre-wear"]["average"])
+                                        + "%";
                                 } else {
                                     const maxTyreWearData = getMaxTyreWear(lap["tyre-set-info"]["tyre-wear"]);
                                     tyreWear = formatFloatWithTwoDecimals(maxTyreWearData["max-wear"]) + "%";
