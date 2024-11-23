@@ -1907,7 +1907,7 @@ SOFTWARE.
                                 if (tyreWearAverageFormat) {
                                     tyreWear = lap["tyre-set-info"]["tyre-wear"]["average"];
                                 } else {
-                                    const maxTyreWearData = getMaxTyreWear(currTyreWearData);
+                                    const maxTyreWearData = getMaxTyreWear(lap["tyre-set-info"]["tyre-wear"]);
                                     tyreWear = formatFloatWithTwoDecimals(maxTyreWearData["max-wear"]) + "%";
                                 }
                             }
