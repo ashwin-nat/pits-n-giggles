@@ -72,7 +72,7 @@ class RaceInfoRsp:
             Dict[str, Any]: JSON response.
         """
 
-        globals_json = {
+        final_json = {
             # First, global fields
             "f1-game-year" : _getValueOrDefaultValue(self.m_globals.m_game_year, None),
             "circuit": _getValueOrDefaultValue(self.m_globals.m_circuit),
@@ -96,10 +96,11 @@ class RaceInfoRsp:
             "is-spectating" : _getValueOrDefaultValue(self.m_globals.m_is_spectating, False),
         }
 
-        driver_list_json = self.m_driver_list_rsp.toJSON()
-        globals_json.update(driver_list_json)
-        self._updatePlayerLapTimes(globals_json["table-entries"])
-        return globals_json
+        final_json["table-entries"] = self.m_driver_list_rsp.toJSON()
+        final_json["fastest-lap-overall"] = _getValueOrDefaultValue(
+            self.m_driver_list_rsp.m_fastest_lap, default_value=0)
+        self._updatePlayerLapTimes(final_json["table-entries"])
+        return final_json
 
     def _updatePlayerLapTimes(self,
                               table_entries_json: List[Dict[str, Any]]) -> None:
@@ -443,6 +444,7 @@ class DriversListRsp:
         self.m_track_length : int = track_length
         self.m_final_list : List[TelData.DataPerDriver] = []
         self.m_fastest_lap : Optional[int] = None
+        self.m_next_pit_stop_window: Optional[int] = None
         self.__initDriverList()
         self.__updateDriverList()
         if len(self.m_final_list) > 0:
@@ -455,81 +457,77 @@ class DriversListRsp:
             Dict[str, Any]: The JSON dump
         """
 
-        return {
-            "table-entries": [
-                {
-                    "driver-info" : {
-                        "position": _getValueOrDefaultValue(data_per_driver.m_position),
-                        "name": _getValueOrDefaultValue(data_per_driver.m_name),
-                        "team": _getValueOrDefaultValue(data_per_driver.m_team),
-                        "is-fastest": _getValueOrDefaultValue(data_per_driver.m_is_fastest),
-                        "is-player": _getValueOrDefaultValue(data_per_driver.m_is_player),
-                        "dnf-status" : _getValueOrDefaultValue(data_per_driver.m_dnf_status_code),
-                        "index" : _getValueOrDefaultValue(data_per_driver.m_index),
-                        "telemetry-setting" : data_per_driver.m_telemetry_restrictions, # Already NULL checked
-                        "drs": self.__getDRSValue(data_per_driver.m_drs_activated, data_per_driver.m_drs_allowed,
-                                            data_per_driver.m_drs_distance),
-                    },
-                    "delta-info" : {
-                        "delta": self.__getDeltaPlusPenaltiesPlusPit(data_per_driver.m_delta_to_car_in_front,
-                                                                data_per_driver.m_penalties,
-                                                                data_per_driver.m_is_pitting,
-                                                                data_per_driver.m_dnf_status_code),
-                        "delta-to-leader": self.__getDeltaPlusPenaltiesPlusPit(
-                                    F1Utils.millisecondsToSecondsMilliseconds(data_per_driver.m_delta_to_leader),
-                                                                data_per_driver.m_penalties,
-                                                                data_per_driver.m_is_pitting,
-                                                                data_per_driver.m_dnf_status_code),
-                    },
-                    "ers-info" : {
-                        "ers-percent": _getValueOrDefaultValue(data_per_driver.m_ers_perc),
-                        "ers-mode" : _getValueOrDefaultValue(str(data_per_driver.m_packet_car_status.m_ersDeployMode)
-                                                            if data_per_driver.m_packet_car_status else None),
-                        "ers-harvested-by-mguk-this-lap" : (((data_per_driver.m_packet_car_status.m_ersHarvestedThisLapMGUK
-                                                            if data_per_driver.m_packet_car_status else 0.0) /
-                                                                CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0),
-                        "ers-deployed-this-lap" : ((data_per_driver.m_packet_car_status.m_ersDeployedThisLap
-                                                    if data_per_driver.m_packet_car_status else 0.0) /
-                                                        CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0,
-                    },
-                    "lap-info" : {
-                        "last-lap-ms" : data_per_driver.m_last_lap_ms,
-                        "best-lap-ms" : data_per_driver.m_best_lap_ms,
-                        "last-lap-ms-player" : 0,
-                        "best-lap-ms-player" : 0,
-                        "lap-progress" : data_per_driver.m_lap_progress, # NULL is supported
-                        "speed-trap-record-kmph" : data_per_driver.m_packet_lap_data.m_speedTrapFastestSpeed if \
-                            data_per_driver.m_packet_lap_data else None, # NULL is supported
-                    },
-                    "warns-pens-info" : {
-                        "corner-cutting-warnings" : _getValueOrDefaultValue(data_per_driver.m_corner_cutting_warnings),
-                        "time-penalties" : _getValueOrDefaultValue(data_per_driver.m_time_penalties),
-                        "num-dt" : _getValueOrDefaultValue(data_per_driver.m_num_dt),
-                        "num-sg" : _getValueOrDefaultValue(data_per_driver.m_num_sg),
-                    },
-                    "tyre-info" : {
-                        "wear-prediction" : data_per_driver.getTyrePredictionsJSONList(
-                            data_per_driver.m_ideal_pit_stop_window),
-                        "current-wear" : data_per_driver.getCurrentTyreWearJSON(),
-                        "tyre-age": _getValueOrDefaultValue(data_per_driver.m_tyre_age),
-                        "tyre-life-remaining" : _getValueOrDefaultValue(data_per_driver.m_tyre_life_remaining_laps),
-                        "visual-tyre-compound": str(_getValueOrDefaultValue(data_per_driver.m_tyre_vis_compound,
-                                                                            default_value="")),
-                        "actual-tyre-compound": str(_getValueOrDefaultValue(data_per_driver.m_tyre_act_compound,
-                                                                            default_value="")),
-                        "num-pitstops": _getValueOrDefaultValue(data_per_driver.m_num_pitstops),
-                    },
-                    "damage-info" : {
-                        "fl-wing-damage" : data_per_driver.m_fl_wing_damage, # NULL is supported
-                        "fr-wing-damage" : data_per_driver.m_fr_wing_damage, # NULL is supported
-                        "rear-wing-damage" : data_per_driver.m_rear_wing_damage, # NULL is supported
-                    },
+        return [
+            {
+                "driver-info" : {
+                    "position": _getValueOrDefaultValue(data_per_driver.m_position),
+                    "name": _getValueOrDefaultValue(data_per_driver.m_name),
+                    "team": _getValueOrDefaultValue(data_per_driver.m_team),
+                    "is-fastest": _getValueOrDefaultValue(data_per_driver.m_is_fastest),
+                    "is-player": _getValueOrDefaultValue(data_per_driver.m_is_player),
+                    "dnf-status" : _getValueOrDefaultValue(data_per_driver.m_dnf_status_code),
+                    "index" : _getValueOrDefaultValue(data_per_driver.m_index),
+                    "telemetry-setting" : data_per_driver.m_telemetry_restrictions, # Already NULL checked
+                    "drs": self.__getDRSValue(data_per_driver.m_drs_activated, data_per_driver.m_drs_allowed,
+                                        data_per_driver.m_drs_distance),
+                },
+                "delta-info" : {
+                    "delta": self.__getDeltaPlusPenaltiesPlusPit(data_per_driver.m_delta_to_car_in_front,
+                                                            data_per_driver.m_penalties,
+                                                            data_per_driver.m_is_pitting,
+                                                            data_per_driver.m_dnf_status_code),
+                    "delta-to-leader": self.__getDeltaPlusPenaltiesPlusPit(
+                                F1Utils.millisecondsToSecondsMilliseconds(data_per_driver.m_delta_to_leader),
+                                                            data_per_driver.m_penalties,
+                                                            data_per_driver.m_is_pitting,
+                                                            data_per_driver.m_dnf_status_code),
+                },
+                "ers-info" : {
+                    "ers-percent": _getValueOrDefaultValue(data_per_driver.m_ers_perc),
+                    "ers-mode" : _getValueOrDefaultValue(str(data_per_driver.m_packet_car_status.m_ersDeployMode)
+                                                        if data_per_driver.m_packet_car_status else None),
+                    "ers-harvested-by-mguk-this-lap" : (((data_per_driver.m_packet_car_status.m_ersHarvestedThisLapMGUK
+                                                        if data_per_driver.m_packet_car_status else 0.0) /
+                                                            CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0),
+                    "ers-deployed-this-lap" : ((data_per_driver.m_packet_car_status.m_ersDeployedThisLap
+                                                if data_per_driver.m_packet_car_status else 0.0) /
+                                                    CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0,
+                },
+                "lap-info" : {
+                    "last-lap-ms" : data_per_driver.m_last_lap_ms,
+                    "best-lap-ms" : data_per_driver.m_best_lap_ms,
+                    "last-lap-ms-player" : 0,
+                    "best-lap-ms-player" : 0,
+                    "lap-progress" : data_per_driver.m_lap_progress, # NULL is supported
+                    "speed-trap-record-kmph" : data_per_driver.m_packet_lap_data.m_speedTrapFastestSpeed if \
+                        data_per_driver.m_packet_lap_data else None, # NULL is supported
+                },
+                "warns-pens-info" : {
+                    "corner-cutting-warnings" : _getValueOrDefaultValue(data_per_driver.m_corner_cutting_warnings),
+                    "time-penalties" : _getValueOrDefaultValue(data_per_driver.m_time_penalties),
+                    "num-dt" : _getValueOrDefaultValue(data_per_driver.m_num_dt),
+                    "num-sg" : _getValueOrDefaultValue(data_per_driver.m_num_sg),
+                },
+                "tyre-info" : {
+                    "wear-prediction" : data_per_driver.getTyrePredictionsJSONList(self.m_next_pit_stop_window),
+                    "current-wear" : data_per_driver.getCurrentTyreWearJSON(),
+                    "tyre-age": _getValueOrDefaultValue(data_per_driver.m_tyre_age),
+                    "tyre-life-remaining" : _getValueOrDefaultValue(data_per_driver.m_tyre_life_remaining_laps),
+                    "visual-tyre-compound": str(_getValueOrDefaultValue(data_per_driver.m_tyre_vis_compound,
+                                                                        default_value="")),
+                    "actual-tyre-compound": str(_getValueOrDefaultValue(data_per_driver.m_tyre_act_compound,
+                                                                        default_value="")),
+                    "num-pitstops": _getValueOrDefaultValue(data_per_driver.m_num_pitstops),
+                },
+                "damage-info" : {
+                    "fl-wing-damage" : data_per_driver.m_fl_wing_damage, # NULL is supported
+                    "fr-wing-damage" : data_per_driver.m_fr_wing_damage, # NULL is supported
+                    "rear-wing-damage" : data_per_driver.m_rear_wing_damage, # NULL is supported
+                },
 
-                    "fuel-info" : data_per_driver.getFuelStatsJSON(),
-                } for data_per_driver in self.m_final_list
-            ],
-            "fastest-lap-overall" : _getValueOrDefaultValue(self.m_fastest_lap, default_value=0)
-        }
+                "fuel-info" : data_per_driver.getFuelStatsJSON(),
+            } for data_per_driver in self.m_final_list
+        ]
 
     def getCurrentLap(self) -> Optional[int]:
         """Get current lap.
@@ -613,6 +611,7 @@ class DriversListRsp:
                 return
 
             # Update the list data
+            self.m_next_pit_stop_window = TelData._driver_data.m_ideal_pit_stop_window
             if TelData._driver_data.m_fastest_index is not None:
                 self.m_fastest_lap = TelData._driver_data.m_driver_data[
                                         TelData._driver_data.m_fastest_index].m_best_lap_ms
@@ -624,10 +623,6 @@ class DriversListRsp:
 
                 temp_data.m_index = index
                 temp_data.m_is_fastest = (index == TelData._driver_data.m_fastest_index)
-                if temp_data.m_is_player:
-                    temp_data.m_ideal_pit_stop_window = TelData._driver_data.m_ideal_pit_stop_window
-                else:
-                    temp_data.m_ideal_pit_stop_window = None
 
                 # Add this prepped record into the final list
                 self.m_final_list.append(temp_data)

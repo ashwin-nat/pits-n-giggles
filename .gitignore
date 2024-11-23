@@ -9,6 +9,8 @@ launch.json
 *.f1pcap
 *.txt
 *.ini
+*.cpp
+*.exe
 build/*
 dist/*
 png-venv/

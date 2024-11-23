@@ -105,17 +105,7 @@ class FullPCapTests(TestF1PacketCapture):
 
         # Generate a random number of packets to add
         num_packets = random.randint(1, FullPCapTests.max_num_packets)
-
-        for _ in range(num_packets):
-            # Generate random data for the packet with a length up to max_packet_len
-            packet_len = random.randint(1, FullPCapTests.max_packet_len)
-            packet_data = bytes([random.randint(0, 255) for _ in range(packet_len)])
-
-            # Add the packet to the capture object
-            self.capture.add(packet_data)
-
-            # Check if the added packet length is within the specified limit
-            self.assertLessEqual(len(packet_data),FullPCapTests.max_packet_len)
+        self._generate_add_random_packets(num_packets)
 
         # Check if the number of added packets matches the expected number
         self.assertEqual(len(self.capture.m_packet_history), num_packets)
@@ -126,21 +116,41 @@ class FullPCapTests(TestF1PacketCapture):
 
         # Generate a random number of packets to add
         num_packets = random.randint(1, FullPCapTests.max_num_packets)
-
-        for i in range(num_packets):
-            # Generate random data for the packet with a length up to max_packet_len
-            packet_len = random.randint(1, FullPCapTests.max_packet_len)
-            packet_data = bytes([random.randint(0, 255) for _ in range(packet_len)])
-
-            # Add the packet to the capture object
-            self.capture.add(packet_data)
-
-            # Check if the added packet length is within the specified limit
-            self.assertLessEqual(len(packet_data), FullPCapTests.max_packet_len)
-            self.assertEqual(len(packet_data), packet_len)
+        self._generate_add_random_packets(num_packets)
 
         self.assertEqual(num_packets, len(self.capture.m_packet_history))
         self.assertEqual(num_packets, self.capture.m_header.num_packets)
+
+        # Dump to file
+        file_name, _, _ = self.dumpToFileHelper()
+
+        # Ensure that the file has been created
+        self.assertTrue(os.path.exists(file_name))
+
+        # Create a new instance to read from the file
+        loaded_capture = F1PacketCapture()
+        loaded_capture.readFromFile(file_name)
+
+        # Ensure that the number of loaded entries matches the expected count
+        self.assertEqual(len(loaded_capture.m_packet_history), num_packets)
+        self.assertEqual(loaded_capture.m_header.num_packets, num_packets)
+
+    def test_clear_and_reload_with_random_packets(self):
+        """Test generating random packets, writing to a file, and reading back."""
+
+        # Generate a random number of packets to add
+        num_packets = random.randint(1, FullPCapTests.max_num_packets)
+        self._generate_add_random_packets(num_packets)
+
+        self.assertEqual(num_packets, len(self.capture.m_packet_history))
+        self.assertEqual(num_packets, self.capture.m_header.num_packets)
+
+        # Clear the object, then continue with the test
+        self.capture.clear()
+
+        # Generate a random number of packets to add
+        num_packets = random.randint(1, FullPCapTests.max_num_packets)
+        self._generate_add_random_packets(num_packets)
 
         # Dump to file
         file_name, _, _ = self.dumpToFileHelper()
@@ -161,6 +171,25 @@ class FullPCapTests(TestF1PacketCapture):
         for file_name in self.m_created_files:
             if os.path.exists(file_name):
                 os.remove(file_name)
+
+    def _generate_add_random_packets(self, num_packets: int) -> None:
+        """Generate and add random packets to the capture object.
+
+        Args:
+            num_packets (int): The number of packets to generate and add.
+        """
+
+        for _ in range(num_packets):
+            # Generate random data for the packet with a length up to max_packet_len
+            packet_len = random.randint(1, FullPCapTests.max_packet_len)
+            packet_data = bytes([random.randint(0, 255) for _ in range(packet_len)])
+
+            # Add the packet to the capture object
+            self.capture.add(packet_data)
+
+            # Check if the added packet length is within the specified limit
+            self.assertLessEqual(len(packet_data), FullPCapTests.max_packet_len)
+            self.assertEqual(len(packet_data), packet_len)
 
 class TestF1PacketCaptureHeader(TestF1PacketCapture):
     def test_to_bytes_and_from_bytes(self):

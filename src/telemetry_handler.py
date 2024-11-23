@@ -425,6 +425,8 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
                 event_str + getTimestampStr() + '.json'
         writeDictToJsonFile(final_json, final_json_file_name)
         png_logger.info("Wrote race info to %s", final_json_file_name)
+    else:
+        png_logger.debug("Not saving post race data")
 
 def clearAllDataStructures() -> None:
     """

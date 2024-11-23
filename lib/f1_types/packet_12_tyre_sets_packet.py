@@ -262,7 +262,7 @@ class PacketTyreSetsData:
                 full_tyre_set_data_raw, TyreSetData.PACKET_LEN
             )
         )
-        self.m_fittedIdx = struct.unpack("<B", data[(1 + tyre_set_data_full_len):])[0]
+        self.m_fittedIdx: int = struct.unpack("<B", data[(1 + tyre_set_data_full_len):])[0]
 
     def __str__(self) -> str:
         """

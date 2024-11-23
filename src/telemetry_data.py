@@ -566,6 +566,9 @@ class DataPerDriver:
                     "desc" : "Insufficient data for extrapolation"
                 }
 
+        # Insert the lap time history against tyre used
+        final_json["lap-time-history"] = self._getLapTimeHistoryJSON() # can be None, handled in frontend
+
         # Return this fully prepped JSON
         return final_json
 
@@ -686,6 +689,68 @@ class DataPerDriver:
                 png_logger.debug('per lap snapshot not available for lap %d driver %s', lap_number, self.m_name)
         return tyre_wear_history
 
+    def _getLapTimeHistoryJSON(self) -> Dict[str, Any]:
+        """Get the lap time history in JSON format
+
+        Returns:
+            JSON object: JSON object containing the lap time history and tyre info for each lap
+        """
+
+        if self.m_packet_session_history:
+            per_lap_tyre_info = self._getPerLapTyreInfoJSON()
+            lap_history_data = []
+            for index, entry in enumerate(self.m_packet_session_history.m_lapHistoryData):
+                # Get tyre set history at start of lap (i.e.) end of previous lap
+                lap_number = index # Use index since it is lap_number - 1
+                # Find the tyre set at the specified lap
+                tyre_set_info = next((obj for obj in per_lap_tyre_info if obj.get("lap-number") == lap_number), None)
+                lap_history_data.append({
+                    "lap-time-in-ms": entry.m_lapTimeInMS,
+                    "lap-time-str": F1Utils.millisecondsToMinutesSecondsMilliseconds(entry.m_lapTimeInMS),
+                    "sector-1-time-in-ms": entry.m_sector1TimeInMS,
+                    "sector-1-time-minutes": entry.m_sector1TimeMinutes,
+                    "sector-1-time-str" : F1Utils.getLapTimeStrSplit(entry.m_sector1TimeMinutes,
+                        entry.m_sector1TimeInMS),
+                    "sector-2-time-in-ms": entry.m_sector2TimeInMS,
+                    "sector-2-time-minutes": entry.m_sector2TimeMinutes,
+                    "sector-2-time-str": F1Utils.getLapTimeStrSplit(entry.m_sector2TimeMinutes,
+                        entry.m_sector2TimeInMS),
+                    "sector-3-time-in-ms": entry.m_sector3TimeInMS,
+                    "sector-3-time-minutes": entry.m_sector3TimeMinutes,
+                    "sector-3-time-str": F1Utils.getLapTimeStrSplit(entry.m_sector3TimeMinutes,
+                        entry.m_sector3TimeInMS),
+                    "lap-valid-bit-flags": entry.m_lapValidBitFlags,
+                    "tyre-set-info" : tyre_set_info,
+                })
+            ret = {
+                "best-lap-time-lap-num" : self.m_packet_session_history.m_bestLapTimeLapNum,
+                "best-sector-1-lap-num" : self.m_packet_session_history.m_bestSector1LapNum,
+                "best-sector-2-lap-num" : self.m_packet_session_history.m_bestSector2LapNum,
+                "best-sector-3-lap-num" : self.m_packet_session_history.m_bestSector3LapNum,
+                "lap-history-data" : lap_history_data,
+            }
+            return ret
+        else:
+            return None
+
+    def _getPerLapTyreInfoJSON(self) -> List[Dict[str, Any]]:
+        """Get the per lap tyre info in JSON format
+
+        Returns:
+            JSON list: JSON list containing multiple JSON objects, each representing one lap time, in order.
+        """
+        ret = []
+        for tyre_set_meta_data in self.m_tyre_set_history:
+            for tyre_wear in tyre_set_meta_data.m_tyre_wear_history:
+                tyre_set_data = self.m_per_lap_snapshots[tyre_wear.lap_number] \
+                    .m_tyre_sets_packet.m_tyreSetData[tyre_set_meta_data.m_fitted_index] \
+                            if tyre_wear.lap_number in self.m_per_lap_snapshots else None
+                ret.append({
+                    'tyre-wear' : tyre_wear.toJSON(),
+                    'lap-number' : tyre_wear.lap_number,
+                    'tyre-set' : tyre_set_data.toJSON() if tyre_set_data else None,
+                })
+        return ret
     def onLapChange(self,
         old_lap_number: int) -> None:
         """
@@ -1095,6 +1160,7 @@ class DataPerDriver:
         self.m_packet_lap_data = lap_data
 
 class DriverData:
+
     """
     Class that models the data for multiple race drivers.
 

@@ -46,6 +46,9 @@ SOFTWARE.
             /* Gold text */
             position: relative;
         }
+        p {
+            margin: 0;
+        }
 
         .top-section {
             display: flex;
@@ -579,6 +582,41 @@ SOFTWARE.
             return playerPosition;
         }
 
+        function getTyreCompoundStr(visualTyreCompound, actualTyreCompound) {
+
+            if (visualTyreCompound == "Inters" || visualTyreCompound == "Wet") {
+                return visualTyreCompound;
+            } else {
+                return actualTyreCompound + " - " + visualTyreCompound;
+            }
+        }
+
+        function getMaxTyreWear(wearData) {
+            const relevantKeys = {
+                "front-left-wear": "FL",
+                "front-right-wear": "FR",
+                "rear-left-wear": "RL",
+                "rear-right-wear": "RR"
+            };
+
+            let maxKey = null;
+            let maxValue = -Infinity;
+
+            // Iterate only through relevant keys
+            for (const key in relevantKeys) {
+                if (key in wearData && wearData[key] > maxValue) {
+                    maxValue = wearData[key];
+                    maxKey = key;
+                }
+            }
+
+            // Return the result as a JSON object with max-key shortened and max-wear
+            return {
+                "max-key": relevantKeys[maxKey],  // Use the shortened version
+                "max-wear": maxValue
+            };
+        }
+
         function getRelevantRaceTableRows(data) {
 
             if (data["table-entries"].length == 0) {
@@ -650,32 +688,6 @@ SOFTWARE.
                 } else {
                     return name;
                 }
-            }
-
-            function getMaxTyreWear(wearData) {
-                const relevantKeys = {
-                    "front-left-wear": "FL",
-                    "front-right-wear": "FR",
-                    "rear-left-wear": "RL",
-                    "rear-right-wear": "RR"
-                };
-
-                let maxKey = null;
-                let maxValue = -Infinity;
-
-                // Iterate only through relevant keys
-                for (const key in relevantKeys) {
-                    if (key in wearData && wearData[key] > maxValue) {
-                        maxValue = wearData[key];
-                        maxKey = key;
-                    }
-                }
-
-                // Return the result as a JSON object with max-key shortened and max-wear
-                return {
-                    "max-key": relevantKeys[maxKey],  // Use the shortened version
-                    "max-wear": maxValue
-                };
             }
 
             function addPositionInfo(row, driverInfo) {
@@ -795,15 +807,6 @@ SOFTWARE.
 
             function addCurrTyreInfo(row, tyreInfoData) {
 
-                function getTyreCompoundStr(visualTyreCompound, actualTyreCompound) {
-
-                    if (visualTyreCompound == "Inters" || visualTyreCompound == "Wet") {
-                        return visualTyreCompound;
-                    } else {
-                        return actualTyreCompound + " - " + visualTyreCompound;
-                    }
-                }
-
                 const tyreInfoCell = row.insertCell();
                 const currTyreWearData = tyreInfoData["current-wear"];
                 let tyreWearText = "";
@@ -838,12 +841,12 @@ SOFTWARE.
                         predictionData.forEach((prediction, index) => {
                             const lapNum = prediction["lap-number"];
                             if (tyreWearAverageFormat) {
-                                predictionHTML += "L" + lapNum + ": " + formatFloatWithTwoDecimals(prediction["average"]) + "%<br>";
+                                predictionHTML += "<p>L" + lapNum + ": " + formatFloatWithTwoDecimals(prediction["average"]) + "%</p>";
                             } else {
                                 const maxWearInfo = getMaxTyreWear(prediction);
                                 const maxWear = formatFloatWithTwoDecimals(maxWearInfo["max-wear"]);
                                 const maxKey = maxWearInfo["max-key"];
-                                predictionHTML += "L" + lapNum + ": " + maxKey + " - " + maxWear + "%<br>";
+                                predictionHTML += "<p>L" + lapNum + ": " + maxKey + " - " + maxWear + "%</p>";
                             }
                         });
                     }
@@ -1825,6 +1828,7 @@ SOFTWARE.
 
             function getLapHistoryContent(data) {
 
+                const newStyle = ("lap-time-history" in data);
                 const lapHistoryContent = document.createElement('div');
                 const lapHistorySubDiv = document.createElement('div');
                 const lapHistoryTable = document.createElement('table');
@@ -1833,13 +1837,25 @@ SOFTWARE.
 
                 const lapHistoryHeader = lapHistoryTable.createTHead();
                 const headerRow = lapHistoryHeader.insertRow();
-                headerRow.innerHTML = `
-                    <th>Lap</th>
-                    <th>S1 Time</th>
-                    <th>S2 Time</th>
-                    <th>S3 Time</th>
-                    <th>Total Time</th>
-                `;
+                if (newStyle) {
+                    headerRow.innerHTML = `
+                        <th>Lap</th>
+                        <th>S1 Time</th>
+                        <th>S2 Time</th>
+                        <th>S3 Time</th>
+                        <th>Lap Time</th>
+                        <th>Tyre</th>
+                        <th>Wear</th>
+                    `;
+                } else {
+                    headerRow.innerHTML = `
+                        <th>Lap</th>
+                        <th>S1 Time</th>
+                        <th>S2 Time</th>
+                        <th>S3 Time</th>
+                        <th>Total Time</th>
+                    `;
+                }
 
                 const lapHistoryBody = lapHistoryTable.createTBody();
                 // Data arrays for plotting graph
@@ -1847,12 +1863,29 @@ SOFTWARE.
                 let graphDataS2 = [];
                 let graphDataS3 = [];
                 let graphDataTotal = [];
-                if ("session-history" in data && data["session-history"] != null) {
-                    const lapHistoryData = data["session-history"]["lap-history-data"];
-                    const bestLapNum = data["session-history"]["best-lap-time-lap-num"];
-                    const bestSector1Num = data["session-history"]["best-sector-1-lap-num"];
-                    const bestSector2Num = data["session-history"]["best-sector-2-lap-num"];
-                    const bestSector3Num = data["session-history"]["best-sector-3-lap-num"];
+
+                if ((newStyle in data && data["lap-time-history"] != null) ||
+                    ("session-history" in data && data["session-history"] != null)) {
+                    let lapHistoryData;
+                    let bestLapNum;
+                    let bestSector1Num;
+                    let bestSector2Num;
+                    let bestSector3Num;
+
+                    if (newStyle) {
+                        lapHistoryData = data["lap-time-history"]["lap-history-data"];
+                        bestLapNum = data["lap-time-history"]["best-lap-time-lap-num"];
+                        bestSector1Num = data["lap-time-history"]["best-sector-1-lap-num"];
+                        bestSector2Num = data["lap-time-history"]["best-sector-2-lap-num"];
+                        bestSector3Num = data["lap-time-history"]["best-sector-3-lap-num"];
+                    } else {
+                        lapHistoryData = data["session-history"]["lap-history-data"];
+                        bestLapNum = data["session-history"]["best-lap-time-lap-num"];
+                        bestSector1Num = data["session-history"]["best-sector-1-lap-num"];
+                        bestSector2Num = data["session-history"]["best-sector-2-lap-num"];
+                        bestSector3Num = data["session-history"]["best-sector-3-lap-num"];
+                    }
+
 
                     lapHistoryData.forEach((lap, index) => {
                         const row = lapHistoryBody.insertRow();
@@ -1865,13 +1898,38 @@ SOFTWARE.
                             return;
                         }
 
-                        row.innerHTML = `
-                            <td>${currentLapNum}</td>
-                            <td>${lap["sector-1-time-str"]}</td>
-                            <td>${lap["sector-2-time-str"]}</td>
-                            <td>${lap["sector-3-time-str"]}</td>
-                            <td>${lap["lap-time-str"]}</td>
-                        `;
+                        if (newStyle) {
+                            let tyreCompound = "N/A";
+                            let tyreWear = "N/A";
+                            if ("tyre-set-info" in lap) {
+                                tyreCompound = getTyreCompoundStr(lap["tyre-set-info"]["tyre-set"]["visual-tyre-compound"],
+                                    lap["tyre-set-info"]["tyre-set"]["actual-tyre-compound"]);
+                                if (tyreWearAverageFormat) {
+                                    tyreWear = lap["tyre-set-info"]["tyre-wear"]["average"];
+                                } else {
+                                    const maxTyreWearData = getMaxTyreWear(currTyreWearData);
+                                    tyreWear = formatFloatWithTwoDecimals(maxTyreWearData["max-wear"]) + "%";
+                                }
+                            }
+
+                            row.innerHTML = `
+                                <td>${currentLapNum}</td>
+                                <td>${lap["sector-1-time-str"]}</td>
+                                <td>${lap["sector-2-time-str"]}</td>
+                                <td>${lap["sector-3-time-str"]}</td>
+                                <td>${lap["lap-time-str"]}</td>
+                                <td>${tyreCompound}</td>
+                                <td>${tyreWear}</td>
+                            `;
+                        } else {
+                            row.innerHTML = `
+                                <td>${currentLapNum}</td>
+                                <td>${lap["sector-1-time-str"]}</td>
+                                <td>${lap["sector-2-time-str"]}</td>
+                                <td>${lap["sector-3-time-str"]}</td>
+                                <td>${lap["lap-time-str"]}</td>
+                            `;
+                        }
 
                         // Check and mark green for best sector 1
                         const greenSectorColor = '#32F129';
@@ -1916,7 +1974,11 @@ SOFTWARE.
                     });
                 } else {
                     const row = lapHistoryBody.insertRow();
-                    row.innerHTML = '<td colspan="5">Lap History data not available</td>';
+                    if (newStyle) {
+                        row.innerHTML = '<td colspan="7">Lap History data not available</td>';
+                    } else {
+                        row.innerHTML = '<td colspan="5">Lap History data not available</td>';
+                    }
                 }
 
                 if (graphDataTotal.length > 0) {
@@ -1955,7 +2017,7 @@ SOFTWARE.
                     plotGraph(graphCanvas, datasets, 'Lap number', 'Time', formatAsLapTime, limits);
                     lapHistorySubDiv.appendChild(graphDiv);
                 }
-                lapHistoryContent.appendChild(createAccordion('Lap History', lapHistorySubDiv));
+                lapHistoryContent.appendChild(createAccordion('Lap Time History', lapHistorySubDiv));
                 return lapHistoryContent;
             }
 
