@@ -304,6 +304,8 @@ def getDriverInfoJsonByIndex(index):
         final_json["car-damage"] = driver_data["car-damage"]
         final_json["car-status"] = driver_data["car-status"]
         final_json["session-history"] = driver_data["session-history"]
+        if "lap-time-history" in driver_data:
+            final_json["lap-time-history"] = driver_data["lap-time-history"]
         final_json["final-classification"] = driver_data["final-classification"]
         final_json["lap-data"] = driver_data["lap-data"]
 

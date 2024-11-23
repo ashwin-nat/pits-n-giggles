@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 app_name = 'pits_n_giggles'
-app_ver = '1.1.0'
+app_ver = '1.2.0'
 
 # Helper function to join paths correctly
 def get_data_paths_main_app():
