@@ -57,7 +57,6 @@ class RaceInfoRsp:
 
         """
 
-        # self.m_driver_data, self.m_fastest_lap_overall = TelData.getDriverData(num_adjacent_cars)
         self.m_globals = TelData.getGlobals()
         track_length = self.m_globals.m_packet_session.m_trackLength if self.m_globals.m_packet_session else None
         self.m_driver_list_rsp = DriversListRsp(self.m_globals.m_is_spectating, track_length)
@@ -66,7 +65,7 @@ class RaceInfoRsp:
             self.m_globals.m_weather_forecast_samples = []
 
     def toJSON(self) -> Dict[str, Any]:
-        """Get the JSON response for the given num_adjacent_cars
+        """Get the JSON update for the current race
 
         Returns:
             Dict[str, Any]: JSON response.

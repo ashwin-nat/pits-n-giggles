@@ -332,6 +332,18 @@ SOFTWARE.
             border-radius: 5px;
         }
 
+        .num-adjacent-cars-input {
+            width: 50px;
+            height: 100%;
+            padding: 8px;
+            font-family: 'Roboto', sans-serif;
+            font-size: 20px;
+            color: #fdd835;
+            background-color: #2e2e2e;
+            border: 1px solid #fdd835;
+            border-radius: 5px;
+        }
+
         /* Apply button styling */
         .apply-button {
             margin-top: 15px;
@@ -459,6 +471,7 @@ SOFTWARE.
         let awaitingResponse;
         let timeoutIntervalId;
         let timeoutIntervalMs = 3000;
+        let numAdjacentCars;
 
         // Check if delta column needs to be displayed
         const shouldHideDeltaColumn = {{ live_data_mode | tojson | safe }};
@@ -628,7 +641,6 @@ SOFTWARE.
             if (data["is-spectating"] || data["race-ended"]) {
                 return data["table-entries"];
             }
-            const numAdjacentCars = {{ num_adjacent_cars }};
             const totalCars = data["table-entries"].length;
             const playerPosition = getPlayerPosition(data);
             relevantPositions = getAdjacentPositions(playerPosition, totalCars, numAdjacentCars);
@@ -1215,7 +1227,6 @@ SOFTWARE.
                 function plotGraphPositionHistory(canvas, datasets, xAxisLabel, yAxisLabel) {
                     var xData = datasets[0].data.map(entry => entry.x);
                     var ctx = canvas.getContext('2d');
-                    console.log(datasets);
 
                     // Define default colors to cycle through if no custom color is provided
                     const defaultColors = [
@@ -2722,6 +2733,13 @@ SOFTWARE.
                 </td>
             `;
 
+            // Tyre Wear Format
+            let numAdjacentCarsRow = settingsBody.insertRow();
+            numAdjacentCarsRow.innerHTML = `
+                <td>Number of adjacent cars</td>
+                <td><input type="number" class="num-adjacent-cars-input" id="numAdjacentCars" min="0" max="22" value="${numAdjacentCars}"></td>
+            `;
+
             // Append the table to the settingsDiv
             settingsDiv.appendChild(settingsTable);
 
@@ -2730,14 +2748,27 @@ SOFTWARE.
             applyButton.innerText = 'Apply';
             applyButton.classList.add('apply-button');
             applyButton.onclick = function() {
+
+                // Validate numAdjacentCars input
+                const numInput = document.getElementById('numAdjacentCars');
+                const min = parseInt(numInput.min, 10);
+                const max = parseInt(numInput.max, 10);
+                const numAdjacentCars_temp = parseInt(numInput.value, 10);
+
+                if (isNaN(numAdjacentCars) || numAdjacentCars < min || numAdjacentCars > max) {
+                    showToast(`Please enter a valid number between ${min} and ${max}.`);
+                    return; // Exit without saving anything
+                }
+
                 // Collect and log the selected settings
                 myTeamName = document.getElementById('teamNameInput').value;
                 is24HourFormat = (document.querySelector('input[name="timeFormat"]:checked').value === "24") ? (true) : (false);
                 lastLapAbsoluteFormat = (document.querySelector('input[name="lastLapTimeFormat"]:checked').value === "absolute") ? (true) : (false);
                 bestLapAbsoluteFormat = (document.querySelector('input[name="bestLapTimeFormat"]:checked').value === "absolute") ? (true) : (false);
                 tyreWearAverageFormat = (document.querySelector('input[name="tyreWearFormat"]:checked').value === "average") ? (true) : (false);
+                numAdjacentCars = numAdjacentCars_temp;
 
-                console.log("Settings Applied:", { myTeamName, is24HourFormat, lastLapAbsoluteFormat, bestLapAbsoluteFormat, tyreWearAverageFormat });
+                console.log("Settings Applied:", { myTeamName, is24HourFormat, lastLapAbsoluteFormat, bestLapAbsoluteFormat, tyreWearAverageFormat, numAdjacentCars });
                 showToast("Settings applied and saved!");
                 savePreferences();
             };
@@ -3050,12 +3081,20 @@ SOFTWARE.
                 missingPreference = true;
             }
 
+            numAdjacentCars = localStorage.getItem('numAdjacentCars');
+            if ((numAdjacentCars === null) || (numAdjacentCars === "")) {
+                numAdjacentCars = 2;
+                missingPreference = true;
+            } else {
+                numAdjacentCars = parseInt(numAdjacentCars, 10); // localstorage saves everthing as string
+            }
+
             // If any preference was missing, save all current preferences
             if (missingPreference) {
                 savePreferences();
             }
 
-            console.log("Loaded Preferences:", { myTeamName, is24HourFormat, lastLapAbsoluteFormat, bestLapAbsoluteFormat, tyreWearAverageFormat, relativeDelta });
+            console.log("Loaded Preferences:", { myTeamName, is24HourFormat, lastLapAbsoluteFormat, bestLapAbsoluteFormat, tyreWearAverageFormat, relativeDelta, numAdjacentCars });
         }
 
         function savePreferences() {
@@ -3065,8 +3104,9 @@ SOFTWARE.
             localStorage.setItem('bestLapAbsoluteFormat', bestLapAbsoluteFormat);
             localStorage.setItem('tyreWearAverageFormat', tyreWearAverageFormat);
             localStorage.setItem('myTeamName', myTeamName);
+            localStorage.setItem('numAdjacentCars', numAdjacentCars);
 
-            console.log("Saved Preferences:", { myTeamName, is24HourFormat, lastLapAbsoluteFormat, bestLapAbsoluteFormat, tyreWearAverageFormat, relativeDelta });
+            console.log("Saved Preferences:", { myTeamName, is24HourFormat, lastLapAbsoluteFormat, bestLapAbsoluteFormat, tyreWearAverageFormat, relativeDelta, numAdjacentCars });
         }
 
         function checkSocketIoRequestTimeout(requestName) {
@@ -3102,7 +3142,6 @@ SOFTWARE.
 
         // Receive details from server
         socket.on('race-table-update', function (data) {
-            clearSocketIoRequestTimeout();
             displayData(data);
         });
 

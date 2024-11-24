@@ -401,22 +401,17 @@ def handleRaceInfoRequest() -> Tuple[Dict[str, Any], HTTPStatus]:
 
 class TelemetryWebServer:
     def __init__(self,
-        port: int,
-        num_adjacent_cars: int):
+        port: int):
         """
         Initialize TelemetryServer.
 
         Args:
             port (int): Port number for the server.
-            packet_capture (bool) - True if packet capture is enabled
-            debug_mode (bool): Enable debug mode.
-            num_adjacent_cars (int): The number of cars adjacent to player to be included in telemetry-info response
         """
         self.m_app = Flask(__name__, template_folder='../src/templates')
         self.m_app.config['PROPAGATE_EXCEPTIONS'] = True
         self.m_app.config["EXPLAIN_TEMPLATE_LOADING"] = True
         self.m_port = port
-        self.m_num_adjacent_cars = num_adjacent_cars
         self.m_socketio = SocketIO(
             app=self.m_app,
             async_mode="gevent",
@@ -445,8 +440,7 @@ class TelemetryWebServer:
             return render_template('index.html',
                 packet_capture_enabled=False,
                 player_only_telemetry=False,
-                live_data_mode=False,
-                num_adjacent_cars=22)
+                live_data_mode=False)
 
         # Define your endpoint
         @self.m_app.route('/telemetry-info')
@@ -821,8 +815,7 @@ def main():
     print("Starting server. It can be accessed at http://localhost:" + str(port_number))
     global _server
     _server = TelemetryWebServer(
-        port=port_number,
-        num_adjacent_cars=20)
+        port=port_number)
     _server.run()
 
 if __name__ == "__main__":

@@ -65,7 +65,6 @@ class Config:
     packet_capture_mode: PacketCaptureMode
     post_race_data_autosave: bool
     refresh_interval: int
-    num_adjacent_cars: int
     disable_browser_autoload: bool
     log_file: str
     log_file_size: int
@@ -92,7 +91,6 @@ _default_config = {
     },
     'Display': {
         'refresh_interval': 200,  # Integer
-        'num_adjacent_cars': 2,   # Integer
         'disable_browser_autoload': False,  # Boolean
     },
     'Logging': {
@@ -205,7 +203,6 @@ def load_config(config_file: str = "config.ini") -> Config:
         post_race_data_autosave=get_value_bool("Capture", "post_race_data_autosave"),
 
         refresh_interval=get_value_int("Display", "refresh_interval"),
-        num_adjacent_cars=get_value_int("Display", "num_adjacent_cars"),
         disable_browser_autoload=get_value_bool("Display", "disable_browser_autoload"),
 
         log_file=get_value_str("Logging", "log_file"),

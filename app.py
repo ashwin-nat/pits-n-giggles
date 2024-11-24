@@ -88,8 +88,7 @@ def httpServerTask(
         http_port: int,
         packet_capture_enabled: bool,
         client_update_interval_ms: int,
-        disable_browser_autoload: bool,
-        num_adjacent_cars: int) -> None:
+        disable_browser_autoload: bool) -> None:
     """Entry point to start the HTTP server.
 
     Args:
@@ -97,7 +96,6 @@ def httpServerTask(
         packet_capture_enabled (bool): Whether packet capture is enabled.
         client_update_interval_ms (int): Client poll interval in milliseconds.
         disable_browser_autoload (bool): Whether to disable browser autoload.
-        num_adjacent_cars (int): The number of cars adjacent to player to be included in telemetry-info response
     """
     # Create a thread to open the webpage
     if not disable_browser_autoload:
@@ -116,8 +114,7 @@ def httpServerTask(
         port=http_port,
         packet_capture_enabled=packet_capture_enabled,
         client_update_interval_ms=client_update_interval_ms,
-        debug_mode=False,
-        num_adjacent_cars=num_adjacent_cars
+        debug_mode=False
     )
 
 def f1TelemetryServerTask(
@@ -151,9 +148,6 @@ def main() -> None:
     config = load_config(args.config_file)
 
     png_logger = initLogger(file_name=config.log_file, max_size=config.log_file_size, debug_mode=args.debug)
-    if config.num_adjacent_cars < 0:
-        png_logger.error("--num-adjacent-cars cannot be negative")
-        sys.exit(1)
     png_logger.info("Starting the app with the following options:")
     png_logger.info(config)
 
@@ -171,7 +165,7 @@ def main() -> None:
     packet_capture_enabled = \
         config.packet_capture_mode in [PacketCaptureMode.ENABLED, PacketCaptureMode.ENABLED_WITH_AUTOSAVE]
     httpServerTask(config.server_port, packet_capture_enabled, config.refresh_interval,
-                   config.disable_browser_autoload, config.num_adjacent_cars)
+                   config.disable_browser_autoload)
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 

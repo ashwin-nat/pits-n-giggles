@@ -49,7 +49,6 @@ class TelemetryWebServer:
         packet_capture_enabled: bool,
         client_update_interval_ms: int,
         debug_mode: bool,
-        num_adjacent_cars: int,
         socketio_tasks: List[Tuple[Callable, Any]]):
         """
         Initialize TelemetryServer.
@@ -59,7 +58,6 @@ class TelemetryWebServer:
             packet_capture (bool) - True if packet capture is enabled
             client_update_interval_ms (int) - The interval at which the client should be updated with new data
             debug_mode (bool): Enable debug mode.
-            num_adjacent_cars (int): The number of cars adjacent to player to be included in telemetry-info response
             socketio_tasks (List[Tuple[Callable, Any]]): List of tasks to be executed by the SocketIO server
         """
 
@@ -69,7 +67,6 @@ class TelemetryWebServer:
         self.m_debug_mode = debug_mode
         self.m_packet_capture_enabled = packet_capture_enabled
         self.m_client_update_interval_ms = client_update_interval_ms
-        self.m_num_adjacent_cars = num_adjacent_cars
         self.m_socketio = SocketIO(
             app=self.m_app,
             async_mode="gevent",
@@ -161,7 +158,6 @@ class TelemetryWebServer:
             return render_template('index.html',
                 packet_capture_enabled=self.m_packet_capture_enabled,
                 client_poll_interval_ms=0, # deprecated since we've moved to socketio
-                num_adjacent_cars=self.m_num_adjacent_cars,
                 live_data_mode=True)
 
         # Render the HTML page
@@ -189,7 +185,6 @@ class TelemetryWebServer:
             return render_template('index.html',
                 packet_capture_enabled=self.m_packet_capture_enabled,
                 client_poll_interval_ms=0, # deprecated since we've moved to socketio
-                num_adjacent_cars=22,
                 live_data_mode=True)
 
         # Socketio endpoints
@@ -301,8 +296,7 @@ def initTelemetryWebServer(
     port: int,
     packet_capture_enabled: bool,
     client_update_interval_ms: int,
-    debug_mode: bool,
-    num_adjacent_cars: int) -> None:
+    debug_mode: bool) -> None:
     """Initialize the web server
 
     Args:
@@ -310,7 +304,6 @@ def initTelemetryWebServer(
         packet_capture_enabled (bool): Should enable packet capture
         client_update_interval_ms (int): How often the client will be updated with new info
         debug_mode (bool): Debug enabled if true
-        num_adjacent_cars (int): Number of adjacent cars to be displayed in the telemetry table
     """
 
     global _web_server
@@ -319,7 +312,6 @@ def initTelemetryWebServer(
         packet_capture_enabled=packet_capture_enabled,
         client_update_interval_ms=client_update_interval_ms,
         debug_mode=debug_mode,
-        num_adjacent_cars=num_adjacent_cars,
         socketio_tasks=[
             (raceTableClientUpdaterTask, client_update_interval_ms),
             (playerTelemetryOverlayUpdaterTask, 60),
