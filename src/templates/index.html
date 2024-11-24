@@ -456,6 +456,9 @@ SOFTWARE.
         let bestLapAbsoluteFormat;
         let tyreWearAverageFormat;
         let myTeamName;
+        let awaitingResponse;
+        let timeoutIntervalId;
+        let timeoutIntervalMs = 3000;
 
         // Check if delta column needs to be displayed
         const shouldHideDeltaColumn = {{ live_data_mode | tojson | safe }};
@@ -644,17 +647,6 @@ SOFTWARE.
                 data["current-lap"], data["total-laps"], data["safety-car-status"], data["fastest-lap-overall"],
                 data["pit-speed-limit"], data["session-time-left"], {{ packet_capture_enabled | tojson }});
             updateWeatherTable(data["weather-forecast-samples"]);
-        }
-
-        function fetchDataAndDisplay() {
-            fetch("telemetry-info")
-                .then(response => response.json())
-                .then(data => {
-                    displayData(data);
-                })
-                .catch (error => {
-                    console.error('Error fetching data:', error);
-                });
         }
 
         function updateWeatherTable(weatherData) {
@@ -953,19 +945,9 @@ SOFTWARE.
         }
 
         function handleDriverInfoClick(index) {
-
-            if ({{ live_data_mode | tojson | safe }}) {
-                socket.emit('driver-info', {index: index});
-            } else {
-                fetch(`/driver-info?index=${index}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        openDriverInfoModal(data);
-                    })
-                    .catch(error => {
-                        console.error('Error fetching driver info:', error);
-                    });
-            }
+            socket.emit('driver-info', {index: index});
+            awaitingResponse = true;
+            timeoutIntervalId = setInterval(() => checkSocketIoRequestTimeout("driver-info"), timeoutIntervalMs);
         }
 
         function createAccordion(title, content) {
@@ -2939,18 +2921,9 @@ SOFTWARE.
         });
 
         document.getElementById("getRaceInfo").addEventListener("click", function () {
-            if ({{ live_data_mode | tojson | safe }}) {
-                socket.emit('race-info', {'message' : 'dummy'});
-            } else {
-                fetch(`/race-info`)
-                    .then(response => response.json())
-                    .then(data => {
-                        openRaceInfoModal(data);
-                    })
-                    .catch(error => {
-                        console.error('Error fetching race info:', error);
-                    });
-            }
+            socket.emit('race-info', {'message' : 'dummy'});
+            awaitingResponse = true;
+            timeoutIntervalId = setInterval(() => checkSocketIoRequestTimeout("race-info"), timeoutIntervalMs);
         });
 
         document.getElementById("settingsButton").addEventListener("click", function () {
@@ -3014,13 +2987,6 @@ SOFTWARE.
         document.getElementById('bestLapLink').addEventListener('click', toggleBestLapFormat);
         document.getElementById('tyreInfoLink').addEventListener('click', toggleTyreWearFormat);
         document.getElementById('wearPredictionLink').addEventListener('click', toggleTyreWearFormat);
-
-        // Fetch data at intervals specified from jinja
-        if (!{{ live_data_mode | tojson | safe }}) {
-            setInterval(fetchDataAndDisplay, {{ client_poll_interval_ms | tojson | safe }});
-            // Initial fetch and display
-            fetchDataAndDisplay();
-        }
 
         // Update local time every second
         setInterval(updateLocalTime, 1000);
@@ -3103,6 +3069,18 @@ SOFTWARE.
             console.log("Saved Preferences:", { myTeamName, is24HourFormat, lastLapAbsoluteFormat, bestLapAbsoluteFormat, tyreWearAverageFormat, relativeDelta });
         }
 
+        function checkSocketIoRequestTimeout(requestName) {
+            if (awaitingResponse) {
+                showToast("Timed out awaiting response for " + requestName);
+                awaitingResponse = false;
+            }
+        }
+
+        function clearSocketIoRequestTimeout() {
+            awaitingResponse = false;
+            clearInterval(timeoutIntervalId);
+        }
+
         // Load preferences on page load
         window.onload = function() {
             loadPreferences();
@@ -3124,10 +3102,12 @@ SOFTWARE.
 
         // Receive details from server
         socket.on('race-table-update', function (data) {
+            clearSocketIoRequestTimeout();
             displayData(data);
         });
 
         socket.on('race-info-response', function (data) {
+            clearSocketIoRequestTimeout();
             if (!('error' in data)) {
                 openRaceInfoModal(data);
             } else {
@@ -3136,10 +3116,12 @@ SOFTWARE.
         });
 
         socket.on('driver-info-response', function (data) {
+            clearSocketIoRequestTimeout();
             if (!('error' in data)) {
                 openDriverInfoModal(data);
             } else {
                 console.log("Received error for driver-info request", data);
+                showToast("Received error for driver info request");
             }
         });
 

@@ -21,7 +21,7 @@
 # SOFTWARE.
 # pylint: skip-file
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Set, Tuple, Optional
 from http import HTTPStatus
 import logging
 import json
@@ -30,10 +30,11 @@ import sys
 import os
 import tkinter as tk
 from tkinter import filedialog
-import subprocess
 import time
 import webbrowser
 import socket
+# pylint: disable=unused-import
+from engineio.async_drivers import gevent
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -42,13 +43,22 @@ from lib.f1_types import F1Utils, LapData, ResultStatus
 import lib.race_analyzer as RaceAnalyzer
 import lib.overtake_analyzer as OvertakeAnalyzer
 from lib.tyre_wear_extrapolator import TyreWearPerLap
-from flask import Flask, render_template, request, jsonify
-from flask_cors import CORS
+from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask_socketio import SocketIO, emit
 
 g_json_data = {}
 g_json_path = ''
 g_json_lock = Lock()
 ui_initialized = False  # Flag to track if UI has been initialized
+_race_table_clients : Set[str] = set()
+_player_overlay_clients : Set[str] = set()
+_server: Optional["TelemetryWebServer"] = None
+
+def sendRaceTable():
+
+    if len(_race_table_clients) > 0:
+        _server.m_socketio.emit('race-table-update', getTelemetryInfo())
+        print("Sending race table update")
 
 def _getPenaltyString(penalties_sec: int, num_dt: int, num_sg: int) -> str:
     """Computes and returns a printable string capturing all penalties
@@ -149,7 +159,7 @@ def getTelemetryInfo():
                 "circuit": "---",
                 "current-lap": "---",
                 "event-type": "---",
-                "fastest-lap-overall": "---",
+                "fastest-lap-overall": 0,
                 "pit-speed-limit": "---",
                 "race-ended": False,
                 "safety-car-status": "",
@@ -327,12 +337,71 @@ def getDriverInfoJsonByIndex(index):
         # Return this fully prepped JSON
         return final_json
 
+def handleDriverInfoRequest(index: str, is_str_input: bool=True) -> Tuple[Dict[str, Any], HTTPStatus]:
+
+    # Check if only one parameter is provided
+    if is_str_input:
+        if not index:
+            error_response = {
+                'error': 'Invalid parameters',
+                'message': 'Provide "index" parameter'
+            }
+            return error_response, HTTPStatus.BAD_REQUEST
+
+        # Check if the provided value for index is numeric
+        if not index.isdigit():
+            error_response = {
+                'error': 'Invalid parameter value',
+                'message': '"index" parameter must be numeric'
+            }
+            return error_response, HTTPStatus.BAD_REQUEST
+
+        # Process parameters and generate response
+        index = int(index)
+    else:
+        if index is None:
+            return {
+                'error': 'Invalid parameters',
+                'message': f'Provide index parameter'
+            }
+
+        # Check if the provided value for index is numeric
+        if not isinstance(index, int) and not index.isdigit():
+            return {
+                'error': 'Invalid parameter value',
+                'message': 'index parameter must be numeric'
+            }
+
+    driver_info = getDriverInfoJsonByIndex(index)
+    if driver_info:
+        return driver_info, HTTPStatus.OK
+    else:
+        error_response = {
+            'error' : 'Invalid parameter value',
+            'message' : 'Invalid index'
+        }
+        return error_response, HTTPStatus.BAD_REQUEST
+
+def handleRaceInfoRequest() -> Tuple[Dict[str, Any], HTTPStatus]:
+
+    with g_json_lock:
+        global g_json_data
+        global g_json_path
+
+        if not g_json_data:
+            return {}, HTTPStatus.OK
+
+        return {
+            "records" : g_json_data.get("records", None),
+            "classification-data" : g_json_data.get("classification-data", None),
+            "overtakes" : g_json_data.get("overtakes", None),
+            "custom-markers" : g_json_data.get("custom-markers", []),
+            "position-history" : g_json_data.get("position-history", []),
+        }, HTTPStatus.OK
+
 class TelemetryWebServer:
     def __init__(self,
         port: int,
-        packet_capture_enabled: bool,
-        client_poll_interval_ms: int,
-        debug_mode: bool,
         num_adjacent_cars: int):
         """
         Initialize TelemetryServer.
@@ -340,7 +409,6 @@ class TelemetryWebServer:
         Args:
             port (int): Port number for the server.
             packet_capture (bool) - True if packet capture is enabled
-            client_refresh_interval_ms (int) - The interval at which the client is to poll the server for data
             debug_mode (bool): Enable debug mode.
             num_adjacent_cars (int): The number of cars adjacent to player to be included in telemetry-info response
         """
@@ -348,10 +416,20 @@ class TelemetryWebServer:
         self.m_app.config['PROPAGATE_EXCEPTIONS'] = True
         self.m_app.config["EXPLAIN_TEMPLATE_LOADING"] = True
         self.m_port = port
-        self.m_debug_mode = debug_mode
-        self.m_packet_capture_enabled = packet_capture_enabled
-        self.m_client_poll_interval_ms = client_poll_interval_ms
         self.m_num_adjacent_cars = num_adjacent_cars
+        self.m_socketio = SocketIO(
+            app=self.m_app,
+            async_mode="gevent",
+        )
+
+        @self.m_app.route('/favicon.ico')
+        def favicon():
+            """Return the favicon file
+
+            Returns:
+                file: Favicon file
+            """
+            return send_from_directory('static', 'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
         # Render the HTML page
         @self.m_app.route('/')
@@ -365,8 +443,7 @@ class TelemetryWebServer:
 
             print('received request')
             return render_template('index.html',
-                packet_capture_enabled=self.m_packet_capture_enabled,
-                client_poll_interval_ms=self.m_client_poll_interval_ms,
+                packet_capture_enabled=False,
                 player_only_telemetry=False,
                 live_data_mode=False,
                 num_adjacent_cars=22)
@@ -391,53 +468,56 @@ class TelemetryWebServer:
                 str: JSON response indicating success or failure.
             """
             # Access parameters using request.args
-            index = request.args.get('index')
-
-            # Check if only one parameter is provided
-            if not index:
-                error_response = {
-                    'error': 'Invalid parameters',
-                    'message': 'Provide "index" parameter'
-                }
-                return error_response, HTTPStatus.BAD_REQUEST
-
-            # Check if the provided value for index is numeric
-            if not index.isdigit():
-                error_response = {
-                    'error': 'Invalid parameter value',
-                    'message': '"index" parameter must be numeric'
-                }
-                return jsonify(error_response), HTTPStatus.BAD_REQUEST
-
-            # Process parameters and generate response
-            index = int(index)
-            driver_info = getDriverInfoJsonByIndex(index)
-            if driver_info:
-                return jsonify(driver_info), HTTPStatus.OK
-            else:
-                error_response = {
-                    'error' : 'Invalid parameter value',
-                    'message' : 'Invalid index'
-                }
-                return jsonify(error_response), HTTPStatus.BAD_REQUEST
+            return handleDriverInfoRequest(request.args.get('index'))
 
         @self.m_app.route('/race-info', methods=['GET'])
         def raceInfo() -> Dict[str, Any]:
+            return handleRaceInfoRequest()
 
-            with g_json_lock:
-                global g_json_data
-                global g_json_path
+        # Socketio endpoints
+        @self.m_socketio.on('connect')
+        def handleConnect():
+            """SocketIO endpoint for handling client connection
+            """
+            print("Client connected")
 
-                if not g_json_data:
-                    return {}, HTTPStatus.OK
+        @self.m_socketio.on('disconnect')
+        def handleDisconnect():
+            """SocketIO endpoint for handling client disconnection
+            """
+            print("Client disconnected")
+            _player_overlay_clients.discard(request.sid)
+            _race_table_clients.discard(request.sid)
 
-                return {
-                    "records" : g_json_data.get("records", None),
-                    "classification-data" : g_json_data.get("classification-data", None),
-                    "overtakes" : g_json_data.get("overtakes", None),
-                    "custom-markers" : g_json_data.get("custom-markers", []),
-                    "position-history" : g_json_data.get("position-history", []),
-                }, HTTPStatus.OK
+        @self.m_socketio.on('race-info')
+        # pylint: disable=unused-argument
+        def handeRaceInfo(dummy_arg: Any):
+            """SocketIO endpoint to handle race info request
+            """
+            # TODO
+            emit("race-info-response", handleRaceInfoRequest(), broadcast=False)
+
+        @self.m_socketio.on('driver-info')
+        def handleDriverInfo(data: Dict[str, Any]):
+            """SocketIO endpoint to handle driver info request
+
+            Args:
+                data (Dict[str, Any]): The JSON response. Will contain the key "error" in case of failure
+            """
+            index = data.get("index", None)
+            driver_info, _ = handleDriverInfoRequest(index, is_str_input=False)
+            emit("driver-info-response", driver_info, broadcast=False)
+
+        @self.m_socketio.on('register-client')
+        def handleClientRegistration(data):
+            """SocketIO endpoint to handle client registration
+            """
+            print('Client registered. SID = %s Type = %s', request.sid, data['type'])
+            if data['type'] == 'player-stream-overlay':
+                _player_overlay_clients.add(request.sid)
+            elif data['type'] == 'race-table':
+                _race_table_clients.add(request.sid)
+                sendRaceTable()
 
     def _checkUpdateRecords(self, json_data: Dict[str, Any]) -> bool:
 
@@ -529,15 +609,17 @@ class TelemetryWebServer:
         """
 
         # Disable Werkzeug request logging
-        werkzeug_logger = logging.getLogger('werkzeug')
-        werkzeug_logger.setLevel(logging.ERROR)
+        logging.getLogger('werkzeug').setLevel(logging.ERROR)
+        logging.getLogger('socketio').setLevel(logging.ERROR)
+        logging.getLogger('engineio').setLevel(logging.ERROR)
+        logging.getLogger('gevent').setLevel(logging.ERROR)
+        logging.getLogger('websocket').setLevel(logging.ERROR)
 
-        self.m_app.run(
-            debug=self.m_debug_mode,
+        self.m_socketio.run(
+            app=self.m_app,
+            debug=False,
             port=self.m_port,
-            threaded=False,
-            use_reloader=False,
-            host='0.0.0.0')
+            use_reloader=False)
 
 def checkRecomputeJSON(json_data : Dict[str, Any]) -> bool:
 
@@ -664,6 +746,7 @@ def open_file_helper(file_path):
 
             should_write = False
             should_write |= checkRecomputeJSON(g_json_data)
+        sendRaceTable()
     print("Opened file: " + file_path)
 
 def open_file():
@@ -736,13 +819,11 @@ def main():
 
     # Start Flask server after Tkinter UI is initialized
     print("Starting server. It can be accessed at http://localhost:" + str(port_number))
-    server = TelemetryWebServer(
+    global _server
+    _server = TelemetryWebServer(
         port=port_number,
-        packet_capture_enabled=False,
-        client_poll_interval_ms=5000,
-        debug_mode=True,
         num_adjacent_cars=20)
-    server.run()
+    _server.run()
 
 if __name__ == "__main__":
     main()
