@@ -387,11 +387,11 @@ class VisualTyreCompound(Enum):
         INTER (int): Intermediate tyre compound
         WET (int): Wet tyre compound
         WET_CLASSIC (int): Wet tyre compound (Classic)
-        SUPER_SOFT (int): Super Soft tyre compound (F2 '19)
-        SOFT_F2 (int): Soft tyre compound (F2 '19)
-        MEDIUM_F2 (int): Medium tyre compound (F2 '19)
-        HARD_F2 (int): Hard tyre compound (F2 '19)
-        WET_F2 (int): Wet tyre compound (F2 '19)
+        SUPER_SOFT (int): Super Soft tyre compound
+        SOFT_F2 (int): Soft tyre compound
+        MEDIUM_F2 (int): Medium tyre compound
+        HARD_F2 (int): Hard tyre compound
+        WET_F2 (int): Wet tyre compound
 
         Note:
             Each attribute represents a unique visual tyre compound identified by an integer value.
@@ -423,11 +423,11 @@ class VisualTyreCompound(Enum):
             VisualTyreCompound.INTER: "Inters",
             VisualTyreCompound.WET: "Wet",
             VisualTyreCompound.WET_CLASSIC: "Wet",
-            VisualTyreCompound.SUPER_SOFT: "Super Soft (F2 '19)",
-            VisualTyreCompound.SOFT_F2: "Soft (F2 '19)",
-            VisualTyreCompound.MEDIUM_F2: "Medium (F2 '19)",
-            VisualTyreCompound.HARD_F2: "Hard (F2 '19)",
-            VisualTyreCompound.WET_F2: "Wet (F2 '19)",
+            VisualTyreCompound.SUPER_SOFT: "Super Soft",
+            VisualTyreCompound.SOFT_F2: "Soft",
+            VisualTyreCompound.MEDIUM_F2: "Medium",
+            VisualTyreCompound.HARD_F2: "Hard",
+            VisualTyreCompound.WET_F2: "Wet",
         }[self]
 
     @staticmethod
