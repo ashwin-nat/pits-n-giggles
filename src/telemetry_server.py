@@ -161,6 +161,18 @@ class TelemetryWebServer:
                 live_data_mode=True)
 
         # Render the HTML page
+        @self.m_app.route('/new-ui')
+        def new_ui():
+            """
+            Endpoint for the index page.
+
+            Returns:
+                str: HTML page content.
+            """
+
+            return render_template('new_ui.html')
+
+        # Render the HTML page
         @self.m_app.route('/player-stream-overlay')
         def throttleBrakeOverlay():
             """

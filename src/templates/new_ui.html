@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>F1 Telemetry Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  </head>
+  <body>
+    <div class="dashboard-container">
+      <header class="dashboard-header">
+        <div class="track-info">
+          <h1 class="track-name">SILVERSTONE</h1>
+          <div class="conditions">
+            <div class="condition-item">
+              <i class="bi bi-thermometer-half condition-icon"></i>
+              <span id="track-temp" class="condition-value">28°C</span>
+            </div>
+            <div class="condition-item">
+              <i class="bi bi-wind condition-icon"></i>
+              <span id="air-temp" class="condition-value">24°C</span>
+            </div>
+          </div>
+        </div>
+        <div class="fastest-lap">
+          <span class="fastest-lap-label">FASTEST LAP</span>
+          <span id="fastest-lap" class="fastest-lap-time">1:30.674</span>
+          <span class="fastest-lap-driver">HAM</span>
+        </div>
+        <div class="header-right">
+          <div id="weather-predictions" class="weather-forecast">
+            <!-- Populated by JavaScript -->
+          </div>
+          <button id="settings-btn" class="settings-button">
+            <i class="bi bi-gear-fill"></i>
+          </button>
+        </div>
+      </header>
+
+      <main class="dashboard-main">
+        <div class="telemetry-table-wrapper">
+          <table class="telemetry-table">
+            <thead>
+              <tr>
+                <th>POS</th>
+                <th>DRIVER</th>
+                <th>DELTA</th>
+                <th>LAST LAP</th>
+                <th>BEST LAP</th>
+                <th>COMPOUND</th>
+                <th>AGE</th>
+                <th>WEAR</th>
+                <th>PRED</th>
+                <th>ERS</th>
+                <th>FUEL</th>
+              </tr>
+            </thead>
+            <tbody id="telemetry-data">
+              <!-- Populated by JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+
+    <!-- Driver Details Modal -->
+    <div class="modal fade" id="driverModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"></h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <!-- Populated by JavaScript -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal fade" id="settingsModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Dashboard Settings</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="carsToShow" class="form-label">Number of cars to show (before/after player)</label>
+              <input type="number" class="form-control" id="carsToShow" value="2" min="1" max="5">
+            </div>
+            <div class="mb-3">
+              <label for="updateInterval" class="form-label">Update interval (milliseconds)</label>
+              <input type="number" class="form-control" id="updateInterval" value="1000" min="100" max="5000" step="100">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-primary" id="saveSettings">Save changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/constants.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/mockData.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/modals.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/telemetryRenderer.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  </body>
+</html>
