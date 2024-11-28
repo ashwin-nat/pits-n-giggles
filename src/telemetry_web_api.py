@@ -109,25 +109,31 @@ class RaceInfoRsp:
             table_entries_json (List[Dict[str, Any]]): The "table-entries" list
         """
 
-        # First, find the player entry and fastest entry in the list
-        player_entry    = None
-        for table_entry in table_entries_json:
-            if table_entry["driver-info"]["is-player"]:
-                player_entry = table_entry
-            if player_entry:
-                # Found the items, break
-                break
+        player_entry = next(
+            (
+                table_entry
+                for table_entry in table_entries_json
+                if table_entry["driver-info"]["is-player"]
+            ),
+            None,
+        )
 
         # Supporting only single player entry, split screen unsupported. player_entry should've been found by now
-        for table_entry in table_entries_json:
-            if player_entry:
+        if player_entry:
+            for table_entry in table_entries_json:
                 # Update last lap time for player in every object
                 if table_entry["driver-info"]["index"] != player_entry["driver-info"]["index"]:
-                    table_entry["lap-info"]["last-lap-ms-player"] = player_entry["lap-info"]["last-lap-ms"]
-                    table_entry["lap-info"]["best-lap-ms-player"] = player_entry["lap-info"]["best-lap-ms"]
+                    # TODO: deprecate
+                    # Fill the player time fields from the identified player_entry object
+                    table_entry["lap-info"]["last-lap-ms-player"] = player_entry["lap-info-new"]["last-lap"]["lap-time-ms"]
+                    table_entry["lap-info"]["best-lap-ms-player"] = player_entry["lap-info-new"]["best-lap"]["lap-time-ms"]
+                    table_entry["lap-info-new"]["last-lap"]["lap-time-ms-player"] = player_entry["lap-info-new"]["last-lap"]["lap-time-ms"]
+                    table_entry["lap-info-new"]["best-lap"]["lap-time-ms-player"] = player_entry["lap-info-new"]["best-lap"]["lap-time-ms"]
                 else:
-                    table_entry["lap-info"]["last-lap-ms-player"] = table_entry["lap-info"]["last-lap-ms"]
-                    table_entry["lap-info"]["best-lap-ms-player"] = table_entry["lap-info"]["best-lap-ms"]
+                    table_entry["lap-info"]["last-lap-ms-player"] = table_entry["lap-info-new"]["last-lap"]["lap-time-ms"]
+                    table_entry["lap-info"]["best-lap-ms-player"] = table_entry["lap-info-new"]["best-lap"]["lap-time-ms"]
+                    table_entry["lap-info-new"]["last-lap"]["lap-time-ms-player"] = table_entry["lap-info-new"]["last-lap"]["lap-time-ms"]
+                    table_entry["lap-info-new"]["best-lap"]["lap-time-ms-player"] = table_entry["lap-info-new"]["best-lap"]["lap-time-ms"]
 
 
 class SavePacketCaptureRsp:
@@ -446,7 +452,7 @@ class DriversListRsp:
         self.m_next_pit_stop_window: Optional[int] = None
         self.__initDriverList()
         self.__updateDriverList()
-        if len(self.m_final_list) > 0:
+        if self.m_final_list:
             self._recomputeDeltas()
 
     def toJSON(self) -> Dict[str, Any]:
@@ -497,6 +503,25 @@ class DriversListRsp:
                     "best-lap-ms" : data_per_driver.m_best_lap_ms,
                     "last-lap-ms-player" : 0,
                     "best-lap-ms-player" : 0,
+                    "lap-progress" : data_per_driver.m_lap_progress, # NULL is supported
+                    "speed-trap-record-kmph" : data_per_driver.m_packet_lap_data.m_speedTrapFastestSpeed if \
+                        data_per_driver.m_packet_lap_data else None, # NULL is supported
+                },
+                "lap-info-new" : {
+                    "last-lap" : {
+                        "lap-time-ms" : data_per_driver.m_last_lap_ms,
+                        "lap-time-ms-player" : 0,
+                        "sector-1-status" : 0,
+                        "sector-2-status" : 0,
+                        "sector-3-status" : 0,
+                    },
+                    "best-lap" : {
+                        "lap-time-ms" : data_per_driver.m_last_lap_ms,
+                        "lap-time-ms-player" : 0,
+                        "sector-1-status" : 0,
+                        "sector-2-status" : 0,
+                        "sector-3-status" : 0,
+                    },
                     "lap-progress" : data_per_driver.m_lap_progress, # NULL is supported
                     "speed-trap-record-kmph" : data_per_driver.m_packet_lap_data.m_speedTrapFastestSpeed if \
                         data_per_driver.m_packet_lap_data else None, # NULL is supported

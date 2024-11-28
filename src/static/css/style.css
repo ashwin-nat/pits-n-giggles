@@ -172,10 +172,6 @@ body {
   transition: background-color 0.2s;
 }
 
-.telemetry-table tbody tr:hover {
-  background-color: var(--f1-gray);
-}
-
 .player-row {
   background-color: rgba(225, 6, 0, 0.1) !important;
 }
@@ -186,10 +182,6 @@ body {
   text-decoration: none;
   font-weight: 600;
   transition: color 0.2s;
-}
-
-.driver-name:hover {
-  color: var(--f1-red);
 }
 
 .tyre-compound {
@@ -296,4 +288,18 @@ body {
 .btn-secondary:hover {
   background-color: var(--f1-light-gray);
   border-color: var(--f1-light-gray);
+}
+
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #333;
+  color: white;
+  padding: 15px 20px;
+  border-radius: 5px;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+  z-index: 9999;
 }

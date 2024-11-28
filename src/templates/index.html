@@ -462,16 +462,16 @@ SOFTWARE.
 
     <script>
         // Init globals
-        let is24HourFormat;
-        let relativeDelta;
-        let lastLapAbsoluteFormat;
-        let bestLapAbsoluteFormat;
-        let tyreWearAverageFormat;
-        let myTeamName;
+        let g_pref_is24HourFormat;
+        let g_pref_relativeDelta;
+        let g_pref_lastLapAbsoluteFormat;
+        let g_pref_bestLapAbsoluteFormat;
+        let g_pref_tyreWearAverageFormat;
+        let g_pref_myTeamName;
         let awaitingResponse;
         let timeoutIntervalId;
         let timeoutIntervalMs = 3000;
-        let numAdjacentCars;
+        let g_pref_numAdjacentCars;
 
         // Check if delta column needs to be displayed
         const shouldHideDeltaColumn = {{ live_data_mode | tojson | safe }};
@@ -481,7 +481,7 @@ SOFTWARE.
 
         function getTeamName(teamId) {
             if ("MY_TEAM" == teamId) {
-                return myTeamName;
+                return g_pref_myTeamName;
             } else {
                 return teamId;
             }
@@ -643,7 +643,7 @@ SOFTWARE.
             }
             const totalCars = data["table-entries"].length;
             const playerPosition = getPlayerPosition(data);
-            relevantPositions = getAdjacentPositions(playerPosition, totalCars, numAdjacentCars);
+            relevantPositions = getAdjacentPositions(playerPosition, totalCars, g_pref_numAdjacentCars);
 
             const lowerIndex = relevantPositions[0] - 1;
             const upperIndex = relevantPositions[relevantPositions.length -1];
@@ -726,7 +726,7 @@ SOFTWARE.
             function addDeltaInfo(row, deltaInfo) {
 
                 if (!shouldHideDeltaColumn) {
-                    if (relativeDelta) {
+                    if (g_pref_relativeDelta) {
                         row.insertCell().textContent = deltaInfo["delta"];
                     } else {
                         row.insertCell().textContent = deltaInfo["delta-to-leader"];
@@ -760,7 +760,7 @@ SOFTWARE.
 
             function addBestLapInfo(row, lapInfo, isPlayer, isSpectating) {
 
-                if (bestLapAbsoluteFormat || isSpectating) {
+                if (g_pref_bestLapAbsoluteFormat || isSpectating) {
                     const lapStr = formatLapTime(lapInfo["best-lap-ms"]);
                     if (gameYear == 23) {
                         row.insertCell().textContent = lapStr;
@@ -800,7 +800,7 @@ SOFTWARE.
             function addLastLapInfo(row, lapInfo, isPlayer, isSpectating) {
 
                 if (!shouldHideLastLapColumn) {
-                    if (lastLapAbsoluteFormat || isSpectating) {
+                    if (g_pref_lastLapAbsoluteFormat || isSpectating) {
                         row.insertCell().textContent = formatLapTime(lapInfo["best-lap-ms"]);
                     } else {
                         row.insertCell().textContent = formatLapDelta(lapInfo["last-lap-ms"],
@@ -814,7 +814,7 @@ SOFTWARE.
                 const tyreInfoCell = row.insertCell();
                 const currTyreWearData = tyreInfoData["current-wear"];
                 let tyreWearText = "";
-                if (tyreWearAverageFormat) {
+                if (g_pref_tyreWearAverageFormat) {
                     if (currTyreWearData) {
                         tyreWearText = formatFloatWithTwoDecimals(currTyreWearData["average"]) + "%";
                     } else {
@@ -844,7 +844,7 @@ SOFTWARE.
                     } else {
                         predictionData.forEach((prediction, index) => {
                             const lapNum = prediction["lap-number"];
-                            if (tyreWearAverageFormat) {
+                            if (g_pref_tyreWearAverageFormat) {
                                 predictionHTML += "<p>L" + lapNum + ": " + formatFloatWithTwoDecimals(prediction["average"]) + "%</p>";
                             } else {
                                 const maxWearInfo = getMaxTyreWear(prediction);
@@ -1897,7 +1897,7 @@ SOFTWARE.
                             if ("tyre-set-info" in lap) {
                                 tyreCompound = getTyreCompoundStr(lap["tyre-set-info"]["tyre-set"]["visual-tyre-compound"],
                                     lap["tyre-set-info"]["tyre-set"]["actual-tyre-compound"]);
-                                if (tyreWearAverageFormat) {
+                                if (g_pref_tyreWearAverageFormat) {
                                     tyreWear = formatFloatWithTwoDecimals(lap["tyre-set-info"]["tyre-wear"]["average"])
                                         + "%";
                                 } else {
@@ -2688,7 +2688,7 @@ SOFTWARE.
             let teamNameRow = settingsBody.insertRow();
             teamNameRow.innerHTML = `
                 <td>My Team Name</td>
-                <td><input type="text" class="team-name-input" id="teamNameInput" value="${myTeamName}"></td>
+                <td><input type="text" class="team-name-input" id="teamNameInput" value="${g_pref_myTeamName}"></td>
             `;
 
             // Radio button rows
@@ -2698,8 +2698,8 @@ SOFTWARE.
             timeFormatRow.innerHTML = `
                 <td>Time Format</td>
                 <td>
-                    <label><input type="radio" name="timeFormat" value="12" ${!is24HourFormat ? 'checked' : ''}> 12 hours</label>
-                    <label><input type="radio" name="timeFormat" value="24" ${is24HourFormat  ? 'checked' : ''}> 24 hours</label>
+                    <label><input type="radio" name="timeFormat" value="12" ${!g_pref_is24HourFormat ? 'checked' : ''}> 12 hours</label>
+                    <label><input type="radio" name="timeFormat" value="24" ${g_pref_is24HourFormat  ? 'checked' : ''}> 24 hours</label>
                 </td>
             `;
 
@@ -2708,8 +2708,8 @@ SOFTWARE.
             lastLapTimeFormatRow.innerHTML = `
                 <td>Last Lap Time Format</td>
                 <td>
-                    <label><input type="radio" name="lastLapTimeFormat" value="absolute" ${lastLapAbsoluteFormat  ? 'checked' : ''}> Absolute</label>
-                    <label><input type="radio" name="lastLapTimeFormat" value="relative" ${!lastLapAbsoluteFormat ? 'checked' : ''}> Relative</label>
+                    <label><input type="radio" name="lastLapTimeFormat" value="absolute" ${g_pref_lastLapAbsoluteFormat  ? 'checked' : ''}> Absolute</label>
+                    <label><input type="radio" name="lastLapTimeFormat" value="relative" ${!g_pref_lastLapAbsoluteFormat ? 'checked' : ''}> Relative</label>
                 </td>
             `;
 
@@ -2718,8 +2718,8 @@ SOFTWARE.
             bestLapTimeFormatRow.innerHTML = `
                 <td>Best Lap Time Format</td>
                 <td>
-                    <label><input type="radio" name="bestLapTimeFormat" value="absolute" ${bestLapAbsoluteFormat  ? 'checked' : ''}> Absolute</label>
-                    <label><input type="radio" name="bestLapTimeFormat" value="relative" ${!bestLapAbsoluteFormat ? 'checked' : ''}> Relative</label>
+                    <label><input type="radio" name="bestLapTimeFormat" value="absolute" ${g_pref_bestLapAbsoluteFormat  ? 'checked' : ''}> Absolute</label>
+                    <label><input type="radio" name="bestLapTimeFormat" value="relative" ${!g_pref_bestLapAbsoluteFormat ? 'checked' : ''}> Relative</label>
                 </td>
             `;
 
@@ -2728,8 +2728,8 @@ SOFTWARE.
             tyreWearFormatRow.innerHTML = `
                 <td>Tyre Wear Format</td>
                 <td>
-                    <label><input type="radio" name="tyreWearFormat" value="average" ${tyreWearAverageFormat  ? 'checked' : ''}> Average</label>
-                    <label><input type="radio" name="tyreWearFormat" value="max" ${!tyreWearAverageFormat  ? 'checked' : ''}> Max</label>
+                    <label><input type="radio" name="tyreWearFormat" value="average" ${g_pref_tyreWearAverageFormat  ? 'checked' : ''}> Average</label>
+                    <label><input type="radio" name="tyreWearFormat" value="max" ${!g_pref_tyreWearAverageFormat  ? 'checked' : ''}> Max</label>
                 </td>
             `;
 
@@ -2737,7 +2737,7 @@ SOFTWARE.
             let numAdjacentCarsRow = settingsBody.insertRow();
             numAdjacentCarsRow.innerHTML = `
                 <td>Number of adjacent cars</td>
-                <td><input type="number" class="num-adjacent-cars-input" id="numAdjacentCars" min="0" max="22" value="${numAdjacentCars}"></td>
+                <td><input type="number" class="num-adjacent-cars-input" id="numAdjacentCars" min="0" max="22" value="${g_pref_numAdjacentCars}"></td>
             `;
 
             // Append the table to the settingsDiv
@@ -2755,20 +2755,20 @@ SOFTWARE.
                 const max = parseInt(numInput.max, 10);
                 const numAdjacentCars_temp = parseInt(numInput.value, 10);
 
-                if (isNaN(numAdjacentCars) || numAdjacentCars < min || numAdjacentCars > max) {
+                if (isNaN(g_pref_numAdjacentCars) || g_pref_numAdjacentCars < min || g_pref_numAdjacentCars > max) {
                     showToast(`Please enter a valid number between ${min} and ${max}.`);
                     return; // Exit without saving anything
                 }
 
                 // Collect and log the selected settings
-                myTeamName = document.getElementById('teamNameInput').value;
-                is24HourFormat = (document.querySelector('input[name="timeFormat"]:checked').value === "24") ? (true) : (false);
-                lastLapAbsoluteFormat = (document.querySelector('input[name="lastLapTimeFormat"]:checked').value === "absolute") ? (true) : (false);
-                bestLapAbsoluteFormat = (document.querySelector('input[name="bestLapTimeFormat"]:checked').value === "absolute") ? (true) : (false);
-                tyreWearAverageFormat = (document.querySelector('input[name="tyreWearFormat"]:checked').value === "average") ? (true) : (false);
-                numAdjacentCars = numAdjacentCars_temp;
+                g_pref_myTeamName = document.getElementById('teamNameInput').value;
+                g_pref_is24HourFormat = (document.querySelector('input[name="timeFormat"]:checked').value === "24") ? (true) : (false);
+                g_pref_lastLapAbsoluteFormat = (document.querySelector('input[name="lastLapTimeFormat"]:checked').value === "absolute") ? (true) : (false);
+                g_pref_bestLapAbsoluteFormat = (document.querySelector('input[name="bestLapTimeFormat"]:checked').value === "absolute") ? (true) : (false);
+                g_pref_tyreWearAverageFormat = (document.querySelector('input[name="tyreWearFormat"]:checked').value === "average") ? (true) : (false);
+                g_pref_numAdjacentCars = numAdjacentCars_temp;
 
-                console.log("Settings Applied:", { myTeamName, is24HourFormat, lastLapAbsoluteFormat, bestLapAbsoluteFormat, tyreWearAverageFormat, numAdjacentCars });
+                console.log("Settings Applied:", { g_pref_myTeamName, g_pref_is24HourFormat, g_pref_lastLapAbsoluteFormat, g_pref_bestLapAbsoluteFormat, g_pref_tyreWearAverageFormat, g_pref_numAdjacentCars });
                 showToast("Settings applied and saved!");
                 savePreferences();
             };
@@ -2852,10 +2852,10 @@ SOFTWARE.
         function updateLocalTime() {
             const now = new Date();
             const options = {
-                hour12: !is24HourFormat
+                hour12: !g_pref_is24HourFormat
             };
             const timeString = now.toLocaleTimeString('en-US', options);
-            if (is24HourFormat) {
+            if (g_pref_is24HourFormat) {
                 document.getElementById('localTimeNameLink').textContent = `Local Time (24H)`;
             } else {
                 document.getElementById('localTimeNameLink').textContent = `Local Time (12H)`;
@@ -2864,33 +2864,33 @@ SOFTWARE.
         }
 
         function toggleTimeFormat() {
-            is24HourFormat = !is24HourFormat;
+            g_pref_is24HourFormat = !g_pref_is24HourFormat;
             updateLocalTime();
-            showToast("Time Format Changed to " + (is24HourFormat ? "24 Hour Format" : "12 Hour Format"));
+            showToast("Time Format Changed to " + (g_pref_is24HourFormat ? "24 Hour Format" : "12 Hour Format"));
             savePreferences();
         }
 
         function toggleDeltaFormat() {
-            relativeDelta = !relativeDelta;
-            showToast("Delta Format Changed to " + (relativeDelta ? "Relative" : "Absolute"));
+            g_pref_relativeDelta = !g_pref_relativeDelta;
+            showToast("Delta Format Changed to " + (g_pref_relativeDelta ? "Relative" : "Absolute"));
             savePreferences();
         }
 
         function toggleLastLapFormat() {
-            lastLapAbsoluteFormat = !lastLapAbsoluteFormat;
-            showToast("Last Lap Format Changed to " + (lastLapAbsoluteFormat ? "Absolute" : "Relative"));
+            g_pref_lastLapAbsoluteFormat = !g_pref_lastLapAbsoluteFormat;
+            showToast("Last Lap Format Changed to " + (g_pref_lastLapAbsoluteFormat ? "Absolute" : "Relative"));
             savePreferences();
         }
 
         function toggleBestLapFormat() {
-            bestLapAbsoluteFormat = !bestLapAbsoluteFormat;
-            showToast("Best Lap Format Changed to " + (bestLapAbsoluteFormat ? "Absolute" : "Relative"));
+            g_pref_bestLapAbsoluteFormat = !g_pref_bestLapAbsoluteFormat;
+            showToast("Best Lap Format Changed to " + (g_pref_bestLapAbsoluteFormat ? "Absolute" : "Relative"));
             savePreferences();
         }
 
         function toggleTyreWearFormat() {
-            tyreWearAverageFormat = !tyreWearAverageFormat;
-            showToast("Tyre wear format changed to " + (tyreWearAverageFormat ? "Average" : "Max"));
+            g_pref_tyreWearAverageFormat = !g_pref_tyreWearAverageFormat;
+            showToast("Tyre wear format changed to " + (g_pref_tyreWearAverageFormat ? "Average" : "Max"));
             savePreferences();
         }
 
@@ -2982,17 +2982,19 @@ SOFTWARE.
 
             let min_valid_lower_bound = 1;
             let max_valid_upper_bound = total_cars;
+            let lower_bound;
+            let upper_bound;
 
             // In time trial, total_cars will be lower than num_adjacent_cars
             if (num_adjacent_cars >= total_cars) {
                 num_adjacent_cars = total_cars;
-                var lower_bound = min_valid_lower_bound;
-                var upper_bound = max_valid_upper_bound;
+                lower_bound = min_valid_lower_bound;
+                upper_bound = max_valid_upper_bound;
             }
             // GP scenario, lower bound and upper bound are off input position by num_adjacent_cars
             else {
-                var lower_bound = position - num_adjacent_cars;
-                var upper_bound = position + num_adjacent_cars;
+                lower_bound = position - num_adjacent_cars;
+                upper_bound = position + num_adjacent_cars;
             }
 
             // now correct if lower and upper bounds have become invalid
@@ -3041,52 +3043,52 @@ SOFTWARE.
 
             // Load or assign default values, and track if any value is missing
             if (localStorage.getItem('is24HourFormat') !== null) {
-                is24HourFormat = localStorage.getItem('is24HourFormat') === 'true';
+                g_pref_is24HourFormat = localStorage.getItem('is24HourFormat') === 'true';
             } else {
-                is24HourFormat = true;
+                g_pref_is24HourFormat = true;
                 missingPreference = true;
             }
 
             if (localStorage.getItem('relativeDelta') !== null) {
-                relativeDelta = localStorage.getItem('relativeDelta') === 'true';
+                g_pref_relativeDelta = localStorage.getItem('relativeDelta') === 'true';
             } else {
-                relativeDelta = false;
+                g_pref_relativeDelta = false;
                 missingPreference = true;
             }
 
             if (localStorage.getItem('lastLapAbsoluteFormat') !== null) {
-                lastLapAbsoluteFormat = localStorage.getItem('lastLapAbsoluteFormat') === 'true';
+                g_pref_lastLapAbsoluteFormat = localStorage.getItem('lastLapAbsoluteFormat') === 'true';
             } else {
-                lastLapAbsoluteFormat = false;
+                g_pref_lastLapAbsoluteFormat = false;
                 missingPreference = true;
             }
 
             if (localStorage.getItem('bestLapAbsoluteFormat') !== null) {
-                bestLapAbsoluteFormat = localStorage.getItem('bestLapAbsoluteFormat') === 'true';
+                g_pref_bestLapAbsoluteFormat = localStorage.getItem('bestLapAbsoluteFormat') === 'true';
             } else {
-                bestLapAbsoluteFormat = true;
+                g_pref_bestLapAbsoluteFormat = true;
                 missingPreference = true;
             }
 
             if (localStorage.getItem('tyreWearAverageFormat') !== null) {
-                tyreWearAverageFormat = localStorage.getItem('tyreWearAverageFormat') === 'true';
+                g_pref_tyreWearAverageFormat = localStorage.getItem('tyreWearAverageFormat') === 'true';
             } else {
-                tyreWearAverageFormat = false;
+                g_pref_tyreWearAverageFormat = false;
                 missingPreference = true;
             }
 
-            myTeamName = localStorage.getItem('myTeamName');
-            if ((myTeamName === null) || (myTeamName === "")) {
-                myTeamName = "Custom Team";
+            g_pref_myTeamName = localStorage.getItem('myTeamName');
+            if ((g_pref_myTeamName === null) || (g_pref_myTeamName === "")) {
+                g_pref_myTeamName = "Custom Team";
                 missingPreference = true;
             }
 
-            numAdjacentCars = localStorage.getItem('numAdjacentCars');
-            if ((numAdjacentCars === null) || (numAdjacentCars === "")) {
-                numAdjacentCars = 2;
+            g_pref_numAdjacentCars = localStorage.getItem('numAdjacentCars');
+            if ((g_pref_numAdjacentCars === null) || (g_pref_numAdjacentCars === "")) {
+                g_pref_numAdjacentCars = 2;
                 missingPreference = true;
             } else {
-                numAdjacentCars = parseInt(numAdjacentCars, 10); // localstorage saves everthing as string
+                g_pref_numAdjacentCars = parseInt(g_pref_numAdjacentCars, 10); // localstorage saves everthing as string
             }
 
             // If any preference was missing, save all current preferences
@@ -3094,19 +3096,19 @@ SOFTWARE.
                 savePreferences();
             }
 
-            console.log("Loaded Preferences:", { myTeamName, is24HourFormat, lastLapAbsoluteFormat, bestLapAbsoluteFormat, tyreWearAverageFormat, relativeDelta, numAdjacentCars });
+            console.log("Loaded Preferences:", { g_pref_myTeamName, g_pref_is24HourFormat, g_pref_lastLapAbsoluteFormat, g_pref_bestLapAbsoluteFormat, g_pref_tyreWearAverageFormat, g_pref_relativeDelta, g_pref_numAdjacentCars });
         }
 
         function savePreferences() {
-            localStorage.setItem('is24HourFormat', is24HourFormat);
-            localStorage.setItem('relativeDelta', relativeDelta);
-            localStorage.setItem('lastLapAbsoluteFormat', lastLapAbsoluteFormat);
-            localStorage.setItem('bestLapAbsoluteFormat', bestLapAbsoluteFormat);
-            localStorage.setItem('tyreWearAverageFormat', tyreWearAverageFormat);
-            localStorage.setItem('myTeamName', myTeamName);
-            localStorage.setItem('numAdjacentCars', numAdjacentCars);
+            localStorage.setItem('is24HourFormat', g_pref_is24HourFormat);
+            localStorage.setItem('relativeDelta', g_pref_relativeDelta);
+            localStorage.setItem('lastLapAbsoluteFormat', g_pref_lastLapAbsoluteFormat);
+            localStorage.setItem('bestLapAbsoluteFormat', g_pref_bestLapAbsoluteFormat);
+            localStorage.setItem('tyreWearAverageFormat', g_pref_tyreWearAverageFormat);
+            localStorage.setItem('myTeamName', g_pref_myTeamName);
+            localStorage.setItem('numAdjacentCars', g_pref_numAdjacentCars);
 
-            console.log("Saved Preferences:", { myTeamName, is24HourFormat, lastLapAbsoluteFormat, bestLapAbsoluteFormat, tyreWearAverageFormat, relativeDelta, numAdjacentCars });
+            console.log("Saved Preferences:", { g_pref_myTeamName, g_pref_is24HourFormat, g_pref_lastLapAbsoluteFormat, g_pref_bestLapAbsoluteFormat, g_pref_tyreWearAverageFormat, g_pref_relativeDelta, g_pref_numAdjacentCars });
         }
 
         function checkSocketIoRequestTimeout(requestName) {

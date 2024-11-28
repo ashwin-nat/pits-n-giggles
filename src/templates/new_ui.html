@@ -7,22 +7,26 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js"></script>
   </head>
   <body>
     <div class="dashboard-container">
       <header class="dashboard-header">
         <div class="track-info">
-          <h1 class="track-name">SILVERSTONE</h1>
+          <h1 class="track-name" id="track-name">PITS N' GIGGLES</h1>
           <div class="conditions">
             <div class="condition-item">
-              <i class="bi bi-thermometer-half condition-icon"></i>
+              <i class="fa-solid fa-road condition-icon"></i>
               <span id="track-temp" class="condition-value">28°C</span>
             </div>
             <div class="condition-item">
-              <i class="bi bi-wind condition-icon"></i>
+              <i class="bi bi-cloud condition-icon"></i>
               <span id="air-temp" class="condition-value">24°C</span>
             </div>
           </div>
@@ -49,14 +53,13 @@
               <tr>
                 <th>POS</th>
                 <th>DRIVER</th>
-                <th>DELTA</th>
-                <th>LAST LAP</th>
-                <th>BEST LAP</th>
-                <th>COMPOUND</th>
-                <th>AGE</th>
-                <th>WEAR</th>
-                <th>PRED</th>
                 <th>ERS</th>
+                <th>WARNS/PENS</th>
+                <th>BEST LAP</th>
+                <th>LAST LAP</th>
+                <th>TYRE INFO</th>
+                <th>WEAR PREDICTION</th>
+                <th>WING DAMAGE</th>
                 <th>FUEL</th>
               </tr>
             </thead>
@@ -88,17 +91,75 @@
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">Dashboard Settings</h5>
+            <h5 class="modal-title">Pits n' Giggles Settings</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
+            <!-- Number of cars to show -->
             <div class="mb-3">
               <label for="carsToShow" class="form-label">Number of cars to show (before/after player)</label>
               <input type="number" class="form-control" id="carsToShow" value="2" min="1" max="5">
             </div>
+            <!-- Team Name -->
             <div class="mb-3">
-              <label for="updateInterval" class="form-label">Update interval (milliseconds)</label>
-              <input type="number" class="form-control" id="updateInterval" value="1000" min="100" max="5000" step="100">
+              <label for="teamName" class="form-label">My Team Name</label>
+              <input type="text" class="form-control" id="teamName" value="My Team">
+            </div>
+            <!-- Time format -->
+            <div class="mb-3">
+              <label class="form-label">Time Format</label>
+              <div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="timeFormat12" name="timeFormat" value="12">
+                  <label class="form-check-label" for="timeFormat12">12 Hour</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="timeFormat24" name="timeFormat" value="24" checked>
+                  <label class="form-check-label" for="timeFormat24">24 Hour</label>
+                </div>
+              </div>
+            </div>
+            <!-- Last lap time format -->
+            <div class="mb-3">
+              <label class="form-label">Last Lap Time Format</label>
+              <div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="lastLapAbsolute" name="lastLapTimeFormat" value="absolute" checked>
+                  <label class="form-check-label" for="lastLapAbsolute">Absolute</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="lastLapRelative" name="lastLapTimeFormat" value="relative">
+                  <label class="form-check-label" for="lastLapRelative">Relative</label>
+                </div>
+              </div>
+            </div>
+            <!-- Best lap time format -->
+            <div class="mb-3">
+              <label class="form-label">Best Lap Time Format</label>
+              <div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="bestLapAbsolute" name="bestLapTimeFormat" value="absolute" checked>
+                  <label class="form-check-label" for="bestLapAbsolute">Absolute</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="bestLapRelative" name="bestLapTimeFormat" value="relative">
+                  <label class="form-check-label" for="bestLapRelative">Relative</label>
+                </div>
+              </div>
+            </div>
+            <!-- Tyre wear format -->
+            <div class="mb-3">
+              <label class="form-label">Tyre Wear Format</label>
+              <div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="tyreWearAbsolute" name="tyreWearFormat" value="absolute" checked>
+                  <label class="form-check-label" for="tyreWearAbsolute">Absolute</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="tyreWearRelative" name="tyreWearFormat" value="relative">
+                  <label class="form-check-label" for="tyreWearRelative">Relative</label>
+                </div>
+              </div>
             </div>
           </div>
           <div class="modal-footer">
@@ -109,10 +170,14 @@
       </div>
     </div>
 
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/preferences.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
     <script src="{{ url_for('static', filename='js/constants.js') }}"></script>
     <script src="{{ url_for('static', filename='js/mockData.js') }}"></script>
     <script src="{{ url_for('static', filename='js/modals.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/raceTableRowPopulator.js') }}"></script>
     <script src="{{ url_for('static', filename='js/telemetryRenderer.js') }}"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
   </body>
