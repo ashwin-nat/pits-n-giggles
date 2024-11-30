@@ -14,6 +14,9 @@ class TelemetryRenderer {
     if (data['driver-info']['is-player']) {
       row.classList.add('player-row');
     }
+    if (data['driver-info']['drs']) {
+      row.classList.add('drs-row');
+    }
     return row;
   }
 
@@ -50,11 +53,37 @@ class TelemetryRenderer {
 
     this.fastestLapTimeSpan.textContent = formatLapTime(incomingData['fastest-lap-overall']);
     this.fastestLapNameSpan.textContent = this.truncateName(incomingData['fastest-lap-overall-driver']);
+    this.populateCircuitSpan(incomingData);
+  }
+
+
+  // Utility methods:
+  populateCircuitSpan(incomingData) {
     const trackName = incomingData['circuit'];
+    const trackNameContainer = this.trackName;
+    // Clear any existing content in the span
+    trackNameContainer.innerHTML = "";
     if ("---" === trackName) {
       this.trackName.textContent = "PITS N' GIGGLES";
     } else {
-      this.trackName.textContent = trackName.toUpperCase();
+      // Create the first div for the track name
+      const trackNameDiv = document.createElement("div");
+      trackNameDiv.textContent = trackName.toUpperCase();
+      trackNameDiv.style.textAlign = "center"; // Center the text
+      trackNameDiv.style.margin = "0 auto";   // Ensure centering in flex/inline-flex containers
+      trackNameContainer.appendChild(trackNameDiv);
+
+      // Create the second div for dummy text
+      const lapCountDiv = document.createElement("div");
+      lapCountDiv.style.textAlign = "center"; // Center the text
+      lapCountDiv.style.margin = "0 auto";   // Ensure centering in flex/inline-flex containers
+      let lapCountText = "";
+      lapCountText += "L" + incomingData['current-lap'].toString();
+      if (incomingData['total-laps']) {
+        lapCountText += "/" + incomingData['total-laps'].toString();
+      }
+      lapCountDiv.textContent = lapCountText;
+      trackNameContainer.appendChild(lapCountDiv);
     }
     const pitLaneSpeedLimit = incomingData['pit-speed-limit'];
     if (pitLaneSpeedLimit) {
@@ -65,11 +94,8 @@ class TelemetryRenderer {
     }
   }
 
-
-  // Utility methods:
   truncateName(name) {
     const maxLength = 3;
-    console.log("name", name);
     if (name.length > maxLength) {
       return name.substring(0, maxLength);
     } else {

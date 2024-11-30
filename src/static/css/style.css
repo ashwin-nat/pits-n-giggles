@@ -47,10 +47,6 @@ body {
   border: 1px solid var(--f1-light-gray);
 }
 
-.dashboard-main {
-  overflow: hidden; /* Avoids forced scrollbars */
-}
-
 .header-right {
   display: flex;
   align-items: center;
@@ -151,8 +147,7 @@ body {
   background-color: var(--f1-dark);
   border-radius: 8px;
   border: 1px solid var(--f1-light-gray);
-  /* height: calc(100vh - 120px); */
-  height: auto; /* Ensure it adjusts dynamically */
+  height: calc(100vh - 120px);
 }
 
 .telemetry-table {
@@ -182,10 +177,27 @@ body {
   transition: background-color 0.2s;
 }
 
-.player-row td {
-  border-color: #f7f5ef;
-  /* Gold border */
+.player-row.drs-row td {
+  box-shadow:
+    inset 0 -1px 0 #f7f5ef, /* Bottom border (white) */
+    inset 0 1px 0 #f7f5ef,  /* Top border (white) */
+    inset 0 -2px 0 #10e71b, /* Bottom border (green) */
+    inset 0 2px 0 #10e71b;  /* Top border (green) */
 }
+
+.player-row td {
+  box-shadow:
+    inset 0 -1px 0 #f7f5ef, /* Bottom border (white) */
+    inset 0 1px 0 #f7f5ef;  /* Top border (white) */
+}
+
+.drs-row td {
+  box-shadow:
+    inset 0 -1px 0 #10e71b, /* Bottom border (green) */
+    inset 0 1px 0 #10e71b;  /* Top border (green) */
+}
+
+
 
 .player-row td:first-child {
   border-left: 1.5px solid #f7f5ef;
