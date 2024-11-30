@@ -1024,9 +1024,9 @@ class TrackID(Enum):
         """
         return {
             "Paul_Ricard": "Paul Ricard",
-            "Sakhir_Bahrain": "Sakhir (Bahrain)",
+            "Sakhir_Bahrain": "Sakhir",
             "Abu_Dhabi": "Abu Dhabi",
-            "Baku_Azerbaijan": "Baku (Azerbaijan)",
+            "Baku_Azerbaijan": "Baku",
             "Portimao": "Portimão"
         }.get(self.name, self.name.replace("_", " "))
 

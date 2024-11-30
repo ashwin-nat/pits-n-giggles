@@ -6,6 +6,11 @@
   --f1-light-gray: #2d2d3d;
   --f1-text: #ffffff;
   --f1-text-secondary: #9090a0;
+
+  font-size: 20px; /* Set the root font size */
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden; /* Prevents horizontal scroll */
 }
 
 * {
@@ -40,6 +45,10 @@ body {
   padding: 1rem;
   border-radius: 8px;
   border: 1px solid var(--f1-light-gray);
+}
+
+.dashboard-main {
+  overflow: hidden; /* Avoids forced scrollbars */
 }
 
 .header-right {
@@ -142,7 +151,8 @@ body {
   background-color: var(--f1-dark);
   border-radius: 8px;
   border: 1px solid var(--f1-light-gray);
-  height: calc(100vh - 120px);
+  /* height: calc(100vh - 120px); */
+  height: auto; /* Ensure it adjusts dynamically */
 }
 
 .telemetry-table {
@@ -172,8 +182,26 @@ body {
   transition: background-color 0.2s;
 }
 
-.player-row {
-  background-color: rgba(225, 6, 0, 0.1) !important;
+.player-row td {
+  border-color: #f7f5ef;
+  /* Gold border */
+}
+
+.player-row td:first-child {
+  border-left: 1.5px solid #f7f5ef;
+  /* Left border on the first cell */
+}
+
+.player-row td:last-child {
+  border-right: 1.5px solid #f7f5ef;
+  /* Right border on the last cell */
+}
+
+.player-row td {
+  border-top: 1.5px solid #f7f5ef !important;
+  /* Top border on all cells */
+  border-bottom: 1.5px solid #f7f5ef !important;
+  /* Bottom border on all cells */
 }
 
 .driver-name {
@@ -339,4 +367,21 @@ a {
   top: 0;
   z-index: 1055;
   padding: 1rem;
+}
+
+.speed-limit-sign {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 40px; /* Diameter of the sign */
+  height: 40px;
+  border-radius: 50%; /* Makes it a circle */
+  background-color: white; /* Inner white background */
+  color: black; /* Black text */
+  font-size: 1rem; /* Adjust text size */
+  font-weight: bold; /* Bold text */
+  text-align: center;
+  position: relative;
+  border: 4px solid red; /* Outer red ring */
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.2); /* Optional subtle shadow */
 }

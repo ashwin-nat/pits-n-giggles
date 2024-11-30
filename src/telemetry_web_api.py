@@ -83,7 +83,7 @@ class RaceInfoRsp:
             "total-laps": _getValueOrDefaultValue(self.m_globals.m_total_laps),
             "current-lap": _getValueOrDefaultValue(self.m_curr_lap),
             "safety-car-status": str(_getValueOrDefaultValue(self.m_globals.m_safety_car_status, default_value="")),
-            "pit-speed-limit": _getValueOrDefaultValue(self.m_globals.m_pit_speed_limit),
+            "pit-speed-limit": _getValueOrDefaultValue(self.m_globals.m_pit_speed_limit, default_value=0),
             "weather-forecast-samples": [
                 {
                     "time-offset": str(sample.m_timeOffset),
@@ -98,6 +98,8 @@ class RaceInfoRsp:
         final_json["table-entries"] = self.m_driver_list_rsp.toJSON()
         final_json["fastest-lap-overall"] = _getValueOrDefaultValue(
             self.m_driver_list_rsp.m_fastest_lap, default_value=0)
+        final_json["fastest-lap-overall-driver"] = _getValueOrDefaultValue(
+            self.m_driver_list_rsp.m_fastest_lap_driver)
         self._updatePlayerLapTimes(final_json["table-entries"])
         return final_json
 
@@ -449,6 +451,7 @@ class DriversListRsp:
         self.m_track_length : int = track_length
         self.m_final_list : List[TelData.DataPerDriver] = []
         self.m_fastest_lap : Optional[int] = None
+        self.m_fastest_lap_driver: Optional[str] = None
         self.m_next_pit_stop_window: Optional[int] = None
         self.__initDriverList()
         self.__updateDriverList()
@@ -643,6 +646,8 @@ class DriversListRsp:
             if TelData._driver_data.m_fastest_index is not None:
                 self.m_fastest_lap = TelData._driver_data.m_driver_data[
                                         TelData._driver_data.m_fastest_index].m_best_lap_ms
+                self.m_fastest_lap_driver = TelData._driver_data.m_driver_data[
+                                            TelData._driver_data.m_fastest_index].m_name
             positions = list(range(1, TelData._driver_data.m_num_active_cars + 1))
             for position in positions:
                 index, temp_data = TelData._driver_data.getIndexByTrackPosition(position)

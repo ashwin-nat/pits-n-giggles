@@ -74,21 +74,27 @@ socketio.on('frontend-update', function (data) {
     }
 });
 
-// function startUpdates() {
-//   if (updateInterval) {
-//     clearInterval(updateInterval);
-//   }
+document.getElementById("best-lap-th").addEventListener("click", function () {
+    g_pref_bestLapAbsoluteFormat = !g_pref_bestLapAbsoluteFormat;
+    showToast("Best Lap Format Changed to " + (g_pref_bestLapAbsoluteFormat ? "Absolute" : "Relative"));
+    savePreferences();
+});
 
-//   updateInterval = setInterval(() => {
-//     telemetryRenderer.updateDashboard(mockTelemetryData, mockWeatherPredictions);
-//   }, settings.updateInterval);
-// }
+document.getElementById("last-lap-th").addEventListener("click", function () {
+    g_pref_lastLapAbsoluteFormat = !g_pref_lastLapAbsoluteFormat;
+    showToast("Last Lap Format Changed to " + (g_pref_lastLapAbsoluteFormat ? "Absolute" : "Relative"));
+    savePreferences();
+});
 
-// // Start updates with initial settings
-// startUpdates();
+document.getElementById("wear-prediction-th").addEventListener("click", function () {
+    g_pref_tyreWearAverageFormat = !g_pref_tyreWearAverageFormat;
+    showToast("Tyre Wear Format Changed to " + (g_pref_tyreWearAverageFormat ? "Average" : "Max"));
+    savePreferences();
+});
 
-// // Listen for settings changes
-// window.addEventListener('settingsChanged', () => {
-//   settings = LoadPreferences();
-//   // startUpdates();
-// });
+
+document.getElementById("tyre-info-th").addEventListener("click", function () {
+    g_pref_tyreWearAverageFormat = !g_pref_tyreWearAverageFormat;
+    showToast("Tyre Wear Format Changed to " + (g_pref_tyreWearAverageFormat ? "Average" : "Max"));
+    savePreferences();
+});

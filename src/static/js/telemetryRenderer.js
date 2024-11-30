@@ -2,86 +2,18 @@ class TelemetryRenderer {
   constructor() {
     this.telemetryTable = document.getElementById('telemetry-data');
     this.weatherContainer = document.getElementById('weather-predictions');
+    this.fastestLapTimeSpan = document.getElementById('fastestLapTimeSpan');
+    this.fastestLapNameSpan = document.getElementById('fastestLapNameSpan');
+    this.trackName = document.getElementById('track-name');
+    this.pitLaneSpeedLimit = document.getElementById('pit-speed-limit');
   }
 
   renderTelemetryRow(data) {
     const row = document.createElement('tr');
     new RaceTableRowPopulator(row, data, this.gameYear).populate();
-    if (data['driver-info']['is-player']) row.classList.add('player-row');
-
-    // Helper to create a cell with optional content and class
-    // const createCell = (content, className = '') => {
-    //     const cell = document.createElement('td');
-    //     if (className) {
-    //       cell.className = className;
-    //     }
-    //     if (content instanceof HTMLElement) {
-    //         cell.appendChild(content);
-    //     } else {
-    //         cell.textContent = content;
-    //     }
-    //     return cell;
-    // };
-
-    // Position cell
-    // row.appendChild(createCell(data['driver-info']['position']));
-
-    // // Driver name cell with link
-    // const driverLink = document.createElement('a');
-    // driverLink.href = '#';
-    // driverLink.className = 'driver-name';
-    // driverLink.textContent = data['driver-info']['name'];
-    // driverLink.dataset.driver = JSON.stringify(data);
-    // driverLink.addEventListener('click', (e) => {
-    //     e.preventDefault();
-    //     const driverData = JSON.parse(e.target.dataset.driver);
-    //     window.modalManager.openDriverModal(driverData);
-    // });
-    // row.appendChild(createCell(driverLink));
-
-    // // Delta cell
-    // const deltaClass = data['delta-info']['delta'].startsWith('-') ? 'delta-negative' : 'delta-positive';
-    // row.appendChild(createCell(data['delta-info']['delta'], deltaClass));
-
-    // // Last lap time cell
-    // row.appendChild(createCell(data['lap-info']['last-lap-ms']));
-
-    // // Best lap time cell
-    // row.appendChild(createCell(data['lap-info']['best-lap-ms']));
-
-    // // Tyre compound cell
-    // const tyreCompound = document.createElement('span');
-    // tyreCompound.className = `tyre-compound tyre-${data['tyre-info']['visual-tyre-compound']}`;
-    // tyreCompound.textContent = data['tyre-info']['visual-tyre-compound'].toUpperCase();
-    // row.appendChild(createCell(tyreCompound));
-
-    // // Tyre age cell
-    // row.appendChild(createCell(`${data['tyre-info']['tyre-age']} laps`));
-
-    // // Tyre wear cell
-    // row.appendChild(createCell(`${data['tyre-info']['current-wear']['average']}%`));
-
-    // // Static value cell
-    // row.appendChild(createCell('0'));
-
-    // // ERS percentage cell
-    // const ersValue = document.createElement('span');
-    // ersValue.className = 'stat-value';
-    // ersValue.textContent = data['ers-info']['ers-percent'];
-    // row.appendChild(createCell(ersValue));
-
-    // // Fuel rate cell
-    // const fuelCell = document.createElement('span');
-    // fuelCell.className = 'stat-value';
-    // fuelCell.textContent = data['fuel-info']['curr-fuel-rate'];
-    // const fuelUnit = document.createElement('span');
-    // fuelUnit.className = 'stat-unit';
-    // fuelUnit.textContent = '%';
-    // const fuelContainer = document.createElement('div');
-    // fuelContainer.appendChild(fuelCell);
-    // fuelContainer.appendChild(fuelUnit);
-    // row.appendChild(createCell(fuelContainer));
-
+    if (data['driver-info']['is-player']) {
+      row.classList.add('player-row');
+    }
     return row;
   }
 
@@ -115,14 +47,31 @@ class TelemetryRenderer {
     weatherPredictions.forEach(prediction => {
       this.weatherContainer.appendChild(this.renderWeatherPrediction(prediction));
     });
+
+    this.fastestLapTimeSpan.textContent = formatLapTime(incomingData['fastest-lap-overall']);
+    this.fastestLapNameSpan.textContent = this.truncateName(incomingData['fastest-lap-overall-driver']);
+    const trackName = incomingData['circuit'];
+    if ("---" === trackName) {
+      this.trackName.textContent = "PITS N' GIGGLES";
+    } else {
+      this.trackName.textContent = trackName.toUpperCase();
+    }
+    const pitLaneSpeedLimit = incomingData['pit-speed-limit'];
+    if (pitLaneSpeedLimit) {
+      this.pitLaneSpeedLimit.textContent = pitLaneSpeedLimit;
+      this.pitLaneSpeedLimit.style.display = "inline-flex"; // Ensure it's visible if there's a value
+    } else {
+      this.pitLaneSpeedLimit.style.display = "none"; // Hide if the value is 0;
+    }
   }
 
 
   // Utility methods:
   truncateName(name) {
-    const maxLength = 25;
+    const maxLength = 3;
+    console.log("name", name);
     if (name.length > maxLength) {
-      return name.substring(0, maxLength - 3) + '...';
+      return name.substring(0, maxLength);
     } else {
       return name;
     }
