@@ -26,6 +26,7 @@ SOFTWARE.
 
 import os
 import json
+import time
 from datetime import datetime
 from enum import Enum
 from threading import Lock
@@ -38,6 +39,7 @@ from lib.f1_types import F1PacketType, PacketSessionData, PacketLapData, \
 from lib.packet_cap import F1PacketCapture
 from lib.overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, OvertakeRecord
 import lib.race_analyzer as RaceAnalyzer
+from lib.button_debouncer import ButtonDebouncer
 import src.telemetry_data as TelData
 from src.telemetry_manager import F1TelemetryManager
 from src.png_logger import getLogger
@@ -182,6 +184,7 @@ class CustomMarkersHistory:
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
 g_packet_capture_table: PacketCaptureTable = PacketCaptureTable()
+
 g_pkt_cap_mode: PacketCaptureMode = PacketCaptureMode.DISABLED
 g_overtakes_history: OvertakesHistory = OvertakesHistory()
 g_post_race_data_autosave: bool = False
@@ -189,6 +192,7 @@ g_directory_mapping: Dict[str, str] = {}
 g_udp_custom_action_code: Optional[int] = None
 g_udp_tyre_delta_action_code: Optional[int] = None
 g_completed_session_uid_set: set[int] = set()
+g_button_debouncer = ButtonDebouncer()
 png_logger = getLogger()
 
 # -------------------------------------- INITIALIZATION ----------------------------------------------------------------
@@ -556,17 +560,20 @@ class F1TelemetryHandler:
             packet (PacketEventData): The parsed object containing the event data packet's contents
         """
         global g_overtakes_history
+        global g_button_debouncer
 
         # UDP Custom Event - Add marker player markers list
         if packet.m_eventCode == PacketEventData.EventPacketType.BUTTON_STATUS:
             if (g_udp_custom_action_code is not None) and \
-                (packet.mEventDetails.isUDPActionPressed(g_udp_custom_action_code)):
+                (packet.mEventDetails.isUDPActionPressed(g_udp_custom_action_code)) and \
+                (g_button_debouncer.onButtonPress(g_udp_custom_action_code)):
 
                 png_logger.debug('UDP action %d pressed', g_udp_custom_action_code)
                 TelData.processCustomMarkerCreate()
 
             if (g_udp_tyre_delta_action_code is not None) and \
-                (packet.mEventDetails.isUDPActionPressed(g_udp_tyre_delta_action_code)):
+                (packet.mEventDetails.isUDPActionPressed(g_udp_tyre_delta_action_code)) and \
+                (g_button_debouncer.onButtonPress(g_udp_tyre_delta_action_code)):
 
                 png_logger.debug('UDP action %d pressed', g_udp_tyre_delta_action_code)
                 TelData.processTyreDeltaSound()

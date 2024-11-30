@@ -40,6 +40,7 @@ from tests_overtake_analyzer import \
     TestOvertakeAnalyzerEmptyInput, \
     TestOvertakeAnalyzerInvalidData
 from tests_race_analyzer import TestGetFastestTimesJson
+from tests_debouncer import TestMultiButtonDebouncer
 from f1_types import \
     TestPacketCarMotionData, \
     TestPacketSessionData, \

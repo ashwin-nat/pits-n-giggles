@@ -800,7 +800,8 @@ class DataPerDriver:
             ))
 
         # Fuel stuff
-        self.m_fuel_rate_recommender.add(self.m_packet_car_status.m_fuelInTank, old_lap_number)
+        if self.m_packet_car_status:
+            self.m_fuel_rate_recommender.add(self.m_packet_car_status.m_fuelInTank, old_lap_number)
 
     def isZerothLapSnapshotDataAvailable(self) -> bool:
         """

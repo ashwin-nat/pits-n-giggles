@@ -197,24 +197,32 @@ body {
     inset 0 1px 0 #10e71b;  /* Top border (green) */
 }
 
-
-
 .player-row td:first-child {
-  border-left: 1.5px solid #f7f5ef;
-  /* Left border on the first cell */
+  border-left: 1px solid #f7f5ef; /* Left border (white) */
 }
 
 .player-row td:last-child {
-  border-right: 1.5px solid #f7f5ef;
-  /* Right border on the last cell */
+  border-right: 1px solid #f7f5ef; /* Right border (white) */
 }
 
 .player-row td {
-  border-top: 1.5px solid #f7f5ef !important;
-  /* Top border on all cells */
-  border-bottom: 1.5px solid #f7f5ef !important;
-  /* Bottom border on all cells */
+  border-top: 1px solid #f7f5ef !important; /* Top border (white) */
+  border-bottom: 1px solid #f7f5ef !important; /* Bottom border (white) */
 }
+
+.drs-row td:first-child {
+  border-left: 1px solid #10e71b; /* Left border (green) */
+}
+
+.drs-row td:last-child {
+  border-right: 1px solid #10e71b; /* Right border (green) */
+}
+
+.drs-row td {
+  border-top: 1px solid #10e71b !important; /* Top border (green) */
+  border-bottom: 1px solid #10e71b !important; /* Bottom border (green) */
+}
+
 
 .driver-name {
   cursor: pointer;

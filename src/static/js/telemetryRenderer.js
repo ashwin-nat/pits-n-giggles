@@ -79,7 +79,7 @@ class TelemetryRenderer {
       lapCountDiv.style.margin = "0 auto";   // Ensure centering in flex/inline-flex containers
       let lapCountText = "";
       lapCountText += "L" + incomingData['current-lap'].toString();
-      if (incomingData['total-laps']) {
+      if (incomingData['total-laps'] > 1) {
         lapCountText += "/" + incomingData['total-laps'].toString();
       }
       lapCountDiv.textContent = lapCountText;
