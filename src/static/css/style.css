@@ -317,3 +317,26 @@ a {
   text-decoration: none; /* Removes the underline */
   color: inherit; /* Inherits the color from the parent element */
 }
+
+/* Ensure modal itself can grow to take up most of the screen */
+.driver-modal-content {
+  max-height: 90vh; /* Maximum height of 90% of viewport */
+  height: auto; /* Allow the height to auto-expand if content is smaller */
+  overflow: hidden; /* Prevent overflow */
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  background-color: var(--f1-darker);
+  color: var(--f1-text);
+}
+
+/* Header remains sticky at the top */
+.driver-modal-header {
+  background-color: var(--f1-dark);
+  color: var(--f1-text);
+  border-bottom: 1px solid var(--f1-light-gray);
+  position: sticky;
+  top: 0;
+  z-index: 1055;
+  padding: 1rem;
+}

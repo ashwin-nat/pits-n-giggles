@@ -273,7 +273,7 @@ class RaceTableRowPopulator {
         const fontSize = window.getComputedStyle(cell).fontSize;
         const fontHeight = parseInt(fontSize, 10); // Convert the font size to an integer value
 
-        console.log(`Font Size: ${fontSize}, Parsed Height: ${fontHeight}`);
+        // console.log(`Font Size: ${fontSize}, Parsed Height: ${fontHeight}`);
 
         // Create a container div for the sectorBar
         const sectorBar = document.createElement('div');

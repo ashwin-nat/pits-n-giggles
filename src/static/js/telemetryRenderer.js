@@ -153,7 +153,6 @@ class TelemetryRenderer {
     }
     const totalCars = data["table-entries"].length;
     const playerPosition = this.getPlayerPosition(data);
-    console.log("getRelevantRaceTableRows", g_pref_numAdjacentCars);
     const relevantPositions = this.getAdjacentPositions(playerPosition, totalCars, g_pref_numAdjacentCars);
 
     const lowerIndex = relevantPositions[0] - 1;
