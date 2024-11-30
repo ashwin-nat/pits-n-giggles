@@ -30,14 +30,108 @@ from enum import Enum
 
 # ------------------------- CLASS DEFINITIONS --------------------------------------------------------------------------
 
+class TyreDeltaMessage:
+    class TyreType(Enum):
+        SLICK = 1
+        WET = 2
+
+        @staticmethod
+        def isValid(tyre_type: Any) -> bool:
+            """Check if the given tyre type ID is valid
+
+            Args:
+                packet_type (int or TyreType): The packet type to be validated
+
+            Returns:
+                bool: True if valid, else False
+            """
+
+            if isinstance(tyre_type, TyreDeltaMessage.TyreType):
+                return True  # It's already an instance of F1PacketType
+            return any(tyre_type == member.value for member in TyreDeltaMessage.TyreType)
+
+        def __repr__(self) -> str:
+            """Return a string representation of the TyreDeltaMessage object."""
+            return self.name
+
+        def __str__(self) -> str:
+            """Return a string representation of the TyreDeltaMessage object."""
+            return self.__repr__()
+
+    def __init__(self, curr_tyre_type: TyreType, delta: float) -> None:
+        """Initialize the TyreDeltaMessage object.
+
+        Args:
+            curr_tyre_type (TyreType): The current tyre type
+            delta (float): The tyre delta
+        """
+        self.m_curr_tyre_type = curr_tyre_type
+        self.m_other_tyre_type = TyreDeltaMessage.TyreType.SLICK \
+            if curr_tyre_type == TyreDeltaMessage.TyreType.WET else TyreDeltaMessage.TyreType.WET
+        self.m_delta = delta
+
+    def __repr__(self) -> str:
+        """Return a string representation of the TyreDeltaMessage object."""
+
+        return f"TyreDeltaMessage(curr_tyre_type={str(self.m_curr_tyre_type)}, " \
+                f"other_tyre_type={str(self.m_other_tyre_type)}, delta={self.m_delta})"
+
+    def __str__(self) -> str:
+        """Return a string representation of the TyreDeltaMessage object."""
+        return self.__repr__()
+
+    def toJSON(self) -> Dict[str, Any]:
+        """Get the JSON representation of this object.
+
+        Returns:
+            Dict[str, Any]: The JSON representation of this object.
+        """
+        return {
+            "curr-tyre-type": str(self.m_curr_tyre_type),
+            "other-tyre-type": str(self.m_other_tyre_type),
+            "tyre-delta": self.m_delta
+        }
+
 @dataclass(frozen=True)
 class ITCMessage:
     class MessageType(Enum):
         CUSTOM_MARKER = 1
+        TYRE_DELTA_NOTIFICATION = 2
         # Add more message types as needed
 
+        def __repr__(self) -> str:
+            """Return a string representation of the ITCMessage object."""
+            return {
+                ITCMessage.MessageType.CUSTOM_MARKER: "custom-marker",
+                ITCMessage.MessageType.TYRE_DELTA_NOTIFICATION: "tyre-delta",
+            }[self]
+
+
+        def __str__(self) -> str:
+            """Return a string representation of the ITCMessage object."""
+            return self.__repr__()
+
     m_message_type: "ITCMessage.MessageType"
-    m_message: Any
+    m_message: Any # Must have toJSON method defined
+
+    def __repr__(self) -> str:
+        """Return a string representation of the ITCMessage object."""
+        return f"ITCMessage(message_type={self.m_message_type}, message={str(self.m_message)})"
+
+    def __str__(self) -> str:
+        """Return a string representation of the ITCMessage object."""
+        return self.__repr__()
+
+    def toJSON(self) -> Dict[str, Any]:
+        """Get the JSON representation of this object.
+
+        Returns:
+            Dict[str, Any]: The JSON representation of this object.
+        """
+        return {
+            "message-type": str(self.m_message_type),
+            "message": self.m_message.toJSON()
+        }
 
 class InterThreadCommunicator:
     _instance: Optional["InterThreadCommunicator"] = None

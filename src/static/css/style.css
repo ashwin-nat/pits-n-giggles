@@ -15,7 +15,7 @@
 }
 
 body {
-  font-family: 'Titillium Web', sans-serif;
+  font-family: 'Exo 2', sans-serif;
   background-color: var(--f1-darker);
   color: var(--f1-text);
   line-height: 1.5;
@@ -290,16 +290,30 @@ body {
   border-color: var(--f1-light-gray);
 }
 
+/* Ensure toast container is positioned correctly */
+.toast-container {
+  z-index: 1055;
+}
+
 .toast {
   position: fixed;
   bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
-  background-color: #333;
-  color: white;
-  padding: 15px 20px;
-  border-radius: 5px;
-  opacity: 0;
-  transition: opacity 0.3s ease-in-out;
-  z-index: 9999;
+  min-width: 200px;
+  background-color: #333; /* Dark background */
+  color: #fff; /* White text */
+  border-radius: 20px; /* Rounded corners */
+  padding: 10px 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4); /* Subtle shadow for better visibility */
+}
+
+.toast-body {
+  font-size: 16px; /* Standard font size */
+  text-align: center; /* Centered text */
+}
+
+a {
+  text-decoration: none; /* Removes the underline */
+  color: inherit; /* Inherits the color from the parent element */
 }

@@ -801,10 +801,10 @@ SOFTWARE.
 
                 if (!shouldHideLastLapColumn) {
                     if (g_pref_lastLapAbsoluteFormat || isSpectating) {
-                        row.insertCell().textContent = formatLapTime(lapInfo["best-lap-ms"]);
+                        row.insertCell().textContent = formatLapTime(lapInfo["last-lap-ms"]);
                     } else {
                         row.insertCell().textContent = formatLapDelta(lapInfo["last-lap-ms"],
-                            lapInfo["last-lap-ms-player"], isPlayer);;
+                            lapInfo["last-lap-ms-player"], isPlayer);
                     }
                 }
             }

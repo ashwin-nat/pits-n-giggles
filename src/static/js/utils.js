@@ -35,7 +35,7 @@ function formatLapDelta(lapTime, playerLapTime, isPlayer) {
         return "---";
     }
 
-    if(playerLapTime === 0 || playerLapTime === null) {
+    if (playerLapTime === 0 || playerLapTime === null) {
         // player has not set a lap yet. so show absolute value
         return formatLapTime(lapTime);
     }
@@ -43,28 +43,37 @@ function formatLapDelta(lapTime, playerLapTime, isPlayer) {
     return formatDelta(lapTime - playerLapTime);
 }
 
-function showToast(message) {
-    // Create a new div element for the toast
-    let toast = document.createElement('div');
-    toast.classList.add('toast');
+function showToast(message, timeout = 3000) {
+    // Select the toast container (create if it doesn't exist)
+    const toastContainer = document.querySelector('.toast-container');
+    let toastElement = document.getElementById('liveToast');
 
-    // Set the message content
-    toast.innerText = message;
+    if (!toastElement) {
+        toastElement = document.createElement('div');
+        toastElement.id = 'liveToast';
+        toastElement.className = 'toast';
+        toastElement.setAttribute('role', 'alert');
+        toastElement.setAttribute('aria-live', 'assertive');
+        toastElement.setAttribute('aria-atomic', 'true');
+        toastElement.innerHTML = `
+        <div class="toast-body"></div>
+      `;
+        toastContainer.appendChild(toastElement);
+    }
 
-    // Append the toast to the document body
-    document.body.appendChild(toast);
+    // Update the toast message
+    const bodyContent = toastElement.querySelector('.toast-body');
+    bodyContent.textContent = message;
 
-    // Show the toast
-    toast.style.opacity = 1;
+    // Apply dark theme styling
+    toastElement.style.backgroundColor = '#333'; // Dark background
+    bodyContent.style.color = '#fff'; // White text for visibility
+    toastElement.style.borderRadius = '20px'; // Rounded corners for Android-like look
+    toastElement.style.padding = '10px 20px'; // Some padding for comfort
 
-    // Hide the toast after 3 seconds
-    setTimeout(function() {
-        toast.style.opacity = 0;
-        // Remove the toast from the document after it fades out
-        setTimeout(function() {
-        document.body.removeChild(toast);
-        }, 300);
-    }, 3000);
+    // Show the toast with a custom timeout
+    const toast = new bootstrap.Toast(toastElement, { delay: timeout });
+    toast.show();
 }
 
 function formatFloatWithTwoDecimals(floatNumber) {
@@ -127,30 +136,6 @@ function getMaxTyreWear(wearData) {
     };
 }
 
-function showToast(message) {
-    // Create a new div element for the toast
-    let toast = document.createElement('div');
-    toast.classList.add('toast');
-
-    // Set the message content
-    toast.innerText = message;
-
-    // Append the toast to the document body
-    document.body.appendChild(toast);
-
-    // Show the toast
-    toast.style.opacity = 1;
-
-    // Hide the toast after 3 seconds
-    setTimeout(function() {
-        toast.style.opacity = 0;
-        // Remove the toast from the document after it fades out
-        setTimeout(function() {
-        document.body.removeChild(toast);
-        }, 300);
-    }, 3000);
-}
-
 function getTeamName(teamId) {
     if ("MY_TEAM" == teamId) {
         return g_pref_myTeamName;
@@ -158,3 +143,16 @@ function getTeamName(teamId) {
         return teamId;
     }
 }
+function textToSpeech(text) {
+    // Create a new SpeechSynthesisUtterance object with the provided text
+    const speech = new SpeechSynthesisUtterance(text);
+    console.log(window.speechSynthesis.getVoices());
+
+    // Optionally, you can customize the speech parameters (e.g., rate, pitch, etc.)
+    speech.rate = 1;    // Normal speed
+    speech.pitch = 1;   // Normal pitch
+    speech.volume = 1;  // Full volume
+
+    // Speak the text out loud
+    window.speechSynthesis.speak(speech);
+  }

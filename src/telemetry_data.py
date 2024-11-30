@@ -24,6 +24,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import copy
+import json
 from typing import Optional, Generator, Tuple, List, Dict, Any
 from enum import Enum
 from collections import OrderedDict
@@ -38,7 +39,7 @@ from lib.overtake_analyzer import OvertakeRecord
 from lib.collisions_analyzer import CollisionRecord, CollisionAnayzer, CollisionAnalyzerMode
 from lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
 from lib.fuel_rate_recommender import FuelRateRecommender
-from lib.inter_thread_communicator import InterThreadCommunicator, ITCMessage
+from lib.inter_thread_communicator import InterThreadCommunicator, ITCMessage, TyreDeltaMessage
 from lib.custom_marker_tracker import CustomMarkerEntry, CustomMarkersHistory
 from src.png_logger import getLogger
 
@@ -1919,11 +1920,21 @@ def processCustomMarkerCreate() -> None:
     custom_marker_obj = getCustomMarkerEntryObj()
     if custom_marker_obj:
         _custom_markers_history.insert(custom_marker_obj)
-        # InterThreadCommunicator().send("stream-update", ITCMessage(
-        #     m_message_type=ITCMessage.MessageType.CUSTOM_MARKER,
-        #     m_message=custom_marker_obj))
+        InterThreadCommunicator().send("frontend-update", ITCMessage(
+            m_message_type=ITCMessage.MessageType.CUSTOM_MARKER,
+            m_message=custom_marker_obj))
     else:
         png_logger.warning("Unable to generate player_recorded_event_str")
+
+def processTyreDeltaSound() -> None:
+    """Send the tyre delta notification to the frontend
+    """
+
+    message = getTyreDeltaNotificationMessage()
+    if message:
+        InterThreadCommunicator().send("frontend-update", ITCMessage(
+            m_message_type=ITCMessage.MessageType.TYRE_DELTA_NOTIFICATION,
+            m_message=message))
 
 # -------------------------------------- UTILTIES ----------------------------------------------------------------------
 
@@ -2097,7 +2108,7 @@ def processStreamUpdateButtonPress(custom_marker_obj: CustomMarkerEntry) -> None
     """Processes the stream update button press event
     """
 
-    InterThreadCommunicator().send("stream-update", ITCMessage(
+    InterThreadCommunicator().send("frontend-update", ITCMessage(
         m_message_type=ITCMessage.MessageType.CUSTOM_MARKER,
         m_message=custom_marker_obj))
 
@@ -2109,3 +2120,50 @@ def clearDataStructures() -> None:
     with _globals_lock.gen_wlock():
         _globals.clear()
     _custom_markers_history.clear()
+
+def getTyreDeltaNotificationMessage() -> TyreDeltaMessage:
+    # sourcery skip: assign-if-exp, extract-method
+
+    with _globals_lock.gen_rlock():
+        # N/A for spectating or after race - maybe support this later
+        if _globals.m_is_spectating or _globals.m_packet_final_classification:
+            return None
+
+    with _driver_data_lock.gen_rlock():
+        # If player ded, not applicable
+        if (_driver_data.m_player_index is None) or (_driver_data.m_is_player_dnf):
+            return None
+        # Need tyre set packet info
+        tyre_sets = _driver_data.m_driver_data[_driver_data.m_player_index].m_packet_tyre_sets
+        if not tyre_sets :
+            return None
+
+        # Fitted index needs to be valid
+        fitted_tyre = tyre_sets.m_fitted_tyre_set
+        if not fitted_tyre:
+            png_logger.error(f"Invalid fitted tyre index: {json.dumps(tyre_sets.toJSON())}")
+
+        # First find the fitted tyre
+        wet_tyre_compounds = {
+            ActualTyreCompound.INTER,
+            ActualTyreCompound.WET,
+            ActualTyreCompound.WET_CLASSIC,
+            ActualTyreCompound.WET_F2
+        }
+        if fitted_tyre.m_actualTyreCompound not in wet_tyre_compounds:
+            curr_tyre_type = TyreDeltaMessage.TyreType.SLICK
+        else:
+            curr_tyre_type = TyreDeltaMessage.TyreType.WET
+        if TyreDeltaMessage.TyreType.SLICK == curr_tyre_type:
+            # Search for the first wet tyre (search in reverse)
+            other_tyre = next((tyre_set for tyre_set in reversed(tyre_sets.m_tyreSetData) \
+                               if tyre_set.m_actualTyreCompound in wet_tyre_compounds), None)
+        else:
+            # Search for the first slick tyre (search in forward)
+            other_tyre = next((tyre_set for tyre_set in tyre_sets.m_tyreSetData \
+                               if tyre_set.m_actualTyreCompound not in wet_tyre_compounds), None)
+        assert other_tyre
+        if not other_tyre:
+            png_logger.error(f"Invalid other tyre index: {json.dumps(tyre_sets.toJSON())}")
+            return None
+        return TyreDeltaMessage(curr_tyre_type, delta=(other_tyre.m_lapDeltaTime / 1000))

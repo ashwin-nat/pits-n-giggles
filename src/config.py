@@ -62,6 +62,7 @@ class Config:
     telemetry_port: int
     server_port: int
     udp_custom_action_code: int
+    udp_tyre_delta_action_code: int
     packet_capture_mode: PacketCaptureMode
     post_race_data_autosave: bool
     refresh_interval: int
@@ -84,6 +85,7 @@ _default_config = {
         'telemetry_port': 20777,  # Integer
         'server_port': 5000,      # Integer
         'udp_custom_action_code': None,  # None (optional, not set by default)
+        'udp_tyre_delta_action_code' : None,
     },
     'Capture': {
         'packet_capture_mode': PacketCaptureMode.DISABLED,  # Enum (which can be converted to string for INI storage)
@@ -198,6 +200,7 @@ def load_config(config_file: str = "config.ini") -> Config:
         telemetry_port=get_value_int("Network", "telemetry_port"),
         server_port=get_value_int("Network", "server_port"),
         udp_custom_action_code=get_value_int("Network", "udp_custom_action_code"),
+        udp_tyre_delta_action_code=get_value_int("Network", "udp_tyre_delta_action_code"),
 
         packet_capture_mode=PacketCaptureMode(get_value_str("Capture", "packet_capture_mode")),
         post_race_data_autosave=get_value_bool("Capture", "post_race_data_autosave"),

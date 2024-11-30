@@ -187,16 +187,30 @@ g_overtakes_history: OvertakesHistory = OvertakesHistory()
 g_post_race_data_autosave: bool = False
 g_directory_mapping: Dict[str, str] = {}
 g_udp_custom_action_code: Optional[int] = None
+g_udp_tyre_delta_action_code: Optional[int] = None
 g_completed_session_uid_set: set[int] = set()
 png_logger = getLogger()
 
 # -------------------------------------- INITIALIZATION ----------------------------------------------------------------
 
-def initAutosaves(post_race_data_autosave: bool, udp_custom_action_code: Optional[int]):
+def initAutosaves(
+    post_race_data_autosave: bool,
+    udp_custom_action_code: Optional[int],
+    udp_tyre_delta_action_code: Optional[int]) -> None:
+    """Initialise the autosave settings
+
+    Args:
+        post_race_data_autosave (bool): Save JSON file after race
+        udp_custom_action_code (Optional[int]): UDP action code to set marker
+        udp_tyre_delta_action_code (Optional[int]): UDP action code to play tyre delta sound
+    """
+
     global g_post_race_data_autosave
     global g_udp_custom_action_code
+    global g_udp_tyre_delta_action_code
     g_post_race_data_autosave = post_race_data_autosave
     g_udp_custom_action_code = udp_custom_action_code
+    g_udp_tyre_delta_action_code = udp_tyre_delta_action_code
 
 def initDirectories() -> None:
     """
@@ -551,7 +565,11 @@ class F1TelemetryHandler:
                 png_logger.debug('UDP action %d pressed', g_udp_custom_action_code)
                 TelData.processCustomMarkerCreate()
 
-                # TelData.processStreamUpdateButtonPress(packet)
+            if (g_udp_tyre_delta_action_code is not None) and \
+                (packet.mEventDetails.isUDPActionPressed(g_udp_tyre_delta_action_code)):
+
+                png_logger.debug('UDP action %d pressed', g_udp_tyre_delta_action_code)
+                TelData.processTyreDeltaSound()
 
         # Fastest Lap - update data structures
         elif packet.m_eventCode == PacketEventData.EventPacketType.FASTEST_LAP:

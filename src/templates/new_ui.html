@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
@@ -33,8 +34,8 @@
         </div>
         <div class="fastest-lap">
           <span class="fastest-lap-label">FASTEST LAP</span>
-          <span id="fastest-lap" class="fastest-lap-time">1:30.674</span>
-          <span class="fastest-lap-driver">HAM</span>
+          <span id="fastest-lap" class="fastest-lap-time" id="fastestLapTimeSpan"></span>
+          <span class="fastest-lap-driver" id="fastestLapNameSpan"></span>
         </div>
         <div class="header-right">
           <div id="weather-predictions" class="weather-forecast">
@@ -46,6 +47,7 @@
         </div>
       </header>
 
+      <!-- Main Container -->
       <main class="dashboard-main">
         <div class="telemetry-table-wrapper">
           <table class="telemetry-table">
@@ -100,10 +102,15 @@
               <label for="carsToShow" class="form-label">Number of cars to show (before/after player)</label>
               <input type="number" class="form-control" id="carsToShow" value="2" min="1" max="5">
             </div>
+            <!-- Number of weather forecast samples to show -->
+            <div class="mb-3">
+              <label for="weatherSamplesToShow" class="form-label">Number of weather forecast samples to show<label>
+              <input type="number" class="form-control" id="weatherSamplesToShow" value="3" min="1" max="5">
+            </div>
             <!-- Team Name -->
             <div class="mb-3">
               <label for="teamName" class="form-label">My Team Name</label>
-              <input type="text" class="form-control" id="teamName" value="My Team">
+              <input type="text" class="form-control" id="teamNameInput" value="My Team">
             </div>
             <!-- Time format -->
             <div class="mb-3">
@@ -170,6 +177,18 @@
       </div>
     </div>
 
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+      <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+          <i class="bi bi-bell-fill me-2 text-primary"></i>
+          <strong class="me-auto">Notification</strong>
+          <small>Just now</small>
+          <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body"></div>
+      </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='js/preferences.js') }}"></script>
@@ -179,6 +198,7 @@
     <script src="{{ url_for('static', filename='js/modals.js') }}"></script>
     <script src="{{ url_for('static', filename='js/raceTableRowPopulator.js') }}"></script>
     <script src="{{ url_for('static', filename='js/telemetryRenderer.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/frontendUpdate.js') }}"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
   </body>
 </html>

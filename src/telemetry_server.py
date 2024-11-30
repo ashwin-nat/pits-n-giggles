@@ -370,7 +370,8 @@ def streamUpdaterTask(update_interval_ms: int) -> None:
 
     sleep_duration = update_interval_ms / 1000
     while True:
-        frame_id = InterThreadCommunicator().receive("stream-update")
-        if frame_id is not None:
-            png_logger.info(f"Received stream update button press {frame_id}")
+        message = InterThreadCommunicator().receive("frontend-update")
+        if message:
+            png_logger.debug(f"Received stream update button press {str(message)}")
+            _web_server.m_socketio.emit('frontend-update', message.toJSON())
         _web_server.m_socketio.sleep(sleep_duration)

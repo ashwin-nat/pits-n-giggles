@@ -511,16 +511,20 @@ class DriversListRsp:
                     "last-lap" : {
                         "lap-time-ms" : data_per_driver.m_last_lap_ms,
                         "lap-time-ms-player" : 0,
-                        "sector-1-status" : 0,
-                        "sector-2-status" : 0,
-                        "sector-3-status" : 0,
+                        "sector-status" : [
+                            0,
+                            1,
+                            2,
+                        ]
                     },
                     "best-lap" : {
-                        "lap-time-ms" : data_per_driver.m_last_lap_ms,
+                        "lap-time-ms" : data_per_driver.m_best_lap_ms,
                         "lap-time-ms-player" : 0,
-                        "sector-1-status" : 0,
-                        "sector-2-status" : 0,
-                        "sector-3-status" : 0,
+                        "sector-status" : [
+                            0,
+                            1,
+                            2,
+                        ]
                     },
                     "lap-progress" : data_per_driver.m_lap_progress, # NULL is supported
                     "speed-trap-record-kmph" : data_per_driver.m_packet_lap_data.m_speedTrapFastestSpeed if \

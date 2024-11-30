@@ -387,3 +387,14 @@ class PacketTyreSetsData:
             b"".join([tyre_set_data.to_bytes() for tyre_set_data in tyre_set_data]) +
             struct.pack("<B", fitted_index)
         ))
+
+    @property
+    def m_fitted_tyre_set(self) -> Optional[TyreSetData]:
+        """Get the fitted tyre set data.
+
+        Returns:
+            TyreSetData: The fitted tyre set data, else None.
+        """
+        if not (0 <= self.m_fittedIdx < len(self.m_tyreSetData)):
+            return None
+        return self.m_tyreSetData[self.m_fittedIdx]

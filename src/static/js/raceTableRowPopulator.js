@@ -51,11 +51,6 @@ class RaceTableRowPopulator {
         if (this.gameYear == 23) {
             row.insertCell().textContent = ersInfo["ers-percent"];
         } else {
-            // if ("ers-mode" in ersInfo) {
-            //     row.insertCell().innerHTML = `${ersInfo["ers-percent"]}<br>${ersInfo["ers-mode"]}`;
-            // } else {
-            //     row.insertCell().textContent = ersInfo["ers-percent"];
-            // }
             this.createMultiLineCell([
                 `${ersInfo["ers-percent"]}`,
                 `${ersInfo["ers-mode"]}`,
@@ -83,10 +78,12 @@ class RaceTableRowPopulator {
         const isPlayer = this.rowData["driver-info"]["is-player"];
         const lapInfo = this.rowData["lap-info-new"]["best-lap"];
         const speedTrapRecord = this.rowData["lap-info-new"]["speed-trap-record-kmph"];
+        let cell;
         if (g_pref_bestLapAbsoluteFormat || isSpectating) {
             const lapStr = formatLapTime(lapInfo["lap-time-ms"]);
             if (this.gameYear == 23) {
-                this.row.insertCell().textContent = lapStr;
+                cell = this.row.insertCell();
+                cell.textContent = lapStr;
             } else {
 
                 let speedTrapValue;
@@ -95,7 +92,7 @@ class RaceTableRowPopulator {
                 } else {
                     speedTrapValue = "---";
                 }
-                this.createMultiLineCell([
+                cell = this.createMultiLineCell([
                     lapStr,
                     speedTrapValue,
                 ]);
@@ -104,7 +101,8 @@ class RaceTableRowPopulator {
             const lapDeltaStr = formatLapDelta(lapInfo["lap-time-ms"],
                     lapInfo["lap-time-ms-player"], isPlayer);
             if (this.gameYear == 23) {
-                this.row.insertCell().textContent = lapDeltaStr;
+                cell = this.row.insertCell();
+                cell.textContent = lapDeltaStr;
             } else {
                 let speedTrapValue;
                 if (speedTrapRecord != null) {
@@ -112,12 +110,13 @@ class RaceTableRowPopulator {
                 } else {
                     speedTrapValue = "---";
                 }
-                this.createMultiLineCell([
+                cell = this.createMultiLineCell([
                     lapDeltaStr,
                     speedTrapValue,
                 ]);
             }
         }
+        this.addSectorInfo(cell, lapInfo["sector-status"]);
         return this;
     }
 
@@ -125,14 +124,18 @@ class RaceTableRowPopulator {
         const isSpectating = this.rowData["driver-info"]["is-spectating"];
         const isPlayer = this.rowData["driver-info"]["is-player"];
         const lapInfo = this.rowData["lap-info-new"]["last-lap"];
+        let cell;
         if (g_pref_bestLapAbsoluteFormat || isSpectating) {
             const lapStr = formatLapTime(lapInfo["lap-time-ms"]);
-            this.row.insertCell().textContent = lapStr;
+            cell = this.row.insertCell();
+            cell.textContent = lapStr;
         } else {
             const lapDeltaStr = formatLapDelta(lapInfo["lap-time-ms"],
                     lapInfo["lap-time-ms-player"], isPlayer);
-            this.row.insertCell().textContent = lapDeltaStr;
+            cell = this.row.insertCell();
+            cell.textContent = lapDeltaStr;
         }
+        this.addSectorInfo(cell, lapInfo["sector-status"]);
         return this;
     }
 
@@ -265,5 +268,35 @@ class RaceTableRowPopulator {
         return cell;
     }
 
+    addSectorInfo(cell, sectorStatus) {
+        // Get the computed font size of the text in the cell
+        const fontSize = window.getComputedStyle(cell).fontSize;
+        const fontHeight = parseInt(fontSize, 10); // Convert the font size to an integer value
+
+        console.log(`Font Size: ${fontSize}, Parsed Height: ${fontHeight}`);
+
+        // Create a container div for the sectorBar
+        const sectorBar = document.createElement('div');
+        sectorBar.classList.add('d-flex', 'w-100', 'p-0');
+        sectorBar.style.height = `${fontHeight}px`; // Set height based on font size
+
+        // Define the color mapping for sector statuses using integers as keys
+        const colorMap = {
+            [-1]: 'bg-danger', // Red
+            [0]: 'bg-warning', // Yellow
+            [1]: 'bg-success', // Green
+            [2]: 'bg-purple'   // Purple
+        };
+
+        // Create individual segments for each sector and apply the appropriate color
+        sectorStatus.forEach(status => {
+            const sectorSegment = document.createElement('div');
+            sectorSegment.classList.add('flex-fill', 'sector-segment', colorMap[status]);
+            sectorBar.appendChild(sectorSegment);
+        });
+
+        // Append the sector bar to the cell
+        cell.appendChild(sectorBar);
+    }
 
 }

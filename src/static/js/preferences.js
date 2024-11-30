@@ -6,6 +6,7 @@ let g_pref_bestLapAbsoluteFormat;
 let g_pref_tyreWearAverageFormat;
 let g_pref_myTeamName;
 let g_pref_numAdjacentCars;
+let g_pref_numWeatherPredictionSamples;
 
 function loadPreferences() {
     let missingPreference = false;
@@ -60,6 +61,15 @@ function loadPreferences() {
         g_pref_numAdjacentCars = parseInt(g_pref_numAdjacentCars, 10); // localstorage saves everthing as string
     }
 
+    g_pref_numWeatherPredictionSamples = localStorage.getItem('numWeatherPredictionSamples');
+    if ((g_pref_numWeatherPredictionSamples === null) || (g_pref_numWeatherPredictionSamples === "")) {
+        g_pref_numWeatherPredictionSamples = 3;
+        missingPreference = true;
+    } else {
+        g_pref_numWeatherPredictionSamples = parseInt(g_pref_numWeatherPredictionSamples, 10); // localstorage saves everthing as string
+    }
+
+
     // If any preference was missing, save all current preferences
     if (missingPreference) {
         savePreferences();
@@ -72,18 +82,29 @@ function loadPreferences() {
         g_pref_bestLapAbsoluteFormat,
         g_pref_tyreWearAverageFormat,
         g_pref_relativeDelta,
-        g_pref_numAdjacentCars
+        g_pref_numAdjacentCars,
+        g_pref_numWeatherPredictionSamples,
     });
 }
 
 function savePreferences() {
-    localStorage.setItem('is24HourFormat', g_is24HourFormat);
-    localStorage.setItem('relativeDelta', g_relativeDelta);
-    localStorage.setItem('lastLapAbsoluteFormat', g_lastLapAbsoluteFormat);
-    localStorage.setItem('bestLapAbsoluteFormat', g_bestLapAbsoluteFormat);
-    localStorage.setItem('tyreWearAverageFormat', g_tyreWearAverageFormat);
-    localStorage.setItem('myTeamName', g_myTeamName);
-    localStorage.setItem('numAdjacentCars', g_numAdjacentCars);
+    localStorage.setItem('is24HourFormat', g_pref_is24HourFormat);
+    localStorage.setItem('relativeDelta', g_pref_relativeDelta);
+    localStorage.setItem('lastLapAbsoluteFormat', g_pref_lastLapAbsoluteFormat);
+    localStorage.setItem('bestLapAbsoluteFormat', g_pref_bestLapAbsoluteFormat);
+    localStorage.setItem('tyreWearAverageFormat', g_pref_tyreWearAverageFormat);
+    localStorage.setItem('myTeamName', g_pref_myTeamName);
+    localStorage.setItem('numAdjacentCars', g_pref_numAdjacentCars);
+    localStorage.setItem('numWeatherPredictionSamples', g_pref_numWeatherPredictionSamples);
 
-    console.log("Saved Preferences:", { g_myTeamName, g_is24HourFormat, g_lastLapAbsoluteFormat, g_bestLapAbsoluteFormat, g_tyreWearAverageFormat, g_relativeDelta, g_numAdjacentCars });
+    console.log("Saved Preferences:", {
+        g_pref_myTeamName,
+        g_pref_is24HourFormat,
+        g_pref_lastLapAbsoluteFormat,
+        g_pref_bestLapAbsoluteFormat,
+        g_pref_tyreWearAverageFormat,
+        g_pref_relativeDelta,
+        g_pref_numAdjacentCars,
+        g_pref_numWeatherPredictionSamples,
+    });
 }

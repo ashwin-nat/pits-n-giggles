@@ -111,7 +111,7 @@ class TelemetryRenderer {
     });
 
     this.weatherContainer.innerHTML = '';
-    const weatherPredictions = incomingData['weather-forecast-samples'].slice(0, 3);
+    const weatherPredictions = incomingData['weather-forecast-samples'].slice(0, g_pref_numWeatherPredictionSamples+1);
     weatherPredictions.forEach(prediction => {
       this.weatherContainer.appendChild(this.renderWeatherPrediction(prediction));
     });
@@ -153,6 +153,7 @@ class TelemetryRenderer {
     }
     const totalCars = data["table-entries"].length;
     const playerPosition = this.getPlayerPosition(data);
+    console.log("getRelevantRaceTableRows", g_pref_numAdjacentCars);
     const relevantPositions = this.getAdjacentPositions(playerPosition, totalCars, g_pref_numAdjacentCars);
 
     const lowerIndex = relevantPositions[0] - 1;

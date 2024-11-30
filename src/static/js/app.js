@@ -60,6 +60,20 @@ socketio.on('driver-info-response', function (data) {
     }
 });
 
+socketio.on('frontend-update', function (data) {
+    console.log("frontend-update", data);
+    switch (data['message-type']) {
+    case 'custom-marker':
+        processCustomMarkerMessage(data['message']);
+        break;
+    case 'tyre-delta':
+        processTyreDeltaMessage(data['message']);
+        break;
+    default:
+        console.error("received unsupported message type in frontend-update");
+    }
+});
+
 // function startUpdates() {
 //   if (updateInterval) {
 //     clearInterval(updateInterval);
