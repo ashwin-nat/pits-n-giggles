@@ -528,10 +528,10 @@ class DriverModalDataPopulator {
     // Pass the graph data to plotGraph function
     const canvas = document.createElement('canvas');
 
-    rightDiv.appendChild(canvas);
     rightDiv.classList.add('chart-container');
     // TODO: graph is very short when only few rows exist in the table
     plotGraph(canvas, datasets, 'Lap', 'Tyre Wear %', false, limits);
+    rightDiv.appendChild(canvas);
 
     containerDiv.appendChild(leftDiv);
     containerDiv.appendChild(rightDiv);
@@ -539,6 +539,129 @@ class DriverModalDataPopulator {
     tabPane.appendChild(containerDiv);
   }
 
+  populateERSHistoryTab(tabPane) {
+
+    const graphDataDeployed = [];
+    const graphDataRemaining = [];
+    const graphDataHarvested = [];
+    const leftPanePopulator = (leftDiv) => {
+      const table = document.createElement('table');
+      table.className = 'table table-bordered table-striped';
+
+      // Create table header
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      const headers = [
+        'Lap',
+        'Remaining',
+        'Deployed',
+        'Harv MGU-H',
+        'Harv MGU-K',
+        'Harvested',
+      ];
+
+      headers.forEach(headerText => {
+        const th = document.createElement('th');
+        th.textContent = headerText;
+        headerRow.appendChild(th);
+      });
+
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      // Create table body
+      const tbody = document.createElement('tbody');
+      const perLapInfo = this.data["per-lap-info"];
+      if (perLapInfo.length > 0) {
+        perLapInfo.forEach((lapInfo) => {
+          const row = tbody.insertRow();
+          const currentLapNum = lapInfo["lap-number"];
+          if (currentLapNum == 0) {
+            // Skip lap 0 for ERS, we want that only for fuel
+            // If this is the only lap info available, print the standard error message
+            if (perLapInfo.length == 1) {
+                row.innerHTML = '<td colspan="6">ERS data not available</td>';
+            }
+            return;
+          }
+
+          let ersRemainingPerc = "---";
+          let ersDeployedPerc = "---";
+          let ersHarvestedMguHPerc = "---";
+          let ersHarvestedMguKPerc = "---";
+          let ersHarvestedTotalPerc = "---";
+          if ("car-status-data" in lapInfo) {
+            const maxErsCapacity = lapInfo["car-status-data"]["ers-max-capacity"];
+            const ersRemainingVal = lapInfo["car-status-data"]["ers-store-energy"];
+            const ersDeployedThisLapVal = lapInfo["car-status-data"]["ers-deployed-this-lap"];
+            const ersHarvestedThisLapMguHVal = lapInfo["car-status-data"]["ers-harvested-this-lap-mguh"];
+            const ersHarvestedThisLapMguKVal = lapInfo["car-status-data"]["ers-harvested-this-lap-mguk"];
+
+            ersRemainingPerc = formatFloatWithTwoDecimals(
+                (ersRemainingVal / maxErsCapacity) * 100) + "%";
+            ersDeployedPerc = formatFloatWithTwoDecimals(
+                (ersDeployedThisLapVal / maxErsCapacity) * 100) + "%";
+            ersHarvestedMguHPerc = formatFloatWithTwoDecimals(
+                (ersHarvestedThisLapMguHVal / maxErsCapacity) * 100) + "%";
+            ersHarvestedMguKPerc = formatFloatWithTwoDecimals(
+                (ersHarvestedThisLapMguKVal / maxErsCapacity) * 100) + "%";
+            ersHarvestedTotalPerc = formatFloatWithTwoDecimals(
+                ((ersHarvestedThisLapMguHVal + ersHarvestedThisLapMguKVal) / maxErsCapacity)
+                * 100) + "%";
+
+            graphDataDeployed.push({ x: parseFloat(currentLapNum), y: ((ersDeployedThisLapVal / maxErsCapacity) * 100) });
+            graphDataRemaining.push({ x: parseFloat(currentLapNum), y: ((ersRemainingVal / maxErsCapacity) * 100) });
+            graphDataHarvested.push({ x: parseFloat(currentLapNum), y: (((ersHarvestedThisLapMguHVal + ersHarvestedThisLapMguKVal) / maxErsCapacity) * 100) });
+          }
+
+          this.populateTableRow(row, [
+            currentLapNum,
+            ersRemainingPerc,
+            ersDeployedPerc,
+            ersHarvestedMguHPerc,
+            ersHarvestedMguKPerc,
+            ersHarvestedTotalPerc,
+          ]);
+        });
+      } else {
+        const row = tbody.insertRow();
+        row.innerHTML = '<td colspan="6">ERS data not available</td>';
+      }
+
+      table.appendChild(tbody);
+      leftDiv.appendChild(table);
+    };
+
+    const rightPanePopulator = (rightDiv) => {
+        // Plot graph
+        const datasets = [
+          {
+              label: 'Deployed',
+              data: graphDataDeployed
+          },
+          {
+              label: 'Remaining',
+              data: graphDataRemaining
+          },
+          {
+              label: 'Harvested',
+              data: graphDataHarvested
+          }
+      ];
+      const limits = {
+          min: 0,
+      }
+
+      // Pass the graph data to plotGraph function
+      const canvas = document.createElement('canvas');
+      rightDiv.classList.add('chart-container');
+      // TODO: graph is very short when only few rows exist in the table
+      plotGraph(canvas, datasets, 'Lap', 'ERS %', false, limits);
+      rightDiv.appendChild(canvas);
+    };
+
+    this.createModalDivElelements(tabPane, leftPanePopulator, rightPanePopulator);
+  }
 
   // Method to create the navigation tabs
   createNavTabs() {
@@ -551,6 +674,7 @@ class DriverModalDataPopulator {
       { id: 'lap-times', label: 'Lap Times' },  // New Lap Times tab
       { id: 'fuel-usage', label: 'Fuel Usage History' },  // New Lap Times tab
       { id: 'tyre-stint-history', label: 'Tyre Stint History' },
+      { id: 'ers-history', label: 'ERS Usage History'}
     ];
 
     // Sort tabs alphabetically based on the label
@@ -589,6 +713,7 @@ class DriverModalDataPopulator {
       { id: 'lap-times', method: this.populateLapTimesTab },  // Lap Times tab
       { id: 'fuel-usage', method: this.populateFuelUsageTab },  // Lap Times tab
       { id: 'tyre-stint-history', method: this.populateTyreStintHistoryTab },
+      { id: 'ers-history', method: this.populateERSHistoryTab },
     ];
 
     // Sort tabs alphabetically based on the label
@@ -616,6 +741,29 @@ class DriverModalDataPopulator {
       cell.textContent = cellData;
       row.appendChild(cell);
     });
+  }
+
+  createModalDivElelements(tabPane, leftPanePopulator, rightPanePopulator) {
+
+    // Split the tab content into two vertical halves
+    const containerDiv = document.createElement('div');
+    containerDiv.className = 'd-flex';
+
+    // Left half: Create the fuel usage table
+    const leftDiv = document.createElement('div');
+    leftDiv.className = 'w-50'; // Half width
+    leftPanePopulator(leftDiv);
+
+    // Right half: Empty for now
+    const rightDiv = document.createElement('div');
+    rightDiv.className = 'w-50'; // Half width, empty for now
+    rightDiv.style.backgroundColor = '#333'; // Optional: dark background for clarity
+    rightPanePopulator(rightDiv);
+
+    containerDiv.appendChild(leftDiv);
+    containerDiv.appendChild(rightDiv);
+
+    tabPane.appendChild(containerDiv);
   }
 }
 
