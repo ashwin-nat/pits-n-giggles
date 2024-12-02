@@ -564,7 +564,9 @@ class DataPerDriver:
             else:
                 final_json["tyre-wear-predictions"] = {
                     "status" : False,
-                    "desc" : "Insufficient data for extrapolation"
+                    "desc" : "Insufficient data for extrapolation",
+                    "predictions": [],
+                    "selected-pit-stop-lap": None
                 }
 
         # Insert the lap time history against tyre used
@@ -919,8 +921,13 @@ class DataPerDriver:
             self.m_tyre_set_history[-1].m_end_lap = self.m_packet_session_history.m_numLaps
 
     def _cleanTyreStintHistory(self) -> None:
-        """If consecutive entries with same start lap exist, only the last instance will be retained.
-             Consecutive duplicate entries are created when the player spams flashback in the pit lane
+        """
+            If consecutive entries with same start lap exist, only the last instance will be retained.
+            NOTE: Consecutive duplicate entries are created when the player spams flashback in the pit lane
+
+            In F1 24, if the driver modifies the strategy before start of race, the game exports the original tyre set
+                with start lap as 1. This messes with the zeroth lap data point.
+
         """
 
         # Clean the input list by removing all but the last occurrence of consecutive items with the same m_start_lap
@@ -936,6 +943,10 @@ class DataPerDriver:
 
         # Update the history list
         self.m_tyre_set_history = cleaned_tyre_set_history_list
+
+        if self.m_tyre_set_history[0].m_start_lap == 1 and self.m_tyre_set_history[0].m_end_lap == 0:
+            png_logger.debug(f"removing tyre stint with start_lap=1 and end_lap=0 for driver {self.m_name}")
+            del self.m_tyre_set_history[0]
 
     def getTyreSetInfoAtLap(self, lap_num: Optional[int] = None) -> Optional[TyreSetInfo]:
         """Get the tyre set info at the specified lap number

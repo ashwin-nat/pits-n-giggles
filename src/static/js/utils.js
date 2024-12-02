@@ -155,4 +155,69 @@ function textToSpeech(text) {
 
     // Speak the text out loud
     window.speechSynthesis.speak(speech);
-  }
+}
+
+function flattenJsonObject(obj) {
+    const result = {};
+    const suffixes = ["rl", "rr", "fl", "fr"];
+    const stack = [{ currentObj: obj, currentKey: "" }];
+
+    while (stack.length > 0) {
+        const { currentObj, currentKey } = stack.pop();
+
+        for (const key in currentObj) {
+            const value = currentObj[key];
+            const newKey = currentKey ? `${currentKey}.${key}` : key;
+
+            if (Array.isArray(value)) {
+                // Unroll the array with specific suffixes
+                value.forEach((element, index) => {
+                    if (index < suffixes.length) {
+                        result[`${newKey}-${suffixes[index]}`] = element;
+                    }
+                });
+            } else if (typeof value === 'object' && value !== null) {
+                // Push nested objects onto the stack for further processing
+                stack.push({ currentObj: value, currentKey: newKey });
+            } else {
+                // Assign the value to the result
+                result[newKey] = value;
+            }
+        }
+    }
+
+    return result;
+}
+
+function splitJsonObject(obj) {
+    const keys = Object.keys(obj);
+    const mid = Math.ceil(keys.length / 2);
+
+    const firstHalf = {};
+    const secondHalf = {};
+
+    keys.forEach((key, index) => {
+        if (index < mid) {
+            firstHalf[key] = obj[key];
+        } else {
+            secondHalf[key] = obj[key];
+        }
+    });
+
+    return { firstHalf, secondHalf };
+}
+
+function kebabToTitleCase(str) {
+    return str
+        .split('-')          // Split the string by the hyphen
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1)) // Capitalize the first letter of each word
+        .join(' ');          // Join the words with a space
+}
+
+function splitArray(array) {
+    const mid = Math.ceil(array.length / 2); // Find the midpoint
+    const firstHalf = array.slice(0, mid); // Elements from index 0 to mid (not inclusive)
+    const secondHalf = array.slice(mid);   // Elements from mid to the end
+
+    return { firstHalf, secondHalf };
+}

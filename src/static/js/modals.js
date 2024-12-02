@@ -663,6 +663,133 @@ class DriverModalDataPopulator {
     this.createModalDivElelements(tabPane, leftPanePopulator, rightPanePopulator);
   }
 
+  populateCarDamageTab(tabPane) {
+    const {firstHalf, secondHalf} = splitJsonObject(flattenJsonObject(this.data["car-damage"]));
+    console.log(this.data, firstHalf, secondHalf);
+    const panePopulator = (divElement, tableData) => {
+      const table = document.createElement('table');
+      table.className = 'table table-bordered table-striped';
+
+      // Create table header
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      const headers = [
+        'Field',
+        'Value',
+      ];
+
+      headers.forEach(headerText => {
+        const th = document.createElement('th');
+        th.textContent = headerText;
+        headerRow.appendChild(th);
+      });
+
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      // Create table body
+      const tbody = document.createElement('tbody');
+      console.log("panePopulator", tableData);
+      if (Object.keys(tableData).length > 0) {
+        for (const key in tableData) {
+          const value = tableData[key];
+          const row = tbody.insertRow();
+          this.populateTableRow(row, [kebabToTitleCase(key), value]);
+        }
+      } else {
+        const row = tbody.insertRow();
+        row.innerHTML = '<td colspan="2">Car damage data not available</td>';
+      }
+
+      table.appendChild(tbody);
+      divElement.appendChild(table);
+    };
+
+    const leftPanePopulator = (leftDiv) => {
+      console.log("leftPanePopulator", firstHalf);
+      panePopulator(leftDiv, firstHalf);
+    }
+    const rightPanePopulator = (rightDiv) => {
+      console.log("rightPanePopulator", secondHalf);
+      panePopulator(rightDiv, secondHalf);
+    }
+
+    this.createModalDivElelements(tabPane, leftPanePopulator, rightPanePopulator);
+  }
+
+  populateTyreWearPredictionTab(tabPane) {
+    if (!this.data.hasOwnProperty("tyre-wear-predictions")) {
+      // no need to even create this tab
+      return;
+    }
+    const selectedPitStop = this.data["tyre-wear-predictions"]["selected-pit-stop-lap"];
+    const predictions = this.data["tyre-wear-predictions"]["predictions"];
+    const {firstHalf, secondHalf} = splitArray(predictions);
+
+    const panePopulator = (divElement, tableData) => {
+      const table = document.createElement('table');
+      table.className = 'table table-bordered table-striped';
+
+      // Create table header
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      const headers = [
+        'Lap',
+        'FL',
+        'FR',
+        'RL',
+        'RR',
+        'Average'
+      ];
+
+      headers.forEach(headerText => {
+        const th = document.createElement('th');
+        th.textContent = headerText;
+        headerRow.appendChild(th);
+      });
+
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      // Create table body
+      const tbody = document.createElement('tbody');
+      console.log("panePopulator", tableData);
+      if (tableData.length > 0) {
+        tableData.forEach((predictionData) => {
+          const currentLapNum = predictionData["lap-number"];
+          const flWear = formatFloatWithTwoDecimals(predictionData["front-left-wear"]) + "%";
+          const frWear = formatFloatWithTwoDecimals(predictionData["front-right-wear"]) + "%";
+          const rlWear = formatFloatWithTwoDecimals(predictionData["rear-left-wear"]) + "%";
+          const rrWear = formatFloatWithTwoDecimals(predictionData["rear-right-wear"]) + "%";
+          const average= formatFloatWithTwoDecimals(predictionData["average"]) + "%";
+          const row = tbody.insertRow();
+          this.populateTableRow(row, [
+            currentLapNum,
+            flWear,
+            frWear,
+            rlWear,
+            rrWear,
+            average
+          ]);
+        });
+      } else {
+        const row = tbody.insertRow();
+        row.innerHTML = '<td colspan="5">Tyre wear prediction data not available</td>';
+      }
+
+      table.appendChild(tbody);
+      divElement.appendChild(table);
+    };
+
+    const leftPanePopulator = (leftDiv) => {
+      panePopulator(leftDiv, firstHalf);
+    };
+    const rightPanePopulator = (rightDiv) => {
+      panePopulator(rightDiv, secondHalf);
+    };
+    this.createModalDivElelements(tabPane, leftPanePopulator, rightPanePopulator);
+  }
+
   // Method to create the navigation tabs
   createNavTabs() {
     const navTabs = document.createElement('ul');
@@ -674,7 +801,9 @@ class DriverModalDataPopulator {
       { id: 'lap-times', label: 'Lap Times' },  // New Lap Times tab
       { id: 'fuel-usage', label: 'Fuel Usage History' },  // New Lap Times tab
       { id: 'tyre-stint-history', label: 'Tyre Stint History' },
-      { id: 'ers-history', label: 'ERS Usage History'}
+      { id: 'ers-history', label: 'ERS Usage History' },
+      { id: 'car-damage', label: 'Car Damage' },
+      { id: 'tyre-wear-prediction', label: 'Tyre Wear Prediction' },
     ];
 
     // Sort tabs alphabetically based on the label
@@ -703,6 +832,8 @@ class DriverModalDataPopulator {
     return navTabs;
   }
 
+
+
   // Method to create the tab content container
   createTabContent() {
     const tabContent = document.createElement('div');
@@ -714,6 +845,8 @@ class DriverModalDataPopulator {
       { id: 'fuel-usage', method: this.populateFuelUsageTab },  // Lap Times tab
       { id: 'tyre-stint-history', method: this.populateTyreStintHistoryTab },
       { id: 'ers-history', method: this.populateERSHistoryTab },
+      { id: 'car-damage', method: this.populateCarDamageTab },
+      { id: 'tyre-wear-prediction', method: this.populateTyreWearPredictionTab },
     ];
 
     // Sort tabs alphabetically based on the label
