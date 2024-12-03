@@ -116,7 +116,9 @@ class RaceTableRowPopulator {
                 ]);
             }
         }
-        this.addSectorInfo(cell, lapInfo["sector-status"]);
+        if (lapInfo["lap-time-ms"]) {
+            this.addSectorInfo(cell, lapInfo["sector-status"]);
+        }
         return this;
     }
 
@@ -135,7 +137,9 @@ class RaceTableRowPopulator {
             cell = this.row.insertCell();
             cell.textContent = lapDeltaStr;
         }
-        this.addSectorInfo(cell, lapInfo["sector-status"]);
+        if (lapInfo["lap-time-ms"]) {
+            this.addSectorInfo(cell, lapInfo["sector-status"]);
+        }
         return this;
     }
 
@@ -163,7 +167,7 @@ class RaceTableRowPopulator {
         this.createMultiLineCell([
             tyreWearText,
             `${tyreInfoData["tyre-age"]} lap(s) ` + `(${tyreInfoData["num-pitstops"]} pit)`,
-            tyreCompound,   // TODO, use icon
+                tyreCompound,   // TODO, use icon
         ]);
         return this;
     }
@@ -234,8 +238,6 @@ class RaceTableRowPopulator {
         return this;
     }
 
-
-
     // Utility
     createMultiLineCell(lines) {
         const cell = this.row.insertCell();
@@ -269,18 +271,15 @@ class RaceTableRowPopulator {
     }
 
     addSectorInfo(cell, sectorStatus) {
-        // Get the computed font size of the text in the cell
-        const fontSize = window.getComputedStyle(cell).fontSize;
-        const fontHeight = parseInt(fontSize, 10); // Convert the font size to an integer value
 
-        // console.log(`Font Size: ${fontSize}, Parsed Height: ${fontHeight}`);
-
+        // cell.classList.add('text-center');
         // Create a container div for the sectorBar
         const sectorBar = document.createElement('div');
         sectorBar.classList.add('d-flex', 'w-100', 'p-0');
-        sectorBar.style.height = `${fontHeight}px`; // Set height based on font size
+        sectorBar.style.height = `1rem`; // Set height based on font size
 
         // Define the color mapping for sector statuses using integers as keys
+        //TODO: move away from class to hex code because bg-purple doesnt
         const colorMap = {
             [-1]: 'bg-danger', // Red
             [0]: 'bg-warning', // Yellow

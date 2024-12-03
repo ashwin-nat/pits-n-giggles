@@ -147,7 +147,6 @@ body {
   background-color: var(--f1-dark);
   border-radius: 8px;
   border: 1px solid var(--f1-light-gray);
-  height: calc(100vh - 120px);
 }
 
 .telemetry-table {
@@ -404,4 +403,16 @@ a {
   position: relative;
   border: 4px solid red; /* Outer red ring */
   box-shadow: 0 0 8px rgba(0, 0, 0, 0.2); /* Optional subtle shadow */
+}
+
+.tab-pane {
+  height: 60vh;
+}
+
+.tab-pane > div {
+  height: inherit;
+}
+
+.bg-purple {
+  background-color: #800080;
 }

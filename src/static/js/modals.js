@@ -17,7 +17,7 @@ class ModalManager {
     console.log("openDriverModal", data);
 
     // Update modal title
-    modalTitle.textContent = `${data["driver-name"]} - ${data["index"]}`;
+    modalTitle.textContent = `${data["driver-name"]} - ${getTeamName(data["team"])}`;
 
     // Clear existing content
     modalBody.innerHTML = '';
@@ -881,6 +881,7 @@ class DriverModalDataPopulator {
     // Split the tab content into two vertical halves
     const containerDiv = document.createElement('div');
     containerDiv.className = 'd-flex';
+    // containerDiv.style.height = '100vh';
 
     // Left half: Create the fuel usage table
     const leftDiv = document.createElement('div');

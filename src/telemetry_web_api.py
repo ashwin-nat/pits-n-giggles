@@ -75,8 +75,8 @@ class RaceInfoRsp:
             # First, global fields
             "f1-game-year" : _getValueOrDefaultValue(self.m_globals.m_game_year, None),
             "circuit": _getValueOrDefaultValue(self.m_globals.m_circuit),
-            "track-temperature": _getValueOrDefaultValue(self.m_globals.m_track_temp),
-            "air-temperature": _getValueOrDefaultValue(self.m_globals.m_air_temp),
+            "track-temperature": _getValueOrDefaultValue(self.m_globals.m_track_temp, default_value=0),
+            "air-temperature": _getValueOrDefaultValue(self.m_globals.m_air_temp, default_value=0),
             "event-type": _getValueOrDefaultValue(self.m_globals.m_event_type),
             "session-time-left" : _getValueOrDefaultValue(self.m_globals.m_packet_session.m_sessionTimeLeft \
                                                           if self.m_globals.m_packet_session else None, 0),

@@ -15,6 +15,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
   </head>
   <body>
     <div class="dashboard-container">
@@ -24,14 +25,14 @@
           <div class="conditions">
             <div class="condition-item">
               <i class="fa-solid fa-road condition-icon"></i>
-              <span id="track-temp" class="condition-value">28°C</span>
+              <span id="track-temp" class="condition-value"></span>
             </div>
             <div class="condition-item">
               <i class="bi bi-cloud condition-icon"></i>
-              <span id="air-temp" class="condition-value">24°C</span>
+              <span id="air-temp" class="condition-value"></span>
             </div>
             <div class="condition-item">
-              <div id="pit-speed-limit" class="speed-limit-sign">80</div>
+              <div id="pit-speed-limit" class="speed-limit-sign"></div>
             </div>
           </div>
         </div>
@@ -60,9 +61,9 @@
                 <th>DRIVER</th>
                 <th>ERS</th>
                 <th>WARNS/PENS</th>
-                <th id="best-lap-th">BEST LAP</th>
-                <th id="last-lap-th">LAST LAP</th>
-                <th id="tyre-info-th">TYRE INFO</th>
+                <th id="best-lap-th" data-bs-toggle="tooltip" data-bs-title="Click to toggle between absolute and relative format">BEST LAP</th>
+                <th id="last-lap-th" data-bs-toggle="tooltip" data-bs-title="Click to toggle between absolute and relative format">LAST LAP</th>
+                <th id="tyre-info-th" data-bs-toggle="tooltip" data-bs-title="Click to toggle between average and maximum format">TYRE INFO</th>
                 <th id="wear-prediction-th">WEAR PREDICTION</th>
                 <th>WING DAMAGE</th>
                 <th>FUEL</th>
@@ -186,39 +187,6 @@
         <div class="toast-body"></div>
       </div>
     </div>
-
-    <!-- Lap Times Tab Content -->
-    <div id="lap-times-tab" class="tab-pane fade">
-        <div class="container-fluid">
-            <div class="row">
-                <!-- Left Half: Table -->
-                <div class="col-md-6">
-                    <table class="table table-dark table-bordered">
-                        <thead>
-                            <tr>
-                                <th>Lap</th>
-                                <th>S1</th>
-                                <th>S2</th>
-                                <th>S3</th>
-                                <th>Time</th>
-                                <th>Tyre</th>
-                                <th>Wear</th>
-                            </tr>
-                        </thead>
-                        <tbody id="lap-times-table-body">
-                            <!-- Rows will be populated here -->
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Right Half: Graph -->
-                <div class="col-md-6">
-                    <canvas id="lap-times-chart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='js/preferences.js') }}"></script>

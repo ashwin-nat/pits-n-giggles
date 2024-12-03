@@ -6,6 +6,8 @@ class TelemetryRenderer {
     this.fastestLapNameSpan = document.getElementById('fastestLapNameSpan');
     this.trackName = document.getElementById('track-name');
     this.pitLaneSpeedLimit = document.getElementById('pit-speed-limit');
+    this.trackTempSpan = document.getElementById('track-temp');
+    this.airTempSpan = document.getElementById('air-temp');
   }
 
   renderTelemetryRow(data) {
@@ -52,8 +54,10 @@ class TelemetryRenderer {
     });
 
     this.fastestLapTimeSpan.textContent = formatLapTime(incomingData['fastest-lap-overall']);
-    this.fastestLapNameSpan.textContent = this.truncateName(incomingData['fastest-lap-overall-driver']);
+    this.fastestLapNameSpan.textContent = this.truncateName(incomingData['fastest-lap-overall-driver']).toUpperCase();
     this.populateCircuitSpan(incomingData);
+    this.airTempSpan.textContent = incomingData['air-temperature'] + ' °C';
+    this.trackTempSpan.textContent = incomingData['track-temperature'] + ' °C';
   }
 
 

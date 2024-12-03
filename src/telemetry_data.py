@@ -522,6 +522,7 @@ class DataPerDriver:
         final_json["is-player"] = self.m_is_player
         final_json["driver-name"] = self.m_name
         final_json["track-position"] = self.m_position
+        final_json["team"] = self.m_team
         final_json["telemetry-settings"] = str(self.m_telemetry_restrictions)
 
         # Insert packet copies if available
