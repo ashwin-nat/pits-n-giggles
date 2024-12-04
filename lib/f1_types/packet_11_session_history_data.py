@@ -76,6 +76,15 @@ class LapHistoryData:
             data (bytes): Raw data representing lap history for a session.
         """
 
+        self.m_lapTimeInMS: int
+        self.m_sector1TimeInMS: int
+        self.m_sector1TimeMinutes: int
+        self.m_sector2TimeInMS: int
+        self.m_sector2TimeMinutes: int
+        self.m_sector3TimeInMS: int
+        self.m_sector3TimeMinutes: int
+        self.m_lapValidBitFlag: int
+
         (
             self.m_lapTimeInMS,
             self.m_sector1TimeInMS,
@@ -331,6 +340,14 @@ class PacketSessionHistoryData:
             header (PacketHeader): The header of the packet.
             data (bytes): Raw data representing session history for a car in a race.
         """
+
+        self.m_carIdx : int
+        self.m_numLaps : int
+        self.m_numTyreStints : int
+        self.m_bestLapTimeLapNum : int
+        self.m_bestSector1LapNum : int
+        self.m_bestSector2LapNum : int
+        self.m_bestSector3LapNum : int
 
         self.m_header: PacketHeader = header
         (

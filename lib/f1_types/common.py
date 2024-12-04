@@ -1176,6 +1176,15 @@ class F1Utils:
         INDEX_FRONT_RIGHT (int): Index for the front-right position in tyre/brake arrays/lists.
         PLAYER_INDEX_INVALID (int): The constant representing invalid player index
 
+        TRACKS_WHERE_FINISH_LINE_AFTER_PIT_GARAGE (Set[TrackID]):
+            A set of track IDs where the finish line is after the pit garage.
+
+        SECTOR_STATUS_NA (int): The constant representing sector status not available.
+        SECTOR_STATUS_INVALID (int): The constant representing sector status invalid.
+        SECTOR_STATUS_YELLOW (int): The constant representing sector status that is not PB or session best.
+        SECTOR_STATUS_GREEN (int): The constant representing sector status PB but not session best.
+        SECTOR_STATUS_PURPLE (int): The constant representing sector status session best.
+
     Methods:
         millisecondsToMinutesSecondsMilliseconds(milliseconds) -> str:
             Convert milliseconds to a formatted string in the format "MM:SS.SSS".
@@ -1205,6 +1214,12 @@ class F1Utils:
     INDEX_FRONT_LEFT = 2
     INDEX_FRONT_RIGHT = 3
     PLAYER_INDEX_INVALID = 255
+
+    SECTOR_STATUS_NA = -2
+    SECTOR_STATUS_INVALID = -1
+    SECTOR_STATUS_YELLOW = 0
+    SECTOR_STATUS_GREEN = 1
+    SECTOR_STATUS_PURPLE = 2
 
     TRACKS_WHERE_FINISH_LINE_AFTER_PIT_GARAGE : Set[TrackID] = {
         TrackID.Melbourne,

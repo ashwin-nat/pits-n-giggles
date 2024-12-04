@@ -272,15 +272,14 @@ class RaceTableRowPopulator {
 
     addSectorInfo(cell, sectorStatus) {
 
-        // cell.classList.add('text-center');
         // Create a container div for the sectorBar
         const sectorBar = document.createElement('div');
         sectorBar.classList.add('d-flex', 'w-100', 'p-0');
         sectorBar.style.height = `1rem`; // Set height based on font size
 
         // Define the color mapping for sector statuses using integers as keys
-        //TODO: move away from class to hex code because bg-purple doesnt
         const colorMap = {
+            [-2]: 'bg-seconday', // grey
             [-1]: 'bg-danger', // Red
             [0]: 'bg-warning', // Yellow
             [1]: 'bg-success', // Green
@@ -288,9 +287,13 @@ class RaceTableRowPopulator {
         };
 
         // Create individual segments for each sector and apply the appropriate color
-        sectorStatus.forEach(status => {
+        sectorStatus.forEach((status, index) => {
             const sectorSegment = document.createElement('div');
             sectorSegment.classList.add('flex-fill', 'sector-segment', colorMap[status]);
+            if (index < sectorStatus.length - 1) {
+                // Add black border to the right, except for the last segment
+                sectorSegment.classList.add('border-end', 'border-dark');
+            }
             sectorBar.appendChild(sectorSegment);
         });
 
