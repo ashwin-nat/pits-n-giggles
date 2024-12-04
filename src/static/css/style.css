@@ -177,23 +177,15 @@ body {
 }
 
 .player-row.drs-row td {
-  box-shadow:
-    inset 0 -1px 0 #f7f5ef, /* Bottom border (white) */
-    inset 0 1px 0 #f7f5ef,  /* Top border (white) */
-    inset 0 -2px 0 #10e71b, /* Bottom border (green) */
-    inset 0 2px 0 #10e71b;  /* Top border (green) */
+  color: #10e71b; /* Set font color to green */
 }
 
 .player-row td {
-  box-shadow:
-    inset 0 -1px 0 #f7f5ef, /* Bottom border (white) */
-    inset 0 1px 0 #f7f5ef;  /* Top border (white) */
+  color: inherit; /* Inherit color for non-DRS rows */
 }
 
 .drs-row td {
-  box-shadow:
-    inset 0 -1px 0 #10e71b, /* Bottom border (green) */
-    inset 0 1px 0 #10e71b;  /* Top border (green) */
+  color: #10e71b; /* Set font color to green */
 }
 
 .player-row td:first-child {

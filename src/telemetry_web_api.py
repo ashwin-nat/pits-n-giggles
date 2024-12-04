@@ -103,8 +103,7 @@ class RaceInfoRsp:
         self._updatePlayerLapTimes(final_json["table-entries"])
         return final_json
 
-    def _updatePlayerLapTimes(self,
-                              table_entries_json: List[Dict[str, Any]]) -> None:
+    def _updatePlayerLapTimes(self,table_entries_json: List[Dict[str, Any]]) -> None:
         """Update the lap-info key's contents
 
         Args:
@@ -136,7 +135,6 @@ class RaceInfoRsp:
                     table_entry["lap-info"]["best-lap-ms-player"] = table_entry["lap-info-new"]["best-lap"]["lap-time-ms"]
                     table_entry["lap-info-new"]["last-lap"]["lap-time-ms-player"] = table_entry["lap-info-new"]["last-lap"]["lap-time-ms"]
                     table_entry["lap-info-new"]["best-lap"]["lap-time-ms-player"] = table_entry["lap-info-new"]["best-lap"]["lap-time-ms"]
-
 
 class SavePacketCaptureRsp:
     """
@@ -453,6 +451,9 @@ class DriversListRsp:
         self.m_fastest_lap : Optional[int] = None
         self.m_fastest_lap_driver: Optional[str] = None
         self.m_next_pit_stop_window: Optional[int] = None
+        self.m_fastest_s1_ms: Optional[int] = None
+        self.m_fastest_s2_ms: Optional[int] = None
+        self.m_fastest_s3_ms: Optional[int] = None
         self.__initDriverList()
         self.__updateDriverList()
         if self.m_final_list:
@@ -514,20 +515,22 @@ class DriversListRsp:
                     "last-lap" : {
                         "lap-time-ms" : data_per_driver.m_last_lap_ms,
                         "lap-time-ms-player" : 0,
-                        "sector-status" : [
-                            0,
-                            1,
-                            2,
-                        ]
+                        "sector-status" : data_per_driver.getSectorStatus(
+                            self.m_fastest_s1_ms, self.m_fastest_s2_ms, self.m_fastest_s3_ms, for_best_lap=False),
+                        #     0,
+                        #     1,
+                        #     2,
+                        # ]
                     },
                     "best-lap" : {
                         "lap-time-ms" : data_per_driver.m_best_lap_ms,
                         "lap-time-ms-player" : 0,
-                        "sector-status" : [
-                            0,
-                            1,
-                            2,
-                        ]
+                        "sector-status" : data_per_driver.getSectorStatus(
+                            self.m_fastest_s1_ms, self.m_fastest_s2_ms, self.m_fastest_s3_ms, for_best_lap=True),
+                        #     0,
+                        #     1,
+                        #     2,
+                        # ]
                     },
                     "lap-progress" : data_per_driver.m_lap_progress, # NULL is supported
                     "speed-trap-record-kmph" : data_per_driver.m_packet_lap_data.m_speedTrapFastestSpeed if \
@@ -585,6 +588,14 @@ class DriversListRsp:
             return []
 
         return [data_per_driver.getPositionHistoryJSON() for data_per_driver in self.m_final_list]
+
+    def getBestSectorTimes(self) -> List[Optional[int]]:
+        """Get best sector times.
+
+        Returns:
+            List[Optional[int]]: The best sector times. Can be None
+        """
+        return [self.m_fastest_s1_ms, self.m_fastest_s2_ms, self.m_fastest_s3_ms]
 
     def __getDeltaPlusPenaltiesPlusPit(self,
             delta: str,
@@ -659,6 +670,9 @@ class DriversListRsp:
 
                 # Add this prepped record into the final list
                 self.m_final_list.append(temp_data)
+            self.m_fastest_s1_ms = TelData._driver_data.m_fastest_s1_ms
+            self.m_fastest_s2_ms = TelData._driver_data.m_fastest_s2_ms
+            self.m_fastest_s3_ms = TelData._driver_data.m_fastest_s3_ms
 
     def __updateDriverList(self) -> None:
         """Add extra fields to each DataPerDriver object
