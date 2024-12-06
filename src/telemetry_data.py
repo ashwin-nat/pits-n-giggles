@@ -526,24 +526,15 @@ class DataPerDriver:
         final_json["telemetry-settings"] = str(self.m_telemetry_restrictions)
 
         # Insert packet copies if available
-        if self.m_packet_car_damage:
-            final_json["car-damage"] = self.m_packet_car_damage.toJSON()
-        if self.m_packet_car_status:
-            final_json["car-status"] = self.m_packet_car_status.toJSON()
-        if self.m_packet_particpant_data:
-            final_json["participant-data"] = self.m_packet_particpant_data.toJSON()
-        if self.m_packet_tyre_sets:
-            final_json["tyre-sets"] = self.m_packet_tyre_sets.toJSON()
-        if self.m_packet_session_history:
-            final_json["session-history"] = self.m_packet_session_history.toJSON()
-        if self.m_packet_final_classification:
-            final_json["final-classification"] = self.m_packet_final_classification.toJSON()
-        if self.m_packet_lap_data:
-            final_json["lap-data"] = self.m_packet_lap_data.toJSON()
-        if self.m_packet_car_setup:
-            final_json["car-setup"] = self.m_packet_car_setup.toJSON()
-        if self.m_warning_penalty_history:
-            final_json["warning-penalty-history"] = [entry.toJSON() for entry in self.m_warning_penalty_history]
+        final_json["car-damage"] = self.m_packet_car_damage.toJSON() if self.m_packet_car_damage else None
+        final_json["car-status"] = self.m_packet_car_status.toJSON() if self.m_packet_car_status else None
+        final_json["participant-data"] = self.m_packet_particpant_data.toJSON() if self.m_packet_particpant_data else None
+        final_json["tyre-sets"] = self.m_packet_tyre_sets.toJSON() if self.m_packet_tyre_sets else None
+        final_json["session-history"] = self.m_packet_session_history.toJSON() if self.m_packet_session_history else None
+        final_json["final-classification"] = self.m_packet_final_classification.toJSON() if self.m_packet_final_classification else None
+        final_json["lap-data"] = self.m_packet_lap_data.toJSON() if self.m_packet_lap_data else None
+        final_json["car-setup"] = self.m_packet_car_setup.toJSON() if self.m_packet_car_setup else None
+        final_json["warning-penalty-history"] = [entry.toJSON() for entry in self.m_warning_penalty_history]
 
         # Insert the tyre set history
         self._computeTyreStintEndLaps()
@@ -2075,8 +2066,8 @@ def processTyreDeltaSound() -> None:
     """Send the tyre delta notification to the frontend
     """
 
-    message = getTyreDeltaNotificationMessage()
-    if message:
+    messages = getTyreDeltaNotificationMessages()
+    for message in messages:
         InterThreadCommunicator().send("frontend-update", ITCMessage(
             m_message_type=ITCMessage.MessageType.TYRE_DELTA_NOTIFICATION,
             m_message=message))
@@ -2266,22 +2257,27 @@ def clearDataStructures() -> None:
         _globals.clear()
     _custom_markers_history.clear()
 
-def getTyreDeltaNotificationMessage() -> TyreDeltaMessage:
-    # sourcery skip: assign-if-exp, extract-method
+def getTyreDeltaNotificationMessages() -> List[TyreDeltaMessage]:
+    """Returns a list of tyre delta notification messages
 
+    Returns:
+        List[TyreDeltaMessage]: A list of tyre delta notification messages
+    """
+
+    # sourcery skip: assign-if-exp, extract-method
     with _globals_lock.gen_rlock():
         # N/A for spectating or after race - maybe support this later
         if _globals.m_is_spectating or _globals.m_packet_final_classification:
-            return None
+            return []
 
     with _driver_data_lock.gen_rlock():
         # If player ded, not applicable
         if (_driver_data.m_player_index is None) or (_driver_data.m_is_player_dnf):
-            return None
+            return []
         # Need tyre set packet info
         tyre_sets = _driver_data.m_driver_data[_driver_data.m_player_index].m_packet_tyre_sets
         if not tyre_sets :
-            return None
+            return []
 
         # Fitted index needs to be valid
         fitted_tyre = tyre_sets.m_fitted_tyre_set
@@ -2290,25 +2286,82 @@ def getTyreDeltaNotificationMessage() -> TyreDeltaMessage:
 
         # First find the fitted tyre
         wet_tyre_compounds = {
-            ActualTyreCompound.INTER,
             ActualTyreCompound.WET,
             ActualTyreCompound.WET_CLASSIC,
             ActualTyreCompound.WET_F2
         }
-        if fitted_tyre.m_actualTyreCompound not in wet_tyre_compounds:
-            curr_tyre_type = TyreDeltaMessage.TyreType.SLICK
-        else:
+        inter_tyre_compounds = {
+            ActualTyreCompound.INTER,
+        }
+        slick_tyre_compounds = {
+            ActualTyreCompound.C5,
+            ActualTyreCompound.C4,
+            ActualTyreCompound.C3,
+            ActualTyreCompound.C2,
+            ActualTyreCompound.C1,
+            ActualTyreCompound.C0,
+            ActualTyreCompound.DRY,
+            ActualTyreCompound.SUPER_SOFT,
+            ActualTyreCompound.SOFT,
+            ActualTyreCompound.MEDIUM,
+            ActualTyreCompound.HARD,
+        }
+        if fitted_tyre.m_actualTyreCompound in wet_tyre_compounds:
             curr_tyre_type = TyreDeltaMessage.TyreType.WET
-        if TyreDeltaMessage.TyreType.SLICK == curr_tyre_type:
-            # Search for the first wet tyre (search in reverse)
-            other_tyre = next((tyre_set for tyre_set in reversed(tyre_sets.m_tyreSetData) \
-                               if tyre_set.m_actualTyreCompound in wet_tyre_compounds), None)
+        elif fitted_tyre.m_actualTyreCompound in inter_tyre_compounds:
+            curr_tyre_type = TyreDeltaMessage.TyreType.INTER
         else:
-            # Search for the first slick tyre (search in forward)
-            other_tyre = next((tyre_set for tyre_set in tyre_sets.m_tyreSetData \
-                               if tyre_set.m_actualTyreCompound not in wet_tyre_compounds), None)
-        assert other_tyre
-        if not other_tyre:
+            curr_tyre_type = TyreDeltaMessage.TyreType.SLICK
+
+        if TyreDeltaMessage.TyreType.SLICK == curr_tyre_type:
+            # Search for the first wet tyre
+            other_tyre_1 = next((tyre_set for tyre_set in reversed(tyre_sets.m_tyreSetData) \
+                               if tyre_set.m_actualTyreCompound in wet_tyre_compounds), None)
+            other_tyre_1_type = TyreDeltaMessage.TyreType.WET
+
+            # Search for the first inter tyre
+            other_tyre_2 = next((tyre_set for tyre_set in reversed(tyre_sets.m_tyreSetData) \
+                               if tyre_set.m_actualTyreCompound in inter_tyre_compounds), None)
+            other_tyre_2_type = TyreDeltaMessage.TyreType.INTER
+
+        elif TyreDeltaMessage.TyreType.INTER == curr_tyre_type:
+            # Search for the first wet tyre
+            other_tyre_1 = next((tyre_set for tyre_set in reversed(tyre_sets.m_tyreSetData) \
+                               if tyre_set.m_actualTyreCompound in wet_tyre_compounds), None)
+            other_tyre_1_type = TyreDeltaMessage.TyreType.WET
+
+            # Search for the first slick tyre
+            other_tyre_2 = next((tyre_set for tyre_set in tyre_sets.m_tyreSetData \
+                               if tyre_set.m_actualTyreCompound in slick_tyre_compounds), None)
+            other_tyre_2_type = TyreDeltaMessage.TyreType.SLICK
+
+        else:
+            # Search for the first slick tyre
+            other_tyre_1 = next((tyre_set for tyre_set in tyre_sets.m_tyreSetData \
+                               if tyre_set.m_actualTyreCompound in slick_tyre_compounds), None)
+            other_tyre_1_type = TyreDeltaMessage.TyreType.SLICK
+
+            # Search for the first inter tyre
+            other_tyre_2 = next((tyre_set for tyre_set in tyre_sets.m_tyreSetData \
+                               if tyre_set.m_actualTyreCompound in inter_tyre_compounds), None)
+            other_tyre_2_type = TyreDeltaMessage.TyreType.INTER
+
+        assert other_tyre_1
+        assert other_tyre_2
+        assert other_tyre_1 != other_tyre_2
+        assert other_tyre_1_type != other_tyre_2_type
+
+        if (not other_tyre_1) or (not other_tyre_2):
             png_logger.error(f"Invalid other tyre index: {json.dumps(tyre_sets.toJSON())}")
-            return None
-        return TyreDeltaMessage(curr_tyre_type, delta=(other_tyre.m_lapDeltaTime / 1000))
+            return []
+
+        return [
+            TyreDeltaMessage(
+                curr_tyre_type=curr_tyre_type,
+                other_tyre_type=other_tyre_1_type,
+                delta=(other_tyre_1.m_lapDeltaTime / 1000)),
+            TyreDeltaMessage(
+                curr_tyre_type=curr_tyre_type,
+                other_tyre_type=other_tyre_2_type,
+                delta=(other_tyre_2.m_lapDeltaTime / 1000)),
+        ]

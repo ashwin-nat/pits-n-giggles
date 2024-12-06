@@ -202,16 +202,15 @@ body {
 }
 
 .drs-row td:first-child {
-  border-left: 1px solid #10e71b; /* Left border (green) */
+  color: #10e71b; /* Set font color to green */
 }
 
 .drs-row td:last-child {
-  border-right: 1px solid #10e71b; /* Right border (green) */
+  color: #10e71b; /* Set font color to green */
 }
 
 .drs-row td {
-  border-top: 1px solid #10e71b !important; /* Top border (green) */
-  border-bottom: 1px solid #10e71b !important; /* Bottom border (green) */
+  color: #10e71b; /* Set font color to green */
 }
 
 

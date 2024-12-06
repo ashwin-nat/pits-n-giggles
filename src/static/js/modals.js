@@ -756,6 +756,7 @@ class DriverModalDataPopulator {
       console.log("panePopulator", tableData);
       if (tableData.length > 0) {
         tableData.forEach((predictionData) => {
+          //TODO: highlight selected pit stop
           const currentLapNum = predictionData["lap-number"];
           const flWear = formatFloatWithTwoDecimals(predictionData["front-left-wear"]) + "%";
           const frWear = formatFloatWithTwoDecimals(predictionData["front-right-wear"]) + "%";
@@ -790,6 +791,139 @@ class DriverModalDataPopulator {
     this.createModalDivElelements(tabPane, leftPanePopulator, rightPanePopulator);
   }
 
+  populateWarnsPensInfoTab(tabPane) {
+
+      const leftPanePopulator = (leftDiv) => {
+        const table = document.createElement('table');
+        table.className = 'table table-bordered table-striped';
+
+        // Create table header
+        // const thead = document.createElement('thead');
+        // const headerRow = document.createElement('tr');
+        // const headers = [
+        //   'Lap',
+        //   'FL',
+        //   'FR',
+        //   'RL',
+        //   'RR',
+        //   'Average'
+        // ];
+
+        // headers.forEach(headerText => {
+        //   const th = document.createElement('th');
+        //   th.textContent = headerText;
+        //   headerRow.appendChild(th);
+        // });
+
+        // thead.appendChild(headerRow);
+        // table.appendChild(thead);
+
+        // Create table body
+        const tbody = document.createElement('tbody');
+        const lapData = this.data["lap-data"];
+        if (lapData) {
+          const numPenalties = lapData["penalties"];
+          const totalWarnings = lapData["total-warnings"];
+          const numCornerCuttingWarnings = lapData["corner-cutting-warnings"];
+          const numUnservedDriveThroughPens = lapData["num-unserved-drive-through-pens"];
+          const numUnservedStopGoPens = lapData["num-unserved-stop-go-pens"];
+          let row;
+
+          row = tbody.insertRow();
+          this.populateTableRow(row, [
+            "Time Penalties",
+            numPenalties
+          ]);
+
+          row = tbody.insertRow();
+          this.populateTableRow(row, [
+            "Total Warnings",
+            totalWarnings
+          ]);
+
+          row = tbody.insertRow();
+          this.populateTableRow(row, [
+            "Corner Cutting Warnings",
+            numCornerCuttingWarnings
+          ]);
+
+          row = tbody.insertRow();
+          this.populateTableRow(row, [
+            "Unserved Drive Through Penalties",
+            numUnservedDriveThroughPens
+          ]);
+
+          row = tbody.insertRow();
+          this.populateTableRow(row, [
+            "Unserved Stop Go Penalties",
+            numUnservedStopGoPens
+          ]);
+        }
+
+        table.appendChild(tbody);
+        leftDiv.appendChild(table);
+      };
+
+      const rightPanePopulator = (rightDiv) => {
+        const table = document.createElement('table');
+        table.className = 'table table-bordered table-striped';
+
+        // Create table header
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        const headers = [
+          'Lap',
+          'Sector',
+          'Lap %',
+          'Type',
+          'Old val',
+          'New val'
+        ];
+
+        headers.forEach(headerText => {
+          const th = document.createElement('th');
+          th.textContent = headerText;
+          headerRow.appendChild(th);
+        });
+
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        // Create table body
+        const tbody = document.createElement('tbody');
+        const warningsPenaltyHistoryList = this.data["warning-penalty-history"];
+        console.log("warningsPenaltyHistoryList", warningsPenaltyHistoryList);
+        if (warningsPenaltyHistoryList.length) {
+          warningsPenaltyHistoryList.forEach(data => {
+            console.log("in loop", data);
+            const entryType     = data["entry-type"];
+            const oldValue      = data["old-value"];
+            const newValue      = data["new-value"];
+            const lapNumber     = data["lap-number"];
+            const sectorNumber  = data["sector-number"];
+            const lapProgressPercent = data["lap-progress-percent"];
+            const row = tbody.insertRow();
+            this.populateTableRow(row, [
+              lapNumber,
+              sectorNumber,
+              formatFloatWithTwoDecimals(lapProgressPercent) + "%",
+              entryType,
+              oldValue,
+              newValue
+            ]);
+          });
+        } else {
+          const row = tbody.insertRow();
+          row.innerHTML = '<td colspan="6">No Warnings or Penalites</td>';
+        }
+
+        table.appendChild(tbody);
+        rightDiv.appendChild(table);
+      };
+
+      this.createModalDivElelements(tabPane, leftPanePopulator, rightPanePopulator);
+  }
+
   // Method to create the navigation tabs
   createNavTabs() {
     const navTabs = document.createElement('ul');
@@ -804,6 +938,7 @@ class DriverModalDataPopulator {
       { id: 'ers-history', label: 'ERS Usage History' },
       { id: 'car-damage', label: 'Car Damage' },
       { id: 'tyre-wear-prediction', label: 'Tyre Wear Prediction' },
+      { id: 'warns-pens-info', label: 'Warns/Pens' },
     ];
 
     // Sort tabs alphabetically based on the label
@@ -832,8 +967,6 @@ class DriverModalDataPopulator {
     return navTabs;
   }
 
-
-
   // Method to create the tab content container
   createTabContent() {
     const tabContent = document.createElement('div');
@@ -847,6 +980,7 @@ class DriverModalDataPopulator {
       { id: 'ers-history', method: this.populateERSHistoryTab },
       { id: 'car-damage', method: this.populateCarDamageTab },
       { id: 'tyre-wear-prediction', method: this.populateTyreWearPredictionTab },
+      { id: 'warns-pens-info', method: this.populateWarnsPensInfoTab },
     ];
 
     // Sort tabs alphabetically based on the label
@@ -891,7 +1025,6 @@ class DriverModalDataPopulator {
     // Right half: Empty for now
     const rightDiv = document.createElement('div');
     rightDiv.className = 'w-50'; // Half width, empty for now
-    rightDiv.style.backgroundColor = '#333'; // Optional: dark background for clarity
     rightPanePopulator(rightDiv);
 
     containerDiv.appendChild(leftDiv);
@@ -900,8 +1033,6 @@ class DriverModalDataPopulator {
     tabPane.appendChild(containerDiv);
   }
 }
-
-
 
 // Export for use in other modules
 window.modalManager = new ModalManager();

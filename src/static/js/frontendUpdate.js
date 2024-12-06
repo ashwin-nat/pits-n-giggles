@@ -1,8 +1,11 @@
 function processTyreDeltaMessage(data) {
+    console.log("received tyre delta update", data);
     let messageText = "";
     messageText += data['curr-tyre-type'] + " tyres are ";
 
-    if (data['tyre-delta'] > 0) {
+    if (data['tyre-delta'] == 0) {
+        messageText += "the same as ";
+    } else if (data['tyre-delta'] > 0) {
         messageText += "faster than ";
     } else {
         messageText += "slower than ";

@@ -49,7 +49,7 @@ class RaceTableRowPopulator {
     addErsInfo() {
         const ersInfo = this.rowData["ers-info"];
         if (this.gameYear == 23) {
-            row.insertCell().textContent = ersInfo["ers-percent"];
+            this.row.insertCell().textContent = ersInfo["ers-percent"];
         } else {
             this.createMultiLineCell([
                 `${ersInfo["ers-percent"]}`,
@@ -87,7 +87,7 @@ class RaceTableRowPopulator {
             } else {
 
                 let speedTrapValue;
-                if (speedTrapRecord != null) {
+                if (speedTrapRecord) {
                     speedTrapValue = formatFloatWithTwoDecimals(speedTrapRecord) + ' kmph';
                 } else {
                     speedTrapValue = "---";

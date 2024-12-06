@@ -10,9 +10,9 @@ class TelemetryRenderer {
     this.airTempSpan = document.getElementById('air-temp');
   }
 
-  renderTelemetryRow(data) {
+  renderTelemetryRow(data, gameYear) {
     const row = document.createElement('tr');
-    new RaceTableRowPopulator(row, data, this.gameYear).populate();
+    new RaceTableRowPopulator(row, data, gameYear).populate();
     if (data['driver-info']['is-player']) {
       row.classList.add('player-row');
     }
@@ -140,7 +140,6 @@ class TelemetryRenderer {
   }
 
   getAdjacentPositions(position, total_cars, num_adjacent_cars) {
-    // if (!(1 <= position && position <= total_cars)) {
       if (!(position >= 1 && position <= total_cars)) {
       return [];
     }

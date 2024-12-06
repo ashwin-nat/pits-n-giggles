@@ -34,6 +34,7 @@ class TyreDeltaMessage:
     class TyreType(Enum):
         SLICK = 1
         WET = 2
+        INTER = 3
 
         @staticmethod
         def isValid(tyre_type: Any) -> bool:
@@ -52,22 +53,26 @@ class TyreDeltaMessage:
 
         def __repr__(self) -> str:
             """Return a string representation of the TyreDeltaMessage object."""
-            return self.name
+            {
+                TyreDeltaMessage.TyreType.SLICK: "slick",
+                TyreDeltaMessage.TyreType.WET: "wet",
+                TyreDeltaMessage.TyreType.INTER: "intermediate"
+            }.get(self, "")
 
         def __str__(self) -> str:
             """Return a string representation of the TyreDeltaMessage object."""
             return self.__repr__()
 
-    def __init__(self, curr_tyre_type: TyreType, delta: float) -> None:
+    def __init__(self, curr_tyre_type: TyreType, other_tyre_type: TyreType, delta: float) -> None:
         """Initialize the TyreDeltaMessage object.
 
         Args:
             curr_tyre_type (TyreType): The current tyre type
+            other_tyre_type (TyreType): The other tyre type
             delta (float): The tyre delta
         """
         self.m_curr_tyre_type = curr_tyre_type
-        self.m_other_tyre_type = TyreDeltaMessage.TyreType.SLICK \
-            if curr_tyre_type == TyreDeltaMessage.TyreType.WET else TyreDeltaMessage.TyreType.WET
+        self.m_other_tyre_type = other_tyre_type
         self.m_delta = delta
 
     def __repr__(self) -> str:
@@ -105,7 +110,6 @@ class ITCMessage:
                 ITCMessage.MessageType.CUSTOM_MARKER: "custom-marker",
                 ITCMessage.MessageType.TYRE_DELTA_NOTIFICATION: "tyre-delta",
             }[self]
-
 
         def __str__(self) -> str:
             """Return a string representation of the ITCMessage object."""
