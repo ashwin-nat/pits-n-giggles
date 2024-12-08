@@ -108,7 +108,7 @@
             </div>
             <!-- Number of weather forecast samples to show -->
             <div class="mb-3">
-              <label for="weatherSamplesToShow" class="form-label">Number of weather forecast samples to show<label>
+              <label for="weatherSamplesToShow" class="form-label">Number of weather forecast samples to show</label>
               <input type="number" class="form-control" id="weatherSamplesToShow" value="3" min="1" max="5">
             </div>
             <!-- Team Name -->
@@ -172,6 +172,33 @@
                 </div>
               </div>
             </div>
+            <!-- TTS voice -->
+            <div class="mb-3">
+              <label for="voiceSelect" class="form-label">Text to Speech Voice</label>
+              <div class="input-group">
+                <select id="voiceSelect" class="form-select">
+                  <!-- Options will be populated via JavaScript -->
+                </select>
+                <button id="playSampleButton" class="btn btn-secondary" type="button">Play Sample</button>
+              </div>
+            </div>
+            <!-- TTS Volume Level -->
+            <div class="mb-3">
+              <label for="volumeRange" class="form-label">TTS Volume Level</label>
+              <div class="d-flex align-items-center">
+                <input
+                  type="range"
+                  class="form-range me-3"
+                  id="volumeRange"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value="50"
+                  aria-label="TTS Volume Level"
+                >
+                <span id="volumeLabel" class="fw-bold">50</span>
+              </div>
+            </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -194,6 +221,7 @@
     <script src="{{ url_for('static', filename='js/constants.js') }}"></script>
     <script src="{{ url_for('static', filename='js/mockData.js') }}"></script>
     <script src="{{ url_for('static', filename='js/graph.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/driverDataModalPopulator.js') }}"></script>
     <script src="{{ url_for('static', filename='js/modals.js') }}"></script>
     <script src="{{ url_for('static', filename='js/raceTableRowPopulator.js') }}"></script>
     <script src="{{ url_for('static', filename='js/telemetryRenderer.js') }}"></script>

@@ -1445,6 +1445,7 @@ class DriverData:
         if driver_data.m_packet_session_history:
             # First option, session history data
             best_lap_index: int = driver_data.m_packet_session_history.m_bestLapTimeLapNum - 1
+            # sourcery skip: merge-nested-ifs
             if 0 <= best_lap_index < len(driver_data.m_packet_session_history.m_lapHistoryData):
                 if driver_data.m_packet_session_history.m_lapHistoryData[best_lap_index].isLapValid():
                     driver_best_lap_ms = \
@@ -1788,7 +1789,11 @@ class DriverData:
 
         if self.m_race_completed and self.m_final_json:
             return self.m_final_json
-        return {"classification-data" : self._getClassificationDataListJSON()}
+        return {
+            "classification-data" : self._getClassificationDataListJSON(),
+            "collisions" : self.getCollisionStatsJSON(),
+            # "overtakes" : self.getOvertakeStatsJSON()
+        }
 
     def processCollisionEvent(self, packet: PacketEventData.Collision) -> None:
         """Process the collision event update packet and update the necessary fields
@@ -2107,7 +2112,7 @@ def getRaceInfo() -> Dict[str, Any]:
     if "records" not in final_json:
         final_json['records'] = {
             'fastest' : getFastestTimesJson(final_json),
-            'tyre-stats' : getTyreStintRecordsDict(final_json)
+            'tyre-stats' : getTyreStintRecordsDict(final_json),
         }
     return final_json
 
@@ -2136,7 +2141,7 @@ def getEventInfoStr() -> Optional[str]:
     """
     with _globals_lock.gen_rlock():
         if _globals.m_event_type and _globals.m_circuit:
-            return (_globals.m_event_type + "_" + _globals.m_circuit).replace(' ', '_') + '_'
+            return f"{_globals.m_event_type}_{_globals.m_circuit}".replace(' ', '_') + '_'
         return None
 
 def getOvertakeObj(overtaking_car_index: int, being_overtaken_index: int) -> Optional[OvertakeRecord]:

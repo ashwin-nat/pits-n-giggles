@@ -53,7 +53,7 @@ class TyreDeltaMessage:
 
         def __repr__(self) -> str:
             """Return a string representation of the TyreDeltaMessage object."""
-            {
+            return {
                 TyreDeltaMessage.TyreType.SLICK: "slick",
                 TyreDeltaMessage.TyreType.WET: "wet",
                 TyreDeltaMessage.TyreType.INTER: "intermediate"

@@ -36,9 +36,8 @@ def _isATwat(driver_data: Dict[str, Any]) -> bool:
     """
 
     # Let's simplify this. skip player if telemetry is off. fuck 'em
-    if 'participant-data' not in driver_data:
-        return True
-    return driver_data['participant-data']['telemetry-setting'] == "Restricted"
+    participant_data = driver_data.get("participant-data")
+    return participant_data['telemetry-setting'] == "Restricted" if participant_data else True
 
 def getFastestTimesJson(json_data: Dict[str, Any], driver_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """

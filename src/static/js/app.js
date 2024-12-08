@@ -101,3 +101,8 @@ document.getElementById("tyre-info-th").addEventListener("click", function () {
     showToast("Tyre Wear Format Changed to " + (g_pref_tyreWearAverageFormat ? "Average" : "Max"));
     savePreferences();
 });
+
+document.getElementById('volumeRange').addEventListener('input', function (e) {
+    document.getElementById('volumeLabel').textContent = e.target.value;
+});
+

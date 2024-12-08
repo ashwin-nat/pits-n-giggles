@@ -7,6 +7,8 @@ let g_pref_tyreWearAverageFormat;
 let g_pref_myTeamName;
 let g_pref_numAdjacentCars;
 let g_pref_numWeatherPredictionSamples;
+let g_pref_ttsVoice;
+let g_pref_ttsVolume;
 
 function loadPreferences() {
     let missingPreference = false;
@@ -69,6 +71,19 @@ function loadPreferences() {
         g_pref_numWeatherPredictionSamples = parseInt(g_pref_numWeatherPredictionSamples, 10); // localstorage saves everthing as string
     }
 
+    g_pref_ttsVoice = localStorage.getItem('ttsVoice');
+    if ((g_pref_ttsVoice === null)) {
+        g_pref_ttsVoice = "";
+        missingPreference = true;
+    }
+
+    g_pref_ttsVolume = localStorage.getItem('ttsVolume');
+    if ((g_pref_ttsVolume === null)) {
+        g_pref_ttsVolume = 100;
+        missingPreference = true;
+    } else {
+        g_pref_ttsVolume = parseInt(g_pref_ttsVolume, 10);
+    }
 
     // If any preference was missing, save all current preferences
     if (missingPreference) {
@@ -84,6 +99,8 @@ function loadPreferences() {
         g_pref_relativeDelta,
         g_pref_numAdjacentCars,
         g_pref_numWeatherPredictionSamples,
+        g_pref_ttsVoice,
+        g_pref_ttsVolume,
     });
 }
 
@@ -96,6 +113,8 @@ function savePreferences() {
     localStorage.setItem('myTeamName', g_pref_myTeamName);
     localStorage.setItem('numAdjacentCars', g_pref_numAdjacentCars);
     localStorage.setItem('numWeatherPredictionSamples', g_pref_numWeatherPredictionSamples);
+    localStorage.setItem('ttsVoice', g_pref_ttsVoice);
+    localStorage.setItem('ttsVolume', g_pref_ttsVolume);
 
     console.log("Saved Preferences:", {
         g_pref_myTeamName,
@@ -106,5 +125,7 @@ function savePreferences() {
         g_pref_relativeDelta,
         g_pref_numAdjacentCars,
         g_pref_numWeatherPredictionSamples,
+        g_pref_ttsVoice,
+        g_pref_ttsVolume,
     });
 }
