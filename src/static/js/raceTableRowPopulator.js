@@ -127,7 +127,7 @@ class RaceTableRowPopulator {
         const isPlayer = this.rowData["driver-info"]["is-player"];
         const lapInfo = this.rowData["lap-info-new"]["last-lap"];
         let cell;
-        if (g_pref_bestLapAbsoluteFormat || isSpectating) {
+        if (g_pref_lastLapAbsoluteFormat || isSpectating) {
             const lapStr = formatLapTime(lapInfo["lap-time-ms"]);
             cell = this.row.insertCell();
             cell.textContent = lapStr;
