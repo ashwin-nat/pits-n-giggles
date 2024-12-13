@@ -1205,6 +1205,12 @@ class DataPerDriver:
             lap_num = self.m_packet_session_history.m_bestLapTimeLapNum
         else:
             lap_num = self.m_current_lap - 1
+
+        # Validate lap number. Can have missing laps if red flag
+        if not (0 <= lap_num < len(self.m_packet_session_history.m_lapHistoryData)):
+            return default_val
+
+        # Get lap data
         best_sector_3_lap = self.m_packet_session_history.m_bestSector3LapNum
         best_sector_2_lap = self.m_packet_session_history.m_bestSector2LapNum
         best_sector_1_lap = self.m_packet_session_history.m_bestSector1LapNum
