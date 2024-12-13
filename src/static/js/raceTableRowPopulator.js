@@ -126,17 +126,24 @@ class RaceTableRowPopulator {
         const isSpectating = this.rowData["driver-info"]["is-spectating"];
         const isPlayer = this.rowData["driver-info"]["is-player"];
         const lapInfo = this.rowData["lap-info-new"]["last-lap"];
-        let cell;
+        const cellContent = [];
+        if (this.gameYear > 23) {
+            // one line to pad against speed trap record
+            cellContent.push(null);
+        }
         if (g_pref_lastLapAbsoluteFormat || isSpectating) {
             const lapStr = formatLapTime(lapInfo["lap-time-ms"]);
-            cell = this.row.insertCell();
-            cell.textContent = lapStr;
+            // cell = this.row.insertCell();
+            // cell.textContent = lapStr;
+            cellContent.push(lapStr);
         } else {
             const lapDeltaStr = formatLapDelta(lapInfo["lap-time-ms"],
                     lapInfo["lap-time-ms-player"], isPlayer);
-            cell = this.row.insertCell();
-            cell.textContent = lapDeltaStr;
+            // cell = this.row.insertCell();
+            // cell.textContent = lapDeltaStr;
+            cellContent.push(lapDeltaStr);
         }
+        const cell = this.createMultiLineCell(cellContent);
         if (lapInfo["lap-time-ms"]) {
             this.addSectorInfo(cell, lapInfo["sector-status"]);
         }
@@ -253,7 +260,11 @@ class RaceTableRowPopulator {
         const cell = this.row.insertCell();
         lines.forEach((line) => {
             const lineElement = document.createElement("div");
-            if (onClick) { // If onClick handler is provided
+            if (line === null) {
+                const lineBreak = document.createElement("br");
+                lineElement.appendChild(lineBreak);
+            }
+            else if (onClick) { // If onClick handler is provided
                 const link = document.createElement("a");
                 link.href = "#";  // Default link to "#"
                 link.textContent = line;

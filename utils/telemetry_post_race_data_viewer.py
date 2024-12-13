@@ -156,6 +156,7 @@ def getTelemetryInfo():
     with g_json_lock:
         if not g_json_data:
             return {
+                "live-data": False,
                 "circuit": "---",
                 "current-lap": "---",
                 "event-type": "---",
@@ -177,6 +178,7 @@ def getTelemetryInfo():
         else:
             fastest_lap = "---"
         json_response = {
+            "live-data": False,
             "circuit": g_json_data["session-info"]["track-id"],
             "track-temperature": g_json_data["session-info"]["track-temperature"],
             "air-temperature" : g_json_data["session-info"]["air-temperature"],

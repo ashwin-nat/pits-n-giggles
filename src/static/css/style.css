@@ -407,3 +407,10 @@ a {
 .bg-purple {
   background-color: #800080;
 }
+
+.telemetry-table .best-lap {
+  width: 10%;
+}
+.telemetry-table .last-lap {
+  width: 10%;
+}
