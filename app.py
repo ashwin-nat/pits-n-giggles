@@ -31,7 +31,7 @@ import webbrowser
 import logging
 from typing import Set, Optional
 
-from src.telemetry_handler import initPktCap, PacketCaptureMode, initAutosaves, F1TelemetryHandler, initDirectories
+from src.telemetry_handler import initPktCap, PacketCaptureMode, initTelemetryGlobals, F1TelemetryHandler, initDirectories
 from src.telemetry_server import initTelemetryWebServer
 from src.png_logger import initLogger
 from src.config import load_config
@@ -123,7 +123,8 @@ def f1TelemetryServerTask(
         replay_server: bool,
         post_race_data_autosave: bool,
         udp_custom_action_code: Optional[int],
-        udp_tyre_delta_action_code: Optional[int]) -> None:
+        udp_tyre_delta_action_code: Optional[int],
+        process_car_setup: bool) -> None:
     """Entry point to start the F1 23 telemetry server.
 
     Args:
@@ -133,11 +134,12 @@ def f1TelemetryServerTask(
         post_race_data_autosave (bool): Whether to autosave race data at the end of the race.
         udp_custom_action_code (Optional[int]): UDP custom action code.
         udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code.
+        process_car_setup (bool): Whether to process car setup data.
     """
     time.sleep(2)
     if packet_capture != PacketCaptureMode.DISABLED:
         initPktCap(packet_capture)
-    initAutosaves(post_race_data_autosave, udp_custom_action_code, udp_tyre_delta_action_code)
+    initTelemetryGlobals(post_race_data_autosave, udp_custom_action_code, udp_tyre_delta_action_code, process_car_setup)
     telemetry_client = F1TelemetryHandler(port_number, packet_capture, replay_server)
     telemetry_client.run()
 
@@ -159,7 +161,8 @@ def main() -> None:
     client_thread = threading.Thread(target=f1TelemetryServerTask,
                                     args=(config.packet_capture_mode, config.telemetry_port,
                                         args.replay_server, config.post_race_data_autosave,
-                                        config.udp_custom_action_code, config.udp_tyre_delta_action_code))
+                                        config.udp_custom_action_code, config.udp_tyre_delta_action_code,
+                                        config.process_car_setup))
     client_thread.daemon = True
     client_thread.start()
 

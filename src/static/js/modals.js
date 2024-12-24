@@ -13,8 +13,9 @@ class ModalManager {
   openDriverModal(data) {
     const modalTitle = document.querySelector('#driverModal .driver-modal-header .modal-title');
     const modalBody = document.querySelector('#driverModal .modal-body');
-
-    console.log("openDriverModal", data);
+    const prevButton = document.querySelector('#prevButton');
+    const nextButton = document.querySelector('#nextButton');
+    const refreshButton = document.querySelector('#refreshButton');
 
     // Update modal title
     modalTitle.textContent = `${data["driver-name"]} - ${getTeamName(data["team"])}`;
@@ -33,9 +34,31 @@ class ModalManager {
     const tabContent = modalDataPopulator.createTabContent();
     modalBody.appendChild(tabContent);
 
+    // Event Listeners for Buttons
+    prevButton.onclick = () => this.loadPreviousDriver();
+    nextButton.onclick = () => this.loadNextDriver();
+    refreshButton.onclick = () => this.refreshDriverData(data);
+
     // Show the modal
     this.driverModal.show();
   }
+
+  // Example Functions for Button Actions
+  loadPreviousDriver() {
+    console.log("Previous driver clicked");
+    // Implement logic to load previous driver data
+  }
+
+  loadNextDriver() {
+    console.log("Next driver clicked");
+    // Implement logic to load next driver data
+  }
+
+  refreshDriverData(data) {
+    console.log("Refresh clicked", data);
+    this.openDriverModal(data); // Reload the modal with the current data
+  }
+
 
   openSettingsModal() {
 

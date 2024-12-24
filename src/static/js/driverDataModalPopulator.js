@@ -3,16 +3,6 @@ class DriverModalDataPopulator {
         this.data = data;
     }
 
-    // Method to populate the Overview tab
-    populateOverviewTab(tabPane) {
-        tabPane.innerHTML = `
-        <h5>Driver Overview</h5>
-        <p>Name: ${this.data["driver-name"]}</p>
-        <p>Index: ${this.data["index"]}</p>
-        <p>Team: ${this.data["team"]}</p>
-      `;
-    }
-
     populateLapTimesTab(tabPane) {
         const lapTimeHistory = this.data["lap-time-history"];
         const lapHistoryData = lapTimeHistory["lap-history-data"];
@@ -569,7 +559,9 @@ class DriverModalDataPopulator {
                 for (const key in tableData) {
                     const value = tableData[key];
                     const row = tbody.insertRow();
-                    this.populateTableRow(row, [kebabToTitleCase(key), value]);
+                    this.populateTableRow(row, [kebabToTitleCase(key),
+                        typeof value === 'number' && !Number.isInteger(value) ?
+                            formatFloatWithTwoDecimals(value) : value]);
                 }
             } else {
                 const row = tbody.insertRow();
@@ -852,6 +844,18 @@ class DriverModalDataPopulator {
         tabPane.appendChild(table);
     }
 
+    populateOvertakesInfoTab(tabPane) {
+        // TODO
+    }
+
+    populateTyreSetsInfoTab(tabPane) {
+        // TODO
+    }
+
+    populateCarSetupTab(tabPane) {
+        // TODO
+    }
+
     // Method to create the navigation tabs
     createNavTabs() {
         const navTabs = document.createElement('ul');
@@ -860,15 +864,20 @@ class DriverModalDataPopulator {
 
         // Array of tabs with ID and label
         const tabs = [
-            { id: 'lap-times', label: 'Lap Times' },  // New Lap Times tab
-            { id: 'fuel-usage', label: 'Fuel Usage History' },  // New Lap Times tab
+            { id: 'lap-times', label: 'Lap Times' },
+            { id: 'fuel-usage', label: 'Fuel Usage History' },
             { id: 'tyre-stint-history', label: 'Tyre Stint History' },
             { id: 'ers-history', label: 'ERS Usage History' },
             { id: 'car-damage', label: 'Car Damage' },
             { id: 'tyre-wear-prediction', label: 'Tyre Wear Prediction' },
             { id: 'warns-pens-info', label: 'Warns/Pens' },
             { id: 'collisions-info', label: 'Collisions' },
+            { id: 'overtakes-info', label: 'Overtakes' },
+            { id: 'tyre-sets', label: 'Tyre Sets' },
         ];
+
+        if ('car-setup' in this.data)
+            tabs.push({ id: 'car-setup', label: 'Car Setup' });
 
         // Sort tabs alphabetically based on the label
         tabs.sort((a, b) => a.label.localeCompare(b.label));
@@ -902,6 +911,7 @@ class DriverModalDataPopulator {
         tabContent.className = 'tab-content driver-modal-tab-content';
 
         // Array of tabs with ID and method to populate content
+        // TODO: setup, overtakes, tyre sets
         const tabs = [
             { id: 'lap-times', method: this.populateLapTimesTab },  // Lap Times tab
             { id: 'fuel-usage', method: this.populateFuelUsageTab },  // Lap Times tab
@@ -911,7 +921,13 @@ class DriverModalDataPopulator {
             { id: 'tyre-wear-prediction', method: this.populateTyreWearPredictionTab },
             { id: 'warns-pens-info', method: this.populateWarnsPensInfoTab },
             { id: 'collisions-info', method: this.populateCollisionsInfoTab },
+            { id: 'overtakes-info', method: this.populateOvertakesInfoTab },
+            { id: 'tyre-sets', method: this.populateTyreSetsInfoTab },
         ];
+
+        if ('car-setup' in this.data)
+            tabs.push({ id: 'car-setup', method: this.populateCarSetupTab });
+
 
         // Sort tabs alphabetically based on the label
         tabs.sort((a, b) => a.id.localeCompare(b.id));

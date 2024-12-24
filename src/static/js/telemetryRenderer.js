@@ -8,6 +8,7 @@ class TelemetryRenderer {
     this.pitLaneSpeedLimit = document.getElementById('pit-speed-limit');
     this.trackTempSpan = document.getElementById('track-temp');
     this.airTempSpan = document.getElementById('air-temp');
+    this.indexByPosition = null;
   }
 
   renderTelemetryRow(data, gameYear) {
@@ -40,9 +41,14 @@ class TelemetryRenderer {
   }
 
   updateDashboard(incomingData) {
-    this.telemetryTable.innerHTML = '';
+
+    // update array of indices by position-1
     const tableEntries = this.getRelevantRaceTableRows(incomingData);
     const gameYear = incomingData["f1-game-year"];
+    this.indexByPosition = incomingData["table-entries"].map(entry => entry["driver-info"]["index"]);
+
+    // clear the table and populate with data
+    this.telemetryTable.innerHTML = '';
     tableEntries.forEach(data => {
       this.telemetryTable.appendChild(this.renderTelemetryRow(data, gameYear));
     });

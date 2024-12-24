@@ -1221,21 +1221,21 @@ class DataPerDriver:
             sector_time=lap_obj.m_sector1TimeInMS,
             sector_best_ms=sector_1_best_ms,
             is_best_sector_lap=(lap_num == best_sector_1_lap),
-            sector_validator=lap_obj.isSector1Valid
+            sector_valid_flag=lap_obj.isSector1Valid()
         )
 
         s2_status = self._get_sector_status(
             lap_obj.m_sector2TimeInMS,
             sector_2_best_ms,
             lap_num == best_sector_2_lap,
-            lap_obj.isSector2Valid
+            lap_obj.isSector2Valid()
         )
 
         s3_status = self._get_sector_status(
             lap_obj.m_sector3TimeInMS,
             sector_3_best_ms,
             lap_num == best_sector_3_lap,
-            lap_obj.isSector3Valid
+            lap_obj.isSector3Valid()
         )
 
         return [s1_status, s2_status, s3_status]
@@ -1245,7 +1245,7 @@ class DataPerDriver:
         sector_time: int,
         sector_best_ms: int,
         is_best_sector_lap: bool,
-        sector_validator: Callable[[], bool]  # Type hint for a method that takes no args and returns bool
+        sector_valid_flag: bool
     ) -> int:
         """
         Determine the status of a single sector.
@@ -1254,7 +1254,7 @@ class DataPerDriver:
             sector_time: Time of the current sector
             sector_best_ms: Best time for the sector
             is_best_sector_lap: Whether this is the best lap for this sector
-            sector_validator: Method to validate sector
+            sector_valid_flag: Whether the sector is valid
 
         Returns:
             Sector status (purple, green, yellow, invalid)
@@ -1265,11 +1265,11 @@ class DataPerDriver:
         elif is_best_sector_lap:
             # Personal best
             return F1Utils.SECTOR_STATUS_GREEN
-        elif not sector_validator():
+        elif not sector_valid_flag:
             # Invalidated
             return F1Utils.SECTOR_STATUS_INVALID
         else:
-            # Standard yellow
+            # Meh sector
             return F1Utils.SECTOR_STATUS_YELLOW
 
 class DriverData:
@@ -2055,6 +2055,7 @@ def processCarSetupsUpdate(packet: PacketCarSetupData) -> None:
 
     Args:
         packet (PacketCarSetupData): The car setup update packet
+        process_car_setup (bool): Whether to process the car setup
     """
 
     with _driver_data_lock.gen_wlock():

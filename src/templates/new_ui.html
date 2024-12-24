@@ -81,9 +81,24 @@
     <div class="modal fade" id="driverModal" tabindex="-1" aria-labelledby="driverModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-fullscreen driver-modal-dialog">
         <div class="modal-content driver-modal-content">
-          <div class="modal-header driver-modal-header">
-            <h5 class="modal-title" id="driverModalLabel">Driver Details</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <div class="modal-header driver-modal-header d-flex justify-content-between align-items-center">
+            <!-- Title and Navigation Buttons -->
+            <div class="d-flex align-items-center">
+              <button class="btn btn-sm btn-outline-secondary me-2 p-1" id="prevButton" title="Previous">
+                &lt;
+              </button>
+              <h5 class="modal-title m-0" id="driverModalLabel">Driver Details</h5>
+              <button class="btn btn-sm btn-outline-secondary ms-2 p-1" id="nextButton" title="Next">
+                &gt;
+              </button>
+            </div>
+            <!-- Refresh and Close Buttons -->
+            <div>
+              <button class="btn btn-sm btn-outline-primary me-2 p-1" id="refreshButton" title="Refresh">
+                <i class="bi bi-arrow-clockwise"></i>
+              </button>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
           </div>
           <div class="modal-body driver-modal-body">
             <!-- Nav tabs and tab content will be dynamically injected here by JavaScript -->

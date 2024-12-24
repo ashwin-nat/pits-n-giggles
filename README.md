@@ -102,4 +102,4 @@ To develop your own app using the telemetry manager module:
     ```
 
 ## Credits
-For a few of the charts/graphs in the UI, credits to [F1TelemetryData](https://x.com/F1TelemetryData) on twitter
+For a few of the charts/graphs in the UI, credits to [F1TelemetryData](https://x.com/F1TelemetryData) on twitter for the ideas

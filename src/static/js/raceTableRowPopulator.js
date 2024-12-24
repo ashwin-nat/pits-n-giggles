@@ -34,9 +34,6 @@ class RaceTableRowPopulator {
             e.preventDefault();
             console.log("index", index);
             socketio.emit('driver-info', {index: index});
-            // window.modalManager.openDriverModal({
-            //     "index" : index
-            // });
         });
         return this;
     }
@@ -133,14 +130,10 @@ class RaceTableRowPopulator {
         }
         if (g_pref_lastLapAbsoluteFormat || isSpectating) {
             const lapStr = formatLapTime(lapInfo["lap-time-ms"]);
-            // cell = this.row.insertCell();
-            // cell.textContent = lapStr;
             cellContent.push(lapStr);
         } else {
             const lapDeltaStr = formatLapDelta(lapInfo["lap-time-ms"],
                     lapInfo["lap-time-ms-player"], isPlayer);
-            // cell = this.row.insertCell();
-            // cell.textContent = lapDeltaStr;
             cellContent.push(lapDeltaStr);
         }
         const cell = this.createMultiLineCell(cellContent);

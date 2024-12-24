@@ -69,6 +69,7 @@ class Config:
     disable_browser_autoload: bool
     log_file: str
     log_file_size: int
+    process_car_setup: bool
 
     def __repr__(self) -> str:
         """Return the string representation, formatted one key-value pair per line
@@ -99,6 +100,9 @@ _default_config = {
         'log_file': 'png.log',  # String (empty if not set)
         'log_file_size': 1000000,  # Integer
     },
+    'Privacy': {
+        'process_car_setup': True, # Boolean
+    }
 }
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
@@ -210,4 +214,6 @@ def load_config(config_file: str = "config.ini") -> Config:
 
         log_file=get_value_str("Logging", "log_file"),
         log_file_size=get_value_int("Logging", "log_file_size"),
+
+        process_car_setup=get_value_bool("Privacy", "process_car_setup"),
     )
