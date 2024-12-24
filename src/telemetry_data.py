@@ -33,7 +33,7 @@ from lib.f1_types import PacketSessionData, PacketLapData, LapData, CarTelemetry
     PacketEventData, PacketParticipantsData, PacketCarTelemetryData, PacketCarStatusData, FinalClassificationData, \
     PacketFinalClassificationData, PacketCarDamageData, PacketSessionHistoryData, ResultStatus, PacketTyreSetsData, \
     F1Utils, WeatherForecastSample, CarDamageData, CarStatusData, TrackID, ActualTyreCompound, VisualTyreCompound, \
-    SafetyCarType, TelemetrySetting, PacketMotionData, CarMotionData, PacketCarSetupData, CarSetupData
+    SafetyCarType, TelemetrySetting, PacketMotionData, CarMotionData, PacketCarSetupData, CarSetupData, ResultStatus
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.overtake_analyzer import OvertakeRecord
 from lib.collisions_analyzer import CollisionRecord, CollisionAnayzer, CollisionAnalyzerMode
@@ -192,6 +192,7 @@ class DataPerDriver:
         m_fl_wing_damage (int): Left front wing damage
         m_fr_wing_damage (int): Right front wing damage
         m_rear_wing_damage (int): Rear wing damage
+        m_result_status (Optional[ResultStatus]): The result status of the driver.
         m_collision_records (List[CollisionRecord]): List of CollisionRecord objects for the driver.
         m_fuel_rate_recommender (Optional[FuelRateRecommender]): Fuel usage rate recommender for the driver.
 
@@ -480,6 +481,7 @@ class DataPerDriver:
         self.m_fl_wing_damage: Optional[int] = None
         self.m_fr_wing_damage: Optional[int] = None
         self.m_rear_wing_damage: Optional[int] = None
+        self.m_result_status: Optional[ResultStatus] = None
         self.m_collision_records: List[CollisionRecord] = []
         self.m_fuel_rate_recommender: FuelRateRecommender = FuelRateRecommender([], total_laps=total_laps,
                                                                                 min_fuel_kg=CarStatusData.MIN_FUEL_KG)
@@ -524,6 +526,8 @@ class DataPerDriver:
         final_json["track-position"] = self.m_position
         final_json["team"] = self.m_team
         final_json["telemetry-settings"] = str(self.m_telemetry_restrictions)
+        final_json["current-lap"] = self.m_current_lap
+        final_json["result-status"] = str(self.m_result_status)
 
         # Insert packet copies if available
         final_json["car-damage"] = self.m_packet_car_damage.toJSON() if self.m_packet_car_damage else None
@@ -1203,11 +1207,13 @@ class DataPerDriver:
         # Select lap details
         if for_best_lap:
             lap_num = self.m_packet_session_history.m_bestLapTimeLapNum
+        elif self.m_result_status != ResultStatus.ACTIVE:
+            lap_num = self.m_current_lap
         else:
             lap_num = self.m_current_lap - 1
 
         # Validate lap number. Can have missing laps if red flag
-        if not (0 <= lap_num < len(self.m_packet_session_history.m_lapHistoryData)):
+        if not (0 <= lap_num <= len(self.m_packet_session_history.m_lapHistoryData)):
             return default_val
 
         # Get lap data
@@ -1547,6 +1553,7 @@ class DriverData:
             # If the player is retired, update the bool variable
             if index == self.m_player_index and len(obj_to_be_updated.m_dnf_status_code) > 0:
                 self.m_is_player_dnf = True
+            self.m_result_status = lap_data.m_resultStatus
 
             # Update warning penalty history and copy of the packet
             obj_to_be_updated.updateLapDataPacketCopy(lap_data, self.m_track_length)
