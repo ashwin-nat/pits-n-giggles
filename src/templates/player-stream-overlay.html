@@ -4,564 +4,191 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>F1 Telemetry Overlay</title>
+    <title>Pits n' Giggles Stream Overlay</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/weather.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tyreIcons.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/carTelemetryOverlay.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/gForceOverlay.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/conditions.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/speedLimit.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,100..900;1,100..900&display=swap"
+        rel="stylesheet">
+    <!-- Include Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-streaming"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-streaming"></script> -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
     <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js"></script>
     <style>
+        /* Make the body take up the full height */
+        html,
         body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            height: 100vh;
-            background-color: transparent;
+            height: 100%;
             margin: 0;
-            padding: 0;
         }
 
-        .container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: 1fr 1fr;
-            gap: 10px;
-            width: 90%;
-            height: 90%;
-            background-color: transparent;
+        body {
+            font-family: 'Exo 2', sans-serif;
+            /* background-color: var(--f1-darker); */
+            background-color: none;
+            color: var(--f1-text);
+            line-height: 1.5;
+            min-height: 100vh;
         }
 
-        .graph-container {
-            display: flex;
-            flex-direction: row;
-            width: 100%;
+        /* Make container take up the full height */
+        .container-fluid {
             height: 100%;
         }
 
-        .graph {
-            background-color: #000000;
-            border: 1px solid #444;
-            position: relative;
+        /* Ensure that rows take up equal height */
+        .row.full-height {
+            height: 50%;
+            /* 50% of the screen height for each row */
         }
 
-        #graphSteeringDiv {
-            display: grid;
-            grid-template-rows: auto 1fr; /* Two rows: top for steeringDiv, bottom for graphDiv */
-            width: 100%;
-            height: 100%;
-        }
-
-        #steeringDiv {
+        /* Ensure that columns inside each row stretch to fill space */
+        .col {
             display: flex;
-            justify-content: center;
             align-items: center;
-            background-color: #333; /* Example background color */
-        }
-
-        #steeringIndicator {
-            width: 3%; /* Adjust the width of the indicator */
-            height: 20px; /* Set the height of the indicator */
-            background-color: #0000FF; /* Indicator color */
-            position: relative;
-        }
-
-        #graphCanvas {
-            width: 100%;
-            height: 100%;
-        }
-
-        #throttleBrakeDiv {
-            display: flex;
-            flex-direction: row;
-            justify-content: left;
-            align-items: flex-end;
-            width: 10%;
-            margin-left: 10px;
-        }
-
-        .bar {
-            width: 30px;
-            margin-left: 5px; /* Adjust this value to reduce/increase the space */
-            border-radius: 5px;
-            height: 0;
-        }
-
-        #throttleBar {
-            background-color: rgba(0, 255, 0, 0.5);
-        }
-
-        #brakeBar {
-            background-color: rgba(255, 0, 0, 0.5);
-        }
-
-        #penaltiesWeatherDiv {
-            margin: 0;
-            padding: 0;
-        }
-
-        #penaltiesTable {
-            table-layout: auto;
-            border-collapse: separate;
-            border-spacing: 0;
-            width: 200px;
-            border: 1px solid #000;
-        }
-
-        #penaltiesTable td {
-            padding: 2px 5px;
-            border: none;
-        }
-
-        #penaltiesTable td:first-child {
-            text-align: right;
-            padding-right: 10px;
-        }
-
-        #penaltiesTable td:last-child {
-            text-align: left;
-            padding-left: 10px;
-        }
-
-        #lapTimeTable {
-            width: 50px;
-        }
-
-        #weatherTable {
-            width: 400px;
-        }
-
-        #gforceDiv {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            display: flex;
             justify-content: center;
-            align-items: center;
-            background-color: transparent;
-            border: 1px solid #444;
+            border: 4px solid #333;
+            /* Thicker border (4px solid) */
         }
 
-        #gforceCanvas {
-            width: 100%;
-            height: 100%;
-        }
-
-        .table {
-            background-color: transparent;
-            border: 1px solid #444;
-            color: white;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-        }
-
-        .highlighted-row {
-            border: 2px solid;
-            border-image: linear-gradient(to right, #4CAF50, #2196F3);
-            border-image-slice: 1;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th,
-        td {
-            border: 1px solid #555;
-            padding: 10px;
-            text-align: center;
+        .text-purple {
+            background-color: #800080;
         }
 
     </style>
 </head>
 
 <body>
-    <div class="container">
-        <div id="carTelemetry" class="graph-container">
-            <div id="graphSteeringDiv">
-                <div id="steeringDiv">
-                    <div id="steeringIndicator"></div>
-                </div>
-                <div id="graphDiv" class="graph">
-                    <canvas id="graphCanvas"></canvas>
+
+    <div class="container-fluid d-flex flex-column">
+        <!-- First Row -->
+        <div class="row full-height">
+            <!-- Lap time history div -->
+            <div class="col d-flex align-items-center justify-content-center" id="lapTimeDiv">
+                <table class="table table-striped table-bordered" id="lapTimeTable"></table>
+            </div>
+
+            <!-- Penalties/Stats Div new -->
+            <div class="col d-flex align-items-center justify-content-center">
+                <div class="conditions">
+                    <div class="condition-item">
+                      <i class="fa-solid fa-road condition-icon"></i>
+                      <span id="track-temp" class="condition-value"></span>
+                    </div>
+                    <div class="condition-item">
+                      <i class="bi bi-cloud condition-icon"></i>
+                      <span id="air-temp" class="condition-value"></span>
+                    </div>
+                    <div class="condition-item">
+                        <i class="bi bi-exclamation-triangle condition-icon"></i>
+                        <span id="track-limits-warnings" class="condition-value"></span>
+                    </div>
+                    <div class="condition-item">
+                      <div id="pit-speed-limit" class="speed-limit-sign"></div>
+                    </div>
+
+                  </div>
+            </div>
+
+            <!-- Weather div -->
+            <div class="col d-flex align-items-center justify-content-center weather-forecast" id="weatherDiv">
+            </div>
+        </div>
+        <!-- Second Row -->
+        <div class="row full-height">
+            <!-- G Force div -->
+            <div class="col d-flex align-items-center justify-content-center" id="gForceDiv">
+                <!-- G-Force Display Template -->
+                <div id="gforce-display" class="gforce-display">
+                    <div id="gforce-circle" class="gforce-circle">
+                        <div id="gforce-dot" class="gforce-dot"></div>
+                        <div class="gforce-crosshair">
+                            <div class="crosshair-vertical"></div>
+                            <div class="crosshair-horizontal"></div>
+                        </div>
+                    </div>
+                    <div class="gforce-text mt-2">
+                        <div class="mt-1">
+                            <small class="text-muted">
+                                <span id="net-gforce"></span>
+                            </small>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div id="throttleBrakeDiv">
-                <div id="throttleBar" class="bar"></div>
-                <div id="brakeBar" class="bar"></div>
+
+            <!-- Car telemetry div -->
+            <div class="col d-flex align-items-center justify-content-center carTelemetryContainer">
+                <div id="CarTelemetryWidget" class="telemetry-widget">
+                    <div class="car-telemetry-section">
+                        <div id="throttleContainer" class="telemetry-pedal-container">
+                            <div id="throttleBar" class="telemetry-pedal telemetry-throttle"></div>
+                        </div>
+
+                        <div class="car-telemetry-chart-section">
+                            <div id="steeringContainer" class="telemetry-steering-container">
+                                <div class="telemetry-steering-center"></div>
+                                <div id="steeringBar" class="telemetry-steering-indicator"></div>
+                            </div>
+
+                            <div class="telemetry-chart-container">
+                                <canvas id="throttleBrakeChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div id="brakeContainer" class="telemetry-pedal-container">
+                            <div id="brakeBar" class="telemetry-pedal telemetry-brake"></div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
-        </div>
-        <div id="gforceDiv">
-            <canvas id="gforceCanvas"></canvas>
-        </div>
-        <div id="lapTimeDiv" class="table">
-            <table id="lapTimeTable">
-            </table>
-        </div>
-        <div id="penaltiesWeatherDiv" class="table">
-            <table id="penaltiesTable">
-                <tr>
-                    <td>Penalties</td>
-                    <td id="penaltiesValue">+30 sec</td>
-                </tr>
-                <tr>
-                    <td>CCW</td>
-                    <td id="ccwValue">15</td>
-                </tr>
-                <tr>
-                    <td>Other Warn</td>
-                    <td id="otherWarnValue">12</td>
-                </tr>
-                <tr>
-                    <td>DT</td>
-                    <td id="dtValue">2</td>
-                </tr>
-                <tr>
-                    <td>SG</td>
-                    <td id="sgValue">3</td>
-                </tr>
-                <tr id="collisionsRow">
-                    <td>Collisions</td>
-                    <td id="collisionsValue">0</td>
-                <tr>
-                    <td>Speed Trap</td>
-                    <td id="speedTrapValue">1.0 kmph</td>
-                </tr>
-            </table>
-            <table id="weatherTable">
-                <tr>
-                    <th>Time offset</td>
-                    <th>Rain Probability</th>
-                    <th>Weather</th>
-                </tr>
-            </table>
+
+            <!-- TODO: Notification -->
+            <div class="col d-flex align-items-center justify-content-center">
+                Top row: Lap time history, general stats, weather<br/>
+                Bottom row: G force, input telemetry, unused<br/>
+            </div>
         </div>
     </div>
 
+    <!-- Include Bootstrap JS (optional, for interactive components) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/weatherUI.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/lapTimeHistoryOverlay.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/penaltiesStatsOverlay.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/gForceOverlay.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/carTelemetryOverlay.js') }}"></script>
     <script>
-        function formatFloatWithTwoDecimals(floatNumber) {
-            if (typeof floatNumber !== 'number' || isNaN(floatNumber)) {
-                console.error('Invalid input. Please provide a valid number.');
-                return null;
-            }
-
-            return floatNumber.toFixed(2);
-        }
-
-        let carGraph;
-
-        function initializeGraph() {
-            const ctx = document.getElementById('graphCanvas').getContext('2d');
-            const initialDataPoints = 10;
-            const now = Date.now();
-
-            const lineThickness = 8;
-            const data = {
-                datasets: [
-                    {
-                        label: 'Throttle',
-                        borderColor: 'green',
-                        backgroundColor: 'rgba(0, 255, 0, 0)',
-                        fill: false,
-                        pointRadius: 0,
-                        pointHoverRadius: 0,
-                        borderWidth: lineThickness,
-                        tension: 0.3,  // Add this line for smoothing
-                        data: Array.from({ length: initialDataPoints }, (_, i) => ({
-                            x: now - (initialDataPoints - i) * 1000,
-                            y: 0
-                        }))
-                    },
-                    {
-                        label: 'Brake',
-                        borderColor: 'red',
-                        backgroundColor: 'rgba(255, 0, 0, 0)',
-                        fill: false,
-                        pointRadius: 0,
-                        pointHoverRadius: 0,
-                        borderWidth: lineThickness,
-                        tension: 0.3,  // Add this line for smoothing
-                        data: Array.from({ length: initialDataPoints }, (_, i) => ({
-                            x: now - (initialDataPoints - i) * 1000,
-                            y: 0
-                        }))
-                    },
-                    {
-                        label: 'Steering',
-                        borderColor: 'blue',
-                        backgroundColor: 'rgba(0, 0, 255, 0)',
-                        fill: false,
-                        pointRadius: 0,
-                        pointHoverRadius: 0,
-                        borderWidth: lineThickness,
-                        tension: 0.3,  // Add this line for smoothing
-                        data: Array.from({ length: initialDataPoints }, (_, i) => ({
-                            x: now - (initialDataPoints - i) * 1000,
-                            y: 0
-                        }))
-                    }
-                ]
-            };
-
-            const config = {
-                type: 'line',
-                data: data,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: {
-                        duration: 0
-                    },
-                    scales: {
-                        x: {
-                            type: 'realtime',
-                            realtime: {
-                                delay: 0,
-                                onRefresh: function (chart) {
-                                }
-                            },
-                            grid: {
-                                display: false
-                            },
-                            ticks: {
-                                display: false
-                            }
-                        },
-                        y: {
-                            beginAtZero: true,
-                            max: 105,
-                            min: 0,
-                            grid: {
-                                display: false
-                            },
-                            ticks: {
-                                display: false
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    }
-                }
-            };
-
-            carGraph = new Chart(ctx, config);
-        }
-
-        function updateCarTelemetryOverlay(carTelemetryData) {
-
-            function transformSteeringInput(input, inputMin, inputMax, outputMin, outputMax) {
-
-                // Perform the linear transformation
-                let slope = (outputMax - outputMin) / (inputMax - inputMin);
-                let intercept = outputMin - slope * inputMin;
-
-                // Calculate the transformed value
-                let output = slope * input + intercept;
-
-                return output;
-            }
-
-            const throttle = carTelemetryData["throttle"];
-            const brake = carTelemetryData["brake"];
-            const steering = carTelemetryData["steering"];
-            const now = Date.now();
-            carGraph.data.datasets[0].data.push({
-                x: now,
-                y: throttle
-            });
-            carGraph.data.datasets[1].data.push({
-                x: now,
-                y: brake
-            });
-            carGraph.data.datasets[2].data.push({
-                x: now,
-                y: transformSteeringInput(steering, -100.0, 100.0, 0.0, 100.0) // transform steering to 0 to 100 scale
-            });
-            carGraph.update('quiet');
-
-            const throttleBar = document.getElementById('throttleBar');
-            const brakeBar = document.getElementById('brakeBar');
-
-            throttleBar.style.height = `${throttle}%`;
-            brakeBar.style.height = `${brake}%`;
-
-            // Update steering indicator position
-            const steeringIndicator = document.getElementById('steeringIndicator');
-            const steeringDiv = document.getElementById('steeringDiv');
-
-            // Set the position of the steeringIndicator within the steeringDiv
-            steeringIndicator.style.left = `${transformSteeringInput(steering, -100.0, 100.0, -48, 48)}%`;
-        }
-
-        function clearTable(tableElement, clearHeader = false) {
-            const minTableRowsCount = clearHeader ? 0 : 1;
-
-            while (tableElement.rows.length > minTableRowsCount) {
-                tableElement.deleteRow(minTableRowsCount);
-            }
-        }
-
-        function updateLapTimeTable(lapTimeHistory) {
-            const lapTimeTable = document.getElementById('lapTimeTable');
-            clearTable(lapTimeTable, clearHeader = true);
-            if (lapTimeHistory === null) {
-                return;
-            }
-
-            function addLapTimeRow(lapTimeTable, lapNumber, lapData, isFastest, compound) {
-                function getValidTimeStr(timeMs, timeStr) {
-                    if (timeMs === 0) {
-                        return "---";
-                    } else {
-                        return timeStr;
-                    }
-                }
-
-                const row = lapTimeTable.insertRow();
-                const lapNumCell = row.insertCell(0);
-                const lapTimeCell = row.insertCell(1);
-
-                lapNumCell.innerHTML = lapNumber;
-                lapTimeCell.innerHTML = getValidTimeStr(lapData["lap-time-in-ms"], lapData["lap-time-str"]);
-            }
-
-            const fastestLapNum = lapTimeHistory['fastest-lap-number'];
-            const lapHistoryData = lapTimeHistory['lap-time-history-data'];
-            const numRows = 5;
-
-            let count = 0;
-            for (i = lapHistoryData.length - 2; i >= 0 && count < numRows; i--, count++) {
-                const lapNumber = i + 1;
-                const lapData = lapHistoryData[i];
-                const isFastest = (lapNumber === fastestLapNum);
-                const compound = lapData["tyre-set-info"] !== null ? lapData["tyre-set-info"]["visual-tyre-compound"] : "";
-                addLapTimeRow(
-                    lapTimeTable,
-                    lapNumber,
-                    lapData,
-                    isFastest,
-                    compound);
-            }
-        }
-
-        function updatePenaltiesStatsTable(stats, gameYear) {
-            const penaltiesCell = document.getElementById('penaltiesValue');
-            const ccwCell = document.getElementById('ccwValue');
-            const otherWarnCell = document.getElementById('otherWarnValue');
-            const dtCell = document.getElementById('dtValue');
-            const sgCell = document.getElementById('sgValue');
-            const collisionsCell = document.getElementById('collisionsValue');
-            const speedTrapCell = document.getElementById('speedTrapValue');
-
-            if (penaltiesCell && ccwCell && otherWarnCell && dtCell && sgCell && collisionsCell && speedTrapCell) {
-                penaltiesCell.innerText = stats["time-penalties"];
-                ccwCell.innerText = stats["corner-cutting-warnings"];
-                otherWarnCell.innerText = stats["total-warnings"] - stats["corner-cutting-warnings"];
-                dtCell.innerText = stats["unserved-drive-through-pens"];
-                sgCell.innerText = stats["unserved-stop-go-pens"];
-                collisionsCell.innerText = stats["num-collisions"];
-                speedTrapCell.innerText = ((stats["speed-trap-record"] != null) ?
-                    (formatFloatWithTwoDecimals(stats["speed-trap-record"]) + ' kmph') : ('N/A'));
-            } else {
-                console.error('One or more penalty table cells are not found in the DOM.');
-            }
-
-            if (gameYear == 23) {
-                const collisionsRow = document.getElementById('collisionsRow');
-                collisionsRow.style.display = 'none';
-            }
-        }
-
-        function updateWeatherTable(weatherForecastSamples) {
-            const weatherTable = document.getElementById('weatherTable');
-            function addWeatherForecastSampleRow(weatherTable, timeOffset, rainProbability, weatherType) {
-                const row = weatherTable.insertRow();
-                const timeOffsetCell = row.insertCell(0);
-                const rainProbabilityCell = row.insertCell(1);
-                const weatherTypeCell = row.insertCell(2);
-
-                timeOffsetCell.innerText = timeOffset + ' min';
-                rainProbabilityCell.innerText = rainProbability + "%";
-                weatherTypeCell.innerText = weatherType;
-            }
-
-            clearTable(weatherTable, clearHeader = false);
-            const maxWeatherSamples = 5;
-            for (let i = 0, count = 0; i < weatherForecastSamples.length && count < maxWeatherSamples; i++, count++) {
-                const sample = weatherForecastSamples[i];
-                addWeatherForecastSampleRow(
-                    weatherTable,
-                    sample['time-offset'],
-                    sample['rain-probability'],
-                    sample['weather']
-                );
-            }
-        }
-
-        function updateGForceCircle(data) {
-            const canvas = document.getElementById('gforceCanvas');
-            const ctx = canvas.getContext('2d');
-            const size = Math.min(canvas.width, canvas.height);
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            const radius = size / 3;
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Draw the outer circle representing the G-force circle
-            ctx.strokeStyle = 'white';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-            ctx.stroke();
-
-            // Draw X and Y axes
-            ctx.beginPath();
-            ctx.moveTo(centerX - radius, centerY);
-            ctx.lineTo(centerX + radius, centerY);
-            ctx.moveTo(centerX, centerY - radius);
-            ctx.lineTo(centerX, centerY + radius);
-            ctx.strokeStyle = 'white';
-            ctx.stroke();
-
-            // Normalize G-force values to stay within the circle
-            const gForceLat = data.lat > 1 ? 1 : data.lat < -1 ? -1 : data.lat;
-            const gForceLong = data.long > 1 ? 1 : data.long < -1 ? -1 : data.long;
-
-            // Draw the G-force dot
-            ctx.fillStyle = 'red';
-            ctx.beginPath();
-            ctx.arc(centerX + gForceLat * radius, centerY - gForceLong * radius, 5, 0, 2 * Math.PI);
-            ctx.fill();
-
-            // Calculate and display the resultant G-force
-            const resultantGForce = Math.sqrt(data.lat**2 + data.long**2 + data.vert**2);
-            ctx.font = '12px Arial';
-            ctx.fillStyle = 'white';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(`${resultantGForce.toFixed(2)}G`, centerX, centerY + radius + 20);
-        }
-
-        initializeGraph();
-
+        // initGForceGraph();
         const socket = io();
+        const carTelemetryWidget = new CarTelemetryWidget('CarTelemetryWidget');
+        const gForceDisplayWidget = new GForceDisplay('gforce-display');
+        const weatherWidget = new WeatherWidget(document.getElementById('weatherDiv'));
+        const pensStatsWidget = new PenaltiesStatsWidget();
+        const lapTimesWidget = new LapTimeTableWidget();
+
+        const maxWeatherSamples = 5;
         // Emit a custom event to register client type upon connection
         socket.on('connect', function () {
             socket.emit('register-client', { type: 'player-stream-overlay' });
         });
 
         socket.on('player-overlay-update', function (data) {
-            updateCarTelemetryOverlay(data["car-telemetry"]);
-            updatePenaltiesStatsTable(data["penalties-and-stats"], data["f1-game-year"]);
-            updateLapTimeTable(data["lap-time-history"]);
-            updateWeatherTable(data["weather-forecast-samples"]);
-            updateGForceCircle(data["g-force"]);
+            carTelemetryWidget.update(data["car-telemetry"]);
+            pensStatsWidget.update(data["penalties-and-stats"], data["f1-game-year"]);
+            lapTimesWidget.update(data["lap-time-history"]);
+            weatherWidget.update(data["weather-forecast-samples"].slice(0, maxWeatherSamples + 1));
+            gForceDisplayWidget.update(data["g-force"]);
         });
     </script>
 </body>

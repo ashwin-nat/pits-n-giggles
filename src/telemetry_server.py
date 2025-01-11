@@ -46,7 +46,6 @@ _player_overlay_clients : Set[str] = set()
 class TelemetryWebServer:
     def __init__(self,
         port: int,
-        packet_capture_enabled: bool,
         client_update_interval_ms: int,
         debug_mode: bool,
         socketio_tasks: List[Tuple[Callable, Any]]):
@@ -55,7 +54,6 @@ class TelemetryWebServer:
 
         Args:
             port (int): Port number for the server.
-            packet_capture (bool) - True if packet capture is enabled
             client_update_interval_ms (int) - The interval at which the client should be updated with new data
             debug_mode (bool): Enable debug mode.
             socketio_tasks (List[Tuple[Callable, Any]]): List of tasks to be executed by the SocketIO server
@@ -65,7 +63,6 @@ class TelemetryWebServer:
         self.m_app.config['PROPAGATE_EXCEPTIONS'] = True
         self.m_port = port
         self.m_debug_mode = debug_mode
-        self.m_packet_capture_enabled = packet_capture_enabled
         self.m_client_update_interval_ms = client_update_interval_ms
         self.m_socketio = SocketIO(
             app=self.m_app,
@@ -106,20 +103,21 @@ class TelemetryWebServer:
 
             return TelWebAPI.OverallRaceStatsRsp().toJSON(), HTTPStatus.OK
 
-        @self.m_app.route('/save-telemetry-capture')
-        def saveTelemetryCapture() -> Dict:
+        @self.m_app.route('/stream-overlay-info')
+        def overlayInfo() -> Dict:
             """
-            Endpoint for saving telemetry packet capture.
+            Endpoint for overtake information.
 
             Returns:
-                str: JSON response indicating success or failure.
+                str: Overtake data in JSON format.
             """
-            return TelWebAPI.SavePacketCaptureRsp().toJSON()
+
+            return TelWebAPI.PlayerTelemetryOverlayUpdate().toJSON(), HTTPStatus.OK
 
         @self.m_app.route('/driver-info', methods=['GET'])
         def driverInfo() -> Dict:
             """
-            Endpoint for saving telemetry packet capture.
+            Endpoint for requesting info per driver.
 
             Returns:
                 str: JSON response indicating success or failure.
@@ -156,7 +154,7 @@ class TelemetryWebServer:
             """
 
             return render_template('index.html',
-                packet_capture_enabled=self.m_packet_capture_enabled,
+                packet_capture_enabled=False, # TODO: deprecate
                 client_poll_interval_ms=0, # deprecated since we've moved to socketio
                 live_data_mode=True)
 
@@ -184,6 +182,16 @@ class TelemetryWebServer:
 
             return render_template('player-stream-overlay.html')
 
+        @self.m_app.route('/player-stream-overlay-new')
+        def newOverlay():
+            """
+            Endpoint for the overlay page.
+
+            Returns:
+                str: HTML page content.
+            """
+            return render_template('new_overlay.html')
+
         # Render the HTML page
         @self.m_app.route('/full')
         def fullTelemetryView():
@@ -195,7 +203,7 @@ class TelemetryWebServer:
             """
 
             return render_template('index.html',
-                packet_capture_enabled=self.m_packet_capture_enabled,
+                packet_capture_enabled=False, #TODO: deprecate
                 client_poll_interval_ms=0, # deprecated since we've moved to socketio
                 live_data_mode=True)
 
@@ -219,7 +227,11 @@ class TelemetryWebServer:
         def handeRaceInfo(dummy_arg: Any):
             """SocketIO endpoint to handle race info request
             """
-            emit("race-info-response", TelWebAPI.OverallRaceStatsRsp().toJSON(), broadcast=False)
+            response = TelWebAPI.OverallRaceStatsRsp().toJSON()
+            # Re-attach the dummy payload if present
+            if "__dummy" in dummy_arg:
+                response["__dummy"] = dummy_arg
+            emit("race-info-response", response, broadcast=False)
 
         @self.m_socketio.on('driver-info')
         def handleDriverInfo(data: Dict[str, Any]):
@@ -241,6 +253,11 @@ class TelemetryWebServer:
                 }
             else:
                 response = TelWebAPI.DriverInfoRsp(index).toJSON()
+
+            # Re-attach the dummy payload if present
+            dummy_payload = data.get("__dummy")
+            if dummy_payload:
+                response["__dummy"] = dummy_payload
             emit("driver-info-response", response, broadcast=False)
 
         @self.m_socketio.on('register-client')
@@ -306,14 +323,12 @@ class TelemetryWebServer:
 
 def initTelemetryWebServer(
     port: int,
-    packet_capture_enabled: bool,
     client_update_interval_ms: int,
     debug_mode: bool) -> None:
     """Initialize the web server
 
     Args:
         port (int): Port number
-        packet_capture_enabled (bool): Should enable packet capture
         client_update_interval_ms (int): How often the client will be updated with new info
         debug_mode (bool): Debug enabled if true
     """
@@ -321,7 +336,6 @@ def initTelemetryWebServer(
     global _web_server
     _web_server = TelemetryWebServer(
         port=port,
-        packet_capture_enabled=packet_capture_enabled,
         client_update_interval_ms=client_update_interval_ms,
         debug_mode=debug_mode,
         socketio_tasks=[

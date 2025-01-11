@@ -1,0 +1,21 @@
+.conditions {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+  }
+
+  .condition-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .condition-icon {
+    font-size: 1.5rem;
+    color: var(--f1-text-secondary);
+  }
+
+  .condition-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+  }

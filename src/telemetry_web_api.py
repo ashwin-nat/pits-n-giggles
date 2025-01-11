@@ -28,7 +28,7 @@ from lib.f1_types import F1Utils, LapHistoryData, CarStatusData
 import lib.race_analyzer as RaceAnalyzer
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 import src.telemetry_data as TelData
-from src.telemetry_handler import dumpPktCapToFile, getOvertakeJSON, GetOvertakesStatus
+from src.telemetry_handler import getOvertakeJSON, GetOvertakesStatus
 
 # ------------------------- UTILITIES ----------------------------------------------------------------------------------
 
@@ -136,38 +136,6 @@ class RaceInfoRsp:
                     table_entry["lap-info"]["best-lap-ms-player"] = table_entry["lap-info-new"]["best-lap"]["lap-time-ms"]
                     table_entry["lap-info-new"]["last-lap"]["lap-time-ms-player"] = table_entry["lap-info-new"]["last-lap"]["lap-time-ms"]
                     table_entry["lap-info-new"]["best-lap"]["lap-time-ms-player"] = table_entry["lap-info-new"]["best-lap"]["lap-time-ms"]
-
-class SavePacketCaptureRsp:
-    """
-    Save packet capture response class.
-    """
-
-    def __init__(self):
-        """Save the packet capture and prepare the rsp fields
-        """
-
-        (
-            self.m_status_code,
-            self.m_file_name,
-            self.m_num_packets,
-            self.m_num_bytes
-        ) = dumpPktCapToFile(clear_db=True, reason='Received Request')
-
-    def toJSON(self) -> Dict[str, Any]:
-        """Dump this object into JSON
-
-        Returns:
-            Dict[str, Any]: The JSON dump
-        """
-
-        return {
-            "is-success" : bool(self.m_file_name),
-            "status-code" : str(self.m_status_code),
-            "file-name" : _getValueOrDefaultValue(self.m_file_name, ""),
-            "num-packets" : _getValueOrDefaultValue(self.m_num_packets, default_value=0),
-            "num-bytes" : _getValueOrDefaultValue(self.m_num_bytes, default_value=0)
-        }
-
 class OverallRaceStatsRsp:
     """
     Overall race stats response class.
@@ -276,9 +244,16 @@ class PlayerTelemetryOverlayUpdate:
             self.m_circuit                  = TelData._globals.m_circuit
             self.m_total_laps               = TelData._globals.m_total_laps
             self.m_game_year                = TelData._globals.m_game_year
+            self.m_pit_speed_limit          = TelData._globals.m_pit_speed_limit
 
         with TelData._driver_data_lock.gen_rlock():
             self.m_next_pit_window          = TelData._driver_data.m_ideal_pit_stop_window
+            self.m_fastest_lap_ms           = \
+                TelData._driver_data.m_driver_data[TelData._driver_data.m_fastest_index].m_best_lap_ms if \
+                    TelData._driver_data.m_fastest_index is not None else None
+            self.m_fastest_s1_ms            = TelData._driver_data.m_fastest_s1_ms
+            self.m_fastest_s2_ms            = TelData._driver_data.m_fastest_s2_ms
+            self.m_fastest_s3_ms            = TelData._driver_data.m_fastest_s3_ms
             player_data = TelData._driver_data.m_driver_data[TelData._driver_data.m_player_index] \
                 if TelData._driver_data.m_player_index in TelData._driver_data.m_driver_data else None
 
@@ -312,7 +287,8 @@ class PlayerTelemetryOverlayUpdate:
         """
 
         self.m_curr_lap: Optional[int] = player_data.m_current_lap if player_data else None
-        self.m_lap_time_history: LapTimeHistory = LapTimeHistory(player_data)
+        self.m_lap_time_history: LapTimeHistory = LapTimeHistory(
+            player_data, self.m_fastest_lap_ms, self.m_fastest_s1_ms, self.m_fastest_s2_ms, self.m_fastest_s3_ms)
         self.m_speed_trap_record: Optional[float] = player_data.m_packet_lap_data.m_speedTrapFastestSpeed \
             if player_data and player_data.m_packet_lap_data else None
 
@@ -393,9 +369,6 @@ class PlayerTelemetryOverlayUpdate:
 
         return {
             "f1-game-year" : self.m_game_year,
-            "circuit" : self.m_circuit,
-            "track-temp": self.m_track_temp,
-            "air-temp": self.m_air_temp,
             "weather-forecast-samples": [
                 {
                     "time-offset": sample.m_timeOffset,
@@ -423,6 +396,10 @@ class PlayerTelemetryOverlayUpdate:
                 "unserved-stop-go-pens": self.m_num_sg,
                 "num-collisions" : self.m_num_collisions,
                 "speed-trap-record": self.m_speed_trap_record,
+                "circuit" : self.m_circuit,
+                "track-temperature": self.m_track_temp,
+                "air-temperature": self.m_air_temp,
+                "pit-speed-limit": self.m_pit_speed_limit,
             },
             "g-force": {
                 "lat": self.m_g_force_lat,
@@ -848,14 +825,23 @@ class LapTimeHistory:
     """Class representing lap time history data along with tyre set used
 
     Attributes:
-        m_fastest_lap_number (int): Fastest lap number.
-        m_fastest_s1_lap_number (int): Fastest sector 1 lap number.
-        m_fastest_s2_lap_number (int): Fastest sector 2 lap number.
-        m_fastest_s3_lap_number (int): Fastest sector 3 lap number.
+        m_personal_fastest_lap_number (int): Fastest lap number.
+        m_personal_fastest_s1_lap_number (int): Fastest sector 1 lap number.
+        m_personal_fastest_s2_lap_number (int): Fastest sector 2 lap number.
+        m_personal_fastest_s3_lap_number (int): Fastest sector 3 lap number.
+        m_global_fastest_lap_ms (int): Fastest lap time of all drivers
+        m_global_fastest_s1_ms (int) : Fastest S1 time of all drivers
+        m_global_fastest_s2_ms (int) : Fastest S2 time of all drivers
+        m_global_fastest_s3_ms (int) : Fastest S3 time of all drivers
         m_lap_time_history_data (List[LapTimeInfo]): List of LapTimeInfo objects representing lap time history data.
     """
 
-    def __init__(self, driver_data: Optional[TelData.DataPerDriver] = None) -> None:
+    def __init__(self,
+                 driver_data: Optional[TelData.DataPerDriver] = None,
+                 global_fastest_lap_ms: Optional[int] = None,
+                 global_fastest_s1_ms: Optional[int] = None,
+                 global_fastest_s2_ms: Optional[int] = None,
+                 global_fastest_s3_ms: Optional[int] = None,) -> None:
         """
         Initializes LapTimeHistory with an optional DataPerDriver object.
 
@@ -864,20 +850,25 @@ class LapTimeHistory:
         """
 
         if driver_data is None:
-            self.m_fastest_lap_number: int = None
+            self.m_personal_fastest_lap_number: int = None
+
+        self.m_global_fastest_lap_ms: Optional[int]  = global_fastest_lap_ms
+        self.m_global_fastest_s1_ms: Optional[int]   = global_fastest_s1_ms
+        self.m_global_fastest_s2_ms: Optional[int]   = global_fastest_s2_ms
+        self.m_global_fastest_s3_ms: Optional[int]   = global_fastest_s3_ms
 
         if driver_data is None or driver_data.m_packet_session_history is None:
-            self.m_fastest_lap_number: int = None
-            self.m_fastest_s1_lap_number: int = None
-            self.m_fastest_s2_lap_number: int = None
-            self.m_fastest_s3_lap_number: int = None
+            self.m_personal_fastest_lap_number: int = None
+            self.m_personal_fastest_s1_lap_number: int = None
+            self.m_personal_fastest_s2_lap_number: int = None
+            self.m_personal_fastest_s3_lap_number: int = None
             self.m_lap_time_history_data: List[LapHistoryData] = []
             return
 
-        self.m_fastest_lap_number: int      = driver_data.m_packet_session_history.m_bestLapTimeLapNum
-        self.m_fastest_s1_lap_number: int   = driver_data.m_packet_session_history.m_bestSector1LapNum
-        self.m_fastest_s2_lap_number: int   = driver_data.m_packet_session_history.m_bestSector2LapNum
-        self.m_fastest_s3_lap_number: int   = driver_data.m_packet_session_history.m_bestSector3LapNum
+        self.m_personal_fastest_lap_number: int      = driver_data.m_packet_session_history.m_bestLapTimeLapNum
+        self.m_personal_fastest_s1_lap_number: int   = driver_data.m_packet_session_history.m_bestSector1LapNum
+        self.m_personal_fastest_s2_lap_number: int   = driver_data.m_packet_session_history.m_bestSector2LapNum
+        self.m_personal_fastest_s3_lap_number: int   = driver_data.m_packet_session_history.m_bestSector3LapNum
         self.m_lap_time_history_data: List[LapHistoryData] = []
 
         for index, lap_info in enumerate(driver_data.m_packet_session_history.m_lapHistoryData):
@@ -895,9 +886,13 @@ class LapTimeHistory:
             Dict[str, Any]: JSON-compatible dictionary with kebab-case keys representing the LapTimeHistory instance.
         """
         return {
-            "fastest-lap-number": self.m_fastest_lap_number,
-            "fastest-s1-lap-number": self.m_fastest_s1_lap_number,
-            "fastest-s2-lap-number": self.m_fastest_s2_lap_number,
-            "fastest-s3-lap-number": self.m_fastest_s3_lap_number,
+            "fastest-lap-number": self.m_personal_fastest_lap_number,
+            "fastest-s1-lap-number": self.m_personal_fastest_s1_lap_number,
+            "fastest-s2-lap-number": self.m_personal_fastest_s2_lap_number,
+            "fastest-s3-lap-number": self.m_personal_fastest_s3_lap_number,
+            "global-fastest-lap-ms": self.m_global_fastest_lap_ms,
+            "global-fastest-s1-ms" : self.m_global_fastest_s1_ms,
+            "global-fastest-s2-ms" : self.m_global_fastest_s2_ms,
+            "global-fastest-s3-ms" : self.m_global_fastest_s3_ms,
             "lap-time-history-data": [lap_time_info.toJSON() for lap_time_info in self.m_lap_time_history_data]
         }

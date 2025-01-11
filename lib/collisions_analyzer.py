@@ -280,7 +280,7 @@ class CollisionAnalyzerMode(Enum):
     INPUT_MODE_LIST_COLLISION_RECORDS=3
     INPUT_MODE_LIST_COLLISION_RECORDS_JSON=4
 
-class CollisionAnayzer:
+class CollisionAnalyzer:
 
     def __init__(self, input_mode: CollisionAnalyzerMode, input_data: Any):
         """

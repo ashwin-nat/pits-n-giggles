@@ -27,6 +27,7 @@ import configparser
 from pathlib import Path
 from enum import Enum
 from dataclasses import dataclass, fields
+from typing import List, Tuple
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -63,13 +64,13 @@ class Config:
     server_port: int
     udp_custom_action_code: int
     udp_tyre_delta_action_code: int
-    packet_capture_mode: PacketCaptureMode
     post_race_data_autosave: bool
     refresh_interval: int
     disable_browser_autoload: bool
     log_file: str
     log_file_size: int
     process_car_setup: bool
+    forwarding_targets: List[Tuple[str, int]]
 
     def __repr__(self) -> str:
         """Return the string representation, formatted one key-value pair per line
@@ -89,7 +90,6 @@ _default_config = {
         'udp_tyre_delta_action_code' : None,
     },
     'Capture': {
-        'packet_capture_mode': PacketCaptureMode.DISABLED,  # Enum (which can be converted to string for INI storage)
         'post_race_data_autosave': True,  # Boolean
     },
     'Display': {
@@ -102,6 +102,11 @@ _default_config = {
     },
     'Privacy': {
         'process_car_setup': True, # Boolean
+    },
+    'Forwarding': {
+        'target1': '',
+        'target2': '',
+        'target3': '',
     }
 }
 
@@ -171,6 +176,44 @@ def load_config(config_file: str = "config.ini") -> Config:
         # Try converting to boolean
         return config.getboolean(section, key, fallback=default_value)
 
+    def get_forwarding_targets() -> List[Tuple[str, int]]:
+        """Parse the forwarding targets and return its list
+
+        Raises:
+            ValueError: _description_
+
+        Returns:
+            List[Tuple[str, int]]: _description_
+        """
+
+        section = config.items('Forwarding')
+        ret_list = []
+
+        for key, value in section:
+            # Keys must begin with target
+            if not key.startswith('target'):
+                print(f"config key {key} under Forwarding does not start with 'target'. Skipping")
+                continue
+            # empty values are valid, just skip
+            if not value.rstrip():
+                print(f"Skipping key {key} because empty value")
+                continue
+            # Try to split the string at the colon
+            try:
+                ip_addr, port_str = value.rstrip().split(":", 1)  # Split only at the first colon
+            except ValueError:
+                # If there's no colon or more than one, raise an exception
+                raise ValueError(f"Forwarding target {key} is invalid. Must be of format ip_addr:port or hostname:port")
+            try:
+                port = int(port_str)
+            except ValueError:
+                # Port must be a number in decimal
+                raise ValueError(f"Forwarding target {key} has invalid port.")
+
+            ret_list.append((ip_addr, port))
+
+        return ret_list
+
     config_path = Path(config_file)
     config = configparser.ConfigParser()
 
@@ -206,7 +249,6 @@ def load_config(config_file: str = "config.ini") -> Config:
         udp_custom_action_code=get_value_int("Network", "udp_custom_action_code"),
         udp_tyre_delta_action_code=get_value_int("Network", "udp_tyre_delta_action_code"),
 
-        packet_capture_mode=PacketCaptureMode(get_value_str("Capture", "packet_capture_mode")),
         post_race_data_autosave=get_value_bool("Capture", "post_race_data_autosave"),
 
         refresh_interval=get_value_int("Display", "refresh_interval"),
@@ -216,4 +258,6 @@ def load_config(config_file: str = "config.ini") -> Config:
         log_file_size=get_value_int("Logging", "log_file_size"),
 
         process_car_setup=get_value_bool("Privacy", "process_car_setup"),
+
+        forwarding_targets=get_forwarding_targets(),
     )

@@ -102,6 +102,7 @@ class ITCMessage:
     class MessageType(Enum):
         CUSTOM_MARKER = 1
         TYRE_DELTA_NOTIFICATION = 2
+        UDP_PACKET_FORWARD = 3
         # Add more message types as needed
 
         def __repr__(self) -> str:
@@ -116,7 +117,7 @@ class ITCMessage:
             return self.__repr__()
 
     m_message_type: "ITCMessage.MessageType"
-    m_message: Any # Must have toJSON method defined
+    m_message: Any
 
     def __repr__(self) -> str:
         """Return a string representation of the ITCMessage object."""
@@ -200,6 +201,23 @@ class InterThreadCommunicator:
 
         try:
             return q.get(timeout=timeout_sec) if timeout_sec > 0 else q.get_nowait()
+        except queue.Empty:
+            return None
+
+    def receiveWaitIndefinite(self, queue_name: str) -> Optional[ITCMessage]:
+        """Receives a message from the specified queue. Blocks indefinitely until a message is available
+
+        Args:
+            queue_name (str): Name of the queue
+
+        Returns:
+            Optional[ITCMessage]: The received message or None
+        """
+
+        q = self._get_queue(queue_name)
+
+        try:
+            return q.get()
         except queue.Empty:
             return None
 

@@ -26,24 +26,23 @@ SOFTWARE.
 
 import os
 import json
-import time
 from datetime import datetime
 from enum import Enum
 from threading import Lock
+import threading
 from typing import Optional, List, Tuple, Dict, Any, Generator
-from tqdm import tqdm
 from lib.f1_types import F1PacketType, PacketSessionData, PacketLapData, \
     PacketEventData, PacketParticipantsData, PacketCarTelemetryData, PacketCarStatusData, \
     PacketFinalClassificationData, PacketCarDamageData, PacketSessionHistoryData, PacketMotionData, \
     PacketTyreSetsData, PacketCarSetupData, SessionType23, SessionType24
-from lib.packet_cap import F1PacketCapture
 from lib.overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, OvertakeRecord
 import lib.race_analyzer as RaceAnalyzer
+from lib.packet_forwarder import UDPForwarder
 from lib.button_debouncer import ButtonDebouncer
+from lib.inter_thread_communicator import InterThreadCommunicator
 import src.telemetry_data as TelData
 from src.telemetry_manager import F1TelemetryManager
 from src.png_logger import getLogger
-from src.config import PacketCaptureMode
 
 # -------------------------------------- TYPE DEFINITIONS --------------------------------------------------------------
 
@@ -68,34 +67,6 @@ class GetOvertakesStatus(Enum):
 
     def __str__(self):
         return self.name
-
-class PacketCaptureTable:
-    """Thread safe container for F1PacketCapture instance.
-    """
-
-    def __init__(self) -> None:
-        """
-        Initialize the object by creating a new F1PacketCapture instance and a Lock instance.
-        """
-        self.m_packet_capture = F1PacketCapture()
-        self.m_lock = Lock()
-
-    def add(self, packet: List[bytes]) -> None:
-        """
-        Add a packet to the packet list while acquiring a lock to ensure thread safety.
-
-        Parameters:
-            packet (List[bytes]): The packet to be added to the table.
-        """
-        with self.m_lock:
-            self.m_packet_capture.add(packet)
-
-    def getNumPackets(self) -> int:
-        """
-        Returns the number of packets captured by the packet capture object.
-        """
-        with self.m_lock:
-            return self.m_packet_capture.getNumPackets()
 
 class OvertakesHistory:
     """Class representing the history of all overtakes
@@ -183,9 +154,6 @@ class CustomMarkersHistory:
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
-g_packet_capture_table: PacketCaptureTable = PacketCaptureTable()
-
-g_pkt_cap_mode: PacketCaptureMode = PacketCaptureMode.DISABLED
 g_overtakes_history: OvertakesHistory = OvertakesHistory()
 g_post_race_data_autosave: bool = False
 g_directory_mapping: Dict[str, str] = {}
@@ -223,7 +191,7 @@ def initTelemetryGlobals(
 
 def initDirectories() -> None:
     """
-    Initialize the necessary directories for storing race information and packet captures.
+    Initialize the necessary directories for storing race information
     This function creates a directory structure based on the current date if it does not already exist.
 
     Returns:
@@ -246,36 +214,44 @@ def initDirectories() -> None:
     global g_directory_mapping
     ts_prefix = datetime.now().strftime("%Y_%m_%d")
     g_directory_mapping['race-info'] = f"data/{ts_prefix}/race-info/"
-    g_directory_mapping['packet-captures'] = f"data/{ts_prefix}/packet-captures/"
 
     for directory in g_directory_mapping.values():
         ensureDirectoryExists(directory)
 
-def initPktCap(packet_capture_mode: PacketCaptureMode):
-    """
-    Initialize packet capture.
+def initForwarder(forwarding_targets: List[Tuple[str, int]]) -> None:
+    """Init the forwarding thread, if targets are defined
 
-    Parameters:
-    - packet_capture_mode (PacketCaptureMode): The mode for packet capture.
-
-    Returns:
-    None
+    Args:
+        forwarding_targets (List[Tuple[str, int]]): Forwarding Targets list
     """
 
-    global g_pkt_cap_mode
-    g_pkt_cap_mode = packet_capture_mode
+    # Spawn the thread only if targets are defined
+    if forwarding_targets:
+        forwarding_thread = threading.Thread(target=udpForwardingThread,
+                                    args=(forwarding_targets,))
+        forwarding_thread.daemon = True
+        forwarding_thread.start()
+
+
+# -------------------------------------- THREADS -----------------------------------------------------------------------
+
+def udpForwardingThread(forwarding_targets: List[Tuple[str, int]]) -> None:
+    """Thread that forwards all UDP packets to specified targets
+
+    Args:
+        forwarding_targets (List[Tuple[str, int]]): List of tuple of target
+            Each tuple is a pair of IP addr/hostname (str), port number (int)
+    """
+
+    udp_forwarder = UDPForwarder(forwarding_targets)
+    png_logger.info(f"Initialised forwarder. Targets={forwarding_targets}")
+    while True:
+        packet = InterThreadCommunicator().receiveWaitIndefinite("packet-forward")
+        assert packet is not None
+
+        udp_forwarder.forward(packet)
 
 # -------------------------------------- UTILITIES ---------------------------------------------------------------------
-
-def addRawPacket(packet: List[bytes]):
-    """
-    Add raw packet to the packet capture table.
-
-    Parameters:
-        - packet (List[bytes]): The raw packet data.
-    """
-    global g_packet_capture_table
-    g_packet_capture_table.add(packet)
 
 def getTimestampStr() -> str:
     """
@@ -285,88 +261,6 @@ def getTimestampStr() -> str:
         str: A string representing the current timestamp.
     """
     return datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-
-def dumpPktCapToFile(
-        file_name: Optional[str] = None,
-        clear_db: bool = False,
-        reason: str = '') -> Tuple[PktSaveStatus, str, int, int]:
-    """
-    Dump packet capture data to a file.
-
-    Parameters:
-    - file_name (Optional[str]): The name of the file to save. Default is None.
-    - clear_db (bool): Whether to clear the packet capture database. Default is False.
-    - reason (str): Reason for dumping the packet capture data.
-
-    Returns:
-    Tuple[PktSaveStatus, str, int, int]: A tuple representing the
-        save status,
-        file name,
-        number of packets, and
-        number of bytes.
-    """
-
-    global g_pkt_cap_mode
-
-    if g_pkt_cap_mode == PacketCaptureMode.DISABLED:
-        return PktSaveStatus.DISABLED, None, 0, 0
-
-    global g_packet_capture_table
-
-    progress_bar = tqdm(
-        total=g_packet_capture_table.getNumPackets(),
-        desc='Saving Packets',
-        unit='packet',
-        mininterval=0.1
-    )
-
-    def progressBarUpdater(current_packets: int, total_packets: int, progress_bar: tqdm) -> None:
-        """
-        Updates the progress bar for the current packet out of the total packets.
-
-        Args:
-            current_packets (int): The current packet number.
-            total_packets (int): The total number of packets.
-            progress_bar (tqdm): The progress bar to be updated.
-        """
-
-        # pylint: disable=unused-argument
-        progress_bar.update(1)
-
-    with g_packet_capture_table.m_lock:
-        try:
-            if not file_name:
-                global g_directory_mapping
-                file_name = g_directory_mapping['packet-captures'] + \
-                            'capture_' + getTimestampStr() + \
-                            '.' + F1PacketCapture.file_extension
-            file_name, num_packets, num_bytes = g_packet_capture_table.m_packet_capture.dumpToFile(
-                file_name=file_name,
-                progress_update_callback=progressBarUpdater,
-                progress_update_callback_arg=progress_bar)
-
-            if clear_db:
-                g_packet_capture_table.m_packet_capture.clear()
-            if (file_name is not None) and (num_bytes > 0) and (num_packets > 0):
-                png_logger.info(
-                    "Dumped raw telemetry data. "
-                    "File Name: %s, "
-                    "Number of Packets: %s, "
-                    "Number of Bytes: %s, "
-                    "Clear DB: %s, "
-                    "Reason: %s",
-                    file_name, num_packets, num_bytes, str(clear_db), reason
-                )
-                return PktSaveStatus.SUCCESS, file_name, num_packets, num_bytes
-            return PktSaveStatus.TABLE_EMPTY, None, 0, 0
-
-        # pylint: disable=broad-except
-        except Exception as e:
-            # Log the exception
-            png_logger.error("An error occurred while dumping telemetry data: %s", e)
-
-            # Return the appropriate status
-            return PktSaveStatus.OS_ERROR, None, 0, 0
 
 def getOvertakeJSON(driver_name: str=None) -> Tuple[GetOvertakesStatus, Dict[str, Any]]:
     """Get the JSON value containing key overtake information
@@ -408,7 +302,7 @@ def writeDictToJsonFile(data_dict: Dict, file_name: str) -> None:
 
 def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
     """
-    Write the contents of final_json, packet capture and player recorded events to a file.
+    Write the contents of final_json and player recorded events to a file.
 
     Arguments:
         final_json (Dict): Dictionary containing JSON data after final classification
@@ -420,14 +314,6 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
     event_str = TelData.getEventInfoStr()
     if not event_str:
         return
-
-    # Capture the packets if required
-    global g_pkt_cap_mode
-    if g_pkt_cap_mode == PacketCaptureMode.ENABLED_WITH_AUTOSAVE:
-        if not file_name:
-            file_name = f'capture_{event_str}{getTimestampStr()}{F1PacketCapture.file_extension}'
-            file_name = g_directory_mapping["packet-captures"] + file_name
-        dumpPktCapToFile(file_name=file_name,reason='Final Classification')
 
     # Save the JSON data
     global g_post_race_data_autosave
@@ -471,22 +357,21 @@ class F1TelemetryHandler:
 
     Attributes:
     - m_manager (F1TelemetryManager): The telemetry manager instance.
-    - m_raw_packet_capture (PacketCaptureMode): The raw packet capture mode.
     """
 
     def __init__(self,
         port: int,
-        raw_packet_capture: PacketCaptureMode = PacketCaptureMode.DISABLED,
+        forwarding_targets: List[Tuple[str, int]],
         replay_server: bool = False) -> None:
         """
         Initialize F1TelemetryHandler.
 
         Parameters:
             - port (int): The port number for telemetry.
-            - raw_packet_capture (PacketCaptureMode): The mode for raw packet capture
+            - replay_server: bool: If true, init in replay mode (TCP)
         """
         self.m_manager = F1TelemetryManager(port, replay_server)
-        self.m_raw_packet_capture = raw_packet_capture
+        self.m_should_forward = bool(forwarding_targets)
 
     def run(self):
         """
@@ -516,7 +401,7 @@ class F1TelemetryHandler:
         self.m_manager.registerCallback(F1PacketType.MOTION, F1TelemetryHandler.handleMotion)
         self.m_manager.registerCallback(F1PacketType.CAR_SETUPS, F1TelemetryHandler.handleCarSetups)
 
-        if self.m_raw_packet_capture != PacketCaptureMode.DISABLED:
+        if self.m_should_forward:
             self.m_manager.registerRawPacketCallback(F1TelemetryHandler.handleRawPacket)
 
     @staticmethod
@@ -527,7 +412,8 @@ class F1TelemetryHandler:
         Parameters:
             packet (List[bytes]): The raw telemetry packet.
         """
-        addRawPacket(packet)
+
+        InterThreadCommunicator().send("packet-forward", packet)
 
     @staticmethod
     def handleSessionData(packet: PacketSessionData) -> None:
@@ -744,4 +630,4 @@ class F1TelemetryHandler:
 
         global g_process_car_setup
         if g_process_car_setup:
-            TelData.processCarSetupsUpdate(packet, g_process_car_setup)
+            TelData.processCarSetupsUpdate(packet)

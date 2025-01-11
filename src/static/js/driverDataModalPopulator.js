@@ -1,4 +1,4 @@
-class DriverModalDataPopulator {
+class DriverModalPopulator {
     constructor(data) {
         this.data = data;
     }
@@ -529,59 +529,7 @@ class DriverModalDataPopulator {
     }
 
     populateCarDamageTab(tabPane) {
-        const { firstHalf, secondHalf } = splitJsonObject(flattenJsonObject(this.data["car-damage"]));
-        console.log(this.data, firstHalf, secondHalf);
-        const panePopulator = (divElement, tableData) => {
-            const table = document.createElement('table');
-            table.className = 'table table-bordered table-striped';
-
-            // Create table header
-            const thead = document.createElement('thead');
-            const headerRow = document.createElement('tr');
-            const headers = [
-                'Field',
-                'Value',
-            ];
-
-            headers.forEach(headerText => {
-                const th = document.createElement('th');
-                th.textContent = headerText;
-                headerRow.appendChild(th);
-            });
-
-            thead.appendChild(headerRow);
-            table.appendChild(thead);
-
-            // Create table body
-            const tbody = document.createElement('tbody');
-            console.log("panePopulator", tableData);
-            if (Object.keys(tableData).length > 0) {
-                for (const key in tableData) {
-                    const value = tableData[key];
-                    const row = tbody.insertRow();
-                    this.populateTableRow(row, [kebabToTitleCase(key),
-                        typeof value === 'number' && !Number.isInteger(value) ?
-                            formatFloatWithTwoDecimals(value) : value]);
-                }
-            } else {
-                const row = tbody.insertRow();
-                row.innerHTML = '<td colspan="2">Car damage data not available</td>';
-            }
-
-            table.appendChild(tbody);
-            divElement.appendChild(table);
-        };
-
-        const leftPanePopulator = (leftDiv) => {
-            console.log("leftPanePopulator", firstHalf);
-            panePopulator(leftDiv, firstHalf);
-        }
-        const rightPanePopulator = (rightDiv) => {
-            console.log("rightPanePopulator", secondHalf);
-            panePopulator(rightDiv, secondHalf);
-        }
-
-        this.createModalDivElelements(tabPane, leftPanePopulator, rightPanePopulator);
+        this.showRawDataInTable(tabPane, this.data["car-damage"], "Car damage data not available");
     }
 
     populateTyreWearPredictionTab(tabPane) {
@@ -813,20 +761,9 @@ class DriverModalDataPopulator {
         thead.appendChild(headerRow);
         table.appendChild(thead);
 
-        console.log("populateCollisionsInfoTab", this.data["collisions"]);
         // Create table body
         const tbody = document.createElement('tbody');
         const playerIndex = this.data["index"];
-        // let row = tbody.insertRow();
-        // this.populateTableRow(row, ["Collisions Count", this.data["collisions"]["records"].length]);
-
-        // const count = this.data["collisions"]["most-collided-pairs"]["count"];
-        // const collisionPairs = this.data["collisions"]["most-collided-pairs"]["collision-pairs"];
-        // collisionPairs.forEach((pair) => {
-        //     const otherDriverName = this.getCollisionOtherDriverName(playerIndex, pair);
-        //     row = tbody.insertRow();
-        //     this.populateTableRow(row, ["Collisions with " + otherDriverName, count]);
-        // });
 
         const records = this.data["collisions"]["records"];
         records.forEach((record, index) => {
@@ -844,16 +781,118 @@ class DriverModalDataPopulator {
         tabPane.appendChild(table);
     }
 
-    populateOvertakesInfoTab(tabPane) {
-        // TODO
-    }
-
     populateTyreSetsInfoTab(tabPane) {
-        // TODO
+
+        const tyreSets = this.sanitizeTyreSetData(this.data['tyre-sets']['tyre-set-data']);
+        console.log("sanitized data", tyreSets);
+
+        // Sample data for accordion groups (without populating inner tables)
+        const data = [
+            { id: 1, name: 'Group A', details: 'Group A details' },
+            { id: 2, name: 'Group B', details: 'Group B details' },
+            { id: 3, name: 'Group C', details: 'Group C details' },
+        ];
+
+        // Create the accordion container
+        const accordionContainer = document.createElement('div');
+        accordionContainer.className = 'accordion';
+        accordionContainer.id = 'tyreSetsAccordion';
+
+        // Generate accordion items
+        tyreSets.forEach((tyreSetGroup, index) => {
+            // Create an accordion item (group)
+            const accordionItem = document.createElement('div');
+            accordionItem.className = 'accordion-item';
+
+            // Accordion header (the clickable row)
+            const accordionHeader = document.createElement('h2');
+            accordionHeader.className = 'accordion-header';
+            accordionHeader.id = `heading${index}`;
+
+            accordionHeader.innerHTML = `
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${index}" aria-expanded="false" aria-controls="collapse${index}">
+                ${tyreSetGroup["actual-tyre-compound"]} - ${tyreSetGroup["visual-tyre-compound"]}
+            </button>
+            `;
+
+            // Accordion body (the collapsible content area)
+            const accordionCollapse = document.createElement('div');
+            accordionCollapse.id = `collapse${index}`;
+            accordionCollapse.className = 'accordion-collapse collapse';
+            accordionCollapse.setAttribute('aria-labelledby', `heading${index}`);
+            accordionCollapse.setAttribute('data-bs-parent', '#tyreSetsAccordion');
+
+            // Accordion body content
+            const accordionBody = document.createElement('div');
+            const table = document.createElement('table');
+            table.className = 'table table-bordered table-striped';
+
+            // Create table header
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            const headers = [
+                'Index',
+                'Wear %',
+                'Lifespan',
+                'Delta'
+            ];
+
+            headers.forEach(headerText => {
+                const th = document.createElement('th');
+                th.textContent = headerText;
+                headerRow.appendChild(th);
+            });
+
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            // Create table body
+            const tbody = document.createElement('tbody');
+
+            const currTyreSets = tyreSetGroup["tyre-sets"];
+            currTyreSets.forEach((record) => {
+                const tyreSetIndex = record["index"];
+                const wear = record["wear"];
+                const lifespan = record["life-span"];
+                const delta = formatFloatWithTwoDecimalsSigned(record["lap-delta-time"] / 1000) + "s";
+                const row = tbody.insertRow();
+                this.populateTableRow(row, [
+                    tyreSetIndex,
+                    wear,
+                    lifespan,
+                    delta
+                ]);
+            });
+
+            table.appendChild(tbody);
+
+            accordionBody.appendChild(table);
+            accordionCollapse.appendChild(accordionBody);
+
+            // Append header and body to the accordion item
+            accordionItem.appendChild(accordionHeader);
+            accordionItem.appendChild(accordionCollapse);
+
+            // Append the accordion item to the main container
+            accordionContainer.appendChild(accordionItem);
+        });
+
+        // Append the accordion container to the body (or any other container)
+        tabPane.appendChild(accordionContainer);
     }
 
     populateCarSetupTab(tabPane) {
-        // TODO
+
+        if (this.data["car-setup"]) {
+            if (this.data["car-setup"]["is-valid"]) {
+                // remove this key, no need to display
+                delete this.data["car-setup"]["is-valid"];
+            } else {
+                // setup data will be full of 0's. Don't show
+                this.data["car-setup"] = null;
+            }
+        }
+        this.showRawDataInTable(tabPane, this.data["car-setup"], "Car setup data not available");
     }
 
     // Method to create the navigation tabs
@@ -872,7 +911,6 @@ class DriverModalDataPopulator {
             { id: 'tyre-wear-prediction', label: 'Tyre Wear Prediction' },
             { id: 'warns-pens-info', label: 'Warns/Pens' },
             { id: 'collisions-info', label: 'Collisions' },
-            { id: 'overtakes-info', label: 'Overtakes' },
             { id: 'tyre-sets', label: 'Tyre Sets' },
         ];
 
@@ -911,7 +949,6 @@ class DriverModalDataPopulator {
         tabContent.className = 'tab-content driver-modal-tab-content';
 
         // Array of tabs with ID and method to populate content
-        // TODO: setup, overtakes, tyre sets
         const tabs = [
             { id: 'lap-times', method: this.populateLapTimesTab },  // Lap Times tab
             { id: 'fuel-usage', method: this.populateFuelUsageTab },  // Lap Times tab
@@ -921,7 +958,6 @@ class DriverModalDataPopulator {
             { id: 'tyre-wear-prediction', method: this.populateTyreWearPredictionTab },
             { id: 'warns-pens-info', method: this.populateWarnsPensInfoTab },
             { id: 'collisions-info', method: this.populateCollisionsInfoTab },
-            { id: 'overtakes-info', method: this.populateOvertakesInfoTab },
             { id: 'tyre-sets', method: this.populateTyreSetsInfoTab },
         ];
 
@@ -995,5 +1031,120 @@ class DriverModalDataPopulator {
         } else {
             return data["driver-2-lap"];
         }
+    }
+
+    sanitizeTyreSetData(tyreSetData) {
+        // Step 1: Filter out unavailable tyres
+        const availableTyres = tyreSetData
+            .filter(tyre => tyre.available === true)
+            .map((tyre, index) => ({ ...tyre, index }));
+
+        // Step 2: Group tyres by both "actual-tyre-compound" and "visual-tyre-compound"
+        const groupedTyres = availableTyres.reduce((acc, tyre) => {
+            const { "actual-tyre-compound": actualCompound, "visual-tyre-compound": visualCompound } = tyre;
+
+            // Ensure the actual-tyre-compound group exists
+            if (!acc[actualCompound]) {
+                acc[actualCompound] = {};
+            }
+
+            // Ensure the visual-tyre-compound group exists within the actual-tyre-compound group
+            if (!acc[actualCompound][visualCompound]) {
+                acc[actualCompound][visualCompound] = [];
+            }
+
+            // Add the tyre to the appropriate group
+            acc[actualCompound][visualCompound].push(tyre);
+
+            return acc; // Return the accumulator for the next iteration
+        }, {}); // Start with an empty object
+
+        // Step 3: Convert the grouped object into the desired array structure
+        const groupedTyreArray = Object.keys(groupedTyres).map(actualCompound => {
+            return Object.keys(groupedTyres[actualCompound]).map(visualCompound => ({
+                "actual-tyre-compound": actualCompound,
+                "visual-tyre-compound": visualCompound,
+                "tyre-sets": groupedTyres[actualCompound][visualCompound]
+            }));
+        }).flat(); // Flatten the array to remove nested arrays
+
+        // Return the final grouped tyres in the required structure
+        return groupedTyreArray;
+    }
+
+    showRawDataInTable(tabPane, data, errorMessage) {
+        if (data === null) {
+
+            // Create the container div
+            const containerDiv = document.createElement('div');
+            containerDiv.className = 'd-flex';
+
+            // Create a paragraph element
+            const paragraph = document.createElement('p');
+
+            // Set the text content of the paragraph
+            paragraph.textContent = errorMessage;
+
+            // Append the paragraph to the container div
+            containerDiv.appendChild(paragraph);
+
+            // Optionally, you can append the containerDiv to the body or any other parent element
+            tabPane.appendChild(containerDiv);
+            return;
+        }
+
+        const { firstHalf, secondHalf } = splitJsonObject(flattenJsonObject(data));
+        console.log(this.data, firstHalf, secondHalf);
+        const panePopulator = (divElement, tableData) => {
+            const table = document.createElement('table');
+            table.className = 'table table-bordered table-striped';
+
+            // Create table header
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            const headers = [
+                'Field',
+                'Value',
+            ];
+
+            headers.forEach(headerText => {
+                const th = document.createElement('th');
+                th.textContent = headerText;
+                headerRow.appendChild(th);
+            });
+
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            // Create table body
+            const tbody = document.createElement('tbody');
+            console.log("panePopulator", tableData);
+            if (Object.keys(tableData).length > 0) {
+                for (const key in tableData) {
+                    const value = tableData[key];
+                    const row = tbody.insertRow();
+                    this.populateTableRow(row, [kebabToTitleCase(key),
+                        typeof value === 'number' && !Number.isInteger(value) ?
+                            formatFloatWithTwoDecimals(value) : value]);
+                }
+            } else {
+                const row = tbody.insertRow();
+                row.innerHTML = `<td colspan="2">${errorMessage}</td>`;
+            }
+
+            table.appendChild(tbody);
+            divElement.appendChild(table);
+        };
+
+        const leftPanePopulator = (leftDiv) => {
+            console.log("leftPanePopulator", firstHalf);
+            panePopulator(leftDiv, firstHalf);
+        }
+        const rightPanePopulator = (rightDiv) => {
+            console.log("rightPanePopulator", secondHalf);
+            panePopulator(rightDiv, secondHalf);
+        }
+
+        this.createModalDivElelements(tabPane, leftPanePopulator, rightPanePopulator);
     }
 }

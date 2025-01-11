@@ -36,7 +36,7 @@ from lib.f1_types import PacketSessionData, PacketLapData, LapData, CarTelemetry
     SafetyCarType, TelemetrySetting, PacketMotionData, CarMotionData, PacketCarSetupData, CarSetupData, ResultStatus
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.overtake_analyzer import OvertakeRecord
-from lib.collisions_analyzer import CollisionRecord, CollisionAnayzer, CollisionAnalyzerMode
+from lib.collisions_analyzer import CollisionRecord, CollisionAnalyzer, CollisionAnalyzerMode
 from lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
 from lib.fuel_rate_recommender import FuelRateRecommender
 from lib.inter_thread_communicator import InterThreadCommunicator, ITCMessage, TyreDeltaMessage
@@ -986,7 +986,7 @@ class DataPerDriver:
             Dict[str, Any]: Collision stats JSON
         """
 
-        collision_analyzer = CollisionAnayzer(
+        collision_analyzer = CollisionAnalyzer(
             input_mode=CollisionAnalyzerMode.INPUT_MODE_LIST_COLLISION_RECORDS,
             input_data=self.m_collision_records)
         return collision_analyzer.toJSON()
@@ -1868,12 +1868,12 @@ class DriverData:
             Dict[str, Any]: Collision stats JSON
         """
 
-        collision_analyzer = CollisionAnayzer(
+        collision_analyzer = CollisionAnalyzer(
             input_mode=CollisionAnalyzerMode.INPUT_MODE_LIST_COLLISION_RECORDS,
             input_data=self.m_collision_records)
         return collision_analyzer.toJSON()
 
-    def _safeMin(self, arg1: int, arg2: int | None) -> int:
+    def _safeMin(self, arg1: int, arg2: Optional[int]) -> int:
         """
         Returns the minimum of two arguments. One is guaranteed to be an integer,
         and the other may be None. If one argument is None, returns the other.

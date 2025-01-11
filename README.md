@@ -25,28 +25,43 @@ Not yet supported because I need a mac to build an executable for mac platforms 
 ## Features
 - Live updating and display of race data on the UI
 - Supports both player and spectator mode
-- In player mode, displays 5 rows including the player
-- For each driver, displays track position, name, team, ERS %, best lap, last lap, and tyre info
-  - Tyre info includes average tyre degradation percentage, tyre age, and tyre compound
+- In player mode, displays 5 rows including the player (can be configured)
+- For each driver, displays track position, name, team, ERS %, best lap, last lap, tyre info and fuel info
+  - Tyre info includes average tyre degradation percentage, tyre age, and tyre compound and wear prediction
+
 
 ## Detailed Driver Info
 - Clicking on a driver's name shows further detailed info, including:
   - Car damage
   - Tyre damage
   - Tyre wear
+  - Tyre wear prediction
   - Current lap data (if race is ongoing)
   - Lap history data
   - ERS history
+  - Fuel history
   - Tyre stint history
 
 ## Advanced Features
-1. Packet Capture:
-   - This feature can be used to save all the raw incoming packets into a file. It is not enabled by default and needs to be enabled through the command line. The telemetry_replayer.py utility can be used to replay these packets from the specified file to the app, provided the app is launched in --replay-server mode. This is very handy for debugging and development.
 
-2. Post Race Data Autosave:
+1. Post Race Data Autosave:
    - This feature can be used to make the tool dump all post race data to a JSON file. It is also disabled by default.
 
-## Running the App
+2. Stream Overlays
+   - Enhance your youtube/twitch streams with realtime data
+      - Throttle/Brake/Steering telemetry
+      - Lap time history
+      - Penalties, track/air temp, speed trap record (only F1 24)
+      - Live G Force info
+      - Weather Forecast
+
+3. Forwarding
+   - Forward the telemetry data to multiple other apps/devices that require this data
+
+4. Packet Capture:
+   - This feature can be used to save all the raw incoming packets into a file. It is not enabled by default and needs to be enabled through the command line. The telemetry_replayer.py utility can be used to replay these packets from the specified file to the app, provided the app is launched in --replay-server mode. This is very handy for debugging and development.
+
+## Running the App (without direct executable)
 - The app can be run using the following commands:
   - Run the app using Python:
     ```bash

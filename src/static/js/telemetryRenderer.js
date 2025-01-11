@@ -1,7 +1,7 @@
 class TelemetryRenderer {
   constructor() {
     this.telemetryTable = document.getElementById('telemetry-data');
-    this.weatherContainer = document.getElementById('weather-predictions');
+    this.weatherWidget = new WeatherWidget(document.getElementById('weather-predictions'));
     this.fastestLapTimeSpan = document.getElementById('fastestLapTimeSpan');
     this.fastestLapNameSpan = document.getElementById('fastestLapNameSpan');
     this.trackName = document.getElementById('track-name');
@@ -23,24 +23,10 @@ class TelemetryRenderer {
     return row;
   }
 
-
-  renderWeatherPrediction(prediction) {
-    const predictionElement = document.createElement('div');
-    predictionElement.classList.add('weather-prediction');
-
-    const weatherIcon = WEATHER_ICONS[prediction['weather']];
-    predictionElement.innerHTML = `
-      <i class="bi ${weatherIcon.icon} weather-icon ${weatherIcon.class}"></i>
-      <div class="weather-info">
-        <span class="weather-time">+${prediction['time-offset']}min</span>
-        <span class="weather-probability">${prediction['rain-probability']}%</span>
-      </div>
-    `;
-
-    return predictionElement;
-  }
-
   updateDashboard(incomingData) {
+
+    // hide/unhide the delta column
+    this.setDeltaColumnState(incomingData["live-data"]);
 
     // update array of indices by position-1
     const tableEntries = this.getRelevantRaceTableRows(incomingData);
@@ -53,11 +39,8 @@ class TelemetryRenderer {
       this.telemetryTable.appendChild(this.renderTelemetryRow(data, gameYear));
     });
 
-    this.weatherContainer.innerHTML = '';
-    const weatherPredictions = incomingData['weather-forecast-samples'].slice(0, g_pref_numWeatherPredictionSamples+1);
-    weatherPredictions.forEach(prediction => {
-      this.weatherContainer.appendChild(this.renderWeatherPrediction(prediction));
-    });
+    const weatherSamples = incomingData['weather-forecast-samples'].slice(0, g_pref_numWeatherPredictionSamples + 1);
+    this.weatherWidget.update(weatherSamples);
 
     this.fastestLapTimeSpan.textContent = formatLapTime(incomingData['fastest-lap-overall']);
     this.fastestLapNameSpan.textContent = this.truncateName(incomingData['fastest-lap-overall-driver']).toUpperCase();
@@ -180,5 +163,22 @@ class TelemetryRenderer {
     }
 
     return Array.from({ length: upper_bound - lower_bound + 1 }, (_, i) => lower_bound + i);
+  }
+
+  setDeltaColumnState(isLiveDataMode) {
+    this.hideColumn('DELTA', isLiveDataMode);
+  }
+
+  hideColumn(columnName, shouldHide) {
+    let raceTable = document.getElementById("race-table");
+    let headers = raceTable.getElementsByTagName("th");
+
+    // Find the Delta column header
+    for (let i = 0; i < headers.length; i++) {
+        if (headers[i].textContent === columnName) {
+            headers[i].style.display = shouldHide ? "none" : "";
+            break;
+        }
+    }
   }
 }

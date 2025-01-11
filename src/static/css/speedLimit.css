@@ -1,0 +1,16 @@
+.speed-limit-sign {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 40px; /* Diameter of the sign */
+    height: 40px;
+    border-radius: 50%; /* Makes it a circle */
+    background-color: white; /* Inner white background */
+    color: black; /* Black text */
+    font-size: 1rem; /* Adjust text size */
+    font-weight: bold; /* Bold text */
+    text-align: center;
+    position: relative;
+    border: 4px solid red; /* Outer red ring */
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.2); /* Optional subtle shadow */
+  }

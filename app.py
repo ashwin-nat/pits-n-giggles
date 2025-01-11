@@ -29,9 +29,9 @@ import threading
 import time
 import webbrowser
 import logging
-from typing import Set, Optional
+from typing import Set, Optional, List, Tuple
 
-from src.telemetry_handler import initPktCap, PacketCaptureMode, initTelemetryGlobals, F1TelemetryHandler, initDirectories
+from src.telemetry_handler import initTelemetryGlobals, F1TelemetryHandler, initDirectories, initForwarder
 from src.telemetry_server import initTelemetryWebServer
 from src.png_logger import initLogger
 from src.config import load_config
@@ -86,14 +86,12 @@ def openWebPage(http_port: int) -> None:
 
 def httpServerTask(
         http_port: int,
-        packet_capture_enabled: bool,
         client_update_interval_ms: int,
         disable_browser_autoload: bool) -> None:
     """Entry point to start the HTTP server.
 
     Args:
         http_port (int): Port number for the HTTP server.
-        packet_capture_enabled (bool): Whether packet capture is enabled.
         client_update_interval_ms (int): Client poll interval in milliseconds.
         disable_browser_autoload (bool): Whether to disable browser autoload.
     """
@@ -112,35 +110,33 @@ def httpServerTask(
 
     initTelemetryWebServer(
         port=http_port,
-        packet_capture_enabled=packet_capture_enabled,
         client_update_interval_ms=client_update_interval_ms,
         debug_mode=False
     )
 
 def f1TelemetryServerTask(
-        packet_capture: PacketCaptureMode,
         port_number: int,
         replay_server: bool,
         post_race_data_autosave: bool,
         udp_custom_action_code: Optional[int],
         udp_tyre_delta_action_code: Optional[int],
-        process_car_setup: bool) -> None:
-    """Entry point to start the F1 23 telemetry server.
+        process_car_setup: bool,
+        forwarding_targets: List[Tuple[str, int]]) -> None:
+    """Entry point to start the F1 telemetry server.
 
     Args:
-        packet_capture (PacketCaptureMode): Packet capture mode.
         port_number (int): Port number for the telemetry client.
         replay_server (bool): Whether to enable the TCP replay debug server.
         post_race_data_autosave (bool): Whether to autosave race data at the end of the race.
         udp_custom_action_code (Optional[int]): UDP custom action code.
         udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code.
         process_car_setup (bool): Whether to process car setup data.
+        forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
     """
     time.sleep(2)
-    if packet_capture != PacketCaptureMode.DISABLED:
-        initPktCap(packet_capture)
     initTelemetryGlobals(post_race_data_autosave, udp_custom_action_code, udp_tyre_delta_action_code, process_car_setup)
-    telemetry_client = F1TelemetryHandler(port_number, packet_capture, replay_server)
+    initForwarder(forwarding_targets)
+    telemetry_client = F1TelemetryHandler(port_number, forwarding_targets, replay_server)
     telemetry_client.run()
 
 def main() -> None:
@@ -159,17 +155,15 @@ def main() -> None:
 
     # First init the telemetry client on a main thread
     client_thread = threading.Thread(target=f1TelemetryServerTask,
-                                    args=(config.packet_capture_mode, config.telemetry_port,
+                                    args=(config.telemetry_port,
                                         args.replay_server, config.post_race_data_autosave,
                                         config.udp_custom_action_code, config.udp_tyre_delta_action_code,
-                                        config.process_car_setup))
+                                        config.process_car_setup, config.forwarding_targets))
     client_thread.daemon = True
     client_thread.start()
 
     # Run the HTTP server on the main thread. Flask does not like running on separate threads
-    packet_capture_enabled = \
-        config.packet_capture_mode in [PacketCaptureMode.ENABLED, PacketCaptureMode.ENABLED_WITH_AUTOSAVE]
-    httpServerTask(config.server_port, packet_capture_enabled, config.refresh_interval,
+    httpServerTask(config.server_port, config.refresh_interval,
                    config.disable_browser_autoload)
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------

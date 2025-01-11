@@ -120,7 +120,6 @@ def getFastestTimesJson(json_data: Dict[str, Any], driver_data: Optional[Dict[st
             'time' : None
         }
 
-        # TODO: handle scenario where multiple drivers have same fastest times
         for driver_data in json_data["classification-data"]:
             if _isATwat(driver_data):
                 continue

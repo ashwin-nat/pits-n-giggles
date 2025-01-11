@@ -1,0 +1,59 @@
+.gforce-display {
+    /* font-family: 'Arial', sans-serif; */
+    text-align: center;
+  }
+
+  .gforce-circle {
+    width: 120px;
+    height: 120px;
+    border: 2px solid #ff1801;
+    border-radius: 50%;
+    position: relative;
+    margin: 0 auto;
+    background-color: rgba(0, 0, 0, 0.8);
+  }
+
+  .gforce-dot {
+    width: 10px;
+    height: 10px;
+    background-color: #ff1801;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(0, 0);
+    transition: transform 0.1s ease-out;
+    z-index: 2;
+  }
+
+  .gforce-crosshair {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+  }
+
+  .crosshair-vertical,
+  .crosshair-horizontal {
+    position: absolute;
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .crosshair-vertical {
+    width: 1px;
+    height: 100%;
+    left: 50%;
+  }
+
+  .crosshair-horizontal {
+    height: 1px;
+    width: 100%;
+    top: 50%;
+  }
+
+  .gforce-text {
+    color: #ffffff;
+    font-size: 1.1em;
+    font-weight: bold;
+  }

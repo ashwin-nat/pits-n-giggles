@@ -960,12 +960,16 @@ class TeamID24(Enum):
         """
         Returns the string representation of the enum member with each word capitalized.
         """
-        if self == TeamID24.RB:
-            return 'VCARB'
-        if self == TeamID24.MY_TEAM:
-            return 'MY_TEAM'
-        return ' '.join(word.capitalize() for word in self.name.split('_'))
 
+        teams_mapping = {
+            0: "Mercedes", 1: "Ferrari", 2: "Red Bull Racing",
+            3: "Williams", 4: "Aston Martin", 5: "Alpine",
+            6: "VCARB", 7: "Haas", 8: "McLaren",
+            9: "Sauber", 41: "Generic", 104: "Custom",
+            255: "MY_TEAM"
+        }
+        return teams_mapping.get(self.value,
+                                 ' '.join(word.capitalize() for word in self.name.split('_')))
     @staticmethod
     def isValid(team_id: int) -> bool:
         """Check if the given team ID is valid.

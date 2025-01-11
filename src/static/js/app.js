@@ -2,9 +2,6 @@ loadPreferences();
 // Initialize renderer
 const telemetryRenderer = new TelemetryRenderer();
 
-// Initial render
-// telemetryRenderer.updateDashboard(mockTelemetryData, mockWeatherPredictions);
-
 // Update interval for periodic updates
 let updateInterval;
 
@@ -44,8 +41,13 @@ socketio.on('race-table-update', function (data) {
 socketio.on('race-info-response', function (data) {
     clearSocketIoRequestTimeout();
     if (!('error' in data)) {
-        // openRaceInfoModal(data);
-        console.log("race-info-response", data);
+        if ('__dummy' in data) {
+            // this request is meant for a synchronous listener, ignore
+            console.log("Ignoring race-info-response in main listener");
+        } else {
+            console.log("race-info-response", data);
+            window.modalManager.openRaceStatsModal(data);
+        }
     } else {
         console.error("Received error for race-info request", data);
     }
@@ -54,9 +56,13 @@ socketio.on('race-info-response', function (data) {
 socketio.on('driver-info-response', function (data) {
     clearSocketIoRequestTimeout();
     if (!('error' in data)) {
-        // openDriverInfoModal(data);
-        window.modalManager.openDriverModal(data);
-        console.log("driver-info-response", data);
+        if ('__dummy' in data) {
+            // this request is meant for a synchronous listener, ignore
+            console.log("Ignoring driver-info-response in main listener");
+        } else {
+            window.modalManager.openDriverModal(data);
+            console.log("driver-info-response", data);
+        }
     } else {
         console.error("Received error for driver-info request", data);
         // showToast("Received error for driver info request");
@@ -66,16 +72,34 @@ socketio.on('driver-info-response', function (data) {
 socketio.on('frontend-update', function (data) {
     console.log("frontend-update", data);
     switch (data['message-type']) {
-    case 'custom-marker':
-        processCustomMarkerMessage(data['message']);
-        break;
-    case 'tyre-delta':
-        processTyreDeltaMessage(data['message']);
-        break;
-    default:
-        console.error("received unsupported message type in frontend-update");
+        case 'custom-marker':
+            processCustomMarkerMessage(data['message']);
+            break;
+        case 'tyre-delta':
+            processTyreDeltaMessage(data['message']);
+            break;
+        default:
+            console.error("received unsupported message type in frontend-update");
     }
 });
+
+// Generic function to handle any request-response via socket events
+async function sendSynchronousRequest(requestEvent, requestData, responseEvent) {
+    return new Promise((resolve, reject) => {
+        // Send the request event with data
+        socketio.emit(requestEvent, requestData);
+
+        // Listen for the response event
+        socketio.once(responseEvent, (response) => {
+            resolve(response);  // Resolve the promise with the response
+        });
+
+        // Optional: Timeout after 5 seconds (adjust as needed)
+        setTimeout(() => {
+            reject(new Error(`Timeout waiting for response event: ${responseEvent}`));
+        }, 5000);  // 5 seconds timeout
+    });
+}
 
 document.getElementById("best-lap-th").addEventListener("click", function () {
     g_pref_bestLapAbsoluteFormat = !g_pref_bestLapAbsoluteFormat;

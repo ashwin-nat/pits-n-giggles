@@ -54,8 +54,9 @@ _race_table_clients : Set[str] = set()
 _player_overlay_clients : Set[str] = set()
 _server: Optional["TelemetryWebServer"] = None
 
-def sendRaceTable():
-
+def sendRaceTable() -> None:
+    """Send race table to all connected clients
+    """
     if len(_race_table_clients) > 0:
         _server.m_socketio.emit('race-table-update', getTelemetryInfo())
         print("Sending race table update")
@@ -439,10 +440,11 @@ class TelemetryWebServer:
             """
 
             print('received request')
-            return render_template('index.html',
-                packet_capture_enabled=False,
-                player_only_telemetry=False,
-                live_data_mode=False)
+            # return render_template('index.html',
+            #     packet_capture_enabled=False,
+            #     player_only_telemetry=False,
+            #     live_data_mode=False)
+            return render_template('new_ui.html')
 
         # Define your endpoint
         @self.m_app.route('/telemetry-info')

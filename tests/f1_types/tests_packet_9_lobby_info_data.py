@@ -416,7 +416,7 @@ class TestPacketLobbyInfoData(F1TypesTest):
                 },
                 {
                     "ai-controlled": False,
-                    "team-id": "Mclaren",
+                    "team-id": "McLaren",
                     "nationality": "German",
                     "platform": "PlayStation",
                     "name": "Player",
@@ -428,7 +428,7 @@ class TestPacketLobbyInfoData(F1TypesTest):
                 },
                 {
                     "ai-controlled": False,
-                    "team-id": "Mclaren",
+                    "team-id": "McLaren",
                     "nationality": "Unspecified",
                     "platform": "Xbox",
                     "name": "Player",

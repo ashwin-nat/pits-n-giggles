@@ -1,0 +1,39 @@
+.weather-forecast {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+  }
+
+  .weather-prediction {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background-color: var(--f1-gray);
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+  }
+
+  .weather-icon {
+    font-size: 1.25rem;
+  }
+
+  /* Weather icon colors */
+  .weather-clear { color: #ffeb3b; }
+  .weather-cloud { color: #90a4ae; }
+  .weather-rain { color: #29b6f6; }
+  .weather-storm { color: #5c6bc0; }
+  .weather-thunder { color: #ffd740; }
+
+  .weather-info {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.875rem;
+  }
+
+  .weather-time {
+    color: var(--f1-text-secondary);
+  }
+
+  .weather-probability {
+    font-weight: 600;
+  }

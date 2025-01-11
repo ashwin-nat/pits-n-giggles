@@ -236,10 +236,15 @@ class TyreWearExtrapolator:
 
         # Recompute the regression models
         if racing_data:
-            self._extracted_from_updateDataList_23(racing_data)
+            self._performRegressions(racing_data)
 
-    # TODO Rename this here and in `updateDataList`
-    def _extracted_from_updateDataList_23(self, racing_data):
+    def _performRegressions(self, racing_data: List[TyreWearPerLap]):
+        """Perform linear regression for all 4 tyres wears
+
+        Args:
+            racing_data (List[TyreWearPerLap]): List of all TyreWearPerLap only for racing laps
+        """
+
         laps = np.array([point.lap_number for point in racing_data]).reshape(-1, 1)
         self.m_fl_regression = LinearRegression().fit(
             laps, np.array([point.fl_tyre_wear for point in racing_data])

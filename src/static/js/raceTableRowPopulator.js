@@ -39,7 +39,13 @@ class RaceTableRowPopulator {
     }
 
     addDeltaInfo() {
-        // TODO:
+        const deltaInfo = this.rowData["delta-info"];
+        const deltaCell = this.row.insertCell();
+        if (g_pref_relativeDelta) {
+            deltaCell.textContent = deltaInfo["delta"];
+        } else {
+            deltaCell.textContent = deltaInfo["delta-to-leader"];
+        }
         return this;
     }
 
@@ -238,17 +244,6 @@ class RaceTableRowPopulator {
         return this;
     }
 
-    // Utility
-    createMultiLineCell(lines) {
-        const cell = this.row.insertCell();
-        lines.forEach((line) => {
-            const lineElement = document.createElement("div");
-            lineElement.textContent = line;
-            cell.appendChild(lineElement);
-        });
-        return cell;
-    }
-
     createMultiLineCell(lines, onClick = null) {
         const cell = this.row.insertCell();
         lines.forEach((line) => {
@@ -283,7 +278,7 @@ class RaceTableRowPopulator {
 
         // Define the color mapping for sector statuses using integers as keys
         const colorMap = {
-            [-2]: 'bg-seconday', // grey
+            [-2]: 'bg-secondary', // grey
             [-1]: 'bg-danger', // Red
             [0]: 'bg-warning', // Yellow
             [1]: 'bg-success', // Green

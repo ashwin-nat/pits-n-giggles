@@ -2,20 +2,24 @@ class ModalManager {
   constructor() {
     this.driverModal = new bootstrap.Modal(document.getElementById('driverModal'));
     this.settingsModal = new bootstrap.Modal(document.getElementById('settingsModal'));
+    this.raceStatsModal = new bootstrap.Modal(document.getElementById('raceStatsModal'));
     this.setupEventListeners();
   }
 
   setupEventListeners() {
     document.getElementById('settings-btn').addEventListener('click', () => this.openSettingsModal());
+    document.getElementById('race-stats-btn').addEventListener('click', () => {
+      socketio.emit('race-info', { 'message': 'dummy' });
+      console.log("sent race-info request");
+    });
     document.getElementById('saveSettings').addEventListener('click', () => this.saveSettings());
   }
 
   openDriverModal(data) {
+    console.log("openDriverModal");
     const modalTitle = document.querySelector('#driverModal .driver-modal-header .modal-title');
     const modalBody = document.querySelector('#driverModal .modal-body');
-    const prevButton = document.querySelector('#prevButton');
-    const nextButton = document.querySelector('#nextButton');
-    const refreshButton = document.querySelector('#refreshButton');
+    const refreshButton = document.getElementById('refreshButtonDriver');
 
     // Update modal title
     modalTitle.textContent = `${data["driver-name"]} - ${getTeamName(data["team"])}`;
@@ -23,8 +27,8 @@ class ModalManager {
     // Clear existing content
     modalBody.innerHTML = '';
 
-    // Create the modal content using the DriverModalDataPopulator class
-    const modalDataPopulator = new DriverModalDataPopulator(data);
+    // Create the modal content using the DriverModalPopulator class
+    const modalDataPopulator = new DriverModalPopulator(data);
 
     // Create and append navigation tabs
     const navTabs = modalDataPopulator.createNavTabs();
@@ -35,30 +39,29 @@ class ModalManager {
     modalBody.appendChild(tabContent);
 
     // Event Listeners for Buttons
-    prevButton.onclick = () => this.loadPreviousDriver();
-    nextButton.onclick = () => this.loadNextDriver();
     refreshButton.onclick = () => this.refreshDriverData(data);
 
     // Show the modal
     this.driverModal.show();
   }
 
-  // Example Functions for Button Actions
-  loadPreviousDriver() {
-    console.log("Previous driver clicked");
-    // Implement logic to load previous driver data
-  }
-
-  loadNextDriver() {
-    console.log("Next driver clicked");
-    // Implement logic to load next driver data
-  }
-
   refreshDriverData(data) {
     console.log("Refresh clicked", data);
-    this.openDriverModal(data); // Reload the modal with the current data
+    const requestPayload = {
+      "index" : data["index"],
+      "__dummy" : {
+        "refresh" : true
+      }
+    };
+    sendSynchronousRequest('driver-info', requestPayload, 'driver-info-response')
+      .then(driverInfo => {
+        console.log('Driver info sync response received:', driverInfo);
+        this.openDriverModal(driverInfo); // Reload the modal with the current data
+      })
+      .catch(error => {
+        console.error('Error fetching driver info:', error);
+      });
   }
-
 
   openSettingsModal() {
 
@@ -81,6 +84,10 @@ class ModalManager {
     // Set the radio buttons for tyre wear format
     document.getElementById("tyreWearAbsolute").checked = !g_pref_tyreWearAverageFormat;
     document.getElementById("tyreWearRelative").checked = g_pref_tyreWearAverageFormat;
+
+    // Set the radio buttons for tyre wear format
+    document.getElementById("deltaLeader").checked = !g_pref_relativeDelta;
+    document.getElementById("deltaRelative").checked = g_pref_relativeDelta;
 
     // Set initial value for volume slider
     const volumeSlider = document.getElementById('volumeRange');
@@ -125,6 +132,7 @@ class ModalManager {
 
     this.settingsModal.show();
   }
+
   saveSettings() {
 
     // Validate numAdjacentCars input
@@ -140,6 +148,7 @@ class ModalManager {
     g_pref_lastLapAbsoluteFormat = (document.querySelector('input[name="lastLapTimeFormat"]:checked').value === "absolute") ? (true) : (false);
     g_pref_bestLapAbsoluteFormat = (document.querySelector('input[name="bestLapTimeFormat"]:checked').value === "absolute") ? (true) : (false);
     g_pref_tyreWearAverageFormat = (document.querySelector('input[name="tyreWearFormat"]:checked').value === "average") ? (true) : (false);
+    g_pref_relativeDelta = (document.querySelector('input[name="deltaFormat"]:checked').value === "relative") ? (true) : (false);
     g_pref_numAdjacentCars = numAdjacentCars_temp;
     g_pref_numWeatherPredictionSamples = numWeatherForecastSamples_temp;
     g_pref_ttsVoice = document.getElementById('voiceSelect').value;
@@ -163,6 +172,54 @@ class ModalManager {
       return null;
     }
     return tempVal;
+  }
+
+  openRaceStatsModal(data) {
+
+    console.log("openRaceStatsModal", data);
+    const modalTitle = document.querySelector('#raceStatsModal .race-stats-modal-header .modal-title');
+    const modalBody = document.querySelector('#raceStatsModal .modal-body');
+    const refreshButton = document.getElementById('refreshButtonRace');
+
+    // Update modal title
+    modalTitle.textContent = `RACE STATS`;
+
+    // Clear existing content
+    modalBody.innerHTML = '';
+
+    // Create the modal content using the RaceStatsModalPopulator class
+    const modalDataPopulator = new RaceStatsModalPopulator(data);
+
+    // Create and append navigation tabs
+    const navTabs = modalDataPopulator.createNavTabs();
+    modalBody.appendChild(navTabs);
+
+    // Create and append tab content
+    const tabContent = modalDataPopulator.createTabContent();
+    modalBody.appendChild(tabContent);
+
+    // Event Listeners for Buttons
+    refreshButton.onclick = () => this.refreshRaceStatsData(data);
+
+    // Show the modal
+    this.raceStatsModal.show();
+  }
+
+  refreshRaceStatsData(data) {
+    console.log("Refresh race stats clicked", data);
+    const requestPayload = {
+      "__dummy" : {
+        "refresh" : true
+      }
+    };
+    sendSynchronousRequest('race-info', requestPayload, 'race-info-response')
+      .then(raceInfo => {
+        console.log('Race info sync response received:', raceInfo);
+        this.openRaceStatsModal(data); // Reload the modal with the current data
+      })
+      .catch(error => {
+        console.error('Error fetching race info:', error);
+      });
   }
 }
 

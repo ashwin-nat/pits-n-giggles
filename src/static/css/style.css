@@ -80,68 +80,6 @@ body {
   margin: 0;
 }
 
-.conditions {
-  display: flex;
-  gap: 2rem;
-  align-items: center;
-}
-
-.condition-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.condition-icon {
-  font-size: 1.5rem;
-  color: var(--f1-text-secondary);
-}
-
-.condition-value {
-  font-size: 1.25rem;
-  font-weight: 700;
-}
-
-.weather-forecast {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-}
-
-.weather-prediction {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  background-color: var(--f1-gray);
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-}
-
-.weather-icon {
-  font-size: 1.25rem;
-}
-
-/* Weather icon colors */
-.weather-clear { color: #ffeb3b; }
-.weather-cloud { color: #90a4ae; }
-.weather-rain { color: #29b6f6; }
-.weather-storm { color: #5c6bc0; }
-.weather-thunder { color: #ffd740; }
-
-.weather-info {
-  display: flex;
-  flex-direction: column;
-  font-size: 0.875rem;
-}
-
-.weather-time {
-  color: var(--f1-text-secondary);
-}
-
-.weather-probability {
-  font-weight: 600;
-}
-
 .telemetry-table-wrapper {
   overflow-x: auto;
   background-color: var(--f1-dark);
@@ -379,23 +317,6 @@ a {
   padding: 1rem;
 }
 
-.speed-limit-sign {
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  width: 40px; /* Diameter of the sign */
-  height: 40px;
-  border-radius: 50%; /* Makes it a circle */
-  background-color: white; /* Inner white background */
-  color: black; /* Black text */
-  font-size: 1rem; /* Adjust text size */
-  font-weight: bold; /* Bold text */
-  text-align: center;
-  position: relative;
-  border: 4px solid red; /* Outer red ring */
-  box-shadow: 0 0 8px rgba(0, 0, 0, 0.2); /* Optional subtle shadow */
-}
-
 .tab-pane {
   height: 60vh;
 }
@@ -413,4 +334,8 @@ a {
 }
 .telemetry-table .last-lap {
   width: 10%;
+}
+
+.hidden-column {
+  display: none;
 }
