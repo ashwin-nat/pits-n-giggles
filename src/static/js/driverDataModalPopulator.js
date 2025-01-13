@@ -16,7 +16,7 @@ class DriverModalPopulator {
         leftDiv.className = 'w-50';
 
         const table = document.createElement('table');
-        table.className = 'table table-bordered table-striped';
+        table.className = 'table table-bordered table-striped table-dark';
 
         // Create table header
         const thead = document.createElement('thead');
@@ -151,7 +151,7 @@ class DriverModalPopulator {
         leftDiv.className = 'w-50'; // Half width
 
         const table = document.createElement('table');
-        table.className = 'table table-bordered table-striped';
+        table.className = 'table table-bordered table-striped table-dark';
 
         // Create table header
         const thead = document.createElement('thead');
@@ -259,7 +259,7 @@ class DriverModalPopulator {
         leftDiv.className = 'w-50'; // Half width
 
         const table = document.createElement('table');
-        table.className = 'table table-bordered table-striped';
+        table.className = 'table table-bordered table-striped table-dark';
 
         // Create table header
         const thead = document.createElement('thead');
@@ -411,7 +411,7 @@ class DriverModalPopulator {
         const graphDataHarvested = [];
         const leftPanePopulator = (leftDiv) => {
             const table = document.createElement('table');
-            table.className = 'table table-bordered table-striped';
+            table.className = 'table table-bordered table-striped table-dark';
 
             // Create table header
             const thead = document.createElement('thead');
@@ -543,7 +543,7 @@ class DriverModalPopulator {
 
         const panePopulator = (divElement, tableData) => {
             const table = document.createElement('table');
-            table.className = 'table table-bordered table-striped';
+            table.className = 'table table-bordered table-striped table-dark';
 
             // Create table header
             const thead = document.createElement('thead');
@@ -610,7 +610,7 @@ class DriverModalPopulator {
 
         const leftPanePopulator = (leftDiv) => {
             const table = document.createElement('table');
-            table.className = 'table table-bordered table-striped';
+            table.className = 'table table-bordered table-striped table-dark';
 
             // Create table header
             // const thead = document.createElement('thead');
@@ -681,7 +681,7 @@ class DriverModalPopulator {
 
         const rightPanePopulator = (rightDiv) => {
             const table = document.createElement('table');
-            table.className = 'table table-bordered table-striped';
+            table.className = 'table table-bordered table-striped table-dark';
 
             // Create table header
             const thead = document.createElement('thead');
@@ -742,7 +742,7 @@ class DriverModalPopulator {
     populateCollisionsInfoTab(tabPane) {
 
         const table = document.createElement('table');
-        table.className = 'table table-bordered table-striped';
+        table.className = 'table table-bordered table-striped table-dark';
 
         // Create table header
         const thead = document.createElement('thead');
@@ -830,7 +830,7 @@ class DriverModalPopulator {
             // Accordion body content
             const accordionBody = document.createElement('div');
             const table = document.createElement('table');
-            table.className = 'table table-bordered table-striped';
+            table.className = 'table table-bordered table-striped table-dark';
 
             // Create table header
             const thead = document.createElement('thead');
@@ -1102,7 +1102,7 @@ class DriverModalPopulator {
         console.log(this.data, firstHalf, secondHalf);
         const panePopulator = (divElement, tableData) => {
             const table = document.createElement('table');
-            table.className = 'table table-bordered table-striped';
+            table.className = 'table table-bordered table-striped table-dark';
 
             // Create table header
             const thead = document.createElement('thead');
