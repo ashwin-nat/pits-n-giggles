@@ -765,7 +765,12 @@ class DriverModalPopulator {
         const tbody = document.createElement('tbody');
         const playerIndex = this.data["index"];
 
-        const records = this.data["collisions"]["records"];
+        let records;
+        if (!("collisions" in this.data && "records" in this.data["collisions"])) {
+            records = [];
+        } else {
+            records = this.data["collisions"]["records"];
+        }
         records.forEach((record, index) => {
             const otherDriverName = this.getCollisionOtherDriverName(playerIndex, record);
             const lapNum = this.getCollisionLapNumber(playerIndex, record);

@@ -1,14 +1,15 @@
 class RaceTableRowPopulator {
-    constructor(row, rowData, gameYear) {
+    constructor(row, rowData, gameYear, isLiveDataMode) {
         this.row = row;
         this.rowData = rowData;
         this.gameYear = gameYear;
+        this.isLiveDataMode = isLiveDataMode;
     }
 
     populate() {
         this.addPositionInfo()
             .addNameInfo()
-            // .addDeltaInfo()
+            .addDeltaInfo()
             .addErsInfo()
             .addWarningsPensInfo()
             .addBestLapInfo()
@@ -39,6 +40,9 @@ class RaceTableRowPopulator {
     }
 
     addDeltaInfo() {
+        if (this.isLiveDataMode) {
+            return this;
+        }
         const deltaInfo = this.rowData["delta-info"];
         const deltaCell = this.row.insertCell();
         if (g_pref_relativeDelta) {
@@ -221,6 +225,9 @@ class RaceTableRowPopulator {
     }
 
     addFuelInfo() {
+        if (!this.isLiveDataMode) {
+            return this;
+        }
         const fuelInfo = this.rowData["fuel-info"];
         const shouldHideFuelColumn = false;
         if (!shouldHideFuelColumn) {

@@ -11,9 +11,9 @@ class TelemetryRenderer {
     this.indexByPosition = null;
   }
 
-  renderTelemetryRow(data, gameYear) {
+  renderTelemetryRow(data, gameYear, isLiveDataMode) {
     const row = document.createElement('tr');
-    new RaceTableRowPopulator(row, data, gameYear).populate();
+    new RaceTableRowPopulator(row, data, gameYear, isLiveDataMode).populate();
     if (data['driver-info']['is-player']) {
       row.classList.add('player-row');
     }
@@ -26,7 +26,9 @@ class TelemetryRenderer {
   updateDashboard(incomingData) {
 
     // hide/unhide the delta column
-    this.setDeltaColumnState(incomingData["live-data"]);
+    const isLiveDataMode = incomingData["live-data"];
+    this.setDeltaColumnState(isLiveDataMode);
+    this.setFuelColumnState(isLiveDataMode);
 
     // update array of indices by position-1
     const tableEntries = this.getRelevantRaceTableRows(incomingData);
@@ -36,7 +38,7 @@ class TelemetryRenderer {
     // clear the table and populate with data
     this.telemetryTable.innerHTML = '';
     tableEntries.forEach(data => {
-      this.telemetryTable.appendChild(this.renderTelemetryRow(data, gameYear));
+      this.telemetryTable.appendChild(this.renderTelemetryRow(data, gameYear, isLiveDataMode));
     });
 
     const weatherSamples = incomingData['weather-forecast-samples'].slice(0, g_pref_numWeatherPredictionSamples + 1);
@@ -166,18 +168,42 @@ class TelemetryRenderer {
   }
 
   setDeltaColumnState(isLiveDataMode) {
+    // hide the column in live mode
+    const shouldHide = isLiveDataMode;
     this.hideColumn('DELTA', isLiveDataMode);
   }
 
-  hideColumn(columnName, shouldHide) {
-    let raceTable = document.getElementById("race-table");
-    let headers = raceTable.getElementsByTagName("th");
+  setFuelColumnState(isLiveDataMode) {
+    // show the column in live mode
+    const shouldHide = !isLiveDataMode;
+    this.hideColumn('FUEL', shouldHide);
+  }
 
-    // Find the Delta column header
+  hideColumn(columnName, shouldHide) {
+    console.log("hideColumn", columnName, shouldHide);
+    const table = document.getElementById("race-table");
+    const headers = table.getElementsByTagName("th");
+    let columnIndex = -1;
+
+    // Find the column index
     for (let i = 0; i < headers.length; i++) {
         if (headers[i].textContent === columnName) {
+            columnIndex = i;
             headers[i].style.display = shouldHide ? "none" : "";
             break;
+        }
+    }
+
+    // If column was found, hide/show all cells in that column
+    if (columnIndex > -1) {
+        const rows = table.getElementsByTagName("tr");
+
+        // Start from 1 to skip header row if it's already handled above
+        for (let i = 1; i < rows.length; i++) {
+            const cells = rows[i].getElementsByTagName("td");
+            if (cells.length > columnIndex) {
+                cells[columnIndex].style.display = shouldHide ? "none" : "";
+            }
         }
     }
   }

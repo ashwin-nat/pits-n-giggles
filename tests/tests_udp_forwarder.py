@@ -51,10 +51,10 @@ class TestUDPForwarder(F1TelemetryUnitTestsBase):
             raise ValueError("Length must be a positive integer")
 
         # Generate random data
-        return bytes([random.randint(0, 255) for _ in range(length)])
+        return bytes(random.randint(0, 255) for _ in range(length))
 
     @patch('socket.socket')  # Patch socket to mock its behavior
-    def test_forwardingData(self, mock_socket):
+    def test_forwarding_data(self, mock_socket):
         """Test that data is forwarded to all configured destinations."""
         # Create a mock socket instance
         mock_sendto = MagicMock()

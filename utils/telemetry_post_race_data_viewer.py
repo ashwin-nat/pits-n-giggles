@@ -39,7 +39,7 @@ from engineio.async_drivers import gevent
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from lib.f1_types import F1Utils, LapData, ResultStatus
+from lib.f1_types import F1Utils, LapData, ResultStatus, LapHistoryData
 import lib.race_analyzer as RaceAnalyzer
 import lib.overtake_analyzer as OvertakeAnalyzer
 from lib.tyre_wear_extrapolator import TyreWearPerLap
@@ -152,6 +152,131 @@ def getTelemetryInfo():
     def getLastLapTimeMsFromSessionHistoryJSON(session_history: Dict[str, Any]) -> int:
         return session_history["lap-history-data"][-1]["lap-time-in-ms"]
 
+    def getSectorStatus(
+        data_per_driver: Dict[str, Any],
+        sector_1_best_ms_global: Optional[int],
+        # sector_1_best_ms_driver: Optional[int],
+        sector_2_best_ms_global: Optional[int],
+        # sector_2_best_ms_driver: Optional[int],
+        sector_3_best_ms_global: Optional[int],
+        # sector_3_best_ms_driver: Optional[int],
+        result_status: Optional[str],
+        for_best_lap: bool) -> List[Optional[int]]:
+        """
+        Determine sector status for either best or last lap.
+
+        Args:
+            sector_1_best_ms: Best sector 1 time in milliseconds
+            sector_2_best_ms: Best sector 2 time in milliseconds
+            sector_3_best_ms: Best sector 3 time in milliseconds
+            for_best_lap: Whether to analyze best lap or last lap
+
+        Returns:
+            List of sector statuses (purple, green, yellow, invalid, or NA)
+        """
+        default_val = [
+            F1Utils.SECTOR_STATUS_NA,
+            F1Utils.SECTOR_STATUS_NA,
+            F1Utils.SECTOR_STATUS_NA
+        ]
+
+        packet_session_history = data_per_driver.get("session-history")
+
+        # Validate input data
+        if (not packet_session_history or
+            not sector_1_best_ms_global or
+            # not sector_1_best_ms_driver or
+            not sector_2_best_ms_global or
+            # not sector_2_best_ms_driver or
+            not sector_3_best_ms_global):# or
+            # not sector_3_best_ms_driver):
+            return default_val
+
+        self_best_lap_num = packet_session_history["best-lap-time-lap-num"]
+        self_m_best_lap_ms = packet_session_history["lap-history-data"][self_best_lap_num-1]["lap-time-in-ms"]
+        self_m_last_lap_ms = packet_session_history["lap-history-data"][-1]["lap-time-in-ms"]
+        self_m_current_lap = data_per_driver["current-lap"]
+
+        # Validate lap data
+        if for_best_lap and not self_m_best_lap_ms:
+            return default_val
+        elif (not for_best_lap) and not self_m_last_lap_ms:
+            return default_val
+
+        # Select lap details
+        if for_best_lap:
+            lap_num = packet_session_history["best-lap-time-lap-num"]
+        elif result_status != str(ResultStatus.ACTIVE):
+            lap_num = self_m_current_lap
+        else:
+            lap_num = self_m_current_lap - 1
+
+        # Validate lap number. Can have missing laps if red flag
+        if not (0 <= lap_num <= len(packet_session_history["lap-history-data"])):
+            return default_val
+
+        # Get lap data
+        best_sector_3_lap = packet_session_history["best-sector-3-lap-num"]
+        best_sector_2_lap = packet_session_history["best-sector-2-lap-num"]
+        best_sector_1_lap = packet_session_history["best-sector-1-lap-num"]
+        lap_obj = packet_session_history["lap-history-data"][lap_num-1]
+        lap_valid_flags = lap_obj["lap-valid-bit-flags"]
+
+        # Analyze sector statuses
+        s1_status = _get_sector_status(
+            lap_obj["sector-1-time-in-ms"],
+            sector_best_ms=sector_1_best_ms_global,
+            is_best_sector_lap=(lap_num == best_sector_1_lap),
+            sector_valid_flag=lap_valid_flags & LapHistoryData.SECTOR_1_VALID_BIT_MASK
+        )
+
+        s2_status = _get_sector_status(
+            lap_obj["sector-2-time-in-ms"],
+            sector_2_best_ms_global,
+            lap_num == best_sector_2_lap,
+            sector_valid_flag=lap_valid_flags & LapHistoryData.SECTOR_2_VALID_BIT_MASK
+        )
+
+        s3_status = _get_sector_status(
+            lap_obj["sector-3-time-in-ms"],
+            sector_3_best_ms_global,
+            lap_num == best_sector_3_lap,
+            sector_valid_flag=lap_valid_flags & LapHistoryData.SECTOR_3_VALID_BIT_MASK
+        )
+
+        return [s1_status, s2_status, s3_status]
+
+    def _get_sector_status(
+        sector_time: int,
+        sector_best_ms: int,
+        is_best_sector_lap: bool,
+        sector_valid_flag: bool
+    ) -> int:
+        """
+        Determine the status of a single sector.
+
+        Args:
+            sector_time: Time of the current sector
+            sector_best_ms: Best time for the sector
+            is_best_sector_lap: Whether this is the best lap for this sector
+            sector_valid_flag: Whether the sector is valid
+
+        Returns:
+            Sector status (purple, green, yellow, invalid)
+        """
+        if sector_time == sector_best_ms:
+            # Session best
+            return F1Utils.SECTOR_STATUS_PURPLE
+        elif is_best_sector_lap:
+            # Personal best
+            return F1Utils.SECTOR_STATUS_GREEN
+        elif not sector_valid_flag:
+            # Invalidated
+            return F1Utils.SECTOR_STATUS_INVALID
+        else:
+            # Meh sector
+            return F1Utils.SECTOR_STATUS_YELLOW
+
 
     # Init the global data onto the JSON repsonse
     with g_json_lock:
@@ -162,22 +287,28 @@ def getTelemetryInfo():
                 "current-lap": "---",
                 "event-type": "---",
                 "fastest-lap-overall": 0,
-                "pit-speed-limit": "---",
+                "fastest-lap-overall-driver": "---",
+                "pit-speed-limit": 0,
                 "race-ended": False,
                 "safety-car-status": "",
                 "table-entries": [],
                 "total-laps": "---",
-                "track-temperature": "---",
-                "air-temperature" : "---",
-                "weather-forecast-samples": []
+                "track-temperature": 0,
+                "air-temperature" : 0,
+                "weather-forecast-samples": [],
+                "f1-game-year" : None,
+                "is-spectating" : False,
             }
         if "records" in g_json_data:
             if "fastest" in g_json_data["records"]:
                 fastest_lap = g_json_data["records"]["fastest"]["lap"]["time"]
+                fastest_lap_driver = g_json_data["records"]["fastest"]["lap"]['driver-name']
             else:
                 fastest_lap = "---"
+                fastest_lap_driver = "---"
         else:
             fastest_lap = "---"
+            fastest_lap_driver = "---"
         json_response = {
             "live-data": False,
             "circuit": g_json_data["session-info"]["track-id"],
@@ -189,9 +320,12 @@ def getTelemetryInfo():
             "current-lap": g_json_data["classification-data"][0]["lap-data"]["current-lap-num"],
             "safety-car-status": g_json_data["session-info"]["safety-car-status"],
             "fastest-lap-overall": fastest_lap,
+            "fastest-lap-overall-driver": fastest_lap_driver,
             "pit-speed-limit" : g_json_data["session-info"]["pit-speed-limit"],
             "weather-forecast-samples": [],
-            "race-ended" : True
+            "race-ended" : True,
+            "f1-game-year" : g_json_data["game-year"],
+            "is-spectating" : False,
         }
         for sample in g_json_data["session-info"]["weather-forecast-samples"]:
             json_response["weather-forecast-samples"].append(
@@ -208,6 +342,9 @@ def getTelemetryInfo():
             ResultStatus.DISQUALIFIED : "DSQ",
             ResultStatus.RETIRED : "DNF"
         }
+        best_s1_time = g_json_data["records"]["fastest"]["s1"]["time"]
+        best_s2_time = g_json_data["records"]["fastest"]["s2"]["time"]
+        best_s3_time = g_json_data["records"]["fastest"]["s3"]["time"]
         for data_per_driver in g_json_data["classification-data"]:
             index = data_per_driver["index"]
             if index == g_json_data["records"]["fastest"]["lap"]["driver-index"]:
@@ -257,12 +394,31 @@ def getTelemetryInfo():
                     },
                     "ers-info" : {
                         "ers-percent": F1Utils.floatToStr(ers_perc) + '%',
+                        "ers-mode": data_per_driver["car-status"]["ers-deploy-mode"] \
+                            if "ers-deploy-mode" in data_per_driver["car-status"] else "None",
                     },
                     "lap-info" : {
                         "last-lap-ms" : getFastestLapTimeMsFromSessionHistoryJSON(data_per_driver["session-history"]),
                         "best-lap-ms" : getLastLapTimeMsFromSessionHistoryJSON(data_per_driver["session-history"]),
                         "last-lap-ms-player" : 0,
                         "best-lap-ms-overall" : 0,
+                        "lap-progress" : None, # NULL is supported,
+                        "speed-trap-record-kmph" : data_per_driver["lap-data"]["speed-trap-fastest-speed"] \
+                            if "speed-trap-fastest-speed" in data_per_driver["lap-data"] else None
+                    },
+                    "lap-info-new" : {
+                        "last-lap" : {
+                            "lap-time-ms" : getFastestLapTimeMsFromSessionHistoryJSON(data_per_driver["session-history"]),
+                            "lap-time-ms-player" : 0,
+                            "sector-status" : getSectorStatus(data_per_driver,
+                                best_s1_time, best_s2_time, best_s3_time, data_per_driver["lap-data"]["result-status"], for_best_lap=False),
+                        },
+                        "best-lap" : {
+                            "lap-time-ms" : getFastestLapTimeMsFromSessionHistoryJSON(data_per_driver["session-history"]),
+                            "lap-time-ms-player" : 0,
+                            "sector-status" : getSectorStatus(data_per_driver,
+                                best_s1_time, best_s2_time, best_s3_time, data_per_driver["lap-data"]["result-status"], for_best_lap=True),
+                        },
                         "lap-progress" : None, # NULL is supported,
                         "speed-trap-record-kmph" : data_per_driver["lap-data"]["speed-trap-fastest-speed"] \
                             if "speed-trap-fastest-speed" in data_per_driver["lap-data"] else None
@@ -286,6 +442,15 @@ def getTelemetryInfo():
                         "fl-wing-damage" : data_per_driver["car-damage"]["front-left-wing-damage"],
                         "fr-wing-damage" : data_per_driver["car-damage"]["front-right-wing-damage"],
                         "rear-wing-damage" : data_per_driver["car-damage"]["rear-wing-damage"],
+                    },
+                    "fuel-info" : {
+                        "fuel-capacity" : data_per_driver["car-status"]["fuel-capacity"],
+                        "fuel-mix" : data_per_driver["car-status"]["fuel-mix"],
+                        "fuel-remaining-laps" :  data_per_driver["car-status"]["fuel-remaining-laps"],
+                        "fuel-in-tank" : data_per_driver["car-status"]["fuel-in-tank"],
+                        "curr-fuel-rate" : 0.0,
+                        "last-lap-fuel-used" : 0.0,
+                        "target-fuel-rate" : 0.0
                     }
                 }
             )
@@ -336,6 +501,9 @@ def getDriverInfoJsonByIndex(index):
             final_json["warning-penalty-history"] = driver_data["warning-penalty-history"]
         else:
             final_json["warning-penalty-history"] = []
+
+        # collisions
+        final_json["collisions"] = driver_data["collisions"] if "collisions" in driver_data else {}
 
         # Return this fully prepped JSON
         return final_json
@@ -411,7 +579,7 @@ class TelemetryWebServer:
         Args:
             port (int): Port number for the server.
         """
-        self.m_app = Flask(__name__, template_folder='../src/templates')
+        self.m_app = Flask(__name__, template_folder='../src/templates', static_folder='../src/static')
         self.m_app.config['PROPAGATE_EXCEPTIONS'] = True
         self.m_app.config["EXPLAIN_TEMPLATE_LOADING"] = True
         self.m_port = port

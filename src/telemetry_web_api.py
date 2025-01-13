@@ -254,8 +254,10 @@ class PlayerTelemetryOverlayUpdate:
             self.m_fastest_s1_ms            = TelData._driver_data.m_fastest_s1_ms
             self.m_fastest_s2_ms            = TelData._driver_data.m_fastest_s2_ms
             self.m_fastest_s3_ms            = TelData._driver_data.m_fastest_s3_ms
-            player_data = TelData._driver_data.m_driver_data[TelData._driver_data.m_player_index] \
-                if TelData._driver_data.m_player_index in TelData._driver_data.m_driver_data else None
+            player_index = TelData._globals.m_spectator_car_index if TelData._globals.m_is_spectating \
+                            else TelData._driver_data.m_player_index
+            player_data = TelData._driver_data.m_driver_data[player_index] \
+                            if player_index in TelData._driver_data.m_driver_data else None
 
         self.__initCarTelemetry(player_data)
         self.__initLapTimes(player_data)
