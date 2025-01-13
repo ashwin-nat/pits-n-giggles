@@ -1,4 +1,4 @@
-class CarTelemetryWidget {
+export class CarTelemetryWidget {
     constructor(containerId) {
         this.container = document.getElementById(containerId);
         if (!this.container) {
