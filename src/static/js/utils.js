@@ -235,7 +235,7 @@ function splitArray(array) {
     return { firstHalf, secondHalf };
 }
 
-export function clearTable(tableElement, clearHeader = false) {
+function clearTable(tableElement, clearHeader = false) {
     const minTableRowsCount = clearHeader ? 0 : 1;
 
     // Remove rows starting from the last row
@@ -244,7 +244,7 @@ export function clearTable(tableElement, clearHeader = false) {
     }
 }
 
-export function getTyreIconSpan(tyreCompound) {
+function getTyreIconSpan(tyreCompound) {
 
     // Get the first letter of the compound or an empty string if compound is empty
     const firstLetter = tyreCompound.charAt(0);  // Get the first letter of the compound

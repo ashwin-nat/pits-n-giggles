@@ -1,6 +1,4 @@
-import { clearTable, getTyreIconSpan } from "./utils.js";
-
-export class LapTimeTableWidget {
+class LapTimeTableWidget {
     constructor() {
         this.lapTimeTable = document.getElementById('lapTimeTable');
     }

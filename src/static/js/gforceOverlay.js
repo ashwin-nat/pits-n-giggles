@@ -1,4 +1,4 @@
-export class GForceDisplay {
+class GForceDisplay {
     constructor(containerId) {
         this.initializeElements(containerId);
     }
@@ -11,6 +11,9 @@ export class GForceDisplay {
 
         this.dot = document.getElementById('gforce-dot');
         this.netGForceElement = document.getElementById('net-gforce');
+        // this.latGForceElement = document.getElementById('lat-gforce');
+        // this.longGForceElement = document.getElementById('long-gforce');
+        // this.vertGForceElement = document.getElementById('vert-gforce');
     }
 
     update(gForceData) {

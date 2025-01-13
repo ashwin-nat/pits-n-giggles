@@ -8,7 +8,31 @@ const WEATHER_ICONS = {
   'Thunderstorm': { icon: 'bi-cloud-lightning-fill', class: 'weather-thunder' }
 };
 
-export class WeatherWidget {
+function renderWeatherPrediction(prediction) {
+  const predictionElement = document.createElement('div');
+  predictionElement.classList.add('weather-prediction');
+
+  const weatherIcon = WEATHER_ICONS[prediction['weather']];
+  predictionElement.innerHTML = `
+    <i class="bi ${weatherIcon.icon} weather-icon ${weatherIcon.class}"></i>
+    <div class="weather-info">
+      <span class="weather-time">+${prediction['time-offset']}min</span>
+      <span class="weather-probability">${prediction['rain-probability']}%</span>
+    </div>
+  `;
+
+  return predictionElement;
+}
+
+function updateWeatherUI(weatherContainer, weatherData) {
+
+  weatherContainer.innerHTML = '';
+  weatherData.forEach(prediction => {
+    weatherContainer.appendChild(renderWeatherPrediction(prediction));
+  });
+}
+
+class WeatherWidget {
   constructor(container) {
     if (!container) {
       throw new Error("WeatherWidget requires a valid container element.");

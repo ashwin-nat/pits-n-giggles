@@ -1,4 +1,4 @@
-export class PenaltiesStatsWidget {
+class PenaltiesStatsWidget {
     constructor() {
       // Elements for displaying the penalties stats
       this.pitLaneSpeedLimitSpan = document.getElementById('pit-speed-limit');
