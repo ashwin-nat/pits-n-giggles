@@ -397,15 +397,6 @@ def getTelemetryInfo():
                         "ers-mode": data_per_driver["car-status"]["ers-deploy-mode"] \
                             if "ers-deploy-mode" in data_per_driver["car-status"] else "None",
                     },
-                    "lap-info" : {
-                        "last-lap-ms" : getFastestLapTimeMsFromSessionHistoryJSON(data_per_driver["session-history"]),
-                        "best-lap-ms" : getLastLapTimeMsFromSessionHistoryJSON(data_per_driver["session-history"]),
-                        "last-lap-ms-player" : 0,
-                        "best-lap-ms-overall" : 0,
-                        "lap-progress" : None, # NULL is supported,
-                        "speed-trap-record-kmph" : data_per_driver["lap-data"]["speed-trap-fastest-speed"] \
-                            if "speed-trap-fastest-speed" in data_per_driver["lap-data"] else None
-                    },
                     "lap-info-new" : {
                         "last-lap" : {
                             "lap-time-ms" : getFastestLapTimeMsFromSessionHistoryJSON(data_per_driver["session-history"]),

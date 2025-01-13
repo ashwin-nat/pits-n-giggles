@@ -153,22 +153,7 @@ class TelemetryWebServer:
                 str: HTML page content.
             """
 
-            return render_template('index.html',
-                packet_capture_enabled=False, # TODO: deprecate
-                client_poll_interval_ms=0, # deprecated since we've moved to socketio
-                live_data_mode=True)
-
-        # Render the HTML page
-        @self.m_app.route('/new-ui')
-        def new_ui():
-            """
-            Endpoint for the index page.
-
-            Returns:
-                str: HTML page content.
-            """
-
-            return render_template('new_ui.html')
+            return render_template('index.html')
 
         # Render the HTML page
         @self.m_app.route('/player-stream-overlay')

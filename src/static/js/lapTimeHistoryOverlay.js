@@ -31,7 +31,8 @@ class LapTimeTableWidget {
         const numRows = 5; // Limit to 5 rows
         let count = 0;
 
-        for (let i = lapHistoryData.length - 1; i >= 0 && count < numRows; i--, count++) {
+        for (let i = lapHistoryData.length - 1; i >= 0 && count < numRows; i--) {
+
             const lapData = lapHistoryData[i];
             const lapNumber = i + 1;
 
@@ -45,6 +46,11 @@ class LapTimeTableWidget {
             const s3TimeMs = lapData["sector-3-time-in-ms"];
             const s3TimeStr = lapData["sector-3-time-str"];
 
+            // fill only complete rows
+            if (lapTimeMs === 0 || s1TimeMs === 0 || s2TimeMs === 0 || s3TimeMs === 0) {
+                continue;
+            }
+
             const validFlags = lapData["lap-valid-bit-flags"];
             const lapValidMask = 1;
             const s1ValidMask = 2;
@@ -52,6 +58,7 @@ class LapTimeTableWidget {
             const s3ValidMask = 8;
 
             const row = this.lapTimeTable.insertRow();
+            count++;
             const lapNumCell = row.insertCell();
             const lapTimeCell = row.insertCell();
             const s1TimeCell = row.insertCell();

@@ -125,15 +125,10 @@ class RaceInfoRsp:
             for table_entry in table_entries_json:
                 # Update last lap time for player in every object
                 if table_entry["driver-info"]["index"] != player_entry["driver-info"]["index"]:
-                    # TODO: deprecate
                     # Fill the player time fields from the identified player_entry object
-                    table_entry["lap-info"]["last-lap-ms-player"] = player_entry["lap-info-new"]["last-lap"]["lap-time-ms"]
-                    table_entry["lap-info"]["best-lap-ms-player"] = player_entry["lap-info-new"]["best-lap"]["lap-time-ms"]
                     table_entry["lap-info-new"]["last-lap"]["lap-time-ms-player"] = player_entry["lap-info-new"]["last-lap"]["lap-time-ms"]
                     table_entry["lap-info-new"]["best-lap"]["lap-time-ms-player"] = player_entry["lap-info-new"]["best-lap"]["lap-time-ms"]
                 else:
-                    table_entry["lap-info"]["last-lap-ms-player"] = table_entry["lap-info-new"]["last-lap"]["lap-time-ms"]
-                    table_entry["lap-info"]["best-lap-ms-player"] = table_entry["lap-info-new"]["best-lap"]["lap-time-ms"]
                     table_entry["lap-info-new"]["last-lap"]["lap-time-ms-player"] = table_entry["lap-info-new"]["last-lap"]["lap-time-ms"]
                     table_entry["lap-info-new"]["best-lap"]["lap-time-ms-player"] = table_entry["lap-info-new"]["best-lap"]["lap-time-ms"]
 class OverallRaceStatsRsp:

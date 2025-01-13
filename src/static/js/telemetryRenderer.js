@@ -180,7 +180,6 @@ class TelemetryRenderer {
   }
 
   hideColumn(columnName, shouldHide) {
-    console.log("hideColumn", columnName, shouldHide);
     const table = document.getElementById("race-table");
     const headers = table.getElementsByTagName("th");
     let columnIndex = -1;
