@@ -61,6 +61,31 @@ Not yet supported because I need a mac to build an executable for mac platforms 
 4. Packet Capture:
    - This feature can be used to save all the raw incoming packets into a file. It is not enabled by default and needs to be enabled through the command line. The telemetry_replayer.py utility can be used to replay these packets from the specified file to the app, provided the app is launched in --replay-server mode. This is very handy for debugging and development.
 
+## Screenshots
+
+### Main UI
+The primary interface of the application, showcasing the clean and intuitive design.
+
+![Main UI](screenshots/main_ui.png)
+
+---
+
+### Driver Details - Lap Times
+A modal view highlighting detailed lap times for a selected driver.
+![Driver Details - Lap times](screenshots/lap-times-modal-ss.png)
+
+---
+
+### Driver Details - Tyre Stint
+Insights into tyre stints, including usage and performance over laps.
+![Driver Details - Tyre Stint](screenshots/tyre-stint-modal-ss.png)
+
+---
+
+### Stream Overlay
+A sneak peek at the live telemetry stream overlay designed for use with OBS.
+![Stream Overlay](screenshots/png-stream-overlay.png)
+
 ## Running the App (without direct executable)
 - The app can be run using the following commands:
   - Run the app using Python:

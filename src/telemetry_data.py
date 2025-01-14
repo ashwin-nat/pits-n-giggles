@@ -142,10 +142,7 @@ class GlobalData:
         self.m_track_temp = packet.m_trackTemperature
         self.m_air_temp = packet.m_airTemperature
         self.m_event_type = str(packet.m_sessionType)
-        self.m_event_type = str(packet.m_sessionType)
         self.m_weather_forecast_samples = packet.m_weatherForecastSamples
-        self.m_weather_forecast_samples = packet.m_weatherForecastSamples
-        self.m_pit_speed_limit = packet.m_pitSpeedLimit
         self.m_pit_speed_limit = packet.m_pitSpeedLimit
         self.m_total_laps = packet.m_totalLaps
         self.m_packet_session = packet
@@ -1196,10 +1193,8 @@ class DataPerDriver:
             return default_val
 
         # Validate lap data
-        if (
-            (for_best_lap and not self.m_best_lap_ms) or
-            (not for_best_lap and not self.m_last_lap_ms)
-        ):
+        if ((for_best_lap and not self.m_best_lap_ms) or
+            (not for_best_lap and not self.m_last_lap_ms)):
             return default_val
 
         # Select lap details
@@ -1220,29 +1215,23 @@ class DataPerDriver:
         best_sector_1_lap = self.m_packet_session_history.m_bestSector1LapNum
         lap_obj = self.m_packet_session_history.m_lapHistoryData[lap_num-1]
 
-        # Analyze sector statuses
-        s1_status = self._get_sector_status(
-            sector_time=lap_obj.m_sector1TimeInMS,
-            sector_best_ms=sector_1_best_ms,
-            is_best_sector_lap=(lap_num == best_sector_1_lap),
-            sector_valid_flag=lap_obj.isSector1Valid()
-        )
-
-        s2_status = self._get_sector_status(
-            lap_obj.m_sector2TimeInMS,
-            sector_2_best_ms,
-            lap_num == best_sector_2_lap,
-            lap_obj.isSector2Valid()
-        )
-
-        s3_status = self._get_sector_status(
-            lap_obj.m_sector3TimeInMS,
-            sector_3_best_ms,
-            lap_num == best_sector_3_lap,
-            lap_obj.isSector3Valid()
-        )
-
-        return [s1_status, s2_status, s3_status]
+        return [
+            self._get_sector_status(
+                sector_time=lap_obj.m_sector1TimeInMS,
+                sector_best_ms=sector_1_best_ms,
+                is_best_sector_lap=(lap_num == best_sector_1_lap),
+                sector_valid_flag=lap_obj.isSector1Valid()),
+            self._get_sector_status(
+                sector_time=lap_obj.m_sector2TimeInMS,
+                sector_best_ms=sector_2_best_ms,
+                is_best_sector_lap=(lap_num == best_sector_2_lap),
+                sector_valid_flag=lap_obj.isSector2Valid()),
+            self._get_sector_status(
+                sector_time=lap_obj.m_sector3TimeInMS,
+                sector_best_ms=sector_3_best_ms,
+                is_best_sector_lap=(lap_num == best_sector_3_lap),
+                sector_valid_flag=lap_obj.isSector3Valid()),
+        ]
 
     def _get_sector_status(
         self,

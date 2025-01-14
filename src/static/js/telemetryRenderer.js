@@ -54,8 +54,46 @@ class TelemetryRenderer {
 
   // Utility methods:
   populateCircuitSpan(incomingData) {
+    // const trackName = incomingData['circuit'];
+    // const trackNameContainer = this.trackName;
+    // // Clear any existing content in the span
+    // trackNameContainer.innerHTML = "";
+    // if ("---" === trackName) {
+    //   this.trackName.textContent = "PITS N' GIGGLES";
+    // } else {
+    //   // Create the first div for the track name
+    //   const trackNameDiv = document.createElement("div");
+    //   trackNameDiv.textContent = trackName.toUpperCase();
+    //   trackNameDiv.style.textAlign = "center"; // Center the text
+    //   trackNameDiv.style.margin = "0 auto";   // Ensure centering in flex/inline-flex containers
+    //   trackNameContainer.appendChild(trackNameDiv);
+
+    //   // Create the second div for dummy text
+    //   const lapCountDiv = document.createElement("div");
+    //   lapCountDiv.style.textAlign = "center"; // Center the text
+    //   lapCountDiv.style.margin = "0 auto";   // Ensure centering in flex/inline-flex containers
+    //   let lapCountText = "";
+    //   lapCountText += "L" + incomingData['current-lap'].toString();
+    //   if (incomingData['total-laps'] > 1) {
+    //     lapCountText += "/" + incomingData['total-laps'].toString();
+    //   }
+    //   lapCountDiv.textContent = lapCountText;
+    //   trackNameContainer.appendChild(lapCountDiv);
+    // }
+    this.populateTrackName(incomingData);
+    const pitLaneSpeedLimit = incomingData['pit-speed-limit'];
+    if (pitLaneSpeedLimit) {
+      this.pitLaneSpeedLimit.textContent = pitLaneSpeedLimit;
+      this.pitLaneSpeedLimit.style.display = "inline-flex"; // Ensure it's visible if there's a value
+    } else {
+      this.pitLaneSpeedLimit.style.display = "none"; // Hide if the value is 0;
+    }
+  }
+
+  populateTrackName(incomingData) {
     const trackName = incomingData['circuit'];
     const trackNameContainer = this.trackName;
+
     // Clear any existing content in the span
     trackNameContainer.innerHTML = "";
     if ("---" === trackName) {
@@ -64,29 +102,34 @@ class TelemetryRenderer {
       // Create the first div for the track name
       const trackNameDiv = document.createElement("div");
       trackNameDiv.textContent = trackName.toUpperCase();
-      trackNameDiv.style.textAlign = "center"; // Center the text
-      trackNameDiv.style.margin = "0 auto";   // Ensure centering in flex/inline-flex containers
+      trackNameDiv.style.textAlign = "center";
+      trackNameDiv.style.margin = "0 auto";
       trackNameContainer.appendChild(trackNameDiv);
 
-      // Create the second div for dummy text
-      const lapCountDiv = document.createElement("div");
-      lapCountDiv.style.textAlign = "center"; // Center the text
-      lapCountDiv.style.margin = "0 auto";   // Ensure centering in flex/inline-flex containers
-      let lapCountText = "";
-      lapCountText += "L" + incomingData['current-lap'].toString();
-      if (incomingData['total-laps'] > 1) {
-        lapCountText += "/" + incomingData['total-laps'].toString();
+      // Create the second div for session info
+      const sessionInfoDiv = document.createElement("div");
+      sessionInfoDiv.style.textAlign = "center";
+      sessionInfoDiv.style.margin = "0 auto";
+
+      let sessionInfoText = "";
+      if (this.shouldShowLapNumber(incomingData['event-type'])) {
+        sessionInfoText += "L" + incomingData['current-lap'].toString();
+        if (incomingData['total-laps'] > 1) {
+          sessionInfoText += "/" + incomingData['total-laps'].toString();
+        }
+      } else {
+        const sessionTime = incomingData['session-time-left'];
+        sessionInfoText += formatSecondsToMMSS(sessionTime);
       }
-      lapCountDiv.textContent = lapCountText;
-      trackNameContainer.appendChild(lapCountDiv);
+
+      sessionInfoDiv.innerHTML = sessionInfoText;
+      trackNameContainer.appendChild(sessionInfoDiv);
     }
-    const pitLaneSpeedLimit = incomingData['pit-speed-limit'];
-    if (pitLaneSpeedLimit) {
-      this.pitLaneSpeedLimit.textContent = pitLaneSpeedLimit;
-      this.pitLaneSpeedLimit.style.display = "inline-flex"; // Ensure it's visible if there's a value
-    } else {
-      this.pitLaneSpeedLimit.style.display = "none"; // Hide if the value is 0;
-    }
+  }
+
+  shouldShowLapNumber(sessionType) {
+    const unsupportedSessionTypes = ['Qualifying', 'Practice', 'Sprint Shootout'];
+    return !unsupportedSessionTypes.some(type => sessionType.includes(type));
   }
 
   truncateName(name) {

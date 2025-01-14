@@ -276,3 +276,21 @@ function getTyreIconSpan(tyreCompound) {
 
     return span;
 }
+
+function formatSecondsToMMSS(seconds) {
+    // Ensure the input is a number
+    if (typeof seconds !== 'number' || seconds < 0) {
+        throw new Error('Input should be a non-negative integer representing seconds.');
+    }
+
+    // Calculate minutes and remaining seconds
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+
+    // Format minutes and seconds with leading zeros if necessary
+    const formattedMinutes = String(minutes).padStart(2, '0');
+    const formattedSeconds = String(remainingSeconds).padStart(2, '0');
+
+    // Return formatted time string
+    return `${formattedMinutes}:${formattedSeconds}`;
+}
