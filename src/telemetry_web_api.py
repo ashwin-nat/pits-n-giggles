@@ -126,11 +126,11 @@ class RaceInfoRsp:
                 # Update last lap time for player in every object
                 if table_entry["driver-info"]["index"] != player_entry["driver-info"]["index"]:
                     # Fill the player time fields from the identified player_entry object
-                    table_entry["lap-info-new"]["last-lap"]["lap-time-ms-player"] = player_entry["lap-info-new"]["last-lap"]["lap-time-ms"]
-                    table_entry["lap-info-new"]["best-lap"]["lap-time-ms-player"] = player_entry["lap-info-new"]["best-lap"]["lap-time-ms"]
+                    table_entry["lap-info"]["last-lap"]["lap-time-ms-player"] = player_entry["lap-info"]["last-lap"]["lap-time-ms"]
+                    table_entry["lap-info"]["best-lap"]["lap-time-ms-player"] = player_entry["lap-info"]["best-lap"]["lap-time-ms"]
                 else:
-                    table_entry["lap-info-new"]["last-lap"]["lap-time-ms-player"] = table_entry["lap-info-new"]["last-lap"]["lap-time-ms"]
-                    table_entry["lap-info-new"]["best-lap"]["lap-time-ms-player"] = table_entry["lap-info-new"]["best-lap"]["lap-time-ms"]
+                    table_entry["lap-info"]["last-lap"]["lap-time-ms-player"] = table_entry["lap-info"]["last-lap"]["lap-time-ms"]
+                    table_entry["lap-info"]["best-lap"]["lap-time-ms-player"] = table_entry["lap-info"]["best-lap"]["lap-time-ms"]
 class OverallRaceStatsRsp:
     """
     Overall race stats response class.
@@ -140,12 +140,8 @@ class OverallRaceStatsRsp:
         """Get the overall race stats and prepare the rsp fields
         """
 
-        # self.m_rsp = TelData.getRaceInfo()
-        # self._checkUpdateRecords()
-
-        import json
-        with open('sample-race-info.json') as f:
-            self.m_rsp = json.load(f)
+        self.m_rsp = TelData.getRaceInfo()
+        self._checkUpdateRecords()
 
     def _checkUpdateRecords(self):
         """
@@ -484,15 +480,6 @@ class DriversListRsp:
                                                     CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0,
                 },
                 "lap-info" : {
-                    "last-lap-ms" : data_per_driver.m_last_lap_ms,
-                    "best-lap-ms" : data_per_driver.m_best_lap_ms,
-                    "last-lap-ms-player" : 0,
-                    "best-lap-ms-player" : 0,
-                    "lap-progress" : data_per_driver.m_lap_progress, # NULL is supported
-                    "speed-trap-record-kmph" : data_per_driver.m_packet_lap_data.m_speedTrapFastestSpeed if \
-                        data_per_driver.m_packet_lap_data else None, # NULL is supported
-                },
-                "lap-info-new" : {
                     "last-lap" : {
                         "lap-time-ms" : data_per_driver.m_last_lap_ms,
                         "lap-time-ms-player" : 0,
@@ -626,7 +613,7 @@ class DriversListRsp:
 
         if (drs_activated is None) or (drs_available is None) or (drs_distance is None):
             return False
-        return bool(drs_activated or drs_available or (drs_distance > 0))
+        return drs_activated or drs_available or (drs_distance > 0)
 
     def __initDriverList(self) -> None:
         """Initialise the fields

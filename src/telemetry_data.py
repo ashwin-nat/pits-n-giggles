@@ -1652,6 +1652,9 @@ class DriverData:
 
         final_json = packet.toJSON()
         is_position_history_supported = isPositionHistorySupported()
+        if is_position_history_supported:
+            final_json["position-history"] = []
+            final_json["tyre-stint-history"] = []
         for index, data in enumerate(packet.m_classificationData):
             obj_to_be_updated = self.m_driver_data.get(index, None)
             # Perform the final snapshot
@@ -1663,13 +1666,8 @@ class DriverData:
             obj_to_be_updated.m_packet_final_classification = data
             final_json["classification-data"][index] = obj_to_be_updated.toJSON(index)
             if is_position_history_supported:
-                final_json["position-history"] = \
-                    [driver_data.getPositionHistoryJSON() for driver_data in self.m_driver_data.values()]
-                final_json["tyre-stint-history"] = \
-                    [driver_data.getTyreStintHistoryJSON() for driver_data in self.m_driver_data.values()]
-            else:
-                final_json["position-history"] = []
-                final_json["tyre-stint-history"] = []
+                final_json["position-history"].append(obj_to_be_updated.getPositionHistoryJSON())
+                final_json["tyre-stint-history"].append(obj_to_be_updated.getTyreStintHistoryJSON())
         final_json['classification-data'] = sorted(final_json['classification-data'], key=lambda x: x['track-position'])
         final_json['game-year'] = self.m_game_year
         self.m_final_json = final_json

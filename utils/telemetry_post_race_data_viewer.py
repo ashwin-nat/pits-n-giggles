@@ -397,7 +397,7 @@ def getTelemetryInfo():
                         "ers-mode": data_per_driver["car-status"]["ers-deploy-mode"] \
                             if "ers-deploy-mode" in data_per_driver["car-status"] else "None",
                     },
-                    "lap-info-new" : {
+                    "lap-info" : {
                         "last-lap" : {
                             "lap-time-ms" : getFastestLapTimeMsFromSessionHistoryJSON(data_per_driver["session-history"]),
                             "lap-time-ms-player" : 0,
@@ -599,12 +599,7 @@ class TelemetryWebServer:
                 str: HTML page content.
             """
 
-            print('received request')
-            # return render_template('index.html',
-            #     packet_capture_enabled=False,
-            #     player_only_telemetry=False,
-            #     live_data_mode=False)
-            return render_template('new_ui.html')
+            return render_template('index.html')
 
         # Define your endpoint
         @self.m_app.route('/telemetry-info')

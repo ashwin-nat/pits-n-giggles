@@ -83,8 +83,8 @@ class RaceTableRowPopulator {
     addBestLapInfo() {
         const isSpectating = this.rowData["driver-info"]["is-spectating"];
         const isPlayer = this.rowData["driver-info"]["is-player"];
-        const lapInfo = this.rowData["lap-info-new"]["best-lap"];
-        const speedTrapRecord = this.rowData["lap-info-new"]["speed-trap-record-kmph"];
+        const lapInfo = this.rowData["lap-info"]["best-lap"];
+        const speedTrapRecord = this.rowData["lap-info"]["speed-trap-record-kmph"];
         let cell;
         if (g_pref_bestLapAbsoluteFormat || isSpectating) {
             const lapStr = formatLapTime(lapInfo["lap-time-ms"]);
@@ -132,7 +132,7 @@ class RaceTableRowPopulator {
     addLastLapInfo() {
         const isSpectating = this.rowData["driver-info"]["is-spectating"];
         const isPlayer = this.rowData["driver-info"]["is-player"];
-        const lapInfo = this.rowData["lap-info-new"]["last-lap"];
+        const lapInfo = this.rowData["lap-info"]["last-lap"];
         const cellContent = [];
         if (this.gameYear > 23) {
             // one line to pad against speed trap record
