@@ -167,30 +167,60 @@ class TelemetryWebServer:
 
             return render_template('player-stream-overlay.html')
 
-        @self.m_app.route('/player-stream-overlay-new')
-        def newOverlay():
+        @self.m_app.route('/tyre-icons/soft.svg')
+        def softTyreIcon():
             """
-            Endpoint for the overlay page.
-
-            Returns:
-                str: HTML page content.
-            """
-            return render_template('new_overlay.html')
-
-        # Render the HTML page
-        @self.m_app.route('/full')
-        def fullTelemetryView():
-            """
-            Endpoint for the index page.
+            Endpoint for the soft tyre icon.
 
             Returns:
                 str: HTML page content.
             """
 
-            return render_template('index.html',
-                packet_capture_enabled=False, #TODO: deprecate
-                client_poll_interval_ms=0, # deprecated since we've moved to socketio
-                live_data_mode=True)
+            return send_from_directory('static', 'tyre-icons/soft_tyre.svg', mimetype='image/svg+xml')
+
+        @self.m_app.route('/tyre-icons/medium.svg')
+        def mediumTyreIcon():
+            """
+            Endpoint for the medium tyre icon.
+
+            Returns:
+                str: HTML page content.
+            """
+
+            return send_from_directory('static', 'tyre-icons/medium_tyre.svg', mimetype='image/svg+xml')
+
+        @self.m_app.route('/tyre-icons/hard.svg')
+        def hardTyreIcon():
+            """
+            Endpoint for the hard tyre icon.
+
+            Returns:
+                str: HTML page content.
+            """
+
+            return send_from_directory('static', 'tyre-icons/hard_tyre.svg', mimetype='image/svg+xml')
+
+        @self.m_app.route('/tyre-icons/intermediate.svg')
+        def interTyreIcon():
+            """
+            Endpoint for the intermediate tyre icon.
+
+            Returns:
+                str: HTML page content.
+            """
+
+            return send_from_directory('static', 'tyre-icons/intermediate_tyre.svg', mimetype='image/svg+xml')
+
+        @self.m_app.route('/tyre-icons/wet.svg')
+        def wetTyreIcon():
+            """
+            Endpoint for the wet tyre icon.
+
+            Returns:
+                str: HTML page content.
+            """
+
+            return send_from_directory('static', 'tyre-icons/wet_tyre.svg', mimetype='image/svg+xml')
 
         # Socketio endpoints
         @self.m_socketio.on('connect')

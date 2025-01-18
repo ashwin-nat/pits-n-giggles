@@ -15,6 +15,7 @@ class RaceStatsModalPopulator {
             { id: 'tyre-stint-records', label: 'Tyre Stint Records' },
             { id: 'custom-markers', label: 'Custom Markers' },
             { id: 'position-history', label: 'Position History' },
+            { id: 'tyre-stint-history', label: 'Tyre Stint History (WIP)' },
         ];
 
         // Sort tabs alphabetically based on the label
@@ -53,6 +54,7 @@ class RaceStatsModalPopulator {
             { id: 'tyre-stint-records', method: this.populateTyreStintRecordsTab },
             { id: 'custom-markers', method: this.populateCustomMarkersTab },
             { id: 'position-history', method: this.populatePositionHistoryTab },
+            { id: 'tyre-stint-history', method: this.populateTyreStintHistoryTab },
         ];
 
         // Sort tabs alphabetically based on the label
@@ -256,14 +258,14 @@ class RaceStatsModalPopulator {
                 const driverPositionHistory = driverInfo["driver-position-history"];
                 let positionHistoryArray = [];
                 driverPositionHistory.forEach((perLapRecord) => {
-                    positionHistoryArray.push({ x: perLapRecord["lap-number"], y: perLapRecord["position"]});
+                    positionHistoryArray.push({ x: perLapRecord["lap-number"], y: perLapRecord["position"] });
                 });
                 datasets.push({
                     label: this.getFirstThreeLetters(name),
                     data: positionHistoryArray,
                     borderColor: this.getF1TeamColor(team)
                 });
-                if (datasets[datasets.length-1].borderColor === null ) {
+                if (datasets[datasets.length - 1].borderColor === null) {
                     console.log("Could not find colour", driverInfo);
                 }
             });
@@ -283,6 +285,26 @@ class RaceStatsModalPopulator {
             }
         }
         tabPane.appendChild(positionHistoryGraphSubDiv);
+    }
+
+    populateTyreStintHistoryTab(tabPane) {
+
+        const tyreStintHistoryGraphSubDiv = document.createElement('div');
+        // TODO: use actual values
+        const trackName = 'SAKHIR';
+        const airTemp = 32;
+        const trackTemp = 25;
+        const numLaps = 5;
+        const chart = new TyreStintHistoryChart(
+            tyreStintHistoryGraphSubDiv,
+            ("tyre-stint-history" in this.data) ? (this.data["tyre-stint-history"]) : ([]),
+            trackName,
+            trackTemp,
+            airTemp,
+            numLaps  // Now using actual number of laps from the data
+        );
+        chart.draw();
+        tabPane.appendChild(tyreStintHistoryGraphSubDiv);
     }
 
     // Utils
@@ -484,7 +506,7 @@ class RaceStatsModalPopulator {
                         ticks: {
                             color: 'rgba(255, 255, 255, 0.8)',
                             stepSize: 5,
-                            callback: function(value) {
+                            callback: function (value) {
                                 return value % 5 === 0 ? value : null;
                             }
                         },
@@ -495,7 +517,7 @@ class RaceStatsModalPopulator {
                     mode: 'dataset',
                     intersect: false
                 },
-                onHover: function(event, activeElements) {
+                onHover: function (event, activeElements) {
                     const chartArea = myChart.chartArea;
                     const mouseX = event.native.clientX;
                     const mouseY = event.native.clientY;

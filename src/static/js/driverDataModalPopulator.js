@@ -250,158 +250,142 @@ class DriverModalPopulator {
 
     populateTyreStintHistoryTab(tabPane) {
 
-        // Split the tab content into two vertical halves
-        const containerDiv = document.createElement('div');
-        containerDiv.className = 'd-flex';
-
-        // Left half: Create the fuel usage table
-        const leftDiv = document.createElement('div');
-        leftDiv.className = 'w-50'; // Half width
-
-        const table = document.createElement('table');
-        table.className = 'table table-bordered table-striped table-dark';
-
-        // Create table header
-        const thead = document.createElement('thead');
-        const headerRow = document.createElement('tr');
-        const headers = [
-            'Stint',
-            'Start Lap',
-            'End Lap',
-            'Length',
-            'Tyre',
-            'Tyre Wear',
-            'Tyre Wear/Lap',
-        ];
-
-        headers.forEach(headerText => {
-            const th = document.createElement('th');
-            th.textContent = headerText;
-            headerRow.appendChild(th);
-        });
-
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
-
-        // Create table body
-        const tbody = document.createElement('tbody');
-
         const graphDataFL = [];
         const graphDataFR = [];
         const graphDataRL = [];
         const graphDataRR = [];
-        const tyreSetsHistoryData = this.data["tyre-set-history"];
-        if (tyreSetsHistoryData.length > 0) {
-            tyreSetsHistoryData.forEach((stintData, index) => {
-                const row = tbody.insertRow();
-                const stintId = index + 1;
+        const leftPanePopulator = (leftDiv) => {
+            const tyreSetsHistoryData = this.data["tyre-set-history"];
+            const table = document.createElement('table');
+            table.className = 'table table-bordered table-striped table-dark';
 
-                const stintStartLap = stintData["start-lap"];
-                const stintEndLap = stintData["end-lap"];
-                const stintLength = `${stintData["stint-length"]} lap(s)`;
-                let compound = "---";
-                let tyreWear = "---";
-                let tyreWearPerLap = "---";
+            // Create table header
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            const headers = [
+                'Stint',
+                'Start Lap',
+                'End Lap',
+                'Length',
+                'Tyre',
+                'Tyre Wear',
+                'Tyre Wear/Lap',
+            ];
 
-                if ("tyre-set-data" in stintData && stintData["tyre-set-data"] != null) {
-                    const tyreSetData = stintData["tyre-set-data"];
-                    const tyreSetIndex = stintData["fitted-index"];
-
-                    const actualCompound = tyreSetData["actual-tyre-compound"];
-                    const tyreSetId = `${actualCompound} - ${tyreSetIndex}`;
-                    compound = tyreSetData["visual-tyre-compound"] + " (" + tyreSetId + ")";
-                    tyreWear = `${formatFloatWithTwoDecimals(tyreSetData["wear"])}%`;
-
-                    // Use parseFloat to ensure numerical calculation
-                    const wearPerLap = parseFloat(tyreSetData["wear"]) / parseFloat(stintData["stint-length"]);
-                    tyreWearPerLap = formatFloatWithTwoDecimals(wearPerLap) + "%";
-                }
-
-                // Populate table
-                this.populateTableRow(row, [
-                    stintId,
-                    stintStartLap,
-                    stintEndLap,
-                    stintLength,
-                    compound,
-                    tyreWear,
-                    tyreWearPerLap,
-                ]);
-
-                // Populate graph data set
-                if ("tyre-wear-history" in stintData && stintData["tyre-wear-history"].length > 0) {
-                    const wearHistory = stintData["tyre-wear-history"];
-                    wearHistory.forEach(wearData => {
-                        graphDataFL.push({
-                            x: wearData["lap-number"],
-                            y: formatFloatWithTwoDecimals(wearData["front-left-wear"]),
-                            desc: wearData["desc"],
-                        });
-                        graphDataFR.push({
-                            x: wearData["lap-number"],
-                            y: formatFloatWithTwoDecimals(wearData["front-right-wear"]),
-                            desc: wearData["desc"],
-                        });
-                        graphDataRL.push({
-                            x: wearData["lap-number"],
-                            y: formatFloatWithTwoDecimals(wearData["rear-left-wear"]),
-                            desc: wearData["desc"],
-                        });
-                        graphDataRR.push({
-                            x: wearData["lap-number"],
-                            y: formatFloatWithTwoDecimals(wearData["rear-right-wear"]),
-                            desc: wearData["desc"],
-                        });
-                    });
-                }
-
+            headers.forEach(headerText => {
+                const th = document.createElement('th');
+                th.textContent = headerText;
+                headerRow.appendChild(th);
             });
-        } else {
-            const row = tbody.insertRow();
-            row.innerHTML = '<td colspan="8">Tyre Stint History data not yet available</td>';
-        }
 
-        table.appendChild(tbody);
-        leftDiv.appendChild(table);
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
 
+            // Create table body and populate
+            const tbody = document.createElement('tbody');
+            if (tyreSetsHistoryData.length > 0) {
+                tyreSetsHistoryData.forEach((stintData, index) => {
+                    const row = tbody.insertRow();
+                    const stintId = index + 1;
 
-        // Right half: Empty for now
-        const rightDiv = document.createElement('div');
-        rightDiv.className = 'w-50'; // Half width, empty for now
-        const datasets = [
-            {
-                label: 'FL',
-                data: graphDataFL
-            },
-            {
-                label: 'FR',
-                data: graphDataFR
-            },
-            {
-                label: 'RL',
-                data: graphDataRL
-            },
-            {
-                label: 'RR',
-                data: graphDataRR
+                    const stintStartLap = stintData["start-lap"];
+                    const stintEndLap = stintData["end-lap"];
+                    const stintLength = `${stintData["stint-length"]} lap(s)`;
+                    let compound = "---";
+                    let tyreWear = "---";
+                    let tyreWearPerLap = "---";
+
+                    if ("tyre-set-data" in stintData && stintData["tyre-set-data"] != null) {
+                        const tyreSetData = stintData["tyre-set-data"];
+                        const tyreSetIndex = stintData["fitted-index"];
+
+                        const actualCompound = tyreSetData["actual-tyre-compound"];
+                        const tyreSetId = `${actualCompound} - ${tyreSetIndex}`;
+                        compound = tyreSetData["visual-tyre-compound"] + " (" + tyreSetId + ")";
+                        tyreWear = `${formatFloatWithTwoDecimals(tyreSetData["wear"])}%`;
+
+                        // Use parseFloat to ensure numerical calculation
+                        const wearPerLap = parseFloat(tyreSetData["wear"]) / parseFloat(stintData["stint-length"]);
+                        tyreWearPerLap = formatFloatWithTwoDecimals(wearPerLap) + "%";
+                    }
+
+                    // Populate table
+                    this.populateTableRow(row, [
+                        stintId,
+                        stintStartLap,
+                        stintEndLap,
+                        stintLength,
+                        compound,
+                        tyreWear,
+                        tyreWearPerLap,
+                    ]);
+
+                    // Populate graph data set
+                    if ("tyre-wear-history" in stintData && stintData["tyre-wear-history"].length > 0) {
+                        const wearHistory = stintData["tyre-wear-history"];
+                        wearHistory.forEach(wearData => {
+                            graphDataFL.push({
+                                x: wearData["lap-number"],
+                                y: formatFloatWithTwoDecimals(wearData["front-left-wear"]),
+                                desc: wearData["desc"],
+                            });
+                            graphDataFR.push({
+                                x: wearData["lap-number"],
+                                y: formatFloatWithTwoDecimals(wearData["front-right-wear"]),
+                                desc: wearData["desc"],
+                            });
+                            graphDataRL.push({
+                                x: wearData["lap-number"],
+                                y: formatFloatWithTwoDecimals(wearData["rear-left-wear"]),
+                                desc: wearData["desc"],
+                            });
+                            graphDataRR.push({
+                                x: wearData["lap-number"],
+                                y: formatFloatWithTwoDecimals(wearData["rear-right-wear"]),
+                                desc: wearData["desc"],
+                            });
+                        });
+                    }
+                });
+            } else {
+                const row = tbody.insertRow();
+                row.innerHTML = '<td colspan="8">Tyre Stint History data not yet available</td>';
             }
-        ];
-        const limits = {
-            min: 0,
-        }
 
-        // Pass the graph data to plotGraph function
-        const canvas = document.createElement('canvas');
+            table.appendChild(tbody);
+            leftDiv.appendChild(table);
+        };
+        const rightPanePopulator = (rightDiv) => {
+            const datasets = [
+                {
+                    label: 'FL',
+                    data: graphDataFL
+                },
+                {
+                    label: 'FR',
+                    data: graphDataFR
+                },
+                {
+                    label: 'RL',
+                    data: graphDataRL
+                },
+                {
+                    label: 'RR',
+                    data: graphDataRR
+                }
+            ];
+            const limits = {
+                min: 0,
+            }
 
-        rightDiv.classList.add('chart-container');
-        // TODO: graph is very short when only few rows exist in the table
-        plotGraph(canvas, datasets, 'Lap', 'Tyre Wear %', false, limits);
-        rightDiv.appendChild(canvas);
+            // Pass the graph data to plotGraph function
+            const canvas = document.createElement('canvas');
+            rightDiv.classList.add('chart-container');
+            plotGraph(canvas, datasets, 'Lap', 'Tyre Wear %', false, limits);
+            rightDiv.appendChild(canvas);
+        };
 
-        containerDiv.appendChild(leftDiv);
-        containerDiv.appendChild(rightDiv);
-
-        tabPane.appendChild(containerDiv);
+        this.createModalDivElelements(tabPane, leftPanePopulator, rightPanePopulator);
     }
 
     populateERSHistoryTab(tabPane) {
@@ -966,8 +950,9 @@ class DriverModalPopulator {
             { id: 'tyre-sets', method: this.populateTyreSetsInfoTab },
         ];
 
-        if ('car-setup' in this.data)
-            tabs.push({ id: 'car-setup', method: this.populateCarSetupTab });
+        if ('car-setup' in this.data) {
+          tabs.push({ id: 'car-setup', method: this.populateCarSetupTab });
+        }
 
 
         // Sort tabs alphabetically based on the label

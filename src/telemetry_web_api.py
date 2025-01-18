@@ -140,8 +140,12 @@ class OverallRaceStatsRsp:
         """Get the overall race stats and prepare the rsp fields
         """
 
-        self.m_rsp = TelData.getRaceInfo()
-        self._checkUpdateRecords()
+        # self.m_rsp = TelData.getRaceInfo()
+        # self._checkUpdateRecords()
+
+        import json
+        with open('sample-race-info.json') as f:
+            self.m_rsp = json.load(f)
 
     def _checkUpdateRecords(self):
         """
@@ -182,7 +186,9 @@ class OverallRaceStatsRsp:
 
         self.m_rsp["custom-markers"] = TelData.getCustomMarkersJSON()
         if TelData.isPositionHistorySupported():
-            self.m_rsp["position-history"] = DriversListRsp(is_spectator_mode=True).getPositionHistoryJSON()
+            drivers_list_rsp = DriversListRsp(is_spectator_mode=True)
+            self.m_rsp["position-history"] = drivers_list_rsp.getPositionHistoryJSON()
+            self.m_rsp["tyre-stint-history"] = drivers_list_rsp.getTyreStintHistoryJSON()
 
     def toJSON(self) -> Dict[str, Any]:
         """Dump this object into JSON
@@ -555,6 +561,18 @@ class DriversListRsp:
             return []
 
         return [data_per_driver.getPositionHistoryJSON() for data_per_driver in self.m_final_list]
+
+    def getTyreStintHistoryJSON(self) -> List[Dict[str, Any]]:
+        """Get tyre stint history.
+
+        Returns:
+            List[Dict[str, Any]]: The tyre stint history JSON
+        """
+
+        if not self.m_final_list:
+            return []
+
+        return [data_per_driver.getTyreStintHistoryJSON() for data_per_driver in self.m_final_list]
 
     def getBestSectorTimes(self) -> List[Optional[int]]:
         """Get best sector times.

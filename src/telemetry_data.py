@@ -283,6 +283,7 @@ class DataPerDriver:
             Args:
                 start_lap (int): The lap at which the tire set was fitted.
                 index (int): The index representing the fitted tire set.
+                tyre_set_key (Optional[str]): The key of the fitted tire set.
                 initial_tyre_wear (TyreWearPerLap): The starting tyre wear for this set (can be non 0 in case of reuse)
             """
             self.m_start_lap : int                          = start_lap
@@ -541,7 +542,6 @@ class DataPerDriver:
         final_json["warning-penalty-history"] = [entry.toJSON() for entry in self.m_warning_penalty_history]
 
         # Insert the tyre set history
-        self._computeTyreStintEndLaps()
         final_json["tyre-set-history"]= self._getTyreSetHistoryJSON()
 
         # Insert the per lap snapshot
@@ -625,29 +625,34 @@ class DataPerDriver:
 
         return self.m_tyre_wear.toJSON() if self.m_tyre_wear else None
 
-    def _getTyreSetHistoryJSON(self) -> List[Dict[str, Any]]:
+    def _getTyreSetHistoryJSON(self, include_wear_history: Optional[bool] = True) -> List[Dict[str, Any]]:
         """Get the list of tyre sets used in JSON format
+
+        Args:
+            include_wear_history (Optional[bool]): Whether to include the tyre wear history. Defaults to True.
 
         Returns:
             JSON list: JSON list containing multiple JSON objects, each representing one set of tyres used, in order.
         """
 
+        self._computeTyreStintEndLaps()
         tyre_set_history = []
         for entry in self.m_tyre_set_history:
             is_index_valid = 0 < entry.m_fitted_index < len(self.m_packet_tyre_sets.m_tyreSetData)
-            tyre_set_history.append({
-                'start-lap' : entry.m_start_lap,
-                'end-lap' : entry.m_end_lap,
-                'stint-length' : (entry.m_end_lap+1-entry.m_start_lap),
-                'fitted-index' : entry.m_fitted_index,
-                'tyre-set-data' : self.m_packet_tyre_sets.m_tyreSetData[entry.m_fitted_index].toJSON() \
-                                    if is_index_valid else None,
-                'tyre-wear-history' : entry.getTyreWearJSONList(),
-                'tyre-set-key' : entry.m_tyre_set_key
-            })
-            # Overwrite the tyre sets wear to actual recent float value
-            if (len(tyre_set_history[-1]['tyre-wear-history']) > 0) and (tyre_set_history[-1]['tyre-set-data']):
-                tyre_set_history[-1]['tyre-set-data']['wear'] = tyre_set_history[-1]['tyre-wear-history'][-1]['average']
+            tyre_set_entry = {
+                'start-lap': entry.m_start_lap,
+                'end-lap': entry.m_end_lap,
+                'stint-length': (entry.m_end_lap + 1 - entry.m_start_lap),
+                'fitted-index': entry.m_fitted_index,
+                'tyre-set-data': self.m_packet_tyre_sets.m_tyreSetData[entry.m_fitted_index].toJSON() if is_index_valid else None,
+                'tyre-set-key': entry.m_tyre_set_key
+            }
+            if include_wear_history:
+                tyre_set_entry['tyre-wear-history'] = entry.getTyreWearJSONList()
+                # Overwrite the tyre sets wear to actual recent float value
+                if (len(tyre_set_entry['tyre-wear-history']) > 0) and (tyre_set_entry['tyre-set-data']):
+                    tyre_set_entry['tyre-set-data']['wear'] = tyre_set_entry['tyre-wear-history'][-1]['average']
+            tyre_set_history.append(tyre_set_entry)
 
         return tyre_set_history
 
@@ -915,29 +920,6 @@ class DataPerDriver:
             # For the last tyre stint, get end lap num from session history
             self.m_tyre_set_history[-1].m_end_lap = self.m_packet_session_history.m_numLaps
 
-    def _cleanTyreStintHistory(self) -> None:
-        """
-            If consecutive entries with same start lap exist, only the last instance will be retained.
-            NOTE: Consecutive duplicate entries are created when the player spams flashback in the pit lane
-
-            In F1 24, if the driver modifies the strategy before start of race, the game exports the original tyre set
-                with start lap as 1. This messes with the zeroth lap data point.
-
-        """
-
-        last_occurrence_dict = OrderedDict()
-
-        for entry in self.m_tyre_set_history:
-            last_occurrence_dict[entry.m_start_lap] = entry
-
-        cleaned_tyre_set_history_list = list(last_occurrence_dict.values())
-        # Update the history list
-        self.m_tyre_set_history = cleaned_tyre_set_history_list
-
-        if self.m_tyre_set_history[0].m_start_lap == 1 and self.m_tyre_set_history[0].m_end_lap == 0:
-            png_logger.debug(f"removing tyre stint with start_lap=1 and end_lap=0 for driver {self.m_name}")
-            del self.m_tyre_set_history[0]
-
     def getTyreSetInfoAtLap(self, lap_num: Optional[int] = None) -> Optional[TyreSetInfo]:
         """Get the tyre set info at the specified lap number
 
@@ -1031,6 +1013,21 @@ class DataPerDriver:
                 }
                 for lap_number, snapshot_record in self._getNextLapSnapshot()
             ]
+        }
+
+    def getTyreStintHistoryJSON(self) -> Dict[str, Any]:
+        """Get the tyre stint history JSON.
+
+        Returns:
+            Dict[str, Any]: Tyre stint history JSON
+        """
+
+        return {
+            "name": self.m_name,
+            "team": self.m_team,
+            "driver-number": self.m_driver_number,
+            "delta-to-leader" : self.m_delta_to_leader,
+            "tyre-stint-history": self._getTyreSetHistoryJSON(include_wear_history=False),
         }
 
     def updateLapDataPacketCopy(self, lap_data: LapData, full_lap_distance: int) -> None:
@@ -1213,7 +1210,16 @@ class DataPerDriver:
         best_sector_3_lap = self.m_packet_session_history.m_bestSector3LapNum
         best_sector_2_lap = self.m_packet_session_history.m_bestSector2LapNum
         best_sector_1_lap = self.m_packet_session_history.m_bestSector1LapNum
-        lap_obj = self.m_packet_session_history.m_lapHistoryData[lap_num-1]
+        if for_best_lap:
+            lap_obj = self.m_packet_session_history.m_lapHistoryData[lap_num-1]
+        else:
+            # last lap may be full of zeroes, skip that
+            for curr_lap_obj in reversed(self.m_packet_session_history.m_lapHistoryData):
+                # find the first non zero lap, stupid game and its bugs
+                if curr_lap_obj.m_lapTimeInMS == 0:
+                    continue
+                lap_obj = curr_lap_obj
+                break
 
         return [
             self._get_sector_status(
@@ -1646,8 +1652,6 @@ class DriverData:
 
         final_json = packet.toJSON()
         is_position_history_supported = isPositionHistorySupported()
-        if is_position_history_supported:
-            final_json["position-history"] = []
         for index, data in enumerate(packet.m_classificationData):
             obj_to_be_updated = self.m_driver_data.get(index, None)
             # Perform the final snapshot
@@ -1659,7 +1663,13 @@ class DriverData:
             obj_to_be_updated.m_packet_final_classification = data
             final_json["classification-data"][index] = obj_to_be_updated.toJSON(index)
             if is_position_history_supported:
-                final_json["position-history"].append(obj_to_be_updated.getPositionHistoryJSON())
+                final_json["position-history"] = \
+                    [driver_data.getPositionHistoryJSON() for driver_data in self.m_driver_data.values()]
+                final_json["tyre-stint-history"] = \
+                    [driver_data.getTyreStintHistoryJSON() for driver_data in self.m_driver_data.values()]
+            else:
+                final_json["position-history"] = []
+                final_json["tyre-stint-history"] = []
         final_json['classification-data'] = sorted(final_json['classification-data'], key=lambda x: x['track-position'])
         final_json['game-year'] = self.m_game_year
         self.m_final_json = final_json
