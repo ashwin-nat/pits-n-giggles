@@ -10,6 +10,7 @@ def get_data_paths_main_app():
 
     data_paths = [
         (base_src_path / 'static' / 'favicon.ico', 'src/static/'),
+        (base_src_path / 'static' , 'src/static/'),
         (base_src_path / 'templates' / 'index.html', 'src/templates/'),
         (base_src_path / 'templates' / 'player-stream-overlay.html', 'src/templates/')
     ]
@@ -21,8 +22,8 @@ def get_data_paths_replayer():
     base_src_path = Path('src')
 
     data_paths = [
-        (base_src_path / 'static' / 'favicon.ico', 'src/static/'),
-        (base_src_path / 'templates' / 'index.html', 'src/templates/'),
+        (str(base_src_path / 'static'), 'static'),
+        (str(base_src_path / 'templates'), 'templates'),
     ]
 
     # Convert paths to strings for PyInstaller compatibility

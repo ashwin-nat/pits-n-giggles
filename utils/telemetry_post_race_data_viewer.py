@@ -23,6 +23,7 @@
 
 from typing import Dict, Any, List, Set, Tuple, Optional
 from http import HTTPStatus
+from pathlib import Path
 import logging
 import json
 from threading import Lock, Thread
@@ -571,7 +572,17 @@ class TelemetryWebServer:
         Args:
             port (int): Port number for the server.
         """
-        self.m_app = Flask(__name__, template_folder='../src/templates', static_folder='../src/static')
+        # Check if we're running in a PyInstaller bundle or not
+        if hasattr(sys, '_MEIPASS'):
+            base_dir = Path(sys._MEIPASS)
+        else:
+            base_dir = Path(__file__).parent.parent / 'src'
+
+        self.m_app = Flask(
+            __name__,
+            template_folder=str(base_dir / 'templates'),
+            static_folder=str(base_dir / 'static'),
+        )
         self.m_app.config['PROPAGATE_EXCEPTIONS'] = True
         self.m_app.config["EXPLAIN_TEMPLATE_LOADING"] = True
         self.m_port = port
@@ -587,7 +598,7 @@ class TelemetryWebServer:
             Returns:
                 file: Favicon file
             """
-            return send_from_directory('static', 'favicon.ico', mimetype='image/vnd.microsoft.icon')
+            return send_from_directory(self.m_app.static_folder, 'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
         # Render the HTML page
         @self.m_app.route('/')
@@ -598,7 +609,6 @@ class TelemetryWebServer:
             Returns:
                 str: HTML page content.
             """
-
             return render_template('index.html')
 
         # Define your endpoint
@@ -626,6 +636,61 @@ class TelemetryWebServer:
         @self.m_app.route('/race-info', methods=['GET'])
         def raceInfo() -> Dict[str, Any]:
             return handleRaceInfoRequest()
+
+        @self.m_app.route('/tyre-icons/soft.svg')
+        def softTyreIcon():
+            """
+            Endpoint for the soft tyre icon.
+
+            Returns:
+                str: HTML page content.
+            """
+
+            return send_from_directory(self.m_app.static_folder, 'tyre-icons/soft_tyre.svg', mimetype='image/svg+xml')
+
+        @self.m_app.route('/tyre-icons/medium.svg')
+        def mediumTyreIcon():
+            """
+            Endpoint for the medium tyre icon.
+
+            Returns:
+                str: HTML page content.
+            """
+
+            return send_from_directory(self.m_app.static_folder, 'tyre-icons/medium_tyre.svg', mimetype='image/svg+xml')
+
+        @self.m_app.route('/tyre-icons/hard.svg')
+        def hardTyreIcon():
+            """
+            Endpoint for the hard tyre icon.
+
+            Returns:
+                str: HTML page content.
+            """
+
+            return send_from_directory(self.m_app.static_folder, 'tyre-icons/hard_tyre.svg', mimetype='image/svg+xml')
+
+        @self.m_app.route('/tyre-icons/intermediate.svg')
+        def interTyreIcon():
+            """
+            Endpoint for the intermediate tyre icon.
+
+            Returns:
+                str: HTML page content.
+            """
+
+            return send_from_directory(self.m_app.static_folder, 'tyre-icons/intermediate_tyre.svg', mimetype='image/svg+xml')
+
+        @self.m_app.route('/tyre-icons/wet.svg')
+        def wetTyreIcon():
+            """
+            Endpoint for the wet tyre icon.
+
+            Returns:
+                str: HTML page content.
+            """
+
+            return send_from_directory(self.m_app.static_folder, 'tyre-icons/wet_tyre.svg', mimetype='image/svg+xml')
 
         # Socketio endpoints
         @self.m_socketio.on('connect')
