@@ -975,30 +975,32 @@ def open_file():
     else:
         status_label.config(text="No file selected")
 
-def start_ui():
+def reopen_webpage():
+    webbrowser.open(f'http://localhost:{port_number}', new=2)
+
+def start_ui(port_number):
     global ui_initialized
     if not ui_initialized:
         ui_initialized = True  # Set flag to True
-        # Create the main window
         print("UI thread")
         root = tk.Tk()
-        root.title("F1 Post race analyzer")
+        root.title("F1 Post Race Analyzer")
 
-        # Create a frame for the content
         frame = tk.Frame(root)
         frame.pack(padx=10, pady=10)
 
-        # Create a label for status
         global status_label
         status_label = tk.Label(frame, text="No file selected")
-        status_label.pack()
+        status_label.grid(row=0, column=0, columnspan=2, pady=(0, 10))  # Spanning two columns
 
-        # Create a button to open a file dialog
-        open_button = tk.Button(frame, text="Open File", command=open_file)
-        open_button.pack()
+        open_file_button = tk.Button(frame, text="Open File", command=open_file)
+        open_file_button.grid(row=1, column=0, padx=(0, 10))  # Position in column 0
 
-        # Run the Tkinter event loop
-        root.protocol("WM_DELETE_WINDOW", on_closing)  # Call on_closing when window is closed
+        open_webpage_button = tk.Button(frame, text="Open UI",
+                                        command=lambda: webbrowser.open(f'http://localhost:{port_number}', new=2))
+        open_webpage_button.grid(row=1, column=1)  # Position in column 1 (to the right of the open_button)
+
+        root.protocol("WM_DELETE_WINDOW", on_closing)
         root.mainloop()
 
 def on_closing():
@@ -1014,7 +1016,7 @@ def openWebPage(port_number : int) -> None:
 
     """
     time.sleep(1)
-    webbrowser.open('http://localhost:' + str(port_number), new=2)
+    webbrowser.open(f'http://localhost:{port_number}', new=2)
 
 def find_free_port():
     """Find an available port."""
@@ -1028,7 +1030,7 @@ def main():
     port_number = find_free_port()
 
     # Start Tkinter UI
-    ui_thread = Thread(target=start_ui)
+    ui_thread = Thread(target=start_ui, args=(port_number,))
     ui_thread.start()
 
     # Open the webpage
@@ -1036,7 +1038,7 @@ def main():
     webpage_thread.start()
 
     # Start Flask server after Tkinter UI is initialized
-    print("Starting server. It can be accessed at http://localhost:" + str(port_number))
+    print(f"Starting server. It can be accessed at http://localhost:{str(port_number)}")
     global _server
     _server = TelemetryWebServer(
         port=port_number)

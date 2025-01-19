@@ -903,8 +903,9 @@ class DriverModalPopulator {
             { id: 'tyre-sets', label: 'Tyre Sets' },
         ];
 
-        if ('car-setup' in this.data)
+        if ('car-setup' in this.data) {
             tabs.push({ id: 'car-setup', label: 'Car Setup' });
+        }
 
         // Sort tabs alphabetically based on the label
         tabs.sort((a, b) => a.label.localeCompare(b.label));

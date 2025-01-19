@@ -1210,6 +1210,7 @@ class DataPerDriver:
         best_sector_3_lap = self.m_packet_session_history.m_bestSector3LapNum
         best_sector_2_lap = self.m_packet_session_history.m_bestSector2LapNum
         best_sector_1_lap = self.m_packet_session_history.m_bestSector1LapNum
+        lap_obj = None
         if for_best_lap:
             lap_obj = self.m_packet_session_history.m_lapHistoryData[lap_num-1]
         else:
@@ -1221,6 +1222,7 @@ class DataPerDriver:
                 lap_obj = curr_lap_obj
                 break
 
+        # lap_obj may be not present, in case of FP or quali, return default val
         return [
             self._get_sector_status(
                 sector_time=lap_obj.m_sector1TimeInMS,
@@ -1237,7 +1239,7 @@ class DataPerDriver:
                 sector_best_ms=sector_3_best_ms,
                 is_best_sector_lap=(lap_num == best_sector_3_lap),
                 sector_valid_flag=lap_obj.isSector3Valid()),
-        ]
+        ] if lap_obj else default_val
 
     def _get_sector_status(
         self,

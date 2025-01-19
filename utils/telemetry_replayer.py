@@ -28,6 +28,7 @@ import struct
 import time
 import sys
 import os
+import random
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -35,6 +36,19 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # Now perform the import
 from lib.packet_cap import F1PacketCapture
 
+def should_drop(probability_percentage: int) -> bool:
+    """
+    Returns True with the given probability percentage.
+
+    Args:
+        probability_percentage (int): A value between 0 and 100 representing the probability.
+
+    Returns:
+        bool: True if should drop this packet
+    """
+    if not (0 <= probability_percentage <= 100):
+        raise ValueError("Probability percentage must be between 0 and 100.")
+    return random.uniform(0, 100) < probability_percentage
 
 def sendBytesUDP(data: bytes, udp_ip: str, udp_port: int) -> int:
     """Send the given list of bytes to the specified destination over UDP
@@ -77,6 +91,7 @@ def main():
     parser.add_argument("--file-name", help="Name of the capture file")
     parser.add_argument("--ip-addr", default="127.0.0.1", help="Server IP address (default: 127.0.0.1)")
     parser.add_argument("--port", type=int, default=20777, help="Server port number (default: 20777)")
+    parser.add_argument("--packet-loss", type=int, default=None, help="The packet loss percentage to simulate")
     parser.add_argument('--no-nagle',  action='store_true', help="Disable Nagle's Algorithm in TCP mode")
     parser.add_argument('--udp-mode',  action='store_true',
                             help="Send telemetry over UDP considering timestamps as well")
@@ -95,8 +110,9 @@ def main():
     try:
         # Read and parse the file
         captured_packets = F1PacketCapture(args.file_name)
+        total_bytes = 0
+        dropped_packets = 0
         if args.udp_mode:
-            total_bytes = 0
             total_packets = captured_packets.getNumPackets()
             prev_timestamp = captured_packets.getFirstTimestamp()
 
@@ -107,16 +123,17 @@ def main():
                 mininterval=0.1
             )
             for timestamp, packet in captured_packets.getPackets():
-
+                progress_bar.update(1)
+                if args.packet_loss and should_drop(args.packet_loss):
+                    dropped_packets += 1
+                    continue
                 total_bytes += sendBytesUDP(packet, args.ip_addr, args.port)
                 sleep_duration = timestamp - prev_timestamp
                 prev_timestamp = timestamp
                 assert (sleep_duration > 0)
-                progress_bar.update(1)
                 time.sleep(sleep_duration)
         else:
             # TCP mode
-            total_bytes = 0
             total_packets = captured_packets.getNumPackets()
             client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client_socket.connect((args.ip_addr, args.port))
@@ -135,7 +152,10 @@ def main():
 
             # Send each packet one by one and update the progress bar
             for _, packet in captured_packets.getPackets():
-
+                progress_bar.update(1)
+                if args.packet_loss and should_drop(args.packet_loss):
+                    dropped_packets += 1
+                    continue
                 # Prefix each message with its length (as a 4-byte integer)
                 message_length = len(packet)
                 message_length_bytes = struct.pack('!I', message_length)
@@ -144,10 +164,12 @@ def main():
                 client_socket.sendall(message_length_bytes + packet)
                 total_bytes += message_length
 
-                progress_bar.update(1)
 
             print('\nSent ' + str(total_packets) + ' packets.')
-            print('Sent ' + str(total_bytes) + ' bytes.')
+            print(f'Sent {str(total_bytes)} bytes.')
+            if args.packet_loss:
+                dropped_rate = (dropped_packets / total_packets) * 100.0
+                print(f'Dropped {dropped_packets} packets ({dropped_rate:.3f}% loss).')
 
     except KeyboardInterrupt:
         print("Client terminated by user.")
