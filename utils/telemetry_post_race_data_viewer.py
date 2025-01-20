@@ -31,7 +31,6 @@ import sys
 import os
 import tkinter as tk
 from tkinter import filedialog
-import time
 import webbrowser
 import socket
 # pylint: disable=unused-import
@@ -47,9 +46,17 @@ from lib.tyre_wear_extrapolator import TyreWearPerLap
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_socketio import SocketIO, emit
 
+def find_free_port():
+    """Find an available port."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('localhost', 0))
+        return s.getsockname()[1]
+
 g_json_data = {}
 g_json_path = ''
 g_json_lock = Lock()
+g_first_file = True
+g_port_number = find_free_port()
 ui_initialized = False  # Flag to track if UI has been initialized
 _race_table_clients : Set[str] = set()
 _player_overlay_clients : Set[str] = set()
@@ -959,6 +966,7 @@ def open_file_helper(file_path):
         global g_json_lock
         global g_json_data
         global g_json_path
+        global g_first_file
         with g_json_lock:
             g_json_data = json.load(f)
             g_json_path = file_path
@@ -966,6 +974,9 @@ def open_file_helper(file_path):
             should_write = False
             should_write |= checkRecomputeJSON(g_json_data)
         sendRaceTable()
+        if g_first_file:
+            g_first_file = False
+            webbrowser.open(f'http://localhost:{g_port_number}', new=2)
     print("Opened file: " + file_path)
 
 def open_file():
@@ -976,10 +987,7 @@ def open_file():
     else:
         status_label.config(text="No file selected")
 
-def reopen_webpage():
-    webbrowser.open(f'http://localhost:{port_number}', new=2)
-
-def start_ui(port_number):
+def start_ui():
     global ui_initialized
     if not ui_initialized:
         ui_initialized = True  # Set flag to True
@@ -998,7 +1006,7 @@ def start_ui(port_number):
         open_file_button.grid(row=1, column=0, padx=(0, 10))  # Position in column 0
 
         open_webpage_button = tk.Button(frame, text="Open UI",
-                                        command=lambda: webbrowser.open(f'http://localhost:{port_number}', new=2))
+                                        command=lambda: webbrowser.open(f'http://localhost:{g_port_number}', new=2))
         open_webpage_button.grid(row=1, column=1)  # Position in column 1 (to the right of the open_button)
 
         root.protocol("WM_DELETE_WINDOW", on_closing)
@@ -1008,43 +1016,19 @@ def on_closing():
     print("UI done")
     os._exit(0)
 
-
-def openWebPage(port_number : int) -> None:
-    """Open the webpage on a new browser tab.
-
-    Args:
-        port_number (int) : The port number of the server
-
-    """
-    time.sleep(1)
-    webbrowser.open(f'http://localhost:{port_number}', new=2)
-
-def find_free_port():
-    """Find an available port."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(('localhost', 0))
-        return s.getsockname()[1]
-
 def main():
 
     print(f"cwd: {os.getcwd()}")
 
-    # Get port number
-    port_number = find_free_port()
-
     # Start Tkinter UI
-    ui_thread = Thread(target=start_ui, args=(port_number,))
+    ui_thread = Thread(target=start_ui)
     ui_thread.start()
 
-    # Open the webpage
-    webpage_thread = Thread(target=openWebPage, args=(port_number,))
-    webpage_thread.start()
-
     # Start Flask server after Tkinter UI is initialized
-    print(f"Starting server. It can be accessed at http://localhost:{str(port_number)}")
+    print(f"Starting server. It can be accessed at http://localhost:{str(g_port_number)}")
     global _server
     _server = TelemetryWebServer(
-        port=port_number)
+        port=g_port_number)
     _server.run()
 
 if __name__ == "__main__":
