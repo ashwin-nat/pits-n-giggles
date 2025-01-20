@@ -146,14 +146,14 @@ class TyreWearExtrapolator:
             bool: True if sufficient
         """
 
-        # m_total_laps will be None in quali
-        if self.m_total_laps is None:
+        # m_total_laps will be None in quali. End of race, return insufficient data
+        if (self.m_total_laps is None) or (self.m_remaining_laps <= 0):
             return False
 
         racing_data = [point for interval in self.m_intervals \
                        if all(point.is_racing_lap for point in interval) for point in interval]
         ret_status = (len(racing_data) > 1)
-        if ret_status and (self.m_remaining_laps > 0):
+        if ret_status:
             assert len(self.m_predicted_tyre_wear) > 0
         return ret_status
 

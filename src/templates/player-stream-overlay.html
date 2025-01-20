@@ -32,14 +32,20 @@
 
         body {
             font-family: 'Exo 2', sans-serif;
-            background-color: transparent; /* Keeps it overlay-ready */
-            color: var(--f1-text, #ffffff); /* Default to white text if --f1-text is not defined */
+            background-color: transparent;
+            /* Keeps it overlay-ready */
+            color: var(--f1-text, #ffffff);
+            /* Default to white text if --f1-text is not defined */
             line-height: 1.5;
             min-height: 100vh;
-            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8); /* Adds a shadow for better contrast on bright or dynamic backgrounds */
-            margin: 0; /* Removes default margins for a cleaner overlay */
-            padding: 0; /* Ensures no unwanted spacing */
-            box-sizing: border-box; /* Keeps sizing predictable */
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+            /* Adds a shadow for better contrast on bright or dynamic backgrounds */
+            margin: 0;
+            /* Removes default margins for a cleaner overlay */
+            padding: 0;
+            /* Ensures no unwanted spacing */
+            box-sizing: border-box;
+            /* Keeps sizing predictable */
         }
 
 
@@ -66,9 +72,9 @@
         .text-purple {
             background-color: #800080;
         }
-
     </style>
 </head>
+
 <body>
 
     <div class="container-fluid d-flex flex-column">
@@ -83,22 +89,22 @@
             <div class="col d-flex align-items-center justify-content-center">
                 <div class="conditions">
                     <div class="condition-item">
-                      <i class="fa-solid fa-road condition-icon"></i>
-                      <span id="track-temp" class="condition-value"></span>
+                        <i class="fa-solid fa-road condition-icon"></i>
+                        <span id="track-temp" class="condition-value"></span>
                     </div>
                     <div class="condition-item">
-                      <i class="bi bi-thermometer-half condition-icon"></i>
-                      <span id="air-temp" class="condition-value"></span>
+                        <i class="bi bi-thermometer-half condition-icon"></i>
+                        <span id="air-temp" class="condition-value"></span>
                     </div>
                     <div class="condition-item">
                         <i class="bi bi-exclamation-triangle condition-icon"></i>
                         <span id="track-limits-warnings" class="condition-value"></span>
                     </div>
                     <div class="condition-item">
-                      <div id="pit-speed-limit" class="speed-limit-sign"></div>
+                        <div id="pit-speed-limit" class="speed-limit-sign"></div>
                     </div>
 
-                  </div>
+                </div>
             </div>
 
             <!-- Weather div -->
@@ -132,8 +138,8 @@
             <div class="col d-flex align-items-center justify-content-center carTelemetryContainer">
                 <div id="CarTelemetryWidget" class="telemetry-widget">
                     <div class="car-telemetry-section">
-                        <div id="throttleContainer" class="telemetry-pedal-container">
-                            <div id="throttleBar" class="telemetry-pedal telemetry-throttle"></div>
+                        <div id="brakeContainer" class="telemetry-pedal-container">
+                            <div id="brakeBar" class="telemetry-pedal telemetry-brake"></div>
                         </div>
 
                         <div class="car-telemetry-chart-section">
@@ -147,8 +153,8 @@
                             </div>
                         </div>
 
-                        <div id="brakeContainer" class="telemetry-pedal-container">
-                            <div id="brakeBar" class="telemetry-pedal telemetry-brake"></div>
+                        <div id="throttleContainer" class="telemetry-pedal-container">
+                            <div id="throttleBar" class="telemetry-pedal telemetry-throttle"></div>
                         </div>
                     </div>
                 </div>
@@ -157,8 +163,8 @@
 
             <!-- TODO: Notification -->
             <div class="col d-flex align-items-center justify-content-center">
-                Top row: Lap time history, general stats, weather<br/>
-                Bottom row: G force, input telemetry, unused<br/>
+                Top row: Lap time history, general stats, weather<br />
+                Bottom row: G force, input telemetry, unused<br />
             </div>
         </div>
     </div>
@@ -172,7 +178,180 @@
     <script src="{{ url_for('static', filename='js/gForceOverlay.js') }}"></script>
     <script src="{{ url_for('static', filename='js/carTelemetryOverlay.js') }}"></script>
     <script>
-        // initGForceGraph();
+        const sampleStreamOverlayJSON = {
+            "car-telemetry": {
+                "brake": 0,
+                "steering": -0.8164450526237488,
+                "throttle": 100
+            },
+            "f1-game-year": 24,
+            "g-force": {
+                "lat": 0.36567622423171997,
+                "long": 0.37355566024780273,
+                "vert": 0.06564931571483612
+            },
+            "lap-time-history": {
+                "fastest-lap-number": 5,
+                "fastest-s1-lap-number": 4,
+                "fastest-s2-lap-number": 5,
+                "fastest-s3-lap-number": 4,
+                "global-fastest-lap-ms": 66622,
+                "global-fastest-s1-ms": 16246,
+                "global-fastest-s2-ms": 29718,
+                "global-fastest-s3-ms": 20204,
+                "lap-time-history-data": [
+                    {
+                        "lap-number": 1,
+                        "lap-time-in-ms": 73077,
+                        "lap-time-str": "01:13.077",
+                        "lap-valid-bit-flags": 15,
+                        "sector-1-time-in-ms": 21421,
+                        "sector-1-time-minutes": 0,
+                        "sector-1-time-str": "21.421",
+                        "sector-2-time-in-ms": 30456,
+                        "sector-2-time-minutes": 0,
+                        "sector-2-time-str": "30.456",
+                        "sector-3-time-in-ms": 21199,
+                        "sector-3-time-minutes": 0,
+                        "sector-3-time-str": "21.199",
+                        "tyre-set-info": {
+                            "actual-tyre-compound": "C5",
+                            "tyre-age-laps": 0,
+                            "tyre-set-id": 6,
+                            "visual-tyre-compound": "Soft"
+                        }
+                    },
+                    {
+                        "lap-number": 2,
+                        "lap-time-in-ms": 67820,
+                        "lap-time-str": "01:07.820",
+                        "lap-valid-bit-flags": 15,
+                        "sector-1-time-in-ms": 17104,
+                        "sector-1-time-minutes": 0,
+                        "sector-1-time-str": "17.104",
+                        "sector-2-time-in-ms": 30392,
+                        "sector-2-time-minutes": 0,
+                        "sector-2-time-str": "30.392",
+                        "sector-3-time-in-ms": 20323,
+                        "sector-3-time-minutes": 0,
+                        "sector-3-time-str": "20.323",
+                        "tyre-set-info": {
+                            "actual-tyre-compound": "C5",
+                            "tyre-age-laps": 1,
+                            "tyre-set-id": 6,
+                            "visual-tyre-compound": "Soft"
+                        }
+                    },
+                    {
+                        "lap-number": 3,
+                        "lap-time-in-ms": 66931,
+                        "lap-time-str": "01:06.931",
+                        "lap-valid-bit-flags": 15,
+                        "sector-1-time-in-ms": 16590,
+                        "sector-1-time-minutes": 0,
+                        "sector-1-time-str": "16.590",
+                        "sector-2-time-in-ms": 30091,
+                        "sector-2-time-minutes": 0,
+                        "sector-2-time-str": "30.091",
+                        "sector-3-time-in-ms": 20249,
+                        "sector-3-time-minutes": 0,
+                        "sector-3-time-str": "20.249",
+                        "tyre-set-info": {
+                            "actual-tyre-compound": "C5",
+                            "tyre-age-laps": 3,
+                            "tyre-set-id": 6,
+                            "visual-tyre-compound": "Soft"
+                        }
+                    },
+                    {
+                        "lap-number": 4,
+                        "lap-time-in-ms": 66884,
+                        "lap-time-str": "01:06.884",
+                        "lap-valid-bit-flags": 15,
+                        "sector-1-time-in-ms": 16350,
+                        "sector-1-time-minutes": 0,
+                        "sector-1-time-str": "16.350",
+                        "sector-2-time-in-ms": 30329,
+                        "sector-2-time-minutes": 0,
+                        "sector-2-time-str": "30.329",
+                        "sector-3-time-in-ms": 20204,
+                        "sector-3-time-minutes": 0,
+                        "sector-3-time-str": "20.204",
+                        "tyre-set-info": {
+                            "actual-tyre-compound": "C5",
+                            "tyre-age-laps": 3,
+                            "tyre-set-id": 6,
+                            "visual-tyre-compound": "Soft"
+                        }
+                    },
+                    {
+                        "lap-number": 5,
+                        "lap-time-in-ms": 66622,
+                        "lap-time-str": "01:06.622",
+                        "lap-valid-bit-flags": 15,
+                        "sector-1-time-in-ms": 16395,
+                        "sector-1-time-minutes": 0,
+                        "sector-1-time-str": "16.395",
+                        "sector-2-time-in-ms": 29983,
+                        "sector-2-time-minutes": 0,
+                        "sector-2-time-str": "29.983",
+                        "sector-3-time-in-ms": 20243,
+                        "sector-3-time-minutes": 0,
+                        "sector-3-time-str": "20.243",
+                        "tyre-set-info": {
+                            "actual-tyre-compound": "C5",
+                            "tyre-age-laps": 5,
+                            "tyre-set-id": 6,
+                            "visual-tyre-compound": "Soft"
+                        }
+                    }
+                ]
+            },
+            "penalties-and-stats": {
+                "air-temperature": 22,
+                "circuit": "Austria",
+                "corner-cutting-warnings": 0,
+                "num-collisions": 5,
+                "pit-speed-limit": 80,
+                "speed-trap-record": 319.41497802734375,
+                "time-penalties": 0,
+                "total-warnings": 0,
+                "track-temperature": 32,
+                "unserved-drive-through-pens": 0,
+                "unserved-stop-go-pens": 0
+            },
+            "tyre-wear": {
+                "current": {
+                    "average": 12.315814018249512,
+                    "desc": "Curr tyre wear",
+                    "front-left-wear": 10.466483116149902,
+                    "front-right-wear": 13.985130310058594,
+                    "lap-number": 5,
+                    "rear-left-wear": 12.046117782592773,
+                    "rear-right-wear": 12.765524864196777
+                },
+                "pit-window": 0,
+                "predictions": []
+            },
+            "weather-forecast-samples": [
+                {
+                    "rain-probability": 18,
+                    "time-offset": 0,
+                    "weather": "Overcast"
+                },
+                {
+                    "rain-probability": 18,
+                    "time-offset": 5,
+                    "weather": "Overcast"
+                },
+                {
+                    "rain-probability": 18,
+                    "time-offset": 10,
+                    "weather": "Overcast"
+                }
+            ]
+        };
+        let firstDataReceived = false;
         const socket = io();
         const carTelemetryWidget = new CarTelemetryWidget('CarTelemetryWidget');
         const gForceDisplayWidget = new GForceDisplay('gforce-display');
@@ -187,6 +366,18 @@
         });
 
         socket.on('player-overlay-update', function (data) {
+            if (!firstDataReceived && data["f1-game-year"] !== null) {
+                firstDataReceived = true;
+            }
+            if (!firstDataReceived) {
+                if (data["f1-game-year"] === null) {
+                    data = sampleStreamOverlayJSON;
+                } else {
+                    firstDataReceived = true;
+                }
+            }
+
+            // Update the widgets with the actual data
             carTelemetryWidget.update(data["car-telemetry"]);
             pensStatsWidget.update(data["penalties-and-stats"], data["f1-game-year"]);
             lapTimesWidget.update(data["lap-time-history"]);

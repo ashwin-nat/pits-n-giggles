@@ -1,6 +1,7 @@
 class DriverModalPopulator {
     constructor(data) {
         this.data = data;
+        this.tableClassNames = 'table table-bordered table-striped table-dark';
     }
 
     populateLapTimesTab(tabPane) {
@@ -16,7 +17,7 @@ class DriverModalPopulator {
         leftDiv.className = 'w-50';
 
         const table = document.createElement('table');
-        table.className = 'table table-bordered table-striped table-dark';
+        table.className = this.tableclassnames;
 
         // Create table header
         const thead = document.createElement('thead');
@@ -151,7 +152,7 @@ class DriverModalPopulator {
         leftDiv.className = 'w-50'; // Half width
 
         const table = document.createElement('table');
-        table.className = 'table table-bordered table-striped table-dark';
+        table.className = this.tableclassnames;
 
         // Create table header
         const thead = document.createElement('thead');
@@ -257,7 +258,7 @@ class DriverModalPopulator {
         const leftPanePopulator = (leftDiv) => {
             const tyreSetsHistoryData = this.data["tyre-set-history"];
             const table = document.createElement('table');
-            table.className = 'table table-bordered table-striped table-dark';
+            table.className = this.tableclassnames;
 
             // Create table header
             const thead = document.createElement('thead');
@@ -284,13 +285,22 @@ class DriverModalPopulator {
             // Create table body and populate
             const tbody = document.createElement('tbody');
             if (tyreSetsHistoryData.length > 0) {
+                let count = 0;
                 tyreSetsHistoryData.forEach((stintData, index) => {
-                    const row = tbody.insertRow();
-                    const stintId = index + 1;
 
                     const stintStartLap = stintData["start-lap"];
                     const stintEndLap = stintData["end-lap"];
                     const stintLength = `${stintData["stint-length"]} lap(s)`;
+
+                    // backward compatibility for files saved with invalid first stint history record bug
+                    if ((stintData["stint-length"] == 0) || (stintData["start-lap"] < "stint-history"["end-lap"])) {
+                        console.debug("Skipping row with invalid data", stintData, index);
+                        return;
+                    }
+
+                    const row = tbody.insertRow();
+                    const stintId = count + 1;
+
                     let compound = "---";
                     let tyreWear = "---";
                     let tyreWearPerLap = "---";
@@ -346,6 +356,7 @@ class DriverModalPopulator {
                             });
                         });
                     }
+                    count++;
                 });
             } else {
                 const row = tbody.insertRow();
@@ -395,7 +406,7 @@ class DriverModalPopulator {
         const graphDataHarvested = [];
         const leftPanePopulator = (leftDiv) => {
             const table = document.createElement('table');
-            table.className = 'table table-bordered table-striped table-dark';
+            table.className = this.tableclassnames;
 
             // Create table header
             const thead = document.createElement('thead');
@@ -527,7 +538,7 @@ class DriverModalPopulator {
 
         const panePopulator = (divElement, tableData) => {
             const table = document.createElement('table');
-            table.className = 'table table-bordered table-striped table-dark';
+            table.className = this.tableclassnames;
 
             // Create table header
             const thead = document.createElement('thead');
@@ -574,7 +585,7 @@ class DriverModalPopulator {
                 });
             } else {
                 const row = tbody.insertRow();
-                row.innerHTML = '<td colspan="5">Tyre wear prediction data not available</td>';
+                row.innerHTML = '<td colspan="6">Tyre wear prediction data not available</td>';
             }
 
             table.appendChild(tbody);
@@ -594,7 +605,7 @@ class DriverModalPopulator {
 
         const leftPanePopulator = (leftDiv) => {
             const table = document.createElement('table');
-            table.className = 'table table-bordered table-striped table-dark';
+            table.className = this.tableclassnames;
 
             // Create table header
             // const thead = document.createElement('thead');
@@ -665,7 +676,7 @@ class DriverModalPopulator {
 
         const rightPanePopulator = (rightDiv) => {
             const table = document.createElement('table');
-            table.className = 'table table-bordered table-striped table-dark';
+            table.className = this.tableclassnames;
 
             // Create table header
             const thead = document.createElement('thead');
@@ -726,7 +737,7 @@ class DriverModalPopulator {
     populateCollisionsInfoTab(tabPane) {
 
         const table = document.createElement('table');
-        table.className = 'table table-bordered table-striped table-dark';
+        table.className = this.tableclassnames;
 
         // Create table header
         const thead = document.createElement('thead');
@@ -775,23 +786,16 @@ class DriverModalPopulator {
         const tyreSets = this.sanitizeTyreSetData(this.data['tyre-sets']['tyre-set-data']);
         console.log("sanitized data", tyreSets);
 
-        // Sample data for accordion groups (without populating inner tables)
-        const data = [
-            { id: 1, name: 'Group A', details: 'Group A details' },
-            { id: 2, name: 'Group B', details: 'Group B details' },
-            { id: 3, name: 'Group C', details: 'Group C details' },
-        ];
-
         // Create the accordion container
         const accordionContainer = document.createElement('div');
-        accordionContainer.className = 'accordion';
+        accordionContainer.className = 'accordion bg-dark';
         accordionContainer.id = 'tyreSetsAccordion';
 
         // Generate accordion items
         tyreSets.forEach((tyreSetGroup, index) => {
             // Create an accordion item (group)
             const accordionItem = document.createElement('div');
-            accordionItem.className = 'accordion-item';
+            accordionItem.className = 'accordion-item accordion-flush bg-dark border-secondary';
 
             // Accordion header (the clickable row)
             const accordionHeader = document.createElement('h2');
@@ -799,7 +803,7 @@ class DriverModalPopulator {
             accordionHeader.id = `heading${index}`;
 
             accordionHeader.innerHTML = `
-            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${index}" aria-expanded="false" aria-controls="collapse${index}">
+            <button class="accordion-button bg-dark text-white collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${index}" aria-expanded="false" aria-controls="collapse${index}">
                 ${tyreSetGroup["actual-tyre-compound"]} - ${tyreSetGroup["visual-tyre-compound"]}
             </button>
             `;
@@ -813,8 +817,9 @@ class DriverModalPopulator {
 
             // Accordion body content
             const accordionBody = document.createElement('div');
+            accordionBody.className = 'accordion-body bg-dark text-light';
             const table = document.createElement('table');
-            table.className = 'table table-bordered table-striped table-dark';
+            table.className = this.tableclassnames;
 
             // Create table header
             const thead = document.createElement('thead');
@@ -887,8 +892,9 @@ class DriverModalPopulator {
     // Method to create the navigation tabs
     createNavTabs() {
         const navTabs = document.createElement('ul');
-        navTabs.className = 'nav nav-tabs driver-modal-nav';
+        navTabs.className = 'nav nav-tabs driver-modal-nav inactive';
         navTabs.setAttribute('role', 'tablist');
+        navTabs.setAttribute('data-bs-theme', 'dark');
 
         // Array of tabs with ID and label
         const tabs = [
@@ -992,12 +998,12 @@ class DriverModalPopulator {
 
         // Left half: Create the fuel usage table
         const leftDiv = document.createElement('div');
-        leftDiv.className = 'w-50'; // Half width
+        leftDiv.className = 'w-50 border border-light-subtle rounded'; // Half width
         leftPanePopulator(leftDiv);
 
         // Right half: Empty for now
         const rightDiv = document.createElement('div');
-        rightDiv.className = 'w-50'; // Half width, empty for now
+        rightDiv.className = 'w-50 border border-light-subtle rounded'; // Half width, empty for now
         rightPanePopulator(rightDiv);
 
         containerDiv.appendChild(leftDiv);
@@ -1088,7 +1094,7 @@ class DriverModalPopulator {
         console.log(this.data, firstHalf, secondHalf);
         const panePopulator = (divElement, tableData) => {
             const table = document.createElement('table');
-            table.className = 'table table-bordered table-striped table-dark';
+            table.className = this.tableclassnames;
 
             // Create table header
             const thead = document.createElement('thead');

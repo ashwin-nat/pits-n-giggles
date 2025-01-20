@@ -114,9 +114,6 @@ body {
   transition: background-color 0.2s;
 }
 
-.player-row.drs-row td {
-  color: #10e71b; /* Set font color to green */
-}
 
 .player-row td {
   color: inherit; /* Inherit color for non-DRS rows */
@@ -124,6 +121,18 @@ body {
 
 .drs-row td {
   color: #10e71b; /* Set font color to green */
+}
+
+.dnf-row td {
+  color: #e60505; /* Set font color to green */
+}
+
+.player-row.drs-row td {
+  color: #10e71b; /* Set font color to green */
+}
+
+.player-row.dnf-row td {
+  color: #e60505; /* Set font color to green */
 }
 
 .player-row td:first-child {
@@ -150,7 +159,6 @@ body {
 .drs-row td {
   color: #10e71b; /* Set font color to green */
 }
-
 
 .driver-name {
   cursor: pointer;
@@ -223,6 +231,10 @@ body {
 
 .modal-footer {
   border-top-color: var(--f1-light-gray);
+}
+
+.inactive .nav-link {
+  color: var(--f1-text-secondary);
 }
 
 .btn-close {
@@ -302,13 +314,13 @@ a {
   display: flex;
   flex-direction: column;
   border-radius: 8px;
-  background-color: var(--f1-darker);
+  /* background-color: var(--f1-darker); */
   color: var(--f1-text);
 }
 
 /* Header remains sticky at the top */
 .driver-modal-header {
-  background-color: var(--f1-dark);
+  /* background-color: var(--f1-dark); */
   color: var(--f1-text);
   border-bottom: 1px solid var(--f1-light-gray);
   position: sticky;
@@ -338,4 +350,17 @@ a {
 
 .hidden-column {
   display: none;
+}
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  color: var(--f1-text-secondary);
+  font-size: 1.25rem; /* Adjust size as needed */
+  padding: 0.5rem;    /* Adds spacing around the icon */
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  color: var(--f1-text);
 }

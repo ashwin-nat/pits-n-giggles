@@ -1,13 +1,15 @@
 class RaceStatsModalPopulator {
     constructor(data) {
         this.data = data;
+        this.tableClassNames = 'table table-bordered table-striped table-dark table-sm align-middle';
     }
 
     // Method to create the navigation tabs
     createNavTabs() {
         const navTabs = document.createElement('ul');
-        navTabs.className = 'nav nav-tabs driver-modal-nav';
+        navTabs.className = 'nav nav-tabs driver-modal-nav inactive';
         navTabs.setAttribute('role', 'tablist');
+        navTabs.setAttribute('data-bs-theme', 'dark');
 
         // Array of tabs with ID and label
         const tabs = [
@@ -79,10 +81,10 @@ class RaceStatsModalPopulator {
     populateLapTimeRecordsTab(tabPane) {
 
         const containerDiv = document.createElement('div');
-        containerDiv.className = 'd-flex';
+        containerDiv.className = 'd-flex table-responsive';
 
         const table = document.createElement('table');
-        table.className = 'table table-bordered table-striped';
+        table.className = this.tableClassNames;
 
         // Create table header
         const thead = document.createElement('thead');
@@ -98,6 +100,8 @@ class RaceStatsModalPopulator {
         headers.forEach(headerText => {
             const th = document.createElement('th');
             th.textContent = headerText;
+            th.setAttribute('scope', 'col');  // Adds semantic meaning
+            th.className = 'text-nowrap';     // Prevents text wrapping
             headerRow.appendChild(th);
         });
 
@@ -133,10 +137,10 @@ class RaceStatsModalPopulator {
     populateCustomMarkersTab(tabPane) {
 
         const containerDiv = document.createElement('div');
-        containerDiv.className = 'd-flex';
+        containerDiv.className = 'd-flex table-responsive';
 
         const table = document.createElement('table');
-        table.className = 'table table-bordered table-striped';
+        table.className = this.tableClassNames;
 
         // Create table header
         const thead = document.createElement('thead');
@@ -190,10 +194,10 @@ class RaceStatsModalPopulator {
     populateTyreStintRecordsTab(tabPane) {
 
         const containerDiv = document.createElement('div');
-        containerDiv.className = 'd-flex';
+        containerDiv.className = 'd-flex table-responsive';
 
         const table = document.createElement('table');
-        table.className = 'table table-bordered table-striped';
+        table.className = this.tableClassNames;
 
         // Create table header
         const thead = document.createElement('thead');
@@ -455,7 +459,7 @@ class RaceStatsModalPopulator {
         };
 
         // Create the chart with the plugin included
-        var myChart = new Chart(ctx, {
+        let myChart = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: xData,

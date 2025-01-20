@@ -89,21 +89,24 @@
     <!-- Driver Details Modal -->
     <div class="modal fade" id="driverModal" tabindex="-1" aria-labelledby="driverModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-fullscreen driver-modal-dialog">
-        <div class="modal-content driver-modal-content">
-          <div class="modal-header driver-modal-header d-flex justify-content-between align-items-center">
+        <div class="modal-content driver-modal-content bg-dark">
+          <!-- Modal Header -->
+          <div class="modal-header driver-modal-header d-flex justify-content-between align-items-center bg-dark border border-dark-subtle rounded">
             <!-- Title and Navigation Buttons -->
             <div class="d-flex align-items-center">
-              <h5 class="modal-title m-0" id="driverModalLabel">Driver Details</h5>
+              <h5 class="modal-title m-0 text-white" id="driverModalLabel">Driver Details</h5>
             </div>
             <!-- Refresh and Close Buttons -->
-            <div>
-              <button class="btn btn-sm btn-outline-primary me-2 p-1" id="refreshButtonDriver" title="Refresh">
+            <div class="d-flex align-items-center">
+              <button type="button" class="icon-btn me-2" id="refreshButtonDriver" title="Refresh">
                 <i class="bi bi-arrow-clockwise"></i>
               </button>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              <button type="button" class="icon-btn" id="closeButtonDriver" data-bs-dismiss="modal" aria-label="Close" title="Close">
+                <i class="bi bi-x-lg"></i>
+              </button>
             </div>
           </div>
-          <div class="modal-body driver-modal-body">
+          <div class="modal-body driver-modal-body border border-dark-subtle rounded">
             <!-- Nav tabs and tab content will be dynamically injected here by JavaScript -->
           </div>
         </div>
@@ -243,21 +246,24 @@
     <!-- Race Stats Modal -->
     <div class="modal fade" id="raceStatsModal" tabindex="-1" aria-labelledby="raceStatsModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-fullscreen race-stats-modal-dialog">
-        <div class="modal-content race-stats-modal-content">
-          <div class="modal-header race-stats-modal-header d-flex justify-content-between align-items-center">
+        <div class="modal-content race-stats-modal-content bg-dark">
+          <!-- Modal Header -->
+          <div class="modal-header race-stats-modal-header d-flex justify-content-between align-items-center bg-dark border border-dark-subtle rounded">
             <!-- Title and Navigation Buttons -->
             <div class="d-flex align-items-center">
-              <h5 class="modal-title m-0" id="raceStatsModalLabel">Race Stats</h5>
+              <h5 class="modal-title m-0 text-white" id="raceStatsModalLabel">Race Stats</h5>
             </div>
             <!-- Refresh and Close Buttons -->
-            <div>
-              <button class="btn btn-sm btn-outline-primary me-2 p-1" id="refreshButtonRace" title="Refresh">
+            <div class="d-flex align-items-center">
+              <button type="button" class="icon-btn me-2" id="refreshButtonRace" title="Refresh">
                 <i class="bi bi-arrow-clockwise"></i>
               </button>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              <button type="button" class="icon-btn" id="closeButtonRace" data-bs-dismiss="modal" aria-label="Close" title="Close">
+                <i class="bi bi-x-lg"></i>
+              </button>
             </div>
           </div>
-          <div class="modal-body race-stats-modal-body">
+          <div class="modal-body race-stats-modal-body border border-dark-subtle rounded">
             <!-- Nav tabs and tab content will be dynamically injected here by JavaScript -->
           </div>
         </div>

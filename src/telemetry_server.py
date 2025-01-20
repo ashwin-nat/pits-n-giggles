@@ -256,7 +256,7 @@ class TelemetryWebServer:
                 data (Dict[str, Any]): The JSON response. Will contain the key "error" in case of failure
             """
             response = None
-            index = data.get("index", None)
+            index = data.get("index")
             error_response = self.validateIntGetRequestParam(index, "index")
             if error_response:
                 emit("driver-info-response", error_response, broadcast=False)

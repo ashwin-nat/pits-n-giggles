@@ -79,6 +79,7 @@ function showToast(message, timeout = 3000) {
 function formatFloatWithTwoDecimals(floatNumber) {
     if (typeof floatNumber !== 'number' || isNaN(floatNumber)) {
         console.error('Invalid input. Please provide a valid number.');
+        console.trace(); // Log the call stack
         return null;
     }
 
@@ -89,6 +90,7 @@ function formatFloatWithTwoDecimals(floatNumber) {
 function formatFloatWithTwoDecimalsSigned(floatNumber) {
     if (typeof floatNumber !== 'number' || isNaN(floatNumber)) {
         console.error('Invalid input. Please provide a valid number.');
+        console.trace(); // Log the call stack
         return null;
     }
 

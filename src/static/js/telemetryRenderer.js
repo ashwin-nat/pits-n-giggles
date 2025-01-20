@@ -17,7 +17,9 @@ class TelemetryRenderer {
     if (data['driver-info']['is-player']) {
       row.classList.add('player-row');
     }
-    if (data['driver-info']['drs']) {
+    if (data['driver-info']['dnf-status'] == 'DNF') {
+      row.classList.add('dnf-row');
+    } else if (data['driver-info']['drs']) {
       row.classList.add('drs-row');
     }
     return row;
@@ -43,6 +45,7 @@ class TelemetryRenderer {
 
     const weatherSamples = incomingData['weather-forecast-samples'].slice(0, g_pref_numWeatherPredictionSamples + 1);
     this.weatherWidget.update(weatherSamples);
+    console.log("weather samples", g_pref_numWeatherPredictionSamples, incomingData['weather-forecast-samples'], weatherSamples);
 
     this.fastestLapTimeSpan.textContent = formatLapTime(incomingData['fastest-lap-overall']);
     this.fastestLapNameSpan.textContent = this.truncateName(incomingData['fastest-lap-overall-driver']).toUpperCase();

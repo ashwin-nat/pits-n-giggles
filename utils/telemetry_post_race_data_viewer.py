@@ -469,6 +469,7 @@ def getDriverInfoJsonByIndex(index):
         final_json["index"] = index
         final_json["is-player"] = driver_data["is-player"]
         final_json["driver-name"] = driver_data["driver-name"]
+        final_json["team"] = driver_data["team"]
         final_json["track-position"] = driver_data["final-classification"]["position"]
         final_json["telemetry-settings"] = driver_data["participant-data"]["telemetry-setting"]
         final_json["car-damage"] = driver_data["car-damage"]
@@ -1025,6 +1026,8 @@ def find_free_port():
         return s.getsockname()[1]
 
 def main():
+
+    print(f"cwd: {os.getcwd()}")
 
     # Get port number
     port_number = find_free_port()
