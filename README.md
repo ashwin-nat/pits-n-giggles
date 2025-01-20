@@ -66,7 +66,7 @@ Not yet supported because I need a mac to build an executable for mac platforms 
 ### Main UI
 The primary interface of the application, showcasing the clean and intuitive design.
 
-![Main UI](screenshots/main_ui.png)
+![Main UI](screenshots/main-ui.png)
 
 ---
 
