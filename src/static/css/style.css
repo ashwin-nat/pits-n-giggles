@@ -91,6 +91,7 @@ body {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
+  table-layout: fixed; /* Ensures consistent column widths */
 }
 
 .telemetry-table th,
@@ -98,6 +99,9 @@ body {
   padding: 1rem;
   text-align: left;
   border-bottom: 1px solid var(--f1-light-gray);
+  overflow: hidden; /* Prevent content overflow */
+  text-overflow: ellipsis;
+  white-space: nowrap; /* Keeps content in one line */
 }
 
 .telemetry-table th {
@@ -110,10 +114,20 @@ body {
   z-index: 1;
 }
 
-.telemetry-table tbody tr {
-  transition: background-color 0.2s;
+.telemetry-table .best-lap,
+.telemetry-table .last-lap {
+  width: 12%; /* Equal width for "Best Lap" and "Last Lap" */
 }
 
+.telemetry-table th:nth-child(1) { width: 5%; } /* POS */
+.telemetry-table th:nth-child(2) { width: 15%; } /* DRIVER */
+.telemetry-table th:nth-child(3) { width: 8%; } /* DELTA */
+.telemetry-table th:nth-child(4) { width: 8%; } /* ERS */
+.telemetry-table th:nth-child(5) { width: 12%; } /* WARNS/PENS */
+.telemetry-table th:nth-child(8) { width: 12%; } /* TYRE INFO */
+.telemetry-table th:nth-child(9) { width: 10%; } /* WEAR PREDICTION */
+.telemetry-table th:nth-child(10) { width: 10%; } /* WING DAMAGE */
+.telemetry-table th:nth-child(11) { width: 8%; } /* FUEL */
 
 .player-row td {
   color: inherit; /* Inherit color for non-DRS rows */
@@ -339,13 +353,6 @@ a {
 
 .bg-purple {
   background-color: #800080;
-}
-
-.telemetry-table .best-lap {
-  width: 10%;
-}
-.telemetry-table .last-lap {
-  width: 10%;
 }
 
 .hidden-column {

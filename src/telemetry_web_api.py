@@ -24,7 +24,7 @@
 
 import logging
 from typing import Dict, Any, Optional, List
-from lib.f1_types import F1Utils, LapHistoryData, CarStatusData
+from lib.f1_types import F1Utils, LapHistoryData, CarStatusData, SessionType23, SessionType24
 import lib.race_analyzer as RaceAnalyzer
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 import src.telemetry_data as TelData
@@ -94,9 +94,10 @@ class RaceInfoRsp:
             ],
             "race-ended" : bool(self.m_globals.m_packet_final_classification),
             "is-spectating" : _getValueOrDefaultValue(self.m_globals.m_is_spectating, False),
+            "session-type"  : _getValueOrDefaultValue(self.m_globals.m_event_type),
         }
 
-        final_json["table-entries"] = self.m_driver_list_rsp.toJSON()
+        final_json["table-entries"] = self.m_driver_list_rsp.toJSON(self.m_globals.m_event_type)
         final_json["fastest-lap-overall"] = _getValueOrDefaultValue(
             self.m_driver_list_rsp.m_fastest_lap, default_value=0)
         final_json["fastest-lap-overall-driver"] = _getValueOrDefaultValue(
@@ -436,8 +437,11 @@ class DriversListRsp:
         if self.m_final_list:
             self._recomputeDeltas()
 
-    def toJSON(self) -> Dict[str, Any]:
+    def toJSON(self, session_type: str) -> Dict[str, Any]:
         """Dump this object into JSON
+
+        Args:
+            session_type (SessionType23 | SessionType24): The session type
 
         Returns:
             Dict[str, Any]: The JSON dump
@@ -484,13 +488,15 @@ class DriversListRsp:
                         "lap-time-ms" : data_per_driver.m_last_lap_ms,
                         "lap-time-ms-player" : 0,
                         "sector-status" : data_per_driver.getSectorStatus(
-                            self.m_fastest_s1_ms, self.m_fastest_s2_ms, self.m_fastest_s3_ms, for_best_lap=False),
+                            self.m_fastest_s1_ms, self.m_fastest_s2_ms, self.m_fastest_s3_ms, for_best_lap=False,
+                            session_type_str=session_type),
                     },
                     "best-lap" : {
                         "lap-time-ms" : data_per_driver.m_best_lap_ms,
                         "lap-time-ms-player" : 0,
                         "sector-status" : data_per_driver.getSectorStatus(
-                            self.m_fastest_s1_ms, self.m_fastest_s2_ms, self.m_fastest_s3_ms, for_best_lap=True),
+                            self.m_fastest_s1_ms, self.m_fastest_s2_ms, self.m_fastest_s3_ms, for_best_lap=True,
+                            session_type_str=session_type),
                     },
                     "lap-progress" : data_per_driver.m_lap_progress, # NULL is supported
                     "speed-trap-record-kmph" : data_per_driver.m_packet_lap_data.m_speedTrapFastestSpeed if \

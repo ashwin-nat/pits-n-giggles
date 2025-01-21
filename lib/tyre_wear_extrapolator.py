@@ -146,8 +146,8 @@ class TyreWearExtrapolator:
             bool: True if sufficient
         """
 
-        # m_total_laps will be None in quali. End of race, return insufficient data
-        if (self.m_total_laps is None) or (self.m_remaining_laps <= 0):
+        # m_total_laps, m_remaining_laps will be None in quali, FP. End of race, return insufficient data
+        if (self.m_total_laps is None) or (self.m_remaining_laps is None) or (self.m_remaining_laps <= 0):
             return False
 
         racing_data = [point for interval in self.m_intervals \

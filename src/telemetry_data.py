@@ -33,7 +33,8 @@ from lib.f1_types import PacketSessionData, PacketLapData, LapData, CarTelemetry
     PacketEventData, PacketParticipantsData, PacketCarTelemetryData, PacketCarStatusData, FinalClassificationData, \
     PacketFinalClassificationData, PacketCarDamageData, PacketSessionHistoryData, ResultStatus, PacketTyreSetsData, \
     F1Utils, WeatherForecastSample, CarDamageData, CarStatusData, TrackID, ActualTyreCompound, VisualTyreCompound, \
-    SafetyCarType, TelemetrySetting, PacketMotionData, CarMotionData, PacketCarSetupData, CarSetupData, ResultStatus
+    SafetyCarType, TelemetrySetting, PacketMotionData, CarMotionData, PacketCarSetupData, CarSetupData, ResultStatus, \
+    SessionType23, SessionType24
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.overtake_analyzer import OvertakeRecord
 from lib.collisions_analyzer import CollisionRecord, CollisionAnalyzer, CollisionAnalyzerMode
@@ -317,6 +318,7 @@ class DataPerDriver:
             return {
                 "start-lap": self.m_start_lap,
                 "end-lap": self.m_end_lap,
+                "stint-length": (self.m_end_lap+1 - self.m_start_lap),
                 "fitted-index": self.m_fitted_index,
                 "tyre-set-key": self.m_tyre_set_key,
                 "tyre-wear-history": self.getTyreWearJSONList() if include_tyre_wear_history else None
@@ -1183,7 +1185,8 @@ class DataPerDriver:
                         sector_1_best_ms: Optional[int],
                         sector_2_best_ms: Optional[int],
                         sector_3_best_ms: Optional[int],
-                        for_best_lap: bool) -> List[Optional[int]]:
+                        for_best_lap: bool,
+                        session_type_str: str) -> List[Optional[int]]:
         """
         Determine sector status for either best or last lap.
 
@@ -1192,6 +1195,7 @@ class DataPerDriver:
             sector_2_best_ms: Best sector 2 time in milliseconds
             sector_3_best_ms: Best sector 3 time in milliseconds
             for_best_lap: Whether to analyze best lap or last lap
+            session_type_str: The session type string
 
         Returns:
             List of sector statuses (purple, green, yellow, invalid, or NA)
@@ -1223,7 +1227,8 @@ class DataPerDriver:
             lap_num = self.m_current_lap - 1
 
         # Validate lap number. Can have missing laps if red flag
-        if not (0 <= lap_num <= len(self.m_packet_session_history.m_lapHistoryData)):
+        if session_type_str.lower() not in ["qualifying", "practice", "shootout", "time trial"] and \
+            not (0 <= lap_num <= len(self.m_packet_session_history.m_lapHistoryData)):
             return default_val
 
         # Get lap data

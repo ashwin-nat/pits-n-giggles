@@ -1,252 +1,232 @@
 class DriverModalPopulator {
     constructor(data) {
         this.data = data;
-        this.tableClassNames = 'table table-bordered table-striped table-dark';
+        this.tableClassNames = 'table table-bordered table-striped table-dark table-sm align-middle';
     }
 
     populateLapTimesTab(tabPane) {
         const lapTimeHistory = this.data["lap-time-history"];
         const lapHistoryData = lapTimeHistory["lap-history-data"];
 
-        // Split the tab content into two vertical halves
-        const containerDiv = document.createElement('div');
-        containerDiv.className = 'd-flex';
+        const leftPanePopulator = (leftDiv) => {
 
-        // Left half: Create the lap time table
-        const leftDiv = document.createElement('div');
-        leftDiv.className = 'w-50';
+            const table = document.createElement('table');
+            table.className = this.tableClassNames ;
 
-        const table = document.createElement('table');
-        table.className = this.tableclassnames;
+            // Create table header
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            const headers = ['Lap', 'S1', 'S2', 'S3', 'Time', 'Tyre', 'Wear'];
 
-        // Create table header
-        const thead = document.createElement('thead');
-        const headerRow = document.createElement('tr');
-        const headers = ['Lap', 'S1', 'S2', 'S3', 'Time', 'Tyre', 'Wear'];
+            headers.forEach(headerText => {
+                const th = document.createElement('th');
+                th.textContent = headerText;
+                headerRow.appendChild(th);
+            });
 
-        headers.forEach(headerText => {
-            const th = document.createElement('th');
-            th.textContent = headerText;
-            headerRow.appendChild(th);
-        });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
 
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
+            // Create table body
+            const tbody = document.createElement('tbody');
 
-        // Create table body
-        const tbody = document.createElement('tbody');
+            lapHistoryData.forEach((lap, index) => {
+                const row = document.createElement('tr');
 
-        lapHistoryData.forEach((lap, index) => {
-            const row = document.createElement('tr');
+                const lapCell = document.createElement('td');
+                lapCell.textContent = index + 1; // Lap number
+                row.appendChild(lapCell);
 
-            const lapCell = document.createElement('td');
-            lapCell.textContent = index + 1; // Lap number
-            row.appendChild(lapCell);
+                const sector1Cell = document.createElement('td');
+                sector1Cell.textContent = lap["sector-1-time-str"];
+                row.appendChild(sector1Cell);
 
-            const sector1Cell = document.createElement('td');
-            sector1Cell.textContent = lap["sector-1-time-str"];
-            row.appendChild(sector1Cell);
+                const sector2Cell = document.createElement('td');
+                sector2Cell.textContent = lap["sector-2-time-str"];
+                row.appendChild(sector2Cell);
 
-            const sector2Cell = document.createElement('td');
-            sector2Cell.textContent = lap["sector-2-time-str"];
-            row.appendChild(sector2Cell);
+                const sector3Cell = document.createElement('td');
+                sector3Cell.textContent = lap["sector-3-time-str"];
+                row.appendChild(sector3Cell);
 
-            const sector3Cell = document.createElement('td');
-            sector3Cell.textContent = lap["sector-3-time-str"];
-            row.appendChild(sector3Cell);
+                const lapTimeCell = document.createElement('td');
+                lapTimeCell.textContent = lap["lap-time-str"];
+                row.appendChild(lapTimeCell);
 
-            const lapTimeCell = document.createElement('td');
-            lapTimeCell.textContent = lap["lap-time-str"];
-            row.appendChild(lapTimeCell);
+                const tyreCell = document.createElement('td');
+                tyreCell.textContent = lap["tyre-set-info"]["tyre-set"]["visual-tyre-compound"];
+                row.appendChild(tyreCell);
 
-            const tyreCell = document.createElement('td');
-            tyreCell.textContent = lap["tyre-set-info"]["tyre-set"]["visual-tyre-compound"];
-            row.appendChild(tyreCell);
+                const wearCell = document.createElement('td');
+                wearCell.textContent = lap["tyre-set-info"]["tyre-wear"]["average"].toFixed(2) + '%';
+                row.appendChild(wearCell);
 
-            const wearCell = document.createElement('td');
-            wearCell.textContent = lap["tyre-set-info"]["tyre-wear"]["average"].toFixed(2) + '%';
-            row.appendChild(wearCell);
+                tbody.appendChild(row);
+            });
 
-            tbody.appendChild(row);
-        });
+            table.appendChild(tbody);
+            leftDiv.appendChild(table);
+        };
 
-        table.appendChild(tbody);
-        leftDiv.appendChild(table);
+        const rightPanePopulator = (rightDiv) => {
+            // Prepare data for the graph
+            const sector1Data = lapHistoryData.map((lap, index) => ({
+                x: index + 1, // Lap number (index + 1)
+                y: lap["sector-1-time-in-ms"] // Time in milliseconds
+            }));
+            const sector2Data = lapHistoryData.map((lap, index) => ({
+                x: index + 1, // Lap number (index + 1)
+                y: lap["sector-2-time-in-ms"] // Time in milliseconds
+            }));
+            const sector3Data = lapHistoryData.map((lap, index) => ({
+                x: index + 1, // Lap number (index + 1)
+                y: lap["sector-3-time-in-ms"] // Time in milliseconds
+            }));
+            const totalTimeData = lapHistoryData.map((lap, index) => ({
+                x: index + 1, // Lap number (index + 1)
+                y: lap["lap-time-in-ms"] // Total lap time in milliseconds
+            }));
+            console.log("totalTimeData", totalTimeData);
 
-        // Right half: Create the graph for lap times
-        const rightDiv = document.createElement('div');
-        rightDiv.className = 'w-50 ms-3';
+            const datasets = [
+                {
+                    label: "S1",
+                    data: sector1Data,
+                    borderColor: 'red',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    fill: false
+                },
+                {
+                    label: "S2",
+                    data: sector2Data,
+                    borderColor: 'blue',
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    fill: false
+                },
+                {
+                    label: "S3",
+                    data: sector3Data,
+                    borderColor: 'cyan',
+                    backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                    fill: false
+                },
+                {
+                    label: "Lap",
+                    data: totalTimeData,
+                    borderColor: 'purple',
+                    backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                    fill: false
+                }
+            ];
 
-        // Prepare data for the graph
-        const sector1Data = lapHistoryData.map((lap, index) => ({
-            x: index + 1, // Lap number (index + 1)
-            y: lap["sector-1-time-in-ms"] // Time in milliseconds
-        }));
-        const sector2Data = lapHistoryData.map((lap, index) => ({
-            x: index + 1, // Lap number (index + 1)
-            y: lap["sector-2-time-in-ms"] // Time in milliseconds
-        }));
-        const sector3Data = lapHistoryData.map((lap, index) => ({
-            x: index + 1, // Lap number (index + 1)
-            y: lap["sector-3-time-in-ms"] // Time in milliseconds
-        }));
-        const totalTimeData = lapHistoryData.map((lap, index) => ({
-            x: index + 1, // Lap number (index + 1)
-            y: lap["lap-time-in-ms"] // Total lap time in milliseconds
-        }));
-        console.log("totalTimeData", totalTimeData);
+            // Pass the graph data to plotGraph function
+            const canvas = document.createElement('canvas');
 
-        const datasets = [
-            {
-                label: "S1",
-                data: sector1Data,
-                borderColor: 'red',
-                backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                fill: false
-            },
-            {
-                label: "S2",
-                data: sector2Data,
-                borderColor: 'blue',
-                backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                fill: false
-            },
-            {
-                label: "S3",
-                data: sector3Data,
-                borderColor: 'cyan',
-                backgroundColor: 'rgba(153, 102, 255, 0.2)',
-                fill: false
-            },
-            {
-                label: "Lap",
-                data: totalTimeData,
-                borderColor: 'purple',
-                backgroundColor: 'rgba(153, 102, 255, 0.2)',
-                fill: false
-            }
-        ];
+            rightDiv.appendChild(canvas);
+            rightDiv.classList.add('chart-container');
+            plotGraph(canvas, datasets, 'Lap', 'Lap Time (ms)', true);
+        };
 
-        // Pass the graph data to plotGraph function
-        const canvas = document.createElement('canvas');
-
-        rightDiv.appendChild(canvas);
-        rightDiv.classList.add('chart-container');
-        plotGraph(canvas, datasets, 'Lap', 'Lap Time (ms)', true);
-
-        containerDiv.appendChild(leftDiv);
-        containerDiv.appendChild(rightDiv);
-
-        tabPane.appendChild(containerDiv);
+        this.createModalDivElelements(tabPane, leftPanePopulator, rightPanePopulator);
     }
 
     populateFuelUsageTab(tabPane) {
-        const fuelUsageData = this.data["per-lap-info"];
-
-        // Split the tab content into two vertical halves
-        const containerDiv = document.createElement('div');
-        containerDiv.className = 'd-flex';
-
-        // Left half: Create the fuel usage table
-        const leftDiv = document.createElement('div');
-        leftDiv.className = 'w-50'; // Half width
-
-        const table = document.createElement('table');
-        table.className = this.tableclassnames;
-
-        // Create table header
-        const thead = document.createElement('thead');
-        const headerRow = document.createElement('tr');
-        const headers = ['Lap', 'Fuel Load (kg)', 'Usage Per Lap (kg)', 'Excess Laps', 'Excess Laps Delta'];
-
-        headers.forEach(headerText => {
-            const th = document.createElement('th');
-            th.textContent = headerText;
-            headerRow.appendChild(th);
-        });
-
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
-
-        // Create table body
-        const tbody = document.createElement('tbody');
-
-        let previousFuelLoad = null;
-        let previousExcessLaps = null;
-
         const fuelUsagePerLap = [];
-        fuelUsageData.forEach((lapData, index) => {
-            const row = document.createElement('tr');
 
-            const lapCell = document.createElement('td');
-            lapCell.textContent = lapData["lap-number"]; // Lap number
-            row.appendChild(lapCell);
+        const leftPanePopulator = (leftDiv) => {
+            const table = document.createElement('table');
+            table.className = this.tableClassNames ;
 
-            const fuelLoadCell = document.createElement('td');
-            fuelLoadCell.textContent = lapData["car-status-data"]["fuel-in-tank"].toFixed(2); // Fuel load (kg)
-            row.appendChild(fuelLoadCell);
+            // Create table header
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            const headers = ['Lap', 'Fuel Load (kg)', 'Usage Per Lap (kg)', 'Excess Laps', 'Excess Laps Delta'];
 
-            const usagePerLapCell = document.createElement('td');
-            if (previousFuelLoad !== null) {
-                const usagePerLap = previousFuelLoad - lapData["car-status-data"]["fuel-in-tank"];
-                usagePerLapCell.textContent = usagePerLap.toFixed(2); // Usage per lap (kg)
-                fuelUsagePerLap.push({
-                    x: lapData["lap-number"],
-                    y: usagePerLap
-                });
-            } else {
-                usagePerLapCell.textContent = '-'; // First lap, no previous value to calculate
-            }
-            row.appendChild(usagePerLapCell);
+            headers.forEach(headerText => {
+                const th = document.createElement('th');
+                th.textContent = headerText;
+                headerRow.appendChild(th);
+            });
 
-            const excessLapsCell = document.createElement('td');
-            const excessLaps = lapData["car-status-data"]["fuel-remaining-laps"];
-            excessLapsCell.textContent = excessLaps.toFixed(2); // Excess laps
-            row.appendChild(excessLapsCell);
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
 
-            const excessLapsDeltaCell = document.createElement('td');
-            if (previousExcessLaps !== null) {
-                const excessLapsDelta = excessLaps - previousExcessLaps;
-                excessLapsDeltaCell.textContent = excessLapsDelta.toFixed(2); // Excess laps delta
-            } else {
-                excessLapsDeltaCell.textContent = '-'; // First lap, no previous value to calculate
-            }
-            row.appendChild(excessLapsDeltaCell);
+            // Create table body
+            const tbody = document.createElement('tbody');
 
-            tbody.appendChild(row);
+            let previousFuelLoad = null;
+            let previousExcessLaps = null;
 
-            // Update previous values for next iteration
-            previousFuelLoad = lapData["car-status-data"]["fuel-in-tank"];
-            previousExcessLaps = excessLaps;
-        });
+            const fuelUsageData = this.data["per-lap-info"];
+            fuelUsageData.forEach((lapData, index) => {
+                const row = document.createElement('tr');
 
-        table.appendChild(tbody);
-        leftDiv.appendChild(table);
+                const lapCell = document.createElement('td');
+                lapCell.textContent = lapData["lap-number"]; // Lap number
+                row.appendChild(lapCell);
 
-        // Right half: Empty for now
-        const rightDiv = document.createElement('div');
-        rightDiv.className = 'w-50'; // Half width, empty for now
-        const datasets = [
-            {
-                label: "Fuel Usage",
-                data: fuelUsagePerLap,
-                borderColor: 'red',
-                backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                fill: false
-            }
-        ];
+                const fuelLoadCell = document.createElement('td');
+                fuelLoadCell.textContent = lapData["car-status-data"]["fuel-in-tank"].toFixed(2); // Fuel load (kg)
+                row.appendChild(fuelLoadCell);
 
-        // Pass the graph data to plotGraph function
-        const canvas = document.createElement('canvas');
+                const usagePerLapCell = document.createElement('td');
+                if (previousFuelLoad !== null) {
+                    const usagePerLap = previousFuelLoad - lapData["car-status-data"]["fuel-in-tank"];
+                    usagePerLapCell.textContent = usagePerLap.toFixed(2); // Usage per lap (kg)
+                    fuelUsagePerLap.push({
+                        x: lapData["lap-number"],
+                        y: usagePerLap
+                    });
+                } else {
+                    usagePerLapCell.textContent = '-'; // First lap, no previous value to calculate
+                }
+                row.appendChild(usagePerLapCell);
 
-        rightDiv.appendChild(canvas);
-        rightDiv.classList.add('chart-container');
-        plotGraph(canvas, datasets, 'Lap', 'Fuel used (kg)');
+                const excessLapsCell = document.createElement('td');
+                const excessLaps = lapData["car-status-data"]["fuel-remaining-laps"];
+                excessLapsCell.textContent = excessLaps.toFixed(2); // Excess laps
+                row.appendChild(excessLapsCell);
 
-        containerDiv.appendChild(leftDiv);
-        containerDiv.appendChild(rightDiv);
+                const excessLapsDeltaCell = document.createElement('td');
+                if (previousExcessLaps !== null) {
+                    const excessLapsDelta = excessLaps - previousExcessLaps;
+                    excessLapsDeltaCell.textContent = excessLapsDelta.toFixed(2); // Excess laps delta
+                } else {
+                    excessLapsDeltaCell.textContent = '-'; // First lap, no previous value to calculate
+                }
+                row.appendChild(excessLapsDeltaCell);
 
-        tabPane.appendChild(containerDiv);
+                tbody.appendChild(row);
+
+                // Update previous values for next iteration
+                previousFuelLoad = lapData["car-status-data"]["fuel-in-tank"];
+                previousExcessLaps = excessLaps;
+            });
+
+            table.appendChild(tbody);
+            leftDiv.appendChild(table);
+        };
+
+        const rightPanePopulator = (rightDiv) => {
+            const datasets = [
+                {
+                    label: "Fuel Usage",
+                    data: fuelUsagePerLap,
+                    borderColor: 'red',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    fill: false
+                }
+            ];
+
+            // Pass the graph data to plotGraph function
+            const canvas = document.createElement('canvas');
+
+            rightDiv.appendChild(canvas);
+            rightDiv.classList.add('chart-container');
+            plotGraph(canvas, datasets, 'Lap', 'Fuel used (kg)');
+        };
+
+        this.createModalDivElelements(tabPane, leftPanePopulator, rightPanePopulator);
     }
 
     populateTyreStintHistoryTab(tabPane) {
@@ -258,7 +238,7 @@ class DriverModalPopulator {
         const leftPanePopulator = (leftDiv) => {
             const tyreSetsHistoryData = this.data["tyre-set-history"];
             const table = document.createElement('table');
-            table.className = this.tableclassnames;
+            table.className = this.tableClassNames ;
 
             // Create table header
             const thead = document.createElement('thead');
@@ -406,7 +386,7 @@ class DriverModalPopulator {
         const graphDataHarvested = [];
         const leftPanePopulator = (leftDiv) => {
             const table = document.createElement('table');
-            table.className = this.tableclassnames;
+            table.className = this.tableClassNames ;
 
             // Create table header
             const thead = document.createElement('thead');
@@ -515,7 +495,6 @@ class DriverModalPopulator {
             // Pass the graph data to plotGraph function
             const canvas = document.createElement('canvas');
             rightDiv.classList.add('chart-container');
-            // TODO: graph is very short when only few rows exist in the table
             plotGraph(canvas, datasets, 'Lap', 'ERS %', false, limits);
             rightDiv.appendChild(canvas);
         };
@@ -538,7 +517,7 @@ class DriverModalPopulator {
 
         const panePopulator = (divElement, tableData) => {
             const table = document.createElement('table');
-            table.className = this.tableclassnames;
+            table.className = this.tableClassNames ;
 
             // Create table header
             const thead = document.createElement('thead');
@@ -605,28 +584,7 @@ class DriverModalPopulator {
 
         const leftPanePopulator = (leftDiv) => {
             const table = document.createElement('table');
-            table.className = this.tableclassnames;
-
-            // Create table header
-            // const thead = document.createElement('thead');
-            // const headerRow = document.createElement('tr');
-            // const headers = [
-            //   'Lap',
-            //   'FL',
-            //   'FR',
-            //   'RL',
-            //   'RR',
-            //   'Average'
-            // ];
-
-            // headers.forEach(headerText => {
-            //   const th = document.createElement('th');
-            //   th.textContent = headerText;
-            //   headerRow.appendChild(th);
-            // });
-
-            // thead.appendChild(headerRow);
-            // table.appendChild(thead);
+            table.className = this.tableClassNames ;
 
             // Create table body
             const tbody = document.createElement('tbody');
@@ -676,7 +634,7 @@ class DriverModalPopulator {
 
         const rightPanePopulator = (rightDiv) => {
             const table = document.createElement('table');
-            table.className = this.tableclassnames;
+            table.className = this.tableClassNames ;
 
             // Create table header
             const thead = document.createElement('thead');
@@ -737,7 +695,7 @@ class DriverModalPopulator {
     populateCollisionsInfoTab(tabPane) {
 
         const table = document.createElement('table');
-        table.className = this.tableclassnames;
+        table.className = this.tableClassNames ;
 
         // Create table header
         const thead = document.createElement('thead');
@@ -819,7 +777,7 @@ class DriverModalPopulator {
             const accordionBody = document.createElement('div');
             accordionBody.className = 'accordion-body bg-dark text-light';
             const table = document.createElement('table');
-            table.className = this.tableclassnames;
+            table.className = this.tableClassNames ;
 
             // Create table header
             const thead = document.createElement('thead');
@@ -1057,16 +1015,13 @@ class DriverModalPopulator {
         }, {}); // Start with an empty object
 
         // Step 3: Convert the grouped object into the desired array structure
-        const groupedTyreArray = Object.keys(groupedTyres).map(actualCompound => {
+        return Object.keys(groupedTyres).map(actualCompound => {
             return Object.keys(groupedTyres[actualCompound]).map(visualCompound => ({
                 "actual-tyre-compound": actualCompound,
                 "visual-tyre-compound": visualCompound,
                 "tyre-sets": groupedTyres[actualCompound][visualCompound]
             }));
-        }).flat(); // Flatten the array to remove nested arrays
-
-        // Return the final grouped tyres in the required structure
-        return groupedTyreArray;
+        }).flat();
     }
 
     showRawDataInTable(tabPane, data, errorMessage) {
@@ -1094,7 +1049,7 @@ class DriverModalPopulator {
         console.log(this.data, firstHalf, secondHalf);
         const panePopulator = (divElement, tableData) => {
             const table = document.createElement('table');
-            table.className = this.tableclassnames;
+            table.className = this.tableClassNames ;
 
             // Create table header
             const thead = document.createElement('thead');

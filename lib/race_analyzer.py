@@ -233,8 +233,6 @@ def getTyreStintRecordsDict(json_data: Dict[str, Any]):
                 if _isATwat(driver_data):
                     continue
                 for tyre_set_history_item in driver_data["tyre-set-history"]:
-                    # if ("tyre-set-data" not in tyre_set_history_item) or \
-                    #     (tyre_set_history_item["tyre-set-data"] is None):
                     if (tyre_set_history_item.get("tyre-set-data") is None):
                         continue
                     tyre_set_data = tyre_set_history_item["tyre-set-data"]
