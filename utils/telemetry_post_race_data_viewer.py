@@ -730,7 +730,7 @@ class TelemetryWebServer:
             Args:
                 data (Dict[str, Any]): The JSON response. Will contain the key "error" in case of failure
             """
-            index = data.get("index", None)
+            index = data.get("index")
             driver_info, _ = handleDriverInfoRequest(index, is_str_input=False)
             emit("driver-info-response", driver_info, broadcast=False)
 

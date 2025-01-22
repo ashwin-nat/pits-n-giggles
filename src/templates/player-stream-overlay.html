@@ -33,21 +33,14 @@
         body {
             font-family: 'Exo 2', sans-serif;
             background-color: transparent;
-            /* Keeps it overlay-ready */
             color: var(--f1-text, #ffffff);
-            /* Default to white text if --f1-text is not defined */
             line-height: 1.5;
             min-height: 100vh;
             text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
-            /* Adds a shadow for better contrast on bright or dynamic backgrounds */
             margin: 0;
-            /* Removes default margins for a cleaner overlay */
             padding: 0;
-            /* Ensures no unwanted spacing */
             box-sizing: border-box;
-            /* Keeps sizing predictable */
         }
-
 
         /* Make container take up the full height */
         .container-fluid {
@@ -69,8 +62,34 @@
             /* Thicker border (4px solid) */
         }
 
+        /* Base table transparency using Option 2 */
+        .table-dark.table-striped {
+            --bs-table-bg: rgba(33, 37, 41, 0.2);
+            --bs-table-striped-bg: rgba(50, 55, 60, 0.2);
+        }
+
+        /* Enhance text readability for all table cells */
+        .table-dark td {
+            text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.9);
+            font-weight: 500;
+        }
+
+        /* Fix for Bootstrap's text-success (green) */
+        .table-dark .text-success {
+            color: var(--bs-success) !important;
+            text-shadow: 1px 1px 1px rgba(0, 0, 0, 1);
+        }
+
+        /* Fix for Bootstrap's text-danger (red) */
+        .table-dark .text-danger {
+            color: var(--bs-danger) !important;
+            text-shadow: 1px 1px 1px rgba(0, 0, 0, 1);
+        }
+
+        /* Your custom purple, fixed to be text color instead of background */
         .text-purple {
-            background-color: #800080;
+            color: #800080 !important;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 1);
         }
     </style>
 </head>
@@ -81,7 +100,7 @@
         <!-- First Row -->
         <div class="row full-height">
             <!-- Lap time history div -->
-            <div class="col d-flex align-items-center justify-content-center" id="lapTimeDiv">
+            <div class="col d-flex align-items-center justify-content-center text-center" id="lapTimeDiv">
                 <table class="table table-striped table-bordered table-dark" id="lapTimeTable"></table>
             </div>
 
@@ -136,29 +155,28 @@
 
             <!-- Car telemetry div -->
             <div class="col d-flex align-items-center justify-content-center carTelemetryContainer">
-                <div id="CarTelemetryWidget" class="telemetry-widget">
-                    <div class="car-telemetry-section">
-                        <div id="brakeContainer" class="telemetry-pedal-container">
-                            <div id="brakeBar" class="telemetry-pedal telemetry-brake"></div>
+                <div class="telemetry-overlay">
+                    <div class="telemetry-steering-container">
+                        <div class="telemetry-steering-center"></div>
+                        <div class="telemetry-steering-bar" id="steeringBar"></div>
+                    </div>
+                    <div class="telemetry-main">
+                        <!-- Graph -->
+                        <div class="telemetry-graph">
+                            <canvas id="inputGraph"></canvas>
                         </div>
 
-                        <div class="car-telemetry-chart-section">
-                            <div id="steeringContainer" class="telemetry-steering-container">
-                                <div class="telemetry-steering-center"></div>
-                                <div id="steeringBar" class="telemetry-steering-indicator"></div>
-                            </div>
-
-                            <div class="telemetry-chart-container">
-                                <canvas id="throttleBrakeChart"></canvas>
-                            </div>
+                        <!-- Throttle -->
+                        <div class="telemetry-pedal telemetry-throttle">
+                            <div class="telemetry-pedal-fill" id="throttleBar"></div>
                         </div>
 
-                        <div id="throttleContainer" class="telemetry-pedal-container">
-                            <div id="throttleBar" class="telemetry-pedal telemetry-throttle"></div>
+                        <!-- Brake -->
+                        <div class="telemetry-pedal telemetry-brake">
+                            <div class="telemetry-pedal-fill" id="brakeBar"></div>
                         </div>
                     </div>
                 </div>
-
             </div>
 
             <!-- TODO: Notification -->
@@ -353,7 +371,7 @@
         };
         let firstDataReceived = false;
         const socket = io();
-        const carTelemetryWidget = new CarTelemetryWidget('CarTelemetryWidget');
+        const carTelemetryWidget = new CarTelemetryWidget();
         const gForceDisplayWidget = new GForceDisplay('gforce-display');
         const weatherWidget = new WeatherWidget(document.getElementById('weatherDiv'));
         const pensStatsWidget = new PenaltiesStatsWidget();

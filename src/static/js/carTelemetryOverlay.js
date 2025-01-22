@@ -1,130 +1,135 @@
 class CarTelemetryWidget {
-    constructor(containerId) {
-        this.container = document.getElementById(containerId);
-        if (!this.container) {
-            throw new Error(`Container with id '${containerId}' not found`);
-        }
+    constructor() {
         this.initializeElements();
-        this.initializeChart();
+        this.initializeGraph();
     }
 
     initializeElements() {
         this.elements = {
             throttle: document.getElementById('throttleBar'),
             brake: document.getElementById('brakeBar'),
-            steering: document.getElementById('steeringBar'),
-            chart: document.getElementById('throttleBrakeChart')
+            steering: document.getElementById('steeringBar')
         };
     }
 
-    initializeChart() {
-        const maxDataPoints = 50;
-        const defaultData = Array(maxDataPoints).fill(0);
+    initializeGraph() {
+        const ctx = document.getElementById('inputGraph').getContext('2d');
+        const maxDataPoints = 100;
 
-        this.chart = new Chart(this.elements.chart, {
+        this.graphData = {
+            throttle: Array(maxDataPoints).fill(0),
+            brake: Array(maxDataPoints).fill(0),
+            steering: Array(maxDataPoints).fill(0)
+        };
+
+        this.graph = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: Array(maxDataPoints).fill(''),
                 datasets: [
                     {
-                        // throttle
-                        data: [...defaultData],
-                        borderColor: 'rgb(0, 255, 0)', // Green for throttle
-                        tension: 0.4,
+                        label: 'Throttle',
+                        data: this.graphData.throttle,
+                        borderColor: '#00ff00',
+                        borderWidth: 2,
                         fill: false,
-                        pointRadius: 0, // Removes the points (circles)
-                        hoverRadius: 0, // Removes the hover effect on points
-                        hoverBackgroundColor: 'transparent', // Ensure no hover color is shown
-                        yAxisID: 'y1', // Use the first Y-axis for throttle
+                        tension: 0.4,
+                        pointRadius: 0
                     },
                     {
-                        // brake
-                        data: [...defaultData],
-                        borderColor: 'rgb(255, 0, 0)', // Red for brake
-                        tension: 0.4,
+                        label: 'Brake',
+                        data: this.graphData.brake,
+                        borderColor: '#ff0000',
+                        borderWidth: 2,
                         fill: false,
-                        pointRadius: 0,
-                        hoverRadius: 0,
-                        hoverBackgroundColor: 'transparent',
-                        yAxisID: 'y1', // Use the first Y-axis for brake
+                        tension: 0.4,
+                        pointRadius: 0
                     },
                     {
-                        // steering
-                        data: [...defaultData],
-                        borderColor: 'rgb(255, 205, 86)', // Yellow for steering
-                        tension: 0.4,
+                        label: 'Steering',
+                        data: this.graphData.steering,
+                        borderColor: '#ffff00',
+                        borderWidth: 2,
                         fill: false,
-                        pointRadius: 0,
-                        hoverRadius: 0,
-                        hoverBackgroundColor: 'transparent',
-                        yAxisID: 'y2', // Use the second Y-axis for steering
+                        tension: 0.4,
+                        pointRadius: 0
                     }
                 ]
             },
             options: {
                 responsive: true,
-                animation: { duration: 0 },
+                maintainAspectRatio: false,
+                animation: false,
+                interaction: {
+                    mode: 'none',
+                    enabled: false
+                },
                 scales: {
-                    y1: {
-                        min: 0,
-                        max: 100,
-                        position: 'left',
-                        grid: { display: false },
-                        ticks: { display: false }
+                    x: {
+                        display: false
                     },
-                    y2: {
+                    y: {
+                        display: true,
                         min: -100,
                         max: 100,
-                        position: 'right',
-                        grid: { display: false },
-                        ticks: { display: false }
-                    },
-                    x: {
-                        grid: { display: false },
-                        ticks: { display: false }
+                        grid: {
+                            color: context => {
+                                const value = context.tick.value;
+                                if (value === 0 || value === -50 || value === 50) {
+                                    return 'rgba(255, 255, 255, 0.1)';
+                                }
+                                return 'transparent';
+                            }
+                        },
+                        ticks: {
+                            display: false
+                        }
                     }
                 },
                 plugins: {
-                    legend: { display: false },
-                    tooltip: { enabled: false }, // Disable the tooltip plugin
-                },
-                interaction: {
-                    mode: null, // Disables interaction
-                    intersect: false, // Prevents hover interactions
-                },
-                elements: {
-                    line: {
-                        tension: 0.4 // Ensures the line has a smooth curve
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        enabled: false
                     }
                 }
             }
         });
     }
 
-    updateChart(data) {
-        this.chart.data.datasets.forEach((dataset, index) => {
-            dataset.data.shift();
-            dataset.data.push(
-                index === 0 ? data.throttle :
-                    index === 1 ? data.brake :
-                        data.steering
-            );
-        });
-        this.chart.update('none');
+    updateGraph(data) {
+        // Update data arrays
+        this.graphData.throttle.push(data.throttle);
+        this.graphData.throttle.shift();
+        this.graphData.brake.push(data.brake);
+        this.graphData.brake.shift();
+        this.graphData.steering.push(data.steering);
+        this.graphData.steering.shift();
+
+        // Update chart datasets
+        this.graph.data.datasets[0].data = [...this.graphData.throttle];
+        this.graph.data.datasets[1].data = [...this.graphData.brake];
+        this.graph.data.datasets[2].data = [...this.graphData.steering];
+
+        this.graph.update('none');
     }
 
     updateBars(data) {
+        // Update pedal bars
         this.elements.throttle.style.height = `${data.throttle}%`;
         this.elements.brake.style.height = `${data.brake}%`;
+
+        // Update steering bar
         const barWidth = this.elements.steering.offsetWidth;
-        // Subtract half the bar width to align its center with the center line
-        const steeringOffset = (data.steering / 100) * 50 - (barWidth / 2);
-        this.elements.steering.style.transform = `translateX(${steeringOffset}px)`;
+        const containerWidth = this.elements.steering.parentElement.offsetWidth;
+        const maxOffset = (containerWidth - barWidth) / 2;
+        const steeringOffset = (data.steering / 100) * maxOffset;
+        this.elements.steering.style.transform = `translateX(calc(-50% + ${steeringOffset}%))`;
     }
 
-
     update(data) {
-        this.updateChart(data);
         this.updateBars(data);
+        this.updateGraph(data);
     }
 }

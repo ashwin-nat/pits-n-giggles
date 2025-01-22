@@ -23,8 +23,8 @@ class GForceDisplay {
         const radius = 50;
 
         const { scaledLat, scaledLong } = this.calculateDotPosition(gForceData, maxG, radius);
-        // Offset by -50% to center the dot
-        this.dot.style.transform = `translate(calc(${scaledLat}px - 50%), calc(${-scaledLong}px - 50%))`;
+        // Apply translation from the centered position
+        this.dot.style.transform = `translate(${scaledLat}px, ${-scaledLong}px)`;
     }
 
     updateGForceValues(gForceData) {

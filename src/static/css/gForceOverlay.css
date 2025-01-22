@@ -19,8 +19,8 @@
     background-color: #ff1801;
     border-radius: 50%;
     position: absolute;
-    top: 50%;
-    left: 50%;
+    top: calc(50% - 5px);
+    left: calc(50% - 5px);
     transform: translate(0, 0);
     transition: transform 0.1s ease-out;
     z-index: 2;
