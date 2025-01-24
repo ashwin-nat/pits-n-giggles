@@ -371,3 +371,20 @@ a {
 .icon-btn:hover {
   color: var(--f1-text);
 }
+
+tab-content {
+  height: 100%;
+  width: 100%;
+}
+
+driver-modal-tab-content {
+  height: 100%;
+  width: 100%;
+}
+
+.chart-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}

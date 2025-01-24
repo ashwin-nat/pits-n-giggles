@@ -32,6 +32,10 @@ class LapTimeTableWidget {
         const numRows = 5; // Limit to 5 rows
         let count = 0;
 
+        const lapValidMask = 1;
+        const s1ValidMask = 2;
+        const s2ValidMask = 4;
+        const s3ValidMask = 8;
         for (let i = lapHistoryData.length - 1; i >= 0 && count < numRows; i--) {
 
             const lapData = lapHistoryData[i];
@@ -53,10 +57,6 @@ class LapTimeTableWidget {
             }
 
             const validFlags = lapData["lap-valid-bit-flags"];
-            const lapValidMask = 1;
-            const s1ValidMask = 2;
-            const s2ValidMask = 4;
-            const s3ValidMask = 8;
 
             const row = this.lapTimeTable.insertRow();
             count++;

@@ -17,7 +17,6 @@ class ModalManager {
   }
 
   openDriverModal(data) {
-    console.log("openDriverModal");
     const modalTitle = document.querySelector('#driverModal .driver-modal-header .modal-title');
     const modalBody = document.querySelector('#driverModal .modal-body');
     const refreshButton = document.getElementById('refreshButtonDriver');
@@ -177,7 +176,6 @@ class ModalManager {
 
   openRaceStatsModal(data) {
 
-    console.log("openRaceStatsModal", data);
     const modalTitle = document.querySelector('#raceStatsModal .race-stats-modal-header .modal-title');
     const modalBody = document.querySelector('#raceStatsModal .modal-body');
     const refreshButton = document.getElementById('refreshButtonRace');

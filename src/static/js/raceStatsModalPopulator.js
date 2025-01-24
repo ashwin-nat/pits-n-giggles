@@ -281,7 +281,7 @@ class RaceStatsModalPopulator {
                 const graphCanvas = document.createElement('canvas');
                 graphDiv.appendChild(graphCanvas);
                 graphCanvas.id = elementId;
-                graphDiv.classList.add('graph-canvas');
+                graphDiv.classList.add('chart-container');
 
                 // Plot graph
                 this.plotGraphPositionHistory(graphCanvas, datasets, 'Lap number', 'Position');
@@ -404,8 +404,8 @@ class RaceStatsModalPopulator {
     }
 
     plotGraphPositionHistory(canvas, datasets, xAxisLabel, yAxisLabel) {
-        var xData = datasets[0].data.map(entry => entry.x);
-        var ctx = canvas.getContext('2d');
+        const xData = datasets[0].data.map(entry => entry.x);
+        const ctx = canvas.getContext('2d');
 
         // Define default colors to cycle through if no custom color is provided
         const defaultColors = [
@@ -503,9 +503,10 @@ class RaceStatsModalPopulator {
                             }
                         },
                         beginAtZero: false,
-                        min: 1,
+                        min: 0,
+                        max: Math.max(...datasets.flatMap(dataset => dataset.data.map(entry => entry.y))) + 1,
                         grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
+                            color: 'rgba(255, 255, 255, 0.2)'
                         },
                         ticks: {
                             color: 'rgba(255, 255, 255, 0.8)',
@@ -518,7 +519,7 @@ class RaceStatsModalPopulator {
                     }
                 },
                 hover: {
-                    mode: 'dataset',
+                    mode: 'nearest',
                     intersect: false
                 },
                 onHover: function (event, activeElements) {
@@ -564,13 +565,14 @@ class RaceStatsModalPopulator {
                 },
                 layout: {
                     padding: {
-                        top: 50,
-                        right: 50,
+                        top: 10,
+                        right: 10, // Increased to leave space for end labels
                         bottom: 10,
                         left: 10
                     }
                 },
-                responsive: true
+                responsive: true,
+                maintainAspectRatio: false,
             },
             plugins: [endLabelPlugin] // Register the end label plugin
         });
