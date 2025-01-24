@@ -1,6 +1,7 @@
 class LapTimeTableWidget {
-    constructor() {
+    constructor(iconCache) {
         this.lapTimeTable = document.getElementById('lapTimeTable');
+        this.iconCache = iconCache;
     }
 
     // Method to get the valid time string
@@ -66,9 +67,12 @@ class LapTimeTableWidget {
             const s3TimeCell = row.insertCell();
             const compoundCell = row.insertCell();
 
-            // Append the span to the compoundCell if compound exists
-            if (compound) {
-                compoundCell.appendChild(getTyreIconSpan(compound));
+            // Append the icon to the compoundCell if compound exists
+            const svgElement = this.iconCache.getIcon(compound);
+            if (svgElement) {
+                compoundCell.appendChild(svgElement);
+            } else {
+                compoundCell.textContent = compound;
             }
 
             lapNumCell.textContent = lapNumber;

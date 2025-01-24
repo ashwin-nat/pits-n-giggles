@@ -720,7 +720,6 @@ class TelemetryWebServer:
         def handeRaceInfo(dummy_arg: Any):
             """SocketIO endpoint to handle race info request
             """
-            # TODO
             emit("race-info-response", handleRaceInfoRequest(), broadcast=False)
 
         @self.m_socketio.on('driver-info')

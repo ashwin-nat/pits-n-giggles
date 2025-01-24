@@ -1,6 +1,7 @@
 loadPreferences();
 // Initialize renderer
-const telemetryRenderer = new TelemetryRenderer();
+const iconCache = new IconCache();
+const telemetryRenderer = new TelemetryRenderer(iconCache);
 
 // Update interval for periodic updates
 let updateInterval;
@@ -60,7 +61,7 @@ socketio.on('driver-info-response', function (data) {
             // this request is meant for a synchronous listener, ignore
             console.log("Ignoring driver-info-response in main listener");
         } else {
-            window.modalManager.openDriverModal(data);
+            window.modalManager.openDriverModal(data, iconCache);
             console.log("driver-info-response", data);
         }
     } else {

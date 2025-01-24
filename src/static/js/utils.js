@@ -246,39 +246,6 @@ function clearTable(tableElement, clearHeader = false) {
     }
 }
 
-function getTyreIconSpan(tyreCompound) {
-
-    // Get the first letter of the compound or an empty string if compound is empty
-    const firstLetter = tyreCompound.charAt(0);  // Get the first letter of the compound
-
-    // Create a span element to hold the first letter
-    const span = document.createElement('span');
-    span.textContent = firstLetter;
-
-    // Apply class for styling
-    span.classList.add('tyre-icon');
-
-    switch (tyreCompound) {
-        case "Soft":
-            span.classList.add('soft-tyre');
-            break;
-        case "Medium":
-            span.classList.add('medium-tyre');
-            break;
-        case "Hard":
-            span.classList.add('hard-tyre');
-            break;
-        case "Inters":
-            span.classList.add('intermediate-tyre');
-            break;
-        case "Wet":
-            span.classList.add('wet-tyre');
-            break;
-    }
-
-    return span;
-}
-
 function formatSecondsToMMSS(seconds) {
     // Ensure the input is a number
     if (typeof seconds !== 'number' || seconds < 0) {

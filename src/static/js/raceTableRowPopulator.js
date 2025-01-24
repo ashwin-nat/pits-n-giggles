@@ -1,9 +1,10 @@
 class RaceTableRowPopulator {
-    constructor(row, rowData, gameYear, isLiveDataMode) {
+    constructor(row, rowData, gameYear, isLiveDataMode, iconCache) {
         this.row = row;
         this.rowData = rowData;
         this.gameYear = gameYear;
         this.isLiveDataMode = isLiveDataMode;
+        this.iconCache = iconCache;
     }
 
     populate() {
@@ -31,10 +32,9 @@ class RaceTableRowPopulator {
         this.createMultiLineCell([
             this.rowData["driver-info"]["name"],
             getTeamName(this.rowData["driver-info"]["team"]),
-        ],  (e) => {
+        ], (e) => {
             e.preventDefault();
-            console.log("index", index);
-            socketio.emit('driver-info', {index: index});
+            socketio.emit('driver-info', { index: index });
         });
         return this;
     }
@@ -106,7 +106,7 @@ class RaceTableRowPopulator {
             }
         } else {
             const lapDeltaStr = formatLapDelta(lapInfo["lap-time-ms"],
-                    lapInfo["lap-time-ms-player"], isPlayer);
+                lapInfo["lap-time-ms-player"], isPlayer);
             if (this.gameYear == 23) {
                 cell = this.row.insertCell();
                 cell.textContent = lapDeltaStr;
@@ -143,7 +143,7 @@ class RaceTableRowPopulator {
             cellContent.push(lapStr);
         } else {
             const lapDeltaStr = formatLapDelta(lapInfo["lap-time-ms"],
-                    lapInfo["lap-time-ms-player"], isPlayer);
+                lapInfo["lap-time-ms-player"], isPlayer);
             cellContent.push(lapDeltaStr);
         }
         const cell = this.createMultiLineCell(cellContent);
@@ -164,20 +164,21 @@ class RaceTableRowPopulator {
             } else {
                 tyreWearText = "N/A";
             }
-        } else {
-            if (currTyreWearData) {
-                const maxTyreWearData = getMaxTyreWear(currTyreWearData);
-                tyreWearText = `${maxTyreWearData["max-key"]}: ${formatFloatWithTwoDecimals(maxTyreWearData["max-wear"])}%`
-            } else {
-                tyreWearText = "N/A";
-            }
+        }
+        else if (currTyreWearData) {
+            const maxTyreWearData = getMaxTyreWear(currTyreWearData);
+            tyreWearText = `${maxTyreWearData["max-key"]}: ${formatFloatWithTwoDecimals(maxTyreWearData["max-wear"])}%`
+        }
+        else {
+            tyreWearText = "N/A";
         }
 
         const tyreCompound = getTyreCompoundStr(tyreInfoData["visual-tyre-compound"], tyreInfoData["actual-tyre-compound"]);
+        const icon = this.iconCache.getIcon(tyreInfoData["visual-tyre-compound"]);
         this.createMultiLineCell([
             tyreWearText,
             `${tyreInfoData["tyre-age"]} lap(s) ` + `(${tyreInfoData["num-pitstops"]} pit)`,
-                tyreCompound,   // TODO, use icon
+            (icon) ? icon : tyreCompound,
         ]);
         return this;
     }
@@ -255,9 +256,13 @@ class RaceTableRowPopulator {
         const cell = this.row.insertCell();
         lines.forEach((line) => {
             const lineElement = document.createElement("div");
+
             if (line === null) {
                 const lineBreak = document.createElement("br");
                 lineElement.appendChild(lineBreak);
+            }
+            else if (line instanceof SVGElement) { // Check if the line is an SVG element
+                lineElement.appendChild(line); // Directly append the SVG icon
             }
             else if (onClick) { // If onClick handler is provided
                 const link = document.createElement("a");

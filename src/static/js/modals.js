@@ -3,6 +3,7 @@ class ModalManager {
     this.driverModal = new bootstrap.Modal(document.getElementById('driverModal'));
     this.settingsModal = new bootstrap.Modal(document.getElementById('settingsModal'));
     this.raceStatsModal = new bootstrap.Modal(document.getElementById('raceStatsModal'));
+    this.iconCache = new IconCache();
     this.setupEventListeners();
   }
 
@@ -28,7 +29,7 @@ class ModalManager {
     modalBody.innerHTML = '';
 
     // Create the modal content using the DriverModalPopulator class
-    const modalDataPopulator = new DriverModalPopulator(data);
+    const modalDataPopulator = new DriverModalPopulator(data, this.iconCache);
 
     // Create and append navigation tabs
     const navTabs = modalDataPopulator.createNavTabs();
@@ -56,7 +57,7 @@ class ModalManager {
     sendSynchronousRequest('driver-info', requestPayload, 'driver-info-response')
       .then(driverInfo => {
         console.log('Driver info sync response received:', driverInfo);
-        this.openDriverModal(driverInfo); // Reload the modal with the current data
+        this.openDriverModal(driverInfo, this.iconCache); // Reload the modal with the current data
       })
       .catch(error => {
         console.error('Error fetching driver info:', error);

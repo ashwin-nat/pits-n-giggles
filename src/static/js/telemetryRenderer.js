@@ -1,5 +1,5 @@
 class TelemetryRenderer {
-  constructor() {
+  constructor(iconCache) {
     this.telemetryTable = document.getElementById('telemetry-data');
     this.weatherWidget = new WeatherWidget(document.getElementById('weather-predictions'));
     this.fastestLapTimeSpan = document.getElementById('fastestLapTimeSpan');
@@ -9,11 +9,12 @@ class TelemetryRenderer {
     this.trackTempSpan = document.getElementById('track-temp');
     this.airTempSpan = document.getElementById('air-temp');
     this.indexByPosition = null;
+    this.iconCache = iconCache;
   }
 
   renderTelemetryRow(data, gameYear, isLiveDataMode) {
     const row = document.createElement('tr');
-    new RaceTableRowPopulator(row, data, gameYear, isLiveDataMode).populate();
+    new RaceTableRowPopulator(row, data, gameYear, isLiveDataMode, this.iconCache).populate();
     if (data['driver-info']['is-player']) {
       row.classList.add('player-row');
     }
@@ -45,7 +46,6 @@ class TelemetryRenderer {
 
     const weatherSamples = incomingData['weather-forecast-samples'].slice(0, g_pref_numWeatherPredictionSamples + 1);
     this.weatherWidget.update(weatherSamples);
-    console.log("weather samples", g_pref_numWeatherPredictionSamples, incomingData['weather-forecast-samples'], weatherSamples);
 
     this.fastestLapTimeSpan.textContent = formatLapTime(incomingData['fastest-lap-overall']);
     this.fastestLapNameSpan.textContent = this.truncateName(incomingData['fastest-lap-overall-driver']).toUpperCase();
@@ -57,32 +57,6 @@ class TelemetryRenderer {
 
   // Utility methods:
   populateCircuitSpan(incomingData) {
-    // const trackName = incomingData['circuit'];
-    // const trackNameContainer = this.trackName;
-    // // Clear any existing content in the span
-    // trackNameContainer.innerHTML = "";
-    // if ("---" === trackName) {
-    //   this.trackName.textContent = "PITS N' GIGGLES";
-    // } else {
-    //   // Create the first div for the track name
-    //   const trackNameDiv = document.createElement("div");
-    //   trackNameDiv.textContent = trackName.toUpperCase();
-    //   trackNameDiv.style.textAlign = "center"; // Center the text
-    //   trackNameDiv.style.margin = "0 auto";   // Ensure centering in flex/inline-flex containers
-    //   trackNameContainer.appendChild(trackNameDiv);
-
-    //   // Create the second div for dummy text
-    //   const lapCountDiv = document.createElement("div");
-    //   lapCountDiv.style.textAlign = "center"; // Center the text
-    //   lapCountDiv.style.margin = "0 auto";   // Ensure centering in flex/inline-flex containers
-    //   let lapCountText = "";
-    //   lapCountText += "L" + incomingData['current-lap'].toString();
-    //   if (incomingData['total-laps'] > 1) {
-    //     lapCountText += "/" + incomingData['total-laps'].toString();
-    //   }
-    //   lapCountDiv.textContent = lapCountText;
-    //   trackNameContainer.appendChild(lapCountDiv);
-    // }
     this.populateTrackName(incomingData);
     const pitLaneSpeedLimit = incomingData['pit-speed-limit'];
     if (pitLaneSpeedLimit) {

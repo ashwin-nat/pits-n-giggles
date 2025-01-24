@@ -1,7 +1,8 @@
 class DriverModalPopulator {
-    constructor(data) {
+    constructor(data, iconCache) {
         this.data = data;
         this.tableClassNames = 'table table-bordered table-striped table-dark table-sm align-middle';
+        this.iconCache = iconCache;
     }
 
     populateLapTimesTab(tabPane) {
@@ -54,7 +55,13 @@ class DriverModalPopulator {
                 row.appendChild(lapTimeCell);
 
                 const tyreCell = document.createElement('td');
-                tyreCell.textContent = lap["tyre-set-info"]["tyre-set"]["visual-tyre-compound"];
+                const compound = lap["tyre-set-info"]["tyre-set"]["visual-tyre-compound"];
+                const svgElement = this.iconCache.getIcon(compound);
+                if (svgElement) {
+                    tyreCell.appendChild(svgElement);
+                } else {
+                    tyreCell.textContent = compound;
+                }
                 row.appendChild(tyreCell);
 
                 const wearCell = document.createElement('td');
@@ -70,23 +77,50 @@ class DriverModalPopulator {
 
         const rightPanePopulator = (rightDiv) => {
             // Prepare data for the graph
-            const sector1Data = lapHistoryData.map((lap, index) => ({
-                x: index + 1, // Lap number (index + 1)
-                y: lap["sector-1-time-in-ms"] // Time in milliseconds
-            }));
-            const sector2Data = lapHistoryData.map((lap, index) => ({
-                x: index + 1, // Lap number (index + 1)
-                y: lap["sector-2-time-in-ms"] // Time in milliseconds
-            }));
-            const sector3Data = lapHistoryData.map((lap, index) => ({
-                x: index + 1, // Lap number (index + 1)
-                y: lap["sector-3-time-in-ms"] // Time in milliseconds
-            }));
-            const totalTimeData = lapHistoryData.map((lap, index) => ({
-                x: index + 1, // Lap number (index + 1)
-                y: lap["lap-time-in-ms"] // Total lap time in milliseconds
-            }));
-            console.log("totalTimeData", totalTimeData);
+            // const sector1Data = lapHistoryData.map((lap, index) => ({
+            //     x: index + 1, // Lap number (index + 1)
+            //     y: lap["sector-1-time-in-ms"] // Time in milliseconds
+            // }));
+            // const sector2Data = lapHistoryData.map((lap, index) => ({
+            //     x: index + 1, // Lap number (index + 1)
+            //     y: lap["sector-2-time-in-ms"] // Time in milliseconds
+            // }));
+            // const sector3Data = lapHistoryData.map((lap, index) => ({
+            //     x: index + 1, // Lap number (index + 1)
+            //     y: lap["sector-3-time-in-ms"] // Time in milliseconds
+            // }));
+            // const totalTimeData = lapHistoryData.map((lap, index) => ({
+            //     x: index + 1, // Lap number (index + 1)
+            //     y: lap["lap-time-in-ms"] // Total lap time in milliseconds
+            // }));
+
+            const sector1Data = lapHistoryData
+                .filter(lap => lap["sector-1-time-in-ms"] > 0)
+                .map((lap, index) => ({
+                    x: index + 1,
+                    y: lap["sector-1-time-in-ms"]
+                }));
+
+            const sector2Data = lapHistoryData
+                .filter(lap => lap["sector-2-time-in-ms"] > 0)
+                .map((lap, index) => ({
+                    x: index + 1,
+                    y: lap["sector-2-time-in-ms"]
+                }));
+
+            const sector3Data = lapHistoryData
+                .filter(lap => lap["sector-3-time-in-ms"] > 0)
+                .map((lap, index) => ({
+                    x: index + 1,
+                    y: lap["sector-3-time-in-ms"]
+                }));
+
+            const totalTimeData = lapHistoryData
+                .filter(lap => lap["lap-time-in-ms"] > 0)
+                .map((lap, index) => ({
+                    x: index + 1,
+                    y: lap["lap-time-in-ms"]
+                }));
 
             const datasets = [
                 {
@@ -284,6 +318,7 @@ class DriverModalPopulator {
                     let compound = "---";
                     let tyreWear = "---";
                     let tyreWearPerLap = "---";
+                    let icon;
 
                     if ("tyre-set-data" in stintData && stintData["tyre-set-data"] != null) {
                         const tyreSetData = stintData["tyre-set-data"];
@@ -291,6 +326,7 @@ class DriverModalPopulator {
 
                         const actualCompound = tyreSetData["actual-tyre-compound"];
                         const tyreSetId = `${actualCompound} - ${tyreSetIndex}`;
+                        icon = this.iconCache.getIcon(tyreSetData["visual-tyre-compound"]);
                         compound = tyreSetData["visual-tyre-compound"] + " (" + tyreSetId + ")";
                         tyreWear = `${formatFloatWithTwoDecimals(tyreSetData["wear"])}%`;
 
@@ -305,7 +341,7 @@ class DriverModalPopulator {
                         stintStartLap,
                         stintEndLap,
                         stintLength,
-                        compound,
+                        icon || compound,
                         tyreWear,
                         tyreWearPerLap,
                     ]);
@@ -542,7 +578,6 @@ class DriverModalPopulator {
 
             // Create table body
             const tbody = document.createElement('tbody');
-            console.log("panePopulator", tableData);
             if (tableData.length > 0) {
                 tableData.forEach((predictionData) => {
                     //TODO: highlight selected pit stop
@@ -660,10 +695,8 @@ class DriverModalPopulator {
             // Create table body
             const tbody = document.createElement('tbody');
             const warningsPenaltyHistoryList = this.data["warning-penalty-history"];
-            console.log("warningsPenaltyHistoryList", warningsPenaltyHistoryList);
             if (warningsPenaltyHistoryList.length) {
                 warningsPenaltyHistoryList.forEach(data => {
-                    console.log("in loop", data);
                     const entryType = data["entry-type"];
                     const oldValue = data["old-value"];
                     const newValue = data["new-value"];
@@ -742,8 +775,6 @@ class DriverModalPopulator {
     populateTyreSetsInfoTab(tabPane) {
 
         const tyreSets = this.sanitizeTyreSetData(this.data['tyre-sets']['tyre-set-data']);
-        console.log("sanitized data", tyreSets);
-
         // Create the accordion container
         const accordionContainer = document.createElement('div');
         accordionContainer.className = 'accordion bg-dark';
@@ -942,7 +973,13 @@ class DriverModalPopulator {
     populateTableRow(row, cellsData) {
         cellsData.forEach((cellData) => {
             const cell = document.createElement('td');
-            cell.textContent = cellData;
+
+            if (cellData instanceof SVGElement) { // Check if cellData is an SVG element
+                cell.appendChild(cellData); // Directly append the SVG icon
+            } else {
+                cell.textContent = cellData; // Fallback to text content for other types
+            }
+
             row.appendChild(cell);
         });
     }
@@ -1046,7 +1083,6 @@ class DriverModalPopulator {
         }
 
         const { firstHalf, secondHalf } = splitJsonObject(flattenJsonObject(data));
-        console.log(this.data, firstHalf, secondHalf);
         const panePopulator = (divElement, tableData) => {
             const table = document.createElement('table');
             table.className = this.tableClassNames ;
@@ -1070,7 +1106,6 @@ class DriverModalPopulator {
 
             // Create table body
             const tbody = document.createElement('tbody');
-            console.log("panePopulator", tableData);
             if (Object.keys(tableData).length > 0) {
                 for (const key in tableData) {
                     const value = tableData[key];
@@ -1089,11 +1124,9 @@ class DriverModalPopulator {
         };
 
         const leftPanePopulator = (leftDiv) => {
-            console.log("leftPanePopulator", firstHalf);
             panePopulator(leftDiv, firstHalf);
         }
         const rightPanePopulator = (rightDiv) => {
-            console.log("rightPanePopulator", secondHalf);
             panePopulator(rightDiv, secondHalf);
         }
 
