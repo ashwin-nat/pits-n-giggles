@@ -44,9 +44,8 @@ socketio.on('race-info-response', function (data) {
     if (!('error' in data)) {
         if ('__dummy' in data) {
             // this request is meant for a synchronous listener, ignore
-            console.log("Ignoring race-info-response in main listener");
+            console.debug("Ignoring race-info-response in main listener");
         } else {
-            console.log("race-info-response", data);
             window.modalManager.openRaceStatsModal(data);
         }
     } else {
@@ -59,10 +58,9 @@ socketio.on('driver-info-response', function (data) {
     if (!('error' in data)) {
         if ('__dummy' in data) {
             // this request is meant for a synchronous listener, ignore
-            console.log("Ignoring driver-info-response in main listener");
+            console.debug("Ignoring driver-info-response in main listener");
         } else {
             window.modalManager.openDriverModal(data, iconCache);
-            console.log("driver-info-response", data);
         }
     } else {
         console.error("Received error for driver-info request", data);

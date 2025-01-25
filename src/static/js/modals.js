@@ -11,7 +11,6 @@ class ModalManager {
     document.getElementById('settings-btn').addEventListener('click', () => this.openSettingsModal());
     document.getElementById('race-stats-btn').addEventListener('click', () => {
       socketio.emit('race-info', { 'message': 'dummy' });
-      console.log("sent race-info request");
     });
     document.getElementById('saveSettings').addEventListener('click', () => this.saveSettings());
   }

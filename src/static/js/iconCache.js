@@ -3,6 +3,7 @@ class IconCache {
         this.cache = {};
         this.iconMappings = {
             "Soft": "/tyre-icons/soft.svg",
+            "Super Soft": "/tyre-icons/super-soft.svg",
             "Medium": "/tyre-icons/medium.svg",
             "Hard": "/tyre-icons/hard.svg",
             "Intermediate": "/tyre-icons/intermediate.svg",
