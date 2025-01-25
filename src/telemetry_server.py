@@ -178,6 +178,17 @@ class TelemetryWebServer:
 
             return send_from_directory('static', 'tyre-icons/soft_tyre.svg', mimetype='image/svg+xml')
 
+        @self.m_app.route('/tyre-icons/super-soft.svg')
+        def superSoftTyreIcon():
+            """
+            Endpoint for the super soft tyre icon.
+
+            Returns:
+                str: HTML page content.
+            """
+
+            return send_from_directory('static', 'tyre-icons/super_soft_tyre.svg', mimetype='image/svg+xml')
+
         @self.m_app.route('/tyre-icons/medium.svg')
         def mediumTyreIcon():
             """
