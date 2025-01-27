@@ -566,7 +566,7 @@ class RaceStatsModalPopulator {
                 layout: {
                     padding: {
                         top: 10,
-                        right: 10, // Increased to leave space for end labels
+                        right: 75, // Increased to leave space for end labels
                         bottom: 10,
                         left: 10
                     }
