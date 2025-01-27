@@ -33,6 +33,7 @@ import tkinter as tk
 from tkinter import filedialog
 import webbrowser
 import socket
+import argparse
 # pylint: disable=unused-import
 from engineio.async_drivers import gevent
 
@@ -56,7 +57,7 @@ g_json_data = {}
 g_json_path = ''
 g_json_lock = Lock()
 g_first_file = True
-g_port_number = find_free_port()
+g_port_number = None
 ui_initialized = False  # Flag to track if UI has been initialized
 _race_table_clients : Set[str] = set()
 _player_overlay_clients : Set[str] = set()
@@ -656,6 +657,17 @@ class TelemetryWebServer:
 
             return send_from_directory(self.m_app.static_folder, 'tyre-icons/soft_tyre.svg', mimetype='image/svg+xml')
 
+        @self.m_app.route('/tyre-icons/super-soft.svg')
+        def superSoftTyreIcon():
+            """
+            Endpoint for the super soft tyre icon.
+
+            Returns:
+                str: HTML page content.
+            """
+
+            return send_from_directory(self.m_app.static_folder, 'tyre-icons/super_soft_tyre.svg', mimetype='image/svg+xml')
+
         @self.m_app.route('/tyre-icons/medium.svg')
         def mediumTyreIcon():
             """
@@ -843,6 +855,7 @@ class TelemetryWebServer:
         self.m_socketio.run(
             app=self.m_app,
             debug=False,
+            host="0.0.0.0",
             port=self.m_port,
             use_reloader=False)
 
@@ -960,7 +973,7 @@ def checkRecomputeJSON(json_data : Dict[str, Any]) -> bool:
 
     return should_write
 
-def open_file_helper(file_path):
+def open_file_helper(file_path, open_webpage=True):
     with open(file_path, 'r+', encoding='utf-8') as f:
         global g_json_lock
         global g_json_data
@@ -973,7 +986,7 @@ def open_file_helper(file_path):
             should_write = False
             should_write |= checkRecomputeJSON(g_json_data)
         sendRaceTable()
-        if g_first_file:
+        if g_first_file and open_webpage:
             g_first_file = False
             webbrowser.open(f'http://localhost:{g_port_number}', new=2)
     print("Opened file: " + file_path)
@@ -1015,13 +1028,59 @@ def on_closing():
     print("UI done")
     os._exit(0)
 
+import argparse
+import os
+
+def parseArgs() -> argparse.Namespace:
+    """Parse the command line args and perform validation
+
+    Returns:
+        argparse.Namespace: The parsed args namespace
+    """
+
+    # Initialize the ArgumentParser
+    parser = argparse.ArgumentParser(description="Pits n' Giggles save data viewer")
+
+    # Add command-line arguments with default values
+    parser.add_argument('-i', '--input-file', nargs="?", default=None, help="Input file name (optional)")
+    parser.add_argument('--headless', action='store_true', default=False, help="Run the viewer server in headless mode")
+    parser.add_argument('-p', '--port-number', type=int, default=None, help="Port number for the server")
+
+    # Parse the command-line arguments
+    args = parser.parse_args()
+
+    # Validation for the input file
+    if args.input_file:
+        if not os.path.isfile(args.input_file):
+            print(f"Error: The input file '{args.input_file}' does not exist or is not a valid file.")
+            exit(1)  # Exit the program or raise an exception based on your needs
+
+    if args.headless:
+        if not args.input_file:
+            print("Error: The input file must be provided in headless mode.")
+            exit(1)
+
+    return args
+
+
 def main():
 
-    print(f"cwd: {os.getcwd()}")
+    args = parseArgs()
 
-    # Start Tkinter UI
-    ui_thread = Thread(target=start_ui)
-    ui_thread.start()
+    if args.port_number is None:
+        g_port_number = find_free_port()
+    else:
+        g_port_number = args.port_number
+
+    # Start Tkinter UI if not in headless mode
+    if args.headless:
+        print("Running in headless mode")
+    else:
+        ui_thread = Thread(target=start_ui)
+        ui_thread.start()
+
+    if args.input_file:
+        open_file_helper(args.input_file, open_webpage=False)
 
     # Start Flask server after Tkinter UI is initialized
     print(f"Starting server. It can be accessed at http://localhost:{str(g_port_number)}")

@@ -50,7 +50,7 @@ def parseArgs() -> argparse.Namespace:
     """
 
     # Initialize the ArgumentParser
-    parser = argparse.ArgumentParser(description="F1 Telemetry Client and Server")
+    parser = argparse.ArgumentParser(description="Pits n' Giggles Realtime Telemetry Server")
 
     # Add command-line arguments with default values
     parser.add_argument("config_file", nargs="?", default="png_config.ini", help="Configuration file name (optional)")

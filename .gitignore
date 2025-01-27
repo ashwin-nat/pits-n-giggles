@@ -14,3 +14,4 @@ launch.json
 build/*
 dist/*
 png-venv/
+.vercel
