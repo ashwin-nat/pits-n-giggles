@@ -128,6 +128,29 @@ function getDefaultOverlayData() {
                 }
             ]
         },
+        "pace-comparison": {
+            "next": {
+                "lap-ms": 67132,
+                "name": "LECLERC",
+                "sector-1-ms": 16246,
+                "sector-2-ms": 30301,
+                "sector-3-ms": 20584
+            },
+            "player": {
+                "lap-ms": 66622,
+                "name": "RICCIARDO",
+                "sector-1-ms": 16395,
+                "sector-2-ms": 29983,
+                "sector-3-ms": 20243
+            },
+            "prev": {
+                "lap-ms": 67601,
+                "name": "NORRIS",
+                "sector-1-ms": 16722,
+                "sector-2-ms": 30628,
+                "sector-3-ms": 20250
+            }
+        },
         "penalties-and-stats": {
             "air-temperature": 22,
             "circuit": "Austria",

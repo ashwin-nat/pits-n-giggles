@@ -6,11 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pits n' Giggles Stream Overlay</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/weather.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/tyreIcons.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/carTelemetryOverlay.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/gForceOverlay.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/conditions.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/speedLimit.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/paceComparisonOverlay.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,100..900;1,100..900&display=swap"
         rel="stylesheet">
     <!-- Include Bootstrap CSS -->
@@ -181,10 +181,55 @@
                 </div>
             </div>
 
-            <!-- TODO: Notification -->
+            <!-- Pace comparison div -->
             <div class="col d-flex align-items-center justify-content-center">
-                Top row: Lap time history, general stats, weather<br />
-                Bottom row: G force, input telemetry, unused<br />
+                <div id="paceComparisonWidget" class="pace-comparison-container">
+                <div class="pace-comparison-header">
+                    Last Lap Pace Comparison
+                </div>
+                <div class="pace-comparison-main-row">
+                    <div class="pace-comparison-half">
+                        <span class="pace-comparison-driver pace-comparison-prev" id="paceComparisonPrev">---</span>
+                        <span class="pace-comparison-delta" id="paceComparisonPrevDelta">--.-</span>
+                    </div>
+                    <div class="pace-comparison-divider"></div>
+                    <div class="pace-comparison-half">
+                        <span class="pace-comparison-delta" id="paceComparisonNextDelta">--.-</span>
+                        <span class="pace-comparison-driver pace-comparison-next" id="paceComparisonNext">---</span>
+                    </div>
+                </div>
+                <div class="pace-comparison-sectors-row">
+                    <div class="pace-comparison-sectors-half">
+                        <div class="pace-comparison-sector">
+                            <span class="pace-comparison-sector-label">S1</span>
+                            <span id="prevSector1">--.-</span>
+                        </div>
+                        <div class="pace-comparison-sector">
+                            <span class="pace-comparison-sector-label">S2</span>
+                            <span id="prevSector2">--.-</span>
+                        </div>
+                        <div class="pace-comparison-sector">
+                            <span class="pace-comparison-sector-label">S3</span>
+                            <span id="prevSector3">--.-</span>
+                        </div>
+                    </div>
+                    <div class="pace-comparison-divider"></div>
+                    <div class="pace-comparison-sectors-half">
+                        <div class="pace-comparison-sector">
+                            <span class="pace-comparison-sector-label">S1</span>
+                            <span id="nextSector1">--.-</span>
+                        </div>
+                        <div class="pace-comparison-sector">
+                            <span class="pace-comparison-sector-label">S2</span>
+                            <span id="nextSector2">--.-</span>
+                        </div>
+                        <div class="pace-comparison-sector">
+                            <span class="pace-comparison-sector-label">S3</span>
+                            <span id="nextSector3">--.-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
             </div>
         </div>
     </div>
@@ -198,6 +243,7 @@
     <script src="{{ url_for('static', filename='js/penaltiesStatsOverlay.js') }}"></script>
     <script src="{{ url_for('static', filename='js/gForceOverlay.js') }}"></script>
     <script src="{{ url_for('static', filename='js/carTelemetryOverlay.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/paceComparisonOverlay.js') }}"></script>
     <script src="{{ url_for('static', filename='js/constants.js') }}"></script>
     <script>
         const sampleStreamOverlayJSON = getDefaultOverlayData();
@@ -209,6 +255,7 @@
         const weatherWidget = new WeatherWidget(document.getElementById('weatherDiv'));
         const pensStatsWidget = new PenaltiesStatsWidget();
         const lapTimesWidget = new LapTimeTableWidget(iconCache);
+        const paceComparisonWidget = new PaceComparison();
 
         const maxWeatherSamples = 5;
         // Emit a custom event to register client type upon connection
@@ -234,6 +281,7 @@
             lapTimesWidget.update(data["lap-time-history"]);
             weatherWidget.update(data["weather-forecast-samples"].slice(0, maxWeatherSamples + 1));
             gForceDisplayWidget.update(data["g-force"]);
+            paceComparisonWidget.update(data["pace-comparison"]);
         });
     </script>
 </body>

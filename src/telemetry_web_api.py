@@ -256,12 +256,16 @@ class PlayerTelemetryOverlayUpdate:
                             else TelData._driver_data.m_player_index
             player_data = TelData._driver_data.m_driver_data[player_index] \
                             if player_index in TelData._driver_data.m_driver_data else None
+            player_position = player_data.m_position if player_data else None
+            prev_data = TelData._driver_data.getDriverInfoByPosition(player_position - 1) if player_position else None
+            next_data = TelData._driver_data.getDriverInfoByPosition(player_position + 1) if player_position else None
 
         self.__initCarTelemetry(player_data)
         self.__initLapTimes(player_data)
         self.__initTyreWear(player_data)
         self.__initPenalties(player_data)
         self.__initGForce(player_data)
+        self.__initPaceComparison(player_data, prev_data, next_data)
 
     def __initCarTelemetry(self, player_data: Optional[TelData.DataPerDriver]) -> None:
         """Prepares the car telemetry data.
@@ -360,6 +364,66 @@ class PlayerTelemetryOverlayUpdate:
             self.m_g_force_vert = 0
             self.m_g_force_long = 0
 
+    def __initPaceComparison(self,
+                             player_data: TelData.DataPerDriver,
+                             prev_data: Optional[TelData.DataPerDriver],
+                             next_data: Optional[TelData.DataPerDriver]) -> None:
+        """Prepares the player's pace comparison data.
+
+        Args:
+            player_data (TelData.DataPerDriver): The player's DataPerDriver object
+            prev_data (Optional[TelData.DataPerDriver]): The previous driver's DataPerDriver object (may be None)
+            next_data (Optional[TelData.DataPerDriver]): The next driver's DataPerDriver object (may be None)
+        """
+        self.m_pace_comp_json = {
+            "player" : {
+                "name" : None,
+                "lap-ms" : None,
+                "sector-1-ms" : None,
+                "sector-2-ms" : None,
+                "sector-3-ms" : None,
+            },
+            "prev" : {
+                "name" : None,
+                "lap-ms" : None,
+                "sector-1-ms" : None,
+                "sector-2-ms" : None,
+                "sector-3-ms" : None,
+            },
+            "next" : {
+                "name" : None,
+                "lap-ms" : None,
+                "sector-1-ms" : None,
+                "sector-2-ms" : None,
+                "sector-3-ms" : None,
+            }
+        }
+        if not player_data:
+            return
+
+        self.__populatePaceCompDataForDriver(self.m_pace_comp_json["player"], player_data)
+        self.__populatePaceCompDataForDriver(self.m_pace_comp_json["prev"], prev_data)
+        self.__populatePaceCompDataForDriver(self.m_pace_comp_json["next"], next_data)
+
+    def __populatePaceCompDataForDriver(self,
+                                        json_dict: Dict[str, any],
+                                        driver_obj: Optional[TelData.DataPerDriver]) -> None:
+        """Populates the player's pace comparison data.
+
+        Args:
+            json_dict (Dict[str, any]): The JSON dict to populate
+            driver_obj (Optional[TelData.DataPerDriver]): The driver's DataPerDriver object (may be None)
+        """
+
+        if driver_obj:
+            json_dict["name"] = driver_obj.m_name
+            json_dict["lap-ms"] = driver_obj.m_last_lap_ms
+            last_lap_obj = driver_obj.m_packet_session_history.getLastLapData() if driver_obj.m_packet_session_history else None
+            if last_lap_obj:
+                json_dict["sector-1-ms"] = last_lap_obj.m_sector1TimeInMS
+                json_dict["sector-2-ms"] = last_lap_obj.m_sector2TimeInMS
+                json_dict["sector-3-ms"] = last_lap_obj.m_sector3TimeInMS
+
     def toJSON(self) -> Dict[str, Any]:
         """Dump this object into JSON
 
@@ -405,7 +469,8 @@ class PlayerTelemetryOverlayUpdate:
                 "lat": self.m_g_force_lat,
                 "vert": self.m_g_force_vert,
                 "long": self.m_g_force_long
-            }
+            },
+            "pace-comparison" : self.m_pace_comp_json,
         }
 
 # ------------------------- HELPER - CLASSES ---------------------------------------------------------------------------
@@ -462,6 +527,7 @@ class DriversListRsp:
                                         data_per_driver.m_drs_distance),
                 },
                 "delta-info" : {
+                     # TODO: deprecate and move to simple numeric delta
                     "delta": self.__getDeltaPlusPenaltiesPlusPit(data_per_driver.m_delta_to_car_in_front,
                                                             data_per_driver.m_penalties,
                                                             data_per_driver.m_is_pitting,
@@ -592,7 +658,7 @@ class DriversListRsp:
         Returns:
             str: Delta plus penalties plus pit information.
         """
-
+        # TODO - deprecate this function
         if len(dnf_status_code) > 0:
             return dnf_status_code
         if is_pitting:
@@ -658,7 +724,7 @@ class DriversListRsp:
 
         for driver_data in self.m_final_list:
             if driver_data.m_ers_perc is not None:
-                driver_data.m_ers_perc = F1Utils.floatToStr(driver_data.m_ers_perc) + "%"
+                driver_data.m_ers_perc = f"{F1Utils.floatToStr(driver_data.m_ers_perc)}%"
             if driver_data.m_telemetry_restrictions is not None:
                 driver_data.m_telemetry_restrictions = str(driver_data.m_telemetry_restrictions)
             else:
@@ -696,31 +762,28 @@ class DriversListRsp:
             # recompute the deltas if not spectator mode
             player_index = next((index for index, item in enumerate(self.m_final_list) if item.m_is_player), None)
 
+            delta_so_far = 0
             # case 1: player is in the absolute front of this pack
             if player_index == 0:
                 self.m_final_list[0].m_delta_to_car_in_front = "---"
-                delta_so_far = 0
+                # dont include the player in the loop
                 for data in self.m_final_list[1:]:
                     delta_so_far += data.m_delta_to_car_in_front
                     data.m_delta_to_car_in_front = self._millisecondsToSecondsStr(delta_so_far)
 
-            # case 2: player is in the back of the pack
-            # Iterate from back to front using reversed need to look at previous car's data for distance ahead
+            # case 2: player is in the absolute back of this pack
             elif player_index == len(self.m_final_list) - 1:
-                delta_so_far = 0
                 one_car_behind_index = len(self.m_final_list)-1
                 one_car_behind_delta = self.m_final_list[one_car_behind_index].m_delta_to_car_in_front
-                for data in reversed(self.m_final_list[:len(self.m_final_list)-1]):
+                # dont include the player in the loop
+                for data in reversed(self.m_final_list[:-1]):
                     delta_so_far -= one_car_behind_delta
                     one_car_behind_delta = data.m_delta_to_car_in_front
                     data.m_delta_to_car_in_front = self._millisecondsToSecondsStr(delta_so_far)
                 self.m_final_list[len(self.m_final_list)-1].m_delta_to_car_in_front = "---"
 
-            # case 3: player is somewhere in the middle of the pack
             else:
-
-                # First, set the deltas for the cars ahead
-                delta_so_far = 0
+                # case 3: player is somewhere in the middle
                 one_car_behind_index = player_index
                 one_car_behind_delta = self.m_final_list[one_car_behind_index].m_delta_to_car_in_front
                 for data in reversed(self.m_final_list[:player_index]):

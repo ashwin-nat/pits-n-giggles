@@ -1902,6 +1902,25 @@ class DriverData:
         """
         return arg1 if arg2 is None else min(arg1, arg2)
 
+    def getDriverInfoByPosition(self, position: int) -> Optional[DataPerDriver]:
+        """
+        Get the driver data by position
+
+        Args:
+            position (int): The position of the driver
+
+        Returns:
+            Optional[DataPerDriver]: The driver data object
+        """
+        return next(
+            (
+                driver_data
+                for driver_data in self.m_driver_data.values()
+                if driver_data.m_position == position
+            ),
+            None,
+        )
+
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
 _globals = GlobalData()

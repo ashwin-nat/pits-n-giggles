@@ -23,7 +23,7 @@
 
 from __future__ import annotations
 import struct
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from .common import _split_list, _extract_sublist, F1Utils, ActualTyreCompound, VisualTyreCompound, PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -430,6 +430,25 @@ class PacketSessionHistoryData:
             json_data["header"] = self.m_header.toJSON()
 
         return json_data
+
+    def getLastLapData(self) -> Optional[LapHistoryData]:
+        """Get the last lap completed data
+
+        Returns:
+            LapHistoryData: The last lap data. May be None if not found
+        """
+
+        return next(
+            (
+                lap_data
+                for lap_data in reversed(self.m_lapHistoryData)
+                if (lap_data.m_lapTimeInMS > 0)
+                and (lap_data.m_sector1TimeInMS > 0)
+                and (lap_data.m_sector2TimeInMS > 0)
+                and (lap_data.m_sector3TimeInMS > 0)
+            ),
+            None,
+        )
 
     def __eq__(self, other: "PacketSessionHistoryData") -> bool:
         """

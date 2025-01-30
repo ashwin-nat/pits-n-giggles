@@ -40,7 +40,7 @@ function formatLapDelta(lapTime, playerLapTime, isPlayer) {
         return formatLapTime(lapTime);
     }
 
-    return formatDelta(lapTime - playerLapTime);
+    return formatDelta(playerLapTime - lapTime);
 }
 
 function showToast(message, timeout = 3000) {
@@ -262,4 +262,13 @@ function formatSecondsToMMSS(seconds) {
 
     // Return formatted time string
     return `${formattedMinutes}:${formattedSeconds}`;
+}
+
+function truncateName(name) {
+    const maxLength = 3;
+    if (name.length > maxLength) {
+      return name.substring(0, maxLength);
+    } else {
+      return name;
+    }
 }

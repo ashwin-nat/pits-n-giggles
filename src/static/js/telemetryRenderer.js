@@ -51,7 +51,7 @@ class TelemetryRenderer {
     this.weatherWidget.update(weatherSamples);
 
     this.fastestLapTimeSpan.textContent = formatLapTime(incomingData['fastest-lap-overall']);
-    this.fastestLapNameSpan.textContent = this.truncateName(incomingData['fastest-lap-overall-driver']).toUpperCase();
+    this.fastestLapNameSpan.textContent = truncateName(incomingData['fastest-lap-overall-driver']).toUpperCase();
     this.populateCircuitSpan(incomingData);
     this.airTempSpan.textContent = incomingData['air-temperature'] + ' °C';
     this.trackTempSpan.textContent = incomingData['track-temperature'] + ' °C';
@@ -110,15 +110,6 @@ class TelemetryRenderer {
   shouldShowLapNumber(sessionType) {
     const unsupportedSessionTypes = ['Qualifying', 'Practice', 'Sprint Shootout'];
     return !unsupportedSessionTypes.some(type => sessionType.includes(type));
-  }
-
-  truncateName(name) {
-    const maxLength = 3;
-    if (name.length > maxLength) {
-      return name.substring(0, maxLength);
-    } else {
-      return name;
-    }
   }
 
   getPlayerPosition(data) {
