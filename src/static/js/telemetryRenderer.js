@@ -18,10 +18,13 @@ class TelemetryRenderer {
     if (data['driver-info']['is-player']) {
       row.classList.add('player-row');
     }
-    if (data['driver-info']['dnf-status'] == 'DNF') {
-      row.classList.add('dnf-row');
-    } else if (data['driver-info']['drs']) {
-      row.classList.add('drs-row');
+    if (isLiveDataMode) {
+      // only apply the drs formatting in live mode
+      if (data['driver-info']['dnf-status'] == 'DNF') {
+        row.classList.add('dnf-row');
+      } else if (data['driver-info']['drs']) {
+        row.classList.add('drs-row');
+      }
     }
     return row;
   }

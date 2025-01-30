@@ -56,7 +56,7 @@ def find_free_port():
 g_json_data = {}
 g_json_path = ''
 g_json_lock = Lock()
-g_first_file = True
+g_should_open_ui = True
 g_port_number = None
 ui_initialized = False  # Flag to track if UI has been initialized
 _race_table_clients : Set[str] = set()
@@ -298,7 +298,7 @@ def getTelemetryInfo():
                 "fastest-lap-overall": 0,
                 "fastest-lap-overall-driver": "---",
                 "pit-speed-limit": 0,
-                "race-ended": False,
+                "race-ended": True,
                 "safety-car-status": "",
                 "table-entries": [],
                 "total-laps": "---",
@@ -978,7 +978,8 @@ def open_file_helper(file_path, open_webpage=True):
         global g_json_lock
         global g_json_data
         global g_json_path
-        global g_first_file
+        global g_should_open_ui
+        global g_port_number
         with g_json_lock:
             g_json_data = json.load(f)
             g_json_path = file_path
@@ -986,8 +987,8 @@ def open_file_helper(file_path, open_webpage=True):
             should_write = False
             should_write |= checkRecomputeJSON(g_json_data)
         sendRaceTable()
-        if g_first_file and open_webpage:
-            g_first_file = False
+        if g_should_open_ui and open_webpage:
+            g_should_open_ui = False
             webbrowser.open(f'http://localhost:{g_port_number}', new=2)
     print("Opened file: " + file_path)
 
@@ -998,6 +999,12 @@ def open_file():
         open_file_helper(file_path)
     else:
         status_label.config(text="No file selected")
+
+def open_webpage():
+    global g_should_open_ui
+    global g_port_number
+    g_should_open_ui = False
+    webbrowser.open(f'http://localhost:{g_port_number}', new=2)
 
 def start_ui():
     global ui_initialized
@@ -1018,7 +1025,7 @@ def start_ui():
         open_file_button.grid(row=1, column=0, padx=(0, 10))  # Position in column 0
 
         open_webpage_button = tk.Button(frame, text="Open UI",
-                                        command=lambda: webbrowser.open(f'http://localhost:{g_port_number}', new=2))
+                                        command=open_webpage)
         open_webpage_button.grid(row=1, column=1)  # Position in column 1 (to the right of the open_button)
 
         root.protocol("WM_DELETE_WINDOW", on_closing)
@@ -1061,6 +1068,7 @@ def parseArgs() -> argparse.Namespace:
 
 def main():
 
+    global g_port_number
     args = parseArgs()
 
     if args.cloud:
