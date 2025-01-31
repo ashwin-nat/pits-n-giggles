@@ -580,7 +580,6 @@ class DriverModalPopulator {
             const tbody = document.createElement('tbody');
             if (tableData.length > 0) {
                 tableData.forEach((predictionData) => {
-                    //TODO: highlight selected pit stop
                     const currentLapNum = predictionData["lap-number"];
                     const flWear = formatFloatWithTwoDecimals(predictionData["front-left-wear"]) + "%";
                     const frWear = formatFloatWithTwoDecimals(predictionData["front-right-wear"]) + "%";
@@ -596,6 +595,10 @@ class DriverModalPopulator {
                         rrWear,
                         average
                     ]);
+
+                    if (currentLapNum == selectedPitStop) {
+                        row.classList.add('border', 'border-white');
+                    }
                 });
             } else {
                 const row = tbody.insertRow();
@@ -791,11 +794,24 @@ class DriverModalPopulator {
             accordionHeader.className = 'accordion-header';
             accordionHeader.id = `heading${index}`;
 
-            accordionHeader.innerHTML = `
-            <button class="accordion-button bg-dark text-white collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${index}" aria-expanded="false" aria-controls="collapse${index}">
-                ${tyreSetGroup["actual-tyre-compound"]} - ${tyreSetGroup["visual-tyre-compound"]}
-            </button>
-            `;
+            const icon = this.iconCache.getIcon(tyreSetGroup["visual-tyre-compound"]);
+            const accordionButton = document.createElement('button');
+            accordionButton.className = 'accordion-button bg-dark text-white collapsed';
+            accordionButton.type = 'button';
+            accordionButton.setAttribute('data-bs-toggle', 'collapse');
+            accordionButton.setAttribute('data-bs-target', `#collapse${index}`);
+            accordionButton.setAttribute('aria-expanded', 'false');
+            accordionButton.setAttribute('aria-controls', `collapse${index}`);
+
+            if (icon) {
+                accordionButton.textContent = `${tyreSetGroup["visual-tyre-compound"]}  `;
+                accordionButton.appendChild(icon);
+            } else {
+                accordionButton.textContent = tyreSetGroup["actual-tyre-compound"] + " - " +
+                    tyreSetGroup["visual-tyre-compound"];
+            }
+
+            accordionHeader.appendChild(accordionButton);
 
             // Accordion body (the collapsible content area)
             const accordionCollapse = document.createElement('div');

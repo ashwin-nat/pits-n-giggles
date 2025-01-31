@@ -154,32 +154,41 @@ class RaceTableRowPopulator {
     }
 
     addCurrTyreInfo() {
-        // const tyreInfoCell = row.insertCell();
         const tyreInfoData = this.rowData["tyre-info"];
         const currTyreWearData = tyreInfoData["current-wear"];
         let tyreWearText = "";
         if (g_pref_tyreWearAverageFormat) {
-            if (currTyreWearData) {
-                tyreWearText = formatFloatWithTwoDecimals(currTyreWearData["average"]) + "%";
-            } else {
-                tyreWearText = "N/A";
-            }
-        }
-        else if (currTyreWearData) {
-            const maxTyreWearData = getMaxTyreWear(currTyreWearData);
-            tyreWearText = `${maxTyreWearData["max-key"]}: ${formatFloatWithTwoDecimals(maxTyreWearData["max-wear"])}%`
-        }
-        else {
-            tyreWearText = "N/A";
+            tyreWearText = currTyreWearData
+                ? formatFloatWithTwoDecimals(currTyreWearData["average"]) + "%"
+                : "N/A";
+        } else {
+            tyreWearText = currTyreWearData
+                ? (() => {
+                    const maxTyreWearData = getMaxTyreWear(currTyreWearData);
+                    return `${maxTyreWearData["max-key"]}: ${formatFloatWithTwoDecimals(maxTyreWearData["max-wear"])}%`;
+                })()
+                : "N/A";
         }
 
-        const tyreCompound = getTyreCompoundStr(tyreInfoData["visual-tyre-compound"], tyreInfoData["actual-tyre-compound"]);
+        const cell = this.row.insertCell();
+
+        const firstRow = document.createElement("div");
         const icon = this.iconCache.getIcon(tyreInfoData["visual-tyre-compound"]);
-        this.createMultiLineCell([
-            tyreWearText,
-            `${tyreInfoData["tyre-age"]} lap(s) ` + `(${tyreInfoData["num-pitstops"]} pit)`,
-            (icon) ? icon : tyreCompound,
-        ]);
+        const tyreCompound = getTyreCompoundStr(tyreInfoData["visual-tyre-compound"], tyreInfoData["actual-tyre-compound"]);
+
+        if (icon) {
+            firstRow.appendChild(icon);
+            firstRow.appendChild(document.createTextNode(" " + tyreWearText));
+        } else {
+            firstRow.textContent = `${tyreCompound} ${tyreWearText}`;
+        }
+
+        const secondRow = document.createElement("div");
+        secondRow.textContent = `${tyreInfoData["tyre-age"]} lap(s) (${tyreInfoData["num-pitstops"]} pit)`;
+
+        cell.appendChild(firstRow);
+        cell.appendChild(secondRow);
+
         return this;
     }
 
