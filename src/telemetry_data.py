@@ -1211,11 +1211,13 @@ class DataPerDriver:
             not sector_1_best_ms or
             not sector_2_best_ms or
             not sector_3_best_ms):
+            png_logger.debug(f"Driver {self.m_name}: Returning default val because of missing data.")
             return default_val
 
         # Validate lap data
         if ((for_best_lap and not self.m_best_lap_ms) or
             (not for_best_lap and not self.m_last_lap_ms)):
+            png_logger.debug(f"Driver {self.m_name}: Returning default val because last/best lap not yet avlb.")
             return default_val
 
         # Select lap details
@@ -1229,6 +1231,7 @@ class DataPerDriver:
         # Validate lap number. Can have missing laps if red flag
         if session_type_str.lower() not in ["qualifying", "practice", "shootout", "time trial"] and \
             not (0 <= lap_num <= len(self.m_packet_session_history.m_lapHistoryData)):
+            png_logger.debug(f"Driver {self.m_name}: Returning default val because missing lap {lap_num}.")
             return default_val
 
         # Get lap data

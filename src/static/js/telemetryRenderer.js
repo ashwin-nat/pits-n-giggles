@@ -13,20 +13,35 @@ class TelemetryRenderer {
   }
 
   renderTelemetryRow(data, gameYear, isLiveDataMode) {
+    const { 'driver-info': driverInfo } = data;
     const row = document.createElement('tr');
+
+    // Populate row with data
     new RaceTableRowPopulator(row, data, gameYear, isLiveDataMode, this.iconCache).populate();
-    if (data['driver-info']['is-player']) {
-      row.classList.add('player-row');
-    }
-    if (isLiveDataMode) {
-      // only apply the drs formatting in live mode
-      if (data['driver-info']['dnf-status'] == 'DNF') {
-        row.classList.add('dnf-row');
-      } else if (data['driver-info']['drs']) {
-        row.classList.add('drs-row');
-      }
-    }
+
+    // Apply CSS classes based on row state
+    const cssClasses = this.determineRowClasses(driverInfo, isLiveDataMode);
+    row.classList.add(...cssClasses);
+
     return row;
+  }
+
+  determineRowClasses(driverInfo, isLiveDataMode) {
+    const classes = [];
+
+    if (driverInfo['is-player']) {
+      classes.push('player-row');
+    }
+
+    if (driverInfo['dnf-status'] === 'DNF') {
+      classes.push('dnf-row');
+    }
+
+    if (isLiveDataMode && driverInfo['drs']) {
+      classes.push('drs-row');
+    }
+
+    return classes;
   }
 
   updateDashboard(incomingData) {

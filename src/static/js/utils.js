@@ -11,21 +11,22 @@ function formatLapTime(milliseconds) {
         millisecondsPart.toString().padStart(3, '0'); // Ensure it's 3 digits
 }
 
+function formatDelta(delta) {
+    // Determine the sign
+    const sign = delta >= 0 ? '+' : '-';
+
+    // Get the absolute value of delta for formatting
+    const absDelta = Math.abs(delta);
+
+    // Calculate seconds and milliseconds
+    const seconds = Math.floor(absDelta / 1000);
+    const milliseconds = absDelta % 1000;
+
+    // Format the string as "±seconds.milliseconds"
+    return sign + seconds + '.' + milliseconds.toString().padStart(3, '0'); // Ensure milliseconds are 3 digits
+}
+
 function formatLapDelta(lapTime, playerLapTime, isPlayer) {
-    function formatDelta(delta) {
-        // Determine the sign
-        const sign = delta >= 0 ? '+' : '-';
-
-        // Get the absolute value of delta for formatting
-        const absDelta = Math.abs(delta);
-
-        // Calculate seconds and milliseconds
-        const seconds = Math.floor(absDelta / 1000);
-        const milliseconds = absDelta % 1000;
-
-        // Format the string as "±seconds.milliseconds"
-        return sign + seconds + '.' + milliseconds.toString().padStart(3, '0'); // Ensure milliseconds are 3 digits
-    }
 
     if (isPlayer) {
         return formatLapTime(playerLapTime);

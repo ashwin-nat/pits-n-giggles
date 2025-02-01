@@ -527,16 +527,8 @@ class DriversListRsp:
                                         data_per_driver.m_drs_distance),
                 },
                 "delta-info" : {
-                     # TODO: deprecate and move to simple numeric delta
-                    "delta": self.__getDeltaPlusPenaltiesPlusPit(data_per_driver.m_delta_to_car_in_front,
-                                                            data_per_driver.m_penalties,
-                                                            data_per_driver.m_is_pitting,
-                                                            data_per_driver.m_dnf_status_code),
-                    "delta-to-leader": self.__getDeltaPlusPenaltiesPlusPit(
-                                F1Utils.millisecondsToSecondsMilliseconds(data_per_driver.m_delta_to_leader),
-                                                            data_per_driver.m_penalties,
-                                                            data_per_driver.m_is_pitting,
-                                                            data_per_driver.m_dnf_status_code),
+                    "delta": data_per_driver.m_delta_to_car_in_front,
+                    "delta-to-leader": data_per_driver.m_delta_to_leader,
                 },
                 "ers-info" : {
                     "ers-percent": _getValueOrDefaultValue(data_per_driver.m_ers_perc),
@@ -640,32 +632,6 @@ class DriversListRsp:
             List[Optional[int]]: The best sector times. Can be None
         """
         return [self.m_fastest_s1_ms, self.m_fastest_s2_ms, self.m_fastest_s3_ms]
-
-    def __getDeltaPlusPenaltiesPlusPit(self,
-            delta: str,
-            penalties: str,
-            is_pitting: bool,
-            dnf_status_code: str):
-        """
-        Get delta plus penalties plus pit information.
-
-        Args:
-            delta (str): Delta information.
-            penalties (str): Penalties information.
-            is_pitting (bool): Whether the driver is pitting.
-            dnf_status_code (str): The code indicating DNF status. Empty string if driver is still racing
-
-        Returns:
-            str: Delta plus penalties plus pit information.
-        """
-        # TODO - deprecate this function
-        if len(dnf_status_code) > 0:
-            return dnf_status_code
-        if is_pitting:
-            return "PIT " + penalties
-        if delta is not None:
-            return delta + " " + penalties
-        return "---"
 
     def __getDRSValue(self,
             drs_activated: bool,

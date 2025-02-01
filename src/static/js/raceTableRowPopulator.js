@@ -46,9 +46,9 @@ class RaceTableRowPopulator {
         const deltaInfo = this.rowData["delta-info"];
         const deltaCell = this.row.insertCell();
         if (g_pref_relativeDelta) {
-            deltaCell.textContent = deltaInfo["delta"];
+            deltaCell.textContent = formatDelta(deltaInfo["delta"]);
         } else {
-            deltaCell.textContent = deltaInfo["delta-to-leader"];
+            deltaCell.textContent = formatDelta(deltaInfo["delta-to-leader"]);
         }
         return this;
     }

@@ -347,9 +347,9 @@ def getTelemetryInfo():
 
         json_response["table-entries"] = []
         result_str_map = {
-            ResultStatus.DID_NOT_FINISH : "DNF",
-            ResultStatus.DISQUALIFIED : "DSQ",
-            ResultStatus.RETIRED : "DNF"
+            str(ResultStatus.DID_NOT_FINISH) : "DNF",
+            str(ResultStatus.DISQUALIFIED) : "DSQ",
+            str(ResultStatus.RETIRED) : "DNF"
         }
         best_s1_time = g_json_data["records"]["fastest"]["s1"]["time"]
         best_s2_time = g_json_data["records"]["fastest"]["s2"]["time"]
@@ -362,20 +362,10 @@ def getTelemetryInfo():
                 is_fastest = False
             position = data_per_driver["final-classification"]["position"]
             if position == 1:
-                delta_relative = "---"
+                delta_relative = 0
             else:
-                delta_relative = F1Utils.millisecondsToSecondsMilliseconds(data_per_driver["lap-data"]["delta-to-race-leader-in-ms"])
+                delta_relative = data_per_driver["lap-data"]["delta-to-race-leader-in-ms"]
             delta_to_leader = delta_relative
-            penalties = _getPenaltyString(
-                penalties_sec=data_per_driver["lap-data"]["penalties"],
-                num_dt=data_per_driver["lap-data"]["num-unserved-drive-through-pens"],
-                num_sg=data_per_driver["lap-data"]["num-unserved-stop-go-pens"]
-            )
-            is_pitting = True if data_per_driver["lap-data"]["pit-status"] in \
-                [str(LapData.PitStatus.PITTING),
-                str(LapData.PitStatus.IN_PIT_AREA),
-                str(LapData.PitStatus.PITTING.value),
-                str(LapData.PitStatus.IN_PIT_AREA.value)] else False
             dnf_status_code = result_str_map.get(data_per_driver["lap-data"]["result-status"], "")
             ers_perc = data_per_driver["car-status"]["ers-store-energy"] / data_per_driver["car-status"]["ers-max-capacity"] * 100.0
 
@@ -397,9 +387,8 @@ def getTelemetryInfo():
                         "drs": False,
                     },
                     "delta-info" : {
-                        "delta": getDeltaPlusPenaltiesPlusPit(delta_relative, penalties, is_pitting, dnf_status_code),
-                        "delta-to-leader" : getDeltaPlusPenaltiesPlusPit(
-                                                delta_to_leader, penalties, is_pitting, dnf_status_code),
+                        "delta": delta_relative,
+                        "delta-to-leader" : delta_to_leader,
                     },
                     "ers-info" : {
                         "ers-percent": F1Utils.floatToStr(ers_perc) + '%',
@@ -573,19 +562,41 @@ def handleRaceInfoRequest() -> Tuple[Dict[str, Any], HTTPStatus]:
         }, HTTPStatus.OK
 
 class TelemetryWebServer:
-    def __init__(self,
-        port: int):
+    def __init__(self, port: int):
         """
         Initialize TelemetryServer.
 
         Args:
             port (int): Port number for the server.
         """
-        # Check if we're running in a PyInstaller bundle or not
+        # Get the absolute path to the application root
         if hasattr(sys, '_MEIPASS'):
+            # PyInstaller bundle mode
             base_dir = Path(sys._MEIPASS)
         else:
-            base_dir = Path(__file__).parent.parent / 'src'
+            # Development mode - find project root regardless of CWD
+            current_file = Path(__file__).resolve()
+            # Assuming the class file is in a module under the project root
+            # Adjust the number of .parents calls based on your actual directory structure
+            base_dir = current_file.parents[1] / 'src'
+
+            # Verify the paths exist
+            if not (base_dir / 'templates').exists() or not (base_dir / 'static').exists():
+                # Fallback: try to find paths relative to CWD
+                cwd = Path.cwd()
+                if (cwd / 'src' / 'templates').exists():
+                    base_dir = cwd / 'src'
+                else:
+                    raise FileNotFoundError(
+                        f"Could not find required directories. Tried:\n"
+                        f"1. {base_dir}/templates\n"
+                        f"2. {cwd}/src/templates\n"
+                        f"Please check your project structure or run from the correct directory."
+                    )
+
+        print(f"Using base directory: {base_dir}")
+        print(f"Templates directory: {base_dir / 'templates'}")
+        print(f"Static directory: {base_dir / 'static'}")
 
         self.m_app = Flask(
             __name__,
@@ -1068,6 +1079,7 @@ def parseArgs() -> argparse.Namespace:
 
 def main():
 
+    print(f"cwd={os.getcwd()}")
     global g_port_number
     args = parseArgs()
 
