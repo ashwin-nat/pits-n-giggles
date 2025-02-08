@@ -1211,13 +1211,18 @@ class DataPerDriver:
             not sector_1_best_ms or
             not sector_2_best_ms or
             not sector_3_best_ms):
-            png_logger.debug(f"Driver {self.m_name}: Returning default val because of missing data.")
+            png_logger.debug(f"Driver {self.m_name}: Returning default val because of missing data. "
+                             f"sector_1_best_ms={str(sector_1_best_ms)}, sector_2_best_ms={str(sector_2_best_ms)}, "
+                             f"sector_3_best_ms={str(sector_3_best_ms)}, packet_session_history="
+                             f"{"present" if self.m_packet_session_history else "not present"}")
             return default_val
 
         # Validate lap data
         if ((for_best_lap and not self.m_best_lap_ms) or
             (not for_best_lap and not self.m_last_lap_ms)):
-            png_logger.debug(f"Driver {self.m_name}: Returning default val because last/best lap not yet avlb.")
+            png_logger.debug(f"Driver {self.m_name}: Returning default val because last/best lap not yet avlb. "
+                             f"for_best_lap={str(for_best_lap)}, best_lap_ms={str(self.m_best_lap_ms)}, "
+                             f"last_lap_ms={str(self.m_last_lap_ms)}")
             return default_val
 
         # Select lap details

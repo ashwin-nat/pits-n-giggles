@@ -37,7 +37,7 @@ class TelemetryRenderer {
       classes.push('dnf-row');
     }
 
-    if (isLiveDataMode && driverInfo['drs']) {
+    else if (isLiveDataMode && driverInfo['drs']) {
       classes.push('drs-row');
     }
 

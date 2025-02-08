@@ -947,12 +947,12 @@ class DriverModalPopulator {
     // Method to create the tab content container
     createTabContent() {
         const tabContent = document.createElement('div');
-        tabContent.className = 'tab-content driver-modal-tab-content';
+        tabContent.className = 'tab-content driver-modal-tab-content flex-grow-1 overflow-hidden';
 
         // Array of tabs with ID and method to populate content
         const tabs = [
-            { id: 'lap-times', method: this.populateLapTimesTab },  // Lap Times tab
-            { id: 'fuel-usage', method: this.populateFuelUsageTab },  // Lap Times tab
+            { id: 'lap-times', method: this.populateLapTimesTab },
+            { id: 'fuel-usage', method: this.populateFuelUsageTab },
             { id: 'tyre-stint-history', method: this.populateTyreStintHistoryTab },
             { id: 'ers-history', method: this.populateERSHistoryTab },
             { id: 'car-damage', method: this.populateCarDamageTab },
@@ -972,7 +972,7 @@ class DriverModalPopulator {
 
         tabs.forEach((tab, index) => {
             const tabPane = document.createElement('div');
-            tabPane.className = `tab-pane fade driver-modal-tab-pane ${index === 0 ? 'show active' : ''}`;
+            tabPane.className = `tab-pane fade driver-modal-tab-pane ${index === 0 ? 'show active' : ''} h-100`;
             tabPane.id = tab.id;
             tabPane.setAttribute('role', 'tabpanel');
             tabPane.setAttribute('aria-labelledby', `${tab.id}-tab`);
@@ -1009,12 +1009,12 @@ class DriverModalPopulator {
 
         // Left half: Create the fuel usage table
         const leftDiv = document.createElement('div');
-        leftDiv.className = 'w-50 border border-light-subtle rounded'; // Half width
+        leftDiv.className = 'w-50 border border-light-subtle rounded overflow-auto'; // Half width
         leftPanePopulator(leftDiv);
 
         // Right half: Empty for now
         const rightDiv = document.createElement('div');
-        rightDiv.className = 'w-50 border border-light-subtle rounded'; // Half width, empty for now
+        rightDiv.className = 'w-50 border border-light-subtle rounded overflow-auto'; // Half width, empty for now
         rightPanePopulator(rightDiv);
 
         containerDiv.appendChild(leftDiv);

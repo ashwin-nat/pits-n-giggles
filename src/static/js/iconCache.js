@@ -7,6 +7,7 @@ class IconCache {
             "Medium": "/tyre-icons/medium.svg",
             "Hard": "/tyre-icons/hard.svg",
             "Intermediate": "/tyre-icons/intermediate.svg",
+            "Inters": "/tyre-icons/intermediate.svg",
             "Wet": "/tyre-icons/wet.svg"
         };
         this.loadIcons();
