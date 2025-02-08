@@ -87,13 +87,15 @@ def openWebPage(http_port: int) -> None:
 def httpServerTask(
         http_port: int,
         client_update_interval_ms: int,
-        disable_browser_autoload: bool) -> None:
+        disable_browser_autoload: bool,
+        stream_overlay_start_sample_data: bool) -> None:
     """Entry point to start the HTTP server.
 
     Args:
         http_port (int): Port number for the HTTP server.
         client_update_interval_ms (int): Client poll interval in milliseconds.
         disable_browser_autoload (bool): Whether to disable browser autoload.
+        stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
     """
     # Create a thread to open the webpage
     if not disable_browser_autoload:
@@ -111,7 +113,8 @@ def httpServerTask(
     initTelemetryWebServer(
         port=http_port,
         client_update_interval_ms=client_update_interval_ms,
-        debug_mode=False
+        debug_mode=False,
+        stream_overlay_start_sample_data=stream_overlay_start_sample_data
     )
 
 def f1TelemetryServerTask(
@@ -164,7 +167,7 @@ def main() -> None:
 
     # Run the HTTP server on the main thread. Flask does not like running on separate threads
     httpServerTask(config.server_port, config.refresh_interval,
-                   config.disable_browser_autoload)
+                   config.disable_browser_autoload, config.stream_overlay_start_sample_data)
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 

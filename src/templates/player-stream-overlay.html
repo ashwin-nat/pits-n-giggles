@@ -271,7 +271,7 @@
             if (!firstDataReceived && data["f1-game-year"] !== null) {
                 firstDataReceived = true;
             }
-            if (!firstDataReceived) {
+            if (!firstDataReceived && data['show-sample-data-at-start']) {
                 if (data["f1-game-year"] === null) {
                     data = sampleStreamOverlayJSON;
                 } else {

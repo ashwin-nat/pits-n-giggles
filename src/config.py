@@ -71,6 +71,7 @@ class Config:
     log_file_size: int
     process_car_setup: bool
     forwarding_targets: List[Tuple[str, int]]
+    stream_overlay_start_sample_data: bool
 
     def __repr__(self) -> str:
         """Return the string representation, formatted one key-value pair per line
@@ -107,6 +108,9 @@ _default_config = {
         'target1': '',
         'target2': '',
         'target3': '',
+    },
+    'Stream Overlay' : {
+        'show_sample_data_at_start' : False, # Boolean
     }
 }
 
@@ -260,4 +264,6 @@ def load_config(config_file: str = "config.ini") -> Config:
         process_car_setup=get_value_bool("Privacy", "process_car_setup"),
 
         forwarding_targets=get_forwarding_targets(),
+
+        stream_overlay_start_sample_data=get_value_bool("Stream Overlay", "show_sample_data_at_start"),
     )

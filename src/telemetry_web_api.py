@@ -424,8 +424,11 @@ class PlayerTelemetryOverlayUpdate:
                 json_dict["sector-2-ms"] = last_lap_obj.m_sector2TimeInMS
                 json_dict["sector-3-ms"] = last_lap_obj.m_sector3TimeInMS
 
-    def toJSON(self) -> Dict[str, Any]:
+    def toJSON(self, stream_overlay_start_sample_data: Optional[bool] = False) -> Dict[str, Any]:
         """Dump this object into JSON
+
+        Args:
+            stream_overlay_start_sample_data (Optional[bool], optional): Whether to include the start sample data
 
         Returns:
             Dict[str, Any]: The JSON dump
@@ -433,6 +436,7 @@ class PlayerTelemetryOverlayUpdate:
 
         return {
             "f1-game-year" : self.m_game_year,
+            "show-sample-data-at-start": stream_overlay_start_sample_data,
             "weather-forecast-samples": [
                 {
                     "time-offset": sample.m_timeOffset,

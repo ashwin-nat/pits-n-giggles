@@ -338,8 +338,9 @@ class TelemetryWebServer:
         logging.getLogger('websocket').setLevel(logging.ERROR)
 
         if self.m_socketio_tasks:
-            for callback, arg in self.m_socketio_tasks:
-                self.m_socketio.start_background_task(callback, arg)
+            for callback, *args in self.m_socketio_tasks:
+                self.m_socketio.start_background_task(callback, *args)
+
         self.m_socketio.run(
             app=self.m_app,
             debug=False,
@@ -351,13 +352,15 @@ class TelemetryWebServer:
 def initTelemetryWebServer(
     port: int,
     client_update_interval_ms: int,
-    debug_mode: bool) -> None:
+    debug_mode: bool,
+    stream_overlay_start_sample_data: bool) -> None:
     """Initialize the web server
 
     Args:
         port (int): Port number
         client_update_interval_ms (int): How often the client will be updated with new info
         debug_mode (bool): Debug enabled if true
+        stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
     """
 
     global _web_server
@@ -367,7 +370,7 @@ def initTelemetryWebServer(
         debug_mode=debug_mode,
         socketio_tasks=[
             (raceTableClientUpdaterTask, client_update_interval_ms),
-            (playerTelemetryOverlayUpdaterTask, 60),
+            (playerTelemetryOverlayUpdaterTask, 60, stream_overlay_start_sample_data),
             (streamUpdaterTask, 1000)
         ]
     )
@@ -388,10 +391,11 @@ def raceTableClientUpdaterTask(update_interval_ms: int) -> None:
             _web_server.m_socketio.emit('race-table-update', TelWebAPI.RaceInfoRsp().toJSON())
         _web_server.m_socketio.sleep(sleep_duration)
 
-def playerTelemetryOverlayUpdaterTask(update_interval_ms: int) -> None:
+def playerTelemetryOverlayUpdaterTask(update_interval_ms: int, stream_overlay_start_sample_data: bool) -> None:
     """Task to update clients with player telemetry overlay data
     Args:
         update_interval_ms (int): Update interval in milliseconds
+        stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
     """
 
     global _web_server
@@ -399,7 +403,9 @@ def playerTelemetryOverlayUpdaterTask(update_interval_ms: int) -> None:
     sleep_duration = update_interval_ms / 1000
     while True:
         if len(_player_overlay_clients) > 0:
-            _web_server.m_socketio.emit('player-overlay-update', TelWebAPI.PlayerTelemetryOverlayUpdate().toJSON())
+            _web_server.m_socketio.emit('player-overlay-update',
+                                        TelWebAPI.PlayerTelemetryOverlayUpdate()
+                                            .toJSON(stream_overlay_start_sample_data))
         _web_server.m_socketio.sleep(sleep_duration)
 
 def streamUpdaterTask(update_interval_ms: int) -> None:
