@@ -1014,7 +1014,7 @@ class DriverModalPopulator {
 
         // Right half: Empty for now
         const rightDiv = document.createElement('div');
-        rightDiv.className = 'w-50 border border-light-subtle rounded overflow-auto'; // Half width, empty for now
+        rightDiv.className = 'w-50 border border-light-subtle rounded overflow-auto'; // Half width
         rightPanePopulator(rightDiv);
 
         containerDiv.appendChild(leftDiv);

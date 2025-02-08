@@ -80,6 +80,82 @@ body {
   margin: 0;
 }
 
+.telemetry-welcome-wrapper {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--f1-light-gray);
+
+  display: flex;
+  justify-content: center; /* Center horizontally */
+  align-items: center; /* Center vertically */
+  gap: 10px; /* Space between dot and text */
+  text-align: center;
+}
+
+.status-wrapper {
+  display: flex;
+  align-items: center; /* Ensures dot and text are aligned */
+  gap: 8px; /* Space between dot and text */
+}
+
+.blinking-dot {
+  width: 10px;
+  height: 10px;
+  background-color: red;
+  border-radius: 50%;
+  animation: blink 1.5s infinite alternate;
+  flex-shrink: 0; /* Prevents shrinking */
+}
+
+@keyframes blink {
+  0% { opacity: 1; }
+  100% { opacity: 0.2; }
+}
+
+.telemetry-time-trial-wrapper {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--f1-light-gray);
+}
+
+/* Specific wrapper for consolidated view */
+.time-trial-consolidated {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Section containers */
+.time-trial-consolidated-section {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 33.333%;
+  width: 100%;
+  overflow: auto;
+}
+
+/* Table specific styles */
+.time-trial-consolidated-table {
+  table-layout: fixed;
+  margin-bottom: 0;
+  width: 100%;
+}
+
+.time-trial-consolidated-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: inherit;
+  width: 20%;
+}
+
+/* Optional: Add some spacing between tables in the same section */
+.time-trial-consolidated-table + .time-trial-consolidated-table {
+  margin-top: 0.5rem;
+}
+
 .telemetry-table-wrapper {
   overflow-x: auto;
   background-color: var(--f1-dark);

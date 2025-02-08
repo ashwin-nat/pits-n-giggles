@@ -1,5 +1,9 @@
 class TelemetryRenderer {
   constructor(iconCache) {
+    this.timeTrialDataPopulator = new TimeTrialDataPopulator();
+    this.welcomeDiv = document.getElementById('welcome-div');
+    this.raceTableDiv = document.getElementById('race-table-div');
+    this.timeTrialDiv = document.getElementById('time-trial-div');
     this.telemetryTable = document.getElementById('telemetry-data');
     this.weatherWidget = new WeatherWidget(document.getElementById('weather-predictions'));
     this.fastestLapTimeSpan = document.getElementById('fastestLapTimeSpan');
@@ -10,6 +14,7 @@ class TelemetryRenderer {
     this.airTempSpan = document.getElementById('air-temp');
     this.indexByPosition = null;
     this.iconCache = iconCache;
+    this.currUIMode = 'Welcome';
   }
 
   renderTelemetryRow(data, gameYear, isLiveDataMode) {
@@ -46,6 +51,31 @@ class TelemetryRenderer {
 
   updateDashboard(incomingData) {
 
+    const sessionType = incomingData["session-type"];
+    // if ("Time Trial" === sessionType) {
+    if (("Time Trial" === sessionType) || ("---" === sessionType)) {
+      this.updateTimeTrialData(incomingData);
+    // } else if ("Unknown" !== sessionType && "---" !== sessionType) {
+    } else if ("Unknown" !== sessionType) {
+      this.updateRaceTableData(incomingData);
+    }
+
+    // update the header section regardless of mode
+    this.updateHeader(incomingData);
+  }
+
+  updateTimeTrialData(incomingData) {
+
+    // enable the time trial UI and set the data
+    this.setUIMode('Time Trial');
+    this.timeTrialDataPopulator.populate(incomingData);
+  }
+
+  updateRaceTableData(incomingData) {
+
+    // enable the race UI
+    this.setUIMode('Race');
+
     // hide/unhide the delta column
     const isLiveDataMode = incomingData["live-data"];
     this.setDeltaColumnState(isLiveDataMode);
@@ -61,7 +91,9 @@ class TelemetryRenderer {
     tableEntries.forEach(data => {
       this.telemetryTable.appendChild(this.renderTelemetryRow(data, gameYear, isLiveDataMode));
     });
+  }
 
+  updateHeader(incomingData) {
     const weatherSamples = incomingData['weather-forecast-samples'].slice(0, g_pref_numWeatherPredictionSamples + 1);
     this.weatherWidget.update(weatherSamples);
 
@@ -233,6 +265,37 @@ class TelemetryRenderer {
                 cells[columnIndex].style.display = shouldHide ? "none" : "";
             }
         }
+    }
+  }
+
+  setUIMode(uiMode) {
+
+    // only process on change
+    if (this.uiMode === uiMode) {
+      return;
+    }
+
+    this.uiMode = uiMode;
+    console.log("changing UI mode to", uiMode);
+    switch(uiMode) {
+      case 'Welcome':
+        this.welcomeDiv.style.display = '';
+        this.raceTableDiv.style.display = 'none';
+        this.timeTrialDiv.style.display = 'none';
+        break;
+      case 'Time Trial':
+        this.welcomeDiv.style.display = 'none';
+        this.raceTableDiv.style.display = 'none';
+        this.timeTrialDiv.style.display = '';
+        break;
+      case 'Race':
+        this.welcomeDiv.style.display = 'none';
+        this.raceTableDiv.style.display = '';
+        this.timeTrialDiv.style.display = 'none';
+        break;
+      default:
+        console.error('Unknown UI mode:', uiMode);
+        break;
     }
   }
 }
