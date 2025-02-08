@@ -245,6 +245,7 @@ class TelemetryWebServer:
             """SocketIO endpoint for handling client disconnection
             """
             png_logger.debug("Client disconnected")
+            png_logger.debug('Client de-registered. SID = %s', request.sid)
             _player_overlay_clients.discard(request.sid)
             _race_table_clients.discard(request.sid)
 
