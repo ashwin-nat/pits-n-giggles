@@ -35,8 +35,11 @@ from lib.packet_cap import F1PacketCapture
 import lib.overtake_analyzer as OvertakeAnalyzer
 from flask import Flask, render_template, request, jsonify
 from src.telemetry_manager import F1TelemetryManager
-from threading import Thread, Lock
+from threading import Thread, Lock, Condition
 
+# Condition variable for signaling when the port is set
+g_start_condition = Condition()
+g_port_num = None
 
 class PacketCaptureTable:
     """Thread safe container for F1PacketCapture instance.
@@ -83,11 +86,47 @@ class SimpleApp:
         # Set the default window size
         self.root.geometry("400x300")
 
-        self.clear_button = tk.Button(root, text="Clear Memory", command=self.clear_memory)
+        # Port Number Entry
+        self.port_label = tk.Label(root, text="Port:")
+        self.port_label.pack(pady=(10, 0))
+
+        self.port_entry = tk.Entry(root)
+        self.port_entry.insert(0, "20777")  # Default port
+        self.port_entry.pack(pady=5)
+
+        # Start Button
+        self.start_button = tk.Button(root, text="Start!", command=self.start_capture)
+        self.start_button.pack(pady=10)
+
+        # Clear Memory Button (Initially Disabled)
+        self.clear_button = tk.Button(root, text="Clear Memory", command=self.clear_memory, state="disabled")
         self.clear_button.pack(pady=10)
 
-        self.save_button = tk.Button(root, text="Save to File", command=self.save_to_file)
+        # Save to File Button (Initially Disabled)
+        self.save_button = tk.Button(root, text="Save to File", command=self.save_to_file, state="disabled")
         self.save_button.pack(pady=10)
+
+    def start_capture(self):
+        port = self.port_entry.get()
+        if port.isdigit():
+            print(f"Starting capture on port {port}")
+            self.port_entry.config(state="disabled")  # Grey out/lock the text box
+            self.start_button.config(state="disabled")  # Disable the Start button
+
+            # Enable the other two buttons
+            self.clear_button.config(state="normal")
+            self.save_button.config(state="normal")
+
+            global g_port_num
+            g_port_num = int(port)
+            with g_start_condition:
+                g_start_condition.notify_all()
+
+            # Signal the condition variable
+            with g_start_condition:
+                g_start_condition.notify_all()
+        else:
+            messagebox.showerror("Error", "Invalid port number. Please enter a valid number.")
 
     def clear_memory(self):
         global g_capture_table
@@ -106,14 +145,21 @@ class SimpleApp:
                 messagebox.showinfo("Info", "No data to save!")
             else:
                 messagebox.showinfo("Info", f"Data has been successfully written to file {file_path}. "
-                                    f"Number of packets is {num_packets}")
+                                            f"Number of packets is {num_packets}")
 
 def raw_packet_callback(raw_packet: bytes):
     global g_capture_table
     g_capture_table.add(raw_packet)
 
 def telemetry_manager_thread():
-    telemetry_manager = F1TelemetryManager(port_number=20777)
+    global g_port_num
+    global g_start_condition
+
+    with g_start_condition:
+        g_start_condition.wait()
+
+    print(f"received notification. starting server on port {g_port_num}")
+    telemetry_manager = F1TelemetryManager(port_number=g_port_num)
     telemetry_manager.registerRawPacketCallback(raw_packet_callback)
     telemetry_manager.run()
 

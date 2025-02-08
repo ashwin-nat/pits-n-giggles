@@ -34,7 +34,7 @@ from typing import Optional, List, Tuple, Dict, Any, Generator
 from lib.f1_types import F1PacketType, PacketSessionData, PacketLapData, \
     PacketEventData, PacketParticipantsData, PacketCarTelemetryData, PacketCarStatusData, \
     PacketFinalClassificationData, PacketCarDamageData, PacketSessionHistoryData, PacketMotionData, \
-    PacketTyreSetsData, PacketCarSetupData, SessionType23, SessionType24
+    PacketTyreSetsData, PacketCarSetupData, PacketTimeTrialData, SessionType23, SessionType24
 from lib.overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, OvertakeRecord
 import lib.race_analyzer as RaceAnalyzer
 from lib.packet_forwarder import UDPForwarder
@@ -631,3 +631,14 @@ class F1TelemetryHandler:
         global g_process_car_setup
         if g_process_car_setup:
             TelData.processCarSetupsUpdate(packet)
+
+    @staticmethod
+    def handleTimeTrialData(packet: PacketTimeTrialData) -> None:
+        """
+        Handle and process the time trial data update.
+
+        Arguments
+            packet - PacketTimeTrialData object
+        """
+
+        TelData.processTimeTrialUpdate(packet)

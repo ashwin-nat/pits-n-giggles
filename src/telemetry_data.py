@@ -34,7 +34,7 @@ from lib.f1_types import PacketSessionData, PacketLapData, LapData, CarTelemetry
     PacketFinalClassificationData, PacketCarDamageData, PacketSessionHistoryData, ResultStatus, PacketTyreSetsData, \
     F1Utils, WeatherForecastSample, CarDamageData, CarStatusData, TrackID, ActualTyreCompound, VisualTyreCompound, \
     SafetyCarType, TelemetrySetting, PacketMotionData, CarMotionData, PacketCarSetupData, CarSetupData, ResultStatus, \
-    SessionType23, SessionType24
+    PacketTimeTrialData
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.overtake_analyzer import OvertakeRecord
 from lib.collisions_analyzer import CollisionRecord, CollisionAnalyzer, CollisionAnalyzerMode
@@ -510,7 +510,7 @@ class DataPerDriver:
         self.m_fr_wing_damage: Optional[int] = None
         self.m_rear_wing_damage: Optional[int] = None
         self.m_result_status: Optional[ResultStatus] = None
-        self.m_top_speed_kmph: Optional[float] = None
+        self.m_top_speed_kmph_this_lap: Optional[float] = None
         self.m_collision_records: List[CollisionRecord] = []
         self.m_fuel_rate_recommender: FuelRateRecommender = FuelRateRecommender([], total_laps=total_laps,
                                                                                 min_fuel_kg=CarStatusData.MIN_FUEL_KG)
@@ -557,7 +557,7 @@ class DataPerDriver:
         final_json["telemetry-settings"] = str(self.m_telemetry_restrictions)
         final_json["current-lap"] = self.m_current_lap
         final_json["result-status"] = str(self.m_result_status)
-        final_json["top-speed-kmph"] = self.m_top_speed_kmph
+        final_json["top-speed-kmph"] = self.m_top_speed_kmph_this_lap
 
         # Insert packet copies if available
         final_json["car-damage"] = self.m_packet_car_damage.toJSON() if self.m_packet_car_damage else None
@@ -800,8 +800,11 @@ class DataPerDriver:
             sc_status=self.m_curr_lap_sc_status,
             tyre_sets=self.m_packet_tyre_sets,
             track_position=self.m_position,
-            top_speed_kmph=self.m_top_speed_kmph,
+            top_speed_kmph=self.m_top_speed_kmph_this_lap,
         )
+
+        # Now clear the top speed
+        self.m_top_speed_kmph_this_lap = None
 
         # Add the tyre wear data into the tyre stint history
         if (old_lap_number > 0) and (len(self.m_tyre_set_history) > 0):
@@ -845,7 +848,7 @@ class DataPerDriver:
             self.m_packet_car_status and
             self.m_packet_tyre_sets and
             self.m_position and
-            (self.m_top_speed_kmph is not None)
+            (self.m_top_speed_kmph_this_lap is not None)
         )
 
     def updateTyreSetData(self, fitted_index: int) -> None:
@@ -1362,6 +1365,7 @@ class DriverData:
         self.m_fastest_s1_ms: Optional[int] = None
         self.m_fastest_s2_ms: Optional[int] = None
         self.m_fastest_s3_ms: Optional[int] = None
+        self.m_time_trial_packet : Optional[PacketTimeTrialData] = None
 
     def clear(self) -> None:
         """Clear this object. Clears the m_driver_data list and sets everything else to None
@@ -1664,10 +1668,10 @@ class DriverData:
                     sum(car_telemetry_data.m_tyresInnerTemperature)/len(car_telemetry_data.m_tyresInnerTemperature)
             obj_to_be_updated.m_tyre_surface_temp = \
                     sum(car_telemetry_data.m_tyresSurfaceTemperature)/len(car_telemetry_data.m_tyresSurfaceTemperature)
-            if obj_to_be_updated.m_top_speed_kmph is None:
-                obj_to_be_updated.m_top_speed_kmph = car_telemetry_data.m_speed
+            if obj_to_be_updated.m_top_speed_kmph_this_lap is None:
+                obj_to_be_updated.m_top_speed_kmph_this_lap = car_telemetry_data.m_speed
             else:
-                obj_to_be_updated.m_top_speed_kmph = max(car_telemetry_data.m_speed, obj_to_be_updated.m_top_speed_kmph)
+                obj_to_be_updated.m_top_speed_kmph_this_lap = max(car_telemetry_data.m_speed, obj_to_be_updated.m_top_speed_kmph_this_lap)
             obj_to_be_updated.m_packet_car_telemetry = car_telemetry_data
 
     def processCarStatusUpdate(self, packet: PacketCarStatusData) -> None:
@@ -1803,6 +1807,15 @@ class DriverData:
         for index, car_setup in enumerate(packet.m_carSetups):
             obj_to_be_updated = self._getObjectByIndex(index)
             obj_to_be_updated.m_packet_car_setup = car_setup
+
+    def processTimeTrialUpdate(self, packet: PacketTimeTrialData) -> None:
+        """Process the time trial update packet and update the necessary fields
+
+        Args:
+            packet (PacketTimeTrialData): The time trial update packet
+        """
+
+        self.m_time_trial_packet = packet
 
     def getDriverInfoJsonByIndex(self, index: int) -> Optional[Dict[str, Any]]:
         """Get the driver info JSON for the specified index.
@@ -2127,6 +2140,16 @@ def processCarSetupsUpdate(packet: PacketCarSetupData) -> None:
 
     with _driver_data_lock.gen_wlock():
         _driver_data.processCarSetupsUpdate(packet)
+
+def processTimeTrialUpdate(packet: PacketTimeTrialData) -> None:
+    """Update the data structures with time trial information
+
+    Args:
+        packet (PacketTimeTrialData): The time trial update packet
+    """
+
+    with _driver_data_lock.gen_wlock():
+        _driver_data.processTimeTrialUpdate(packet)
 
 def processCustomMarkerCreate() -> None:
     """Update the data structures with custom marker information

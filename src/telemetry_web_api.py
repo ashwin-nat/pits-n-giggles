@@ -97,12 +97,16 @@ class RaceInfoRsp:
             "session-type"  : _getValueOrDefaultValue(self.m_globals.m_event_type),
         }
 
-        final_json["table-entries"] = self.m_driver_list_rsp.toJSON(self.m_globals.m_event_type)
+        if self.m_globals.m_event_type == "Time Trial":
+            final_json["tt-lap-time-history"] = self.m_driver_list_rsp.getTtTableJSON()
+        else:
+            final_json["table-entries"] = self.m_driver_list_rsp.toRaceTableJSON(self.m_globals.m_event_type)
+            self._updatePlayerLapTimes(final_json["table-entries"])
+
         final_json["fastest-lap-overall"] = _getValueOrDefaultValue(
             self.m_driver_list_rsp.m_fastest_lap, default_value=0)
         final_json["fastest-lap-overall-driver"] = _getValueOrDefaultValue(
             self.m_driver_list_rsp.m_fastest_lap_driver)
-        self._updatePlayerLapTimes(final_json["table-entries"])
         return final_json
 
     def _updatePlayerLapTimes(self,table_entries_json: List[Dict[str, Any]]) -> None:
@@ -506,8 +510,8 @@ class DriversListRsp:
         if self.m_final_list:
             self._recomputeDeltas()
 
-    def toJSON(self, session_type: str) -> Dict[str, Any]:
-        """Dump this object into JSON
+    def toRaceTableJSON(self, session_type: str) -> Dict[str, Any]:
+        """Get the race table JSON
 
         Args:
             session_type (SessionType23 | SessionType24): The session type
@@ -516,7 +520,7 @@ class DriversListRsp:
             Dict[str, Any]: The JSON dump
         """
 
-        return [
+        return  [
             {
                 "driver-info" : {
                     "position": _getValueOrDefaultValue(data_per_driver.m_position),
@@ -563,7 +567,7 @@ class DriversListRsp:
                     "lap-progress" : data_per_driver.m_lap_progress, # NULL is supported
                     "speed-trap-record-kmph" : data_per_driver.m_packet_lap_data.m_speedTrapFastestSpeed if \
                         data_per_driver.m_packet_lap_data else None, # NULL is supported
-                    "top-speed-kmph" : data_per_driver.m_top_speed_kmph,
+                    "top-speed-kmph" : data_per_driver.m_top_speed_kmph_this_lap,
                 },
                 "warns-pens-info" : {
                     "corner-cutting-warnings" : _getValueOrDefaultValue(data_per_driver.m_corner_cutting_warnings),
@@ -591,6 +595,31 @@ class DriversListRsp:
                 "fuel-info" : data_per_driver.getFuelStatsJSON(),
             } for data_per_driver in self.m_final_list
         ]
+
+    def getTtTableJSON(self) -> Dict[str, Any]:
+        """Get the Time Trial table JSON.
+
+        Returns:
+            Dict[str, Any]: The JSON dump.
+        """
+
+        player_obj = next(
+            (driver for driver in self.m_final_list if driver.m_is_player),
+            None
+        )
+
+        return {
+            "lap-history": [
+                {
+                    **lap_data.toJSON(),
+                    "top-speed-kmph": player_obj.m_per_lap_snapshots[index + 1].m_top_speed_kmph \
+                        if (index + 1) in player_obj.m_per_lap_snapshots else None,
+                }
+                for index, lap_data in enumerate(player_obj.m_packet_session_history.m_lapHistoryData)
+            ] if player_obj and player_obj.m_packet_session_history else None,
+            "tt-packet": self.m_time_trial_packet.toJSON() if self.m_time_trial_packet else None,
+        }
+
 
     def getCurrentLap(self) -> Optional[int]:
         """Get current lap.
@@ -688,6 +717,7 @@ class DriversListRsp:
             self.m_fastest_s1_ms = TelData._driver_data.m_fastest_s1_ms
             self.m_fastest_s2_ms = TelData._driver_data.m_fastest_s2_ms
             self.m_fastest_s3_ms = TelData._driver_data.m_fastest_s3_ms
+            self.m_time_trial_packet = TelData._driver_data.m_time_trial_packet
 
     def __updateDriverList(self) -> None:
         """Add extra fields to each DataPerDriver object
