@@ -101,6 +101,7 @@
         <div class="telemetry-time-trial-wrapper d-flex w-100 h-100" id="time-trial-div" style="display: none;">
           <!-- Left Side (50%) -->
           <div class="flex-grow-1 h-100 telemetry-time-trial-wrapper overflow-auto" id="time-trial-table-div" style="width: 50%;">
+            <div class="section-header text-center fw-bold">Lap Time History</div>
             <table class="table table-striped table-bordered table-dark text-center" id="ttLapTimeTable">
               <thead>
                 <tr>
@@ -115,154 +116,160 @@
           </div>
 
           <!-- Right Side (50%) -->
-          <div class="d-flex flex-column telemetry-time-trial-wrapper time-trial-consolidated overflow-auto" id="time-trial-consolidated-div" style="width: 50%;">
+          <div class="d-flex flex-column telemetry-time-trial-wrapper time-trial-consolidated overflow-none" id="time-trial-consolidated-div" style="width: 50%;">
             <!-- Section 1 -->
-            <div class="time-trial-consolidated-section p-2" id="consolidated-section-1">
-              <div class="text-center fw-bold p-2 border-bottom">Player Session Best</div>
+            <div class="time-trial-consolidated-section" id="consolidated-section-1">
+              <div class="section-header text-center fw-bold">Player Session Best</div>
 
-              <!-- First Table -->
-              <table class="table table-striped table-bordered table-dark text-center time-trial-consolidated-table">
-                <thead>
-                  <tr>
-                    <th>Total</th>
-                    <th>S1</th>
-                    <th>S2</th>
-                    <th>S3</th>
-                    <th>Valid</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td id="ttPlayerSessionBestTotal">---</td>
-                    <td id="ttPlayerSessionBestS1">---</td>
-                    <td id="ttPlayerSessionBestS2">---</td>
-                    <td id="ttPlayerSessionBestS3">---</td>
-                    <td id="ttPlayerSessionBestValid">---</td>
-                  </tr>
-                </tbody>
-              </table>
+              <div class="time-trial-consolidated-tables">
+                <!-- First Table -->
+                <table class="table table-striped table-bordered table-dark text-center time-trial-consolidated-table">
+                  <thead>
+                    <tr>
+                      <th>Total</th>
+                      <th>S1</th>
+                      <th>S2</th>
+                      <th>S3</th>
+                      <th>Valid</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td id="ttPlayerSessionBestTotal">---</td>
+                      <td id="ttPlayerSessionBestS1">---</td>
+                      <td id="ttPlayerSessionBestS2">---</td>
+                      <td id="ttPlayerSessionBestS3">---</td>
+                      <td id="ttPlayerSessionBestValid">---</td>
+                    </tr>
+                  </tbody>
+                </table>
 
-              <!-- Second Table -->
-              <table class="table table-striped table-bordered table-dark text-center time-trial-consolidated-table">
-                <thead>
-                  <tr>
-                    <th>TC</th>
-                    <th>ABS</th>
-                    <th>Gears</th>
-                    <th>Eq. Perf.</th>
-                    <th>Cust. Setup</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td id="ttPlayerSessionBestTC">---</td>
-                    <td id="ttPlayerSessionBestABS">---</td>
-                    <td id="ttPlayerSessionBestGearbox">---</td>
-                    <td id="ttPlayerSessionBestEqualPerformance">---</td>
-                    <td id="ttPlayerSessionBestCustomSetup">---</td>
-                  </tr>
-                </tbody>
-              </table>
+                <!-- Second Table -->
+                <table class="table table-striped table-bordered table-dark text-center time-trial-consolidated-table">
+                  <thead>
+                    <tr>
+                      <th>TC</th>
+                      <th>ABS</th>
+                      <th>Gears</th>
+                      <th>Eq. Perf.</th>
+                      <th>Cust. Setup</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td id="ttPlayerSessionBestTC">---</td>
+                      <td id="ttPlayerSessionBestABS">---</td>
+                      <td id="ttPlayerSessionBestGearbox">---</td>
+                      <td id="ttPlayerSessionBestEqualPerformance">---</td>
+                      <td id="ttPlayerSessionBestCustomSetup">---</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             <!-- Section 2 -->
-            <div class="time-trial-consolidated-section p-2" id="consolidated-section-2">
-              <div class="text-center fw-bold p-2 border-bottom">Player Personal Best</div>
+            <div class="time-trial-consolidated-section" id="consolidated-section-2">
+              <div class="section-header text-center fw-bold">Player Personal Best</div>
 
-              <!-- First Table -->
-              <table class="table table-striped table-bordered table-dark text-center time-trial-consolidated-table">
-                <thead>
-                  <tr>
-                    <th>Total</th>
-                    <th>S1</th>
-                    <th>S2</th>
-                    <th>S3</th>
-                    <th>Valid</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td id="ttPlayerPersonalBestTotal">---</td>
-                    <td id="ttPlayerPersonalBestS1">---</td>
-                    <td id="ttPlayerPersonalBestS2">---</td>
-                    <td id="ttPlayerPersonalBestS3">---</td>
-                    <td id="ttPlayerPersonalBestValid">---</td>
-                  </tr>
-                </tbody>
-              </table>
+              <div class="time-trial-consolidated-tables">
+                <!-- First Table -->
+                <table class="table table-striped table-bordered table-dark text-center time-trial-consolidated-table">
+                  <thead>
+                    <tr>
+                      <th>Total</th>
+                      <th>S1</th>
+                      <th>S2</th>
+                      <th>S3</th>
+                      <th>Valid</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td id="ttPlayerPersonalBestTotal">---</td>
+                      <td id="ttPlayerPersonalBestS1">---</td>
+                      <td id="ttPlayerPersonalBestS2">---</td>
+                      <td id="ttPlayerPersonalBestS3">---</td>
+                      <td id="ttPlayerPersonalBestValid">---</td>
+                    </tr>
+                  </tbody>
+                </table>
 
-              <!-- Second Table -->
-              <table class="table table-striped table-bordered table-dark text-center time-trial-consolidated-table">
-                <thead>
-                  <tr>
-                    <th>TC</th>
-                    <th>ABS</th>
-                    <th>Gears</th>
-                    <th>Eq. Perf.</th>
-                    <th>Cust. Setup</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td id="ttPlayerPersonalBestTC">---</td>
-                    <td id="ttPlayerPersonalBestABS">---</td>
-                    <td id="ttPlayerPersonalBestGearbox">---</td>
-                    <td id="ttPlayerPersonalBestEqualPerformance">---</td>
-                    <td id="ttPlayerPersonalBestCustomSetup">---</td>
-                  </tr>
-                </tbody>
-              </table>
+                <!-- Second Table -->
+                <table class="table table-striped table-bordered table-dark text-center time-trial-consolidated-table">
+                  <thead>
+                    <tr>
+                      <th>TC</th>
+                      <th>ABS</th>
+                      <th>Gears</th>
+                      <th>Eq. Perf.</th>
+                      <th>Cust. Setup</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td id="ttPlayerPersonalBestTC">---</td>
+                      <td id="ttPlayerPersonalBestABS">---</td>
+                      <td id="ttPlayerPersonalBestGearbox">---</td>
+                      <td id="ttPlayerPersonalBestEqualPerformance">---</td>
+                      <td id="ttPlayerPersonalBestCustomSetup">---</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             <!-- Section 3 -->
-            <div class="time-trial-consolidated-section p-2" id="consolidated-section-3">
-              <div class="text-center fw-bold p-2 border-bottom">Rival Session Best</div>
+            <div class="time-trial-consolidated-section" id="consolidated-section-3">
+              <div class="section-header text-center fw-bold">Rival Session Best</div>
 
-              <!-- First Table -->
-              <table class="table table-striped table-bordered table-dark text-center time-trial-consolidated-table">
-                <thead>
-                  <tr>
-                    <th>Total</th>
-                    <th>S1</th>
-                    <th>S2</th>
-                    <th>S3</th>
-                    <th>Valid</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td id="ttRivalSessionBestTotal">---</td>
-                    <td id="ttRivalSessionBestS1">---</td>
-                    <td id="ttRivalSessionBestS2">---</td>
-                    <td id="ttRivalSessionBestS3">---</td>
-                    <td id="ttRivalSessionBestValid">---</td>
-                  </tr>
-                </tbody>
-              </table>
+              <div class="time-trial-consolidated-tables">
+                <!-- First Table -->
+                <table class="table table-striped table-bordered table-dark text-center time-trial-consolidated-table">
+                  <thead>
+                    <tr>
+                      <th>Total</th>
+                      <th>S1</th>
+                      <th>S2</th>
+                      <th>S3</th>
+                      <th>Valid</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td id="ttRivalSessionBestTotal">---</td>
+                      <td id="ttRivalSessionBestS1">---</td>
+                      <td id="ttRivalSessionBestS2">---</td>
+                      <td id="ttRivalSessionBestS3">---</td>
+                      <td id="ttRivalSessionBestValid">---</td>
+                    </tr>
+                  </tbody>
+                </table>
 
-              <!-- Second Table -->
-              <table class="table table-striped table-bordered table-dark text-center time-trial-consolidated-table">
-                <thead>
-                  <tr>
-                    <th>TC</th>
-                    <th>ABS</th>
-                    <th>Gears</th>
-                    <th>Eq. Perf.</th>
-                    <th>Cust. Setup</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td id="ttRivalSessionBestTC">---</td>
-                    <td id="ttRivalSessionBestABS">---</td>
-                    <td id="ttRivalSessionBestGearbox">---</td>
-                    <td id="ttRivalSessionBestEqualPerformance">---</td>
-                    <td id="ttRivalSessionBestCustomSetup">---</td>
-                  </tr>
-                </tbody>
-              </table>
+                <!-- Second Table -->
+                <table class="table table-striped table-bordered table-dark text-center time-trial-consolidated-table">
+                  <thead>
+                    <tr>
+                      <th>TC</th>
+                      <th>ABS</th>
+                      <th>Gears</th>
+                      <th>Eq. Perf.</th>
+                      <th>Cust. Setup</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td id="ttRivalSessionBestTC">---</td>
+                      <td id="ttRivalSessionBestABS">---</td>
+                      <td id="ttRivalSessionBestGearbox">---</td>
+                      <td id="ttRivalSessionBestEqualPerformance">---</td>
+                      <td id="ttRivalSessionBestCustomSetup">---</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
-            <!-- Repeat the same pattern for sections 2 and 3 -->
+
           </div>
         </div>
       </main>
