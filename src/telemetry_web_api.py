@@ -563,6 +563,7 @@ class DriversListRsp:
                     "lap-progress" : data_per_driver.m_lap_progress, # NULL is supported
                     "speed-trap-record-kmph" : data_per_driver.m_packet_lap_data.m_speedTrapFastestSpeed if \
                         data_per_driver.m_packet_lap_data else None, # NULL is supported
+                    "top-speed-kmph" : data_per_driver.m_top_speed_kmph,
                 },
                 "warns-pens-info" : {
                     "corner-cutting-warnings" : _getValueOrDefaultValue(data_per_driver.m_corner_cutting_warnings),

@@ -194,6 +194,7 @@ class DataPerDriver:
         m_fr_wing_damage (int): Right front wing damage
         m_rear_wing_damage (int): Rear wing damage
         m_result_status (Optional[ResultStatus]): The result status of the driver.
+        m_top_speed_kmph (Optional[float]): The top speed achieved by the driver.
         m_collision_records (List[CollisionRecord]): List of CollisionRecord objects for the driver.
         m_fuel_rate_recommender (Optional[FuelRateRecommender]): Fuel usage rate recommender for the driver.
 
@@ -334,14 +335,16 @@ class DataPerDriver:
             m_track_position (int): The lap's track position
             m_tyre_sets_packet (Optional[PacketTyreSetsData]): The Tyre Sets packet
             m_sc_status (PacketSessionData.SafetyCarStatus): The lap's safety car status
+            m_top_speed_kmph (float): The lap's top speed in kmph
         """
 
         def __init__(self,
-                     car_damage : CarDamageData,
-                     car_status : CarStatusData,
-                     sc_status  : SafetyCarType,
-                     tyre_sets  : PacketTyreSetsData,
-                     track_position: int):
+            car_damage : CarDamageData,
+            car_status : CarStatusData,
+            sc_status  : SafetyCarType,
+            tyre_sets  : PacketTyreSetsData,
+            track_position: int,
+            top_speed_kmph: float = 0.0):
             """Init the snapshot entry object
 
             Args:
@@ -349,6 +352,8 @@ class DataPerDriver:
                 car_status (CarStatusData): The Car Status packet
                 sc_status (PacketSessionData.SafetyCarStatus): The lap's safety car status
                 tyre_sets (PacketTyreSetsData): The Tyre Sets packet
+                track_position (int): The lap's track position
+                top_speed_kmph (float): The lap's top speed in kmph
             """
 
             self.m_car_damage_packet: CarDamageData = car_damage
@@ -356,6 +361,7 @@ class DataPerDriver:
             self.m_sc_status: SafetyCarType = sc_status
             self.m_tyre_sets_packet: PacketTyreSetsData = tyre_sets
             self.m_track_position: int = track_position
+            self.m_top_speed_kmph: float = top_speed_kmph
 
         def toJSON(self, lap_number : int) -> Dict[str, Any]:
             """Dump this object into JSON
@@ -373,7 +379,8 @@ class DataPerDriver:
                 "car-status-data" : self.m_car_status_packet.toJSON() if self.m_car_status_packet else None,
                 "safety-car-status" : str(self.m_sc_status) if self.m_sc_status else None,
                 "tyre-sets-data" : self.m_tyre_sets_packet.toJSON() if self.m_tyre_sets_packet else None,
-                "track-position" : self.m_track_position or None
+                "track-position" : self.m_track_position or None,
+                "top-speed-kmph" : self.m_top_speed_kmph,
             }
 
     class WarningPenaltyEntry:
@@ -503,6 +510,7 @@ class DataPerDriver:
         self.m_fr_wing_damage: Optional[int] = None
         self.m_rear_wing_damage: Optional[int] = None
         self.m_result_status: Optional[ResultStatus] = None
+        self.m_top_speed_kmph: Optional[float] = None
         self.m_collision_records: List[CollisionRecord] = []
         self.m_fuel_rate_recommender: FuelRateRecommender = FuelRateRecommender([], total_laps=total_laps,
                                                                                 min_fuel_kg=CarStatusData.MIN_FUEL_KG)
@@ -549,6 +557,7 @@ class DataPerDriver:
         final_json["telemetry-settings"] = str(self.m_telemetry_restrictions)
         final_json["current-lap"] = self.m_current_lap
         final_json["result-status"] = str(self.m_result_status)
+        final_json["top-speed-kmph"] = self.m_top_speed_kmph
 
         # Insert packet copies if available
         final_json["car-damage"] = self.m_packet_car_damage.toJSON() if self.m_packet_car_damage else None
@@ -790,7 +799,8 @@ class DataPerDriver:
             car_status=self.m_packet_car_status,
             sc_status=self.m_curr_lap_sc_status,
             tyre_sets=self.m_packet_tyre_sets,
-            track_position=self.m_position
+            track_position=self.m_position,
+            top_speed_kmph=self.m_top_speed_kmph,
         )
 
         # Add the tyre wear data into the tyre stint history
@@ -834,7 +844,8 @@ class DataPerDriver:
             self.m_packet_car_damage and
             self.m_packet_car_status and
             self.m_packet_tyre_sets and
-            self.m_position
+            self.m_position and
+            (self.m_top_speed_kmph is not None)
         )
 
     def updateTyreSetData(self, fitted_index: int) -> None:
@@ -1653,6 +1664,10 @@ class DriverData:
                     sum(car_telemetry_data.m_tyresInnerTemperature)/len(car_telemetry_data.m_tyresInnerTemperature)
             obj_to_be_updated.m_tyre_surface_temp = \
                     sum(car_telemetry_data.m_tyresSurfaceTemperature)/len(car_telemetry_data.m_tyresSurfaceTemperature)
+            if obj_to_be_updated.m_top_speed_kmph is None:
+                obj_to_be_updated.m_top_speed_kmph = car_telemetry_data.m_speed
+            else:
+                obj_to_be_updated.m_top_speed_kmph = max(car_telemetry_data.m_speed, obj_to_be_updated.m_top_speed_kmph)
             obj_to_be_updated.m_packet_car_telemetry = car_telemetry_data
 
     def processCarStatusUpdate(self, packet: PacketCarStatusData) -> None:

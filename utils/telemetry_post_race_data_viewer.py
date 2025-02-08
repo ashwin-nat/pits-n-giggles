@@ -410,7 +410,8 @@ def getTelemetryInfo():
                         },
                         "lap-progress" : None, # NULL is supported,
                         "speed-trap-record-kmph" : data_per_driver["lap-data"]["speed-trap-fastest-speed"] \
-                            if "speed-trap-fastest-speed" in data_per_driver["lap-data"] else None
+                            if "speed-trap-fastest-speed" in data_per_driver["lap-data"] else None,
+                        "top-speed-kmph" : data_per_driver.get("top-speed-kmph", 0.0),
                     },
                     "warns-pens-info" : {
                         "corner-cutting-warnings" : data_per_driver["lap-data"]["corner-cutting-warnings"],
