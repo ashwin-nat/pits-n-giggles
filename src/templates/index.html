@@ -88,21 +88,13 @@
             </tbody>
           </table>
         </div>
-        <!--
-        <div class="telemetry-time-trial-wrapper d-flex w-100 h-100" id="time-trial-div" style="display: none;">
-          <div class="telemetry-time-trial-wrapper flex-grow-1 overflow-auto" id="time-trial-table-div" style="width: 70%;">
 
-          </div>
-          <div class="telemetry-time-trial-wrapper flex-grow-1 overflow-auto" id="time-trial-consolidated-div" style="width: 30%;">
-
-          </div>
-        </div>
-        -->
+        <!-- Time Trial Body -->
         <div class="telemetry-time-trial-wrapper d-flex w-100 h-100" id="time-trial-div" style="display: none;">
           <!-- Left Side (50%) -->
           <div class="flex-grow-1 h-100 telemetry-time-trial-wrapper overflow-auto" id="time-trial-table-div" style="width: 50%;">
             <div class="section-header text-center fw-bold">Lap Time History</div>
-            <table class="table table-striped table-bordered table-dark text-center" id="ttLapTimeTable">
+            <table class="table table-striped table-bordered table-dark text-center" >
               <thead>
                 <tr>
                   <th>Lap</th>
@@ -110,8 +102,12 @@
                   <th>S1</th>
                   <th>S2</th>
                   <th>S3</th>
+                  <th>Top Speed</th>
                 </tr>
               </thead>
+              <tbody id="tt-lap-time-table">
+                <!-- Populated by JavaScript -->
+              </tbody>
             </table>
           </div>
 

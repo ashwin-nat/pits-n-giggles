@@ -98,7 +98,7 @@ class RaceInfoRsp:
         }
 
         if self.m_globals.m_event_type == "Time Trial":
-            final_json["tt-lap-time-history"] = self.m_driver_list_rsp.getTtTableJSON()
+            final_json["tt-data"] = self.m_driver_list_rsp.getTtTableJSON()
         else:
             final_json["table-entries"] = self.m_driver_list_rsp.toRaceTableJSON(self.m_globals.m_event_type)
             self._updatePlayerLapTimes(final_json["table-entries"])

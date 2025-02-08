@@ -68,7 +68,7 @@ class TelemetryRenderer {
 
     // enable the time trial UI and set the data
     this.setUIMode('Time Trial');
-    this.timeTrialDataPopulator.populate(incomingData);
+    this.timeTrialDataPopulator.populate(incomingData["tt-data"], incomingData["f1-game-year"]);
   }
 
   updateRaceTableData(incomingData) {
@@ -98,7 +98,8 @@ class TelemetryRenderer {
     this.weatherWidget.update(weatherSamples);
 
     this.fastestLapTimeSpan.textContent = formatLapTime(incomingData['fastest-lap-overall']);
-    this.fastestLapNameSpan.textContent = truncateName(incomingData['fastest-lap-overall-driver']).toUpperCase();
+    this.fastestLapNameSpan.textContent = (incomingData['event-type'] === 'Time Trial') ?
+        ('') : (truncateName(incomingData['fastest-lap-overall-driver']).toUpperCase());
     this.populateCircuitSpan(incomingData);
     this.airTempSpan.textContent = incomingData['air-temperature'] + ' °C';
     this.trackTempSpan.textContent = incomingData['track-temperature'] + ' °C';
@@ -141,7 +142,7 @@ class TelemetryRenderer {
       let sessionInfoText = "";
       if (this.shouldShowLapNumber(incomingData['event-type'])) {
         sessionInfoText += "L" + incomingData['current-lap'].toString();
-        if (incomingData['total-laps'] > 1) {
+        if (incomingData['event-type'] != "Time Trial" && incomingData['total-laps'] > 1) {
           sessionInfoText += "/" + incomingData['total-laps'].toString();
         }
       } else {
