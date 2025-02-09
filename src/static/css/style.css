@@ -120,15 +120,15 @@ body {
   border: 2px solid var(--f1-light-gray);
 }
 
-/* Specific wrapper for consolidated view */
-.time-trial-consolidated {
+/* Specific wrapper for tt-data view */
+.time-trial-tt-data {
   height: 100%;
   display: flex;
   flex-direction: column;
 }
 
 /* Section containers */
-.time-trial-consolidated-section {
+.time-trial-tt-data-section {
   flex: 1 1 0;
   min-height: 0;
   max-height: 33.333%;
@@ -137,13 +137,13 @@ body {
 }
 
 /* Table specific styles */
-.time-trial-consolidated-table {
+.time-trial-tt-data-table {
   table-layout: fixed;
   margin-bottom: 0;
   width: 100%;
 }
 
-.time-trial-consolidated-table thead th {
+.time-trial-tt-data-table thead th {
   position: sticky;
   top: 0;
   z-index: 1;
@@ -152,7 +152,7 @@ body {
 }
 
 /* Optional: Add some spacing between tables in the same section */
-.time-trial-consolidated-table + .time-trial-consolidated-table {
+.time-trial-tt-data-table + .time-trial-tt-data-table {
   margin-top: 0.5rem;
 }
 

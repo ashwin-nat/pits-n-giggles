@@ -2,16 +2,15 @@ class TimeTrialDataPopulator {
     constructor() {
         this.timeTrialTableDiv = document.getElementById('time-trial-table-div');
         this.timeTrialTable = document.getElementById('tt-lap-time-table');
-        this.timeTrialConsolidatedDiv = document.getElementById('time-trial-consolidated-div');
+        this.timeTrialTtDataDiv = document.getElementById('time-trial-tt-data-div');
     }
 
     populate(incomingData, gameYear) {
         this.populateTimeTrialTable(incomingData, gameYear);
-        this.populateTimeTrialConsolidated(incomingData, gameYear);
+        this.populateTimeTrialTtData(incomingData, gameYear);
     }
 
     populateTimeTrialTable(incomingData, gameYear) {
-        console.log("populateTimeTrialTable received data", incomingData);
         if (!incomingData || !incomingData["lap-history"]) {
             return;
         }
@@ -19,7 +18,6 @@ class TimeTrialDataPopulator {
         // Clear existing rows except the header
         this.timeTrialTable.innerHTML = '';
         const lapHistory = incomingData["lap-history"];
-        console.log("received data", lapHistory);
         lapHistory.forEach((lap, index) => {
             if (lap["sector-1-time-in-ms"] === 0) {
               return;
@@ -56,7 +54,13 @@ class TimeTrialDataPopulator {
         });
     }
 
-    populateTimeTrialConsolidated(incomingData) {
-        // Do nothing for now
+    populateTimeTrialTtData(incomingData, gameYear) {
+
+        // This data is available only on F1 24 onwards
+        if (gameYear < 24) {
+            return;
+        }
+
+        ;
     }
 }
