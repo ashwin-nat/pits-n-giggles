@@ -52,11 +52,9 @@ class TelemetryRenderer {
   updateDashboard(incomingData) {
 
     const sessionType = incomingData["session-type"];
-    // if ("Time Trial" === sessionType) {
-    if (("Time Trial" === sessionType) || ("---" === sessionType)) {
+    if ("Time Trial" === sessionType) {
       this.updateTimeTrialData(incomingData);
-    // } else if ("Unknown" !== sessionType && "---" !== sessionType) {
-    } else if ("Unknown" !== sessionType) {
+    } else if ("Unknown" !== sessionType && "---" !== sessionType) {
       this.updateRaceTableData(incomingData);
     }
 
