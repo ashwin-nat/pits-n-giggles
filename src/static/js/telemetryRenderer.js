@@ -1,7 +1,7 @@
 class TelemetryRenderer {
   constructor(iconCache) {
     this.timeTrialDataPopulator = new TimeTrialDataPopulator();
-    this.welcomeDiv = document.getElementById('welcome-div');
+    this.splashDiv = document.getElementById('splash-div');
     this.raceTableDiv = document.getElementById('race-table-div');
     this.timeTrialDiv = document.getElementById('time-trial-div');
     this.telemetryTable = document.getElementById('telemetry-data');
@@ -14,7 +14,7 @@ class TelemetryRenderer {
     this.airTempSpan = document.getElementById('air-temp');
     this.indexByPosition = null;
     this.iconCache = iconCache;
-    this.currUIMode = 'Welcome';
+    this.currUIMode = 'Splash';
   }
 
   renderTelemetryRow(data, gameYear, isLiveDataMode) {
@@ -279,18 +279,18 @@ class TelemetryRenderer {
     this.uiMode = uiMode;
     console.log("changing UI mode to", uiMode);
     switch(uiMode) {
-      case 'Welcome':
-        this.welcomeDiv.style.display = '';
+      case 'Splash':
+        this.splashDiv.style.display = '';
         this.raceTableDiv.style.display = 'none';
         this.timeTrialDiv.style.display = 'none';
         break;
       case 'Time Trial':
-        this.welcomeDiv.style.display = 'none';
+        this.splashDiv.style.display = 'none';
         this.raceTableDiv.style.display = 'none';
         this.timeTrialDiv.style.display = '';
         break;
       case 'Race':
-        this.welcomeDiv.style.display = 'none';
+        this.splashDiv.style.display = 'none';
         this.raceTableDiv.style.display = '';
         this.timeTrialDiv.style.display = 'none';
         break;
