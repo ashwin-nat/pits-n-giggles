@@ -274,8 +274,8 @@ class TelemetryRenderer {
       return;
     }
 
+    console.log(`changing UI mode from ${this.uiMode} to ${uiMode}`);
     this.uiMode = uiMode;
-    console.log("changing UI mode to", uiMode);
     switch(uiMode) {
       case 'Splash':
         this.splashDiv.style.display = '';
