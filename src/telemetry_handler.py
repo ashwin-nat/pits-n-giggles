@@ -400,6 +400,7 @@ class F1TelemetryHandler:
         self.m_manager.registerCallback(F1PacketType.TYRE_SETS, F1TelemetryHandler.handleTyreSets)
         self.m_manager.registerCallback(F1PacketType.MOTION, F1TelemetryHandler.handleMotion)
         self.m_manager.registerCallback(F1PacketType.CAR_SETUPS, F1TelemetryHandler.handleCarSetups)
+        self.m_manager.registerCallback(F1PacketType.TIME_TRIAL, F1TelemetryHandler.handleTimeTrialData)
 
         if self.m_should_forward:
             self.m_manager.registerRawPacketCallback(F1TelemetryHandler.handleRawPacket)

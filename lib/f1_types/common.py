@@ -772,7 +772,7 @@ class GearboxAssistMode(Enum):
     Enumeration representing different Gearbox Control Assist modes.
 
     Attributes:
-        MANAUL: Off
+        MANUAL: Off
         MANUAL_WITH_SUGGESTED_GEAR: Manual Transmission with suggested gear
         AUTO: Full assist
 
@@ -780,7 +780,7 @@ class GearboxAssistMode(Enum):
             Each attribute represents a unique ERS deployment mode identified by an integer value.
     """
 
-    MANAUL = 1
+    MANUAL = 1
     MANUAL_WITH_SUGGESTED_GEAR = 2
     AUTO = 3
 
