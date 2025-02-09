@@ -603,22 +603,25 @@ class DriversListRsp:
             Dict[str, Any]: The JSON dump.
         """
 
+        # Player object must be found in TT mode
         player_obj = next(
             (driver for driver in self.m_final_list if driver.m_is_player),
             None
         )
 
+        # Insert top speed into the lap-history-data records
+        if player_obj.m_packet_session_history:
+            session_history = player_obj.m_packet_session_history.toJSON()
+            for index, lap_data in enumerate(session_history["lap-history-data"]):
+                lap_data["top-speed-kmph"] = player_obj.m_per_lap_snapshots[index + 1].m_top_speed_kmph \
+                    if (index + 1) in player_obj.m_per_lap_snapshots else None
+        else:
+            session_history = None
         return {
-            "lap-history": [
-                {
-                    **lap_data.toJSON(),
-                    "top-speed-kmph": player_obj.m_per_lap_snapshots[index + 1].m_top_speed_kmph \
-                        if (index + 1) in player_obj.m_per_lap_snapshots else None,
-                }
-                for index, lap_data in enumerate(player_obj.m_packet_session_history.m_lapHistoryData)
-            ] if player_obj and player_obj.m_packet_session_history else None,
-            "tt-packet": self.m_time_trial_packet.toJSON() if self.m_time_trial_packet else None,
+            "session-history": session_history,
+            "tt-data": self.m_time_trial_packet.toJSON() if self.m_time_trial_packet else None,
         }
+
 
 
     def getCurrentLap(self) -> Optional[int]:

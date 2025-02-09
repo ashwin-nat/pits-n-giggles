@@ -783,6 +783,7 @@ class GearboxAssistMode(Enum):
     MANUAL = 1
     MANUAL_WITH_SUGGESTED_GEAR = 2
     AUTO = 3
+    UNKNOWN = 0
 
     def __str__(self) -> str:
         """

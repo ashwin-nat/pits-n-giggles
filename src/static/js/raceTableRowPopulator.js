@@ -69,7 +69,7 @@ class RaceTableRowPopulator {
     addWarningsPensInfo() {
         const warnsPensInfo = this.rowData["warns-pens-info"];
         const dtPlusSg = warnsPensInfo["num-dt"] + "DT + " +
-            warnsPensInfo["num-sg"] + "SG";
+            warnsPensInfo["num-sg"] + "Serv";
         this.createMultiLineCell([
             `Pens: ${warnsPensInfo["time-penalties"]} sec`,
             `Warns: ${warnsPensInfo["corner-cutting-warnings"]}`,
