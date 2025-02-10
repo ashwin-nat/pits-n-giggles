@@ -440,7 +440,8 @@ def getTelemetryInfo():
                         "fuel-in-tank" : data_per_driver["car-status"]["fuel-in-tank"],
                         "curr-fuel-rate" : 0.0,
                         "last-lap-fuel-used" : 0.0,
-                        "target-fuel-rate" : 0.0
+                        "target-fuel-rate-average" : 0.0,
+                        "target-fuel-rate-next-lap" : 0.0,
                     }
                 }
             )

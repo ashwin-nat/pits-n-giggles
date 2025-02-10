@@ -72,15 +72,15 @@
               <tr>
                 <th>POS</th>
                 <th>DRIVER</th>
-                <th id="delta-th" data-bs-toggle="tooltip" data-bs-title="TODO: enter tooltip">DELTA</th>
+                <th id="delta-th" data-bs-toggle="tooltip">DELTA</th>
                 <th>ERS</th>
                 <th>WARNS/PENS</th>
-                <th id="best-lap-th" class="best-lap" data-bs-toggle="tooltip" data-bs-title="Click to toggle between absolute and relative format">BEST LAP</th>
-                <th id="last-lap-th" class="last-lap" data-bs-toggle="tooltip" data-bs-title="Click to toggle between absolute and relative format">LAST LAP</th>
-                <th id="tyre-info-th" data-bs-toggle="tooltip" data-bs-title="Click to toggle between average and maximum format">TYRE INFO</th>
+                <th id="best-lap-th" class="best-lap" data-bs-toggle="tooltip">BEST LAP</th>
+                <th id="last-lap-th" class="last-lap" data-bs-toggle="tooltip">LAST LAP</th>
+                <th id="tyre-info-th" data-bs-toggle="tooltip">TYRE INFO</th>
                 <th id="wear-prediction-th">WEAR PREDICTION</th>
                 <th>WING DAMAGE</th>
-                <th>FUEL</th>
+                <th id="fuel-info-th" data-bs-toggle="tooltip">FUEL</th>
               </tr>
             </thead>
             <tbody id="telemetry-data">
@@ -389,6 +389,20 @@
                 <div class="form-check form-check-inline">
                   <input class="form-check-input" type="radio" id="deltaRelative" name="deltaFormat" value="relative" checked>
                   <label class="form-check-label" for="deltaRelative">Relative</label>
+                </div>
+              </div>
+            </div>
+            <!-- Fuel format -->
+            <div class="mb-3">
+              <label class="form-label">Fuel Recommendation Format</label>
+              <div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="fuelTargetAverage" name="fuelFormat" value="relative" checked>
+                  <label class="form-check-label" for="fuelTargetAverage">Average target for remaining laps</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="fuelTargetNextLap" name="fuelFormat" value="absolute">
+                  <label class="form-check-label" for="fuelTargetNextLap">Target for next lap</label>
                 </div>
               </div>
             </div>

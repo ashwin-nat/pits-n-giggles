@@ -55,14 +55,10 @@ class RaceTableRowPopulator {
 
     addErsInfo() {
         const ersInfo = this.rowData["ers-info"];
-        if (this.gameYear == 23) {
-            this.row.insertCell().textContent = ersInfo["ers-percent"];
-        } else {
-            this.createMultiLineCell([
-                `${ersInfo["ers-percent"]}`,
-                `${ersInfo["ers-mode"]}`,
-            ]);
-        }
+        this.createMultiLineCell([
+            `${ersInfo["ers-percent"]}`,
+            `${ersInfo["ers-mode"]}`,
+        ]);
         return this;
     }
 
@@ -245,8 +241,11 @@ class RaceTableRowPopulator {
             const currFuelRate = fuelInfo["curr-fuel-rate"] !== null
                 ? formatFloatWithTwoDecimals(fuelInfo["curr-fuel-rate"])
                 : "N/A";
-            const targetFuelRate = fuelInfo["target-fuel-rate"] !== null
-                ? formatFloatWithTwoDecimals(fuelInfo["target-fuel-rate"])
+            const targetFuelRateAverage = fuelInfo["target-fuel-rate-average"] !== null
+                ? formatFloatWithTwoDecimals(fuelInfo["target-fuel-rate-average"])
+                : "N/A";
+            const targetFuelRateNextLap = fuelInfo["target-fuel-rate-next-lap"] !== null
+                ? formatFloatWithTwoDecimals(fuelInfo["target-fuel-rate-next-lap"])
                 : "N/A";
             const lastLapFuelUsed = fuelInfo["last-lap-fuel-used"] !== null
                 ? formatFloatWithTwoDecimals(fuelInfo["last-lap-fuel-used"])
@@ -255,7 +254,7 @@ class RaceTableRowPopulator {
             this.createMultiLineCell([
                 `Last: ${lastLapFuelUsed}`,
                 `Curr: ${currFuelRate}`,
-                `Tgt: ${targetFuelRate}`,
+                `Tgt: ${(g_pref_fuelTargetAverageFormat) ? (targetFuelRateAverage) : (targetFuelRateNextLap)}`,
             ]);
         }
         return this;

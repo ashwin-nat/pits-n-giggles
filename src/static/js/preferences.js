@@ -1,6 +1,7 @@
 // Globals for preferences
 let g_pref_is24HourFormat;
 let g_pref_relativeDelta;
+let g_pref_fuelTargetAverageFormat;
 let g_pref_lastLapAbsoluteFormat;
 let g_pref_bestLapAbsoluteFormat;
 let g_pref_tyreWearAverageFormat;
@@ -18,6 +19,13 @@ function loadPreferences() {
         g_pref_is24HourFormat = localStorage.getItem('is24HourFormat') === 'true';
     } else {
         g_pref_is24HourFormat = true;
+        missingPreference = true;
+    }
+
+    if (localStorage.getItem('g_pref_fuelTargetAverageFormat') !== null) {
+        g_pref_fuelTargetAverageFormat = localStorage.getItem('g_pref_fuelTargetAverageFormat') === 'true';
+    } else {
+        g_pref_fuelTargetAverageFormat = true;
         missingPreference = true;
     }
 
@@ -97,16 +105,19 @@ function loadPreferences() {
         g_pref_bestLapAbsoluteFormat,
         g_pref_tyreWearAverageFormat,
         g_pref_relativeDelta,
+        g_pref_fuelTargetAverageFormat,
         g_pref_numAdjacentCars,
         g_pref_numWeatherPredictionSamples,
         g_pref_ttsVoice,
         g_pref_ttsVolume,
     });
+    updateAllTooltips();
 }
 
 function savePreferences() {
     localStorage.setItem('is24HourFormat', g_pref_is24HourFormat);
     localStorage.setItem('relativeDelta', g_pref_relativeDelta);
+    localStorage.setItem('fuelTargetAverageFormat', g_pref_fuelTargetAverageFormat);
     localStorage.setItem('lastLapAbsoluteFormat', g_pref_lastLapAbsoluteFormat);
     localStorage.setItem('bestLapAbsoluteFormat', g_pref_bestLapAbsoluteFormat);
     localStorage.setItem('tyreWearAverageFormat', g_pref_tyreWearAverageFormat);
@@ -119,6 +130,7 @@ function savePreferences() {
     console.log("Saved Preferences:", {
         g_pref_myTeamName,
         g_pref_is24HourFormat,
+        g_pref_fuelTargetAverageFormat,
         g_pref_lastLapAbsoluteFormat,
         g_pref_bestLapAbsoluteFormat,
         g_pref_tyreWearAverageFormat,
@@ -128,4 +140,35 @@ function savePreferences() {
         g_pref_ttsVoice,
         g_pref_ttsVolume,
     });
+
+    updateAllTooltips();
+}
+
+function updateAllTooltips() {
+
+    updateTooltip("best-lap-th", `Click to toggle between absolute and relative format. Current format is ${
+                                                    (g_pref_bestLapAbsoluteFormat) ? ("Absolute") : ("Relative")}`);
+    updateTooltip("last-lap-th", `Click to toggle between absolute and relative format. Current format is ${
+                                                    (g_pref_lastLapAbsoluteFormat) ? ("Absolute") : ("Relative")}`);
+    updateTooltip("delta-th", `Click to toggle between absolute and relative format. Current format is ${
+                                                    (!g_pref_relativeDelta) ? ("Absolute") : ("Relative")}`);
+    updateTooltip("tyre-info-th", `Click to toggle between absolute and relative format. Current format is ${
+                                                    (g_pref_tyreWearAverageFormat) ? ("Average") : ("Relative")}`);
+    updateTooltip("wear-prediction-th", `Click to toggle between absolute and relative format. Current format is ${
+                                                    (g_pref_tyreWearAverageFormat) ? ("Average") : ("Relative")}`);
+    updateTooltip("fuel-info-th", `Click to toggle between target fuel format. Current format is ${
+                                                    (g_pref_fuelTargetAverageFormat) ? ("Average target fuel rate") :
+                                                        ("Fuel usage target for next lap")}`);
+}
+
+function updateTooltip(id, newText) {
+    let element = document.getElementById(id);
+    element.setAttribute("data-bs-title", newText); // Update tooltip text
+
+    // Reinitialize Bootstrap tooltip to reflect the change
+    let tooltip = bootstrap.Tooltip.getInstance(element);
+    if (tooltip) {
+        tooltip.dispose(); // Remove existing instance
+    }
+    new bootstrap.Tooltip(element); // Reinitialize with new title
 }

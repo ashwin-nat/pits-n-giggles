@@ -89,6 +89,7 @@ class FuelRateRecommender:
 
         self.m_curr_fuel_rate: Optional[float] = None
         self.m_target_fuel_rate: Optional[float] = None
+        self.m_target_next_lap_fuel_usage: Optional[float] = None
 
         self._recompute()
 
@@ -127,6 +128,15 @@ class FuelRateRecommender:
         """
 
         return self.m_target_fuel_rate
+
+    @property
+    def target_next_lap_fuel_usage(self) -> Optional[float]:
+        """Get the target fuel usage for the next lap
+
+        Returns:
+            Optional[float]: Target fuel usage for next lap. None if not available
+        """
+        return self.m_target_next_lap_fuel_usage
 
     @property
     def fuel_used_last_lap(self) -> Optional[float]:
@@ -195,5 +205,15 @@ class FuelRateRecommender:
         # Calculate target fuel rate to meet the minimum fuel requirement at the end
         if laps_left > 0:
             self.m_target_fuel_rate = (current_fuel - self.m_min_fuel_kg) / laps_left
+
+            # Calculate target fuel usage for next lap
+            if self.m_curr_fuel_rate is not None:
+                fuel_rate_difference = self.m_curr_fuel_rate - self.m_target_fuel_rate
+                adjustment_factor = 0.5
+                self.m_target_next_lap_fuel_usage = self.m_target_fuel_rate - \
+                    (fuel_rate_difference * adjustment_factor)
+            else:
+                self.m_target_next_lap_fuel_usage = self.m_target_fuel_rate
         else:
             self.m_target_fuel_rate = None
+            self.m_target_next_lap_fuel_usage = None

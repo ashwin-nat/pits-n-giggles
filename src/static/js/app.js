@@ -125,6 +125,13 @@ document.getElementById("tyre-info-th").addEventListener("click", function () {
     savePreferences();
 });
 
+document.getElementById("fuel-info-th").addEventListener("click", function () {
+    g_pref_fuelTargetAverageFormat = !g_pref_fuelTargetAverageFormat;
+    showToast("Target fuel usage Format Changed to " + (g_pref_fuelTargetAverageFormat ?
+        ("Average target fuel rate") : ("Fuel usage target for next lap")));
+    savePreferences();
+});
+
 document.getElementById('volumeRange').addEventListener('input', function (e) {
     document.getElementById('volumeLabel').textContent = e.target.value;
 });

@@ -88,6 +88,10 @@ class ModalManager {
     document.getElementById("deltaLeader").checked = !g_pref_relativeDelta;
     document.getElementById("deltaRelative").checked = g_pref_relativeDelta;
 
+    // Set the radio buttons for fuel format
+    document.getElementById("fuelTargetAverage").checked = g_pref_fuelTargetAverageFormat;
+    document.getElementById("fuelTargetNextLap").checked = !g_pref_fuelTargetAverageFormat;
+
     // Set initial value for volume slider
     const volumeSlider = document.getElementById('volumeRange');
     const volumeLabel = document.getElementById('volumeLabel');
@@ -148,6 +152,7 @@ class ModalManager {
     g_pref_bestLapAbsoluteFormat = (document.querySelector('input[name="bestLapTimeFormat"]:checked').value === "absolute") ? (true) : (false);
     g_pref_tyreWearAverageFormat = (document.querySelector('input[name="tyreWearFormat"]:checked').value === "average") ? (true) : (false);
     g_pref_relativeDelta = (document.querySelector('input[name="deltaFormat"]:checked').value === "relative") ? (true) : (false);
+    g_pref_fuelTargetAverageFormat = (document.querySelector('input[name="fuelFormat"]:checked').value === "average") ? (true) : (false);
     g_pref_numAdjacentCars = numAdjacentCars_temp;
     g_pref_numWeatherPredictionSamples = numWeatherForecastSamples_temp;
     g_pref_ttsVoice = document.getElementById('voiceSelect').value;
