@@ -16,6 +16,9 @@ You can download the exe file and skip python setup [from here](https://github.c
 ## Direct executable download (Mac)
 Not yet supported because I need a mac to build an executable for mac platforms and I do not own one.
 
+## Detailed instructions and other features
+[Head on over to the wiki page to read all about this](https://github.com/ashwin-nat/pits-n-giggles/wiki)
+
 ## Prerequisites
 - Python
   - [Python Setup Guide for Windows](https://www.python.org/downloads/windows/)
