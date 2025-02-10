@@ -134,7 +134,7 @@ class TimeTrialDataPopulator {
 
             const sector1Cell = document.createElement('td');
             sector1Cell.textContent = (lap["sector-1-time-in-ms"]) ? (lap["sector-1-time-str"]) : ('---');
-            this.applyColourToCell(sector1Cell, lapNum, bestLapTimeLapNum, lapValidBitFlags & s1ValidMask);
+            this.applyColourToCell(sector1Cell, lapNum, bestS1TimeLapNum, lapValidBitFlags & s1ValidMask);
             row.appendChild(sector1Cell);
 
             const sector2Cell = document.createElement('td');
