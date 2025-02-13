@@ -330,6 +330,7 @@ def getTelemetryInfo():
             "safety-car-status": g_json_data["session-info"]["safety-car-status"],
             "fastest-lap-overall": fastest_lap,
             "fastest-lap-overall-driver": fastest_lap_driver,
+            "fastest-lap-overall-tyre" : None,
             "pit-speed-limit" : g_json_data["session-info"]["pit-speed-limit"],
             "weather-forecast-samples": [],
             "race-ended" : True,

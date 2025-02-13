@@ -24,7 +24,7 @@
 
 import logging
 from typing import Dict, Any, Optional, List
-from lib.f1_types import F1Utils, LapHistoryData, CarStatusData, SessionType23, SessionType24
+from lib.f1_types import F1Utils, LapHistoryData, CarStatusData, VisualTyreCompound
 import lib.race_analyzer as RaceAnalyzer
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 import src.telemetry_data as TelData
@@ -107,6 +107,8 @@ class RaceInfoRsp:
             self.m_driver_list_rsp.m_fastest_lap, default_value=0)
         final_json["fastest-lap-overall-driver"] = _getValueOrDefaultValue(
             self.m_driver_list_rsp.m_fastest_lap_driver)
+        final_json["fastest-lap-overall-tyre"] = str(self.m_driver_list_rsp.m_fastest_lap_tyre) \
+            if self.m_driver_list_rsp.m_fastest_lap_tyre else None
         return final_json
 
     def _updatePlayerLapTimes(self,table_entries_json: List[Dict[str, Any]]) -> None:
@@ -501,6 +503,7 @@ class DriversListRsp:
         self.m_final_list : List[TelData.DataPerDriver] = []
         self.m_fastest_lap : Optional[int] = None
         self.m_fastest_lap_driver: Optional[str] = None
+        self.m_fastest_lap_tyre: Optional[VisualTyreCompound] = None
         self.m_next_pit_stop_window: Optional[int] = None
         self.m_fastest_s1_ms: Optional[int] = None
         self.m_fastest_s2_ms: Optional[int] = None
@@ -706,6 +709,8 @@ class DriversListRsp:
                                         TelData._driver_data.m_fastest_index].m_best_lap_ms
                 self.m_fastest_lap_driver = TelData._driver_data.m_driver_data[
                                             TelData._driver_data.m_fastest_index].m_name
+                self.m_fastest_lap_tyre = TelData._driver_data.m_driver_data[
+                                            TelData._driver_data.m_fastest_index].m_best_lap_tyre
             positions = list(range(1, TelData._driver_data.m_num_active_cars + 1))
             for position in positions:
                 index, temp_data = TelData._driver_data.getIndexByTrackPosition(position)

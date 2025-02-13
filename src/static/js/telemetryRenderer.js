@@ -8,6 +8,7 @@ class TelemetryRenderer {
     this.weatherWidget = new WeatherWidget(document.getElementById('weather-predictions'));
     this.fastestLapTimeSpan = document.getElementById('fastestLapTimeSpan');
     this.fastestLapNameSpan = document.getElementById('fastestLapNameSpan');
+    this.fastestLapTyreSpan = document.getElementById('fastestLapTyreSpan');
     this.trackName = document.getElementById('track-name');
     this.pitLaneSpeedLimit = document.getElementById('pit-speed-limit');
     this.trackTempSpan = document.getElementById('track-temp');
@@ -98,6 +99,16 @@ class TelemetryRenderer {
     this.fastestLapTimeSpan.textContent = formatLapTime(incomingData['fastest-lap-overall']);
     this.fastestLapNameSpan.textContent = (incomingData['event-type'] === 'Time Trial') ?
         ('') : (truncateName(incomingData['fastest-lap-overall-driver']).toUpperCase());
+
+    this.fastestLapTyreSpan.innerHTML = '';
+    const fastestLapTyre = incomingData['fastest-lap-overall-tyre'];
+    if (fastestLapTyre) {
+      const icon = this.iconCache.getIcon(fastestLapTyre);
+      if (icon) {
+        this.fastestLapTyreSpan.appendChild(icon);
+      }
+    }
+
     this.populateCircuitSpan(incomingData);
     this.airTempSpan.textContent = incomingData['air-temperature'] + ' °C';
     this.trackTempSpan.textContent = incomingData['track-temperature'] + ' °C';

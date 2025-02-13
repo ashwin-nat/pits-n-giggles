@@ -7,6 +7,12 @@ class PaceComparison {
         this.prevDelta = document.getElementById('paceComparisonPrevDelta');
         this.nextDelta = document.getElementById('paceComparisonNextDelta');
 
+        this.playerName = document.getElementById('paceComparisonPlayerName');
+        this.playerLastLapTime = document.getElementById('paceComparisonPlayerLastLapTime');
+        this.playerLastS1Time  = document.getElementById('paceComparisonPlayerLastS1Time');
+        this.playerLastS2Time  = document.getElementById('paceComparisonPlayerLastS2Time');
+        this.playerLastS3Time  = document.getElementById('paceComparisonPlayerLastS3Time');
+
         this.prevSectors = [
             document.getElementById('prevSector1'),
             document.getElementById('prevSector2'),
@@ -102,6 +108,13 @@ class PaceComparison {
         if (!this.#isDataAvailable(data['player'])) {
             return;
         }
+
+        // Update the players last lap time
+        this.playerName.textContent         = this.#getDriverName(data['player']);
+        this.playerLastLapTime.textContent  = formatLapTime(data['player']['lap-ms']);
+        this.playerLastS1Time.textContent   = formatSectorTime(data['player']['sector-1-ms']);
+        this.playerLastS2Time.textContent   = formatSectorTime(data['player']['sector-2-ms']);
+        this.playerLastS3Time.textContent   = formatSectorTime(data['player']['sector-3-ms']);
 
         const isPrevDataAvailable = this.#isDataAvailable(data['prev']);
         const isNextDataAvailable = this.#isDataAvailable(data['next']);

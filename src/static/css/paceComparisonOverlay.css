@@ -73,6 +73,11 @@
     margin-bottom: 4px;
 }
 
+.pace-comparison-player-sector-label {
+    font-size: 12px;
+    color: #888;
+}
+
 .pace-comparison-driver {
     padding: 4px 8px;
     font-weight: bold;

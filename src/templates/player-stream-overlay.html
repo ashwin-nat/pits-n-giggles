@@ -188,52 +188,68 @@
             <!-- Pace comparison div -->
             <div class="col d-flex align-items-center justify-content-center">
                 <div id="paceComparisonWidget" class="pace-comparison-container">
-                <div class="pace-comparison-header">
-                    Last Lap Pace Comparison
+                    <!-- Header -->
+                    <div class="pace-comparison-header">
+                        Last Lap Pace Comparison
+                    </div>
+                    <!-- Player details -->
+                    <div class="pace-comparison-lap-time pace-comparison-header">
+                        <span id="paceComparisonPlayerName"
+                            class="pace-comparison-lap-label border-end border-secondary pe-2 me-2">Last Lap Time</span>
+                        <span id="paceComparisonPlayerLastLapTime"
+                            class="pace-comparison-lap-label border-end border-secondary pe-2 me-2">--:--.---</span>
+                        <span id="paceComparisonPlayerLastS1Time"
+                            class="pace-comparison-player-sector-label border-end border-secondary pe-2 me-2">--.---</span>
+                        <span id="paceComparisonPlayerLastS2Time"
+                            class="pace-comparison-player-sector-label border-end border-secondary pe-2 me-2">--.---</span>
+                        <span id="paceComparisonPlayerLastS3Time"
+                            class="pace-comparison-player-sector-label border-end border-secondary pe-2 me-2">--.---</span>
+                    </div>
+                    <!-- Lap time comparisons -->
+                    <div class="pace-comparison-main-row">
+                        <div class="pace-comparison-half">
+                            <span class="pace-comparison-driver pace-comparison-prev" id="paceComparisonPrev">---</span>
+                            <span class="pace-comparison-delta" id="paceComparisonPrevDelta">--.-</span>
+                        </div>
+                        <div class="pace-comparison-divider"></div>
+                        <div class="pace-comparison-half">
+                            <span class="pace-comparison-delta" id="paceComparisonNextDelta">--.-</span>
+                            <span class="pace-comparison-driver pace-comparison-next" id="paceComparisonNext">---</span>
+                        </div>
+                    </div>
+                    <!-- Sector time comparisons -->
+                    <div class="pace-comparison-sectors-row">
+                        <div class="pace-comparison-sectors-half">
+                            <div class="pace-comparison-sector">
+                                <span class="pace-comparison-sector-label">S1</span>
+                                <span id="prevSector1">--.-</span>
+                            </div>
+                            <div class="pace-comparison-sector">
+                                <span class="pace-comparison-sector-label">S2</span>
+                                <span id="prevSector2">--.-</span>
+                            </div>
+                            <div class="pace-comparison-sector">
+                                <span class="pace-comparison-sector-label">S3</span>
+                                <span id="prevSector3">--.-</span>
+                            </div>
+                        </div>
+                        <div class="pace-comparison-divider"></div>
+                        <div class="pace-comparison-sectors-half">
+                            <div class="pace-comparison-sector">
+                                <span class="pace-comparison-sector-label">S1</span>
+                                <span id="nextSector1">--.-</span>
+                            </div>
+                            <div class="pace-comparison-sector">
+                                <span class="pace-comparison-sector-label">S2</span>
+                                <span id="nextSector2">--.-</span>
+                            </div>
+                            <div class="pace-comparison-sector">
+                                <span class="pace-comparison-sector-label">S3</span>
+                                <span id="nextSector3">--.-</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="pace-comparison-main-row">
-                    <div class="pace-comparison-half">
-                        <span class="pace-comparison-driver pace-comparison-prev" id="paceComparisonPrev">---</span>
-                        <span class="pace-comparison-delta" id="paceComparisonPrevDelta">--.-</span>
-                    </div>
-                    <div class="pace-comparison-divider"></div>
-                    <div class="pace-comparison-half">
-                        <span class="pace-comparison-delta" id="paceComparisonNextDelta">--.-</span>
-                        <span class="pace-comparison-driver pace-comparison-next" id="paceComparisonNext">---</span>
-                    </div>
-                </div>
-                <div class="pace-comparison-sectors-row">
-                    <div class="pace-comparison-sectors-half">
-                        <div class="pace-comparison-sector">
-                            <span class="pace-comparison-sector-label">S1</span>
-                            <span id="prevSector1">--.-</span>
-                        </div>
-                        <div class="pace-comparison-sector">
-                            <span class="pace-comparison-sector-label">S2</span>
-                            <span id="prevSector2">--.-</span>
-                        </div>
-                        <div class="pace-comparison-sector">
-                            <span class="pace-comparison-sector-label">S3</span>
-                            <span id="prevSector3">--.-</span>
-                        </div>
-                    </div>
-                    <div class="pace-comparison-divider"></div>
-                    <div class="pace-comparison-sectors-half">
-                        <div class="pace-comparison-sector">
-                            <span class="pace-comparison-sector-label">S1</span>
-                            <span id="nextSector1">--.-</span>
-                        </div>
-                        <div class="pace-comparison-sector">
-                            <span class="pace-comparison-sector-label">S2</span>
-                            <span id="nextSector2">--.-</span>
-                        </div>
-                        <div class="pace-comparison-sector">
-                            <span class="pace-comparison-sector-label">S3</span>
-                            <span id="nextSector3">--.-</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
             </div>
         </div>
     </div>

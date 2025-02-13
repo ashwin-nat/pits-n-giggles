@@ -483,6 +483,7 @@ class DataPerDriver:
         self.m_delta_to_leader: Optional[int] = None
         self.m_ers_perc: Optional[float] = None
         self.m_best_lap_ms: Optional[str] = None
+        self.m_best_lap_tyre: Optional[VisualTyreCompound] = None
         self.m_last_lap_ms: Optional[int] = None
         self.m_tyre_wear: Optional[TyreWearPerLap] = None
         self.m_is_player: Optional[bool] = None
@@ -1621,6 +1622,7 @@ class DriverData:
 
         obj_to_be_updated = self._getObjectByIndex(packet.vehicleIdx)
         obj_to_be_updated.m_best_lap_ms = packet.lapTime
+        obj_to_be_updated.m_best_lap_tyre = obj_to_be_updated.m_tyre_vis_compound
         self.m_fastest_index = packet.vehicleIdx
 
     def processRetirement(self, packet: PacketEventData.Retirement) -> None:
@@ -1761,6 +1763,9 @@ class DriverData:
         obj_to_be_updated.m_packet_session_history = packet
         if (packet.m_bestLapTimeLapNum > 0) and (packet.m_bestLapTimeLapNum <= packet.m_numLaps):
             obj_to_be_updated.m_best_lap_ms = packet.m_lapHistoryData[packet.m_bestLapTimeLapNum-1].m_lapTimeInMS
+            tyre_set_info_at_best_lap = obj_to_be_updated.getTyreSetInfoAtLap(packet.m_bestLapTimeLapNum-1)
+            obj_to_be_updated.m_best_lap_tyre = tyre_set_info_at_best_lap.m_visual_tyre_compound \
+                if tyre_set_info_at_best_lap else None
 
         # Recompute fastest lap if required
         if self._shouldRecomputeFastestLap(obj_to_be_updated):
@@ -2371,7 +2376,7 @@ def getTyreDeltaNotificationMessages() -> List[TyreDeltaMessage]:
     # sourcery skip: assign-if-exp, extract-method
     with _globals_lock.gen_rlock():
         # N/A for spectating or after race - maybe support this later
-        if _globals.m_is_spectating or _globals.m_packet_final_classification:
+        if _globals.m_is_spectating or _globals.m_packet_final_classification or _globals.m_event_type != "Time Trial":
             return []
 
     with _driver_data_lock.gen_rlock():

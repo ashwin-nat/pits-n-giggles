@@ -11,6 +11,14 @@ function formatLapTime(milliseconds) {
         millisecondsPart.toString().padStart(3, '0'); // Ensure it's 3 digits
 }
 
+function formatSectorTime(milliseconds) {
+    // Check if the input is 0 or null
+    if (milliseconds === 0 || milliseconds === null) {
+        return "--.---";
+    }
+    return (milliseconds / 1000).toFixed(3);
+}
+
 function formatDelta(delta) {
     // Determine the sign
     const sign = delta >= 0 ? '+' : '-';
