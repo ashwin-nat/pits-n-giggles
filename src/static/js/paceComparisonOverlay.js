@@ -23,6 +23,16 @@ class PaceComparison {
             document.getElementById('nextSector2'),
             document.getElementById('nextSector3')
         ];
+
+        this.prevBatteryLevel       = document.getElementById('prevBatteryLevel');
+        this.prevDeployMode         = document.getElementById('prevDeployMode');
+        this.prevDeployBar          = document.getElementById('prevDeployBar');
+        this.prevHarvestBar        = document.getElementById('prevHarvestBar');
+
+        this.nextBatteryLevel       = document.getElementById('nextBatteryLevel');
+        this.nextDeployMode         = document.getElementById('nextDeployMode');
+        this.nextDeployBar          = document.getElementById('nextDeployBar');
+        this.nextHarvestBar        = document.getElementById('nextHarvestBar');
     }
 
     #formatDelta(deltaMs) {
@@ -74,6 +84,42 @@ class PaceComparison {
         }
     }
 
+    #updateBatteryDisplay(batteryLevelElement, deployModeElement, deployBarElement, harvestBarElement,
+        percentage, deployMode, deployPercentage, harvestPercentage) {
+
+        // Update battery level width instead of height
+        batteryLevelElement.style.width = `${percentage}%`;
+
+        // Update deploy mode text
+        deployModeElement.textContent = deployMode.toUpperCase();
+
+        // Remove all mode classes first
+        batteryLevelElement.classList.remove(
+            'mode-none',
+            'mode-medium',
+            'mode-hotlap',
+            'mode-overtake'
+        );
+
+        // Add appropriate mode class
+        batteryLevelElement.classList.add(`mode-${deployMode.toLowerCase()}`);
+
+        // Update the deploy and harvest bars
+        deployBarElement.style.width = `${deployPercentage}%`;
+        harvestBarElement.style.width = `${harvestPercentage}%`;
+    }
+
+    #isERSDataAvailable(ersData) {
+        if (!ersData) {
+            return false;
+        }
+        if (ersData['ers-percent'] !== null && ersData['ers-mode'] !== null) {
+            return true;
+        }
+        return false;
+    }
+
+
     /**
      * Updates the UI with new timing data
      * @param {Object} data - The timing data object containing:
@@ -92,7 +138,16 @@ class PaceComparison {
      *   - next-sector2-ms: number
      *   - next-sector3-ms: number
      */
-    update(data) {
+    update(data, eventType) {
+
+        // Hide this in TT mode
+        if ("Time Trial" === eventType) {
+            this.container.style.display = 'none';
+            return;
+        } else {
+            this.container.style.display = '';
+        }
+
         this.#clearPrevData();
         this.#clearNextData();
 
@@ -104,11 +159,6 @@ class PaceComparison {
             this.nextDriver.textContent = this.#getDriverName(data['next']);
         }
 
-        // If player's data is not available, do nothing
-        if (!this.#isDataAvailable(data['player'])) {
-            return;
-        }
-
         // Update the players last lap time
         this.playerName.textContent         = this.#getDriverName(data['player']);
         this.playerLastLapTime.textContent  = formatLapTime(data['player']['lap-ms']);
@@ -116,38 +166,52 @@ class PaceComparison {
         this.playerLastS2Time.textContent   = formatSectorTime(data['player']['sector-2-ms']);
         this.playerLastS3Time.textContent   = formatSectorTime(data['player']['sector-3-ms']);
 
-        const isPrevDataAvailable = this.#isDataAvailable(data['prev']);
-        const isNextDataAvailable = this.#isDataAvailable(data['next']);
+        const isPrevTimingDataAvailable = this.#isDataAvailable(data['prev']);
+        const isNextTimingDataAvailable = this.#isDataAvailable(data['next']);
 
-        if (isPrevDataAvailable) {
+        if (isPrevTimingDataAvailable) {
             const prevDelta = data['player']['lap-ms'] - data['prev']['lap-ms'];
             this.prevDelta.textContent = this.#formatDelta(prevDelta);
             this.#updateElementDelta(this.prevDelta, prevDelta);
         }
 
-        if (isNextDataAvailable) {
+        if (isNextTimingDataAvailable) {
             const nextDelta = data['player']['lap-ms'] - data['next']['lap-ms'];
             this.nextDelta.textContent = this.#formatDelta(nextDelta);
             this.#updateElementDelta(this.nextDelta, nextDelta);
         }
 
-        if (!isPrevDataAvailable && !isNextDataAvailable) {
-            console.error("Both prev and next data are unavailable", data);
-            return;
-        }
-
         // Update sector times and colors
         for (let i = 0; i < 3; i++) {
-            if (isPrevDataAvailable) {
+            if (isPrevTimingDataAvailable) {
                 const prevSectorDelta = data['player'][`sector-${i+1}-ms`] - data['prev'][`sector-${i+1}-ms`];
                 this.prevSectors[i].textContent = this.#formatDelta(prevSectorDelta);
                 this.#updateElementDelta(this.prevSectors[i], prevSectorDelta);
             }
-            if (isNextDataAvailable) {
+            if (isNextTimingDataAvailable) {
                 const nextSectorDelta = data['player'][`sector-${i+1}-ms`] - data['next'][`sector-${i+1}-ms`];
                 this.nextSectors[i].textContent = this.#formatDelta(nextSectorDelta);
                 this.#updateElementDelta(this.nextSectors[i], nextSectorDelta);
             }
+        }
+
+        // Update the battery stats
+        if (this.#isERSDataAvailable(data['prev']['ers'])) {
+            const percentage = data['prev']['ers']['ers-percent'];
+            const deployMode = data['prev']['ers']['ers-mode'];
+            const deployPercentage = data['prev']['ers']['ers-deployed-this-lap'];
+            const harvestPercentage = data['prev']['ers']['ers-harvested-by-mguk-this-lap'];
+            this.#updateBatteryDisplay(this.prevBatteryLevel, this.prevDeployMode, this.prevDeployBar,
+                this.prevHarvestBar, percentage, deployMode, deployPercentage, harvestPercentage);
+        }
+
+        if (this.#isERSDataAvailable(data['next']['ers'])) {
+            const percentage = data['next']['ers']['ers-percent'];
+            const deployMode = data['next']['ers']['ers-mode'];
+            const deployPercentage = data['next']['ers']['ers-deployed-this-lap'];
+            const harvestPercentage = data['next']['ers']['ers-harvested-by-mguk-this-lap'];
+            this.#updateBatteryDisplay(this.nextBatteryLevel, this.nextDeployMode, this.nextDeployBar,
+                this.nextHarvestBar, percentage, deployMode, deployPercentage, harvestPercentage);
         }
     }
 }

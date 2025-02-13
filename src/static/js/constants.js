@@ -5,6 +5,7 @@ function getDefaultOverlayData() {
             "steering": -0.8164450526237488,
             "throttle": 100
         },
+        "event-type": "Race",
         "f1-game-year": 24,
         "g-force": {
             "lat": 0.36567622423171997,
@@ -79,7 +80,7 @@ function getDefaultOverlayData() {
                     "sector-3-time-str": "20.249",
                     "tyre-set-info": {
                         "actual-tyre-compound": "C5",
-                        "tyre-age-laps": 3,
+                        "tyre-age-laps": 2,
                         "tyre-set-id": 6,
                         "visual-tyre-compound": "Soft"
                     }
@@ -130,6 +131,12 @@ function getDefaultOverlayData() {
         },
         "pace-comparison": {
             "next": {
+                "ers": {
+                    "ers-deployed-this-lap": 56.73158125,
+                    "ers-harvested-by-mguk-this-lap": 40.500403125,
+                    "ers-mode": "None",
+                    "ers-percent": 28.726315624999998
+                },
                 "lap-ms": 67132,
                 "name": "LECLERC",
                 "sector-1-ms": 16246,
@@ -137,6 +144,12 @@ function getDefaultOverlayData() {
                 "sector-3-ms": 20584
             },
             "player": {
+                "ers": {
+                    "ers-deployed-this-lap": 0.02997669067382813,
+                    "ers-harvested-by-mguk-this-lap": 0,
+                    "ers-mode": "Overtake",
+                    "ers-percent": 9.2042296875
+                },
                 "lap-ms": 66622,
                 "name": "RICCIARDO",
                 "sector-1-ms": 16395,
@@ -144,6 +157,12 @@ function getDefaultOverlayData() {
                 "sector-3-ms": 20243
             },
             "prev": {
+                "ers": {
+                    "ers-deployed-this-lap": 0,
+                    "ers-harvested-by-mguk-this-lap": 0.6522224121093749,
+                    "ers-mode": "Medium",
+                    "ers-percent": 15.280621875
+                },
                 "lap-ms": 67601,
                 "name": "NORRIS",
                 "sector-1-ms": 16722,
@@ -164,15 +183,16 @@ function getDefaultOverlayData() {
             "unserved-drive-through-pens": 0,
             "unserved-stop-go-pens": 0
         },
+        "show-sample-data-at-start": false,
         "tyre-wear": {
             "current": {
-                "average": 12.315814018249512,
+                "average": 12.315972805023193,
                 "desc": "Curr tyre wear",
                 "front-left-wear": 10.466483116149902,
                 "front-right-wear": 13.985130310058594,
                 "lap-number": 5,
-                "rear-left-wear": 12.046117782592773,
-                "rear-right-wear": 12.765524864196777
+                "rear-left-wear": 12.046425819396973,
+                "rear-right-wear": 12.765851974487305
             },
             "pit-window": 0,
             "predictions": []
@@ -191,16 +211,6 @@ function getDefaultOverlayData() {
             {
                 "rain-probability": 18,
                 "time-offset": 10,
-                "weather": "Overcast"
-            },
-            {
-                "rain-probability": 18,
-                "time-offset": 15,
-                "weather": "Overcast"
-            },
-            {
-                "rain-probability": 18,
-                "time-offset": 30,
                 "weather": "Overcast"
             }
         ]

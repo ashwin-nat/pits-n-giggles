@@ -106,3 +106,85 @@
     height: 40px;
     margin: 0 10px;
 }
+
+.pace-comparison-battery-row {
+    display: flex;
+    align-items: start;
+    padding: 5px 15px;
+}
+
+.pace-comparison-half {
+    flex: 1;
+    padding: 0 10px;
+}
+
+.pace-comparison-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.battery-container {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.battery-body {
+    flex: 1;
+    height: 24px;
+    border: 2px solid #333;
+    border-radius: 3px;
+    position: relative;
+    background: #fff;
+    overflow: hidden;
+}
+
+.battery-cap {
+    width: 3px;
+    height: 10px;
+    background: #333;
+    margin-left: 2px;
+    border-radius: 0 2px 2px 0;
+}
+
+.battery-level {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 0%;
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.battery-mode {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 12px;
+    z-index: 1;
+    color: #fff;
+    text-shadow: 0px 0px 2px #000;
+}
+
+.ers-bars-container {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+}
+
+.ers-label {
+    font-size: 11px;
+    font-weight: bold;
+    color: #666;
+    min-width: 12px;
+}
+
+/* Deployment mode colors */
+.battery-level.mode-none { background: #808080; }
+.battery-level.mode-medium { background: #FCEC17; }
+.battery-level.mode-hotlap { background: #00FF00; }
+.battery-level.mode-overtake { background: #FF0000; }

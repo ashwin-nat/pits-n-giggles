@@ -248,6 +248,7 @@ class PlayerTelemetryOverlayUpdate:
             self.m_circuit                  = TelData._globals.m_circuit
             self.m_total_laps               = TelData._globals.m_total_laps
             self.m_game_year                = TelData._globals.m_game_year
+            self.m_event_type               = TelData._globals.m_event_type
             self.m_pit_speed_limit          = TelData._globals.m_pit_speed_limit
 
         with TelData._driver_data_lock.gen_rlock():
@@ -388,6 +389,12 @@ class PlayerTelemetryOverlayUpdate:
                 "sector-1-ms" : None,
                 "sector-2-ms" : None,
                 "sector-3-ms" : None,
+                "ers" : {
+                    "ers-percent": None,
+                    "ers-mode" : None,
+                    "ers-harvested-by-mguk-this-lap" : None,
+                    "ers-deployed-this-lap" : None,
+                },
             },
             "prev" : {
                 "name" : None,
@@ -395,6 +402,12 @@ class PlayerTelemetryOverlayUpdate:
                 "sector-1-ms" : None,
                 "sector-2-ms" : None,
                 "sector-3-ms" : None,
+                "ers" : {
+                    "ers-percent": None,
+                    "ers-mode" : None,
+                    "ers-harvested-by-mguk-this-lap" : None,
+                    "ers-deployed-this-lap" : None,
+                },
             },
             "next" : {
                 "name" : None,
@@ -402,6 +415,12 @@ class PlayerTelemetryOverlayUpdate:
                 "sector-1-ms" : None,
                 "sector-2-ms" : None,
                 "sector-3-ms" : None,
+                "ers" : {
+                    "ers-percent": None,
+                    "ers-mode" : None,
+                    "ers-harvested-by-mguk-this-lap" : None,
+                    "ers-deployed-this-lap" : None,
+                },
             }
         }
         if not player_data:
@@ -421,14 +440,26 @@ class PlayerTelemetryOverlayUpdate:
             driver_obj (Optional[TelData.DataPerDriver]): The driver's DataPerDriver object (may be None)
         """
 
-        if driver_obj:
-            json_dict["name"] = driver_obj.m_name
-            json_dict["lap-ms"] = driver_obj.m_last_lap_ms
-            last_lap_obj = driver_obj.m_packet_session_history.getLastLapData() if driver_obj.m_packet_session_history else None
-            if last_lap_obj:
-                json_dict["sector-1-ms"] = last_lap_obj.m_sector1TimeInMS
-                json_dict["sector-2-ms"] = last_lap_obj.m_sector2TimeInMS
-                json_dict["sector-3-ms"] = last_lap_obj.m_sector3TimeInMS
+        if not driver_obj:
+            return
+        json_dict["name"] = driver_obj.m_name
+        json_dict["lap-ms"] = driver_obj.m_last_lap_ms
+        last_lap_obj = driver_obj.m_packet_session_history.getLastLapData() if driver_obj.m_packet_session_history else None
+        if last_lap_obj:
+            json_dict["sector-1-ms"] = last_lap_obj.m_sector1TimeInMS
+            json_dict["sector-2-ms"] = last_lap_obj.m_sector2TimeInMS
+            json_dict["sector-3-ms"] = last_lap_obj.m_sector3TimeInMS
+        json_dict["ers"] = {
+            "ers-percent" : _getValueOrDefaultValue(driver_obj.m_ers_perc),
+            "ers-mode" : _getValueOrDefaultValue(str(driver_obj.m_packet_car_status.m_ersDeployMode)
+                                            if driver_obj.m_packet_car_status else None),
+            "ers-harvested-by-mguk-this-lap" : (((driver_obj.m_packet_car_status.m_ersHarvestedThisLapMGUK
+                                            if driver_obj.m_packet_car_status else 0.0) /
+                                                CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0),
+            "ers-deployed-this-lap" : ((driver_obj.m_packet_car_status.m_ersDeployedThisLap
+                                    if driver_obj.m_packet_car_status else 0.0) /
+                                        CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0
+        }
 
     def toJSON(self, stream_overlay_start_sample_data: Optional[bool] = False) -> Dict[str, Any]:
         """Dump this object into JSON
@@ -442,6 +473,7 @@ class PlayerTelemetryOverlayUpdate:
 
         return {
             "f1-game-year" : self.m_game_year,
+            "event-type" : self.m_event_type,
             "show-sample-data-at-start": stream_overlay_start_sample_data,
             "weather-forecast-samples": [
                 {

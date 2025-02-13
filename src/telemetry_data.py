@@ -967,6 +967,9 @@ class DataPerDriver:
             Optional[TyreSetInfo]: The tyre set info. None if data not found or invalid lap num
         """
 
+        if self.m_current_lap is None:
+            return None
+
         if lap_num is None:
             lap_num = self.m_current_lap
 

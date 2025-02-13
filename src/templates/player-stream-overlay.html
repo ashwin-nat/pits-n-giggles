@@ -249,6 +249,60 @@
                             </div>
                         </div>
                     </div>
+                    <!-- ERS comparisons -->
+                    <div class="pace-comparison-battery-row w-100">
+                        <div class="pace-comparison-half">
+                            <div class="pace-comparison-content w-100">
+                                <div class="battery-container">
+                                    <div class="battery-body">
+                                        <div id="prevBatteryLevel" class="battery-level"></div>
+                                        <span id="prevDeployMode" class="battery-mode">--</span>
+                                    </div>
+                                    <div class="battery-cap"></div>
+                                </div>
+                                <div class="ers-bars-container">
+                                    <div class="ers-bar-group d-flex align-items-center w-100">
+                                        <span class="ers-label me-1">D</span>
+                                        <div class="progress w-100" style="height: 6px;">
+                                            <div id="prevDeployBar" class="progress-bar bg-success" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                    </div>
+                                    <div class="ers-bar-group d-flex align-items-center w-100">
+                                        <span class="ers-label me-1">H</span>
+                                        <div class="progress w-100" style="height: 6px;">
+                                            <div id="prevHarvestBar" class="progress-bar bg-info" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pace-comparison-divider"></div>
+                        <div class="pace-comparison-half">
+                            <div class="pace-comparison-content w-100">
+                                <div class="battery-container">
+                                    <div class="battery-body">
+                                        <div id="nextBatteryLevel" class="battery-level"></div>
+                                        <span id="nextDeployMode" class="battery-mode">--</span>
+                                    </div>
+                                    <div class="battery-cap"></div>
+                                </div>
+                                <div class="ers-bars-container">
+                                    <div class="ers-bar-group d-flex align-items-center w-100">
+                                        <span class="ers-label me-1">D</span>
+                                        <div class="progress w-100" style="height: 6px;">
+                                            <div id="nextDeployBar" class="progress-bar bg-success" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                    </div>
+                                    <div class="ers-bar-group d-flex align-items-center w-100">
+                                        <span class="ers-label me-1">H</span>
+                                        <div class="progress w-100" style="height: 6px;">
+                                            <div id="nextHarvestBar" class="progress-bar bg-info" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -301,7 +355,7 @@
             lapTimesWidget.update(data["lap-time-history"]);
             weatherWidget.update(data["weather-forecast-samples"].slice(0, maxWeatherSamples + 1));
             gForceDisplayWidget.update(data["g-force"]);
-            paceComparisonWidget.update(data["pace-comparison"]);
+            paceComparisonWidget.update(data["pace-comparison"], data["event-type"]);
         });
     </script>
 </body>
