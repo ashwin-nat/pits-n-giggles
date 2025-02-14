@@ -90,6 +90,7 @@ class FuelRateRecommender:
         self.m_curr_fuel_rate: Optional[float] = None
         self.m_target_fuel_rate: Optional[float] = None
         self.m_target_next_lap_fuel_usage: Optional[float] = None
+        self.m_surplus_laps: Optional[float] = None
 
         self._recompute()
 
@@ -137,6 +138,15 @@ class FuelRateRecommender:
             Optional[float]: Target fuel usage for next lap. None if not available
         """
         return self.m_target_next_lap_fuel_usage
+
+    @property
+    def surplus_laps(self) -> Optional[float]:
+        """Get the number of surplus laps worth of fuel the car has
+
+        Returns:
+            Optional[float]: The surplus laps count (can be positive, negative, fractional)
+        """
+        return self.m_surplus_laps
 
     @property
     def fuel_used_last_lap(self) -> Optional[float]:
@@ -206,6 +216,14 @@ class FuelRateRecommender:
         if laps_left > 0:
             self.m_target_fuel_rate = (current_fuel - self.m_min_fuel_kg) / laps_left
 
+           # Calculate surplus/deficit laps
+            if self.m_curr_fuel_rate is not None and self.m_curr_fuel_rate > 0:
+                available_fuel = current_fuel - self.m_min_fuel_kg
+                laps_at_current_rate = available_fuel / self.m_curr_fuel_rate
+                self.m_surplus_laps = laps_at_current_rate - laps_left
+            else:
+                self.m_surplus_laps = None
+
             # Calculate target fuel usage for next lap
             if self.m_curr_fuel_rate is not None:
                 fuel_rate_difference = self.m_curr_fuel_rate - self.m_target_fuel_rate
@@ -217,3 +235,4 @@ class FuelRateRecommender:
         else:
             self.m_target_fuel_rate = None
             self.m_target_next_lap_fuel_usage = None
+            self.m_surplus_laps = None

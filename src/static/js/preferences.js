@@ -152,10 +152,10 @@ function updateAllTooltips() {
                                                     (g_pref_lastLapAbsoluteFormat) ? ("Absolute") : ("Relative")}`);
     updateTooltip("delta-th", `Click to toggle between absolute and relative format. Current format is ${
                                                     (!g_pref_relativeDelta) ? ("Absolute") : ("Relative")}`);
-    updateTooltip("tyre-info-th", `Click to toggle between absolute and relative format. Current format is ${
-                                                    (g_pref_tyreWearAverageFormat) ? ("Average") : ("Relative")}`);
-    updateTooltip("wear-prediction-th", `Click to toggle between absolute and relative format. Current format is ${
-                                                    (g_pref_tyreWearAverageFormat) ? ("Average") : ("Relative")}`);
+    updateTooltip("tyre-info-th", `Click to toggle between average and max wear format. Current format is ${
+                                                    (g_pref_tyreWearAverageFormat) ? ("Average") : ("yre with max wear")}`);
+    updateTooltip("wear-prediction-th", `Click to toggle between average and max wear format. Current format is ${
+                                                    (g_pref_tyreWearAverageFormat) ? ("Average") : ("Tyre with max wear")}`);
     updateTooltip("fuel-info-th", `Click to toggle between target fuel format. Current format is ${
                                                     (g_pref_fuelTargetAverageFormat) ? ("Average target fuel rate") :
                                                         ("Fuel usage target for next lap")}`);

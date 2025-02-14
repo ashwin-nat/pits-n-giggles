@@ -1024,6 +1024,7 @@ class DataPerDriver:
                 "last-lap-fuel-used" : self.m_fuel_rate_recommender.fuel_used_last_lap,
                 "target-fuel-rate-average" : self.m_fuel_rate_recommender.target_fuel_rate,
                 "target-fuel-rate-next-lap" : self.m_fuel_rate_recommender.target_next_lap_fuel_usage,
+                "surplus-laps" : self.m_fuel_rate_recommender.surplus_laps,
             }
 
         return {
@@ -1035,6 +1036,7 @@ class DataPerDriver:
             "last-lap-fuel-used" : 0.0,
             "target-fuel-rate-average" : 0.0,
             "target-fuel-rate-next-lap" : 0.0,
+            "surplus-laps" : 0.0,
         }
 
     def getPositionHistoryJSON(self) -> Dict[str, Any]:

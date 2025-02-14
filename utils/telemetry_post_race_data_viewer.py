@@ -443,6 +443,7 @@ def getTelemetryInfo():
                         "last-lap-fuel-used" : 0.0,
                         "target-fuel-rate-average" : 0.0,
                         "target-fuel-rate-next-lap" : 0.0,
+                        "surplus-laps" : 0.0,
                     }
                 }
             )

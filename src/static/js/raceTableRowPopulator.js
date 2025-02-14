@@ -251,6 +251,10 @@ class RaceTableRowPopulator {
                 ? formatFloatWithTwoDecimals(fuelInfo["last-lap-fuel-used"])
                 : "N/A";
 
+            const surplusLaps = fuelInfo["surplus-laps"] !== null
+                ? formatFloatWithTwoDecimals(fuelInfo["surplus-laps"])
+                : "N/A";
+
             this.createMultiLineCell([
                 `Last: ${lastLapFuelUsed}`,
                 `Curr: ${currFuelRate}`,
