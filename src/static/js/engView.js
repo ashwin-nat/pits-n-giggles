@@ -55,7 +55,7 @@ function formatFloat(value) {
 }
 
 // Class to handle table row creation and updates
-class RaceTableRow {
+class EngViewRaceTableRow {
     constructor(driver) {
         this.driver = driver;
         this.element = document.createElement('tr');
@@ -69,16 +69,25 @@ class RaceTableRow {
         `;
     }
 
-    render() {
-        const cells = [
+    getDriverInfoCells() {
+        return [
             { value: this.driver.position, border: true },
             { value: this.driver.name, border: true },
-            { value: formatLapTime(this.driver.delta), border: true },
-            // Penalties
+            { value: formatLapTime(this.driver.delta), border: true }
+        ];
+    }
+
+    getPenaltyCells() {
+        return [
             { value: this.driver.penalties.track },
             { value: this.driver.penalties.time },
             { value: this.driver.penalties.dt },
-            { value: this.driver.penalties.serv, border: true },
+            { value: this.driver.penalties.serv, border: true }
+        ];
+    }
+
+    getLapTimeCells() {
+        return [
             // Last Lap
             { value: formatLapTime(this.driver.lastLap.total) },
             { value: formatLapTime(this.driver.lastLap.s1) },
@@ -88,25 +97,53 @@ class RaceTableRow {
             { value: formatLapTime(this.driver.bestLap.total) },
             { value: formatLapTime(this.driver.bestLap.s1) },
             { value: formatLapTime(this.driver.bestLap.s2) },
-            { value: formatLapTime(this.driver.bestLap.s3), border: true },
-            // Tyre Wear
+            { value: formatLapTime(this.driver.bestLap.s3), border: true }
+        ];
+    }
+
+    getTyreWearCells() {
+        return [
             { value: this.createTyreWearCell(this.driver.tyreWear.current.lap, this.driver.tyreWear.prediction.lap) },
             { value: this.createTyreWearCell(formatFloat(this.driver.tyreWear.current.fl) + '%', formatFloat(this.driver.tyreWear.prediction.fl) + '%') },
             { value: this.createTyreWearCell(formatFloat(this.driver.tyreWear.current.fr) + '%', formatFloat(this.driver.tyreWear.prediction.fr) + '%') },
             { value: this.createTyreWearCell(formatFloat(this.driver.tyreWear.current.rl) + '%', formatFloat(this.driver.tyreWear.prediction.rl) + '%') },
-            { value: this.createTyreWearCell(formatFloat(this.driver.tyreWear.current.rr) + '%', formatFloat(this.driver.tyreWear.prediction.rr) + '%'), border: true },
-            // ERS
+            { value: this.createTyreWearCell(formatFloat(this.driver.tyreWear.current.rr) + '%', formatFloat(this.driver.tyreWear.prediction.rr) + '%'), border: true }
+        ];
+    }
+
+    getErsCells() {
+        return [
             { value: formatFloat(this.driver.ers.available) + '%' },
             { value: formatFloat(this.driver.ers.deploy) + '%' },
-            { value: this.driver.ers.mode, border: true },
-            // Fuel
+            { value: this.driver.ers.mode, border: true }
+        ];
+    }
+
+    getFuelCells() {
+        return [
             { value: formatFloat(this.driver.fuel.total) + 'kg' },
             { value: formatFloat(this.driver.fuel.perLap) + 'kg' },
-            { value: formatFloat(this.driver.fuel.estimate) + 'kg', border: true },
-            // Damage
+            { value: formatFloat(this.driver.fuel.estimate) + 'kg', border: true }
+        ];
+    }
+
+    getDamageCells() {
+        return [
             { value: formatFloat(this.driver.damage.fl) + '%' },
             { value: formatFloat(this.driver.damage.fr) + '%' },
             { value: formatFloat(this.driver.damage.rw) + '%' }
+        ];
+    }
+
+    render() {
+        const cells = [
+            ...this.getDriverInfoCells(),
+            ...this.getPenaltyCells(),
+            ...this.getLapTimeCells(),
+            ...this.getTyreWearCells(),
+            ...this.getErsCells(),
+            ...this.getFuelCells(),
+            ...this.getDamageCells()
         ];
 
         this.element.innerHTML = cells.map(cell =>
@@ -121,15 +158,15 @@ class RaceTableRow {
 }
 
 // Class to manage the race table
-class RaceTable {
+class EngViewRaceTable {
     constructor() {
-        this.tableBody = document.getElementById('raceTableBody');
+        this.tableBody = document.getElementById('engViewRaceTableBody');
         this.rows = new Map();
     }
 
     updateDriver(driver) {
         if (!this.rows.has(driver.position)) {
-            const row = new RaceTableRow(driver);
+            const row = new EngViewRaceTableRow(driver);
             this.rows.set(driver.position, row);
             this.tableBody.appendChild(row.element);
         } else {
@@ -185,7 +222,7 @@ function updateRaceStatus() {
 
 // Initialize the dashboard
 function initDashboard() {
-    const raceTable = new RaceTable();
+    const raceTable = new EngViewRaceTable();
 
     // Create 22 drivers with realistic names
     const driverNames = [
@@ -246,3 +283,96 @@ function initDashboard() {
 
 // Start the dashboard when the page loads
 document.addEventListener('DOMContentLoaded', initDashboard);
+
+let awaitingResponse = false;
+let timeoutIntervalId;
+let timeoutIntervalMs = 3000;
+let socketio;
+
+socketio = io.connect('http://' + location.hostname + ':' + location.port, {
+    reconnection: true,           // Enables reconnection
+    reconnectionAttempts: Infinity, // Number of attempts before giving up (Infinity means never stop trying)
+    reconnectionDelay: 1000,      // Initial delay before reconnection (in ms)
+    reconnectionDelayMax: 5000,   // Maximum delay between reconnections (in ms)
+    randomizationFactor: 0.5,     // Randomization factor to prevent reconnection storms
+    timeout: 20000                // Connection timeout before giving up (in ms)
+});
+console.log("SocketIO initialized");
+
+function clearSocketIoRequestTimeout() {
+    awaitingResponse = false;
+    clearInterval(timeoutIntervalId);
+}
+
+socketio.on('connect', function () {
+    socketio.emit('register-client', { type: 'race-table' });
+});
+
+// Receive details from server
+socketio.on('race-table-update', function (data) {
+    console.log("Received race table update", data);
+    // telemetryRenderer.updateDashboard(data);
+});
+
+socketio.on('race-info-response', function (data) {
+    clearSocketIoRequestTimeout();
+    console.log("Received race-info-response", data);
+    // if (!('error' in data)) {
+    //     if ('__dummy' in data) {
+    //         // this request is meant for a synchronous listener, ignore
+    //         console.debug("Ignoring race-info-response in main listener");
+    //     } else {
+    //         window.modalManager.openRaceStatsModal(data);
+    //     }
+    // } else {
+    //     console.error("Received error for race-info request", data);
+    // }
+});
+
+socketio.on('driver-info-response', function (data) {
+    clearSocketIoRequestTimeout();
+    console.log("Received driver-info-response", data);
+    // if (!('error' in data)) {
+    //     if ('__dummy' in data) {
+    //         // this request is meant for a synchronous listener, ignore
+    //         console.debug("Ignoring driver-info-response in main listener");
+    //     } else {
+    //         window.modalManager.openDriverModal(data, iconCache);
+    //     }
+    // } else {
+    //     console.error("Received error for driver-info request", data);
+    //     // showToast("Received error for driver info request");
+    // }
+});
+
+socketio.on('frontend-update', function (data) {
+    console.log("frontend-update", data);
+    // switch (data['message-type']) {
+    //     case 'custom-marker':
+    //         processCustomMarkerMessage(data['message']);
+    //         break;
+    //     case 'tyre-delta':
+    //         processTyreDeltaMessage(data['message']);
+    //         break;
+    //     default:
+    //         console.error("received unsupported message type in frontend-update");
+    // }
+});
+
+// Generic function to handle any request-response via socket events
+async function sendSynchronousRequest(requestEvent, requestData, responseEvent) {
+    return new Promise((resolve, reject) => {
+        // Send the request event with data
+        socketio.emit(requestEvent, requestData);
+
+        // Listen for the response event
+        socketio.once(responseEvent, (response) => {
+            resolve(response);  // Resolve the promise with the response
+        });
+
+        // Optional: Timeout after 5 seconds (adjust as needed)
+        setTimeout(() => {
+            reject(new Error(`Timeout waiting for response event: ${responseEvent}`));
+        }, 5000);  // 5 seconds timeout
+    });
+}
