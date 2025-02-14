@@ -132,16 +132,17 @@ class TelemetryWebServer:
                 return error_response, HTTPStatus.BAD_REQUEST
 
             # Check if the given index is valid
-            index = int(index)
-            if not TelData.isDriverIndexValid(index):
+            index_int = int(index)
+            if not TelData.isDriverIndexValid(index_int):
                 error_response = {
                     'error' : 'Invalid parameter value',
-                    'message' : 'Invalid index'
+                    'message' : 'Invalid index',
+                    'index' : index
                 }
                 return jsonify(error_response), HTTPStatus.BAD_REQUEST
 
             # Process parameters and generate response
-            return TelWebAPI.DriverInfoRsp(index).toJSON(), HTTPStatus.OK
+            return TelWebAPI.DriverInfoRsp(index_int).toJSON(), HTTPStatus.OK
 
         # Render the HTML page
         @self.m_app.route('/')

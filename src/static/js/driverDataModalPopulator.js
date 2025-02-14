@@ -55,12 +55,15 @@ class DriverModalPopulator {
                 row.appendChild(lapTimeCell);
 
                 const tyreCell = document.createElement('td');
-                const compound = lap["tyre-set-info"]["tyre-set"]["visual-tyre-compound"];
-                const svgElement = this.iconCache.getIcon(compound);
-                if (svgElement) {
-                    tyreCell.appendChild(svgElement);
-                } else {
-                    tyreCell.textContent = compound;
+                const tyreSet = lap["tyre-set-info"]["tyre-set"];
+                if (tyreSet) {
+                    const compound = tyreSet["visual-tyre-compound"];
+                    const svgElement = this.iconCache.getIcon(compound);
+                    if (svgElement) {
+                        tyreCell.appendChild(svgElement);
+                    } else {
+                        tyreCell.textContent = compound;
+                    }
                 }
                 row.appendChild(tyreCell);
 
@@ -76,23 +79,6 @@ class DriverModalPopulator {
         };
 
         const rightPanePopulator = (rightDiv) => {
-            // Prepare data for the graph
-            // const sector1Data = lapHistoryData.map((lap, index) => ({
-            //     x: index + 1, // Lap number (index + 1)
-            //     y: lap["sector-1-time-in-ms"] // Time in milliseconds
-            // }));
-            // const sector2Data = lapHistoryData.map((lap, index) => ({
-            //     x: index + 1, // Lap number (index + 1)
-            //     y: lap["sector-2-time-in-ms"] // Time in milliseconds
-            // }));
-            // const sector3Data = lapHistoryData.map((lap, index) => ({
-            //     x: index + 1, // Lap number (index + 1)
-            //     y: lap["sector-3-time-in-ms"] // Time in milliseconds
-            // }));
-            // const totalTimeData = lapHistoryData.map((lap, index) => ({
-            //     x: index + 1, // Lap number (index + 1)
-            //     y: lap["lap-time-in-ms"] // Total lap time in milliseconds
-            // }));
 
             const sector1Data = lapHistoryData
                 .filter(lap => lap["sector-1-time-in-ms"] > 0)
