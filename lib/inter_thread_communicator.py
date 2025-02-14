@@ -159,9 +159,10 @@ class InterThreadCommunicator:
         if not hasattr(self, "queues"):
             self.queues = {}
             self._lock = threading.Lock()  # Lock to protect access to the queues
+            self._thread_local = threading.local()  # Thread-local storage
 
     def _get_queue(self, queue_name: str) -> queue.Queue:
-        """Get the specified named queue. If it doesn't exist, create it.
+        """Get the specified named queue, using thread-local caching. If it doesn't exist, create it
 
         Args:
             queue_name (str): Name of the queue
@@ -169,11 +170,21 @@ class InterThreadCommunicator:
         Returns:
             queue.Queue: The queue object
         """
-        # Get or create a queue by name
+        # Check if the queue is cached in thread-local storage
+        if hasattr(self._thread_local, "last_queue_name") and self._thread_local.last_queue_name == queue_name:
+            return self._thread_local.last_queue
+
+        # If not cached, get or create a queue
         with self._lock:
             if queue_name not in self.queues:
                 self.queues[queue_name] = queue.Queue()
-            return self.queues[queue_name]
+            q = self.queues[queue_name]
+
+        # Cache the queue reference in thread-local storage
+        self._thread_local.last_queue_name = queue_name
+        self._thread_local.last_queue = q
+
+        return q
 
     def send(self, queue_name: str, message: ITCMessage) -> None:
         """Send the given message to the specified queue
