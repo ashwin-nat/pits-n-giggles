@@ -89,7 +89,7 @@ class TelemetryWebServer:
                 str: Telemetry data in JSON format.
             """
 
-            return TelWebAPI.RaceInfoRsp().toJSON(), HTTPStatus.OK
+            return TelWebAPI.RaceInfoUpdate().toJSON(), HTTPStatus.OK
 
         # Define your endpoint
         @self.m_app.route('/race-info')
@@ -402,7 +402,7 @@ def raceTableClientUpdaterTask(update_interval_ms: int) -> None:
     sleep_duration = update_interval_ms / 1000
     while True:
         if len(_race_table_clients) > 0:
-            _web_server.m_socketio.emit('race-table-update', TelWebAPI.RaceInfoRsp().toJSON())
+            _web_server.m_socketio.emit('race-table-update', TelWebAPI.RaceInfoUpdate().toJSON())
         _web_server.m_socketio.sleep(sleep_duration)
 
 def playerTelemetryOverlayUpdaterTask(update_interval_ms: int, stream_overlay_start_sample_data: bool) -> None:

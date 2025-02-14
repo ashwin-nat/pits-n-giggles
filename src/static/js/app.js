@@ -3,9 +3,6 @@ loadPreferences();
 const iconCache = new IconCache();
 const telemetryRenderer = new TelemetryRenderer(iconCache);
 
-// Update interval for periodic updates
-let updateInterval;
-
 let awaitingResponse = false;
 let timeoutIntervalId;
 let timeoutIntervalMs = 3000;
@@ -14,7 +11,6 @@ let socketio;
 const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
 const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 
-// socket = io.connect('http://' + document.domain + ':' + location.port, {
 socketio = io.connect('http://' + location.hostname + ':' + location.port, {
     reconnection: true,           // Enables reconnection
     reconnectionAttempts: Infinity, // Number of attempts before giving up (Infinity means never stop trying)

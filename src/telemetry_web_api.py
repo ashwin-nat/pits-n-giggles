@@ -49,7 +49,7 @@ def _getValueOrDefaultValue(
 
 # ------------------------- API - CLASSES ------------------------------------------------------------------------------
 
-class RaceInfoRsp:
+class RaceInfoUpdate:
     """This class will prepare the live race telemetry info response. Use toJSON() method to get the JSON rsp
     """
     def __init__(self) -> None:
@@ -95,6 +95,14 @@ class RaceInfoRsp:
             "race-ended" : bool(self.m_globals.m_packet_final_classification),
             "is-spectating" : _getValueOrDefaultValue(self.m_globals.m_is_spectating, False),
             "session-type"  : _getValueOrDefaultValue(self.m_globals.m_event_type),
+            "session-duration" : _getValueOrDefaultValue(self.m_globals.m_packet_session.m_sessionDuration \
+                                                          if self.m_globals.m_packet_session else None, 0),
+            "num-sc" : _getValueOrDefaultValue(self.m_globals.m_packet_session.m_numSafetyCarPeriods \
+                                                          if self.m_globals.m_packet_session else None, 0),
+            "num-vsc" : _getValueOrDefaultValue(self.m_globals.m_packet_session.m_numVirtualSafetyCarPeriods \
+                                                          if self.m_globals.m_packet_session else None, 0),
+            "num-red-flags" : _getValueOrDefaultValue(self.m_globals.m_packet_session.m_numRedFlagPeriods \
+                                                          if self.m_globals.m_packet_session else None, 0),
         }
 
         if self.m_globals.m_event_type == "Time Trial":
