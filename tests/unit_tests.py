@@ -42,6 +42,7 @@ from tests_overtake_analyzer import \
 from tests_race_analyzer import TestGetFastestTimesJson
 from tests_debouncer import TestMultiButtonDebouncer
 from tests_udp_forwarder import TestUDPForwarder
+from tests_itc import TestInterThreadCommunicator
 from f1_types import \
     TestPacketCarMotionData, \
     TestPacketSessionData, \
