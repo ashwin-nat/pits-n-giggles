@@ -1,0 +1,143 @@
+body {
+    font-family: 'Exo 2', sans-serif;
+    overflow: hidden;
+    background-color: #000 !important;
+}
+
+.container-fluid {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+}
+
+.eng-view-global-data-section {
+    flex: 0 0 15%;
+    padding: 1rem;
+    border-bottom: 1px solid #333;
+}
+
+.eng-view-race-table-section {
+    flex: 0 0 85%;
+    overflow-y: auto;
+}
+
+.eng-view-table {
+    font-size: 0.85rem;
+    background-color: #000 !important;
+}
+
+.eng-view-table th,
+.eng-view-table td {
+    padding: 0.3rem;
+    white-space: nowrap;
+    background-color: #000 !important;
+    border-color: #333 !important;
+}
+
+.eng-view-table tbody tr:hover td {
+    background-color: #111 !important;
+}
+
+/* Column borders for both header and body cells */
+.eng-view-col-border {
+    border-right: 2px solid #333 !important;
+}
+
+.eng-view-table td.eng-view-col-border {
+    border-right: 2px solid #333 !important;
+}
+
+.eng-view-sub-header th {
+    font-size: 0.8rem;
+    font-weight: normal;
+    color: #888;
+}
+
+.eng-view-global-stat {
+    display: inline-block;
+    margin-right: 2rem;
+    margin-bottom: 1rem;
+}
+
+.eng-view-global-stat label {
+    display: block;
+    font-size: 0.9rem;
+    color: #888;
+}
+
+.eng-view-global-stat span {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #fff;
+}
+
+/* Weather table styles */
+.eng-view-weather-table {
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+.eng-view-weather-table td {
+    padding: 0.3rem;
+    text-align: center;
+    background-color: #000 !important;
+    border-color: #333 !important;
+}
+
+/* Custom scrollbar for better visibility */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #111;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #444;
+}
+
+/* Tyre wear rows */
+.eng-view-tyre-row-1,
+.eng-view-tyre-row-2 {
+    font-size: 0.8rem;
+}
+
+.eng-view-tyre-row-2 {
+    color: #666;
+}
+
+/* Prediction lap input styling */
+#predictionLap {
+    width: 80px;
+    height: 30px;
+    padding: 0.25rem 0.5rem;
+}
+
+/* Dark theme for number input */
+input[type="number"] {
+    background-color: #111 !important;
+    color: #fff !important;
+    border-color: #333 !important;
+}
+
+input[type="number"]:focus {
+    background-color: #222 !important;
+    color: #fff !important;
+    border-color: #444 !important;
+    box-shadow: 0 0 0 0.2rem rgba(66, 70, 73, 0.5) !important;
+}
+
+/* Remove number input spinners in Chrome, Safari, Edge, Opera */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    opacity: 1;
+    background: #222;
+}

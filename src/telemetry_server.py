@@ -160,13 +160,25 @@ class TelemetryWebServer:
         @self.m_app.route('/player-stream-overlay')
         def throttleBrakeOverlay():
             """
-            Endpoint for the index page.
+            Endpoint for the stream overlay page.
 
             Returns:
                 str: HTML page content.
             """
 
             return render_template('player-stream-overlay.html')
+
+        # Render the HTML page
+        @self.m_app.route('/eng-view')
+        def engView():
+            """
+            Endpoint for the engineer view page.
+
+            Returns:
+                str: HTML page content.
+            """
+
+            return render_template('eng-view.html')
 
         @self.m_app.route('/tyre-icons/soft.svg')
         def softTyreIcon():
