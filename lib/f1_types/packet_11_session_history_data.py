@@ -439,7 +439,7 @@ class PacketSessionHistoryData:
         return json_data
 
     def getLastLapData(self) -> Optional[LapHistoryData]:
-        """Get the last lap completed data
+        """Get the last completed lap data
 
         Returns:
             LapHistoryData: The last lap data. May be None if not found
@@ -456,6 +456,15 @@ class PacketSessionHistoryData:
             ),
             None,
         )
+
+    def getBestLapData(self) -> Optional[LapHistoryData]:
+        """Get the best lap data
+
+        Returns:
+            LapHistoryData: The best lap data. May be None if not found
+        """
+
+        return self.m_lapHistoryData[self.m_bestLapTimeLapNum-1] if self.m_bestLapTimeLapNum else None
 
     def __eq__(self, other: "PacketSessionHistoryData") -> bool:
         """
