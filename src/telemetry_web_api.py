@@ -599,6 +599,9 @@ class DriversListRsp:
                         "sector-status" : data_per_driver.getSectorStatus(
                             self.m_fastest_s1_ms, self.m_fastest_s2_ms, self.m_fastest_s3_ms, for_best_lap=False,
                             session_type_str=session_type),
+                        "s1-time-ms" : data_per_driver.m_last_lap_s1_ms,
+                        "s2-time-ms" : data_per_driver.m_last_lap_s2_ms,
+                        "s3-time-ms" : data_per_driver.m_last_lap_s3_ms,
                     },
                     "best-lap" : {
                         "lap-time-ms" : data_per_driver.m_best_lap_ms,
@@ -606,6 +609,9 @@ class DriversListRsp:
                         "sector-status" : data_per_driver.getSectorStatus(
                             self.m_fastest_s1_ms, self.m_fastest_s2_ms, self.m_fastest_s3_ms, for_best_lap=True,
                             session_type_str=session_type),
+                        "s1-time-ms" : data_per_driver.m_best_lap_s1_ms,
+                        "s2-time-ms" : data_per_driver.m_best_lap_s2_ms,
+                        "s3-time-ms" : data_per_driver.m_best_lap_s3_ms,
                     },
                     "lap-progress" : data_per_driver.m_lap_progress, # NULL is supported
                     "speed-trap-record-kmph" : data_per_driver.m_packet_lap_data.m_speedTrapFastestSpeed if \

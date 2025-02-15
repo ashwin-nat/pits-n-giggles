@@ -483,8 +483,14 @@ class DataPerDriver:
         self.m_delta_to_leader: Optional[int] = None
         self.m_ers_perc: Optional[float] = None
         self.m_best_lap_ms: Optional[str] = None
+        self.m_best_lap_s1_ms: Optional[int] = None
+        self.m_best_lap_s2_ms: Optional[int] = None
+        self.m_best_lap_s3_ms: Optional[int] = None
         self.m_best_lap_tyre: Optional[VisualTyreCompound] = None
         self.m_last_lap_ms: Optional[int] = None
+        self.m_last_lap_s1_ms: Optional[int] = None
+        self.m_last_lap_s2_ms: Optional[int] = None
+        self.m_last_lap_s3_ms: Optional[int] = None
         self.m_tyre_wear: Optional[TyreWearPerLap] = None
         self.m_is_player: Optional[bool] = None
         self.m_current_lap: Optional[int] = None
@@ -1775,6 +1781,22 @@ class DriverData:
             self.m_fastest_s2_ms = self._safeMin(packet.m_lapHistoryData[packet.m_bestSector2LapNum-1].m_sector2TimeInMS, self.m_fastest_s2_ms)
         if (packet.m_bestSector3LapNum > 0) and (packet.m_bestSector3LapNum <= packet.m_numLaps):
             self.m_fastest_s3_ms = self._safeMin(packet.m_lapHistoryData[packet.m_bestSector3LapNum-1].m_sector3TimeInMS, self.m_fastest_s3_ms)
+
+        # Update last lap sector time
+        last_lap_obj = packet.getLastLapData()
+        if last_lap_obj:
+            obj_to_be_updated.m_last_lap_ms = last_lap_obj.m_lapTimeInMS
+            obj_to_be_updated.m_last_lap_s1_ms = last_lap_obj.m_sector1TimeInMS
+            obj_to_be_updated.m_last_lap_s2_ms = last_lap_obj.m_sector2TimeInMS
+            obj_to_be_updated.m_last_lap_s3_ms = last_lap_obj.m_sector3TimeInMS
+
+        # Update best lap sector time
+        best_lap_obj = packet.getBestLapData()
+        if best_lap_obj:
+            obj_to_be_updated.m_best_lap_ms = best_lap_obj.m_lapTimeInMS
+            obj_to_be_updated.m_best_lap_s1_ms = best_lap_obj.m_sector1TimeInMS
+            obj_to_be_updated.m_best_lap_s2_ms = best_lap_obj.m_sector2TimeInMS
+            obj_to_be_updated.m_best_lap_s3_ms = best_lap_obj.m_sector3TimeInMS
 
     def processTyreSetsUpdate(self, packet: PacketTyreSetsData) -> None:
         """Process the tyre sets update packet and update the necessary fields
