@@ -550,8 +550,6 @@ class DriversListRsp:
         self.m_fastest_s3_ms: Optional[int] = None
         self.__initDriverList()
         self.__updateDriverList()
-        if self.m_final_list:
-            self._recomputeDeltas()
 
     def toRaceTableJSON(self, session_type: str) -> Dict[str, Any]:
         """Get the race table JSON
@@ -579,6 +577,7 @@ class DriversListRsp:
                 },
                 "delta-info" : {
                     "delta": data_per_driver.m_delta_to_car_in_front,
+                    "delta-to-car-in-front": data_per_driver.m_delta_to_car_in_front,
                     "delta-to-leader": data_per_driver.m_delta_to_leader,
                 },
                 "ers-info" : {
@@ -801,64 +800,6 @@ class DriversListRsp:
                 driver_data.m_time_penalties = None
                 driver_data.m_num_dt = None
                 driver_data.m_num_sg = None
-
-    def _recomputeDeltas(self):
-        """Recompute the deltas for the list of driver data relative to the player
-        """
-
-        self.m_final_list[0].m_delta_to_car_in_front = "---"
-        if self.m_is_spectator_mode:
-            # just convert the deltas to str
-            for data in self.m_final_list:
-                if data.m_delta_to_car_in_front is not None and isinstance(data.m_delta_to_car_in_front, int):
-                    data.m_delta_to_car_in_front = self._millisecondsToSecondsStr(data.m_delta_to_car_in_front)
-                else:
-                    data.m_delta_to_car_in_front = "---"
-        else:
-            # recompute the deltas if not spectator mode
-            player_index = next((index for index, item in enumerate(self.m_final_list) if item.m_is_player), None)
-
-            delta_so_far = 0
-            # case 1: player is in the absolute front of this pack
-            if player_index == 0:
-                self.m_final_list[0].m_delta_to_car_in_front = "---"
-                # dont include the player in the loop
-                for data in self.m_final_list[1:]:
-                    delta_so_far += data.m_delta_to_car_in_front
-                    data.m_delta_to_car_in_front = self._millisecondsToSecondsStr(delta_so_far)
-
-            # case 2: player is in the absolute back of this pack
-            elif player_index == len(self.m_final_list) - 1:
-                one_car_behind_index = len(self.m_final_list)-1
-                one_car_behind_delta = self.m_final_list[one_car_behind_index].m_delta_to_car_in_front
-                # dont include the player in the loop
-                for data in reversed(self.m_final_list[:-1]):
-                    delta_so_far -= one_car_behind_delta
-                    one_car_behind_delta = data.m_delta_to_car_in_front
-                    data.m_delta_to_car_in_front = self._millisecondsToSecondsStr(delta_so_far)
-                self.m_final_list[len(self.m_final_list)-1].m_delta_to_car_in_front = "---"
-
-            else:
-                # case 3: player is somewhere in the middle
-                one_car_behind_index = player_index
-                one_car_behind_delta = self.m_final_list[one_car_behind_index].m_delta_to_car_in_front
-                for data in reversed(self.m_final_list[:player_index]):
-                    delta_so_far -= one_car_behind_delta
-                    one_car_behind_delta = data.m_delta_to_car_in_front
-                    data.m_delta_to_car_in_front = self._millisecondsToSecondsStr(delta_so_far)
-
-                # Finally, set the deltas for the cars ahead
-                delta_so_far = 0
-                for data in self.m_final_list[player_index+1:]:
-                    delta_so_far += data.m_delta_to_car_in_front
-                    data.m_delta_to_car_in_front = self._millisecondsToSecondsStr(delta_so_far)
-
-                # finally set the delta for the player
-                self.m_final_list[player_index].m_delta_to_car_in_front = "---"
-
-            # Update the race leader's delta to car in front
-            if self.m_final_list[0].m_position == 1:
-                self.m_final_list[0].m_delta_to_car_in_front = "---"
 
     def _millisecondsToSecondsStr(self, ms: float) -> str:
         """
