@@ -44,14 +44,15 @@ const raceState = {
     ]
 };
 
-// Format lap time from milliseconds to "s.ms" format
-function formatLapTime(ms) {
-    return (ms / 1000).toFixed(3);
-}
-
-// Format float values to 2 decimal places
-function formatFloat(value) {
-    return Number(value).toFixed(2);
+function getShortERSMode(mode) {
+    switch (mode) {
+        case 'None': return 'NON';
+        case 'Medium': return 'MED';
+        case 'Hotlap': return 'HOT';
+        case 'Overtake': return 'OVR';
+    }
+    console.error("Unknown ERS mode:", mode);
+    return 'N/A';
 }
 
 // Class to handle table row creation and updates
@@ -70,68 +71,86 @@ class EngViewRaceTableRow {
     }
 
     getDriverInfoCells() {
+        const driverInfo = this.driver["driver-info"];
+        const deltaInfo  = this.driver["delta-info"];
+
+        // TODO: first row show the mode - interval/leader
         return [
-            { value: this.driver.position, border: true },
-            { value: this.driver.name, border: true },
-            { value: formatLapTime(this.driver.delta), border: true }
+            {value: driverInfo["position"], border: true},
+            {value: driverInfo["name"], border: true},
+            {value: formatFloatWithThreeDecimalsSigned(deltaInfo["delta-to-car-in-front"]/1000), border: true},
         ];
     }
 
     getPenaltyCells() {
+        const warnsPensInfo = this.driver["warns-pens-info"];
         return [
-            { value: this.driver.penalties.track },
-            { value: this.driver.penalties.time },
-            { value: this.driver.penalties.dt },
-            { value: this.driver.penalties.serv, border: true }
+            { value: warnsPensInfo["corner-cutting-warnings"] },
+            { value: warnsPensInfo["time-penalties"] },
+            { value: warnsPensInfo["num-dt"] },
+            { value: warnsPensInfo["num-sg"], border: true }
         ];
     }
 
     getLapTimeCells() {
+        const lastLapInfo = this.driver["lap-info"]["last-lap"];
+        const bestLapInfo = this.driver["lap-info"]["best-lap"];
         return [
             // Last Lap
-            { value: formatLapTime(this.driver.lastLap.total) },
-            { value: formatLapTime(this.driver.lastLap.s1) },
-            { value: formatLapTime(this.driver.lastLap.s2) },
-            { value: formatLapTime(this.driver.lastLap.s3), border: true },
+            { value: formatLapTime(lastLapInfo["lap-time-ms"]) },
+            { value: formatSectorTime(lastLapInfo["s1-time-ms"]) },
+            { value: formatSectorTime(lastLapInfo["s2-time-ms"]) },
+            { value: formatSectorTime(lastLapInfo["s3-time-ms"]), border: true },
             // Best Lap
-            { value: formatLapTime(this.driver.bestLap.total) },
-            { value: formatLapTime(this.driver.bestLap.s1) },
-            { value: formatLapTime(this.driver.bestLap.s2) },
-            { value: formatLapTime(this.driver.bestLap.s3), border: true }
+            { value: formatLapTime(bestLapInfo["lap-time-ms"]) },
+            { value: formatSectorTime(bestLapInfo["s1-time-ms"]) },
+            { value: formatSectorTime(bestLapInfo["s2-time-ms"]) },
+            { value: formatSectorTime(bestLapInfo["s3-time-ms"]), border: true },
         ];
     }
 
     getTyreWearCells() {
+        const currTyreWearInfo = this.driver["tyre-info"]["current-wear"];
+        const predictedTyreWearInfo = this.driver["tyre-info"]["current-wear"]; // TODO: fix
+        console.log("currTyreWearInfo", currTyreWearInfo);
+        const predictionLap = 1;
         return [
-            { value: this.createTyreWearCell(this.driver.tyreWear.current.lap, this.driver.tyreWear.prediction.lap) },
-            { value: this.createTyreWearCell(formatFloat(this.driver.tyreWear.current.fl) + '%', formatFloat(this.driver.tyreWear.prediction.fl) + '%') },
-            { value: this.createTyreWearCell(formatFloat(this.driver.tyreWear.current.fr) + '%', formatFloat(this.driver.tyreWear.prediction.fr) + '%') },
-            { value: this.createTyreWearCell(formatFloat(this.driver.tyreWear.current.rl) + '%', formatFloat(this.driver.tyreWear.prediction.rl) + '%') },
-            { value: this.createTyreWearCell(formatFloat(this.driver.tyreWear.current.rr) + '%', formatFloat(this.driver.tyreWear.prediction.rr) + '%'), border: true }
+            { value: this.createTyreWearCell("cur", predictionLap) },
+            { value: this.createTyreWearCell(formatFloatWithTwoDecimals(currTyreWearInfo["front-left-wear"]) + '%',
+                formatFloatWithTwoDecimals(predictedTyreWearInfo["front-left-wear"]) + '%') },
+            { value: this.createTyreWearCell(formatFloatWithTwoDecimals(currTyreWearInfo["front-right-wear"]) + '%',
+                formatFloatWithTwoDecimals(predictedTyreWearInfo["front-right-wear"]) + '%') },
+            { value: this.createTyreWearCell(formatFloatWithTwoDecimals(currTyreWearInfo["rear-left-wear"]) + '%',
+                formatFloatWithTwoDecimals(predictedTyreWearInfo["rear-left-wear"]) + '%') },
+            { value: this.createTyreWearCell(formatFloatWithTwoDecimals(currTyreWearInfo["rear-right-wear"]) + '%',
+                formatFloatWithTwoDecimals(predictedTyreWearInfo["rear-right-wear"]) + '%'), border: true }
         ];
     }
 
     getErsCells() {
+        const ersInfo = this.driver["ers-info"];
         return [
-            { value: formatFloat(this.driver.ers.available) + '%' },
-            { value: formatFloat(this.driver.ers.deploy) + '%' },
-            { value: this.driver.ers.mode, border: true }
+            { value: ersInfo["ers-percent"] }, // this is already a string
+            { value: formatFloatWithTwoDecimals(ersInfo["ers-deployed-this-lap"]) + '%' },
+            { value: getShortERSMode(ersInfo["ers-mode"]), border: true }
         ];
     }
 
     getFuelCells() {
+        const fuelInfo = this.driver["fuel-info"];
         return [
-            { value: formatFloat(this.driver.fuel.total) + 'kg' },
-            { value: formatFloat(this.driver.fuel.perLap) + 'kg' },
-            { value: formatFloat(this.driver.fuel.estimate) + 'kg', border: true }
+            { value: fuelInfo["fuel-in-tank"] == null ? "N/A" : formatFloatWithTwoDecimals(fuelInfo["fuel-in-tank"]) },
+            { value: fuelInfo["curr-fuel-rate"] == null ? "N/A" : formatFloatWithTwoDecimals(fuelInfo["curr-fuel-rate"]) },
+            { value: fuelInfo["curr-fuel-rate"] == null ? "N/A" : formatFloatWithTwoDecimals(fuelInfo["curr-fuel-rate"]), border: true } // TODO: fix
         ];
     }
 
     getDamageCells() {
+        const damageInfo = this.driver["damage-info"];
         return [
-            { value: formatFloat(this.driver.damage.fl) + '%' },
-            { value: formatFloat(this.driver.damage.fr) + '%' },
-            { value: formatFloat(this.driver.damage.rw) + '%' }
+            { value: damageInfo["fl-wing-damage"] + '%' },
+            { value: damageInfo["fr-wing-damage"] + '%' },
+            { value: damageInfo["rear-wing-damage"] + '%', border: true }
         ];
     }
 
@@ -178,6 +197,53 @@ class EngViewRaceTable {
         this.tableBody.innerHTML = '';
         this.rows.clear();
     }
+
+    update(drivers) {
+        // Clear the existing table body
+        this.clear();
+
+        // Repopulate the table with the new driver data
+        drivers.forEach(driver => {
+            const row = new EngViewRaceTableRow(driver);
+            this.rows.set(driver.position, row);
+            this.tableBody.appendChild(row.element);
+        });
+    }
+}
+
+function formatSessionTime(seconds) {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return [hrs, mins, secs].map(v => String(v).padStart(2, '0')).join(':');
+}
+
+class EngViewRaceStatus {
+    constructor() {
+        this.raceTimeElement = document.getElementById('raceTime');
+        this.raceStatusElement = document.getElementById('raceStatus');
+        this.currentLapElement = document.getElementById('currentLap');
+        this.scCountElement = document.getElementById('scCount');
+        this.vscCountElement = document.getElementById('vscCount');
+        this.predictionLapInput = document.getElementById('predictionLap');
+
+        this.predictionLapInput.addEventListener('input', (e) => {
+            const newValue = parseInt(e.target.value);
+            if (newValue >= 1 && newValue <= raceState.totalLaps) {
+                raceState.predictionLap = newValue;
+                // You can add your callback function here
+                console.log('Prediction lap changed to:', newValue);
+            }
+        });
+    }
+
+    update(data) {
+        this.raceTimeElement.textContent = formatSessionTime(data["session-duration"]);
+        this.raceStatusElement.textContent = data["safety-car-status"];
+        this.currentLapElement.textContent = `${data["current-lap"]}/${data["total-laps"]}`;
+        this.scCountElement.textContent = data["num-sc"];
+        this.vscCountElement.textContent = data["num-vsc"];
+    }
 }
 
 // Update race time and status
@@ -220,65 +286,12 @@ function updateRaceStatus() {
     }, 1000);
 }
 
+let raceTable;
+let raceStatus;
 // Initialize the dashboard
 function initDashboard() {
-    const raceTable = new EngViewRaceTable();
-
-    // Create 22 drivers with realistic names
-    const driverNames = [
-        'VER', 'HAM', 'PER', 'LEC', 'SAI', 'RUS',
-        'NOR', 'PIA', 'ALO', 'STR', 'GAS', 'OCO',
-        'ALB', 'BOT', 'HUL', 'ZHO', 'TSU', 'MAG',
-        'SAR', 'LAW', 'BEA', 'VES'
-    ];
-
-    const drivers = driverNames.map((name, index) => new Driver(index + 1, name));
-
-    // Initial update
-    drivers.forEach(driver => raceTable.updateDriver(driver));
-    updateRaceStatus();
-
-    // Simulate random updates
-    setInterval(() => {
-        drivers.forEach(driver => {
-            // Update lap times
-            const lastLapTime = Math.random() * 2000 + 80000; // 80-82s lap time
-            driver.lastLap.total = lastLapTime;
-            driver.lastLap.s1 = lastLapTime * 0.3;
-            driver.lastLap.s2 = lastLapTime * 0.35;
-            driver.lastLap.s3 = lastLapTime * 0.35;
-
-            if (!driver.bestLap.total || lastLapTime < driver.bestLap.total) {
-                driver.bestLap = { ...driver.lastLap };
-            }
-
-            driver.delta = Math.random() * 2000;
-            driver.tyreWear.current.lap = 'curr';
-            driver.tyreWear.prediction.lap = Math.floor(Math.random() * 20 + 30);
-            driver.tyreWear.current.fl = Math.max(0, 100 - Math.random() * 50);
-            driver.tyreWear.prediction.fl = Math.max(0, driver.tyreWear.current.fl - 20);
-            driver.ers.available = Math.max(0, Math.min(100, driver.ers.available + (Math.random() * 2 - 1)));
-            driver.fuel.total = Math.max(0, driver.fuel.total - Math.random() * 0.1);
-
-            raceTable.updateDriver(driver);
-        });
-
-        // Occasionally update race status
-        if (Math.random() < 0.05) {
-            const statuses = ['Racing', 'SC', 'VSC'];
-            const newStatus = statuses[Math.floor(Math.random() * statuses.length)];
-            if (newStatus !== raceState.status) {
-                if (newStatus === 'SC') raceState.scCount++;
-                if (newStatus === 'VSC') raceState.vscCount++;
-                raceState.status = newStatus;
-            }
-        }
-
-        // Update lap number
-        if (Math.random() < 0.1 && raceState.currentLap < raceState.totalLaps) {
-            raceState.currentLap++;
-        }
-    }, 1000);
+    raceTable = new EngViewRaceTable();
+    raceStatus = new EngViewRaceStatus();
 }
 
 // Start the dashboard when the page loads
@@ -310,8 +323,12 @@ socketio.on('connect', function () {
 
 // Receive details from server
 socketio.on('race-table-update', function (data) {
-    console.log("Received race table update", data);
-    // telemetryRenderer.updateDashboard(data);
+
+    const tableEntries = data["table-entries"];
+    if (tableEntries) {
+        raceTable.update(tableEntries);
+    }
+    raceStatus.update(data);
 });
 
 socketio.on('race-info-response', function (data) {
@@ -332,17 +349,6 @@ socketio.on('race-info-response', function (data) {
 socketio.on('driver-info-response', function (data) {
     clearSocketIoRequestTimeout();
     console.log("Received driver-info-response", data);
-    // if (!('error' in data)) {
-    //     if ('__dummy' in data) {
-    //         // this request is meant for a synchronous listener, ignore
-    //         console.debug("Ignoring driver-info-response in main listener");
-    //     } else {
-    //         window.modalManager.openDriverModal(data, iconCache);
-    //     }
-    // } else {
-    //     console.error("Received error for driver-info request", data);
-    //     // showToast("Received error for driver info request");
-    // }
 });
 
 socketio.on('frontend-update', function (data) {
