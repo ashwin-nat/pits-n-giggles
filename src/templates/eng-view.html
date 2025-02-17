@@ -16,8 +16,9 @@
             <div class="row">
                 <div class="col-md-8">
                     <div class="card bg-black border-secondary">
-                        <div class="card-header border-secondary">
-                            <h5>Race Status</h5>
+                        <div class="card-header border-secondary d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Race Status</h5>
+                            <span id="raceStatus" class="race-status-icon">Racing</span>
                         </div>
                         <div class="card-body">
                             <div class="eng-view-global-stat">
@@ -63,21 +64,8 @@
                         <div class="card-body">
                             <div class="table-responsive">
                                 <table class="table table-dark table-sm eng-view-weather-table">
-                                    <tbody>
-                                        <tr>
-                                            <td>-</td>
-                                            <td>-</td>
-                                            <td>-</td>
-                                            <td>-</td>
-                                            <td>-</td>
-                                        </tr>
-                                        <tr>
-                                            <td>-</td>
-                                            <td>-</td>
-                                            <td>-</td>
-                                            <td>-</td>
-                                            <td>-</td>
-                                        </tr>
+                                    <tbody id="weatherTableBody">
+                                        <!-- Weather data will be populated by JavaScript -->
                                     </tbody>
                                 </table>
                             </div>
@@ -99,7 +87,7 @@
                             <th colspan="4" class="eng-view-col-border">Penalties</th>
                             <th colspan="4" class="eng-view-col-border">Last Lap</th>
                             <th colspan="4" class="eng-view-col-border">Best Lap</th>
-                            <th colspan="5" class="eng-view-col-border">Tyre Wear</th>
+                            <th colspan="6" class="eng-view-col-border">Tyre Wear</th>
                             <th colspan="3" class="eng-view-col-border">ERS</th>
                             <th colspan="3" class="eng-view-col-border">Fuel</th>
                             <th colspan="3">Damage</th>
@@ -124,6 +112,7 @@
                             <th>S2</th>
                             <th class="eng-view-col-border">S3</th>
                             <!-- Tyre Wear -->
+                            <th>Comp</th>
                             <th>Lap</th>
                             <th>FL</th>
                             <th>FR</th>
@@ -154,5 +143,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
     <script src="{{ url_for('static', filename='js/engView.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/iconCache.js') }}"></script>
 </body>
 </html>

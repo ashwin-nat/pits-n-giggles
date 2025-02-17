@@ -1,48 +1,4 @@
-// Data structure for a driver
-class Driver {
-    constructor(position, name) {
-        this.position = position;
-        this.name = name;
-        this.delta = '0.000';
-        this.penalties = { track: 0, time: 0, dt: 0, serv: 0 };
-        this.lastLap = {
-            total: '0.000',
-            s1: '0.000',
-            s2: '0.000',
-            s3: '0.000'
-        };
-        this.bestLap = {
-            total: '0.000',
-            s1: '0.000',
-            s2: '0.000',
-            s3: '0.000'
-        };
-        this.tyreWear = {
-            current: { lap: 'curr', fl: 100, fr: 100, rl: 100, rr: 100 },
-            prediction: { lap: 0, fl: 100, fr: 100, rl: 100, rr: 100 }
-        };
-        this.ers = { available: 100, deploy: 0, mode: 1 };
-        this.fuel = { total: 100, perLap: 2.5, estimate: 95 };
-        this.damage = { fl: 0, fr: 0, rw: 0 };
-    }
-}
 
-// Global race state
-const raceState = {
-    currentLap: 1,
-    totalLaps: 58,
-    status: 'Racing',
-    scCount: 0,
-    vscCount: 0,
-    predictionLap: 1,
-    weather: [
-        { time: '+10m', type: 'Clear', probability: 0 },
-        { time: '+20m', type: 'Clear', probability: 10 },
-        { time: '+30m', type: 'Cloudy', probability: 30 },
-        { time: '+40m', type: 'Light Rain', probability: 60 },
-        { time: '+50m', type: 'Rain', probability: 80 }
-    ]
-};
 
 function getShortERSMode(mode) {
     switch (mode) {
@@ -57,8 +13,9 @@ function getShortERSMode(mode) {
 
 // Class to handle table row creation and updates
 class EngViewRaceTableRow {
-    constructor(driver) {
+    constructor(driver, iconCache) {
         this.driver = driver;
+        this.iconCache = iconCache;
         this.element = document.createElement('tr');
         this.render();
     }
@@ -70,16 +27,37 @@ class EngViewRaceTableRow {
         `;
     }
 
+    createIconTextCell(iconSvg, text) {
+        return `
+            <div class="eng-view-icon-row">
+                <div class="eng-view-icon">${iconSvg.outerHTML}</div>
+                <div class="eng-view-text">${text}</div>
+            </div>
+        `;
+    }
+
     getDriverInfoCells() {
         const driverInfo = this.driver["driver-info"];
-        const deltaInfo  = this.driver["delta-info"];
 
         // TODO: first row show the mode - interval/leader
         return [
             {value: driverInfo["position"], border: true},
             {value: driverInfo["name"], border: true},
-            {value: formatFloatWithThreeDecimalsSigned(deltaInfo["delta-to-car-in-front"]/1000), border: true},
         ];
+    }
+
+    getDeltaInfoCells() {
+
+        const deltaInfo  = this.driver["delta-info"];
+        const position   = this.driver["driver-info"]["position"]
+        return [
+            {
+                value: this.createTyreWearCell(
+                    (position == 1) ? ("Interval") : (formatFloatWithThreeDecimalsSigned(deltaInfo["delta-to-car-in-front"]/1000)),
+                    (position == 1) ? ("Leader") : (formatFloatWithThreeDecimalsSigned(deltaInfo["delta-to-leader"]/1000))),
+                border: true
+            },
+        ]
     }
 
     getPenaltyCells() {
@@ -110,11 +88,14 @@ class EngViewRaceTableRow {
     }
 
     getTyreWearCells() {
-        const currTyreWearInfo = this.driver["tyre-info"]["current-wear"];
-        const predictedTyreWearInfo = this.driver["tyre-info"]["current-wear"]; // TODO: fix
-        console.log("currTyreWearInfo", currTyreWearInfo);
+        const tyreInfoData = this.driver["tyre-info"];
+        const currTyreWearInfo = tyreInfoData["current-wear"];
+        const predictedTyreWearInfo = tyreInfoData["current-wear"]; // TODO: fix
+        const tyreIcon = this.iconCache.getIcon(tyreInfoData["visual-tyre-compound"]);
+        const agePitInfoStr = `${tyreInfoData["tyre-age"]} L (${tyreInfoData["num-pitstops"]} pit)`;
         const predictionLap = 1;
         return [
+            { value: this.createIconTextCell(tyreIcon, agePitInfoStr)},
             { value: this.createTyreWearCell("cur", predictionLap) },
             { value: this.createTyreWearCell(formatFloatWithTwoDecimals(currTyreWearInfo["front-left-wear"]) + '%',
                 formatFloatWithTwoDecimals(predictedTyreWearInfo["front-left-wear"]) + '%') },
@@ -157,6 +138,7 @@ class EngViewRaceTableRow {
     render() {
         const cells = [
             ...this.getDriverInfoCells(),
+            ...this.getDeltaInfoCells(),
             ...this.getPenaltyCells(),
             ...this.getLapTimeCells(),
             ...this.getTyreWearCells(),
@@ -178,19 +160,10 @@ class EngViewRaceTableRow {
 
 // Class to manage the race table
 class EngViewRaceTable {
-    constructor() {
+    constructor(iconCache) {
         this.tableBody = document.getElementById('engViewRaceTableBody');
         this.rows = new Map();
-    }
-
-    updateDriver(driver) {
-        if (!this.rows.has(driver.position)) {
-            const row = new EngViewRaceTableRow(driver);
-            this.rows.set(driver.position, row);
-            this.tableBody.appendChild(row.element);
-        } else {
-            this.rows.get(driver.position).update(driver);
-        }
+        this.iconCache = iconCache;
     }
 
     clear() {
@@ -204,7 +177,7 @@ class EngViewRaceTable {
 
         // Repopulate the table with the new driver data
         drivers.forEach(driver => {
-            const row = new EngViewRaceTableRow(driver);
+            const row = new EngViewRaceTableRow(driver, this.iconCache);
             this.rows.set(driver.position, row);
             this.tableBody.appendChild(row.element);
         });
@@ -219,7 +192,8 @@ function formatSessionTime(seconds) {
 }
 
 class EngViewRaceStatus {
-    constructor() {
+    constructor(iconCache) {
+        this.iconCache = iconCache;
         this.raceTimeElement = document.getElementById('raceTime');
         this.raceStatusElement = document.getElementById('raceStatus');
         this.currentLapElement = document.getElementById('currentLap');
@@ -246,52 +220,50 @@ class EngViewRaceStatus {
     }
 }
 
-// Update race time and status
-function updateRaceStatus() {
-    const raceTimeElement = document.getElementById('raceTime');
-    const raceStatusElement = document.getElementById('raceStatus');
-    const currentLapElement = document.getElementById('currentLap');
-    const scCountElement = document.getElementById('scCount');
-    const vscCountElement = document.getElementById('vscCount');
-    const predictionLapInput = document.getElementById('predictionLap');
+// Weather table management class
+class EngViewWeatherTable {
+    constructor() {
+        this.tableBody = document.querySelector('.eng-view-weather-table tbody');
+    }
 
-    let seconds = 0;
+    update(weatherData) {
+        // Create weather type row
+        const typeRow = document.createElement('tr');
+        typeRow.innerHTML = weatherData
+            .map(w => `<td>${w["weather"]}</td>`)
+            .join('');
 
-    // Set up prediction lap input
-    predictionLapInput.min = 1;
-    predictionLapInput.max = raceState.totalLaps;
-    predictionLapInput.value = raceState.predictionLap;
+        // Create time and probability row
+        const timeRow = document.createElement('tr');
+        timeRow.innerHTML = weatherData
+            .map(w => `<td>${w["time-offset"]} (${w["rain-probability"]}%)</td>`)
+            .join('');
 
-    predictionLapInput.addEventListener('input', (e) => {
-        const newValue = parseInt(e.target.value);
-        if (newValue >= 1 && newValue <= raceState.totalLaps) {
-            raceState.predictionLap = newValue;
-            // You can add your callback function here
-            console.log('Prediction lap changed to:', newValue);
-        }
-    });
+        // Clear and update table
+        this.tableBody.innerHTML = '';
+        this.tableBody.appendChild(typeRow);
+        this.tableBody.appendChild(timeRow);
+    }
 
-    setInterval(() => {
-        seconds++;
-        const hours = Math.floor(seconds / 3600);
-        const minutes = Math.floor((seconds % 3600) / 60);
-        const secs = seconds % 60;
-
-        raceTimeElement.textContent =
-            `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-        raceStatusElement.textContent = raceState.status;
-        currentLapElement.textContent = `${raceState.currentLap}/${raceState.totalLaps}`;
-        scCountElement.textContent = raceState.scCount;
-        vscCountElement.textContent = raceState.vscCount;
-    }, 1000);
+    clear() {
+        this.tableBody.innerHTML = `
+            <tr>${'<td>-</td>'.repeat(5)}</tr>
+            <tr>${'<td>-</td>'.repeat(5)}</tr>
+        `;
+    }
 }
 
 let raceTable;
 let raceStatus;
+let weatherTable;
+let iconCache;
+
 // Initialize the dashboard
 function initDashboard() {
-    raceTable = new EngViewRaceTable();
-    raceStatus = new EngViewRaceStatus();
+    iconCache = new IconCache();
+    raceTable = new EngViewRaceTable(iconCache);
+    raceStatus = new EngViewRaceStatus(iconCache);
+    weatherTable = new EngViewWeatherTable(iconCache);
 }
 
 // Start the dashboard when the page loads
@@ -329,6 +301,7 @@ socketio.on('race-table-update', function (data) {
         raceTable.update(tableEntries);
     }
     raceStatus.update(data);
+    weatherTable.update(data["weather-forecast-samples"]);
 });
 
 socketio.on('race-info-response', function (data) {
