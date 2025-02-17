@@ -30,16 +30,16 @@ from typing import List
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from lib.f1_types import F1Utils, LapData, ResultStatus
 from lib.packet_cap import F1PacketCapture
-import lib.overtake_analyzer as OvertakeAnalyzer
-from flask import Flask, render_template, request, jsonify
 from src.telemetry_manager import F1TelemetryManager
+from lib.packet_forwarder import UDPForwarder
 from threading import Thread, Lock, Condition
+import queue
 
 # Condition variable for signaling when the port is set
 g_start_condition = Condition()
 g_port_num = None
+g_queue = queue.Queue()
 
 class PacketCaptureTable:
     """Thread safe container for F1PacketCapture instance.
@@ -62,12 +62,17 @@ class PacketCaptureTable:
         with self.m_lock:
             self.m_packet_capture.add(packet)
 
-    def clear(self) -> None:
+    def clear(self) -> int:
         """
         Clear the packet history table and reset the number of packets.
+
+        Returns:
+            int: The number of packets cleared.
         """
         with self.m_lock:
+            ret = self.m_packet_capture.getNumPackets()
             self.m_packet_capture.clear()
+            return ret
 
     def getNumPackets(self) -> int:
         """
@@ -130,9 +135,9 @@ class SimpleApp:
 
     def clear_memory(self):
         global g_capture_table
-        g_capture_table.clear()
+        count = g_capture_table.clear()
         self.memory_data = ""
-        messagebox.showinfo("Info", "Memory cleared!")
+        messagebox.showinfo("Info", f"Memory cleared! Number of packets cleared: {count}")
 
     def save_to_file(self):
         file_path = filedialog.asksaveasfilename(defaultextension=".f1pcap",
@@ -149,7 +154,10 @@ class SimpleApp:
 
 def raw_packet_callback(raw_packet: bytes):
     global g_capture_table
+    global g_queue
+    g_queue.put(raw_packet)
     g_capture_table.add(raw_packet)
+
 
 def telemetry_manager_thread():
     global g_port_num
@@ -163,7 +171,29 @@ def telemetry_manager_thread():
     telemetry_manager.registerRawPacketCallback(raw_packet_callback)
     telemetry_manager.run()
 
+
+def udpForwardingThread() -> None:
+    """Thread that forwards all UDP packets to specified targets
+
+    Args:
+        forwarding_targets (List[Tuple[str, int]]): List of tuple of target
+            Each tuple is a pair of IP addr/hostname (str), port number (int)
+    """
+
+    forwarding_targets = [("127.0.0.1", 20777)]
+    udp_forwarder = UDPForwarder(forwarding_targets)
+    while True:
+        packet = g_queue.get()
+        assert packet is not None
+
+        udp_forwarder.forward(packet)
+
+
 if __name__ == "__main__":
+
+    forwarding_thread = Thread(target=udpForwardingThread)
+    forwarding_thread.daemon = True
+    forwarding_thread.start()
 
     f1_telemetry_thread = Thread(target=telemetry_manager_thread)
     f1_telemetry_thread.daemon = True
