@@ -731,6 +731,7 @@ class DriversListRsp:
 
         with TelData._driver_data_lock.gen_rlock():
             # Do the bare mimnimum within this block so that we can unlock the mutex ASAP
+            # Player index can never be none, since the player always an index, even if a spectator (for Lobby packet)
             if (TelData._driver_data.m_player_index is None) or (TelData._driver_data.m_num_active_cars is None):
                 return
 
