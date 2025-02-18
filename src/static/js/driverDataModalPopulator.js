@@ -55,7 +55,7 @@ class DriverModalPopulator {
                 row.appendChild(lapTimeCell);
 
                 const tyreCell = document.createElement('td');
-                const tyreSet = lap["tyre-set-info"]["tyre-set"];
+                const tyreSet = (lap["tyre-set-info"]) ? (lap["tyre-set-info"]["tyre-set"]) : (null);
                 if (tyreSet) {
                     const compound = tyreSet["visual-tyre-compound"];
                     const svgElement = this.iconCache.getIcon(compound);
