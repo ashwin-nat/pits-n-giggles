@@ -27,7 +27,6 @@ import copy
 import json
 from typing import Optional, Generator, Tuple, List, Dict, Any, Callable
 from enum import Enum
-from collections import OrderedDict
 from readerwriterlock import rwlock
 from lib.f1_types import PacketSessionData, PacketLapData, LapData, CarTelemetryData, ParticipantData, \
     PacketEventData, PacketParticipantsData, PacketCarTelemetryData, PacketCarStatusData, FinalClassificationData, \
@@ -586,20 +585,7 @@ class DataPerDriver:
             final_json["per-lap-info"].append(snapshot_entry.toJSON(lap_number))
 
         if include_tyre_wear_prediction:
-            if self.m_tyre_wear_extrapolator.isDataSufficient():
-                final_json["tyre-wear-predictions"] = {
-                    "status" : True,
-                    "desc" : "Data is sufficient for extrapolation",
-                    "predictions": [item.toJSON() for item in self.m_tyre_wear_extrapolator.predicted_tyre_wear],
-                    "selected-pit-stop-lap": selected_pit_stop_lap
-                }
-            else:
-                final_json["tyre-wear-predictions"] = {
-                    "status" : False,
-                    "desc" : "Insufficient data for extrapolation",
-                    "predictions": [],
-                    "selected-pit-stop-lap": None
-                }
+            final_json["tyre-wear-predictions"] = self.getFullTyreWearPredictions(selected_pit_stop_lap)
 
         # Insert the lap time history against tyre used
         final_json["lap-time-history"] = self._getLapTimeHistoryJSON() # can be None, handled in frontend
@@ -610,8 +596,33 @@ class DataPerDriver:
         # Return this fully prepped JSON
         return final_json
 
+    def getFullTyreWearPredictions(self, selected_pit_stop_lap: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Get a JSON list with the tyre wear predictions for all remaining laps
+
+        Args:
+            next_pit_window (Optional[int], optional): The next pit window lap number.
+
+        Returns:
+            List[Dict[str, Any]]: List of JSON objects, each containing tyre wear predictions for a specific lap
+        """
+
+        if self.m_tyre_wear_extrapolator.isDataSufficient():
+            return {
+                "status" : True,
+                "desc" : "Data is sufficient for extrapolation",
+                "predictions": [item.toJSON() for item in self.m_tyre_wear_extrapolator.predicted_tyre_wear],
+                "selected-pit-stop-lap": selected_pit_stop_lap
+            }
+        else:
+            return {
+                "status" : False,
+                "desc" : "Insufficient data for extrapolation",
+                "predictions": [],
+                "selected-pit-stop-lap": None
+            }
+
     def getTyrePredictionsJSONList(self, next_pit_window: Optional[int] = None) -> List[Dict[str, Any]]:
-        """Get a JSON list with the tyre wear predictions
+        """Get a JSON list with the tyre wear predictions for next stop/mid point and end of race
 
         Args:
             next_pit_window (Optional[int], optional): The next pit window lap number.

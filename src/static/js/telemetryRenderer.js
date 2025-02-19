@@ -184,8 +184,10 @@ class TelemetryRenderer {
 
       let sessionInfoText = "";
       if (this.shouldShowLapNumber(incomingData['event-type'])) {
-        sessionInfoText += "L" + incomingData['current-lap'].toString();
-        if (incomingData['event-type'] != "Time Trial" && incomingData['total-laps'] > 1) {
+        if (incomingData['current-lap']) {
+          sessionInfoText += "L" + incomingData['current-lap'].toString();
+        }
+        if (incomingData['event-type'] != "Time Trial" && ((incomingData['total-laps'] ?? 0) > 1)) {
           sessionInfoText += "/" + incomingData['total-laps'].toString();
         }
       } else {

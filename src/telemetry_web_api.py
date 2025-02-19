@@ -81,8 +81,8 @@ class RaceInfoUpdate:
             "event-type": _getValueOrDefaultValue(self.m_globals.m_event_type),
             "session-time-left" : _getValueOrDefaultValue(self.m_globals.m_packet_session.m_sessionTimeLeft \
                                                           if self.m_globals.m_packet_session else None, 0),
-            "total-laps": _getValueOrDefaultValue(self.m_globals.m_total_laps),
-            "current-lap": _getValueOrDefaultValue(self.m_curr_lap),
+            "total-laps": _getValueOrDefaultValue(self.m_globals.m_total_laps, default_value=None),
+            "current-lap": _getValueOrDefaultValue(self.m_curr_lap, default_value=None),
             "safety-car-status": str(_getValueOrDefaultValue(self.m_globals.m_safety_car_status, default_value="")),
             "pit-speed-limit": _getValueOrDefaultValue(self.m_globals.m_pit_speed_limit, default_value=0),
             "weather-forecast-samples": [
@@ -103,6 +103,7 @@ class RaceInfoUpdate:
                                                           if self.m_globals.m_packet_session else None, 0),
             "num-red-flags" : _getValueOrDefaultValue(self.m_globals.m_packet_session.m_numRedFlagPeriods \
                                                           if self.m_globals.m_packet_session else None, 0),
+            "player-pit-window" : _getValueOrDefaultValue(self.m_driver_list_rsp.m_next_pit_stop_window, None),
         }
 
         if self.m_globals.m_event_type == "Time Trial":
@@ -610,6 +611,7 @@ class DriversListRsp:
                                                     CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0,
                 },
                 "lap-info" : {
+                    "current-lap" : data_per_driver.m_current_lap,
                     "last-lap" : {
                         "lap-time-ms" : data_per_driver.m_last_lap_ms,
                         "lap-time-ms-player" : 0,
@@ -648,7 +650,7 @@ class DriversListRsp:
                     "num-sg" : _getValueOrDefaultValue(data_per_driver.m_num_sg),
                 },
                 "tyre-info" : {
-                    "wear-prediction" : data_per_driver.getTyrePredictionsJSONList(self.m_next_pit_stop_window),
+                    "wear-prediction" : data_per_driver.getFullTyreWearPredictions(self.m_next_pit_stop_window),
                     "current-wear" : data_per_driver.getCurrentTyreWearJSON(),
                     "tyre-age": _getValueOrDefaultValue(data_per_driver.m_tyre_age),
                     "tyre-life-remaining" : _getValueOrDefaultValue(data_per_driver.m_tyre_life_remaining_laps),

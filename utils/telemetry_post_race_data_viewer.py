@@ -397,6 +397,7 @@ def getTelemetryInfo():
                             if "ers-deploy-mode" in data_per_driver["car-status"] else "None",
                     },
                     "lap-info" : {
+                        "current-lap" : None,
                         "last-lap" : {
                             "lap-time-ms" : getFastestLapTimeMsFromSessionHistoryJSON(data_per_driver["session-history"]),
                             "lap-time-ms-player" : 0,
@@ -421,7 +422,12 @@ def getTelemetryInfo():
                         "num-sg" : num_sg,
                     },
                     "tyre-info" : {
-                        "wear-prediction" : [],
+                        "wear-prediction" : {
+                            "status" : False,
+                            "desc" : "Insufficient data for extrapolation",
+                            "predictions": [],
+                            "selected-pit-stop-lap": None
+                        },
                         "current-wear" : getTyreWearJSON(data_per_driver),
                         "tyre-age": data_per_driver["car-status"]["tyres-age-laps"],
                         "tyre-life-remaining" : None,
