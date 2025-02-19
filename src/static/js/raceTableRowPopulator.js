@@ -215,12 +215,10 @@ class RaceTableRowPopulator {
             return [lastPrediction];
         }
 
-        // Find the prediction closest to the midpoint
-        const midPointPrediction = data.predictions.reduce((prev, curr) => {
-            return Math.abs(curr["lap-number"] - midLapNumber) < Math.abs(prev["lap-number"] - midLapNumber)
-                ? curr
-                : prev;
-        });
+        // Find the first prediction that is at or after the midpoint
+        const midPointPrediction = data.predictions.find(
+            pred => pred["lap-number"] >= midLapNumber
+        );
 
         return [midPointPrediction, lastPrediction];
     }
