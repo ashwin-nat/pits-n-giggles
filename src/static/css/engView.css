@@ -20,7 +20,7 @@ body {
 .eng-view-race-table-section {
     flex: 0 0 85%;
     overflow-y: auto;
-    padding-bottom: 2rem
+    padding-bottom: 2rem;
 }
 
 .eng-view-table {
@@ -34,6 +34,7 @@ body {
     white-space: nowrap;
     background-color: #000 !important;
     border-color: #333 !important;
+    vertical-align: middle;
 }
 
 .eng-view-table tbody tr:hover td {
@@ -77,6 +78,7 @@ body {
 .eng-view-weather-table {
     font-size: 0.85rem;
     margin: 0;
+    height: 100%;
 }
 
 .eng-view-weather-table td {
@@ -113,6 +115,31 @@ body {
 
 .eng-view-tyre-row-2 {
     color: #666;
+}
+
+/* Icon and text row styling */
+.eng-view-icon-row {
+    display: flex;
+    flex-direction: column;
+}
+
+.eng-view-icon {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.2rem;
+}
+
+.eng-view-icon svg {
+    width: 0.9rem;
+    height: 0.9rem;
+}
+
+/* Race status section layout */
+.card-body .eng-view-global-stats-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem 2rem;
+    align-items: center;
 }
 
 /* Prediction lap input styling */

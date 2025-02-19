@@ -154,7 +154,7 @@ class TelemetryWebServer:
                 str: HTML page content.
             """
 
-            return render_template('index.html')
+            return render_template('index.html', live_data_mode=True)
 
         # Render the HTML page
         @self.m_app.route('/player-stream-overlay')

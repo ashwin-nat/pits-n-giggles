@@ -633,7 +633,7 @@ class TelemetryWebServer:
             Returns:
                 str: HTML page content.
             """
-            return render_template('index.html')
+            return render_template('index.html', live_data_mode=False)
 
         # Define your endpoint
         @self.m_app.route('/telemetry-info')
