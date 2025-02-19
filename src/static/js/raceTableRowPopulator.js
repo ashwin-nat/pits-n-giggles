@@ -188,8 +188,47 @@ class RaceTableRowPopulator {
         return this;
     }
 
+    #getWearPredictions(data, currentLap) {
+        // If status is false or no predictions, return empty array
+        if (!data.status || !data.predictions || data.predictions.length === 0) {
+            return [];
+        }
+
+        // If selected pit stop lap is non-zero and exists in predictions
+        if (data["selected-pit-stop-lap"] > 0) {
+            const pitLapPrediction = data.predictions.find(
+                p => p["lap-number"] === data["selected-pit-stop-lap"]
+            );
+            const lastPrediction = data.predictions[data.predictions.length - 1];
+
+            if (pitLapPrediction) {
+                return [pitLapPrediction, lastPrediction];
+            }
+        }
+
+        // Calculate midpoint between current lap and last predicted lap
+        const lastPrediction = data.predictions[data.predictions.length - 1];
+        const midLapNumber = Math.floor((currentLap + lastPrediction["lap-number"]) / 2);
+
+        // If midpoint equals the final lap, return only the last prediction
+        if (midLapNumber === lastPrediction["lap-number"]) {
+            return [lastPrediction];
+        }
+
+        // Find the prediction closest to the midpoint
+        const midPointPrediction = data.predictions.reduce((prev, curr) => {
+            return Math.abs(curr["lap-number"] - midLapNumber) < Math.abs(prev["lap-number"] - midLapNumber)
+                ? curr
+                : prev;
+        });
+
+        return [midPointPrediction, lastPrediction];
+    }
+
     addTyrePredictionInfo() {
-        const predictionData = this.rowData["tyre-info"]["wear-prediction"];
+        const currentLap = this.rowData["lap-info"]["current-lap"];
+        const predictionData = this.#getWearPredictions(this.rowData["tyre-info"]["wear-prediction"], currentLap);
+
         const shouldHidePredictionColumn = false;
         if (!shouldHidePredictionColumn) {
             if (predictionData.length === 0) {

@@ -1,4 +1,4 @@
-
+let g_engView_pitLapNum = null;
 
 function getShortERSMode(mode) {
     switch (mode) {
@@ -76,6 +76,7 @@ class EngViewRaceTableRow {
         const bestLapInfo = this.driver["lap-info"]["best-lap"];
         const isPlayer = this.driver["driver-info"]["is-player"];
 
+        // in spectator mode, there is no need for delta
         if (this.isSpectating) {
             return [
                 // Last Lap
@@ -149,21 +150,23 @@ class EngViewRaceTableRow {
     getTyreWearCells() {
         const tyreInfoData = this.driver["tyre-info"];
         const currTyreWearInfo = tyreInfoData["current-wear"];
-        const predictedTyreWearInfo = tyreInfoData["current-wear"]; // TODO: fix
         const tyreIcon = this.iconCache.getIcon(tyreInfoData["visual-tyre-compound"]);
         const agePitInfoStr = `${tyreInfoData["tyre-age"]} L (${tyreInfoData["num-pitstops"]} pit)`;
-        const predictionLap = 1;
+        const predictionLap = g_engView_pitLapNum;
+        const predictedTyreWearInfo = tyreInfoData["wear-prediction"]["predictions"].find(
+            p => p["lap-number"] === predictionLap);
         return [
             { value: this.createIconTextCell(tyreIcon, agePitInfoStr)},
             { value: this.createMultiLineCell("cur", predictionLap) },
             { value: this.createMultiLineCell(formatFloatWithTwoDecimals(currTyreWearInfo["front-left-wear"]) + '%',
-                formatFloatWithTwoDecimals(predictedTyreWearInfo["front-left-wear"]) + '%') },
+                (predictedTyreWearInfo) ? (formatFloatWithTwoDecimals(predictedTyreWearInfo["front-left-wear"]) + '%') : ('---')) },
             { value: this.createMultiLineCell(formatFloatWithTwoDecimals(currTyreWearInfo["front-right-wear"]) + '%',
-                formatFloatWithTwoDecimals(predictedTyreWearInfo["front-right-wear"]) + '%') },
+                (predictedTyreWearInfo) ? (formatFloatWithTwoDecimals(predictedTyreWearInfo["front-right-wear"]) + '%') : ('---')) },
             { value: this.createMultiLineCell(formatFloatWithTwoDecimals(currTyreWearInfo["rear-left-wear"]) + '%',
-                formatFloatWithTwoDecimals(predictedTyreWearInfo["rear-left-wear"]) + '%') },
+                (predictedTyreWearInfo) ? (formatFloatWithTwoDecimals(predictedTyreWearInfo["rear-left-wear"]) + '%') : ('---')) },
             { value: this.createMultiLineCell(formatFloatWithTwoDecimals(currTyreWearInfo["rear-right-wear"]) + '%',
-                formatFloatWithTwoDecimals(predictedTyreWearInfo["rear-right-wear"]) + '%'), border: true }
+                (predictedTyreWearInfo) ? (formatFloatWithTwoDecimals(predictedTyreWearInfo["rear-right-wear"]) + '%') : ('---')),
+                border: true },
         ];
     }
 
@@ -261,13 +264,16 @@ class EngViewRaceStatus {
         this.trackTempElement = document.getElementById('trackTemp');
         this.airTempElement = document.getElementById('airTemp');
         this.predictionLapInput = document.getElementById('predictionLap');
+        this.totalLaps = null;
+        this.pitLap = null;
 
         this.predictionLapInput.addEventListener('input', (e) => {
-            const newValue = parseInt(e.target.value);
-            if (newValue >= 1 && newValue <= raceState.totalLaps) {
-                raceState.predictionLap = newValue;
-                // You can add your callback function here
-                console.log('Prediction lap changed to:', newValue);
+            let value = parseInt(e.target.value);
+            if (!isNaN(value) && value >= e.target.min && value <= e.target.max) {
+                g_engView_pitLapNum = value;
+                console.log('Prediction lap changed to:', g_engView_pitLapNum);
+            } else {
+                console.warn('Invalid input: Out of range');
             }
         });
     }
@@ -288,13 +294,35 @@ class EngViewRaceStatus {
     }
 
     update(data) {
+
+        let shouldUpdatePred = false;
+        if (data["total-laps"] != "---" && this.totalLaps != data["total-laps"]) {
+            // Set the initial prediction value
+            g_engView_pitLapNum = data["total-laps"];
+            shouldUpdatePred = true;
+        }
+
+        if (this.pitLap == null && data["player-pit-window"]) {
+            // If the pit window becomes available
+            g_engView_pitLapNum = data["player-pit-window"];
+            shouldUpdatePred = true;
+        }
+        this.totalLaps = data["total-laps"];
+        this.pitLap = data["player-pit-window"];
+
+        this.predictionLapInput.max = this.totalLaps;
         this.raceTimeElement.textContent = formatSessionTime(data["session-duration"]);
         this.raceStatusElement.textContent = this.#getSCStatusString(data["safety-car-status"]);
-        this.currentLapElement.textContent = `${data["current-lap"]}/${data["total-laps"]}`;
+        this.currentLapElement.textContent = `${data["current-lap"]}/${this.totalLaps}`;
         this.scCountElement.textContent = data["num-sc"];
         this.vscCountElement.textContent = data["num-vsc"];
         this.trackTempElement.textContent = data["track-temperature"] + ' °C';
         this.airTempElement.textContent = data["air-temperature"] + ' °C';
+
+        if (shouldUpdatePred) {
+            this.predictionLapInput.value = g_engView_pitLapNum;
+            console.log("Updated prediction element value", g_engView_pitLapNum);
+        }
     }
 }
 
