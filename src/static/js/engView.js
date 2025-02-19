@@ -13,14 +13,15 @@ function getShortERSMode(mode) {
 
 // Class to handle table row creation and updates
 class EngViewRaceTableRow {
-    constructor(driver, iconCache) {
+    constructor(driver, isSpectating, iconCache) {
         this.driver = driver;
+        this.isSpectating = isSpectating;
         this.iconCache = iconCache;
         this.element = document.createElement('tr');
         this.render();
     }
 
-    createTyreWearCell(current, prediction) {
+    createMultiLineCell(current, prediction) {
         return `
             <div class="eng-view-tyre-row-1">${current}</div>
             <div class="eng-view-tyre-row-2">${prediction}</div>
@@ -31,15 +32,13 @@ class EngViewRaceTableRow {
         return `
             <div class="eng-view-icon-row">
                 <div class="eng-view-icon">${iconSvg.outerHTML}</div>
-                <div class="eng-view-text">${text}</div>
+                <div class="eng-view-tyre-row-2">${text}</div>
             </div>
         `;
     }
 
     getDriverInfoCells() {
         const driverInfo = this.driver["driver-info"];
-
-        // TODO: first row show the mode - interval/leader
         return [
             {value: driverInfo["position"], border: true},
             {value: driverInfo["name"], border: true},
@@ -52,9 +51,11 @@ class EngViewRaceTableRow {
         const position   = this.driver["driver-info"]["position"]
         return [
             {
-                value: this.createTyreWearCell(
-                    (position == 1) ? ("Interval") : (formatFloatWithThreeDecimalsSigned(deltaInfo["delta-to-car-in-front"]/1000)),
-                    (position == 1) ? ("Leader") : (formatFloatWithThreeDecimalsSigned(deltaInfo["delta-to-leader"]/1000))),
+                value: this.createMultiLineCell(
+                    (position == 1) ? ("Interval") :
+                        (formatFloatWithThreeDecimalsSigned(deltaInfo["delta-to-car-in-front"]/1000)),
+                    (position == 1) ? ("Leader") :
+                        (formatFloatWithThreeDecimalsSigned(deltaInfo["delta-to-leader"]/1000))),
                 border: true
             },
         ]
@@ -73,17 +74,75 @@ class EngViewRaceTableRow {
     getLapTimeCells() {
         const lastLapInfo = this.driver["lap-info"]["last-lap"];
         const bestLapInfo = this.driver["lap-info"]["best-lap"];
+        const isPlayer = this.driver["driver-info"]["is-player"];
+
+        if (this.isSpectating) {
+            return [
+                // Last Lap
+                { value: formatLapTime(lastLapInfo["lap-time-ms"]) },
+                { value: formatSectorTime(lastLapInfo["s1-time-ms"]) },
+                { value: formatSectorTime(lastLapInfo["s2-time-ms"]) },
+                { value: formatSectorTime(lastLapInfo["s3-time-ms"]), border: true },
+                // Best Lap
+                { value: formatLapTime(bestLapInfo["lap-time-ms"]) },
+                { value: formatSectorTime(bestLapInfo["s1-time-ms"]) },
+                { value: formatSectorTime(bestLapInfo["s2-time-ms"]) },
+                { value: formatSectorTime(bestLapInfo["s3-time-ms"]), border: true },
+            ];
+        }
+
         return [
             // Last Lap
-            { value: formatLapTime(lastLapInfo["lap-time-ms"]) },
-            { value: formatSectorTime(lastLapInfo["s1-time-ms"]) },
-            { value: formatSectorTime(lastLapInfo["s2-time-ms"]) },
-            { value: formatSectorTime(lastLapInfo["s3-time-ms"]), border: true },
+            {
+                value: this.createMultiLineCell(formatLapTime(lastLapInfo["lap-time-ms"]),
+                    ((isPlayer) ? ('---') :
+                    (formatDelta(lastLapInfo["lap-time-ms-player"] - lastLapInfo["lap-time-ms"])))),
+                border: false
+            },
+            {
+                value: this.createMultiLineCell(formatSectorTime(lastLapInfo["s1-time-ms"]),
+                    ((isPlayer) ? ('---') :
+                    (formatDelta(lastLapInfo["s1-time-ms-player"] - lastLapInfo["s1-time-ms"])))),
+                border: false
+            },
+            {
+                value: this.createMultiLineCell(formatSectorTime(lastLapInfo["s2-time-ms"]),
+                    ((isPlayer) ? ('---') :
+                    (formatDelta(lastLapInfo["s2-time-ms-player"] - lastLapInfo["s2-time-ms"])))),
+                border: false
+            },
+            {
+                value: this.createMultiLineCell(formatSectorTime(lastLapInfo["s3-time-ms"]),
+                    ((isPlayer) ? ('---') :
+                    (formatDelta(lastLapInfo["s3-time-ms-player"] - lastLapInfo["s3-time-ms"])))),
+                border: true
+            },
+
             // Best Lap
-            { value: formatLapTime(bestLapInfo["lap-time-ms"]) },
-            { value: formatSectorTime(bestLapInfo["s1-time-ms"]) },
-            { value: formatSectorTime(bestLapInfo["s2-time-ms"]) },
-            { value: formatSectorTime(bestLapInfo["s3-time-ms"]), border: true },
+            {
+                value: this.createMultiLineCell(formatLapTime(bestLapInfo["lap-time-ms"]),
+                    ((isPlayer) ? ('---') :
+                    (formatDelta(bestLapInfo["lap-time-ms-player"] - bestLapInfo["lap-time-ms"])))),
+                border: false
+            },
+            {
+                value: this.createMultiLineCell(formatSectorTime(bestLapInfo["s1-time-ms"]),
+                    ((isPlayer) ? ('---') :
+                    (formatDelta(bestLapInfo["s1-time-ms-player"] - bestLapInfo["s1-time-ms"])))),
+                border: false
+            },
+            {
+                value: this.createMultiLineCell(formatSectorTime(bestLapInfo["s2-time-ms"]),
+                    ((isPlayer) ? ('---') :
+                    (formatDelta(bestLapInfo["s2-time-ms-player"] - bestLapInfo["s2-time-ms"])))),
+                border: false
+            },
+            {
+                value: this.createMultiLineCell(formatSectorTime(bestLapInfo["s3-time-ms"]),
+                    ((isPlayer) ? ('---') :
+                    (formatDelta(bestLapInfo["s3-time-ms-player"] - bestLapInfo["s3-time-ms"])))),
+                border: true
+            },
         ];
     }
 
@@ -96,14 +155,14 @@ class EngViewRaceTableRow {
         const predictionLap = 1;
         return [
             { value: this.createIconTextCell(tyreIcon, agePitInfoStr)},
-            { value: this.createTyreWearCell("cur", predictionLap) },
-            { value: this.createTyreWearCell(formatFloatWithTwoDecimals(currTyreWearInfo["front-left-wear"]) + '%',
+            { value: this.createMultiLineCell("cur", predictionLap) },
+            { value: this.createMultiLineCell(formatFloatWithTwoDecimals(currTyreWearInfo["front-left-wear"]) + '%',
                 formatFloatWithTwoDecimals(predictedTyreWearInfo["front-left-wear"]) + '%') },
-            { value: this.createTyreWearCell(formatFloatWithTwoDecimals(currTyreWearInfo["front-right-wear"]) + '%',
+            { value: this.createMultiLineCell(formatFloatWithTwoDecimals(currTyreWearInfo["front-right-wear"]) + '%',
                 formatFloatWithTwoDecimals(predictedTyreWearInfo["front-right-wear"]) + '%') },
-            { value: this.createTyreWearCell(formatFloatWithTwoDecimals(currTyreWearInfo["rear-left-wear"]) + '%',
+            { value: this.createMultiLineCell(formatFloatWithTwoDecimals(currTyreWearInfo["rear-left-wear"]) + '%',
                 formatFloatWithTwoDecimals(predictedTyreWearInfo["rear-left-wear"]) + '%') },
-            { value: this.createTyreWearCell(formatFloatWithTwoDecimals(currTyreWearInfo["rear-right-wear"]) + '%',
+            { value: this.createMultiLineCell(formatFloatWithTwoDecimals(currTyreWearInfo["rear-right-wear"]) + '%',
                 formatFloatWithTwoDecimals(predictedTyreWearInfo["rear-right-wear"]) + '%'), border: true }
         ];
     }
@@ -171,13 +230,13 @@ class EngViewRaceTable {
         this.rows.clear();
     }
 
-    update(drivers) {
+    update(drivers, isSpectating) {
         // Clear the existing table body
         this.clear();
 
         // Repopulate the table with the new driver data
         drivers.forEach(driver => {
-            const row = new EngViewRaceTableRow(driver, this.iconCache);
+            const row = new EngViewRaceTableRow(driver, isSpectating, this.iconCache);
             this.rows.set(driver.position, row);
             this.tableBody.appendChild(row.element);
         });
@@ -199,6 +258,8 @@ class EngViewRaceStatus {
         this.currentLapElement = document.getElementById('currentLap');
         this.scCountElement = document.getElementById('scCount');
         this.vscCountElement = document.getElementById('vscCount');
+        this.trackTempElement = document.getElementById('trackTemp');
+        this.airTempElement = document.getElementById('airTemp');
         this.predictionLapInput = document.getElementById('predictionLap');
 
         this.predictionLapInput.addEventListener('input', (e) => {
@@ -211,12 +272,29 @@ class EngViewRaceStatus {
         });
     }
 
+    #getSCStatusString(scStatus) {
+        switch(scStatus) {
+            case "NO_SAFETY_CAR":
+                return "Racing";
+            case "FULL_SAFETY_CAR":
+                return "Safety Car";
+            case "VIRTUAL_SAFETY_CAR":
+                return "VSC";
+            case "FORMATION_LAP":
+                return "Form. Lap";
+            default:
+                return "---";
+        }
+    }
+
     update(data) {
         this.raceTimeElement.textContent = formatSessionTime(data["session-duration"]);
-        this.raceStatusElement.textContent = data["safety-car-status"];
+        this.raceStatusElement.textContent = this.#getSCStatusString(data["safety-car-status"]);
         this.currentLapElement.textContent = `${data["current-lap"]}/${data["total-laps"]}`;
         this.scCountElement.textContent = data["num-sc"];
         this.vscCountElement.textContent = data["num-vsc"];
+        this.trackTempElement.textContent = data["track-temperature"] + ' °C';
+        this.airTempElement.textContent = data["air-temperature"] + ' °C';
     }
 }
 
@@ -236,7 +314,7 @@ class EngViewWeatherTable {
         // Create time and probability row
         const timeRow = document.createElement('tr');
         timeRow.innerHTML = weatherData
-            .map(w => `<td>${w["time-offset"]} (${w["rain-probability"]}%)</td>`)
+            .map(w => `<td>+${w["time-offset"]}m (${w["rain-probability"]}%)</td>`)
             .join('');
 
         // Clear and update table
@@ -297,8 +375,9 @@ socketio.on('connect', function () {
 socketio.on('race-table-update', function (data) {
 
     const tableEntries = data["table-entries"];
+    const isSpectating = data["is-spectating"];
     if (tableEntries) {
-        raceTable.update(tableEntries);
+        raceTable.update(tableEntries, isSpectating);
     }
     raceStatus.update(data);
     weatherTable.update(data["weather-forecast-samples"]);

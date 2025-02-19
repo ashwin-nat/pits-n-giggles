@@ -50,9 +50,11 @@
           <div id="weather-predictions" class="weather-forecast">
             <!-- Populated by JavaScript -->
           </div>
+          {% if live_data_mode %}
           <button id="eng-view-btn" class="settings-button" onclick="window.location.href='/eng-view';" data-bs-toggle="tooltip" data-bs-title="Switch to race engineer view">
-            <i class="bi bi-wrench-adjustable"></i>
+              <i class="bi bi-wrench-adjustable"></i>
           </button>
+          {% endif %}
           <button id="race-stats-btn" class="settings-button" data-bs-toggle="tooltip" data-bs-title="Show Race Stats">
             🏁
           </button>

@@ -137,15 +137,33 @@ class RaceInfoUpdate:
 
         # Supporting only single player entry, split screen unsupported. player_entry should've been found by now
         if player_entry:
+            player_last_lap = player_entry["lap-info"]["last-lap"]
+            player_best_lap = player_entry["lap-info"]["best-lap"]
             for table_entry in table_entries_json:
                 # Update last lap time for player in every object
                 if table_entry["driver-info"]["index"] != player_entry["driver-info"]["index"]:
-                    # Fill the player time fields from the identified player_entry object
-                    table_entry["lap-info"]["last-lap"]["lap-time-ms-player"] = player_entry["lap-info"]["last-lap"]["lap-time-ms"]
-                    table_entry["lap-info"]["best-lap"]["lap-time-ms-player"] = player_entry["lap-info"]["best-lap"]["lap-time-ms"]
+                    # Current entry is NOT the player entry
+                    table_entry["lap-info"]["last-lap"]["lap-time-ms-player"] = player_last_lap["lap-time-ms"]
+                    table_entry["lap-info"]["last-lap"]["s1-time-ms-player"] = player_last_lap["s1-time-ms"]
+                    table_entry["lap-info"]["last-lap"]["s2-time-ms-player"] = player_last_lap["s2-time-ms"]
+                    table_entry["lap-info"]["last-lap"]["s3-time-ms-player"] = player_last_lap["s3-time-ms"]
+
+                    table_entry["lap-info"]["best-lap"]["lap-time-ms-player"] = player_best_lap["lap-time-ms"]
+                    table_entry["lap-info"]["best-lap"]["s1-time-ms-player"] = player_best_lap["s1-time-ms"]
+                    table_entry["lap-info"]["best-lap"]["s2-time-ms-player"] = player_best_lap["s2-time-ms"]
+                    table_entry["lap-info"]["best-lap"]["s3-time-ms-player"] = player_best_lap["s3-time-ms"]
                 else:
+                    # Current entry is the player entry
                     table_entry["lap-info"]["last-lap"]["lap-time-ms-player"] = table_entry["lap-info"]["last-lap"]["lap-time-ms"]
+                    table_entry["lap-info"]["last-lap"]["s1-time-ms-player"] = table_entry["lap-info"]["last-lap"]["s1-time-ms"]
+                    table_entry["lap-info"]["last-lap"]["s2-time-ms-player"] = table_entry["lap-info"]["last-lap"]["s2-time-ms"]
+                    table_entry["lap-info"]["last-lap"]["s3-time-ms-player"] = table_entry["lap-info"]["last-lap"]["s3-time-ms"]
+
                     table_entry["lap-info"]["best-lap"]["lap-time-ms-player"] = table_entry["lap-info"]["best-lap"]["lap-time-ms"]
+                    table_entry["lap-info"]["best-lap"]["s1-time-ms-player"] = table_entry["lap-info"]["best-lap"]["s1-time-ms"]
+                    table_entry["lap-info"]["best-lap"]["s2-time-ms-player"] = table_entry["lap-info"]["best-lap"]["s2-time-ms"]
+                    table_entry["lap-info"]["best-lap"]["s3-time-ms-player"] = table_entry["lap-info"]["best-lap"]["s3-time-ms"]
+
 class OverallRaceStatsRsp:
     """
     Overall race stats response class.
@@ -595,6 +613,9 @@ class DriversListRsp:
                     "last-lap" : {
                         "lap-time-ms" : data_per_driver.m_last_lap_ms,
                         "lap-time-ms-player" : 0,
+                        "s1-time-ms-player" : 0,
+                        "s2-time-ms-player" : 0,
+                        "s3-time-ms-player" : 0,
                         "sector-status" : data_per_driver.getSectorStatus(
                             self.m_fastest_s1_ms, self.m_fastest_s2_ms, self.m_fastest_s3_ms, for_best_lap=False,
                             session_type_str=session_type),
@@ -605,6 +626,9 @@ class DriversListRsp:
                     "best-lap" : {
                         "lap-time-ms" : data_per_driver.m_best_lap_ms,
                         "lap-time-ms-player" : 0,
+                        "s1-time-ms-player" : 0,
+                        "s2-time-ms-player" : 0,
+                        "s3-time-ms-player" : 0,
                         "sector-status" : data_per_driver.getSectorStatus(
                             self.m_fastest_s1_ms, self.m_fastest_s2_ms, self.m_fastest_s3_ms, for_best_lap=True,
                             session_type_str=session_type),
@@ -669,8 +693,6 @@ class DriversListRsp:
             "session-history": session_history,
             "tt-data": self.m_time_trial_packet.toJSON() if self.m_time_trial_packet else None,
         }
-
-
 
     def getCurrentLap(self) -> Optional[int]:
         """Get current lap.
