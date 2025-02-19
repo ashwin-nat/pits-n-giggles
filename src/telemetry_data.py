@@ -2009,7 +2009,7 @@ def processSessionStarted() -> None:
     """
     Reset the data structures when SESSION_STARTED has been received
     """
-    clearDataStructures()
+    clearDataStructures("session started")
     with _driver_data_lock.gen_wlock():
         _driver_data.setRaceOngoing()
 
@@ -2026,7 +2026,7 @@ def processSessionUpdate(packet: PacketSessionData) -> bool:
     with _globals_lock.gen_wlock():
         should_clear = _globals.processSessionUpdate(packet)
     if should_clear:
-        clearDataStructures()
+        clearDataStructures("session update")
     return should_clear
 
 def processLapDataUpdate(packet: PacketLapData) -> None:
@@ -2387,14 +2387,19 @@ def processStreamUpdateButtonPress(custom_marker_obj: CustomMarkerEntry) -> None
         m_message_type=ITCMessage.MessageType.CUSTOM_MARKER,
         m_message=custom_marker_obj))
 
-def clearDataStructures() -> None:
+def clearDataStructures(reason: str) -> None:
     """Clears the data structures
+
+    Args:
+        reason (str): Why the data structures should be cleared
+
     """
     with _driver_data_lock.gen_wlock():
         _driver_data.clear()
     with _globals_lock.gen_wlock():
         _globals.clear()
     _custom_markers_history.clear()
+    png_logger.debug(f"Clearing all data structures. Reason: f{reason}")
 
 def getTyreDeltaNotificationMessages() -> List[TyreDeltaMessage]:
     """Returns a list of tyre delta notification messages
