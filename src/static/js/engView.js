@@ -41,7 +41,7 @@ class EngViewRaceTableRow {
         const driverInfo = this.driver["driver-info"];
         return [
             {value: driverInfo["position"], border: true},
-            {value: driverInfo["name"], border: true},
+            {value: this.createMultiLineCell(driverInfo["name"], driverInfo["team"]), border: true},
         ];
     }
 
@@ -198,6 +198,13 @@ class EngViewRaceTableRow {
     }
 
     render() {
+
+        // Add the player-row class if this is the player's row
+        if (this.driver["driver-info"]["is-player"]) {
+            this.element.classList.add('player-row');
+        } else {
+            this.element.classList.remove('player-row');
+        }
         const cells = [
             ...this.getDriverInfoCells(),
             ...this.getDeltaInfoCells(),
@@ -313,7 +320,16 @@ class EngViewRaceStatus {
         this.predictionLapInput.max = this.totalLaps;
         this.raceTimeElement.textContent = formatSessionTime(data["session-duration"]);
         this.raceStatusElement.textContent = this.#getSCStatusString(data["safety-car-status"]);
-        this.currentLapElement.textContent = `${data["current-lap"]}/${this.totalLaps}`;
+
+        let lapText = "";
+        if (data['current-lap']) {
+            lapText += incomingData['current-lap'].toString();
+          }
+          if (data['event-type'] != "Time Trial" && ((data['total-laps'] ?? 0) > 1)) {
+            lapText += "/" + data['total-laps'].toString();
+          }
+        this.currentLapElement.textContent = (lapText === "") ? ("---") : (lapText);
+
         this.scCountElement.textContent = data["num-sc"];
         this.vscCountElement.textContent = data["num-vsc"];
         this.trackTempElement.textContent = data["track-temperature"] + ' °C';
@@ -389,6 +405,10 @@ socketio = io.connect('http://' + location.hostname + ':' + location.port, {
     timeout: 20000                // Connection timeout before giving up (in ms)
 });
 console.log("SocketIO initialized");
+
+// Init tooltips
+const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 
 function clearSocketIoRequestTimeout() {
     awaitingResponse = false;
