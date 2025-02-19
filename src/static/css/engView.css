@@ -169,3 +169,17 @@ input[type="number"]::-webkit-outer-spin-button {
     opacity: 1;
     background: #222;
 }
+
+/* Player row highlight */
+.eng-view-table tbody tr.player-row td {
+    border-top: 2px solid #ffd700 !important;
+    border-bottom: 2px solid #ffd700 !important;
+}
+
+.eng-view-table tbody tr.player-row td:first-child {
+    border-left: 2px solid #ffd700 !important;
+}
+
+.eng-view-table tbody tr.player-row td:last-child {
+    border-right: 2px solid #ffd700 !important;
+}
