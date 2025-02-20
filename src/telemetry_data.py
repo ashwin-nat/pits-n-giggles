@@ -33,7 +33,7 @@ from lib.f1_types import PacketSessionData, PacketLapData, LapData, CarTelemetry
     PacketFinalClassificationData, PacketCarDamageData, PacketSessionHistoryData, ResultStatus, PacketTyreSetsData, \
     F1Utils, WeatherForecastSample, CarDamageData, CarStatusData, TrackID, ActualTyreCompound, VisualTyreCompound, \
     SafetyCarType, TelemetrySetting, PacketMotionData, CarMotionData, PacketCarSetupData, CarSetupData, ResultStatus, \
-    PacketTimeTrialData
+    PacketTimeTrialData, LapHistoryData
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.overtake_analyzer import OvertakeRecord
 from lib.collisions_analyzer import CollisionRecord, CollisionAnalyzer, CollisionAnalyzerMode
@@ -482,14 +482,13 @@ class DataPerDriver:
         self.m_delta_to_leader: Optional[int] = None
         self.m_ers_perc: Optional[float] = None
         self.m_best_lap_ms: Optional[str] = None
-        self.m_best_lap_s1_ms: Optional[int] = None
-        self.m_best_lap_s2_ms: Optional[int] = None
-        self.m_best_lap_s3_ms: Optional[int] = None
+        self.m_best_lap_obj: Optional[LapHistoryData] = None
         self.m_best_lap_tyre: Optional[VisualTyreCompound] = None
+        self.m_pb_s1_ms: Optional[int] = None
+        self.m_pb_s2_ms: Optional[int] = None
+        self.m_pb_s3_ms: Optional[int] = None
         self.m_last_lap_ms: Optional[int] = None
-        self.m_last_lap_s1_ms: Optional[int] = None
-        self.m_last_lap_s2_ms: Optional[int] = None
-        self.m_last_lap_s3_ms: Optional[int] = None
+        self.m_last_lap_obj: Optional[LapHistoryData] = None
         self.m_tyre_wear: Optional[TyreWearPerLap] = None
         self.m_is_player: Optional[bool] = None
         self.m_current_lap: Optional[int] = None
@@ -1226,6 +1225,7 @@ class DataPerDriver:
                         sector_3_best_ms: Optional[int],
                         for_best_lap: bool,
                         session_type_str: str) -> List[Optional[int]]:
+        # sourcery skip: merge-duplicate-blocks
         """
         Determine sector status for either best or last lap.
 
@@ -1245,63 +1245,40 @@ class DataPerDriver:
             F1Utils.SECTOR_STATUS_NA
         ]
 
-        # Validate input data
-        if (not self.m_packet_session_history or
+        # Validate input/reference data
+        if (not self.m_pb_s1_ms or
+            not self.m_pb_s2_ms or
+            not self.m_pb_s3_ms or
             not sector_1_best_ms or
             not sector_2_best_ms or
             not sector_3_best_ms):
             return default_val
 
-        # Validate lap data
-        if ((for_best_lap and not self.m_best_lap_ms) or
-            (not for_best_lap and not self.m_last_lap_ms)):
+        # Validate driver's data. For best/last lap, all relevant fields must be present
+        if for_best_lap and not self.m_best_lap_obj:
+            return default_val
+        elif not self.m_last_lap_obj:
             return default_val
 
-        # Select lap details
-        if for_best_lap:
-            lap_num = self.m_packet_session_history.m_bestLapTimeLapNum
-        elif self.m_result_status != ResultStatus.ACTIVE:
-            lap_num = self.m_current_lap
-        else:
-            lap_num = self.m_current_lap - 1
+        # Select lap object
+        lap_obj = self.m_best_lap_obj if for_best_lap else self.m_last_lap_obj
+        assert lap_obj
 
-        # Validate lap number. Can have missing laps if red flag
-        if session_type_str.lower() not in ["qualifying", "practice", "shootout", "time trial"] and \
-            not (0 <= lap_num <= len(self.m_packet_session_history.m_lapHistoryData)):
-            return default_val
-
-        # Get lap data
-        best_sector_3_lap = self.m_packet_session_history.m_bestSector3LapNum
-        best_sector_2_lap = self.m_packet_session_history.m_bestSector2LapNum
-        best_sector_1_lap = self.m_packet_session_history.m_bestSector1LapNum
-        lap_obj = None
-        if for_best_lap:
-            lap_obj = self.m_packet_session_history.m_lapHistoryData[lap_num-1]
-        else:
-            # last lap may be full of zeroes, skip that
-            for curr_lap_obj in reversed(self.m_packet_session_history.m_lapHistoryData):
-                # find the first non zero lap, stupid game and its bugs
-                if curr_lap_obj.m_lapTimeInMS == 0:
-                    continue
-                lap_obj = curr_lap_obj
-                break
-
-        # lap_obj may be not present, in case of FP or quali, return default val
         return [
             self._get_sector_status(
-                sector_time=lap_obj.m_sector1TimeInMS,
+                sector_time=lap_obj.s1TimeMS,
                 sector_best_ms=sector_1_best_ms,
-                is_best_sector_lap=(lap_num == best_sector_1_lap),
+                is_personal_best_sector_lap=(lap_obj.s1TimeMS == self.m_pb_s1_ms),
                 sector_valid_flag=lap_obj.isSector1Valid()),
             self._get_sector_status(
-                sector_time=lap_obj.m_sector2TimeInMS,
+                sector_time=lap_obj.s2TimeMS,
                 sector_best_ms=sector_2_best_ms,
-                is_best_sector_lap=(lap_num == best_sector_2_lap),
+                is_personal_best_sector_lap=(lap_obj.s2TimeMS == self.m_pb_s2_ms),
                 sector_valid_flag=lap_obj.isSector2Valid()),
             self._get_sector_status(
-                sector_time=lap_obj.m_sector3TimeInMS,
+                sector_time=lap_obj.s3TimeMS,
                 sector_best_ms=sector_3_best_ms,
-                is_best_sector_lap=(lap_num == best_sector_3_lap),
+                is_personal_best_sector_lap=(lap_obj.s3TimeMS == self.m_pb_s3_ms),
                 sector_valid_flag=lap_obj.isSector3Valid()),
         ] if lap_obj else default_val
 
@@ -1309,7 +1286,7 @@ class DataPerDriver:
         self,
         sector_time: int,
         sector_best_ms: int,
-        is_best_sector_lap: bool,
+        is_personal_best_sector_lap: bool,
         sector_valid_flag: bool
     ) -> int:
         """
@@ -1318,7 +1295,7 @@ class DataPerDriver:
         Args:
             sector_time: Time of the current sector
             sector_best_ms: Best time for the sector
-            is_best_sector_lap: Whether this is the best lap for this sector
+            is_personal_best_sector_lap: Whether this is the best lap for this sector
             sector_valid_flag: Whether the sector is valid
 
         Returns:
@@ -1327,7 +1304,7 @@ class DataPerDriver:
         if sector_time == sector_best_ms:
             # Session best
             return F1Utils.SECTOR_STATUS_PURPLE
-        elif is_best_sector_lap:
+        elif is_personal_best_sector_lap:
             # Personal best
             return F1Utils.SECTOR_STATUS_GREEN
         elif not sector_valid_flag:
@@ -1785,29 +1762,28 @@ class DriverData:
         if self._shouldRecomputeFastestLap(obj_to_be_updated):
             self._recomputeFastestLap()
 
-        # Update fastest sector times
+        # Update fastest sector times and personal best sector times
         if (packet.m_bestSector1LapNum > 0) and (packet.m_bestSector1LapNum <= packet.m_numLaps):
-            self.m_fastest_s1_ms = self._safeMin(packet.m_lapHistoryData[packet.m_bestSector1LapNum-1].m_sector1TimeInMS, self.m_fastest_s1_ms)
+            obj_to_be_updated.m_pb_s1_ms = packet.m_lapHistoryData[packet.m_bestSector1LapNum-1].s1TimeMS
+            self.m_fastest_s1_ms = self._safeMin(obj_to_be_updated.m_pb_s1_ms, self.m_fastest_s1_ms)
         if (packet.m_bestSector2LapNum > 0) and (packet.m_bestSector2LapNum <= packet.m_numLaps):
-            self.m_fastest_s2_ms = self._safeMin(packet.m_lapHistoryData[packet.m_bestSector2LapNum-1].m_sector2TimeInMS, self.m_fastest_s2_ms)
+            obj_to_be_updated.m_pb_s2_ms = packet.m_lapHistoryData[packet.m_bestSector2LapNum-1].s2TimeMS
+            self.m_fastest_s2_ms = self._safeMin(obj_to_be_updated.m_pb_s2_ms, self.m_fastest_s2_ms)
         if (packet.m_bestSector3LapNum > 0) and (packet.m_bestSector3LapNum <= packet.m_numLaps):
-            self.m_fastest_s3_ms = self._safeMin(packet.m_lapHistoryData[packet.m_bestSector3LapNum-1].m_sector3TimeInMS, self.m_fastest_s3_ms)
+            obj_to_be_updated.m_pb_s3_ms = packet.m_lapHistoryData[packet.m_bestSector3LapNum-1].s3TimeMS
+            self.m_fastest_s3_ms = self._safeMin(obj_to_be_updated.m_pb_s3_ms, self.m_fastest_s3_ms)
 
         # Update last lap sector time
         last_lap_obj = packet.getLastLapData()
         if last_lap_obj:
             obj_to_be_updated.m_last_lap_ms = last_lap_obj.m_lapTimeInMS
-            obj_to_be_updated.m_last_lap_s1_ms = last_lap_obj.m_sector1TimeInMS
-            obj_to_be_updated.m_last_lap_s2_ms = last_lap_obj.m_sector2TimeInMS
-            obj_to_be_updated.m_last_lap_s3_ms = last_lap_obj.m_sector3TimeInMS
+            obj_to_be_updated.m_last_lap_obj = last_lap_obj
 
         # Update best lap sector time
         best_lap_obj = packet.getBestLapData()
         if best_lap_obj:
             obj_to_be_updated.m_best_lap_ms = best_lap_obj.m_lapTimeInMS
-            obj_to_be_updated.m_best_lap_s1_ms = best_lap_obj.m_sector1TimeInMS
-            obj_to_be_updated.m_best_lap_s2_ms = best_lap_obj.m_sector2TimeInMS
-            obj_to_be_updated.m_best_lap_s3_ms = best_lap_obj.m_sector3TimeInMS
+            obj_to_be_updated.m_best_lap_obj = best_lap_obj
 
     def processTyreSetsUpdate(self, packet: PacketTyreSetsData) -> None:
         """Process the tyre sets update packet and update the necessary fields
