@@ -507,7 +507,10 @@ class PacketSessionHistoryData:
             LapHistoryData: The best lap data. May be None if not found
         """
 
-        return self.m_lapHistoryData[self.m_bestLapTimeLapNum-1] if self.m_bestLapTimeLapNum else None
+        # Index is lap number - 1, ensure it is within valid bounds
+        if self.m_bestLapTimeLapNum and 1 <= self.m_bestLapTimeLapNum <= len(self.m_lapHistoryData):
+            return self.m_lapHistoryData[self.m_bestLapTimeLapNum - 1]
+        return None
 
     def __eq__(self, other: "PacketSessionHistoryData") -> bool:
         """
