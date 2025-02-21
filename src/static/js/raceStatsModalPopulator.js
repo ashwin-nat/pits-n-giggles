@@ -404,7 +404,6 @@ class RaceStatsModalPopulator {
     }
 
     plotGraphPositionHistory(canvas, datasets, xAxisLabel, yAxisLabel) {
-        const xData = datasets[0].data.map(entry => entry.x);
         const ctx = canvas.getContext('2d');
 
         // Define default colors to cycle through if no custom color is provided
@@ -433,44 +432,54 @@ class RaceStatsModalPopulator {
             'rgba(72, 61, 139, 1)'     // Dark Slate Blue
         ];
 
+        // Find the maximum x value across all datasets
+        const maxX = Math.max(...datasets.flatMap(dataset => dataset.data.map(entry => entry.x)));
 
         // Define a custom plugin for labeling at the end of the line
         const endLabelPlugin = {
             id: 'endLabelPlugin',
             afterDatasetsDraw(chart, args, plugins) {
-                const { ctx, data, chartArea: { right } } = chart;
+                const { ctx, data } = chart;
                 ctx.save();
 
                 data.datasets.forEach((dataset, index) => {
                     const meta = chart.getDatasetMeta(index);
-                    const maxLength = meta.data.length;
+                    if (!meta.hidden && dataset.data.length > 0) {
+                        // Use the last actual data point for label positioning
+                        const lastPoint = meta.data[dataset.data.length - 1];
 
-                    // Use the custom line color for the label text or default color
-                    ctx.fillStyle = dataset.borderColor || defaultColors[index % defaultColors.length];
-
-                    ctx.font = 'bold 16px sans-serif';
-                    ctx.fillText(dataset.label, right + 10, meta.data[maxLength - 1].y);
-                    ctx.textAlign = 'left';
-                    ctx.textBaseline = 'middle';
+                        // Only draw label if we have valid coordinates
+                        if (lastPoint && typeof lastPoint.y === 'number') {
+                            // Use the custom line color for the label text or default color
+                            ctx.fillStyle = dataset.borderColor || defaultColors[index % defaultColors.length];
+                            ctx.font = 'bold 16px sans-serif';
+                            ctx.textAlign = 'left';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(dataset.label, lastPoint.x + 10, lastPoint.y);
+                        }
+                    }
                 });
 
                 ctx.restore();
             }
         };
 
+        // Process datasets to maintain individual lengths
+        const processedDatasets = datasets.map((dataset, index) => ({
+            ...dataset,
+            data: dataset.data.map(entry => ({x: entry.x, y: entry.y})), // Preserve x,y format
+            label: dataset.label,
+            borderColor: dataset.borderColor || defaultColors[index % defaultColors.length],
+            backgroundColor: dataset.backgroundColor || defaultColors[index % defaultColors.length].replace('1)', '0.2)'),
+            borderWidth: 2,
+            spanGaps: false, // Don't connect points across gaps
+        }));
+
         // Create the chart with the plugin included
         let myChart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: xData,
-                datasets: datasets.map((dataset, index) => ({
-                    ...dataset,
-                    data: dataset.data.map(entry => entry.y), // Use numerical values for chart
-                    label: dataset.label, // Update label
-                    borderColor: dataset.borderColor || defaultColors[index % defaultColors.length], // Select custom or default color
-                    backgroundColor: dataset.backgroundColor || defaultColors[index % defaultColors.length].replace('1)', '0.2)'), // Default transparent background color
-                    borderWidth: 2, // Default line width
-                }))
+                datasets: processedDatasets
             },
             options: {
                 scales: {
@@ -491,7 +500,8 @@ class RaceStatsModalPopulator {
                             color: 'rgba(255, 255, 255, 0.8)',
                             stepSize: 1,
                             precision: 0
-                        }
+                        },
+                        max: maxX // Set maximum x value
                     },
                     y: {
                         title: {
@@ -511,7 +521,7 @@ class RaceStatsModalPopulator {
                         ticks: {
                             color: 'rgba(255, 255, 255, 0.8)',
                             stepSize: 5,
-                            callback: function (value) {
+                            callback: function(value) {
                                 return value % 5 === 0 ? value : null;
                             }
                         },
@@ -522,51 +532,49 @@ class RaceStatsModalPopulator {
                     mode: 'nearest',
                     intersect: false
                 },
-                onHover: function (event, activeElements) {
+                onHover: function(event, activeElements) {
                     const chartArea = myChart.chartArea;
                     const mouseX = event.native.clientX;
                     const mouseY = event.native.clientY;
 
-                    // Check if the mouse is outside the chart area
-                    if (mouseX < chartArea.left || mouseX > chartArea.right || mouseY < chartArea.top || mouseY > chartArea.bottom) {
+                    if (mouseX < chartArea.left || mouseX > chartArea.right ||
+                        mouseY < chartArea.top || mouseY > chartArea.bottom) {
                         // Reset all lines when mouse leaves the chart area
                         myChart.data.datasets.forEach((dataset) => {
-                            dataset.borderWidth = 2; // Reset to default width
-                            dataset.borderColor = dataset.borderColor.replace('0.3)', '1)'); // Reset to full opacity
-                            dataset.shadowBlur = 0; // Remove shadow
+                            dataset.borderWidth = 2;
+                            dataset.borderColor = dataset.borderColor.replace('0.3)', '1)');
+                            dataset.shadowBlur = 0;
                         });
-                        myChart.update(); // Update the chart
-                        return; // Exit early if outside chart
+                        myChart.update();
+                        return;
                     }
 
                     const activeDatasetIndex = activeElements.length ? activeElements[0].datasetIndex : null;
 
                     myChart.data.datasets.forEach((dataset, index) => {
                         if (index === activeDatasetIndex) {
-                            // Highlight hovered line
                             dataset.borderWidth = 6;
                             dataset.borderColor = dataset.borderColor.replace('0.3)', '1)');
                             dataset.shadowBlur = 10;
                             dataset.shadowColor = 'rgba(0, 0, 0, 0.8)';
                         } else {
-                            // Dim non-hovered lines
                             dataset.borderWidth = 2;
                             dataset.borderColor = dataset.borderColor.replace('1)', '0.3)');
                             dataset.shadowBlur = 0;
                         }
                     });
 
-                    myChart.update(); // Update chart with new styles
+                    myChart.update();
                 },
                 plugins: {
                     legend: {
-                        display: false // Disable the legend
+                        display: false
                     }
                 },
                 layout: {
                     padding: {
                         top: 10,
-                        right: 75, // Increased to leave space for end labels
+                        right: 75,
                         bottom: 10,
                         left: 10
                     }
@@ -574,7 +582,7 @@ class RaceStatsModalPopulator {
                 responsive: true,
                 maintainAspectRatio: false,
             },
-            plugins: [endLabelPlugin] // Register the end label plugin
+            plugins: [endLabelPlugin]
         });
     }
 
