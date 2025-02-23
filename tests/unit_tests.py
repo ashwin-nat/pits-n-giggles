@@ -26,11 +26,13 @@ import cProfile
 import sys
 import random
 from colorama import init
+from typing import Set
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # pylint: disable=unused-import wrong-import-position
+# sourcery skip: dont-import-test-modules
 from tests_base import F1TelemetryUnitTestsBase, CustomTestResult
 from tests_pcap import FullPCapTests, TestF1PacketCaptureHeader
 from tests_overtake_analyzer import \
@@ -39,6 +41,16 @@ from tests_overtake_analyzer import \
     TestOvertakeAnalyzerListCsv, \
     TestOvertakeAnalyzerEmptyInput, \
     TestOvertakeAnalyzerInvalidData
+from tests_collision_analyzer import \
+    TestCollisionRecord, \
+    TestCollisionPairKey, \
+    TestCollisionAnalyzer
+from tests_fuel_recommender import \
+    TestFuelRemainingPerLap, \
+    TestFuelRateRecommender
+from tests_custom_markers import \
+    TestCustomMarkerEntry, \
+    TestCustomMarkersHistory
 from tests_race_analyzer import TestGetFastestTimesJson
 from tests_debouncer import TestMultiButtonDebouncer
 from tests_udp_forwarder import TestUDPForwarder
