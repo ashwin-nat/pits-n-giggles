@@ -209,6 +209,24 @@ class DataPerDriver:
             Copy of FinalClassificationData packet for the driver.
     """
 
+    def __repr__(self) -> str:
+        """Get the string representation of this object
+
+        Returns:
+            str: The string representation
+        """
+
+        return f"DataPerDriver({self.m_position}|{self.m_name}|{self.m_team})"
+
+    def __str__(self) -> str:
+        """Get the string representation of this object
+
+        Returns:
+            str: The string representation
+        """
+
+        return self.__repr__()
+
     class TyreSetInfo:
         """
         Class that models the data describing a tyre set.
@@ -1566,7 +1584,6 @@ class DriverData:
 
             # Update the position, time and other fields
             obj_to_be_updated.m_position = lap_data.m_carPosition
-            obj_to_be_updated.m_last_lap_ms = lap_data.m_lastLapTimeInMS
             obj_to_be_updated.m_delta_to_car_in_front = lap_data.m_deltaToCarInFrontInMS
             obj_to_be_updated.m_delta_to_leader = lap_data.m_deltaToRaceLeaderInMS
             obj_to_be_updated.m_penalties = self._getPenaltyString(lap_data.m_penalties,
