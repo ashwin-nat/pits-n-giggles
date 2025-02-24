@@ -328,8 +328,12 @@ class EngViewRaceStatus {
         this.trackTempElement = document.getElementById('trackTemp');
         this.airTempElement = document.getElementById('airTemp');
         this.predictionLapInput = document.getElementById('predictionLap');
+        this.predictionPitBtn = document.getElementById('predictionPitBtn');
+        this.predictionMidBtn = document.getElementById('predictionMidBtn');
+        this.predictionLastBtn = document.getElementById('predictionLastBtn');
         this.totalLaps = null;
         this.pitLap = null;
+        this.midLap = null;
 
         this.predictionLapInput.addEventListener('input', (e) => {
             let value = parseInt(e.target.value);
@@ -340,6 +344,30 @@ class EngViewRaceStatus {
                 console.warn('Invalid input: Out of range');
             }
         });
+
+        this.predictionPitBtn.addEventListener('click', () => {
+            g_engView_pitLapNum = this.pitLap;
+            this.#updatePredLapInputBox();
+        });
+
+        this.predictionMidBtn.addEventListener('click', () => {
+            g_engView_pitLapNum = this.midLap;
+            this.#updatePredLapInputBox();
+        });
+
+        this.predictionLastBtn.addEventListener('click', () => {
+            g_engView_pitLapNum = this.totalLaps;
+            this.#updatePredLapInputBox();
+        });
+
+        this.predictionPitBtn.disabled = true;
+        this.predictionMidBtn.disabled = true;
+        this.predictionLastBtn.disabled = true;
+    }
+
+    #updatePredLapInputBox() {
+        this.predictionLapInput.value = g_engView_pitLapNum;
+        console.log("Updated prediction element value", g_engView_pitLapNum);
     }
 
     #getSCStatusString(scStatus) {
@@ -364,14 +392,21 @@ class EngViewRaceStatus {
             // Set the initial prediction value
             g_engView_pitLapNum = data["total-laps"];
             shouldUpdatePred = true;
+            this.predictionLastBtn.disabled = false;
         }
 
         if (this.pitLap == null && data["player-pit-window"]) {
             // If the pit window becomes available
             g_engView_pitLapNum = data["player-pit-window"];
             shouldUpdatePred = true;
+            this.predictionPitBtn.disabled = false;
         }
         this.totalLaps = data["total-laps"];
+        if (data["current-lap"] !== null && this.totalLaps !== null && data["current-lap"] !== 0 && this.totalLaps !== 0) {
+            this.midLap = data["current-lap"] + Math.floor((data["total-laps"] - data["current-lap"]) / 2);
+            this.predictionMidBtn.disabled = false;
+        }
+
         this.pitLap = data["player-pit-window"];
 
         this.predictionLapInput.max = this.totalLaps;
@@ -393,8 +428,7 @@ class EngViewRaceStatus {
         this.airTempElement.textContent = data["air-temperature"] + ' °C';
 
         if (shouldUpdatePred) {
-            this.predictionLapInput.value = g_engView_pitLapNum;
-            console.log("Updated prediction element value", g_engView_pitLapNum);
+            this.#updatePredLapInputBox();
         }
     }
 }

@@ -57,9 +57,22 @@
                                 <label>Air Temp</label>
                                 <span id="airTemp"></span>
                             </div>
-                            <div class="eng-view-global-stat">
+                            <div class="eng-view-global-stat border border-secondary rounded p-2">
                                 <label>Prediction Lap</label>
-                                <input type="number" id="predictionLap" class="form-control form-control-sm bg-dark text-light border-secondary" value="1" min="1" max="80">
+                                <div class="d-flex align-items-center">
+                                    <input type="number" id="predictionLap" class="form-control form-control-sm bg-dark text-light border-secondary" value="1" min="1" max="80">
+                                    <div class="ms-2 d-flex">
+                                        <span class="d-inline-block" tabindex="0" data-bs-toggle="tooltip" data-bs-title="Set prediction to pit lap (if available)">
+                                            <button id="predictionPitBtn" class="btn btn-sm btn-secondary me-1">Pit</button>
+                                        </span>
+                                        <span class="d-inline-block" tabindex="0" data-bs-toggle="tooltip" data-bs-title="Set prediction to mid-point lap">
+                                            <button id="predictionMidBtn" class="btn btn-sm btn-secondary">Mid</button>
+                                        </span>
+                                        <span class="d-inline-block" tabindex="0" data-bs-toggle="tooltip" data-bs-title="Set prediction to last lap">
+                                            <button id="predictionLastBtn" class="btn btn-sm btn-secondary">Last</button>
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
