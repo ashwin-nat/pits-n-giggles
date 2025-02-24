@@ -1,21 +1,33 @@
 class ModalManager {
-  constructor() {
-    this.driverModal = new bootstrap.Modal(document.getElementById('driverModal'));
-    this.settingsModal = new bootstrap.Modal(document.getElementById('settingsModal'));
-    this.raceStatsModal = new bootstrap.Modal(document.getElementById('raceStatsModal'));
+  constructor(driverModal=true, settingsModal=true, raceStatsModal=true) {
+    const modalElement = document.getElementById('driverModal');
+    console.log("modalElement", modalElement);
+    this.driverModal = (driverModal) ? (new bootstrap.Modal(modalElement)) : (null);
+    this.settingsModal = (settingsModal) ? (new bootstrap.Modal(document.getElementById('settingsModal'))) : (null);
+    this.raceStatsModal = (raceStatsModal) ? (new bootstrap.Modal(document.getElementById('raceStatsModal'))) : (null);
     this.iconCache = new IconCache();
     this.setupEventListeners();
+    console.log("Modal manager initialized with driverModal:", driverModal,
+      "settingsModal:", settingsModal, "raceStatsModal:", raceStatsModal);
   }
 
   setupEventListeners() {
-    document.getElementById('settings-btn').addEventListener('click', () => this.openSettingsModal());
-    document.getElementById('race-stats-btn').addEventListener('click', () => {
-      socketio.emit('race-info', { 'message': 'dummy' });
-    });
-    document.getElementById('saveSettings').addEventListener('click', () => this.saveSettings());
+    if (this.settingsModal) {
+      document.getElementById('settings-btn').addEventListener('click', () => this.openSettingsModal());
+      document.getElementById('saveSettings').addEventListener('click', () => this.saveSettings());
+    }
+    if (this.raceStatsModal) {
+      document.getElementById('race-stats-btn').addEventListener('click', () => {
+        socketio.emit('race-info', { 'message': 'dummy' });
+      });
+    }
   }
 
   openDriverModal(data) {
+    if (!this.driverModal) {
+      console.error("Driver modal not initialized");
+      return;
+    }
     const modalTitle = document.querySelector('#driverModal .driver-modal-header .modal-title');
     const modalBody = document.querySelector('#driverModal .modal-body');
     const refreshButton = document.getElementById('refreshButtonDriver');
@@ -63,6 +75,11 @@ class ModalManager {
   }
 
   openSettingsModal() {
+
+    if (!this.settingsModal) {
+      console.error("Settings modal not initialized");
+      return;
+    }
 
     // Populate the fields with the default values
     document.getElementById("carsToShow").value = g_pref_numAdjacentCars;
@@ -180,6 +197,11 @@ class ModalManager {
 
   openRaceStatsModal(data) {
 
+    if (!this.raceStatsModal) {
+      this.console.error("Race stats modal not initialized");
+      return;
+    }
+
     const modalTitle = document.querySelector('#raceStatsModal .race-stats-modal-header .modal-title');
     const modalBody = document.querySelector('#raceStatsModal .modal-body');
     const refreshButton = document.getElementById('refreshButtonRace');
@@ -225,6 +247,3 @@ class ModalManager {
       });
   }
 }
-
-// Export for use in other modules
-window.modalManager = new ModalManager();
