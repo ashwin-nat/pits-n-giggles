@@ -25,6 +25,7 @@ class TimeTrialTtDataPopulator {
     populate(ttPacket, gameYear) {
 
         if (gameYear < 24) {
+            this.clearCells();
             this.showUnsupportedDiv();
             return;
         }
