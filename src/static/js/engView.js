@@ -410,7 +410,7 @@ class EngViewRaceStatus {
         this.pitLap = data["player-pit-window"];
 
         this.predictionLapInput.max = this.totalLaps;
-        this.raceTimeElement.textContent = formatSessionTime(data["session-duration"]);
+        this.raceTimeElement.textContent = formatSessionTime(data["session-duration-so-far"]);
         this.raceStatusElement.textContent = this.#getSCStatusString(data["safety-car-status"]);
 
         let lapText = "";
