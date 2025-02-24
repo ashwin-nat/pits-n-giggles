@@ -22,13 +22,17 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-import logging
+from src.png_logger import getLogger
 from typing import Dict, Any, Optional, List
 from lib.f1_types import F1Utils, LapHistoryData, CarStatusData, VisualTyreCompound
 import lib.race_analyzer as RaceAnalyzer
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 import src.telemetry_data as TelData
 from src.telemetry_handler import getOvertakeJSON, GetOvertakesStatus
+
+# -------------------------------------- GLOBALS -----------------------------------------------------------------------
+
+png_logger = getLogger()
 
 # ------------------------- UTILITIES ----------------------------------------------------------------------------------
 
@@ -188,7 +192,7 @@ class OverallRaceStatsRsp:
             try:
                 self.m_rsp["records"]["fastest"] = RaceAnalyzer.getFastestTimesJson(self.m_rsp)
             except ValueError:
-                logging.debug('Failed to get fastest times JSON')
+                png_logger.debug('Failed to get fastest times JSON')
                 self.m_rsp["records"]["fastest"] = None
 
         if "tyre-stats" not in self.m_rsp["records"]:
@@ -688,6 +692,10 @@ class DriversListRsp:
             (driver for driver in self.m_final_list if driver.m_is_player),
             None
         )
+
+        if not player_obj:
+            png_logger.debug("Player not found in TT mode")
+            return None
 
         # Insert top speed into the lap-history-data records
         if player_obj.m_packet_session_history:
