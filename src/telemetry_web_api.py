@@ -99,7 +99,8 @@ class RaceInfoUpdate:
             "race-ended" : bool(self.m_globals.m_packet_final_classification),
             "is-spectating" : _getValueOrDefaultValue(self.m_globals.m_is_spectating, False),
             "session-type"  : _getValueOrDefaultValue(self.m_globals.m_event_type),
-            "session-duration" : _getValueOrDefaultValue(self.m_globals.m_packet_session.m_sessionDuration \
+            "session-duration-so-far" : _getValueOrDefaultValue(
+                (self.m_globals.m_packet_session.m_sessionDuration - self.m_globals.m_packet_session.m_sessionTimeLeft) \
                                                           if self.m_globals.m_packet_session else None, 0),
             "num-sc" : _getValueOrDefaultValue(self.m_globals.m_packet_session.m_numSafetyCarPeriods \
                                                           if self.m_globals.m_packet_session else None, 0),
