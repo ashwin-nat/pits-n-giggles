@@ -13,19 +13,42 @@ function getShortERSMode(mode) {
 
 // Class to handle table row creation and updates
 class EngViewRaceTableRow {
-    constructor(driver, isSpectating, iconCache) {
+    constructor(driver, isSpectating, iconCache, eventType) {
         this.driver = driver;
         this.isSpectating = isSpectating;
         this.iconCache = iconCache;
         this.element = document.createElement('tr');
-        this.render();
+        if (eventType === "Time Trial") {
+            this.renderTT();
+        } else {
+            this.render();
+        }
     }
 
-    createMultiLineCell(current, prediction) {
+    createMultiLineCell(row1, row2) {
         return `
-            <div class="eng-view-tyre-row-1">${current}</div>
-            <div class="eng-view-tyre-row-2">${prediction}</div>
+            <div class="eng-view-tyre-row-1">${row1}</div>
+            <div class="eng-view-tyre-row-2">${row2}</div>
         `;
+    }
+
+    createMultiLineCellOnClick(row1Content, row2Content, onClick) {
+        const container = document.createElement("div");
+
+        const row1 = document.createElement("div");
+        row1.className = "eng-view-tyre-row-1";
+        row1.textContent = row1Content;
+        row1.addEventListener("click", onClick);
+
+        const row2 = document.createElement("div");
+        row2.className = "eng-view-tyre-row-2";
+        row2.textContent = row2Content;
+        row2.addEventListener("click", onClick);
+
+        container.appendChild(row1);
+        container.appendChild(row2);
+
+        return container;
     }
 
     createIconTextCell(iconSvg, text) {
@@ -41,7 +64,10 @@ class EngViewRaceTableRow {
         const driverInfo = this.driver["driver-info"];
         return [
             {value: driverInfo["position"], border: true},
-            {value: this.createMultiLineCell(driverInfo["name"], driverInfo["team"]), border: true},
+            {value: this.createMultiLineCellOnClick(driverInfo["name"], driverInfo["team"], () => {
+                console.log("Sending driver info request", driverInfo["name"], driverInfo["index"]);
+                socketio.emit('driver-info', { index: driverInfo["index"] });
+            }), border: true},
         ];
     }
 
@@ -198,13 +224,16 @@ class EngViewRaceTableRow {
     }
 
     render() {
-
         // Add the player-row class if this is the player's row
         if (this.driver["driver-info"]["is-player"]) {
             this.element.classList.add('player-row');
         } else {
             this.element.classList.remove('player-row');
         }
+
+        // Clear previous content
+        this.element.innerHTML = "";
+
         const cells = [
             ...this.getDriverInfoCells(),
             ...this.getDeltaInfoCells(),
@@ -216,9 +245,30 @@ class EngViewRaceTableRow {
             ...this.getDamageCells()
         ];
 
-        this.element.innerHTML = cells.map(cell =>
-            `<td${cell.border ? ' class="eng-view-col-border"' : ''}>${cell.value}</td>`
-        ).join('');
+        // Iterate through cells and append them correctly
+        cells.forEach(cell => {
+            const td = document.createElement("td");
+            if (cell.border) {
+                td.classList.add("eng-view-col-border");
+            }
+
+            if (cell.value instanceof HTMLElement) {
+                td.appendChild(cell.value);  // Append the element properly
+            } else {
+                td.innerHTML = cell.value;   // Use innerHTML for string values
+            }
+
+            this.element.appendChild(td);
+        });
+    }
+
+    renderTT() {
+        // Clear existing content and display a message spanning all columns
+        this.element.innerHTML = `
+            <td colspan="100%" class="text-center">
+                Time Trial not supported in Engineer View
+            </td>
+        `;
     }
 
     update(driver) {
@@ -240,16 +290,23 @@ class EngViewRaceTable {
         this.rows.clear();
     }
 
-    update(drivers, isSpectating) {
+    update(drivers, isSpectating, eventType) {
         // Clear the existing table body
         this.clear();
 
-        // Repopulate the table with the new driver data
-        drivers.forEach(driver => {
-            const row = new EngViewRaceTableRow(driver, isSpectating, this.iconCache);
-            this.rows.set(driver.position, row);
+        // Time trial not supported
+        if (eventType === "Time Trial") {
+            const row = new EngViewRaceTableRow(null, isSpectating, this.iconCache, eventType);
+            this.rows.set(1, row);
             this.tableBody.appendChild(row.element);
-        });
+        } else {
+            // Repopulate the table with the new driver data
+            drivers.forEach(driver => {
+                const row = new EngViewRaceTableRow(driver, isSpectating, this.iconCache, eventType);
+                this.rows.set(driver.position, row);
+                this.tableBody.appendChild(row.element);
+            });
+        }
     }
 }
 
@@ -323,7 +380,7 @@ class EngViewRaceStatus {
 
         let lapText = "";
         if (data['current-lap']) {
-            lapText += incomingData['current-lap'].toString();
+            lapText += data['current-lap'].toString();
           }
           if (data['event-type'] != "Time Trial" && ((data['total-laps'] ?? 0) > 1)) {
             lapText += "/" + data['total-laps'].toString();
@@ -386,6 +443,11 @@ function initDashboard() {
     raceTable = new EngViewRaceTable(iconCache);
     raceStatus = new EngViewRaceStatus(iconCache);
     weatherTable = new EngViewWeatherTable(iconCache);
+
+    const driverModal = true;
+    const raceStatsModal = false;
+    const settingsModal = false;
+    window.modalManager = new ModalManager(driverModal, raceStatsModal, settingsModal);
 }
 
 // Start the dashboard when the page loads
@@ -422,10 +484,13 @@ socketio.on('connect', function () {
 // Receive details from server
 socketio.on('race-table-update', function (data) {
 
-    const tableEntries = data["table-entries"];
-    const isSpectating = data["is-spectating"];
+    const tableEntries  = data["table-entries"];
+    const isSpectating  = data["is-spectating"];
+    const eventType     = data["event-type"];
     if (tableEntries) {
-        raceTable.update(tableEntries, isSpectating);
+        raceTable.update(tableEntries, isSpectating, eventType);
+    } else if (eventType === "Time Trial") {
+        raceTable.update(tableEntries, isSpectating, eventType);
     }
     raceStatus.update(data);
     weatherTable.update(data["weather-forecast-samples"]);
@@ -449,6 +514,17 @@ socketio.on('race-info-response', function (data) {
 socketio.on('driver-info-response', function (data) {
     clearSocketIoRequestTimeout();
     console.log("Received driver-info-response", data);
+    if (!('error' in data)) {
+        if ('__dummy' in data) {
+            // this request is meant for a synchronous listener, ignore
+            console.debug("Ignoring driver-info-response in main listener");
+        } else {
+            window.modalManager.openDriverModal(data, iconCache);
+        }
+    } else {
+        console.error("Received error for driver-info request", data);
+        // showToast("Received error for driver info request");
+    }
 });
 
 socketio.on('frontend-update', function (data) {
