@@ -80,16 +80,61 @@ class TelemetryRenderer {
     this.setDeltaColumnState(isLiveDataMode);
     this.setFuelColumnState(isLiveDataMode);
 
-    // update array of indices by position-1
+    // get data and game year
     const tableEntries = this.getRelevantRaceTableRows(incomingData);
     const gameYear = incomingData["f1-game-year"];
     this.indexByPosition = incomingData["table-entries"].map(entry => entry["driver-info"]["index"]);
 
-    // clear the table and populate with data
-    this.telemetryTable.innerHTML = '';
-    tableEntries.forEach(data => {
-      this.telemetryTable.appendChild(this.renderTelemetryRow(data, gameYear, isLiveDataMode));
+    // Create a map of rows we want to keep by driver index
+    const driverRowMap = new Map();
+
+    // First pass - identify existing rows and store them by driver index
+    Array.from(this.telemetryTable.querySelectorAll('tr[data-driver-index]')).forEach(row => {
+      const driverIndex = row.getAttribute('data-driver-index');
+      driverRowMap.set(driverIndex, row);
+
+      // Remove from DOM temporarily (will add back if needed)
+      row.parentNode.removeChild(row);
     });
+
+    // If table is empty (first run), we need to keep the header row
+    if (this.telemetryTable.children.length === 0) {
+      // Your code to create header row if needed
+    } else if (this.telemetryTable.children.length === 1) {
+      // Keep the header row if it exists
+      const headerRow = this.telemetryTable.children[0];
+      this.telemetryTable.innerHTML = '';
+      this.telemetryTable.appendChild(headerRow);
+    }
+
+    // Process each entry - reuse or create rows as needed
+    tableEntries.forEach(data => {
+      const driverIndex = data["driver-info"]["index"];
+
+      // Try to get existing row
+      let row = driverRowMap.get(driverIndex);
+
+      if (row) {
+        // Update existing row with new data
+        // First, create a new row with the current data
+        const newRow = this.renderTelemetryRow(data, gameYear, isLiveDataMode);
+
+        // Copy all children (cells) from new row to existing row
+        row.innerHTML = newRow.innerHTML;
+
+        // Remove from map to mark as processed
+        driverRowMap.delete(driverIndex);
+      } else {
+        // Create new row
+        row = this.renderTelemetryRow(data, gameYear, isLiveDataMode);
+        row.setAttribute('data-driver-index', driverIndex);
+      }
+
+      // Add to table
+      this.telemetryTable.appendChild(row);
+    });
+
+    // Any rows left in the map are for drivers no longer in the data, so we don't add them back
   }
 
   updateHeader(incomingData) {
