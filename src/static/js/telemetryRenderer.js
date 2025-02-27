@@ -70,26 +70,60 @@ class TelemetryRenderer {
     this.timeTrialDataPopulator.populate(incomingData["tt-data"], incomingData["f1-game-year"]);
   }
 
+  // Extract existing driver rows and remove them from the DOM
+  extractDriverRows() {
+    const driverRowMap = new Map();
+    Array.from(this.telemetryTable.querySelectorAll('tr[data-driver-index]')).forEach(row => {
+      const driverIndex = row.getAttribute('data-driver-index');
+      driverRowMap.set(driverIndex, row);
+      row.parentNode.removeChild(row);
+    });
+    return driverRowMap;
+  }
+
+  // Ensure the header row is preserved
+  preserveHeaderRow() {
+    if (this.telemetryTable.children.length === 1) {
+      const headerRow = this.telemetryTable.children[0];
+      this.telemetryTable.innerHTML = '';
+      this.telemetryTable.appendChild(headerRow);
+    }
+  }
+
+  // Update or create row based on existing data
+  updateOrCreateRow(row, data, gameYear, isLiveDataMode, driverIndex) {
+    const newRow = this.renderTelemetryRow(data, gameYear, isLiveDataMode);
+    if (row) {
+      row.innerHTML = newRow.innerHTML;
+    } else {
+      row = newRow;
+      row.setAttribute('data-driver-index', driverIndex);
+    }
+    return row;
+  }
+
   updateRaceTableData(incomingData) {
-
-    // enable the race UI
     this.setUIMode('Race');
-
-    // hide/unhide the delta column
     const isLiveDataMode = incomingData["live-data"];
     this.setDeltaColumnState(isLiveDataMode);
     this.setFuelColumnState(isLiveDataMode);
 
-    // update array of indices by position-1
     const tableEntries = this.getRelevantRaceTableRows(incomingData);
     const gameYear = incomingData["f1-game-year"];
     this.indexByPosition = incomingData["table-entries"].map(entry => entry["driver-info"]["index"]);
 
-    // clear the table and populate with data
-    this.telemetryTable.innerHTML = '';
+    // Extract and remove existing driver rows
+    const driverRowMap = this.extractDriverRows();
+    // Preserve header row if needed
+    this.preserveHeaderRow();
+
     tableEntries.forEach(data => {
-      this.telemetryTable.appendChild(this.renderTelemetryRow(data, gameYear, isLiveDataMode));
+      const driverIndex = data["driver-info"]["index"];
+      let row = driverRowMap.get(driverIndex);
+      row = this.updateOrCreateRow(row, data, gameYear, isLiveDataMode, driverIndex);
+      this.telemetryTable.appendChild(row);
     });
+    // Rows not referenced in tableEntries will be left out
   }
 
   updateHeader(incomingData) {
