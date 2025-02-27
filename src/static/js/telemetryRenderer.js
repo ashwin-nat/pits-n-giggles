@@ -98,9 +98,7 @@ class TelemetryRenderer {
     });
 
     // If table is empty (first run), we need to keep the header row
-    if (this.telemetryTable.children.length === 0) {
-      // Your code to create header row if needed
-    } else if (this.telemetryTable.children.length === 1) {
+    if (this.telemetryTable.children.length === 1) {
       // Keep the header row if it exists
       const headerRow = this.telemetryTable.children[0];
       this.telemetryTable.innerHTML = '';
