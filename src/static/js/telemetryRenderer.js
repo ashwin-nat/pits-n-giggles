@@ -70,69 +70,60 @@ class TelemetryRenderer {
     this.timeTrialDataPopulator.populate(incomingData["tt-data"], incomingData["f1-game-year"]);
   }
 
-  updateRaceTableData(incomingData) {
-
-    // enable the race UI
-    this.setUIMode('Race');
-
-    // hide/unhide the delta column
-    const isLiveDataMode = incomingData["live-data"];
-    this.setDeltaColumnState(isLiveDataMode);
-    this.setFuelColumnState(isLiveDataMode);
-
-    // get data and game year
-    const tableEntries = this.getRelevantRaceTableRows(incomingData);
-    const gameYear = incomingData["f1-game-year"];
-    this.indexByPosition = incomingData["table-entries"].map(entry => entry["driver-info"]["index"]);
-
-    // Create a map of rows we want to keep by driver index
+  // Extract existing driver rows and remove them from the DOM
+  extractDriverRows() {
     const driverRowMap = new Map();
-
-    // First pass - identify existing rows and store them by driver index
     Array.from(this.telemetryTable.querySelectorAll('tr[data-driver-index]')).forEach(row => {
       const driverIndex = row.getAttribute('data-driver-index');
       driverRowMap.set(driverIndex, row);
-
-      // Remove from DOM temporarily (will add back if needed)
       row.parentNode.removeChild(row);
     });
+    return driverRowMap;
+  }
 
-    // If table is empty (first run), we need to keep the header row
+  // Ensure the header row is preserved
+  preserveHeaderRow() {
     if (this.telemetryTable.children.length === 1) {
-      // Keep the header row if it exists
       const headerRow = this.telemetryTable.children[0];
       this.telemetryTable.innerHTML = '';
       this.telemetryTable.appendChild(headerRow);
     }
+  }
 
-    // Process each entry - reuse or create rows as needed
+  // Update or create row based on existing data
+  updateOrCreateRow(row, data, gameYear, isLiveDataMode, driverIndex) {
+    const newRow = this.renderTelemetryRow(data, gameYear, isLiveDataMode);
+    if (row) {
+      row.innerHTML = newRow.innerHTML;
+    } else {
+      row = newRow;
+      row.setAttribute('data-driver-index', driverIndex);
+    }
+    return row;
+  }
+
+  updateRaceTableData(incomingData) {
+    this.setUIMode('Race');
+    const isLiveDataMode = incomingData["live-data"];
+    this.setDeltaColumnState(isLiveDataMode);
+    this.setFuelColumnState(isLiveDataMode);
+
+    const tableEntries = this.getRelevantRaceTableRows(incomingData);
+    const gameYear = incomingData["f1-game-year"];
+    this.indexByPosition = incomingData["table-entries"].map(entry => entry["driver-info"]["index"]);
+
+    // Extract and remove existing driver rows
+    const driverRowMap = this.extractDriverRows();
+    // Preserve header row if needed
+    this.preserveHeaderRow();
+
     tableEntries.forEach(data => {
       const driverIndex = data["driver-info"]["index"];
-
-      // Try to get existing row
       let row = driverRowMap.get(driverIndex);
-
-      if (row) {
-        // Update existing row with new data
-        // First, create a new row with the current data
-        const newRow = this.renderTelemetryRow(data, gameYear, isLiveDataMode);
-
-        // Copy all children (cells) from new row to existing row
-        row.innerHTML = newRow.innerHTML;
-
-        // Remove from map to mark as processed
-        driverRowMap.delete(driverIndex);
-      } else {
-        // Create new row
-        row = this.renderTelemetryRow(data, gameYear, isLiveDataMode);
-        row.setAttribute('data-driver-index', driverIndex);
-      }
-
-      // Add to table
+      row = this.updateOrCreateRow(row, data, gameYear, isLiveDataMode, driverIndex);
       this.telemetryTable.appendChild(row);
     });
-
-    // Any rows left in the map are for drivers no longer in the data, so we don't add them back
+    // Rows not referenced in tableEntries will be left out
   }
 
   updateHeader(incomingData) {
