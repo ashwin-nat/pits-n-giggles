@@ -499,7 +499,7 @@ class DataPerDriver:
         self.m_delta_to_car_in_front: Optional[int] = None
         self.m_delta_to_leader: Optional[int] = None
         self.m_ers_perc: Optional[float] = None
-        self.m_best_lap_ms: Optional[str] = None
+        self.m_best_lap_ms: Optional[int] = None
         self.m_best_lap_obj: Optional[LapHistoryData] = None
         self.m_best_lap_tyre: Optional[VisualTyreCompound] = None
         self.m_pb_s1_ms: Optional[int] = None
@@ -1795,12 +1795,20 @@ class DriverData:
         if last_lap_obj:
             obj_to_be_updated.m_last_lap_ms = last_lap_obj.m_lapTimeInMS
             obj_to_be_updated.m_last_lap_obj = last_lap_obj
+        else:
+            # Clear the best lap obj (can linger if flashback is used or practice programme is restarted)
+            obj_to_be_updated.m_last_lap_ms = None
+            obj_to_be_updated.m_last_lap_obj = None
 
         # Update best lap sector time
         best_lap_obj = packet.getBestLapData()
         if best_lap_obj:
             obj_to_be_updated.m_best_lap_ms = best_lap_obj.m_lapTimeInMS
             obj_to_be_updated.m_best_lap_obj = best_lap_obj
+        else:
+            # Clear the last lap obj (can linger if flashback is used or practice programme is restarted)
+            obj_to_be_updated.m_best_lap_ms = None
+            obj_to_be_updated.m_best_lap_obj = None
 
     def processTyreSetsUpdate(self, packet: PacketTyreSetsData) -> None:
         """Process the tyre sets update packet and update the necessary fields
