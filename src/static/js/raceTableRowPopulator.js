@@ -188,41 +188,44 @@ class RaceTableRowPopulator {
         return this;
     }
 
+    #getPitStopPrediction(data) {
+        if (data["selected-pit-stop-lap"] > 0) {
+            return data.predictions.find(
+                p => p["lap-number"] === data["selected-pit-stop-lap"]
+            ) || null;
+        }
+        return null;
+    }
+
     #getWearPredictions(data, currentLap) {
         // If status is false or no predictions, return empty array
-        if (!data.status || !data.predictions || data.predictions.length === 0) {
+        if (!data.status || !data.predictions?.length) {
             return [];
         }
 
-        // If selected pit stop lap is non-zero and exists in predictions
-        if (data["selected-pit-stop-lap"] > 0) {
-            const pitLapPrediction = data.predictions.find(
-                p => p["lap-number"] === data["selected-pit-stop-lap"]
-            );
-            const lastPrediction = data.predictions[data.predictions.length - 1];
+        const {predictions} = data;
+        const lastPrediction = predictions[predictions.length - 1];
 
-            if (pitLapPrediction) {
-                return [pitLapPrediction, lastPrediction];
-            }
+        // If selected pit stop lap is non-zero and exists in predictions
+        const pitPrediction = this.#getPitStopPrediction(data);
+        if (pitPrediction) {
+            return [pitPrediction, lastPrediction];
         }
 
         // Calculate midpoint between current lap and last predicted lap
-        const lastPrediction = data.predictions[data.predictions.length - 1];
         const midLapNumber = Math.floor((currentLap + lastPrediction["lap-number"]) / 2);
-
         // If midpoint equals the final lap, return only the last prediction
         if (midLapNumber === lastPrediction["lap-number"]) {
             return [lastPrediction];
         }
 
         // Find the first prediction that is at or after the midpoint
-        const midPointPrediction = data.predictions.find(
+        const midPointPrediction = predictions.find(
             pred => pred["lap-number"] >= midLapNumber
         );
 
         return [midPointPrediction, lastPrediction];
     }
-
     addTyrePredictionInfo() {
         const currentLap = this.rowData["lap-info"]["current-lap"];
         const predictionData = this.#getWearPredictions(this.rowData["tyre-info"]["wear-prediction"], currentLap);

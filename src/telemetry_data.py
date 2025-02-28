@@ -1243,7 +1243,7 @@ class DataPerDriver:
                         sector_3_best_ms: Optional[int],
                         for_best_lap: bool,
                         session_type_str: str) -> List[Optional[int]]:
-        # sourcery skip: merge-duplicate-blocks
+        # sourcery skip: merge-duplicate-blocks, remove-redundant-if
         """
         Determine sector status for either best or last lap.
 
@@ -2400,7 +2400,7 @@ def clearDataStructures(reason: str) -> None:
     with _globals_lock.gen_wlock():
         _globals.clear()
     _custom_markers_history.clear()
-    png_logger.debug(f"Clearing all data structures. Reason: f{reason}")
+    png_logger.debug(f"Clearing all data structures. Reason: {reason}")
 
 def getTyreDeltaNotificationMessages() -> List[TyreDeltaMessage]:
     """Returns a list of tyre delta notification messages
