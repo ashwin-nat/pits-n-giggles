@@ -99,8 +99,9 @@ body {
 .eng-view-weather-table td {
     padding: 0.3rem;
     text-align: center;
-    background-color: #000 !important;
+    background-color: var(--f1-gray) !important;
     border-color: #333 !important;
+    color: var(--f1-text);
 }
 
 /* Custom scrollbar for better visibility */
