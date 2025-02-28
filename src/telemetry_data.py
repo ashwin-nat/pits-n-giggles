@@ -613,7 +613,7 @@ class DataPerDriver:
         # Return this fully prepped JSON
         return final_json
 
-    def getFullTyreWearPredictions(self, selected_pit_stop_lap: Optional[int] = None) -> List[Dict[str, Any]]:
+    def getFullTyreWearPredictions(self, selected_pit_stop_lap: Optional[int] = None) -> Dict[str, Any]:
         """Get a JSON list with the tyre wear predictions for all remaining laps
 
         Args:
@@ -1280,7 +1280,8 @@ class DataPerDriver:
 
         # Select lap object
         lap_obj = self.m_best_lap_obj if for_best_lap else self.m_last_lap_obj
-        assert lap_obj
+        if not lap_obj:
+            return default_val
 
         return [
             self._get_sector_status(
