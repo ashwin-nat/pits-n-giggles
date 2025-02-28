@@ -1,7 +1,17 @@
+:root {
+    --f1-red: #e10600;
+    --f1-dark: #15151e;
+    --f1-darker: #0c0c12;
+    --f1-gray: #1f1f2b;
+    --f1-light-gray: #2d2d3d;
+    --f1-text: #ffffff;
+    --f1-text-secondary: #9090a0;
+}
+
 body {
     font-family: 'Exo 2', sans-serif;
     overflow: hidden;
-    background-color: #000 !important;
+    background-color: var(--f1-darker);
 }
 
 .container-fluid {
@@ -20,25 +30,26 @@ body {
 .eng-view-race-table-section {
     flex: 0 0 85%;
     overflow-y: auto;
-    padding-bottom: 2rem;
+    padding-bottom: 6rem;
 }
 
 .eng-view-table {
     font-size: 0.85rem;
-    background-color: #000 !important;
+    background-color: var(--f1-dark) !important;
 }
 
 .eng-view-table th,
 .eng-view-table td {
     padding: 0.3rem;
     white-space: nowrap;
-    background-color: #000 !important;
+    background-color: var(--f1-gray) !important;
     border-color: #333 !important;
     vertical-align: middle;
+    color: var(--f1-text);
 }
 
 .eng-view-table tbody tr:hover td {
-    background-color: #111 !important;
+    background-color: var(--f1-light-gray) !important;
 }
 
 /* Column borders for both header and body cells */
@@ -50,10 +61,14 @@ body {
     border-right: 2px solid #333 !important;
 }
 
+.eng-view-table-main-header th {
+    color: var(--f1-text);
+}
+
 .eng-view-sub-header th {
     font-size: 0.8rem;
     font-weight: normal;
-    color: #888;
+    color: var(--f1-text-secondary);
 }
 
 .eng-view-global-stat {
@@ -114,7 +129,7 @@ body {
 }
 
 .eng-view-tyre-row-2 {
-    color: #666;
+    color: var(--f1-text-secondary);
 }
 
 /* Icon and text row styling */
@@ -140,6 +155,15 @@ body {
     flex-wrap: wrap;
     gap: 1rem 2rem;
     align-items: center;
+}
+
+.global-stats-section-header {
+    background: var(--f1-dark);
+    color: var(--f1-text);
+}
+
+.global-stats-section {
+    background: var(--f1-dark);
 }
 
 /* Prediction lap input styling */

@@ -15,14 +15,14 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="bg-black text-light">
+<body>
     <div class="container-fluid">
         <!-- Global Data Section -->
         <div class="eng-view-global-data-section">
             <div class="row">
                 <div class="col-md-8">
-                    <div class="card bg-black border-secondary">
-                        <div class="card-header border-secondary d-flex justify-content-between align-items-center">
+                    <div class="card border-secondary global-stats-section">
+                        <div class="card-header border-secondary d-flex justify-content-between align-items-center global-stats-section-header">
                             <h5 class="mb-0">Race Status</h5>
                             <a href="/">
                                 <span style="font-size: 1.5rem;" data-bs-toggle="tooltip" data-bs-title="Switch to driver view">🏎️</span>
@@ -78,13 +78,13 @@
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="card bg-black border-secondary">
-                        <div class="card-header border-secondary">
+                    <div class="card border-secondary global-stats-section">
+                        <div class="card-header border-secondary global-stats-section-header">
                             <h5>Weather Forecast</h5>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
-                                <table class="table table-dark table-sm eng-view-weather-table">
+                                <table class="table table-sm eng-view-weather-table">
                                     <tbody id="weatherTableBody">
                                         <!-- Weather data will be populated by JavaScript -->
                                     </tbody>
@@ -99,9 +99,9 @@
         <!-- Race Table Section -->
         <div class="eng-view-race-table-section">
             <div class="table-responsive">
-                <table class="table table-dark table-hover table-sm eng-view-table">
+                <table class="table table-hover table-sm table-striped eng-view-table">
                     <thead>
-                        <tr class="text-center">
+                        <tr class="text-center eng-view-table-main-header">
                             <th class="eng-view-col-border">Pos</th>
                             <th class="eng-view-col-border">Name</th>
                             <th class="eng-view-col-border">Delta</th>
