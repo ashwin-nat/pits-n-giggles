@@ -87,7 +87,7 @@ function showToast(message, timeout = 3000) {
 
 function formatFloatWithTwoDecimals(floatNumber) {
     if (typeof floatNumber !== 'number' || isNaN(floatNumber)) {
-        console.error('Invalid input. Please provide a valid number.');
+        console.error('Invalid input. Please provide a valid number.', floatNumber);
         console.trace(); // Log the call stack
         return null;
     }
@@ -105,6 +105,22 @@ function formatFloatWithTwoDecimalsSigned(floatNumber) {
 
     // Use toFixed to round to two decimal places and convert to string
     const floatStr = floatNumber.toFixed(2);
+    if (floatNumber >= 0.0) {
+        return '+' + floatStr;
+    } else {
+        return floatStr;
+    }
+}
+
+function formatFloatWithThreeDecimalsSigned(floatNumber) {
+    if (typeof floatNumber !== 'number' || isNaN(floatNumber)) {
+        console.error('Invalid input. Please provide a valid number.');
+        console.trace(); // Log the call stack
+        return null;
+    }
+
+    // Use toFixed to round to two decimal places and convert to string
+    const floatStr = floatNumber.toFixed(3);
     if (floatNumber >= 0.0) {
         return '+' + floatStr;
     } else {

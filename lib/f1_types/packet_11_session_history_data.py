@@ -174,6 +174,49 @@ class LapHistoryData:
 
         return self.m_lapValidBitFlags & LapHistoryData.FULL_LAP_VALID_BIT_MASK
 
+    @property
+    def s1TimeMS(self) -> int:
+        """Return the total S1 time in ms
+
+        Returns:
+            int: Total S1 time in ms
+        """
+
+        return self.__getCombinedTimeMS(self.m_sector1TimeInMS, self.m_sector1TimeMinutes)
+
+    @property
+    def s2TimeMS(self) -> int:
+        """Return the total S2 time in ms
+
+        Returns:
+            int: Total S2 time in ms
+        """
+
+        return self.__getCombinedTimeMS(self.m_sector2TimeInMS, self.m_sector2TimeMinutes)
+
+    @property
+    def s3TimeMS(self) -> int:
+        """Return the total S3 time in ms
+
+        Returns:
+            int: Total S3 time in ms
+        """
+
+        return self.__getCombinedTimeMS(self.m_sector3TimeInMS, self.m_sector3TimeMinutes)
+
+    def __getCombinedTimeMS(self, ms_part: int, min_part: int) -> int:
+        """
+        Combines minutes and milliseconds into a total time in milliseconds.
+
+        Args:
+            ms_part (int): The milliseconds part of the time.
+            min_part (int): The minutes part of the time.
+
+        Returns:
+            int: The total time in milliseconds.
+        """
+        return (min_part * 60 * 1000) + ms_part
+
     def __eq__(self, other: "LapHistoryData") -> bool:
         """Check if two LapHistoryData objects are equal
 
@@ -439,7 +482,7 @@ class PacketSessionHistoryData:
         return json_data
 
     def getLastLapData(self) -> Optional[LapHistoryData]:
-        """Get the last lap completed data
+        """Get the last completed lap data
 
         Returns:
             LapHistoryData: The last lap data. May be None if not found
@@ -456,6 +499,18 @@ class PacketSessionHistoryData:
             ),
             None,
         )
+
+    def getBestLapData(self) -> Optional[LapHistoryData]:
+        """Get the best lap data
+
+        Returns:
+            LapHistoryData: The best lap data. May be None if not found
+        """
+
+        # Index is lap number - 1, ensure it is within valid bounds
+        if self.m_bestLapTimeLapNum and 1 <= self.m_bestLapTimeLapNum <= len(self.m_lapHistoryData):
+            return self.m_lapHistoryData[self.m_bestLapTimeLapNum - 1]
+        return None
 
     def __eq__(self, other: "PacketSessionHistoryData") -> bool:
         """

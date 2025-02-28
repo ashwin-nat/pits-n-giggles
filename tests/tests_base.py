@@ -40,8 +40,27 @@ class CustomTestResult(unittest.TextTestResult):
         super().startTest(test)
         test_class_name = test.getFullTestName()
         test_description = test.shortDescription()
-        print(f"{Fore.MAGENTA}{Style.BRIGHT}Running test: {Fore.CYAN}{Style.BRIGHT}"
-              f"{test_class_name}.{Fore.YELLOW}{Style.BRIGHT}{test_description}", end="")
+
+        # Split the class name by dots and color each part differently
+        class_parts = test_class_name.split('.')
+        colored_parts = []
+        colors = [
+            Fore.CYAN,
+            Fore.MAGENTA,
+            Fore.GREEN,
+            Fore.BLUE,
+            Fore.RED,
+        ]  # Add more colors if needed
+
+        for i, part in enumerate(class_parts):
+            color = colors[i % len(colors)]  # Cycle through colors if there are more parts than colors
+            colored_parts.append(f"{color}{Style.BRIGHT}{part}")
+
+        # Join the colored parts with dots
+        colored_class_name = f"{Fore.WHITE}{Style.BRIGHT}.{Style.RESET_ALL}".join(colored_parts)
+
+        print(f"{Fore.MAGENTA}{Style.BRIGHT}Running test: "
+            f"{colored_class_name}.{Fore.YELLOW}{Style.BRIGHT}{test_description}", end="")
 
     def addSuccess(self, test):
         super().addSuccess(test)

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pits n' Giggles Engineer View</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/engView.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modals.css') }}">
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- Global Data Section -->
+        <div class="eng-view-global-data-section">
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card border-secondary global-stats-section">
+                        <div class="card-header border-secondary d-flex justify-content-between align-items-center global-stats-section-header">
+                            <h5 class="mb-0">Race Status</h5>
+                            <a href="/">
+                                <span style="font-size: 1.5rem;" data-bs-toggle="tooltip" data-bs-title="Switch to driver view">🏎️</span>
+                            </a>
+                        </div>
+                        <div class="card-body">
+                            <div class="eng-view-global-stat">
+                                <label>Race Time</label>
+                                <span id="raceTime"></span>
+                            </div>
+                            <div class="eng-view-global-stat">
+                                <label>Current Status</label>
+                                <span id="raceStatus"></span>
+                            </div>
+                            <div class="eng-view-global-stat">
+                                <label>Lap</label>
+                                <span id="currentLap"></span>
+                            </div>
+                            <div class="eng-view-global-stat">
+                                <label>SC Count</label>
+                                <span id="scCount"></span>
+                            </div>
+                            <div class="eng-view-global-stat">
+                                <label>VSC Count</label>
+                                <span id="vscCount"></span>
+                            </div>
+                            <div class="eng-view-global-stat">
+                                <label>Track Temp</label>
+                                <span id="trackTemp"></span>
+                            </div>
+                            <div class="eng-view-global-stat">
+                                <label>Air Temp</label>
+                                <span id="airTemp"></span>
+                            </div>
+                            <div class="eng-view-global-stat border border-secondary rounded p-2">
+                                <label>Prediction Lap</label>
+                                <div class="d-flex align-items-center">
+                                    <input type="number" id="predictionLap" class="form-control form-control-sm bg-dark text-light border-secondary" value="1" min="1" max="80">
+                                    <div class="ms-2 d-flex">
+                                        <span class="d-inline-block" tabindex="0" data-bs-toggle="tooltip" data-bs-title="Set prediction to pit lap (if available)">
+                                            <button id="predictionPitBtn" class="btn btn-sm btn-secondary me-1">Pit</button>
+                                        </span>
+                                        <span class="d-inline-block" tabindex="0" data-bs-toggle="tooltip" data-bs-title="Set prediction to mid-point lap">
+                                            <button id="predictionMidBtn" class="btn btn-sm btn-secondary">Mid</button>
+                                        </span>
+                                        <span class="d-inline-block" tabindex="0" data-bs-toggle="tooltip" data-bs-title="Set prediction to last lap">
+                                            <button id="predictionLastBtn" class="btn btn-sm btn-secondary">Last</button>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-secondary global-stats-section">
+                        <div class="card-header border-secondary global-stats-section-header">
+                            <h5>Weather Forecast</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm eng-view-weather-table">
+                                    <tbody id="weatherTableBody">
+                                        <!-- Weather data will be populated by JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Race Table Section -->
+        <div class="eng-view-race-table-section">
+            <div class="table-responsive">
+                <table class="table table-hover table-sm table-striped eng-view-table">
+                    <thead>
+                        <tr class="text-center eng-view-table-main-header">
+                            <th class="eng-view-col-border">Pos</th>
+                            <th class="eng-view-col-border">Name</th>
+                            <th class="eng-view-col-border">Delta</th>
+                            <th colspan="4" class="eng-view-col-border">Penalties</th>
+                            <th colspan="4" class="eng-view-col-border">Last Lap</th>
+                            <th colspan="4" class="eng-view-col-border">Best Lap</th>
+                            <th colspan="6" class="eng-view-col-border">Tyre Wear</th>
+                            <th colspan="3" class="eng-view-col-border">ERS</th>
+                            <th colspan="3" class="eng-view-col-border">Fuel</th>
+                            <th colspan="3">Damage</th>
+                        </tr>
+                        <tr class="eng-view-sub-header">
+                            <th class="eng-view-col-border"></th>
+                            <th class="eng-view-col-border"></th>
+                            <th class="eng-view-col-border"></th>
+                            <!-- Penalties -->
+                            <th>Track</th>
+                            <th>Time</th>
+                            <th>DT</th>
+                            <th class="eng-view-col-border">Serv</th>
+                            <!-- Last Lap -->
+                            <th>Lap</th>
+                            <th>S1</th>
+                            <th>S2</th>
+                            <th class="eng-view-col-border">S3</th>
+                            <!-- Best Lap -->
+                            <th>Lap</th>
+                            <th>S1</th>
+                            <th>S2</th>
+                            <th class="eng-view-col-border">S3</th>
+                            <!-- Tyre Wear -->
+                            <th>Comp</th>
+                            <th>Lap</th>
+                            <th>FL</th>
+                            <th>FR</th>
+                            <th>RL</th>
+                            <th class="eng-view-col-border">RR</th>
+                            <!-- ERS -->
+                            <th>Avail</th>
+                            <th>Deploy</th>
+                            <th class="eng-view-col-border">Mode</th>
+                            <!-- Fuel -->
+                            <th>Total</th>
+                            <th>Per Lap</th>
+                            <th class="eng-view-col-border">Est</th>
+                            <!-- Damage -->
+                            <th>FL</th>
+                            <th>FR</th>
+                            <th>RW</th>
+                        </tr>
+                    </thead>
+                    <tbody id="engViewRaceTableBody">
+                        <!-- Rows will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Driver Details Modal -->
+        <div class="modal fade" id="driverModal" tabindex="-1" aria-labelledby="driverModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-fullscreen driver-modal-dialog">
+                <div class="modal-content driver-modal-content bg-dark">
+                    <!-- Modal Header -->
+                    <div
+                        class="modal-header driver-modal-header d-flex justify-content-between align-items-center bg-dark border border-dark-subtle rounded">
+                        <!-- Title and Navigation Buttons -->
+                        <div class="d-flex align-items-center">
+                            <h5 class="modal-title m-0 text-white" id="driverModalLabel">Driver Details</h5>
+                        </div>
+                        <!-- Refresh and Close Buttons -->
+                        <div class="d-flex align-items-center">
+                            <button type="button" class="icon-btn me-2" id="refreshButtonDriver" title="Refresh">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </button>
+                            <button type="button" class="icon-btn" id="closeButtonDriver" data-bs-dismiss="modal"
+                                aria-label="Close" title="Close">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="modal-body driver-modal-body border border-dark-subtle rounded d-flex flex-column">
+                        <!-- Nav tabs and tab content will be dynamically injected here by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+    </div>
+
+    <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/iconCache.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/modals.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/graph.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/driverDataModalPopulator.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/engView.js') }}"></script>
+</body>
+</html>

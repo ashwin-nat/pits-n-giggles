@@ -142,6 +142,28 @@ def f1TelemetryServerTask(
     telemetry_client = F1TelemetryHandler(port_number, forwarding_targets, replay_server)
     telemetry_client.run()
 
+def printDoNotCloseWarning() -> None:
+    """
+    """
+    RED = "\033[91m"
+    BOLD = "\033[1m"
+    RESET = "\033[0m"
+
+    border = "*" * 60  # Fixed-width border
+    message = [
+        "WARNING: DO NOT CLOSE THIS WINDOW!",
+        "This command line window is required",
+        "for the application to run properly.",
+        "If you close this window, the application",
+        "will stop working."
+    ]
+
+    print(RED + BOLD + border + RESET)
+    for line in message:
+        print(RED + BOLD + f"* {line.center(56)} *" + RESET)
+    print(RED + BOLD + border + RESET)
+
+
 def main() -> None:
     """Entry point for the application."""
 
@@ -166,6 +188,7 @@ def main() -> None:
     client_thread.start()
 
     # Run the HTTP server on the main thread. Flask does not like running on separate threads
+    printDoNotCloseWarning()
     httpServerTask(config.server_port, config.refresh_interval,
                    config.disable_browser_autoload, config.stream_overlay_start_sample_data)
 

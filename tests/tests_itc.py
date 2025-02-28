@@ -22,7 +22,6 @@
 # pylint: skip-file
 
 import threading
-import queue
 from time import sleep
 import sys
 import os
