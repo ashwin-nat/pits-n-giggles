@@ -13,7 +13,7 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     text-transform: uppercase;
     letter-spacing: 1.5px;
-    color: #ffffff;
+    color: var(--bs-white)fff;
 }
 
 .pace-comparison-header::after {
@@ -44,6 +44,7 @@
     color: white;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     margin-top: 1px;
+    margin-bottom: 2px;
 }
 
 .pace-comparison-half {
@@ -69,13 +70,13 @@
 
 .pace-comparison-sector-label {
     font-size: 12px;
-    color: #888;
+    color: var(--bs-light);
     margin-bottom: 4px;
 }
 
 .pace-comparison-player-sector-label {
     font-size: 12px;
-    color: #888;
+    color: var(--bs-light);
 }
 
 .pace-comparison-driver {
@@ -83,7 +84,7 @@
     font-weight: bold;
     font-size: 14px;
     text-transform: uppercase;
-    color: #fff;
+    color: var(--bs-white);
 }
 
 .pace-comparison-prev {
@@ -111,6 +112,8 @@
     display: flex;
     align-items: start;
     padding: 5px 15px;
+    background: #15151e;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .pace-comparison-half {
@@ -136,14 +139,14 @@
     border: 2px solid #333;
     border-radius: 3px;
     position: relative;
-    background: #fff;
+    background: #000000;
     overflow: hidden;
 }
 
 .battery-cap {
     width: 3px;
     height: 10px;
-    background: #333;
+    background: #e4e4e4;
     margin-left: 2px;
     border-radius: 0 2px 2px 0;
 }
@@ -164,9 +167,8 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    font-size: 12px;
+    font-size: 18px;
     z-index: 1;
-    color: #fff;
     text-shadow: 0px 0px 2px #000;
 }
 
@@ -179,12 +181,24 @@
 .ers-label {
     font-size: 11px;
     font-weight: bold;
-    color: #666;
+    color: var(--bs-light);
     min-width: 12px;
 }
 
 /* Deployment mode colors */
-.battery-level.mode-none { background: #808080; }
-.battery-level.mode-medium { background: #FCEC17; }
-.battery-level.mode-hotlap { background: #00FF00; }
-.battery-level.mode-overtake { background: #FF0000; }
+.battery-level.mode-none {
+    background: #808080;
+    color: #ffffff;
+}
+.battery-level.mode-medium {
+    background: #FCEC17;
+    color: #ffffff;
+}
+.battery-level.mode-hotlap {
+    background: #00FF00;
+    color: #000000;
+}
+.battery-level.mode-overtake {
+    background: #FF0000;
+    color: #ffffff;
+}
