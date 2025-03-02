@@ -440,15 +440,18 @@ class EngViewWeatherTable {
     }
 
     update(weatherData) {
+        // Limit to first 5 entries
+        const limitedData = weatherData.slice(0, 5);
+
         // Create weather type row
         const typeRow = document.createElement('tr');
-        typeRow.innerHTML = weatherData
+        typeRow.innerHTML = limitedData
             .map(w => `<td>${w["weather"]}</td>`)
             .join('');
 
         // Create time and probability row
         const timeRow = document.createElement('tr');
-        timeRow.innerHTML = weatherData
+        timeRow.innerHTML = limitedData
             .map(w => `<td>+${w["time-offset"]}m (${w["rain-probability"]}%)</td>`)
             .join('');
 

@@ -1798,8 +1798,10 @@ class DriverData:
             obj_to_be_updated.m_last_lap_obj = last_lap_obj
         else:
             # Clear the best lap obj (can linger if flashback is used or practice programme is restarted)
+            if obj_to_be_updated.m_last_lap_obj:
+                png_logger.debug(f"Clearing lingering last lap obj for car {packet.m_carIdx} - {obj_to_be_updated.m_name}")
+                obj_to_be_updated.m_last_lap_obj = None
             obj_to_be_updated.m_last_lap_ms = None
-            obj_to_be_updated.m_last_lap_obj = None
 
         # Update best lap sector time
         best_lap_obj = packet.getBestLapData()
@@ -1808,8 +1810,13 @@ class DriverData:
             obj_to_be_updated.m_best_lap_obj = best_lap_obj
         else:
             # Clear the last lap obj (can linger if flashback is used or practice programme is restarted)
+            if obj_to_be_updated.m_best_lap_obj:
+                png_logger.debug(f"Clearing lingering best lap obj for car {packet.m_carIdx} - {obj_to_be_updated.m_name}")
+                obj_to_be_updated.m_best_lap_obj = None
             obj_to_be_updated.m_best_lap_ms = None
-            obj_to_be_updated.m_best_lap_obj = None
+            if packet.m_carIdx == self.m_fastest_index:
+                self.m_fastest_index = None
+                png_logger.debug(f"Cleared fastest_index f{packet.m_carIdx}")
 
     def processTyreSetsUpdate(self, packet: PacketTyreSetsData) -> None:
         """Process the tyre sets update packet and update the necessary fields
