@@ -29,6 +29,7 @@ import lib.race_analyzer as RaceAnalyzer
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 import src.telemetry_data as TelData
 from src.telemetry_handler import getOvertakeJSON, GetOvertakesStatus
+from src.data_per_driver import TyreSetInfo
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -866,20 +867,21 @@ class LapTimeInfo():
         m_sector3TimeInMS (int): Sector 3 time in milliseconds.
         m_sector3TimeMinutes (int): Sector 3 whole minute part.
         m_lapValidBitFlags (int): Bit flags representing lap and sector validity.
-        m_tyre_set_info (TelData.DataPerDriver.TyreSetInfo): The tyre set used.
+        m_tyre_set_info (TyreSetInfo): The tyre set used.
     """
     def __init__(self,
                  lap_history_data: LapHistoryData,
-                 tyre_set_info: TelData.DataPerDriver.TyreSetInfo,
+                 tyre_set_info: TyreSetInfo,
                  lap_number: int) -> None:
         """
         Initializes LapTimeInfo with an existing LapHistoryData object, tyre set info and lap number.
 
         Args:
             lap_history_data (LapHistoryData): An instance of LapHistoryData.
-            tyre_set_info (TelData.DataPerDriver.TyreSetInfo): The tyre set info for this lap
+            tyre_set_info (TyreSetInfo): The tyre set info for this lap
             lap_number (int): The lap number for this lap
         """
+
         # Initialize the base class attributes by copying from the existing LapHistoryData instance
         self.m_lapTimeInMS = lap_history_data.m_lapTimeInMS
         self.m_sector1TimeInMS = lap_history_data.m_sector1TimeInMS

@@ -34,6 +34,7 @@ from lib.f1_types import PacketSessionData, PacketLapData, LapData, CarTelemetry
     F1Utils, WeatherForecastSample, CarDamageData, CarStatusData, TrackID, ActualTyreCompound, VisualTyreCompound, \
     SafetyCarType, TelemetrySetting, PacketMotionData, CarMotionData, PacketCarSetupData, CarSetupData, ResultStatus, \
     PacketTimeTrialData, LapHistoryData
+from src.data_per_driver import TyreSetInfo, TyreSetHistoryEntry, WarningPenaltyEntry
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.overtake_analyzer import OvertakeRecord
 from lib.collisions_analyzer import CollisionRecord, CollisionAnalyzer, CollisionAnalyzerMode
@@ -183,7 +184,7 @@ class DataPerDriver:
         m_tyre_life_remaining_laps (Optional[int]): The remaining laps the tires are expected to last.
         m_telemetry_restrictions (Optional[TelemetrySetting]):
             Telemetry settings indicating the level of data available for the driver.
-        m_tyre_set_history (List[DataPerDriver.TyreSetHistoryEntry]):
+        m_tyre_set_history (List[TyreSetHistoryEntry]):
             List of TyreSetHistoryEntry objects, representing the driver's tire set history.
         m_tyre_wear_extrapolator (TyreWearExtrapolator): Predicts the tyre wear for upcoming laps
         m_curr_lap_sc_status (SafetyCarStatus): The current lap's safety car status
@@ -226,121 +227,6 @@ class DataPerDriver:
         """
 
         return self.__repr__()
-
-    class TyreSetInfo:
-        """
-        Class that models the data describing a tyre set.
-
-        Attributes:
-            m_actual_tyre_compound (ActualTyreCompound): The actual compound of the tyre.
-            m_visual_tyre_compound (VisualTyreCompound): The visual compound of the tyre.
-            m_tyre_set_id (int): The ID of the tyre set.
-            m_tyre_age_laps (int): The age of the tyre in laps.
-        """
-        def __init__(self,
-                     actual_tyre_compound: ActualTyreCompound,
-                     visual_tyre_compound: VisualTyreCompound,
-                     tyre_set_id: int,
-                     tyre_age_laps: int):
-
-            self.m_actual_tyre_compound = actual_tyre_compound
-            self.m_visual_tyre_compound = visual_tyre_compound
-            self.m_tyre_set_id = tyre_set_id
-            self.m_tyre_age_laps = tyre_age_laps
-
-        def toJSON(self) -> Dict[str, Any]:
-            """Get the JSON representation of this object
-
-            Returns:
-                Dict[str, Any]: The JSON representation
-            """
-            return {
-                'actual-tyre-compound': str(self.m_actual_tyre_compound),
-                'visual-tyre-compound': str(self.m_visual_tyre_compound),
-                'tyre-set-id': self.m_tyre_set_id,
-                'tyre-age-laps': self.m_tyre_age_laps
-            }
-
-        def __repr__(self) -> str:
-            """
-            Returns a string representation of the object suitable for debugging.
-            """
-            return f"TyreSetInfo(actual_tyre_compound={str(self.m_actual_tyre_compound)}, " \
-                f"visual_tyre_compound={str(self.m_visual_tyre_compound)}, " \
-                f"tyre_set_id={self.m_tyre_set_id}, " \
-                f"tyre_age_laps={self.m_tyre_age_laps})"
-
-        def __str__(self) -> str:
-            """
-            Returns a string representation of the object suitable for end-users.
-            """
-            return f"Tyre Set ID: {self.m_tyre_set_id}, " \
-                f"Actual Compound: {str(self.m_actual_tyre_compound)}, " \
-                f"Visual Compound: {str(self.m_visual_tyre_compound)}, " \
-                f"Tyre Age (laps): {self.m_tyre_age_laps}"
-
-    class TyreSetHistoryEntry:
-        """
-        Class that models the data stored per entry in the tyre set history list.
-
-        Attributes:
-            m_start_lap (int): The lap at which the tire set was fitted.
-            m_fitted_index (int): The index representing the fitted tire set.
-            m_tyre_set_key (Optional[str]): The key of the fitted tire set.
-            m_end_lap (Optional[int]): The lap at which the tire set was removed.
-                                            Must be set using the _computeTyreStintEndLaps method
-            m_tyre_wear_history (List[TyreWearPerLap]): The list of tyre wears for the fitted tire set.
-        """
-
-        def __init__(self,
-                     start_lap: int,
-                     index: int,
-                     tyre_set_key: Optional[str] = None,
-                     initial_tyre_wear: Optional[TyreWearPerLap] = None):
-            """Initialize the TyreSetHistoryEntry object. The m_end_lap attribute will be set to None
-
-            Args:
-                start_lap (int): The lap at which the tire set was fitted.
-                index (int): The index representing the fitted tire set.
-                tyre_set_key (Optional[str]): The key of the fitted tire set.
-                initial_tyre_wear (TyreWearPerLap): The starting tyre wear for this set (can be non 0 in case of reuse)
-            """
-            self.m_start_lap : int                          = start_lap
-            self.m_fitted_index : int                       = index
-            self.m_tyre_set_key : Optional[str]             = tyre_set_key
-            self.m_end_lap : int                            = None
-            if initial_tyre_wear:
-                self.m_tyre_wear_history : List[TyreWearPerLap] = [initial_tyre_wear]
-            else:
-                self.m_tyre_wear_history : List[TyreWearPerLap] = []
-
-        def getTyreWearJSONList(self):
-            """Dump this object into JSON
-
-            Returns:
-                List[Dict[str, Any]]: The JSON dump
-            """
-
-            return [entry.toJSON() for entry in self.m_tyre_wear_history]
-
-        def toJSON(self, include_tyre_wear_history: Optional[bool] = True) -> Dict[str, Any]:
-            """Dump this object into JSON
-
-            Args:
-                include_tyre_wear_history (Optional[bool]): Whether to include the tyre wear history. Defaults to False.
-
-            Returns:
-                Dict[str, Any]: The JSON dump
-            """
-
-            return {
-                "start-lap": self.m_start_lap,
-                "end-lap": self.m_end_lap,
-                "stint-length": (self.m_end_lap+1 - self.m_start_lap),
-                "fitted-index": self.m_fitted_index,
-                "tyre-set-key": self.m_tyre_set_key,
-                "tyre-wear-history": self.getTyreWearJSONList() if include_tyre_wear_history else None
-            }
 
     class PerLapSnapshotEntry:
         """
@@ -400,93 +286,6 @@ class DataPerDriver:
                 "top-speed-kmph" : self.m_top_speed_kmph,
             }
 
-    class WarningPenaltyEntry:
-        """
-        Class that captures one warning/penalty entry
-        """
-        class EntryType(Enum):
-            """
-            Enum representing the type of warning/penalty entry
-            """
-            CORNER_CUTTING_WARNING = 0
-            DT_PENALTY = 1
-            SG_PENALTY = 2
-            OTHER_WARNING = 3
-            TIME_PENALTY = 4
-
-            @staticmethod
-            def isValid(entry_type_code: int) -> bool:
-                """
-                Check if the entry type is valid
-
-                Args:
-                    entry_type_code (int): The entry type code to check
-
-                Returns:
-                    bool: True if the entry type is valid
-                """
-
-                if isinstance(entry_type_code, DataPerDriver.WarningPenaltyEntry.EntryType):
-                    return True  # It's already an instance of EntryType
-                return any(entry_type_code == member.value for member in  DataPerDriver.WarningPenaltyEntry.EntryType)
-
-            def __str__(self) -> str:
-                """
-                Get the name of the entry type
-
-                Returns:
-                    str: The name of the entry type
-                """
-                return self.name.replace('_', ' ').title()
-
-        def __init__(self,
-                     entry_type: EntryType,
-                     old_value: int,
-                     new_value: int,
-                     lap_num: int,
-                     sector_number: int,
-                     distance_from_start: float,
-                     lap_progress_percent: float) -> None:
-
-            """
-            Init the warning/penalty entry
-
-            Args:
-                entry_type (EntryType): The entry type
-                old_value (int): The old value of the entry
-                new_value (int): The new value of the entry
-                lap_number (int): The lap number
-                sector_number (int): The sector number
-                distance_from_start (float): The distance from start
-                lap_progress_percent (float): The lap progress percent
-            """
-
-            assert old_value != new_value
-            self.m_entry_type: DataPerDriver.WarningPenaltyEntry.EntryType = entry_type
-            self.m_old_value: int = old_value
-            self.m_new_value: int = new_value
-            self.m_lap_number: int = lap_num
-            self.m_sector_number: int = sector_number
-            self.m_distance_from_start: float = distance_from_start
-            self.m_lap_progress_percent: float = lap_progress_percent
-
-        def toJSON(self) -> Dict[str, Any]:
-            """
-            Dump this object into JSON
-
-            Returns:
-                Dict[str, Any]: The JSON dump
-            """
-            return {
-                "entry-type" : str(self.m_entry_type),
-                "old-value" : self.m_old_value,
-                "new-value" : self.m_new_value,
-                "lap-number" : self.m_lap_number,
-                "sector-number" : str(self.m_sector_number),
-                "distance-from-start" : self.m_distance_from_start,
-                "lap-progress-percent" : self.m_lap_progress_percent
-            }
-
     def __init__(self, total_laps):
         """
         Init the data per driver fields
@@ -524,7 +323,7 @@ class DataPerDriver:
         self.m_dnf_status_code: Optional[str] = None
         self.m_tyre_life_remaining_laps: Optional[int] = None
         self.m_telemetry_restrictions: Optional[TelemetrySetting] = None
-        self.m_tyre_set_history: List[DataPerDriver.TyreSetHistoryEntry] = []
+        self.m_tyre_set_history: List[TyreSetHistoryEntry] = []
         self.m_tyre_wear_extrapolator: TyreWearExtrapolator = TyreWearExtrapolator([], total_laps=total_laps)
         self.m_curr_lap_sc_status: Optional[SafetyCarType] = None
         self.m_fuel_load_kg: Optional[float] = None
@@ -537,7 +336,7 @@ class DataPerDriver:
         self.m_collision_records: List[CollisionRecord] = []
         self.m_fuel_rate_recommender: FuelRateRecommender = FuelRateRecommender([], total_laps=total_laps,
                                                                                 min_fuel_kg=CarStatusData.MIN_FUEL_KG)
-        self.m_warning_penalty_history: List[DataPerDriver.WarningPenaltyEntry] = []
+        self.m_warning_penalty_history: List[WarningPenaltyEntry] = []
 
         # packet copies
         self.m_packet_lap_data: Optional[LapData] = None
@@ -913,7 +712,7 @@ class DataPerDriver:
                         is_racing_lap=True,
                         desc="end of zeroth lap data point"
                     )
-                    self.m_tyre_set_history.append(DataPerDriver.TyreSetHistoryEntry(
+                    self.m_tyre_set_history.append(TyreSetHistoryEntry(
                                                 start_lap=self.m_current_lap,
                                                 index=fitted_index,
                                                 tyre_set_key=fitted_tyre_set_key,
@@ -931,7 +730,7 @@ class DataPerDriver:
                     is_racing_lap=True,
                     desc=f"tyre set change detected. key={str(fitted_tyre_set_key)}"
                 )
-                self.m_tyre_set_history.append(DataPerDriver.TyreSetHistoryEntry(
+                self.m_tyre_set_history.append(TyreSetHistoryEntry(
                                             start_lap=lap_number,
                                             index=fitted_index,
                                             tyre_set_key=fitted_tyre_set_key,
@@ -1008,7 +807,7 @@ class DataPerDriver:
             lap_num = self.m_current_lap
 
         if lap_num == self.m_current_lap and self.m_packet_car_status:
-            return DataPerDriver.TyreSetInfo(
+            return TyreSetInfo(
                 actual_tyre_compound=self.m_packet_car_status.m_actualTyreCompound,
                 visual_tyre_compound=self.m_packet_car_status.m_visualTyreCompound,
                 tyre_set_id=self._getCurrentTyreSetID(),
@@ -1020,7 +819,7 @@ class DataPerDriver:
             snapshot_tyre_sets    = snapshot_at_lap.m_tyre_sets_packet
             if not snapshot_car_status or not snapshot_tyre_sets:
                 return None
-            return DataPerDriver.TyreSetInfo(
+            return TyreSetInfo(
                 actual_tyre_compound=snapshot_car_status.m_actualTyreCompound,
                 visual_tyre_compound=snapshot_car_status.m_visualTyreCompound,
                 tyre_set_id=snapshot_tyre_sets.m_fittedIdx,
@@ -1122,8 +921,8 @@ class DataPerDriver:
             # If any penalties/warnings exist, set it
             if lap_data.m_cornerCuttingWarnings > 0:
                 # Add the corner cutting warning
-                self.m_warning_penalty_history.append(DataPerDriver.WarningPenaltyEntry(
-                    entry_type=DataPerDriver.WarningPenaltyEntry.EntryType.CORNER_CUTTING_WARNING,
+                self.m_warning_penalty_history.append(WarningPenaltyEntry(
+                    entry_type=WarningPenaltyEntry.EntryType.CORNER_CUTTING_WARNING,
                     old_value=0,
                     new_value=lap_data.m_cornerCuttingWarnings,
                     lap_num=lap_data.m_currentLapNum,
@@ -1133,8 +932,8 @@ class DataPerDriver:
                     ))
             if curr_other_warnings > 0:
                 # Add other warnings
-                self.m_warning_penalty_history.append(DataPerDriver.WarningPenaltyEntry(
-                    entry_type=DataPerDriver.WarningPenaltyEntry.EntryType.OTHER_WARNING,
+                self.m_warning_penalty_history.append(WarningPenaltyEntry(
+                    entry_type=WarningPenaltyEntry.EntryType.OTHER_WARNING,
                     old_value=0,
                     new_value=curr_other_warnings,
                     lap_num=lap_data.m_currentLapNum,
@@ -1144,8 +943,8 @@ class DataPerDriver:
                     ))
             if lap_data.m_numUnservedDriveThroughPens > 0:
                 # Add the drive through penalty
-                self.m_warning_penalty_history.append(DataPerDriver.WarningPenaltyEntry(
-                    entry_type=DataPerDriver.WarningPenaltyEntry.EntryType.DT_PENALTY,
+                self.m_warning_penalty_history.append(WarningPenaltyEntry(
+                    entry_type=WarningPenaltyEntry.EntryType.DT_PENALTY,
                     old_value=0,
                     new_value=lap_data.m_numUnservedDriveThroughPens,
                     lap_num=lap_data.m_currentLapNum,
@@ -1155,8 +954,8 @@ class DataPerDriver:
                     ))
             if lap_data.m_numUnservedStopGoPens > 0:
                 # Add the stop go penalty
-                self.m_warning_penalty_history.append(DataPerDriver.WarningPenaltyEntry(
-                    entry_type=DataPerDriver.WarningPenaltyEntry.EntryType.SG_PENALTY,
+                self.m_warning_penalty_history.append(WarningPenaltyEntry(
+                    entry_type=WarningPenaltyEntry.EntryType.SG_PENALTY,
                     old_value=0,
                     new_value=lap_data.m_numUnservedStopGoPens,
                     lap_num=lap_data.m_currentLapNum,
@@ -1166,8 +965,8 @@ class DataPerDriver:
                     ))
             if lap_data.m_penalties > 0:
                 # Add the time penalty
-                self.m_warning_penalty_history.append(DataPerDriver.WarningPenaltyEntry(
-                    entry_type=DataPerDriver.WarningPenaltyEntry.EntryType.TIME_PENALTY,
+                self.m_warning_penalty_history.append(WarningPenaltyEntry(
+                    entry_type=WarningPenaltyEntry.EntryType.TIME_PENALTY,
                     old_value=0,
                     new_value=lap_data.m_penalties,
                     lap_num=lap_data.m_currentLapNum,
@@ -1180,8 +979,8 @@ class DataPerDriver:
                 self.m_packet_lap_data.m_cornerCuttingWarnings
             # If there is a diff in corner cutting warnings, add it
             if lap_data.m_cornerCuttingWarnings != self.m_packet_lap_data.m_cornerCuttingWarnings:
-                self.m_warning_penalty_history.append(DataPerDriver.WarningPenaltyEntry(
-                    entry_type=DataPerDriver.WarningPenaltyEntry.EntryType.CORNER_CUTTING_WARNING,
+                self.m_warning_penalty_history.append(WarningPenaltyEntry(
+                    entry_type=WarningPenaltyEntry.EntryType.CORNER_CUTTING_WARNING,
                     old_value=self.m_packet_lap_data.m_cornerCuttingWarnings,
                     new_value=lap_data.m_cornerCuttingWarnings,
                     lap_num=lap_data.m_currentLapNum,
@@ -1191,8 +990,8 @@ class DataPerDriver:
                     ))
             # If there is a diff in other warnings, add it
             if curr_other_warnings != old_other_warnings:
-                self.m_warning_penalty_history.append(DataPerDriver.WarningPenaltyEntry(
-                    entry_type=DataPerDriver.WarningPenaltyEntry.EntryType.OTHER_WARNING,
+                self.m_warning_penalty_history.append(WarningPenaltyEntry(
+                    entry_type=WarningPenaltyEntry.EntryType.OTHER_WARNING,
                     old_value=old_other_warnings,
                     new_value=curr_other_warnings,
                     lap_num=lap_data.m_currentLapNum,
@@ -1202,8 +1001,8 @@ class DataPerDriver:
                     ))
             # If there is a diff in drive through penalties, add it
             if lap_data.m_numUnservedDriveThroughPens != self.m_packet_lap_data.m_numUnservedDriveThroughPens:
-                self.m_warning_penalty_history.append(DataPerDriver.WarningPenaltyEntry(
-                    entry_type=DataPerDriver.WarningPenaltyEntry.EntryType.DT_PENALTY,
+                self.m_warning_penalty_history.append(WarningPenaltyEntry(
+                    entry_type=WarningPenaltyEntry.EntryType.DT_PENALTY,
                     old_value=self.m_packet_lap_data.m_numUnservedDriveThroughPens,
                     new_value=lap_data.m_numUnservedDriveThroughPens,
                     lap_num=lap_data.m_currentLapNum,
@@ -1213,8 +1012,8 @@ class DataPerDriver:
                     ))
             # If there is a diff in stop go penalties, add it
             if lap_data.m_numUnservedStopGoPens != self.m_packet_lap_data.m_numUnservedStopGoPens:
-                self.m_warning_penalty_history.append(DataPerDriver.WarningPenaltyEntry(
-                    entry_type=DataPerDriver.WarningPenaltyEntry.EntryType.SG_PENALTY,
+                self.m_warning_penalty_history.append(WarningPenaltyEntry(
+                    entry_type=WarningPenaltyEntry.EntryType.SG_PENALTY,
                     old_value=self.m_packet_lap_data.m_numUnservedStopGoPens,
                     new_value=lap_data.m_numUnservedStopGoPens,
                     lap_num=lap_data.m_currentLapNum,
@@ -1224,8 +1023,8 @@ class DataPerDriver:
                     ))
             # If there is a diff in time penalties, add it
             if lap_data.m_penalties != self.m_packet_lap_data.m_penalties:
-                self.m_warning_penalty_history.append(DataPerDriver.WarningPenaltyEntry(
-                    entry_type=DataPerDriver.WarningPenaltyEntry.EntryType.TIME_PENALTY,
+                self.m_warning_penalty_history.append(WarningPenaltyEntry(
+                    entry_type=WarningPenaltyEntry.EntryType.TIME_PENALTY,
                     old_value=self.m_packet_lap_data.m_penalties,
                     new_value=lap_data.m_penalties,
                     lap_num=lap_data.m_currentLapNum,

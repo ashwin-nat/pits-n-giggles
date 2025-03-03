@@ -106,10 +106,13 @@ class F1TelemetryUnitTestsBase(unittest.TestCase):
         Raises:
             AssertionError: If the two JSON objects are not equal.
         """
+        # Compare JSON objects using DeepDiff
         differences = DeepDiff(expected_json, actual_json, ignore_order=True)
 
         if differences:
             print("Differences found:")
+
+            # Check if 'values_changed' exists in the differences
             if 'values_changed' in differences:
                 for key, change in differences['values_changed'].items():
                     # Extract the key name and expected/actual values
@@ -118,5 +121,23 @@ class F1TelemetryUnitTestsBase(unittest.TestCase):
                     actual_value = change['new_value']
                     print(f"Changed key: {key_name}  Expected value: {expected_value}  Actual value: {actual_value}")
             else:
-                print(json.dumps(differences, indent=4))
-            raise AssertionError(f"JSON objects are not equal.\n {json.dumps(differences, indent=4)}")
+                # If no 'values_changed', print all differences
+                print(self.serialize_object(differences))
+
+            raise AssertionError(f"JSON objects are not equal.\n {self.serialize_object(differences)}")
+
+    def serialize_object(self, obj):
+        """
+        Serializes an object, converting non-serializable items to string.
+
+        Args:
+            obj (Any): The object to serialize.
+
+        Returns:
+            str: The serialized JSON string.
+        """
+        try:
+            return json.dumps(obj, indent=4)  # Try to serialize directly
+        except TypeError:  # If serialization fails due to non-serializable types
+            # Fallback to string conversion for non-serializable objects
+            return json.dumps(str(obj), indent=4)
