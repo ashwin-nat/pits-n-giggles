@@ -25,6 +25,7 @@
 from lib.f1_types import VisualTyreCompound, ActualTyreCompound, PacketTyreSetsData
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 from typing import Dict, List, Any, Optional, Generator
+from dataclasses import dataclass
 from src.png_logger import getLogger
 import json
 
@@ -290,3 +291,14 @@ class TyreSetHistoryManager:
             tyre_set_history.append(entry_json)
 
         return tyre_set_history
+
+@dataclass
+class CurrTyreInfo:
+    tyre_age: Optional[int] = None
+    tyre_vis_compound: Optional[VisualTyreCompound] = None
+    tyre_act_compound: Optional[ActualTyreCompound] = None
+    tyre_wear: Optional[TyreWearPerLap] = None
+    tyre_surface_temp: Optional[float] = None
+    tyre_inner_temp: Optional[float] = None
+    tyre_life_remaining_laps: Optional[int] = None
+

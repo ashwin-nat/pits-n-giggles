@@ -33,7 +33,7 @@ from lib.f1_types import PacketSessionData, PacketLapData, LapData, CarTelemetry
     F1Utils, WeatherForecastSample, CarDamageData, CarStatusData, TrackID, ActualTyreCompound, VisualTyreCompound, \
     SafetyCarType, TelemetrySetting, PacketMotionData, CarMotionData, PacketCarSetupData, CarSetupData, ResultStatus, \
     PacketTimeTrialData, LapHistoryData
-from src.data_per_driver import TyreSetInfo, TyreSetHistoryEntry, TyreSetHistoryManager, WarningPenaltyEntry, \
+from src.data_per_driver import TyreSetInfo, TyreSetHistoryEntry, TyreSetHistoryManager, CurrTyreInfo, \
     PerLapSnapshotEntry, WarningPenaltyHistory
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.overtake_analyzer import OvertakeRecord
@@ -248,22 +248,15 @@ class DataPerDriver:
         self.m_pb_s3_ms: Optional[int] = None
         self.m_last_lap_ms: Optional[int] = None
         self.m_last_lap_obj: Optional[LapHistoryData] = None
-        self.m_tyre_wear: Optional[TyreWearPerLap] = None
         self.m_is_player: Optional[bool] = None
         self.m_current_lap: Optional[int] = None
-        self.m_penalties: Optional[str] = None
-        self.m_tyre_age: Optional[int] = None
-        self.m_tyre_vis_compound: Optional[VisualTyreCompound] = None
-        self.m_tyre_act_compound: Optional[ActualTyreCompound] = None
-        self.m_tyre_surface_temp: Optional[float] = None
-        self.m_tyre_inner_temp: Optional[float] = None
+        self.m_curr_tyre_info: CurrTyreInfo = CurrTyreInfo()
         self.m_is_pitting: Optional[bool] = None
         self.m_drs_activated: Optional[bool] = None
         self.m_drs_allowed: Optional[bool] = None
         self.m_drs_distance: Optional[int] = None
         self.m_num_pitstops: Optional[int] = None
         self.m_dnf_status_code: Optional[str] = None
-        self.m_tyre_life_remaining_laps: Optional[int] = None
         self.m_telemetry_restrictions: Optional[TelemetrySetting] = None
         self.m_tyre_set_history_manager: TyreSetHistoryManager = TyreSetHistoryManager()
         self.m_tyre_wear_extrapolator: TyreWearExtrapolator = TyreWearExtrapolator([], total_laps=total_laps)
@@ -428,7 +421,7 @@ class DataPerDriver:
             JSON object: JSON object containing the current tyre wear
         """
 
-        return self.m_tyre_wear.toJSON() if self.m_tyre_wear else None
+        return self.m_curr_tyre_info.tyre_wear.toJSON() if self.m_curr_tyre_info.tyre_wear else None
 
     def _getTyreSetHistoryJSON(self, include_wear_history: Optional[bool] = True) -> List[Dict[str, Any]]:
         """Get the list of tyre sets used in JSON format
@@ -1178,8 +1171,6 @@ class DriverData:
             obj_to_be_updated.m_position = lap_data.m_carPosition
             obj_to_be_updated.m_delta_to_car_in_front = lap_data.m_deltaToCarInFrontInMS
             obj_to_be_updated.m_delta_to_leader = lap_data.m_deltaToRaceLeaderInMS
-            obj_to_be_updated.m_penalties = self._getPenaltyString(lap_data.m_penalties,
-                                lap_data.m_numUnservedDriveThroughPens, lap_data.m_numUnservedStopGoPens)
 
             # Update the per lap snapshot data structure if lap info is available
             if (obj_to_be_updated.m_current_lap is not None):
@@ -1222,7 +1213,7 @@ class DriverData:
 
         obj_to_be_updated = self._getObjectByIndex(packet.vehicleIdx)
         obj_to_be_updated.m_best_lap_ms = packet.lapTime
-        obj_to_be_updated.m_best_lap_tyre = obj_to_be_updated.m_tyre_vis_compound
+        obj_to_be_updated.m_best_lap_tyre = obj_to_be_updated.m_curr_tyre_info.tyre_vis_compound
         self.m_fastest_index = packet.vehicleIdx
 
     def processRetirement(self, packet: PacketEventData.Retirement) -> None:
@@ -1268,9 +1259,9 @@ class DriverData:
         for index, car_telemetry_data in enumerate(packet.m_carTelemetryData):
             obj_to_be_updated = self._getObjectByIndex(index)
             obj_to_be_updated.m_drs_activated = bool(car_telemetry_data.m_drs)
-            obj_to_be_updated.m_tyre_inner_temp = \
+            obj_to_be_updated.m_curr_tyre_info.tyre_inner_temp = \
                     sum(car_telemetry_data.m_tyresInnerTemperature)/len(car_telemetry_data.m_tyresInnerTemperature)
-            obj_to_be_updated.m_tyre_surface_temp = \
+            obj_to_be_updated.m_curr_tyre_info.tyre_surface_temp = \
                     sum(car_telemetry_data.m_tyresSurfaceTemperature)/len(car_telemetry_data.m_tyresSurfaceTemperature)
             if obj_to_be_updated.m_top_speed_kmph_this_lap is None:
                 obj_to_be_updated.m_top_speed_kmph_this_lap = car_telemetry_data.m_speed
@@ -1288,9 +1279,9 @@ class DriverData:
         for index, car_status_data in enumerate(packet.m_carStatusData):
             obj_to_be_updated = self._getObjectByIndex(index)
             obj_to_be_updated.m_ers_perc = (car_status_data.m_ersStoreEnergy/CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0
-            obj_to_be_updated.m_tyre_age = car_status_data.m_tyresAgeLaps
-            obj_to_be_updated.m_tyre_vis_compound = car_status_data.m_visualTyreCompound
-            obj_to_be_updated.m_tyre_act_compound = car_status_data.m_actualTyreCompound
+            obj_to_be_updated.m_curr_tyre_info.tyre_age = car_status_data.m_tyresAgeLaps
+            obj_to_be_updated.m_curr_tyre_info.tyre_vis_compound = car_status_data.m_visualTyreCompound
+            obj_to_be_updated.m_curr_tyre_info.tyre_act_compound = car_status_data.m_actualTyreCompound
             obj_to_be_updated.m_drs_allowed = bool(car_status_data.m_drsAllowed)
             obj_to_be_updated.m_drs_distance = car_status_data.m_drsActivationDistance
             obj_to_be_updated.m_packet_car_status = car_status_data
@@ -1340,7 +1331,7 @@ class DriverData:
         for index, car_damage in enumerate(packet.m_carDamageData):
             obj_to_be_updated = self._getObjectByIndex(index)
             obj_to_be_updated.m_packet_car_damage = car_damage
-            obj_to_be_updated.m_tyre_wear = TyreWearPerLap(
+            obj_to_be_updated.m_curr_tyre_info.tyre_wear = TyreWearPerLap(
                 fl_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
                 fr_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
                 rl_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
@@ -1418,7 +1409,7 @@ class DriverData:
 
         obj_to_be_updated = self._getObjectByIndex(packet.m_carIdx)
         obj_to_be_updated.m_packet_tyre_sets = packet
-        obj_to_be_updated.m_tyre_life_remaining_laps = packet.m_tyreSetData[packet.m_fittedIdx].m_lifeSpan
+        obj_to_be_updated.m_curr_tyre_info.tyre_life_remaining_laps = packet.m_tyreSetData[packet.m_fittedIdx].m_lifeSpan
 
         # Update the tyre set history
         obj_to_be_updated.updateTyreSetData(fitted_index=packet.m_fittedIdx)
@@ -1680,7 +1671,6 @@ def processParticipantsUpdate(packet: PacketParticipantsData) -> None:
 
     with _driver_data_lock.gen_wlock():
         _driver_data.processParticipantsUpdate(packet)
-
 
 def processCarTelemetryUpdate(packet: PacketCarTelemetryData) -> None:
     """Update the data structure with the car telemetry information

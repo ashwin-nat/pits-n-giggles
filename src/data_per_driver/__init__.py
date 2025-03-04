@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from .tyre_info import TyreSetInfo, TyreSetHistoryEntry, TyreSetHistoryManager
+from .tyre_info import TyreSetInfo, TyreSetHistoryEntry, TyreSetHistoryManager, CurrTyreInfo
 from .warns_pens_info import WarningPenaltyEntry, WarningPenaltyHistory
 from .per_lap_snapshot import PerLapSnapshotEntry
 
@@ -28,6 +28,7 @@ __all__ = [
     'TyreSetInfo',
     'TyreSetHistoryEntry',
     'TyreSetHistoryManager',
+    'CurrTyreInfo',
 
     'WarningPenaltyEntry',
     'WarningPenaltyHistory',
