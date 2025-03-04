@@ -20,12 +20,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from .tyre_info import TyreSetInfo, TyreSetHistoryEntry
+from .tyre_info import TyreSetInfo, TyreSetHistoryEntry, TyreSetHistoryManager
 from .warns_pens_info import WarningPenaltyEntry
 
 __all__ = [
     'TyreSetInfo',
     'TyreSetHistoryEntry',
+    'TyreSetHistoryManager',
 
     'WarningPenaltyEntry',
 

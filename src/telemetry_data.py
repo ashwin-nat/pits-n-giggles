@@ -25,8 +25,7 @@
 
 import copy
 import json
-from typing import Optional, Generator, Tuple, List, Dict, Any, Callable
-from enum import Enum
+from typing import Optional, Generator, Tuple, List, Dict, Any
 from readerwriterlock import rwlock
 from lib.f1_types import PacketSessionData, PacketLapData, LapData, CarTelemetryData, ParticipantData, \
     PacketEventData, PacketParticipantsData, PacketCarTelemetryData, PacketCarStatusData, FinalClassificationData, \
@@ -34,7 +33,7 @@ from lib.f1_types import PacketSessionData, PacketLapData, LapData, CarTelemetry
     F1Utils, WeatherForecastSample, CarDamageData, CarStatusData, TrackID, ActualTyreCompound, VisualTyreCompound, \
     SafetyCarType, TelemetrySetting, PacketMotionData, CarMotionData, PacketCarSetupData, CarSetupData, ResultStatus, \
     PacketTimeTrialData, LapHistoryData
-from src.data_per_driver import TyreSetInfo, TyreSetHistoryEntry, WarningPenaltyEntry
+from src.data_per_driver import TyreSetInfo, TyreSetHistoryEntry, TyreSetHistoryManager, WarningPenaltyEntry
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.overtake_analyzer import OvertakeRecord
 from lib.collisions_analyzer import CollisionRecord, CollisionAnalyzer, CollisionAnalyzerMode
@@ -184,8 +183,7 @@ class DataPerDriver:
         m_tyre_life_remaining_laps (Optional[int]): The remaining laps the tires are expected to last.
         m_telemetry_restrictions (Optional[TelemetrySetting]):
             Telemetry settings indicating the level of data available for the driver.
-        m_tyre_set_history (List[TyreSetHistoryEntry]):
-            List of TyreSetHistoryEntry objects, representing the driver's tire set history.
+        m_tyre_set_history_manager (TyreSetHistoryManager)
         m_tyre_wear_extrapolator (TyreWearExtrapolator): Predicts the tyre wear for upcoming laps
         m_curr_lap_sc_status (SafetyCarStatus): The current lap's safety car status
         m_fuel_load_kg (float): The current fuel load (in kg)
@@ -323,7 +321,7 @@ class DataPerDriver:
         self.m_dnf_status_code: Optional[str] = None
         self.m_tyre_life_remaining_laps: Optional[int] = None
         self.m_telemetry_restrictions: Optional[TelemetrySetting] = None
-        self.m_tyre_set_history: List[TyreSetHistoryEntry] = []
+        self.m_tyre_set_history_manager: TyreSetHistoryManager = TyreSetHistoryManager()
         self.m_tyre_wear_extrapolator: TyreWearExtrapolator = TyreWearExtrapolator([], total_laps=total_laps)
         self.m_curr_lap_sc_status: Optional[SafetyCarType] = None
         self.m_fuel_load_kg: Optional[float] = None
@@ -498,22 +496,7 @@ class DataPerDriver:
             JSON list: JSON list containing multiple JSON objects, each representing one set of tyres used, in order.
         """
 
-        self._computeTyreStintEndLaps()
-        tyre_set_history = []
-        for entry in self.m_tyre_set_history:
-            is_index_valid = 0 < entry.m_fitted_index < len(self.m_packet_tyre_sets.m_tyreSetData)
-            entry_json = entry.toJSON(include_wear_history)
-            entry_json['tyre-set-data'] = \
-                self.m_packet_tyre_sets.m_tyreSetData[entry.m_fitted_index].toJSON() if is_index_valid else None
-
-            if include_wear_history:
-                entry_json['tyre-wear-history'] = entry.getTyreWearJSONList()
-                # Overwrite the tyre sets wear to actual recent float value
-                if (len(entry_json['tyre-wear-history']) > 0) and (entry_json['tyre-set-data']):
-                    entry_json['tyre-set-data']['wear'] = entry_json['tyre-wear-history'][-1]['average']
-            tyre_set_history.append(entry_json)
-
-        return tyre_set_history
+        return self.m_tyre_set_history_manager.toJSON(include_wear_history, self.m_packet_tyre_sets)
 
     def _getTyreWearHistoryJSON(self, start_lap : int, end_lap : int):
         """
@@ -602,8 +585,9 @@ class DataPerDriver:
         Returns:
             JSON list: JSON list containing multiple JSON objects, each representing one lap time, in order.
         """
+
         ret = []
-        for tyre_set_meta_data in self.m_tyre_set_history:
+        for tyre_set_meta_data in self.m_tyre_set_history_manager.getEntries():
             for tyre_wear in tyre_set_meta_data.m_tyre_wear_history:
                 tyre_set_data = self.m_per_lap_snapshots[tyre_wear.lap_number] \
                     .m_tyre_sets_packet.m_tyreSetData[tyre_set_meta_data.m_fitted_index] \
@@ -614,6 +598,7 @@ class DataPerDriver:
                     'tyre-set' : tyre_set_data.toJSON() if tyre_set_data else None,
                 })
         return ret
+
     def onLapChange(self,
         old_lap_number: int) -> None:
         """
@@ -641,8 +626,8 @@ class DataPerDriver:
         self.m_top_speed_kmph_this_lap = None
 
         # Add the tyre wear data into the tyre stint history
-        if (old_lap_number > 0) and (len(self.m_tyre_set_history) > 0):
-            self.m_tyre_set_history[-1].m_tyre_wear_history.append(TyreWearPerLap(
+        if old_lap_number and self.m_tyre_set_history_manager.length:
+            self.m_tyre_set_history_manager.addTyreWear(TyreWearPerLap(
                 fl_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
                 fr_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
                 rl_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
@@ -700,7 +685,7 @@ class DataPerDriver:
         # This can happen if tyre sets packets arrives before lap data packet
         if self.m_current_lap is not None:
             fitted_tyre_set_key = self._getCurrentTyreSetKey()
-            if len(self.m_tyre_set_history) == 0:
+            if not self.m_tyre_set_history_manager.length:
                 if 0 in self.m_per_lap_snapshots:
                     # Start of race, enter the tyre wear data along with starting value
                     initial_tyre_wear = TyreWearPerLap(
@@ -712,13 +697,13 @@ class DataPerDriver:
                         is_racing_lap=True,
                         desc="end of zeroth lap data point"
                     )
-                    self.m_tyre_set_history.append(TyreSetHistoryEntry(
+                    self.m_tyre_set_history_manager.add(TyreSetHistoryEntry(
                                                 start_lap=self.m_current_lap,
                                                 index=fitted_index,
                                                 tyre_set_key=fitted_tyre_set_key,
                                                 initial_tyre_wear=initial_tyre_wear,
                     ))
-            elif fitted_index != self.m_tyre_set_history[-1].m_fitted_index:
+            elif fitted_index != self.m_tyre_set_history_manager.getLastEntry().m_fitted_index:
                 lap_number = self.m_current_lap - 1
                 # create a new tyre set entry with initial data.
                 initial_tyre_wear = TyreWearPerLap(
@@ -730,7 +715,7 @@ class DataPerDriver:
                     is_racing_lap=True,
                     desc=f"tyre set change detected. key={str(fitted_tyre_set_key)}"
                 )
-                self.m_tyre_set_history.append(TyreSetHistoryEntry(
+                self.m_tyre_set_history_manager.add(TyreSetHistoryEntry(
                                             start_lap=lap_number,
                                             index=fitted_index,
                                             tyre_set_key=fitted_tyre_set_key,
@@ -768,27 +753,6 @@ class DataPerDriver:
         """
         for lap_number in sorted(self.m_per_lap_snapshots.keys()):
             yield lap_number, self.m_per_lap_snapshots[lap_number]
-
-    def _computeTyreStintEndLaps(self) -> None:
-        """
-        Compute the end lap number for each tyre stint
-        """
-
-        # Don't do any of this if we have no tyre stint history. Fuck those guys who have telemetry off
-        if len(self.m_tyre_set_history) > 0:
-            for i in range(len(self.m_tyre_set_history) - 1):
-                current_stint = self.m_tyre_set_history[i]
-                next_stint = self.m_tyre_set_history[i + 1]
-                current_stint.m_end_lap = next_stint.m_start_lap
-
-            # For the last tyre stint, get end lap num from session history
-            self.m_tyre_set_history[-1].m_end_lap = self.m_packet_session_history.m_numLaps
-
-            # If the first stint has garbage data, remove it (this happens if the user customizes the strat before race)
-            if self.m_tyre_set_history[0].m_end_lap < self.m_tyre_set_history[0].m_start_lap:
-                garbage_obj = self.m_tyre_set_history.pop(0)
-                png_logger.debug(f"Removed garbage tyre stint history record for driver {self.m_name}.\n"
-                                 f"{json.dumps(garbage_obj.toJSON(include_tyre_wear_history=False), indent=4)}")
 
     def getTyreSetInfoAtLap(self, lap_num: Optional[int] = None) -> Optional[TyreSetInfo]:
         """Get the tyre set info at the specified lap number

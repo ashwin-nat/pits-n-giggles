@@ -20,9 +20,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from lib.f1_types import VisualTyreCompound, ActualTyreCompound
+from lib.f1_types import VisualTyreCompound, ActualTyreCompound, PacketTyreSetsData
 from lib.tyre_wear_extrapolator import TyreWearPerLap
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Generator
+from src.png_logger import getLogger
+import json
+
+png_logger = getLogger()
 
 class TyreSetInfo:
     """
@@ -155,3 +159,128 @@ class TyreSetHistoryEntry:
             str: string representation of this object
         """
         return self.__repr__()
+
+class TyreSetHistoryManager:
+    """Class that manages the info per tyre set usage
+    """
+
+    def __init__(self):
+        """Init the manager object
+        """
+
+        self.m_history: List[TyreSetHistoryEntry] = []
+
+    @property
+    def length(self) -> int:
+        """Get the length of the history collection
+
+        Returns:
+            int: Number of items in history
+        """
+
+        return len(self.m_history)
+
+    def add(self, entry: TyreSetHistoryEntry) -> None:
+        """Add given item to the history collection
+
+        Args:
+            entry (TyreSetHistoryEntry): Item to be added to the history collection
+        """
+
+        self.m_history.append(entry)
+
+    def addTyreWear(self, tyre_wear_info: TyreWearPerLap, entry_index: int = -1) -> None:
+        """Append tyre wear info for the specified tyre wear history item at the given index
+
+        Args:
+            tyre_wear_info (TyreWearPerLap): Tyre wear of latest lap
+            entry_index (int, optional): Index of the history item. Defaults to -1 (last item).
+        """
+
+        self.m_history[entry_index].m_tyre_wear_history.append(tyre_wear_info)
+
+    def _computeTyreStintEndLaps(self, final_lap_num: int) -> None:
+        """
+        Compute the end lap number for each tyre stint
+
+        Args:
+            final_lap_num(int): The lap number of the final/current lap
+        """
+
+        # Don't do any of this if we have no tyre stint history. Can happen if player has telemetry disabled
+        if not self.length:
+            return
+
+        for i in range(len(self.m_history) - 1):
+            current_stint = self.m_history[i]
+            next_stint = self.m_history[i + 1]
+            current_stint.m_end_lap = next_stint.m_start_lap
+
+        # For the last tyre stint, get end lap num from session history
+        self.m_history[-1].m_end_lap = final_lap_num
+
+        # If the first stint has garbage data, remove it (this happens if the user customizes the strat before race)
+        if self.m_history[0].m_end_lap < self.m_history[0].m_start_lap:
+            garbage_obj = self.m_history.pop(0)
+            png_logger.debug(f"Removed garbage tyre stint history record for driver {self.m_name}.\n"
+                                f"{json.dumps(garbage_obj.toJSON(include_tyre_wear_history=False), indent=4)}")
+
+    def getEntries(self) -> Generator[TyreSetHistoryEntry, None, None]:
+        """Get all entries in the tyre set history collection
+
+        Yields:
+            Generator[TyreSetHistoryEntry, None, None]: The next history entry
+        """
+        yield from self.m_history
+
+    def getEntry(self, index: int) -> Optional[TyreSetHistoryEntry]:
+        """Get the entry in the tyre set history collection at the specified index
+
+        Args:
+            index (int): History item index
+
+        Returns:
+            Optional[TyreSetHistoryEntry]: History item (may be None)
+        """
+
+        return self.m_history[index]
+
+    def getLastEntry(self) -> Optional[TyreSetHistoryEntry]:
+        """Get the entry in the tyre set history collection at the specified index
+
+        Args:
+            index (int): History item index
+
+        Returns:
+            Optional[TyreSetHistoryEntry]: History item (may be None)
+        """
+
+        return self.getEntry(index=-1)
+
+    def toJSON(self, include_wear_history: bool, tyre_sets_packet: PacketTyreSetsData) -> List[Dict[str, Any]]:
+        """Get the JSON representation of the tyre set history
+
+        Args:
+            include_wear_history (bool): Whether tyre wear per lap should be included under each tyre set
+            tyre_sets_packet (PacketTyreSetsData): The most recent tyre sets packet data copy
+
+        Returns:
+            List[Dict[str, Any]]: List of tyre stint history entries in JSON
+        """
+
+        self._computeTyreStintEndLaps()
+        tyre_set_history = []
+        for entry in self.m_history:
+            is_index_valid = 0 < entry.m_fitted_index < len(tyre_sets_packet.m_tyreSetData)
+            entry_json = entry.toJSON(include_wear_history)
+            entry_json['tyre-set-data'] = \
+                tyre_sets_packet.m_tyreSetData[entry.m_fitted_index].toJSON() if is_index_valid else None
+
+            if include_wear_history:
+                entry_json['tyre-wear-history'] = entry.getTyreWearJSONList()
+                # Overwrite the tyre sets wear to actual recent float value
+                if (len(entry_json['tyre-wear-history']) > 0) and (entry_json['tyre-set-data']):
+                    entry_json['tyre-set-data']['wear'] = entry_json['tyre-wear-history'][-1]['average']
+            tyre_set_history.append(entry_json)
+
+        return tyre_set_history
