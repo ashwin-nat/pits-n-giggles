@@ -20,8 +20,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from enum import Enum
-from typing import Any, Dict
+from enum import Enum, auto
+from typing import Any, Dict, List, Optional, Generator
+from lib.f1_types import LapData
 
 class WarningPenaltyEntry:
     """
@@ -31,11 +32,12 @@ class WarningPenaltyEntry:
         """
         Enum representing the type of warning/penalty entry
         """
-        CORNER_CUTTING_WARNING = 0
-        DT_PENALTY = 1
-        SG_PENALTY = 2
-        OTHER_WARNING = 3
-        TIME_PENALTY = 4
+
+        CORNER_CUTTING_WARNING = auto()
+        DT_PENALTY = auto()
+        SG_PENALTY = auto()
+        OTHER_WARNING = auto()
+        TIME_PENALTY = auto()
 
         @staticmethod
         def isValid(entry_type_code: int) -> bool:
@@ -128,3 +130,145 @@ class WarningPenaltyEntry:
             str: string representation of this object
         """
         return self.__repr__()
+
+class WarningPenaltyHistory:
+    """Warns/Pens histroy tracker class
+    """
+    def __init__(self) -> None:
+        """Init the history tracker
+        """
+        self.m_history: List[WarningPenaltyEntry] = []
+
+    def update(self, curr_packet: LapData, full_lap_distance: int, old_packet: Optional[LapData] = None) -> None:
+        """Update the history tracker with the new warns/pens
+
+        Args:
+            curr_packet (LapData): Current lap data packet
+            full_lap_distance (int): _description_
+            old_packet (Optional[LapData], optional): Previously stored lap data packet. Defaults to None.
+        """
+        curr_other_warnings = curr_packet.m_totalWarnings - curr_packet.m_cornerCuttingWarnings
+        lap_progress_percent=(curr_packet.m_lapDistance/float(full_lap_distance))*100.0
+        if not old_packet:
+            # If any penalties/warnings exist, set it
+            if curr_packet.m_cornerCuttingWarnings > 0:
+                # Add the corner cutting warning
+                self.m_history.append(WarningPenaltyEntry(
+                    entry_type=WarningPenaltyEntry.EntryType.CORNER_CUTTING_WARNING,
+                    old_value=0,
+                    new_value=curr_packet.m_cornerCuttingWarnings,
+                    lap_num=curr_packet.m_currentLapNum,
+                    sector_number=curr_packet.m_sector,
+                    distance_from_start=curr_packet.m_lapDistance,
+                    lap_progress_percent=lap_progress_percent
+                    ))
+            if curr_other_warnings > 0:
+                # Add other warnings
+                self.m_history.append(WarningPenaltyEntry(
+                    entry_type=WarningPenaltyEntry.EntryType.OTHER_WARNING,
+                    old_value=0,
+                    new_value=curr_other_warnings,
+                    lap_num=curr_packet.m_currentLapNum,
+                    sector_number=curr_packet.m_sector,
+                    distance_from_start=curr_packet.m_lapDistance,
+                    lap_progress_percent=lap_progress_percent
+                    ))
+            if curr_packet.m_numUnservedDriveThroughPens > 0:
+                # Add the drive through penalty
+                self.m_history.append(WarningPenaltyEntry(
+                    entry_type=WarningPenaltyEntry.EntryType.DT_PENALTY,
+                    old_value=0,
+                    new_value=curr_packet.m_numUnservedDriveThroughPens,
+                    lap_num=curr_packet.m_currentLapNum,
+                    sector_number=curr_packet.m_sector,
+                    distance_from_start=curr_packet.m_lapDistance,
+                    lap_progress_percent=lap_progress_percent
+                    ))
+            if curr_packet.m_numUnservedStopGoPens > 0:
+                # Add the stop go penalty
+                self.m_history.append(WarningPenaltyEntry(
+                    entry_type=WarningPenaltyEntry.EntryType.SG_PENALTY,
+                    old_value=0,
+                    new_value=curr_packet.m_numUnservedStopGoPens,
+                    lap_num=curr_packet.m_currentLapNum,
+                    sector_number=curr_packet.m_sector,
+                    distance_from_start=curr_packet.m_lapDistance,
+                    lap_progress_percent=lap_progress_percent
+                    ))
+            if curr_packet.m_penalties > 0:
+                # Add the time penalty
+                self.m_history.append(WarningPenaltyEntry(
+                    entry_type=WarningPenaltyEntry.EntryType.TIME_PENALTY,
+                    old_value=0,
+                    new_value=curr_packet.m_penalties,
+                    lap_num=curr_packet.m_currentLapNum,
+                    sector_number=curr_packet.m_sector,
+                    distance_from_start=curr_packet.m_lapDistance,
+                    lap_progress_percent=lap_progress_percent
+                    ))
+        else:
+            old_other_warnings  = old_packet.m_totalWarnings - \
+                old_packet.m_cornerCuttingWarnings
+            # If there is a diff in corner cutting warnings, add it
+            if curr_packet.m_cornerCuttingWarnings != old_packet.m_cornerCuttingWarnings:
+                self.m_history.append(WarningPenaltyEntry(
+                    entry_type=WarningPenaltyEntry.EntryType.CORNER_CUTTING_WARNING,
+                    old_value=old_packet.m_cornerCuttingWarnings,
+                    new_value=curr_packet.m_cornerCuttingWarnings,
+                    lap_num=curr_packet.m_currentLapNum,
+                    sector_number=curr_packet.m_sector,
+                    distance_from_start=curr_packet.m_lapDistance,
+                    lap_progress_percent=lap_progress_percent
+                    ))
+            # If there is a diff in other warnings, add it
+            if curr_other_warnings != old_other_warnings:
+                self.m_history.append(WarningPenaltyEntry(
+                    entry_type=WarningPenaltyEntry.EntryType.OTHER_WARNING,
+                    old_value=old_other_warnings,
+                    new_value=curr_other_warnings,
+                    lap_num=curr_packet.m_currentLapNum,
+                    sector_number=curr_packet.m_sector,
+                    distance_from_start=curr_packet.m_lapDistance,
+                    lap_progress_percent=lap_progress_percent
+                    ))
+            # If there is a diff in drive through penalties, add it
+            if curr_packet.m_numUnservedDriveThroughPens != old_packet.m_numUnservedDriveThroughPens:
+                self.m_history.append(WarningPenaltyEntry(
+                    entry_type=WarningPenaltyEntry.EntryType.DT_PENALTY,
+                    old_value=old_packet.m_numUnservedDriveThroughPens,
+                    new_value=curr_packet.m_numUnservedDriveThroughPens,
+                    lap_num=curr_packet.m_currentLapNum,
+                    sector_number=curr_packet.m_sector,
+                    distance_from_start=curr_packet.m_lapDistance,
+                    lap_progress_percent=lap_progress_percent
+                    ))
+            # If there is a diff in stop go penalties, add it
+            if curr_packet.m_numUnservedStopGoPens != old_packet.m_numUnservedStopGoPens:
+                self.m_history.append(WarningPenaltyEntry(
+                    entry_type=WarningPenaltyEntry.EntryType.SG_PENALTY,
+                    old_value=old_packet.m_numUnservedStopGoPens,
+                    new_value=curr_packet.m_numUnservedStopGoPens,
+                    lap_num=curr_packet.m_currentLapNum,
+                    sector_number=curr_packet.m_sector,
+                    distance_from_start=curr_packet.m_lapDistance,
+                    lap_progress_percent=lap_progress_percent
+                    ))
+            # If there is a diff in time penalties, add it
+            if curr_packet.m_penalties != old_packet.m_penalties:
+                self.m_history.append(WarningPenaltyEntry(
+                    entry_type=WarningPenaltyEntry.EntryType.TIME_PENALTY,
+                    old_value=old_packet.m_penalties,
+                    new_value=curr_packet.m_penalties,
+                    lap_num=curr_packet.m_currentLapNum,
+                    sector_number=curr_packet.m_sector,
+                    distance_from_start=curr_packet.m_lapDistance,
+                    lap_progress_percent=lap_progress_percent
+                    ))
+
+    def getEntries(self) -> Generator[WarningPenaltyEntry, None, None]:
+        """Get the warnings penalties history entries
+
+        Yields:
+            Generator[WarningPenaltyEntry, None, None]: History entries
+        """
+        yield from self.m_history

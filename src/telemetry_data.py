@@ -34,7 +34,7 @@ from lib.f1_types import PacketSessionData, PacketLapData, LapData, CarTelemetry
     SafetyCarType, TelemetrySetting, PacketMotionData, CarMotionData, PacketCarSetupData, CarSetupData, ResultStatus, \
     PacketTimeTrialData, LapHistoryData
 from src.data_per_driver import TyreSetInfo, TyreSetHistoryEntry, TyreSetHistoryManager, WarningPenaltyEntry, \
-    PerLapSnapshotEntry
+    PerLapSnapshotEntry, WarningPenaltyHistory
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.overtake_analyzer import OvertakeRecord
 from lib.collisions_analyzer import CollisionRecord, CollisionAnalyzer, CollisionAnalyzerMode
@@ -196,6 +196,7 @@ class DataPerDriver:
         m_top_speed_kmph (Optional[float]): The top speed achieved by the driver.
         m_collision_records (List[CollisionRecord]): List of CollisionRecord objects for the driver.
         m_fuel_rate_recommender (Optional[FuelRateRecommender]): Fuel usage rate recommender for the driver.
+        self.m_warning_penalty_history: WarningPenaltyHistory
 
         m_packet_lap_data (Optional[LapData]): Copy of LapData packet for the driver.
         m_packet_participant_data (Optional[ParticipantData]): Copy of ParticipantData packet for the driver.
@@ -277,7 +278,7 @@ class DataPerDriver:
         self.m_collision_records: List[CollisionRecord] = []
         self.m_fuel_rate_recommender: FuelRateRecommender = FuelRateRecommender([], total_laps=total_laps,
                                                                                 min_fuel_kg=CarStatusData.MIN_FUEL_KG)
-        self.m_warning_penalty_history: List[WarningPenaltyEntry] = []
+        self.m_warning_penalty_history: WarningPenaltyHistory = WarningPenaltyHistory()
 
         # packet copies
         self.m_packet_lap_data: Optional[LapData] = None
@@ -331,7 +332,7 @@ class DataPerDriver:
         final_json["final-classification"] = self.m_packet_final_classification.toJSON() if self.m_packet_final_classification else None
         final_json["lap-data"] = self.m_packet_lap_data.toJSON() if self.m_packet_lap_data else None
         final_json["car-setup"] = self.m_packet_car_setup.toJSON() if self.m_packet_car_setup else None
-        final_json["warning-penalty-history"] = [entry.toJSON() for entry in self.m_warning_penalty_history]
+        final_json["warning-penalty-history"] = [entry.toJSON() for entry in self.m_warning_penalty_history.getEntries()]
 
         # Insert the tyre set history
         final_json["tyre-set-history"]= self._getTyreSetHistoryJSON()
@@ -439,7 +440,8 @@ class DataPerDriver:
             JSON list: JSON list containing multiple JSON objects, each representing one set of tyres used, in order.
         """
 
-        return self.m_tyre_set_history_manager.toJSON(include_wear_history, self.m_packet_tyre_sets)
+        return self.m_tyre_set_history_manager.toJSON(include_wear_history, self.m_packet_tyre_sets,
+                                                      self.m_packet_session_history.m_numLaps)
 
     def _getTyreWearHistoryJSON(self, start_lap : int, end_lap : int):
         """
@@ -822,125 +824,8 @@ class DataPerDriver:
             full_lap_distance (int): The distance of the entire lap in metres
         """
 
-        curr_other_warnings = lap_data.m_totalWarnings - lap_data.m_cornerCuttingWarnings
-        lap_progress_percent=(lap_data.m_lapDistance/float(full_lap_distance))*100.0
-        if not self.m_packet_lap_data:
-            # If any penalties/warnings exist, set it
-            if lap_data.m_cornerCuttingWarnings > 0:
-                # Add the corner cutting warning
-                self.m_warning_penalty_history.append(WarningPenaltyEntry(
-                    entry_type=WarningPenaltyEntry.EntryType.CORNER_CUTTING_WARNING,
-                    old_value=0,
-                    new_value=lap_data.m_cornerCuttingWarnings,
-                    lap_num=lap_data.m_currentLapNum,
-                    sector_number=lap_data.m_sector,
-                    distance_from_start=lap_data.m_lapDistance,
-                    lap_progress_percent=lap_progress_percent
-                    ))
-            if curr_other_warnings > 0:
-                # Add other warnings
-                self.m_warning_penalty_history.append(WarningPenaltyEntry(
-                    entry_type=WarningPenaltyEntry.EntryType.OTHER_WARNING,
-                    old_value=0,
-                    new_value=curr_other_warnings,
-                    lap_num=lap_data.m_currentLapNum,
-                    sector_number=lap_data.m_sector,
-                    distance_from_start=lap_data.m_lapDistance,
-                    lap_progress_percent=lap_progress_percent
-                    ))
-            if lap_data.m_numUnservedDriveThroughPens > 0:
-                # Add the drive through penalty
-                self.m_warning_penalty_history.append(WarningPenaltyEntry(
-                    entry_type=WarningPenaltyEntry.EntryType.DT_PENALTY,
-                    old_value=0,
-                    new_value=lap_data.m_numUnservedDriveThroughPens,
-                    lap_num=lap_data.m_currentLapNum,
-                    sector_number=lap_data.m_sector,
-                    distance_from_start=lap_data.m_lapDistance,
-                    lap_progress_percent=lap_progress_percent
-                    ))
-            if lap_data.m_numUnservedStopGoPens > 0:
-                # Add the stop go penalty
-                self.m_warning_penalty_history.append(WarningPenaltyEntry(
-                    entry_type=WarningPenaltyEntry.EntryType.SG_PENALTY,
-                    old_value=0,
-                    new_value=lap_data.m_numUnservedStopGoPens,
-                    lap_num=lap_data.m_currentLapNum,
-                    sector_number=lap_data.m_sector,
-                    distance_from_start=lap_data.m_lapDistance,
-                    lap_progress_percent=lap_progress_percent
-                    ))
-            if lap_data.m_penalties > 0:
-                # Add the time penalty
-                self.m_warning_penalty_history.append(WarningPenaltyEntry(
-                    entry_type=WarningPenaltyEntry.EntryType.TIME_PENALTY,
-                    old_value=0,
-                    new_value=lap_data.m_penalties,
-                    lap_num=lap_data.m_currentLapNum,
-                    sector_number=lap_data.m_sector,
-                    distance_from_start=lap_data.m_lapDistance,
-                    lap_progress_percent=lap_progress_percent
-                    ))
-        else:
-            old_other_warnings  = self.m_packet_lap_data.m_totalWarnings - \
-                self.m_packet_lap_data.m_cornerCuttingWarnings
-            # If there is a diff in corner cutting warnings, add it
-            if lap_data.m_cornerCuttingWarnings != self.m_packet_lap_data.m_cornerCuttingWarnings:
-                self.m_warning_penalty_history.append(WarningPenaltyEntry(
-                    entry_type=WarningPenaltyEntry.EntryType.CORNER_CUTTING_WARNING,
-                    old_value=self.m_packet_lap_data.m_cornerCuttingWarnings,
-                    new_value=lap_data.m_cornerCuttingWarnings,
-                    lap_num=lap_data.m_currentLapNum,
-                    sector_number=lap_data.m_sector,
-                    distance_from_start=lap_data.m_lapDistance,
-                    lap_progress_percent=lap_progress_percent
-                    ))
-            # If there is a diff in other warnings, add it
-            if curr_other_warnings != old_other_warnings:
-                self.m_warning_penalty_history.append(WarningPenaltyEntry(
-                    entry_type=WarningPenaltyEntry.EntryType.OTHER_WARNING,
-                    old_value=old_other_warnings,
-                    new_value=curr_other_warnings,
-                    lap_num=lap_data.m_currentLapNum,
-                    sector_number=lap_data.m_sector,
-                    distance_from_start=lap_data.m_lapDistance,
-                    lap_progress_percent=lap_progress_percent
-                    ))
-            # If there is a diff in drive through penalties, add it
-            if lap_data.m_numUnservedDriveThroughPens != self.m_packet_lap_data.m_numUnservedDriveThroughPens:
-                self.m_warning_penalty_history.append(WarningPenaltyEntry(
-                    entry_type=WarningPenaltyEntry.EntryType.DT_PENALTY,
-                    old_value=self.m_packet_lap_data.m_numUnservedDriveThroughPens,
-                    new_value=lap_data.m_numUnservedDriveThroughPens,
-                    lap_num=lap_data.m_currentLapNum,
-                    sector_number=lap_data.m_sector,
-                    distance_from_start=lap_data.m_lapDistance,
-                    lap_progress_percent=lap_progress_percent
-                    ))
-            # If there is a diff in stop go penalties, add it
-            if lap_data.m_numUnservedStopGoPens != self.m_packet_lap_data.m_numUnservedStopGoPens:
-                self.m_warning_penalty_history.append(WarningPenaltyEntry(
-                    entry_type=WarningPenaltyEntry.EntryType.SG_PENALTY,
-                    old_value=self.m_packet_lap_data.m_numUnservedStopGoPens,
-                    new_value=lap_data.m_numUnservedStopGoPens,
-                    lap_num=lap_data.m_currentLapNum,
-                    sector_number=lap_data.m_sector,
-                    distance_from_start=lap_data.m_lapDistance,
-                    lap_progress_percent=lap_progress_percent
-                    ))
-            # If there is a diff in time penalties, add it
-            if lap_data.m_penalties != self.m_packet_lap_data.m_penalties:
-                self.m_warning_penalty_history.append(WarningPenaltyEntry(
-                    entry_type=WarningPenaltyEntry.EntryType.TIME_PENALTY,
-                    old_value=self.m_packet_lap_data.m_penalties,
-                    new_value=lap_data.m_penalties,
-                    lap_num=lap_data.m_currentLapNum,
-                    sector_number=lap_data.m_sector,
-                    distance_from_start=lap_data.m_lapDistance,
-                    lap_progress_percent=lap_progress_percent
-                    ))
-
-        # Finally, update the packet copy
+        # Update the history and packet copy
+        self.m_warning_penalty_history.update(lap_data, full_lap_distance, self.m_packet_lap_data)
         self.m_packet_lap_data = lap_data
 
     def getSectorStatus(self,

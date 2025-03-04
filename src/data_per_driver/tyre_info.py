@@ -262,18 +262,19 @@ class TyreSetHistoryManager:
 
         return self.getEntry(index=-1)
 
-    def toJSON(self, include_wear_history: bool, tyre_sets_packet: PacketTyreSetsData) -> List[Dict[str, Any]]:
+    def toJSON(self, include_wear_history: bool, tyre_sets_packet: PacketTyreSetsData, final_lap_num: int) -> List[Dict[str, Any]]:
         """Get the JSON representation of the tyre set history
 
         Args:
             include_wear_history (bool): Whether tyre wear per lap should be included under each tyre set
             tyre_sets_packet (PacketTyreSetsData): The most recent tyre sets packet data copy
+            final_lap_num (int): Final lap num
 
         Returns:
             List[Dict[str, Any]]: List of tyre stint history entries in JSON
         """
 
-        self._computeTyreStintEndLaps()
+        self._computeTyreStintEndLaps(final_lap_num)
         tyre_set_history = []
         for entry in self.m_history:
             is_index_valid = 0 < entry.m_fitted_index < len(tyre_sets_packet.m_tyreSetData)

@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 from .tyre_info import TyreSetInfo, TyreSetHistoryEntry, TyreSetHistoryManager
-from .warns_pens_info import WarningPenaltyEntry
+from .warns_pens_info import WarningPenaltyEntry, WarningPenaltyHistory
 from .per_lap_snapshot import PerLapSnapshotEntry
 
 __all__ = [
@@ -30,6 +30,7 @@ __all__ = [
     'TyreSetHistoryManager',
 
     'WarningPenaltyEntry',
+    'WarningPenaltyHistory',
 
     'PerLapSnapshotEntry',
 ]
