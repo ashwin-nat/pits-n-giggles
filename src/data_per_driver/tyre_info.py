@@ -20,14 +20,19 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# -------------------------------------- IMPORTS -----------------------------------------------------------------------
+
 from lib.f1_types import VisualTyreCompound, ActualTyreCompound, PacketTyreSetsData
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 from typing import Dict, List, Any, Optional, Generator
 from src.png_logger import getLogger
 import json
 
+# -------------------------------------- GLOBALS -----------------------------------------------------------------------
+
 png_logger = getLogger()
 
+# -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 class TyreSetInfo:
     """
     Class that models the data describing a tyre set.

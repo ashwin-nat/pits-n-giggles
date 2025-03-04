@@ -22,6 +22,7 @@
 
 from .tyre_info import TyreSetInfo, TyreSetHistoryEntry, TyreSetHistoryManager
 from .warns_pens_info import WarningPenaltyEntry
+from .per_lap_snapshot import PerLapSnapshotEntry
 
 __all__ = [
     'TyreSetInfo',
@@ -30,5 +31,5 @@ __all__ = [
 
     'WarningPenaltyEntry',
 
-
+    'PerLapSnapshotEntry',
 ]

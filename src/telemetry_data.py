@@ -33,7 +33,8 @@ from lib.f1_types import PacketSessionData, PacketLapData, LapData, CarTelemetry
     F1Utils, WeatherForecastSample, CarDamageData, CarStatusData, TrackID, ActualTyreCompound, VisualTyreCompound, \
     SafetyCarType, TelemetrySetting, PacketMotionData, CarMotionData, PacketCarSetupData, CarSetupData, ResultStatus, \
     PacketTimeTrialData, LapHistoryData
-from src.data_per_driver import TyreSetInfo, TyreSetHistoryEntry, TyreSetHistoryManager, WarningPenaltyEntry
+from src.data_per_driver import TyreSetInfo, TyreSetHistoryEntry, TyreSetHistoryManager, WarningPenaltyEntry, \
+    PerLapSnapshotEntry
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.overtake_analyzer import OvertakeRecord
 from lib.collisions_analyzer import CollisionRecord, CollisionAnalyzer, CollisionAnalyzerMode
@@ -226,64 +227,6 @@ class DataPerDriver:
 
         return self.__repr__()
 
-    class PerLapSnapshotEntry:
-        """
-        Class that captures one lap's snapshot data
-
-        Attributes:
-            m_car_damage_packet (CarDamageData): The Car damage packet
-            m_car_status_packet (CarStatusData): The Car Status packet
-            m_track_position (int): The lap's track position
-            m_tyre_sets_packet (Optional[PacketTyreSetsData]): The Tyre Sets packet
-            m_sc_status (PacketSessionData.SafetyCarStatus): The lap's safety car status
-            m_top_speed_kmph (float): The lap's top speed in kmph
-        """
-
-        def __init__(self,
-            car_damage : CarDamageData,
-            car_status : CarStatusData,
-            sc_status  : SafetyCarType,
-            tyre_sets  : PacketTyreSetsData,
-            track_position: int,
-            top_speed_kmph: float = 0.0):
-            """Init the snapshot entry object
-
-            Args:
-                car_damage (CarDamageData): The Car damage packet
-                car_status (CarStatusData): The Car Status packet
-                sc_status (PacketSessionData.SafetyCarStatus): The lap's safety car status
-                tyre_sets (PacketTyreSetsData): The Tyre Sets packet
-                track_position (int): The lap's track position
-                top_speed_kmph (float): The lap's top speed in kmph
-            """
-
-            self.m_car_damage_packet: CarDamageData = car_damage
-            self.m_car_status_packet: CarStatusData = car_status
-            self.m_sc_status: SafetyCarType = sc_status
-            self.m_tyre_sets_packet: PacketTyreSetsData = tyre_sets
-            self.m_track_position: int = track_position
-            self.m_top_speed_kmph: float = top_speed_kmph
-
-        def toJSON(self, lap_number : int) -> Dict[str, Any]:
-            """Dump this object into JSON
-
-            Args:
-                lap_number (int): The lap number corresponding to this history item
-
-            Returns:
-                Dict[str, Any]: The JSON dump
-            """
-
-            return {
-                "lap-number" : lap_number,
-                "car-damage-data" : self.m_car_damage_packet.toJSON() if self.m_car_damage_packet else None,
-                "car-status-data" : self.m_car_status_packet.toJSON() if self.m_car_status_packet else None,
-                "safety-car-status" : str(self.m_sc_status) if self.m_sc_status else None,
-                "tyre-sets-data" : self.m_tyre_sets_packet.toJSON() if self.m_tyre_sets_packet else None,
-                "track-position" : self.m_track_position or None,
-                "top-speed-kmph" : self.m_top_speed_kmph,
-            }
-
     def __init__(self, total_laps):
         """
         Init the data per driver fields
@@ -349,7 +292,7 @@ class DataPerDriver:
         self.m_packet_car_setup: Optional[CarSetupData] = None
 
         # Per lap snapshot
-        self.m_per_lap_snapshots: Dict[int, DataPerDriver.PerLapSnapshotEntry] = {}
+        self.m_per_lap_snapshots: Dict[int, PerLapSnapshotEntry] = {}
 
     def toJSON(self,
                index: Optional[int] = None,
@@ -613,7 +556,7 @@ class DataPerDriver:
             return
 
         # Store the snapshot data for the old lap
-        self.m_per_lap_snapshots[old_lap_number] = DataPerDriver.PerLapSnapshotEntry(
+        self.m_per_lap_snapshots[old_lap_number] = PerLapSnapshotEntry(
             car_damage=self.m_packet_car_damage,
             car_status=self.m_packet_car_status,
             sc_status=self.m_curr_lap_sc_status,
