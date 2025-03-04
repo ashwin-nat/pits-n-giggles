@@ -20,21 +20,26 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from .tyre_info import TyreSetInfo, TyreSetHistoryEntry, TyreSetHistoryManager, CurrTyreInfo
-from .warns_pens_info import WarningPenaltyEntry, WarningPenaltyHistory
-from .per_lap_snapshot import PerLapSnapshotEntry
-from.driver_info import DriverInfo
+# -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-__all__ = [
-    'TyreSetInfo',
-    'TyreSetHistoryEntry',
-    'TyreSetHistoryManager',
-    'CurrTyreInfo',
+from lib.f1_types import TelemetrySetting
+from lib.tyre_wear_extrapolator import TyreWearPerLap
+from typing import Dict, List, Any, Optional, Generator
+from dataclasses import dataclass
+from src.png_logger import getLogger
+import json
 
-    'WarningPenaltyEntry',
-    'WarningPenaltyHistory',
+# -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
-    'PerLapSnapshotEntry',
+png_logger = getLogger()
 
-    'DriverInfo',
-]
+# -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
+
+@dataclass
+class DriverInfo:
+    name: Optional[str] = None
+    position: Optional[int] = None
+    team: Optional[str] = None
+    is_player: Optional[bool] = None
+    telemetry_restrictions: Optional[TelemetrySetting] = None
+    driver_number: Optional[int] = None

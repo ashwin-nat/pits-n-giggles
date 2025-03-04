@@ -296,7 +296,7 @@ class PlayerTelemetryOverlayUpdate:
                             else TelData._driver_data.m_player_index
             player_data = TelData._driver_data.m_driver_data[player_index] \
                             if player_index in TelData._driver_data.m_driver_data else None
-            player_position = player_data.m_position if player_data else None
+            player_position = player_data.m_driver_info.position if player_data else None
             prev_data = TelData._driver_data.getDriverInfoByPosition(player_position - 1) if player_position else None
             next_data = TelData._driver_data.getDriverInfoByPosition(player_position + 1) if player_position else None
 
@@ -475,7 +475,7 @@ class PlayerTelemetryOverlayUpdate:
 
         if not driver_obj:
             return
-        json_dict["name"] = driver_obj.m_name
+        json_dict["name"] = driver_obj.m_driver_info.name
         json_dict["lap-ms"] = driver_obj.m_last_lap_ms
         last_lap_obj = driver_obj.m_packet_session_history.getLastLapData() if driver_obj.m_packet_session_history else None
         if last_lap_obj:
@@ -589,14 +589,14 @@ class DriversListRsp:
         return  [
             {
                 "driver-info" : {
-                    "position": _getValueOrDefaultValue(data_per_driver.m_position),
-                    "name": _getValueOrDefaultValue(data_per_driver.m_name),
-                    "team": _getValueOrDefaultValue(data_per_driver.m_team),
+                    "position": _getValueOrDefaultValue(data_per_driver.m_driver_info.position),
+                    "name": _getValueOrDefaultValue(data_per_driver.m_driver_info.name),
+                    "team": _getValueOrDefaultValue(data_per_driver.m_driver_info.team),
                     "is-fastest": _getValueOrDefaultValue(data_per_driver.m_is_fastest),
-                    "is-player": _getValueOrDefaultValue(data_per_driver.m_is_player),
+                    "is-player": _getValueOrDefaultValue(data_per_driver.m_driver_info.is_player),
                     "dnf-status" : _getValueOrDefaultValue(data_per_driver.m_dnf_status_code),
                     "index" : _getValueOrDefaultValue(data_per_driver.m_index),
-                    "telemetry-setting" : data_per_driver.m_telemetry_restrictions, # Already NULL checked
+                    "telemetry-setting" : data_per_driver.m_driver_info.telemetry_restrictions, # Already NULL checked
                     "drs": self.__getDRSValue(data_per_driver.m_drs_activated, data_per_driver.m_drs_allowed,
                                         data_per_driver.m_drs_distance),
                 },
@@ -692,7 +692,7 @@ class DriversListRsp:
 
         # Player object must be found in TT mode
         player_obj = next(
-            (driver for driver in self.m_final_list if driver.m_is_player),
+            (driver for driver in self.m_final_list if driver.m_driver_info.is_player),
             None
         )
 
@@ -725,7 +725,7 @@ class DriversListRsp:
 
         if self.m_is_spectator_mode:
             return self.m_final_list[0].m_current_lap
-        return next((driver_data.m_current_lap for driver_data in self.m_final_list if driver_data.m_is_player), None)
+        return next((driver_data.m_current_lap for driver_data in self.m_final_list if driver_data.m_driver_info.is_player), None)
 
     def getPositionHistoryJSON(self) -> List[Dict[str, Any]]:
         """Get position history.
@@ -795,7 +795,7 @@ class DriversListRsp:
                 self.m_fastest_lap = TelData._driver_data.m_driver_data[
                                         TelData._driver_data.m_fastest_index].m_best_lap_ms
                 self.m_fastest_lap_driver = TelData._driver_data.m_driver_data[
-                                            TelData._driver_data.m_fastest_index].m_name
+                                            TelData._driver_data.m_fastest_index].m_driver_info.name
                 self.m_fastest_lap_tyre = TelData._driver_data.m_driver_data[
                                             TelData._driver_data.m_fastest_index].m_best_lap_tyre
             positions = list(range(1, TelData._driver_data.m_num_active_cars + 1))
@@ -821,10 +821,10 @@ class DriversListRsp:
         for driver_data in self.m_final_list:
             if driver_data.m_ers_perc is not None:
                 driver_data.m_ers_perc = f"{F1Utils.floatToStr(driver_data.m_ers_perc)}%"
-            if driver_data.m_telemetry_restrictions is not None:
-                driver_data.m_telemetry_restrictions = str(driver_data.m_telemetry_restrictions)
+            if driver_data.m_driver_info.telemetry_restrictions is not None:
+                driver_data.m_driver_info.telemetry_restrictions = str(driver_data.m_driver_info.telemetry_restrictions)
             else:
-                driver_data.m_telemetry_restrictions = "N/A"
+                driver_data.m_driver_info.telemetry_restrictions = "N/A"
             if driver_data.m_packet_lap_data:
                 driver_data.m_corner_cutting_warnings = driver_data.m_packet_lap_data.m_cornerCuttingWarnings
                 driver_data.m_time_penalties = driver_data.m_packet_lap_data.m_penalties
