@@ -664,13 +664,13 @@ class DriversListRsp:
                 "tyre-info" : {
                     "wear-prediction" : data_per_driver.getFullTyreWearPredictions(self.m_next_pit_stop_window),
                     "current-wear" : data_per_driver.getCurrentTyreWearJSON(),
-                    "tyre-age": _getValueOrDefaultValue(data_per_driver.m_curr_tyre_info.tyre_age),
+                    "tyre-age": _getValueOrDefaultValue(data_per_driver.m_tyre_info.tyre_age),
                     "tyre-life-remaining" : _getValueOrDefaultValue(
-                        data_per_driver.m_curr_tyre_info.tyre_life_remaining_laps),
+                        data_per_driver.m_tyre_info.tyre_life_remaining_laps),
                     "visual-tyre-compound": str(_getValueOrDefaultValue(
-                        data_per_driver.m_curr_tyre_info.tyre_vis_compound, default_value="")),
+                        data_per_driver.m_tyre_info.tyre_vis_compound, default_value="")),
                     "actual-tyre-compound": str(_getValueOrDefaultValue(
-                        data_per_driver.m_curr_tyre_info.tyre_act_compound, default_value="")),
+                        data_per_driver.m_tyre_info.tyre_act_compound, default_value="")),
                     "num-pitstops": _getValueOrDefaultValue(data_per_driver.m_num_pitstops),
                 },
                 "damage-info" : {

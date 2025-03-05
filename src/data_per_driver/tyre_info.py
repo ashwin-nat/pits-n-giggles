@@ -23,7 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from lib.f1_types import VisualTyreCompound, ActualTyreCompound, PacketTyreSetsData
-from lib.tyre_wear_extrapolator import TyreWearPerLap
+from lib.tyre_wear_extrapolator import TyreWearPerLap, TyreWearExtrapolator
 from typing import Dict, List, Any, Optional, Generator
 from dataclasses import dataclass
 from src.png_logger import getLogger
@@ -293,12 +293,19 @@ class TyreSetHistoryManager:
         return tyre_set_history
 
 @dataclass
-class CurrTyreInfo:
-    tyre_age: Optional[int] = None
-    tyre_vis_compound: Optional[VisualTyreCompound] = None
-    tyre_act_compound: Optional[ActualTyreCompound] = None
-    tyre_wear: Optional[TyreWearPerLap] = None
-    tyre_surface_temp: Optional[float] = None
-    tyre_inner_temp: Optional[float] = None
-    tyre_life_remaining_laps: Optional[int] = None
+class TyreInfo:
 
+    # Custom constructor to accept only total_laps
+    def __init__(self, total_laps: int) -> None:
+        # Explicitly set all fields to None
+        self.tyre_age: Optional[int] = None
+        self.tyre_vis_compound: Optional[VisualTyreCompound] = None
+        self.tyre_act_compound: Optional[ActualTyreCompound] = None
+        self.tyre_wear: Optional[TyreWearPerLap] = None
+        self.tyre_surface_temp: Optional[float] = None
+        self.tyre_inner_temp: Optional[float] = None
+        self.tyre_life_remaining_laps: Optional[int] = None
+        self.m_tyre_set_history_manager: TyreSetHistoryManager = TyreSetHistoryManager()
+
+        # Initialize m_tyre_wear_extrapolator using total_laps
+        self.m_tyre_wear_extrapolator: TyreWearExtrapolator = TyreWearExtrapolator([], total_laps=total_laps)
