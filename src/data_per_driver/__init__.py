@@ -26,6 +26,7 @@ from .per_lap_snapshot import PerLapSnapshotEntry
 from .driver_info import DriverInfo
 from .lap_info import LapInfo
 from .packet_copies import PacketCopies
+from .car_info import CarInfo
 
 __all__ = [
     'TyreSetInfo',
@@ -41,5 +42,8 @@ __all__ = [
     'DriverInfo',
 
     'LapInfo',
-    'PacketCopies'
+
+    'PacketCopies',
+
+    'CarInfo',
 ]

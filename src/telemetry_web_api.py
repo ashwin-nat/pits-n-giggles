@@ -483,7 +483,7 @@ class PlayerTelemetryOverlayUpdate:
             json_dict["sector-2-ms"] = last_lap_obj.m_sector2TimeInMS
             json_dict["sector-3-ms"] = last_lap_obj.m_sector3TimeInMS
         json_dict["ers"] = {
-            "ers-percent" : _getValueOrDefaultValue(driver_obj.m_ers_perc),
+            "ers-percent" : _getValueOrDefaultValue(driver_obj.m_car_info.m_ers_perc),
             "ers-mode" : _getValueOrDefaultValue(str(driver_obj.m_packet_copies.m_packet_car_status.m_ersDeployMode)
                                             if driver_obj.m_packet_copies.m_packet_car_status else None),
             "ers-harvested-by-mguk-this-lap" : (((driver_obj.m_packet_copies.m_packet_car_status.m_ersHarvestedThisLapMGUK
@@ -594,11 +594,11 @@ class DriversListRsp:
                     "team": _getValueOrDefaultValue(data_per_driver.m_driver_info.team),
                     "is-fastest": _getValueOrDefaultValue(data_per_driver.m_is_fastest),
                     "is-player": _getValueOrDefaultValue(data_per_driver.m_driver_info.is_player),
-                    "dnf-status" : _getValueOrDefaultValue(data_per_driver.m_dnf_status_code),
+                    "dnf-status" : _getValueOrDefaultValue(data_per_driver.m_driver_info.m_dnf_status_code),
                     "index" : _getValueOrDefaultValue(data_per_driver.m_index),
                     "telemetry-setting" : data_per_driver.m_driver_info.telemetry_restrictions, # Already NULL checked
-                    "drs": self.__getDRSValue(data_per_driver.m_drs_activated, data_per_driver.m_drs_allowed,
-                                        data_per_driver.m_drs_distance),
+                    "drs": self.__getDRSValue(data_per_driver.m_car_info.m_drs_activated, data_per_driver.m_car_info.m_drs_allowed,
+                                        data_per_driver.m_car_info.m_drs_distance),
                 },
                 "delta-info" : {
                     "delta": data_per_driver.m_delta_to_car_in_front,
@@ -606,7 +606,7 @@ class DriversListRsp:
                     "delta-to-leader": data_per_driver.m_delta_to_leader,
                 },
                 "ers-info" : {
-                    "ers-percent": _getValueOrDefaultValue(data_per_driver.m_ers_perc),
+                    "ers-percent": _getValueOrDefaultValue(data_per_driver.m_car_info.m_ers_perc),
                     "ers-mode" : _getValueOrDefaultValue(str(data_per_driver.m_packet_copies.m_packet_car_status.m_ersDeployMode)
                                                         if data_per_driver.m_packet_copies.m_packet_car_status else None),
                     "ers-harvested-by-mguk-this-lap" : (((data_per_driver.m_packet_copies.m_packet_car_status.m_ersHarvestedThisLapMGUK
@@ -671,12 +671,12 @@ class DriversListRsp:
                         data_per_driver.m_tyre_info.tyre_vis_compound, default_value="")),
                     "actual-tyre-compound": str(_getValueOrDefaultValue(
                         data_per_driver.m_tyre_info.tyre_act_compound, default_value="")),
-                    "num-pitstops": _getValueOrDefaultValue(data_per_driver.m_num_pitstops),
+                    "num-pitstops": _getValueOrDefaultValue(data_per_driver.m_driver_info.m_num_pitstops),
                 },
                 "damage-info" : {
-                    "fl-wing-damage" : data_per_driver.m_fl_wing_damage, # NULL is supported
-                    "fr-wing-damage" : data_per_driver.m_fr_wing_damage, # NULL is supported
-                    "rear-wing-damage" : data_per_driver.m_rear_wing_damage, # NULL is supported
+                    "fl-wing-damage" : data_per_driver.m_car_info.m_fl_wing_damage, # NULL is supported
+                    "fr-wing-damage" : data_per_driver.m_car_info.m_fr_wing_damage, # NULL is supported
+                    "rear-wing-damage" : data_per_driver.m_car_info.m_rear_wing_damage, # NULL is supported
                 },
 
                 "fuel-info" : data_per_driver.getFuelStatsJSON(),
@@ -819,8 +819,8 @@ class DriversListRsp:
         """
 
         for driver_data in self.m_final_list:
-            if driver_data.m_ers_perc is not None:
-                driver_data.m_ers_perc = f"{F1Utils.floatToStr(driver_data.m_ers_perc)}%"
+            if driver_data.m_car_info.m_ers_perc is not None:
+                driver_data.m_car_info.m_ers_perc = f"{F1Utils.floatToStr(driver_data.m_car_info.m_ers_perc)}%"
             if driver_data.m_driver_info.telemetry_restrictions is not None:
                 driver_data.m_driver_info.telemetry_restrictions = str(driver_data.m_driver_info.telemetry_restrictions)
             else:

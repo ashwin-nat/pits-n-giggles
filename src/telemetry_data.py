@@ -33,13 +33,12 @@ from lib.f1_types import PacketSessionData, PacketLapData, LapData, CarTelemetry
     F1Utils, WeatherForecastSample, CarDamageData, CarStatusData, TrackID, ActualTyreCompound, \
     SafetyCarType, TelemetrySetting, PacketMotionData, CarMotionData, PacketCarSetupData, CarSetupData, ResultStatus, \
     PacketTimeTrialData
-from src.data_per_driver import TyreSetInfo, TyreSetHistoryEntry, TyreSetHistoryManager, TyreInfo, \
-    PerLapSnapshotEntry, WarningPenaltyHistory, DriverInfo, LapInfo, PacketCopies
+from src.data_per_driver import TyreSetInfo, TyreSetHistoryEntry, TyreInfo, \
+    PerLapSnapshotEntry, WarningPenaltyHistory, DriverInfo, LapInfo, PacketCopies, CarInfo
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.overtake_analyzer import OvertakeRecord
 from lib.collisions_analyzer import CollisionRecord, CollisionAnalyzer, CollisionAnalyzerMode
-from lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
-from lib.fuel_rate_recommender import FuelRateRecommender
+from lib.tyre_wear_extrapolator import TyreWearPerLap
 from lib.inter_thread_communicator import InterThreadCommunicator, ITCMessage, TyreDeltaMessage
 from lib.custom_marker_tracker import CustomMarkerEntry, CustomMarkersHistory
 from src.png_logger import getLogger
@@ -237,26 +236,14 @@ class DataPerDriver:
         self.m_driver_info: DriverInfo = DriverInfo()
         self.m_delta_to_car_in_front: Optional[int] = None
         self.m_delta_to_leader: Optional[int] = None
-        self.m_ers_perc: Optional[float] = None
         self.m_lap_info: LapInfo = LapInfo()
+        self.m_tyre_info: TyreInfo = TyreInfo(total_laps)
+
+        self.m_car_info: CarInfo = CarInfo(total_laps)
 
         self.m_current_lap: Optional[int] = None
-        self.m_tyre_info: TyreInfo = TyreInfo(total_laps)
-        self.m_drs_activated: Optional[bool] = None
-        self.m_drs_allowed: Optional[bool] = None
-        self.m_drs_distance: Optional[int] = None
-        self.m_num_pitstops: Optional[int] = None
-        self.m_dnf_status_code: Optional[str] = None
-        self.m_curr_lap_sc_status: Optional[SafetyCarType] = None
-        self.m_fuel_load_kg: Optional[float] = None
-        self.m_fuel_laps_remaining: Optional[float] = None
-        self.m_fl_wing_damage: Optional[int] = None
-        self.m_fr_wing_damage: Optional[int] = None
-        self.m_rear_wing_damage: Optional[int] = None
         self.m_top_speed_kmph_this_lap: Optional[float] = None
         self.m_collision_records: List[CollisionRecord] = []
-        self.m_fuel_rate_recommender: FuelRateRecommender = FuelRateRecommender([], total_laps=total_laps,
-                                                                                min_fuel_kg=CarStatusData.MIN_FUEL_KG)
         self.m_warning_penalty_history: WarningPenaltyHistory = WarningPenaltyHistory()
 
         # packet copies
@@ -542,7 +529,7 @@ class DataPerDriver:
         self.m_per_lap_snapshots[old_lap_number] = PerLapSnapshotEntry(
             car_damage=self.m_packet_copies.m_packet_car_damage,
             car_status=self.m_packet_copies.m_packet_car_status,
-            sc_status=self.m_curr_lap_sc_status,
+            sc_status=self.m_driver_info.m_curr_lap_sc_status,
             tyre_sets=self.m_packet_copies.m_packet_tyre_sets,
             track_position=self.m_driver_info.position,
             top_speed_kmph=self.m_top_speed_kmph_this_lap,
@@ -578,7 +565,7 @@ class DataPerDriver:
 
         # Fuel stuff
         if self.m_packet_copies.m_packet_car_status:
-            self.m_fuel_rate_recommender.add(self.m_packet_copies.m_packet_car_status.m_fuelInTank, old_lap_number)
+            self.m_car_info.m_fuel_rate_recommender.add(self.m_packet_copies.m_packet_car_status.m_fuelInTank, old_lap_number)
 
     def isZerothLapSnapshotDataAvailable(self) -> bool:
         """
@@ -744,11 +731,11 @@ class DataPerDriver:
                 "fuel-mix" : str(self.m_packet_copies.m_packet_car_status.m_fuelMix),
                 "fuel-remaining-laps" : self.m_packet_copies.m_packet_car_status.m_fuelRemainingLaps,
                 "fuel-in-tank" : self.m_packet_copies.m_packet_car_status.m_fuelInTank,
-                "curr-fuel-rate" :self.m_fuel_rate_recommender.curr_fuel_rate,
-                "last-lap-fuel-used" : self.m_fuel_rate_recommender.fuel_used_last_lap,
-                "target-fuel-rate-average" : self.m_fuel_rate_recommender.target_fuel_rate,
-                "target-fuel-rate-next-lap" : self.m_fuel_rate_recommender.target_next_lap_fuel_usage,
-                "surplus-laps" : self.m_fuel_rate_recommender.surplus_laps,
+                "curr-fuel-rate" :self.m_car_info.m_fuel_rate_recommender.curr_fuel_rate,
+                "last-lap-fuel-used" : self.m_car_info.m_fuel_rate_recommender.fuel_used_last_lap,
+                "target-fuel-rate-average" : self.m_car_info.m_fuel_rate_recommender.target_fuel_rate,
+                "target-fuel-rate-next-lap" : self.m_car_info.m_fuel_rate_recommender.target_next_lap_fuel_usage,
+                "surplus-laps" : self.m_car_info.m_fuel_rate_recommender.surplus_laps,
             }
 
         return {
@@ -1127,11 +1114,11 @@ class DriverData:
             # Next, update in all extrapolator objects
             for driver_data in self.m_driver_data.values():
                 driver_data.m_tyre_info.m_tyre_wear_extrapolator.total_laps = self.m_total_laps
-                driver_data.m_fuel_rate_recommender.total_laps = self.m_total_laps
+                driver_data.m_car_info.m_fuel_rate_recommender.total_laps = self.m_total_laps
 
         # Update the SC status for all drivers
         for driver_data in self.m_driver_data.values():
-            driver_data.m_curr_lap_sc_status = packet.m_safetyCarStatus
+            driver_data.m_driver_info.m_curr_lap_sc_status = packet.m_safetyCarStatus
 
     def processLapDataUpdate(self, packet: PacketLapData) -> None:
         """Process the lap data packet and update the necessary fields
@@ -1172,10 +1159,10 @@ class DriverData:
 
             # Now, update the current lap number and other shit
             obj_to_be_updated.m_current_lap =  lap_data.m_currentLapNum
-            obj_to_be_updated.m_num_pitstops = lap_data.m_numPitStops
-            obj_to_be_updated.m_dnf_status_code = result_str_map.get(lap_data.m_resultStatus, "")
+            obj_to_be_updated.m_driver_info.m_num_pitstops = lap_data.m_numPitStops
+            obj_to_be_updated.m_driver_info.m_dnf_status_code = result_str_map.get(lap_data.m_resultStatus, "")
             # If the player is retired, update the bool variable
-            if index == self.m_player_index and len(obj_to_be_updated.m_dnf_status_code) > 0:
+            if index == self.m_player_index and len(obj_to_be_updated.m_driver_info.m_dnf_status_code) > 0:
                 self.m_is_player_dnf = True
             self.m_result_status = lap_data.m_resultStatus
 
@@ -1211,7 +1198,7 @@ class DriverData:
         """
 
         obj_to_be_updated = self._getObjectByIndex(packet.vehicleIdx)
-        obj_to_be_updated.m_dnf_status_code = 'DNF'
+        obj_to_be_updated.m_driver_info.m_dnf_status_code = 'DNF'
 
         if packet.vehicleIdx == self.m_player_index:
             self.m_is_player_dnf = True
@@ -1245,7 +1232,7 @@ class DriverData:
 
         for index, car_telemetry_data in enumerate(packet.m_carTelemetryData):
             obj_to_be_updated = self._getObjectByIndex(index)
-            obj_to_be_updated.m_drs_activated = bool(car_telemetry_data.m_drs)
+            obj_to_be_updated.m_car_info.m_drs_activated = bool(car_telemetry_data.m_drs)
             obj_to_be_updated.m_tyre_info.tyre_inner_temp = \
                     sum(car_telemetry_data.m_tyresInnerTemperature)/len(car_telemetry_data.m_tyresInnerTemperature)
             obj_to_be_updated.m_tyre_info.tyre_surface_temp = \
@@ -1265,15 +1252,13 @@ class DriverData:
 
         for index, car_status_data in enumerate(packet.m_carStatusData):
             obj_to_be_updated = self._getObjectByIndex(index)
-            obj_to_be_updated.m_ers_perc = (car_status_data.m_ersStoreEnergy/CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0
+            obj_to_be_updated.m_car_info.m_ers_perc = (car_status_data.m_ersStoreEnergy/CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0
             obj_to_be_updated.m_tyre_info.tyre_age = car_status_data.m_tyresAgeLaps
             obj_to_be_updated.m_tyre_info.tyre_vis_compound = car_status_data.m_visualTyreCompound
             obj_to_be_updated.m_tyre_info.tyre_act_compound = car_status_data.m_actualTyreCompound
-            obj_to_be_updated.m_drs_allowed = bool(car_status_data.m_drsAllowed)
-            obj_to_be_updated.m_drs_distance = car_status_data.m_drsActivationDistance
+            obj_to_be_updated.m_car_info.m_drs_allowed = bool(car_status_data.m_drsAllowed)
+            obj_to_be_updated.m_car_info.m_drs_distance = car_status_data.m_drsActivationDistance
             obj_to_be_updated.m_packet_copies.m_packet_car_status = car_status_data
-            obj_to_be_updated.m_fuel_load_kg = car_status_data.m_fuelInTank
-            obj_to_be_updated.m_fuel_laps_remaining = car_status_data.m_fuelRemainingLaps
 
     def processFinalClassificationUpdate(self, packet: PacketFinalClassificationData) -> Dict[str, Any]:
         """Process the final classification update packet and update the necessary fields.
@@ -1325,9 +1310,9 @@ class DriverData:
                 rr_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
                 desc="curr tyre wear"
             )
-            obj_to_be_updated.m_fl_wing_damage = car_damage.m_frontLeftWingDamage
-            obj_to_be_updated.m_fr_wing_damage = car_damage.m_frontRightWingDamage
-            obj_to_be_updated.m_rear_wing_damage = car_damage.m_rearWingDamage
+            obj_to_be_updated.m_car_info.m_fl_wing_damage = car_damage.m_frontLeftWingDamage
+            obj_to_be_updated.m_car_info.m_fr_wing_damage = car_damage.m_frontRightWingDamage
+            obj_to_be_updated.m_car_info.m_rear_wing_damage = car_damage.m_rearWingDamage
 
     def processSessionHistoryUpdate(self, packet: PacketSessionHistoryData) -> None:
         """Process the session history update packet and update the necessary fields

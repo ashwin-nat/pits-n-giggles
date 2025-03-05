@@ -22,12 +22,11 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from lib.f1_types import TelemetrySetting, SafetyCarType
-from lib.tyre_wear_extrapolator import TyreWearPerLap
-from typing import Dict, List, Any, Optional, Generator
+from lib.f1_types import CarStatusData
+from lib.fuel_rate_recommender import FuelRateRecommender
+from typing import Optional
 from dataclasses import dataclass
 from src.png_logger import getLogger
-import json
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -36,13 +35,15 @@ png_logger = getLogger()
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
 @dataclass
-class DriverInfo:
-    name: Optional[str] = None
-    position: Optional[int] = None
-    team: Optional[str] = None
-    is_player: Optional[bool] = None
-    telemetry_restrictions: Optional[TelemetrySetting] = None
-    driver_number: Optional[int] = None
-    m_num_pitstops: Optional[int] = None
-    m_dnf_status_code: Optional[str] = None
-    m_curr_lap_sc_status: Optional[SafetyCarType] = None
+class CarInfo:
+
+    def __init__(self, total_laps: int) -> None:
+        self.m_ers_perc: Optional[float] = None
+        self.m_drs_activated: Optional[bool] = None
+        self.m_drs_allowed: Optional[bool] = None
+        self.m_drs_distance: Optional[int] = None
+        self.m_fl_wing_damage: Optional[int] = None
+        self.m_fr_wing_damage: Optional[int] = None
+        self.m_rear_wing_damage: Optional[int] = None
+        self.m_fuel_rate_recommender: FuelRateRecommender = FuelRateRecommender([], total_laps=total_laps,
+                                                                                min_fuel_kg=CarStatusData.MIN_FUEL_KG)
