@@ -314,10 +314,10 @@ class PlayerTelemetryOverlayUpdate:
             player_data (Optional[TelData.DataPerDriver]): The player's DataPerDriver object
         """
 
-        if player_data and player_data.m_packet_car_telemetry:
-            self.m_throttle = player_data.m_packet_car_telemetry.m_throttle
-            self.m_brake    = player_data.m_packet_car_telemetry.m_brake
-            self.m_steering = player_data.m_packet_car_telemetry.m_steer
+        if player_data and player_data.m_packet_copies.m_packet_car_telemetry:
+            self.m_throttle = player_data.m_packet_copies.m_packet_car_telemetry.m_throttle
+            self.m_brake    = player_data.m_packet_copies.m_packet_car_telemetry.m_brake
+            self.m_steering = player_data.m_packet_copies.m_packet_car_telemetry.m_steer
         else:
             self.m_throttle = 0
             self.m_brake    = 0
@@ -333,8 +333,8 @@ class PlayerTelemetryOverlayUpdate:
         self.m_curr_lap: Optional[int] = player_data.m_current_lap if player_data else None
         self.m_lap_time_history: LapTimeHistory = LapTimeHistory(
             player_data, self.m_fastest_lap_ms, self.m_fastest_s1_ms, self.m_fastest_s2_ms, self.m_fastest_s3_ms)
-        self.m_speed_trap_record: Optional[float] = player_data.m_packet_lap_data.m_speedTrapFastestSpeed \
-            if player_data and player_data.m_packet_lap_data else None
+        self.m_speed_trap_record: Optional[float] = player_data.m_packet_copies.m_packet_lap_data.m_speedTrapFastestSpeed \
+            if player_data and player_data.m_packet_copies.m_packet_lap_data else None
 
     def __initTyreWear(self, player_data: Optional[TelData.DataPerDriver]) -> None:
         """Prepares the player's tyre wear data.
@@ -343,12 +343,12 @@ class PlayerTelemetryOverlayUpdate:
             player_data (Optional[TelData.DataPerDriver]): The player's DataPerDriver object
         """
 
-        if player_data and player_data.m_packet_car_damage:
+        if player_data and player_data.m_packet_copies.m_packet_car_damage:
             self.m_tyre_wear = TyreWearPerLap(
-                fl_tyre_wear=player_data.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
-                fr_tyre_wear=player_data.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
-                rl_tyre_wear=player_data.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
-                rr_tyre_wear=player_data.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
+                fl_tyre_wear=player_data.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
+                fr_tyre_wear=player_data.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
+                rl_tyre_wear=player_data.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
+                rr_tyre_wear=player_data.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
                 lap_number=self.m_curr_lap,
                 is_racing_lap=True,
                 desc="Curr tyre wear"
@@ -373,12 +373,12 @@ class PlayerTelemetryOverlayUpdate:
             player_data (Optional[TelData.DataPerDriver]): The player's DataPerDriver object
         """
 
-        if player_data and player_data.m_packet_lap_data:
-            self.m_penalties = player_data.m_packet_lap_data.m_penalties
-            self.m_total_warnings = player_data.m_packet_lap_data.m_totalWarnings
-            self.m_corner_cutting_warnings = player_data.m_packet_lap_data.m_cornerCuttingWarnings
-            self.m_num_dt = player_data.m_packet_lap_data.m_numUnservedDriveThroughPens
-            self.m_num_sg = player_data.m_packet_lap_data.m_numUnservedStopGoPens
+        if player_data and player_data.m_packet_copies.m_packet_lap_data:
+            self.m_penalties = player_data.m_packet_copies.m_packet_lap_data.m_penalties
+            self.m_total_warnings = player_data.m_packet_copies.m_packet_lap_data.m_totalWarnings
+            self.m_corner_cutting_warnings = player_data.m_packet_copies.m_packet_lap_data.m_cornerCuttingWarnings
+            self.m_num_dt = player_data.m_packet_copies.m_packet_lap_data.m_numUnservedDriveThroughPens
+            self.m_num_sg = player_data.m_packet_copies.m_packet_lap_data.m_numUnservedStopGoPens
             self.m_num_collisions = len(player_data.m_collision_records)
         else:
             self.m_penalties = 0
@@ -395,10 +395,10 @@ class PlayerTelemetryOverlayUpdate:
             player_data (Optional[TelData.DataPerDriver]): The player's DataPerDriver object
         """
 
-        if player_data and player_data.m_packet_motion:
-            self.m_g_force_lat = player_data.m_packet_motion.m_gForceLateral
-            self.m_g_force_vert = player_data.m_packet_motion.m_gForceVertical
-            self.m_g_force_long = player_data.m_packet_motion.m_gForceLongitudinal
+        if player_data and player_data.m_packet_copies.m_packet_motion:
+            self.m_g_force_lat = player_data.m_packet_copies.m_packet_motion.m_gForceLateral
+            self.m_g_force_vert = player_data.m_packet_copies.m_packet_motion.m_gForceVertical
+            self.m_g_force_long = player_data.m_packet_copies.m_packet_motion.m_gForceLongitudinal
         else:
             self.m_g_force_lat = 0
             self.m_g_force_vert = 0
@@ -477,20 +477,20 @@ class PlayerTelemetryOverlayUpdate:
             return
         json_dict["name"] = driver_obj.m_driver_info.name
         json_dict["lap-ms"] = driver_obj.m_lap_info.m_last_lap_ms
-        last_lap_obj = driver_obj.m_packet_session_history.getLastLapData() if driver_obj.m_packet_session_history else None
+        last_lap_obj = driver_obj.m_packet_copies.m_packet_session_history.getLastLapData() if driver_obj.m_packet_copies.m_packet_session_history else None
         if last_lap_obj:
             json_dict["sector-1-ms"] = last_lap_obj.m_sector1TimeInMS
             json_dict["sector-2-ms"] = last_lap_obj.m_sector2TimeInMS
             json_dict["sector-3-ms"] = last_lap_obj.m_sector3TimeInMS
         json_dict["ers"] = {
             "ers-percent" : _getValueOrDefaultValue(driver_obj.m_ers_perc),
-            "ers-mode" : _getValueOrDefaultValue(str(driver_obj.m_packet_car_status.m_ersDeployMode)
-                                            if driver_obj.m_packet_car_status else None),
-            "ers-harvested-by-mguk-this-lap" : (((driver_obj.m_packet_car_status.m_ersHarvestedThisLapMGUK
-                                            if driver_obj.m_packet_car_status else 0.0) /
+            "ers-mode" : _getValueOrDefaultValue(str(driver_obj.m_packet_copies.m_packet_car_status.m_ersDeployMode)
+                                            if driver_obj.m_packet_copies.m_packet_car_status else None),
+            "ers-harvested-by-mguk-this-lap" : (((driver_obj.m_packet_copies.m_packet_car_status.m_ersHarvestedThisLapMGUK
+                                            if driver_obj.m_packet_copies.m_packet_car_status else 0.0) /
                                                 CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0),
-            "ers-deployed-this-lap" : ((driver_obj.m_packet_car_status.m_ersDeployedThisLap
-                                    if driver_obj.m_packet_car_status else 0.0) /
+            "ers-deployed-this-lap" : ((driver_obj.m_packet_copies.m_packet_car_status.m_ersDeployedThisLap
+                                    if driver_obj.m_packet_copies.m_packet_car_status else 0.0) /
                                         CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0
         }
 
@@ -607,13 +607,13 @@ class DriversListRsp:
                 },
                 "ers-info" : {
                     "ers-percent": _getValueOrDefaultValue(data_per_driver.m_ers_perc),
-                    "ers-mode" : _getValueOrDefaultValue(str(data_per_driver.m_packet_car_status.m_ersDeployMode)
-                                                        if data_per_driver.m_packet_car_status else None),
-                    "ers-harvested-by-mguk-this-lap" : (((data_per_driver.m_packet_car_status.m_ersHarvestedThisLapMGUK
-                                                        if data_per_driver.m_packet_car_status else 0.0) /
+                    "ers-mode" : _getValueOrDefaultValue(str(data_per_driver.m_packet_copies.m_packet_car_status.m_ersDeployMode)
+                                                        if data_per_driver.m_packet_copies.m_packet_car_status else None),
+                    "ers-harvested-by-mguk-this-lap" : (((data_per_driver.m_packet_copies.m_packet_car_status.m_ersHarvestedThisLapMGUK
+                                                        if data_per_driver.m_packet_copies.m_packet_car_status else 0.0) /
                                                             CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0),
-                    "ers-deployed-this-lap" : ((data_per_driver.m_packet_car_status.m_ersDeployedThisLap
-                                                if data_per_driver.m_packet_car_status else 0.0) /
+                    "ers-deployed-this-lap" : ((data_per_driver.m_packet_copies.m_packet_car_status.m_ersDeployedThisLap
+                                                if data_per_driver.m_packet_copies.m_packet_car_status else 0.0) /
                                                     CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0,
                 },
                 "lap-info" : {
@@ -651,8 +651,8 @@ class DriversListRsp:
                             if data_per_driver.m_lap_info.m_best_lap_obj else None,
                     },
                     "lap-progress" : data_per_driver.m_lap_progress, # NULL is supported
-                    "speed-trap-record-kmph" : data_per_driver.m_packet_lap_data.m_speedTrapFastestSpeed if \
-                        data_per_driver.m_packet_lap_data else None, # NULL is supported
+                    "speed-trap-record-kmph" : data_per_driver.m_packet_copies.m_packet_lap_data.m_speedTrapFastestSpeed if \
+                        data_per_driver.m_packet_copies.m_packet_lap_data else None, # NULL is supported
                     "top-speed-kmph" : data_per_driver.m_top_speed_kmph_this_lap,
                 },
                 "warns-pens-info" : {
@@ -701,8 +701,8 @@ class DriversListRsp:
             return None
 
         # Insert top speed into the lap-history-data records
-        if player_obj.m_packet_session_history:
-            session_history = player_obj.m_packet_session_history.toJSON()
+        if player_obj.m_packet_copies.m_packet_session_history:
+            session_history = player_obj.m_packet_copies.m_packet_session_history.toJSON()
             for index, lap_data in enumerate(session_history["lap-history-data"]):
                 lap_data["top-speed-kmph"] = player_obj.m_per_lap_snapshots[index + 1].m_top_speed_kmph \
                     if (index + 1) in player_obj.m_per_lap_snapshots else None
@@ -825,13 +825,13 @@ class DriversListRsp:
                 driver_data.m_driver_info.telemetry_restrictions = str(driver_data.m_driver_info.telemetry_restrictions)
             else:
                 driver_data.m_driver_info.telemetry_restrictions = "N/A"
-            if driver_data.m_packet_lap_data:
-                driver_data.m_corner_cutting_warnings = driver_data.m_packet_lap_data.m_cornerCuttingWarnings
-                driver_data.m_time_penalties = driver_data.m_packet_lap_data.m_penalties
-                driver_data.m_num_dt = driver_data.m_packet_lap_data.m_numUnservedDriveThroughPens
-                driver_data.m_num_sg = driver_data.m_packet_lap_data.m_numUnservedStopGoPens
+            if driver_data.m_packet_copies.m_packet_lap_data:
+                driver_data.m_corner_cutting_warnings = driver_data.m_packet_copies.m_packet_lap_data.m_cornerCuttingWarnings
+                driver_data.m_time_penalties = driver_data.m_packet_copies.m_packet_lap_data.m_penalties
+                driver_data.m_num_dt = driver_data.m_packet_copies.m_packet_lap_data.m_numUnservedDriveThroughPens
+                driver_data.m_num_sg = driver_data.m_packet_copies.m_packet_lap_data.m_numUnservedStopGoPens
                 if self.m_track_length:
-                    driver_data.m_lap_progress = (driver_data.m_packet_lap_data.m_lapDistance /
+                    driver_data.m_lap_progress = (driver_data.m_packet_copies.m_packet_lap_data.m_lapDistance /
                                                             self.m_track_length) * 100.0
                 else:
                     driver_data.m_lap_progress = None
@@ -967,7 +967,7 @@ class LapTimeHistory:
         self.m_global_fastest_s2_ms: Optional[int]   = global_fastest_s2_ms
         self.m_global_fastest_s3_ms: Optional[int]   = global_fastest_s3_ms
 
-        if driver_data is None or driver_data.m_packet_session_history is None:
+        if driver_data is None or driver_data.m_packet_copies.m_packet_session_history is None:
             self.m_personal_fastest_lap_number: int = None
             self.m_personal_fastest_s1_lap_number: int = None
             self.m_personal_fastest_s2_lap_number: int = None
@@ -975,13 +975,13 @@ class LapTimeHistory:
             self.m_lap_time_history_data: List[LapHistoryData] = []
             return
 
-        self.m_personal_fastest_lap_number: int      = driver_data.m_packet_session_history.m_bestLapTimeLapNum
-        self.m_personal_fastest_s1_lap_number: int   = driver_data.m_packet_session_history.m_bestSector1LapNum
-        self.m_personal_fastest_s2_lap_number: int   = driver_data.m_packet_session_history.m_bestSector2LapNum
-        self.m_personal_fastest_s3_lap_number: int   = driver_data.m_packet_session_history.m_bestSector3LapNum
+        self.m_personal_fastest_lap_number: int      = driver_data.m_packet_copies.m_packet_session_history.m_bestLapTimeLapNum
+        self.m_personal_fastest_s1_lap_number: int   = driver_data.m_packet_copies.m_packet_session_history.m_bestSector1LapNum
+        self.m_personal_fastest_s2_lap_number: int   = driver_data.m_packet_copies.m_packet_session_history.m_bestSector2LapNum
+        self.m_personal_fastest_s3_lap_number: int   = driver_data.m_packet_copies.m_packet_session_history.m_bestSector3LapNum
         self.m_lap_time_history_data: List[LapHistoryData] = []
 
-        for index, lap_info in enumerate(driver_data.m_packet_session_history.m_lapHistoryData):
+        for index, lap_info in enumerate(driver_data.m_packet_copies.m_packet_session_history.m_lapHistoryData):
             lap_number = index + 1
             self.m_lap_time_history_data.append(LapTimeInfo(
                 lap_history_data=lap_info,

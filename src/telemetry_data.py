@@ -34,7 +34,7 @@ from lib.f1_types import PacketSessionData, PacketLapData, LapData, CarTelemetry
     SafetyCarType, TelemetrySetting, PacketMotionData, CarMotionData, PacketCarSetupData, CarSetupData, ResultStatus, \
     PacketTimeTrialData
 from src.data_per_driver import TyreSetInfo, TyreSetHistoryEntry, TyreSetHistoryManager, CurrTyreInfo, \
-    PerLapSnapshotEntry, WarningPenaltyHistory, DriverInfo, LapInfo
+    PerLapSnapshotEntry, WarningPenaltyHistory, DriverInfo, LapInfo, PacketCopies
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.overtake_analyzer import OvertakeRecord
 from lib.collisions_analyzer import CollisionRecord, CollisionAnalyzer, CollisionAnalyzerMode
@@ -263,19 +263,19 @@ class DataPerDriver:
         self.m_warning_penalty_history: WarningPenaltyHistory = WarningPenaltyHistory()
 
         # packet copies
-        self.m_packet_lap_data: Optional[LapData] = None
-        self.m_packet_particpant_data: Optional[ParticipantData] = None
-        self.m_packet_car_telemetry: Optional[CarTelemetryData] = None
-        self.m_packet_car_status: Optional[CarStatusData] = None
-        self.m_packet_car_damage: Optional[CarDamageData] = None
-        self.m_packet_session_history: Optional[PacketSessionHistoryData] = None
-        self.m_packet_tyre_sets: Optional[PacketTyreSetsData] = None
-        self.m_packet_final_classification: Optional[FinalClassificationData] = None
-        self.m_packet_motion: Optional[CarMotionData] = None
-        self.m_packet_car_setup: Optional[CarSetupData] = None
+        self.m_packet_copies: PacketCopies = PacketCopies()
 
         # Per lap snapshot
         self.m_per_lap_snapshots: Dict[int, PerLapSnapshotEntry] = {}
+
+    @property
+    def is_valid(self) -> bool:
+        """Check if this DataPerDriver entry is valid. Reuse the same fields as __repr__
+
+        Returns:
+            bool: True if valid
+        """
+        return bool(self.m_driver_info.position or self.m_driver_info.name or self.m_driver_info.team)
 
     def toJSON(self,
                index: Optional[int] = None,
@@ -306,14 +306,14 @@ class DataPerDriver:
         final_json["top-speed-kmph"] = self.m_top_speed_kmph_this_lap
 
         # Insert packet copies if available
-        final_json["car-damage"] = self.m_packet_car_damage.toJSON() if self.m_packet_car_damage else None
-        final_json["car-status"] = self.m_packet_car_status.toJSON() if self.m_packet_car_status else None
-        final_json["participant-data"] = self.m_packet_particpant_data.toJSON() if self.m_packet_particpant_data else None
-        final_json["tyre-sets"] = self.m_packet_tyre_sets.toJSON() if self.m_packet_tyre_sets else None
-        final_json["session-history"] = self.m_packet_session_history.toJSON() if self.m_packet_session_history else None
-        final_json["final-classification"] = self.m_packet_final_classification.toJSON() if self.m_packet_final_classification else None
-        final_json["lap-data"] = self.m_packet_lap_data.toJSON() if self.m_packet_lap_data else None
-        final_json["car-setup"] = self.m_packet_car_setup.toJSON() if self.m_packet_car_setup else None
+        final_json["car-damage"] = self.m_packet_copies.m_packet_car_damage.toJSON() if self.m_packet_copies.m_packet_car_damage else None
+        final_json["car-status"] = self.m_packet_copies.m_packet_car_status.toJSON() if self.m_packet_copies.m_packet_car_status else None
+        final_json["participant-data"] = self.m_packet_copies.m_packet_particpant_data.toJSON() if self.m_packet_copies.m_packet_particpant_data else None
+        final_json["tyre-sets"] = self.m_packet_copies.m_packet_tyre_sets.toJSON() if self.m_packet_copies.m_packet_tyre_sets else None
+        final_json["session-history"] = self.m_packet_copies.m_packet_session_history.toJSON() if self.m_packet_copies.m_packet_session_history else None
+        final_json["final-classification"] = self.m_packet_copies.m_packet_final_classification.toJSON() if self.m_packet_copies.m_packet_final_classification else None
+        final_json["lap-data"] = self.m_packet_copies.m_packet_lap_data.toJSON() if self.m_packet_copies.m_packet_lap_data else None
+        final_json["car-setup"] = self.m_packet_copies.m_packet_car_setup.toJSON() if self.m_packet_copies.m_packet_car_setup else None
         final_json["warning-penalty-history"] = [entry.toJSON() for entry in self.m_warning_penalty_history.getEntries()]
 
         # Insert the tyre set history
@@ -422,8 +422,8 @@ class DataPerDriver:
             JSON list: JSON list containing multiple JSON objects, each representing one set of tyres used, in order.
         """
 
-        return self.m_tyre_set_history_manager.toJSON(include_wear_history, self.m_packet_tyre_sets,
-                                                      self.m_packet_session_history.m_numLaps)
+        return self.m_tyre_set_history_manager.toJSON(include_wear_history, self.m_packet_copies.m_packet_tyre_sets,
+                                                      self.m_packet_copies.m_packet_session_history.m_numLaps)
 
     def _getTyreWearHistoryJSON(self, start_lap : int, end_lap : int):
         """
@@ -473,11 +473,11 @@ class DataPerDriver:
             JSON object: JSON object containing the lap time history and tyre info for each lap
         """
 
-        if not self.m_packet_session_history:
+        if not self.m_packet_copies.m_packet_session_history:
             return None
         per_lap_tyre_info = self._getPerLapTyreInfoJSON()
         lap_history_data = []
-        for index, entry in enumerate(self.m_packet_session_history.m_lapHistoryData):
+        for index, entry in enumerate(self.m_packet_copies.m_packet_session_history.m_lapHistoryData):
             # Get tyre set history at start of lap (i.e.) end of previous lap
             lap_number = index # Use index since it is lap_number - 1
             # Find the tyre set at the specified lap
@@ -501,10 +501,10 @@ class DataPerDriver:
                 "tyre-set-info" : tyre_set_info,
             })
         return {
-            "best-lap-time-lap-num": self.m_packet_session_history.m_bestLapTimeLapNum,
-            "best-sector-1-lap-num": self.m_packet_session_history.m_bestSector1LapNum,
-            "best-sector-2-lap-num": self.m_packet_session_history.m_bestSector2LapNum,
-            "best-sector-3-lap-num": self.m_packet_session_history.m_bestSector3LapNum,
+            "best-lap-time-lap-num": self.m_packet_copies.m_packet_session_history.m_bestLapTimeLapNum,
+            "best-sector-1-lap-num": self.m_packet_copies.m_packet_session_history.m_bestSector1LapNum,
+            "best-sector-2-lap-num": self.m_packet_copies.m_packet_session_history.m_bestSector2LapNum,
+            "best-sector-3-lap-num": self.m_packet_copies.m_packet_session_history.m_bestSector3LapNum,
             "lap-history-data": lap_history_data,
         }
 
@@ -543,10 +543,10 @@ class DataPerDriver:
 
         # Store the snapshot data for the old lap
         self.m_per_lap_snapshots[old_lap_number] = PerLapSnapshotEntry(
-            car_damage=self.m_packet_car_damage,
-            car_status=self.m_packet_car_status,
+            car_damage=self.m_packet_copies.m_packet_car_damage,
+            car_status=self.m_packet_copies.m_packet_car_status,
             sc_status=self.m_curr_lap_sc_status,
-            tyre_sets=self.m_packet_tyre_sets,
+            tyre_sets=self.m_packet_copies.m_packet_tyre_sets,
             track_position=self.m_driver_info.position,
             top_speed_kmph=self.m_top_speed_kmph_this_lap,
         )
@@ -557,10 +557,10 @@ class DataPerDriver:
         # Add the tyre wear data into the tyre stint history
         if old_lap_number and self.m_tyre_set_history_manager.length:
             self.m_tyre_set_history_manager.addTyreWear(TyreWearPerLap(
-                fl_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
-                fr_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
-                rl_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
-                rr_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
+                fl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
+                fr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
+                rl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
+                rr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
                 lap_number=old_lap_number,
                 is_racing_lap=True,
                 desc=f"end of lap {old_lap_number} snapshot"
@@ -570,18 +570,18 @@ class DataPerDriver:
         tyre_set_id = self._getCurrentTyreSetKey()
         if tyre_set_id:
             self.m_tyre_wear_extrapolator.updateDataLap(TyreWearPerLap(
-                fl_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
-                fr_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
-                rl_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
-                rr_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
+                fl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
+                fr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
+                rl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
+                rr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
                 lap_number=old_lap_number,
                 is_racing_lap=True,
                 desc=tyre_set_id
             ))
 
         # Fuel stuff
-        if self.m_packet_car_status:
-            self.m_fuel_rate_recommender.add(self.m_packet_car_status.m_fuelInTank, old_lap_number)
+        if self.m_packet_copies.m_packet_car_status:
+            self.m_fuel_rate_recommender.add(self.m_packet_copies.m_packet_car_status.m_fuelInTank, old_lap_number)
 
     def isZerothLapSnapshotDataAvailable(self) -> bool:
         """
@@ -592,9 +592,9 @@ class DataPerDriver:
         """
 
         return bool(
-            self.m_packet_car_damage and
-            self.m_packet_car_status and
-            self.m_packet_tyre_sets and
+            self.m_packet_copies.m_packet_car_damage and
+            self.m_packet_copies.m_packet_car_status and
+            self.m_packet_copies.m_packet_tyre_sets and
             self.m_driver_info.position and
             (self.m_top_speed_kmph_this_lap is not None)
         )
@@ -636,10 +636,10 @@ class DataPerDriver:
                 lap_number = self.m_current_lap - 1
                 # create a new tyre set entry with initial data.
                 initial_tyre_wear = TyreWearPerLap(
-                    fl_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
-                    fr_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
-                    rl_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
-                    rr_tyre_wear=self.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
+                    fl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
+                    fr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
+                    rl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
+                    rr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
                     lap_number=lap_number,
                     is_racing_lap=True,
                     desc=f"tyre set change detected. key={str(fitted_tyre_set_key)}"
@@ -662,7 +662,8 @@ class DataPerDriver:
             Optional[str]: The tyre set key
         """
 
-        return self.m_packet_tyre_sets.getFittedTyreSetKey() if self.m_packet_tyre_sets else None
+        return self.m_packet_copies.m_packet_tyre_sets.getFittedTyreSetKey() \
+            if self.m_packet_copies.m_packet_tyre_sets else None
 
     def _getCurrentTyreSetID(self) -> Optional[int]:
         """Get the ID/index for the currently equipped tyre set
@@ -671,7 +672,7 @@ class DataPerDriver:
             Optional[int]: The tyre set ID
         """
 
-        return self.m_packet_tyre_sets.m_fittedIdx if self.m_packet_tyre_sets else None
+        return self.m_packet_copies.m_packet_tyre_sets.m_fittedIdx if self.m_packet_copies.m_packet_tyre_sets else None
 
     def _getNextLapSnapshot(self) -> Generator[Tuple[int, PerLapSnapshotEntry], None, None]:
         """
@@ -699,12 +700,12 @@ class DataPerDriver:
         if lap_num is None:
             lap_num = self.m_current_lap
 
-        if lap_num == self.m_current_lap and self.m_packet_car_status:
+        if lap_num == self.m_current_lap and self.m_packet_copies.m_packet_car_status:
             return TyreSetInfo(
-                actual_tyre_compound=self.m_packet_car_status.m_actualTyreCompound,
-                visual_tyre_compound=self.m_packet_car_status.m_visualTyreCompound,
+                actual_tyre_compound=self.m_packet_copies.m_packet_car_status.m_actualTyreCompound,
+                visual_tyre_compound=self.m_packet_copies.m_packet_car_status.m_visualTyreCompound,
                 tyre_set_id=self._getCurrentTyreSetID(),
-                tyre_age_laps=self.m_packet_car_status.m_tyresAgeLaps
+                tyre_age_laps=self.m_packet_copies.m_packet_car_status.m_tyresAgeLaps
             )
         if (lap_num < self.m_current_lap) and (lap_num in self.m_per_lap_snapshots):
             snapshot_at_lap       = self.m_per_lap_snapshots[lap_num]
@@ -740,12 +741,12 @@ class DataPerDriver:
             Dict[str, Any]: Fuel stats JSON
         """
 
-        if self.m_packet_car_status:
+        if self.m_packet_copies.m_packet_car_status:
             return {
-                "fuel-capacity" : self.m_packet_car_status.m_fuelCapacity,
-                "fuel-mix" : str(self.m_packet_car_status.m_fuelMix),
-                "fuel-remaining-laps" : self.m_packet_car_status.m_fuelRemainingLaps,
-                "fuel-in-tank" : self.m_packet_car_status.m_fuelInTank,
+                "fuel-capacity" : self.m_packet_copies.m_packet_car_status.m_fuelCapacity,
+                "fuel-mix" : str(self.m_packet_copies.m_packet_car_status.m_fuelMix),
+                "fuel-remaining-laps" : self.m_packet_copies.m_packet_car_status.m_fuelRemainingLaps,
+                "fuel-in-tank" : self.m_packet_copies.m_packet_car_status.m_fuelInTank,
                 "curr-fuel-rate" :self.m_fuel_rate_recommender.curr_fuel_rate,
                 "last-lap-fuel-used" : self.m_fuel_rate_recommender.fuel_used_last_lap,
                 "target-fuel-rate-average" : self.m_fuel_rate_recommender.target_fuel_rate,
@@ -809,8 +810,8 @@ class DataPerDriver:
         """
 
         # Update the history and packet copy
-        self.m_warning_penalty_history.update(lap_data, full_lap_distance, self.m_packet_lap_data)
-        self.m_packet_lap_data = lap_data
+        self.m_warning_penalty_history.update(lap_data, full_lap_distance, self.m_packet_copies.m_packet_lap_data)
+        self.m_packet_copies.m_packet_lap_data = lap_data
 
     def getSectorStatus(self,
                         sector_1_best_ms: Optional[int],
@@ -1089,14 +1090,14 @@ class DriverData:
 
         # Determine this guy's best lap
         driver_best_lap_ms = None
-        if driver_data.m_packet_session_history:
+        if driver_data.m_packet_copies.m_packet_session_history:
             # First option, session history data
-            best_lap_index: int = driver_data.m_packet_session_history.m_bestLapTimeLapNum - 1
+            best_lap_index: int = driver_data.m_packet_copies.m_packet_session_history.m_bestLapTimeLapNum - 1
             # sourcery skip: merge-nested-ifs
-            if 0 <= best_lap_index < len(driver_data.m_packet_session_history.m_lapHistoryData):
-                if driver_data.m_packet_session_history.m_lapHistoryData[best_lap_index].isLapValid():
+            if 0 <= best_lap_index < len(driver_data.m_packet_copies.m_packet_session_history.m_lapHistoryData):
+                if driver_data.m_packet_copies.m_packet_session_history.m_lapHistoryData[best_lap_index].isLapValid():
                     driver_best_lap_ms = \
-                        driver_data.m_packet_session_history.m_lapHistoryData[best_lap_index].m_lapTimeInMS
+                        driver_data.m_packet_copies.m_packet_session_history.m_lapHistoryData[best_lap_index].m_lapTimeInMS
         if driver_best_lap_ms is None:
             # Second option, from the object itself
             driver_best_lap_ms = driver_data.m_lap_info.m_best_lap_ms
@@ -1236,7 +1237,7 @@ class DriverData:
             else:
                 obj_to_be_updated.m_driver_info.is_player = False
             obj_to_be_updated.m_driver_info.telemetry_restrictions = participant.m_yourTelemetry
-            obj_to_be_updated.m_packet_particpant_data = participant
+            obj_to_be_updated.m_packet_copies.m_packet_particpant_data = participant
 
     def processCarTelemetryUpdate(self, packet: PacketCarTelemetryData) -> None:
         """Process the car telemetry update packet and update the necessary fields
@@ -1256,7 +1257,7 @@ class DriverData:
                 obj_to_be_updated.m_top_speed_kmph_this_lap = car_telemetry_data.m_speed
             else:
                 obj_to_be_updated.m_top_speed_kmph_this_lap = max(car_telemetry_data.m_speed, obj_to_be_updated.m_top_speed_kmph_this_lap)
-            obj_to_be_updated.m_packet_car_telemetry = car_telemetry_data
+            obj_to_be_updated.m_packet_copies.m_packet_car_telemetry = car_telemetry_data
 
     def processCarStatusUpdate(self, packet: PacketCarStatusData) -> None:
         """Process the car status update packet and update the necessary fields
@@ -1273,7 +1274,7 @@ class DriverData:
             obj_to_be_updated.m_curr_tyre_info.tyre_act_compound = car_status_data.m_actualTyreCompound
             obj_to_be_updated.m_drs_allowed = bool(car_status_data.m_drsAllowed)
             obj_to_be_updated.m_drs_distance = car_status_data.m_drsActivationDistance
-            obj_to_be_updated.m_packet_car_status = car_status_data
+            obj_to_be_updated.m_packet_copies.m_packet_car_status = car_status_data
             obj_to_be_updated.m_fuel_load_kg = car_status_data.m_fuelInTank
             obj_to_be_updated.m_fuel_laps_remaining = car_status_data.m_fuelRemainingLaps
 
@@ -1301,7 +1302,7 @@ class DriverData:
             # Sometimes, lapInfo is unreliable. update the track position
             obj_to_be_updated.m_per_lap_snapshots[data.m_numLaps].m_track_position = data.m_position
             obj_to_be_updated.m_driver_info.position = data.m_position
-            obj_to_be_updated.m_packet_final_classification = data
+            obj_to_be_updated.m_packet_copies.m_packet_final_classification = data
             final_json["classification-data"][index] = obj_to_be_updated.toJSON(index)
             if is_position_history_supported:
                 final_json["position-history"].append(obj_to_be_updated.getPositionHistoryJSON())
@@ -1319,7 +1320,7 @@ class DriverData:
         """
         for index, car_damage in enumerate(packet.m_carDamageData):
             obj_to_be_updated = self._getObjectByIndex(index)
-            obj_to_be_updated.m_packet_car_damage = car_damage
+            obj_to_be_updated.m_packet_copies.m_packet_car_damage = car_damage
             obj_to_be_updated.m_curr_tyre_info.tyre_wear = TyreWearPerLap(
                 fl_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
                 fr_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
@@ -1340,7 +1341,7 @@ class DriverData:
 
         # Update the fastest lap variable
         obj_to_be_updated = self._getObjectByIndex(packet.m_carIdx)
-        obj_to_be_updated.m_packet_session_history = packet
+        obj_to_be_updated.m_packet_copies.m_packet_session_history = packet
         if (packet.m_bestLapTimeLapNum > 0) and (packet.m_bestLapTimeLapNum <= packet.m_numLaps):
             obj_to_be_updated.m_lap_info.m_best_lap_ms = packet.m_lapHistoryData[packet.m_bestLapTimeLapNum-1].m_lapTimeInMS
             tyre_set_info_at_best_lap = obj_to_be_updated.getTyreSetInfoAtLap(packet.m_bestLapTimeLapNum-1)
@@ -1399,7 +1400,7 @@ class DriverData:
         """
 
         obj_to_be_updated = self._getObjectByIndex(packet.m_carIdx)
-        obj_to_be_updated.m_packet_tyre_sets = packet
+        obj_to_be_updated.m_packet_copies.m_packet_tyre_sets = packet
         obj_to_be_updated.m_curr_tyre_info.tyre_life_remaining_laps = packet.m_tyreSetData[packet.m_fittedIdx].m_lifeSpan
 
         # Update the tyre set history
@@ -1414,7 +1415,7 @@ class DriverData:
 
         for index, motion_data in enumerate(packet.m_carMotionData):
             obj_to_be_updated = self._getObjectByIndex(index)
-            obj_to_be_updated.m_packet_motion = motion_data
+            obj_to_be_updated.m_packet_copies.m_packet_motion = motion_data
 
     def processCarSetupsUpdate(self, packet: PacketCarSetupData) -> None:
         """Process the car setup update packet and update the necessary fields
@@ -1425,7 +1426,7 @@ class DriverData:
 
         for index, car_setup in enumerate(packet.m_carSetups):
             obj_to_be_updated = self._getObjectByIndex(index)
-            obj_to_be_updated.m_packet_car_setup = car_setup
+            obj_to_be_updated.m_packet_copies.m_packet_car_setup = car_setup
 
     def processTimeTrialUpdate(self, packet: PacketTimeTrialData) -> None:
         """Process the time trial update packet and update the necessary fields
@@ -1532,7 +1533,7 @@ class DriverData:
         Return a list of dictionaries containing index, driver name, position, and participant data.
         """
 
-        return [driver_data.toJSON(index) for index, driver_data in self.m_driver_data.items()]
+        return [driver_data.toJSON(index) for index, driver_data in self.m_driver_data.items() if driver_data.is_valid]
 
     def getCollisionStatsJSON(self) -> Dict[str, Any]:
         """Get the collision stats JSON.
@@ -1831,7 +1832,6 @@ def getRaceInfo() -> Dict[str, Any]:
         }
     return final_json
 
-
 # -------------------------------------- UTILITIES ---------------------------------------------------------------------
 
 def isDriverIndexValid(index: int) -> bool:
@@ -2000,7 +2000,7 @@ def getTyreDeltaNotificationMessages() -> List[TyreDeltaMessage]:
         if (_driver_data.m_player_index is None) or (_driver_data.m_is_player_dnf):
             return []
         # Need tyre set packet info
-        tyre_sets = _driver_data.m_driver_data[_driver_data.m_player_index].m_packet_tyre_sets
+        tyre_sets = _driver_data.m_driver_data[_driver_data.m_player_index].m_packet_copies.m_packet_tyre_sets
         if not tyre_sets :
             return []
 
