@@ -287,7 +287,7 @@ class PlayerTelemetryOverlayUpdate:
         with TelData._driver_data_lock.gen_rlock():
             self.m_next_pit_window          = TelData._driver_data.m_ideal_pit_stop_window
             self.m_fastest_lap_ms           = \
-                TelData._driver_data.m_driver_data[TelData._driver_data.m_fastest_index].m_best_lap_ms if \
+                TelData._driver_data.m_driver_data[TelData._driver_data.m_fastest_index].m_lap_info.m_best_lap_ms if \
                     TelData._driver_data.m_fastest_index is not None else None
             self.m_fastest_s1_ms            = TelData._driver_data.m_fastest_s1_ms
             self.m_fastest_s2_ms            = TelData._driver_data.m_fastest_s2_ms
@@ -476,7 +476,7 @@ class PlayerTelemetryOverlayUpdate:
         if not driver_obj:
             return
         json_dict["name"] = driver_obj.m_driver_info.name
-        json_dict["lap-ms"] = driver_obj.m_last_lap_ms
+        json_dict["lap-ms"] = driver_obj.m_lap_info.m_last_lap_ms
         last_lap_obj = driver_obj.m_packet_session_history.getLastLapData() if driver_obj.m_packet_session_history else None
         if last_lap_obj:
             json_dict["sector-1-ms"] = last_lap_obj.m_sector1TimeInMS
@@ -619,7 +619,7 @@ class DriversListRsp:
                 "lap-info" : {
                     "current-lap" : data_per_driver.m_current_lap,
                     "last-lap" : {
-                        "lap-time-ms" : data_per_driver.m_last_lap_ms,
+                        "lap-time-ms" : data_per_driver.m_lap_info.m_last_lap_ms,
                         "lap-time-ms-player" : 0,
                         "s1-time-ms-player" : 0,
                         "s2-time-ms-player" : 0,
@@ -627,15 +627,15 @@ class DriversListRsp:
                         "sector-status" : data_per_driver.getSectorStatus(
                             self.m_fastest_s1_ms, self.m_fastest_s2_ms, self.m_fastest_s3_ms, for_best_lap=False,
                             session_type_str=session_type),
-                        "s1-time-ms" : data_per_driver.m_last_lap_obj.m_sector1TimeInMS \
-                            if data_per_driver.m_last_lap_obj else None,
-                        "s2-time-ms" : data_per_driver.m_last_lap_obj.m_sector2TimeInMS \
-                            if data_per_driver.m_last_lap_obj else None,
-                        "s3-time-ms" : data_per_driver.m_last_lap_obj.m_sector3TimeInMS \
-                            if data_per_driver.m_last_lap_obj else None,
+                        "s1-time-ms" : data_per_driver.m_lap_info.m_last_lap_obj.m_sector1TimeInMS \
+                            if data_per_driver.m_lap_info.m_last_lap_obj else None,
+                        "s2-time-ms" : data_per_driver.m_lap_info.m_last_lap_obj.m_sector2TimeInMS \
+                            if data_per_driver.m_lap_info.m_last_lap_obj else None,
+                        "s3-time-ms" : data_per_driver.m_lap_info.m_last_lap_obj.m_sector3TimeInMS \
+                            if data_per_driver.m_lap_info.m_last_lap_obj else None,
                     },
                     "best-lap" : {
-                        "lap-time-ms" : data_per_driver.m_best_lap_ms,
+                        "lap-time-ms" : data_per_driver.m_lap_info.m_best_lap_ms,
                         "lap-time-ms-player" : 0,
                         "s1-time-ms-player" : 0,
                         "s2-time-ms-player" : 0,
@@ -643,12 +643,12 @@ class DriversListRsp:
                         "sector-status" : data_per_driver.getSectorStatus(
                             self.m_fastest_s1_ms, self.m_fastest_s2_ms, self.m_fastest_s3_ms, for_best_lap=True,
                             session_type_str=session_type),
-                        "s1-time-ms" : data_per_driver.m_best_lap_obj.m_sector1TimeInMS \
-                            if data_per_driver.m_best_lap_obj else None,
-                        "s2-time-ms" : data_per_driver.m_best_lap_obj.m_sector2TimeInMS \
-                            if data_per_driver.m_best_lap_obj else None,
-                        "s3-time-ms" : data_per_driver.m_best_lap_obj.m_sector3TimeInMS \
-                            if data_per_driver.m_best_lap_obj else None,
+                        "s1-time-ms" : data_per_driver.m_lap_info.m_best_lap_obj.m_sector1TimeInMS \
+                            if data_per_driver.m_lap_info.m_best_lap_obj else None,
+                        "s2-time-ms" : data_per_driver.m_lap_info.m_best_lap_obj.m_sector2TimeInMS \
+                            if data_per_driver.m_lap_info.m_best_lap_obj else None,
+                        "s3-time-ms" : data_per_driver.m_lap_info.m_best_lap_obj.m_sector3TimeInMS \
+                            if data_per_driver.m_lap_info.m_best_lap_obj else None,
                     },
                     "lap-progress" : data_per_driver.m_lap_progress, # NULL is supported
                     "speed-trap-record-kmph" : data_per_driver.m_packet_lap_data.m_speedTrapFastestSpeed if \
@@ -793,11 +793,11 @@ class DriversListRsp:
             self.m_next_pit_stop_window = TelData._driver_data.m_ideal_pit_stop_window
             if TelData._driver_data.m_fastest_index is not None:
                 self.m_fastest_lap = TelData._driver_data.m_driver_data[
-                                        TelData._driver_data.m_fastest_index].m_best_lap_ms
+                                        TelData._driver_data.m_fastest_index].m_lap_info.m_best_lap_ms
                 self.m_fastest_lap_driver = TelData._driver_data.m_driver_data[
                                             TelData._driver_data.m_fastest_index].m_driver_info.name
                 self.m_fastest_lap_tyre = TelData._driver_data.m_driver_data[
-                                            TelData._driver_data.m_fastest_index].m_best_lap_tyre
+                                            TelData._driver_data.m_fastest_index].m_lap_info.m_best_lap_tyre
             positions = list(range(1, TelData._driver_data.m_num_active_cars + 1))
             for position in positions:
                 index, temp_data = TelData._driver_data.getIndexByTrackPosition(position)

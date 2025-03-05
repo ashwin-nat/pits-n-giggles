@@ -20,24 +20,26 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from .tyre_info import TyreSetInfo, TyreSetHistoryEntry, TyreSetHistoryManager, CurrTyreInfo
-from .warns_pens_info import WarningPenaltyEntry, WarningPenaltyHistory
-from .per_lap_snapshot import PerLapSnapshotEntry
-from .driver_info import DriverInfo
-from .lap_info import LapInfo
+# -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-__all__ = [
-    'TyreSetInfo',
-    'TyreSetHistoryEntry',
-    'TyreSetHistoryManager',
-    'CurrTyreInfo',
+from lib.f1_types import LapHistoryData, VisualTyreCompound
+from typing import Optional
+from dataclasses import dataclass
+from src.png_logger import getLogger
 
-    'WarningPenaltyEntry',
-    'WarningPenaltyHistory',
+# -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
-    'PerLapSnapshotEntry',
+png_logger = getLogger()
 
-    'DriverInfo',
+# -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
-    'LapInfo',
-]
+@dataclass
+class LapInfo:
+    m_best_lap_ms: Optional[int] = None
+    m_best_lap_obj: Optional[LapHistoryData] = None
+    m_best_lap_tyre: Optional[VisualTyreCompound] = None
+    m_pb_s1_ms: Optional[int] = None
+    m_pb_s2_ms: Optional[int] = None
+    m_pb_s3_ms: Optional[int] = None
+    m_last_lap_ms: Optional[int] = None
+    m_last_lap_obj: Optional[LapHistoryData] = None

@@ -30,11 +30,11 @@ from readerwriterlock import rwlock
 from lib.f1_types import PacketSessionData, PacketLapData, LapData, CarTelemetryData, ParticipantData, \
     PacketEventData, PacketParticipantsData, PacketCarTelemetryData, PacketCarStatusData, FinalClassificationData, \
     PacketFinalClassificationData, PacketCarDamageData, PacketSessionHistoryData, ResultStatus, PacketTyreSetsData, \
-    F1Utils, WeatherForecastSample, CarDamageData, CarStatusData, TrackID, ActualTyreCompound, VisualTyreCompound, \
+    F1Utils, WeatherForecastSample, CarDamageData, CarStatusData, TrackID, ActualTyreCompound, \
     SafetyCarType, TelemetrySetting, PacketMotionData, CarMotionData, PacketCarSetupData, CarSetupData, ResultStatus, \
-    PacketTimeTrialData, LapHistoryData
+    PacketTimeTrialData
 from src.data_per_driver import TyreSetInfo, TyreSetHistoryEntry, TyreSetHistoryManager, CurrTyreInfo, \
-    PerLapSnapshotEntry, WarningPenaltyHistory, DriverInfo
+    PerLapSnapshotEntry, WarningPenaltyHistory, DriverInfo, LapInfo
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.overtake_analyzer import OvertakeRecord
 from lib.collisions_analyzer import CollisionRecord, CollisionAnalyzer, CollisionAnalyzerMode
@@ -164,6 +164,7 @@ class DataPerDriver:
         m_delta_to_car_in_front (Optional[str]): The time difference between the driver and the car in front.
         m_delta_to_leader (Optional[str]): The time difference to the race leader.
         m_ers_perc (Optional[float]): The percentage of ERS (Energy Recovery System) remaining.
+        m_lap_info (LapInfo): Details regarding best and last lap
         m_best_lap_ms (Optional[int]): The best lap time achieved by the driver.
         m_last_lap_ms (Optional[int]): The time taken for the last lap completed by the driver in ms.
         m_tyre_wear (Optional[TyreWearPerLap]): The level of wear on the driver's tires.
@@ -237,14 +238,8 @@ class DataPerDriver:
         self.m_delta_to_car_in_front: Optional[int] = None
         self.m_delta_to_leader: Optional[int] = None
         self.m_ers_perc: Optional[float] = None
-        self.m_best_lap_ms: Optional[int] = None
-        self.m_best_lap_obj: Optional[LapHistoryData] = None
-        self.m_best_lap_tyre: Optional[VisualTyreCompound] = None
-        self.m_pb_s1_ms: Optional[int] = None
-        self.m_pb_s2_ms: Optional[int] = None
-        self.m_pb_s3_ms: Optional[int] = None
-        self.m_last_lap_ms: Optional[int] = None
-        self.m_last_lap_obj: Optional[LapHistoryData] = None
+        self.m_lap_info: LapInfo = LapInfo()
+
         self.m_current_lap: Optional[int] = None
         self.m_curr_tyre_info: CurrTyreInfo = CurrTyreInfo()
         self.m_drs_activated: Optional[bool] = None
@@ -844,22 +839,22 @@ class DataPerDriver:
         ]
 
         # Validate input/reference data
-        if (not self.m_pb_s1_ms or
-            not self.m_pb_s2_ms or
-            not self.m_pb_s3_ms or
+        if (not self.m_lap_info.m_pb_s1_ms or
+            not self.m_lap_info.m_pb_s2_ms or
+            not self.m_lap_info.m_pb_s3_ms or
             not sector_1_best_ms or
             not sector_2_best_ms or
             not sector_3_best_ms):
             return default_val
 
         # Validate driver's data. For best/last lap, all relevant fields must be present
-        if for_best_lap and not self.m_best_lap_obj:
+        if for_best_lap and not self.m_lap_info.m_best_lap_obj:
             return default_val
-        elif not self.m_last_lap_obj:
+        elif not self.m_lap_info.m_last_lap_obj:
             return default_val
 
         # Select lap object
-        lap_obj = self.m_best_lap_obj if for_best_lap else self.m_last_lap_obj
+        lap_obj = self.m_lap_info.m_best_lap_obj if for_best_lap else self.m_lap_info.m_last_lap_obj
         if not lap_obj:
             return default_val
 
@@ -867,17 +862,17 @@ class DataPerDriver:
             self._get_sector_status(
                 sector_time=lap_obj.s1TimeMS,
                 sector_best_ms=sector_1_best_ms,
-                is_personal_best_sector_lap=(lap_obj.s1TimeMS == self.m_pb_s1_ms),
+                is_personal_best_sector_lap=(lap_obj.s1TimeMS == self.m_lap_info.m_pb_s1_ms),
                 sector_valid_flag=lap_obj.isSector1Valid()),
             self._get_sector_status(
                 sector_time=lap_obj.s2TimeMS,
                 sector_best_ms=sector_2_best_ms,
-                is_personal_best_sector_lap=(lap_obj.s2TimeMS == self.m_pb_s2_ms),
+                is_personal_best_sector_lap=(lap_obj.s2TimeMS == self.m_lap_info.m_pb_s2_ms),
                 sector_valid_flag=lap_obj.isSector2Valid()),
             self._get_sector_status(
                 sector_time=lap_obj.s3TimeMS,
                 sector_best_ms=sector_3_best_ms,
-                is_personal_best_sector_lap=(lap_obj.s3TimeMS == self.m_pb_s3_ms),
+                is_personal_best_sector_lap=(lap_obj.s3TimeMS == self.m_lap_info.m_pb_s3_ms),
                 sector_valid_flag=lap_obj.isSector3Valid()),
         ] if lap_obj else default_val
 
@@ -1065,8 +1060,8 @@ class DriverData:
         self.m_fastest_index = None
         fastest_time_ms = 500000000000 # cant be slower than this, right?
         for index, driver_data in self.m_driver_data.items():
-            if (driver_data.m_best_lap_ms) and driver_data.m_best_lap_ms < fastest_time_ms:
-                fastest_time_ms = driver_data.m_best_lap_ms
+            if (driver_data.m_lap_info.m_best_lap_ms) and driver_data.m_lap_info.m_best_lap_ms < fastest_time_ms:
+                fastest_time_ms = driver_data.m_lap_info.m_best_lap_ms
                 self.m_fastest_index = index
 
     def _shouldRecomputeFastestLap(self, driver_data: DataPerDriver) -> bool:
@@ -1085,7 +1080,7 @@ class DriverData:
             return False
 
         # Driver data is not available
-        if driver_data.m_best_lap_ms == 0:
+        if driver_data.m_lap_info.m_best_lap_ms == 0:
             return False
 
         # True if fastest lap has not been determined yet
@@ -1104,14 +1099,14 @@ class DriverData:
                         driver_data.m_packet_session_history.m_lapHistoryData[best_lap_index].m_lapTimeInMS
         if driver_best_lap_ms is None:
             # Second option, from the object itself
-            driver_best_lap_ms = driver_data.m_best_lap_ms
+            driver_best_lap_ms = driver_data.m_lap_info.m_best_lap_ms
 
         # False if this guy does not have a valid best lap
-        if driver_data.m_best_lap_ms is None:
+        if driver_data.m_lap_info.m_best_lap_ms is None:
             return False
 
         # Check if this guy's lap is faster than the best lap
-        return self.m_driver_data[self.m_fastest_index].m_best_lap_ms > driver_best_lap_ms
+        return self.m_driver_data[self.m_fastest_index].m_lap_info.m_best_lap_ms > driver_best_lap_ms
 
     def processSessionUpdate(self, packet: PacketSessionData) -> None:
         """Process the Session Update packet. Update the total laps and ideal pit window for the player
@@ -1206,8 +1201,8 @@ class DriverData:
         """
 
         obj_to_be_updated = self._getObjectByIndex(packet.vehicleIdx)
-        obj_to_be_updated.m_best_lap_ms = packet.lapTime
-        obj_to_be_updated.m_best_lap_tyre = obj_to_be_updated.m_curr_tyre_info.tyre_vis_compound
+        obj_to_be_updated.m_lap_info.m_best_lap_ms = packet.lapTime
+        obj_to_be_updated.m_lap_info.m_best_lap_tyre = obj_to_be_updated.m_curr_tyre_info.tyre_vis_compound
         self.m_fastest_index = packet.vehicleIdx
 
     def processRetirement(self, packet: PacketEventData.Retirement) -> None:
@@ -1347,9 +1342,9 @@ class DriverData:
         obj_to_be_updated = self._getObjectByIndex(packet.m_carIdx)
         obj_to_be_updated.m_packet_session_history = packet
         if (packet.m_bestLapTimeLapNum > 0) and (packet.m_bestLapTimeLapNum <= packet.m_numLaps):
-            obj_to_be_updated.m_best_lap_ms = packet.m_lapHistoryData[packet.m_bestLapTimeLapNum-1].m_lapTimeInMS
+            obj_to_be_updated.m_lap_info.m_best_lap_ms = packet.m_lapHistoryData[packet.m_bestLapTimeLapNum-1].m_lapTimeInMS
             tyre_set_info_at_best_lap = obj_to_be_updated.getTyreSetInfoAtLap(packet.m_bestLapTimeLapNum-1)
-            obj_to_be_updated.m_best_lap_tyre = tyre_set_info_at_best_lap.m_visual_tyre_compound \
+            obj_to_be_updated.m_lap_info.m_best_lap_tyre = tyre_set_info_at_best_lap.m_visual_tyre_compound \
                 if tyre_set_info_at_best_lap else None
 
         # Recompute fastest lap if required
@@ -1358,40 +1353,40 @@ class DriverData:
 
         # Update fastest sector times and personal best sector times
         if (packet.m_bestSector1LapNum > 0) and (packet.m_bestSector1LapNum <= packet.m_numLaps):
-            obj_to_be_updated.m_pb_s1_ms = packet.m_lapHistoryData[packet.m_bestSector1LapNum-1].s1TimeMS
-            self.m_fastest_s1_ms = self._safeMin(obj_to_be_updated.m_pb_s1_ms, self.m_fastest_s1_ms)
+            obj_to_be_updated.m_lap_info.m_pb_s1_ms = packet.m_lapHistoryData[packet.m_bestSector1LapNum-1].s1TimeMS
+            self.m_fastest_s1_ms = self._safeMin(obj_to_be_updated.m_lap_info.m_pb_s1_ms, self.m_fastest_s1_ms)
         if (packet.m_bestSector2LapNum > 0) and (packet.m_bestSector2LapNum <= packet.m_numLaps):
-            obj_to_be_updated.m_pb_s2_ms = packet.m_lapHistoryData[packet.m_bestSector2LapNum-1].s2TimeMS
-            self.m_fastest_s2_ms = self._safeMin(obj_to_be_updated.m_pb_s2_ms, self.m_fastest_s2_ms)
+            obj_to_be_updated.m_lap_info.m_pb_s2_ms = packet.m_lapHistoryData[packet.m_bestSector2LapNum-1].s2TimeMS
+            self.m_fastest_s2_ms = self._safeMin(obj_to_be_updated.m_lap_info.m_pb_s2_ms, self.m_fastest_s2_ms)
         if (packet.m_bestSector3LapNum > 0) and (packet.m_bestSector3LapNum <= packet.m_numLaps):
-            obj_to_be_updated.m_pb_s3_ms = packet.m_lapHistoryData[packet.m_bestSector3LapNum-1].s3TimeMS
-            self.m_fastest_s3_ms = self._safeMin(obj_to_be_updated.m_pb_s3_ms, self.m_fastest_s3_ms)
+            obj_to_be_updated.m_lap_info.m_pb_s3_ms = packet.m_lapHistoryData[packet.m_bestSector3LapNum-1].s3TimeMS
+            self.m_fastest_s3_ms = self._safeMin(obj_to_be_updated.m_lap_info.m_pb_s3_ms, self.m_fastest_s3_ms)
 
         # Update last lap sector time
         last_lap_obj = packet.getLastLapData()
         if last_lap_obj:
-            obj_to_be_updated.m_last_lap_ms = last_lap_obj.m_lapTimeInMS
-            obj_to_be_updated.m_last_lap_obj = last_lap_obj
+            obj_to_be_updated.m_lap_info.m_last_lap_ms = last_lap_obj.m_lapTimeInMS
+            obj_to_be_updated.m_lap_info.m_last_lap_obj = last_lap_obj
         else:
             # Clear the best lap obj (can linger if flashback is used or practice programme is restarted)
-            if obj_to_be_updated.m_last_lap_obj:
+            if obj_to_be_updated.m_lap_info.m_last_lap_obj:
                 png_logger.debug(f"Clearing lingering last lap obj for car "
                                  f"{packet.m_carIdx} - {obj_to_be_updated.m_driver_info.name}")
-                obj_to_be_updated.m_last_lap_obj = None
-            obj_to_be_updated.m_last_lap_ms = None
+                obj_to_be_updated.m_lap_info.m_last_lap_obj = None
+            obj_to_be_updated.m_lap_info.m_last_lap_ms = None
 
         # Update best lap sector time
         best_lap_obj = packet.getBestLapData()
         if best_lap_obj:
-            obj_to_be_updated.m_best_lap_ms = best_lap_obj.m_lapTimeInMS
-            obj_to_be_updated.m_best_lap_obj = best_lap_obj
+            obj_to_be_updated.m_lap_info.m_best_lap_ms = best_lap_obj.m_lapTimeInMS
+            obj_to_be_updated.m_lap_info.m_best_lap_obj = best_lap_obj
         else:
             # Clear the last lap obj (can linger if flashback is used or practice programme is restarted)
-            if obj_to_be_updated.m_best_lap_obj:
+            if obj_to_be_updated.m_lap_info.m_best_lap_obj:
                 png_logger.debug(f"Clearing lingering best lap obj for car {packet.m_carIdx} - "
                                  f"{obj_to_be_updated.m_driver_info.name}")
-                obj_to_be_updated.m_best_lap_obj = None
-            obj_to_be_updated.m_best_lap_ms = None
+                obj_to_be_updated.m_lap_info.m_best_lap_obj = None
+            obj_to_be_updated.m_lap_info.m_best_lap_ms = None
             if packet.m_carIdx == self.m_fastest_index:
                 self.m_fastest_index = None
                 png_logger.debug(f"Cleared fastest_index f{packet.m_carIdx}")
