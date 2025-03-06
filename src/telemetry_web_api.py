@@ -28,8 +28,8 @@ from lib.f1_types import F1Utils, LapHistoryData, CarStatusData, VisualTyreCompo
 import lib.race_analyzer as RaceAnalyzer
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 import src.telemetry_data as TelData
-from src.telemetry_handler import getOvertakeJSON, GetOvertakesStatus
 from src.data_per_driver import TyreSetInfo
+from src.overtakes import GetOvertakesStatus
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -217,7 +217,7 @@ class OverallRaceStatsRsp:
                 should_recompute_overtakes = True
 
         if should_recompute_overtakes:
-            _, overtake_records = getOvertakeJSON()
+            _, overtake_records = TelData.getOvertakeJSON()
             self.m_rsp["overtakes"] = self.m_rsp["overtakes"] | overtake_records
 
         self.m_rsp["custom-markers"] = TelData.getCustomMarkersJSON()
@@ -249,7 +249,7 @@ class DriverInfoRsp:
 
         self.m_rsp = TelData.getDriverInfoJsonByIndex(index)
         assert self.m_rsp
-        status, overtakes_info = getOvertakeJSON(self.m_rsp["driver-name"])
+        status, overtakes_info = TelData.getOvertakeJSON(self.m_rsp["driver-name"])
         self.m_rsp["overtakes-status-code"] = str(status)
         self.m_rsp['overtakes'] = overtakes_info
         assert status != GetOvertakesStatus.INVALID_INDEX

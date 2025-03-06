@@ -22,7 +22,7 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-from typing import Callable
+from typing import Callable, Dict
 from lib.socket_receiver import UDPListener, TCPListener
 from lib.f1_types import F1PacketType, PacketHeader, PacketMotionData, PacketSessionData, PacketLapData, \
     PacketEventData, PacketParticipantsData, PacketCarSetupData, PacketCarTelemetryData, PacketCarStatusData, \
@@ -107,42 +107,47 @@ class F1TelemetryManager:
 
         self.m_raw_packet_callback = callback
 
-    def registerCallback(self, packet_type: F1PacketType, callback: Callable) -> None:
+    def registerCallbacks(self, packet_callbacks: Dict[F1PacketType, Callable]) -> None:
         """
-        Registers a callback function for a specific F1 packet type.
+        Registers multiple callback functions for specific F1 packet types.
 
         Args:
-            packet_type (F1PacketType): The type of F1 packet for which the callback is registered.
-            callback (Callable): The callback function to be executed when a packet of the specified type is received.
-                It should be a function that takes one argument of the corresponding packet type.
-                    e.g. if registering for F1PacketType.MOTION event, the arg passed will be PacketMotionData
-                    Refer to the the below table for all mappings
-                        # Packet Type Mappings:
-                        +-------------------------------------+-------------------------------------------+
-                        | F1PacketType                        | Corresponding Packet Class                |
-                        +-------------------------------------+-------------------------------------------+
-                        | F1PacketType.MOTION                 | PacketMotionData                          |
-                        | F1PacketType.SESSION                | PacketSessionData                         |
-                        | F1PacketType.LAP_DATA               | PacketLapData                             |
-                        | F1PacketType.EVENT                  | PacketEventData                           |
-                        | F1PacketType.PARTICIPANTS           | PacketParticipantsData                    |
-                        | F1PacketType.CAR_SETUPS             | PacketCarSetupData                        |
-                        | F1PacketType.CAR_TELEMETRY          | PacketCarTelemetryData                    |
-                        | F1PacketType.CAR_STATUS             | PacketCarStatusData                       |
-                        | F1PacketType.FINAL_CLASSIFICATION   | PacketFinalClassificationData             |
-                        | F1PacketType.LOBBY_INFO             | PacketLobbyInfoData                       |
-                        | F1PacketType.CAR_DAMAGE             | PacketCarDamageData                       |
-                        | F1PacketType.SESSION_HISTORY        | PacketSessionHistoryData                  |
-                        | F1PacketType.TYRE_SETS              | PacketTyreSetsData                        |
-                        | F1PacketType.MOTION_EX              | PacketMotionExData                        |
-                        +-------------------------------------+-------------------------------------------+
+            packet_callbacks (Dict[F1PacketType, Callable]): A dictionary where the keys are F1 packet types
+                and the values are callback functions. Each callback should take one argument of the corresponding
+                packet type (e.g., `PacketMotionData` for `F1PacketType.MOTION`).
+                                It should be a function that takes one argument of the corresponding packet type.
+                e.g. if registering for F1PacketType.MOTION event, the arg passed will be PacketMotionData
+                Refer to the the below table for all mappings
+                    # Packet Type Mappings:
+                    +-------------------------------------+-------------------------------------------+
+                    | F1PacketType                        | Corresponding Packet Class                |
+                    +-------------------------------------+-------------------------------------------+
+                    | F1PacketType.MOTION                 | PacketMotionData                          |
+                    | F1PacketType.SESSION                | PacketSessionData                         |
+                    | F1PacketType.LAP_DATA               | PacketLapData                             |
+                    | F1PacketType.EVENT                  | PacketEventData                           |
+                    | F1PacketType.PARTICIPANTS           | PacketParticipantsData                    |
+                    | F1PacketType.CAR_SETUPS             | PacketCarSetupData                        |
+                    | F1PacketType.CAR_TELEMETRY          | PacketCarTelemetryData                    |
+                    | F1PacketType.CAR_STATUS             | PacketCarStatusData                       |
+                    | F1PacketType.FINAL_CLASSIFICATION   | PacketFinalClassificationData             |
+                    | F1PacketType.LOBBY_INFO             | PacketLobbyInfoData                       |
+                    | F1PacketType.CAR_DAMAGE             | PacketCarDamageData                       |
+                    | F1PacketType.SESSION_HISTORY        | PacketSessionHistoryData                  |
+                    | F1PacketType.TYRE_SETS              | PacketTyreSetsData                        |
+                    | F1PacketType.MOTION_EX              | PacketMotionExData                        |
+                    | F1PacketType.TIME_TRIAL             | PacketTimeTrialData                       |
+                    +-------------------------------------+-------------------------------------------+
 
         Raises:
-            ValueError: If the provided packet_type is not a valid F1PacketType.
+            ValueError: If any provided packet type is not a valid F1PacketType.
         """
-        if not F1PacketType.isValid(packet_type):
-            raise ValueError('Invalid packet type in registering callback')
-        self.m_callbacks[packet_type] = callback
+
+        # Validate and register each callback in the dictionary
+        for packet_type, callback in packet_callbacks.items():
+            if not F1PacketType.isValid(packet_type):
+                raise ValueError(f'Invalid packet type: {packet_type}')
+            self.m_callbacks[packet_type] = callback
 
     def run(self) -> None:
         """Run the telemetry client

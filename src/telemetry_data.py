@@ -52,12 +52,14 @@ from lib.f1_types import (
     WeatherForecastSample
 )
 from src.data_per_driver import DataPerDriver
+from src.overtakes import OvertakesHistory, GetOvertakesStatus
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.overtake_analyzer import OvertakeRecord
 from lib.collisions_analyzer import CollisionRecord, CollisionAnalyzer, CollisionAnalyzerMode
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 from lib.inter_thread_communicator import InterThreadCommunicator, ITCMessage, TyreDeltaMessage
 from lib.custom_marker_tracker import CustomMarkerEntry, CustomMarkersHistory
+from lib.overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, OvertakeRecord
 from src.png_logger import getLogger
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
@@ -120,7 +122,8 @@ class SessionInfo:
             f"m_spectator_car_index={str(self.m_spectator_car_index)}, "
             f"m_weather_forecast_samples={str(self.m_weather_forecast_samples)}, "
             f"m_pit_speed_limit={str(self.m_pit_speed_limit)}, "
-            f"m_packet_final_classification={str(self.m_packet_final_classification)}")
+            f"m_packet_final_classification={str(self.m_packet_final_classification)}"
+        )
 
     def clear(self) -> None:
         """
@@ -173,7 +176,6 @@ class SessionInfo:
         return ret_status
 
 class DriverData:
-
     """
     Class that models the data for multiple race drivers.
 
@@ -212,6 +214,7 @@ class DriverData:
         self.m_fastest_s2_ms: Optional[int] = None
         self.m_fastest_s3_ms: Optional[int] = None
         self.m_time_trial_packet : Optional[PacketTimeTrialData] = None
+        self.m_overtakes_history = OvertakesHistory()
         self.m_globals: SessionInfo = SessionInfo()
 
     def clear(self) -> None:
@@ -229,6 +232,7 @@ class DriverData:
         self.m_fastest_s1_ms = None
         self.m_fastest_s2_ms = None
         self.m_fastest_s3_ms = None
+        self.m_overtakes_history.clear()
         self.m_globals.clear()
 
     def setRaceOngoing(self) -> None:
@@ -840,6 +844,30 @@ class DriverData:
         """
         return bool(self.m_globals.m_session_type and "Race" in str(self.m_globals.m_session_type))
 
+    def getOvertakeJSON(self, driver_name: str=None) -> Tuple[GetOvertakesStatus, Dict[str, Any]]:
+        """Get the JSON value containing key overtake information
+
+        Arguments:
+            driver_name (str) - Name of the driver if specific overtake info is required
+
+        Returns:
+            Tuple[GetOvertakesStatus, Dict]: Status, JSON value (may be empty)
+        """
+        final_classification_received = bool(self.m_globals.m_packet_final_classification)
+        if not final_classification_received:
+            if len(self.m_overtakes_history.m_overtakes_history) == 0:
+                return GetOvertakesStatus.NO_DATA, {}
+            return GetOvertakesStatus.RACE_ONGOING, OvertakeAnalyzer(
+                input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST_OVERTAKE_RECORDS,
+                input_data=self.m_overtakes_history.m_overtakes_history).toJSON(
+                    driver_name=driver_name,
+                    is_case_sensitive=True)
+        return GetOvertakesStatus.RACE_COMPLETED, OvertakeAnalyzer(
+            input_mode=OvertakeAnalyzerMode.INPUT_MODE_LIST_OVERTAKE_RECORDS,
+            input_data=self.m_overtakes_history.m_overtakes_history).toJSON(
+                driver_name=driver_name,
+                is_case_sensitive=True)
+
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
 _driver_data = DriverData()
@@ -904,15 +932,16 @@ def processRetirementEvent(packet: PacketEventData) -> None:
     with _driver_data_lock.gen_wlock():
         _driver_data.processRetirement(packet.mEventDetails)
 
-def processCollisionsEvent(packet: PacketEventData.Collision)-> None:
+def processCollisionsEvent(packet: PacketEventData) -> None:
     """Update the data structures with collisions event udpate.
 
     Args:
-        packet (PacketEventData.Collision): The collision update packet
+        packet (PacketEventData.: The event packet
     """
 
+    record: PacketEventData.Collision = packet.mEventDetails
     with _driver_data_lock.gen_wlock():
-        _driver_data.processCollisionEvent(packet)
+        _driver_data.processCollisionEvent(record)
 
 def processParticipantsUpdate(packet: PacketParticipantsData) -> None:
     """Update the data strucutre with participants information
@@ -1049,6 +1078,17 @@ def processTyreDeltaSound() -> None:
         InterThreadCommunicator().send("frontend-update", ITCMessage(
             m_message_type=ITCMessage.MessageType.TYRE_DELTA_NOTIFICATION,
             m_message=message))
+
+def processOvertakeEvent(packet: PacketEventData) -> None:
+    """Add the overtake event to the tracker
+
+    Args:
+        packet (PacketEventData): Incoming event packet
+    """
+    record: PacketEventData.Overtake = packet.mEventDetails
+    if (overtake_obj := getOvertakeObj(record.overtakingVehicleIdx, record.beingOvertakenVehicleIdx)):
+        with _driver_data_lock.gen_wlock():
+            _driver_data.m_overtakes_history.insert(overtake_obj)
 
 # -------------------------------------- UTILTIES ----------------------------------------------------------------------
 
@@ -1346,3 +1386,26 @@ def getTyreDeltaNotificationMessages() -> List[TyreDeltaMessage]:
                 other_tyre_type=other_tyre_2_type,
                 delta=(other_tyre_2.m_lapDeltaTime / 1000)),
         ]
+
+def getOvertakeJSON(driver_name: str=None) -> Tuple[GetOvertakesStatus, Dict[str, Any]]:
+    """Get the JSON value containing key overtake information
+
+    Arguments:
+        driver_name (str) - Name of the driver if specific overtake info is required
+
+    Returns:
+        Tuple[GetOvertakesStatus, Dict]: Status, JSON value (may be empty)
+    """
+
+    with _driver_data_lock.gen_rlock():
+        return _driver_data.getOvertakeJSON(driver_name)
+
+def getOvertakeRecords() -> List[OvertakeRecord]:
+    """Get the overtake records
+
+    Returns:
+        List[OvertakeRecord]: The list of overtake records
+    """
+
+    with _driver_data_lock.gen_rlock():
+        return _driver_data.m_overtakes_history.getRecords()
