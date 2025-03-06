@@ -25,14 +25,32 @@
 
 import copy
 import json
-from typing import Optional, Generator, Tuple, List, Dict, Any, Union
+from typing import Optional, Tuple, List, Dict, Any, Union
 from readerwriterlock import rwlock
-from lib.f1_types import PacketSessionData, PacketLapData, LapData, CarTelemetryData, ParticipantData, \
-    PacketEventData, PacketParticipantsData, PacketCarTelemetryData, PacketCarStatusData, FinalClassificationData, \
-    PacketFinalClassificationData, PacketCarDamageData, PacketSessionHistoryData, ResultStatus, PacketTyreSetsData, \
-    F1Utils, WeatherForecastSample, CarDamageData, CarStatusData, TrackID, ActualTyreCompound, \
-    SafetyCarType, TelemetrySetting, PacketMotionData, CarMotionData, PacketCarSetupData, CarSetupData, ResultStatus, \
-    PacketTimeTrialData, SessionType23, SessionType24
+from lib.f1_types import (
+    ActualTyreCompound,
+    CarStatusData,
+    F1Utils,
+    PacketCarDamageData,
+    PacketCarSetupData,
+    PacketCarStatusData,
+    PacketCarTelemetryData,
+    PacketEventData,
+    PacketFinalClassificationData,
+    PacketLapData,
+    PacketMotionData,
+    PacketParticipantsData,
+    PacketSessionData,
+    PacketSessionHistoryData,
+    PacketTimeTrialData,
+    PacketTyreSetsData,
+    ResultStatus,
+    SafetyCarType,
+    SessionType23,
+    SessionType24,
+    TrackID,
+    WeatherForecastSample
+)
 from src.data_per_driver import DataPerDriver
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.overtake_analyzer import OvertakeRecord
@@ -44,7 +62,7 @@ from src.png_logger import getLogger
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
-class GlobalData:
+class SessionInfo:
     """
     Class that stores global race data.
 
@@ -66,7 +84,7 @@ class GlobalData:
 
     def __init__(self):
         """
-        Init the GlobalData object fields to None
+        Init the SessionInfo object fields to None
         """
 
         self.m_track : Optional[TrackID] = None
@@ -85,13 +103,13 @@ class GlobalData:
         self.m_game_year : Optional[int] = None
 
     def __str__(self) -> str:
-        """Dump the GlobalData object to a readable string
+        """Dump the SessionInfo object to a readable string
 
         Returns:
             str: Readable string
         """
         return (
-            f"GlobalData(m_track={str(self.m_track)}, "
+            f"SessionInfo(m_track={str(self.m_track)}, "
             f"m_track_len={self.m_track_len}, "
             f"m_event_type={str(self.m_session_type)}, "
             f"m_track_temp={self.m_track_temp}, "
@@ -166,7 +184,6 @@ class DriverData:
         m_num_active_cars (int): The number of active cars in the race.
         m_num_dnf_cars (int): The number of cars that did not finish the race.
         m_race_completed (bool): Indicates whether the race has been completed.
-        m_final_json (Dict[str, Any]): Dictionary containing the final JSON data for the driver.
         m_total_laps (int): The total number of laps in this race
         m_ideal_pit_stop_window (int): The ideal pit stop window for the player, according to the selected strategy
         m_track_id (TrackID): The track ID of the event
@@ -188,7 +205,6 @@ class DriverData:
         self.m_num_active_cars: Optional[int] = None
         self.m_num_dnf_cars: Optional[int] = None
         self.m_race_completed: Optional[bool] = None
-        self.m_final_json: Dict[str, Any] = None # TODO: revisit
         self.m_is_player_dnf : Optional[bool] = None
         self.m_ideal_pit_stop_window : Optional[int] = None
         self.m_collision_records : List[CollisionRecord] = []
@@ -196,7 +212,7 @@ class DriverData:
         self.m_fastest_s2_ms: Optional[int] = None
         self.m_fastest_s3_ms: Optional[int] = None
         self.m_time_trial_packet : Optional[PacketTimeTrialData] = None
-        self.m_globals: GlobalData = GlobalData()
+        self.m_globals: SessionInfo = SessionInfo()
 
     def clear(self) -> None:
         """Clear this object. Clears the m_driver_data list and sets everything else to None
@@ -207,7 +223,6 @@ class DriverData:
         self.m_num_active_cars = None
         self.m_num_dnf_cars = None
         self.m_race_completed = None
-        self.m_final_json = None
         self.m_is_player_dnf = None
         self.m_ideal_pit_stop_window = None
         self.m_collision_records.clear()
@@ -545,7 +560,6 @@ class DriverData:
                 final_json["tyre-stint-history"].append(obj_to_be_updated.getTyreStintHistoryJSON())
         final_json['classification-data'] = sorted(final_json['classification-data'], key=lambda x: x['track-position'])
         final_json['game-year'] = self.m_globals.m_game_year
-        self.m_final_json = final_json
 
         final_json["session-info"] = self.m_globals.m_packet_session.toJSON() \
             if self.m_globals.m_packet_session else None
@@ -716,8 +730,6 @@ class DriverData:
             Dict[str, Any]: Race info JSON
         """
 
-        if self.m_race_completed and self.m_final_json:
-            return self.m_final_json
         return {
             "classification-data" : self._getClassificationDataListJSON(),
             "collisions" : self.getCollisionStatsJSON(),
@@ -1040,12 +1052,12 @@ def processTyreDeltaSound() -> None:
 
 # -------------------------------------- UTILTIES ----------------------------------------------------------------------
 
-def getGlobals() -> GlobalData:
+def getGlobals() -> SessionInfo:
     """
-    Returns a copy of the GlobalData object
+    Returns a copy of the SessionInfo object
 
     Returns:
-        GlobalData: A copy of the GlobalData object
+        SessionInfo: A copy of the SessionInfo object
     """
     with _driver_data_lock.gen_rlock():
         return copy.deepcopy(_driver_data.m_globals)

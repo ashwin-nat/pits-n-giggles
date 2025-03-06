@@ -23,11 +23,9 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from lib.f1_types import TelemetrySetting, SafetyCarType
-from lib.tyre_wear_extrapolator import TyreWearPerLap
-from typing import Dict, List, Any, Optional, Generator
+from typing import Optional
 from dataclasses import dataclass
 from src.png_logger import getLogger
-import json
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 

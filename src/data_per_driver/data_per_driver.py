@@ -24,8 +24,18 @@
 
 from typing import Optional, Generator, Tuple, List, Dict, Any
 from lib.f1_types import LapData, F1Utils, TelemetrySetting
-from src.data_per_driver import TyreSetInfo, TyreSetHistoryEntry, TyreInfo, \
-    PerLapSnapshotEntry, WarningPenaltyHistory, DriverInfo, LapInfo, PacketCopies, CarInfo
+from src.data_per_driver import (
+    CarInfo,
+    DriverInfo,
+    LapInfo,
+    PacketCopies,
+    PerLapSnapshotEntry,
+    TyreInfo,
+    TyreSetHistoryEntry,
+    TyreSetInfo,
+    WarningPenaltyHistory
+)
+
 from lib.collisions_analyzer import CollisionRecord, CollisionAnalyzer, CollisionAnalyzerMode
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 from src.png_logger import getLogger

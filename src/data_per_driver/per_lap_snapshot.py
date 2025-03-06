@@ -23,10 +23,8 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from lib.f1_types import CarDamageData, CarStatusData, SafetyCarType, PacketTyreSetsData
-from lib.tyre_wear_extrapolator import TyreWearPerLap
-from typing import Dict, List, Any, Optional, Generator
+from typing import Dict, Any
 from src.png_logger import getLogger
-import json
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 

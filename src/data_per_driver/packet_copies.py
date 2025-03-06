@@ -22,8 +22,18 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from lib.f1_types import LapData, ParticipantData, CarTelemetryData, CarStatusData, CarDamageData, \
-    PacketSessionHistoryData, PacketTyreSetsData, FinalClassificationData, CarMotionData, CarSetupData
+from lib.f1_types import (
+    CarDamageData,
+    CarMotionData,
+    CarSetupData,
+    CarStatusData,
+    CarTelemetryData,
+    FinalClassificationData,
+    LapData,
+    PacketSessionHistoryData,
+    PacketTyreSetsData,
+    ParticipantData
+)
 from typing import Optional
 from dataclasses import dataclass
 from src.png_logger import getLogger
