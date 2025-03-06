@@ -461,7 +461,7 @@ class DataPerDriver:
             self.m_packet_copies.m_packet_car_status and
             self.m_packet_copies.m_packet_tyre_sets and
             self.m_driver_info.position and
-            (self.m_lap_info.m_top_speed_kmph_this_lap is not None) # TODO: is this required for zeroth lap?
+            (self.m_lap_info.m_top_speed_kmph_this_lap is not None)
         )
 
     def updateTyreSetData(self, fitted_index: int) -> None:

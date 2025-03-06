@@ -492,8 +492,9 @@ class DriverData:
             if obj_to_be_updated.m_lap_info.m_top_speed_kmph_this_lap is None:
                 obj_to_be_updated.m_lap_info.m_top_speed_kmph_this_lap = car_telemetry_data.m_speed
             else:
-                obj_to_be_updated.m_lap_info.m_top_speed_kmph_this_lap = max(car_telemetry_data.m_speed,
-                                                                             obj_to_be_updated.m_lap_info.m_top_speed_kmph_this_lap)
+                obj_to_be_updated.m_lap_info.m_top_speed_kmph_this_lap = \
+                    max(car_telemetry_data.m_speed,
+                        obj_to_be_updated.m_lap_info.m_top_speed_kmph_this_lap)
             obj_to_be_updated.m_packet_copies.m_packet_car_telemetry = car_telemetry_data
 
     def processCarStatusUpdate(self, packet: PacketCarStatusData) -> None:
