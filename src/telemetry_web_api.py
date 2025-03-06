@@ -272,19 +272,18 @@ class PlayerTelemetryOverlayUpdate:
         """Get the player telemetry data and prep the fields
         """
 
-        with TelData._globals_lock.gen_rlock():
-            self.m_track_temp               = TelData._globals.m_track_temp
-            self.m_air_temp                 = TelData._globals.m_air_temp
-            self.m_weather_forecast_samples = TelData._globals.m_weather_forecast_samples
+        with TelData._driver_data_lock.gen_rlock():
+            self.m_track_temp               = TelData._driver_data.m_globals.m_track_temp
+            self.m_air_temp                 = TelData._driver_data.m_globals.m_air_temp
+            self.m_weather_forecast_samples = TelData._driver_data.m_globals.m_weather_forecast_samples
             if self.m_weather_forecast_samples is None:
                 self.m_weather_forecast_samples = []
-            self.m_circuit                  = TelData._globals.m_circuit
-            self.m_total_laps               = TelData._globals.m_total_laps
-            self.m_game_year                = TelData._globals.m_game_year
-            self.m_event_type               = TelData._globals.m_event_type
-            self.m_pit_speed_limit          = TelData._globals.m_pit_speed_limit
+            self.m_circuit                  = TelData._driver_data.m_globals.m_circuit
+            self.m_total_laps               = TelData._driver_data.m_globals.m_total_laps
+            self.m_game_year                = TelData._driver_data.m_globals.m_game_year
+            self.m_event_type               = TelData._driver_data.m_globals.m_event_type
+            self.m_pit_speed_limit          = TelData._driver_data.m_globals.m_pit_speed_limit
 
-        with TelData._driver_data_lock.gen_rlock():
             self.m_next_pit_window          = TelData._driver_data.m_ideal_pit_stop_window
             self.m_fastest_lap_ms           = \
                 TelData._driver_data.m_driver_data[TelData._driver_data.m_fastest_index].m_lap_info.m_best_lap_ms if \
@@ -292,7 +291,8 @@ class PlayerTelemetryOverlayUpdate:
             self.m_fastest_s1_ms            = TelData._driver_data.m_fastest_s1_ms
             self.m_fastest_s2_ms            = TelData._driver_data.m_fastest_s2_ms
             self.m_fastest_s3_ms            = TelData._driver_data.m_fastest_s3_ms
-            player_index = TelData._globals.m_spectator_car_index if TelData._globals.m_is_spectating \
+            player_index = TelData._driver_data.m_globals.m_spectator_car_index \
+                            if TelData._driver_data.m_globals.m_is_spectating \
                             else TelData._driver_data.m_player_index
             player_data = TelData._driver_data.m_driver_data[player_index] \
                             if player_index in TelData._driver_data.m_driver_data else None

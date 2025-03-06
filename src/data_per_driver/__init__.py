@@ -27,6 +27,7 @@ from .driver_info import DriverInfo
 from .lap_info import LapInfo
 from .packet_copies import PacketCopies
 from .car_info import CarInfo
+from .data_per_driver import DataPerDriver
 
 __all__ = [
     'TyreSetInfo',
@@ -46,4 +47,6 @@ __all__ = [
     'PacketCopies',
 
     'CarInfo',
+
+    'DataPerDriver',
 ]
