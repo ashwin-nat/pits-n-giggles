@@ -330,7 +330,7 @@ class PlayerTelemetryOverlayUpdate:
             player_data (Optional[TelData.DataPerDriver]): The player's DataPerDriver object
         """
 
-        self.m_curr_lap: Optional[int] = player_data.m_current_lap if player_data else None
+        self.m_curr_lap: Optional[int] = player_data.m_lap_info.m_current_lap if player_data else None
         self.m_lap_time_history: LapTimeHistory = LapTimeHistory(
             player_data, self.m_fastest_lap_ms, self.m_fastest_s1_ms, self.m_fastest_s2_ms, self.m_fastest_s3_ms)
         self.m_speed_trap_record: Optional[float] = player_data.m_packet_copies.m_packet_lap_data.m_speedTrapFastestSpeed \
@@ -601,9 +601,9 @@ class DriversListRsp:
                                         data_per_driver.m_car_info.m_drs_distance),
                 },
                 "delta-info" : {
-                    "delta": data_per_driver.m_delta_to_car_in_front,
-                    "delta-to-car-in-front": data_per_driver.m_delta_to_car_in_front,
-                    "delta-to-leader": data_per_driver.m_delta_to_leader,
+                    "delta": data_per_driver.m_lap_info.m_delta_to_car_in_front,
+                    "delta-to-car-in-front": data_per_driver.m_lap_info.m_delta_to_car_in_front,
+                    "delta-to-leader": data_per_driver.m_lap_info.m_delta_to_leader,
                 },
                 "ers-info" : {
                     "ers-percent": _getValueOrDefaultValue(data_per_driver.m_car_info.m_ers_perc),
@@ -617,7 +617,7 @@ class DriversListRsp:
                                                     CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0,
                 },
                 "lap-info" : {
-                    "current-lap" : data_per_driver.m_current_lap,
+                    "current-lap" : data_per_driver.m_lap_info.m_current_lap,
                     "last-lap" : {
                         "lap-time-ms" : data_per_driver.m_lap_info.m_last_lap_ms,
                         "lap-time-ms-player" : 0,
@@ -653,7 +653,7 @@ class DriversListRsp:
                     "lap-progress" : data_per_driver.m_lap_progress, # NULL is supported
                     "speed-trap-record-kmph" : data_per_driver.m_packet_copies.m_packet_lap_data.m_speedTrapFastestSpeed if \
                         data_per_driver.m_packet_copies.m_packet_lap_data else None, # NULL is supported
-                    "top-speed-kmph" : data_per_driver.m_top_speed_kmph_this_lap,
+                    "top-speed-kmph" : data_per_driver.m_lap_info.m_top_speed_kmph_this_lap,
                 },
                 "warns-pens-info" : {
                     "corner-cutting-warnings" : _getValueOrDefaultValue(data_per_driver.m_corner_cutting_warnings),
@@ -724,8 +724,8 @@ class DriversListRsp:
             return None
 
         if self.m_is_spectator_mode:
-            return self.m_final_list[0].m_current_lap
-        return next((driver_data.m_current_lap for driver_data in self.m_final_list if driver_data.m_driver_info.is_player), None)
+            return self.m_final_list[0].m_lap_info.m_current_lap
+        return next((driver_data.m_lap_info.m_current_lap for driver_data in self.m_final_list if driver_data.m_driver_info.is_player), None)
 
     def getPositionHistoryJSON(self) -> List[Dict[str, Any]]:
         """Get position history.

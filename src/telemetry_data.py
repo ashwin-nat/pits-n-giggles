@@ -234,15 +234,11 @@ class DataPerDriver:
         """
 
         self.m_driver_info: DriverInfo = DriverInfo()
-        self.m_delta_to_car_in_front: Optional[int] = None
-        self.m_delta_to_leader: Optional[int] = None
         self.m_lap_info: LapInfo = LapInfo()
         self.m_tyre_info: TyreInfo = TyreInfo(total_laps)
 
         self.m_car_info: CarInfo = CarInfo(total_laps)
 
-        self.m_current_lap: Optional[int] = None
-        self.m_top_speed_kmph_this_lap: Optional[float] = None
         self.m_collision_records: List[CollisionRecord] = []
         self.m_warning_penalty_history: WarningPenaltyHistory = WarningPenaltyHistory()
 
@@ -285,8 +281,8 @@ class DataPerDriver:
         final_json["track-position"] = self.m_driver_info.position
         final_json["team"] = self.m_driver_info.team
         final_json["telemetry-settings"] = str(self.m_driver_info.telemetry_restrictions)
-        final_json["current-lap"] = self.m_current_lap
-        final_json["top-speed-kmph"] = self.m_top_speed_kmph_this_lap
+        final_json["current-lap"] = self.m_lap_info.m_current_lap
+        final_json["top-speed-kmph"] = self.m_lap_info.m_top_speed_kmph_this_lap
 
         # Insert packet copies if available
         final_json["car-damage"] = self.m_packet_copies.m_packet_car_damage.toJSON() if self.m_packet_copies.m_packet_car_damage else None
@@ -362,9 +358,9 @@ class DataPerDriver:
         predictions_list = []
 
         # Input sanitization
-        if next_pit_window is None or (next_pit_window == 0) or (next_pit_window < self.m_current_lap):
+        if next_pit_window is None or (next_pit_window == 0) or (next_pit_window < self.m_lap_info.m_current_lap):
             # Lets return the lap midway between current lap and final lap
-            next_pit_window = (self.m_current_lap + self.m_tyre_info.m_tyre_wear_extrapolator.total_laps) // 2
+            next_pit_window = (self.m_lap_info.m_current_lap + self.m_tyre_info.m_tyre_wear_extrapolator.total_laps) // 2
 
         # NOTE: Flashbacks or delayed telemetry starts can cause the prediction to not be available.
         # This happens in the last lap
@@ -532,11 +528,11 @@ class DataPerDriver:
             sc_status=self.m_driver_info.m_curr_lap_sc_status,
             tyre_sets=self.m_packet_copies.m_packet_tyre_sets,
             track_position=self.m_driver_info.position,
-            top_speed_kmph=self.m_top_speed_kmph_this_lap,
+            top_speed_kmph=self.m_lap_info.m_top_speed_kmph_this_lap,
         )
 
         # Now clear the top speed
-        self.m_top_speed_kmph_this_lap = None
+        self.m_lap_info.m_top_speed_kmph_this_lap = None
 
         # Add the tyre wear data into the tyre stint history
         if old_lap_number and self.m_tyre_info.m_tyre_set_history_manager.length:
@@ -580,7 +576,7 @@ class DataPerDriver:
             self.m_packet_copies.m_packet_car_status and
             self.m_packet_copies.m_packet_tyre_sets and
             self.m_driver_info.position and
-            (self.m_top_speed_kmph_this_lap is not None)
+            (self.m_lap_info.m_top_speed_kmph_this_lap is not None) # TODO: is this required for zeroth lap?
         )
 
     def updateTyreSetData(self, fitted_index: int) -> None:
@@ -596,7 +592,7 @@ class DataPerDriver:
             return
 
         # This can happen if tyre sets packets arrives before lap data packet
-        if self.m_current_lap is not None:
+        if self.m_lap_info.m_current_lap is not None:
             fitted_tyre_set_key = self._getCurrentTyreSetKey()
             if not self.m_tyre_info.m_tyre_set_history_manager.length:
                 if 0 in self.m_per_lap_snapshots:
@@ -611,13 +607,13 @@ class DataPerDriver:
                         desc="end of zeroth lap data point"
                     )
                     self.m_tyre_info.m_tyre_set_history_manager.add(TyreSetHistoryEntry(
-                                                start_lap=self.m_current_lap,
+                                                start_lap=self.m_lap_info.m_current_lap,
                                                 index=fitted_index,
                                                 tyre_set_key=fitted_tyre_set_key,
                                                 initial_tyre_wear=initial_tyre_wear,
                     ))
             elif fitted_index != self.m_tyre_info.m_tyre_set_history_manager.getLastEntry().m_fitted_index:
-                lap_number = self.m_current_lap - 1
+                lap_number = self.m_lap_info.m_current_lap - 1
                 # create a new tyre set entry with initial data.
                 initial_tyre_wear = TyreWearPerLap(
                     fl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
@@ -678,20 +674,20 @@ class DataPerDriver:
             Optional[TyreSetInfo]: The tyre set info. None if data not found or invalid lap num
         """
 
-        if self.m_current_lap is None:
+        if self.m_lap_info.m_current_lap is None:
             return None
 
         if lap_num is None:
-            lap_num = self.m_current_lap
+            lap_num = self.m_lap_info.m_current_lap
 
-        if lap_num == self.m_current_lap and self.m_packet_copies.m_packet_car_status:
+        if lap_num == self.m_lap_info.m_current_lap and self.m_packet_copies.m_packet_car_status:
             return TyreSetInfo(
                 actual_tyre_compound=self.m_packet_copies.m_packet_car_status.m_actualTyreCompound,
                 visual_tyre_compound=self.m_packet_copies.m_packet_car_status.m_visualTyreCompound,
                 tyre_set_id=self._getCurrentTyreSetID(),
                 tyre_age_laps=self.m_packet_copies.m_packet_car_status.m_tyresAgeLaps
             )
-        if (lap_num < self.m_current_lap) and (lap_num in self.m_per_lap_snapshots):
+        if (lap_num < self.m_lap_info.m_current_lap) and (lap_num in self.m_per_lap_snapshots):
             snapshot_at_lap       = self.m_per_lap_snapshots[lap_num]
             snapshot_car_status   = snapshot_at_lap.m_car_status_packet
             snapshot_tyre_sets    = snapshot_at_lap.m_tyre_sets_packet
@@ -781,7 +777,7 @@ class DataPerDriver:
             "name": self.m_driver_info.name,
             "team": self.m_driver_info.team,
             "driver-number": self.m_driver_info.driver_number,
-            "delta-to-leader" : self.m_delta_to_leader,
+            "delta-to-leader" : self.m_lap_info.m_delta_to_leader,
             "tyre-stint-history": self._getTyreSetHistoryJSON(include_wear_history=False),
         }
 
@@ -1145,20 +1141,20 @@ class DriverData:
 
             # Update the position, time and other fields
             obj_to_be_updated.m_driver_info.position = lap_data.m_carPosition
-            obj_to_be_updated.m_delta_to_car_in_front = lap_data.m_deltaToCarInFrontInMS
-            obj_to_be_updated.m_delta_to_leader = lap_data.m_deltaToRaceLeaderInMS
+            obj_to_be_updated.m_lap_info.m_delta_to_car_in_front = lap_data.m_deltaToCarInFrontInMS
+            obj_to_be_updated.m_lap_info.m_delta_to_leader = lap_data.m_deltaToRaceLeaderInMS
 
             # Update the per lap snapshot data structure if lap info is available
-            if (obj_to_be_updated.m_current_lap is not None):
-                if (1 == obj_to_be_updated.m_current_lap) and (obj_to_be_updated.isZerothLapSnapshotDataAvailable()):
+            if (obj_to_be_updated.m_lap_info.m_current_lap is not None):
+                if (1 == obj_to_be_updated.m_lap_info.m_current_lap) and (obj_to_be_updated.isZerothLapSnapshotDataAvailable()):
                     obj_to_be_updated.onLapChange(old_lap_number=0)
 
                 # Now, add shit only if there is change (this should handle lap 1 to lap 2 transition)
-                if (obj_to_be_updated.m_current_lap != lap_data.m_currentLapNum):
-                    obj_to_be_updated.onLapChange(old_lap_number=obj_to_be_updated.m_current_lap)
+                if (obj_to_be_updated.m_lap_info.m_current_lap != lap_data.m_currentLapNum):
+                    obj_to_be_updated.onLapChange(old_lap_number=obj_to_be_updated.m_lap_info.m_current_lap)
 
             # Now, update the current lap number and other shit
-            obj_to_be_updated.m_current_lap =  lap_data.m_currentLapNum
+            obj_to_be_updated.m_lap_info.m_current_lap =  lap_data.m_currentLapNum
             obj_to_be_updated.m_driver_info.m_num_pitstops = lap_data.m_numPitStops
             obj_to_be_updated.m_driver_info.m_dnf_status_code = result_str_map.get(lap_data.m_resultStatus, "")
             # If the player is retired, update the bool variable
@@ -1237,10 +1233,11 @@ class DriverData:
                     sum(car_telemetry_data.m_tyresInnerTemperature)/len(car_telemetry_data.m_tyresInnerTemperature)
             obj_to_be_updated.m_tyre_info.tyre_surface_temp = \
                     sum(car_telemetry_data.m_tyresSurfaceTemperature)/len(car_telemetry_data.m_tyresSurfaceTemperature)
-            if obj_to_be_updated.m_top_speed_kmph_this_lap is None:
-                obj_to_be_updated.m_top_speed_kmph_this_lap = car_telemetry_data.m_speed
+            if obj_to_be_updated.m_lap_info.m_top_speed_kmph_this_lap is None:
+                obj_to_be_updated.m_lap_info.m_top_speed_kmph_this_lap = car_telemetry_data.m_speed
             else:
-                obj_to_be_updated.m_top_speed_kmph_this_lap = max(car_telemetry_data.m_speed, obj_to_be_updated.m_top_speed_kmph_this_lap)
+                obj_to_be_updated.m_lap_info.m_top_speed_kmph_this_lap = max(car_telemetry_data.m_speed,
+                                                                             obj_to_be_updated.m_lap_info.m_top_speed_kmph_this_lap)
             obj_to_be_updated.m_packet_copies.m_packet_car_telemetry = car_telemetry_data
 
     def processCarStatusUpdate(self, packet: PacketCarStatusData) -> None:
@@ -1436,7 +1433,7 @@ class DriverData:
         else:
             include_wear_prediction = True
             # Update the pit window for the player if valid
-            if driver_info_obj.m_driver_info.is_player and self.m_ideal_pit_stop_window >= driver_info_obj.m_current_lap:
+            if driver_info_obj.m_driver_info.is_player and self.m_ideal_pit_stop_window >= driver_info_obj.m_lap_info.m_current_lap:
                 selected_pit_stop_lap = self.m_ideal_pit_stop_window
             else:
                 selected_pit_stop_lap = None
@@ -1496,17 +1493,17 @@ class DriverData:
             return None
 
         if driver_1_obj.m_driver_info.name is None or \
-            driver_1_obj.m_current_lap is None or \
+            driver_1_obj.m_lap_info.m_current_lap is None or \
                 driver_2_obj.m_driver_info.name is None or \
-                    driver_2_obj.m_current_lap is None:
+                    driver_2_obj.m_lap_info.m_current_lap is None:
             return None
 
         return CollisionRecord(
             driver_1_name=driver_1_obj.m_driver_info.name,
-            driver_1_lap=driver_1_obj.m_current_lap,
+            driver_1_lap=driver_1_obj.m_lap_info.m_current_lap,
             driver_1_index=driver_1_index,
             driver_2_name=driver_2_obj.m_driver_info.name,
-            driver_2_lap=driver_2_obj.m_current_lap,
+            driver_2_lap=driver_2_obj.m_lap_info.m_current_lap,
             driver_2_index=driver_2_index
         )
 
@@ -1865,15 +1862,15 @@ def getOvertakeObj(overtaking_car_index: int, being_overtaken_index: int) -> Opt
 
         # Prepare data for CSV writing
         if overtaking_car_obj.m_driver_info.name is None or \
-            overtaking_car_obj.m_current_lap is None or \
+            overtaking_car_obj.m_lap_info.m_current_lap is None or \
                 being_overtaken_car_obj.m_driver_info.name is None or \
-                    being_overtaken_car_obj.m_current_lap is None:
+                    being_overtaken_car_obj.m_lap_info.m_current_lap is None:
             return None
         return OvertakeRecord(
             overtaking_driver_name=overtaking_car_obj.m_driver_info.name,
-            overtaking_driver_lap=overtaking_car_obj.m_current_lap,
+            overtaking_driver_lap=overtaking_car_obj.m_lap_info.m_current_lap,
             overtaken_driver_name=being_overtaken_car_obj.m_driver_info.name,
-            overtaken_driver_lap=being_overtaken_car_obj.m_current_lap,
+            overtaken_driver_lap=being_overtaken_car_obj.m_lap_info.m_current_lap,
         )
 
 def getCustomMarkerEntryObj() -> Optional[CustomMarkerEntry]:

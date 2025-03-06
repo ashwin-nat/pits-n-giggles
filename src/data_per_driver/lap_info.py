@@ -43,3 +43,7 @@ class LapInfo:
     m_pb_s3_ms: Optional[int] = None
     m_last_lap_ms: Optional[int] = None
     m_last_lap_obj: Optional[LapHistoryData] = None
+    m_current_lap: Optional[int] = None
+    m_delta_to_car_in_front: Optional[int] = None
+    m_delta_to_leader: Optional[int] = None
+    m_top_speed_kmph_this_lap: Optional[int] = None
