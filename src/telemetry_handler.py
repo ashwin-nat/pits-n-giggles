@@ -544,7 +544,7 @@ class F1TelemetryHandler:
         g_completed_session_uid_set.add(packet.m_header.m_sessionUID)
 
         # Perform the auto save stuff only for races
-        event_type_str = TelData.getGlobals().m_event_type
+        event_type_str = str(TelData.getGlobals().m_session_type)
         if event_type_str:
             is_event_supported = True
             if packet.m_header.m_gameYear == 23:

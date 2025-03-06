@@ -69,8 +69,9 @@ class GlobalData:
         Init the GlobalData object fields to None
         """
 
-        self.m_circuit : Optional[str] = None
-        self.m_event_type : Optional[str] = None
+        self.m_track : Optional[TrackID] = None
+        self.m_track_len: Optional[int] = None
+        self.m_session_type : Optional[Union[SessionType23, SessionType24]] = None
         self.m_track_temp : Optional[int] = None
         self.m_air_temp : Optional[int] = None
         self.m_total_laps : Optional[int] = None
@@ -90,8 +91,9 @@ class GlobalData:
             str: Readable string
         """
         return (
-            f"GlobalData(m_circuit={self.m_circuit}, "
-            f"m_event_type={self.m_event_type}, "
+            f"GlobalData(m_track={str(self.m_track)}, "
+            f"m_track_len={self.m_track_len}, "
+            f"m_event_type={str(self.m_session_type)}, "
             f"m_track_temp={self.m_track_temp}, "
             f"m_air_temp={self.m_air_temp}, "
             f"m_total_laps={self.m_total_laps}, "
@@ -107,8 +109,9 @@ class GlobalData:
         Clear the objects contents.
         """
 
-        self.m_circuit = None
-        self.m_event_type = None
+        self.m_track = None
+        self.m_track_len = None
+        self.m_session_type = None
         self.m_track_temp = None
         self.m_air_temp = None
         self.m_total_laps = None
@@ -137,10 +140,11 @@ class GlobalData:
                 != self.m_packet_session.m_header.m_sessionUID
             )
         )
-        self.m_circuit = str(packet.m_trackId)
+        self.m_track = packet.m_trackId
+        self.m_track_len = packet.m_trackLength
         self.m_track_temp = packet.m_trackTemperature
         self.m_air_temp = packet.m_airTemperature
-        self.m_event_type = str(packet.m_sessionType)
+        self.m_session_type = packet.m_sessionType
         self.m_weather_forecast_samples = packet.m_weatherForecastSamples
         self.m_pit_speed_limit = packet.m_pitSpeedLimit
         self.m_total_laps = packet.m_totalLaps
@@ -186,13 +190,8 @@ class DriverData:
         self.m_race_completed: Optional[bool] = None
         self.m_final_json: Dict[str, Any] = None # TODO: revisit
         self.m_is_player_dnf : Optional[bool] = None
-        self.m_total_laps : Optional[int] = None
         self.m_ideal_pit_stop_window : Optional[int] = None
-        self.m_track_id : Optional[TrackID] = None
-        self.m_session_type: Union[SessionType23 | SessionType24] = None
-        self.m_game_year : Optional[int] = None
         self.m_collision_records : List[CollisionRecord] = []
-        self.m_track_length : Optional[int] = None
         self.m_fastest_s1_ms: Optional[int] = None
         self.m_fastest_s2_ms: Optional[int] = None
         self.m_fastest_s3_ms: Optional[int] = None
@@ -210,13 +209,8 @@ class DriverData:
         self.m_race_completed = None
         self.m_final_json = None
         self.m_is_player_dnf = None
-        self.m_total_laps = None
         self.m_ideal_pit_stop_window = None
-        self.m_track_id = None
-        self.m_session_type = None
-        self.m_game_year = None
         self.m_collision_records.clear()
-        self.m_track_length = None
         self.m_fastest_s1_ms = None
         self.m_fastest_s2_ms = None
         self.m_fastest_s3_ms = None
@@ -296,7 +290,7 @@ class DriverData:
             DataPerDriver: The data object associated with the given index
         """
         # Use setdefault to insert a new DataPerDriver if the index is not found, avoiding multiple lookups
-        return self.m_driver_data.setdefault(index, DataPerDriver(self.m_total_laps))
+        return self.m_driver_data.setdefault(index, DataPerDriver(self.m_globals.m_total_laps))
 
     def _recomputeFastestLap(self) -> None:
         """
@@ -362,21 +356,17 @@ class DriverData:
         """
 
         self.m_ideal_pit_stop_window = packet.m_pitStopWindowIdealLap
-        self.m_track_id = packet.m_trackId
-        self.m_session_type = packet.m_sessionType
-        self.m_game_year = packet.m_header.m_gameYear
-        self.m_track_length = packet.m_trackLength
 
         # First time total laps notification has arrived after driver info (out of order)
-        if (self.m_total_laps is None) and (packet.m_totalLaps > 0):
+        if (self.m_globals.m_total_laps is None) and (packet.m_totalLaps > 0):
 
             # First update the total laps
-            self.m_total_laps = packet.m_totalLaps
+            self.m_globals.m_total_laps = packet.m_totalLaps
 
             # Next, update in all extrapolator objects
             for driver_data in self.m_driver_data.values():
-                driver_data.m_tyre_info.m_tyre_wear_extrapolator.total_laps = self.m_total_laps
-                driver_data.m_car_info.m_fuel_rate_recommender.total_laps = self.m_total_laps
+                driver_data.m_tyre_info.m_tyre_wear_extrapolator.total_laps = self.m_globals.m_total_laps
+                driver_data.m_car_info.m_fuel_rate_recommender.total_laps = self.m_globals.m_total_laps
 
         # Update the SC status for all drivers
         for driver_data in self.m_driver_data.values():
@@ -429,7 +419,7 @@ class DriverData:
             self.m_result_status = lap_data.m_resultStatus
 
             # Update warning penalty history and copy of the packet
-            obj_to_be_updated.updateLapDataPacketCopy(lap_data, self.m_track_length)
+            obj_to_be_updated.updateLapDataPacketCopy(lap_data, self.m_globals.m_track_len)
 
             # Check if fastest lap needs to be recomputed
             if not should_recompute:
@@ -553,7 +543,7 @@ class DriverData:
                 final_json["position-history"].append(obj_to_be_updated.getPositionHistoryJSON())
                 final_json["tyre-stint-history"].append(obj_to_be_updated.getTyreStintHistoryJSON())
         final_json['classification-data'] = sorted(final_json['classification-data'], key=lambda x: x['track-position'])
-        final_json['game-year'] = self.m_game_year
+        final_json['game-year'] = self.m_globals.m_game_year
         self.m_final_json = final_json
 
         final_json["session-info"] = self.m_globals.m_packet_session.toJSON() \
@@ -711,10 +701,10 @@ class DriverData:
         if not driver_info_obj:
             return None
         final_json = driver_info_obj.toJSON(index, include_wear_prediction, selected_pit_stop_lap)
-        final_json["circuit"] = str(self.m_track_id)
-        final_json["session-type"] = str(self.m_session_type)
-        final_json["is-finish-line-after-pit-garage"] = F1Utils.isFinishLineAfterPitGarage(self.m_track_id) \
-            if self.m_track_id is not None else None
+        final_json["circuit"] = str(self.m_globals.m_track)
+        final_json["session-type"] = str(self.m_globals.m_session_type)
+        final_json["is-finish-line-after-pit-garage"] = F1Utils.isFinishLineAfterPitGarage(self.m_globals.m_track) \
+            if self.m_globals.m_track is not None else None
 
         return final_json
 
@@ -835,7 +825,8 @@ class DriverData:
         Returns:
             bool: True if the position history is supported, False otherwise
         """
-        return bool(self.m_globals.m_event_type and "Race" in self.m_globals.m_event_type)
+        return bool(self.m_globals.m_session_type and "Race" in str(self.m_globals.m_session_type))
+
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
 _driver_data = DriverData()
@@ -876,7 +867,7 @@ def processLapDataUpdate(packet: PacketLapData) -> None:
     """
 
     with _driver_data_lock.gen_wlock():
-        if _driver_data.m_total_laps is not None:
+        if _driver_data.m_globals.m_total_laps is not None:
             _driver_data.processLapDataUpdate(packet)
             _driver_data.setRaceOngoing()
 
@@ -1107,13 +1098,10 @@ def getEventInfoStr() -> Optional[str]:
     Returns:
         Optional[str]: The event type string (ends with an underscore), or None if no data is available
     """
-    # with _globals_lock.gen_rlock():
-    #     if _globals.m_event_type and _globals.m_circuit:
-    #         return f"{_globals.m_event_type}_{_globals.m_circuit}".replace(' ', '_') + '_'
-    #     return None
+
     with _driver_data_lock.gen_rlock():
-        if _driver_data.m_track_id and _driver_data.m_session_type:
-            return f"{str(_driver_data.m_session_type)}_{str(_driver_data.m_track_id)}".replace(' ', '_') + '_'
+        if _driver_data.m_globals.m_track and _driver_data.m_globals.m_session_type:
+            return f"{str(_driver_data.m_globals.m_session_type)}_{str(_driver_data.m_globals.m_track)}".replace(' ', '_') + '_'
         return None
 
 def getOvertakeObj(overtaking_car_index: int, being_overtaken_index: int) -> Optional[OvertakeRecord]:
@@ -1169,10 +1157,10 @@ def getCustomMarkerEntryObj() -> Optional[CustomMarkerEntry]:
                 player_data.m_packet_copies.m_packet_lap_data.m_currentLapTimeInMS)
             curr_lap_dist = player_data.m_packet_copies.m_packet_lap_data.m_lapDistance
 
-            track = str(_driver_data.m_track_id)
-            event_type = str(_driver_data.m_session_type)
+            track = str(_driver_data.m_globals.m_track)
+            event_type = str(_driver_data.m_globals.m_session_type)
             curr_lap_percent = (
-                f"{F1Utils.floatToStr(float(curr_lap_dist) / float(_driver_data.m_track_length) * 100.0)}%"
+                f"{F1Utils.floatToStr(float(curr_lap_dist) / float(_driver_data.m_globals.m_track_len) * 100.0)}%"
                 if curr_lap_dist is not None
                 else None
             )
@@ -1248,7 +1236,7 @@ def getTyreDeltaNotificationMessages() -> List[TyreDeltaMessage]:
         # N/A for spectating or after race - maybe support this later
         if (_driver_data.m_globals.m_is_spectating or
             _driver_data.m_globals.m_packet_final_classification or
-            _driver_data.m_globals.m_event_type != "Time Trial"):
+            str(_driver_data.m_globals.m_session_type) != "Time Trial"):
             return []
 
         # If player ded, not applicable
