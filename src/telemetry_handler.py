@@ -53,7 +53,6 @@ g_post_race_data_autosave: bool = False
 g_directory_mapping: Dict[str, str] = {}
 g_udp_custom_action_code: Optional[int] = None
 g_udp_tyre_delta_action_code: Optional[int] = None
-g_process_car_setup: Optional[bool] = None
 g_completed_session_uid_set: set[int] = set()
 g_button_debouncer = ButtonDebouncer()
 png_logger = getLogger()
@@ -63,25 +62,21 @@ png_logger = getLogger()
 def initTelemetryGlobals(
     post_race_data_autosave: bool,
     udp_custom_action_code: Optional[int],
-    udp_tyre_delta_action_code: Optional[int],
-    process_car_setup: bool) -> None:
+    udp_tyre_delta_action_code: Optional[int]) -> None:
     """Initialise the autosave settings
 
     Args:
         post_race_data_autosave (bool): Save JSON file after race
         udp_custom_action_code (Optional[int]): UDP action code to set marker
         udp_tyre_delta_action_code (Optional[int]): UDP action code to play tyre delta sound
-        process_car_setup (bool): Whether to process car setup data
     """
 
     global g_post_race_data_autosave
     global g_udp_custom_action_code
     global g_udp_tyre_delta_action_code
-    global g_process_car_setup
     g_post_race_data_autosave = post_race_data_autosave
     g_udp_custom_action_code = udp_custom_action_code
     g_udp_tyre_delta_action_code = udp_tyre_delta_action_code
-    g_process_car_setup = process_car_setup
 
 def initDirectories() -> None:
     """
@@ -261,7 +256,7 @@ class F1TelemetryHandler:
             F1PacketType.SESSION_HISTORY: TelData.processSessionHistoryUpdate,
             F1PacketType.TYRE_SETS: TelData.processTyreSetsUpdate,
             F1PacketType.MOTION: TelData.processMotionUpdate,
-            F1PacketType.CAR_SETUPS: F1TelemetryHandler.handleCarSetups,
+            F1PacketType.CAR_SETUPS: TelData.processCarSetupsUpdate,
             F1PacketType.TIME_TRIAL: TelData.processTimeTrialUpdate,
         })
 
@@ -383,16 +378,3 @@ class F1TelemetryHandler:
                         break
             if is_event_supported:
                 postGameDumpToFile(final_json)
-
-    @staticmethod
-    def handleCarSetups(packet: PacketCarSetupData) -> None:
-        """
-        Handle and process the car setup data update.
-
-        Arguments
-            packet - PacketCarSetupData object
-        """
-
-        global g_process_car_setup
-        if g_process_car_setup:
-            TelData.processCarSetupsUpdate(packet)

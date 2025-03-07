@@ -197,10 +197,20 @@ class DriverData:
         m_fastest_s3_ms (int): The fastest sector 3 time in milliseconds
     """
 
-    def __init__(self):
+    def __init__(self,
+                 post_race_autosave: bool,
+                 udp_custom_marker_action_code: Optional[int],
+                 udp_tyre_delta_action_code: Optional[int],
+                 process_car_setups: bool) -> None:
+        """Init the DriverData object
+
+        Args:
+            post_race_autosave (bool): Will save data to file after race
+            udp_custom_marker_action_code (Optional[int]): The UDP action code for custom marker
+            udp_tyre_delta_action_code (Optional[int]): The UDP action code for tyre delta notification
+            process_car_setups (bool): Whether to process car setups packets
         """
-        Initialize the DriverData object.
-        """
+
         self.m_driver_data: Dict[int, DataPerDriver] = {}
         self.m_player_index: Optional[int] = None
         self.m_fastest_index: Optional[int] = None
@@ -216,6 +226,12 @@ class DriverData:
         self.m_time_trial_packet : Optional[PacketTimeTrialData] = None
         self.m_overtakes_history = OvertakesHistory()
         self.m_globals: SessionInfo = SessionInfo()
+
+        # Config params
+        self.m_post_race_autosave: bool = post_race_autosave
+        self.m_udp_custom_marker_action_code: Optional[int] = udp_custom_marker_action_code
+        self.m_udp_tyre_delta_action_code: Optional[int] = udp_tyre_delta_action_code
+        self.m_process_car_setups: bool = process_car_setups
 
     def clear(self) -> None:
         """Clear this object. Clears the m_driver_data list and sets everything else to None
@@ -234,6 +250,8 @@ class DriverData:
         self.m_fastest_s3_ms = None
         self.m_overtakes_history.clear()
         self.m_globals.clear()
+
+        # No need to clear config params
 
     def setRaceOngoing(self) -> None:
         """
@@ -870,7 +888,7 @@ class DriverData:
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
-_driver_data = DriverData()
+_driver_data: Optional[DriverData] = None
 _driver_data_lock: rwlock.RWLockFair = rwlock.RWLockFair()
 png_logger = getLogger()
 _custom_markers_history = CustomMarkersHistory()
@@ -911,6 +929,7 @@ def processLapDataUpdate(packet: PacketLapData) -> None:
         if _driver_data.m_globals.m_total_laps is not None:
             _driver_data.processLapDataUpdate(packet)
             _driver_data.setRaceOngoing()
+
 
 def processFastestLapUpdate(packet: PacketEventData) -> None:
     """Update the data structures with the fastest lap
@@ -1042,6 +1061,10 @@ def processCarSetupsUpdate(packet: PacketCarSetupData) -> None:
         packet (PacketCarSetupData): The car setup update packet
         process_car_setup (bool): Whether to process the car setup
     """
+
+    # no need to lock for this since this field should never change
+    if not _driver_data.m_process_car_setups:
+        return
 
     with _driver_data_lock.gen_wlock():
         _driver_data.processCarSetupsUpdate(packet)
@@ -1409,3 +1432,24 @@ def getOvertakeRecords() -> List[OvertakeRecord]:
 
     with _driver_data_lock.gen_rlock():
         return _driver_data.m_overtakes_history.getRecords()
+
+def initDriverData(post_race_autosave: bool,
+                 udp_custom_marker_action_code: Optional[int],
+                 udp_tyre_delta_action_code: Optional[int],
+                 process_car_setups: bool) -> None:
+    """Init the DriverData object
+
+    Args:
+        post_race_autosave (bool): Will save data to file after race
+        udp_custom_marker_action_code (Optional[int]): The UDP action code for custom marker
+        udp_tyre_delta_action_code (Optional[int]): The UDP action code for tyre delta notification
+        process_car_setups (bool): Whether to process car setups packets
+    """
+    global _driver_data
+    with _driver_data_lock.gen_wlock():
+        _driver_data = DriverData(
+            post_race_autosave,
+            udp_custom_marker_action_code,
+            udp_tyre_delta_action_code,
+            process_car_setups
+        )
