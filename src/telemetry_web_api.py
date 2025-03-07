@@ -64,12 +64,12 @@ class RaceInfoUpdate:
 
         """
 
-        self.m_globals = TelData.getGlobals()
-        track_length = self.m_globals.m_packet_session.m_trackLength if self.m_globals.m_packet_session else None
-        self.m_driver_list_rsp = DriversListRsp(self.m_globals.m_is_spectating, track_length)
+        self.m_session_info = TelData.getSessionInfo()
+        track_length = self.m_session_info.m_packet_session.m_trackLength if self.m_session_info.m_packet_session else None
+        self.m_driver_list_rsp = DriversListRsp(self.m_session_info.m_is_spectating, track_length)
         self.m_curr_lap = self.m_driver_list_rsp.getCurrentLap()
-        if self.m_globals.m_weather_forecast_samples is None:
-            self.m_globals.m_weather_forecast_samples = []
+        if self.m_session_info.m_weather_forecast_samples is None:
+            self.m_session_info.m_weather_forecast_samples = []
 
     def toJSON(self) -> Dict[str, Any]:
         """Get the JSON update for the current race
@@ -81,40 +81,40 @@ class RaceInfoUpdate:
         final_json = {
             # First, global fields
             "live-data" : True,
-            "f1-game-year" : _getValueOrDefaultValue(self.m_globals.m_game_year, None),
-            "circuit": _getValueOrDefaultValue(str(self.m_globals.m_track)),
-            "track-temperature": _getValueOrDefaultValue(self.m_globals.m_track_temp, default_value=0),
-            "air-temperature": _getValueOrDefaultValue(self.m_globals.m_air_temp, default_value=0),
-            "event-type": _getValueOrDefaultValue(str(self.m_globals.m_session_type)),
-            "session-time-left" : _getValueOrDefaultValue(self.m_globals.m_packet_session.m_sessionTimeLeft \
-                                                          if self.m_globals.m_packet_session else None, 0),
-            "total-laps": _getValueOrDefaultValue(self.m_globals.m_total_laps, default_value=None),
+            "f1-game-year" : _getValueOrDefaultValue(self.m_session_info.m_game_year, None),
+            "circuit": _getValueOrDefaultValue(str(self.m_session_info.m_track)),
+            "track-temperature": _getValueOrDefaultValue(self.m_session_info.m_track_temp, default_value=0),
+            "air-temperature": _getValueOrDefaultValue(self.m_session_info.m_air_temp, default_value=0),
+            "event-type": _getValueOrDefaultValue(str(self.m_session_info.m_session_type)),
+            "session-time-left" : _getValueOrDefaultValue(self.m_session_info.m_packet_session.m_sessionTimeLeft \
+                                                          if self.m_session_info.m_packet_session else None, 0),
+            "total-laps": _getValueOrDefaultValue(self.m_session_info.m_total_laps, default_value=None),
             "current-lap": _getValueOrDefaultValue(self.m_curr_lap, default_value=None),
-            "safety-car-status": str(_getValueOrDefaultValue(self.m_globals.m_safety_car_status, default_value="")),
-            "pit-speed-limit": _getValueOrDefaultValue(self.m_globals.m_pit_speed_limit, default_value=0),
+            "safety-car-status": str(_getValueOrDefaultValue(self.m_session_info.m_safety_car_status, default_value="")),
+            "pit-speed-limit": _getValueOrDefaultValue(self.m_session_info.m_pit_speed_limit, default_value=0),
             "weather-forecast-samples": [
                 {
                     "time-offset": str(sample.m_timeOffset),
                     "weather": str(sample.m_weather),
                     "rain-probability": str(sample.m_rainPercentage)
-                } for sample in self.m_globals.m_weather_forecast_samples
+                } for sample in self.m_session_info.m_weather_forecast_samples
             ],
-            "race-ended" : bool(self.m_globals.m_packet_final_classification),
-            "is-spectating" : _getValueOrDefaultValue(self.m_globals.m_is_spectating, False),
-            "session-type"  : _getValueOrDefaultValue(str(self.m_globals.m_session_type)),
+            "race-ended" : bool(self.m_session_info.m_packet_final_classification),
+            "is-spectating" : _getValueOrDefaultValue(self.m_session_info.m_is_spectating, False),
+            "session-type"  : _getValueOrDefaultValue(str(self.m_session_info.m_session_type)),
             "session-duration-so-far" : _getValueOrDefaultValue(
-                (self.m_globals.m_packet_session.m_sessionDuration - self.m_globals.m_packet_session.m_sessionTimeLeft) \
-                                                          if self.m_globals.m_packet_session else None, 0),
-            "num-sc" : _getValueOrDefaultValue(self.m_globals.m_packet_session.m_numSafetyCarPeriods \
-                                                          if self.m_globals.m_packet_session else None, 0),
-            "num-vsc" : _getValueOrDefaultValue(self.m_globals.m_packet_session.m_numVirtualSafetyCarPeriods \
-                                                          if self.m_globals.m_packet_session else None, 0),
-            "num-red-flags" : _getValueOrDefaultValue(self.m_globals.m_packet_session.m_numRedFlagPeriods \
-                                                          if self.m_globals.m_packet_session else None, 0),
+                (self.m_session_info.m_packet_session.m_sessionDuration - self.m_session_info.m_packet_session.m_sessionTimeLeft) \
+                                                          if self.m_session_info.m_packet_session else None, 0),
+            "num-sc" : _getValueOrDefaultValue(self.m_session_info.m_packet_session.m_numSafetyCarPeriods \
+                                                          if self.m_session_info.m_packet_session else None, 0),
+            "num-vsc" : _getValueOrDefaultValue(self.m_session_info.m_packet_session.m_numVirtualSafetyCarPeriods \
+                                                          if self.m_session_info.m_packet_session else None, 0),
+            "num-red-flags" : _getValueOrDefaultValue(self.m_session_info.m_packet_session.m_numRedFlagPeriods \
+                                                          if self.m_session_info.m_packet_session else None, 0),
             "player-pit-window" : _getValueOrDefaultValue(self.m_driver_list_rsp.m_next_pit_stop_window, None),
         }
 
-        if str(self.m_globals.m_session_type) == "Time Trial":
+        if str(self.m_session_info.m_session_type) == "Time Trial":
             final_json["tt-data"] = self.m_driver_list_rsp.getTtTableJSON()
         else:
             final_json["table-entries"] = self.m_driver_list_rsp.toRaceTableJSON()
@@ -275,16 +275,16 @@ class PlayerTelemetryOverlayUpdate:
         """
 
         with TelData._driver_data_lock.gen_rlock():
-            self.m_track_temp               = TelData._driver_data.m_globals.m_track_temp
-            self.m_air_temp                 = TelData._driver_data.m_globals.m_air_temp
-            self.m_weather_forecast_samples = TelData._driver_data.m_globals.m_weather_forecast_samples
+            self.m_track_temp               = TelData._driver_data.m_session_info.m_track_temp
+            self.m_air_temp                 = TelData._driver_data.m_session_info.m_air_temp
+            self.m_weather_forecast_samples = TelData._driver_data.m_session_info.m_weather_forecast_samples
             if self.m_weather_forecast_samples is None:
                 self.m_weather_forecast_samples = []
-            self.m_circuit                  = TelData._driver_data.m_globals.m_track
-            self.m_total_laps               = TelData._driver_data.m_globals.m_total_laps
-            self.m_game_year                = TelData._driver_data.m_globals.m_game_year
-            self.m_session_type               = TelData._driver_data.m_globals.m_session_type
-            self.m_pit_speed_limit          = TelData._driver_data.m_globals.m_pit_speed_limit
+            self.m_circuit                  = TelData._driver_data.m_session_info.m_track
+            self.m_total_laps               = TelData._driver_data.m_session_info.m_total_laps
+            self.m_game_year                = TelData._driver_data.m_session_info.m_game_year
+            self.m_session_type               = TelData._driver_data.m_session_info.m_session_type
+            self.m_pit_speed_limit          = TelData._driver_data.m_session_info.m_pit_speed_limit
 
             self.m_next_pit_window          = TelData._driver_data.m_ideal_pit_stop_window
             self.m_fastest_lap_ms           = \
@@ -293,8 +293,8 @@ class PlayerTelemetryOverlayUpdate:
             self.m_fastest_s1_ms            = TelData._driver_data.m_fastest_s1_ms
             self.m_fastest_s2_ms            = TelData._driver_data.m_fastest_s2_ms
             self.m_fastest_s3_ms            = TelData._driver_data.m_fastest_s3_ms
-            player_index = TelData._driver_data.m_globals.m_spectator_car_index \
-                            if TelData._driver_data.m_globals.m_is_spectating \
+            player_index = TelData._driver_data.m_session_info.m_spectator_car_index \
+                            if TelData._driver_data.m_session_info.m_is_spectating \
                             else TelData._driver_data.m_player_index
             player_data = TelData._driver_data.m_driver_data[player_index] \
                             if player_index in TelData._driver_data.m_driver_data else None
