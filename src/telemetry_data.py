@@ -59,19 +59,21 @@ class SessionInfo:
     Class that stores global race data.
 
     Attributes:
-         - m_circuit (str): The current circuit name
-         - m_event_type (str): The current event type
-         - m_track_temp (int): The current track temperature
-         - m_air_temp (int): The current air temperature
-         - m_total_laps (int): The total number of laps in the current event
-         - m_safety_car_status (SafetyCarStatus): Current safety car status enum
-         - m_is_spectating (bool): Whether the user is currently spectating
-         - m_spectator_car_index (int): Which car the user is spectating
-         - m_weather_forecast_samples (List[WeatherForecastSample]): The list of weather forecast samples
-         - m_pit_speed_limit (int): The Pit Lane speed limit (in kmph)
-         - m_packet_final_classification (PacketFinalClassificationData): The final classification packet
-         - m_packet_session (PacketSessionData): Copy of the last saved session packet
-         - m_game_year (int): The current game year
+         - m_track (Optional[TrackID]): The current track
+         - m_track_len (Optional[int]): The length of the track in meters
+         - m_session_type (Optional[Union[SessionType23, SessionType24]]): The type of the session,
+                which can be either SessionType23 or SessionType24
+         - m_track_temp (Optional[int]): The current track temperature in degrees Celsius
+         - m_air_temp (Optional[int]): The current air temperature in degrees Celsius
+         - m_total_laps (Optional[int]): The total number of laps in the current event
+         - m_safety_car_status (Optional[SafetyCarType]): Current safety car status as an enum
+         - m_is_spectating (Optional[bool]): Whether the user is currently spectating
+         - m_spectator_car_index (Optional[int]): Index of the car the user is spectating
+         - m_weather_forecast_samples (Optional[List[WeatherForecastSample]]): List of weather forecast samples
+         - m_pit_speed_limit (Optional[int]): The pit lane speed limit in km/h
+         - m_packet_session (Optional[PacketSessionData]): Copy of the last saved session packet
+         - m_packet_final_classification (Optional[PacketFinalClassificationData]): The final classification packet
+         - m_game_year (Optional[int]): The current game year
     """
 
     def __init__(self):
@@ -170,21 +172,26 @@ class DriverData:
     Class that models the data for multiple race drivers.
 
     Attributes:
-        m_driver_data (Dict[int, DataPerDriver]): Dictionary containing driver data indexed by driver ID.
-        m_player_index (int): The index of the player driver.
-        m_fastest_index (int): The index of the driver who achieved the fastest lap.
-        m_num_active_cars (int): The number of active cars in the race.
-        m_num_dnf_cars (int): The number of cars that did not finish the race.
-        m_race_completed (bool): Indicates whether the race has been completed.
-        m_total_laps (int): The total number of laps in this race
-        m_ideal_pit_stop_window (int): The ideal pit stop window for the player, according to the selected strategy
-        m_track_id (TrackID): The track ID of the event
-        m_game_year (int): The game year
-        m_collision_records (List[CollisionRecord]): List of collision records
-        m_track_length (int): The track length
-        m_fastest_s1_ms (int): The fastest sector 1 time in milliseconds
-        m_fastest_s2_ms (int): The fastest sector 2 time in milliseconds
-        m_fastest_s3_ms (int): The fastest sector 3 time in milliseconds
+        m_driver_data (Dict[int, DataPerDriver]): A dictionary mapping driver IDs (int) to their
+                            corresponding DataPerDriver instances.
+        m_player_index (Optional[int]): The index of the player driver
+        m_fastest_index (Optional[int]): The index of the driver who achieved the fastest lap
+        m_num_active_cars (Optional[int]): The number of active cars in the race
+        m_num_dnf_cars (Optional[int]): The number of cars that did not finish the race
+        m_race_completed (Optional[bool]): Indicates whether the race has been completed
+        m_is_player_dnf (Optional[bool]): Indicates whether the player has not finished the race
+        m_ideal_pit_stop_window (Optional[int]): The ideal pit stop window for the player, according to the selected strategy
+        m_collision_records (List[CollisionRecord]): A list of collision records; empty if no collisions occurred.
+        m_fastest_s1_ms (Optional[int]): The fastest sector 1 time in milliseconds
+        m_fastest_s2_ms (Optional[int]): The fastest sector 2 time in milliseconds
+        m_fastest_s3_ms (Optional[int]): The fastest sector 3 time in milliseconds
+        m_time_trial_packet (Optional[PacketTimeTrialData]): A packet containing time trial data
+        m_overtakes_history (OvertakesHistory): An instance tracking overtakes history.
+        m_globals (SessionInfo): An instance of SessionInfo containing global race data.
+        m_post_race_autosave (bool): Flag indicating whether to save data to file after race.
+        m_udp_custom_marker_action_code (Optional[int]): The UDP action code for custom marker
+        m_udp_tyre_delta_action_code (Optional[int]): The UDP action code for tyre delta notification
+        m_process_car_setups (bool): Flag indicating whether to process car setups packets.
     """
 
     def __init__(self,
