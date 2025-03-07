@@ -25,41 +25,31 @@
 
 import copy
 import json
-from typing import Optional, Tuple, List, Dict, Any, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 from readerwriterlock import rwlock
-from lib.f1_types import (
-    ActualTyreCompound,
-    CarStatusData,
-    F1Utils,
-    PacketCarDamageData,
-    PacketCarSetupData,
-    PacketCarStatusData,
-    PacketCarTelemetryData,
-    PacketEventData,
-    PacketFinalClassificationData,
-    PacketLapData,
-    PacketMotionData,
-    PacketParticipantsData,
-    PacketSessionData,
-    PacketSessionHistoryData,
-    PacketTimeTrialData,
-    PacketTyreSetsData,
-    ResultStatus,
-    SafetyCarType,
-    SessionType23,
-    SessionType24,
-    TrackID,
-    WeatherForecastSample
-)
-from src.data_per_driver import DataPerDriver
-from src.overtakes import OvertakesHistory, GetOvertakesStatus
-from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
-from lib.overtake_analyzer import OvertakeRecord
-from lib.collisions_analyzer import CollisionRecord, CollisionAnalyzer, CollisionAnalyzerMode
-from lib.tyre_wear_extrapolator import TyreWearPerLap
-from lib.inter_thread_communicator import InterThreadCommunicator, ITCMessage, TyreDeltaMessage
+
+from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
+                                     CollisionRecord)
 from lib.custom_marker_tracker import CustomMarkerEntry, CustomMarkersHistory
-from lib.overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, OvertakeRecord
+from lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils,
+                          PacketCarDamageData, PacketCarSetupData,
+                          PacketCarStatusData, PacketCarTelemetryData,
+                          PacketEventData, PacketFinalClassificationData,
+                          PacketLapData, PacketMotionData,
+                          PacketParticipantsData, PacketSessionData,
+                          PacketSessionHistoryData, PacketTimeTrialData,
+                          PacketTyreSetsData, ResultStatus, SafetyCarType,
+                          SessionType23, SessionType24, TrackID,
+                          WeatherForecastSample)
+from lib.inter_thread_communicator import (InterThreadCommunicator, ITCMessage,
+                                           TyreDeltaMessage)
+from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
+                                   OvertakeRecord)
+from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
+from lib.tyre_wear_extrapolator import TyreWearPerLap
+from src.data_per_driver import DataPerDriver
+from src.overtakes import GetOvertakesStatus, OvertakesHistory
 from src.png_logger import getLogger
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
@@ -439,7 +429,7 @@ class DriverData:
 
             # Update the per lap snapshot data structure if lap info is available
             if (obj_to_be_updated.m_lap_info.m_current_lap is not None):
-                if (1 == obj_to_be_updated.m_lap_info.m_current_lap) and (obj_to_be_updated.isZerothLapSnapshotDataAvailable()):
+                if (obj_to_be_updated.m_lap_info.m_current_lap == 1) and (obj_to_be_updated.isZerothLapSnapshotDataAvailable()):
                     obj_to_be_updated.onLapChange(old_lap_number=0)
 
                 # Now, add shit only if there is change (this should handle lap 1 to lap 2 transition)
@@ -1059,7 +1049,6 @@ def processCarSetupsUpdate(packet: PacketCarSetupData) -> None:
 
     Args:
         packet (PacketCarSetupData): The car setup update packet
-        process_car_setup (bool): Whether to process the car setup
     """
 
     # no need to lock for this since this field should never change

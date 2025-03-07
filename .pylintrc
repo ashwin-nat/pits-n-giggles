@@ -115,7 +115,9 @@ disable=
     too-many-arguments,
     too-many-locals,
     too-many-public-methods,
-    no-name-in-module
+    no-name-in-module,
+    too-many-positional-arguments,
+    too-many-boolean-expressions
 
 [REPORTS]
 

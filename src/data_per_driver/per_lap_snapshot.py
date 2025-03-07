@@ -22,8 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from lib.f1_types import CarDamageData, CarStatusData, SafetyCarType, PacketTyreSetsData
-from typing import Dict, Any
+from typing import Any, Dict
+
+from lib.f1_types import (CarDamageData, CarStatusData, PacketTyreSetsData,
+                          SafetyCarType)
 from src.png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------

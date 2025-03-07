@@ -24,26 +24,22 @@ SOFTWARE.
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import os
 import json
-from datetime import datetime
-from enum import Enum
-from threading import Lock
+import os
 import threading
-from typing import Optional, List, Tuple, Dict, Any, Generator
-from lib.f1_types import F1PacketType, PacketSessionData, PacketLapData, \
-    PacketEventData, PacketParticipantsData, PacketCarTelemetryData, PacketCarStatusData, \
-    PacketFinalClassificationData, PacketCarDamageData, PacketSessionHistoryData, PacketMotionData, \
-    PacketTyreSetsData, PacketCarSetupData, PacketTimeTrialData, SessionType23, SessionType24
-from lib.overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode, OvertakeRecord
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
+
 import lib.race_analyzer as RaceAnalyzer
-from lib.packet_forwarder import UDPForwarder
-from lib.button_debouncer import ButtonDebouncer
-from lib.inter_thread_communicator import InterThreadCommunicator
 import src.telemetry_data as TelData
-from src.telemetry_manager import F1TelemetryManager
-from src.overtakes import OvertakesHistory, GetOvertakesStatus
+from lib.button_debouncer import ButtonDebouncer
+from lib.f1_types import (F1PacketType, PacketEventData,
+                          PacketFinalClassificationData, PacketSessionData,
+                          SessionType23, SessionType24)
+from lib.inter_thread_communicator import InterThreadCommunicator
+from lib.packet_forwarder import UDPForwarder
 from src.png_logger import getLogger
+from src.telemetry_manager import F1TelemetryManager
 
 # -------------------------------------- TYPE DEFINITIONS --------------------------------------------------------------
 
@@ -82,9 +78,6 @@ def initDirectories() -> None:
     """
     Initialize the necessary directories for storing race information
     This function creates a directory structure based on the current date if it does not already exist.
-
-    Returns:
-        None
     """
     def ensureDirectoryExists(directory: str) -> None:
         """
@@ -92,9 +85,6 @@ def initDirectories() -> None:
 
         Parameters:
         - directory (str): The path of the directory to be checked or created.
-
-        Returns:
-        - None
         """
         if not os.path.exists(directory):
             os.makedirs(directory, exist_ok=True)
@@ -197,9 +187,8 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
     else:
         png_logger.debug("Not saving post race data")
 
-def clearAllDataStructures(dummy_arg) -> None:
-    """
-    Clear all data structures.
+def clearAllDataStructures(_dummy_arg=None) -> None:
+    """Clear all data structures.
     """
 
     TelData.processSessionStarted()

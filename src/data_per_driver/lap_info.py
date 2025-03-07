@@ -22,9 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from lib.f1_types import LapHistoryData, VisualTyreCompound
-from typing import Optional
 from dataclasses import dataclass
+from typing import Optional
+
+from lib.f1_types import LapHistoryData, VisualTyreCompound
 from src.png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------

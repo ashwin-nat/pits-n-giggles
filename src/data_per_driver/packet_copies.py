@@ -22,20 +22,14 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from lib.f1_types import (
-    CarDamageData,
-    CarMotionData,
-    CarSetupData,
-    CarStatusData,
-    CarTelemetryData,
-    FinalClassificationData,
-    LapData,
-    PacketSessionHistoryData,
-    PacketTyreSetsData,
-    ParticipantData
-)
-from typing import Optional
 from dataclasses import dataclass
+from typing import Optional
+
+from lib.f1_types import (CarDamageData, CarMotionData, CarSetupData,
+                          CarStatusData, CarTelemetryData,
+                          FinalClassificationData, LapData,
+                          PacketSessionHistoryData, PacketTyreSetsData,
+                          ParticipantData)
 from src.png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------

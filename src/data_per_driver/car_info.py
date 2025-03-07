@@ -22,10 +22,11 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+from dataclasses import dataclass
+from typing import Optional
+
 from lib.f1_types import CarStatusData
 from lib.fuel_rate_recommender import FuelRateRecommender
-from typing import Optional
-from dataclasses import dataclass
 from src.png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------

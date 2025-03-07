@@ -22,12 +22,14 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from lib.f1_types import VisualTyreCompound, ActualTyreCompound, PacketTyreSetsData
-from lib.tyre_wear_extrapolator import TyreWearPerLap, TyreWearExtrapolator
-from typing import Dict, List, Any, Optional, Generator
-from dataclasses import dataclass
-from src.png_logger import getLogger
 import json
+from dataclasses import dataclass
+from typing import Any, Dict, Generator, List, Optional
+
+from lib.f1_types import (ActualTyreCompound, PacketTyreSetsData,
+                          VisualTyreCompound)
+from lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
+from src.png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -228,7 +230,7 @@ class TyreSetHistoryManager:
         # If the first stint has garbage data, remove it (this happens if the user customizes the strat before race)
         if self.m_history[0].m_end_lap < self.m_history[0].m_start_lap:
             garbage_obj = self.m_history.pop(0)
-            png_logger.debug(f"Removed garbage tyre stint history record for driver {self.m_name}.\n"
+            png_logger.debug(f"Removed garbage tyre stint history record.\n"
                                 f"{json.dumps(garbage_obj.toJSON(include_tyre_wear_history=False), indent=4)}")
 
     def getEntries(self) -> Generator[TyreSetHistoryEntry, None, None]:
@@ -253,9 +255,6 @@ class TyreSetHistoryManager:
 
     def getLastEntry(self) -> Optional[TyreSetHistoryEntry]:
         """Get the entry in the tyre set history collection at the specified index
-
-        Args:
-            index (int): History item index
 
         Returns:
             Optional[TyreSetHistoryEntry]: History item (may be None)

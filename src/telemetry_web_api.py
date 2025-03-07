@@ -22,14 +22,16 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-from src.png_logger import getLogger
-from typing import Dict, Any, Optional, List, Union
-from lib.f1_types import F1Utils, LapHistoryData, CarStatusData, VisualTyreCompound, SessionType23, SessionType24
+from typing import Any, Dict, List, Optional
+
 import lib.race_analyzer as RaceAnalyzer
-from lib.tyre_wear_extrapolator import TyreWearPerLap
 import src.telemetry_data as TelData
+from lib.f1_types import (CarStatusData, F1Utils, LapHistoryData,
+                          VisualTyreCompound)
+from lib.tyre_wear_extrapolator import TyreWearPerLap
 from src.data_per_driver import TyreSetInfo
 from src.overtakes import GetOvertakesStatus
+from src.png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -115,7 +117,7 @@ class RaceInfoUpdate:
         if str(self.m_globals.m_session_type) == "Time Trial":
             final_json["tt-data"] = self.m_driver_list_rsp.getTtTableJSON()
         else:
-            final_json["table-entries"] = self.m_driver_list_rsp.toRaceTableJSON(self.m_globals.m_session_type)
+            final_json["table-entries"] = self.m_driver_list_rsp.toRaceTableJSON()
             self._updatePlayerLapTimes(final_json["table-entries"])
 
         final_json["fastest-lap-overall"] = _getValueOrDefaultValue(
@@ -576,11 +578,8 @@ class DriversListRsp:
         self.__initDriverList()
         self.__updateDriverList()
 
-    def toRaceTableJSON(self, session_type: Union[SessionType23, SessionType24]) -> Dict[str, Any]:
+    def toRaceTableJSON(self) -> Dict[str, Any]:
         """Get the race table JSON
-
-        Args:
-            session_type (SessionType23 | SessionType24): The session type
 
         Returns:
             Dict[str, Any]: The JSON dump
@@ -625,8 +624,7 @@ class DriversListRsp:
                         "s2-time-ms-player" : 0,
                         "s3-time-ms-player" : 0,
                         "sector-status" : data_per_driver.getSectorStatus(
-                            self.m_fastest_s1_ms, self.m_fastest_s2_ms, self.m_fastest_s3_ms, for_best_lap=False,
-                            session_type_str=str(session_type)),
+                            self.m_fastest_s1_ms, self.m_fastest_s2_ms, self.m_fastest_s3_ms, for_best_lap=False),
                         "s1-time-ms" : data_per_driver.m_lap_info.m_last_lap_obj.m_sector1TimeInMS \
                             if data_per_driver.m_lap_info.m_last_lap_obj else None,
                         "s2-time-ms" : data_per_driver.m_lap_info.m_last_lap_obj.m_sector2TimeInMS \
@@ -641,8 +639,7 @@ class DriversListRsp:
                         "s2-time-ms-player" : 0,
                         "s3-time-ms-player" : 0,
                         "sector-status" : data_per_driver.getSectorStatus(
-                            self.m_fastest_s1_ms, self.m_fastest_s2_ms, self.m_fastest_s3_ms, for_best_lap=True,
-                            session_type_str=session_type),
+                            self.m_fastest_s1_ms, self.m_fastest_s2_ms, self.m_fastest_s3_ms, for_best_lap=True),
                         "s1-time-ms" : data_per_driver.m_lap_info.m_best_lap_obj.m_sector1TimeInMS \
                             if data_per_driver.m_lap_info.m_best_lap_obj else None,
                         "s2-time-ms" : data_per_driver.m_lap_info.m_best_lap_obj.m_sector2TimeInMS \

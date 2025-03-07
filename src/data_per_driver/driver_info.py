@@ -22,9 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from lib.f1_types import TelemetrySetting, SafetyCarType
-from typing import Optional
 from dataclasses import dataclass
+from typing import Optional
+
+from lib.f1_types import SafetyCarType, TelemetrySetting
 from src.png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------

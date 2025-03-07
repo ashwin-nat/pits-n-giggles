@@ -22,22 +22,16 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Optional, Generator, Tuple, List, Dict, Any
-from lib.f1_types import LapData, F1Utils, TelemetrySetting
-from src.data_per_driver import (
-    CarInfo,
-    DriverInfo,
-    LapInfo,
-    PacketCopies,
-    PerLapSnapshotEntry,
-    TyreInfo,
-    TyreSetHistoryEntry,
-    TyreSetInfo,
-    WarningPenaltyHistory
-)
+from typing import Any, Dict, Generator, List, Optional, Tuple
 
-from lib.collisions_analyzer import CollisionRecord, CollisionAnalyzer, CollisionAnalyzerMode
+from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
+                                     CollisionRecord)
+from lib.f1_types import F1Utils, LapData, TelemetrySetting
 from lib.tyre_wear_extrapolator import TyreWearPerLap
+from src.data_per_driver import (CarInfo, DriverInfo, LapInfo, PacketCopies,
+                                 PerLapSnapshotEntry, TyreInfo,
+                                 TyreSetHistoryEntry, TyreSetInfo,
+                                 WarningPenaltyHistory)
 from src.png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
@@ -214,7 +208,7 @@ class DataPerDriver:
         """Get a JSON list with the tyre wear predictions for all remaining laps
 
         Args:
-            next_pit_window (Optional[int], optional): The next pit window lap number.
+            selected_pit_stop_lap (Optional[int], optional): The next pit window lap number.
 
         Returns:
             List[Dict[str, Any]]: List of JSON objects, each containing tyre wear predictions for a specific lap
@@ -227,13 +221,12 @@ class DataPerDriver:
                 "predictions": [item.toJSON() for item in self.m_tyre_info.m_tyre_wear_extrapolator.predicted_tyre_wear],
                 "selected-pit-stop-lap": selected_pit_stop_lap
             }
-        else:
-            return {
-                "status" : False,
-                "desc" : "Insufficient data for extrapolation",
-                "predictions": [],
-                "selected-pit-stop-lap": None
-            }
+        return {
+            "status" : False,
+            "desc" : "Insufficient data for extrapolation",
+            "predictions": [],
+            "selected-pit-stop-lap": None
+        }
 
     def getTyrePredictionsJSONList(self, next_pit_window: Optional[int] = None) -> List[Dict[str, Any]]:
         """Get a JSON list with the tyre wear predictions for next stop/mid point and end of race
@@ -692,8 +685,7 @@ class DataPerDriver:
                         sector_1_best_ms: Optional[int],
                         sector_2_best_ms: Optional[int],
                         sector_3_best_ms: Optional[int],
-                        for_best_lap: bool,
-                        session_type_str: str) -> List[Optional[int]]:
+                        for_best_lap: bool) -> List[Optional[int]]:
         # sourcery skip: merge-duplicate-blocks, remove-redundant-if
         """
         Determine sector status for either best or last lap.
@@ -703,7 +695,6 @@ class DataPerDriver:
             sector_2_best_ms: Best sector 2 time in milliseconds
             sector_3_best_ms: Best sector 3 time in milliseconds
             for_best_lap: Whether to analyze best lap or last lap
-            session_type_str: The session type string
 
         Returns:
             List of sector statuses (purple, green, yellow, invalid, or NA)
@@ -726,7 +717,7 @@ class DataPerDriver:
         # Validate driver's data. For best/last lap, all relevant fields must be present
         if for_best_lap and not self.m_lap_info.m_best_lap_obj:
             return default_val
-        elif not self.m_lap_info.m_last_lap_obj:
+        if not self.m_lap_info.m_last_lap_obj:
             return default_val
 
         # Select lap object
@@ -774,12 +765,11 @@ class DataPerDriver:
         if sector_time == sector_best_ms:
             # Session best
             return F1Utils.SECTOR_STATUS_PURPLE
-        elif is_personal_best_sector_lap:
+        if is_personal_best_sector_lap:
             # Personal best
             return F1Utils.SECTOR_STATUS_GREEN
-        elif not sector_valid_flag:
+        if not sector_valid_flag:
             # Invalidated
             return F1Utils.SECTOR_STATUS_INVALID
-        else:
-            # Meh sector
-            return F1Utils.SECTOR_STATUS_YELLOW
+        # Meh sector
+        return F1Utils.SECTOR_STATUS_YELLOW
