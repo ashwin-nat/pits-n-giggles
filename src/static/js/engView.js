@@ -53,18 +53,23 @@ class EngViewRaceTableRow {
         `;
     }
 
-    createPositionDrsCell(position, driverInfo) {
-        let drsClass = '';
-        if (driverInfo["drs-activated"]) {
-            drsClass = 'drs-active';
+    createPositionStatusCell(position, driverInfo) {
+        let statusClass = '';
+        let statusText = 'DRS';
+        if (driverInfo["is-pitting"]) {
+            statusText = 'PIT';
+            statusClass = 'driver-pitting';
+        }
+        else if (driverInfo["drs-activated"]) {
+            statusClass = 'drs-active';
         } else if (driverInfo["drs-available"]) {
-            drsClass = 'drs-available';
+            statusClass = 'drs-available';
         } else {
-            drsClass = 'drs-not-available';
+            statusClass = 'drs-not-available';
         }
         return `
             <div class="eng-view-tyre-row-1">${position}</div>
-            <div class="${drsClass}">${"DRS"}</div>
+            <div class="${statusClass}">${statusText}</div>
         `;
     }
 
@@ -99,7 +104,7 @@ class EngViewRaceTableRow {
     getDriverInfoCells() {
         const driverInfo = this.driver["driver-info"];
         return [
-            {value: this.createPositionDrsCell(driverInfo["position"], driverInfo), border: true},
+            {value: this.createPositionStatusCell(driverInfo["position"], driverInfo), border: true},
             {value: this.createMultiLineCellOnClick(driverInfo["name"], driverInfo["team"], () => {
                 console.log("Sending driver info request", driverInfo["name"], driverInfo["index"]);
                 socketio.emit('driver-info', { index: driverInfo["index"] });
