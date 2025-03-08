@@ -20,9 +20,19 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# -------------------------------------- IMPORTS -----------------------------------------------------------------------
+
 from enum import Enum, auto
-from typing import Any, Dict, List, Optional, Generator
+from typing import Any, Dict, List, Optional
+
 from lib.f1_types import LapData
+from src.png_logger import getLogger
+
+# -------------------------------------- GLOBALS -----------------------------------------------------------------------
+
+png_logger = getLogger()
+
+# -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
 class WarningPenaltyEntry:
     """
@@ -265,10 +275,10 @@ class WarningPenaltyHistory:
                     lap_progress_percent=lap_progress_percent
                     ))
 
-    def getEntries(self) -> Generator[WarningPenaltyEntry, None, None]:
+    def getEntries(self) -> List[WarningPenaltyEntry]:
         """Get the warnings penalties history entries
 
-        Yields:
-            Generator[WarningPenaltyEntry, None, None]: History entries
+        Returns:
+            List[WarningPenaltyEntry]: History entries
         """
-        yield from self.m_history
+        return self.m_history

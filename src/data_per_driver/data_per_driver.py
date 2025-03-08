@@ -45,58 +45,14 @@ class DataPerDriver:
     Class that models the data stored per race driver.
 
     Attributes:
-        m_position (Optional[int]): The current position of the driver in the race.
-        m_name (Optional[str]): The name of the driver.
-        m_team (Optional[str]): The team to which the driver belongs.
-        m_driver_number (Optional[int]): The race number of the driver
-        m_delta_to_car_in_front (Optional[str]): The time difference between the driver and the car in front.
-        m_delta_to_leader (Optional[str]): The time difference to the race leader.
-        m_ers_perc (Optional[float]): The percentage of ERS (Energy Recovery System) remaining.
-        m_lap_info (LapInfo): Details regarding best and last lap
-        m_best_lap_ms (Optional[int]): The best lap time achieved by the driver.
-        m_last_lap_ms (Optional[int]): The time taken for the last lap completed by the driver in ms.
-        m_tyre_wear (Optional[TyreWearPerLap]): The level of wear on the driver's tires.
-        m_is_player (Optional[bool]): Indicates whether the driver is the player.
-        m_current_lap (Optional[int]): The current lap the driver is on.
-        m_penalties (Optional[str]): Penalties accumulated by the driver.
-        m_tyre_age (Optional[int]): The age of the driver's current set of tires.
-        m_tyre_vis_compound (Optional[VisualTyreCompound]): The visual type of tyre compound being used by the driver.
-        m_tyre_act_compound (Optional[ActualTyreCompound]): The actual type of tyre compound being used by the driver.
-        m_tyre_surface_temp (Optional[float]): The surface temperature of the driver's tires.
-        m_tyre_inner_temp (Optional[float]): The inner temperature of the driver's tires.
-        m_is_pitting (Optional[bool]): Indicates whether the driver is currently in the pit lane.
-        m_drs_activated (Optional[bool]): Indicates whether the DRS (Drag Reduction System) is activated for the driver.
-        m_drs_allowed (Optional[bool]): Indicates whether DRS is allowed for the driver.
-        m_drs_distance (Optional[int]): The distance to the car in front for DRS activation.
-        m_num_pitstops (Optional[int]): The number of pitstops made by the driver.
-        m_dnf_status_code (Optional[str]): Status code indicating if the driver did not finish the race.
-        m_tyre_life_remaining_laps (Optional[int]): The remaining laps the tires are expected to last.
-        m_telemetry_restrictions (Optional[TelemetrySetting]):
-            Telemetry settings indicating the level of data available for the driver.
-        m_tyre_set_history_manager (TyreSetHistoryManager)
-        m_tyre_wear_extrapolator (TyreWearExtrapolator): Predicts the tyre wear for upcoming laps
-        m_curr_lap_sc_status (SafetyCarStatus): The current lap's safety car status
-        m_fuel_load_kg (float): The current fuel load (in kg)
-        m_fuel_laps_remaining (float): Number of laps remaining with current fuel load
-        m_fl_wing_damage (int): Left front wing damage
-        m_fr_wing_damage (int): Right front wing damage
-        m_rear_wing_damage (int): Rear wing damage
-        m_result_status (Optional[ResultStatus]): The result status of the driver.
-        m_top_speed_kmph (Optional[float]): The top speed achieved by the driver.
-        m_collision_records (List[CollisionRecord]): List of CollisionRecord objects for the driver.
-        m_fuel_rate_recommender (Optional[FuelRateRecommender]): Fuel usage rate recommender for the driver.
-        self.m_warning_penalty_history: WarningPenaltyHistory
-
-        m_packet_lap_data (Optional[LapData]): Copy of LapData packet for the driver.
-        m_packet_participant_data (Optional[ParticipantData]): Copy of ParticipantData packet for the driver.
-        m_packet_car_telemetry (Optional[CarTelemetryData]): Copy of CarTelemetryData packet for the driver.
-        m_packet_car_status (Optional[CarStatusData]): Copy of CarStatusData packet for the driver.
-        m_packet_car_damage (Optional[CarDamageData]): Copy of CarDamageData packet for the driver.
-        m_packet_session_history (Optional[PacketSessionHistoryData]):
-            Copy of PacketSessionHistoryData packet for the driver.
-        m_packet_tyre_sets (Optional[PacketTyreSetsData]): Copy of PacketTyreSetsData packet for the driver.
-        m_packet_final_classification (Optional[FinalClassificationData]):
-            Copy of FinalClassificationData packet for the driver.
+        m_driver_info (DriverInfo): Contains driver's position, name, and team.
+        m_lap_info (LapInfo): Details regarding the driver's lap times.
+        m_tyre_info (TyreInfo): Information about the driver's tire usage and condition.
+        m_car_info (CarInfo): Data related to the driver's car performance.
+        m_collision_records (List[CollisionRecord]): List of collision records involving the driver.
+        m_warning_penalty_history (WarningPenaltyHistory): History of warnings and penalties received by the driver.
+        m_packet_copies (PacketCopies): Copies of various data packets related to the driver's performance.
+        m_per_lap_snapshots (Dict[int, PerLapSnapshotEntry]): Snapshots of the driver's performance per lap
     """
 
     def __repr__(self) -> str:

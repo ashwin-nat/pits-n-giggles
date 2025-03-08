@@ -36,6 +36,24 @@ png_logger = getLogger()
 
 @dataclass
 class LapInfo:
+    """
+    Class that models lap-related information for a race driver.
+
+    Attributes:
+        m_best_lap_ms (Optional[int]): The best lap time in milliseconds.
+        m_best_lap_obj (Optional[LapHistoryData]): Object containing details about the best lap.
+        m_best_lap_tyre (Optional[VisualTyreCompound]): Visual representation of the tyre compound used during the best lap.
+        m_pb_s1_ms (Optional[int]): Personal best sector 1 time in milliseconds.
+        m_pb_s2_ms (Optional[int]): Personal best sector 2 time in milliseconds.
+        m_pb_s3_ms (Optional[int]): Personal best sector 3 time in milliseconds.
+        m_last_lap_ms (Optional[int]): The time taken for the last lap in milliseconds.
+        m_last_lap_obj (Optional[LapHistoryData]): Object containing details about the last lap.
+        m_current_lap (Optional[int]): The current lap number the driver is on.
+        m_delta_to_car_in_front (Optional[int]): Time difference to the car in front in milliseconds.
+        m_delta_to_leader (Optional[int]): Time difference to the race leader in milliseconds.
+        m_top_speed_kmph_this_lap (Optional[int]): The top speed achieved during the current lap in km/h.
+        m_is_pitting (Optional[bool]): Indicates whether the driver is currently in the pit lane.
+    """
     m_best_lap_ms: Optional[int] = None
     m_best_lap_obj: Optional[LapHistoryData] = None
     m_best_lap_tyre: Optional[VisualTyreCompound] = None

@@ -40,6 +40,21 @@ png_logger = getLogger()
 
 @dataclass
 class PacketCopies:
+    """
+    Class holding copies of various telemetry and status packets for a driver.
+
+    Attributes:
+        m_packet_lap_data (Optional[LapData]): Copy of the LapData packet.
+        m_packet_particpant_data (Optional[ParticipantData]): Copy of the ParticipantData packet.
+        m_packet_car_telemetry (Optional[CarTelemetryData]): Copy of the CarTelemetryData packet.
+        m_packet_car_status (Optional[CarStatusData]): Copy of the CarStatusData packet.
+        m_packet_car_damage (Optional[CarDamageData]): Copy of the CarDamageData packet.
+        m_packet_session_history (Optional[PacketSessionHistoryData]): Copy of the PacketSessionHistoryData packet.
+        m_packet_tyre_sets (Optional[PacketTyreSetsData]): Copy of the PacketTyreSetsData packet.
+        m_packet_final_classification (Optional[FinalClassificationData]): Copy of the FinalClassificationData packet.
+        m_packet_motion (Optional[CarMotionData]): Copy of the CarMotionData packet.
+        m_packet_car_setup (Optional[CarSetupData]): Copy of the CarSetupData packet.
+    """
     m_packet_lap_data: Optional[LapData] = None
     m_packet_particpant_data: Optional[ParticipantData] = None
     m_packet_car_telemetry: Optional[CarTelemetryData] = None

@@ -37,7 +37,19 @@ png_logger = getLogger()
 
 @dataclass
 class CarInfo:
+    """
+    Class that models the car-related data for a race driver.
 
+    Attributes:
+        m_ers_perc (Optional[float]): The percentage of ERS battery remaining.
+        m_drs_activated (Optional[bool]): Indicates whether the DRS is activated for the car.
+        m_drs_allowed (Optional[bool]): Indicates whether DRS is allowed for the car.
+        m_drs_distance (Optional[int]): The distance to the car in front for DRS activation.
+        m_fl_wing_damage (Optional[int]): Left front wing damage.
+        m_fr_wing_damage (Optional[int]): Right front wing damage.
+        m_rear_wing_damage (Optional[int]): Rear wing damage.
+        m_fuel_rate_recommender (FuelRateRecommender): Fuel usage rate recommender for the car.
+    """
     def __init__(self, total_laps: int) -> None:
         self.m_ers_perc: Optional[float] = None
         self.m_drs_activated: Optional[bool] = None

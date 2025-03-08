@@ -293,7 +293,20 @@ class TyreSetHistoryManager:
 
 @dataclass
 class TyreInfo:
+    """
+    Class that models the tire information for a race driver.
 
+    Attributes:
+        tyre_age (Optional[int]): The age of the driver's current set of tires.
+        tyre_vis_compound (Optional[VisualTyreCompound]): The visual type of tire compound being used.
+        tyre_act_compound (Optional[ActualTyreCompound]): The actual type of tire compound being used.
+        tyre_wear (Optional[TyreWearPerLap]): The level of wear on the driver's tires per lap.
+        tyre_surface_temp (Optional[float]): The surface temperature of the driver's tires.
+        tyre_inner_temp (Optional[float]): The inner temperature of the driver's tires.
+        tyre_life_remaining_laps (Optional[int]): The number of laps the tires are expected to last.
+        m_tyre_set_history_manager (TyreSetHistoryManager): Manages the history of tire sets used.
+        m_tyre_wear_extrapolator (TyreWearExtrapolator): Predicts the tire wear for upcoming laps.
+    """
     # Custom constructor to accept only total_laps
     def __init__(self, total_laps: int) -> None:
         # Explicitly set all fields to None

@@ -36,6 +36,20 @@ png_logger = getLogger()
 
 @dataclass
 class DriverInfo:
+    """
+    Class that models the information stored per race driver.
+
+    Attributes:
+        name (Optional[str]): The name of the driver.
+        position (Optional[int]): The current position of the driver in the race.
+        team (Optional[str]): The team to which the driver belongs.
+        is_player (Optional[bool]): Indicates whether the driver is the player.
+        telemetry_restrictions (Optional[TelemetrySetting]): Telemetry settings indicating the level of data available for the driver.
+        driver_number (Optional[int]): The race number of the driver.
+        m_num_pitstops (Optional[int]): The number of pitstops made by the driver.
+        m_dnf_status_code (Optional[str]): Status code indicating if the driver did not finish the race.
+        m_curr_lap_sc_status (Optional[SafetyCarType]): The current lap's safety car status.
+    """
     name: Optional[str] = None
     position: Optional[int] = None
     team: Optional[str] = None
