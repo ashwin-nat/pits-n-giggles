@@ -299,11 +299,14 @@ class DataPerDriver:
 
         if not self.m_packet_copies.m_packet_session_history:
             return None
+
         per_lap_tyre_info = self._getPerLapTyreInfoJSON()
         lap_history_data = []
         for index, entry in enumerate(self.m_packet_copies.m_packet_session_history.m_lapHistoryData):
             # Get tyre set history at start of lap (i.e.) end of previous lap
             lap_number = index # Use index since it is lap_number - 1
+            top_speed_kmph = self.m_per_lap_snapshots[lap_number].m_top_speed_kmph \
+                if lap_number in self.m_per_lap_snapshots else None
             # Find the tyre set at the specified lap
             tyre_set_info = next((obj for obj in per_lap_tyre_info if obj.get("lap-number") == lap_number), None)
             lap_history_data.append({
@@ -323,6 +326,7 @@ class DataPerDriver:
                     entry.m_sector3TimeInMS),
                 "lap-valid-bit-flags": entry.m_lapValidBitFlags,
                 "tyre-set-info" : tyre_set_info,
+                "top-speed-kmph" : top_speed_kmph,
             })
         return {
             "best-lap-time-lap-num": self.m_packet_copies.m_packet_session_history.m_bestLapTimeLapNum,

@@ -857,7 +857,7 @@ class DriversListRsp:
         seconds = ms / 1000
         return f"{sign}{seconds:.3f}"
 
-class LapTimeInfo():
+class LapTimeInfo:
     """Lap time info per lap. Contains Lap info breakdown and tyre set used
 
     Attributes:
@@ -869,11 +869,13 @@ class LapTimeInfo():
         m_sector3TimeInMS (int): Sector 3 time in milliseconds.
         m_sector3TimeMinutes (int): Sector 3 whole minute part.
         m_lapValidBitFlags (int): Bit flags representing lap and sector validity.
+        m_top_speed_kmph (int): Top speed this lap
         m_tyre_set_info (TyreSetInfo): The tyre set used.
     """
     def __init__(self,
                  lap_history_data: LapHistoryData,
                  tyre_set_info: TyreSetInfo,
+                 top_speed_kmph: int,
                  lap_number: int) -> None:
         """
         Initializes LapTimeInfo with an existing LapHistoryData object, tyre set info and lap number.
@@ -885,14 +887,15 @@ class LapTimeInfo():
         """
 
         # Initialize the base class attributes by copying from the existing LapHistoryData instance
-        self.m_lapTimeInMS = lap_history_data.m_lapTimeInMS
-        self.m_sector1TimeInMS = lap_history_data.m_sector1TimeInMS
-        self.m_sector1TimeMinutes = lap_history_data.m_sector1TimeMinutes
-        self.m_sector2TimeInMS = lap_history_data.m_sector2TimeInMS
-        self.m_sector2TimeMinutes = lap_history_data.m_sector2TimeMinutes
-        self.m_sector3TimeInMS = lap_history_data.m_sector3TimeInMS
-        self.m_sector3TimeMinutes = lap_history_data.m_sector3TimeMinutes
-        self.m_lapValidBitFlags = lap_history_data.m_lapValidBitFlags
+        self.m_lapTimeInMS          = lap_history_data.m_lapTimeInMS
+        self.m_sector1TimeInMS      = lap_history_data.m_sector1TimeInMS
+        self.m_sector1TimeMinutes   = lap_history_data.m_sector1TimeMinutes
+        self.m_sector2TimeInMS      = lap_history_data.m_sector2TimeInMS
+        self.m_sector2TimeMinutes   = lap_history_data.m_sector2TimeMinutes
+        self.m_sector3TimeInMS      = lap_history_data.m_sector3TimeInMS
+        self.m_sector3TimeMinutes   = lap_history_data.m_sector3TimeMinutes
+        self.m_lapValidBitFlags     = lap_history_data.m_lapValidBitFlags
+        self.m_top_speed_kmph       = top_speed_kmph
 
         # Initialize the additional attributes
         self.m_tyre_set_info = tyre_set_info
@@ -929,7 +932,8 @@ class LapTimeInfo():
             "sector-3-time-str": F1Utils.getLapTimeStrSplit(self.m_sector3TimeMinutes, self.m_sector3TimeInMS),
             "lap-valid-bit-flags": self.m_lapValidBitFlags,
             "tyre-set-info" : self.m_tyre_set_info.toJSON() if self.m_tyre_set_info else None,
-            "lap-number": self.m_lap_number
+            "top-speed-kmph" : self.m_top_speed_kmph,
+            "lap-number": self.m_lap_number,
         }
 
 class LapTimeHistory:
@@ -984,9 +988,12 @@ class LapTimeHistory:
 
         for index, lap_info in enumerate(driver_data.m_packet_copies.m_packet_session_history.m_lapHistoryData):
             lap_number = index + 1
+            top_speed_kmph = driver_data.m_per_lap_snapshots[lap_number].m_top_speed_kmph \
+                if lap_number in driver_data.m_per_lap_snapshots else None
             self.m_lap_time_history_data.append(LapTimeInfo(
                 lap_history_data=lap_info,
                 tyre_set_info=driver_data.getTyreSetInfoAtLap(lap_num=lap_number),
+                top_speed_kmph=top_speed_kmph,
                 lap_number=lap_number))
 
     def toJSON(self) -> Dict[str, Any]:
