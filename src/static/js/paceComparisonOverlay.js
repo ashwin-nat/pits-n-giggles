@@ -66,11 +66,13 @@ class PaceComparison {
     }
 
     #clearPrevData() {
+        this.prevDriver.textContent = '---';
         this.prevDelta.textContent = '---';
         this.prevSectors.forEach(el => el.textContent = '---');
     }
 
     #clearNextData() {
+        this.nextDriver.textContent = '---';
         this.nextDelta.textContent = '---';
         this.nextSectors.forEach(el => el.textContent = '---');
     }

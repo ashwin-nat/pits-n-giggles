@@ -474,7 +474,7 @@ class DriverData:
         """
 
         obj_to_be_updated = self._getObjectByIndex(packet.vehicleIdx)
-        obj_to_be_updated.m_lap_info.m_best_lap_ms = packet.lapTime
+        obj_to_be_updated.m_lap_info.m_best_lap_ms = int(packet.lapTime * 1000) # Convert to int ms, since everything is in int ms
         obj_to_be_updated.m_lap_info.m_best_lap_tyre = obj_to_be_updated.m_tyre_info.tyre_vis_compound
         self.m_fastest_index = packet.vehicleIdx
 

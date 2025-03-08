@@ -596,9 +596,12 @@ class DriversListRsp:
                     "dnf-status" : _getValueOrDefaultValue(data_per_driver.m_driver_info.m_dnf_status_code),
                     "index" : _getValueOrDefaultValue(data_per_driver.m_index),
                     "telemetry-setting" : data_per_driver.m_driver_info.telemetry_restrictions, # Already NULL checked
+                    "is-pitting" : _getValueOrDefaultValue(data_per_driver.m_lap_info.m_is_pitting, default_value=False),
                     "drs": self.__getDRSValue(data_per_driver.m_car_info.m_drs_activated, data_per_driver.m_car_info.m_drs_allowed,
                                         data_per_driver.m_car_info.m_drs_distance),
-                    "is-pitting" : _getValueOrDefaultValue(data_per_driver.m_lap_info.m_is_pitting, default_value=False),
+                    "drs-activated" : _getValueOrDefaultValue(data_per_driver.m_car_info.m_drs_activated, default_value=False),
+                    "drs-allowed" : _getValueOrDefaultValue(data_per_driver.m_car_info.m_drs_allowed, default_value=False),
+                    "drs-distance" : _getValueOrDefaultValue(data_per_driver.m_car_info.m_drs_distance, default_value=0),
                 },
                 "delta-info" : {
                     "delta": data_per_driver.m_lap_info.m_delta_to_car_in_front,
