@@ -32,7 +32,7 @@ from readerwriterlock import rwlock
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
 from lib.custom_marker_tracker import CustomMarkerEntry, CustomMarkersHistory
-from lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils,
+from lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils, LapData,
                           PacketCarDamageData, PacketCarSetupData,
                           PacketCarStatusData, PacketCarTelemetryData,
                           PacketEventData, PacketFinalClassificationData,
@@ -445,6 +445,8 @@ class DriverData:
 
             # Now, update the current lap number and other shit
             obj_to_be_updated.m_lap_info.m_current_lap =  lap_data.m_currentLapNum
+            obj_to_be_updated.m_lap_info.m_is_pitting = lap_data.m_pitStatus in \
+                [LapData.PitStatus.PITTING, LapData.PitStatus.IN_PIT_AREA]
             obj_to_be_updated.m_driver_info.m_num_pitstops = lap_data.m_numPitStops
             obj_to_be_updated.m_driver_info.m_dnf_status_code = result_str_map.get(lap_data.m_resultStatus, "")
             # If the player is retired, update the bool variable

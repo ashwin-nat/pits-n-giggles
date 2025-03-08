@@ -48,3 +48,4 @@ class LapInfo:
     m_delta_to_car_in_front: Optional[int] = None
     m_delta_to_leader: Optional[int] = None
     m_top_speed_kmph_this_lap: Optional[int] = None
+    m_is_pitting: Optional[bool] = None
