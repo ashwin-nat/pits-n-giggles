@@ -32,6 +32,42 @@ class EngViewRaceTableRow {
         `;
     }
 
+    createLapInfoCell(row1, row2, sectorStatus) {
+        const redSector     = -1;
+        const greenSector   = 1;
+        const purpleSector  = 2;
+
+        let sectorClass = '';
+        if (sectorStatus === greenSector) {
+            sectorClass = 'green-time';
+        } else if (sectorStatus === purpleSector) {
+            sectorClass = 'purple-time';
+        } else if (sectorStatus === redSector) {
+            sectorClass = 'red-time';
+        }
+
+        // Apply 'eng-view-tyre-row-1' and conditionally add sectorClass to row1
+        return `
+            <div class="eng-view-tyre-row-1 ${sectorClass}">${row1}</div>
+            <div class="eng-view-tyre-row-2">${row2}</div>
+        `;
+    }
+
+    createPositionDrsCell(position, driverInfo) {
+        let drsClass = '';
+        if (driverInfo["drs-activated"]) {
+            drsClass = 'drs-active';
+        } else if (driverInfo["drs-available"]) {
+            drsClass = 'drs-available';
+        } else {
+            drsClass = 'drs-not-available';
+        }
+        return `
+            <div class="eng-view-tyre-row-1">${position}</div>
+            <div class="${drsClass}">${"DRS"}</div>
+        `;
+    }
+
     createMultiLineCellOnClick(row1Content, row2Content, onClick) {
         const container = document.createElement("div");
 
@@ -63,7 +99,7 @@ class EngViewRaceTableRow {
     getDriverInfoCells() {
         const driverInfo = this.driver["driver-info"];
         return [
-            {value: driverInfo["position"], border: true},
+            {value: this.createPositionDrsCell(driverInfo["position"], driverInfo), border: true},
             {value: this.createMultiLineCellOnClick(driverInfo["name"], driverInfo["team"], () => {
                 console.log("Sending driver info request", driverInfo["name"], driverInfo["index"]);
                 socketio.emit('driver-info', { index: driverInfo["index"] });
@@ -103,7 +139,7 @@ class EngViewRaceTableRow {
         const isPlayer = this.driver["driver-info"]["is-player"];
 
         // in spectator mode, there is no need for delta
-        if (this.isSpectating) {
+        if (this.isSpectating || isPlayer) {
             return [
                 // Last Lap
                 { value: formatLapTime(lastLapInfo["lap-time-ms"]) },
@@ -118,56 +154,49 @@ class EngViewRaceTableRow {
             ];
         }
 
+        const yellowSector = 0;
         return [
             // Last Lap
             {
-                value: this.createMultiLineCell(formatLapTime(lastLapInfo["lap-time-ms"]),
-                    ((isPlayer) ? ('---') :
-                    (formatDelta(lastLapInfo["lap-time-ms-player"] - lastLapInfo["lap-time-ms"])))),
+                value: this.createLapInfoCell(formatLapTime(lastLapInfo["lap-time-ms"]),
+                    formatDelta(lastLapInfo["lap-time-ms-player"] - lastLapInfo["lap-time-ms"]), yellowSector),
                 border: false
             },
             {
-                value: this.createMultiLineCell(formatSectorTime(lastLapInfo["s1-time-ms"]),
-                    ((isPlayer) ? ('---') :
-                    (formatDelta(lastLapInfo["s1-time-ms-player"] - lastLapInfo["s1-time-ms"])))),
+                value: this.createLapInfoCell(formatSectorTime(lastLapInfo["s1-time-ms"]),
+                    formatDelta(lastLapInfo["s1-time-ms-player"] - lastLapInfo["s1-time-ms"]), lastLapInfo["sector-status"][0]),
                 border: false
             },
             {
-                value: this.createMultiLineCell(formatSectorTime(lastLapInfo["s2-time-ms"]),
-                    ((isPlayer) ? ('---') :
-                    (formatDelta(lastLapInfo["s2-time-ms-player"] - lastLapInfo["s2-time-ms"])))),
+                value: this.createLapInfoCell(formatSectorTime(lastLapInfo["s2-time-ms"]),
+                    formatDelta(lastLapInfo["s2-time-ms-player"] - lastLapInfo["s2-time-ms"]), lastLapInfo["sector-status"][1]),
                 border: false
             },
             {
-                value: this.createMultiLineCell(formatSectorTime(lastLapInfo["s3-time-ms"]),
-                    ((isPlayer) ? ('---') :
-                    (formatDelta(lastLapInfo["s3-time-ms-player"] - lastLapInfo["s3-time-ms"])))),
+                value: this.createLapInfoCell(formatSectorTime(lastLapInfo["s3-time-ms"]),
+                    formatDelta(lastLapInfo["s3-time-ms-player"] - lastLapInfo["s3-time-ms"]), lastLapInfo["sector-status"][2]),
                 border: true
             },
 
             // Best Lap
             {
-                value: this.createMultiLineCell(formatLapTime(bestLapInfo["lap-time-ms"]),
-                    ((isPlayer) ? ('---') :
-                    (formatDelta(bestLapInfo["lap-time-ms-player"] - bestLapInfo["lap-time-ms"])))),
+                value: this.createLapInfoCell(formatLapTime(bestLapInfo["lap-time-ms"]),
+                    formatDelta(bestLapInfo["lap-time-ms-player"] - bestLapInfo["lap-time-ms"]), yellowSector),
                 border: false
             },
             {
-                value: this.createMultiLineCell(formatSectorTime(bestLapInfo["s1-time-ms"]),
-                    ((isPlayer) ? ('---') :
-                    (formatDelta(bestLapInfo["s1-time-ms-player"] - bestLapInfo["s1-time-ms"])))),
+                value: this.createLapInfoCell(formatSectorTime(bestLapInfo["s1-time-ms"]),
+                    formatDelta(bestLapInfo["s1-time-ms-player"] - bestLapInfo["s1-time-ms"]), bestLapInfo["sector-status"][0]),
                 border: false
             },
             {
-                value: this.createMultiLineCell(formatSectorTime(bestLapInfo["s2-time-ms"]),
-                    ((isPlayer) ? ('---') :
-                    (formatDelta(bestLapInfo["s2-time-ms-player"] - bestLapInfo["s2-time-ms"])))),
+                value: this.createLapInfoCell(formatSectorTime(bestLapInfo["s2-time-ms"]),
+                    formatDelta(bestLapInfo["s2-time-ms-player"] - bestLapInfo["s2-time-ms"]), bestLapInfo["sector-status"][1]),
                 border: false
             },
             {
-                value: this.createMultiLineCell(formatSectorTime(bestLapInfo["s3-time-ms"]),
-                    ((isPlayer) ? ('---') :
-                    (formatDelta(bestLapInfo["s3-time-ms-player"] - bestLapInfo["s3-time-ms"])))),
+                value: this.createLapInfoCell(formatSectorTime(bestLapInfo["s3-time-ms"]),
+                    formatDelta(bestLapInfo["s3-time-ms-player"] - bestLapInfo["s3-time-ms"]), bestLapInfo["sector-status"][2]),
                 border: true
             },
         ];

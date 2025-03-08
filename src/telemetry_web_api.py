@@ -598,6 +598,9 @@ class DriversListRsp:
                     "telemetry-setting" : data_per_driver.m_telemetry_restrictions, # Already NULL checked
                     "drs": self.__getDRSValue(data_per_driver.m_drs_activated, data_per_driver.m_drs_allowed,
                                         data_per_driver.m_drs_distance),
+                    "drs-activated" : _getValueOrDefaultValue(data_per_driver.m_drs_activated, default_value=False),
+                    "drs-allowed" : _getValueOrDefaultValue(data_per_driver.m_drs_allowed, default_value=False),
+                    "drs-distance" : _getValueOrDefaultValue(data_per_driver.m_drs_distance, default_value=0),
                 },
                 "delta-info" : {
                     "delta": data_per_driver.m_delta_to_car_in_front,
