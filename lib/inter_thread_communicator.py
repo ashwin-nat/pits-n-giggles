@@ -41,7 +41,7 @@ class TyreDeltaMessage:
             """Check if the given tyre type ID is valid
 
             Args:
-                packet_type (int or TyreType): The packet type to be validated
+                tyre_type (int or TyreType): The tyre type to be validated
 
             Returns:
                 bool: True if valid, else False

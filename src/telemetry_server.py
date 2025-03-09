@@ -263,14 +263,13 @@ class TelemetryWebServer:
             _race_table_clients.discard(request.sid)
 
         @self.m_socketio.on('race-info')
-        # pylint: disable=unused-argument
-        def handeRaceInfo(dummy_arg: Any):
+        def handeRaceInfo(arg: Any):
             """SocketIO endpoint to handle race info request
             """
             response = TelWebAPI.OverallRaceStatsRsp().toJSON()
             # Re-attach the dummy payload if present
-            if "__dummy" in dummy_arg:
-                response["__dummy"] = dummy_arg
+            if "__dummy" in arg:
+                response["__dummy"] = arg
             emit("race-info-response", response, broadcast=False)
 
         @self.m_socketio.on('driver-info')

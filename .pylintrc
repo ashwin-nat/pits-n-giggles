@@ -114,10 +114,12 @@ disable=
     duplicate-code,
     too-many-arguments,
     too-many-locals,
+    too-many-branches,
     too-many-public-methods,
     no-name-in-module,
-    too-many-positional-arguments,
-    too-many-boolean-expressions
+    too-many-positional,
+    too-many-boolean-expressions,
+    redefined-variable-type
 
 [REPORTS]
 

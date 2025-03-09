@@ -25,7 +25,6 @@
 
 import configparser
 from pathlib import Path
-from enum import Enum
 from dataclasses import dataclass, fields
 from typing import List, Tuple
 
@@ -180,14 +179,14 @@ def load_config(config_file: str = "config.ini") -> Config:
             # Try to split the string at the colon
             try:
                 ip_addr, port_str = value.rstrip().split(":", 1)  # Split only at the first colon
-            except ValueError:
-                # If there's no colon or more than one, raise an exception
-                raise ValueError(f"Forwarding target {key} is invalid. Must be of format ip_addr:port or hostname:port")
+            except ValueError as exc:
+                raise ValueError(
+                    f"Forwarding target {key} is invalid. Must be of format ip_addr:port or hostname:port"
+                ) from exc
             try:
                 port = int(port_str)
-            except ValueError:
-                # Port must be a number in decimal
-                raise ValueError(f"Forwarding target {key} has invalid port.")
+            except ValueError as exc:
+                raise ValueError(f"Forwarding target {key} has invalid port.") from exc
 
             ret_list.append((ip_addr, port))
 
@@ -218,7 +217,7 @@ def load_config(config_file: str = "config.ini") -> Config:
 
     # Save the updated config back to the file
     if should_write:
-        with open(config_file, 'w') as f:
+        with open(config_file, 'w', encoding='utf-8') as f:
             config.write(f)
 
     # Create and return the Config object with values from INI file

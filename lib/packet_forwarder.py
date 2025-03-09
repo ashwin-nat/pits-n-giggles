@@ -47,7 +47,6 @@ class UDPForwarder:
         Forwards the given data to all the configured destinations.
 
         :param data: The data (bytes) to forward, which is the received UDP packet.
-        :return: None
         """
         for destination in self.m_forward_addresses:
             self._forwardPacket(data, destination)
@@ -58,12 +57,11 @@ class UDPForwarder:
 
         :param data: The data (bytes) to forward, which is the received UDP packet.
         :param destination: A tuple (IP, Port) specifying where the packet should be forwarded.
-        :return: None
         """
         forward_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
             forward_socket.sendto(data, destination)
-        except Exception as e:
+        except OSError as e:
             png_logger.error(f"Error forwarding packet to {destination}: {e}")
         finally:
             forward_socket.close()

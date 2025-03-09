@@ -1219,7 +1219,7 @@ class PacketSessionData:
         self.m_airTemperature: int
         self.m_totalLaps: int
         self.m_trackLength: int
-        self.m_sessionType: SessionType23 | SessionType24
+        self.m_sessionType: Union[SessionType23, SessionType24]
         self.m_trackId: TrackID
         self.m_formula: int
         self.m_sessionTimeLeft: int
