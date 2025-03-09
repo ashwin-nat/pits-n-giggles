@@ -23,7 +23,7 @@
 
 import struct
 from enum import Enum
-from typing import Dict, Any
+from typing import Dict, Any, Optional, Type, Union
 from .common import PacketHeader, SafetyCarEventType, SafetyCarType
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -1292,7 +1292,10 @@ class PacketEventData:
             return not self.__eq__(other)
 
     # Mappings between the event type and the type of object to parse into
-    event_type_map = {
+    event_type_map: Dict[EventPacketType, Optional[Type[Union[FastestLap, Retirement, TeamMateInPits, RaceWinner,
+                                                         Penalty, SpeedTrap, StartLights, DriveThroughPenaltyServed,
+                                                         StopGoPenaltyServed, Flashback, Buttons, Overtake,
+                                                         SafetyCarEvent, Collision]]]] = {
         EventPacketType.SESSION_STARTED: None,
         EventPacketType.SESSION_ENDED: None,
         EventPacketType.FASTEST_LAP: FastestLap,
@@ -1315,6 +1318,7 @@ class PacketEventData:
         EventPacketType.SAFETY_CAR: SafetyCarEvent,
         EventPacketType.COLLISION: Collision
     }
+
 
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
         """Construct the PacketEventData object from the incoming raw packet

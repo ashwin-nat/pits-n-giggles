@@ -24,7 +24,6 @@
 
 import argparse
 import socket
-import sys
 import threading
 import time
 import webbrowser
@@ -33,6 +32,7 @@ from typing import Set, Optional, List, Tuple
 
 from src.telemetry_handler import initTelemetryGlobals, F1TelemetryHandler, initDirectories, initForwarder
 from src.telemetry_server import initTelemetryWebServer
+from src.telemetry_data import initDriverData
 from src.png_logger import initLogger
 from src.config import load_config
 
@@ -123,7 +123,6 @@ def f1TelemetryServerTask(
         post_race_data_autosave: bool,
         udp_custom_action_code: Optional[int],
         udp_tyre_delta_action_code: Optional[int],
-        process_car_setup: bool,
         forwarding_targets: List[Tuple[str, int]]) -> None:
     """Entry point to start the F1 telemetry server.
 
@@ -133,11 +132,10 @@ def f1TelemetryServerTask(
         post_race_data_autosave (bool): Whether to autosave race data at the end of the race.
         udp_custom_action_code (Optional[int]): UDP custom action code.
         udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code.
-        process_car_setup (bool): Whether to process car setup data.
         forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
     """
     time.sleep(2)
-    initTelemetryGlobals(post_race_data_autosave, udp_custom_action_code, udp_tyre_delta_action_code, process_car_setup)
+    initTelemetryGlobals(post_race_data_autosave, udp_custom_action_code, udp_tyre_delta_action_code)
     initForwarder(forwarding_targets)
     telemetry_client = F1TelemetryHandler(port_number, forwarding_targets, replay_server)
     telemetry_client.run()
@@ -177,13 +175,19 @@ def main() -> None:
     png_logger.info(config)
 
     initDirectories()
+    initDriverData(
+        config.post_race_data_autosave,
+        config.udp_custom_action_code,
+        config.udp_tyre_delta_action_code,
+        config.process_car_setup
+    )
 
     # First init the telemetry client on a main thread
     client_thread = threading.Thread(target=f1TelemetryServerTask,
                                     args=(config.telemetry_port,
                                         args.replay_server, config.post_race_data_autosave,
                                         config.udp_custom_action_code, config.udp_tyre_delta_action_code,
-                                        config.process_car_setup, config.forwarding_targets))
+                                        config.forwarding_targets))
     client_thread.daemon = True
     client_thread.start()
 

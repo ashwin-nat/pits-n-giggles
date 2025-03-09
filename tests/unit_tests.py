@@ -71,6 +71,10 @@ from f1_types import \
     TestPacketTyreSetsData, \
     TestPacketMotionExData, \
     TestPacketTimeTrialData
+from tests_data_per_driver import \
+    TestTyreSetInfo, \
+    TestTyreSetHistoryEntry
+
 
 # Initialize colorama
 init(autoreset=True)

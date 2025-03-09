@@ -31,31 +31,6 @@ from typing import List, Tuple
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
-# Define your PacketCaptureMode Enum, if not already done
-
-class PacketCaptureMode(Enum):
-    """Enum class for packet capture mode
-    """
-    DISABLED = "disabled"
-    ENABLED = "enabled"
-    ENABLED_WITH_AUTOSAVE = "enabled-with-autosave"
-
-    def __repr__(self)->str:
-        """Return the string representation
-
-        Returns:
-            str: string representation
-        """
-        return self.__str__()
-
-    def __str__(self)->str:
-        """Return the string representation
-
-        Returns:
-            str: string representation
-        """
-        return self.value
-
 @dataclass
 class Config:
     """The data class containing the app config

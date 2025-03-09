@@ -17,7 +17,7 @@ class DriverModalPopulator {
             // Create table header
             const thead = document.createElement('thead');
             const headerRow = document.createElement('tr');
-            const headers = ['Lap', 'S1', 'S2', 'S3', 'Time', 'Tyre', 'Wear'];
+            const headers = ['Lap', 'S1', 'S2', 'S3', 'Time', 'Tyre', 'Wear', 'Top Speed'];
 
             headers.forEach(headerText => {
                 const th = document.createElement('th');
@@ -70,6 +70,11 @@ class DriverModalPopulator {
                 const wearCell = document.createElement('td');
                 wearCell.textContent = lap["tyre-set-info"]["tyre-wear"]["average"].toFixed(2) + '%';
                 row.appendChild(wearCell);
+
+                const topSpeedCell = document.createElement('td');
+                const topSpeed = lap["top-speed-kmph"]
+                topSpeedCell.textContent = (topSpeed != null) ? (topSpeed) : ('---');
+                row.appendChild(topSpeedCell);
 
                 tbody.appendChild(row);
             });
