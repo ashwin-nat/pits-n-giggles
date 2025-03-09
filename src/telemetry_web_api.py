@@ -101,7 +101,8 @@ class RaceInfoUpdate:
             ],
             "race-ended" : bool(self.m_session_info.m_packet_final_classification),
             "is-spectating" : _getValueOrDefaultValue(self.m_session_info.m_is_spectating, False),
-            "session-type"  : _getValueOrDefaultValue(str(self.m_session_info.m_session_type)),
+            "session-type"  : str(self.m_session_info.m_session_type) \
+                if self.m_session_info.m_session_type is not None else "---",
             "session-duration-so-far" : _getValueOrDefaultValue(
                 (self.m_session_info.m_packet_session.m_sessionDuration - self.m_session_info.m_packet_session.m_sessionTimeLeft) \
                                                           if self.m_session_info.m_packet_session else None, 0),
