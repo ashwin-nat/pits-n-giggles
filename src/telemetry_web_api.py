@@ -82,7 +82,7 @@ class RaceInfoUpdate:
             # First, global fields
             "live-data" : True,
             "f1-game-year" : _getValueOrDefaultValue(self.m_session_info.m_game_year, None),
-            "circuit": _getValueOrDefaultValue(str(self.m_session_info.m_track)),
+            "circuit": str(self.m_session_info.m_track) if self.m_session_info.m_track is not None else "---",
             "track-temperature": _getValueOrDefaultValue(self.m_session_info.m_track_temp, default_value=0),
             "air-temperature": _getValueOrDefaultValue(self.m_session_info.m_air_temp, default_value=0),
             "event-type": _getValueOrDefaultValue(str(self.m_session_info.m_session_type)),
