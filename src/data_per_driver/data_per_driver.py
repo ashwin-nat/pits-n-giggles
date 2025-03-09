@@ -210,8 +210,7 @@ class DataPerDriver:
         # This happens in the last lap
         if next_pit_window == self.m_tyre_info.m_tyre_wear_extrapolator.total_laps:
             # We are already in the final lap, so return the final prediction
-            predicted_tyre_wear = self.m_tyre_info.m_tyre_wear_extrapolator.getTyreWearPrediction()
-            if predicted_tyre_wear:
+            if predicted_tyre_wear := self.m_tyre_info.m_tyre_wear_extrapolator.getTyreWearPrediction():
                 predictions_list.append(predicted_tyre_wear.toJSON())
         else:
 
@@ -273,8 +272,7 @@ class DataPerDriver:
             })
         for lap_number in range_of_laps:
             if lap_number in self.m_per_lap_snapshots:
-                car_damage_data = self.m_per_lap_snapshots[lap_number].m_car_damage_packet
-                if car_damage_data:
+                if car_damage_data := self.m_per_lap_snapshots[lap_number].m_car_damage_packet:
                     tyre_wear_history.append({
                         'lap-number': lap_number,
                         'front-right-wear': car_damage_data.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
@@ -395,8 +393,7 @@ class DataPerDriver:
             ))
 
         # Add the tyre wear data into the extrapolator
-        tyre_set_id = self._getCurrentTyreSetKey()
-        if tyre_set_id:
+        if tyre_set_id := self._getCurrentTyreSetKey():
             self.m_tyre_info.m_tyre_wear_extrapolator.updateDataLap(TyreWearPerLap(
                 fl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
                 fr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
@@ -646,7 +643,7 @@ class DataPerDriver:
                         sector_2_best_ms: Optional[int],
                         sector_3_best_ms: Optional[int],
                         for_best_lap: bool) -> List[Optional[int]]:
-        # sourcery skip: merge-duplicate-blocks, remove-redundant-if
+
         """
         Determine sector status for either best or last lap.
 

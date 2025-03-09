@@ -72,7 +72,7 @@ class OvertakesHistory:
         self.m_overtakes_history: List[OvertakeRecord] = []
 
     def insert(self, overtake_record: OvertakeRecord) -> None:
-        """Insert the overtake into the history table. THREAD SAFE
+        """Insert the overtake into the history table
 
         Args:
             overtake_record (OvertakeRecord): The overtake object

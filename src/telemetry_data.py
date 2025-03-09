@@ -1222,8 +1222,9 @@ def getCustomMarkerEntryObj() -> Optional[CustomMarkerEntry]:
     """
 
     with _driver_data_lock.gen_rlock():
-        player_data = _driver_data.m_driver_data.get(_driver_data.m_player_index)
-        if player_data:
+        if player_data := _driver_data.m_driver_data.get(
+            _driver_data.m_player_index
+        ):
             # CSV string - <track>,<event-type>,<lap-num>,<sector-num>
             lap_num = player_data.m_lap_info.m_current_lap
             sector = player_data.m_packet_copies.m_packet_lap_data.m_sector
