@@ -29,6 +29,7 @@ import time
 import webbrowser
 import logging
 from typing import Set, Optional, List, Tuple
+from colorama import init, Fore, Style
 
 from src.telemetry_handler import initTelemetryGlobals, F1TelemetryHandler, initDirectories, initForwarder
 from src.telemetry_server import initTelemetryWebServer
@@ -142,10 +143,13 @@ def f1TelemetryServerTask(
 
 def printDoNotCloseWarning() -> None:
     """
+    Prints a warning message in red and bold.
+    Works across Windows CMD, PowerShell, and Linux/macOS terminals.
     """
-    RED = "\033[91m"
-    BOLD = "\033[1m"
-    RESET = "\033[0m"
+    init(autoreset=True)  # Ensures colors reset automatically and enables ANSI on Windows
+
+    RED = Fore.RED
+    BOLD = Style.BRIGHT
 
     border = "*" * 60  # Fixed-width border
     message = [
@@ -156,11 +160,10 @@ def printDoNotCloseWarning() -> None:
         "will stop working."
     ]
 
-    print(RED + BOLD + border + RESET)
+    print(RED + BOLD + border)
     for line in message:
-        print(RED + BOLD + f"* {line.center(56)} *" + RESET)
-    print(RED + BOLD + border + RESET)
-
+        print(RED + BOLD + f"* {line.center(56)} *")
+    print(RED + BOLD + border)
 
 def main() -> None:
     """Entry point for the application."""
