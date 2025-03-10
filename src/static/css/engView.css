@@ -31,6 +31,8 @@ body {
     flex: 0 0 85%;
     overflow-y: auto;
     padding-bottom: 6rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
 }
 
 .eng-view-table {
