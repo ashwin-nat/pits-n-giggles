@@ -302,7 +302,7 @@ class DataPerDriver:
         lap_history_data = []
         for index, entry in enumerate(self.m_packet_copies.m_packet_session_history.m_lapHistoryData):
             # Get tyre set history at start of lap (i.e.) end of previous lap
-            lap_number = index # Use index since it is lap_number - 1
+            lap_number = index + 1
             top_speed_kmph = self.m_per_lap_snapshots[lap_number].m_top_speed_kmph \
                 if lap_number in self.m_per_lap_snapshots else None
             # Find the tyre set at the specified lap
