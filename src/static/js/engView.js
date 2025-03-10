@@ -474,8 +474,9 @@ class EngViewWeatherTable {
     }
 
     update(weatherData) {
+        const sessionWeather = transformForecast(weatherData)[0];
         // Limit to first 5 entries
-        const limitedData = weatherData.slice(0, 5);
+        const limitedData = sessionWeather.slice(0, 5);
 
         // Create weather type row
         const typeRow = document.createElement('tr');

@@ -8,6 +8,29 @@ const WEATHER_ICONS = {
   'Thunderstorm': { icon: 'bi-cloud-lightning-fill', class: 'weather-thunder' }
 };
 
+function transformForecast(data) {
+  const sessions = [];
+  let currentSession = [];
+
+  for (const sample of data) {
+    // When time-offset is 0 and we already have data, start a new session
+    if (sample["time-offset"] === "0" && currentSession.length > 0) {
+      sessions.push([...currentSession]);
+      currentSession = [];
+    }
+
+    // Add the current sample to the current session
+    currentSession.push(sample);
+  }
+
+  // Don't forget to add the last session
+  if (currentSession.length > 0) {
+    sessions.push(currentSession);
+  }
+
+  return sessions;
+}
+
 function renderWeatherPrediction(prediction) {
   const predictionElement = document.createElement('div');
   predictionElement.classList.add('weather-prediction');
@@ -27,7 +50,8 @@ function renderWeatherPrediction(prediction) {
 function updateWeatherUI(weatherContainer, weatherData) {
 
   weatherContainer.innerHTML = '';
-  weatherData.forEach(prediction => {
+  const sessionWeather = transformForecast(weatherData)[0];
+  sessionWeather.forEach(prediction => {
     weatherContainer.appendChild(renderWeatherPrediction(prediction));
   });
 }
