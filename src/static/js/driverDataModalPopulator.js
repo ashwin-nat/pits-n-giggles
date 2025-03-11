@@ -55,7 +55,8 @@ class DriverModalPopulator {
                 row.appendChild(lapTimeCell);
 
                 const tyreCell = document.createElement('td');
-                const tyreSet = (lap["tyre-set-info"]) ? (lap["tyre-set-info"]["tyre-set"]) : (null);
+                const tyreSetInfo = lap["tyre-set-info"];
+                const tyreSet = (tyreSetInfo) ? (tyreSetInfo["tyre-set"]) : (null);
                 if (tyreSet) {
                     const compound = tyreSet["visual-tyre-compound"];
                     const svgElement = this.iconCache.getIcon(compound);
@@ -68,7 +69,7 @@ class DriverModalPopulator {
                 row.appendChild(tyreCell);
 
                 const wearCell = document.createElement('td');
-                wearCell.textContent = lap["tyre-set-info"]["tyre-wear"]["average"].toFixed(2) + '%';
+                wearCell.textContent = (tyreSetInfo) ? (tyreSetInfo["tyre-wear"]["average"]) : ('---');
                 row.appendChild(wearCell);
 
                 const topSpeedCell = document.createElement('td');
