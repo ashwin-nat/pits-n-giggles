@@ -69,7 +69,9 @@ class DriverModalPopulator {
                 row.appendChild(tyreCell);
 
                 const wearCell = document.createElement('td');
-                wearCell.textContent = (tyreSetInfo) ? (tyreSetInfo["tyre-wear"]["average"]) : ('---');
+                wearCell.textContent = tyreSetInfo
+                    ? tyreSetInfo["tyre-wear"]["average"].toFixed(2) + '%'
+                    : '---';
                 row.appendChild(wearCell);
 
                 const topSpeedCell = document.createElement('td');
