@@ -15,7 +15,7 @@ class TelemetryRenderer {
     this.airTempSpan = document.getElementById('air-temp');
     this.indexByPosition = null;
     this.iconCache = iconCache;
-    this.currUIMode = 'Splash';
+    this.uiMode = 'Splash';
   }
 
   renderTelemetryRow(data, gameYear, isLiveDataMode) {
@@ -53,10 +53,17 @@ class TelemetryRenderer {
   updateDashboard(incomingData) {
 
     const sessionType = incomingData["session-type"];
-    if ("Time Trial" === sessionType) {
-      this.updateTimeTrialData(incomingData);
-    } else if ("Unknown" !== sessionType && "---" !== sessionType) {
-      this.updateRaceTableData(incomingData);
+    switch (sessionType) {
+      case "Time Trial":
+        this.updateTimeTrialData(incomingData);
+        break;
+      case "Unknown":
+      case "---":
+        this.setUIMode('Splash');
+        break;
+      default:
+        this.updateRaceTableData(incomingData);
+        break;
     }
 
     // update the header section regardless of mode
