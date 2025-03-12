@@ -105,6 +105,9 @@ A sneak peek at the live telemetry stream overlay designed for use with OBS.
       run.sh
       ```
 
+## App Architecture
+![alt text](screenshots/arch-diagram.png)
+
 ## Launch Options in app.py
 - The following launch options are available in app.py:
 
