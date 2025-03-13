@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 app_name = 'pits_n_giggles'
-app_ver = '2.2.5'
+app_ver = '2.2.6'
 
 # Helper function to join paths correctly
 def get_data_paths_main_app():
@@ -12,7 +12,8 @@ def get_data_paths_main_app():
         (base_src_path / 'static' / 'favicon.ico', 'src/static/'),
         (base_src_path / 'static' , 'src/static/'),
         (base_src_path / 'templates' / 'index.html', 'src/templates/'),
-        (base_src_path / 'templates' / 'player-stream-overlay.html', 'src/templates/')
+        (base_src_path / 'templates' / 'player-stream-overlay.html', 'src/templates/'),
+        (base_src_path / 'templates' / 'eng-view.html', 'src/templates/')
     ]
 
     # Convert paths to strings for PyInstaller compatibility
