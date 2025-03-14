@@ -84,8 +84,8 @@ class WeatherWidget {
   // Method to update the weather UI with an array of weather predictions
   update(weatherData) {
     this.weatherContainer.innerHTML = ''; // Clear previous content
-
-    weatherData.forEach(prediction => {
+    const sessionWeather = transformForecast(weatherData)[0];
+    sessionWeather.forEach(prediction => {
       this.weatherContainer.appendChild(this.renderWeatherPrediction(prediction));
     });
   }
