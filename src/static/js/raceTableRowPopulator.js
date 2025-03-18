@@ -224,7 +224,7 @@ class RaceTableRowPopulator {
             pred => pred["lap-number"] >= midLapNumber
         );
 
-        return [midPointPrediction, lastPrediction];
+        return midPointPrediction ? [midPointPrediction, lastPrediction] : [lastPrediction];
     }
     addTyrePredictionInfo() {
         const currentLap = this.rowData["lap-info"]["current-lap"];
