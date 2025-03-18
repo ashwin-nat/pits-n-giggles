@@ -9,18 +9,29 @@ class ModalManager {
     this.setupEventListeners();
     console.log("Modal manager initialized with driverModal:", driverModal,
       "settingsModal:", settingsModal, "raceStatsModal:", raceStatsModal);
+    this.toggleFuelTargetShowSetting(g_pref_showFuelTarget);
   }
 
   setupEventListeners() {
     if (this.settingsModal) {
       document.getElementById('settings-btn').addEventListener('click', () => this.openSettingsModal());
       document.getElementById('saveSettings').addEventListener('click', () => this.saveSettings());
+      document.getElementById('fuelTargetEnabled').addEventListener('change', (event) => {
+        this.toggleFuelTargetShowSetting(event.target.checked);
+      });
     }
     if (this.raceStatsModal) {
       document.getElementById('race-stats-btn').addEventListener('click', () => {
         socketio.emit('race-info', { 'message': 'dummy' });
       });
     }
+  }
+
+  toggleFuelTargetShowSetting(enabled) {
+    const isDisabled = !enabled; // Disable when checkbox is unchecked
+    document.getElementById('fuelTargetAverage').disabled = isDisabled;
+    document.getElementById('fuelTargetNextLap').disabled = isDisabled;
+    console.log("Changed fuel target state to ", !isDisabled);
   }
 
   openDriverModal(data) {
@@ -105,7 +116,10 @@ class ModalManager {
     document.getElementById("deltaLeader").checked = !g_pref_relativeDelta;
     document.getElementById("deltaRelative").checked = g_pref_relativeDelta;
 
-    // Set the radio buttons for fuel format
+    // Set the switch for fuel target show
+    document.getElementById("fuelTargetEnabled").checked = g_pref_showFuelTarget;
+
+    // Set the radio buttons for fuel
     document.getElementById("fuelTargetAverage").checked = g_pref_fuelTargetAverageFormat;
     document.getElementById("fuelTargetNextLap").checked = !g_pref_fuelTargetAverageFormat;
 
@@ -169,6 +183,7 @@ class ModalManager {
     g_pref_bestLapAbsoluteFormat = (document.querySelector('input[name="bestLapTimeFormat"]:checked').value === "absolute") ? (true) : (false);
     g_pref_tyreWearAverageFormat = (document.querySelector('input[name="tyreWearFormat"]:checked').value === "average") ? (true) : (false);
     g_pref_relativeDelta = (document.querySelector('input[name="deltaFormat"]:checked').value === "relative") ? (true) : (false);
+    g_pref_showFuelTarget = (document.getElementById('fuelTargetEnabled').checked) ? (true) : (false);
     g_pref_fuelTargetAverageFormat = (document.querySelector('input[name="fuelFormat"]:checked').value === "average") ? (true) : (false);
     g_pref_numAdjacentCars = numAdjacentCars_temp;
     g_pref_numWeatherPredictionSamples = numWeatherForecastSamples_temp;

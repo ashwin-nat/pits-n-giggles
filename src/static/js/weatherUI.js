@@ -50,6 +50,9 @@ function renderWeatherPrediction(prediction) {
 function updateWeatherUI(weatherContainer, weatherData) {
 
   weatherContainer.innerHTML = '';
+  if (weatherData.length === 0) {
+    return;
+  }
   const sessionWeather = transformForecast(weatherData)[0];
   sessionWeather.forEach(prediction => {
     weatherContainer.appendChild(renderWeatherPrediction(prediction));
@@ -84,6 +87,9 @@ class WeatherWidget {
   // Method to update the weather UI with an array of weather predictions
   update(weatherData) {
     this.weatherContainer.innerHTML = ''; // Clear previous content
+    if (weatherData.length === 0) {
+      return;
+    }
     const sessionWeather = transformForecast(weatherData)[0];
     sessionWeather.forEach(prediction => {
       this.weatherContainer.appendChild(this.renderWeatherPrediction(prediction));

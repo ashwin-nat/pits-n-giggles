@@ -292,12 +292,12 @@ class RaceTableRowPopulator {
                 : "N/A";
 
             const surplusLaps = fuelInfo["surplus-laps"] !== null
-                ? formatFloatWithTwoDecimals(fuelInfo["surplus-laps"])
+                ? formatFloatWithTwoDecimalsSigned(fuelInfo["surplus-laps"])
                 : "N/A";
 
             this.createMultiLineCell([
                 `Last: ${lastLapFuelUsed}`,
-                `Curr: ${currFuelRate}`,
+                `Laps: ${surplusLaps}`,
                 `Tgt: ${(g_pref_fuelTargetAverageFormat) ? (targetFuelRateAverage) : (targetFuelRateNextLap)}`,
             ]);
         }

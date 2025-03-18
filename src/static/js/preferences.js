@@ -2,6 +2,7 @@
 let g_pref_is24HourFormat;
 let g_pref_relativeDelta;
 let g_pref_fuelTargetAverageFormat;
+let g_pref_showFuelTarget;
 let g_pref_lastLapAbsoluteFormat;
 let g_pref_bestLapAbsoluteFormat;
 let g_pref_tyreWearAverageFormat;
@@ -22,7 +23,16 @@ function loadPreferences() {
         missingPreference = true;
     }
 
-    if (localStorage.getItem('g_pref_fuelTargetAverageFormat') !== null) {
+    if (localStorage.getItem('showFuelTarget') !== null) {
+        g_pref_showFuelTarget = localStorage.getItem('showFuelTarget') === 'true';
+        console.log("Retrieved g_pref_showFuelTarget:", g_pref_showFuelTarget);
+    } else {
+        g_pref_showFuelTarget = false;
+        missingPreference = true;
+        console.log("Missing g_pref_showFuelTarget");
+    }
+
+    if (localStorage.getItem('fuelTargetAverageFormat') !== null) {
         g_pref_fuelTargetAverageFormat = localStorage.getItem('g_pref_fuelTargetAverageFormat') === 'true';
     } else {
         g_pref_fuelTargetAverageFormat = true;
@@ -105,6 +115,7 @@ function loadPreferences() {
         g_pref_bestLapAbsoluteFormat,
         g_pref_tyreWearAverageFormat,
         g_pref_relativeDelta,
+        g_pref_showFuelTarget,
         g_pref_fuelTargetAverageFormat,
         g_pref_numAdjacentCars,
         g_pref_numWeatherPredictionSamples,
@@ -117,6 +128,7 @@ function loadPreferences() {
 function savePreferences() {
     localStorage.setItem('is24HourFormat', g_pref_is24HourFormat);
     localStorage.setItem('relativeDelta', g_pref_relativeDelta);
+    localStorage.setItem('showFuelTarget', g_pref_showFuelTarget);
     localStorage.setItem('fuelTargetAverageFormat', g_pref_fuelTargetAverageFormat);
     localStorage.setItem('lastLapAbsoluteFormat', g_pref_lastLapAbsoluteFormat);
     localStorage.setItem('bestLapAbsoluteFormat', g_pref_bestLapAbsoluteFormat);
@@ -130,6 +142,7 @@ function savePreferences() {
     console.log("Saved Preferences:", {
         g_pref_myTeamName,
         g_pref_is24HourFormat,
+        g_pref_showFuelTarget,
         g_pref_fuelTargetAverageFormat,
         g_pref_lastLapAbsoluteFormat,
         g_pref_bestLapAbsoluteFormat,
@@ -156,9 +169,13 @@ function updateAllTooltips() {
                                                     (g_pref_tyreWearAverageFormat) ? ("Average") : ("yre with max wear")}`);
     updateTooltip("wear-prediction-th", `Click to toggle between average and max wear format. Current format is ${
                                                     (g_pref_tyreWearAverageFormat) ? ("Average") : ("Tyre with max wear")}`);
-    updateTooltip("fuel-info-th", `Click to toggle between target fuel format. Current format is ${
-                                                    (g_pref_fuelTargetAverageFormat) ? ("Average target fuel rate") :
-                                                        ("Fuel usage target for next lap")}`);
+    if (g_pref_showFuelTarget) {
+        updateTooltip("fuel-info-th", `Click to toggle between target fuel format. Current format is ${
+            (g_pref_fuelTargetAverageFormat) ? ("Average target fuel rate") :
+            ("Fuel usage target for next lap")}`);
+    } else {
+        updateTooltip("fuel-info-th", `Target fuel rate is disabled. Enable it via the settings`);
+    }
 }
 
 function updateTooltip(id, newText) {
