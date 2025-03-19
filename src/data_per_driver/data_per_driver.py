@@ -22,7 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
@@ -499,15 +499,15 @@ class DataPerDriver:
 
         return self.m_packet_copies.m_packet_tyre_sets.m_fittedIdx if self.m_packet_copies.m_packet_tyre_sets else None
 
-    def _getNextLapSnapshot(self) -> Generator[Tuple[int, PerLapSnapshotEntry], None, None]:
+    def _getNextLapSnapshot(self) -> List[Tuple[int, PerLapSnapshotEntry]]:
         """
         Returns a generator for each lap's snapshot in order.
 
-        Yields:
-            Tuple[int, PerLapHistoryEntry]: Tuple containing lap number and snapshot data for each lap.
+        Returns:
+            List[Tuple[int, PerLapSnapshotEntry]]: List of Tuple containing lap number and snapshot data for each lap.
         """
-        for lap_number in sorted(self.m_per_lap_snapshots.keys()):
-            yield lap_number, self.m_per_lap_snapshots[lap_number]
+        return [(lap_number, self.m_per_lap_snapshots[lap_number]) \
+                for lap_number in sorted(self.m_per_lap_snapshots.keys())]
 
     def getTyreSetInfoAtLap(self, lap_num: Optional[int] = None) -> Optional[TyreSetInfo]:
         """Get the tyre set info at the specified lap number

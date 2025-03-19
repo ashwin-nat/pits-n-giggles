@@ -22,7 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Dict, List, Any, Generator
+from typing import Dict, List, Any
 from threading import Lock
 from lib.f1_types import LapData
 
@@ -146,11 +146,12 @@ class CustomMarkersHistory:
         with self.m_lock:
             return [marker.toJSON() for marker in self.getMarkers()]
 
-    def getMarkers(self) -> Generator[CustomMarkerEntry, None, None]:
+    def getMarkers(self) -> List[CustomMarkerEntry]:
         """
-        Generate markers from the history table.
+        Get all the custom markers
 
-        Yields:
-        - Tuple[float, bytes]: A tuple containing timestamp (float) and data (bytes) for each packet.
+        Returns:
+        - List[CustomMarkerEntry]: List of all custom markers
         """
-        yield from self.m_custom_markers_history
+
+        return self.m_custom_markers_history

@@ -111,7 +111,7 @@ class TestCustomMarkersHistory(CustomMarkersUT):
 
     def test_get_markers_generator(self):
         self.history.insert(self.sample_marker)
-        markers = list(self.history.getMarkers())
+        markers = self.history.getMarkers()
         self.assertEqual(len(markers), 1)
         self.assertEqual(markers[0], self.sample_marker)
 

@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from typing import List, Tuple, Optional, Dict, Any, Generator
+from typing import List, Tuple, Optional, Dict, Any
 from sklearn.linear_model import LinearRegression
 import numpy as np
 
@@ -179,13 +179,13 @@ class TyreWearExtrapolator:
         return next((point for point in self.m_predicted_tyre_wear if point.lap_number == lap_number), None)
 
     @property
-    def predicted_tyre_wear(self) -> Generator[TyreWearPerLap, None, None]:
+    def predicted_tyre_wear(self) -> List[TyreWearPerLap]:
         """Generate predicted tyre wear objects
 
-        Yields:
-            TyreWearPerLap: The object representing the tyre wear per lap
+        Returns:
+            List[TyreWearPerLap]: The list of object representing the tyre wear per lap
         """
-        yield from self.m_predicted_tyre_wear
+        return self.m_predicted_tyre_wear
 
     @property
     def total_laps(self) -> int:

@@ -24,7 +24,7 @@
 
 import json
 from dataclasses import dataclass
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Dict, List, Optional
 
 from lib.f1_types import (ActualTyreCompound, PacketTyreSetsData,
                           VisualTyreCompound)
@@ -233,13 +233,13 @@ class TyreSetHistoryManager:
             png_logger.debug(f"Removed garbage tyre stint history record.\n"
                                 f"{json.dumps(garbage_obj.toJSON(include_tyre_wear_history=False), indent=4)}")
 
-    def getEntries(self) -> Generator[TyreSetHistoryEntry, None, None]:
+    def getEntries(self) -> List[TyreSetHistoryEntry]:
         """Get all entries in the tyre set history collection
 
-        Yields:
-            Generator[TyreSetHistoryEntry, None, None]: The next history entry
+        Returns:
+            List[TyreSetHistoryEntry]: The list of all history entries
         """
-        yield from self.m_history
+        return self.m_history
 
     def getEntry(self, index: int) -> Optional[TyreSetHistoryEntry]:
         """Get the entry in the tyre set history collection at the specified index
