@@ -95,6 +95,8 @@ def main():
     parser.add_argument('--no-nagle',  action='store_true', help="Disable Nagle's Algorithm in TCP mode")
     parser.add_argument('--udp-mode',  action='store_true',
                             help="Send telemetry over UDP considering timestamps as well")
+    parser.add_argument('--speed-multiplier', type=float, default=1.0, help="Speed multiplier for the replay speed "
+                                                                            "Applicable only for UDP mode.")
 
     args = parser.parse_args()
     client_socket = None
@@ -114,7 +116,7 @@ def main():
         dropped_packets = 0
         if args.udp_mode:
             total_packets = captured_packets.getNumPackets()
-            prev_timestamp = captured_packets.getFirstTimestamp()
+            prev_timestamp = None
 
             progress_bar = tqdm(
                 total=total_packets,
@@ -124,14 +126,18 @@ def main():
             )
             for timestamp, packet in captured_packets.getPackets():
                 progress_bar.update(1)
+                if prev_timestamp is not None:
+                    sleep_duration = timestamp - prev_timestamp
+                    if sleep_duration == 0:
+                        sleep_duration = 0.01667 # 16.67ms is time interval on 60 Hz telemetry rate.
+                    time.sleep(sleep_duration/args.speed_multiplier)
+
                 if args.packet_loss and should_drop(args.packet_loss):
                     dropped_packets += 1
                     continue
+
                 total_bytes += sendBytesUDP(packet, args.ip_addr, args.port)
-                sleep_duration = timestamp - prev_timestamp
                 prev_timestamp = timestamp
-                assert (sleep_duration > 0)
-                time.sleep(sleep_duration)
         else:
             # TCP mode
             total_packets = captured_packets.getNumPackets()

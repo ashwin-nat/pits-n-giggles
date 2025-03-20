@@ -367,8 +367,7 @@ class F1PacketCapture:
         Yields:
         - Tuple[float, bytes]: A tuple containing timestamp (float) and data (bytes) for each packet.
         """
-        for entry in self.m_packet_history:
-            yield entry.m_timestamp, entry.m_data
+        yield from ((entry.m_timestamp, entry.m_data) for entry in self.m_packet_history)
 
     def getFirstTimestamp(self) -> float:
         """Returns the timestamp of the first packet in the capture
