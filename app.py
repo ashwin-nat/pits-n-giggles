@@ -23,19 +23,22 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import argparse
+import asyncio
+import logging
 import socket
 import threading
 import time
 import webbrowser
-import logging
-from typing import Set, Optional, List, Tuple
-from colorama import init, Fore, Style
+from typing import List, Optional, Set, Tuple
 
-from src.telemetry_handler import initTelemetryGlobals, F1TelemetryHandler, initDirectories, initForwarder
-from src.telemetry_server import initTelemetryWebServer
-from src.telemetry_data import initDriverData
-from src.png_logger import initLogger
+from colorama import Fore, Style, init
+
 from src.config import load_config
+from src.png_logger import initLogger
+from src.telemetry_data import initDriverData
+from src.telemetry_handler import (F1TelemetryHandler, initDirectories,
+                                   initForwarder, initTelemetryGlobals)
+from src.telemetry_server import initTelemetryWebServer
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -85,11 +88,12 @@ def openWebPage(http_port: int) -> None:
     time.sleep(1)
     webbrowser.open(f'http://localhost:{http_port}', new=2)
 
-def httpServerTask(
+def setupWebServerTask(
         http_port: int,
         client_update_interval_ms: int,
         disable_browser_autoload: bool,
-        stream_overlay_start_sample_data: bool) -> None:
+        stream_overlay_start_sample_data: bool,
+        tasks: List[asyncio.Task]) -> None:
     """Entry point to start the HTTP server.
 
     Args:
@@ -97,6 +101,7 @@ def httpServerTask(
         client_update_interval_ms (int): Client poll interval in milliseconds.
         disable_browser_autoload (bool): Whether to disable browser autoload.
         stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
+        tasks (List[asyncio.Task]): List of tasks to be executed
     """
     # Create a thread to open the webpage
     if not disable_browser_autoload:
@@ -115,7 +120,8 @@ def httpServerTask(
         port=http_port,
         client_update_interval_ms=client_update_interval_ms,
         debug_mode=False,
-        stream_overlay_start_sample_data=stream_overlay_start_sample_data
+        stream_overlay_start_sample_data=stream_overlay_start_sample_data,
+        tasks=tasks
     )
 
 def f1TelemetryServerTask(
@@ -135,7 +141,7 @@ def f1TelemetryServerTask(
         udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code.
         forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
     """
-    time.sleep(2)
+    time.sleep(2) # TODO: revisit this sleep
     initTelemetryGlobals(post_race_data_autosave, udp_custom_action_code, udp_tyre_delta_action_code)
     initForwarder(forwarding_targets)
     telemetry_client = F1TelemetryHandler(port_number, forwarding_targets, replay_server)
@@ -165,7 +171,7 @@ def printDoNotCloseWarning() -> None:
         print(RED + BOLD + f"* {line.center(56)} *")
     print(RED + BOLD + border)
 
-def main() -> None:
+async def main() -> None:
     """Entry point for the application."""
 
     global png_logger
@@ -185,6 +191,8 @@ def main() -> None:
         config.process_car_setup
     )
 
+    tasks: List[asyncio.Task] = []
+
     # First init the telemetry client on a main thread
     client_thread = threading.Thread(target=f1TelemetryServerTask,
                                     args=(config.telemetry_port,
@@ -196,10 +204,14 @@ def main() -> None:
 
     # Run the HTTP server on the main thread. Flask does not like running on separate threads
     printDoNotCloseWarning()
-    httpServerTask(config.server_port, config.refresh_interval,
-                   config.disable_browser_autoload, config.stream_overlay_start_sample_data)
+
+    setupWebServerTask(config.server_port, config.refresh_interval,
+                   config.disable_browser_autoload, config.stream_overlay_start_sample_data, tasks)
+
+    # Run all tasks concurrently
+    await asyncio.gather(*tasks)
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())
