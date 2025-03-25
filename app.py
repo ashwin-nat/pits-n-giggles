@@ -25,10 +25,21 @@
 import argparse
 import asyncio
 import logging
+import asyncio
+import logging
 import socket
 import threading
 import time
 import webbrowser
+from typing import List, Optional, Set, Tuple
+
+from colorama import Fore, Style, init
+
+from src.config import load_config
+from src.png_logger import initLogger
+from src.telemetry_data import initDriverData
+from src.telemetry_handler import (F1TelemetryHandler, initDirectories,
+                                   initForwarder, initTelemetryGlobals)
 from typing import List, Optional, Set, Tuple
 
 from colorama import Fore, Style, init
@@ -90,9 +101,12 @@ async def openWebPage(http_port: int) -> None:
     png_logger.debug("Webpage opened. Task completed")
 
 def setupWebServerTask(
+def setupWebServerTask(
         http_port: int,
         client_update_interval_ms: int,
         disable_browser_autoload: bool,
+        stream_overlay_start_sample_data: bool,
+        tasks: List[asyncio.Task]) -> None:
         stream_overlay_start_sample_data: bool,
         tasks: List[asyncio.Task]) -> None:
     """Entry point to start the HTTP server.
@@ -102,6 +116,7 @@ def setupWebServerTask(
         client_update_interval_ms (int): Client poll interval in milliseconds.
         disable_browser_autoload (bool): Whether to disable browser autoload.
         stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
+        tasks (List[asyncio.Task]): List of tasks to be executed
         tasks (List[asyncio.Task]): List of tasks to be executed
     """
     # Create a thread to open the webpage
@@ -120,6 +135,8 @@ def setupWebServerTask(
         port=http_port,
         client_update_interval_ms=client_update_interval_ms,
         debug_mode=False,
+        stream_overlay_start_sample_data=stream_overlay_start_sample_data,
+        tasks=tasks
         stream_overlay_start_sample_data=stream_overlay_start_sample_data,
         tasks=tasks
     )
@@ -142,6 +159,7 @@ def setupGameTelemetryTask(
         udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code.
         forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
     """
+    time.sleep(2) # TODO: revisit this sleep
     time.sleep(2) # TODO: revisit this sleep
     initTelemetryGlobals(post_race_data_autosave, udp_custom_action_code, udp_tyre_delta_action_code)
     initForwarder(forwarding_targets)
@@ -174,6 +192,7 @@ def printDoNotCloseWarning() -> None:
     print(RED + BOLD + border)
 
 async def main() -> None:
+async def main() -> None:
     """Entry point for the application."""
 
     global png_logger
@@ -195,10 +214,14 @@ async def main() -> None:
 
     tasks: List[asyncio.Task] = []
 
-    setupGameTelemetryTask(  config.telemetry_port,
-                            args.replay_server, config.post_race_data_autosave,
-                            config.udp_custom_action_code, config.udp_tyre_delta_action_code,
-                            config.forwarding_targets, tasks)
+    # First init the telemetry client on a main thread
+    client_thread = threading.Thread(target=f1TelemetryServerTask,
+                                    args=(config.telemetry_port,
+                                        args.replay_server, config.post_race_data_autosave,
+                                        config.udp_custom_action_code, config.udp_tyre_delta_action_code,
+                                        config.forwarding_targets))
+    client_thread.daemon = True
+    client_thread.start()
 
     # Run the HTTP server on the main thread. Flask does not like running on separate threads
     printDoNotCloseWarning()
@@ -207,10 +230,11 @@ async def main() -> None:
                    config.disable_browser_autoload, config.stream_overlay_start_sample_data, tasks)
 
     # Run all tasks concurrently
-    png_logger.debug(f"Registered {len(tasks)} Tasks: {[task.get_name() for task in tasks]}")
     await asyncio.gather(*tasks)
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
 if __name__ == '__main__':
+    asyncio.run(main())
+
     asyncio.run(main())
