@@ -24,7 +24,6 @@ SOFTWARE.
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import asyncio
 import json
 import os
 import threading
@@ -38,7 +37,7 @@ from lib.f1_types import (F1PacketType, PacketEventData,
                           PacketFinalClassificationData, PacketSessionData,
                           SessionType23, SessionType24)
 from lib.inter_thread_communicator import InterThreadCommunicator
-from lib.packet_forwarder import UDPForwarder, AsyncUDPForwarder
+from lib.packet_forwarder import UDPForwarder
 from src.png_logger import getLogger
 from src.telemetry_manager import F1TelemetryManager
 
@@ -98,7 +97,7 @@ def initDirectories() -> None:
     for directory in g_directory_mapping.values():
         ensureDirectoryExists(directory)
 
-def initForwarder(forwarding_targets: List[Tuple[str, int]], tasks: List[asyncio.Task]) -> None:
+def initForwarder(forwarding_targets: List[Tuple[str, int]]) -> None:
     """Init the forwarding thread, if targets are defined
 
     Args:
@@ -130,19 +129,6 @@ def udpForwardingThread(forwarding_targets: List[Tuple[str, int]]) -> None:
         assert packet is not None
 
         udp_forwarder.forward(packet)
-
-async def udpForwardingTask(forwarding_targets: List[Tuple[str, int]]) -> None:
-    """Task that forwards all UDP packets to specified targets
-
-    Args:
-        forwarding_targets (List[Tuple[str, int]]): List of tuple of target
-            Each tuple is a pair of IP addr/hostname (str), port number (int)
-    """
-
-    udp_forwarder = AsyncUDPForwarder(forwarding_targets)
-    png_logger.info(f"Initialised forwarder. Targets={forwarding_targets}")
-    while True:
-        packet = await InterThreadCommunicator().receiveWaitIndefiniteAsync("packet-forward")
 
 # -------------------------------------- UTILITIES ---------------------------------------------------------------------
 
