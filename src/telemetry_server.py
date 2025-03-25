@@ -123,26 +123,7 @@ class TelemetryWebServer:
                 str: JSON response indicating success or failure.
             """
 
-            # Access parameters using request.args
-            index = request.args.get('index')
-
-            # Validate the input
-            error_response = self.validateIntGetRequestParam(index, 'index')
-            if error_response:
-                return error_response, HTTPStatus.BAD_REQUEST
-
-            # Check if the given index is valid
-            index_int = int(index)
-            if not TelData.isDriverIndexValid(index_int):
-                error_response = {
-                    'error' : 'Invalid parameter value',
-                    'message' : 'Invalid index',
-                    'index' : index
-                }
-                return jsonify(error_response), HTTPStatus.BAD_REQUEST
-
-            # Process parameters and generate response
-            return TelWebAPI.DriverInfoRsp(index_int).toJSON(), HTTPStatus.OK
+            return self._processDriverInfoRequest(request.args.get('index'))
 
         # Render the HTML page
         @self.m_app.route('/')
@@ -279,19 +260,8 @@ class TelemetryWebServer:
             Args:
                 data (Dict[str, Any]): The JSON response. Will contain the key "error" in case of failure
             """
-            response = None
-            index = data.get("index")
-            error_response = self.validateIntGetRequestParam(index, "index")
-            if error_response:
-                emit("driver-info-response", error_response, broadcast=False)
-                response = error_response
-            elif not TelData.isDriverIndexValid(index):
-                response = {
-                    'error' : 'Invalid parameter value',
-                    'message' : 'Invalid index'
-                }
-            else:
-                response = TelWebAPI.DriverInfoRsp(index).toJSON()
+
+            response, _ = self._processDriverInfoRequest(data.get("index"))
 
             # Re-attach the dummy payload if present
             dummy_payload = data.get("__dummy")
@@ -309,7 +279,7 @@ class TelemetryWebServer:
             elif data['type'] == 'race-table':
                 _race_table_clients.add(request.sid)
 
-    def validateIntGetRequestParam(self, param: Any, param_name: str) -> Optional[Dict[str, Any]]:
+    def _validateIntGetRequestParam(self, param: Any, param_name: str) -> Optional[Dict[str, Any]]:
         """
         Validate integer get request parameter.
 
@@ -336,6 +306,35 @@ class TelemetryWebServer:
             }
 
         return None
+
+    def _processDriverInfoRequest(self, index_arg: Any) -> Tuple[Dict[str, Any], HTTPStatus]:
+        """
+        Process driver info request.
+
+        Args:
+            index_arg (Any): The index parameter, expected to be a number.
+
+        Returns:
+            Tuple[Dict[str, Any], HTTPStatus]: The response and HTTP status code.
+        """
+
+        # Validate the input
+        error_response = self._validateIntGetRequestParam(index_arg, 'index')
+        if error_response:
+            return error_response, HTTPStatus.BAD_REQUEST
+
+        # Check if the given index is valid
+        index_int = int(index_arg)
+        if not TelData.isDriverIndexValid(index_int):
+            error_response = {
+                'error' : 'Invalid parameter value',
+                'message' : 'Invalid index',
+                'index' : index_arg
+            }
+            return jsonify(error_response), HTTPStatus.BAD_REQUEST
+
+        # Process parameters and generate response
+        return TelWebAPI.DriverInfoRsp(index_int).toJSON(), HTTPStatus.OK
 
     def run(self):
         """
