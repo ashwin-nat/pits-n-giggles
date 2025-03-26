@@ -25,7 +25,7 @@
 import asyncio
 import socket
 from types import MappingProxyType
-from typing import List, Tuple, Dict
+from typing import List, Tuple
 
 from src.png_logger import getLogger
 
