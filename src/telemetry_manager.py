@@ -22,7 +22,7 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-from typing import Callable, Dict, Optional, Awaitable
+from typing import Callable, Dict
 
 from lib.f1_types import (F1PacketType, InvalidPacketLengthError,
                           PacketCarDamageData, PacketCarSetupData,

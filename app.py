@@ -214,14 +214,10 @@ async def main() -> None:
 
     tasks: List[asyncio.Task] = []
 
-    # First init the telemetry client on a main thread
-    client_thread = threading.Thread(target=f1TelemetryServerTask,
-                                    args=(config.telemetry_port,
-                                        args.replay_server, config.post_race_data_autosave,
-                                        config.udp_custom_action_code, config.udp_tyre_delta_action_code,
-                                        config.forwarding_targets))
-    client_thread.daemon = True
-    client_thread.start()
+    setupGameTelemetryTask(  config.telemetry_port,
+                            args.replay_server, config.post_race_data_autosave,
+                            config.udp_custom_action_code, config.udp_tyre_delta_action_code,
+                            config.forwarding_targets, tasks)
 
     # Run the HTTP server on the main thread. Flask does not like running on separate threads
     printDoNotCloseWarning()
@@ -230,6 +226,7 @@ async def main() -> None:
                    config.disable_browser_autoload, config.stream_overlay_start_sample_data, tasks)
 
     # Run all tasks concurrently
+    png_logger.debug(f"Registered {len(tasks)} Tasks: {[task.get_name() for task in tasks]}")
     await asyncio.gather(*tasks)
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
