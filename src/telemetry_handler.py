@@ -215,18 +215,22 @@ class F1TelemetryHandler:
             - port (int): The port number for telemetry.
             - replay_server: bool: If true, init in replay mode (TCP)
         """
-        self.m_manager = F1TelemetryManager(port, replay_server)
+        self.m_manager = F1TelemetryManager(
+            port_number=port,
+            async_mode=True,
+            replay_server=replay_server
+        )
         self.m_should_forward = bool(forwarding_targets)
+        self.registerCallbacks()
 
-    def run(self):
+    async def run(self):
         """
         Run the telemetry handler.
 
         Returns:
         None
         """
-        self.registerCallbacks()
-        self.m_manager.run()
+        await self.m_manager.runAsync()
 
     def registerCallbacks(self) -> None:
         """

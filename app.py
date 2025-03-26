@@ -79,14 +79,15 @@ def getLocalIpAddresses() -> Set[str]:
         png_logger.warning("Error occurred: %s. Using default IP addresses.", e)
     return ip_addresses
 
-def openWebPage(http_port: int) -> None:
+async def openWebPage(http_port: int) -> None:
     """Open the webpage on a new browser tab.
 
     Args:
         http_port (int): Port number of the HTTP server.
     """
-    time.sleep(1)
+    await asyncio.sleep(1)
     webbrowser.open(f'http://localhost:{http_port}', new=2)
+    png_logger.debug("Webpage opened. Task completed")
 
 def setupWebServerTask(
         http_port: int,
@@ -105,8 +106,7 @@ def setupWebServerTask(
     """
     # Create a thread to open the webpage
     if not disable_browser_autoload:
-        webpage_open_thread = threading.Thread(target=openWebPage, args=(http_port,))
-        webpage_open_thread.start()
+        tasks.append(asyncio.create_task(openWebPage(http_port), name="Web page opener Task"))
 
     log_str = "Starting F1 telemetry server. Open one of the below addresses in your browser\n"
     ip_addresses = getLocalIpAddresses()
@@ -124,13 +124,14 @@ def setupWebServerTask(
         tasks=tasks
     )
 
-def f1TelemetryServerTask(
+def setupGameTelemetryTask(
         port_number: int,
         replay_server: bool,
         post_race_data_autosave: bool,
         udp_custom_action_code: Optional[int],
         udp_tyre_delta_action_code: Optional[int],
-        forwarding_targets: List[Tuple[str, int]]) -> None:
+        forwarding_targets: List[Tuple[str, int]],
+        tasks: List[asyncio.Task]) -> None:
     """Entry point to start the F1 telemetry server.
 
     Args:
@@ -145,7 +146,8 @@ def f1TelemetryServerTask(
     initTelemetryGlobals(post_race_data_autosave, udp_custom_action_code, udp_tyre_delta_action_code)
     initForwarder(forwarding_targets)
     telemetry_client = F1TelemetryHandler(port_number, forwarding_targets, replay_server)
-    telemetry_client.run()
+    tasks.append(asyncio.create_task(telemetry_client.run(), name="Game Telemetry Listener Task"))
+
 
 def printDoNotCloseWarning() -> None:
     """
@@ -193,14 +195,10 @@ async def main() -> None:
 
     tasks: List[asyncio.Task] = []
 
-    # First init the telemetry client on a main thread
-    client_thread = threading.Thread(target=f1TelemetryServerTask,
-                                    args=(config.telemetry_port,
-                                        args.replay_server, config.post_race_data_autosave,
-                                        config.udp_custom_action_code, config.udp_tyre_delta_action_code,
-                                        config.forwarding_targets))
-    client_thread.daemon = True
-    client_thread.start()
+    setupGameTelemetryTask(  config.telemetry_port,
+                            args.replay_server, config.post_race_data_autosave,
+                            config.udp_custom_action_code, config.udp_tyre_delta_action_code,
+                            config.forwarding_targets, tasks)
 
     # Run the HTTP server on the main thread. Flask does not like running on separate threads
     printDoNotCloseWarning()
@@ -209,6 +207,7 @@ async def main() -> None:
                    config.disable_browser_autoload, config.stream_overlay_start_sample_data, tasks)
 
     # Run all tasks concurrently
+    png_logger.debug(f"Registered {len(tasks)} Tasks: {[task.get_name() for task in tasks]}")
     await asyncio.gather(*tasks)
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
