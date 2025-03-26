@@ -20,6 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import asyncio
 import socket
 import struct
 
@@ -130,3 +131,136 @@ class TCPListener():
                 self.m_connection.close()
                 self.m_connection = None
                 continue  # Continue listening for the next connection
+
+class AsyncUDPListener():
+    """This class represents an async-friendly UDP client.
+    Attributes:
+    - m_buffer_size - The buffer size being used
+    - m_port - The UDP port that this client is bound to
+    - m_bind_ip - The IP address this UDP client is bound to
+    - m_socket - The socket object handle associated with this client
+    Methods:
+    - getNextMessage()
+    """
+    def __init__(self, port: int, bind_ip: str, buffer_size: int = 16384) -> None:
+        """Construct a UDPListener object
+        Args:
+            port (int): The port number to initialise this client to
+            bind_ip (str): The IP address this client must be bound to (default is '127.0.0.1')
+            buffer_size (int, optional): The buffer size to be specified. Defaults to 16 kb.
+        """
+        self.m_buffer_size = buffer_size
+        self.m_port = port
+        self.m_bind_ip = bind_ip
+        self.m_socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+        self.m_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.m_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        self.m_socket.bind((self.m_bind_ip, self.m_port))
+        self._loop = asyncio.get_event_loop()
+
+    async def getNextMessage(self) -> bytes:
+        """Asynchronously waits until the next message arrives, then returns it.
+        Returns:
+            bytes: The raw bytes that were received
+        """
+        # Use run_in_executor to make the blocking socket receive call async-friendly
+        # This will block the executor thread but allow other tasks to run
+        message, _ = await self._loop.run_in_executor(
+            None,
+            lambda: self.m_socket.recvfrom(self.m_buffer_size)
+        )
+        return message
+
+class AsyncTCPListener():
+    """This class represents a TCP server.
+    Attributes:
+    - m_buffer_size - The buffer size being used
+    - m_port - The TCP port that this server is bound to
+    - m_bind_ip - The IP address this TCP server is bound to
+    - m_socket - The socket object handle associated with this server
+    - m_connection - The current connection object
+    Methods:
+    - getNextMessage()
+    """
+    def __init__(self, port: int, bind_ip: str, buffer_size: int = 16384) -> None:
+        """Construct a TCPListener object
+        Args:
+            port (int): The port number to initialise this server to
+            bind_ip (str): The IP address this server must be bound to (default is '127.0.0.1')
+            buffer_size (int, optional): The buffer size to be specified. Defaults to 16 kb.
+        """
+        self.m_buffer_size = buffer_size
+        self.m_port = port
+        self.m_bind_ip = bind_ip
+        self.m_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.m_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.m_socket.bind((self.m_bind_ip, self.m_port))
+        self.m_socket.listen(1)  # Set the maximum number of queued connections
+        self.m_connection = None
+        self._loop = asyncio.get_event_loop()
+
+    async def getNextMessage(self) -> bytes:
+        """
+        Asynchronously waits until the next message arrives on the current connection
+        or establishes a new connection, then returns it.
+        Returns:
+        bytes: The raw bytes that were received.
+        """
+        while True:
+            # Use run_in_executor to make blocking operations async-friendly
+            async def _get_next_message():
+                # Establish connection if needed
+                if self.m_connection is None:
+                    # Accept connection
+                    self.m_connection, _ = await self._loop.run_in_executor(
+                        None,
+                        lambda: self.m_socket.accept()
+                    )
+
+                try:
+                    # Read message length (4-byte integer)
+                    message_length_bytes = await self._loop.run_in_executor(
+                        None,
+                        lambda: self.m_connection.recv(4)
+                    )
+
+                    if not message_length_bytes:
+                        # Connection closed by client
+                        self.m_connection.close()
+                        self.m_connection = None
+                        # This will implicitly continue the loop
+                        return None
+
+                    # Unpack message length
+                    message_length = struct.unpack('!I', message_length_bytes)[0]
+
+                    # Read actual message
+                    message = await self._loop.run_in_executor(
+                        None,
+                        lambda: self.m_connection.recv(message_length)
+                    )
+
+                    if not message:
+                        # Connection closed by client
+                        self.m_connection.close()
+                        self.m_connection = None
+                        # This will implicitly continue the loop
+                        return None
+
+                    return message
+
+                except socket.error:
+                    # Handle socket errors
+                    if self.m_connection:
+                        self.m_connection.close()
+                    self.m_connection = None
+                    return None
+
+            # Wait for a message, allowing other tasks to run if blocking
+            result = await _get_next_message()
+
+            # If result is not None, return it
+            if result is not None:
+                return result
+
+            # If result is None, the loop will continue automatically
