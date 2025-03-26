@@ -27,8 +27,6 @@ import copy
 import json
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from readerwriterlock import rwlock
-
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
 from lib.custom_marker_tracker import CustomMarkerEntry, CustomMarkersHistory
@@ -891,7 +889,6 @@ class DriverData:
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
 _driver_data: Optional[DriverData] = None
-_driver_data_lock: rwlock.RWLockFair = rwlock.RWLockFair()
 png_logger = getLogger()
 _custom_markers_history = CustomMarkersHistory()
 
@@ -902,8 +899,7 @@ def processSessionStarted() -> None:
     Reset the data structures when SESSION_STARTED has been received
     """
     clearDataStructures("session started")
-    with _driver_data_lock.gen_wlock():
-        _driver_data.setRaceOngoing()
+    _driver_data.setRaceOngoing()
 
 def processSessionUpdate(packet: PacketSessionData) -> bool:
     """Update the data strctures with session data
@@ -913,10 +909,8 @@ def processSessionUpdate(packet: PacketSessionData) -> bool:
         bool - True if all data needs to be reset
     """
 
-    with _driver_data_lock.gen_wlock():
-        _driver_data.processSessionUpdate(packet)
-        should_clear = _driver_data.m_session_info.processSessionUpdate(packet)
-    if should_clear:
+    _driver_data.processSessionUpdate(packet)
+    if should_clear := _driver_data.m_session_info.processSessionUpdate(packet):
         clearDataStructures("session update")
     return should_clear
 
@@ -927,11 +921,9 @@ def processLapDataUpdate(packet: PacketLapData) -> None:
         packet (PacketLapData): Lap Data packet
     """
 
-    with _driver_data_lock.gen_wlock():
-        if _driver_data.m_session_info.m_total_laps is not None:
-            _driver_data.processLapDataUpdate(packet)
-            _driver_data.setRaceOngoing()
-
+    if _driver_data.m_session_info.m_total_laps is not None:
+        _driver_data.processLapDataUpdate(packet)
+        _driver_data.setRaceOngoing()
 
 def processFastestLapUpdate(packet: PacketEventData) -> None:
     """Update the data structures with the fastest lap
@@ -940,8 +932,7 @@ def processFastestLapUpdate(packet: PacketEventData) -> None:
         packet (PacketEventData): Fastest lap Event packet
     """
 
-    with _driver_data_lock.gen_wlock():
-        _driver_data.processFastestLapUpdate(packet.mEventDetails)
+    _driver_data.processFastestLapUpdate(packet.mEventDetails)
 
 def processRetirementEvent(packet: PacketEventData) -> None:
     """Update the data structures with the driver retirement udpate
@@ -950,8 +941,7 @@ def processRetirementEvent(packet: PacketEventData) -> None:
         packet (PacketEventData): Retirement event packet
     """
 
-    with _driver_data_lock.gen_wlock():
-        _driver_data.processRetirement(packet.mEventDetails)
+    _driver_data.processRetirement(packet.mEventDetails)
 
 def processCollisionsEvent(packet: PacketEventData) -> None:
     """Update the data structures with collisions event udpate.
@@ -961,8 +951,7 @@ def processCollisionsEvent(packet: PacketEventData) -> None:
     """
 
     record: PacketEventData.Collision = packet.mEventDetails
-    with _driver_data_lock.gen_wlock():
-        _driver_data.processCollisionEvent(record)
+    _driver_data.processCollisionEvent(record)
 
 def processParticipantsUpdate(packet: PacketParticipantsData) -> None:
     """Update the data strucutre with participants information
@@ -971,8 +960,7 @@ def processParticipantsUpdate(packet: PacketParticipantsData) -> None:
         packet (PacketParticipantsData): The pariticpants info packet
     """
 
-    with _driver_data_lock.gen_wlock():
-        _driver_data.processParticipantsUpdate(packet)
+    _driver_data.processParticipantsUpdate(packet)
 
 def processCarTelemetryUpdate(packet: PacketCarTelemetryData) -> None:
     """Update the data structure with the car telemetry information
@@ -981,9 +969,8 @@ def processCarTelemetryUpdate(packet: PacketCarTelemetryData) -> None:
         packet (PacketCarTelemetryData): The car telemetry update packet
     """
 
-    with _driver_data_lock.gen_wlock():
-        _driver_data.processCarTelemetryUpdate(packet)
-        _driver_data.setRaceOngoing()
+    _driver_data.processCarTelemetryUpdate(packet)
+    _driver_data.setRaceOngoing()
 
 def processCarStatusUpdate(packet: PacketCarStatusData) -> None:
     """Update the data structures with car status information
@@ -992,9 +979,8 @@ def processCarStatusUpdate(packet: PacketCarStatusData) -> None:
         packet (PacketCarStatusData): The car status update packet
     """
 
-    with _driver_data_lock.gen_wlock():
-        _driver_data.processCarStatusUpdate(packet)
-        _driver_data.setRaceOngoing()
+    _driver_data.processCarStatusUpdate(packet)
+    _driver_data.setRaceOngoing()
 
 def processFinalClassificationUpdate(packet: PacketFinalClassificationData) -> Dict[str, Any]:
     """Update the data structures with the final classification information
@@ -1007,9 +993,8 @@ def processFinalClassificationUpdate(packet: PacketFinalClassificationData) -> D
         Dict[str, Any]: Driver data JSON
     """
 
-    with _driver_data_lock.gen_wlock():
-        final_json = _driver_data.processFinalClassificationUpdate(packet)
-        _driver_data.setRaceCompleted()
+    final_json = _driver_data.processFinalClassificationUpdate(packet)
+    _driver_data.setRaceCompleted()
     final_json['custom-markers'] = _custom_markers_history.getJSONList()
     return final_json
 
@@ -1020,9 +1005,8 @@ def processCarDamageUpdate(packet: PacketCarDamageData):
         packet (PacketCarDamageData): The car damage update packet
     """
 
-    with _driver_data_lock.gen_wlock():
-        _driver_data.processCarDamageUpdate(packet)
-        _driver_data.setRaceOngoing()
+    _driver_data.processCarDamageUpdate(packet)
+    _driver_data.setRaceOngoing()
 
 def processSessionHistoryUpdate(packet: PacketSessionHistoryData):
     """Update the data structures with session history information
@@ -1031,9 +1015,8 @@ def processSessionHistoryUpdate(packet: PacketSessionHistoryData):
         packet (PacketSessionHistoryData): The session history update packet
     """
 
-    with _driver_data_lock.gen_wlock():
-        _driver_data.processSessionHistoryUpdate(packet)
-        _driver_data.setRaceOngoing()
+    _driver_data.processSessionHistoryUpdate(packet)
+    _driver_data.setRaceOngoing()
 
 def processTyreSetsUpdate(packet: PacketTyreSetsData) -> None:
     """Update the data structures with tyre history information
@@ -1042,9 +1025,8 @@ def processTyreSetsUpdate(packet: PacketTyreSetsData) -> None:
         packet (PacketTyreSetsData): The tyre history update packet
     """
 
-    with _driver_data_lock.gen_wlock():
-        _driver_data.processTyreSetsUpdate(packet)
-        _driver_data.setRaceOngoing()
+    _driver_data.processTyreSetsUpdate(packet)
+    _driver_data.setRaceOngoing()
 
 def processMotionUpdate(packet: PacketMotionData) -> None:
     """Update the data structures with motion information
@@ -1053,8 +1035,7 @@ def processMotionUpdate(packet: PacketMotionData) -> None:
         packet (PacketMotionData): The motion update packet
     """
 
-    with _driver_data_lock.gen_wlock():
-        _driver_data.processMotionUpdate(packet)
+    _driver_data.processMotionUpdate(packet)
 
 def processCarSetupsUpdate(packet: PacketCarSetupData) -> None:
     """Update the data structures with car setup information
@@ -1063,12 +1044,9 @@ def processCarSetupsUpdate(packet: PacketCarSetupData) -> None:
         packet (PacketCarSetupData): The car setup update packet
     """
 
-    # no need to lock for this since this field should never change
     if not _driver_data.m_process_car_setups:
         return
-
-    with _driver_data_lock.gen_wlock():
-        _driver_data.processCarSetupsUpdate(packet)
+    _driver_data.processCarSetupsUpdate(packet)
 
 def processTimeTrialUpdate(packet: PacketTimeTrialData) -> None:
     """Update the data structures with time trial information
@@ -1077,8 +1055,7 @@ def processTimeTrialUpdate(packet: PacketTimeTrialData) -> None:
         packet (PacketTimeTrialData): The time trial update packet
     """
 
-    with _driver_data_lock.gen_wlock():
-        _driver_data.processTimeTrialUpdate(packet)
+    _driver_data.processTimeTrialUpdate(packet)
 
 def processCustomMarkerCreate() -> None:
     """Update the data structures with custom marker information
@@ -1111,8 +1088,7 @@ def processOvertakeEvent(packet: PacketEventData) -> None:
     """
     record: PacketEventData.Overtake = packet.mEventDetails
     if (overtake_obj := getOvertakeObj(record.overtakingVehicleIdx, record.beingOvertakenVehicleIdx)):
-        with _driver_data_lock.gen_wlock():
-            _driver_data.m_overtakes_history.insert(overtake_obj)
+        _driver_data.m_overtakes_history.insert(overtake_obj)
 
 # -------------------------------------- UTILTIES ----------------------------------------------------------------------
 
@@ -1123,8 +1099,7 @@ def getSessionInfo() -> SessionInfo:
     Returns:
         SessionInfo: A copy of the SessionInfo object
     """
-    with _driver_data_lock.gen_rlock():
-        return copy.deepcopy(_driver_data.m_session_info)
+    return copy.deepcopy(_driver_data.m_session_info)
 
 def getDriverInfoJsonByIndex(index: int) -> Optional[Dict[str, Any]]:
     """Get the driver info JSON for the given index
@@ -1136,16 +1111,14 @@ def getDriverInfoJsonByIndex(index: int) -> Optional[Dict[str, Any]]:
         Optional[Dict[str, Any]]: The driver info JSON
     """
 
-    with _driver_data_lock.gen_rlock():
-        return _driver_data.getDriverInfoJsonByIndex(index)
+    return _driver_data.getDriverInfoJsonByIndex(index)
 
 def getRaceInfo() -> Dict[str, Any]:
     """
     Returns the race information as a dictionary with string keys and any values.
     """
 
-    with _driver_data_lock.gen_rlock():
-        final_json = _driver_data.getRaceInfoJSON()
+    final_json = _driver_data.getRaceInfoJSON()
     if "records" not in final_json:
         final_json['records'] = {
             'fastest' : getFastestTimesJson(final_json),
@@ -1165,8 +1138,7 @@ def isDriverIndexValid(index: int) -> bool:
         bool: True if valid
     """
 
-    with _driver_data_lock.gen_rlock():
-        return index in _driver_data.m_driver_data
+    return index in _driver_data.m_driver_data
 
 def getEventInfoStr() -> Optional[str]:
     """Returns a string with the following format
@@ -1176,10 +1148,9 @@ def getEventInfoStr() -> Optional[str]:
         Optional[str]: The event type string (ends with an underscore), or None if no data is available
     """
 
-    with _driver_data_lock.gen_rlock():
-        if _driver_data.m_session_info.m_track and _driver_data.m_session_info.m_session_type:
-            return f"{str(_driver_data.m_session_info.m_session_type)}_{str(_driver_data.m_session_info.m_track)}".replace(' ', '_') + '_'
-        return None
+    if _driver_data.m_session_info.m_track and _driver_data.m_session_info.m_session_type:
+        return f"{str(_driver_data.m_session_info.m_session_type)}_{str(_driver_data.m_session_info.m_track)}".replace(' ', '_') + '_'
+    return None
 
 def getOvertakeObj(overtaking_car_index: int, being_overtaken_index: int) -> Optional[OvertakeRecord]:
     """Returns an overtake object containing overtake information
@@ -1195,26 +1166,25 @@ def getOvertakeObj(overtaking_car_index: int, being_overtaken_index: int) -> Opt
             - Current Lap number of car being overtaken
             - Name of driver of car being overtaken
     """
-    with _driver_data_lock.gen_rlock():
-        if not _driver_data.m_driver_data:
-            return None
-        overtaking_car_obj = _driver_data.m_driver_data.get(overtaking_car_index, None)
-        being_overtaken_car_obj = _driver_data.m_driver_data.get(being_overtaken_index, None)
-        if overtaking_car_obj is None or being_overtaken_car_obj is None:
-            return None
+    if not _driver_data.m_driver_data:
+        return None
+    overtaking_car_obj = _driver_data.m_driver_data.get(overtaking_car_index, None)
+    being_overtaken_car_obj = _driver_data.m_driver_data.get(being_overtaken_index, None)
+    if overtaking_car_obj is None or being_overtaken_car_obj is None:
+        return None
 
-        # Prepare data for CSV writing
-        if overtaking_car_obj.m_driver_info.name is None or \
-            overtaking_car_obj.m_lap_info.m_current_lap is None or \
-                being_overtaken_car_obj.m_driver_info.name is None or \
-                    being_overtaken_car_obj.m_lap_info.m_current_lap is None:
-            return None
-        return OvertakeRecord(
-            overtaking_driver_name=overtaking_car_obj.m_driver_info.name,
-            overtaking_driver_lap=overtaking_car_obj.m_lap_info.m_current_lap,
-            overtaken_driver_name=being_overtaken_car_obj.m_driver_info.name,
-            overtaken_driver_lap=being_overtaken_car_obj.m_lap_info.m_current_lap,
-        )
+    # Prepare data for CSV writing
+    if overtaking_car_obj.m_driver_info.name is None or \
+        overtaking_car_obj.m_lap_info.m_current_lap is None or \
+            being_overtaken_car_obj.m_driver_info.name is None or \
+                being_overtaken_car_obj.m_lap_info.m_current_lap is None:
+        return None
+    return OvertakeRecord(
+        overtaking_driver_name=overtaking_car_obj.m_driver_info.name,
+        overtaking_driver_lap=overtaking_car_obj.m_lap_info.m_current_lap,
+        overtaken_driver_name=being_overtaken_car_obj.m_driver_info.name,
+        overtaken_driver_lap=being_overtaken_car_obj.m_lap_info.m_current_lap,
+    )
 
 def getCustomMarkerEntryObj() -> Optional[CustomMarkerEntry]:
     """
@@ -1224,34 +1194,31 @@ def getCustomMarkerEntryObj() -> Optional[CustomMarkerEntry]:
         CustomMarkerEntry: The custom marker entry object for the player. None if any data points is not available
     """
 
-    with _driver_data_lock.gen_rlock():
-        if player_data := _driver_data.m_driver_data.get(
-            _driver_data.m_player_index
-        ):
-            # CSV string - <track>,<event-type>,<lap-num>,<sector-num>
-            lap_num = player_data.m_lap_info.m_current_lap
-            sector = player_data.m_packet_copies.m_packet_lap_data.m_sector
-            curr_lap_time = F1Utils.millisecondsToMinutesSecondsMilliseconds(
-                player_data.m_packet_copies.m_packet_lap_data.m_currentLapTimeInMS)
-            curr_lap_dist = player_data.m_packet_copies.m_packet_lap_data.m_lapDistance
+    if player_data := _driver_data.m_driver_data.get(_driver_data.m_player_index):
+        # CSV string - <track>,<event-type>,<lap-num>,<sector-num>
+        lap_num = player_data.m_lap_info.m_current_lap
+        sector = player_data.m_packet_copies.m_packet_lap_data.m_sector
+        curr_lap_time = F1Utils.millisecondsToMinutesSecondsMilliseconds(
+            player_data.m_packet_copies.m_packet_lap_data.m_currentLapTimeInMS)
+        curr_lap_dist = player_data.m_packet_copies.m_packet_lap_data.m_lapDistance
 
-            track = str(_driver_data.m_session_info.m_track)
-            event_type = str(_driver_data.m_session_info.m_session_type)
-            curr_lap_percent = (
-                f"{F1Utils.floatToStr(float(curr_lap_dist) / float(_driver_data.m_session_info.m_track_len) * 100.0)}%"
-                if curr_lap_dist is not None
-                else None
-            )
+        track = str(_driver_data.m_session_info.m_track)
+        event_type = str(_driver_data.m_session_info.m_session_type)
+        curr_lap_percent = (
+            f"{F1Utils.floatToStr(float(curr_lap_dist) / float(_driver_data.m_session_info.m_track_len) * 100.0)}%"
+            if curr_lap_dist is not None
+            else None
+        )
 
-        else:
-            lap_num = None
-            sector = None
-            curr_lap_time = None
-            curr_lap_dist = None
+    else:
+        lap_num = None
+        sector = None
+        curr_lap_time = None
+        curr_lap_dist = None
 
-            track = None
-            event_type = None
-            curr_lap_percent = None
+        track = None
+        event_type = None
+        curr_lap_percent = None
 
     mandatory_vars = [track, event_type, lap_num, sector, curr_lap_time, curr_lap_percent]
     if any(var is None for var in mandatory_vars):
@@ -1279,8 +1246,7 @@ def isPositionHistorySupported() -> bool:
         bool: True if the position history is supported, False otherwise
     """
 
-    with _driver_data_lock.gen_rlock():
-        return _driver_data.isPositionHistorySupported()
+    return _driver_data.isPositionHistorySupported()
 
 def processStreamUpdateButtonPress(custom_marker_obj: CustomMarkerEntry) -> None:
     """Processes the stream update button press event
@@ -1297,8 +1263,7 @@ def clearDataStructures(reason: str) -> None:
         reason (str): Why the data structures should be cleared
 
     """
-    with _driver_data_lock.gen_wlock():
-        _driver_data.clear()
+    _driver_data.clear()
     _custom_markers_history.clear()
     png_logger.debug(f"Clearing all data structures. Reason: {reason}")
 
@@ -1310,107 +1275,106 @@ def getTyreDeltaNotificationMessages() -> List[TyreDeltaMessage]:
     """
 
     # sourcery skip: assign-if-exp, extract-method
-    with _driver_data_lock.gen_rlock():
-        # N/A for spectating or after race - maybe support this later
-        if (_driver_data.m_session_info.m_is_spectating or
-            _driver_data.m_session_info.m_packet_final_classification or
-            str(_driver_data.m_session_info.m_session_type) != "Time Trial"):
-            return []
+    # N/A for spectating or after race - maybe support this later
+    if (_driver_data.m_session_info.m_is_spectating or
+        _driver_data.m_session_info.m_packet_final_classification or
+        str(_driver_data.m_session_info.m_session_type) != "Time Trial"):
+        return []
 
-        # If player ded, not applicable
-        if (_driver_data.m_player_index is None) or (_driver_data.m_is_player_dnf):
-            return []
-        # Need tyre set packet info
-        tyre_sets = _driver_data.m_driver_data[_driver_data.m_player_index].m_packet_copies.m_packet_tyre_sets
-        if not tyre_sets :
-            return []
+    # If player ded, not applicable
+    if (_driver_data.m_player_index is None) or (_driver_data.m_is_player_dnf):
+        return []
+    # Need tyre set packet info
+    tyre_sets = _driver_data.m_driver_data[_driver_data.m_player_index].m_packet_copies.m_packet_tyre_sets
+    if not tyre_sets :
+        return []
 
-        # Fitted index needs to be valid
-        fitted_tyre = tyre_sets.m_fitted_tyre_set
-        if not fitted_tyre:
-            png_logger.error(f"Invalid fitted tyre index: {json.dumps(tyre_sets.toJSON())}")
+    # Fitted index needs to be valid
+    fitted_tyre = tyre_sets.m_fitted_tyre_set
+    if not fitted_tyre:
+        png_logger.error(f"Invalid fitted tyre index: {json.dumps(tyre_sets.toJSON())}")
 
-        # First find the fitted tyre
-        wet_tyre_compounds = {
-            ActualTyreCompound.WET,
-            ActualTyreCompound.WET_CLASSIC,
-            ActualTyreCompound.WET_F2
-        }
-        inter_tyre_compounds = {
-            ActualTyreCompound.INTER,
-        }
-        slick_tyre_compounds = {
-            ActualTyreCompound.C5,
-            ActualTyreCompound.C4,
-            ActualTyreCompound.C3,
-            ActualTyreCompound.C2,
-            ActualTyreCompound.C1,
-            ActualTyreCompound.C0,
-            ActualTyreCompound.DRY,
-            ActualTyreCompound.SUPER_SOFT,
-            ActualTyreCompound.SOFT,
-            ActualTyreCompound.MEDIUM,
-            ActualTyreCompound.HARD,
-        }
-        if fitted_tyre.m_actualTyreCompound in wet_tyre_compounds:
-            curr_tyre_type = TyreDeltaMessage.TyreType.WET
-        elif fitted_tyre.m_actualTyreCompound in inter_tyre_compounds:
-            curr_tyre_type = TyreDeltaMessage.TyreType.INTER
-        else:
-            curr_tyre_type = TyreDeltaMessage.TyreType.SLICK
+    # First find the fitted tyre
+    wet_tyre_compounds = {
+        ActualTyreCompound.WET,
+        ActualTyreCompound.WET_CLASSIC,
+        ActualTyreCompound.WET_F2
+    }
+    inter_tyre_compounds = {
+        ActualTyreCompound.INTER,
+    }
+    slick_tyre_compounds = {
+        ActualTyreCompound.C5,
+        ActualTyreCompound.C4,
+        ActualTyreCompound.C3,
+        ActualTyreCompound.C2,
+        ActualTyreCompound.C1,
+        ActualTyreCompound.C0,
+        ActualTyreCompound.DRY,
+        ActualTyreCompound.SUPER_SOFT,
+        ActualTyreCompound.SOFT,
+        ActualTyreCompound.MEDIUM,
+        ActualTyreCompound.HARD,
+    }
+    if fitted_tyre.m_actualTyreCompound in wet_tyre_compounds:
+        curr_tyre_type = TyreDeltaMessage.TyreType.WET
+    elif fitted_tyre.m_actualTyreCompound in inter_tyre_compounds:
+        curr_tyre_type = TyreDeltaMessage.TyreType.INTER
+    else:
+        curr_tyre_type = TyreDeltaMessage.TyreType.SLICK
 
-        if TyreDeltaMessage.TyreType.SLICK == curr_tyre_type:
-            # Search for the first wet tyre
-            other_tyre_1 = next((tyre_set for tyre_set in reversed(tyre_sets.m_tyreSetData) \
-                               if tyre_set.m_actualTyreCompound in wet_tyre_compounds), None)
-            other_tyre_1_type = TyreDeltaMessage.TyreType.WET
+    if TyreDeltaMessage.TyreType.SLICK == curr_tyre_type:
+        # Search for the first wet tyre
+        other_tyre_1 = next((tyre_set for tyre_set in reversed(tyre_sets.m_tyreSetData) \
+                            if tyre_set.m_actualTyreCompound in wet_tyre_compounds), None)
+        other_tyre_1_type = TyreDeltaMessage.TyreType.WET
 
-            # Search for the first inter tyre
-            other_tyre_2 = next((tyre_set for tyre_set in reversed(tyre_sets.m_tyreSetData) \
-                               if tyre_set.m_actualTyreCompound in inter_tyre_compounds), None)
-            other_tyre_2_type = TyreDeltaMessage.TyreType.INTER
+        # Search for the first inter tyre
+        other_tyre_2 = next((tyre_set for tyre_set in reversed(tyre_sets.m_tyreSetData) \
+                            if tyre_set.m_actualTyreCompound in inter_tyre_compounds), None)
+        other_tyre_2_type = TyreDeltaMessage.TyreType.INTER
 
-        elif TyreDeltaMessage.TyreType.INTER == curr_tyre_type:
-            # Search for the first wet tyre
-            other_tyre_1 = next((tyre_set for tyre_set in reversed(tyre_sets.m_tyreSetData) \
-                               if tyre_set.m_actualTyreCompound in wet_tyre_compounds), None)
-            other_tyre_1_type = TyreDeltaMessage.TyreType.WET
+    elif TyreDeltaMessage.TyreType.INTER == curr_tyre_type:
+        # Search for the first wet tyre
+        other_tyre_1 = next((tyre_set for tyre_set in reversed(tyre_sets.m_tyreSetData) \
+                            if tyre_set.m_actualTyreCompound in wet_tyre_compounds), None)
+        other_tyre_1_type = TyreDeltaMessage.TyreType.WET
 
-            # Search for the first slick tyre
-            other_tyre_2 = next((tyre_set for tyre_set in tyre_sets.m_tyreSetData \
-                               if tyre_set.m_actualTyreCompound in slick_tyre_compounds), None)
-            other_tyre_2_type = TyreDeltaMessage.TyreType.SLICK
+        # Search for the first slick tyre
+        other_tyre_2 = next((tyre_set for tyre_set in tyre_sets.m_tyreSetData \
+                            if tyre_set.m_actualTyreCompound in slick_tyre_compounds), None)
+        other_tyre_2_type = TyreDeltaMessage.TyreType.SLICK
 
-        else:
-            # Search for the first slick tyre
-            other_tyre_1 = next((tyre_set for tyre_set in tyre_sets.m_tyreSetData \
-                               if tyre_set.m_actualTyreCompound in slick_tyre_compounds), None)
-            other_tyre_1_type = TyreDeltaMessage.TyreType.SLICK
+    else:
+        # Search for the first slick tyre
+        other_tyre_1 = next((tyre_set for tyre_set in tyre_sets.m_tyreSetData \
+                            if tyre_set.m_actualTyreCompound in slick_tyre_compounds), None)
+        other_tyre_1_type = TyreDeltaMessage.TyreType.SLICK
 
-            # Search for the first inter tyre
-            other_tyre_2 = next((tyre_set for tyre_set in tyre_sets.m_tyreSetData \
-                               if tyre_set.m_actualTyreCompound in inter_tyre_compounds), None)
-            other_tyre_2_type = TyreDeltaMessage.TyreType.INTER
+        # Search for the first inter tyre
+        other_tyre_2 = next((tyre_set for tyre_set in tyre_sets.m_tyreSetData \
+                            if tyre_set.m_actualTyreCompound in inter_tyre_compounds), None)
+        other_tyre_2_type = TyreDeltaMessage.TyreType.INTER
 
-        assert other_tyre_1
-        assert other_tyre_2
-        assert other_tyre_1 != other_tyre_2
-        assert other_tyre_1_type != other_tyre_2_type
+    assert other_tyre_1
+    assert other_tyre_2
+    assert other_tyre_1 != other_tyre_2
+    assert other_tyre_1_type != other_tyre_2_type
 
-        if (not other_tyre_1) or (not other_tyre_2):
-            png_logger.error(f"Invalid other tyre index: {json.dumps(tyre_sets.toJSON())}")
-            return []
+    if (not other_tyre_1) or (not other_tyre_2):
+        png_logger.error(f"Invalid other tyre index: {json.dumps(tyre_sets.toJSON())}")
+        return []
 
-        return [
-            TyreDeltaMessage(
-                curr_tyre_type=curr_tyre_type,
-                other_tyre_type=other_tyre_1_type,
-                delta=(other_tyre_1.m_lapDeltaTime / 1000)),
-            TyreDeltaMessage(
-                curr_tyre_type=curr_tyre_type,
-                other_tyre_type=other_tyre_2_type,
-                delta=(other_tyre_2.m_lapDeltaTime / 1000)),
-        ]
+    return [
+        TyreDeltaMessage(
+            curr_tyre_type=curr_tyre_type,
+            other_tyre_type=other_tyre_1_type,
+            delta=(other_tyre_1.m_lapDeltaTime / 1000)),
+        TyreDeltaMessage(
+            curr_tyre_type=curr_tyre_type,
+            other_tyre_type=other_tyre_2_type,
+            delta=(other_tyre_2.m_lapDeltaTime / 1000)),
+    ]
 
 def getOvertakeJSON(driver_name: str=None) -> Tuple[GetOvertakesStatus, Dict[str, Any]]:
     """Get the JSON value containing key overtake information
@@ -1422,8 +1386,7 @@ def getOvertakeJSON(driver_name: str=None) -> Tuple[GetOvertakesStatus, Dict[str
         Tuple[GetOvertakesStatus, Dict]: Status, JSON value (may be empty)
     """
 
-    with _driver_data_lock.gen_rlock():
-        return _driver_data.getOvertakeJSON(driver_name)
+    return _driver_data.getOvertakeJSON(driver_name)
 
 def getOvertakeRecords() -> List[OvertakeRecord]:
     """Get the overtake records
@@ -1432,8 +1395,7 @@ def getOvertakeRecords() -> List[OvertakeRecord]:
         List[OvertakeRecord]: The list of overtake records
     """
 
-    with _driver_data_lock.gen_rlock():
-        return _driver_data.m_overtakes_history.getRecords()
+    return _driver_data.m_overtakes_history.getRecords()
 
 def initDriverData(post_race_autosave: bool,
                  udp_custom_marker_action_code: Optional[int],
@@ -1448,10 +1410,9 @@ def initDriverData(post_race_autosave: bool,
         process_car_setups (bool): Whether to process car setups packets
     """
     global _driver_data
-    with _driver_data_lock.gen_wlock():
-        _driver_data = DriverData(
-            post_race_autosave,
-            udp_custom_marker_action_code,
-            udp_tyre_delta_action_code,
-            process_car_setups
-        )
+    _driver_data = DriverData(
+        post_race_autosave,
+        udp_custom_marker_action_code,
+        udp_tyre_delta_action_code,
+        process_car_setups
+    )

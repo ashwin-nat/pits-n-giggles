@@ -275,33 +275,32 @@ class PlayerTelemetryOverlayUpdate:
         """Get the player telemetry data and prep the fields
         """
 
-        with TelData._driver_data_lock.gen_rlock():
-            self.m_track_temp               = TelData._driver_data.m_session_info.m_track_temp
-            self.m_air_temp                 = TelData._driver_data.m_session_info.m_air_temp
-            self.m_weather_forecast_samples = TelData._driver_data.m_session_info.m_weather_forecast_samples
-            if self.m_weather_forecast_samples is None:
-                self.m_weather_forecast_samples = []
-            self.m_circuit                  = TelData._driver_data.m_session_info.m_track
-            self.m_total_laps               = TelData._driver_data.m_session_info.m_total_laps
-            self.m_game_year                = TelData._driver_data.m_session_info.m_game_year
-            self.m_session_type               = TelData._driver_data.m_session_info.m_session_type
-            self.m_pit_speed_limit          = TelData._driver_data.m_session_info.m_pit_speed_limit
+        self.m_track_temp               = TelData._driver_data.m_session_info.m_track_temp
+        self.m_air_temp                 = TelData._driver_data.m_session_info.m_air_temp
+        self.m_weather_forecast_samples = TelData._driver_data.m_session_info.m_weather_forecast_samples
+        if self.m_weather_forecast_samples is None:
+            self.m_weather_forecast_samples = []
+        self.m_circuit                  = TelData._driver_data.m_session_info.m_track
+        self.m_total_laps               = TelData._driver_data.m_session_info.m_total_laps
+        self.m_game_year                = TelData._driver_data.m_session_info.m_game_year
+        self.m_session_type               = TelData._driver_data.m_session_info.m_session_type
+        self.m_pit_speed_limit          = TelData._driver_data.m_session_info.m_pit_speed_limit
 
-            self.m_next_pit_window          = TelData._driver_data.m_ideal_pit_stop_window
-            self.m_fastest_lap_ms           = \
-                TelData._driver_data.m_driver_data[TelData._driver_data.m_fastest_index].m_lap_info.m_best_lap_ms if \
-                    TelData._driver_data.m_fastest_index is not None else None
-            self.m_fastest_s1_ms            = TelData._driver_data.m_fastest_s1_ms
-            self.m_fastest_s2_ms            = TelData._driver_data.m_fastest_s2_ms
-            self.m_fastest_s3_ms            = TelData._driver_data.m_fastest_s3_ms
-            player_index = TelData._driver_data.m_session_info.m_spectator_car_index \
-                            if TelData._driver_data.m_session_info.m_is_spectating \
-                            else TelData._driver_data.m_player_index
-            player_data = TelData._driver_data.m_driver_data[player_index] \
-                            if player_index in TelData._driver_data.m_driver_data else None
-            player_position = player_data.m_driver_info.position if player_data else None
-            prev_data = TelData._driver_data.getDriverInfoByPosition(player_position - 1) if player_position else None
-            next_data = TelData._driver_data.getDriverInfoByPosition(player_position + 1) if player_position else None
+        self.m_next_pit_window          = TelData._driver_data.m_ideal_pit_stop_window
+        self.m_fastest_lap_ms           = \
+            TelData._driver_data.m_driver_data[TelData._driver_data.m_fastest_index].m_lap_info.m_best_lap_ms if \
+                TelData._driver_data.m_fastest_index is not None else None
+        self.m_fastest_s1_ms            = TelData._driver_data.m_fastest_s1_ms
+        self.m_fastest_s2_ms            = TelData._driver_data.m_fastest_s2_ms
+        self.m_fastest_s3_ms            = TelData._driver_data.m_fastest_s3_ms
+        player_index = TelData._driver_data.m_session_info.m_spectator_car_index \
+                        if TelData._driver_data.m_session_info.m_is_spectating \
+                        else TelData._driver_data.m_player_index
+        player_data = TelData._driver_data.m_driver_data[player_index] \
+                        if player_index in TelData._driver_data.m_driver_data else None
+        player_position = player_data.m_driver_info.position if player_data else None
+        prev_data = TelData._driver_data.getDriverInfoByPosition(player_position - 1) if player_position else None
+        next_data = TelData._driver_data.getDriverInfoByPosition(player_position + 1) if player_position else None
 
         self.__initCarTelemetry(player_data)
         self.__initLapTimes(player_data)
@@ -785,36 +784,34 @@ class DriversListRsp:
         """Initialise the fields
         """
 
-        with TelData._driver_data_lock.gen_rlock():
-            # Do the bare mimnimum within this block so that we can unlock the mutex ASAP
-            # Player index can never be none, since the player always an index, even if a spectator (for Lobby packet)
-            if (TelData._driver_data.m_player_index is None) or (TelData._driver_data.m_num_active_cars is None):
+        # Player index can never be none, since the player always an index, even if a spectator (for Lobby packet)
+        if (TelData._driver_data.m_player_index is None) or (TelData._driver_data.m_num_active_cars is None):
+            return
+
+        # Update the list data
+        self.m_next_pit_stop_window = TelData._driver_data.m_ideal_pit_stop_window
+        if TelData._driver_data.m_fastest_index is not None:
+            self.m_fastest_lap = TelData._driver_data.m_driver_data[
+                                    TelData._driver_data.m_fastest_index].m_lap_info.m_best_lap_ms
+            self.m_fastest_lap_driver = TelData._driver_data.m_driver_data[
+                                        TelData._driver_data.m_fastest_index].m_driver_info.name
+            self.m_fastest_lap_tyre = TelData._driver_data.m_driver_data[
+                                        TelData._driver_data.m_fastest_index].m_lap_info.m_best_lap_tyre
+        positions = list(range(1, TelData._driver_data.m_num_active_cars + 1))
+        for position in positions:
+            index, temp_data = TelData._driver_data.getIndexByTrackPosition(position)
+            if (index, temp_data) == (None, None):
                 return
 
-            # Update the list data
-            self.m_next_pit_stop_window = TelData._driver_data.m_ideal_pit_stop_window
-            if TelData._driver_data.m_fastest_index is not None:
-                self.m_fastest_lap = TelData._driver_data.m_driver_data[
-                                        TelData._driver_data.m_fastest_index].m_lap_info.m_best_lap_ms
-                self.m_fastest_lap_driver = TelData._driver_data.m_driver_data[
-                                            TelData._driver_data.m_fastest_index].m_driver_info.name
-                self.m_fastest_lap_tyre = TelData._driver_data.m_driver_data[
-                                            TelData._driver_data.m_fastest_index].m_lap_info.m_best_lap_tyre
-            positions = list(range(1, TelData._driver_data.m_num_active_cars + 1))
-            for position in positions:
-                index, temp_data = TelData._driver_data.getIndexByTrackPosition(position)
-                if (index, temp_data) == (None, None):
-                    return
+            temp_data.m_index = index
+            temp_data.m_is_fastest = (index == TelData._driver_data.m_fastest_index)
 
-                temp_data.m_index = index
-                temp_data.m_is_fastest = (index == TelData._driver_data.m_fastest_index)
-
-                # Add this prepped record into the final list
-                self.m_final_list.append(temp_data)
-            self.m_fastest_s1_ms = TelData._driver_data.m_fastest_s1_ms
-            self.m_fastest_s2_ms = TelData._driver_data.m_fastest_s2_ms
-            self.m_fastest_s3_ms = TelData._driver_data.m_fastest_s3_ms
-            self.m_time_trial_packet = TelData._driver_data.m_time_trial_packet
+            # Add this prepped record into the final list
+            self.m_final_list.append(temp_data)
+        self.m_fastest_s1_ms = TelData._driver_data.m_fastest_s1_ms
+        self.m_fastest_s2_ms = TelData._driver_data.m_fastest_s2_ms
+        self.m_fastest_s3_ms = TelData._driver_data.m_fastest_s3_ms
+        self.m_time_trial_packet = TelData._driver_data.m_time_trial_packet
 
     def __updateDriverList(self) -> None:
         """Add extra fields to each DataPerDriver object
