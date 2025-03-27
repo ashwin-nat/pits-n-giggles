@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Racing HUD Overlay</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Arial', sans-serif;
+            background: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        #hud-container {
+            position: fixed;
+            top: 50px;
+            right: 50px;
+            width: 250px;
+            background-color: rgba(0, 0, 0, 0.6);
+            border-radius: 10px;
+            padding: 15px;
+            color: white;
+            transition: all 0.3s ease;
+        }
+        #hud-container.bordered {
+            border: 2px solid white;
+            background-color: rgba(0, 0, 0, 0.8);
+            -webkit-app-region: drag;
+        }
+        .bordered * {
+            -webkit-app-region: no-drag;
+        }
+        #speed-label {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        #lap-label {
+            font-size: 20px;
+        }
+        .no-border {
+            -webkit-app-region: no-drag;
+        }
+    </style>
+</head>
+<body>
+    <div id="hud-container" class="no-border">
+        <div id="speed-label">Speed: 0 km/h</div>
+        <div id="lap-label">Lap: 0/5</div>
+    </div>
+
+    <script>
+        const hudContainer = document.getElementById('hud-container');
+        const speedLabel = document.getElementById('speed-label');
+        const lapLabel = document.getElementById('lap-label');
+        let isBordered = false;
+
+        // Toggle border mode
+        function toggleBorderMode() {
+            isBordered = !isBordered;
+            hudContainer.classList.toggle('bordered');
+
+            fetch('http://localhost:5000/toggle-border')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Border mode:', data.bordered);
+                });
+        }
+
+        // Fetch race data
+        function updateRaceData() {
+            fetch('http://localhost:5000/get-race-data')
+                .then(response => response.json())
+                .then(data => {
+                    speedLabel.textContent = `Speed: ${data.speed} km/h`;
+                    lapLabel.textContent = `Lap: ${data.lap}/5`;
+                });
+        }
+
+        // Update data every second
+        setInterval(updateRaceData, 1000);
+
+        // Toggle border on F12 key press
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'F12') {
+                toggleBorderMode();
+            }
+        });
+    </script>
+</body>
+</html>
