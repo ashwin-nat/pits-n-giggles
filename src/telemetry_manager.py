@@ -22,7 +22,7 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-from typing import Callable, Dict
+from typing import Callable, Dict, Optional, Awaitable
 
 from lib.f1_types import (F1PacketType, InvalidPacketLengthError,
                           PacketCarDamageData, PacketCarSetupData,
@@ -92,7 +92,7 @@ class F1TelemetryManager:
             self.m_server = AsyncUDPListener(port_number, "0.0.0.0", buffer_size=4096)
         else:
             self.m_server = UDPListener(port_number, "0.0.0.0", buffer_size=4096)
-        self.m_callbacks = {
+        self.m_callbacks: Dict[F1PacketType, Optional[Callable[[object], Awaitable[None]]]] = {
             F1PacketType.MOTION : None,
             F1PacketType.SESSION : None,
             F1PacketType.LAP_DATA : None,
@@ -108,7 +108,7 @@ class F1TelemetryManager:
             F1PacketType.TYRE_SETS : None,
             F1PacketType.MOTION_EX : None,
         }
-        self.m_raw_packet_callback = None
+        self.m_raw_packet_callback: Optional[Callable[[object], Awaitable[None]]] = None
 
 
         self.packet_count = 0
@@ -116,7 +116,7 @@ class F1TelemetryManager:
         self.max_processing_time = 0
         self.total_processing_time = 0
 
-    def registerRawPacketCallback(self, callback: Callable):
+    def registerRawPacketCallback(self, callback: Callable[[object], Awaitable[None]]):
         """Register a callback for every UDP message on this socket. This is useful for debugging
 
         Args:
@@ -127,12 +127,15 @@ class F1TelemetryManager:
 
         self.m_raw_packet_callback = callback
 
-    def registerCallbacks(self, packet_callbacks: Dict[F1PacketType, Callable]) -> None:
+    def registerCallbacks(
+            self,
+            packet_callbacks: Dict[F1PacketType, Optional[Callable[[object], Awaitable[None]]]]) -> None:
         """
         Registers multiple callback functions for specific F1 packet types.
 
         Args:
-            packet_callbacks (Dict[F1PacketType, Callable]): A dictionary where the keys are F1 packet types
+            packet_callbacks (Dict[F1PacketType, Optional[Callable[[object], Awaitable[None]]]]):
+                A dictionary where the keys are F1 packet types
                 and the values are callback functions. Each callback should take one argument of the corresponding
                 packet type (e.g., `PacketMotionData` for `F1PacketType.MOTION`).
                                 It should be a function that takes one argument of the corresponding packet type.
@@ -201,7 +204,7 @@ class F1TelemetryManager:
             # Get next UDP message (TCP in the case of replay server)
             raw_packet = await self.m_server.getNextMessage()
             start_time = time.perf_counter()
-            self._processPacket(should_parse_packet, raw_packet)
+            await self._processPacket(should_parse_packet, raw_packet)
             end_time = time.perf_counter()
 
             processing_time = end_time - start_time
@@ -210,14 +213,14 @@ class F1TelemetryManager:
             self.max_processing_time = max(self.max_processing_time, processing_time)
             self.total_processing_time += processing_time
 
-    def _processPacket(self, should_parse_packet: bool, raw_packet: bytes) -> None:
+    async def _processPacket(self, should_parse_packet: bool, raw_packet: bytes) -> None:
 
         if len(raw_packet) < PacketHeader.PACKET_LEN:
             # skip incomplete packet
             return
 
         if self.m_raw_packet_callback:
-            self.m_raw_packet_callback(raw_packet)
+            await self.m_raw_packet_callback(raw_packet)
 
         if not should_parse_packet:
             return
@@ -237,7 +240,7 @@ class F1TelemetryManager:
             png_logger.error("Cannot parse packet of type %s. Error = %s", str(header.m_packetId), str(e))
         callback = self.m_callbacks.get(header.m_packetId, None)
         if callback:
-            callback(packet)
+            await callback(packet)
 
     def get_processing_stats(self):
         avg_time = (self.total_processing_time / self.packet_count) if self.packet_count > 0 else 0.0
