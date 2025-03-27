@@ -22,11 +22,12 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
+import asyncio
 import queue
 import threading
-from typing import Any, Dict, Optional
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any, Dict, Optional
 
 # ------------------------- CLASS DEFINITIONS --------------------------------------------------------------------------
 
@@ -232,3 +233,68 @@ class InterThreadCommunicator:
         except queue.Empty:
             return None
 
+class AsyncInterTaskCommunicator:
+    _instance: Optional["AsyncInterTaskCommunicator"] = None
+
+    def __new__(cls, *args: Any, **kwargs: Any) -> "AsyncInterTaskCommunicator":
+        """
+        Singleton pattern to ensure only one instance is created.
+        Returns:
+            AsyncInterThreadCommunicator: Object of this class
+        """
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __init__(self, queue_size: int = 0):
+        """Construct the AsyncInterThreadCommunicator object."""
+        # Ensure initialization happens only once
+        if not hasattr(self, '_initialized'):
+            self.queues: Dict[str, asyncio.Queue] = {}
+            self._lock = asyncio.Lock()  # Async lock to protect queue creation
+            self._queue_size = queue_size
+            self._initialized = True
+
+    async def send(self, queue_name: str, message: Any) -> None:
+        """
+        Send a message to a specific queue.
+
+        Args:
+            queue_name (str): Name of the queue
+            message (Any): Message to send
+        """
+        async with self._lock:
+            # Create queue if it doesn't exist
+            if queue_name not in self.queues:
+                self.queues[queue_name] = asyncio.Queue(maxsize=self._queue_size)
+
+            # Send message
+            await self.queues[queue_name].put(message)
+
+    async def receive(self, queue_name: str, timeout: Optional[float] = None) -> Optional[Any]:
+        """
+        Receive a message from a specific queue.
+
+        Args:
+            queue_name (str): Name of the queue
+            timeout (Optional[float]): Maximum time to wait for a message
+
+        Returns:
+            Optional[Any]: Received message or None if timeout occurs
+        """
+        async with self._lock:
+            # Ensure queue exists
+            if queue_name not in self.queues:
+                self.queues[queue_name] = asyncio.Queue(maxsize=self._queue_size)
+
+        try:
+            # Use wait_for to handle timeout
+            if timeout is not None:
+                return await asyncio.wait_for(
+                    self.queues[queue_name].get(),
+                    timeout=timeout
+                )
+            else:
+                return await self.queues[queue_name].get()
+        except asyncio.TimeoutError:
+            return None
