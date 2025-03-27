@@ -258,7 +258,7 @@ class F1TelemetryHandler:
             self.m_manager.registerRawPacketCallback(F1TelemetryHandler.handleRawPacket)
 
     @staticmethod
-    def handleRawPacket(packet: List[bytes]) -> None:
+    async def handleRawPacket(packet: List[bytes]) -> None:
         """
         Handle raw telemetry packet.
 
@@ -269,7 +269,7 @@ class F1TelemetryHandler:
         InterThreadCommunicator().send("packet-forward", packet)
 
     @staticmethod
-    def handleSessionData(packet: PacketSessionData) -> None:
+    async def handleSessionData(packet: PacketSessionData) -> None:
         """
         Handle session data telemetry packet.
 
@@ -286,7 +286,7 @@ class F1TelemetryHandler:
             clearAllDataStructures()
 
     @staticmethod
-    def handleEvent(packet: PacketEventData) -> None:
+    async def handleEvent(packet: PacketEventData) -> None:
         """Handle the Event packet
 
         Args:
@@ -323,7 +323,7 @@ class F1TelemetryHandler:
             event_handler(packet)
 
     @staticmethod
-    def handleFinalClassification(packet: PacketFinalClassificationData) -> None:
+    async def handleFinalClassification(packet: PacketFinalClassificationData) -> None:
         """
         Handle and process the final classification packet. This is sent out at the end of the event when the game
             displays the final classification table
