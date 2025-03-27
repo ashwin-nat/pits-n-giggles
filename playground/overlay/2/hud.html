@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Racing HUD</title>
+    <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background: transparent !important;
+            overflow: hidden;
+        }
+        #app {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: flex-end;
+            align-items: flex-start;
+            pointer-events: none;
+        }
+        #hud-container {
+            width: 200px;
+            background-color: rgba(0, 0, 0, 0.6);
+            border-radius: 10px;
+            padding: 15px;
+            color: white;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+        #hud-container.bordered {
+            border: 2px solid white;
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+        #speed-label {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        #lap-label {
+            font-size: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div id="hud-container">
+            <div id="speed-label">Speed: 0 km/h</div>
+            <div id="lap-label">Lap: 0/5</div>
+        </div>
+    </div>
+
+    <script>
+        // Wait for the QWebChannel to be ready
+        new QWebChannel(qt.webChannelTransport, function (channel) {
+            // Get the data manager object
+            const dataManager = channel.objects.dataManager;
+
+            // Update speed label
+            dataManager.speedChanged.connect(function(speed) {
+                document.getElementById('speed-label').textContent = `Speed: ${speed} km/h`;
+            });
+
+            // Update lap label
+            dataManager.lapChanged.connect(function(lap) {
+                document.getElementById('lap-label').textContent = `Lap: ${lap}/5`;
+            });
+
+            // Toggle border mode
+            dataManager.borderModeChanged.connect(function(bordered) {
+                const hudContainer = document.getElementById('hud-container');
+                hudContainer.classList.toggle('bordered', bordered);
+            });
+
+            // Keyboard event for border mode toggle (optional, as main app handles this)
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'F12') {
+                    dataManager.toggle_border_mode();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
