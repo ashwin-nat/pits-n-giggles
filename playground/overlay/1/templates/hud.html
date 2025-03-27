@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Racing HUD</title>
+    <style>
+        body {
+            background: transparent;
+            color: white;
+            font-size: 24px;
+            text-align: center;
+            font-family: Arial, sans-serif;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #hud {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 20px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="hud">
+        Speed: <span id="speed">0</span> km/h<br>
+        Gear: <span id="gear">N</span>
+    </div>
+
+    <script>
+        function updateHUD() {
+            fetch("/data")
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById("speed").innerText = data.speed;
+                    document.getElementById("gear").innerText = data.gear;
+                });
+        }
+        setInterval(updateHUD, 500); // Update every 500ms
+    </script>
+</body>
+</html>
