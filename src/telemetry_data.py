@@ -914,7 +914,7 @@ def processSessionUpdate(packet: PacketSessionData) -> bool:
         clearDataStructures("session update")
     return should_clear
 
-def processLapDataUpdate(packet: PacketLapData) -> None:
+async def processLapDataUpdate(packet: PacketLapData) -> None:
     """Update the data structures with lap data
 
     Args:
@@ -953,7 +953,7 @@ def processCollisionsEvent(packet: PacketEventData) -> None:
     record: PacketEventData.Collision = packet.mEventDetails
     _driver_data.processCollisionEvent(record)
 
-def processParticipantsUpdate(packet: PacketParticipantsData) -> None:
+async def processParticipantsUpdate(packet: PacketParticipantsData) -> None:
     """Update the data strucutre with participants information
 
     Args:
@@ -962,7 +962,7 @@ def processParticipantsUpdate(packet: PacketParticipantsData) -> None:
 
     _driver_data.processParticipantsUpdate(packet)
 
-def processCarTelemetryUpdate(packet: PacketCarTelemetryData) -> None:
+async def processCarTelemetryUpdate(packet: PacketCarTelemetryData) -> None:
     """Update the data structure with the car telemetry information
 
     Args:
@@ -972,7 +972,7 @@ def processCarTelemetryUpdate(packet: PacketCarTelemetryData) -> None:
     _driver_data.processCarTelemetryUpdate(packet)
     _driver_data.setRaceOngoing()
 
-def processCarStatusUpdate(packet: PacketCarStatusData) -> None:
+async def processCarStatusUpdate(packet: PacketCarStatusData) -> None:
     """Update the data structures with car status information
 
     Args:
@@ -998,7 +998,7 @@ def processFinalClassificationUpdate(packet: PacketFinalClassificationData) -> D
     final_json['custom-markers'] = _custom_markers_history.getJSONList()
     return final_json
 
-def processCarDamageUpdate(packet: PacketCarDamageData):
+async def processCarDamageUpdate(packet: PacketCarDamageData):
     """Update the data strucutres with car damage information
 
     Args:
@@ -1008,7 +1008,7 @@ def processCarDamageUpdate(packet: PacketCarDamageData):
     _driver_data.processCarDamageUpdate(packet)
     _driver_data.setRaceOngoing()
 
-def processSessionHistoryUpdate(packet: PacketSessionHistoryData):
+async def processSessionHistoryUpdate(packet: PacketSessionHistoryData):
     """Update the data structures with session history information
 
     Args:
@@ -1018,7 +1018,7 @@ def processSessionHistoryUpdate(packet: PacketSessionHistoryData):
     _driver_data.processSessionHistoryUpdate(packet)
     _driver_data.setRaceOngoing()
 
-def processTyreSetsUpdate(packet: PacketTyreSetsData) -> None:
+async def processTyreSetsUpdate(packet: PacketTyreSetsData) -> None:
     """Update the data structures with tyre history information
 
     Args:
@@ -1028,7 +1028,7 @@ def processTyreSetsUpdate(packet: PacketTyreSetsData) -> None:
     _driver_data.processTyreSetsUpdate(packet)
     _driver_data.setRaceOngoing()
 
-def processMotionUpdate(packet: PacketMotionData) -> None:
+async def processMotionUpdate(packet: PacketMotionData) -> None:
     """Update the data structures with motion information
 
     Args:
@@ -1037,7 +1037,7 @@ def processMotionUpdate(packet: PacketMotionData) -> None:
 
     _driver_data.processMotionUpdate(packet)
 
-def processCarSetupsUpdate(packet: PacketCarSetupData) -> None:
+async def processCarSetupsUpdate(packet: PacketCarSetupData) -> None:
     """Update the data structures with car setup information
 
     Args:
@@ -1048,7 +1048,7 @@ def processCarSetupsUpdate(packet: PacketCarSetupData) -> None:
         return
     _driver_data.processCarSetupsUpdate(packet)
 
-def processTimeTrialUpdate(packet: PacketTimeTrialData) -> None:
+async def processTimeTrialUpdate(packet: PacketTimeTrialData) -> None:
     """Update the data structures with time trial information
 
     Args:
