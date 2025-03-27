@@ -52,7 +52,8 @@ from tests_data_per_driver import TestTyreSetHistoryEntry, TestTyreSetInfo
 from tests_debouncer import TestMultiButtonDebouncer
 from tests_fuel_recommender import (TestFuelRateRecommender,
                                     TestFuelRemainingPerLap)
-from tests_itc import TestInterThreadCommunicator
+from tests_itc import (TestAsyncInterThreadCommunicator,
+                       TestInterThreadCommunicator)
 from tests_overtake_analyzer import (TestOvertakeAnalyzerEmptyInput,
                                      TestOvertakeAnalyzerFileCsv,
                                      TestOvertakeAnalyzerInvalidData,
