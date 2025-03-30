@@ -388,7 +388,7 @@ class DataPerDriver:
                 rl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
                 rr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
                 lap_number=old_lap_number,
-                is_racing_lap=True,
+                is_racing_lap=self.m_driver_info.m_curr_lap_sc_status,
                 desc=f"end of lap {old_lap_number} snapshot"
             ))
 
@@ -400,13 +400,18 @@ class DataPerDriver:
                 rl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
                 rr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
                 lap_number=old_lap_number,
-                is_racing_lap=True,
+                is_racing_lap=self.m_driver_info.m_curr_lap_sc_status,
                 desc=tyre_set_id
             ))
 
         # Fuel stuff
         if self.m_packet_copies.m_packet_car_status:
-            self.m_car_info.m_fuel_rate_recommender.add(self.m_packet_copies.m_packet_car_status.m_fuelInTank, old_lap_number)
+            self.m_car_info.m_fuel_rate_recommender.add(
+                self.m_packet_copies.m_packet_car_status.m_fuelInTank,
+                old_lap_number,
+                self.m_driver_info.m_curr_lap_sc_status,
+                desc=f"end of lap {old_lap_number} snapshot"
+            )
 
     def isZerothLapSnapshotDataAvailable(self) -> bool:
         """
@@ -577,6 +582,7 @@ class DataPerDriver:
                 "target-fuel-rate-average" : self.m_car_info.m_fuel_rate_recommender.target_fuel_rate,
                 "target-fuel-rate-next-lap" : self.m_car_info.m_fuel_rate_recommender.target_next_lap_fuel_usage,
                 "surplus-laps" : self.m_car_info.m_fuel_rate_recommender.surplus_laps,
+                "safety-car-fuel-rate" : self.m_car_info.m_fuel_rate_recommender.safety_car_fuel_rate,
             }
 
         return {
