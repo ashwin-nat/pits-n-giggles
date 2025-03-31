@@ -100,4 +100,4 @@ class OvertakesHistory:
             List[OvertakeRecord]: The list of overtake records
         """
 
-        return copy.deepcopy(self.m_overtakes_history)
+        return self.m_overtakes_history
