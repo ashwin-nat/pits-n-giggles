@@ -23,7 +23,6 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import copy
 import json
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -273,7 +272,7 @@ class DriverData:
         """
         return next(
             (
-                (index, copy.deepcopy(driver_data))
+                (index, driver_data)
                 for index, driver_data in self.m_driver_data.items()
                 if driver_data.m_driver_info.position == track_position
             ),
@@ -1096,7 +1095,7 @@ def getSessionInfo() -> SessionInfo:
     Returns:
         SessionInfo: A copy of the SessionInfo object
     """
-    return copy.deepcopy(_driver_data.m_session_info)
+    return _driver_data.m_session_info
 
 def getDriverInfoJsonByIndex(index: int) -> Optional[Dict[str, Any]]:
     """Get the driver info JSON for the given index
