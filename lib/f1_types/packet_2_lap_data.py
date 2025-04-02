@@ -141,6 +141,40 @@ class LapData:
     )
     PACKET_LEN_24:int = struct.calcsize(PACKET_FORMAT_24)
 
+    # Type hints declaration for fields
+    m_gameYear: int
+    m_lastLapTimeInMS: int
+    m_currentLapTimeInMS: int
+    m_sector1TimeInMS: int
+    m_sector1TimeMinutes: int
+    m_sector2TimeInMS: int
+    m_sector2TimeMinutes: int
+    m_deltaToCarInFrontInMS: int
+    m_deltaToRaceLeaderInMS: int
+    m_lapDistance: float
+    m_totalDistance: float
+    m_safetyCarDelta: float
+    m_carPosition: int
+    m_currentLapNum: int
+    m_pitStatus: "LapData.PitStatus"
+    m_numPitStops: int
+    m_sector: "LapData.Sector"
+    m_currentLapInvalid: bool
+    m_penalties: int
+    m_totalWarnings: int
+    m_cornerCuttingWarnings: int
+    m_numUnservedDriveThroughPens: int
+    m_numUnservedStopGoPens: int
+    m_gridPosition: int
+    m_driverStatus: "LapData.DriverStatus"
+    m_resultStatus: ResultStatus
+    m_pitLaneTimerActive: bool
+    m_pitLaneTimeInLaneInMS: int
+    m_pitStopTimerInMS: int
+    m_pitStopShouldServePen: bool
+    m_speedTrapFastestSpeed: float
+    m_speedTrapFastestLap: int
+
     class DriverStatus(Enum):
         """
         Enumeration representing the status of a driver during a racing session.
@@ -517,41 +551,53 @@ class PacketLapData:
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
         """
         Initialize PacketLapData instance by unpacking binary data.
-
         Args:
             - header (PacketHeader): Packet header information.
             - packet (bytes): Binary data containing lap data packet.
-
         Raises:
             - InvalidPacketLengthError: If the received packet length is not as expected.
         """
-        self.m_header: PacketHeader = header
-        self.m_lapData: List[LapData] = []  # LapData[22]
-        self.m_lapDataCount = 22
-        if header.m_gameYear == 23:
-            lap_data_obj_size = LapData.PACKET_LEN_23
-            len_of_lap_data_array = self.m_lapDataCount * LapData.PACKET_LEN_23
-        else: # 24
-            lap_data_obj_size = LapData.PACKET_LEN_24
-            len_of_lap_data_array = self.m_lapDataCount * LapData.PACKET_LEN_24
+        # Store the header reference
+        self.m_header = header
 
-        # 2 extra bytes for the two uint8 that follow LapData
-        expected_len = (len_of_lap_data_array + 2)
+        # Set the fixed number of lap data entries (22 cars)
+        self.m_lapDataCount = 22
+
+        # Determine LapData size based on game year
+        # F1 game data structures can vary between game versions
+        lap_data_obj_size = LapData.PACKET_LEN_24  # Default to 2024 format
+        if header.m_gameYear == 23:
+            lap_data_obj_size = LapData.PACKET_LEN_23  # Use 2023 format if needed
+
+        # Calculate expected packet length:
+        # - Total lap data size (22 cars × bytes per car)
+        # - Plus 2 bytes for the time trial indices at the end
+        len_of_lap_data_array = self.m_lapDataCount * lap_data_obj_size
+        expected_len = len_of_lap_data_array + 2
+
+        # Validate that the packet is the correct length
+        # This helps catch corrupted or incorrect data early
         if len(packet) != expected_len:
             raise InvalidPacketLengthError(
                 f"Received LapDataPacket length {len(packet)} is not of expected length {expected_len}"
             )
 
-        lap_data_packet_raw = _extract_sublist(packet, 0, len_of_lap_data_array)
-        for lap_data_packet in _split_list(lap_data_packet_raw, lap_data_obj_size):
-            self.m_lapData.append(LapData(lap_data_packet, header.m_gameYear))
+        # Process each car's lap data individually
+        # Extract chunks of the correct size and create LapData objects
+        self.m_lapData: List[LapData] = []
+        for i in range(self.m_lapDataCount):
+            # Calculate start and end indices for this car's data
+            start_idx = i * lap_data_obj_size
+            end_idx = start_idx + lap_data_obj_size
 
-        time_trial_section_raw = _extract_sublist(packet, len_of_lap_data_array, len(packet))
-        unpacked_data = struct.unpack('<bb', time_trial_section_raw)
-        (
-            self.m_timeTrialPBCarIdx,
-            self.m_timeTrialRivalCarIdx
-        ) = unpacked_data
+            # Extract this car's binary data and create a LapData object
+            car_data = packet[start_idx:end_idx]
+            self.m_lapData.append(LapData(car_data, header.m_gameYear))
+
+        # Extract time trial indices from the last 2 bytes
+        # These identify personal best and rival cars in time trial mode
+        time_trial_data = packet[len_of_lap_data_array:]
+        self.m_timeTrialPBCarIdx, self.m_timeTrialRivalCarIdx = struct.unpack('<bb', time_trial_data)
 
     def __str__(self) -> str:
         """
