@@ -191,6 +191,16 @@ class TelemetryWebServer:
             """
             return await render_template('index.html', live_data_mode=True)
 
+        @self.m_app.route('/eng-view')
+        async def engineerView() -> str:
+            """
+            Render the player stream overlay page.
+
+            Returns:
+                str: Rendered HTML content for the stream overlay page.
+            """
+            return await render_template('eng-view.html')
+
         @self.m_app.route('/player-stream-overlay')
         async def playerStreamOverlay() -> str:
             """
