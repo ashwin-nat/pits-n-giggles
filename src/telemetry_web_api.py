@@ -797,17 +797,21 @@ class DriversListRsp:
                                         TelData._driver_data.m_fastest_index].m_driver_info.name
             self.m_fastest_lap_tyre = TelData._driver_data.m_driver_data[
                                         TelData._driver_data.m_fastest_index].m_lap_info.m_best_lap_tyre
-        positions = list(range(1, TelData._driver_data.m_num_active_cars + 1))
-        for position in positions:
-            index, temp_data = TelData._driver_data.getIndexByTrackPosition(position)
+        # for position in positions:
+        for index, temp_data in enumerate(TelData._driver_data.m_driver_data):
             if (index, temp_data) == (None, None):
                 return
+            if not temp_data.is_valid:
+                continue
+            if not 1 <= temp_data.m_driver_info.position <= TelData._driver_data.m_num_active_cars:
+                continue
 
             temp_data.m_index = index
             temp_data.m_is_fastest = (index == TelData._driver_data.m_fastest_index)
 
             # Add this prepped record into the final list
             self.m_final_list.append(temp_data)
+        self.m_final_list.sort(key=lambda obj: obj.m_driver_info.position)
         self.m_fastest_s1_ms = TelData._driver_data.m_fastest_s1_ms
         self.m_fastest_s2_ms = TelData._driver_data.m_fastest_s2_ms
         self.m_fastest_s3_ms = TelData._driver_data.m_fastest_s3_ms
