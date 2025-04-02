@@ -259,57 +259,6 @@ class DriverData:
         """
         self.m_race_completed = True
 
-    def getIndexByTrackPosition(self, track_position: int) -> Tuple[Optional[int], Optional[DataPerDriver]]:
-        """
-        Get the driver index and data based on the provided track position.
-
-        Args:
-            track_position(int): The track position to search for.
-
-        Returns:
-            Tuple[Optional[int], Optional[DataPerDriver]]: A tuple containing the driver index and corresponding
-                DataPerDriver object if found; otherwise, (None, None).
-        """
-        return next(
-            (
-                (index, driver_data)
-                for index, driver_data in self.m_driver_data.items()
-                if driver_data.m_driver_info.position == track_position
-            ),
-            (None, None),
-        )
-
-    def _getPenaltyString(self, penalties_sec: int, num_dt: int, num_sg: int) -> str:
-        """Computes and returns a printable string capturing all penalties
-
-        Args:
-            penalties_sec (int): The time penalty in second
-            num_dt (int): Number of drive through penalties
-            num_sg (int): Number of stop/go penalties
-
-        Returns:
-            str: The penalty string
-        """
-
-        if penalties_sec == 0 and num_dt == 0 and num_sg == 0:
-            return ""
-        penalty_string = "("
-        started_filling = False
-        if penalties_sec > 0:
-            penalty_string += f"+{penalties_sec} sec"
-            started_filling = True
-        if num_dt > 0:
-            if started_filling:
-                penalty_string += " + "
-            penalty_string += f"{num_dt}DT"
-            started_filling = True
-        if num_sg:
-            if started_filling:
-                penalty_string += " + "
-            penalty_string += f"{num_sg}SG"
-        penalty_string += ")"
-        return penalty_string
-
     def _getObjectByIndex(self, index: int) -> DataPerDriver:
         """Looks up and retrieves the object at the specified index.
             If not found, creates the object, inserts into the dict, and returns it.
@@ -320,8 +269,12 @@ class DriverData:
         Returns:
             DataPerDriver: The data object associated with the given index
         """
-        # Use setdefault to insert a new DataPerDriver if the index is not found, avoiding multiple lookups
-        return self.m_driver_data.setdefault(index, DataPerDriver(self.m_session_info.m_total_laps))
+
+        if not (obj := self.m_driver_data.get(index)):
+            png_logger.debug(f"Creating new DataPerDriver for index {index}")
+            obj = DataPerDriver(self.m_session_info.m_total_laps)
+            self.m_driver_data[index] = obj
+        return obj
 
     def _recomputeFastestLap(self) -> None:
         """
