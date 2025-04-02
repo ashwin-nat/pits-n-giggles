@@ -205,7 +205,7 @@ class DriverData:
             process_car_setups (bool): Whether to process car setups packets
         """
 
-        self.m_driver_data: Dict[int, DataPerDriver] = {}
+        self.m_driver_data: List[Optional[DataPerDriver]] = [None] * 22
         self.m_player_index: Optional[int] = None
         self.m_fastest_index: Optional[int] = None
         self.m_num_active_cars: Optional[int] = None
@@ -230,7 +230,7 @@ class DriverData:
     def clear(self) -> None:
         """Clear this object. Clears the m_driver_data list and sets everything else to None
         """
-        self.m_driver_data.clear()
+        self.m_driver_data = [None] * 22
         self.m_player_index = None
         self.m_fastest_index = None
         self.m_num_active_cars = None
@@ -259,22 +259,30 @@ class DriverData:
         """
         self.m_race_completed = True
 
-    def _getObjectByIndex(self, index: int) -> DataPerDriver:
+    def _getObjectByIndex(self, index: int, create: bool = True) -> DataPerDriver:
         """Looks up and retrieves the object at the specified index.
-            If not found, creates the object, inserts into the dict, and returns it.
+            If not found and create is True, creates the object, inserts into the list, and returns it.
 
         Args:
             index (int): The driver index
+            create (bool, optional): Whether to create the object if not found. Defaults to True.
 
         Returns:
             DataPerDriver: The data object associated with the given index
         """
 
-        if not (obj := self.m_driver_data.get(index)):
+        assert 0 <= index < len(self.m_driver_data)
+        if not (obj := self.m_driver_data[index]) and create:
             png_logger.debug(f"Creating new DataPerDriver for index {index}")
             obj = DataPerDriver(self.m_session_info.m_total_laps)
             self.m_driver_data[index] = obj
         return obj
+
+        # if not (obj := self.m_driver_data.get(index)):
+        #     png_logger.debug(f"Creating new DataPerDriver for index {index}")
+        #     obj = DataPerDriver(self.m_session_info.m_total_laps)
+        #     self.m_driver_data[index] = obj
+        # return obj
 
     def _recomputeFastestLap(self) -> None:
         """
@@ -283,7 +291,9 @@ class DriverData:
 
         self.m_fastest_index = None
         fastest_time_ms = 500000000000 # cant be slower than this, right?
-        for index, driver_data in self.m_driver_data.items():
+        for index, driver_data in enumerate(self.m_driver_data):
+            if not driver_data or not driver_data.is_valid:
+                continue
             if (driver_data.m_lap_info.m_best_lap_ms) and driver_data.m_lap_info.m_best_lap_ms < fastest_time_ms:
                 fastest_time_ms = driver_data.m_lap_info.m_best_lap_ms
                 self.m_fastest_index = index
@@ -348,7 +358,9 @@ class DriverData:
             self.m_session_info.m_total_laps = packet.m_totalLaps
 
             # Next, update in all extrapolator objects
-            for driver_data in self.m_driver_data.values():
+            for driver_data in self.m_driver_data:
+                if not driver_data or not driver_data.is_valid:
+                    continue
                 driver_data.m_tyre_info.m_tyre_wear_extrapolator.total_laps = self.m_session_info.m_total_laps
                 driver_data.m_car_info.m_fuel_rate_recommender.total_laps = self.m_session_info.m_total_laps
 
@@ -520,7 +532,7 @@ class DriverData:
             final_json["position-history"] = []
             final_json["tyre-stint-history"] = []
         for index, data in enumerate(packet.m_classificationData):
-            obj_to_be_updated = self.m_driver_data.get(index, None)
+            obj_to_be_updated = self._getObjectByIndex(index, create=False)
             # Perform the final snapshot
             obj_to_be_updated.onLapChange(
                 old_lap_number=data.m_numLaps)
@@ -676,7 +688,9 @@ class DriverData:
             Optional[Dict[str, Any]]: Driver info JSON. None if invalid index or data not yet available
         """
 
-        driver_info_obj = self.m_driver_data.get(index, None)
+        driver_info_obj = self._getObjectByIndex(index)
+        if not driver_info_obj:
+            return None
         if self.m_race_completed:
             include_wear_prediction = False
             selected_pit_stop_lap = None
@@ -687,8 +701,6 @@ class DriverData:
                 selected_pit_stop_lap = self.m_ideal_pit_stop_window
             else:
                 selected_pit_stop_lap = None
-        if not driver_info_obj:
-            return None
         final_json = driver_info_obj.toJSON(index, include_wear_prediction, selected_pit_stop_lap)
         final_json["circuit"] = str(self.m_session_info.m_track)
         final_json["session-type"] = str(self.m_session_info.m_session_type)
@@ -736,8 +748,8 @@ class DriverData:
 
         if not self.m_driver_data:
             return None
-        driver_1_obj = self.m_driver_data.get(driver_1_index, None)
-        driver_2_obj = self.m_driver_data.get(driver_2_index, None)
+        driver_1_obj = self._getObjectByIndex(driver_1_index, create=False)
+        driver_2_obj = self._getObjectByIndex(driver_2_index, create=False)
         if driver_1_obj is None or driver_2_obj is None:
             return None
 
@@ -761,7 +773,8 @@ class DriverData:
         Return a list of dictionaries containing index, driver name, position, and participant data.
         """
 
-        return [driver_data.toJSON(index) for index, driver_data in self.m_driver_data.items() if driver_data.is_valid]
+        return [driver_data.toJSON(index) for index, driver_data in enumerate(self.m_driver_data) \
+                if driver_data and driver_data.is_valid]
 
     def getCollisionStatsJSON(self) -> Dict[str, Any]:
         """Get the collision stats JSON.
@@ -799,8 +812,8 @@ class DriverData:
         return next(
             (
                 driver_data
-                for driver_data in self.m_driver_data.values()
-                if driver_data.m_driver_info.position == position
+                for driver_data in self.m_driver_data
+                if (driver_data and driver_data.is_valid) and(driver_data.m_driver_info.position == position)
             ),
             None,
         )
@@ -1090,7 +1103,8 @@ def isDriverIndexValid(index: int) -> bool:
         bool: True if valid
     """
 
-    return index in _driver_data.m_driver_data
+    return  (0 <= index < len(_driver_data.m_driver_data)) and \
+            (_driver_data.m_driver_data[index] and _driver_data.m_driver_data[index].is_valid)
 
 def getEventInfoStr() -> Optional[str]:
     """Returns a string with the following format
@@ -1120,8 +1134,8 @@ def getOvertakeObj(overtaking_car_index: int, being_overtaken_index: int) -> Opt
     """
     if not _driver_data.m_driver_data:
         return None
-    overtaking_car_obj = _driver_data.m_driver_data.get(overtaking_car_index, None)
-    being_overtaken_car_obj = _driver_data.m_driver_data.get(being_overtaken_index, None)
+    overtaking_car_obj = _driver_data._getObjectByIndex(overtaking_car_index, create=False)
+    being_overtaken_car_obj = _driver_data._getObjectByIndex(being_overtaken_index, create=False)
     if overtaking_car_obj is None or being_overtaken_car_obj is None:
         return None
 
@@ -1146,7 +1160,7 @@ def getCustomMarkerEntryObj() -> Optional[CustomMarkerEntry]:
         CustomMarkerEntry: The custom marker entry object for the player. None if any data points is not available
     """
 
-    if player_data := _driver_data.m_driver_data.get(_driver_data.m_player_index):
+    if player_data := _driver_data._getObjectByIndex(_driver_data.m_player_index, create=False):
         # CSV string - <track>,<event-type>,<lap-num>,<sector-num>
         lap_num = player_data.m_lap_info.m_current_lap
         sector = player_data.m_packet_copies.m_packet_lap_data.m_sector
