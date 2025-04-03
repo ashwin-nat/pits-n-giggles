@@ -22,9 +22,12 @@
 
 
 from __future__ import annotations
+
 import struct
-from typing import Dict, Any, List, Optional
-from .common import _extract_sublist, F1Utils, ActualTyreCompound, VisualTyreCompound, PacketHeader
+from typing import Any, Dict, List, Optional
+
+from .common import (ActualTyreCompound, F1Utils, PacketHeader,
+                     VisualTyreCompound)
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -412,7 +415,10 @@ class PacketSessionHistoryData:
         # Then, iterate over it in steps of LapHistoryData.PACKET_LEN, creating LapHistoryData objects.
 
         len_total_lap_hist = LapHistoryData.PACKET_LEN * PacketSessionHistoryData.MAX_LAPS
-        laps_history_data_all = _extract_sublist(data, bytes_index_so_far, bytes_index_so_far + len_total_lap_hist)
+        # Extract a slice of data from bytes_index_so_far to bytes_index_so_far + len_total_lap_hist.
+        # If the indices are out of bounds, Python's slicing naturally returns an empty bytes object.
+
+        laps_history_data_all = data[bytes_index_so_far:bytes_index_so_far + len_total_lap_hist]
 
         self.m_lapHistoryData = [
             LapHistoryData(laps_history_data_all[i:i + LapHistoryData.PACKET_LEN])
@@ -425,7 +431,7 @@ class PacketSessionHistoryData:
         # Then, iterate over it in steps of TyreStintHistoryData.PACKET_LEN, creating TyreStintHistoryData objects.
 
         len_total_tyre_stint = PacketSessionHistoryData.MAX_TYRE_STINT_COUNT * TyreStintHistoryData.PACKET_LEN
-        tyre_stint_history_all = _extract_sublist(data, bytes_index_so_far, bytes_index_so_far + len_total_tyre_stint)
+        tyre_stint_history_all = data[bytes_index_so_far:bytes_index_so_far + len_total_tyre_stint]
 
         self.m_tyreStintsHistoryData = [
             TyreStintHistoryData(tyre_stint_history_all[i:i + TyreStintHistoryData.PACKET_LEN])

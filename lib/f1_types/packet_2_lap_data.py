@@ -22,9 +22,11 @@
 
 
 import struct
-from typing import Dict, List, Any
 from enum import Enum
-from .common import _extract_sublist, ResultStatus, F1Utils, PacketHeader, InvalidPacketLengthError
+from typing import Any, Dict, List
+
+from .common import (F1Utils, InvalidPacketLengthError, PacketHeader,
+                     ResultStatus)
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -308,7 +310,7 @@ class LapData:
         # Assign the members from unpacked_data
         self.m_gameYear = game_year
         if game_year == 23:
-            raw_data = _extract_sublist(data, 0, self.PACKET_LEN_23)
+            raw_data = data[0:self.PACKET_LEN_23]
             (
                 self.m_lastLapTimeInMS,
                 self.m_currentLapTimeInMS,
@@ -345,7 +347,7 @@ class LapData:
             self.m_speedTrapFastestSpeed: float = 0
             self.m_speedTrapFastestLap: int = 0
         else: # 24
-            raw_data = _extract_sublist(data, 0, self.PACKET_LEN_24)
+            raw_data = data[0:self.PACKET_LEN_24]
             (
                 self.m_lastLapTimeInMS,
                 self.m_currentLapTimeInMS,

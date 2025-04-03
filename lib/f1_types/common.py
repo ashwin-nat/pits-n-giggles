@@ -31,30 +31,6 @@ import struct
 from enum import Enum, IntEnum
 from typing import Any, Dict, List, Optional, Set
 
-# ------------------------- PRIVATE FUNCTIONS ----------------------------------
-
-def _extract_sublist(data: bytes, lower_index: int, upper_index: int) -> bytes:
-    """
-    Extracts a sub-list from the given data.
-
-    Args:
-        data (bytes): The data to extract the sub-list from.
-        lower_index (int): The index of the lower bound of the sub-list. (inclusive)
-        upper_index (int): The index of the upper bound of the sub-list. (not inclusive)
-
-    Returns:
-        bytes: The extracted sub-list.
-    """
-
-    # Ensure the indices are within bounds
-    if lower_index < 0 or upper_index > len(data) or lower_index > upper_index:
-        # Return an empty bytes object to indicate an error
-        return b''
-
-    # Extract the sub-list
-    sub_list: bytes = data[lower_index:upper_index]
-    return sub_list
-
 # ------------------------- ERROR CLASSES --------------------------------------
 
 class InvalidPacketLengthError(Exception):

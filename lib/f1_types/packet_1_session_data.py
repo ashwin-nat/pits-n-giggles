@@ -22,10 +22,12 @@
 
 
 import struct
-from typing import Dict, Any, List, Union
 from enum import Enum
-from .common import _extract_sublist, SessionType23, SessionType24, PacketHeader, TrackID, SafetyCarType, \
-    GearboxAssistMode, SessionLength, GameMode, RuleSet
+from typing import Any, Dict, List, Union
+
+from .common import (GameMode, GearboxAssistMode, PacketHeader, RuleSet,
+                     SafetyCarType, SessionLength, SessionType23,
+                     SessionType24, TrackID)
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -1300,7 +1302,7 @@ class PacketSessionData:
         else:
             self.m_maxWeatherForecastSamples = self.F1_24_MAX_NUM_WEATHER_FORECAST_SAMPLES
         # First, section 0
-        section_0_raw_data = _extract_sublist(data, 0, self.PACKET_LEN_SECTION_0)
+        section_0_raw_data = data[0:self.PACKET_LEN_SECTION_0]
         byte_index_so_far = self.PACKET_LEN_SECTION_0
         unpacked_data = struct.unpack(self.PACKET_FORMAT_SECTION_0, section_0_raw_data)
         (
@@ -1336,7 +1338,7 @@ class PacketSessionData:
 
         # Next section 1, marshalZones
         section_1_size = MarshalZone.PACKET_LEN * self.m_maxMarshalZones
-        section_1_raw_data = _extract_sublist(data, byte_index_so_far, byte_index_so_far+section_1_size)
+        section_1_raw_data = data[byte_index_so_far:byte_index_so_far + section_1_size]
         byte_index_so_far += section_1_size
 
         # Iterate over section_1_raw_data in steps of MarshalZone.PACKET_LEN,
@@ -1350,7 +1352,7 @@ class PacketSessionData:
         section_1_raw_data = None
 
         # Section 2, till numWeatherForecastSamples
-        section_2_raw_data = _extract_sublist(data, byte_index_so_far, byte_index_so_far + self.PACKET_LEN_SECTION_2)
+        section_2_raw_data = data[byte_index_so_far:byte_index_so_far + self.PACKET_LEN_SECTION_2]
         byte_index_so_far += self.PACKET_LEN_SECTION_2
         unpacked_data = struct.unpack(self.PACKET_FORMAT_SECTION_2, section_2_raw_data)
         (
@@ -1364,7 +1366,7 @@ class PacketSessionData:
 
         # Section 3 - weather forecast samples
         section_3_size = WeatherForecastSample.PACKET_LEN * self.m_maxWeatherForecastSamples
-        section_3_raw_data = _extract_sublist(data, byte_index_so_far, byte_index_so_far+section_3_size)
+        section_3_raw_data = data[byte_index_so_far:byte_index_so_far + section_3_size]
         byte_index_so_far += section_3_size
         # Iterate over section_3_raw_data in steps of WeatherForecastSample.PACKET_LEN,
         # creating WeatherForecastSample objects for each segment and passing the game year.
@@ -1378,7 +1380,7 @@ class PacketSessionData:
         section_3_raw_data = None
 
         # Section 4 - rest of the packet
-        section_4_raw_data = _extract_sublist(data, byte_index_so_far, byte_index_so_far+self.PACKET_LEN_SECTION_4)
+        section_4_raw_data = data[byte_index_so_far:byte_index_so_far + self.PACKET_LEN_SECTION_4]
         byte_index_so_far += self.PACKET_LEN_SECTION_4
         unpacked_data = struct.unpack(self.PACKET_FORMAT_SECTION_4, section_4_raw_data)
         (
@@ -1424,7 +1426,7 @@ class PacketSessionData:
         # Section 5 - F1 24 specific stuff
         if header.m_gameYear == 24:
             self.m_weekendStructure = [0] * 12
-            section_5_raw_data = _extract_sublist(data, byte_index_so_far, byte_index_so_far+self.PACKET_LEN_SECTION_5)
+            section_5_raw_data = data[byte_index_so_far:byte_index_so_far + self.PACKET_LEN_SECTION_5]
             unpacked_data = struct.unpack(self.PACKET_FORMAT_SECTION_5, section_5_raw_data)
             (
                 self.m_equalCarPerformance,
