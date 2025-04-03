@@ -28,6 +28,7 @@ import logging
 import asyncio
 import logging
 import socket
+import os
 import time
 import webbrowser
 from typing import List, Optional, Set, Tuple
@@ -118,7 +119,7 @@ def setupWebServerTask(
         tasks (List[asyncio.Task]): List of tasks to be executed
         tasks (List[asyncio.Task]): List of tasks to be executed
     """
-    # Create a thread to open the webpage
+    # Create a task to open the webpage
     if not disable_browser_autoload:
         tasks.append(asyncio.create_task(openWebPage(http_port), name="Web page opener Task"))
 
@@ -158,10 +159,8 @@ def setupGameTelemetryTask(
         udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code.
         forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
     """
-    time.sleep(2) # TODO: revisit this sleep
-    time.sleep(2) # TODO: revisit this sleep
     initTelemetryGlobals(post_race_data_autosave, udp_custom_action_code, udp_tyre_delta_action_code)
-    initForwarder(forwarding_targets)
+    initForwarder(forwarding_targets, tasks)
     telemetry_client = F1TelemetryHandler(port_number, forwarding_targets, replay_server)
     tasks.append(asyncio.create_task(telemetry_client.run(), name="Game Telemetry Listener Task"))
 
@@ -200,7 +199,7 @@ async def main() -> None:
     config = load_config(args.config_file)
 
     png_logger = initLogger(file_name=config.log_file, max_size=config.log_file_size, debug_mode=args.debug)
-    png_logger.info("Starting the app with the following options:")
+    png_logger.info(f"PID={os.getpid()} Starting the app with the following options:")
     png_logger.info(config)
 
     initDirectories()
@@ -226,11 +225,88 @@ async def main() -> None:
 
     # Run all tasks concurrently
     png_logger.debug(f"Registered {len(tasks)} Tasks: {[task.get_name() for task in tasks]}")
-    await asyncio.gather(*tasks)
+    try:
+        await asyncio.gather(*tasks)
+    except asyncio.CancelledError:
+        png_logger.debug("Main task was cancelled.")
+        raise  # Ensure proper cancellation behavior
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("Program interrupted by user.")
+    except asyncio.CancelledError:
+        print("Program shutdown gracefully.")
 
-    asyncio.run(main())
+# import yappi
+# import pstats
+
+# def save_pstats_report(html_filename, txt_filename):
+#     stats = pstats.Stats("yappi_profile.prof")
+
+#     # Don't strip directories, so full paths are included
+#     # If you want the paths to be fully visible, just skip strip_dirs()
+#     stats.sort_stats("cumulative")
+
+#     # Save as HTML
+#     with open(html_filename, "w") as f:
+#         f.write("<html><head><title>Yappi Profile</title></head><body><pre>")
+#         stats.stream = f
+#         stats.print_stats()
+#         f.write("</pre></body></html>")
+
+#     # Save as TXT
+#     with open(txt_filename, "w") as f:
+#         stats.stream = f
+#         stats.print_stats()
+
+# if __name__ == "__main__":
+#     yappi.set_clock_type("wall")  # Use "cpu" for CPU-bound tasks
+#     yappi.start()
+
+#     try:
+#         asyncio.run(main())
+#     except KeyboardInterrupt:
+#         print("Program interrupted by user.")
+#     except asyncio.CancelledError:
+#         print("Program shutdown gracefully.")
+#     finally:
+#         yappi.stop()
+
+#         # Save function-level stats for SnakeViz
+#         yappi.get_func_stats().save("yappi_profile.prof", type="pstat")
+#         print("Saved function profile as yappi_profile.prof (compatible with snakeviz)")
+
+#         # Generate reports
+#         save_pstats_report("yappi_profile.html", "yappi_profile.txt")
+
+#         print("Generated reports:")
+#         print(" - yappi_profile.html")
+#         print(" - yappi_profile.txt")
+
+# import cProfile
+# import pstats
+
+# if __name__ == '__main__':
+#     with cProfile.Profile() as pr:
+#         try:
+#             asyncio.run(main())
+#         except KeyboardInterrupt:
+#             print("Program interrupted by user.")
+#         except asyncio.CancelledError:
+#             print("Program shutdown gracefully.")
+
+#     print("starting stats dump")
+#     pr.dump_stats("profile_results.prof")  # ✅ Binary format for later analysis
+
+#     stats = pstats.Stats(pr)
+#     stats.sort_stats("cumulative")  # Sort by cumulative time
+
+#     # Write readable profiling results to a text file
+#     with open("profile_results.txt", "w") as f:
+#         stats.stream = f
+#         stats.print_stats()
+#     print("finished stats dump")

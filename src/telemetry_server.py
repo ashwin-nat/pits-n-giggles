@@ -23,20 +23,21 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
+import logging
 import os
 from http import HTTPStatus
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import socketio
 # pylint: disable=unused-import
-from engineio.async_drivers import gevent
+# from engineio.async_drivers import gevent
 from hypercorn.asyncio import serve
 from hypercorn.config import Config
 from quart import Quart, jsonify, render_template, request, send_from_directory
 
 import src.telemetry_data as TelData
 import src.telemetry_web_api as TelWebAPI
-from lib.inter_thread_communicator import InterThreadCommunicator
+from lib.inter_thread_communicator import AsyncInterTaskCommunicator
 from src.png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
@@ -405,8 +406,14 @@ class TelemetryWebServer:
 
         Sets up the server configuration and starts serving the application.
         """
+
         config = Config()
         config.bind = [f"0.0.0.0:{self.m_port}"]
+        if not self.m_debug_mode:
+            config.errorlog = None  # Disable error log output
+            config.accesslog = None  # Disable access log output
+            logging.getLogger("hypercorn.error").setLevel(logging.CRITICAL)   # Suppresses startup messages
+            logging.getLogger("hypercorn.access").setLevel(logging.CRITICAL)  # Suppresses request logs
         await serve(self.m_sio_app, config)
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
@@ -493,7 +500,7 @@ async def frontEndMessageTask(update_interval_ms: int, sio: socketio.AsyncServer
 
     sleep_duration = update_interval_ms / 1000
     while True:
-        message = InterThreadCommunicator().receive("frontend-update")
+        message = await AsyncInterTaskCommunicator().receive("frontend-update")
         if message:
             png_logger.debug(f"Received stream update button press {str(message)}")
             await sio.emit('frontend-update', message.toJSON())

@@ -24,9 +24,9 @@ SOFTWARE.
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import asyncio
 import json
 import os
-import threading
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -36,8 +36,8 @@ from lib.button_debouncer import ButtonDebouncer
 from lib.f1_types import (F1PacketType, PacketEventData,
                           PacketFinalClassificationData, PacketSessionData,
                           SessionType23, SessionType24)
-from lib.inter_thread_communicator import InterThreadCommunicator
-from lib.packet_forwarder import UDPForwarder
+from lib.inter_thread_communicator import AsyncInterTaskCommunicator
+from lib.packet_forwarder import AsyncUDPForwarder
 from src.png_logger import getLogger
 from src.telemetry_manager import F1TelemetryManager
 
@@ -97,38 +97,28 @@ def initDirectories() -> None:
     for directory in g_directory_mapping.values():
         ensureDirectoryExists(directory)
 
-def initForwarder(forwarding_targets: List[Tuple[str, int]]) -> None:
+def initForwarder(forwarding_targets: List[Tuple[str, int]], tasks: List[asyncio.Task]) -> None:
     """Init the forwarding thread, if targets are defined
 
     Args:
         forwarding_targets (List[Tuple[str, int]]): Forwarding Targets list
+        tasks (List[asyncio.Task]): List of tasks
     """
 
-    # Spawn the thread only if targets are defined
+    # Register the task only if targets are defined
     if forwarding_targets:
-        forwarding_thread = threading.Thread(target=udpForwardingThread,
-                                    args=(forwarding_targets,))
-        forwarding_thread.daemon = True
-        forwarding_thread.start()
-
+        tasks.append(asyncio.create_task(udpForwardingTask(forwarding_targets), name="UDP Forwarder Task"))
 
 # -------------------------------------- THREADS -----------------------------------------------------------------------
 
-def udpForwardingThread(forwarding_targets: List[Tuple[str, int]]) -> None:
-    """Thread that forwards all UDP packets to specified targets
+async def udpForwardingTask(forwarding_targets: List[Tuple[str, int]]) -> None:
 
-    Args:
-        forwarding_targets (List[Tuple[str, int]]): List of tuple of target
-            Each tuple is a pair of IP addr/hostname (str), port number (int)
-    """
-
-    udp_forwarder = UDPForwarder(forwarding_targets)
+    udp_forwarder = AsyncUDPForwarder(forwarding_targets)
     png_logger.info(f"Initialised forwarder. Targets={forwarding_targets}")
     while True:
-        packet = InterThreadCommunicator().receiveWaitIndefinite("packet-forward")
+        packet = await AsyncInterTaskCommunicator().receive("packet-forward")
         assert packet is not None
-
-        udp_forwarder.forward(packet)
+        await udp_forwarder.forward(packet)
 
 # -------------------------------------- UTILITIES ---------------------------------------------------------------------
 
@@ -187,7 +177,7 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
     else:
         png_logger.debug("Not saving post race data")
 
-def clearAllDataStructures(_dummy_arg=None) -> None:
+async def clearAllDataStructures(_dummy_arg=None) -> None:
     """Clear all data structures.
     """
 
@@ -266,7 +256,8 @@ class F1TelemetryHandler:
             packet (List[bytes]): The raw telemetry packet.
         """
 
-        InterThreadCommunicator().send("packet-forward", packet)
+        # InterThreadCommunicator().send("packet-forward", packet)
+        await AsyncInterTaskCommunicator().send("packet-forward", packet)
 
     @staticmethod
     async def handleSessionData(packet: PacketSessionData) -> None:
@@ -296,18 +287,18 @@ class F1TelemetryHandler:
         global g_button_debouncer
 
         # Function to handle BUTTON_STATUS action
-        def handle_button_status(packet: PacketEventData):
+        async def handle_button_status(packet: PacketEventData):
             if (g_udp_custom_action_code is not None) and \
             (packet.mEventDetails.isUDPActionPressed(g_udp_custom_action_code)) and \
             (g_button_debouncer.onButtonPress(g_udp_custom_action_code)):
                 png_logger.debug('UDP action %d pressed', g_udp_custom_action_code)
-                TelData.processCustomMarkerCreate()
+                await TelData.processCustomMarkerCreate()
 
             if (g_udp_tyre_delta_action_code is not None) and \
             (packet.mEventDetails.isUDPActionPressed(g_udp_tyre_delta_action_code)) and \
             (g_button_debouncer.onButtonPress(g_udp_tyre_delta_action_code)):
                 png_logger.debug('UDP action %d pressed', g_udp_tyre_delta_action_code)
-                TelData.processTyreDeltaSound()
+                await TelData.processTyreDeltaSound()
 
         # Define the handler functions in a dictionary
         event_handler = {
@@ -320,7 +311,7 @@ class F1TelemetryHandler:
         }.get(packet.m_eventCode)
 
         if event_handler:
-            event_handler(packet)
+            await event_handler(packet)
 
     @staticmethod
     async def handleFinalClassification(packet: PacketFinalClassificationData) -> None:
@@ -370,3 +361,18 @@ class F1TelemetryHandler:
                         break
             if is_event_supported:
                 postGameDumpToFile(final_json)
+
+
+            # # Cancel all tasks except itself
+            # import asyncio
+            # current_task = asyncio.current_task()
+            # for task in asyncio.all_tasks():
+            #     if task is not current_task:
+            #         task.cancel()
+
+            # # Option 1: Self-cancel
+            # try:
+            #     current_task.cancel()
+            # except asyncio.CancelledError:
+            #     pass  # Suppress the traceback
+            # return  # Ensure it stops running
