@@ -22,7 +22,8 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-from typing import Callable, Dict, Optional, Awaitable
+import time
+from typing import Awaitable, Callable, Dict, Optional
 
 from lib.f1_types import (F1PacketType, InvalidPacketLengthError,
                           PacketCarDamageData, PacketCarSetupData,
@@ -191,7 +192,6 @@ class F1TelemetryManager:
     async def runAsync(self) -> None:
         """Run the telemetry client asynchronously
         """
-        import time
 
         if self.m_replay_server:
             png_logger.info("REPLAY SERVER MODE. PORT = %s", self.m_port_number)

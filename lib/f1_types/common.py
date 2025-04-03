@@ -28,7 +28,7 @@
 
 
 from enum import Enum
-from typing import List, Any, Dict, Optional, Set
+from typing import Any, Dict, Optional, Set
 import struct
 
 # ------------------------- ERROR CLASSES --------------------------------------
@@ -40,7 +40,7 @@ class InvalidPacketLengthError(Exception):
     incomplete or corrupt. or more realistically a bug)
     """
     def __init__(self, message):
-        super().__init__("Invalid packet length. " + message)
+        super().__init__(f"Invalid packet length. {message}")
 
 # -------------------- COMMON CLASSES ------------------------------------------
 class F1PacketType(Enum):

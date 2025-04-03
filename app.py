@@ -25,9 +25,8 @@
 import argparse
 import asyncio
 import logging
-import socket
 import os
-import time
+import socket
 import webbrowser
 from typing import List, Optional, Set, Tuple
 
@@ -141,6 +140,7 @@ def setupGameTelemetryTask(
         udp_custom_action_code (Optional[int]): UDP custom action code.
         udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code.
         forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
+        tasks (List[asyncio.Task]): List of tasks to be executed
     """
 
     initTelemetryGlobals(post_race_data_autosave, udp_custom_action_code, udp_tyre_delta_action_code)
@@ -182,7 +182,7 @@ async def main() -> None:
     config = load_config(args.config_file)
 
     png_logger = initLogger(file_name=config.log_file, max_size=config.log_file_size, debug_mode=args.debug)
-    png_logger.info(f"PID={os.getpid()} Starting the app with the following options:")
+    png_logger.info("PID=%d Starting the app with the following options:", os.getpid())
     png_logger.info(config)
 
     initDirectories()
@@ -207,7 +207,7 @@ async def main() -> None:
                    config.disable_browser_autoload, config.stream_overlay_start_sample_data, tasks)
 
     # Run all tasks concurrently
-    png_logger.debug(f"Registered {len(tasks)} Tasks: {[task.get_name() for task in tasks]}")
+    png_logger.debug("Registered %d Tasks: %s", len(tasks), [task.get_name() for task in tasks])
     try:
         await asyncio.gather(*tasks)
     except asyncio.CancelledError:

@@ -29,8 +29,6 @@ from http import HTTPStatus
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import socketio
-# pylint: disable=unused-import
-# from engineio.async_drivers import gevent
 from hypercorn.asyncio import serve
 from hypercorn.config import Config
 from quart import Quart, jsonify, render_template, request, send_from_directory
@@ -270,6 +268,7 @@ class TelemetryWebServer:
         """
         Set up Socket.IO event handlers for client connection and registration.
         """
+        # pylint: disable=unused-argument
         @self.m_sio.event
         async def connect(sid: str, environ: Dict[str, Any]) -> None:
             """
@@ -431,6 +430,7 @@ def initTelemetryWebServer(
         client_update_interval_ms (int): How often the client will be updated with new info
         debug_mode (bool): Debug enabled if true
         stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
+        tasks (List[asyncio.Task]): List of tasks to be executed
 
     Returns:
         TelemetryWebServer: The initialized web server

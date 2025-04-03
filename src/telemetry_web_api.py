@@ -22,8 +22,7 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-import copy
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import lib.race_analyzer as RaceAnalyzer
 import src.telemetry_data as TelData
@@ -571,7 +570,7 @@ class DriversListRsp:
 
         self.m_is_spectator_mode : bool = is_spectator_mode
         self.m_track_length : int = track_length
-        self.m_json_rsp : List[Dict[str, Any]] | Dict[str, Any] = [] # In TT mode dict, else list
+        self.m_json_rsp : Union[List[Dict[str, Any]], Dict[str, Any]] = [] # In TT mode dict, else list
         self.m_fastest_lap : Optional[int] = None
         self.m_fastest_lap_driver: Optional[str] = None
         self.m_fastest_lap_tyre: Optional[VisualTyreCompound] = None
@@ -584,11 +583,11 @@ class DriversListRsp:
         else:
             self.__initDriverList()
 
-    def toJSON(self) -> List[Dict[str, Any]] | Dict[str, Any]:
+    def toJSON(self) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
         """Get the drivers list JSON
 
         Returns:
-            List[Dict[str, Any]] | Dict[str, Any]: The JSON dump
+            Union[List[Dict[str, Any]], Dict[str, Any]]: The JSON dump
         """
         return self.m_json_rsp
 
@@ -711,7 +710,7 @@ class DriversListRsp:
         player_obj = TelData._driver_data.m_driver_data[player_index]
         if not player_obj:
             png_logger.debug("Player not found in TT mode")
-            return None
+            return
 
         # Insert top speed into the lap-history-data records
         if player_obj.m_packet_copies.m_packet_session_history:
