@@ -73,61 +73,44 @@ class AsyncUDPTransport:
     """Abstraction layer for UDP transport management."""
     def __init__(self, forward_addresses: List[Tuple[str, int]]):
         """
-        Initialize transports for known destinations.
+        Initialize transports for known destinations synchronously.
 
         :param forward_addresses: List of (IP, Port) tuples to initialize transports for
         """
         self._transports: Dict[Tuple[str, int], asyncio.DatagramTransport] = {}
+        self._sockets: Dict[Tuple[str, int], socket.socket] = {}
 
-        # Only attempt to create transports if addresses are provided
+        # Only attempt to create sockets if addresses are provided
         if forward_addresses:
-            # Use async method to create transports
-            asyncio.run(self._initialize_transports(forward_addresses))
+            for destination in forward_addresses:
+                try:
+                    # Create UDP socket
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    sock.setblocking(False)  # Non-blocking socket
 
-        # Freeze the dictionary after initialization
-        self._transports = MappingProxyType(self._transports)
+                    # Connect the socket to the destination (doesn't send data)
+                    sock.connect(destination)
 
-        # Store transports for safe cleanup
-        self._cleanup_transports = list(self._transports.values())
+                    # Store socket
+                    self._sockets[destination] = sock
+                except OSError as e:
+                    png_logger.error(f"Error creating socket to {destination}: {e}")
+                    # Clean up any sockets created so far
+                    self.close()
+                    raise
 
-    async def _initialize_transports(self, destinations: List[Tuple[str, int]]) -> None:
-        """
-        Asynchronously create transports for all specified destinations.
-
-        :param destinations: List of (IP, Port) tuples to create transports for
-        """
-        # Use asyncio.gather to create transports concurrently
-        await asyncio.gather(
-            *[self._create_transport(destination) for destination in destinations]
-        )
-
-    async def _create_transport(self, destination: Tuple[str, int]) -> None:
-        """
-        Create a UDP transport for a specific destination.
-
-        :param destination: A tuple (IP, Port) specifying the destination.
-        """
-        try:
-            loop = asyncio.get_running_loop()
-            transport, _ = await loop.create_datagram_endpoint(
-                lambda: asyncio.DatagramProtocol(),
-                remote_addr=destination
-            )
-            self._transports[destination] = transport
-        except OSError as e:
-            png_logger.error(f"Error creating transport to {destination}: {e}")
-            raise
+        # Freeze the dictionaries after initialization
+        self._sockets = MappingProxyType(self._sockets)
 
     def close(self) -> None:
         """
-        Safely close all transports.
+        Safely close all sockets.
         """
-        for transport in self._cleanup_transports:
+        for destination, sock in list(getattr(self, '_sockets', {}).items()):
             try:
-                if not transport.is_closing():
-                    transport.close()
+                sock.close()
             except Exception as e:
-                png_logger.error(f"Error closing transport: {e}")
+                png_logger.error(f"Error closing socket to {destination}: {e}")
 
     async def send(self, data: bytes, destination: Tuple[str, int]) -> None:
         """
@@ -136,15 +119,13 @@ class AsyncUDPTransport:
         :param data: Bytes to send
         :param destination: Destination (IP, Port)
         """
-        if destination not in self._transports:
-            raise ValueError(f"No pre-initialized transport for destination {destination}")
+        if destination not in self._sockets:
+            raise ValueError(f"No pre-initialized socket for destination {destination}")
 
-        # Send outside of the lock to minimize lock duration
+        # Send asynchronously using the socket
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(
-            None,
-            lambda: self._transports[destination].sendto(data)
-        )
+        await loop.sock_sendall(self._sockets[destination], data)
+
 
 class AsyncUDPForwarder:
     def __init__(self, forward_addresses: List[Tuple[str, int]]):
@@ -163,15 +144,12 @@ class AsyncUDPForwarder:
 
         :param data: The data (bytes) to forward
         """
-        # Do nothing if no destinations are configured
         if not self.m_forward_addresses:
             return
 
-        # Use asyncio.gather to send to all destinations concurrently
-        await asyncio.gather(
-            *[self._forwardPacket(data, destination)
-              for destination in self.m_forward_addresses]
-        )
+        # Schedule all sends concurrently using create_task (avoiding asyncio.gather overhead)
+        for destination in self.m_forward_addresses:
+            asyncio.ensure_future(self._transport.send(data, destination))
 
     async def _forwardPacket(self, data: bytes, destination: Tuple[str, int]) -> None:
         """

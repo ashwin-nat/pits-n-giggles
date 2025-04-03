@@ -23,6 +23,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import asyncio
 import json
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -39,8 +40,8 @@ from lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils, LapData,
                           PacketTyreSetsData, ResultStatus, SafetyCarType,
                           SessionType23, SessionType24, TrackID,
                           WeatherForecastSample)
-from lib.inter_thread_communicator import (InterThreadCommunicator, ITCMessage,
-                                           TyreDeltaMessage)
+from lib.inter_thread_communicator import (AsyncInterTaskCommunicator,
+                                           ITCMessage, TyreDeltaMessage)
 from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
@@ -889,7 +890,7 @@ async def processLapDataUpdate(packet: PacketLapData) -> None:
         _driver_data.processLapDataUpdate(packet)
         _driver_data.setRaceOngoing()
 
-def processFastestLapUpdate(packet: PacketEventData) -> None:
+async def processFastestLapUpdate(packet: PacketEventData) -> None:
     """Update the data structures with the fastest lap
 
     Args:
@@ -898,7 +899,7 @@ def processFastestLapUpdate(packet: PacketEventData) -> None:
 
     _driver_data.processFastestLapUpdate(packet.mEventDetails)
 
-def processRetirementEvent(packet: PacketEventData) -> None:
+async def processRetirementEvent(packet: PacketEventData) -> None:
     """Update the data structures with the driver retirement udpate
 
     Args:
@@ -907,7 +908,7 @@ def processRetirementEvent(packet: PacketEventData) -> None:
 
     _driver_data.processRetirement(packet.mEventDetails)
 
-def processCollisionsEvent(packet: PacketEventData) -> None:
+async def processCollisionsEvent(packet: PacketEventData) -> None:
     """Update the data structures with collisions event udpate.
 
     Args:
@@ -1021,30 +1022,34 @@ async def processTimeTrialUpdate(packet: PacketTimeTrialData) -> None:
 
     _driver_data.processTimeTrialUpdate(packet)
 
-def processCustomMarkerCreate() -> None:
+async def processCustomMarkerCreate() -> None:
     """Update the data structures with custom marker information
     """
 
     custom_marker_obj = getCustomMarkerEntryObj()
     if custom_marker_obj:
         _custom_markers_history.insert(custom_marker_obj)
-        InterThreadCommunicator().send("frontend-update", ITCMessage(
+        await AsyncInterTaskCommunicator().send("frontend-update", ITCMessage(
             m_message_type=ITCMessage.MessageType.CUSTOM_MARKER,
             m_message=custom_marker_obj))
     else:
         png_logger.warning("Unable to generate player_recorded_event_str")
 
-def processTyreDeltaSound() -> None:
+async def processTyreDeltaSound() -> None:
     """Send the tyre delta notification to the frontend
     """
 
     messages = getTyreDeltaNotificationMessages()
     for message in messages:
-        InterThreadCommunicator().send("frontend-update", ITCMessage(
-            m_message_type=ITCMessage.MessageType.TYRE_DELTA_NOTIFICATION,
-            m_message=message))
+        asyncio.create_task(AsyncInterTaskCommunicator().send(
+            "frontend-update",
+            ITCMessage(
+                m_message_type=ITCMessage.MessageType.TYRE_DELTA_NOTIFICATION,
+                m_message=message
+            )
+        ))
 
-def processOvertakeEvent(packet: PacketEventData) -> None:
+async def processOvertakeEvent(packet: PacketEventData) -> None:
     """Add the overtake event to the tracker
 
     Args:
@@ -1212,14 +1217,6 @@ def isPositionHistorySupported() -> bool:
     """
 
     return _driver_data.isPositionHistorySupported()
-
-def processStreamUpdateButtonPress(custom_marker_obj: CustomMarkerEntry) -> None:
-    """Processes the stream update button press event
-    """
-
-    InterThreadCommunicator().send("frontend-update", ITCMessage(
-        m_message_type=ITCMessage.MessageType.CUSTOM_MARKER,
-        m_message=custom_marker_obj))
 
 def clearDataStructures(reason: str) -> None:
     """Clears the data structures
