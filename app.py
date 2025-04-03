@@ -69,6 +69,7 @@ def parseArgs() -> argparse.Namespace:
 
     # Add command-line arguments with default values
     parser.add_argument("config_file", nargs="?", default="png_config.ini", help="Configuration file name (optional)")
+    parser.add_argument("--version", nargs="?", default="dev", help="Current version string")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
     parser.add_argument('--replay-server', action='store_true', help="Enable the TCP replay debug server")
 
@@ -101,14 +102,12 @@ async def openWebPage(http_port: int) -> None:
     png_logger.debug("Webpage opened. Task completed")
 
 def setupWebServerTask(
-def setupWebServerTask(
         http_port: int,
         client_update_interval_ms: int,
         disable_browser_autoload: bool,
         stream_overlay_start_sample_data: bool,
-        tasks: List[asyncio.Task]) -> None:
-        stream_overlay_start_sample_data: bool,
-        tasks: List[asyncio.Task]) -> None:
+        tasks: List[asyncio.Task],
+        ver_str: str) -> None:
     """Entry point to start the HTTP server.
 
     Args:
@@ -117,7 +116,7 @@ def setupWebServerTask(
         disable_browser_autoload (bool): Whether to disable browser autoload.
         stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
         tasks (List[asyncio.Task]): List of tasks to be executed
-        tasks (List[asyncio.Task]): List of tasks to be executed
+        ver_str (str): Version string
     """
     # Create a task to open the webpage
     if not disable_browser_autoload:
@@ -136,9 +135,8 @@ def setupWebServerTask(
         client_update_interval_ms=client_update_interval_ms,
         debug_mode=False,
         stream_overlay_start_sample_data=stream_overlay_start_sample_data,
-        tasks=tasks
-        stream_overlay_start_sample_data=stream_overlay_start_sample_data,
-        tasks=tasks
+        tasks=tasks,
+        ver_str=ver_str
     )
 
 def setupGameTelemetryTask(
@@ -191,7 +189,6 @@ def printDoNotCloseWarning() -> None:
     print(RED + BOLD + border)
 
 async def main() -> None:
-async def main() -> None:
     """Entry point for the application."""
 
     global png_logger
@@ -222,7 +219,7 @@ async def main() -> None:
     printDoNotCloseWarning()
 
     setupWebServerTask(config.server_port, config.refresh_interval,
-                   config.disable_browser_autoload, config.stream_overlay_start_sample_data, tasks)
+                   config.disable_browser_autoload, config.stream_overlay_start_sample_data, tasks, args.version)
 
     # Run all tasks concurrently
     png_logger.debug("Registered %d Tasks: %s", len(tasks), [task.get_name() for task in tasks])

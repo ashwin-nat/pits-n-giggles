@@ -366,7 +366,9 @@ class DriverData:
                 driver_data.m_car_info.m_fuel_rate_recommender.total_laps = self.m_session_info.m_total_laps
 
         # Update the max SC status for all drivers
-        for obj_to_be_updated in self.m_driver_data.values():
+        for obj_to_be_updated in self.m_driver_data:
+            if not obj_to_be_updated or not obj_to_be_updated.is_valid:
+                continue
             obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status = (
                 packet.m_safetyCarStatus
                 if obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status is None
