@@ -62,6 +62,9 @@
           <button id="settings-btn" class="settings-button" data-bs-toggle="tooltip" data-bs-title="Configure UI settings">
             <i class="bi bi-gear-fill"></i>
           </button>
+          <a id="github-btn" class="settings-button" href="https://github.com/ashwin-nat/pits-n-giggles" data-bs-toggle="tooltip" data-bs-title="Pits n' Giggles Github Repo" target="_blank" rel="noopener noreferrer">
+              <i class="bi bi-github"></i>
+          </a>
         </div>
       </header>
 
@@ -507,5 +510,25 @@
     <script src="{{ url_for('static', filename='js/telemetryRenderer.js') }}"></script>
     <script src="{{ url_for('static', filename='js/frontendUpdate.js') }}"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/updater.js') }}"></script>
+    <script>
+      const currVer = "{{ version }}";
+      console.info("Running version", currVer);
+      if (currVer !== 'dev') {
+        checkForNewVersion(currVer, (error, updateInfo) => {
+          if (error) {
+            console.error('Error checking for updates:', error);
+            return;
+          }
+
+          if (updateInfo.hasUpdate) {
+            console.log(`New version found: ${updateInfo.latestVersion}`);
+            showToast(`New version available: ${updateInfo.latestVersion}`, 10000);
+          } else {
+            console.log('No new version found.');
+          }
+        });
+      }
+    </script>
   </body>
 </html>

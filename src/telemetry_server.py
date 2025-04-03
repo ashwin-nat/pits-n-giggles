@@ -60,17 +60,20 @@ class TelemetryWebServer:
         m_app (Quart): The Quart web application instance.
         m_sio (socketio.AsyncServer): The Socket.IO server instance.
         m_sio_app (socketio.ASGIApp): The combined Quart and Socket.IO ASGI application.
+        m_ver_str (str): The version string.
     """
 
-    def __init__(self, port: int, debug_mode: bool = False):
+    def __init__(self, port: int, ver_str: str, debug_mode: bool = False):
         """
         Initialize the TelemetryWebServer.
 
         Args:
             port (int): The port number to run the server on.
+            ver_str (str): The version string.
             debug_mode (bool, optional): Enable or disable debug mode. Defaults to False.
         """
         self.m_port: int = port
+        self.m_ver_str = ver_str
         self.m_debug_mode: bool = debug_mode
         self.subtasks: List[Tuple[Callable, Tuple[Any, ...]]] = []
 
@@ -188,7 +191,7 @@ class TelemetryWebServer:
             Returns:
                 str: Rendered HTML content for the index page.
             """
-            return await render_template('index.html', live_data_mode=True)
+            return await render_template('index.html', live_data_mode=True, version=self.m_ver_str)
 
         @self.m_app.route('/eng-view')
         async def engineerView() -> str:
@@ -422,7 +425,8 @@ def initTelemetryWebServer(
     client_update_interval_ms: int,
     debug_mode: bool,
     stream_overlay_start_sample_data: bool,
-    tasks: List[asyncio.Task]) -> TelemetryWebServer:
+    tasks: List[asyncio.Task],
+    ver_str: str) -> TelemetryWebServer:
     """Initialize the web server
 
     Args:
@@ -431,6 +435,7 @@ def initTelemetryWebServer(
         debug_mode (bool): Debug enabled if true
         stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
         tasks (List[asyncio.Task]): List of tasks to be executed
+        ver_str (str): Version string
 
     Returns:
         TelemetryWebServer: The initialized web server
@@ -441,6 +446,7 @@ def initTelemetryWebServer(
     _web_server = TelemetryWebServer(
         port=port,
         debug_mode=debug_mode,
+        ver_str=ver_str
     )
 
     # Register tasks associated with this server
