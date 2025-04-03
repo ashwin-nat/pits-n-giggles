@@ -36,7 +36,7 @@ from lib.button_debouncer import ButtonDebouncer
 from lib.f1_types import (F1PacketType, PacketEventData,
                           PacketFinalClassificationData, PacketSessionData,
                           SessionType23, SessionType24)
-from lib.inter_thread_communicator import AsyncInterTaskCommunicator
+from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.packet_forwarder import AsyncUDPForwarder
 from src.png_logger import getLogger
 from src.telemetry_manager import F1TelemetryManager
