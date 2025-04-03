@@ -40,7 +40,7 @@ from lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils, LapData,
                           PacketTyreSetsData, ResultStatus, SafetyCarType,
                           SessionType23, SessionType24, TrackID,
                           WeatherForecastSample)
-from lib.inter_thread_communicator import (AsyncInterTaskCommunicator,
+from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
                                            ITCMessage, TyreDeltaMessage)
 from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
