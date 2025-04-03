@@ -33,19 +33,6 @@ import struct
 
 # ------------------------- PRIVATE FUNCTIONS ----------------------------------
 
-def _split_list(original_list: List[Any], sublist_length: int) -> List[List[Any]]:
-    """
-    Splits the given list into sublists of a specified length.
-
-    Args:
-        original_list (List[Any]): The original list to be split.
-        sublist_length (int): The desired length of each sublist.
-
-    Returns:
-        List[List[Any]]: A list containing sublists of the specified length.
-    """
-    return [original_list[i:i + sublist_length] for i in range(0, len(original_list), sublist_length)]
-
 def _extract_sublist(data: bytes, lower_index: int, upper_index: int) -> bytes:
     """
     Extracts a sub-list from the given data.

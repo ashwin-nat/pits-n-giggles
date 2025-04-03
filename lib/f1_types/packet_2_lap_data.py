@@ -24,7 +24,7 @@
 import struct
 from typing import Dict, List, Any
 from enum import Enum
-from .common import _split_list, _extract_sublist, ResultStatus, F1Utils, PacketHeader, InvalidPacketLengthError
+from .common import _extract_sublist, ResultStatus, F1Utils, PacketHeader, InvalidPacketLengthError
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 

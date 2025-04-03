@@ -24,7 +24,7 @@
 import struct
 from typing import Dict, Any, List, Union
 from enum import Enum
-from .common import _split_list, _extract_sublist, SessionType23, SessionType24, PacketHeader, TrackID, SafetyCarType, \
+from .common import _extract_sublist, SessionType23, SessionType24, PacketHeader, TrackID, SafetyCarType, \
     GearboxAssistMode, SessionLength, GameMode, RuleSet
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -1338,13 +1338,13 @@ class PacketSessionData:
         section_1_size = MarshalZone.PACKET_LEN * self.m_maxMarshalZones
         section_1_raw_data = _extract_sublist(data, byte_index_so_far, byte_index_so_far+section_1_size)
         byte_index_so_far += section_1_size
-        self.m_marshalZones: List[MarshalZone] = []         # List of marshal zones – max 21
-        self.m_marshalZones.extend(
-            MarshalZone(per_marshal_zone_raw_data)
-            for per_marshal_zone_raw_data in _split_list(
-                section_1_raw_data, MarshalZone.PACKET_LEN
-            )
-        )
+
+        # Iterate over section_1_raw_data in steps of MarshalZone.PACKET_LEN,
+        # creating MarshalZone objects for each segment.
+        self.m_marshalZones = [
+            MarshalZone(section_1_raw_data[i:i + MarshalZone.PACKET_LEN])
+            for i in range(0, len(section_1_raw_data), MarshalZone.PACKET_LEN)
+        ]
         # Trim the unnecessary marshalZones
         self.m_marshalZones = self.m_marshalZones[:self.m_numMarshalZones]
         section_1_raw_data = None
@@ -1366,13 +1366,13 @@ class PacketSessionData:
         section_3_size = WeatherForecastSample.PACKET_LEN * self.m_maxWeatherForecastSamples
         section_3_raw_data = _extract_sublist(data, byte_index_so_far, byte_index_so_far+section_3_size)
         byte_index_so_far += section_3_size
-        self.m_weatherForecastSamples: List[WeatherForecastSample] = []  # Array of weather forecast samples
-        self.m_weatherForecastSamples.extend(
-            WeatherForecastSample(per_weather_sample_raw_data, header.m_gameYear)
-            for per_weather_sample_raw_data in _split_list(
-                section_3_raw_data, WeatherForecastSample.PACKET_LEN
-            )
-        )
+        # Iterate over section_3_raw_data in steps of WeatherForecastSample.PACKET_LEN,
+        # creating WeatherForecastSample objects for each segment and passing the game year.
+
+        self.m_weatherForecastSamples = [
+            WeatherForecastSample(section_3_raw_data[i:i + WeatherForecastSample.PACKET_LEN], header.m_gameYear)
+            for i in range(0, len(section_3_raw_data), WeatherForecastSample.PACKET_LEN)
+        ]
         # Trim the unnecessary weatherForecastSamples
         self.m_weatherForecastSamples = self.m_weatherForecastSamples[:self.m_numWeatherForecastSamples]
         section_3_raw_data = None

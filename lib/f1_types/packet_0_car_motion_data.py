@@ -23,7 +23,7 @@
 
 import struct
 from typing import Dict, Any
-from .common import _split_list, PacketHeader, InvalidPacketLengthError, List
+from .common import PacketHeader, InvalidPacketLengthError, List
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -299,12 +299,12 @@ class PacketMotionData:
             raise InvalidPacketLengthError(
                 f"Received packet length {len(packet)} is not a multiple of {str(CarMotionData.PACKET_LEN)}"
             )
-        self.m_carMotionData: List[CarMotionData] = []
-        motion_data_packet_per_car = _split_list(packet, CarMotionData.PACKET_LEN)
-        self.m_carMotionData.extend(
-            CarMotionData(motion_data_packet)
-            for motion_data_packet in motion_data_packet_per_car
-        )
+
+        # Slice the packet bytes in steps of CarMotionData.PACKET_LEN to create CarMotionData objects.
+        self.m_carMotionData = [
+            CarMotionData(packet[i:i + CarMotionData.PACKET_LEN])
+            for i in range(0, len(packet), CarMotionData.PACKET_LEN)
+        ]
 
     def __str__(self) -> str:
         """

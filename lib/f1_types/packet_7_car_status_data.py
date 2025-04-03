@@ -24,7 +24,7 @@
 import struct
 from typing import Dict, List, Any
 from enum import Enum
-from .common import _split_list, PacketHeader, ActualTyreCompound, VisualTyreCompound, TractionControlAssistMode
+from .common import PacketHeader, ActualTyreCompound, VisualTyreCompound, TractionControlAssistMode
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
