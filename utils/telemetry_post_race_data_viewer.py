@@ -572,13 +572,15 @@ def handleRaceInfoRequest() -> Tuple[Dict[str, Any], HTTPStatus]:
         }, HTTPStatus.OK
 
 class TelemetryWebServer:
-    def __init__(self, port: int):
+    def __init__(self, port: int, ver_str: str):
         """
         Initialize TelemetryServer.
 
         Args:
             port (int): Port number for the server.
+            ver_str (str): Version string
         """
+        self.m_ver_str = ver_str
         # Get the absolute path to the application root
         if hasattr(sys, '_MEIPASS'):
             # PyInstaller bundle mode
@@ -639,7 +641,7 @@ class TelemetryWebServer:
             Returns:
                 str: HTML page content.
             """
-            return render_template('index.html', live_data_mode=False)
+            return render_template('index.html', live_data_mode=False, version=self.m_ver_str)
 
         # Define your endpoint
         @self.m_app.route('/telemetry-info')
@@ -1072,6 +1074,7 @@ def parseArgs() -> argparse.Namespace:
     # Add command-line arguments with default values
     parser.add_argument('-i', '--input-file', nargs="?", default=None, help="Input file name (optional)")
     parser.add_argument('-c', '--cloud', action='store_true', default=False, help="Run the viewer server in cloud mode")
+    parser.add_argument("--version", nargs="?", default="dev", help="Current version string")
 
     # Parse the command-line arguments
     args = parser.parse_args()
@@ -1114,7 +1117,8 @@ def main():
     print(f"Starting server. It can be accessed at http://localhost:{str(g_port_number)}")
     global _server
     _server = TelemetryWebServer(
-        port=g_port_number)
+        port=g_port_number,
+        ver_str=args.version)
     _server.run()
 
 if __name__ == "__main__":
