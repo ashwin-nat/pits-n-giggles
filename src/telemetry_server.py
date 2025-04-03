@@ -37,7 +37,7 @@ from quart import Quart, jsonify, render_template, request, send_from_directory
 
 import src.telemetry_data as TelData
 import src.telemetry_web_api as TelWebAPI
-from lib.inter_thread_communicator import AsyncInterTaskCommunicator
+from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from src.png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
