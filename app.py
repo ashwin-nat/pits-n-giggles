@@ -55,6 +55,7 @@ def parseArgs() -> argparse.Namespace:
 
     # Add command-line arguments with default values
     parser.add_argument("config_file", nargs="?", default="png_config.ini", help="Configuration file name (optional)")
+    parser.add_argument("--version", nargs="?", default="dev", help="Current version string")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
     parser.add_argument('--replay-server', action='store_true', help="Enable the TCP replay debug server")
 
@@ -89,7 +90,8 @@ def httpServerTask(
         http_port: int,
         client_update_interval_ms: int,
         disable_browser_autoload: bool,
-        stream_overlay_start_sample_data: bool) -> None:
+        stream_overlay_start_sample_data: bool,
+        ver_str: str) -> None:
     """Entry point to start the HTTP server.
 
     Args:
@@ -97,6 +99,7 @@ def httpServerTask(
         client_update_interval_ms (int): Client poll interval in milliseconds.
         disable_browser_autoload (bool): Whether to disable browser autoload.
         stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
+        ver_str (str): Version string
     """
     # Create a thread to open the webpage
     if not disable_browser_autoload:
@@ -115,7 +118,8 @@ def httpServerTask(
         port=http_port,
         client_update_interval_ms=client_update_interval_ms,
         debug_mode=False,
-        stream_overlay_start_sample_data=stream_overlay_start_sample_data
+        stream_overlay_start_sample_data=stream_overlay_start_sample_data,
+        ver_str=ver_str
     )
 
 def f1TelemetryServerTask(
@@ -197,7 +201,7 @@ def main() -> None:
     # Run the HTTP server on the main thread. Flask does not like running on separate threads
     printDoNotCloseWarning()
     httpServerTask(config.server_port, config.refresh_interval,
-                   config.disable_browser_autoload, config.stream_overlay_start_sample_data)
+                   config.disable_browser_autoload, config.stream_overlay_start_sample_data, args.version)
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 

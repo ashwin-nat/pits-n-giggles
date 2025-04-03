@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 app_name = 'pits_n_giggles'
-app_ver = '2.2.6'
+app_ver = '2.2.7'
 
 # Helper function to join paths correctly
 def get_data_paths_main_app():
@@ -88,7 +88,8 @@ exe1 = EXE(
     runtime_tmpdir=None,
     console=True,
     disable_windowed_traceback=False,
-    argv_emulation=False,
+    argv_emulation=True,
+    arguments=['--version', app_ver],
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,

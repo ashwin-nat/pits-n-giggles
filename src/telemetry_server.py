@@ -48,7 +48,8 @@ class TelemetryWebServer:
         port: int,
         client_update_interval_ms: int,
         debug_mode: bool,
-        socketio_tasks: List[Tuple[Callable, Any]]):
+        socketio_tasks: List[Tuple[Callable, Any]],
+        ver_str: str):
         """
         Initialize TelemetryServer.
 
@@ -57,8 +58,10 @@ class TelemetryWebServer:
             client_update_interval_ms (int) - The interval at which the client should be updated with new data
             debug_mode (bool): Enable debug mode.
             socketio_tasks (List[Tuple[Callable, Any]]): List of tasks to be executed by the SocketIO server
+            ver_str (str): Version string
         """
 
+        self.m_ver_str = ver_str
         self.m_app = Flask(__name__, template_folder='templates', static_folder='static')
         self.m_app.config['PROPAGATE_EXCEPTIONS'] = True
         self.m_port = port
@@ -154,7 +157,7 @@ class TelemetryWebServer:
                 str: HTML page content.
             """
 
-            return render_template('index.html', live_data_mode=True)
+            return render_template('index.html', live_data_mode=True, version=self.m_ver_str)
 
         # Render the HTML page
         @self.m_app.route('/player-stream-overlay')
@@ -366,7 +369,8 @@ def initTelemetryWebServer(
     port: int,
     client_update_interval_ms: int,
     debug_mode: bool,
-    stream_overlay_start_sample_data: bool) -> None:
+    stream_overlay_start_sample_data: bool,
+    ver_str: str) -> None:
     """Initialize the web server
 
     Args:
@@ -374,6 +378,7 @@ def initTelemetryWebServer(
         client_update_interval_ms (int): How often the client will be updated with new info
         debug_mode (bool): Debug enabled if true
         stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
+        ver_str (str): Version string
     """
 
     global _web_server
@@ -385,7 +390,8 @@ def initTelemetryWebServer(
             (raceTableClientUpdaterTask, client_update_interval_ms),
             (playerTelemetryOverlayUpdaterTask, 60, stream_overlay_start_sample_data),
             (streamUpdaterTask, 1000)
-        ]
+        ],
+        ver_str=ver_str
     )
     _web_server.run()
 
