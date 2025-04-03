@@ -22,6 +22,7 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
+import copy
 from typing import Any, Dict, List, Optional
 
 import lib.race_analyzer as RaceAnalyzer
@@ -806,11 +807,14 @@ class DriversListRsp:
             if not 1 <= temp_data.m_driver_info.position <= TelData._driver_data.m_num_active_cars:
                 continue
 
-            temp_data.m_index = index
-            temp_data.m_is_fastest = (index == TelData._driver_data.m_fastest_index)
+            # TODO: rework this class. dont store temp copies of DataPerDriver
+            # temp fix - copy the data so that we dont modify the original
+            copied_data = copy.deepcopy(temp_data)
+            copied_data.m_index = index
+            copied_data.m_is_fastest = (index == TelData._driver_data.m_fastest_index)
 
             # Add this prepped record into the final list
-            self.m_final_list.append(temp_data)
+            self.m_final_list.append(copied_data)
         self.m_final_list.sort(key=lambda obj: obj.m_driver_info.position)
         self.m_fastest_s1_ms = TelData._driver_data.m_fastest_s1_ms
         self.m_fastest_s2_ms = TelData._driver_data.m_fastest_s2_ms
