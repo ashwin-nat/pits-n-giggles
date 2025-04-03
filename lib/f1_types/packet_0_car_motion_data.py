@@ -22,8 +22,9 @@
 
 
 import struct
-from typing import Dict, Any
-from .common import PacketHeader, InvalidPacketLengthError, List
+from typing import Any, Dict, List
+
+from .common import InvalidPacketLengthError, PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
