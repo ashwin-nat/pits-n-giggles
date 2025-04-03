@@ -214,7 +214,7 @@ class AsyncTCPListener():
                     # Accept connection
                     self.m_connection, _ = await self._loop.run_in_executor(
                         None,
-                        lambda: self.m_socket.accept()
+                        self.m_socket.accept
                     )
 
                 try:

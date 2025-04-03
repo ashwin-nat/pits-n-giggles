@@ -22,7 +22,6 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import copy
 from typing import List
 from enum import Enum, auto
 from lib.overtake_analyzer import OvertakeRecord

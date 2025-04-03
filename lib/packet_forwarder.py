@@ -111,6 +111,7 @@ class AsyncUDPTransport:
                 sock.close()
             except Exception as e:
                 png_logger.error(f"Error closing socket to {destination}: {e}")
+                raise
 
     async def send(self, data: bytes, destination: Tuple[str, int]) -> None:
         """
@@ -162,3 +163,4 @@ class AsyncUDPForwarder:
             await self._transport.send(data, destination)
         except Exception as e:
             png_logger.error(f"Error forwarding packet to {destination}: {e}")
+            raise

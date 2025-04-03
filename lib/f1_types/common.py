@@ -27,6 +27,8 @@
 ## F1 24 - https://answers.ea.com/t5/General-Discussion/F1-24-UDP-Specification/td-p/13745220
 
 
+from enum import Enum
+from typing import Any, Dict, Optional, Set
 import struct
 from enum import Enum, IntEnum
 from typing import Any, Dict, List, Optional, Set
@@ -40,7 +42,7 @@ class InvalidPacketLengthError(Exception):
     incomplete or corrupt. or more realistically a bug)
     """
     def __init__(self, message):
-        super().__init__("Invalid packet length. " + message)
+        super().__init__(f"Invalid packet length. {message}")
 
 # -------------------- COMMON CLASSES ------------------------------------------
 class F1PacketType(Enum):
