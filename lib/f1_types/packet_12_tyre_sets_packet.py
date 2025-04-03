@@ -23,7 +23,7 @@
 
 import struct
 from typing import Dict, List, Any, Optional, Union
-from .common import _split_list, _extract_sublist, PacketHeader, VisualTyreCompound, ActualTyreCompound, \
+from .common import _extract_sublist, PacketHeader, VisualTyreCompound, ActualTyreCompound, \
     SessionType23, SessionType24
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -254,14 +254,15 @@ class PacketTyreSetsData:
         self.m_carIdx: int = struct.unpack("<B", data[:1])[0]
         self.m_tyreSetData: List[TyreSetData] = []
 
+        # Extract the full tyre set data slice from the packet, based on the expected length.
+        # Then, iterate over it in steps of TyreSetData.PACKET_LEN, creating TyreSetData objects.
         tyre_set_data_full_len = PacketTyreSetsData.MAX_TYRE_SETS * TyreSetData.PACKET_LEN
         full_tyre_set_data_raw = _extract_sublist(data, 1, 1 + tyre_set_data_full_len)
-        self.m_tyreSetData.extend(
-            TyreSetData(tyre_set_data_raw, header.m_gameYear)
-            for tyre_set_data_raw in _split_list(
-                full_tyre_set_data_raw, TyreSetData.PACKET_LEN
-            )
-        )
+
+        self.m_tyreSetData = [
+            TyreSetData(full_tyre_set_data_raw[i:i + TyreSetData.PACKET_LEN], header.m_gameYear)
+            for i in range(0, tyre_set_data_full_len, TyreSetData.PACKET_LEN)
+        ]
         self.m_fittedIdx: int = struct.unpack("<B", data[(1 + tyre_set_data_full_len):])[0]
 
     def __str__(self) -> str:

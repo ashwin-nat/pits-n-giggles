@@ -24,7 +24,7 @@
 import struct
 from typing import Dict, List, Any, Optional, Union
 from enum import Enum
-from .common import _split_list, PacketHeader, F1PacketType, TeamID23, TeamID24, Nationality, Platform, TelemetrySetting
+from .common import PacketHeader, F1PacketType, TeamID23, TeamID24, Nationality, Platform, TelemetrySetting
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -327,18 +327,15 @@ class PacketLobbyInfoData:
 
         self.m_header: PacketHeader = header
         self.m_numPlayers: int = struct.unpack("<B", packet[:1])[0]
-        self.m_lobbyPlayers: List[LobbyInfoData] = []
         if header.m_packetFormat == 2023:
             packet_len = LobbyInfoData.PACKET_LEN_23
         else: # 24
             packet_len = LobbyInfoData.PACKET_LEN_24
 
-        self.m_lobbyPlayers.extend(
-            LobbyInfoData(lobby_info_per_player_raw_data, header.m_packetFormat)
-            for lobby_info_per_player_raw_data in _split_list(
-                packet[1:], packet_len
-            )
-        )
+        self.m_lobbyPlayers: List[LobbyInfoData] = [
+            LobbyInfoData(packet[i:i + packet_len], header.m_packetFormat)
+            for i in range(1, len(packet), packet_len)
+        ]
         # Trim the list
         self.m_lobbyPlayers = self.m_lobbyPlayers[:self.m_numPlayers]
 
