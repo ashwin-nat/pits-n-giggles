@@ -26,7 +26,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
-from lib.f1_types import F1Utils, LapData, TelemetrySetting
+from lib.f1_types import F1Utils, LapData, TelemetrySetting, SafetyCarType
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 from src.data_per_driver import (CarInfo, DriverInfo, LapInfo, PacketCopies,
                                  PerLapSnapshotEntry, TyreInfo,
@@ -409,7 +409,7 @@ class DataPerDriver:
             self.m_car_info.m_fuel_rate_recommender.add(
                 self.m_packet_copies.m_packet_car_status.m_fuelInTank,
                 old_lap_number,
-                self.m_driver_info.m_curr_lap_sc_status,
+                (self.m_driver_info.m_curr_lap_sc_status == SafetyCarType.NO_SAFETY_CAR), # is_racing_lap
                 desc=f"end of lap {old_lap_number} snapshot"
             )
 
@@ -582,7 +582,6 @@ class DataPerDriver:
                 "target-fuel-rate-average" : self.m_car_info.m_fuel_rate_recommender.target_fuel_rate,
                 "target-fuel-rate-next-lap" : self.m_car_info.m_fuel_rate_recommender.target_next_lap_fuel_usage,
                 "surplus-laps" : self.m_car_info.m_fuel_rate_recommender.surplus_laps,
-                "safety-car-fuel-rate" : self.m_car_info.m_fuel_rate_recommender.safety_car_fuel_rate,
             }
 
         return {
