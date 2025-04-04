@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import argparse
+import os
 import socket
 import threading
 import time
@@ -55,7 +56,6 @@ def parseArgs() -> argparse.Namespace:
 
     # Add command-line arguments with default values
     parser.add_argument("config_file", nargs="?", default="png_config.ini", help="Configuration file name (optional)")
-    parser.add_argument("--version", nargs="?", default="dev", help="Current version string")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
     parser.add_argument('--replay-server', action='store_true', help="Enable the TCP replay debug server")
 
@@ -169,6 +169,15 @@ def printDoNotCloseWarning() -> None:
         print(RED + BOLD + f"* {line.center(56)} *")
     print(RED + BOLD + border)
 
+def getVersion() -> str:
+    """Get the version string from env variable
+
+    Returns:
+        str: Version string
+    """
+
+    return os.environ.get('PNG_VERSION', 'dev')
+
 def main() -> None:
     """Entry point for the application."""
 
@@ -201,7 +210,7 @@ def main() -> None:
     # Run the HTTP server on the main thread. Flask does not like running on separate threads
     printDoNotCloseWarning()
     httpServerTask(config.server_port, config.refresh_interval,
-                   config.disable_browser_autoload, config.stream_overlay_start_sample_data, args.version)
+                   config.disable_browser_autoload, config.stream_overlay_start_sample_data, getVersion())
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 

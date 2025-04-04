@@ -1,8 +1,17 @@
 import os
+import tempfile
 from pathlib import Path
 
 app_name = 'pits_n_giggles'
 app_ver = '2.2.7'
+
+# Create a temporary runtime hook file
+temp_dir = tempfile.mkdtemp()
+hook_path = os.path.join(temp_dir, 'hook-runtime.py')
+
+with open(hook_path, 'w') as f:
+    f.write(f"import os\n")
+    f.write(f"os.environ['PNG_VERSION'] = '{app_ver}'\n")
 
 # Helper function to join paths correctly
 def get_data_paths_main_app():
@@ -47,7 +56,7 @@ a = Analysis(
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=[hook_path],
     excludes=[],
     noarchive=False,
     optimize=0,
@@ -62,7 +71,7 @@ b = Analysis(
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=[hook_path],
     excludes=[],
     noarchive=False,
     optimize=0,
