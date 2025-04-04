@@ -26,6 +26,7 @@ import argparse
 import asyncio
 import logging
 import os
+import os
 import socket
 import webbrowser
 from typing import List, Optional, Set, Tuple
@@ -57,7 +58,6 @@ def parseArgs() -> argparse.Namespace:
 
     # Add command-line arguments with default values
     parser.add_argument("config_file", nargs="?", default="png_config.ini", help="Configuration file name (optional)")
-    parser.add_argument("--version", nargs="?", default="dev", help="Current version string")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
     parser.add_argument('--replay-server', action='store_true', help="Enable the TCP replay debug server")
 
@@ -177,6 +177,15 @@ def printDoNotCloseWarning() -> None:
         print(RED + BOLD + f"* {line.center(56)} *")
     print(RED + BOLD + border)
 
+def getVersion() -> str:
+    """Get the version string from env variable
+
+    Returns:
+        str: Version string
+    """
+
+    return os.environ.get('PNG_VERSION', 'dev')
+
 async def main() -> None:
     """Entry point for the application."""
 
@@ -208,7 +217,7 @@ async def main() -> None:
     printDoNotCloseWarning()
 
     setupWebServerTask(config.server_port, config.refresh_interval,
-                   config.disable_browser_autoload, config.stream_overlay_start_sample_data, tasks, args.version)
+                   config.disable_browser_autoload, config.stream_overlay_start_sample_data, tasks, getVersion())
 
     # Run all tasks concurrently
     png_logger.debug("Registered %d Tasks: %s", len(tasks), [task.get_name() for task in tasks])
