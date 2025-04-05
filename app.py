@@ -236,6 +236,8 @@ if __name__ == '__main__':
     except asyncio.CancelledError:
         print("Program shutdown gracefully.")
 
+# ---------------------------------------- PROFILER MODE ---------------------------------------------------------------
+
 # import yappi
 # import pstats
 
