@@ -264,7 +264,7 @@ class PacketTimeTrialData:
 
         # First, the Player session best data set
         bytes_so_far = 0
-        raw_data = data[0:bytes_so_far + TimeTrialDataSet.PACKET_LEN]
+        raw_data = data[:bytes_so_far + TimeTrialDataSet.PACKET_LEN]
         bytes_so_far += TimeTrialDataSet.PACKET_LEN
         self.m_playerSessionBestDataSet = TimeTrialDataSet(raw_data)
 

@@ -111,12 +111,6 @@ class F1TelemetryManager:
         }
         self.m_raw_packet_callback: Optional[Callable[[object], Awaitable[None]]] = None
 
-
-        self.packet_count = 0
-        self.min_processing_time = float('inf')
-        self.max_processing_time = 0
-        self.total_processing_time = 0
-
     def registerRawPacketCallback(self, callback: Callable[[object], Awaitable[None]]):
         """Register a callback for every UDP message on this socket. This is useful for debugging
 
@@ -203,18 +197,18 @@ class F1TelemetryManager:
 
             # Get next UDP message (TCP in the case of replay server)
             raw_packet = await self.m_server.getNextMessage()
-            start_time = time.perf_counter()
-            await self._processPacket(should_parse_packet, raw_packet)
-            end_time = time.perf_counter()
-
-            processing_time = end_time - start_time
-            self.packet_count += 1
-            self.min_processing_time = min(self.min_processing_time, processing_time)
-            self.max_processing_time = max(self.max_processing_time, processing_time)
-            self.total_processing_time += processing_time
+            try:
+                await self._processPacket(should_parse_packet, raw_packet)
+            except Exception as e:
+                png_logger.error("Error processing packet: %s", e, exc_info=True)
 
     async def _processPacket(self, should_parse_packet: bool, raw_packet: bytes) -> None:
+        """Processes the packet received from the UDP socket
 
+        Args:
+            should_parse_packet (bool): Whether to parse the packet or not
+            raw_packet (bytes): The raw packet received from the UDP socket
+        """
         if len(raw_packet) < PacketHeader.PACKET_LEN:
             # skip incomplete packet
             return
@@ -238,15 +232,5 @@ class F1TelemetryManager:
             packet = F1TelemetryManager.packet_type_map[header.m_packetId](header, payload_raw)
         except InvalidPacketLengthError as e:
             png_logger.error("Cannot parse packet of type %s. Error = %s", str(header.m_packetId), str(e))
-        callback = self.m_callbacks.get(header.m_packetId, None)
-        if callback:
+        if callback := self.m_callbacks.get(header.m_packetId, None):
             await callback(packet)
-
-    def get_processing_stats(self):
-        avg_time = (self.total_processing_time / self.packet_count) if self.packet_count > 0 else 0.0
-        return {
-            "packet_count": self.packet_count,
-            "min_processing_time": self.min_processing_time,
-            "max_processing_time": self.max_processing_time,
-            "avg_processing_time": avg_time
-        }

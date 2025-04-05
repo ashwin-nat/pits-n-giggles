@@ -192,6 +192,8 @@ class DriverData:
         m_process_car_setups (bool): Flag indicating whether to process car setups packets.
     """
 
+    MAX_DRIVERS: int = 22
+
     def __init__(self,
                  post_race_autosave: bool,
                  udp_custom_marker_action_code: Optional[int],
@@ -206,7 +208,7 @@ class DriverData:
             process_car_setups (bool): Whether to process car setups packets
         """
 
-        self.m_driver_data: List[Optional[DataPerDriver]] = [None] * 22
+        self.m_driver_data: List[Optional[DataPerDriver]] = [None] * self.MAX_DRIVERS
         self.m_player_index: Optional[int] = None
         self.m_fastest_index: Optional[int] = None
         self.m_num_active_cars: Optional[int] = None
@@ -231,7 +233,7 @@ class DriverData:
     def clear(self) -> None:
         """Clear this object. Clears the m_driver_data list and sets everything else to None
         """
-        self.m_driver_data = [None] * 22
+        self.m_driver_data = [None] * self.MAX_DRIVERS
         self.m_player_index = None
         self.m_fastest_index = None
         self.m_num_active_cars = None

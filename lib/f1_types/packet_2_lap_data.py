@@ -310,7 +310,7 @@ class LapData:
         # Assign the members from unpacked_data
         self.m_gameYear = game_year
         if game_year == 23:
-            raw_data = data[0:self.PACKET_LEN_23]
+            raw_data = data[:self.PACKET_LEN_23]
             (
                 self.m_lastLapTimeInMS,
                 self.m_currentLapTimeInMS,

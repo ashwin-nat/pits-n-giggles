@@ -522,7 +522,7 @@ class PacketCarSetupData:
             self.m_nextFrontWingValue: float = 0.0
         else: # 24
             packet_len = CarSetupData.PACKET_LEN_24
-            car_setups_raw_data = packet[0:packet_len * 22]
+            car_setups_raw_data = packet[:packet_len * 22]
             # Iterate over car_setups_raw_data in steps of packet_len,
             # splitting it into chunks of packet_len.
             car_setups_raw_data = [

@@ -385,8 +385,7 @@ class TelemetryWebServer:
         """
 
         # Validate the input
-        error_response = self._validateIntGetRequestParam(index_arg, 'index')
-        if error_response:
+        if error_response := self._validateIntGetRequestParam(index_arg, 'index'):
             return error_response, HTTPStatus.BAD_REQUEST
 
         # Check if the given index is valid

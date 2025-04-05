@@ -726,7 +726,6 @@ class DriversListRsp:
         }
 
     def _getDriverJSON(self, index: int, driver_data: DataPerDriver) -> Dict[str, Any]:
-        # sourcery skip: low-code-quality
         """Get the driver JSON data.
 
         Args:
