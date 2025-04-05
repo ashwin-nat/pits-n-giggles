@@ -155,6 +155,7 @@ class AsyncUDPListener():
         self.m_socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
         self.m_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.m_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        self.m_socket.setblocking(False)
         self.m_socket.bind((self.m_bind_ip, self.m_port))
         self._loop = asyncio.get_event_loop()
 
@@ -163,16 +164,11 @@ class AsyncUDPListener():
         Returns:
             bytes: The raw bytes that were received
         """
-        # Use run_in_executor to make the blocking socket receive call async-friendly
-        # This will block the executor thread but allow other tasks to run
-        message, _ = await self._loop.run_in_executor(
-            None,
-            lambda: self.m_socket.recvfrom(self.m_buffer_size)
-        )
+        message, _ = await self._loop.sock_recvfrom(self.m_socket, self.m_buffer_size)
         return message
 
-class AsyncTCPListener():
-    """This class represents a TCP server.
+class AsyncTCPListener:
+    """This class represents a TCP server that handles one connection at a time.
     Attributes:
     - m_buffer_size - The buffer size being used
     - m_port - The TCP port that this server is bound to
@@ -186,18 +182,23 @@ class AsyncTCPListener():
         """Construct a TCPListener object
         Args:
             port (int): The port number to initialise this server to
-            bind_ip (str): The IP address this server must be bound to (default is '127.0.0.1')
+            bind_ip (str): The IP address this server must be bound to
             buffer_size (int, optional): The buffer size to be specified. Defaults to 16 kb.
         """
         self.m_buffer_size = buffer_size
         self.m_port = port
         self.m_bind_ip = bind_ip
+
+        # Create and configure the server socket
         self.m_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.m_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.m_socket.bind((self.m_bind_ip, self.m_port))
-        self.m_socket.listen(1)  # Set the maximum number of queued connections
+        self.m_socket.listen(1)  # One connection queue
+        self.m_socket.setblocking(False)  # Non-blocking mode
+
         self.m_connection = None
-        self._loop = asyncio.get_event_loop()
+        self._reader = None
+        self._writer = None
 
     async def getNextMessage(self) -> bytes:
         """
@@ -206,61 +207,37 @@ class AsyncTCPListener():
         Returns:
         bytes: The raw bytes that were received.
         """
-        while True:
-            # Use run_in_executor to make blocking operations async-friendly
-            async def _get_next_message():
-                # Establish connection if needed
-                if self.m_connection is None:
-                    # Accept connection
-                    self.m_connection, _ = await self._loop.run_in_executor(
-                        None,
-                        self.m_socket.accept
-                    )
+        # Accept a new connection if needed
+        if self.m_connection is None:
+            try:
+                # Wait for a connection - this yields to the event loop
+                conn, addr = await asyncio.get_event_loop().sock_accept(self.m_socket)
+                self.m_connection = conn
+                self.m_connection.setblocking(False)
+                # Use streams for easier reading
+                self._reader, self._writer = await asyncio.open_connection(
+                    sock=conn
+                )
+            except Exception as e:
+                print(f"Connection error: {e}")
+                return await self.getNextMessage()  # Try again
 
-                try:
-                    # Read message length (4-byte integer)
-                    message_length_bytes = await self._loop.run_in_executor(
-                        None,
-                        lambda: self.m_connection.recv(4)
-                    )
+        try:
+            # Read length prefix (4 bytes)
+            length_bytes = await self._reader.readexactly(4)
+            message_length = struct.unpack('!I', length_bytes)[0]
 
-                    if not message_length_bytes:
-                        # Connection closed by client
-                        self.m_connection.close()
-                        self.m_connection = None
-                        # This will implicitly continue the loop
-                        return None
+            # Read the message of specified length
+            return await self._reader.readexactly(message_length)
 
-                    # Unpack message length
-                    message_length = struct.unpack('!I', message_length_bytes)[0]
+        except (asyncio.IncompleteReadError, ConnectionError) as e:
+            # Connection closed or error
+            if self._writer:
+                self._writer.close()
+                await self._writer.wait_closed()
+            self.m_connection = None
+            self._reader = None
+            self._writer = None
 
-                    # Read actual message
-                    message = await self._loop.run_in_executor(
-                        None,
-                        lambda: self.m_connection.recv(message_length)
-                    )
-
-                    if not message:
-                        # Connection closed by client
-                        self.m_connection.close()
-                        self.m_connection = None
-                        # This will implicitly continue the loop
-                        return None
-
-                    return message
-
-                except socket.error:
-                    # Handle socket errors
-                    if self.m_connection:
-                        self.m_connection.close()
-                    self.m_connection = None
-                    return None
-
-            # Wait for a message, allowing other tasks to run if blocking
-            result = await _get_next_message()
-
-            # If result is not None, return it
-            if result is not None:
-                return result
-
-            # If result is None, the loop will continue automatically
+            # Try again with a new connection
+            return await self.getNextMessage()
