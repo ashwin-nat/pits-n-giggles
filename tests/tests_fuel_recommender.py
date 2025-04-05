@@ -103,11 +103,6 @@ class TestFuelRateRecommender(FuelRecommenderUT):
         )
         self.assertFalse(single_lap_recommender.isDataSufficient())
 
-    def test_clear(self):
-        self.recommender.clear()
-        self.assertEqual(len(self.recommender.m_fuel_remaining_history), 0)
-        self.assertFalse(self.recommender.isDataSufficient())
-
     def test_fuel_used_last_lap(self):
         self.assertEqual(self.recommender.fuel_used_last_lap, 2.0)  # 100.0 - 98.0
 
@@ -192,8 +187,7 @@ class TestFuelRateRecommender(FuelRecommenderUT):
         * Safety Car: 1.2 kg/lap (lower due to reduced speed)
 
         Expected Behavior:
-        - The recommender should correctly calculate the current fuel rate, target fuel rate,
-          target next lap fuel usage, and surplus laps.
+        - The recommender should correctly calculate the current fuel rate and surplus laps.
         - The target next lap fuel usage should be adjusted based on the difference between
           current and target rates.
         - The recommender should correctly handle the different fuel consumption rates between
@@ -292,3 +286,87 @@ class TestFuelRateRecommender(FuelRecommenderUT):
         if recommender.curr_fuel_rate is not None:
             self.assertGreater(recommender.curr_fuel_rate, 0)
             self.assertLess(abs(recommender.curr_fuel_rate - RACING_CONSUMPTION), 0.5)
+
+    def test_fuel_recommender_safety_car_beginning(self):
+        """
+        Test scenario with safety car period at the beginning of the race.
+        """
+        INITIAL_FUEL = 100.0
+        TOTAL_LAPS = 10
+        MIN_FUEL = 0.0
+        RACING_CONSUMPTION = 2.8
+        SAFETY_CAR_CONSUMPTION = 1.2
+        SAFETY_CAR_PERIODS = [(1, 3)]  # Safety car for laps 1 to 3
+
+        recommender = FuelRateRecommender([], TOTAL_LAPS, MIN_FUEL)
+        recommender.add(INITIAL_FUEL, 0, True, "Starting fuel")
+        current_fuel = INITIAL_FUEL
+
+        for lap in range(1, TOTAL_LAPS + 1):
+            is_safety_car = any(start <= lap <= end for start, end in SAFETY_CAR_PERIODS)
+            consumption = SAFETY_CAR_CONSUMPTION if is_safety_car else RACING_CONSUMPTION
+            current_fuel -= consumption
+            lap_desc = "Safety Car" if is_safety_car else "Racing"
+            recommender.add(current_fuel, lap, not is_safety_car, lap_desc)
+
+        # Calculate expected final fuel
+        expected_final_fuel = INITIAL_FUEL - ((3 * SAFETY_CAR_CONSUMPTION) + ((TOTAL_LAPS - 3) * RACING_CONSUMPTION))
+        assert abs(recommender.final_fuel_kg - expected_final_fuel) < 1e-6
+
+
+    def test_fuel_recommender_safety_car_end(self):
+        """
+        Test scenario with safety car period at the end of the race.
+        """
+        INITIAL_FUEL = 100.0
+        TOTAL_LAPS = 10
+        MIN_FUEL = 0.0
+        RACING_CONSUMPTION = 2.8
+        SAFETY_CAR_CONSUMPTION = 1.2
+        SAFETY_CAR_PERIODS = [(8, 10)]  # Safety car for laps 8 to 10
+
+        recommender = FuelRateRecommender([], TOTAL_LAPS, MIN_FUEL)
+        recommender.add(INITIAL_FUEL, 0, True, "Starting fuel")
+        current_fuel = INITIAL_FUEL
+
+        for lap in range(1, TOTAL_LAPS + 1):
+            is_safety_car = any(start <= lap <= end for start, end in SAFETY_CAR_PERIODS)
+            consumption = SAFETY_CAR_CONSUMPTION if is_safety_car else RACING_CONSUMPTION
+            current_fuel -= consumption
+            lap_desc = "Safety Car" if is_safety_car else "Racing"
+            recommender.add(current_fuel, lap, not is_safety_car, lap_desc)
+
+        # Calculate expected final fuel
+        safety_laps = 3
+        racing_laps = TOTAL_LAPS - safety_laps
+        expected_final_fuel = INITIAL_FUEL - (safety_laps * SAFETY_CAR_CONSUMPTION + racing_laps * RACING_CONSUMPTION)
+        assert abs(recommender.final_fuel_kg - expected_final_fuel) < 1e-6
+
+
+    def test_fuel_recommender_multiple_short_safety_car(self):
+        """
+        Test scenario with multiple short safety car periods.
+        """
+        INITIAL_FUEL = 100.0
+        TOTAL_LAPS = 10
+        MIN_FUEL = 0.0
+        RACING_CONSUMPTION = 2.8
+        SAFETY_CAR_CONSUMPTION = 1.2
+        SAFETY_CAR_PERIODS = [(2, 2), (5, 5), (8, 8)]  # Safety car on laps 2, 5, and 8
+
+        recommender = FuelRateRecommender([], TOTAL_LAPS, MIN_FUEL)
+        recommender.add(INITIAL_FUEL, 0, True, "Starting fuel")
+        current_fuel = INITIAL_FUEL
+
+        for lap in range(1, TOTAL_LAPS + 1):
+            is_safety_car = any(start <= lap <= end for start, end in SAFETY_CAR_PERIODS)
+            consumption = SAFETY_CAR_CONSUMPTION if is_safety_car else RACING_CONSUMPTION
+            current_fuel -= consumption
+            lap_desc = "Safety Car" if is_safety_car else "Racing"
+            recommender.add(current_fuel, lap, not is_safety_car, lap_desc)
+
+        # Calculate expected final fuel
+        safety_laps = 3  # Laps 2, 5, and 8
+        racing_laps = TOTAL_LAPS - safety_laps
+        expected_final_fuel = INITIAL_FUEL - (safety_laps * SAFETY_CAR_CONSUMPTION + racing_laps * RACING_CONSUMPTION)
+        assert abs(recommender.final_fuel_kg - expected_final_fuel) < 1e-6

@@ -120,13 +120,6 @@ class FuelRateRecommender:
         racing_laps = [lap for lap in self.m_fuel_remaining_history if lap.m_is_racing_lap]
         return len(racing_laps) >= 2 and self.m_total_laps is not None
 
-    def clear(self) -> None:
-        """Clear the fuel rate recommender's data
-        """
-        self.m_fuel_remaining_history.clear()
-        self.m_total_laps = None
-        self._clearComputedValues()
-
     def _clearComputedValues(self) -> None:
         """Clear the computed values
         """
@@ -191,6 +184,15 @@ class FuelRateRecommender:
         """
         return self.m_total_laps
 
+    @property
+    def final_fuel_kg(self) -> Optional[float]:
+        """Get the predicted final fuel level in kg
+
+        Returns:
+            Optional[float]: Final fuel level in kg. None if not available
+        """
+        return self.m_predicted_final_fuel.get(0)
+
     @total_laps.setter
     def total_laps(self, value: int):
         """Set the total number of laps in the race
@@ -217,49 +219,36 @@ class FuelRateRecommender:
         )
         self._recompute()
 
-    def predict_final_fuel(self) -> Optional[float]:
-        """Get the predicted final fuel remaining"""
-        return self.m_predicted_final_fuel.get(0)
-
     def _compute_racing_fuel_rate(self, racing_laps: List[FuelRemainingPerLap]) -> None:
         """Compute average fuel rate using ONLY racing laps, handling discontinuities"""
+        # Handle edge case: need at least 2 racing laps to calculate fuel rate
         if len(racing_laps) <= 1:
             return
 
-        # Sort by lap number
+        # Sort laps by lap number to ensure correct ordering
         racing_laps.sort(key=lambda x: x.m_lap_number)
 
-        # Find consecutive racing lap segments
-        consecutive_segments = []
-        current_segment = [racing_laps[0]]
-
-        for i in range(1, len(racing_laps)):
-            # Check if laps are consecutive
-            if racing_laps[i].m_lap_number == racing_laps[i-1].m_lap_number + 1:
-                current_segment.append(racing_laps[i])
-            else:
-                # Non-consecutive laps indicate a discontinuity (safety car period)
-                if len(current_segment) > 1:
-                    consecutive_segments.append(current_segment)
-                current_segment = [racing_laps[i]]
-
-        # Add the last segment if it has more than one lap
-        if len(current_segment) > 1:
-            consecutive_segments.append(current_segment)
-
-        # Calculate fuel rate from all consecutive segments
+        # Track fuel consumption across consecutive lap pairs
         total_fuel_used = 0
-        total_racing_laps = 0
+        valid_pair_count = 0
 
-        for segment in consecutive_segments:
-            segment_fuel_used = segment[0].m_fuel_remaining - segment[-1].m_fuel_remaining
-            segment_laps = segment[-1].m_lap_number - segment[0].m_lap_number
-            total_fuel_used += segment_fuel_used
-            total_racing_laps += segment_laps
+        # Iterate through adjacent lap pairs using zip
+        # A valid pair is two consecutive laps where:
+        # 1. The lap numbers are sequential (no gaps)
+        # 2. We can calculate fuel consumption between them
+        # These pairs represent "clean" racing conditions where
+        # fuel usage data is most reliable for rate calculations
+        for prev_lap, curr_lap in zip(racing_laps, racing_laps[1:]):
+            # Only consider consecutive laps (handles discontinuities like safety car periods)
+            if curr_lap.m_lap_number == prev_lap.m_lap_number + 1:
+                # Calculate fuel used between these two consecutive laps
+                lap_fuel_used = prev_lap.m_fuel_remaining - curr_lap.m_fuel_remaining
+                total_fuel_used += lap_fuel_used
+                valid_pair_count += 1
 
-        # If we have valid segments, calculate the rate
-        if total_racing_laps > 0:
-            self.m_curr_fuel_rate = total_fuel_used / total_racing_laps
+        # Update fuel rate only if we have valid consecutive lap pairs
+        if valid_pair_count > 0:
+            self.m_curr_fuel_rate = total_fuel_used / valid_pair_count
 
     def _compute_last_lap_fuel_usage(self) -> None:
         """Compute fuel used in the last lap"""
@@ -339,7 +328,7 @@ class FuelRateRecommender:
 
         current_lap = self.m_fuel_remaining_history[-1].m_lap_number
         current_fuel = self.m_fuel_remaining_history[-1].m_fuel_remaining
-        predicted_fuel = self.predict_final_fuel()
+        predicted_fuel = self.final_fuel_kg
 
         result = [
             f"Current lap: {current_lap if current_lap is not None else 'None'}/"
