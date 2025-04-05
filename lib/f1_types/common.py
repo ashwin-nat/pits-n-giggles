@@ -27,7 +27,7 @@
 ## F1 24 - https://answers.ea.com/t5/General-Discussion/F1-24-UDP-Specification/td-p/13745220
 
 
-from enum import Enum
+from enum import Enum, IntEnum
 from typing import Any, Dict, Optional, Set
 import struct
 
