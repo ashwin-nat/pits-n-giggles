@@ -22,8 +22,11 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import asyncio
 import socket
-from typing import List, Tuple
+from types import MappingProxyType
+from typing import List, Tuple, Dict
+
 from src.png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
@@ -65,3 +68,99 @@ class UDPForwarder:
             png_logger.error(f"Error forwarding packet to {destination}: {e}")
         finally:
             forward_socket.close()
+
+class AsyncUDPTransport:
+    """Abstraction layer for UDP transport management."""
+    def __init__(self, forward_addresses: List[Tuple[str, int]]):
+        """
+        Initialize transports for known destinations synchronously.
+
+        :param forward_addresses: List of (IP, Port) tuples to initialize transports for
+        """
+        self._transports: Dict[Tuple[str, int], asyncio.DatagramTransport] = {}
+        self._sockets: Dict[Tuple[str, int], socket.socket] = {}
+
+        # Only attempt to create sockets if addresses are provided
+        if forward_addresses:
+            for destination in forward_addresses:
+                try:
+                    # Create UDP socket
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    sock.setblocking(False)  # Non-blocking socket
+
+                    # Connect the socket to the destination (doesn't send data)
+                    sock.connect(destination)
+
+                    # Store socket
+                    self._sockets[destination] = sock
+                except OSError as e:
+                    png_logger.error(f"Error creating socket to {destination}: {e}")
+                    # Clean up any sockets created so far
+                    self.close()
+                    raise
+
+        # Freeze the dictionaries after initialization
+        self._sockets = MappingProxyType(self._sockets)
+
+    def close(self) -> None:
+        """
+        Safely close all sockets.
+        """
+        for destination, sock in list(getattr(self, '_sockets', {}).items()):
+            try:
+                sock.close()
+            except Exception as e:
+                png_logger.error(f"Error closing socket to {destination}: {e}")
+                raise
+
+    async def send(self, data: bytes, destination: Tuple[str, int]) -> None:
+        """
+        Send data to the specified destination.
+
+        :param data: Bytes to send
+        :param destination: Destination (IP, Port)
+        """
+        if destination not in self._sockets:
+            raise ValueError(f"No pre-initialized socket for destination {destination}")
+
+        # Send asynchronously using the socket
+        loop = asyncio.get_running_loop()
+        await loop.sock_sendall(self._sockets[destination], data)
+
+
+class AsyncUDPForwarder:
+    def __init__(self, forward_addresses: List[Tuple[str, int]]):
+        """
+        Initializes the AsyncUDPForwarder with forwarding destinations.
+
+        :param forward_addresses: A list of tuples, each consisting of an IP address
+                                  and a port number to forward packets to.
+        """
+        self.m_forward_addresses = forward_addresses
+        self._transport = AsyncUDPTransport(forward_addresses)
+
+    async def forward(self, data: bytes) -> None:
+        """
+        Concurrently forwards the given data to all configured destinations.
+
+        :param data: The data (bytes) to forward
+        """
+        if not self.m_forward_addresses:
+            return
+
+        # Schedule all sends concurrently using create_task (avoiding asyncio.gather overhead)
+        for destination in self.m_forward_addresses:
+            asyncio.ensure_future(self._transport.send(data, destination))
+
+    async def _forwardPacket(self, data: bytes, destination: Tuple[str, int]) -> None:
+        """
+        Forwards the received UDP packet to the specified destination.
+
+        :param data: The data (bytes) to forward
+        :param destination: A tuple (IP, Port) specifying where the packet should be forwarded
+        """
+        try:
+            await self._transport.send(data, destination)
+        except Exception as e:
+            png_logger.error(f"Error forwarding packet to {destination}: {e}")
+            raise

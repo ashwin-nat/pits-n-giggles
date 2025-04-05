@@ -23,7 +23,6 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
-import threading
 import sys
 import io
 import os
@@ -46,9 +45,6 @@ def initLogger(file_name: str = None, max_size: int = 1000000, debug_mode: bool 
                  '%(asctime)s [%(levelname)s] - %(message)s'
     formatter = logging.Formatter(format_str)
 
-    # Create a lock to make the logger thread-safe
-    lock = threading.Lock()
-
     # Create the logger
     png_logger = logging.getLogger('png')
     png_logger.setLevel(logging.DEBUG if debug_mode else logging.INFO)
@@ -67,7 +63,6 @@ def initLogger(file_name: str = None, max_size: int = 1000000, debug_mode: bool 
 
     # Add lock to the logger to make it thread-safe
     png_logger.addHandler(logging.NullHandler())
-    png_logger._lock = lock
 
     return png_logger
 

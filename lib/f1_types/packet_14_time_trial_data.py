@@ -22,8 +22,10 @@
 
 
 import struct
-from typing import Dict, Any
-from .common import PacketHeader, TeamID24, TractionControlAssistMode, _extract_sublist, F1Utils, GearboxAssistMode
+from typing import Any, Dict
+
+from .common import (F1Utils, GearboxAssistMode, PacketHeader, TeamID24,
+                     TractionControlAssistMode)
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -262,17 +264,17 @@ class PacketTimeTrialData:
 
         # First, the Player session best data set
         bytes_so_far = 0
-        raw_data = _extract_sublist(data, 0, bytes_so_far + TimeTrialDataSet.PACKET_LEN)
+        raw_data = data[0:bytes_so_far + TimeTrialDataSet.PACKET_LEN]
         bytes_so_far += TimeTrialDataSet.PACKET_LEN
         self.m_playerSessionBestDataSet = TimeTrialDataSet(raw_data)
 
         # Next, the personal best data set
-        raw_data = _extract_sublist(data, bytes_so_far, bytes_so_far + TimeTrialDataSet.PACKET_LEN)
+        raw_data = data[bytes_so_far:bytes_so_far + TimeTrialDataSet.PACKET_LEN]
         bytes_so_far += TimeTrialDataSet.PACKET_LEN
         self.m_personalBestDataSet = TimeTrialDataSet(raw_data)
 
         # Finally, the rival data set
-        raw_data = _extract_sublist(data, bytes_so_far, bytes_so_far + TimeTrialDataSet.PACKET_LEN)
+        raw_data = data[bytes_so_far:bytes_so_far + TimeTrialDataSet.PACKET_LEN]
         bytes_so_far += TimeTrialDataSet.PACKET_LEN
         self.m_rivalSessionBestDataSet = TimeTrialDataSet(raw_data)
 

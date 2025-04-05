@@ -22,12 +22,20 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-from typing import Callable, Dict
-from lib.socket_receiver import UDPListener, TCPListener
-from lib.f1_types import F1PacketType, PacketHeader, PacketMotionData, PacketSessionData, PacketLapData, \
-    PacketEventData, PacketParticipantsData, PacketCarSetupData, PacketCarTelemetryData, PacketCarStatusData, \
-    PacketFinalClassificationData, PacketLobbyInfoData, PacketCarDamageData, PacketSessionHistoryData, \
-    PacketTyreSetsData, PacketMotionExData, InvalidPacketLengthError, PacketTimeTrialData
+import time
+from typing import Awaitable, Callable, Dict, Optional
+
+from lib.f1_types import (F1PacketType, InvalidPacketLengthError,
+                          PacketCarDamageData, PacketCarSetupData,
+                          PacketCarStatusData, PacketCarTelemetryData,
+                          PacketEventData, PacketFinalClassificationData,
+                          PacketHeader, PacketLapData, PacketLobbyInfoData,
+                          PacketMotionData, PacketMotionExData,
+                          PacketParticipantsData, PacketSessionData,
+                          PacketSessionHistoryData, PacketTimeTrialData,
+                          PacketTyreSetsData)
+from lib.socket_receiver import (AsyncTCPListener, AsyncUDPListener,
+                                 TCPListener, UDPListener)
 from src.png_logger import getLogger
 
 # ------------------------- GLOBALS ------------------------------------------------------------------------------------
@@ -63,11 +71,12 @@ class F1TelemetryManager:
         F1PacketType.TIME_TRIAL : PacketTimeTrialData,
     }
 
-    def __init__(self, port_number: int, replay_server: bool = False):
+    def __init__(self, port_number: int, async_mode: bool = False, replay_server: bool = False):
         """Init the telemetry manager app and all its sub components
 
         Args:
             port_number (int): The port number to listen in on
+            async_mode (bool): If True, the socket will be in async mode
             replay_server (bool): If True, the TCP based packet replay server will be created
                 NOTE: This is not suited for game. It is meant to be used in conjunction with telemetry_replayer.py
         """
@@ -75,10 +84,16 @@ class F1TelemetryManager:
         self.m_replay_server = replay_server
         self.m_port_number = port_number
         if self.m_replay_server:
-            self.m_server = TCPListener(port_number, "localhost")
+            self.m_server = (
+                AsyncTCPListener(port_number, "localhost")
+                if async_mode
+                else TCPListener(port_number, "localhost")
+            )
+        elif async_mode:
+            self.m_server = AsyncUDPListener(port_number, "0.0.0.0", buffer_size=4096)
         else:
             self.m_server = UDPListener(port_number, "0.0.0.0", buffer_size=4096)
-        self.m_callbacks = {
+        self.m_callbacks: Dict[F1PacketType, Optional[Callable[[object], Awaitable[None]]]] = {
             F1PacketType.MOTION : None,
             F1PacketType.SESSION : None,
             F1PacketType.LAP_DATA : None,
@@ -94,9 +109,15 @@ class F1TelemetryManager:
             F1PacketType.TYRE_SETS : None,
             F1PacketType.MOTION_EX : None,
         }
-        self.m_raw_packet_callback = None
+        self.m_raw_packet_callback: Optional[Callable[[object], Awaitable[None]]] = None
 
-    def registerRawPacketCallback(self, callback: Callable):
+
+        self.packet_count = 0
+        self.min_processing_time = float('inf')
+        self.max_processing_time = 0
+        self.total_processing_time = 0
+
+    def registerRawPacketCallback(self, callback: Callable[[object], Awaitable[None]]):
         """Register a callback for every UDP message on this socket. This is useful for debugging
 
         Args:
@@ -107,12 +128,15 @@ class F1TelemetryManager:
 
         self.m_raw_packet_callback = callback
 
-    def registerCallbacks(self, packet_callbacks: Dict[F1PacketType, Callable]) -> None:
+    def registerCallbacks(
+            self,
+            packet_callbacks: Dict[F1PacketType, Optional[Callable[[object], Awaitable[None]]]]) -> None:
         """
         Registers multiple callback functions for specific F1 packet types.
 
         Args:
-            packet_callbacks (Dict[F1PacketType, Callable]): A dictionary where the keys are F1 packet types
+            packet_callbacks (Dict[F1PacketType, Optional[Callable[[object], Awaitable[None]]]]):
+                A dictionary where the keys are F1 packet types
                 and the values are callback functions. Each callback should take one argument of the corresponding
                 packet type (e.g., `PacketMotionData` for `F1PacketType.MOTION`).
                                 It should be a function that takes one argument of the corresponding packet type.
@@ -163,30 +187,66 @@ class F1TelemetryManager:
 
             # Get next UDP message (TCP in the case of replay server)
             raw_packet = self.m_server.getNextMessage()
-            if len(raw_packet) < PacketHeader.PACKET_LEN:
-                # skip incomplete packet
-                continue
+            self._processPacket(should_parse_packet, raw_packet)
 
-            if self.m_raw_packet_callback:
-                self.m_raw_packet_callback(raw_packet)
+    async def runAsync(self) -> None:
+        """Run the telemetry client asynchronously
+        """
 
-            if not should_parse_packet:
-                continue
+        if self.m_replay_server:
+            png_logger.info("REPLAY SERVER MODE. PORT = %s", self.m_port_number)
 
-            # Parse the header
-            header_raw = raw_packet[:PacketHeader.PACKET_LEN]
-            header = PacketHeader(header_raw)
-            if not header.is_supported_packet_type:
-                # Unsupported packet type, skip
-                continue
+        should_parse_packet = (sum(callback is not None for callback in self.m_callbacks.values()) > 0)
 
-            # Parse the payload and call the registered callback
-            payload_raw = raw_packet[PacketHeader.PACKET_LEN:]
-            try:
-                packet = F1TelemetryManager.packet_type_map[header.m_packetId](header, payload_raw)
-            except InvalidPacketLengthError as e:
-                png_logger.error("Cannot parse packet of type %s. Error = %s", str(header.m_packetId), str(e))
-            callback = self.m_callbacks.get(header.m_packetId, None)
-            if callback:
-                callback(packet)
+        # Run the client indefinitely
+        while True:
 
+            # Get next UDP message (TCP in the case of replay server)
+            raw_packet = await self.m_server.getNextMessage()
+            start_time = time.perf_counter()
+            await self._processPacket(should_parse_packet, raw_packet)
+            end_time = time.perf_counter()
+
+            processing_time = end_time - start_time
+            self.packet_count += 1
+            self.min_processing_time = min(self.min_processing_time, processing_time)
+            self.max_processing_time = max(self.max_processing_time, processing_time)
+            self.total_processing_time += processing_time
+
+    async def _processPacket(self, should_parse_packet: bool, raw_packet: bytes) -> None:
+
+        if len(raw_packet) < PacketHeader.PACKET_LEN:
+            # skip incomplete packet
+            return
+
+        if self.m_raw_packet_callback:
+            await self.m_raw_packet_callback(raw_packet)
+
+        if not should_parse_packet:
+            return
+
+        # Parse the header
+        header_raw = raw_packet[:PacketHeader.PACKET_LEN]
+        header = PacketHeader(header_raw)
+        if not header.is_supported_packet_type:
+            # Unsupported packet type, skip
+            return
+
+        # Parse the payload and call the registered callback
+        payload_raw = raw_packet[PacketHeader.PACKET_LEN:]
+        try:
+            packet = F1TelemetryManager.packet_type_map[header.m_packetId](header, payload_raw)
+        except InvalidPacketLengthError as e:
+            png_logger.error("Cannot parse packet of type %s. Error = %s", str(header.m_packetId), str(e))
+        callback = self.m_callbacks.get(header.m_packetId, None)
+        if callback:
+            await callback(packet)
+
+    def get_processing_stats(self):
+        avg_time = (self.total_processing_time / self.packet_count) if self.packet_count > 0 else 0.0
+        return {
+            "packet_count": self.packet_count,
+            "min_processing_time": self.min_processing_time,
+            "max_processing_time": self.max_processing_time,
+            "avg_processing_time": avg_time
+        }

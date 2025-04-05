@@ -17,6 +17,9 @@ class IconCache {
         const loadPromises = Object.entries(this.iconMappings).map(async ([key, url]) => {
             try {
                 const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
                 const svgText = await response.text();
                 this.cache[key] = svgText;
                 console.log("Successfully fetched icon", key);

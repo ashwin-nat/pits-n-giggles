@@ -23,7 +23,7 @@
 
 import struct
 from typing import Dict, Any, List
-from .common import _split_list, PacketHeader
+from .common import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -372,15 +372,14 @@ class PacketCarTelemetryData:
         """
 
         self.m_header: PacketHeader = header
-        self.m_carTelemetryData: List[CarTelemetryData] = []         # CarTelemetryData[22]
         len_all_car_telemetry = PacketCarTelemetryData.max_telemetry_entries * CarTelemetryData.PACKET_LEN
 
-        self.m_carTelemetryData.extend(
-            CarTelemetryData(per_car_telemetry_raw_data)
-            for per_car_telemetry_raw_data in _split_list(
-                packet[:len_all_car_telemetry], CarTelemetryData.PACKET_LEN
-            )
-        )
+        # Iterate over the first len_all_car_telemetry bytes of packet in steps of CarTelemetryData.PACKET_LEN,
+        # creating CarTelemetryData objects for each segment.
+        self.m_carTelemetryData: List[CarTelemetryData] = [
+            CarTelemetryData(packet[i:i + CarTelemetryData.PACKET_LEN])
+            for i in range(0, len_all_car_telemetry, CarTelemetryData.PACKET_LEN)
+        ]
         self.m_mfdPanelIndex, self.m_mfdPanelIndexSecondaryPlayer, self.m_suggestedGear = \
                 struct.unpack("<BBb", packet[len_all_car_telemetry:])
 

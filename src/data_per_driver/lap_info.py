@@ -34,7 +34,7 @@ png_logger = getLogger()
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
-@dataclass
+@dataclass(slots=True)
 class LapInfo:
     """
     Class that models lap-related information for a race driver.

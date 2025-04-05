@@ -22,7 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 from lib.f1_types import CarStatusData
@@ -35,28 +35,26 @@ png_logger = getLogger()
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
-@dataclass
+@dataclass(slots=True)
 class CarInfo:
     """
     Class that models the car-related data for a race driver.
-
-    Attributes:
-        m_ers_perc (Optional[float]): The percentage of ERS battery remaining.
-        m_drs_activated (Optional[bool]): Indicates whether the DRS is activated for the car.
-        m_drs_allowed (Optional[bool]): Indicates whether DRS is allowed for the car.
-        m_drs_distance (Optional[int]): The distance to the car in front for DRS activation.
-        m_fl_wing_damage (Optional[int]): Left front wing damage.
-        m_fr_wing_damage (Optional[int]): Right front wing damage.
-        m_rear_wing_damage (Optional[int]): Rear wing damage.
-        m_fuel_rate_recommender (FuelRateRecommender): Fuel usage rate recommender for the car.
     """
-    def __init__(self, total_laps: int) -> None:
-        self.m_ers_perc: Optional[float] = None
-        self.m_drs_activated: Optional[bool] = None
-        self.m_drs_allowed: Optional[bool] = None
-        self.m_drs_distance: Optional[int] = None
-        self.m_fl_wing_damage: Optional[int] = None
-        self.m_fr_wing_damage: Optional[int] = None
-        self.m_rear_wing_damage: Optional[int] = None
-        self.m_fuel_rate_recommender: FuelRateRecommender = FuelRateRecommender([], total_laps=total_laps,
-                                                                                min_fuel_kg=CarStatusData.MIN_FUEL_KG)
+    total_laps: int = field(repr=False)  # 👈 Must come first
+
+    m_ers_perc: Optional[float] = None
+    m_drs_activated: Optional[bool] = None
+    m_drs_allowed: Optional[bool] = None
+    m_drs_distance: Optional[int] = None
+    m_fl_wing_damage: Optional[int] = None
+    m_fr_wing_damage: Optional[int] = None
+    m_rear_wing_damage: Optional[int] = None
+
+    m_fuel_rate_recommender: "FuelRateRecommender" = field(init=False)
+
+    def __post_init__(self):
+        self.m_fuel_rate_recommender = FuelRateRecommender(
+            [],
+            total_laps=self.total_laps,
+            min_fuel_kg=CarStatusData.MIN_FUEL_KG
+        )

@@ -23,7 +23,7 @@
 
 import struct
 from typing import Dict, Any
-from .common import PacketHeader, _extract_sublist
+from .common import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -164,7 +164,7 @@ class PacketMotionExData:
             self.m_wheelVertForce[2],               # array of floats
             self.m_wheelVertForce[3],               # array of floats
 
-        ) = struct.unpack(self.PACKET_FORMAT_23, _extract_sublist(data, 0, self.PACKET_LEN_23))
+        ) = struct.unpack(self.PACKET_FORMAT_23, data[0:self.PACKET_LEN_23])
 
         if header.m_gameYear == 24:
             (
@@ -174,7 +174,8 @@ class PacketMotionExData:
                 self.m_rearRollAngle,               # float
                 self.m_chassisYaw,                  # float
             ) = struct.unpack(self.PACKET_FORMAT_24_EXTRA,
-                              _extract_sublist(data, self.PACKET_LEN_23, self.PACKET_LEN_23 + self.PACKET_LEN_EXTRA_24))
+                                data[self.PACKET_LEN_23:self.PACKET_LEN_23 + self.PACKET_LEN_EXTRA_24])
+
         else:
             self.m_frontAeroHeight: float = 0
             self.m_rearAeroHeight: float = 0

@@ -23,7 +23,7 @@
 
 import struct
 from typing import Dict, Any, List, Union, Optional
-from .common import _split_list, PacketHeader, Platform, Nationality, TeamID23, TeamID24, TelemetrySetting
+from .common import PacketHeader, Platform, Nationality, TeamID23, TeamID24, TelemetrySetting
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -364,9 +364,12 @@ class PacketParticipantsData:
         self.m_participants: List[ParticipantData] = []            # ParticipantData[22]
 
         packet_len = ParticipantData.PACKET_LEN_23 if (header.m_gameYear == 23) else ParticipantData.PACKET_LEN_24
+        # Iterate over packet[1:] in steps of packet_len,
+        # creating ParticipantData objects for each segment and passing the game year.
+
         self.m_participants.extend(
-            ParticipantData(participant_data_raw, header.m_gameYear)
-            for participant_data_raw in _split_list(packet[1:], packet_len)
+            ParticipantData(packet[i:i + packet_len], header.m_gameYear)
+            for i in range(1, len(packet), packet_len)
         )
         # Trim the list
         self.m_participants = self.m_participants[:self.m_numActiveCars]

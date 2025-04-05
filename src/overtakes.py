@@ -22,7 +22,6 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import copy
 from typing import List
 from enum import Enum, auto
 from lib.overtake_analyzer import OvertakeRecord
@@ -100,4 +99,4 @@ class OvertakesHistory:
             List[OvertakeRecord]: The list of overtake records
         """
 
-        return copy.deepcopy(self.m_overtakes_history)
+        return self.m_overtakes_history

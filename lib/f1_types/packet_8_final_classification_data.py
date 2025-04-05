@@ -23,7 +23,7 @@
 
 import struct
 from typing import Dict, Any, List
-from .common import _split_list, PacketHeader, F1Utils, ResultStatus, ActualTyreCompound, VisualTyreCompound
+from .common import PacketHeader, F1Utils, ResultStatus, ActualTyreCompound, VisualTyreCompound
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -420,14 +420,13 @@ class PacketFinalClassificationData:
 
         self.m_header: PacketHeader = header
         self.m_numCars: int = struct.unpack("<B", packet[:1])[0]
-        self.m_classificationData: List[FinalClassificationData] = []
+        # Iterate over packet[1:] in steps of FinalClassificationData.PACKET_LEN,
+        # creating FinalClassificationData objects for each segment.
 
-        self.m_classificationData.extend(
-            FinalClassificationData(classification_per_car_raw_data)
-            for classification_per_car_raw_data in _split_list(
-                packet[1:], FinalClassificationData.PACKET_LEN
-            )
-        )
+        self.m_classificationData: List[FinalClassificationData] = [
+            FinalClassificationData(packet[i:i + FinalClassificationData.PACKET_LEN])
+            for i in range(1, len(packet), FinalClassificationData.PACKET_LEN)
+        ]
         # strip the non-applicable data
         self.m_classificationData = self.m_classificationData[:self.m_numCars]
 

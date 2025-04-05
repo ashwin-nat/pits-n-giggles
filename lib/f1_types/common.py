@@ -27,46 +27,9 @@
 ## F1 24 - https://answers.ea.com/t5/General-Discussion/F1-24-UDP-Specification/td-p/13745220
 
 
-import struct
 from enum import Enum, IntEnum
-from typing import Any, Dict, List, Optional, Set
-
-# ------------------------- PRIVATE FUNCTIONS ----------------------------------
-
-def _split_list(original_list: List[Any], sublist_length: int) -> List[List[Any]]:
-    """
-    Splits the given list into sublists of a specified length.
-
-    Args:
-        original_list (List[Any]): The original list to be split.
-        sublist_length (int): The desired length of each sublist.
-
-    Returns:
-        List[List[Any]]: A list containing sublists of the specified length.
-    """
-    return [original_list[i:i + sublist_length] for i in range(0, len(original_list), sublist_length)]
-
-def _extract_sublist(data: bytes, lower_index: int, upper_index: int) -> bytes:
-    """
-    Extracts a sub-list from the given data.
-
-    Args:
-        data (bytes): The data to extract the sub-list from.
-        lower_index (int): The index of the lower bound of the sub-list. (inclusive)
-        upper_index (int): The index of the upper bound of the sub-list. (not inclusive)
-
-    Returns:
-        bytes: The extracted sub-list.
-    """
-
-    # Ensure the indices are within bounds
-    if lower_index < 0 or upper_index > len(data) or lower_index > upper_index:
-        # Return an empty bytes object to indicate an error
-        return b''
-
-    # Extract the sub-list
-    sub_list: bytes = data[lower_index:upper_index]
-    return sub_list
+from typing import Any, Dict, Optional, Set
+import struct
 
 # ------------------------- ERROR CLASSES --------------------------------------
 
@@ -77,7 +40,7 @@ class InvalidPacketLengthError(Exception):
     incomplete or corrupt. or more realistically a bug)
     """
     def __init__(self, message):
-        super().__init__("Invalid packet length. " + message)
+        super().__init__(f"Invalid packet length. {message}")
 
 # -------------------- COMMON CLASSES ------------------------------------------
 class F1PacketType(Enum):

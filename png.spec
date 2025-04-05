@@ -65,7 +65,7 @@ a = Analysis(
 # Analysis for the second executable
 b = Analysis(
     ['utils/telemetry_post_race_data_viewer.py'],
-    pathex=[str(Path('png-venv/Lib/site-packages/'))],
+    pathex=[str(vimPath('png-venv/Lib/site-packages/'))],
     binaries=[],
     datas=get_data_paths_replayer(),  # Paths handled in a cross-platform manner
     hiddenimports=[],

@@ -23,7 +23,7 @@
 
 import struct
 from typing import List, Dict, Any
-from .common import _split_list, PacketHeader
+from .common import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -362,10 +362,11 @@ class PacketCarDamageData:
         """
 
         self.m_header: PacketHeader = header
-        self.m_carDamageData: List[CarDamageData] = []
-
-        for raw_data_per_car in _split_list(data, CarDamageData.PACKET_LEN):
-            self.m_carDamageData.append(CarDamageData(raw_data_per_car))
+        # Slice the data bytes in steps of CarDamageData.PACKET_LEN to create CarDamageData objects.
+        self.m_carDamageData = [
+            CarDamageData(data[i:i + CarDamageData.PACKET_LEN])
+            for i in range(0, len(data), CarDamageData.PACKET_LEN)
+        ]
 
     def __str__(self) -> str:
         """

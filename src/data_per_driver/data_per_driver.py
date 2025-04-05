@@ -55,6 +55,17 @@ class DataPerDriver:
         m_per_lap_snapshots (Dict[int, PerLapSnapshotEntry]): Snapshots of the driver's performance per lap
     """
 
+    __slots__ = (
+        "m_driver_info",
+        "m_lap_info",
+        "m_tyre_info",
+        "m_car_info",
+        "m_collision_records",
+        "m_warning_penalty_history",
+        "m_packet_copies",
+        "m_per_lap_snapshots"
+        )
+
     def __repr__(self) -> str:
         """Get the string representation of this object
 
