@@ -402,9 +402,13 @@ class DriverData:
                 driver_data.m_tyre_info.m_tyre_wear_extrapolator.total_laps = self.m_session_info.m_total_laps
                 driver_data.m_car_info.m_fuel_rate_recommender.total_laps = self.m_session_info.m_total_laps
 
-        # Update the SC status for all drivers
-        for driver_data in self.m_driver_data.values():
-            driver_data.m_driver_info.m_curr_lap_sc_status = packet.m_safetyCarStatus
+        # Update the max SC status for all drivers
+        for obj_to_be_updated in self.m_driver_data.values():
+            obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status = (
+                packet.m_safetyCarStatus
+                if obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status is None
+                else max(packet.m_safetyCarStatus, obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status)
+            )
 
     def processLapDataUpdate(self, packet: PacketLapData) -> None:
         """Process the lap data packet and update the necessary fields
@@ -525,12 +529,11 @@ class DriverData:
                     sum(car_telemetry_data.m_tyresInnerTemperature)/len(car_telemetry_data.m_tyresInnerTemperature)
             obj_to_be_updated.m_tyre_info.tyre_surface_temp = \
                     sum(car_telemetry_data.m_tyresSurfaceTemperature)/len(car_telemetry_data.m_tyresSurfaceTemperature)
-            if obj_to_be_updated.m_lap_info.m_top_speed_kmph_this_lap is None:
-                obj_to_be_updated.m_lap_info.m_top_speed_kmph_this_lap = car_telemetry_data.m_speed
-            else:
-                obj_to_be_updated.m_lap_info.m_top_speed_kmph_this_lap = \
-                    max(car_telemetry_data.m_speed,
-                        obj_to_be_updated.m_lap_info.m_top_speed_kmph_this_lap)
+            obj_to_be_updated.m_lap_info.m_top_speed_kmph_this_lap = (
+                car_telemetry_data.m_speed
+                if obj_to_be_updated.m_lap_info.m_top_speed_kmph_this_lap is None
+                else max(car_telemetry_data.m_speed, obj_to_be_updated.m_lap_info.m_top_speed_kmph_this_lap)
+            )
             obj_to_be_updated.m_packet_copies.m_packet_car_telemetry = car_telemetry_data
 
     def processCarStatusUpdate(self, packet: PacketCarStatusData) -> None:
