@@ -282,7 +282,7 @@ class EngViewRaceTableRow {
         return [
             { value: fuelInfo["fuel-in-tank"] == null ? "N/A" : formatFloatWithTwoDecimals(fuelInfo["fuel-in-tank"]) },
             { value: fuelInfo["curr-fuel-rate"] == null ? "N/A" : formatFloatWithTwoDecimals(fuelInfo["curr-fuel-rate"]) },
-            { value: fuelInfo["curr-fuel-rate"] == null ? "N/A" : formatFloatWithTwoDecimals(fuelInfo["curr-fuel-rate"]), border: true } // TODO: fix
+            { value: fuelInfo["surplus-laps"] == null ? "N/A" : formatFloatWithTwoDecimalsSigned(fuelInfo["surplus-laps"]), border: true }
         ];
     }
 

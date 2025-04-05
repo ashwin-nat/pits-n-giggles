@@ -27,9 +27,9 @@
 ## F1 24 - https://answers.ea.com/t5/General-Discussion/F1-24-UDP-Specification/td-p/13745220
 
 
-from enum import Enum
-from typing import List, Any, Dict, Optional, Set
 import struct
+from enum import Enum, IntEnum
+from typing import Any, Dict, List, Optional, Set
 
 # ------------------------- PRIVATE FUNCTIONS ----------------------------------
 
@@ -445,7 +445,7 @@ class VisualTyreCompound(Enum):
             return True  # It's already an instance of VisualTyreCompound
         return any(visual_tyre_compound == member.value for member in VisualTyreCompound)
 
-class SafetyCarType(Enum):
+class SafetyCarType(IntEnum):
     """
     Enumeration representing different safety car statuses.
 

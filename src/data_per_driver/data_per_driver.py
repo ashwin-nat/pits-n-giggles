@@ -26,7 +26,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
-from lib.f1_types import F1Utils, LapData, TelemetrySetting
+from lib.f1_types import F1Utils, LapData, TelemetrySetting, SafetyCarType
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 from src.data_per_driver import (CarInfo, DriverInfo, LapInfo, PacketCopies,
                                  PerLapSnapshotEntry, TyreInfo,
@@ -371,14 +371,11 @@ class DataPerDriver:
         self.m_per_lap_snapshots[old_lap_number] = PerLapSnapshotEntry(
             car_damage=self.m_packet_copies.m_packet_car_damage,
             car_status=self.m_packet_copies.m_packet_car_status,
-            sc_status=self.m_driver_info.m_curr_lap_sc_status,
+            max_sc_status=self.m_driver_info.m_curr_lap_max_sc_status,
             tyre_sets=self.m_packet_copies.m_packet_tyre_sets,
             track_position=self.m_driver_info.position,
             top_speed_kmph=self.m_lap_info.m_top_speed_kmph_this_lap,
         )
-
-        # Now clear the top speed
-        self.m_lap_info.m_top_speed_kmph_this_lap = None
 
         # Add the tyre wear data into the tyre stint history
         if old_lap_number and self.m_tyre_info.m_tyre_set_history_manager.length:
@@ -388,7 +385,7 @@ class DataPerDriver:
                 rl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
                 rr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
                 lap_number=old_lap_number,
-                is_racing_lap=self.m_driver_info.m_curr_lap_sc_status,
+                is_racing_lap=self.m_driver_info.m_curr_lap_max_sc_status,
                 desc=f"end of lap {old_lap_number} snapshot"
             ))
 
@@ -400,7 +397,7 @@ class DataPerDriver:
                 rl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
                 rr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
                 lap_number=old_lap_number,
-                is_racing_lap=self.m_driver_info.m_curr_lap_sc_status,
+                is_racing_lap=(self.m_driver_info.m_curr_lap_max_sc_status == SafetyCarType.NO_SAFETY_CAR),
                 desc=tyre_set_id
             ))
 
@@ -409,9 +406,13 @@ class DataPerDriver:
             self.m_car_info.m_fuel_rate_recommender.add(
                 self.m_packet_copies.m_packet_car_status.m_fuelInTank,
                 old_lap_number,
-                self.m_driver_info.m_curr_lap_sc_status,
+                (self.m_driver_info.m_curr_lap_max_sc_status == SafetyCarType.NO_SAFETY_CAR), # is_racing_lap
                 desc=f"end of lap {old_lap_number} snapshot"
             )
+
+        # Now clear the per lap max stuff
+        self.m_lap_info.m_top_speed_kmph_this_lap = None
+        self.m_driver_info.m_curr_lap_max_sc_status = None
 
     def isZerothLapSnapshotDataAvailable(self) -> bool:
         """
@@ -426,7 +427,8 @@ class DataPerDriver:
             self.m_packet_copies.m_packet_car_status and
             self.m_packet_copies.m_packet_tyre_sets and
             self.m_driver_info.position and
-            (self.m_lap_info.m_top_speed_kmph_this_lap is not None)
+            (self.m_lap_info.m_top_speed_kmph_this_lap is not None) and
+            (self.m_driver_info.m_curr_lap_max_sc_status is not None)
         )
 
     def updateTyreSetData(self, fitted_index: int) -> None:
@@ -582,7 +584,6 @@ class DataPerDriver:
                 "target-fuel-rate-average" : self.m_car_info.m_fuel_rate_recommender.target_fuel_rate,
                 "target-fuel-rate-next-lap" : self.m_car_info.m_fuel_rate_recommender.target_next_lap_fuel_usage,
                 "surplus-laps" : self.m_car_info.m_fuel_rate_recommender.surplus_laps,
-                "safety-car-fuel-rate" : self.m_car_info.m_fuel_rate_recommender.safety_car_fuel_rate,
             }
 
         return {
