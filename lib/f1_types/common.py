@@ -30,8 +30,6 @@
 from enum import Enum
 from typing import Any, Dict, Optional, Set
 import struct
-from enum import Enum, IntEnum
-from typing import Any, Dict, List, Optional, Set
 
 # ------------------------- ERROR CLASSES --------------------------------------
 

@@ -25,22 +25,10 @@
 import argparse
 import asyncio
 import logging
-import asyncio
-import logging
-import socket
 import os
 import os
 import socket
 import webbrowser
-from typing import List, Optional, Set, Tuple
-
-from colorama import Fore, Style, init
-
-from src.config import load_config
-from src.png_logger import initLogger
-from src.telemetry_data import initDriverData
-from src.telemetry_handler import (F1TelemetryHandler, initDirectories,
-                                   initForwarder, initTelemetryGlobals)
 from typing import List, Optional, Set, Tuple
 
 from colorama import Fore, Style, init
