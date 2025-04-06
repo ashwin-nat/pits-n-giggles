@@ -39,7 +39,7 @@ from lib.f1_types import (F1PacketType, PacketEventData,
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.packet_forwarder import AsyncUDPForwarder
 from src.png_logger import getLogger
-from src.telemetry_manager import F1TelemetryManager
+from src.telemetry_manager import AsyncF1TelemetryManager
 
 # -------------------------------------- TYPE DEFINITIONS --------------------------------------------------------------
 
@@ -205,7 +205,7 @@ class F1TelemetryHandler:
             - port (int): The port number for telemetry.
             - replay_server: bool: If true, init in replay mode (TCP)
         """
-        self.m_manager = F1TelemetryManager(
+        self.m_manager = AsyncF1TelemetryManager(
             port_number=port,
             async_mode=True,
             replay_server=replay_server
@@ -220,7 +220,7 @@ class F1TelemetryHandler:
         Returns:
         None
         """
-        await self.m_manager.runAsync()
+        await self.m_manager.run()
 
     def registerCallbacks(self) -> None:
         """

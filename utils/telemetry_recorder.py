@@ -191,13 +191,15 @@ def udpForwardingThread() -> None:
 
 if __name__ == "__main__":
 
-    forwarding_thread = Thread(target=udpForwardingThread)
-    forwarding_thread.daemon = True
-    forwarding_thread.start()
+    # forwarding_thread = Thread(target=udpForwardingThread)
+    # forwarding_thread.daemon = True
+    # forwarding_thread.start()
 
     f1_telemetry_thread = Thread(target=telemetry_manager_thread)
     f1_telemetry_thread.daemon = True
     f1_telemetry_thread.start()
+    import time
+    time.sleep(1)
     root = tk.Tk()
     app = SimpleApp(root)
     root.mainloop()
