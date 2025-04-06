@@ -207,7 +207,6 @@ class F1TelemetryHandler:
         """
         self.m_manager = AsyncF1TelemetryManager(
             port_number=port,
-            async_mode=True,
             replay_server=replay_server
         )
         self.m_should_forward = bool(forwarding_targets)

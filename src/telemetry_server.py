@@ -454,7 +454,7 @@ def initTelemetryWebServer(
                                      name="Race Table Update Task"))
     tasks.append(asyncio.create_task(streamOverlayUpdateTask(60, stream_overlay_start_sample_data, _web_server.m_sio),
                                      name="Stream Overlay Update Task"))
-    tasks.append(asyncio.create_task(frontEndMessageTask(1000, _web_server.m_sio),
+    tasks.append(asyncio.create_task(frontEndMessageTask(_web_server.m_sio),
                                      name="Front End Message Task"))
     return _web_server
 
@@ -495,18 +495,15 @@ async def streamOverlayUpdateTask(
                                             .toJSON(stream_overlay_start_sample_data))
         await asyncio.sleep(sleep_duration)
 
-async def frontEndMessageTask(update_interval_ms: int, sio: socketio.AsyncServer) -> None:
+async def frontEndMessageTask(sio: socketio.AsyncServer) -> None:
     """Task to update clients with telemetry data
 
     Args:
-        update_interval_ms (int): Update interval in milliseconds
         sio (socketio.AsyncServer): The socketio server instance
     """
 
-    sleep_duration = update_interval_ms / 1000
     while True:
         message = await AsyncInterTaskCommunicator().receive("frontend-update")
         if message:
             png_logger.debug(f"Received stream update button press {str(message)}")
             await sio.emit('frontend-update', message.toJSON())
-        await asyncio.sleep(sleep_duration)

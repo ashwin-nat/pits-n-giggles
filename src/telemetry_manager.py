@@ -71,12 +71,11 @@ class AsyncF1TelemetryManager:
         F1PacketType.TIME_TRIAL : PacketTimeTrialData,
     }
 
-    def __init__(self, port_number: int, async_mode: bool = False, replay_server: bool = False):
+    def __init__(self, port_number: int, replay_server: bool = False):
         """Init the telemetry manager app and all its sub components
 
         Args:
             port_number (int): The port number to listen in on
-            async_mode (bool): If True, the socket will be in async mode
             replay_server (bool): If True, the TCP based packet replay server will be created
                 NOTE: This is not suited for game. It is meant to be used in conjunction with telemetry_replayer.py
         """
@@ -84,15 +83,9 @@ class AsyncF1TelemetryManager:
         self.m_replay_server = replay_server
         self.m_port_number = port_number
         if self.m_replay_server:
-            self.m_server = (
-                AsyncTCPListener(port_number, "localhost")
-                if async_mode
-                else TCPListener(port_number, "localhost")
-            )
-        elif async_mode:
-            self.m_server = AsyncUDPListener(port_number, "0.0.0.0", buffer_size=4096)
+            self.m_server = AsyncTCPListener(port_number, "localhost")
         else:
-            self.m_server = UDPListener(port_number, "0.0.0.0", buffer_size=4096)
+            self.m_server = AsyncUDPListener(port_number, "0.0.0.0", buffer_size=4096)
         self.m_callbacks: Dict[F1PacketType, Optional[Callable[[object], Awaitable[None]]]] = {
             F1PacketType.MOTION : None,
             F1PacketType.SESSION : None,

@@ -165,6 +165,21 @@ class AsyncInterTaskCommunicator:
         await q.put(message)
 
     async def receive(self, queue_name: str, timeout: Optional[float] = None) -> Optional[Any]:
+        """
+        Asynchronously retrieves an item from the specified queue.
+
+        Behavior depends on the `timeout` parameter:
+          - If `timeout` is None, waits indefinitely until an item is available.
+          - If `timeout` > 0, waits up to `timeout` seconds for an item.
+          - If `timeout` == 0, attempts to retrieve immediately; returns `None` if the queue is empty.
+
+        Args:
+            queue_name (str): The name of the queue to retrieve the item from.
+            timeout (Optional[float]): Maximum time in seconds to wait for an item.
+
+        Returns:
+            Optional[Any]: The item retrieved from the queue, or None if the operation timed out.
+        """
         q = await self._get_queue(queue_name)
         try:
             if timeout is not None:
