@@ -22,11 +22,11 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-import queue
-import threading
-from typing import Any, Dict, Optional
+import asyncio
+import contextvars
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any, Dict, Optional
 
 # ------------------------- CLASS DEFINITIONS --------------------------------------------------------------------------
 
@@ -138,97 +138,54 @@ class ITCMessage:
             "message": self.m_message.toJSON()
         }
 
-class InterThreadCommunicator:
-    _instance: Optional["InterThreadCommunicator"] = None
-    queues: Dict[str, queue.Queue]
+class AsyncInterTaskCommunicator:
+    _instance: Optional["AsyncInterTaskCommunicator"] = None
+    _last_used_queue = contextvars.ContextVar("last_used_queue", default=None)
 
-    def __new__(cls, *args, **kwargs) -> "InterThreadCommunicator":
+    def __new__(cls, *args: Any, **kwargs: Any) -> "AsyncInterTaskCommunicator":
         """
         Singleton pattern to ensure only one instance is created.
-
         Returns:
-            InterThreadCommunicator: Object of this class
+            AsyncInterThreadCommunicator: Object of this class
         """
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self) -> None:
-        """Construct the InterThreadCommunicator object."""
-        # Initialize only once to avoid resetting the queues dictionary on subsequent instantiations
-        if not hasattr(self, "queues"):
-            self.queues = {}
-            self._lock = threading.Lock()  # Lock to protect access to the queues
-            self._thread_local = threading.local()  # Thread-local storage
+    def __init__(self, queue_size: int = 0):
+        """Construct the AsyncInterThreadCommunicator object."""
+        if not hasattr(self, '_initialized'):
+            self.queues: Dict[str, asyncio.Queue] = {}
+            self._lock = asyncio.Lock()
+            self._queue_size = queue_size
+            self._initialized = True
 
-    def _get_queue(self, queue_name: str) -> queue.Queue:
-        """Get the specified named queue, using thread-local caching. If it doesn't exist, create it
+    async def send(self, queue_name: str, message: Any) -> None:
+        q = await self._get_queue(queue_name)
+        await q.put(message)
 
-        Args:
-            queue_name (str): Name of the queue
+    async def receive(self, queue_name: str, timeout: Optional[float] = None) -> Optional[Any]:
+        q = await self._get_queue(queue_name)
+        try:
+            if timeout is not None:
+                return await asyncio.wait_for(q.get(), timeout=timeout)
+            return await q.get()
+        except asyncio.TimeoutError:
+            return None
 
-        Returns:
-            queue.Queue: The queue object
+    async def _get_queue(self, queue_name: str) -> asyncio.Queue:
         """
-        # Check if the queue is cached in thread-local storage
-        if hasattr(self._thread_local, "last_queue_name") and self._thread_local.last_queue_name == queue_name:
-            return self._thread_local.last_queue
+        Get the queue associated with the given name, using contextvars
+        for caching the last accessed queue.
+        """
+        cached = self._last_used_queue.get()
+        if cached and cached[0] == queue_name:
+            return cached[1]
 
-        # If not cached, get or create a queue
-        with self._lock:
+        async with self._lock:
             if queue_name not in self.queues:
-                self.queues[queue_name] = queue.Queue()
-            q = self.queues[queue_name]
+                self.queues[queue_name] = asyncio.Queue(maxsize=self._queue_size)
 
-        # Cache the queue reference in thread-local storage
-        self._thread_local.last_queue_name = queue_name
-        self._thread_local.last_queue = q
-
-        return q
-
-    def send(self, queue_name: str, message: ITCMessage) -> None:
-        """Send the given message to the specified queue
-
-        Args:
-            queue_name (str): Name of the queue
-            message (ITCMessage): The message to be sent
-        """
-        q = self._get_queue(queue_name)
-        q.put(message)
-
-    def receive(self, queue_name: str, timeout_sec: int = 0) -> Optional[ITCMessage]:
-        """Receives a message from the specified queue. If no message is available,
-            waits up to `timeout_sec` seconds if specified. Returns None if no message is received within the timeout.
-
-        Args:
-            queue_name (str): Name of the queue
-            timeout_sec (int, optional): The maximum number of seconds to wait for a message. Defaults to 0.
-
-        Returns:
-            Optional[ITCMessage]: The received message or None
-        """
-
-        q = self._get_queue(queue_name)
-
-        try:
-            return q.get(timeout=timeout_sec) if timeout_sec > 0 else q.get_nowait()
-        except queue.Empty:
-            return None
-
-    def receiveWaitIndefinite(self, queue_name: str) -> Optional[ITCMessage]:
-        """Receives a message from the specified queue. Blocks indefinitely until a message is available
-
-        Args:
-            queue_name (str): Name of the queue
-
-        Returns:
-            Optional[ITCMessage]: The received message or None
-        """
-
-        q = self._get_queue(queue_name)
-
-        try:
-            return q.get()
-        except queue.Empty:
-            return None
-
+            queue = self.queues[queue_name]
+            self._last_used_queue.set((queue_name, queue))
+            return queue

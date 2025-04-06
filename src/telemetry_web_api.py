@@ -22,14 +22,14 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import lib.race_analyzer as RaceAnalyzer
 import src.telemetry_data as TelData
 from lib.f1_types import (CarStatusData, F1Utils, LapHistoryData,
                           VisualTyreCompound)
 from lib.tyre_wear_extrapolator import TyreWearPerLap
-from src.data_per_driver import TyreSetInfo
+from src.data_per_driver import DataPerDriver, TyreSetInfo
 from src.overtakes import GetOvertakesStatus
 from src.png_logger import getLogger
 
@@ -66,7 +66,8 @@ class RaceInfoUpdate:
 
         self.m_session_info = TelData.getSessionInfo()
         track_length = self.m_session_info.m_packet_session.m_trackLength if self.m_session_info.m_packet_session else None
-        self.m_driver_list_rsp = DriversListRsp(self.m_session_info.m_is_spectating, track_length)
+        self.m_driver_list_rsp = DriversListRsp(self.m_session_info.m_is_spectating, track_length,
+                                                (str(self.m_session_info.m_session_type) == "Time Trial"))
         self.m_curr_lap = self.m_driver_list_rsp.getCurrentLap()
         if self.m_session_info.m_weather_forecast_samples is None:
             self.m_session_info.m_weather_forecast_samples = []
@@ -116,9 +117,9 @@ class RaceInfoUpdate:
         }
 
         if str(self.m_session_info.m_session_type) == "Time Trial":
-            final_json["tt-data"] = self.m_driver_list_rsp.getTtTableJSON()
+            final_json["tt-data"] = self.m_driver_list_rsp.toJSON()
         else:
-            final_json["table-entries"] = self.m_driver_list_rsp.toRaceTableJSON()
+            final_json["table-entries"] = self.m_driver_list_rsp.toJSON()
             self._updatePlayerLapTimes(final_json["table-entries"])
 
         final_json["fastest-lap-overall"] = _getValueOrDefaultValue(
@@ -225,7 +226,8 @@ class OverallRaceStatsRsp:
 
         self.m_rsp["custom-markers"] = TelData.getCustomMarkersJSON()
         if TelData.isPositionHistorySupported():
-            drivers_list_rsp = DriversListRsp(is_spectator_mode=True)
+            drivers_list_rsp = DriversListRsp(is_spectator_mode=True,
+                                              is_tt_mode=str(TelData.getSessionInfo().m_session_type) == "Time Trial")
             self.m_rsp["position-history"] = drivers_list_rsp.getPositionHistoryJSON()
             self.m_rsp["tyre-stint-history"] = drivers_list_rsp.getTyreStintHistoryJSON()
 
@@ -275,33 +277,32 @@ class PlayerTelemetryOverlayUpdate:
         """Get the player telemetry data and prep the fields
         """
 
-        with TelData._driver_data_lock.gen_rlock():
-            self.m_track_temp               = TelData._driver_data.m_session_info.m_track_temp
-            self.m_air_temp                 = TelData._driver_data.m_session_info.m_air_temp
-            self.m_weather_forecast_samples = TelData._driver_data.m_session_info.m_weather_forecast_samples
-            if self.m_weather_forecast_samples is None:
-                self.m_weather_forecast_samples = []
-            self.m_circuit                  = TelData._driver_data.m_session_info.m_track
-            self.m_total_laps               = TelData._driver_data.m_session_info.m_total_laps
-            self.m_game_year                = TelData._driver_data.m_session_info.m_game_year
-            self.m_session_type               = TelData._driver_data.m_session_info.m_session_type
-            self.m_pit_speed_limit          = TelData._driver_data.m_session_info.m_pit_speed_limit
+        self.m_track_temp               = TelData._driver_data.m_session_info.m_track_temp
+        self.m_air_temp                 = TelData._driver_data.m_session_info.m_air_temp
+        self.m_weather_forecast_samples = TelData._driver_data.m_session_info.m_weather_forecast_samples
+        if self.m_weather_forecast_samples is None:
+            self.m_weather_forecast_samples = []
+        self.m_circuit                  = TelData._driver_data.m_session_info.m_track
+        self.m_total_laps               = TelData._driver_data.m_session_info.m_total_laps
+        self.m_game_year                = TelData._driver_data.m_session_info.m_game_year
+        self.m_session_type               = TelData._driver_data.m_session_info.m_session_type
+        self.m_pit_speed_limit          = TelData._driver_data.m_session_info.m_pit_speed_limit
 
-            self.m_next_pit_window          = TelData._driver_data.m_ideal_pit_stop_window
-            self.m_fastest_lap_ms           = \
-                TelData._driver_data.m_driver_data[TelData._driver_data.m_fastest_index].m_lap_info.m_best_lap_ms if \
-                    TelData._driver_data.m_fastest_index is not None else None
-            self.m_fastest_s1_ms            = TelData._driver_data.m_fastest_s1_ms
-            self.m_fastest_s2_ms            = TelData._driver_data.m_fastest_s2_ms
-            self.m_fastest_s3_ms            = TelData._driver_data.m_fastest_s3_ms
-            player_index = TelData._driver_data.m_session_info.m_spectator_car_index \
-                            if TelData._driver_data.m_session_info.m_is_spectating \
-                            else TelData._driver_data.m_player_index
-            player_data = TelData._driver_data.m_driver_data[player_index] \
-                            if player_index in TelData._driver_data.m_driver_data else None
-            player_position = player_data.m_driver_info.position if player_data else None
-            prev_data = TelData._driver_data.getDriverInfoByPosition(player_position - 1) if player_position else None
-            next_data = TelData._driver_data.getDriverInfoByPosition(player_position + 1) if player_position else None
+        self.m_next_pit_window          = TelData._driver_data.m_ideal_pit_stop_window
+        self.m_fastest_lap_ms           = \
+            TelData._driver_data.m_driver_data[TelData._driver_data.m_fastest_index].m_lap_info.m_best_lap_ms if \
+                TelData._driver_data.m_fastest_index is not None else None
+        self.m_fastest_s1_ms            = TelData._driver_data.m_fastest_s1_ms
+        self.m_fastest_s2_ms            = TelData._driver_data.m_fastest_s2_ms
+        self.m_fastest_s3_ms            = TelData._driver_data.m_fastest_s3_ms
+        player_index = TelData._driver_data.m_session_info.m_spectator_car_index \
+                        if TelData._driver_data.m_session_info.m_is_spectating \
+                        else TelData._driver_data.m_player_index
+        player_data = TelData._driver_data.m_driver_data[player_index] \
+                        if player_index in TelData._driver_data.m_driver_data else None
+        player_position = player_data.m_driver_info.position if player_data else None
+        prev_data = TelData._driver_data.getDriverInfoByPosition(player_position - 1) if player_position else None
+        next_data = TelData._driver_data.getDriverInfoByPosition(player_position + 1) if player_position else None
 
         self.__initCarTelemetry(player_data)
         self.__initLapTimes(player_data)
@@ -558,17 +559,18 @@ class DriversListRsp:
     Drivers list response class.
     """
 
-    def __init__(self, is_spectator_mode: bool, track_length: Optional[int] = None):
+    def __init__(self, is_spectator_mode: bool, track_length: Optional[int] = None, is_tt_mode: bool = False):
         """Get the drivers list and prepare the rsp fields
 
         Args:
             is_spectator_mode (bool): Whether the player is in spectator mode
             track_length (Optional[int], optional): The track length. Defaults to None.
+            is_tt_mode (bool, optional): Whether the player is in time trial mode
         """
 
         self.m_is_spectator_mode : bool = is_spectator_mode
         self.m_track_length : int = track_length
-        self.m_final_list : List[TelData.DataPerDriver] = []
+        self.m_json_rsp : Union[List[Dict[str, Any]], Dict[str, Any]] = [] # In TT mode dict, else list
         self.m_fastest_lap : Optional[int] = None
         self.m_fastest_lap_driver: Optional[str] = None
         self.m_fastest_lap_tyre: Optional[VisualTyreCompound] = None
@@ -576,144 +578,18 @@ class DriversListRsp:
         self.m_fastest_s1_ms: Optional[int] = None
         self.m_fastest_s2_ms: Optional[int] = None
         self.m_fastest_s3_ms: Optional[int] = None
-        self.__initDriverList()
-        self.__updateDriverList()
-
-    def toRaceTableJSON(self) -> Dict[str, Any]:
-        """Get the race table JSON
-
-        Returns:
-            Dict[str, Any]: The JSON dump
-        """
-
-        return  [
-            {
-                "driver-info" : {
-                    "position": _getValueOrDefaultValue(data_per_driver.m_driver_info.position),
-                    "name": _getValueOrDefaultValue(data_per_driver.m_driver_info.name),
-                    "team": _getValueOrDefaultValue(data_per_driver.m_driver_info.team),
-                    "is-fastest": _getValueOrDefaultValue(data_per_driver.m_is_fastest),
-                    "is-player": _getValueOrDefaultValue(data_per_driver.m_driver_info.is_player),
-                    "dnf-status" : _getValueOrDefaultValue(data_per_driver.m_driver_info.m_dnf_status_code),
-                    "index" : _getValueOrDefaultValue(data_per_driver.m_index),
-                    "telemetry-setting" : data_per_driver.m_driver_info.telemetry_restrictions, # Already NULL checked
-                    "is-pitting" : _getValueOrDefaultValue(data_per_driver.m_lap_info.m_is_pitting, default_value=False),
-                    "drs": self.__getDRSValue(data_per_driver.m_car_info.m_drs_activated, data_per_driver.m_car_info.m_drs_allowed,
-                                        data_per_driver.m_car_info.m_drs_distance),
-                    "drs-activated" : _getValueOrDefaultValue(data_per_driver.m_car_info.m_drs_activated, default_value=False),
-                    "drs-allowed" : _getValueOrDefaultValue(data_per_driver.m_car_info.m_drs_allowed, default_value=False),
-                    "drs-distance" : _getValueOrDefaultValue(data_per_driver.m_car_info.m_drs_distance, default_value=0),
-                },
-                "delta-info" : {
-                    "delta": data_per_driver.m_lap_info.m_delta_to_car_in_front,
-                    "delta-to-car-in-front": data_per_driver.m_lap_info.m_delta_to_car_in_front,
-                    "delta-to-leader": data_per_driver.m_lap_info.m_delta_to_leader,
-                },
-                "ers-info" : {
-                    "ers-percent": _getValueOrDefaultValue(data_per_driver.m_car_info.m_ers_perc),
-                    "ers-mode" : _getValueOrDefaultValue(str(data_per_driver.m_packet_copies.m_packet_car_status.m_ersDeployMode)
-                                                        if data_per_driver.m_packet_copies.m_packet_car_status else None),
-                    "ers-harvested-by-mguk-this-lap" : (((data_per_driver.m_packet_copies.m_packet_car_status.m_ersHarvestedThisLapMGUK
-                                                        if data_per_driver.m_packet_copies.m_packet_car_status else 0.0) /
-                                                            CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0),
-                    "ers-deployed-this-lap" : ((data_per_driver.m_packet_copies.m_packet_car_status.m_ersDeployedThisLap
-                                                if data_per_driver.m_packet_copies.m_packet_car_status else 0.0) /
-                                                    CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0,
-                },
-                "lap-info" : {
-                    "current-lap" : data_per_driver.m_lap_info.m_current_lap,
-                    "last-lap" : {
-                        "lap-time-ms" : data_per_driver.m_lap_info.m_last_lap_ms,
-                        "lap-time-ms-player" : 0,
-                        "s1-time-ms-player" : 0,
-                        "s2-time-ms-player" : 0,
-                        "s3-time-ms-player" : 0,
-                        "sector-status" : data_per_driver.getSectorStatus(
-                            self.m_fastest_s1_ms, self.m_fastest_s2_ms, self.m_fastest_s3_ms, for_best_lap=False),
-                        "s1-time-ms" : data_per_driver.m_lap_info.m_last_lap_obj.m_sector1TimeInMS \
-                            if data_per_driver.m_lap_info.m_last_lap_obj else None,
-                        "s2-time-ms" : data_per_driver.m_lap_info.m_last_lap_obj.m_sector2TimeInMS \
-                            if data_per_driver.m_lap_info.m_last_lap_obj else None,
-                        "s3-time-ms" : data_per_driver.m_lap_info.m_last_lap_obj.m_sector3TimeInMS \
-                            if data_per_driver.m_lap_info.m_last_lap_obj else None,
-                    },
-                    "best-lap" : {
-                        "lap-time-ms" : data_per_driver.m_lap_info.m_best_lap_ms,
-                        "lap-time-ms-player" : 0,
-                        "s1-time-ms-player" : 0,
-                        "s2-time-ms-player" : 0,
-                        "s3-time-ms-player" : 0,
-                        "sector-status" : data_per_driver.getSectorStatus(
-                            self.m_fastest_s1_ms, self.m_fastest_s2_ms, self.m_fastest_s3_ms, for_best_lap=True),
-                        "s1-time-ms" : data_per_driver.m_lap_info.m_best_lap_obj.m_sector1TimeInMS \
-                            if data_per_driver.m_lap_info.m_best_lap_obj else None,
-                        "s2-time-ms" : data_per_driver.m_lap_info.m_best_lap_obj.m_sector2TimeInMS \
-                            if data_per_driver.m_lap_info.m_best_lap_obj else None,
-                        "s3-time-ms" : data_per_driver.m_lap_info.m_best_lap_obj.m_sector3TimeInMS \
-                            if data_per_driver.m_lap_info.m_best_lap_obj else None,
-                    },
-                    "lap-progress" : data_per_driver.m_lap_progress, # NULL is supported
-                    "speed-trap-record-kmph" : data_per_driver.m_packet_copies.m_packet_lap_data.m_speedTrapFastestSpeed if \
-                        data_per_driver.m_packet_copies.m_packet_lap_data else None, # NULL is supported
-                    "top-speed-kmph" : data_per_driver.m_lap_info.m_top_speed_kmph_this_lap,
-                },
-                "warns-pens-info" : {
-                    "corner-cutting-warnings" : _getValueOrDefaultValue(data_per_driver.m_corner_cutting_warnings),
-                    "time-penalties" : _getValueOrDefaultValue(data_per_driver.m_time_penalties),
-                    "num-dt" : _getValueOrDefaultValue(data_per_driver.m_num_dt),
-                    "num-sg" : _getValueOrDefaultValue(data_per_driver.m_num_sg),
-                },
-                "tyre-info" : {
-                    "wear-prediction" : data_per_driver.getFullTyreWearPredictions(self.m_next_pit_stop_window),
-                    "current-wear" : data_per_driver.getCurrentTyreWearJSON(),
-                    "tyre-age": _getValueOrDefaultValue(data_per_driver.m_tyre_info.tyre_age),
-                    "tyre-life-remaining" : _getValueOrDefaultValue(
-                        data_per_driver.m_tyre_info.tyre_life_remaining_laps),
-                    "visual-tyre-compound": str(_getValueOrDefaultValue(
-                        data_per_driver.m_tyre_info.tyre_vis_compound, default_value="")),
-                    "actual-tyre-compound": str(_getValueOrDefaultValue(
-                        data_per_driver.m_tyre_info.tyre_act_compound, default_value="")),
-                    "num-pitstops": _getValueOrDefaultValue(data_per_driver.m_driver_info.m_num_pitstops),
-                },
-                "damage-info" : {
-                    "fl-wing-damage" : data_per_driver.m_car_info.m_fl_wing_damage, # NULL is supported
-                    "fr-wing-damage" : data_per_driver.m_car_info.m_fr_wing_damage, # NULL is supported
-                    "rear-wing-damage" : data_per_driver.m_car_info.m_rear_wing_damage, # NULL is supported
-                },
-
-                "fuel-info" : data_per_driver.getFuelStatsJSON(),
-            } for data_per_driver in self.m_final_list
-        ]
-
-    def getTtTableJSON(self) -> Dict[str, Any]:
-        """Get the Time Trial table JSON.
-
-        Returns:
-            Dict[str, Any]: The JSON dump.
-        """
-
-        # Player object must be found in TT mode
-        player_obj = next(
-            (driver for driver in self.m_final_list if driver.m_driver_info.is_player),
-            None
-        )
-
-        if not player_obj:
-            png_logger.debug("Player not found in TT mode")
-            return None
-
-        # Insert top speed into the lap-history-data records
-        if player_obj.m_packet_copies.m_packet_session_history:
-            session_history = player_obj.m_packet_copies.m_packet_session_history.toJSON()
-            for index, lap_data in enumerate(session_history["lap-history-data"]):
-                lap_data["top-speed-kmph"] = player_obj.m_per_lap_snapshots[index + 1].m_top_speed_kmph \
-                    if (index + 1) in player_obj.m_per_lap_snapshots else None
+        if is_tt_mode:
+            self.__initTTDict()
         else:
-            session_history = None
-        return {
-            "session-history": session_history,
-            "tt-data": self.m_time_trial_packet.toJSON() if self.m_time_trial_packet else None,
-        }
+            self.__initDriverList()
+
+    def toJSON(self) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
+        """Get the drivers list JSON
+
+        Returns:
+            Union[List[Dict[str, Any]], Dict[str, Any]]: The JSON dump
+        """
+        return self.m_json_rsp
 
     def getCurrentLap(self) -> Optional[int]:
         """Get current lap.
@@ -722,12 +598,13 @@ class DriversListRsp:
             Optional[int]: The lap number. None if no race is ongoing
         """
 
-        if len(self.m_final_list) == 0:
+        if len(self.m_json_rsp) == 0:
             return None
 
         if self.m_is_spectator_mode:
-            return self.m_final_list[0].m_lap_info.m_current_lap
-        return next((driver_data.m_lap_info.m_current_lap for driver_data in self.m_final_list if driver_data.m_driver_info.is_player), None)
+            return self.m_json_rsp[0]["lap-info"]["current-lap"]
+        return next((driver_data["lap-info"]["current-lap"] for driver_data in self.m_json_rsp \
+                     if driver_data["driver-info"]["is-player"]), None)
 
     def getPositionHistoryJSON(self) -> List[Dict[str, Any]]:
         """Get position history.
@@ -736,10 +613,12 @@ class DriversListRsp:
             List[Dict[str, Any]]: The position history JSON
         """
 
-        if not self.m_final_list:
+        if not self.m_json_rsp:
             return []
 
-        return [data_per_driver.getPositionHistoryJSON() for data_per_driver in self.m_final_list]
+        # Use original list since this request comes only once in a bluemoon
+        return [data_per_driver.getPositionHistoryJSON() for data_per_driver in TelData._driver_data.m_driver_data \
+                if data_per_driver and data_per_driver.is_valid]
 
     def getTyreStintHistoryJSON(self) -> List[Dict[str, Any]]:
         """Get tyre stint history.
@@ -748,10 +627,11 @@ class DriversListRsp:
             List[Dict[str, Any]]: The tyre stint history JSON
         """
 
-        if not self.m_final_list:
+        if not self.m_json_rsp:
             return []
 
-        return [data_per_driver.getTyreStintHistoryJSON() for data_per_driver in self.m_final_list]
+        return [data_per_driver.getTyreStintHistoryJSON() for data_per_driver in TelData._driver_data.m_driver_data \
+                if data_per_driver and data_per_driver.is_valid]
 
     def getBestSectorTimes(self) -> List[Optional[int]]:
         """Get best sector times.
@@ -785,64 +665,187 @@ class DriversListRsp:
         """Initialise the fields
         """
 
-        with TelData._driver_data_lock.gen_rlock():
-            # Do the bare mimnimum within this block so that we can unlock the mutex ASAP
-            # Player index can never be none, since the player always an index, even if a spectator (for Lobby packet)
-            if (TelData._driver_data.m_player_index is None) or (TelData._driver_data.m_num_active_cars is None):
+        # Player index can never be none, since the player always an index, even if a spectator (for Lobby packet)
+        if (TelData._driver_data.m_player_index is None) or (TelData._driver_data.m_num_active_cars is None):
+            return
+
+        # Update the list data
+        self.m_next_pit_stop_window = TelData._driver_data.m_ideal_pit_stop_window
+        if TelData._driver_data.m_fastest_index is not None:
+            self.m_fastest_lap = TelData._driver_data.m_driver_data[
+                                    TelData._driver_data.m_fastest_index].m_lap_info.m_best_lap_ms
+            self.m_fastest_lap_driver = TelData._driver_data.m_driver_data[
+                                        TelData._driver_data.m_fastest_index].m_driver_info.name
+            self.m_fastest_lap_tyre = TelData._driver_data.m_driver_data[
+                                        TelData._driver_data.m_fastest_index].m_lap_info.m_best_lap_tyre
+
+        self.m_fastest_s1_ms = TelData._driver_data.m_fastest_s1_ms
+        self.m_fastest_s2_ms = TelData._driver_data.m_fastest_s2_ms
+        self.m_fastest_s3_ms = TelData._driver_data.m_fastest_s3_ms
+        self.m_time_trial_packet = TelData._driver_data.m_time_trial_packet
+
+        # for each driver:
+        for index, driver_data in enumerate(TelData._driver_data.m_driver_data):
+            if (index, driver_data) == (None, None):
                 return
+            if not driver_data.is_valid:
+                continue
+            if not 1 <= driver_data.m_driver_info.position <= TelData._driver_data.m_num_active_cars:
+                continue
+            self.m_json_rsp.append(self._getDriverJSON(index,driver_data))
+        self.m_json_rsp.sort(key=lambda obj: obj["driver-info"]["position"])
 
-            # Update the list data
-            self.m_next_pit_stop_window = TelData._driver_data.m_ideal_pit_stop_window
-            if TelData._driver_data.m_fastest_index is not None:
-                self.m_fastest_lap = TelData._driver_data.m_driver_data[
-                                        TelData._driver_data.m_fastest_index].m_lap_info.m_best_lap_ms
-                self.m_fastest_lap_driver = TelData._driver_data.m_driver_data[
-                                            TelData._driver_data.m_fastest_index].m_driver_info.name
-                self.m_fastest_lap_tyre = TelData._driver_data.m_driver_data[
-                                            TelData._driver_data.m_fastest_index].m_lap_info.m_best_lap_tyre
-            positions = list(range(1, TelData._driver_data.m_num_active_cars + 1))
-            for position in positions:
-                index, temp_data = TelData._driver_data.getIndexByTrackPosition(position)
-                if (index, temp_data) == (None, None):
-                    return
 
-                temp_data.m_index = index
-                temp_data.m_is_fastest = (index == TelData._driver_data.m_fastest_index)
-
-                # Add this prepped record into the final list
-                self.m_final_list.append(temp_data)
-            self.m_fastest_s1_ms = TelData._driver_data.m_fastest_s1_ms
-            self.m_fastest_s2_ms = TelData._driver_data.m_fastest_s2_ms
-            self.m_fastest_s3_ms = TelData._driver_data.m_fastest_s3_ms
-            self.m_time_trial_packet = TelData._driver_data.m_time_trial_packet
-
-    def __updateDriverList(self) -> None:
-        """Add extra fields to each DataPerDriver object
+    def __initTTDict(self) -> None:
+        """Initialise the fields
         """
 
-        for driver_data in self.m_final_list:
-            if driver_data.m_car_info.m_ers_perc is not None:
-                driver_data.m_car_info.m_ers_perc = f"{F1Utils.floatToStr(driver_data.m_car_info.m_ers_perc)}%"
-            if driver_data.m_driver_info.telemetry_restrictions is not None:
-                driver_data.m_driver_info.telemetry_restrictions = str(driver_data.m_driver_info.telemetry_restrictions)
-            else:
-                driver_data.m_driver_info.telemetry_restrictions = "N/A"
-            if driver_data.m_packet_copies.m_packet_lap_data:
-                driver_data.m_corner_cutting_warnings = driver_data.m_packet_copies.m_packet_lap_data.m_cornerCuttingWarnings
-                driver_data.m_time_penalties = driver_data.m_packet_copies.m_packet_lap_data.m_penalties
-                driver_data.m_num_dt = driver_data.m_packet_copies.m_packet_lap_data.m_numUnservedDriveThroughPens
-                driver_data.m_num_sg = driver_data.m_packet_copies.m_packet_lap_data.m_numUnservedStopGoPens
-                if self.m_track_length:
-                    driver_data.m_lap_progress = (driver_data.m_packet_copies.m_packet_lap_data.m_lapDistance /
-                                                            self.m_track_length) * 100.0
-                else:
-                    driver_data.m_lap_progress = None
-            else:
-                driver_data.m_lap_progress = None
-                driver_data.m_corner_cutting_warnings = None
-                driver_data.m_time_penalties = None
-                driver_data.m_num_dt = None
-                driver_data.m_num_sg = None
+        # Player index can never be none, since the player always an index, even if a spectator (for Lobby packet)
+        player_index = TelData._driver_data.m_player_index
+        if (player_index is None) or (TelData._driver_data.m_num_active_cars is None):
+            return
+
+
+        # Player object must be found in TT mode
+        player_obj = TelData._driver_data.m_driver_data[player_index]
+        if not player_obj:
+            png_logger.debug("Player not found in TT mode")
+            return
+
+        # Insert top speed into the lap-history-data records
+        if player_obj.m_packet_copies.m_packet_session_history:
+            session_history = player_obj.m_packet_copies.m_packet_session_history.toJSON()
+            for index, lap_data in enumerate(session_history["lap-history-data"]):
+                lap_data["top-speed-kmph"] = player_obj.m_per_lap_snapshots[index + 1].m_top_speed_kmph \
+                    if (index + 1) in player_obj.m_per_lap_snapshots else None
+        else:
+            session_history = None
+        self.m_json_rsp = {
+            "session-history": session_history,
+            "tt-data": self.m_time_trial_packet.toJSON() if self.m_time_trial_packet else None,
+        }
+
+    def _getDriverJSON(self, index: int, driver_data: DataPerDriver) -> Dict[str, Any]:
+        """Get the driver JSON data.
+
+        Args:
+            index (int): Index of the driver.
+            driver_data (DataPerDriver): Driver data.
+
+        Returns:
+            Dict[str, Any]: Driver JSON data.
+        """
+
+        ers_perc = f"{F1Utils.floatToStr(driver_data.m_car_info.m_ers_perc)}%" \
+            if driver_data.m_car_info.m_ers_perc is not None else "0.00%"
+        telemetry_restrictions = str(driver_data.m_driver_info.telemetry_restrictions) \
+            if driver_data.m_driver_info.telemetry_restrictions is not None else "N/A"
+        if driver_data.m_packet_copies.m_packet_lap_data:
+            lap_data = driver_data.m_packet_copies.m_packet_lap_data
+            corner_cutting_warnings = lap_data.m_cornerCuttingWarnings
+            time_penalties = lap_data.m_penalties
+            num_dt = lap_data.m_numUnservedDriveThroughPens
+            num_sg = lap_data.m_numUnservedStopGoPens
+            lap_progress = (lap_data.m_lapDistance / self.m_track_length) * 100.0 if self.m_track_length else None
+        else:
+            corner_cutting_warnings = time_penalties = num_dt = num_sg = lap_progress = None
+
+        return {
+            "driver-info" : {
+                "position": _getValueOrDefaultValue(driver_data.m_driver_info.position),
+                "name": _getValueOrDefaultValue(driver_data.m_driver_info.name),
+                "team": _getValueOrDefaultValue(driver_data.m_driver_info.team),
+                "is-fastest": _getValueOrDefaultValue(index == TelData._driver_data.m_fastest_index),
+                "is-player": _getValueOrDefaultValue(driver_data.m_driver_info.is_player),
+                "dnf-status" : _getValueOrDefaultValue(driver_data.m_driver_info.m_dnf_status_code),
+                "index" : _getValueOrDefaultValue(index),
+                "telemetry-setting" : telemetry_restrictions, # Already NULL checked
+                "is-pitting" : _getValueOrDefaultValue(driver_data.m_lap_info.m_is_pitting, default_value=False),
+                "drs": self.__getDRSValue(driver_data.m_car_info.m_drs_activated, driver_data.m_car_info.m_drs_allowed,
+                                    driver_data.m_car_info.m_drs_distance),
+                "drs-activated" : _getValueOrDefaultValue(driver_data.m_car_info.m_drs_activated, default_value=False),
+                "drs-allowed" : _getValueOrDefaultValue(driver_data.m_car_info.m_drs_allowed, default_value=False),
+                "drs-distance" : _getValueOrDefaultValue(driver_data.m_car_info.m_drs_distance, default_value=0),
+            },
+            "delta-info" : {
+                "delta": driver_data.m_lap_info.m_delta_to_car_in_front,
+                "delta-to-car-in-front": driver_data.m_lap_info.m_delta_to_car_in_front,
+                "delta-to-leader": driver_data.m_lap_info.m_delta_to_leader,
+            },
+            "ers-info" : {
+                "ers-percent": _getValueOrDefaultValue(ers_perc),
+                "ers-mode" : _getValueOrDefaultValue(str(driver_data.m_packet_copies.m_packet_car_status.m_ersDeployMode)
+                                                    if driver_data.m_packet_copies.m_packet_car_status else None),
+                "ers-harvested-by-mguk-this-lap" : (((driver_data.m_packet_copies.m_packet_car_status.m_ersHarvestedThisLapMGUK
+                                                    if driver_data.m_packet_copies.m_packet_car_status else 0.0) /
+                                                        CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0),
+                "ers-deployed-this-lap" : ((driver_data.m_packet_copies.m_packet_car_status.m_ersDeployedThisLap
+                                            if driver_data.m_packet_copies.m_packet_car_status else 0.0) /
+                                                CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0,
+            },
+            "lap-info" : {
+                "current-lap" : driver_data.m_lap_info.m_current_lap,
+                "last-lap" : {
+                    "lap-time-ms" : driver_data.m_lap_info.m_last_lap_ms,
+                    "lap-time-ms-player" : 0,
+                    "s1-time-ms-player" : 0,
+                    "s2-time-ms-player" : 0,
+                    "s3-time-ms-player" : 0,
+                    "sector-status" : driver_data.getSectorStatus(
+                        self.m_fastest_s1_ms, self.m_fastest_s2_ms, self.m_fastest_s3_ms, for_best_lap=False),
+                    "s1-time-ms" : driver_data.m_lap_info.m_last_lap_obj.m_sector1TimeInMS \
+                        if driver_data.m_lap_info.m_last_lap_obj else None,
+                    "s2-time-ms" : driver_data.m_lap_info.m_last_lap_obj.m_sector2TimeInMS \
+                        if driver_data.m_lap_info.m_last_lap_obj else None,
+                    "s3-time-ms" : driver_data.m_lap_info.m_last_lap_obj.m_sector3TimeInMS \
+                        if driver_data.m_lap_info.m_last_lap_obj else None,
+                },
+                "best-lap" : {
+                    "lap-time-ms" : driver_data.m_lap_info.m_best_lap_ms,
+                    "lap-time-ms-player" : 0,
+                    "s1-time-ms-player" : 0,
+                    "s2-time-ms-player" : 0,
+                    "s3-time-ms-player" : 0,
+                    "sector-status" : driver_data.getSectorStatus(
+                        self.m_fastest_s1_ms, self.m_fastest_s2_ms, self.m_fastest_s3_ms, for_best_lap=True),
+                    "s1-time-ms" : driver_data.m_lap_info.m_best_lap_obj.m_sector1TimeInMS \
+                        if driver_data.m_lap_info.m_best_lap_obj else None,
+                    "s2-time-ms" : driver_data.m_lap_info.m_best_lap_obj.m_sector2TimeInMS \
+                        if driver_data.m_lap_info.m_best_lap_obj else None,
+                    "s3-time-ms" : driver_data.m_lap_info.m_best_lap_obj.m_sector3TimeInMS \
+                        if driver_data.m_lap_info.m_best_lap_obj else None,
+                },
+                "lap-progress" : lap_progress, # NULL is supported
+                "speed-trap-record-kmph" : driver_data.m_packet_copies.m_packet_lap_data.m_speedTrapFastestSpeed if \
+                    driver_data.m_packet_copies.m_packet_lap_data else None, # NULL is supported
+                "top-speed-kmph" : driver_data.m_lap_info.m_top_speed_kmph_this_lap,
+            },
+            "warns-pens-info" : {
+                "corner-cutting-warnings" : _getValueOrDefaultValue(corner_cutting_warnings),
+                "time-penalties" : _getValueOrDefaultValue(time_penalties),
+                "num-dt" : _getValueOrDefaultValue(num_dt),
+                "num-sg" : _getValueOrDefaultValue(num_sg),
+            },
+            "tyre-info" : {
+                "wear-prediction" : driver_data.getFullTyreWearPredictions(self.m_next_pit_stop_window),
+                "current-wear" : driver_data.getCurrentTyreWearJSON(),
+                "tyre-age": _getValueOrDefaultValue(driver_data.m_tyre_info.tyre_age),
+                "tyre-life-remaining" : _getValueOrDefaultValue(
+                    driver_data.m_tyre_info.tyre_life_remaining_laps),
+                "visual-tyre-compound": str(_getValueOrDefaultValue(
+                    driver_data.m_tyre_info.tyre_vis_compound, default_value="")),
+                "actual-tyre-compound": str(_getValueOrDefaultValue(
+                    driver_data.m_tyre_info.tyre_act_compound, default_value="")),
+                "num-pitstops": _getValueOrDefaultValue(driver_data.m_driver_info.m_num_pitstops),
+            },
+            "damage-info" : {
+                "fl-wing-damage" : driver_data.m_car_info.m_fl_wing_damage, # NULL is supported
+                "fr-wing-damage" : driver_data.m_car_info.m_fr_wing_damage, # NULL is supported
+                "rear-wing-damage" : driver_data.m_car_info.m_rear_wing_damage, # NULL is supported
+            },
+
+            "fuel-info" : driver_data.getFuelStatsJSON(),
+        }
 
     def _millisecondsToSecondsStr(self, ms: float) -> str:
         """

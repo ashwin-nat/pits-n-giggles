@@ -22,8 +22,8 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Dict, List, Any
-from threading import Lock
+from typing import Any, Dict, List
+
 from lib.f1_types import LapData
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
@@ -107,7 +107,6 @@ class CustomMarkersHistory:
         """
 
         self.m_custom_markers_history: List[CustomMarkerEntry] = []
-        self.m_lock: Lock = Lock()
 
     def insert(self, custom_marker_entry: CustomMarkerEntry) -> None:
         """Insert the custom marker into the history table. THREAD SAFE
@@ -116,15 +115,13 @@ class CustomMarkersHistory:
             custom_marker_entry (TelData.CustomMarkerEntry): The marker object
         """
 
-        with self.m_lock:
-            self.m_custom_markers_history.append(custom_marker_entry)
+        self.m_custom_markers_history.append(custom_marker_entry)
 
     def clear(self) -> None:
         """Clear the history table. THREAD SAFE
         """
 
-        with self.m_lock:
-            self.m_custom_markers_history.clear()
+        self.m_custom_markers_history.clear()
 
     def getCount(self) -> int:
         """Get the number of markers in the history table. THREAD SAFE
@@ -133,8 +130,7 @@ class CustomMarkersHistory:
             int: The count value
         """
 
-        with self.m_lock:
-            return len(self.m_custom_markers_history)
+        return len(self.m_custom_markers_history)
 
     def getJSONList(self) -> List[Dict[str, Any]]:
         """Get the list of JSON objects representing the marker objects. THREAD SAFE
@@ -143,8 +139,7 @@ class CustomMarkersHistory:
             List[Dict[str, Any]]: The JSON list
         """
 
-        with self.m_lock:
-            return [marker.toJSON() for marker in self.getMarkers()]
+        return [marker.toJSON() for marker in self.getMarkers()]
 
     def getMarkers(self) -> List[CustomMarkerEntry]:
         """

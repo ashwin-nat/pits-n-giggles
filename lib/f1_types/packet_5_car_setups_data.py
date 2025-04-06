@@ -23,7 +23,7 @@
 
 import struct
 from typing import Dict, Any, List, Optional
-from .common import _split_list, PacketHeader, _extract_sublist
+from .common import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -513,12 +513,22 @@ class PacketCarSetupData:
         packet_len = CarSetupData.PACKET_LEN_23 if (header.m_gameYear == 23) else CarSetupData.PACKET_LEN_24
         if header.m_gameYear == 23:
             packet_len = CarSetupData.PACKET_LEN_23
-            car_setups_raw_data = _split_list(packet, packet_len)
+            # Iterate over car_setups_raw_data in steps of packet_len,
+            # splitting it into chunks of packet_len.
+            car_setups_raw_data = [
+                packet[i:i + packet_len]
+                for i in range(0, len(packet), packet_len)
+            ]
             self.m_nextFrontWingValue: float = 0.0
         else: # 24
             packet_len = CarSetupData.PACKET_LEN_24
-            car_setups_raw_data = _extract_sublist(packet, 0, packet_len*22)
-            car_setups_raw_data = _split_list(car_setups_raw_data, packet_len)
+            car_setups_raw_data = packet[:packet_len * 22]
+            # Iterate over car_setups_raw_data in steps of packet_len,
+            # splitting it into chunks of packet_len.
+            car_setups_raw_data = [
+                car_setups_raw_data[i:i + packet_len]
+                for i in range(0, len(car_setups_raw_data), packet_len)
+            ]
             self.m_nextFrontWingValue: float = struct.unpack("<f", packet[packet_len*22:])[0]
         for setup_per_car_raw_data in car_setups_raw_data:
             self.m_carSetups.append(CarSetupData(setup_per_car_raw_data, header.m_gameYear))

@@ -23,7 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import json
-from dataclasses import dataclass
+from dataclasses import InitVar, dataclass, field
 from typing import Any, Dict, List, Optional
 
 from lib.f1_types import (ActualTyreCompound, PacketTyreSetsData,
@@ -291,7 +291,7 @@ class TyreSetHistoryManager:
 
         return tyre_set_history
 
-@dataclass
+@dataclass(slots=True)
 class TyreInfo:
     """
     Class that models the tire information for a race driver.
@@ -307,17 +307,20 @@ class TyreInfo:
         m_tyre_set_history_manager (TyreSetHistoryManager): Manages the history of tire sets used.
         m_tyre_wear_extrapolator (TyreWearExtrapolator): Predicts the tire wear for upcoming laps.
     """
-    # Custom constructor to accept only total_laps
-    def __init__(self, total_laps: int) -> None:
-        # Explicitly set all fields to None
-        self.tyre_age: Optional[int] = None
-        self.tyre_vis_compound: Optional[VisualTyreCompound] = None
-        self.tyre_act_compound: Optional[ActualTyreCompound] = None
-        self.tyre_wear: Optional[TyreWearPerLap] = None
-        self.tyre_surface_temp: Optional[float] = None
-        self.tyre_inner_temp: Optional[float] = None
-        self.tyre_life_remaining_laps: Optional[int] = None
-        self.m_tyre_set_history_manager: TyreSetHistoryManager = TyreSetHistoryManager()
+    total_laps: InitVar[int]
 
-        # Initialize m_tyre_wear_extrapolator using total_laps
-        self.m_tyre_wear_extrapolator: TyreWearExtrapolator = TyreWearExtrapolator([], total_laps=total_laps)
+    tyre_age: Optional[int] = None
+    tyre_vis_compound: Optional["VisualTyreCompound"] = None
+    tyre_act_compound: Optional["ActualTyreCompound"] = None
+    tyre_wear: Optional["TyreWearPerLap"] = None
+    tyre_surface_temp: Optional[float] = None
+    tyre_inner_temp: Optional[float] = None
+    tyre_life_remaining_laps: Optional[int] = None
+
+    m_tyre_set_history_manager: "TyreSetHistoryManager" = field(init=False)
+    m_tyre_wear_extrapolator: "TyreWearExtrapolator" = field(init=False)
+
+    def __post_init__(self, total_laps: int):
+        """Init the utility objects with external init-only arg"""
+        self.m_tyre_set_history_manager = TyreSetHistoryManager()
+        self.m_tyre_wear_extrapolator = TyreWearExtrapolator([], total_laps=total_laps)

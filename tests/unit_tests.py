@@ -20,61 +20,47 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import unittest
-import os
 import cProfile
-import sys
+import os
 import random
-from colorama import init
+import sys
+import unittest
 from typing import Set
+
+from colorama import init
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+from f1_types import (TestPacketCarDamageData, TestPacketCarMotionData,
+                      TestPacketCarSetupData, TestPacketCarStatusData,
+                      TestPacketCarTelemetryData, TestPacketEventData,
+                      TestPacketFinalClassificationData, TestPacketLapData,
+                      TestPacketLobbyInfoData, TestPacketMotionExData,
+                      TestPacketParticipantsData, TestPacketSessionData,
+                      TestPacketSessionHistoryData, TestPacketTimeTrialData,
+                      TestPacketTyreSetsData)
 # pylint: disable=unused-import wrong-import-position
 # sourcery skip: dont-import-test-modules
-from tests_base import F1TelemetryUnitTestsBase, CustomTestResult
-from tests_pcap import FullPCapTests, TestF1PacketCaptureHeader
-from tests_overtake_analyzer import \
-    TestOvertakeAnalyzerListObj, \
-    TestOvertakeAnalyzerFileCsv, \
-    TestOvertakeAnalyzerListCsv, \
-    TestOvertakeAnalyzerEmptyInput, \
-    TestOvertakeAnalyzerInvalidData
-from tests_collision_analyzer import \
-    TestCollisionRecord, \
-    TestCollisionPairKey, \
-    TestCollisionAnalyzer
-from tests_fuel_recommender import \
-    TestFuelRemainingPerLap, \
-    TestFuelRateRecommender
-from tests_custom_markers import \
-    TestCustomMarkerEntry, \
-    TestCustomMarkersHistory
-from tests_race_analyzer import TestGetFastestTimesJson
+from tests_base import CustomTestResult, F1TelemetryUnitTestsBase
+from tests_collision_analyzer import (TestCollisionAnalyzer,
+                                      TestCollisionPairKey,
+                                      TestCollisionRecord)
+from tests_custom_markers import (TestCustomMarkerEntry,
+                                  TestCustomMarkersHistory)
+from tests_data_per_driver import TestTyreSetHistoryEntry, TestTyreSetInfo
 from tests_debouncer import TestMultiButtonDebouncer
-from tests_udp_forwarder import TestUDPForwarder
-from tests_itc import TestInterThreadCommunicator
-from f1_types import \
-    TestPacketCarMotionData, \
-    TestPacketSessionData, \
-    TestPacketLapData, \
-    TestPacketEventData, \
-    TestPacketParticipantsData, \
-    TestPacketCarSetupData, \
-    TestPacketCarTelemetryData, \
-    TestPacketCarStatusData, \
-    TestPacketFinalClassificationData, \
-    TestPacketLobbyInfoData, \
-    TestPacketCarDamageData, \
-    TestPacketSessionHistoryData, \
-    TestPacketTyreSetsData, \
-    TestPacketMotionExData, \
-    TestPacketTimeTrialData
-from tests_data_per_driver import \
-    TestTyreSetInfo, \
-    TestTyreSetHistoryEntry
-
+from tests_fuel_recommender import (TestFuelRateRecommender,
+                                    TestFuelRemainingPerLap)
+from tests_itc import TestAsyncInterThreadCommunicator
+from tests_overtake_analyzer import (TestOvertakeAnalyzerEmptyInput,
+                                     TestOvertakeAnalyzerFileCsv,
+                                     TestOvertakeAnalyzerInvalidData,
+                                     TestOvertakeAnalyzerListCsv,
+                                     TestOvertakeAnalyzerListObj)
+from tests_pcap import FullPCapTests, TestF1PacketCaptureHeader
+from tests_race_analyzer import TestGetFastestTimesJson
+from tests_udp_forwarder import TestAsyncUDPForwarder, TestUDPForwarder
 
 # Initialize colorama
 init(autoreset=True)

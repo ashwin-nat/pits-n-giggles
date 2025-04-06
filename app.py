@@ -23,20 +23,22 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import argparse
+import asyncio
+import logging
+import os
 import os
 import socket
-import threading
-import time
 import webbrowser
-import logging
-from typing import Set, Optional, List, Tuple
-from colorama import init, Fore, Style
+from typing import List, Optional, Set, Tuple
 
-from src.telemetry_handler import initTelemetryGlobals, F1TelemetryHandler, initDirectories, initForwarder
-from src.telemetry_server import initTelemetryWebServer
-from src.telemetry_data import initDriverData
-from src.png_logger import initLogger
+from colorama import Fore, Style, init
+
 from src.config import load_config
+from src.png_logger import initLogger
+from src.telemetry_data import initDriverData
+from src.telemetry_handler import (F1TelemetryHandler, initDirectories,
+                                   initForwarder, initTelemetryGlobals)
+from src.telemetry_server import initTelemetryWebServer
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -77,20 +79,22 @@ def getLocalIpAddresses() -> Set[str]:
         png_logger.warning("Error occurred: %s. Using default IP addresses.", e)
     return ip_addresses
 
-def openWebPage(http_port: int) -> None:
+async def openWebPage(http_port: int) -> None:
     """Open the webpage on a new browser tab.
 
     Args:
         http_port (int): Port number of the HTTP server.
     """
-    time.sleep(1)
+    await asyncio.sleep(1)
     webbrowser.open(f'http://localhost:{http_port}', new=2)
+    png_logger.debug("Webpage opened. Task completed")
 
-def httpServerTask(
+def setupWebServerTask(
         http_port: int,
         client_update_interval_ms: int,
         disable_browser_autoload: bool,
         stream_overlay_start_sample_data: bool,
+        tasks: List[asyncio.Task],
         ver_str: str) -> None:
     """Entry point to start the HTTP server.
 
@@ -99,12 +103,12 @@ def httpServerTask(
         client_update_interval_ms (int): Client poll interval in milliseconds.
         disable_browser_autoload (bool): Whether to disable browser autoload.
         stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
+        tasks (List[asyncio.Task]): List of tasks to be executed
         ver_str (str): Version string
     """
-    # Create a thread to open the webpage
+    # Create a task to open the webpage
     if not disable_browser_autoload:
-        webpage_open_thread = threading.Thread(target=openWebPage, args=(http_port,))
-        webpage_open_thread.start()
+        tasks.append(asyncio.create_task(openWebPage(http_port), name="Web page opener Task"))
 
     log_str = "Starting F1 telemetry server. Open one of the below addresses in your browser\n"
     ip_addresses = getLocalIpAddresses()
@@ -119,16 +123,18 @@ def httpServerTask(
         client_update_interval_ms=client_update_interval_ms,
         debug_mode=False,
         stream_overlay_start_sample_data=stream_overlay_start_sample_data,
+        tasks=tasks,
         ver_str=ver_str
     )
 
-def f1TelemetryServerTask(
+def setupGameTelemetryTask(
         port_number: int,
         replay_server: bool,
         post_race_data_autosave: bool,
         udp_custom_action_code: Optional[int],
         udp_tyre_delta_action_code: Optional[int],
-        forwarding_targets: List[Tuple[str, int]]) -> None:
+        forwarding_targets: List[Tuple[str, int]],
+        tasks: List[asyncio.Task]) -> None:
     """Entry point to start the F1 telemetry server.
 
     Args:
@@ -138,12 +144,13 @@ def f1TelemetryServerTask(
         udp_custom_action_code (Optional[int]): UDP custom action code.
         udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code.
         forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
+        tasks (List[asyncio.Task]): List of tasks to be executed
     """
-    time.sleep(2)
     initTelemetryGlobals(post_race_data_autosave, udp_custom_action_code, udp_tyre_delta_action_code)
-    initForwarder(forwarding_targets)
+    initForwarder(forwarding_targets, tasks)
     telemetry_client = F1TelemetryHandler(port_number, forwarding_targets, replay_server)
-    telemetry_client.run()
+    tasks.append(asyncio.create_task(telemetry_client.run(), name="Game Telemetry Listener Task"))
+
 
 def printDoNotCloseWarning() -> None:
     """
@@ -178,7 +185,7 @@ def getVersion() -> str:
 
     return os.environ.get('PNG_VERSION', 'dev')
 
-def main() -> None:
+async def main() -> None:
     """Entry point for the application."""
 
     global png_logger
@@ -187,7 +194,7 @@ def main() -> None:
     config = load_config(args.config_file)
 
     png_logger = initLogger(file_name=config.log_file, max_size=config.log_file_size, debug_mode=args.debug)
-    png_logger.info("Starting the app with the following options:")
+    png_logger.info("PID=%d Starting the app with the following options:", os.getpid())
     png_logger.info(config)
 
     initDirectories()
@@ -198,21 +205,105 @@ def main() -> None:
         config.process_car_setup
     )
 
-    # First init the telemetry client on a main thread
-    client_thread = threading.Thread(target=f1TelemetryServerTask,
-                                    args=(config.telemetry_port,
-                                        args.replay_server, config.post_race_data_autosave,
-                                        config.udp_custom_action_code, config.udp_tyre_delta_action_code,
-                                        config.forwarding_targets))
-    client_thread.daemon = True
-    client_thread.start()
+    tasks: List[asyncio.Task] = []
+
+    setupGameTelemetryTask(  config.telemetry_port,
+                            args.replay_server, config.post_race_data_autosave,
+                            config.udp_custom_action_code, config.udp_tyre_delta_action_code,
+                            config.forwarding_targets, tasks)
 
     # Run the HTTP server on the main thread. Flask does not like running on separate threads
     printDoNotCloseWarning()
-    httpServerTask(config.server_port, config.refresh_interval,
-                   config.disable_browser_autoload, config.stream_overlay_start_sample_data, getVersion())
+
+    setupWebServerTask(config.server_port, config.refresh_interval,
+                   config.disable_browser_autoload, config.stream_overlay_start_sample_data, tasks, getVersion())
+
+    # Run all tasks concurrently
+    png_logger.debug("Registered %d Tasks: %s", len(tasks), [task.get_name() for task in tasks])
+    try:
+        await asyncio.gather(*tasks)
+    except asyncio.CancelledError:
+        png_logger.debug("Main task was cancelled.")
+        raise  # Ensure proper cancellation behavior
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
 if __name__ == '__main__':
-    main()
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("Program interrupted by user.")
+    except asyncio.CancelledError:
+        print("Program shutdown gracefully.")
+
+# ---------------------------------------- PROFILER MODE ---------------------------------------------------------------
+
+# import yappi
+# import pstats
+
+# def save_pstats_report(html_filename, txt_filename):
+#     stats = pstats.Stats("yappi_profile.prof")
+
+#     # Don't strip directories, so full paths are included
+#     # If you want the paths to be fully visible, just skip strip_dirs()
+#     stats.sort_stats("cumulative")
+
+#     # Save as HTML
+#     with open(html_filename, "w") as f:
+#         f.write("<html><head><title>Yappi Profile</title></head><body><pre>")
+#         stats.stream = f
+#         stats.print_stats()
+#         f.write("</pre></body></html>")
+
+#     # Save as TXT
+#     with open(txt_filename, "w") as f:
+#         stats.stream = f
+#         stats.print_stats()
+
+# if __name__ == "__main__":
+#     yappi.set_clock_type("wall")  # Use "cpu" for CPU-bound tasks
+#     yappi.start()
+
+#     try:
+#         asyncio.run(main())
+#     except KeyboardInterrupt:
+#         print("Program interrupted by user.")
+#     except asyncio.CancelledError:
+#         print("Program shutdown gracefully.")
+#     finally:
+#         yappi.stop()
+
+#         # Save function-level stats for SnakeViz
+#         yappi.get_func_stats().save("yappi_profile.prof", type="pstat")
+#         print("Saved function profile as yappi_profile.prof (compatible with snakeviz)")
+
+#         # Generate reports
+#         save_pstats_report("yappi_profile.html", "yappi_profile.txt")
+
+#         print("Generated reports:")
+#         print(" - yappi_profile.html")
+#         print(" - yappi_profile.txt")
+
+# import cProfile
+# import pstats
+
+# if __name__ == '__main__':
+#     with cProfile.Profile() as pr:
+#         try:
+#             asyncio.run(main())
+#         except KeyboardInterrupt:
+#             print("Program interrupted by user.")
+#         except asyncio.CancelledError:
+#             print("Program shutdown gracefully.")
+
+#     print("starting stats dump")
+#     pr.dump_stats("profile_results.prof")  # ✅ Binary format for later analysis
+
+#     stats = pstats.Stats(pr)
+#     stats.sort_stats("cumulative")  # Sort by cumulative time
+
+#     # Write readable profiling results to a text file
+#     with open("profile_results.txt", "w") as f:
+#         stats.stream = f
+#         stats.print_stats()
+#     print("finished stats dump")

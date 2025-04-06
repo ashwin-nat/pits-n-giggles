@@ -24,7 +24,7 @@
 import struct
 from typing import Dict, List, Any
 from enum import Enum
-from .common import _split_list, PacketHeader, ActualTyreCompound, VisualTyreCompound, TractionControlAssistMode
+from .common import PacketHeader, ActualTyreCompound, VisualTyreCompound, TractionControlAssistMode
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -105,6 +105,33 @@ class CarStatusData:
         "B" # uint8       m_networkPaused;            // Whether the car is paused in a network game
     )
     PACKET_LEN = struct.calcsize(PACKET_FORMAT)
+
+    # Type hint declarations
+    m_tractionControl: "TractionControlAssistMode | int"
+    m_antiLockBrakes: bool
+    m_fuelMix: "CarStatusData.FuelMix | int"
+    m_frontBrakeBias: int
+    m_pitLimiterStatus: bool
+    m_fuelInTank: float
+    m_fuelCapacity: float
+    m_fuelRemainingLaps: float
+    m_maxRPM: int
+    m_idleRPM: int
+    m_maxGears: int
+    m_drsAllowed: int
+    m_drsActivationDistance: int
+    m_actualTyreCompound: "ActualTyreCompound | int"
+    m_visualTyreCompound: "VisualTyreCompound | int"
+    m_tyresAgeLaps: int
+    m_vehicleFiaFlags: "CarStatusData.VehicleFIAFlags | int"
+    m_enginePowerICE: float
+    m_enginePowerMGUK: float
+    m_ersStoreEnergy: float
+    m_ersDeployMode: "CarStatusData.ERSDeployMode | int"
+    m_ersHarvestedThisLapMGUK: float
+    m_ersHarvestedThisLapMGUH: float
+    m_ersDeployedThisLap: float
+    m_networkPaused: bool
 
     class VehicleFIAFlags(Enum):
         """
@@ -255,49 +282,43 @@ class CarStatusData:
         Args:
             data (bytes): Raw data representing car status.
         """
-        (
-            self.m_tractionControl,
-            self.m_antiLockBrakes,
-            self.m_fuelMix,
-            self.m_frontBrakeBias,
-            self.m_pitLimiterStatus,
-            self.m_fuelInTank,
-            self.m_fuelCapacity,
-            self.m_fuelRemainingLaps,
-            self.m_maxRPM,
-            self.m_idleRPM,
-            self.m_maxGears,
-            self.m_drsAllowed,
-            self.m_drsActivationDistance,
-            self.m_actualTyreCompound,
-            self.m_visualTyreCompound,
-            self.m_tyresAgeLaps,
-            self. m_vehicleFiaFlags,
-            self.m_enginePowerICE,
-            self.m_enginePowerMGUK,
-            self.m_ersStoreEnergy,
-            self.m_ersDeployMode,
-            self.m_ersHarvestedThisLapMGUK,
-            self.m_ersHarvestedThisLapMGUH,
-            self.m_ersDeployedThisLap,
-            self.m_networkPaused
-        ) = struct.unpack(self.PACKET_FORMAT, data)
+
+        # Unpack data in a single step
+        unpacked = struct.unpack(self.PACKET_FORMAT, data)
+
+        # Set attributes using __dict__.update() to reduce overhead
+        self.__dict__.update(zip([
+            "m_tractionControl", "m_antiLockBrakes", "m_fuelMix", "m_frontBrakeBias",
+            "m_pitLimiterStatus", "m_fuelInTank", "m_fuelCapacity", "m_fuelRemainingLaps",
+            "m_maxRPM", "m_idleRPM", "m_maxGears", "m_drsAllowed", "m_drsActivationDistance",
+            "m_actualTyreCompound", "m_visualTyreCompound", "m_tyresAgeLaps", "m_vehicleFiaFlags",
+            "m_enginePowerICE", "m_enginePowerMGUK", "m_ersStoreEnergy", "m_ersDeployMode",
+            "m_ersHarvestedThisLapMGUK", "m_ersHarvestedThisLapMGUH", "m_ersDeployedThisLap",
+            "m_networkPaused"
+        ], unpacked))
+
+        # Convert boolean fields using bitwise AND
+        self.m_antiLockBrakes = unpacked[1] & 1
+        self.m_pitLimiterStatus = unpacked[4] & 1
+        self.m_networkPaused = unpacked[24] & 1
+
+        # Convert Enums with error handling
+        def try_enum(enum_class, value):
+            try:
+                return enum_class(value)
+            except ValueError:
+                return value  # Store raw value if conversion fails
+
+        self.m_actualTyreCompound = try_enum(ActualTyreCompound, unpacked[13])
+        self.m_visualTyreCompound = try_enum(VisualTyreCompound, unpacked[14])
+        self.m_vehicleFiaFlags = try_enum(CarStatusData.VehicleFIAFlags, unpacked[16])
+        self.m_ersDeployMode = try_enum(CarStatusData.ERSDeployMode, unpacked[20])
+        self.m_tractionControl = try_enum(TractionControlAssistMode, unpacked[0])
+        self.m_fuelMix = try_enum(CarStatusData.FuelMix, unpacked[2])
 
         self.m_antiLockBrakes = bool(self.m_antiLockBrakes)
         self.m_pitLimiterStatus = bool(self.m_pitLimiterStatus)
         self.m_networkPaused = bool(self.m_networkPaused)
-        if ActualTyreCompound.isValid(self.m_actualTyreCompound):
-            self.m_actualTyreCompound = ActualTyreCompound(self.m_actualTyreCompound)
-        if VisualTyreCompound.isValid(self.m_visualTyreCompound):
-            self.m_visualTyreCompound = VisualTyreCompound(self.m_visualTyreCompound)
-        if CarStatusData.VehicleFIAFlags.isValid(self.m_vehicleFiaFlags):
-            self.m_vehicleFiaFlags = CarStatusData.VehicleFIAFlags(self.m_vehicleFiaFlags)
-        if CarStatusData.ERSDeployMode.isValid(self.m_ersDeployMode):
-            self.m_ersDeployMode = CarStatusData.ERSDeployMode(self.m_ersDeployMode)
-        if TractionControlAssistMode.isValid(self.m_tractionControl):
-            self.m_tractionControl = TractionControlAssistMode(self.m_tractionControl)
-        if CarStatusData.FuelMix.isValid(self.m_fuelMix):
-            self.m_fuelMix = CarStatusData.FuelMix(self.m_fuelMix)
 
     def __str__(self):
         """
@@ -534,22 +555,19 @@ class PacketCarStatusData:
     """
 
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
-        """Initialise the object from the raw bytes list
+        """Initialize the object from raw bytes.
 
         Args:
-            header (PacketHeader): Object containing header info
-            packet (bytes): List of bytes representing the packet payload
+            header (PacketHeader): Object containing header info.
+            packet (bytes): Bytes representing the packet payload.
         """
-
         self.m_header: PacketHeader = header
-        self.m_carStatusData: List[CarStatusData] = []               # CarStatusData[22]
 
-        self.m_carStatusData.extend(
-            CarStatusData(status_per_car_raw_data)
-            for status_per_car_raw_data in _split_list(
-                packet, CarStatusData.PACKET_LEN
-            )
-        )
+        car_status_len = CarStatusData.PACKET_LEN
+        self.m_carStatusData = [
+            CarStatusData(packet[i : i + car_status_len])
+            for i in range(0, len(packet), car_status_len)
+        ]
 
     def __str__(self) -> str:
         """Generate a human readable string of this object's contents

@@ -34,7 +34,7 @@ png_logger = getLogger()
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
-@dataclass
+@dataclass(slots=True)
 class DriverInfo:
     """
     Class that models the information stored per race driver.

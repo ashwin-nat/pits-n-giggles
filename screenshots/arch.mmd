@@ -1,0 +1,72 @@
+%%{
+  init: {
+    'theme': 'base',
+    'themeVariables': {
+      'primaryColor': '#5D8AA8',
+      'primaryTextColor': '#fff',
+      'primaryBorderColor': '#5D8AA8',
+      'lineColor': '#F8B229',
+      'secondaryColor': '#006100',
+      'tertiaryColor': '#fff'
+    },
+    'flowchart': {
+      'curve': 'basis',
+      'htmlLabels': true,
+      'diagramPadding': 20
+    }
+  }
+}%%
+flowchart TB
+    %% External simulator
+    SIM["🏎️ F1 Simulator"]
+    %% Main application architecture
+    subgraph APP["🎮 Pits n' Giggles Architecture"]
+        subgraph RUNTIME["⚡ Event Loop"]
+            %% Telemetry components
+            UDP["📡 UDP Server"]
+            PARSER["🔄 Telemetry Parser"]
+            COMPUTE["🧮 Computations Engine"]
+            DS["💾 Shared State"]
+            %% Web components
+            FLASK["🌐 Web Server"]
+            API["🔌 Telemetry API Layer"]
+            SOCKETIO["⚡ SocketIO"]
+            UI["📊 User Interface"]
+            %% Forwarding components
+            FORWARDER["📦 Packet Forwarder"]
+            TARGETS["🎯 External Targets"]
+            %% Data flows
+            UDP -->|"Raw UDP Packets"| PARSER
+            PARSER -->|"Parsed Data"| COMPUTE
+            COMPUTE -->|"Processed Data"| DS
+            UDP -->|"Raw UDP Packets"| FORWARDER
+            FORWARDER -->|"Raw UDP Packets"| TARGETS
+            %% API integration
+            FLASK -->|"Data Requests"| API
+            API -.->|"Read Operations"| DS
+            API -->|"Telemetry Data"| FLASK
+            FLASK -->|"Updates"| SOCKETIO
+            SOCKETIO --> UI
+        end
+    end
+    %% External data flow
+    SIM ==>|"UDP Telemetry Data"| UDP
+    %% Styling classes
+    classDef main fill:#5D8AA8,color:#fff,stroke:#333,stroke-width:2px;
+    classDef group1 fill:#FF6B6B,color:#fff,stroke:#333,stroke-width:1px,rx:10,ry:10;
+    classDef group2 fill:#4ECDC4,color:#fff,stroke:#333,stroke-width:1px,rx:10,ry:10;
+    classDef group3 fill:#45B649,color:#fff,stroke:#333,stroke-width:1px,rx:10,ry:10;
+    classDef compute fill:#9966CC,color:#fff,stroke:#333,stroke-width:1px,rx:10,ry:10;
+    classDef datastore fill:#FCE38A,color:#333,stroke:#333,stroke-width:1px,rx:10,ry:10;
+    classDef external fill:#F38181,color:#fff,stroke:#333,stroke-width:2px,stroke-dasharray:5 5,rx:10,ry:10;
+    classDef container fill:#F7F7F7,color:#333,stroke:#BBBBBB,stroke-width:1px,rx:5,ry:5;
+    classDef api fill:#FF9F45,color:#fff,stroke:#333,stroke-width:1px,rx:10,ry:10;
+    %% Apply styling classes
+    class UDP,PARSER group1;
+    class FLASK,SOCKETIO,UI group2;
+    class FORWARDER,TARGETS group3;
+    class COMPUTE compute;
+    class DS datastore;
+    class SIM external;
+    class APP,RUNTIME container;
+    class API api;

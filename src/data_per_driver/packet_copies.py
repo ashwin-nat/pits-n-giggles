@@ -38,7 +38,7 @@ png_logger = getLogger()
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
-@dataclass
+@dataclass(slots=True)
 class PacketCopies:
     """
     Class holding copies of various telemetry and status packets for a driver.
