@@ -212,7 +212,6 @@ async def main() -> None:
                             config.udp_custom_action_code, config.udp_tyre_delta_action_code,
                             config.forwarding_targets, tasks)
 
-    # Run the HTTP server on the main thread. Flask does not like running on separate threads
     printDoNotCloseWarning()
 
     setupWebServerTask(config.server_port, config.refresh_interval,

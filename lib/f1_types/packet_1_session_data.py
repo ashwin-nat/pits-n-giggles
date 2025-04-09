@@ -23,10 +23,10 @@
 
 import struct
 from enum import Enum
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List
 
 from .common import (GameMode, GearboxAssistMode, PacketHeader, RuleSet,
-                     SafetyCarType, SessionLength, SessionType23,
+                     SafetyCarType, SessionLength, SessionType, SessionType23,
                      SessionType24, TrackID)
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -480,7 +480,7 @@ class WeatherForecastSample:
     @classmethod
     def from_values(cls,
                     game_year: int,
-                    session_type: Union[SessionType23, SessionType24],
+                    session_type: SessionType,
                     time_offset: int,
                     weather: WeatherCondition,
                     track_temp: int,
@@ -493,7 +493,7 @@ class WeatherForecastSample:
 
         Args:
             game_year (int): Game year
-            session_type (Union[SessionType23, SessionType24]): Session type enum
+            session_type (SessionType): Session type enum
             time_offset (int): Time offset in minutes
             weather (WeaetherCondition): Weather enum
             track_temp (int): Track temp in celsius
@@ -1207,6 +1207,7 @@ class PacketSessionData:
             return self.name
 
     def __init__(self, header: PacketHeader, data: bytes) -> None:
+        # sourcery skip: low-code-quality
         """Construct a PacketSessionData object
 
         Args:
@@ -1221,7 +1222,7 @@ class PacketSessionData:
         self.m_airTemperature: int
         self.m_totalLaps: int
         self.m_trackLength: int
-        self.m_sessionType: Union[SessionType23, SessionType24]
+        self.m_sessionType: SessionType
         self.m_trackId: TrackID
         self.m_formula: int
         self.m_sessionTimeLeft: int

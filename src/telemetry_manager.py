@@ -22,7 +22,6 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-import time
 from typing import Awaitable, Callable, Dict, Optional
 
 from lib.f1_types import (F1PacketType, InvalidPacketLengthError,
@@ -176,7 +175,7 @@ class AsyncF1TelemetryManager:
             raw_packet = await self.m_server.getNextMessage()
             try:
                 await self._processPacket(should_parse_packet, raw_packet)
-            except Exception as e:
+            except Exception as e: # noqa: W0718 pylint: disable=broad-exception-caught
                 png_logger.error("Error processing packet: %s", e, exc_info=True)
 
     async def _processPacket(self, should_parse_packet: bool, raw_packet: bytes) -> None:

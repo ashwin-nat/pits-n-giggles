@@ -22,10 +22,10 @@
 
 
 import struct
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
-from .common import (ActualTyreCompound, PacketHeader, SessionType23,
-                     SessionType24, VisualTyreCompound)
+from .common import (ActualTyreCompound, PacketHeader, SessionType,
+                     SessionType23, SessionType24, VisualTyreCompound)
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -195,7 +195,7 @@ class TyreSetData:
                 visual_tyre_compound: VisualTyreCompound,
                 wear: int,
                 available: bool,
-                recommended_session: Union[SessionType23, SessionType24],
+                recommended_session: SessionType,
                 life_span: int,
                 usable_life: int,
                 lap_delta_time: int,
@@ -209,7 +209,7 @@ class TyreSetData:
             visual_tyre_compound (VisualTyreCompound): Visual tyre compound
             wear (int): Wear percentage
             available (bool): Available
-            recommended_session (Union[SessionType23, SessionType24]): Recommended session
+            recommended_session (SessionType): Recommended session
             life_span (int): Life span
             usable_life (int): Usable life
             lap_delta_time (int): Lap delta time

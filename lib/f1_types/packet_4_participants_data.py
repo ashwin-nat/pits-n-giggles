@@ -22,8 +22,10 @@
 
 
 import struct
-from typing import Dict, Any, List, Union, Optional
-from .common import PacketHeader, Platform, Nationality, TeamID23, TeamID24, TelemetrySetting
+from typing import Any, Dict, List, Optional
+
+from .common import (Nationality, PacketHeader, Platform, TeamID, TeamID23,
+                     TeamID24, TelemetrySetting)
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -268,7 +270,7 @@ class ParticipantData:
                     ai_controlled: bool,
                     driver_id: int,
                     network_id: int,
-                    team_id: Union[TeamID23, TeamID24],
+                    team_id: TeamID,
                     my_team: bool,
                     race_number: int,
                     nationality: Nationality,
@@ -286,7 +288,7 @@ class ParticipantData:
             ai_controlled (bool): Whether the car is an AI car or not.
             driver_id (int): ID of the car's driver.
             network_id (int): ID of the car on the network.
-            team_id (Union[TeamID23, TeamID24]): ID of the car's team.
+            team_id (TeamID): ID of the car's team.
             my_team (bool): Whether the car is on its team or not.
             race_number (int): Race number of the car.
             nationality (Nationality): Nationality of the car.
