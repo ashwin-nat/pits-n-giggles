@@ -71,30 +71,28 @@ class FuelRemainingPerLap:
 
 class FuelRateRecommender:
     """Class representing the fuel rate recommender with discontinuity handling."""
-    """
-    ALGORITHM EXPLANATION:
+    # ALGORITHM EXPLANATION:
 
-    1. Data Storage:
-    - Maintains history of fuel readings with lap number, fuel remaining, and lap type
+    # 1. Data Storage:
+    # - Maintains history of fuel readings with lap number, fuel remaining, and lap type
 
-    2. Fuel Rate Calculation:
-    - Groups racing laps into consecutive segments to handle safety car interruptions
-    - Calculates fuel usage within each segment separately
-    - Derives overall rate from total fuel used across segments divided by racing lap count
+    # 2. Fuel Rate Calculation:
+    # - Groups racing laps into consecutive segments to handle safety car interruptions
+    # - Calculates fuel usage within each segment separately
+    # - Derives overall rate from total fuel used across segments divided by racing lap count
 
-    3. Target Calculation:
-    - Computes target fuel rate to finish with minimum required fuel
-    - Determines surplus/deficit laps based on current consumption
-    - Calculates adaptive target for next lap
+    # 3. Target Calculation:
+    # - Computes target fuel rate to finish with minimum required fuel
+    # - Determines surplus/deficit laps based on current consumption
+    # - Calculates adaptive target for next lap
 
-    4. Prediction:
-    - Projects final fuel level using current racing fuel rate
-    - Assumes all remaining laps are racing laps
+    # 4. Prediction:
+    # - Projects final fuel level using current racing fuel rate
+    # - Assumes all remaining laps are racing laps
 
-    5. Recomputation:
-    - Refreshes all calculations when new data is added
-    - Sequence: last lap usage → racing rate → current state → targets → predictions
-    """
+    # 5. Recomputation:
+    # - Refreshes all calculations when new data is added
+    # - Sequence: last lap usage → racing rate → current state → targets → predictions
 
     def __init__(self, fuel_remaining_history: List[FuelRemainingPerLap], total_laps: int, min_fuel_kg: float) -> None:
         self.m_fuel_remaining_history: List[FuelRemainingPerLap] = fuel_remaining_history

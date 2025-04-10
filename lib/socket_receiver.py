@@ -211,14 +211,12 @@ class AsyncTCPListener:
         if self.m_connection is None:
             try:
                 # Wait for a connection - this yields to the event loop
-                conn, addr = await asyncio.get_event_loop().sock_accept(self.m_socket)
+                conn, _ = await asyncio.get_event_loop().sock_accept(self.m_socket)
                 self.m_connection = conn
                 self.m_connection.setblocking(False)
                 # Use streams for easier reading
-                self._reader, self._writer = await asyncio.open_connection(
-                    sock=conn
-                )
-            except Exception as e:
+                self._reader, self._writer = await asyncio.open_connection(sock=conn)
+            except (OSError) as e:
                 print(f"Connection error: {e}")
                 return await self.getNextMessage()  # Try again
 
@@ -230,7 +228,7 @@ class AsyncTCPListener:
             # Read the message of specified length
             return await self._reader.readexactly(message_length)
 
-        except (asyncio.IncompleteReadError, ConnectionError) as e:
+        except (asyncio.IncompleteReadError, ConnectionError):
             # Connection closed or error
             if self._writer:
                 self._writer.close()
