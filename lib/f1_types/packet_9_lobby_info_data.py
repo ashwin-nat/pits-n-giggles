@@ -22,11 +22,9 @@
 
 
 import struct
+from typing import Dict, List, Any, Optional, Union
 from enum import Enum
-from typing import Any, Dict, List, Optional
-
-from .common import (F1PacketType, Nationality, PacketHeader, Platform, TeamID,
-                     TeamID23, TeamID24, TelemetrySetting)
+from .common import PacketHeader, F1PacketType, TeamID23, TeamID24, Nationality, Platform, TelemetrySetting
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -251,7 +249,7 @@ class LobbyInfoData:
     def from_values(cls,
                     header: PacketHeader,
                     ai_controlled: bool,
-                    team_id: TeamID,
+                    team_id: Union[TeamID23, TeamID24],
                     nationality: Nationality,
                     platform: Platform,
                     name: str,
@@ -266,7 +264,7 @@ class LobbyInfoData:
         Args:
             header (PacketHeader): The header of the telemetry packet.
             ai_controlled (bool): Whether the car is controlled by an AI car.
-            team_id (TeamID): Team ID of the player.
+            team_id (TeamID23): Team ID of the player.
             nationality (Nationality): Nationality of the player.
             platform (Platform): Platform on which the player is participating.
             name (str): Name of the player.

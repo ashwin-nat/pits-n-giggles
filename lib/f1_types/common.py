@@ -26,10 +26,10 @@
 ## F1 23 - https://answers.ea.com/t5/General-Discussion/F1-23-UDP-Specification/m-p/12633159
 ## F1 24 - https://answers.ea.com/t5/General-Discussion/F1-24-UDP-Specification/td-p/13745220
 
-import struct
-from abc import ABCMeta, abstractmethod
-from enum import Enum, IntEnum, EnumMeta
+
+from enum import Enum, IntEnum
 from typing import Any, Dict, Optional, Set
+import struct
 
 # ------------------------- ERROR CLASSES --------------------------------------
 
@@ -85,7 +85,7 @@ class F1PacketType(Enum):
         """
         if F1PacketType.isValid(self.value):
             return self.name
-        return f'packet type {str(self.value)}'
+        return 'packet type ' + str(self.value)
 
 class ResultStatus(Enum):
     """
@@ -134,29 +134,7 @@ class ResultStatus(Enum):
         }
         return status_mapping.get(self.value, "---")
 
-# Combine the metaclasses
-class ABCEnumMeta(ABCMeta, EnumMeta):
-    pass
-
-class SessionType(Enum, metaclass=ABCEnumMeta):
-    """
-    Abstract base class for F1 session types.
-    """
-
-    @staticmethod
-    @abstractmethod
-    def isValid(session_type: int) -> bool:
-        """
-        Check if the given session type is valid.
-        """
-
-    @abstractmethod
-    def __str__(self) -> str:
-        """
-        Return a string representation of the session type.
-        """
-
-class SessionType23(SessionType):
+class SessionType23(Enum):
     """
     Enum class representing F1 session types.
     """
@@ -199,7 +177,7 @@ class SessionType23(SessionType):
         """
         return self.name.replace('_', ' ').title()
 
-class SessionType24(SessionType):
+class SessionType24(Enum):
     UNKNOWN = 0
     PRACTICE_1 = 1
     PRACTICE_2 = 2
@@ -794,25 +772,7 @@ class GearboxAssistMode(Enum):
             return True  # It's already an instance of GearboxAssistMode
         return any(gearbox_assist_code == member.value for member in GearboxAssistMode)
 
-class TeamID(Enum, metaclass=ABCEnumMeta):
-    """
-    Abstract base class for F1 team ID's.
-    """
-
-    @staticmethod
-    @abstractmethod
-    def isValid(team_id: int) -> bool:
-        """
-        Check if the given team ID is valid.
-        """
-
-    @abstractmethod
-    def __str__(self) -> str:
-        """
-        Return a string representation of the team ID.
-        """
-
-class TeamID23(TeamID):
+class TeamID23(Enum):
     """
     Enumeration representing the TeamID setting for the player (F1 2023)
     """
@@ -931,9 +891,9 @@ class TeamID23(TeamID):
         }
         return teams_mapping.get(self.value, "---")
 
-class TeamID24(TeamID):
+class TeamID24(Enum):
     """
-    Enumeration representing the TeamID setting for the player (F1 2024)
+    Enumeration representing the TeamID setting for the player (F1 2023)
     """
     MERCEDES = 0
     FERRARI = 1
@@ -1348,6 +1308,22 @@ class F1Utils:
         milliseconds = total_milliseconds % 1000
 
         return f"{seconds}.{milliseconds:03}"
+
+    @staticmethod
+    def timeStrToMilliseconds(time_str: str) -> int:
+        """
+        Convert a time string in the format "MM:SS.SSS" to milliseconds.
+
+        Args:
+            time_str (str): The input time string.
+
+        Returns:
+            int: The time in milliseconds.
+        """
+        minutes, seconds_with_milliseconds = [str(item) for item in time_str.split(':')]
+        seconds, milliseconds = [int(item) for item in seconds_with_milliseconds.split('.')]
+        total_milliseconds = int(minutes) * 60 * 1000 + seconds * 1000 + milliseconds
+        return total_milliseconds
 
     @staticmethod
     def floatToStr(float_val : float, num_dec_places : Optional[int] = 2) -> str:

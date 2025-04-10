@@ -25,7 +25,7 @@
 
 import asyncio
 import json
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
@@ -38,7 +38,7 @@ from lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils, LapData,
                           PacketParticipantsData, PacketSessionData,
                           PacketSessionHistoryData, PacketTimeTrialData,
                           PacketTyreSetsData, ResultStatus, SafetyCarType,
-                          SessionType, TrackID,
+                          SessionType23, SessionType24, TrackID,
                           WeatherForecastSample)
 from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
                                            ITCMessage, TyreDeltaMessage)
@@ -81,7 +81,7 @@ class SessionInfo:
 
         self.m_track : Optional[TrackID] = None
         self.m_track_len: Optional[int] = None
-        self.m_session_type : Optional[SessionType] = None
+        self.m_session_type : Optional[Union[SessionType23, SessionType24]] = None
         self.m_track_temp : Optional[int] = None
         self.m_air_temp : Optional[int] = None
         self.m_total_laps : Optional[int] = None
