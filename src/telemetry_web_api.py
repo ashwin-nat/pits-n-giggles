@@ -298,9 +298,11 @@ class PlayerTelemetryOverlayUpdate:
         player_index = TelData._driver_data.m_session_info.m_spectator_car_index \
                         if TelData._driver_data.m_session_info.m_is_spectating \
                         else TelData._driver_data.m_player_index
-        player_data = TelData._driver_data.m_driver_data[player_index] \
-                        if (player_index is not None) and (player_index in TelData._driver_data.m_driver_data) \
-                        else None
+        player_data = (
+            TelData._driver_data.m_driver_data[player_index]
+            if player_index is not None and 0 <= player_index < len(TelData._driver_data.m_driver_data)
+            else None
+        )
         player_position = player_data.m_driver_info.position if player_data else None
         prev_data = TelData._driver_data.getDriverInfoByPosition(player_position - 1) if player_position else None
         next_data = TelData._driver_data.getDriverInfoByPosition(player_position + 1) if player_position else None
