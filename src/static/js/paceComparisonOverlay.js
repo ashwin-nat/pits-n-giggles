@@ -52,7 +52,7 @@ class PaceComparison {
         if (delta > 0) {
             element.classList.add('text-danger');
         } else if (delta < 0) {
-            element.classList.add('text-success');
+            element.style.color = 'lime';
         }
     }
 
