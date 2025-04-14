@@ -627,6 +627,7 @@ class DriverData:
         if best_lap_obj:
             obj_to_be_updated.m_lap_info.m_best_lap_ms = best_lap_obj.m_lapTimeInMS
             obj_to_be_updated.m_lap_info.m_best_lap_obj = best_lap_obj
+            obj_to_be_updated.m_lap_info.m_best_lap_tyre = obj_to_be_updated.m_tyre_info.tyre_vis_compound
         else:
             # Clear the last lap obj (can linger if flashback is used or practice programme is restarted)
             if obj_to_be_updated.m_lap_info.m_best_lap_obj:
@@ -634,6 +635,7 @@ class DriverData:
                                  f"{obj_to_be_updated.m_driver_info.name}")
                 obj_to_be_updated.m_lap_info.m_best_lap_obj = None
             obj_to_be_updated.m_lap_info.m_best_lap_ms = None
+            obj_to_be_updated.m_lap_info.m_best_lap_tyre = None
             if packet.m_carIdx == self.m_fastest_index:
                 self.m_fastest_index = None
                 png_logger.debug(f"Cleared fastest_index f{packet.m_carIdx}")
