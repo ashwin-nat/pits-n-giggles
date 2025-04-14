@@ -37,7 +37,7 @@ function formatDelta(delta) {
 function formatLapDelta(lapTime, playerLapTime, isPlayer) {
 
     if (isPlayer) {
-        return formatLapTime(playerLapTime);
+        return formatLapTime(lapTime);
     }
 
     if (lapTime === 0 || lapTime === null) {
