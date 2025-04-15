@@ -22,11 +22,12 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
-from lib.f1_types import F1Utils, LapData, TelemetrySetting, SafetyCarType
+from lib.f1_types import (F1Utils, LapData, SafetyCarType, SessionType23,
+                          SessionType24, TelemetrySetting)
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 from src.data_per_driver import (CarInfo, DriverInfo, LapInfo, PacketCopies,
                                  PerLapSnapshotEntry, TyreInfo,
@@ -63,7 +64,8 @@ class DataPerDriver:
         "m_collision_records",
         "m_warning_penalty_history",
         "m_packet_copies",
-        "m_per_lap_snapshots"
+        "m_per_lap_snapshots",
+        "m_latest_snapshot_lap_num",
         )
 
     def __repr__(self) -> str:
@@ -103,6 +105,7 @@ class DataPerDriver:
 
         # Per lap snapshot
         self.m_per_lap_snapshots: Dict[int, PerLapSnapshotEntry] = {}
+        self.m_latest_snapshot_lap_num: Optional[int] = None
 
     @property
     def is_valid(self) -> bool:
@@ -365,14 +368,77 @@ class DataPerDriver:
                 })
         return ret
 
-    def onLapChange(self,
-        old_lap_number: int) -> None:
-        """
-        Perform snapshot for the given lap change.
+    def _handleFlashBack(self, old_lap_number: int) -> None:
+        """Handle a flashback. Remove data from the histories
 
         Args:
             old_lap_number (int): The old lap number.
         """
+
+        # Ignore practice sessions, since lap count is per practice programme, not overall
+        outdated_laps = [key for key in self.m_per_lap_snapshots.keys() if key >= old_lap_number]
+
+        # Remove outdated laps from snapshot history
+        for lap_num in outdated_laps:
+            del self.m_per_lap_snapshots[lap_num]
+
+        # TODO - remove outdated data from tyre set history manager
+        # TODO - remove outdated data from tyre wear extrapolator
+        # TODO - remove outdated data from fuel recommender
+
+        png_logger.info(f'Driver {self} - detected flashback. outdated_laps: {outdated_laps}')
+
+    def onLapChange(self,
+        old_lap_number: int,
+        session_type: Union[SessionType23, SessionType24]) -> None:
+        """
+        Perform snapshot and projection updates for the given lap change.
+
+        This method is triggered when a lap change is detected. It handles
+        per-lap bookkeeping, flashback handling, and projection logic for tyre wear and fuel usage.
+
+        Args:
+            old_lap_number (int): The completed lap number.
+            session_type (Union[SessionType23, SessionType24]): The current session type.
+
+        Behavior:
+            - Can be safely called multiple times for the same lap. If data for the lap
+            has already been captured, the method will skip processing.
+
+        Operations performed:
+            - **Flashback Handling**:
+                - If the current lap number is lower than the last recorded lap and it's not a practice session,
+                this indicates a flashback or restart. Stale laps are idenified and removed and a snapshot is taken.
+
+            - **Per-Lap Bookkeeping**:
+                - Car damage and car status packet copies.
+                - Driver's track position at the end of the lap.
+                - Top speed achieved during the lap.
+                - Maximum safety car status encountered.
+                - Tyre sets in use.
+
+            - **Tyre Set History**:
+                - Tyre set ID and wear (FL/FR/RL/RR) are recorded into the tyre set history for this lap.
+
+            - **Tyre Wear Projection**:
+                - Record tyre wear and racing status of current lap and recompute
+
+            - **Fuel Usage Projection**:
+                - Record fuel usage and racing status of current lap and recompute
+
+            - **Cleanup for Next Lap**:
+                - Resets temporary per-lap metrics like top speed and safety car status
+                to prepare for the next lap.
+
+        Note:
+            All data is stored in memory for the current session only; no data is persisted across races or sessions.
+        """
+
+        # Handle flashbacks/retry practice programmes
+        # If old_lap_number is less than max lap num in the dict, then scrap the now outdated data
+        if (self.m_latest_snapshot_lap_num and (old_lap_number < self.m_latest_snapshot_lap_num)) \
+            and not F1Utils.isPracticeSession(session_type):
+            self._handleFlashBack(old_lap_number)
 
         # Check if the old lap number is already present in the snapshots (lap already processed)
         if old_lap_number in self.m_per_lap_snapshots:
@@ -387,6 +453,7 @@ class DataPerDriver:
             track_position=self.m_driver_info.position,
             top_speed_kmph=self.m_lap_info.m_top_speed_kmph_this_lap,
         )
+        self.m_latest_snapshot_lap_num = old_lap_number
 
         # Add the tyre wear data into the tyre stint history
         if old_lap_number and self.m_tyre_info.m_tyre_set_history_manager.length:
@@ -424,6 +491,7 @@ class DataPerDriver:
         # Now clear the per lap max stuff
         self.m_lap_info.m_top_speed_kmph_this_lap = None
         self.m_driver_info.m_curr_lap_max_sc_status = None
+        png_logger.debug(f'Driver {self} - inserted snapshot for lap {old_lap_number}')
 
     def isZerothLapSnapshotDataAvailable(self) -> bool:
         """

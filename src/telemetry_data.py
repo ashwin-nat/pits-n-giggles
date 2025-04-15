@@ -408,11 +408,12 @@ class DriverData:
             # Update the per lap snapshot data structure if lap info is available
             if (obj_to_be_updated.m_lap_info.m_current_lap is not None):
                 if (obj_to_be_updated.m_lap_info.m_current_lap == 1) and (obj_to_be_updated.isZerothLapSnapshotDataAvailable()):
-                    obj_to_be_updated.onLapChange(old_lap_number=0)
+                    obj_to_be_updated.onLapChange(old_lap_number=0, session_type=self.m_session_info.m_session_type)
 
                 # Now, add shit only if there is change (this should handle lap 1 to lap 2 transition)
                 if (obj_to_be_updated.m_lap_info.m_current_lap != lap_data.m_currentLapNum):
-                    obj_to_be_updated.onLapChange(old_lap_number=obj_to_be_updated.m_lap_info.m_current_lap)
+                    obj_to_be_updated.onLapChange(old_lap_number=obj_to_be_updated.m_lap_info.m_current_lap,
+                                                  session_type=self.m_session_info.m_session_type)
 
             # Now, update the current lap number and other shit
             obj_to_be_updated.m_lap_info.m_current_lap =  lap_data.m_currentLapNum
@@ -540,7 +541,7 @@ class DriverData:
             obj_to_be_updated = self._getObjectByIndex(index, create=False)
             # Perform the final snapshot
             obj_to_be_updated.onLapChange(
-                old_lap_number=data.m_numLaps)
+                old_lap_number=data.m_numLaps, session_type=self.m_session_info.m_session_type)
             # Sometimes, lapInfo is unreliable. update the track position
             obj_to_be_updated.m_per_lap_snapshots[data.m_numLaps].m_track_position = data.m_position
             obj_to_be_updated.m_driver_info.position = data.m_position

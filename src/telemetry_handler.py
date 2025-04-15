@@ -286,7 +286,14 @@ class F1TelemetryHandler:
         global g_button_debouncer
 
         # Function to handle BUTTON_STATUS action
-        async def handle_button_status(packet: PacketEventData):
+        async def handleButtonStatus(packet: PacketEventData) -> None:
+            """
+            Handle and process the button press event
+
+            Args:
+                packet (PacketEventData): The parsed object containing the button status packet's contents.
+            """
+
             if (g_udp_custom_action_code is not None) and \
             (packet.mEventDetails.isUDPActionPressed(g_udp_custom_action_code)) and \
             (g_button_debouncer.onButtonPress(g_udp_custom_action_code)):
@@ -299,14 +306,24 @@ class F1TelemetryHandler:
                 png_logger.debug('UDP action %d pressed', g_udp_tyre_delta_action_code)
                 await TelData.processTyreDeltaSound()
 
+        async def handleFlashBackEvent(packet: PacketEventData) -> None:
+            """
+            Handle and process the flashback event
+
+            Args:
+                packet (PacketEventData): The parsed object containing the flashback packet's contents.
+            """
+            png_logger.info(f"Flashback event received. Frame ID = {packet.mEventDetails.flashbackFrameIdentifier}")
+
         # Define the handler functions in a dictionary
         event_handler = {
-            PacketEventData.EventPacketType.BUTTON_STATUS: handle_button_status,
+            PacketEventData.EventPacketType.BUTTON_STATUS: handleButtonStatus,
             PacketEventData.EventPacketType.FASTEST_LAP: TelData.processFastestLapUpdate,
             PacketEventData.EventPacketType.SESSION_STARTED: clearAllDataStructures,
             PacketEventData.EventPacketType.RETIREMENT: TelData.processRetirementEvent,
             PacketEventData.EventPacketType.OVERTAKE: TelData.processOvertakeEvent,
             PacketEventData.EventPacketType.COLLISION: TelData.processCollisionsEvent,
+            PacketEventData.EventPacketType.FLASHBACK: handleFlashBackEvent,
         }.get(packet.m_eventCode)
 
         if event_handler:
