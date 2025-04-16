@@ -384,7 +384,7 @@ class DataPerDriver:
 
         # TODO - remove outdated data from tyre set history manager
         # TODO - remove outdated data from tyre wear extrapolator
-        # TODO - remove outdated data from fuel recommender
+        self.m_car_info.m_fuel_rate_recommender.remove(outdated_laps)
 
         png_logger.info(f'Driver {self} - detected flashback. outdated_laps: {outdated_laps}')
 
@@ -429,9 +429,6 @@ class DataPerDriver:
             - **Cleanup for Next Lap**:
                 - Resets temporary per-lap metrics like top speed and safety car status
                 to prepare for the next lap.
-
-        Note:
-            All data is stored in memory for the current session only; no data is persisted across races or sessions.
         """
 
         # Handle flashbacks/retry practice programmes

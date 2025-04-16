@@ -68,7 +68,7 @@ class TestFuelRemainingPerLap(FuelRecommenderUT):
         self.assertTrue(json_data["is-racing-lap"])
         self.assertEqual(json_data["desc"], "Normal racing lap")
 
-class TestFuelRateRecommender(FuelRecommenderUT):
+class TestFuelRateRecommenderMisc(FuelRecommenderUT):
     def setUp(self):
         # Initialize with starting conditions
         self.total_laps = 50
@@ -370,3 +370,87 @@ class TestFuelRateRecommender(FuelRecommenderUT):
         racing_laps = TOTAL_LAPS - safety_laps
         expected_final_fuel = INITIAL_FUEL - (safety_laps * SAFETY_CAR_CONSUMPTION + racing_laps * RACING_CONSUMPTION)
         assert abs(recommender.final_fuel_kg - expected_final_fuel) < 1e-6
+
+class TestFuelRateRecommenderRemove(FuelRecommenderUT):
+    def setUp(self):
+        # Import the class (this would be your actual import)
+        self.FuelRateRecommender = FuelRateRecommender
+
+        # Create test data
+        self.fuel_history = [
+            FuelRemainingPerLap(1, 100.0, True),
+            FuelRemainingPerLap(2, 97.0, True),
+            FuelRemainingPerLap(3, 94.0, True),
+            FuelRemainingPerLap(4, 91.0, True),
+            FuelRemainingPerLap(5, 88.0, True)
+        ]
+        self.total_laps = 10
+        self.min_fuel = 5.0
+
+        # Create recommender and replace _recompute to do nothing for these tests
+        self.recommender = self.FuelRateRecommender(
+            self.fuel_history.copy(), self.total_laps, self.min_fuel
+        )
+        self.recommender._recompute = lambda: None  # No-op function
+
+    def test_remove_single_lap(self):
+        """Test removing a single lap"""
+        # Remove lap 3
+        self.recommender.remove([3])
+
+        # Check if lap 3 was removed
+        lap_numbers = [lap.m_lap_number for lap in self.recommender.m_fuel_remaining_history]
+        self.assertEqual(len(self.recommender.m_fuel_remaining_history), 4)
+        self.assertNotIn(3, lap_numbers)
+        self.assertEqual(lap_numbers, [1, 2, 4, 5])
+
+    def test_remove_multiple_laps(self):
+        """Test removing multiple laps"""
+        # Create fresh recommender for this test
+        recommender = self.FuelRateRecommender(
+            self.fuel_history.copy(), self.total_laps, self.min_fuel
+        )
+        recommender._recompute = lambda: None  # No-op function
+
+        # Remove laps 2 and 4
+        recommender.remove([2, 4])
+
+        # Check if laps 2 and 4 were removed
+        lap_numbers = [lap.m_lap_number for lap in recommender.m_fuel_remaining_history]
+        self.assertEqual(len(recommender.m_fuel_remaining_history), 3)
+        self.assertNotIn(2, lap_numbers)
+        self.assertNotIn(4, lap_numbers)
+        self.assertEqual(lap_numbers, [1, 3, 5])
+
+    def test_remove_nonexistent_laps(self):
+        """Test removing laps that don't exist"""
+        # Create fresh recommender for this test
+        recommender = self.FuelRateRecommender(
+            self.fuel_history.copy(), self.total_laps, self.min_fuel
+        )
+        recommender._recompute = lambda: None  # No-op function
+
+        # Remove lap that doesn't exist
+        recommender.remove([99])
+
+        # Check nothing was removed
+        self.assertEqual(len(recommender.m_fuel_remaining_history), 5)
+        lap_numbers = [lap.m_lap_number for lap in recommender.m_fuel_remaining_history]
+        self.assertEqual(lap_numbers, [1, 2, 3, 4, 5])
+
+    def test_remove_empty_list(self):
+        """Test removing with an empty list"""
+        # Create fresh recommender for this test
+        recommender = self.FuelRateRecommender(
+            self.fuel_history.copy(), self.total_laps, self.min_fuel
+        )
+        recommender._recompute = lambda: None  # No-op function
+
+        # Get original state
+        original_length = len(recommender.m_fuel_remaining_history)
+
+        # Remove empty list
+        recommender.remove([])
+
+        # Check nothing was removed
+        self.assertEqual(len(recommender.m_fuel_remaining_history), original_length)
