@@ -391,7 +391,8 @@ class DataPerDriver:
 
     def onLapChange(self,
         old_lap_number: int,
-        session_type: Union[SessionType23, SessionType24]) -> None:
+        session_type: Union[SessionType23, SessionType24],
+        is_flashback: Optional[bool] = False) -> None:
         """
         Perform snapshot and projection updates for the given lap change.
 
@@ -401,6 +402,7 @@ class DataPerDriver:
         Args:
             old_lap_number (int): The completed lap number.
             session_type (Union[SessionType23, SessionType24]): The current session type.
+            is_flashback (Optional[bool], optional): Whether the lap change is due to a flashback. Defaults to False.
 
         Behavior:
             - Can be safely called multiple times for the same lap. If data for the lap
@@ -434,12 +436,12 @@ class DataPerDriver:
 
         # Handle flashbacks/retry practice programmes
         # If old_lap_number is less than max lap num in the dict, then scrap the now outdated data
-        if (self.m_latest_snapshot_lap_num and (old_lap_number < self.m_latest_snapshot_lap_num)) \
-            and not F1Utils.isPracticeSession(session_type):
+        if is_flashback and not F1Utils.isPracticeSession(session_type):
             self._handleFlashBack(old_lap_number)
 
         # Check if the old lap number is already present in the snapshots (lap already processed)
         if old_lap_number in self.m_per_lap_snapshots:
+            png_logger.warning(f'Driver {self} - lap {old_lap_number} already in per_lap_snapshots')
             return
 
         # Store the snapshot data for the old lap
@@ -507,6 +509,16 @@ class DataPerDriver:
             (self.m_lap_info.m_top_speed_kmph_this_lap is not None) and
             (self.m_driver_info.m_curr_lap_max_sc_status is not None)
         )
+
+    def isZerothLapSnapshotAlreadyCaptured(self) -> bool:
+        """
+        Checks if zeroth lap snapshot data has already been captured
+
+        Returns:
+            bool - True if zeroth lap snapshot data is available
+        """
+
+        return self.m_latest_snapshot_lap_num is not None
 
     def updateTyreSetData(self, fitted_index: int) -> None:
         """Update the current tyre set in the history list, if required.

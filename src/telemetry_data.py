@@ -407,13 +407,24 @@ class DriverData:
 
             # Update the per lap snapshot data structure if lap info is available
             if (obj_to_be_updated.m_lap_info.m_current_lap is not None):
-                if (obj_to_be_updated.m_lap_info.m_current_lap == 1) and (obj_to_be_updated.isZerothLapSnapshotDataAvailable()):
+                if (obj_to_be_updated.m_lap_info.m_current_lap == 1) and \
+                        (obj_to_be_updated.isZerothLapSnapshotDataAvailable()) and \
+                            (not obj_to_be_updated.isZerothLapSnapshotAlreadyCaptured()):
                     obj_to_be_updated.onLapChange(old_lap_number=0, session_type=self.m_session_info.m_session_type)
 
-                # Now, add shit only if there is change (this should handle lap 1 to lap 2 transition)
+                # Now, Take snapshots only at end of laps (i.e.) when m_current_lap is changing
                 if (obj_to_be_updated.m_lap_info.m_current_lap != lap_data.m_currentLapNum):
-                    obj_to_be_updated.onLapChange(old_lap_number=obj_to_be_updated.m_lap_info.m_current_lap,
-                                                  session_type=self.m_session_info.m_session_type)
+                    # If flashback is used in the pits or just after crossing the start/finish line, the game may be
+                    # rewound to the previous lap. In that case, we need to delete the snapshot for that lap
+                    # so that it can be captured again.
+                    if (flashback_detected := (obj_to_be_updated.m_lap_info.m_current_lap > lap_data.m_currentLapNum)):
+                        png_logger.debug(f'Driver {obj_to_be_updated}. Lap change due to Flashback detected')
+
+                    # In this case, the lap data packet lap num may be less than the stored current lap
+                    old_lap_num = min(obj_to_be_updated.m_lap_info.m_current_lap, lap_data.m_currentLapNum)
+                    obj_to_be_updated.onLapChange(old_lap_number=old_lap_num,
+                                                  session_type=self.m_session_info.m_session_type,
+                                                  is_flashback=flashback_detected)
 
             # Now, update the current lap number and other shit
             obj_to_be_updated.m_lap_info.m_current_lap =  lap_data.m_currentLapNum
