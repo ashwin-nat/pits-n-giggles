@@ -382,7 +382,8 @@ class DataPerDriver:
         for lap_num in outdated_laps:
             del self.m_per_lap_snapshots[lap_num]
 
-        # TODO - remove outdated data from tyre wear extrapolator
+        # Remove outdated laps from managed objects
+        self.m_tyre_info.m_tyre_wear_extrapolator.remove(outdated_laps)
         self.m_tyre_info.m_tyre_set_history_manager.remove(outdated_laps)
         self.m_car_info.m_fuel_rate_recommender.remove(outdated_laps)
 
@@ -466,7 +467,7 @@ class DataPerDriver:
 
         # Add the tyre wear data into the extrapolator
         if tyre_set_id := self._getCurrentTyreSetKey():
-            self.m_tyre_info.m_tyre_wear_extrapolator.updateDataLap(TyreWearPerLap(
+            self.m_tyre_info.m_tyre_wear_extrapolator.add(TyreWearPerLap(
                 fl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
                 fr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
                 rl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
@@ -561,7 +562,7 @@ class DataPerDriver:
 
                 # Tyre set change detected. clear the extrapolation data
                 self.m_tyre_info.m_tyre_wear_extrapolator.clear()
-                self.m_tyre_info.m_tyre_wear_extrapolator.updateDataLap(initial_tyre_wear)
+                self.m_tyre_info.m_tyre_wear_extrapolator.add(initial_tyre_wear)
 
     def _getCurrentTyreSetKey(self) -> Optional[str]:
         """Get the unique ID key for the currently equipped tyre set
