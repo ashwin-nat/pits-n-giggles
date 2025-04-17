@@ -1248,7 +1248,7 @@ def getTyreDeltaNotificationMessages() -> List[TyreDeltaMessage]:
     # N/A for spectating or after race - maybe support this later
     if (_driver_data.m_session_info.m_is_spectating or
         _driver_data.m_session_info.m_packet_final_classification or
-        str(_driver_data.m_session_info.m_session_type) != "Time Trial"):
+        str(_driver_data.m_session_info.m_session_type) == "Time Trial"):
         return []
 
     # If player ded, not applicable
