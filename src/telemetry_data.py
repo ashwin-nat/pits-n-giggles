@@ -1020,6 +1020,7 @@ async def processMotionUpdate(packet: PacketMotionData) -> None:
     """
 
     _driver_data.processMotionUpdate(packet)
+    _driver_data.setRaceOngoing()
 
 async def processCarSetupsUpdate(packet: PacketCarSetupData) -> None:
     """Update the data structures with car setup information
@@ -1031,6 +1032,7 @@ async def processCarSetupsUpdate(packet: PacketCarSetupData) -> None:
     if not _driver_data.m_process_car_setups:
         return
     _driver_data.processCarSetupsUpdate(packet)
+    _driver_data.setRaceOngoing()
 
 async def processTimeTrialUpdate(packet: PacketTimeTrialData) -> None:
     """Update the data structures with time trial information
@@ -1077,6 +1079,7 @@ async def processOvertakeEvent(packet: PacketEventData) -> None:
     record: PacketEventData.Overtake = packet.mEventDetails
     if (overtake_obj := getOvertakeObj(record.overtakingVehicleIdx, record.beingOvertakenVehicleIdx)):
         _driver_data.m_overtakes_history.insert(overtake_obj)
+    _driver_data.setRaceOngoing()
 
 # -------------------------------------- UTILTIES ----------------------------------------------------------------------
 
