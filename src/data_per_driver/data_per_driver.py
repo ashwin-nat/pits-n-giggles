@@ -382,8 +382,8 @@ class DataPerDriver:
         for lap_num in outdated_laps:
             del self.m_per_lap_snapshots[lap_num]
 
-        # TODO - remove outdated data from tyre set history manager
         # TODO - remove outdated data from tyre wear extrapolator
+        self.m_tyre_info.m_tyre_set_history_manager.remove(outdated_laps)
         self.m_car_info.m_fuel_rate_recommender.remove(outdated_laps)
 
         png_logger.info(f'Driver {self} - detected flashback. outdated_laps: {outdated_laps}')

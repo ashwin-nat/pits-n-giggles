@@ -454,3 +454,19 @@ class TestFuelRateRecommenderRemove(FuelRecommenderUT):
 
         # Check nothing was removed
         self.assertEqual(len(recommender.m_fuel_remaining_history), original_length)
+
+    def test_remove_all_laps(self):
+        """Test removing all laps"""
+        # Create fresh recommender for this test
+        recommender = self.FuelRateRecommender(
+            self.fuel_history.copy(), self.total_laps, self.min_fuel
+        )
+        recommender._recompute = lambda: None  # No-op function
+
+        # Remove all laps
+        all_lap_numbers = [lap.m_lap_number for lap in recommender.m_fuel_remaining_history]
+        recommender.remove(all_lap_numbers)
+
+        # Check all laps were removed
+        self.assertEqual(len(recommender.m_fuel_remaining_history), 0)
+        self.assertFalse(recommender.isDataSufficient())

@@ -48,7 +48,8 @@ from tests_collision_analyzer import (TestCollisionAnalyzer,
                                       TestCollisionRecord)
 from tests_custom_markers import (TestCustomMarkerEntry,
                                   TestCustomMarkersHistory)
-from tests_data_per_driver import TestTyreSetHistoryEntry, TestTyreSetInfo
+from tests_data_per_driver import (TestTyreSetHistoryEntry,
+                                   TestTyreSetHistoryManager, TestTyreSetInfo)
 from tests_debouncer import TestMultiButtonDebouncer
 from tests_fuel_recommender import (TestFuelRateRecommenderMisc,
                                     TestFuelRateRecommenderRemove,

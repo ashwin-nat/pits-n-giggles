@@ -102,10 +102,10 @@ class TyreSetHistoryEntry:
     """
 
     def __init__(self,
-                    start_lap: int,
-                    index: int,
-                    tyre_set_key: Optional[str] = None,
-                    initial_tyre_wear: Optional[TyreWearPerLap] = None):
+                 start_lap: int,
+                 index: int,
+                 tyre_set_key: Optional[str] = None,
+                 initial_tyre_wear: Optional[TyreWearPerLap] = None):
         """Initialize the TyreSetHistoryEntry object. The m_end_lap attribute will be set to None
 
         Args:
@@ -197,15 +197,34 @@ class TyreSetHistoryManager:
 
         self.m_history.append(entry)
 
-    def addTyreWear(self, tyre_wear_info: TyreWearPerLap, entry_index: int = -1) -> None:
+    def addTyreWear(self, tyre_wear_info: TyreWearPerLap) -> None:
         """Append tyre wear info for the specified tyre wear history item at the given index
 
         Args:
             tyre_wear_info (TyreWearPerLap): Tyre wear of latest lap
-            entry_index (int, optional): Index of the history item. Defaults to -1 (last item).
         """
 
-        self.m_history[entry_index].m_tyre_wear_history.append(tyre_wear_info)
+        self.m_history[-1].m_tyre_wear_history.append(tyre_wear_info)
+
+    def remove(self, laps: List[int]) -> None:
+        """Remove the specified laps from the tyre set history
+
+        Args:
+            laps (List[int]): List of lap numbers to be removed
+        """
+
+        if self.m_history:
+            last_entry = self.m_history[-1]
+
+            # Remove the last lap from tyre wear history if it matches any in the removal list
+            if last_entry.m_tyre_wear_history:
+                last_lap = last_entry.m_tyre_wear_history[-1].lap_number
+                if last_lap in laps:
+                    last_entry.m_tyre_wear_history.pop()
+
+            # Remove the entire tyre set if its start lap is in the removal list
+            if last_entry.m_start_lap in laps:
+                self.m_history.pop()
 
     def _computeTyreStintEndLaps(self, final_lap_num: int) -> None:
         """
