@@ -407,9 +407,7 @@ class DriverData:
 
             # Update the per lap snapshot data structure if lap info is available
             if (obj_to_be_updated.m_lap_info.m_current_lap is not None):
-                if (obj_to_be_updated.m_lap_info.m_current_lap == 1) and \
-                        (obj_to_be_updated.isZerothLapSnapshotDataAvailable()) and \
-                            (not obj_to_be_updated.isZerothLapSnapshotAlreadyCaptured()):
+                if obj_to_be_updated.shouldCaptureZerothLapSnapshot():
                     obj_to_be_updated.onLapChange(old_lap_number=0, session_type=self.m_session_info.m_session_type)
 
                 # Now, Take snapshots only at end of laps (i.e.) when m_current_lap is changing

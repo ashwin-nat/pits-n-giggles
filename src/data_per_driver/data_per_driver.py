@@ -493,6 +493,20 @@ class DataPerDriver:
         self.m_driver_info.m_curr_lap_max_sc_status = None
         png_logger.debug(f'Driver {self} - inserted snapshot for lap {old_lap_number}')
 
+    def shouldCaptureZerothLapSnapshot(self) -> bool:
+        """
+        Checks if the zeroth lap snapshot should be captured.
+
+        Returns:
+            bool - True if the zeroth lap snapshot should be captured
+        """
+
+        return (
+            self.m_lap_info.m_current_lap == 1 and
+            self.isZerothLapSnapshotDataAvailable() and
+            not self.isZerothLapSnapshotAlreadyCaptured()
+        )
+
     def isZerothLapSnapshotDataAvailable(self) -> bool:
         """
         Checks if zeroth lap snapshot data is available.

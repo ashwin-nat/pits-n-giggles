@@ -204,6 +204,8 @@ class TyreSetHistoryManager:
             tyre_wear_info (TyreWearPerLap): Tyre wear of latest lap
         """
 
+        if not self.m_history:
+            raise IndexError("Tyre history is empty, cannot add tyre wear info")
         self.m_history[-1].m_tyre_wear_history.append(tyre_wear_info)
 
     def remove(self, laps: List[int]) -> None:

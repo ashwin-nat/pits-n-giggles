@@ -391,7 +391,6 @@ class TestFuelRateRecommenderRemove(FuelRecommenderUT):
         self.recommender = self.FuelRateRecommender(
             self.fuel_history.copy(), self.total_laps, self.min_fuel
         )
-        self.recommender._recompute = lambda: None  # No-op function
 
     def test_remove_single_lap(self):
         """Test removing a single lap"""
@@ -410,7 +409,6 @@ class TestFuelRateRecommenderRemove(FuelRecommenderUT):
         recommender = self.FuelRateRecommender(
             self.fuel_history.copy(), self.total_laps, self.min_fuel
         )
-        recommender._recompute = lambda: None  # No-op function
 
         # Remove laps 2 and 4
         recommender.remove([2, 4])
@@ -428,7 +426,6 @@ class TestFuelRateRecommenderRemove(FuelRecommenderUT):
         recommender = self.FuelRateRecommender(
             self.fuel_history.copy(), self.total_laps, self.min_fuel
         )
-        recommender._recompute = lambda: None  # No-op function
 
         # Remove lap that doesn't exist
         recommender.remove([99])
@@ -444,7 +441,6 @@ class TestFuelRateRecommenderRemove(FuelRecommenderUT):
         recommender = self.FuelRateRecommender(
             self.fuel_history.copy(), self.total_laps, self.min_fuel
         )
-        recommender._recompute = lambda: None  # No-op function
 
         # Get original state
         original_length = len(recommender.m_fuel_remaining_history)
@@ -461,7 +457,6 @@ class TestFuelRateRecommenderRemove(FuelRecommenderUT):
         recommender = self.FuelRateRecommender(
             self.fuel_history.copy(), self.total_laps, self.min_fuel
         )
-        recommender._recompute = lambda: None  # No-op function
 
         # Remove all laps
         all_lap_numbers = [lap.m_lap_number for lap in recommender.m_fuel_remaining_history]
