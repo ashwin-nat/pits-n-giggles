@@ -21,17 +21,20 @@
 # SOFTWARE.
 
 import random
-from typing import Optional, List
 from unittest.mock import MagicMock
 
 from lib.f1_types import ActualTyreCompound, VisualTyreCompound
 from lib.tyre_wear_extrapolator import TyreWearPerLap
-from src.data_per_driver import TyreSetInfo, TyreSetHistoryEntry
+from src.data_per_driver import (TyreSetHistoryEntry, TyreSetHistoryManager,
+                                 TyreSetInfo)
+
 from .tests_data_per_driver_base import F1DataPerDriverTest
 
-# Assuming the classes have been defined above or imported as TyreSetInfo and TyreSetHistoryEntry.
 
-class TestTyreSetInfo(F1DataPerDriverTest):
+class TestTyreSets(F1DataPerDriverTest):
+    pass
+
+class TestTyreSetInfo(TestTyreSets):
 
     def test_initialization(self):
         actual_tyre_compound = random.choice(list(ActualTyreCompound))
@@ -88,7 +91,7 @@ class TestTyreSetInfo(F1DataPerDriverTest):
         self.assertEqual(str(tyre_set), expected_str)
 
 
-class TestTyreSetHistoryEntry(F1DataPerDriverTest):
+class TestTyreSetHistoryEntry(TestTyreSets):
 
     def test_initialization(self):
         start_lap = 5
@@ -178,3 +181,199 @@ class TestTyreSetHistoryEntry(F1DataPerDriverTest):
 
         expected_str = "start_lap: 5 end_lap: None key: key_1 tyre_wear_history_len: 0"
         self.assertEqual(str(history_entry), expected_str)
+
+class TestTyreSetHistoryManager(TestTyreSets):
+
+    def setUp(self):
+        self.manager = TyreSetHistoryManager()
+
+def test_remove_empty_history(self):
+    """Test remove method with empty history."""
+    # Should not raise any exception when history is empty
+    self.manager.remove([1, 2, 3])
+    self.assertEqual(self.manager.length, 0)
+
+    def test_remove_last_tyre_wear_entry(self):
+        """Test removing the last tyre wear entry when its lap number is in the removal list."""
+        # Setup
+        entry = TyreSetHistoryEntry(start_lap=5, index=1)
+        self.manager.add(entry)
+
+        # Add some tyre wear history
+        wear1 = TyreWearPerLap(
+            fl_tyre_wear=10.5,
+            fr_tyre_wear=12.3,
+            rl_tyre_wear=11.2,
+            rr_tyre_wear=9.8,
+            lap_number=6,
+            is_racing_lap=True,
+            desc="Lap 6"
+        )
+        wear2 = TyreWearPerLap(
+            fl_tyre_wear=11.5,
+            fr_tyre_wear=13.3,
+            rl_tyre_wear=12.2,
+            rr_tyre_wear=10.8,
+            lap_number=7,
+            is_racing_lap=True,
+            desc="Lap 7"
+        )
+        self.manager.addTyreWear(wear1)
+        self.manager.addTyreWear(wear2)
+
+        # Remove lap 7
+        self.manager.remove([7])
+
+        # Verify
+        self.assertEqual(len(entry.m_tyre_wear_history), 1)
+        self.assertEqual(entry.m_tyre_wear_history[0].lap_number, 6)
+        self.assertEqual(self.manager.length, 1)
+
+    def test_remove_not_matching_lap(self):
+        """Test removing when no lap matches the removal list."""
+        # Setup
+        entry = TyreSetHistoryEntry(start_lap=5, index=1)
+        self.manager.add(entry)
+
+        wear1 = TyreWearPerLap(
+            fl_tyre_wear=10.5,
+            fr_tyre_wear=12.3,
+            rl_tyre_wear=11.2,
+            rr_tyre_wear=9.8,
+            lap_number=6,
+            is_racing_lap=True,
+            desc="Lap 6"
+        )
+        self.manager.addTyreWear(wear1)
+
+        # Try to remove non-existent lap
+        self.manager.remove([10])
+
+        # Verify nothing was removed
+        self.assertEqual(len(entry.m_tyre_wear_history), 1)
+        self.assertEqual(self.manager.length, 1)
+
+    def test_remove_entire_tyre_set(self):
+        """Test removing the entire tyre set when its start lap is in the removal list."""
+        # Setup
+        entry1 = TyreSetHistoryEntry(start_lap=1, index=1)
+        entry2 = TyreSetHistoryEntry(start_lap=5, index=2)
+        self.manager.add(entry1)
+        self.manager.add(entry2)
+
+        # Remove lap 5 (the start lap of the last entry)
+        self.manager.remove([5])
+
+        # Verify
+        self.assertEqual(self.manager.length, 1)
+        self.assertEqual(self.manager.getLastEntry().m_start_lap, 1)
+
+    def test_remove_multiple_operations(self):
+        """Test both removing the last tyre wear entry and then the entire tyre set."""
+        # Setup
+        entry = TyreSetHistoryEntry(start_lap=5, index=1)
+        self.manager.add(entry)
+
+        wear1 = TyreWearPerLap(
+            fl_tyre_wear=10.5,
+            fr_tyre_wear=12.3,
+            rl_tyre_wear=11.2,
+            rr_tyre_wear=9.8,
+            lap_number=6,
+            is_racing_lap=True,
+            desc="Lap 6"
+        )
+        wear2 = TyreWearPerLap(
+            fl_tyre_wear=11.5,
+            fr_tyre_wear=13.3,
+            rl_tyre_wear=12.2,
+            rr_tyre_wear=10.8,
+            lap_number=7,
+            is_racing_lap=True,
+            desc="Lap 7"
+        )
+        self.manager.addTyreWear(wear1)
+        self.manager.addTyreWear(wear2)
+
+        # Remove both the last wear and the entire set
+        self.manager.remove([5, 7])
+
+        # Verify the entire set was removed (since start lap 5 was in the removal list)
+        self.assertEqual(self.manager.length, 0)
+
+    def test_remove_last_wear_only(self):
+        """Test removing only the last wear entry without removing the entire set."""
+        # Setup
+        entry = TyreSetHistoryEntry(start_lap=5, index=1)
+        self.manager.add(entry)
+
+        wear1 = TyreWearPerLap(
+            fl_tyre_wear=10.5,
+            fr_tyre_wear=12.3,
+            rl_tyre_wear=11.2,
+            rr_tyre_wear=9.8,
+            lap_number=6,
+            is_racing_lap=True,
+            desc="Lap 6"
+        )
+        wear2 = TyreWearPerLap(
+            fl_tyre_wear=11.5,
+            fr_tyre_wear=13.3,
+            rl_tyre_wear=12.2,
+            rr_tyre_wear=10.8,
+            lap_number=7,
+            is_racing_lap=True,
+            desc="Lap 7"
+        )
+        self.manager.addTyreWear(wear1)
+        self.manager.addTyreWear(wear2)
+
+        # Remove only the last wear
+        self.manager.remove([7])
+
+        # Verify
+        self.assertEqual(self.manager.length, 1)
+        self.assertEqual(len(entry.m_tyre_wear_history), 1)
+        self.assertEqual(entry.m_tyre_wear_history[0].lap_number, 6)
+
+    def test_remove_with_empty_tyre_wear_history(self):
+        """Test removing when the tyre wear history is empty."""
+        # Setup an entry with no wear history
+        entry = TyreSetHistoryEntry(start_lap=5, index=1)
+        self.manager.add(entry)
+
+        # Try to remove a lap
+        self.manager.remove([6])
+
+        # Verify nothing changed
+        self.assertEqual(self.manager.length, 1)
+        self.assertEqual(len(entry.m_tyre_wear_history), 0)
+
+    def test_remove_with_multiple_entries(self):
+        """Test removing the last entry when there are multiple entries in history."""
+        # Setup
+        entry1 = TyreSetHistoryEntry(start_lap=1, index=1)
+        entry2 = TyreSetHistoryEntry(start_lap=5, index=2)
+        entry3 = TyreSetHistoryEntry(start_lap=10, index=3)
+
+        self.manager.add(entry1)
+        self.manager.add(entry2)
+        self.manager.add(entry3)
+
+        wear = TyreWearPerLap(
+            fl_tyre_wear=12.5,
+            fr_tyre_wear=14.3,
+            rl_tyre_wear=13.2,
+            rr_tyre_wear=11.8,
+            lap_number=11,
+            is_racing_lap=True,
+            desc="Lap 11"
+        )
+        self.manager.addTyreWear(wear)
+
+        # Remove the last entry
+        self.manager.remove([10])
+
+        # Verify
+        self.assertEqual(self.manager.length, 2)
+        self.assertEqual(self.manager.getLastEntry().m_start_lap, 5)
