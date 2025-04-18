@@ -441,7 +441,7 @@ class DataPerDriver:
 
         # Check if the old lap number is already present in the snapshots (lap already processed)
         if old_lap_number in self.m_per_lap_snapshots:
-            png_logger.warning(f'Driver {self} - lap {old_lap_number} already in per_lap_snapshots')
+            png_logger.debug(f'Driver {self} - lap {old_lap_number} already in per_lap_snapshots. Possible flashback')
             return
 
         # Store the snapshot data for the old lap
