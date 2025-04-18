@@ -65,7 +65,6 @@ class RaceInfoUpdate:
         """
 
         self.m_session_info = TelData.getSessionInfo()
-        self.m_race_ended = TelData._driver_data.m_race_completed
         track_length = self.m_session_info.m_packet_session.m_trackLength if self.m_session_info.m_packet_session else None
         self.m_driver_list_rsp = DriversListRsp(self.m_session_info.m_is_spectating, track_length,
                                                 (str(self.m_session_info.m_session_type) == "Time Trial"))
@@ -101,7 +100,7 @@ class RaceInfoUpdate:
                     "rain-probability": str(sample.m_rainPercentage)
                 } for sample in self.m_session_info.m_weather_forecast_samples
             ],
-            "race-ended" : self.m_race_ended,
+            "race-ended" : bool(self.m_session_info.m_packet_final_classification),
             "is-spectating" : _getValueOrDefaultValue(self.m_session_info.m_is_spectating, False),
             "session-type"  : str(self.m_session_info.m_session_type) \
                 if self.m_session_info.m_session_type is not None else "---",
