@@ -177,11 +177,14 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
     else:
         png_logger.debug("Not saving post race data")
 
-async def clearAllDataStructures(_dummy_arg=None) -> None:
+async def clearAllDataStructures(session_start: Optional[bool] = True, reason: Optional[str] = None) -> None:
     """Clear all data structures.
     """
 
-    TelData.processSessionStarted()
+    if session_start:
+        TelData.processSessionStarted()
+    else:
+        TelData.clearDataStructures(reason)
     g_completed_session_uid_set.clear()
 
 # -------------------------------------- TELEMETRY PACKET HANDLERS -----------------------------------------------------
@@ -269,11 +272,11 @@ class F1TelemetryHandler:
 
         if packet.m_sessionDuration == 0:
             png_logger.info("Session duration is 0. clearing data structures")
-            clearAllDataStructures()
+            await clearAllDataStructures()
 
         elif TelData.processSessionUpdate(packet):
             png_logger.info("Session UID changed. clearing data structures")
-            clearAllDataStructures()
+            await clearAllDataStructures()
 
     @staticmethod
     async def handleEvent(packet: PacketEventData) -> None:
@@ -315,6 +318,17 @@ class F1TelemetryHandler:
             """
             png_logger.info(f"Flashback event received. Frame ID = {packet.mEventDetails.flashbackFrameIdentifier}")
 
+        async def handleStartLightsEvent(packet: PacketEventData) -> None:
+            """
+            Handle and process the start lights event
+
+            Args:
+                packet (PacketEventData): The parsed object containing the start lights packet's contents.
+            """
+            # TODO: remove log
+            if (packet.mEventDetails.numLights == 1):
+                await clearAllDataStructures(session_start=False, reason="start lights")
+
         # Define the handler functions in a dictionary
         event_handler = {
             PacketEventData.EventPacketType.BUTTON_STATUS: handleButtonStatus,
@@ -324,6 +338,7 @@ class F1TelemetryHandler:
             PacketEventData.EventPacketType.OVERTAKE: TelData.processOvertakeEvent,
             PacketEventData.EventPacketType.COLLISION: TelData.processCollisionsEvent,
             PacketEventData.EventPacketType.FLASHBACK: handleFlashBackEvent,
+            PacketEventData.EventPacketType.START_LIGHTS: handleStartLightsEvent,
         }.get(packet.m_eventCode)
 
         if event_handler:
