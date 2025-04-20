@@ -100,7 +100,7 @@ body {
 }
 
 /* Change the styles for the first child paragraph tag */
-.status-wrapper > p:first-child {
+.status-wrapper > p:nth-child(2) {
   margin-bottom: 3px;
 }
 
