@@ -348,17 +348,10 @@ class DriverData:
         self.m_ideal_pit_stop_window = packet.m_pitStopWindowIdealLap
 
         # First time total laps notification has arrived after driver info (out of order)
-        if (self.m_session_info.m_total_laps is None) and (packet.m_totalLaps > 0):
+        if packet.m_totalLaps:
 
             # First update the total laps
             self.m_session_info.m_total_laps = packet.m_totalLaps
-
-            # Next, update in all extrapolator objects
-            for driver_data in self.m_driver_data:
-                if not driver_data or not driver_data.is_valid:
-                    continue
-                driver_data.m_tyre_info.m_tyre_wear_extrapolator.total_laps = self.m_session_info.m_total_laps
-                driver_data.m_car_info.m_fuel_rate_recommender.total_laps = self.m_session_info.m_total_laps
 
         # Update the max SC status for all drivers
         for obj_to_be_updated in self.m_driver_data:
@@ -369,6 +362,8 @@ class DriverData:
                 if obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status is None
                 else max(packet.m_safetyCarStatus, obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status)
             )
+            obj_to_be_updated.m_tyre_info.m_tyre_wear_extrapolator.total_laps = self.m_session_info.m_total_laps
+            obj_to_be_updated.m_car_info.m_fuel_rate_recommender.total_laps = self.m_session_info.m_total_laps
 
     def processLapDataUpdate(self, packet: PacketLapData) -> None:
         """Process the lap data packet and update the necessary fields

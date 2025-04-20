@@ -205,7 +205,9 @@ class TyreWearExtrapolator:
         Args:
             value (int): The total number of laps in the race
         """
-        self.m_total_laps = value
+        if value != self.m_total_laps:
+            self.m_total_laps = value
+            self._recompute()
 
     @property
     def remaining_laps(self) -> int:

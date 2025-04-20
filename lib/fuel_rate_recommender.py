@@ -217,9 +217,8 @@ class FuelRateRecommender:
         Args:
             value (int): The total number of laps in the race
         """
-        should_recompute = self.m_total_laps != value
-        self.m_total_laps = value
-        if should_recompute:
+        if value != self.m_total_laps:
+            self.m_total_laps = value
             self._recompute()
 
     def _clearComputedValues(self) -> None:
