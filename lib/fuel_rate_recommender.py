@@ -222,8 +222,6 @@ class FuelRateRecommender:
         if should_recompute:
             self._recompute()
 
-
-
     def _clearComputedValues(self) -> None:
         """Clear the computed values
         """

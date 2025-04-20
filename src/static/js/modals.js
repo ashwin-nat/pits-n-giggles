@@ -116,6 +116,10 @@ class ModalManager {
     document.getElementById("deltaLeader").checked = !g_pref_relativeDelta;
     document.getElementById("deltaRelative").checked = g_pref_relativeDelta;
 
+    // Set the radio buttons for fuel surplus laps source
+    document.getElementById("fuelSurplusLapsGame").checked = !g_pref_fuelSurplusLapsPng;
+    document.getElementById("fuelSurplusLapsPng").checked = g_pref_fuelSurplusLapsPng;
+
     // Set the switch for fuel target show
     document.getElementById("fuelTargetEnabled").checked = g_pref_showFuelTarget;
 
@@ -183,6 +187,7 @@ class ModalManager {
     g_pref_bestLapAbsoluteFormat = (document.querySelector('input[name="bestLapTimeFormat"]:checked').value === "absolute") ? (true) : (false);
     g_pref_tyreWearAverageFormat = (document.querySelector('input[name="tyreWearFormat"]:checked').value === "average") ? (true) : (false);
     g_pref_relativeDelta = (document.querySelector('input[name="deltaFormat"]:checked').value === "relative") ? (true) : (false);
+    g_pref_fuelSurplusLapsPng = (document.querySelector('input[name="fuelSurplusLapsSrc"]:checked').value === "png") ? (true) : (false);
     g_pref_showFuelTarget = (document.getElementById('fuelTargetEnabled').checked) ? (true) : (false);
     g_pref_fuelTargetAverageFormat = (document.querySelector('input[name="fuelFormat"]:checked').value === "average") ? (true) : (false);
     g_pref_numAdjacentCars = numAdjacentCars_temp;

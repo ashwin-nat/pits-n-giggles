@@ -274,18 +274,11 @@ class DriverData:
             DataPerDriver: The data object associated with the given index
         """
 
-        assert 0 <= index < len(self.m_driver_data)
         if not (obj := self.m_driver_data[index]) and create:
             png_logger.debug(f"Creating new DataPerDriver for index {index}")
             obj = DataPerDriver(self.m_session_info.m_total_laps)
             self.m_driver_data[index] = obj
         return obj
-
-        # if not (obj := self.m_driver_data.get(index)):
-        #     png_logger.debug(f"Creating new DataPerDriver for index {index}")
-        #     obj = DataPerDriver(self.m_session_info.m_total_laps)
-        #     self.m_driver_data[index] = obj
-        # return obj
 
     def _recomputeFastestLap(self) -> None:
         """
