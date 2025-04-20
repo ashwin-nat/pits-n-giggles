@@ -177,11 +177,14 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
     else:
         png_logger.debug("Not saving post race data")
 
-async def clearAllDataStructures(_dummy_arg=None) -> None:
+async def clearAllDataStructures(session_start: Optional[bool] = True, reason: Optional[str] = None) -> None:
     """Clear all data structures.
     """
 
-    TelData.processSessionStarted()
+    if session_start:
+        TelData.processSessionStarted()
+    else:
+        TelData.clearDataStructures(reason)
     g_completed_session_uid_set.clear()
 
 # -------------------------------------- TELEMETRY PACKET HANDLERS -----------------------------------------------------
@@ -269,11 +272,11 @@ class F1TelemetryHandler:
 
         if packet.m_sessionDuration == 0:
             png_logger.info("Session duration is 0. clearing data structures")
-            clearAllDataStructures()
+            await clearAllDataStructures()
 
         elif TelData.processSessionUpdate(packet):
             png_logger.info("Session UID changed. clearing data structures")
-            clearAllDataStructures()
+            await clearAllDataStructures()
 
     @staticmethod
     async def handleEvent(packet: PacketEventData) -> None:
@@ -286,7 +289,14 @@ class F1TelemetryHandler:
         global g_button_debouncer
 
         # Function to handle BUTTON_STATUS action
-        async def handle_button_status(packet: PacketEventData):
+        async def handleButtonStatus(packet: PacketEventData) -> None:
+            """
+            Handle and process the button press event
+
+            Args:
+                packet (PacketEventData): The parsed object containing the button status packet's contents.
+            """
+
             if (g_udp_custom_action_code is not None) and \
             (packet.mEventDetails.isUDPActionPressed(g_udp_custom_action_code)) and \
             (g_button_debouncer.onButtonPress(g_udp_custom_action_code)):
@@ -299,14 +309,36 @@ class F1TelemetryHandler:
                 png_logger.debug('UDP action %d pressed', g_udp_tyre_delta_action_code)
                 await TelData.processTyreDeltaSound()
 
+        async def handleFlashBackEvent(packet: PacketEventData) -> None:
+            """
+            Handle and process the flashback event
+
+            Args:
+                packet (PacketEventData): The parsed object containing the flashback packet's contents.
+            """
+            png_logger.info(f"Flashback event received. Frame ID = {packet.mEventDetails.flashbackFrameIdentifier}")
+
+        async def handleStartLightsEvent(packet: PacketEventData) -> None:
+            """
+            Handle and process the start lights event
+
+            Args:
+                packet (PacketEventData): The parsed object containing the start lights packet's contents.
+            """
+            # TODO: remove log
+            if (packet.mEventDetails.numLights == 1):
+                await clearAllDataStructures(session_start=False, reason="start lights")
+
         # Define the handler functions in a dictionary
         event_handler = {
-            PacketEventData.EventPacketType.BUTTON_STATUS: handle_button_status,
+            PacketEventData.EventPacketType.BUTTON_STATUS: handleButtonStatus,
             PacketEventData.EventPacketType.FASTEST_LAP: TelData.processFastestLapUpdate,
             PacketEventData.EventPacketType.SESSION_STARTED: clearAllDataStructures,
             PacketEventData.EventPacketType.RETIREMENT: TelData.processRetirementEvent,
             PacketEventData.EventPacketType.OVERTAKE: TelData.processOvertakeEvent,
             PacketEventData.EventPacketType.COLLISION: TelData.processCollisionsEvent,
+            PacketEventData.EventPacketType.FLASHBACK: handleFlashBackEvent,
+            PacketEventData.EventPacketType.START_LIGHTS: handleStartLightsEvent,
         }.get(packet.m_eventCode)
 
         if event_handler:

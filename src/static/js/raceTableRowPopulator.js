@@ -291,13 +291,17 @@ class RaceTableRowPopulator {
                 ? formatFloatWithTwoDecimals(fuelInfo["last-lap-fuel-used"])
                 : "N/A";
 
-            const surplusLaps = fuelInfo["surplus-laps"] !== null
-                ? formatFloatWithTwoDecimalsSigned(fuelInfo["surplus-laps"])
+            const surplusLapsPng = fuelInfo["surplus-laps-png"] !== null
+                ? formatFloatWithTwoDecimalsSigned(fuelInfo["surplus-laps-png"])
                 : "N/A";
+            const surplusLapsGame = fuelInfo["surplus-laps-game"] !== null
+                ? formatFloatWithTwoDecimalsSigned(fuelInfo["surplus-laps-game"])
+                : "N/A";
+
 
             this.createMultiLineCell([
                 `Last: ${lastLapFuelUsed}`,
-                `Laps: ${surplusLaps}`,
+                `Laps: ${(g_pref_fuelSurplusLapsPng) ? (surplusLapsPng) : (surplusLapsGame)}`,
                 `Tgt: ${(g_pref_fuelTargetAverageFormat) ? (targetFuelRateAverage) : (targetFuelRateNextLap)}`,
             ]);
         }

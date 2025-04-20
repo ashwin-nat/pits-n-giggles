@@ -3,6 +3,7 @@ let g_pref_is24HourFormat;
 let g_pref_relativeDelta;
 let g_pref_fuelTargetAverageFormat;
 let g_pref_showFuelTarget;
+let g_pref_fuelSurplusLapsPng;
 let g_pref_lastLapAbsoluteFormat;
 let g_pref_bestLapAbsoluteFormat;
 let g_pref_tyreWearAverageFormat;
@@ -20,6 +21,13 @@ function loadPreferences() {
         g_pref_is24HourFormat = localStorage.getItem('is24HourFormat') === 'true';
     } else {
         g_pref_is24HourFormat = true;
+        missingPreference = true;
+    }
+
+    if (localStorage.getItem('g_pref_fuelSurplusLapsPng') !== null) {
+        g_pref_fuelSurplusLapsPng = localStorage.getItem('g_pref_fuelSurplusLapsPng') === 'true';
+    } else {
+        g_pref_fuelSurplusLapsPng = true;
         missingPreference = true;
     }
 
@@ -115,6 +123,7 @@ function loadPreferences() {
         g_pref_bestLapAbsoluteFormat,
         g_pref_tyreWearAverageFormat,
         g_pref_relativeDelta,
+        g_pref_fuelSurplusLapsPng,
         g_pref_showFuelTarget,
         g_pref_fuelTargetAverageFormat,
         g_pref_numAdjacentCars,
@@ -128,6 +137,7 @@ function loadPreferences() {
 function savePreferences() {
     localStorage.setItem('is24HourFormat', g_pref_is24HourFormat);
     localStorage.setItem('relativeDelta', g_pref_relativeDelta);
+    localStorage.setItem('fuelSurplusLapsPng', g_pref_fuelSurplusLapsPng);
     localStorage.setItem('showFuelTarget', g_pref_showFuelTarget);
     localStorage.setItem('fuelTargetAverageFormat', g_pref_fuelTargetAverageFormat);
     localStorage.setItem('lastLapAbsoluteFormat', g_pref_lastLapAbsoluteFormat);
@@ -142,6 +152,7 @@ function savePreferences() {
     console.log("Saved Preferences:", {
         g_pref_myTeamName,
         g_pref_is24HourFormat,
+        g_pref_fuelSurplusLapsPng,
         g_pref_showFuelTarget,
         g_pref_fuelTargetAverageFormat,
         g_pref_lastLapAbsoluteFormat,

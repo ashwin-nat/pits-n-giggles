@@ -680,7 +680,7 @@ class PacketEventData:
             """
 
             format_str = "<B"
-            self.numLights = struct.unpack(format_str, data[:struct.calcsize(format_str)])[0]
+            self.numLights: int = struct.unpack(format_str, data[:struct.calcsize(format_str)])[0]
 
         def __str__(self) -> str:
             """

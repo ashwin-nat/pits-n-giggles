@@ -20,9 +20,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from typing import List, Tuple, Optional, Dict, Any
-from sklearn.linear_model import LinearRegression
+from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
+from sklearn.linear_model import LinearRegression
+
 
 class TyreWearPerLap:
     """Class representing the tyre wear percentage per lap.
@@ -214,16 +216,9 @@ class TyreWearExtrapolator:
         """
         return self.m_remaining_laps
 
-    def updateDataList(self, new_data: List[TyreWearPerLap]):
+    def _recompute(self) -> None:
+        """Recompute the tyre wear extrapolator
         """
-        Update the extrapolator with new data during the race.
-
-        Args:
-            new_data (List[TyreWearPerLap]): New tyre wear data.
-        """
-
-        # Insert the data,
-        self.m_initial_data.extend(new_data)
 
         # This happens in quali
         if self.m_total_laps is None:
@@ -237,6 +232,17 @@ class TyreWearExtrapolator:
         # Recompute the regression models
         if racing_data:
             self._performRegressions(racing_data)
+
+    def _updateDataList(self, new_data: List[TyreWearPerLap]):
+        """
+        Update the extrapolator with new data during the race.
+
+        Args:
+            new_data (List[TyreWearPerLap]): New tyre wear data.
+        """
+
+        self.m_initial_data.extend(new_data)
+        self._recompute()
 
     def _performRegressions(self, racing_data: List[TyreWearPerLap]):
         """Perform linear regression for all 4 tyres wears
@@ -267,7 +273,7 @@ class TyreWearExtrapolator:
         self.m_remaining_laps = self.m_total_laps - self.m_initial_data[-1].lap_number
         self._extrapolateTyreWear()
 
-    def updateDataLap(self, new_data: TyreWearPerLap):
+    def add(self, new_data: TyreWearPerLap) -> None:
         """
         Update the extrapolator with new data during the race.
 
@@ -275,7 +281,21 @@ class TyreWearExtrapolator:
             new_data (TyreWearPerLap): New tyre wear data.
         """
 
-        self.updateDataList([new_data])
+        self._updateDataList([new_data])
+
+    def remove(self, laps: List[int]) -> None:
+        """Remove the given list of laps from the extrapolator
+
+        Args:
+            laps (List[int]): Laps to be removed
+        """
+
+        # Remove the laps from the data
+        self.m_initial_data = [
+            entry for entry in self.m_initial_data
+            if entry.lap_number not in laps
+        ]
+        self._recompute()
 
     @property
     def num_samples(self) -> int:

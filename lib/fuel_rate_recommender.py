@@ -109,6 +109,35 @@ class FuelRateRecommender:
 
         self._recompute()
 
+    def add(self, fuel_remaining: float, lap_number: int, is_racing_lap: bool = True, desc: Optional[str] = None) -> None:
+        """Add a new fuel remaining per lap
+
+        Args:
+            fuel_remaining (float): Fuel remaining in tank in kg.
+            lap_number (int): Lap number
+            is_racing_lap (bool, optional): Indicates if the lap is a racing lap. Defaults to True.
+            desc (Optional[str], optional): Description. Defaults to None.
+        """
+        self.m_fuel_remaining_history.append(
+            FuelRemainingPerLap(lap_number, fuel_remaining, is_racing_lap, desc)
+        )
+        self._recompute()
+
+    def remove(self, laps: List[int]) -> None:
+        """Remove specific laps from the fuel remaining history
+
+        Args:
+            laps (List[int]): List of lap numbers to remove
+        """
+        # Filter out laps that match the removal list
+        self.m_fuel_remaining_history = [
+            entry for entry in self.m_fuel_remaining_history
+            if entry.m_lap_number not in laps
+        ]
+
+        # Recompute values after removing laps
+        self._recompute()
+
     def isDataSufficient(self) -> bool:
         """Check if the amount of data available for extrapolation is sufficient.
 
@@ -117,16 +146,6 @@ class FuelRateRecommender:
         """
         racing_laps = [lap for lap in self.m_fuel_remaining_history if lap.m_is_racing_lap]
         return len(racing_laps) >= 2 and self.m_total_laps is not None
-
-    def _clearComputedValues(self) -> None:
-        """Clear the computed values
-        """
-        self.m_curr_fuel_rate = None
-        self.m_target_fuel_rate = None
-        self.m_target_next_lap_fuel_usage = None
-        self.m_surplus_laps = None
-        self.m_fuel_used_last_lap = None
-        self.m_predicted_final_fuel = {}
 
     @property
     def curr_fuel_rate(self) -> Optional[float]:
@@ -203,19 +222,15 @@ class FuelRateRecommender:
         if should_recompute:
             self._recompute()
 
-    def add(self, fuel_remaining: float, lap_number: int, is_racing_lap: bool = True, desc: Optional[str] = None) -> None:
-        """Add a new fuel remaining per lap
-
-        Args:
-            fuel_remaining (float): Fuel remaining in tank in kg.
-            lap_number (int): Lap number
-            is_racing_lap (bool, optional): Indicates if the lap is a racing lap. Defaults to True.
-            desc (Optional[str], optional): Description. Defaults to None.
+    def _clearComputedValues(self) -> None:
+        """Clear the computed values
         """
-        self.m_fuel_remaining_history.append(
-            FuelRemainingPerLap(lap_number, fuel_remaining, is_racing_lap, desc)
-        )
-        self._recompute()
+        self.m_curr_fuel_rate = None
+        self.m_target_fuel_rate = None
+        self.m_target_next_lap_fuel_usage = None
+        self.m_surplus_laps = None
+        self.m_fuel_used_last_lap = None
+        self.m_predicted_final_fuel = {}
 
     def _compute_racing_fuel_rate(self, racing_laps: List[FuelRemainingPerLap]) -> None:
         """Compute average fuel rate using ONLY racing laps, handling discontinuities"""
