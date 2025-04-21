@@ -20,7 +20,7 @@
 }
 
 body {
-  font-family: "Exo 2", sans-serif;
+  font-family: 'Exo 2', sans-serif;
   background-color: var(--f1-darker);
   color: var(--f1-text);
   line-height: 1.5;
@@ -114,12 +114,8 @@ body {
 }
 
 @keyframes blink {
-  0% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0.2;
-  }
+  0% { opacity: 1; }
+  100% { opacity: 0.2; }
 }
 
 .telemetry-time-trial-wrapper {
@@ -204,33 +200,15 @@ body {
   width: 12%; /* Equal width for "Best Lap" and "Last Lap" */
 }
 
-.telemetry-table th:nth-child(1) {
-  width: 5%;
-} /* POS */
-.telemetry-table th:nth-child(2) {
-  width: 15%;
-} /* DRIVER */
-.telemetry-table th:nth-child(3) {
-  width: 8%;
-} /* DELTA */
-.telemetry-table th:nth-child(4) {
-  width: 8%;
-} /* ERS */
-.telemetry-table th:nth-child(5) {
-  width: 12%;
-} /* WARNS/PENS */
-.telemetry-table th:nth-child(8) {
-  width: 12%;
-} /* TYRE INFO */
-.telemetry-table th:nth-child(9) {
-  width: 10%;
-} /* WEAR PREDICTION */
-.telemetry-table th:nth-child(10) {
-  width: 10%;
-} /* WING DAMAGE */
-.telemetry-table th:nth-child(11) {
-  width: 8%;
-} /* FUEL */
+.telemetry-table th:nth-child(1) { width: 5%; } /* POS */
+.telemetry-table th:nth-child(2) { width: 15%; } /* DRIVER */
+.telemetry-table th:nth-child(3) { width: 8%; } /* DELTA */
+.telemetry-table th:nth-child(4) { width: 8%; } /* ERS */
+.telemetry-table th:nth-child(5) { width: 12%; } /* WARNS/PENS */
+.telemetry-table th:nth-child(8) { width: 12%; } /* TYRE INFO */
+.telemetry-table th:nth-child(9) { width: 10%; } /* WEAR PREDICTION */
+.telemetry-table th:nth-child(10) { width: 10%; } /* WING DAMAGE */
+.telemetry-table th:nth-child(11) { width: 8%; } /* FUEL */
 
 .player-row td {
   color: inherit; /* Inherit color for non-DRS rows */
@@ -294,24 +272,12 @@ body {
   min-width: 80px;
 }
 
-.tyre-soft {
-  background-color: #ff1e00;
-}
-.tyre-medium {
-  background-color: #ffd700;
-  color: #000000;
-}
-.tyre-hard {
-  background-color: #ffffff;
-  color: #000000;
-}
+.tyre-soft { background-color: #ff1e00; }
+.tyre-medium { background-color: #ffd700; color: #000000; }
+.tyre-hard { background-color: #ffffff; color: #000000; }
 
-.delta-positive {
-  color: #ff4444;
-}
-.delta-negative {
-  color: #44ff44;
-}
+.delta-positive { color: #ff4444; }
+.delta-negative { color: #44ff44; }
 
 .fastest-lap {
   display: flex;
