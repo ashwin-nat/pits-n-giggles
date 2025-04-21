@@ -99,6 +99,11 @@ body {
   gap: 8px; /* Space between dot and text */
 }
 
+/* Change the styles for the first child paragraph tag */
+.status-wrapper > p:nth-child(2) {
+  margin-bottom: 3px;
+}
+
 .blinking-dot {
   width: 10px;
   height: 10px;

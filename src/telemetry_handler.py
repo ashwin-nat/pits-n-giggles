@@ -49,7 +49,8 @@ g_post_race_data_autosave: bool = False
 g_directory_mapping: Dict[str, str] = {}
 g_udp_custom_action_code: Optional[int] = None
 g_udp_tyre_delta_action_code: Optional[int] = None
-g_completed_session_uid_set: set[int] = set()
+g_last_session_uid: Optional[int] = None
+g_data_cleared_this_session: bool = False
 g_button_debouncer = ButtonDebouncer()
 png_logger = getLogger()
 
@@ -177,15 +178,10 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
     else:
         png_logger.debug("Not saving post race data")
 
-async def clearAllDataStructures(session_start: Optional[bool] = True, reason: Optional[str] = None) -> None:
-    """Clear all data structures.
-    """
-
-    if session_start:
-        TelData.processSessionStarted()
-    else:
-        TelData.clearDataStructures(reason)
-    g_completed_session_uid_set.clear()
+async def clearAllDataStructures() -> None:
+    TelData.processSessionStarted()
+    global g_data_cleared_this_session
+    g_data_cleared_this_session = True
 
 # -------------------------------------- TELEMETRY PACKET HANDLERS -----------------------------------------------------
 
@@ -272,11 +268,11 @@ class F1TelemetryHandler:
 
         if packet.m_sessionDuration == 0:
             png_logger.info("Session duration is 0. clearing data structures")
-            await clearAllDataStructures()
+            clearAllDataStructures()
 
         elif TelData.processSessionUpdate(packet):
             png_logger.info("Session UID changed. clearing data structures")
-            await clearAllDataStructures()
+            clearAllDataStructures()
 
     @staticmethod
     async def handleEvent(packet: PacketEventData) -> None:
@@ -285,6 +281,20 @@ class F1TelemetryHandler:
         Args:
             packet (PacketEventData): The parsed object containing the event data packet's contents
         """
+
+        async def handeSessionStartEvent(packet: PacketEventData) -> None:
+            """
+            Handle and process the session start event
+
+            Args:
+                packet (PacketEventData): The parsed object containing the session start packet's contents.
+            """
+
+            global g_last_session_uid
+            session_uid = packet.m_header.m_sessionUID
+
+            g_last_session_uid = session_uid
+            await clearAllDataStructures()
 
         global g_button_debouncer
 
@@ -325,15 +335,27 @@ class F1TelemetryHandler:
             Args:
                 packet (PacketEventData): The parsed object containing the start lights packet's contents.
             """
-            # TODO: remove log
-            if (packet.mEventDetails.numLights == 1):
-                await clearAllDataStructures(session_start=False, reason="start lights")
+            # In case session start was missed, clear data structures
+            png_logger.debug(f"Start lights event received. Lights = {packet.mEventDetails.numLights}")
+            if packet.mEventDetails.numLights == 1:
+                png_logger.info("Session start was missed. Clearing data structures in start lights event")
+                global g_last_session_uid, g_data_cleared_this_session
+                session_uid = packet.m_header.m_sessionUID
+
+                if session_uid != g_last_session_uid:
+                    g_last_session_uid = session_uid
+                    g_data_cleared_this_session = False
+
+                if not g_data_cleared_this_session:
+                    await clearAllDataStructures()
+            else:
+                png_logger.debug("Not clearing data structures in start lights event")
 
         # Define the handler functions in a dictionary
         event_handler = {
             PacketEventData.EventPacketType.BUTTON_STATUS: handleButtonStatus,
             PacketEventData.EventPacketType.FASTEST_LAP: TelData.processFastestLapUpdate,
-            PacketEventData.EventPacketType.SESSION_STARTED: clearAllDataStructures,
+            PacketEventData.EventPacketType.SESSION_STARTED: handeSessionStartEvent,
             PacketEventData.EventPacketType.RETIREMENT: TelData.processRetirementEvent,
             PacketEventData.EventPacketType.OVERTAKE: TelData.processOvertakeEvent,
             PacketEventData.EventPacketType.COLLISION: TelData.processCollisionsEvent,
@@ -353,13 +375,13 @@ class F1TelemetryHandler:
         Arguments
             packet - PacketCarStatusData object
         """
-        global g_completed_session_uid_set
-        if packet.m_header.m_sessionUID in g_completed_session_uid_set:
+        global g_last_session_uid
+        if packet.m_header.m_sessionUID == g_last_session_uid:
             png_logger.debug('Session UID %d final classification already processed.', packet.m_header.m_sessionUID)
             return
         png_logger.info('Received Final Classification Packet.')
         final_json = TelData.processFinalClassificationUpdate(packet)
-        g_completed_session_uid_set.add(packet.m_header.m_sessionUID)
+        g_last_session_uid = packet.m_header.m_sessionUID
 
         # Perform the auto save stuff only for races
         if event_type_str := str(TelData.getSessionInfo().m_session_type):
