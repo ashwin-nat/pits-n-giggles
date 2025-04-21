@@ -1230,9 +1230,9 @@ def clearDataStructures(reason: str) -> None:
         reason (str): Why the data structures should be cleared
 
     """
-    png_logger.debug(f"Clearing all data structures. Reason: {reason}")
     _driver_data.clear()
     _custom_markers_history.clear()
+    png_logger.debug(f"Clearing all data structures. Reason: {reason}")
 
 def getTyreDeltaNotificationMessages() -> List[TyreDeltaMessage]:
     """Returns a list of tyre delta notification messages
