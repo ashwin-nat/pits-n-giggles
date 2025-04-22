@@ -36,6 +36,9 @@ class SimpleLinearRegression:
             x (List[int]): List of x values
             y (List[float]): List of y values
         """
+        if not x or not y:
+            raise ValueError("Both x and y must be non-empty lists.")
+
         if len(x) == 1:  # Special case when there's only one point
             self.m = 0  # No slope with only one point, or assume a default value
             self.c = y[0]  # The intercept is just the first y value (starting wear)

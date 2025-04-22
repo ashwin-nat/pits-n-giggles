@@ -24,10 +24,54 @@ from typing import List
 
 from tests_base import F1TelemetryUnitTestsBase
 
-from lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
+from lib.tyre_wear_extrapolator import (SimpleLinearRegression,
+                                        TyreWearExtrapolator, TyreWearPerLap)
 
+class TestTyreWearPrediction(F1TelemetryUnitTestsBase):
+    pass
 
-class TestTyreWear(F1TelemetryUnitTestsBase):
+class TestSimpleLinearRegression(TestTyreWearPrediction):
+
+    def test_fit_with_multiple_points(self):
+        model = SimpleLinearRegression()
+        x = [1, 2, 3, 4, 5]
+        y = [2, 4, 6, 8, 10]
+        model.fit(x, y)
+
+        # Check if the model's slope (m) and intercept (c) match the expected values
+        self.assertEqual(model.m, 2.0)
+        self.assertEqual(model.c, 0.0)
+
+    def test_fit_with_single_point(self):
+        model = SimpleLinearRegression()
+        x = [2]
+        y = [5]
+        model.fit(x, y)
+
+        # With only one point, slope is assumed to be 0, and the intercept is the y value
+        self.assertEqual(model.m, 0)
+        self.assertEqual(model.c, 5)
+
+    def test_fit_with_empty_lists(self):
+        model = SimpleLinearRegression()
+        with self.assertRaises(ValueError):
+            model.fit([], [])
+
+    def test_predict(self):
+        model = SimpleLinearRegression()
+        x = [1, 2, 3, 4, 5]
+        y = [2, 4, 6, 8, 10]
+        model.fit(x, y)
+
+        # Predict the value for x = 6, should return 12 as per the model
+        self.assertEqual(model.predict(6), 12.0)
+
+    def test_predict_with_invalid_type(self):
+        model = SimpleLinearRegression()
+        with self.assertRaises(ValueError):
+            model.predict('string')  # Passing a non-integer type
+
+class TestTyreWearExtrapolator(TestTyreWearPrediction):
 
     def setUp(self):
         self.sample_data: List[TyreWearPerLap] = [
