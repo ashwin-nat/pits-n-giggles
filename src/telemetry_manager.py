@@ -22,7 +22,6 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-import time
 from typing import Awaitable, Callable, Dict, Optional
 
 from lib.f1_types import (F1PacketType, InvalidPacketLengthError,
@@ -178,6 +177,7 @@ class AsyncF1TelemetryManager:
                 await self._processPacket(should_parse_packet, raw_packet)
             except Exception as e:
                 png_logger.error("Error processing packet: %s", e, exc_info=True)
+                raise  # Re-raises the caught exception
 
     async def _processPacket(self, should_parse_packet: bool, raw_packet: bytes) -> None:
         """Processes the packet received from the UDP socket

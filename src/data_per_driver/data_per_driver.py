@@ -376,7 +376,7 @@ class DataPerDriver:
         """
 
         # Ignore practice sessions, since lap count is per practice programme, not overall
-        outdated_laps = [key for key in self.m_per_lap_snapshots.keys() if key >= old_lap_number]
+        outdated_laps = [key for key in self.m_per_lap_snapshots if key >= old_lap_number]
 
         # Remove outdated laps from snapshot history
         for lap_num in outdated_laps:
