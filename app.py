@@ -27,6 +27,7 @@ import asyncio
 import logging
 import os
 import socket
+import sys
 import webbrowser
 from typing import List, Optional, Set, Tuple
 
@@ -37,7 +38,7 @@ from src.png_logger import initLogger
 from src.telemetry_data import initDriverData
 from src.telemetry_handler import (F1TelemetryHandler, initDirectories,
                                    initForwarder, initTelemetryGlobals)
-from src.telemetry_server import initTelemetryWebServer
+from src.telemetry_server import TelemetryWebServer, initTelemetryWebServer
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -94,7 +95,7 @@ def setupWebServerTask(
         disable_browser_autoload: bool,
         stream_overlay_start_sample_data: bool,
         tasks: List[asyncio.Task],
-        ver_str: str) -> None:
+        ver_str: str) -> TelemetryWebServer:
     """Entry point to start the HTTP server.
 
     Args:
@@ -104,6 +105,9 @@ def setupWebServerTask(
         stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
         tasks (List[asyncio.Task]): List of tasks to be executed
         ver_str (str): Version string
+
+    Returns:
+        TelemetryWebServer: The initialized web server object
     """
     # Create a task to open the webpage
     if not disable_browser_autoload:
@@ -117,7 +121,7 @@ def setupWebServerTask(
     log_str += "That is when the game starts sending telemetry data"
     png_logger.info(log_str)
 
-    initTelemetryWebServer(
+    return initTelemetryWebServer(
         port=http_port,
         client_update_interval_ms=client_update_interval_ms,
         debug_mode=False,
@@ -184,16 +188,18 @@ def getVersion() -> str:
 
     return os.environ.get('PNG_VERSION', 'dev')
 
-async def main() -> None:
-    """Entry point for the application."""
+async def main(args: argparse.Namespace) -> None:
+    """Entry point for the application.
+
+    Args:
+        args (argparse.Namespace): Parsed command-line arguments.
+    """
 
     global png_logger
-    # Initialize the ArgumentParser
-    args = parseArgs()
     config = load_config(args.config_file)
 
-    png_logger = initLogger(file_name=config.log_file, max_size=config.log_file_size, debug_mode=args.debug)
     png_logger.info("PID=%d Starting the app with the following options:", os.getpid())
+    png_logger.info(f"Python version {sys.version}")
     png_logger.info(config)
 
     initDirectories()
@@ -214,7 +220,7 @@ async def main() -> None:
     # Run the HTTP server on the main thread. Flask does not like running on separate threads
     printDoNotCloseWarning()
 
-    setupWebServerTask(config.server_port, config.refresh_interval,
+    web_server = setupWebServerTask(config.server_port, config.refresh_interval,
                    config.disable_browser_autoload, config.stream_overlay_start_sample_data, tasks, getVersion())
 
     # Run all tasks concurrently
@@ -223,17 +229,23 @@ async def main() -> None:
         await asyncio.gather(*tasks)
     except asyncio.CancelledError:
         png_logger.debug("Main task was cancelled.")
+        await web_server.stop()
+        for task in tasks:
+            task.cancel()
+
         raise  # Ensure proper cancellation behavior
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
 if __name__ == '__main__':
+    args = parseArgs()
+    png_logger = initLogger(file_name='png_log.log', max_size=100000, debug_mode=args.debug)
     try:
-        asyncio.run(main())
+        asyncio.run(main(args))
     except KeyboardInterrupt:
-        print("Program interrupted by user.")
+        png_logger.info("Program interrupted by user.")
     except asyncio.CancelledError:
-        print("Program shutdown gracefully.")
+        png_logger.info("Program shutdown gracefully.")
 
 # ---------------------------------------- PROFILER MODE ---------------------------------------------------------------
 

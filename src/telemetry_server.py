@@ -75,7 +75,7 @@ class TelemetryWebServer:
         self.m_port: int = port
         self.m_ver_str = ver_str
         self.m_debug_mode: bool = debug_mode
-        self.subtasks: List[Tuple[Callable, Tuple[Any, ...]]] = []
+        self._shutdown_event = asyncio.Event()
 
         # Create a Quart app and Socket.IO server instance
         self.m_app: Quart = Quart(
@@ -415,7 +415,11 @@ class TelemetryWebServer:
             config.accesslog = None  # Disable access log output
             logging.getLogger("hypercorn.error").setLevel(logging.CRITICAL)   # Suppresses startup messages
             logging.getLogger("hypercorn.access").setLevel(logging.CRITICAL)  # Suppresses request logs
-        await serve(self.m_sio_app, config)
+        await serve(self.m_sio_app, config, shutdown_trigger=self._shutdown_event.wait)
+
+    async def stop(self) -> None:
+        """Stop the web server."""
+        self._shutdown_event.set()
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
