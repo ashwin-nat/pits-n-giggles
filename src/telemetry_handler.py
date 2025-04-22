@@ -348,8 +348,8 @@ class F1TelemetryHandler:
 
                 if not g_data_cleared_this_session:
                     await clearAllDataStructures()
-            else:
-                png_logger.debug("Not clearing data structures in start lights event")
+                else:
+                    png_logger.debug("Not clearing data structures in start lights event")
 
         # Define the handler functions in a dictionary
         event_handler = {
