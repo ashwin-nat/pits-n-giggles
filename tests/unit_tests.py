@@ -62,7 +62,8 @@ from tests_overtake_analyzer import (TestOvertakeAnalyzerEmptyInput,
                                      TestOvertakeAnalyzerListObj)
 from tests_pcap import FullPCapTests, TestF1PacketCaptureHeader
 from tests_race_analyzer import TestGetFastestTimesJson
-from tests_tyre_wear_extrapolator import TestTyreWear
+from tests_tyre_wear_extrapolator import (TestSimpleLinearRegression,
+                                          TestTyreWearExtrapolator)
 from tests_udp_forwarder import TestAsyncUDPForwarder, TestUDPForwarder
 
 # Initialize colorama
