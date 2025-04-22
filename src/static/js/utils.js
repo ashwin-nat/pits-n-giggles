@@ -170,32 +170,6 @@ function getTeamName(teamId) {
         return teamId;
     }
 }
-function textToSpeech(text, volume=g_pref_ttsVolume) {
-    // Create a new SpeechSynthesisUtterance object with the provided text
-    const speech = new SpeechSynthesisUtterance(text);
-
-    // Retrieve the list of available voices
-    const voices = window.speechSynthesis.getVoices();
-
-    // Use the variable g_pref_ttsVoice to select the voice
-    const preferredVoiceName = g_pref_ttsVoice; // Replace this with your preferred voice variable
-    const preferredVoice = voices.find(voice => voice.name === preferredVoiceName);
-
-    if (preferredVoice) {
-        speech.voice = preferredVoice; // Assign the preferred voice to the utterance
-    } else {
-        console.warn(`Voice "${preferredVoiceName}" not found. Using the default voice.`);
-    }
-
-    // Optionally, you can customize the speech parameters
-    speech.rate = 1;    // Normal speed
-    speech.pitch = 1;   // Normal pitch
-    speech.volume = (g_pref_ttsVolume / 100);  // Full volume
-
-    // Speak the text out loud
-    window.speechSynthesis.speak(speech);
-}
-
 
 function flattenJsonObject(obj) {
     const result = {};
