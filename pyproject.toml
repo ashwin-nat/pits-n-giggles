@@ -19,7 +19,7 @@ dependencies = [
     "python-socketio (>=5.12.1,<6.0.0)",
     "quart (>=0.20.0,<0.21.0)",
     "flask-socketio (>=5.5.1,<6.0.0)",
-    "gevent (>=24.11.1,<25.0.0)"
+    "gevent (>=24.11.1,<25.0.0)",
 ]
 
 
