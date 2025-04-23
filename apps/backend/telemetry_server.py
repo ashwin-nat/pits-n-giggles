@@ -33,10 +33,10 @@ from hypercorn.asyncio import serve
 from hypercorn.config import Config
 from quart import Quart, jsonify, render_template, request, send_from_directory
 
-import src.telemetry_data as TelData
-import src.telemetry_web_api as TelWebAPI
+import apps.backend.telemetry_data as TelData
+import apps.backend.telemetry_web_api as TelWebAPI
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
-from src.png_logger import getLogger
+from apps.backend.png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 

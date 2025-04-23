@@ -23,6 +23,15 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import os
+print(os.getcwd())
+# import sys
+# from pathlib import Path
+
+
+# # Add project root to sys.path (2 levels up from this file)
+# sys.path.append(str(Path(__file__).resolve().parents[2]))
+
 import asyncio
 import json
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -46,9 +55,9 @@ from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.tyre_wear_extrapolator import TyreWearPerLap
-from src.data_per_driver import DataPerDriver
-from src.overtakes import GetOvertakesStatus, OvertakesHistory
-from src.png_logger import getLogger
+from apps.backend.data_per_driver import DataPerDriver
+from apps.backend.overtakes import GetOvertakesStatus, OvertakesHistory
+from apps.backend.png_logger import getLogger
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 

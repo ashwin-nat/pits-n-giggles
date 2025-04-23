@@ -27,11 +27,7 @@ import socket
 from types import MappingProxyType
 from typing import List, Tuple, Dict
 
-from src.png_logger import getLogger
-
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
-
-png_logger = getLogger()
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -65,7 +61,7 @@ class UDPForwarder:
         try:
             forward_socket.sendto(data, destination)
         except OSError as e:
-            png_logger.error(f"Error forwarding packet to {destination}: {e}")
+            print(f"Error forwarding packet to {destination}: {e}")
         finally:
             forward_socket.close()
 
@@ -94,7 +90,7 @@ class AsyncUDPTransport:
                     # Store socket
                     self._sockets[destination] = sock
                 except OSError as e:
-                    png_logger.error(f"Error creating socket to {destination}: {e}")
+                    print(f"Error creating socket to {destination}: {e}")
                     # Clean up any sockets created so far
                     self.close()
                     raise
@@ -110,7 +106,7 @@ class AsyncUDPTransport:
             try:
                 sock.close()
             except Exception as e:
-                png_logger.error(f"Error closing socket to {destination}: {e}")
+                print(f"Error closing socket to {destination}: {e}")
                 raise
 
     async def send(self, data: bytes, destination: Tuple[str, int]) -> None:
@@ -162,5 +158,5 @@ class AsyncUDPForwarder:
         try:
             await self._transport.send(data, destination)
         except Exception as e:
-            png_logger.error(f"Error forwarding packet to {destination}: {e}")
+            print(f"Error forwarding packet to {destination}: {e}")
             raise

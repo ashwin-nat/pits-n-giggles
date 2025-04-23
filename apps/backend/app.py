@@ -33,12 +33,12 @@ from typing import List, Optional, Set, Tuple
 
 from colorama import Fore, Style, init
 
-from src.config import load_config
-from src.png_logger import initLogger
-from src.telemetry_data import initDriverData
-from src.telemetry_handler import (F1TelemetryHandler, initDirectories,
+from apps.backend.config import load_config
+from apps.backend.png_logger import initLogger
+from apps.backend.telemetry_data import initDriverData
+from apps.backend.telemetry_handler import (F1TelemetryHandler, initDirectories,
                                    initForwarder, initTelemetryGlobals)
-from src.telemetry_server import TelemetryWebServer, initTelemetryWebServer
+from apps.backend.telemetry_server import TelemetryWebServer, initTelemetryWebServer
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 

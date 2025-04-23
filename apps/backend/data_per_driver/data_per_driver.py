@@ -29,11 +29,14 @@ from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
 from lib.f1_types import (F1Utils, LapData, SafetyCarType, SessionType23,
                           SessionType24, TelemetrySetting)
 from lib.tyre_wear_extrapolator import TyreWearPerLap
-from src.data_per_driver import (CarInfo, DriverInfo, LapInfo, PacketCopies,
-                                 PerLapSnapshotEntry, TyreInfo,
-                                 TyreSetHistoryEntry, TyreSetInfo,
-                                 WarningPenaltyHistory)
-from src.png_logger import getLogger
+from .car_info import CarInfo
+from .driver_info import DriverInfo
+from .lap_info import LapInfo
+from .packet_copies import PacketCopies
+from .per_lap_snapshot import PerLapSnapshotEntry
+from .tyre_info import TyreInfo, TyreSetHistoryEntry, TyreSetInfo
+from .warns_pens_info import WarningPenaltyHistory
+from apps.backend.png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 

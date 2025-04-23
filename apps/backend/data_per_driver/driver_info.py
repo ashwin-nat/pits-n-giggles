@@ -22,12 +22,11 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
-from lib.f1_types import CarStatusData
-from lib.fuel_rate_recommender import FuelRateRecommender
-from src.png_logger import getLogger
+from lib.f1_types import SafetyCarType, TelemetrySetting
+from ..png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -36,25 +35,27 @@ png_logger = getLogger()
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
 @dataclass(slots=True)
-class CarInfo:
+class DriverInfo:
     """
-    Class that models the car-related data for a race driver.
+    Class that models the information stored per race driver.
+
+    Attributes:
+        name (Optional[str]): The name of the driver.
+        position (Optional[int]): The current position of the driver in the race.
+        team (Optional[str]): The team to which the driver belongs.
+        is_player (Optional[bool]): Indicates whether the driver is the player.
+        telemetry_restrictions (Optional[TelemetrySetting]): Telemetry settings indicating the level of data available for the driver.
+        driver_number (Optional[int]): The race number of the driver.
+        m_num_pitstops (Optional[int]): The number of pitstops made by the driver.
+        m_dnf_status_code (Optional[str]): Status code indicating if the driver did not finish the race.
+        m_curr_lap_sc_status (Optional[SafetyCarType]): The current lap's safety car status.
     """
-    total_laps: int = field(repr=False)  # 👈 Must come first
-
-    m_ers_perc: Optional[float] = None
-    m_drs_activated: Optional[bool] = None
-    m_drs_allowed: Optional[bool] = None
-    m_drs_distance: Optional[int] = None
-    m_fl_wing_damage: Optional[int] = None
-    m_fr_wing_damage: Optional[int] = None
-    m_rear_wing_damage: Optional[int] = None
-
-    m_fuel_rate_recommender: "FuelRateRecommender" = field(init=False)
-
-    def __post_init__(self):
-        self.m_fuel_rate_recommender = FuelRateRecommender(
-            [],
-            total_laps=self.total_laps,
-            min_fuel_kg=CarStatusData.MIN_FUEL_KG
-        )
+    name: Optional[str] = None
+    position: Optional[int] = None
+    team: Optional[str] = None
+    is_player: Optional[bool] = None
+    telemetry_restrictions: Optional[TelemetrySetting] = None
+    driver_number: Optional[int] = None
+    m_num_pitstops: Optional[int] = None
+    m_dnf_status_code: Optional[str] = None
+    m_curr_lap_max_sc_status: Optional[SafetyCarType] = None

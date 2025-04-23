@@ -29,7 +29,7 @@ from typing import Any, Dict, List, Optional
 from lib.f1_types import (ActualTyreCompound, PacketTyreSetsData,
                           VisualTyreCompound)
 from lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
-from src.png_logger import getLogger
+from ..png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 

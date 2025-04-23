@@ -25,13 +25,13 @@
 from typing import Any, Dict, List, Optional, Union
 
 import lib.race_analyzer as RaceAnalyzer
-import src.telemetry_data as TelData
+import apps.backend.telemetry_data as TelData
 from lib.f1_types import (CarStatusData, F1Utils, LapHistoryData,
                           VisualTyreCompound)
 from lib.tyre_wear_extrapolator import TyreWearPerLap
-from src.data_per_driver import DataPerDriver, TyreSetInfo
-from src.overtakes import GetOvertakesStatus
-from src.png_logger import getLogger
+from apps.backend.data_per_driver import DataPerDriver, TyreSetInfo
+from apps.backend.overtakes import GetOvertakesStatus
+from apps.backend.png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 

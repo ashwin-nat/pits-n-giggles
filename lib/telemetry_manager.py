@@ -22,6 +22,7 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
+from logging import Logger
 from typing import Awaitable, Callable, Dict, Optional
 
 from lib.f1_types import (F1PacketType, InvalidPacketLengthError,
@@ -35,11 +36,8 @@ from lib.f1_types import (F1PacketType, InvalidPacketLengthError,
                           PacketTyreSetsData)
 from lib.socket_receiver import (AsyncTCPListener, AsyncUDPListener,
                                  TCPListener, UDPListener)
-from src.png_logger import getLogger
 
 # ------------------------- GLOBALS ------------------------------------------------------------------------------------
-
-png_logger = getLogger()
 
 # ------------------------- CLASSES ------------------------------------------------------------------------------------
 
@@ -70,17 +68,19 @@ class AsyncF1TelemetryManager:
         F1PacketType.TIME_TRIAL : PacketTimeTrialData,
     }
 
-    def __init__(self, port_number: int, replay_server: bool = False):
+    def __init__(self, port_number: int, logger: Logger = None, replay_server: bool = False):
         """Init the telemetry manager app and all its sub components
 
         Args:
             port_number (int): The port number to listen in on
+            logger (Logger): The logger to use
             replay_server (bool): If True, the TCP based packet replay server will be created
                 NOTE: This is not suited for game. It is meant to be used in conjunction with telemetry_replayer.py
         """
 
         self.m_replay_server = replay_server
         self.m_port_number = port_number
+        self.m_logger = logger
         if self.m_replay_server:
             self.m_server = AsyncTCPListener(port_number, "localhost")
         else:
@@ -164,7 +164,7 @@ class AsyncF1TelemetryManager:
         """
 
         if self.m_replay_server:
-            png_logger.info("REPLAY SERVER MODE. PORT = %s", self.m_port_number)
+            self.m_logger.info("REPLAY SERVER MODE. PORT = %s", self.m_port_number)
 
         should_parse_packet = (sum(callback is not None for callback in self.m_callbacks.values()) > 0)
 
@@ -176,7 +176,7 @@ class AsyncF1TelemetryManager:
             try:
                 await self._processPacket(should_parse_packet, raw_packet)
             except Exception as e:
-                png_logger.error("Error processing packet: %s", e, exc_info=True)
+                self.m_logger.error("Error processing packet: %s", e, exc_info=True)
                 raise  # Re-raises the caught exception
 
     async def _processPacket(self, should_parse_packet: bool, raw_packet: bytes) -> None:
@@ -208,7 +208,8 @@ class AsyncF1TelemetryManager:
         try:
             packet = AsyncF1TelemetryManager.packet_type_map[header.m_packetId](header, payload_raw)
         except InvalidPacketLengthError as e:
-            png_logger.error("Cannot parse packet of type %s. Error = %s", str(header.m_packetId), str(e))
+            self.m_logger.error("Cannot parse packet of type %s. Error = %s", str(header.m_packetId), str(e))
+            return
         if callback := self.m_callbacks.get(header.m_packetId, None):
             await callback(packet)
 
@@ -239,17 +240,19 @@ class F1TelemetryManager:
         F1PacketType.TIME_TRIAL : PacketTimeTrialData,
     }
 
-    def __init__(self, port_number: int, replay_server: bool = False):
+    def __init__(self, port_number: int, logger: Logger = None, replay_server: bool = False):
         """Init the telemetry manager app and all its sub components
 
         Args:
             port_number (int): The port number to listen in on
+            logger (Logger): The logger to use
             replay_server (bool): If True, the TCP based packet replay server will be created
                 NOTE: This is not suited for game. It is meant to be used in conjunction with telemetry_replayer.py
         """
 
         self.m_replay_server = replay_server
         self.m_port_number = port_number
+        self.m_logger = logger
         if self.m_replay_server:
             self.m_server = TCPListener(port_number, "localhost")
         else:
@@ -330,7 +333,7 @@ class F1TelemetryManager:
         """
 
         if self.m_replay_server:
-            png_logger.info("REPLAY SERVER MODE. PORT = %s", self.m_port_number)
+            self.m_logger.info("REPLAY SERVER MODE. PORT = %s", self.m_port_number)
 
         should_parse_packet = (sum(callback is not None for callback in self.m_callbacks.values()) > 0)
 
@@ -361,7 +364,7 @@ class F1TelemetryManager:
             try:
                 packet = F1TelemetryManager.packet_type_map[header.m_packetId](header, payload_raw)
             except InvalidPacketLengthError as e:
-                png_logger.error("Cannot parse packet of type %s. Error = %s", str(header.m_packetId), str(e))
-            callback = self.m_callbacks.get(header.m_packetId, None)
-            if callback:
+                self.m_logger.error("Cannot parse packet of type %s. Error = %s", str(header.m_packetId), str(e))
+                continue
+            if callback := self.m_callbacks.get(header.m_packetId, None):
                 callback(packet)
