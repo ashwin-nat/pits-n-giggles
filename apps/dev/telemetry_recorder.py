@@ -31,7 +31,7 @@ from typing import List
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from lib.packet_cap import F1PacketCapture
-from src.telemetry_manager import F1TelemetryManager
+from lib.telemetry_manager import F1TelemetryManager
 from lib.packet_forwarder import UDPForwarder
 from threading import Thread, Lock, Condition
 import queue

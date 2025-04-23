@@ -21,8 +21,8 @@ REM Upgrade pip and install prerequisites
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 
-REM Run the Python script
-python -O app.py
+REM Run the app module
+python -O -m apps.backend.app
 
 REM Pause to keep the command prompt window open
 pause

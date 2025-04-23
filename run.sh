@@ -21,5 +21,5 @@ source png-venv/bin/activate
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 
-# Run the Python script
-python -O app.py
+# Run the app as a module
+python -O -m apps.backend.app

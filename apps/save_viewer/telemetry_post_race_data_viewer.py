@@ -582,6 +582,7 @@ class TelemetryWebServer:
             ver_str (str): Version string
         """
         self.m_ver_str = ver_str
+
         # Get the absolute path to the application root
         if hasattr(sys, '_MEIPASS'):
             # PyInstaller bundle mode
@@ -589,33 +590,32 @@ class TelemetryWebServer:
         else:
             # Development mode - find project root regardless of CWD
             current_file = Path(__file__).resolve()
-            # Assuming the class file is in a module under the project root
-            # Adjust the number of .parents calls based on your actual directory structure
-            base_dir = current_file.parents[1] / 'src'
+            # Assuming the frontend folder is inside 'apps' as per your structure
+            base_dir = current_file.parents[2]  # This assumes 'frontend' is inside 'apps'
 
             # Verify the paths exist
-            if not (base_dir / 'templates').exists() or not (base_dir / 'static').exists():
-                # Fallback: try to find paths relative to CWD
-                cwd = Path.cwd()
-                if (cwd / 'src' / 'templates').exists():
-                    base_dir = cwd / 'src'
-                else:
-                    raise FileNotFoundError(
-                        f"Could not find required directories. Tried:\n"
-                        f"1. {base_dir}/templates\n"
-                        f"2. {cwd}/src/templates\n"
-                        f"Please check your project structure or run from the correct directory."
-                    )
+            if not (base_dir / 'apps' / 'frontend' / 'html').exists() \
+                    or not (base_dir / 'apps' / 'frontend' / 'css').exists() \
+                        or not (base_dir / 'apps' / 'frontend' / 'js').exists():
+                raise FileNotFoundError(
+                    f"Could not find required directories. Tried:\n"
+                    f"1. {base_dir}/apps/frontend/html\n"
+                    f"2. {base_dir}/apps/frontend/js\n"
+                    f"3. {base_dir}/apps/frontend/css\n"
+                    f"Please check your project structure or run from the correct directory."
+                )
 
         print(f"Using base directory: {base_dir}")
-        print(f"Templates directory: {base_dir / 'templates'}")
-        print(f"Static directory: {base_dir / 'static'}")
+        print(f"Templates directory: {base_dir / 'apps' / 'frontend' / 'html'}")
 
+        # Initialize Flask app
         self.m_app = Flask(
             __name__,
-            template_folder=str(base_dir / 'templates'),
-            static_folder=str(base_dir / 'static'),
+            template_folder=str(base_dir / 'apps' / 'frontend' / 'html'),
+            static_folder=str(base_dir / 'apps' / 'frontend' ),
+            static_url_path='/static'
         )
+        self.m_assets_dir = base_dir / 'assets'
         self.m_app.config['PROPAGATE_EXCEPTIONS'] = True
         self.m_app.config["EXPLAIN_TEMPLATE_LOADING"] = True
         self.m_port = port
@@ -631,7 +631,7 @@ class TelemetryWebServer:
             Returns:
                 file: Favicon file
             """
-            return send_from_directory(self.m_app.static_folder, 'favicon.ico', mimetype='image/vnd.microsoft.icon')
+            return send_from_directory(self.m_assets_dir, 'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
         # Render the HTML page
         @self.m_app.route('/')
@@ -679,7 +679,7 @@ class TelemetryWebServer:
                 str: HTML page content.
             """
 
-            return send_from_directory(self.m_app.static_folder, 'tyre-icons/soft_tyre.svg', mimetype='image/svg+xml')
+            return send_from_directory(self.m_assets_dir, 'tyre-icons/soft_tyre.svg', mimetype='image/svg+xml')
 
         @self.m_app.route('/tyre-icons/super-soft.svg')
         def superSoftTyreIcon():
@@ -690,7 +690,7 @@ class TelemetryWebServer:
                 str: HTML page content.
             """
 
-            return send_from_directory(self.m_app.static_folder, 'tyre-icons/super_soft_tyre.svg', mimetype='image/svg+xml')
+            return send_from_directory(self.m_assets_dir, 'tyre-icons/super_soft_tyre.svg', mimetype='image/svg+xml')
 
         @self.m_app.route('/tyre-icons/medium.svg')
         def mediumTyreIcon():
@@ -701,7 +701,7 @@ class TelemetryWebServer:
                 str: HTML page content.
             """
 
-            return send_from_directory(self.m_app.static_folder, 'tyre-icons/medium_tyre.svg', mimetype='image/svg+xml')
+            return send_from_directory(self.m_assets_dir, 'tyre-icons/medium_tyre.svg', mimetype='image/svg+xml')
 
         @self.m_app.route('/tyre-icons/hard.svg')
         def hardTyreIcon():
@@ -712,7 +712,7 @@ class TelemetryWebServer:
                 str: HTML page content.
             """
 
-            return send_from_directory(self.m_app.static_folder, 'tyre-icons/hard_tyre.svg', mimetype='image/svg+xml')
+            return send_from_directory(self.m_assets_dir, 'tyre-icons/hard_tyre.svg', mimetype='image/svg+xml')
 
         @self.m_app.route('/tyre-icons/intermediate.svg')
         def interTyreIcon():
@@ -723,7 +723,7 @@ class TelemetryWebServer:
                 str: HTML page content.
             """
 
-            return send_from_directory(self.m_app.static_folder, 'tyre-icons/intermediate_tyre.svg', mimetype='image/svg+xml')
+            return send_from_directory(self.m_assets_dir, 'tyre-icons/intermediate_tyre.svg', mimetype='image/svg+xml')
 
         @self.m_app.route('/tyre-icons/wet.svg')
         def wetTyreIcon():
@@ -734,7 +734,7 @@ class TelemetryWebServer:
                 str: HTML page content.
             """
 
-            return send_from_directory(self.m_app.static_folder, 'tyre-icons/wet_tyre.svg', mimetype='image/svg+xml')
+            return send_from_directory(self.m_assets_dir, 'tyre-icons/wet_tyre.svg', mimetype='image/svg+xml')
 
         # Socketio endpoints
         @self.m_socketio.on('connect')
