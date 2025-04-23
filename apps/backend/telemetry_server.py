@@ -31,6 +31,7 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 import socketio
 from hypercorn.asyncio import serve
 from hypercorn.config import Config
+from pathlib import Path
 from quart import Quart, jsonify, render_template, request, send_from_directory
 
 import apps.backend.telemetry_data as TelData
@@ -78,10 +79,16 @@ class TelemetryWebServer:
         self._shutdown_event = asyncio.Event()
 
         # Create a Quart app and Socket.IO server instance
+
+        base_dir = Path(__file__).resolve().parent.parent.parent
+        template_dir = base_dir / "apps" / "frontend" / "html"
+        static_dir = base_dir / "apps" / "frontend"
+        print(f'templates path: {template_dir}')
+        print(f'static path: {static_dir}')
         self.m_app: Quart = Quart(
             __name__,
-            template_folder='templates',
-            static_folder='static',
+            template_folder=template_dir,
+            static_folder=static_dir,
             static_url_path='/static'
         )
         self.m_app.config['PROPAGATE_EXCEPTIONS'] = False
