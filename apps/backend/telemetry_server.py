@@ -80,9 +80,9 @@ class TelemetryWebServer:
 
         # Create a Quart app and Socket.IO server instance
 
-        base_dir = Path(__file__).resolve().parent.parent.parent
-        template_dir = base_dir / "apps" / "frontend" / "html"
-        static_dir = base_dir / "apps" / "frontend"
+        self.m_base_dir = Path(__file__).resolve().parent.parent.parent
+        template_dir = self.m_base_dir / "apps" / "frontend" / "html"
+        static_dir = self.m_base_dir / "apps" / "frontend"
         print(f'templates path: {template_dir}')
         print(f'static path: {static_dir}')
         self.m_app: Quart = Quart(
@@ -158,8 +158,7 @@ class TelemetryWebServer:
         }
 
         # Determine the absolute path to the static directory
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        static_dir = os.path.join(current_dir, 'static')
+        assets_dir = self.m_base_dir / "assets"
 
         # Dynamically create route handlers for each static file
         for route, config in static_routes.items():
@@ -176,7 +175,7 @@ class TelemetryWebServer:
                     Callable: An async function to serve the static file.
                 """
                 async def _static_route():
-                    return await send_from_directory(static_dir, file_path, mimetype=mime_type)
+                    return await send_from_directory(assets_dir, file_path, mimetype=mime_type)
 
                 _static_route.__name__ = f'serve_static_{route_path.replace("/", "_")}'
                 return _static_route
