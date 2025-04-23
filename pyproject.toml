@@ -28,4 +28,5 @@ package-mode = false
 [tool.poetry.group.dev.dependencies]
 tqdm = "^4.67.1"
 deepdiff = "^8.4.2"
+requests = "^2.32.3"
 
