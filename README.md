@@ -26,7 +26,6 @@ Not yet supported because I need a mac to build an executable for mac platforms 
 - For each driver, displays track position, name, team, ERS %, best lap, last lap, tyre info and fuel info
   - Tyre info includes average tyre degradation percentage, tyre age, and tyre compound and wear prediction
 
-
 ## Detailed Driver Info
 - Clicking on a driver's name shows further detailed info, including:
   - Car damage
@@ -82,6 +81,11 @@ Insights into tyre stints, including usage and performance over laps.
 ### Stream Overlay
 A sneak peek at the live telemetry stream overlay designed for use with OBS.
 ![Stream Overlay](screenshots/png-stream-overlay.png)
+
+
+## App Architecture
+
+![alt text](docs/arch-diagram.png)
 
 ## Running the App (without direct executable)
 📖 For detailed setup and usage instructions, see [RUNNING.md](RUNNING.md).
