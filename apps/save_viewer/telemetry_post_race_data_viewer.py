@@ -70,37 +70,6 @@ def sendRaceTable() -> None:
         _server.m_socketio.emit('race-table-update', getTelemetryInfo())
         print("Sending race table update")
 
-def _getPenaltyString(penalties_sec: int, num_dt: int, num_sg: int) -> str:
-    """Computes and returns a printable string capturing all penalties
-
-    Args:
-        penalties_sec (int): The time penalty in second
-        num_dt (int): Number of drive through penalties
-        num_sg (int): Number of stop/go penalties
-
-    Returns:
-        str: The penalty string
-    """
-
-    if penalties_sec == 0 and num_dt == 0 and num_sg == 0:
-        return ""
-    penalty_string = "("
-    started_filling = False
-    if penalties_sec > 0:
-        penalty_string += "+" + str(penalties_sec) + " sec"
-        started_filling = True
-    if num_dt > 0:
-        if started_filling:
-            penalty_string += " + "
-        penalty_string += str(num_dt) + "DT"
-        started_filling = True
-    if num_sg:
-        if started_filling:
-            penalty_string += " + "
-        penalty_string += str(num_sg) + "SG"
-    penalty_string += ")"
-    return penalty_string
-
 def getDeltaPlusPenaltiesPlusPit(
         delta: str,
         penalties: str,
@@ -119,12 +88,12 @@ def getDeltaPlusPenaltiesPlusPit(
         str: Delta plus penalties plus pit information.
     """
 
-    if len(dnf_status_code) > 0:
+    if dnf_status_code != "":
         return dnf_status_code
     elif is_pitting:
-        return "PIT " + penalties
+        return f"PIT {penalties}"
     elif delta is not None:
-        return delta + " " + penalties
+        return f"{delta} {penalties}"
     else:
         return "---"
 
@@ -357,10 +326,7 @@ def getTelemetryInfo():
         best_s3_time = g_json_data["records"]["fastest"]["s3"]["time"]
         for data_per_driver in g_json_data["classification-data"]:
             index = data_per_driver["index"]
-            if index == g_json_data["records"]["fastest"]["lap"]["driver-index"]:
-                is_fastest = True
-            else:
-                is_fastest = False
+            is_fastest = (index == g_json_data["records"]["fastest"]["lap"]["driver-index"])
             position = data_per_driver["final-classification"]["position"]
             if position == 1:
                 delta_relative = 0
@@ -376,82 +342,136 @@ def getTelemetryInfo():
 
             json_response["table-entries"].append(
                 {
-                    "driver-info" : {
+                    "driver-info": {
                         "position": position,
                         "name": data_per_driver["driver-name"],
                         "team": data_per_driver["participant-data"]["team-id"],
                         "is-fastest": is_fastest,
                         "is-player": data_per_driver["is-player"],
-                        "dnf-status" : dnf_status_code,
-                        "index" : index,
-                        "telemetry-setting" : data_per_driver["participant-data"]["telemetry-setting"], # Already NULL checked
+                        "dnf-status": dnf_status_code,
+                        "index": index,
+                        "telemetry-setting": data_per_driver[
+                            "participant-data"
+                        ][
+                            "telemetry-setting"
+                        ],  # Already NULL checked
                         "drs": False,
                     },
-                    "delta-info" : {
+                    "delta-info": {
                         "delta": delta_relative,
-                        "delta-to-leader" : delta_to_leader,
+                        "delta-to-leader": delta_to_leader,
                     },
-                    "ers-info" : {
-                        "ers-percent": F1Utils.floatToStr(ers_perc) + '%',
-                        "ers-mode": data_per_driver["car-status"]["ers-deploy-mode"] \
-                            if "ers-deploy-mode" in data_per_driver["car-status"] else "None",
+                    "ers-info": {
+                        "ers-percent": f'{F1Utils.floatToStr(ers_perc)}%',
+                        "ers-mode": (
+                            data_per_driver["car-status"]["ers-deploy-mode"]
+                            if "ers-deploy-mode"
+                            in data_per_driver["car-status"]
+                            else "None"
+                        ),
                     },
-                    "lap-info" : {
-                        "current-lap" : None,
-                        "last-lap" : {
-                            "lap-time-ms" : getFastestLapTimeMsFromSessionHistoryJSON(data_per_driver["session-history"]),
-                            "lap-time-ms-player" : 0,
-                            "sector-status" : getSectorStatus(data_per_driver,
-                                best_s1_time, best_s2_time, best_s3_time, data_per_driver["lap-data"]["result-status"], for_best_lap=False),
+                    "lap-info": {
+                        "current-lap": None,
+                        "last-lap": {
+                            "lap-time-ms": getFastestLapTimeMsFromSessionHistoryJSON(
+                                data_per_driver["session-history"]
+                            ),
+                            "lap-time-ms-player": 0,
+                            "sector-status": getSectorStatus(
+                                data_per_driver,
+                                best_s1_time,
+                                best_s2_time,
+                                best_s3_time,
+                                data_per_driver["lap-data"]["result-status"],
+                                for_best_lap=False,
+                            ),
                         },
-                        "best-lap" : {
-                            "lap-time-ms" : getFastestLapTimeMsFromSessionHistoryJSON(data_per_driver["session-history"]),
-                            "lap-time-ms-player" : 0,
-                            "sector-status" : getSectorStatus(data_per_driver,
-                                best_s1_time, best_s2_time, best_s3_time, data_per_driver["lap-data"]["result-status"], for_best_lap=True),
+                        "best-lap": {
+                            "lap-time-ms": getFastestLapTimeMsFromSessionHistoryJSON(
+                                data_per_driver["session-history"]
+                            ),
+                            "lap-time-ms-player": 0,
+                            "sector-status": getSectorStatus(
+                                data_per_driver,
+                                best_s1_time,
+                                best_s2_time,
+                                best_s3_time,
+                                data_per_driver["lap-data"]["result-status"],
+                                for_best_lap=True,
+                            ),
                         },
-                        "lap-progress" : None, # NULL is supported,
-                        "speed-trap-record-kmph" : data_per_driver["lap-data"]["speed-trap-fastest-speed"] \
-                            if "speed-trap-fastest-speed" in data_per_driver["lap-data"] else None,
-                        "top-speed-kmph" : data_per_driver.get("top-speed-kmph", 0.0),
+                        "lap-progress": None,  # NULL is supported,
+                        "speed-trap-record-kmph": (
+                            data_per_driver["lap-data"][
+                                "speed-trap-fastest-speed"
+                            ]
+                            if "speed-trap-fastest-speed"
+                            in data_per_driver["lap-data"]
+                            else None
+                        ),
+                        "top-speed-kmph": data_per_driver.get(
+                            "top-speed-kmph", 0.0
+                        ),
                     },
-                    "warns-pens-info" : {
-                        "corner-cutting-warnings" : data_per_driver["lap-data"]["corner-cutting-warnings"],
-                        "time-penalties" : time_pens,
-                        "num-dt" : num_dt,
-                        "num-sg" : num_sg,
+                    "warns-pens-info": {
+                        "corner-cutting-warnings": data_per_driver["lap-data"][
+                            "corner-cutting-warnings"
+                        ],
+                        "time-penalties": time_pens,
+                        "num-dt": num_dt,
+                        "num-sg": num_sg,
                     },
-                    "tyre-info" : {
-                        "wear-prediction" : {
-                            "status" : False,
-                            "desc" : "Insufficient data for extrapolation",
+                    "tyre-info": {
+                        "wear-prediction": {
+                            "status": False,
+                            "desc": "Insufficient data for extrapolation",
                             "predictions": [],
-                            "selected-pit-stop-lap": None
+                            "selected-pit-stop-lap": None,
                         },
-                        "current-wear" : getTyreWearJSON(data_per_driver),
-                        "tyre-age": data_per_driver["car-status"]["tyres-age-laps"],
-                        "tyre-life-remaining" : None,
-                        "actual-tyre-compound" : data_per_driver["car-status"]["actual-tyre-compound"],
-                        "visual-tyre-compound" : data_per_driver["car-status"]["visual-tyre-compound"],
-                        "num-pitstops": data_per_driver["final-classification"]["num-pit-stops"],
+                        "current-wear": getTyreWearJSON(data_per_driver),
+                        "tyre-age": data_per_driver["car-status"][
+                            "tyres-age-laps"
+                        ],
+                        "tyre-life-remaining": None,
+                        "actual-tyre-compound": data_per_driver["car-status"][
+                            "actual-tyre-compound"
+                        ],
+                        "visual-tyre-compound": data_per_driver["car-status"][
+                            "visual-tyre-compound"
+                        ],
+                        "num-pitstops": data_per_driver[
+                            "final-classification"
+                        ]["num-pit-stops"],
                     },
-                    "damage-info" : {
-                        "fl-wing-damage" : data_per_driver["car-damage"]["front-left-wing-damage"],
-                        "fr-wing-damage" : data_per_driver["car-damage"]["front-right-wing-damage"],
-                        "rear-wing-damage" : data_per_driver["car-damage"]["rear-wing-damage"],
+                    "damage-info": {
+                        "fl-wing-damage": data_per_driver["car-damage"][
+                            "front-left-wing-damage"
+                        ],
+                        "fr-wing-damage": data_per_driver["car-damage"][
+                            "front-right-wing-damage"
+                        ],
+                        "rear-wing-damage": data_per_driver["car-damage"][
+                            "rear-wing-damage"
+                        ],
                     },
-                    "fuel-info" : {
-                        "fuel-capacity" : data_per_driver["car-status"]["fuel-capacity"],
-                        "fuel-mix" : data_per_driver["car-status"]["fuel-mix"],
-                        "fuel-remaining-laps" :  data_per_driver["car-status"]["fuel-remaining-laps"],
-                        "fuel-in-tank" : data_per_driver["car-status"]["fuel-in-tank"],
-                        "curr-fuel-rate" : 0.0,
-                        "last-lap-fuel-used" : 0.0,
-                        "target-fuel-rate-average" : 0.0,
-                        "target-fuel-rate-next-lap" : 0.0,
-                        "surplus-laps-png" : 0.0,
-                        "surplus-laps-game" : 0.0,
-                    }
+                    "fuel-info": {
+                        "fuel-capacity": data_per_driver["car-status"][
+                            "fuel-capacity"
+                        ],
+                        "fuel-mix": data_per_driver["car-status"]["fuel-mix"],
+                        "fuel-remaining-laps": data_per_driver["car-status"][
+                            "fuel-remaining-laps"
+                        ],
+                        "fuel-in-tank": data_per_driver["car-status"][
+                            "fuel-in-tank"
+                        ],
+                        "curr-fuel-rate": 0.0,
+                        "last-lap-fuel-used": 0.0,
+                        "target-fuel-rate-average": 0.0,
+                        "target-fuel-rate-next-lap": 0.0,
+                        "surplus-laps-png": 0.0,
+                        "surplus-laps-game": 0.0,
+                    },
                 }
             )
 
@@ -465,12 +485,14 @@ def getDriverInfoJsonByIndex(index):
         if not g_json_data:
             return final_json
 
-        driver_data = None
-        for driver in g_json_data["classification-data"]:
-            if driver["index"] == index:
-                driver_data = driver
-                break
-
+        driver_data = next(
+            (
+                driver
+                for driver in g_json_data["classification-data"]
+                if driver["index"] == index
+            ),
+            None,
+        )
         if not driver_data:
             return final_json
 
@@ -534,7 +556,7 @@ def handleDriverInfoRequest(index: str, is_str_input: bool=True) -> Tuple[Dict[s
         if index is None:
             return {
                 'error': 'Invalid parameters',
-                'message': f'Provide index parameter'
+                'message': 'Provide index parameter'
             }
 
         # Check if the provided value for index is numeric
@@ -547,12 +569,11 @@ def handleDriverInfoRequest(index: str, is_str_input: bool=True) -> Tuple[Dict[s
     driver_info = getDriverInfoJsonByIndex(index)
     if driver_info:
         return driver_info, HTTPStatus.OK
-    else:
-        error_response = {
-            'error' : 'Invalid parameter value',
-            'message' : 'Invalid index'
-        }
-        return error_response, HTTPStatus.BAD_REQUEST
+    error_response = {
+        'error' : 'Invalid parameter value',
+        'message' : 'Invalid index'
+    }
+    return error_response, HTTPStatus.BAD_REQUEST
 
 def handleRaceInfoRequest() -> Tuple[Dict[str, Any], HTTPStatus]:
 
@@ -850,17 +871,16 @@ class TelemetryWebServer:
             if key not in json_data["overtakes"]:
                 should_recompute_overtakes = True
 
-        if should_recompute_overtakes:
-            if len(json_data["overtakes"]["records"]) > 0:
-                if _isValidJson(json_data["overtakes"]["records"][0]):
-                    overtake_analyzer_mode = OvertakeAnalyzer.OvertakeAnalyzerMode.INPUT_MODE_LIST_OVERTAKE_RECORDS_JSON
-                else:
-                    overtake_analyzer_mode = OvertakeAnalyzer.OvertakeAnalyzerMode.INPUT_MODE_LIST_CSV
-                overtake_records = OvertakeAnalyzer.OvertakeAnalyzer(
-                    input_mode=overtake_analyzer_mode,
-                    input_data=json_data["overtakes"]["records"]).toJSON()
-                json_data["overtakes"] = json_data["overtakes"] | overtake_records
-                should_write = True
+        if should_recompute_overtakes and len(json_data["overtakes"]["records"]) > 0:
+            if _isValidJson(json_data["overtakes"]["records"][0]):
+                overtake_analyzer_mode = OvertakeAnalyzer.OvertakeAnalyzerMode.INPUT_MODE_LIST_OVERTAKE_RECORDS_JSON
+            else:
+                overtake_analyzer_mode = OvertakeAnalyzer.OvertakeAnalyzerMode.INPUT_MODE_LIST_CSV
+            overtake_records = OvertakeAnalyzer.OvertakeAnalyzer(
+                input_mode=overtake_analyzer_mode,
+                input_data=json_data["overtakes"]["records"]).toJSON()
+            json_data["overtakes"] = json_data["overtakes"] | overtake_records
+            should_write = True
 
         return should_write
 
@@ -983,17 +1003,16 @@ def checkRecomputeJSON(json_data : Dict[str, Any]) -> bool:
         if key not in json_data["overtakes"]:
             should_recompute_overtakes = True
 
-    if should_recompute_overtakes:
-        if len(json_data["overtakes"]["records"]) > 0:
-            if _isValidJson(json_data["overtakes"]["records"][0]):
-                overtake_analyzer_mode = OvertakeAnalyzer.OvertakeAnalyzerMode.INPUT_MODE_LIST_OVERTAKE_RECORDS_JSON
-            else:
-                overtake_analyzer_mode = OvertakeAnalyzer.OvertakeAnalyzerMode.INPUT_MODE_LIST_CSV
-            overtake_records = OvertakeAnalyzer.OvertakeAnalyzer(
-                input_mode=overtake_analyzer_mode,
-                input_data=json_data["overtakes"]["records"]).toJSON()
-            json_data["overtakes"] = json_data["overtakes"] | overtake_records
-            should_write = True
+    if should_recompute_overtakes and len(json_data["overtakes"]["records"]) > 0:
+        if _isValidJson(json_data["overtakes"]["records"][0]):
+            overtake_analyzer_mode = OvertakeAnalyzer.OvertakeAnalyzerMode.INPUT_MODE_LIST_OVERTAKE_RECORDS_JSON
+        else:
+            overtake_analyzer_mode = OvertakeAnalyzer.OvertakeAnalyzerMode.INPUT_MODE_LIST_CSV
+        overtake_records = OvertakeAnalyzer.OvertakeAnalyzer(
+            input_mode=overtake_analyzer_mode,
+            input_data=json_data["overtakes"]["records"]).toJSON()
+        json_data["overtakes"] = json_data["overtakes"] | overtake_records
+        should_write = True
 
     return should_write
 
@@ -1014,7 +1033,7 @@ def open_file_helper(file_path, open_webpage=True):
         if g_should_open_ui and open_webpage:
             g_should_open_ui = False
             webbrowser.open(f'http://localhost:{g_port_number}', new=2)
-    print("Opened file: " + file_path)
+    print(f"Opened file: {file_path}")
 
 def open_file():
     file_path = filedialog.askopenfilename()
