@@ -115,7 +115,7 @@ def initForwarder(forwarding_targets: List[Tuple[str, int]], tasks: List[asyncio
 
 async def udpForwardingTask(forwarding_targets: List[Tuple[str, int]]) -> None:
 
-    udp_forwarder = AsyncUDPForwarder(forwarding_targets)
+    udp_forwarder = AsyncUDPForwarder(forwarding_targets, png_logger)
     png_logger.info(f"Initialised forwarder. Targets={forwarding_targets}")
     while True:
         packet = await AsyncInterTaskCommunicator().receive("packet-forward")

@@ -99,7 +99,7 @@ class TestAsyncUDPForwarder(F1TelemetryUnitTestsBase):
         """Test that data is forwarded to all configured destinations."""
         async def async_test_forwarding():
             # Mock the send method of the transport
-            with patch.object(self.forwarder._transport, 'send', new_callable=AsyncMock) as mock_send:
+            with patch.object(self.forwarder.m_transport, 'send', new_callable=AsyncMock) as mock_send:
                 # Call the forward method
                 await self.forwarder.forward(self.test_data)
 
@@ -120,7 +120,7 @@ class TestAsyncUDPForwarder(F1TelemetryUnitTestsBase):
             empty_forwarder = AsyncUDPForwarder([])
 
             # Mock the send method of the transport
-            with patch.object(empty_forwarder._transport, 'send', new_callable=AsyncMock) as mock_send:
+            with patch.object(empty_forwarder.m_transport, 'send', new_callable=AsyncMock) as mock_send:
                 # Call the forward method
                 await empty_forwarder.forward(self.test_data)
 
@@ -134,7 +134,7 @@ class TestAsyncUDPForwarder(F1TelemetryUnitTestsBase):
         """Test error handling during packet forwarding."""
         async def async_test_error_handling():
             # Mock the send method to raise an exception
-            with patch.object(self.forwarder._transport, 'send', new_callable=AsyncMock) as mock_send:
+            with patch.object(self.forwarder.m_transport, 'send', new_callable=AsyncMock) as mock_send:
                 # Configure the mock to raise an OSError
                 mock_send.side_effect = OSError("Simulated network error")
 
@@ -154,7 +154,7 @@ class TestAsyncUDPForwarder(F1TelemetryUnitTestsBase):
         """Test multiple consecutive forward calls."""
         async def async_test_multiple_forwards():
             # Mock the send method of the transport
-            with patch.object(self.forwarder._transport, 'send', new_callable=AsyncMock) as mock_send:
+            with patch.object(self.forwarder.m_transport, 'send', new_callable=AsyncMock) as mock_send:
                 # Make multiple forward calls
                 for _ in range(3):
                     await self.forwarder.forward(self.test_data)
