@@ -14,7 +14,7 @@ For detailed instructions on setting up the project, please refer to the [RUNNIN
 - Follow existing naming and code style conventions.
 - Include helpful commit messages.
 - Test your changes before committing.
-
+    - Ensure that you build and test with the executable as well, since change of files/paths may require modification in the build config
 ---
 
 ## 📦 Submitting Pull Requests
