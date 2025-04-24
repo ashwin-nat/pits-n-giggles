@@ -26,7 +26,7 @@ from enum import Enum, auto
 from typing import Any, Dict, List, Optional
 
 from lib.f1_types import LapData
-from apps.backend.png_logger import getLogger
+from apps.backend.common.png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 

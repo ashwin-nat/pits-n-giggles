@@ -26,7 +26,7 @@ from typing import Any, Dict
 
 from lib.f1_types import (CarDamageData, CarStatusData, PacketTyreSetsData,
                           SafetyCarType)
-from apps.backend.png_logger import getLogger
+from apps.backend.common.png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 

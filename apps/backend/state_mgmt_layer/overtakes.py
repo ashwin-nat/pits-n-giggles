@@ -25,7 +25,7 @@
 from typing import List
 from enum import Enum, auto
 from lib.overtake_analyzer import OvertakeRecord
-from apps.backend.png_logger import getLogger
+from apps.backend.common.png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 

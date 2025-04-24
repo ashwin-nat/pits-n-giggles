@@ -34,10 +34,10 @@ from hypercorn.config import Config
 from pathlib import Path
 from quart import Quart, jsonify, render_template, request, send_from_directory
 
-import apps.backend.telemetry_data as TelData
-import apps.backend.telemetry_web_api as TelWebAPI
+import apps.backend.state_mgmt_layer.telemetry_data as TelData
+import apps.backend.state_mgmt_layer.telemetry_web_api as TelWebAPI
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
-from apps.backend.png_logger import getLogger
+from apps.backend.common.png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -80,7 +80,7 @@ class TelemetryWebServer:
 
         # Create a Quart app and Socket.IO server instance
 
-        self.m_base_dir = Path(__file__).resolve().parent.parent.parent
+        self.m_base_dir = Path(__file__).resolve().parent.parent.parent.parent
         template_dir = self.m_base_dir / "apps" / "frontend" / "html"
         static_dir = self.m_base_dir / "apps" / "frontend"
         print(f'templates path: {template_dir}')

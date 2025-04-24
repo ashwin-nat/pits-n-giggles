@@ -26,7 +26,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from lib.f1_types import SafetyCarType, TelemetrySetting
-from ..png_logger import getLogger
+from apps.backend.common.png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 

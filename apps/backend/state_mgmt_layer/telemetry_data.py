@@ -23,7 +23,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import os
+import os # TODO: remove
 print(os.getcwd())
 # import sys
 # from pathlib import Path
@@ -55,9 +55,9 @@ from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.tyre_wear_extrapolator import TyreWearPerLap
-from apps.backend.data_per_driver import DataPerDriver
-from apps.backend.overtakes import GetOvertakesStatus, OvertakesHistory
-from apps.backend.png_logger import getLogger
+from apps.backend.state_mgmt_layer.data_per_driver import DataPerDriver
+from apps.backend.state_mgmt_layer.overtakes import GetOvertakesStatus, OvertakesHistory
+from apps.backend.common.png_logger import getLogger
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
