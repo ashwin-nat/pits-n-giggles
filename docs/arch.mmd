@@ -1,0 +1,72 @@
+%%{ init : { "theme" : "default", "themeVariables": {
+    "background": "#ffffff",
+    "primaryColor": "#4ECDC4",
+    "primaryTextColor": "#1A535C",
+    "primaryBorderColor": "#1A535C",
+    "lineColor": "#1A535C",
+    "fontSize": "16px"
+}} }%%
+
+flowchart TD
+    %% Main components
+    F1_SIM["🏎️ F1 Sim"]
+    EXT_TGT["🌐 External Targets"]
+
+    %% Event Loop with revised layout - UI and Telemetry on same level, State Management below
+    subgraph EVENT_LOOP["🔄 Event Loop"]
+        direction TB
+
+        subgraph TELEMETRY_LAYER["📡 Telemetry Layer"]
+            direction LR
+            UDP_RECV["📶 UDP Receiver"]
+            PARSERS["🔍 Parsers"]
+            PACKET_FWD["📤 Packet Forwarder"]
+        end
+
+        subgraph UI_INTF_LAYER["🖥️ UI Interface Layer"]
+            direction LR
+            QUART["🌐 Quart HTTP Server"]
+            SOCKETIO["⚡ SocketIO"]
+        end
+
+        subgraph STATE_MGMT_LAYER["🧠 State Mgmt Layer"]
+            direction LR
+            COMP_ENGINE["⚙️ Computations Engine"]
+            SHARED_STATE["💾 Shared State"]
+            API_INTF["🔌 API Interface"]
+        end
+    end
+
+    subgraph UI_CLIENTS["UI Clients"]
+        STREAM_OVERLAY["🎥 Stream Overlay"]
+        DRV_VIEW["🧑🏎️ Driver Dashboard"]
+        ENG_VIEW["🧑‍🔧 Engineer Dashboard"]
+    end
+
+    %% External connections
+    F1_SIM -->|"Telemetry Data"| UDP_RECV
+    UDP_RECV -->|"Raw Packets"| PARSERS
+    UDP_RECV -->|"Raw Packets"| PACKET_FWD
+    PACKET_FWD -->|"Raw Packets"| EXT_TGT
+    PARSERS -->|"Telemetry Objects"| COMP_ENGINE
+    COMP_ENGINE -->|"Compute & Update"| SHARED_STATE
+    API_INTF -->|"Read"| SHARED_STATE
+    QUART -->|"Request"| API_INTF
+    API_INTF -->|"Response"| QUART
+    SOCKETIO -->|"Request"| API_INTF
+    API_INTF -->|"Response"| SOCKETIO
+    SOCKETIO -->|"Periodic Updates"| STREAM_OVERLAY
+    SOCKETIO -->|"Periodic Updates"| DRV_VIEW
+    SOCKETIO -->|"Periodic Updates"| ENG_VIEW
+    UI_CLIENTS -->|"Page Request"| QUART
+    QUART -->|"Page Response"| UI_CLIENTS
+
+
+    %% Classes for styles
+    classDef external fill:#FF6B6B,stroke:#BA181B,color:#ffffff,font-weight:bold
+    classDef layer fill:#FFDD67,stroke:#F3722C,stroke-width:2px,color:#000000,font-weight:bold
+    classDef component fill:#C0FDFB,stroke:#0077B6,stroke-width:2px,color:#03045E,rounded
+
+    class F1_SIM,EXT_TGT external
+    class TELEMETRY_LAYER,STATE_MGMT_LAYER,UI_INTF_LAYER layer
+    class UDP_RECV,PARSERS,PACKET_FWD,COMP_ENGINE,API_INTF,SHARED_STATE,QUART,SOCKETIO component
