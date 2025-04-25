@@ -1,3 +1,0 @@
-[lfs]
-    fetchexclude = session_captures/*.f1pcap
-    smudge = git-lfs smudge --skip -- %f

@@ -1,5 +1,0 @@
-session_captures/f1_23_sp_austria.f1pcap filter=lfs diff=lfs merge=lfs -text
-session_captures/f1_23_tt_silverstone.f1pcap filter=lfs diff=lfs merge=lfs -text
-session_captures/f1_24_sp_austria.f1pcap filter=lfs diff=lfs merge=lfs -text
-session_captures/f1_24_sp_austria_flashback.f1pcap filter=lfs diff=lfs merge=lfs -text
-session_captures/f1_24_tt_silverstone.f1pcap filter=lfs diff=lfs merge=lfs -text
