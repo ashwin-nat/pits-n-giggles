@@ -1,46 +1,49 @@
 import os
+import sys
 import tempfile
 from pathlib import Path
 
 app_name = 'pits_n_giggles'
-app_ver = '2.3.1'
+app_ver = '2.3.2'
 
 # Create a temporary runtime hook file
 temp_dir = tempfile.mkdtemp()
 hook_path = os.path.join(temp_dir, 'hook-runtime.py')
 
 with open(hook_path, 'w') as f:
-    f.write(f"import os\n")
+    f.write("import os\n")
     f.write(f"os.environ['PNG_VERSION'] = '{app_ver}'\n")
 
-# Helper function to join paths correctly
-def get_data_paths_main_app():
-    base_src_path = Path('src')
-
-    data_paths = [
-        (base_src_path / 'static' / 'favicon.ico', 'src/static/'),
-        (base_src_path / 'static' , 'src/static/'),
-        (base_src_path / 'templates' / 'index.html', 'src/templates/'),
-        (base_src_path / 'templates' / 'player-stream-overlay.html', 'src/templates/'),
-        (base_src_path / 'templates' / 'eng-view.html', 'src/templates/')
+def get_data_paths_frontend():
+    return [
+        ('../apps/frontend/css/*', 'apps/frontend/css'),
+        ('../apps/frontend/html/*', 'apps/frontend/html'),
+        ('../apps/frontend/js/*', 'apps/frontend/js'),
+        ('../assets/favicon.ico', 'assets/'),  # Corrected path
+        ('../assets/tyre-icons/intermediate_tyre.svg', 'assets/tyre-icons'),
+        ('../assets/tyre-icons/hard_tyre.svg', 'assets/tyre-icons'),
+        ('../assets/tyre-icons/soft_tyre.svg', 'assets/tyre-icons'),
+        ('../assets/tyre-icons/medium_tyre.svg', 'assets/tyre-icons'),
+        ('../assets/tyre-icons/wet_tyre.svg', 'assets/tyre-icons'),
+        ('../assets/tyre-icons/super_soft_tyre.svg', 'assets/tyre-icons'),
     ]
 
-    # Convert paths to strings for PyInstaller compatibility
-    return [(str(src), dest) for src, dest in data_paths]
+def get_data_paths_save_viewer():
+    # Determine the base path depending on whether we are in a bundled or normal environment
+    if getattr(sys, 'frozen', False):  # Check if we're running as a bundled app
+        base_src_path = Path(sys._MEIPASS) / 'apps' / 'frontend'  # Use the extracted folder
+    else:
+        base_src_path = Path(os.getcwd()) / 'apps' / 'frontend'  # Normal environment
 
-def get_data_paths_replayer():
-    base_src_path = Path('src')
-
-    data_paths = [
-        (str(base_src_path / 'static'), 'static'),
-        (str(base_src_path / 'templates'), 'templates'),
+    # Return the appropriate paths for the actual directories
+    return [
+        (str(base_src_path / 'css'), 'apps/frontend/css'),
+        (str(base_src_path / 'html'), 'apps/frontend/html'),
+        (str(base_src_path / 'js'), 'apps/frontend/js'),
     ]
-
-    # Convert paths to strings for PyInstaller compatibility
-    return [(str(src), dest) for src, dest in data_paths]
 
 def get_icon_path():
-    return str(Path('src/static/favicon.ico'))
+    return str(Path('../assets/favicon.ico'))
 
 def get_name():
     return app_name + '_' + app_ver
@@ -48,26 +51,25 @@ def get_name():
 def get_viewer_name():
     return 'png_save_data_viewer_' + app_ver
 
+# === Analysis for backend ===
+
 a = Analysis(
-    ['app.py'],
-    pathex=[str(Path('png-venv/Lib/site-packages/'))],  # OS-independent path
+    ['../apps/backend/pits_n_giggles.py'],  # Correct path to the main script
+    pathex=['.'],
     binaries=[],
-    datas=get_data_paths_main_app(),  # Paths handled in a cross-platform manner
+    datas=get_data_paths_frontend(),
     hiddenimports=[],
     hookspath=[],
-    hooksconfig={},
-    runtime_hooks=[hook_path],
-    excludes=[],
-    noarchive=False,
-    optimize=0,
+    runtime_hooks=[],
+    excludes=[]
 )
 
-# Analysis for the second executable
+# === Analysis for save viewer ===
 b = Analysis(
-    ['utils/telemetry_post_race_data_viewer.py'],
-    pathex=[str(Path('png-venv/Lib/site-packages/'))],  # OS-independent path
+    ['../apps/save_viewer/telemetry_post_race_data_viewer.py'],
+    pathex=[str(Path('png-venv/Lib/site-packages/'))],
     binaries=[],
-    datas=get_data_paths_replayer(),  # Paths handled in a cross-platform manner
+    datas=get_data_paths_frontend(),
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -80,7 +82,6 @@ b = Analysis(
 pyz = PYZ(a.pure)
 pyz_b = PYZ(b.pure)
 
-# First executable for app.py
 exe1 = EXE(
     pyz,
     a.scripts,
@@ -88,7 +89,7 @@ exe1 = EXE(
     a.datas,
     [],
     name=get_name(),
-    icon=get_icon_path(),  # Set the icon path here
+    icon=get_icon_path(),
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -105,7 +106,6 @@ exe1 = EXE(
     onefile=True,
 )
 
-# Second executable for telemetry_post_race_data_viewer.py
 exe2 = EXE(
     pyz_b,
     b.scripts,

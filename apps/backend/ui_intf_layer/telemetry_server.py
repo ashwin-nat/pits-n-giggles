@@ -83,8 +83,6 @@ class TelemetryWebServer:
         self.m_base_dir = Path(__file__).resolve().parent.parent.parent.parent
         template_dir = self.m_base_dir / "apps" / "frontend" / "html"
         static_dir = self.m_base_dir / "apps" / "frontend"
-        print(f'templates path: {template_dir}')
-        print(f'static path: {static_dir}')
         self.m_app: Quart = Quart(
             __name__,
             template_folder=template_dir,
