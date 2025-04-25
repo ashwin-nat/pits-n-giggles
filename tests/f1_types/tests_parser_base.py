@@ -29,7 +29,7 @@ from typing import Optional
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from tests_base import F1TelemetryUnitTestsBase
-from apps.lib.f1_types import PacketHeader, F1PacketType
+from lib.f1_types import PacketHeader, F1PacketType
 
 # ----------------------------------------------------------------------------------------------------------------------
 

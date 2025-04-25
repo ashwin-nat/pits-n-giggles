@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 import random
-from apps.lib.f1_types import PacketLapData, F1PacketType
+from lib.f1_types import PacketLapData, F1PacketType
 from .tests_parser_base import F1TypesTest
 
 class TestPacketLapData(F1TypesTest):

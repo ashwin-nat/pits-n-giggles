@@ -30,9 +30,9 @@ from typing import List
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from apps.lib.packet_cap import F1PacketCapture
-from apps.lib.telemetry_manager import F1TelemetryManager
-from apps.lib.packet_forwarder import UDPForwarder
+from lib.packet_cap import F1PacketCapture
+from lib.telemetry_manager import F1TelemetryManager
+from lib.packet_forwarder import UDPForwarder
 from threading import Thread, Lock, Condition
 import queue
 

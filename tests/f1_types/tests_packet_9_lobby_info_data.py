@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 import random
-from apps.lib.f1_types import LobbyInfoData, PacketLobbyInfoData, F1PacketType, \
+from lib.f1_types import LobbyInfoData, PacketLobbyInfoData, F1PacketType, \
     PacketHeader, TeamID23, TeamID24, Nationality, Platform, TelemetrySetting
 from .tests_parser_base import F1TypesTest
 

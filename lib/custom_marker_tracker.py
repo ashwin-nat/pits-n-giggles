@@ -24,7 +24,7 @@
 
 from typing import Any, Dict, List
 
-from apps.lib.f1_types import LapData
+from lib.f1_types import LapData
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 

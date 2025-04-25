@@ -25,8 +25,8 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
-from apps.lib.f1_types import CarStatusData
-from apps.lib.fuel_rate_recommender import FuelRateRecommender
+from lib.f1_types import CarStatusData
+from lib.fuel_rate_recommender import FuelRateRecommender
 from apps.backend.common.png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------

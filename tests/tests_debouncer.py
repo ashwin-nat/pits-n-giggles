@@ -28,7 +28,7 @@ import sys
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from apps.lib.button_debouncer import ButtonDebouncer
+from lib.button_debouncer import ButtonDebouncer
 from tests_base import F1TelemetryUnitTestsBase
 
 # ----------------------------------------------------------------------------------------------------------------------

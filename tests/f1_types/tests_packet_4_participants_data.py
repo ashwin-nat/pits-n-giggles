@@ -22,7 +22,7 @@
 
 import random
 from typing import Optional
-from apps.lib.f1_types import ParticipantData, PacketParticipantsData, F1PacketType, PacketHeader, \
+from lib.f1_types import ParticipantData, PacketParticipantsData, F1PacketType, PacketHeader, \
     TeamID23, TeamID24, Nationality, TelemetrySetting, Platform
 from .tests_parser_base import F1TypesTest
 

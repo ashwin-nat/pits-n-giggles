@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 import random
-from apps.lib.f1_types import CarTelemetryData, PacketCarTelemetryData, F1PacketType, PacketHeader
+from lib.f1_types import CarTelemetryData, PacketCarTelemetryData, F1PacketType, PacketHeader
 from .tests_parser_base import F1TypesTest
 
 class TestPacketCarTelemetryData(F1TypesTest):

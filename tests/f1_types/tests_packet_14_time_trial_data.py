@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 import random
-from apps.lib.f1_types import PacketTimeTrialData, TimeTrialDataSet, F1PacketType, PacketHeader, TeamID24, \
+from lib.f1_types import PacketTimeTrialData, TimeTrialDataSet, F1PacketType, PacketHeader, TeamID24, \
     GearboxAssistMode, TractionControlAssistMode
 from .tests_parser_base import F1TypesTest
 

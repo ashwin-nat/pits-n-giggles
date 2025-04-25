@@ -36,10 +36,10 @@ import asyncio
 import json
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from apps.lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
+from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
-from apps.lib.custom_marker_tracker import CustomMarkerEntry, CustomMarkersHistory
-from apps.lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils, LapData,
+from lib.custom_marker_tracker import CustomMarkerEntry, CustomMarkersHistory
+from lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils, LapData,
                           PacketCarDamageData, PacketCarSetupData,
                           PacketCarStatusData, PacketCarTelemetryData,
                           PacketEventData, PacketFinalClassificationData,
@@ -49,12 +49,12 @@ from apps.lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils, LapDa
                           PacketTyreSetsData, ResultStatus, SafetyCarType,
                           SessionType23, SessionType24, TrackID,
                           WeatherForecastSample)
-from apps.lib.inter_task_communicator import (AsyncInterTaskCommunicator,
+from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
                                            ITCMessage, TyreDeltaMessage)
-from apps.lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
+from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
-from apps.lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
-from apps.lib.tyre_wear_extrapolator import TyreWearPerLap
+from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
+from lib.tyre_wear_extrapolator import TyreWearPerLap
 from apps.backend.state_mgmt_layer.data_per_driver import DataPerDriver
 from apps.backend.state_mgmt_layer.overtakes import GetOvertakesStatus, OvertakesHistory
 from apps.backend.common.png_logger import getLogger

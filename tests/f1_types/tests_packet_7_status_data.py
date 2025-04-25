@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 import random
-from apps.lib.f1_types import CarStatusData, PacketCarStatusData, F1PacketType, PacketHeader, \
+from lib.f1_types import CarStatusData, PacketCarStatusData, F1PacketType, PacketHeader, \
     TractionControlAssistMode, VisualTyreCompound, ActualTyreCompound
 from .tests_parser_base import F1TypesTest
 

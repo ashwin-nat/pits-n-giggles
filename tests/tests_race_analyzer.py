@@ -32,7 +32,7 @@ import json
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from apps.lib.race_analyzer import getFastestTimesJson
+from lib.race_analyzer import getFastestTimesJson
 from tests_base import F1TelemetryUnitTestsBase
 
 class RaceAnalyzerUT(F1TelemetryUnitTestsBase):

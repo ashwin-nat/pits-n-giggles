@@ -30,7 +30,7 @@ from typing import List
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from apps.lib.fuel_rate_recommender import FuelRemainingPerLap, FuelRateRecommender
+from lib.fuel_rate_recommender import FuelRemainingPerLap, FuelRateRecommender
 from tests_base import F1TelemetryUnitTestsBase
 
 # ----------------------------------------------------------------------------------------------------------------------

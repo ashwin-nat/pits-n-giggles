@@ -25,7 +25,7 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from apps.lib.f1_types import (CarDamageData, CarMotionData, CarSetupData,
+from lib.f1_types import (CarDamageData, CarMotionData, CarSetupData,
                           CarStatusData, CarTelemetryData,
                           FinalClassificationData, LapData,
                           PacketSessionHistoryData, PacketTyreSetsData,

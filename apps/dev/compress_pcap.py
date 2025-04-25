@@ -1,4 +1,4 @@
-import apps.lib.packet_cap as pcap
+import lib.packet_cap as pcap
 import sys
 
 if __name__ == '__main__':

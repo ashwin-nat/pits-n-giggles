@@ -32,7 +32,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from tests_base import F1TelemetryUnitTestsBase
 
-from apps.lib.inter_task_communicator import (AsyncInterTaskCommunicator,
+from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
                                            ITCMessage,
                                            TyreDeltaMessage)
 

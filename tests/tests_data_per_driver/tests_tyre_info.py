@@ -25,8 +25,8 @@ from unittest.mock import MagicMock
 
 from apps.backend.state_mgmt_layer.data_per_driver import (
     TyreSetHistoryEntry, TyreSetHistoryManager, TyreSetInfo)
-from apps.lib.f1_types import ActualTyreCompound, VisualTyreCompound
-from apps.lib.tyre_wear_extrapolator import TyreWearPerLap
+from lib.f1_types import ActualTyreCompound, VisualTyreCompound
+from lib.tyre_wear_extrapolator import TyreWearPerLap
 
 from .tests_data_per_driver_base import F1DataPerDriverTest
 

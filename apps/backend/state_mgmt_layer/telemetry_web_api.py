@@ -24,11 +24,11 @@
 
 from typing import Any, Dict, List, Optional, Union
 
-import apps.lib.race_analyzer as RaceAnalyzer
+import lib.race_analyzer as RaceAnalyzer
 import apps.backend.state_mgmt_layer.telemetry_data as TelData
-from apps.lib.f1_types import (CarStatusData, F1Utils, LapHistoryData,
+from lib.f1_types import (CarStatusData, F1Utils, LapHistoryData,
                           VisualTyreCompound)
-from apps.lib.tyre_wear_extrapolator import TyreWearPerLap
+from lib.tyre_wear_extrapolator import TyreWearPerLap
 from apps.backend.state_mgmt_layer.data_per_driver import DataPerDriver, TyreSetInfo
 from apps.backend.state_mgmt_layer.overtakes import GetOvertakesStatus
 from apps.backend.common.png_logger import getLogger
