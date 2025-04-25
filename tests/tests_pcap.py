@@ -44,132 +44,155 @@ class FullPCapTests(TestF1PacketCapture):
     max_num_packets = 5000
 
     def setUp(self):
-        # Create an instance of F1PacketCapture for each test
-        self.capture = F1PacketCapture()
         self.m_created_files = []
 
-    def dumpToFileHelper(self, file_name=None):
+    def dumpToFileHelper(self, file_name=None, compressed=True):
+        # self.capture = F1PacketCapture(compressed=compressed)
         file_name, packets_count, bytes_count = self.capture.dumpToFile(file_name)
-        self.m_created_files.append(file_name)  # Keep track of created files
+
+        # Ensure file_name is not None
+        if file_name:
+            self.m_created_files.append(file_name)  # Keep track of created files
+        else:
+            raise ValueError("The file_name returned from dumpToFile is None")
+
         return file_name, packets_count, bytes_count
 
     def test_add_data(self):
         """Test adding data to F1PacketCapture."""
-        entry_data = b'\x01\x02\x03\x04'
-        self.capture.add(entry_data)
+        for compressed in [True, False]:
+            with self.subTest(compressed=compressed):
+                self.capture = F1PacketCapture(compressed=compressed)
+                entry_data = b'\x01\x02\x03\x04'
+                self.capture.add(entry_data)
 
-        # Ensure that the entry has been added to the packet history
-        self.assertEqual(len(self.capture.m_packet_history), 1)
-        self.assertEqual(self.capture.m_packet_history[0].m_data, entry_data)
+                # Ensure that the entry has been added to the packet history
+                self.assertEqual(len(self.capture.m_packet_history), 1)
+                self.assertEqual(self.capture.m_packet_history[0].m_data, entry_data)
 
     def test_dump_to_file(self):
         """Test dumping F1PacketCapture to a file."""
-        entry_data_1 = b'\x01\x02\x03\x04'
-        entry_data_2 = b'\x05\x06\x07\x08'
-        self.capture.add(entry_data_1)
-        self.capture.add(entry_data_2)
+        for compressed in [True, False]:
+            with self.subTest(compressed=compressed):
+                self.capture = F1PacketCapture(compressed=compressed)
+                entry_data_1 = b'\x01\x02\x03\x04'
+                entry_data_2 = b'\x05\x06\x07\x08'
+                self.capture.add(entry_data_1)
+                self.capture.add(entry_data_2)
 
-        # Dump to file
-        file_name, _, _ = self.dumpToFileHelper()
+                # Dump to file
+                file_name, _, _ = self.dumpToFileHelper(compressed=compressed)
 
-        # Ensure that the file has been created
-        self.assertTrue(os.path.exists(file_name))
+                # Ensure that the file has been created
+                self.assertTrue(os.path.exists(file_name))
 
-        # Read from the file and print the loaded entries
-        loaded_capture = F1PacketCapture()
-        loaded_capture.readFromFile(file_name)
+                # Read from the file and print the loaded entries
+                loaded_capture = F1PacketCapture(compressed=compressed)
+                loaded_capture.readFromFile(file_name)
 
-        # Ensure that the number of loaded entries matches the expected count
-        self.assertEqual(len(loaded_capture.m_packet_history), 2)
-        self.assertEqual(len(loaded_capture.m_packet_history), loaded_capture.m_header.num_packets)
+                # Ensure that the number of loaded entries matches the expected count
+                self.assertEqual(len(loaded_capture.m_packet_history), 2)
+                self.assertEqual(len(loaded_capture.m_packet_history), loaded_capture.m_header.num_packets)
 
     def test_read_from_file(self):
         """Test reading from a file into F1PacketCapture."""
-        entry_data = b'\x01\x02\x03\x04'
-        self.capture.add(entry_data)
+        for compressed in [True, False]:
+            with self.subTest(compressed=compressed):
+                self.capture = F1PacketCapture(compressed=compressed)
+                entry_data = b'\x01\x02\x03\x04'
+                self.capture.add(entry_data)
 
-        # Dump to file
-        file_name, _, _ = self.dumpToFileHelper()
+                # Dump to file
+                file_name, _, _ = self.dumpToFileHelper(compressed=compressed)
 
-        # Clear existing entries and read from the file
-        self.capture.m_packet_history = []  # Clear existing entries
-        self.capture.readFromFile(file_name)
+                # Clear existing entries and read from the file
+                self.capture.m_packet_history = []  # Clear existing entries
+                self.capture.readFromFile(file_name)
 
-        # Ensure that the entry has been read from the file
-        self.assertEqual(len(self.capture.m_packet_history), 1)
-        self.assertEqual(len(self.capture.m_packet_history), self.capture.m_header.num_packets)
-        self.assertEqual(self.capture.m_packet_history[0].m_data, entry_data)
+                # Ensure that the entry has been read from the file
+                self.assertEqual(len(self.capture.m_packet_history), 1)
+                self.assertEqual(len(self.capture.m_packet_history), self.capture.m_header.num_packets)
+                self.assertEqual(self.capture.m_packet_history[0].m_data, entry_data)
 
     def test_add_random_packets(self):
         """Test adding random packets to F1PacketCapture."""
+        for compressed in [True, False]:
+            with self.subTest(compressed=compressed):
+                self.capture = F1PacketCapture(compressed=compressed)
 
-        # Generate a random number of packets to add
-        num_packets = random.randint(1, FullPCapTests.max_num_packets)
-        self._generate_add_random_packets(num_packets)
+                # Generate a random number of packets to add
+                num_packets = random.randint(1, FullPCapTests.max_num_packets)
+                self._generate_add_random_packets(num_packets)
 
-        # Check if the number of added packets matches the expected number
-        self.assertEqual(len(self.capture.m_packet_history), num_packets)
-        self.assertEqual(self.capture.m_header.num_packets, num_packets)
+                # Check if the number of added packets matches the expected number
+                self.assertEqual(len(self.capture.m_packet_history), num_packets)
+                self.assertEqual(self.capture.m_header.num_packets, num_packets)
 
     def test_random_packets_to_file_and_read(self):
         """Test generating random packets, writing to a file, and reading back."""
+        for compressed in [True, False]:
+            with self.subTest(compressed=compressed):
+                self.capture = F1PacketCapture(compressed=compressed)
 
-        # Generate a random number of packets to add
-        num_packets = random.randint(1, FullPCapTests.max_num_packets)
-        self._generate_add_random_packets(num_packets)
+                # Generate a random number of packets to add
+                num_packets = random.randint(1, FullPCapTests.max_num_packets)
+                self._generate_add_random_packets(num_packets)
 
-        self.assertEqual(num_packets, len(self.capture.m_packet_history))
-        self.assertEqual(num_packets, self.capture.m_header.num_packets)
+                self.assertEqual(num_packets, len(self.capture.m_packet_history))
+                self.assertEqual(num_packets, self.capture.m_header.num_packets)
 
-        # Dump to file
-        file_name, _, _ = self.dumpToFileHelper()
+                # Dump to file
+                file_name, _, _ = self.dumpToFileHelper(compressed=compressed)
 
-        # Ensure that the file has been created
-        self.assertTrue(os.path.exists(file_name))
+                # Ensure that the file has been created
+                self.assertTrue(os.path.exists(file_name))
 
-        # Create a new instance to read from the file
-        loaded_capture = F1PacketCapture()
-        loaded_capture.readFromFile(file_name)
+                # Create a new instance to read from the file
+                loaded_capture = F1PacketCapture(compressed=compressed)
+                loaded_capture.readFromFile(file_name)
 
-        # Ensure that the number of loaded entries matches the expected count
-        self.assertEqual(len(loaded_capture.m_packet_history), num_packets)
-        self.assertEqual(loaded_capture.m_header.num_packets, num_packets)
+                # Ensure that the number of loaded entries matches the expected count
+                self.assertEqual(len(loaded_capture.m_packet_history), num_packets)
+                self.assertEqual(loaded_capture.m_header.num_packets, num_packets)
 
     def test_clear_and_reload_with_random_packets(self):
         """Test generating random packets, writing to a file, and reading back."""
+        for compressed in [True, False]:
+            with self.subTest(compressed=compressed):
+                self.capture = F1PacketCapture(compressed=compressed)
 
-        # Generate a random number of packets to add
-        num_packets = random.randint(1, FullPCapTests.max_num_packets)
-        self._generate_add_random_packets(num_packets)
+                # Generate a random number of packets to add
+                num_packets = random.randint(1, FullPCapTests.max_num_packets)
+                self._generate_add_random_packets(num_packets)
 
-        self.assertEqual(num_packets, len(self.capture.m_packet_history))
-        self.assertEqual(num_packets, self.capture.m_header.num_packets)
+                self.assertEqual(num_packets, len(self.capture.m_packet_history))
+                self.assertEqual(num_packets, self.capture.m_header.num_packets)
 
-        # Clear the object, then continue with the test
-        self.capture.clear()
+                # Clear the object, then continue with the test
+                self.capture.clear()
 
-        # Generate a random number of packets to add
-        num_packets = random.randint(1, FullPCapTests.max_num_packets)
-        self._generate_add_random_packets(num_packets)
+                # Generate a random number of packets to add
+                num_packets = random.randint(1, FullPCapTests.max_num_packets)
+                self._generate_add_random_packets(num_packets)
 
-        # Dump to file
-        file_name, _, _ = self.dumpToFileHelper()
+                # Dump to file
+                file_name, _, _ = self.dumpToFileHelper(compressed=compressed)
 
-        # Ensure that the file has been created
-        self.assertTrue(os.path.exists(file_name))
+                # Ensure that the file has been created
+                self.assertTrue(os.path.exists(file_name))
 
-        # Create a new instance to read from the file
-        loaded_capture = F1PacketCapture()
-        loaded_capture.readFromFile(file_name)
+                # Create a new instance to read from the file
+                loaded_capture = F1PacketCapture(compressed=compressed)
+                loaded_capture.readFromFile(file_name)
 
-        # Ensure that the number of loaded entries matches the expected count
-        self.assertEqual(len(loaded_capture.m_packet_history), num_packets)
-        self.assertEqual(loaded_capture.m_header.num_packets, num_packets)
+                # Ensure that the number of loaded entries matches the expected count
+                self.assertEqual(len(loaded_capture.m_packet_history), num_packets)
+                self.assertEqual(loaded_capture.m_header.num_packets, num_packets)
 
     def tearDown(self):
         self.capture.m_packet_history = None
         for file_name in self.m_created_files:
-            if os.path.exists(file_name):
+            if file_name and os.path.exists(file_name):
                 os.remove(file_name)
 
     def _generate_add_random_packets(self, num_packets: int) -> None:
@@ -194,7 +217,13 @@ class FullPCapTests(TestF1PacketCapture):
 class TestF1PacketCaptureHeader(TestF1PacketCapture):
     def test_to_bytes_and_from_bytes(self):
         # Test serialization and deserialization
-        header1 = F1PktCapFileHeader(major_version=3, minor_version=8, num_packets=1000, is_little_endian=True)
+        header1 = F1PktCapFileHeader(
+            major_version=3,
+            minor_version=8,
+            num_packets=1000,
+            is_little_endian=True,
+            is_compressed=False
+        )
         header_bytes = header1.to_bytes()
         header2 = F1PktCapFileHeader.from_bytes(header_bytes)
 
@@ -203,6 +232,7 @@ class TestF1PacketCaptureHeader(TestF1PacketCapture):
         self.assertEqual(header1.minor_version, header2.minor_version)
         self.assertEqual(header1.num_packets, header2.num_packets)
         self.assertEqual(header1.is_little_endian, header2.is_little_endian)
+        self.assertEqual(header1.is_compressed, header2.is_compressed)
 
     def test_major_version_boundary(self):
         # Test major version boundary

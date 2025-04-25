@@ -154,8 +154,8 @@ class SimpleApp:
 
 def raw_packet_callback(raw_packet: bytes):
     global g_capture_table
-    global g_queue
-    g_queue.put(raw_packet)
+    # global g_queue
+    # g_queue.put(raw_packet)
     g_capture_table.add(raw_packet)
 
 

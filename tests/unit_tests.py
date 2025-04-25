@@ -25,7 +25,6 @@ import os
 import random
 import sys
 import unittest
-from typing import Set
 
 from colorama import init
 
