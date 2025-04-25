@@ -42,7 +42,7 @@
             "name": "Replayer - Module",
             "type": "debugpy",
             "request": "launch",
-            "module": "apps.dev.telemetry_replayer",
+            "module": "apps.dev_tools.telemetry_replayer",
             "console": "integratedTerminal",
             "args": [
                 "--file-name", "session_captures/f1_24_sp_austria.f1pcap",
@@ -54,7 +54,7 @@
             "name": "Recorder - Module",
             "type": "debugpy",
             "request": "launch",
-            "module": "apps.dev.telemetry_recorder",
+            "module": "apps.dev_tools.telemetry_recorder",
             "console": "integratedTerminal",
             "args": [
             ]
