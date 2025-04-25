@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from lib.f1_types import PacketSessionHistoryData, F1PacketType
+from apps.lib.f1_types import PacketSessionHistoryData, F1PacketType
 from .tests_parser_base import F1TypesTest
 
 class TestPacketSessionHistoryData(F1TypesTest):

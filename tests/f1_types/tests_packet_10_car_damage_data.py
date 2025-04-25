@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 import random
-from lib.f1_types import CarDamageData, PacketCarDamageData, F1PacketType, PacketHeader
+from apps.lib.f1_types import CarDamageData, PacketCarDamageData, F1PacketType, PacketHeader
 from .tests_parser_base import F1TypesTest
 
 class TestPacketCarDamageData(F1TypesTest):

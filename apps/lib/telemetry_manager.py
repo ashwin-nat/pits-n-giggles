@@ -25,7 +25,7 @@
 from logging import Logger
 from typing import Awaitable, Callable, Dict, Optional
 
-from lib.f1_types import (F1PacketType, InvalidPacketLengthError,
+from apps.lib.f1_types import (F1PacketType, InvalidPacketLengthError,
                           PacketCarDamageData, PacketCarSetupData,
                           PacketCarStatusData, PacketCarTelemetryData,
                           PacketEventData, PacketFinalClassificationData,
@@ -34,7 +34,7 @@ from lib.f1_types import (F1PacketType, InvalidPacketLengthError,
                           PacketParticipantsData, PacketSessionData,
                           PacketSessionHistoryData, PacketTimeTrialData,
                           PacketTyreSetsData)
-from lib.socket_receiver import (AsyncTCPListener, AsyncUDPListener,
+from apps.lib.socket_receiver import (AsyncTCPListener, AsyncUDPListener,
                                  TCPListener, UDPListener)
 
 # ------------------------- GLOBALS ------------------------------------------------------------------------------------

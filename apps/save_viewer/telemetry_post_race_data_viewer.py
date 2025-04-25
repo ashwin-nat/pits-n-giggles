@@ -40,10 +40,10 @@ from engineio.async_drivers import gevent
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from lib.f1_types import F1Utils, LapData, ResultStatus, LapHistoryData
-import lib.race_analyzer as RaceAnalyzer
-import lib.overtake_analyzer as OvertakeAnalyzer
-from lib.tyre_wear_extrapolator import TyreWearPerLap
+from apps.lib.f1_types import F1Utils, LapData, ResultStatus, LapHistoryData
+import apps.lib.race_analyzer as RaceAnalyzer
+import apps.lib.overtake_analyzer as OvertakeAnalyzer
+from apps.lib.tyre_wear_extrapolator import TyreWearPerLap
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_socketio import SocketIO, emit
 

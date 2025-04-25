@@ -27,7 +27,7 @@ import sys
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from lib.collisions_analyzer import CollisionRecord, CollisionPairKey, CollisionAnalyzer, CollisionAnalyzerMode
+from apps.lib.collisions_analyzer import CollisionRecord, CollisionPairKey, CollisionAnalyzer, CollisionAnalyzerMode
 from tests_base import F1TelemetryUnitTestsBase
 
 # ----------------------------------------------------------------------------------------------------------------------

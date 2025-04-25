@@ -30,7 +30,7 @@ import tempfile
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from lib.packet_cap import F1PacketCapture, F1PktCapFileHeader, F1PktCapMessage
+from apps.lib.packet_cap import F1PacketCapture, F1PktCapFileHeader, F1PktCapMessage
 from tests_base import F1TelemetryUnitTestsBase
 
 # ----------------------------------------------------------------------------------------------------------------------

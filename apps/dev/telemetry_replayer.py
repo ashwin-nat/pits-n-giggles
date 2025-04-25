@@ -34,7 +34,7 @@ import random
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Now perform the import
-from lib.packet_cap import F1PacketCapture
+from apps.lib.packet_cap import F1PacketCapture
 
 def should_drop(probability_percentage: int) -> bool:
     """

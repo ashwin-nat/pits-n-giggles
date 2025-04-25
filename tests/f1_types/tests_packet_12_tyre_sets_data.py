@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 import random
-from lib.f1_types import TyreSetData, PacketTyreSetsData, F1PacketType, PacketHeader, \
+from apps.lib.f1_types import TyreSetData, PacketTyreSetsData, F1PacketType, PacketHeader, \
     ActualTyreCompound, VisualTyreCompound, SessionType23, SessionType24
 from .tests_parser_base import F1TypesTest
 

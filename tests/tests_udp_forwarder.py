@@ -32,7 +32,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from tests_base import F1TelemetryUnitTestsBase
 
-from lib.packet_forwarder import AsyncUDPForwarder, UDPForwarder
+from apps.lib.packet_forwarder import AsyncUDPForwarder, UDPForwarder
 
 # ----------------------------------------------------------------------------------------------------------------------
 

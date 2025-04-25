@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 import random
-from lib.f1_types import FinalClassificationData, PacketFinalClassificationData, F1PacketType, \
+from apps.lib.f1_types import FinalClassificationData, PacketFinalClassificationData, F1PacketType, \
     PacketHeader, ResultStatus, VisualTyreCompound, ActualTyreCompound
 from .tests_parser_base import F1TypesTest
 

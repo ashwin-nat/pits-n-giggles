@@ -24,11 +24,11 @@
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
+from apps.lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
-from lib.f1_types import (F1Utils, LapData, SafetyCarType, SessionType23,
+from apps.lib.f1_types import (F1Utils, LapData, SafetyCarType, SessionType23,
                           SessionType24, TelemetrySetting)
-from lib.tyre_wear_extrapolator import TyreWearPerLap
+from apps.lib.tyre_wear_extrapolator import TyreWearPerLap
 from .car_info import CarInfo
 from .driver_info import DriverInfo
 from .lap_info import LapInfo

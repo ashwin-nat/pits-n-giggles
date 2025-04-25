@@ -30,16 +30,16 @@ import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-import lib.race_analyzer as RaceAnalyzer
+import apps.lib.race_analyzer as RaceAnalyzer
 import apps.backend.state_mgmt_layer.telemetry_data as TelData
-from lib.button_debouncer import ButtonDebouncer
-from lib.f1_types import (F1PacketType, PacketEventData,
+from apps.lib.button_debouncer import ButtonDebouncer
+from apps.lib.f1_types import (F1PacketType, PacketEventData,
                           PacketFinalClassificationData, PacketSessionData,
                           SessionType23, SessionType24)
-from lib.inter_task_communicator import AsyncInterTaskCommunicator
-from lib.packet_forwarder import AsyncUDPForwarder
+from apps.lib.inter_task_communicator import AsyncInterTaskCommunicator
+from apps.lib.packet_forwarder import AsyncUDPForwarder
 from apps.backend.common.png_logger import getLogger
-from lib.telemetry_manager import AsyncF1TelemetryManager
+from apps.lib.telemetry_manager import AsyncF1TelemetryManager
 
 # -------------------------------------- TYPE DEFINITIONS --------------------------------------------------------------
 

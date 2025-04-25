@@ -22,7 +22,7 @@
 
 
 from typing import Dict, Any, Optional
-from lib.f1_types import F1Utils
+from apps.lib.f1_types import F1Utils
 
 def _isATwat(driver_data: Dict[str, Any]) -> bool:
     """

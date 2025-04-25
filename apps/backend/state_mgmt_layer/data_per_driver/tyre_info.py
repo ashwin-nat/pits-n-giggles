@@ -26,9 +26,9 @@ import json
 from dataclasses import InitVar, dataclass, field
 from typing import Any, Dict, List, Optional
 
-from lib.f1_types import (ActualTyreCompound, PacketTyreSetsData,
+from apps.lib.f1_types import (ActualTyreCompound, PacketTyreSetsData,
                           VisualTyreCompound)
-from lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
+from apps.lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
 from apps.backend.common.png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------

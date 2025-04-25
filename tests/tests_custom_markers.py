@@ -27,8 +27,8 @@ import sys
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from lib.custom_marker_tracker import CustomMarkerEntry, CustomMarkersHistory
-from lib.f1_types import LapData
+from apps.lib.custom_marker_tracker import CustomMarkerEntry, CustomMarkersHistory
+from apps.lib.f1_types import LapData
 from tests_base import F1TelemetryUnitTestsBase
 
 # ----------------------------------------------------------------------------------------------------------------------
