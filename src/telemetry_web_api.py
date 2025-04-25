@@ -581,7 +581,8 @@ class DriversListRsp:
         self.m_fastest_s1_ms: Optional[int] = None
         self.m_fastest_s2_ms: Optional[int] = None
         self.m_fastest_s3_ms: Optional[int] = None
-        if is_tt_mode:
+        self.m_is_tt_mode : bool = is_tt_mode
+        if self.m_is_tt_mode:
             self.__initTTDict()
         else:
             self.__initDriverList()
@@ -603,6 +604,9 @@ class DriversListRsp:
 
         if len(self.m_json_rsp) == 0:
             return None
+
+        if self.m_is_tt_mode:
+            return self.m_json_rsp["current-lap"]
 
         if self.m_is_spectator_mode:
             return self.m_json_rsp[0]["lap-info"]["current-lap"]
@@ -726,6 +730,7 @@ class DriversListRsp:
         else:
             session_history = None
         self.m_json_rsp = {
+            "current-lap" : player_obj.m_lap_info.m_current_lap,
             "session-history": session_history,
             "tt-data": self.m_time_trial_packet.toJSON() if self.m_time_trial_packet else None,
         }

@@ -3,7 +3,7 @@ import tempfile
 from pathlib import Path
 
 app_name = 'pits_n_giggles'
-app_ver = '2.3.0'
+app_ver = '2.3.1'
 
 # Create a temporary runtime hook file
 temp_dir = tempfile.mkdtemp()
