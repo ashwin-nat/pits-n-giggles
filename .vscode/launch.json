@@ -9,7 +9,7 @@
             "name": "App - Module",
             "type": "debugpy",
             "request": "launch",
-            "module": "apps.backend.app",
+            "module": "apps.backend.pits_n_giggles",
             "console": "integratedTerminal",
             "args": [
                 "--debug"
@@ -20,7 +20,7 @@
             "name": "App - Module (Replay)",
             "type": "debugpy",
             "request": "launch",
-            "module": "apps.backend.app",
+            "module": "apps.backend.pits_n_giggles",
             "console": "integratedTerminal",
             "args": [
                 "--debug",

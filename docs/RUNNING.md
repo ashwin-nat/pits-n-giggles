@@ -30,7 +30,7 @@ All commands below must be run **from the project root directory** (i.e., the fo
 ### 🧠 Backend App
 
 ```bash
-poetry run python -m apps.backend.app --replay-server
+poetry run python -m apps.backend.pits_n_giggles --replay-server
 ```
 
 ### 🛠 Dev Tools (e.g., telemetry replayer)
