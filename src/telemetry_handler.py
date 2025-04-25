@@ -51,6 +51,7 @@ g_udp_custom_action_code: Optional[int] = None
 g_udp_tyre_delta_action_code: Optional[int] = None
 g_last_session_uid: Optional[int] = None
 g_data_cleared_this_session: bool = False
+g_final_classification_processed: bool = False
 g_button_debouncer = ButtonDebouncer()
 png_logger = getLogger()
 
@@ -180,8 +181,9 @@ def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
 
 async def clearAllDataStructures() -> None:
     TelData.processSessionStarted()
-    global g_data_cleared_this_session
+    global g_data_cleared_this_session, g_final_classification_processed
     g_data_cleared_this_session = True
+    g_final_classification_processed = False
 
 # -------------------------------------- TELEMETRY PACKET HANDLERS -----------------------------------------------------
 
@@ -375,13 +377,13 @@ class F1TelemetryHandler:
         Arguments
             packet - PacketCarStatusData object
         """
-        global g_last_session_uid
-        if packet.m_header.m_sessionUID == g_last_session_uid:
+        global g_final_classification_processed
+        if g_final_classification_processed:
             png_logger.debug('Session UID %d final classification already processed.', packet.m_header.m_sessionUID)
             return
         png_logger.info('Received Final Classification Packet.')
         final_json = TelData.processFinalClassificationUpdate(packet)
-        g_last_session_uid = packet.m_header.m_sessionUID
+        g_final_classification_processed = True
 
         # Perform the auto save stuff only for races
         if event_type_str := str(TelData.getSessionInfo().m_session_type):

@@ -22,9 +22,42 @@
 
 from typing import Any, Dict, List, Optional, Tuple
 
-import numpy as np
-from sklearn.linear_model import LinearRegression
+class SimpleLinearRegression:
+    """A simple linear regression class to perform linear regression using least squares method."""
 
+    def __init__(self):
+        self.m = 0.0  # Slope
+        self.c = 0.0  # Intercept
+
+    def fit(self, x: List[int], y: List[float]) -> None:
+        """Fit a simple linear regression model using least squares method
+
+        Args:
+            x (List[int]): List of x values
+            y (List[float]): List of y values
+        """
+        if not x or not y:
+            raise ValueError("Both x and y must be non-empty lists.")
+
+        if len(x) == 1:  # Special case when there's only one point
+            self.m = 0  # No slope with only one point, or assume a default value
+            self.c = y[0]  # The intercept is just the first y value (starting wear)
+        else:
+            # Calculate the slope and intercept normally for more than one point
+            mean_x = sum(x) / len(x)
+            mean_y = sum(y) / len(y)
+
+            numerator = sum((x[i] - mean_x) * (y[i] - mean_y) for i in range(len(x)))
+            denominator = sum((x[i] - mean_x) ** 2 for i in range(len(x)))
+
+            self.m = numerator / denominator if denominator != 0 else 0
+            self.c = mean_y - self.m * mean_x  # Intercept
+
+    def predict(self, x: int) -> float:
+        """Predict the y value for a given x value using the simple linear regression model."""
+        if not isinstance(x, int):
+            raise ValueError(f"Expected x to be an int, got {type(x)} instead.")
+        return self.m * x + self.c
 
 class TyreWearPerLap:
     """Class representing the tyre wear percentage per lap.
@@ -253,22 +286,23 @@ class TyreWearExtrapolator:
             racing_data (List[TyreWearPerLap]): List of all TyreWearPerLap only for racing laps
         """
 
-        laps = np.array([point.lap_number for point in racing_data]).reshape(-1, 1)
-        self.m_fl_regression = LinearRegression().fit(
-            laps, np.array([point.fl_tyre_wear for point in racing_data])
-        )
+        laps = [point.lap_number for point in racing_data]
+        fl_wear = [point.fl_tyre_wear for point in racing_data]
+        fr_wear = [point.fr_tyre_wear for point in racing_data]
+        rl_wear = [point.rl_tyre_wear for point in racing_data]
+        rr_wear = [point.rr_tyre_wear for point in racing_data]
 
-        self.m_fr_regression = LinearRegression().fit(
-            laps, np.array([point.fr_tyre_wear for point in racing_data])
-        )
+        # Initialize the simple linear regression models for each tyre
+        self.m_fl_regression = SimpleLinearRegression()
+        self.m_fr_regression = SimpleLinearRegression()
+        self.m_rl_regression = SimpleLinearRegression()
+        self.m_rr_regression = SimpleLinearRegression()
 
-        self.m_rl_regression = LinearRegression().fit(
-            laps, np.array([point.rl_tyre_wear for point in racing_data])
-        )
-
-        self.m_rr_regression = LinearRegression().fit(
-            laps, np.array([point.rr_tyre_wear for point in racing_data])
-        )
+        # Fit each model
+        self.m_fl_regression.fit(laps, fl_wear)
+        self.m_fr_regression.fit(laps, fr_wear)
+        self.m_rl_regression.fit(laps, rl_wear)
+        self.m_rr_regression.fit(laps, rr_wear)
 
         assert self.m_initial_data[-1].lap_number is not None
         assert self.m_total_laps is not None
@@ -327,10 +361,10 @@ class TyreWearExtrapolator:
         else:
             self.m_remaining_laps : int = total_laps
         self.m_predicted_tyre_wear: List[TyreWearPerLap] = []
-        self.m_fl_regression : LinearRegression = None
-        self.m_fr_regression : LinearRegression = None
-        self.m_rl_regression : LinearRegression = None
-        self.m_rr_regression : LinearRegression = None
+        self.m_fl_regression : SimpleLinearRegression = None
+        self.m_fr_regression : SimpleLinearRegression = None
+        self.m_rl_regression : SimpleLinearRegression = None
+        self.m_rr_regression : SimpleLinearRegression = None
 
         # Can't init the data models if there is no data
         if not self.m_initial_data:
@@ -339,27 +373,7 @@ class TyreWearExtrapolator:
         # Combine all laps, excluding non-racing laps
         racing_data = [point for interval in self.m_intervals \
                            if all(point.is_racing_lap for point in interval) for point in interval]
-
-        # Fit linear regression model for each tyre using racing data
-        self.m_fl_regression = LinearRegression().fit(
-            np.array([point.lap_number for point in racing_data]).reshape(-1, 1),
-            np.array([point.fl_tyre_wear for point in racing_data])
-        )
-        self.m_fr_regression = LinearRegression().fit(
-            np.array([point.lap_number for point in racing_data]).reshape(-1, 1),
-            np.array([point.fr_tyre_wear for point in racing_data])
-        )
-        self.m_rl_regression = LinearRegression().fit(
-            np.array([point.lap_number for point in racing_data]).reshape(-1, 1),
-            np.array([point.rl_tyre_wear for point in racing_data])
-        )
-        self.m_rr_regression = LinearRegression().fit(
-            np.array([point.lap_number for point in racing_data]).reshape(-1, 1),
-            np.array([point.rr_tyre_wear for point in racing_data])
-        )
-
-        # Update the predicted tyre wear data structure
-        self._extrapolateTyreWear()
+        self._performRegressions(racing_data)
 
     def _extrapolateTyreWear(self) -> None:
         """Extrapolate the tyre wear for the remaining laps of the race and stores in m_predicted_tyre_wear
@@ -368,27 +382,28 @@ class TyreWearExtrapolator:
         # No more predictions to do. give the actual data
         if self.m_remaining_laps == 0:
             self.m_predicted_tyre_wear = [self.m_initial_data[-1]]
-
         else:
             assert self.m_fl_regression is not None
             assert self.m_fr_regression is not None
             assert self.m_rl_regression is not None
             assert self.m_rr_regression is not None
 
-            self.m_predicted_tyre_wear: List[TyreWearPerLap] = []
-            for lap in range(self.m_total_laps-self.m_remaining_laps+1, self.m_total_laps+1):
-                fl_wear = self.m_fl_regression.predict([[lap]])[0]
-                fr_wear = self.m_fr_regression.predict([[lap]])[0]
-                rl_wear = self.m_rl_regression.predict([[lap]])[0]
-                rr_wear = self.m_rr_regression.predict([[lap]])[0]
+            self.m_predicted_tyre_wear = []
+            for lap in range(self.m_total_laps - self.m_remaining_laps + 1, self.m_total_laps + 1):
+                fl_wear = self.m_fl_regression.predict(lap)
+                fr_wear = self.m_fr_regression.predict(lap)
+                rl_wear = self.m_rl_regression.predict(lap)
+                rr_wear = self.m_rr_regression.predict(lap)
 
-                self.m_predicted_tyre_wear.append(TyreWearPerLap(
+                # Add the predicted tyre wear for the current lap
+                predicted_tyre = TyreWearPerLap(
                     fl_tyre_wear=fl_wear,
                     fr_tyre_wear=fr_wear,
                     rl_tyre_wear=rl_wear,
                     rr_tyre_wear=rr_wear,
                     lap_number=lap,
-                ))
+                )
+                self.m_predicted_tyre_wear.append(predicted_tyre)
 
     def _segmentData(self, data: List[TyreWearPerLap]) -> List[List[TyreWearPerLap]]:
         """
