@@ -304,7 +304,7 @@ class F1PacketCapture:
         self.is_compressed = compressed
 
         if file_name:
-            self.readFromFile(file_name, append=False)
+            self.readFromFile(file_name)
         else:
             self.m_header = F1PktCapFileHeader(
                 major_version=self.major_ver,
@@ -316,6 +316,14 @@ class F1PacketCapture:
                 self.m_compression_helper: CompressionHelper = ZlibCompressionHelper()
             else:
                 self.m_compression_helper: CompressionHelper = NoCompressionHelper()
+
+    def set_compressed(self, compressed: bool):
+        """Set the compression state and update the compression helper accordingly."""
+        self.is_compressed = compressed
+        if compressed:
+            self.m_compression_helper = ZlibCompressionHelper()
+        else:
+            self.m_compression_helper = NoCompressionHelper()
 
     def add(self, data: bytes):
         """
@@ -393,23 +401,17 @@ class F1PacketCapture:
 
         return file_name, total_packet_count, byte_count
 
-    def readFromFile(self, file_name: str, append:bool = False) -> None:
+    def readFromFile(self, file_name: str) -> None:
         """
         Read packet entries from a binary file and populate the packet history.
 
         Parameters:
             - file_name (str): The name of the file to read from.
-            - append (bool): If true, will append the file contents into the existing table
-                                If false, will clear the table before reading the file
 
         Raises:
             - ValueError: If the number of packets mentioned in the file does not match
                 the number of packets in the file body
         """
-        # Clear existing entries before reading from file if not in append mode
-
-        if not append:
-            self.clear()
 
         with open(file_name, "rb") as file:
             # First, fetch the file header

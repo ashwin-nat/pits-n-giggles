@@ -111,7 +111,7 @@ def main():
 
     try:
         # Read and parse the file
-        captured_packets = F1PacketCapture(args.file_name)
+        captured_packets = F1PacketCapture(file_name=args.file_name)
         total_bytes = 0
         dropped_packets = 0
         if args.udp_mode:

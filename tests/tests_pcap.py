@@ -22,15 +22,15 @@
 # pylint: skip-file
 
 import os
-from tempfile import NamedTemporaryFile
-from colorama import Fore, Style
 import random
 import sys
+import time
+import tempfile
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from lib.packet_cap import F1PacketCapture, F1PktCapFileHeader
+from lib.packet_cap import F1PacketCapture, F1PktCapFileHeader, F1PktCapMessage
 from tests_base import F1TelemetryUnitTestsBase
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -243,3 +243,197 @@ class TestF1PacketCaptureHeader(TestF1PacketCapture):
         # Test minor version boundary
         with self.assertRaises(ValueError):
             F1PktCapFileHeader(minor_version=16)
+
+class TestF1PacketCaptureCompression(TestF1PacketCapture):
+    def setUp(self):
+        # Create some sample packet data for testing
+        self.test_packets = [
+            b'This is test packet 1',
+            b'This is a longer test packet with more data to compress',
+            b'\x00\x01\x02\x03\x04\x05', # Binary data
+            b'Short',
+            b'A' * 1000  # Large packet to test compression
+        ]
+        self.test_timestamps = [
+            time.time(),
+            time.time() + 0.1,
+            time.time() + 0.2,
+            time.time() + 0.3,
+            time.time() + 0.4
+        ]
+
+    def test_uncompressed_to_compressed_conversion(self):
+        """Test converting from uncompressed to compressed format"""
+        # Create an uncompressed capture
+        uncompressed_capture = F1PacketCapture(compressed=False)
+
+        # Add test packets
+        for packet in self.test_packets:
+            uncompressed_capture.add(packet)
+
+        # Write uncompressed file
+        temp_dir = tempfile.gettempdir()
+        uncompressed_filename = os.path.join(temp_dir, "uncompressed_test.f1pcap")
+        uncompressed_capture.dumpToFile(uncompressed_filename)
+
+        # Create new capture from the uncompressed file
+        loaded_uncompressed = F1PacketCapture(file_name=uncompressed_filename)
+
+        # Convert to compressed
+        compressed_filename = os.path.join(temp_dir, "compressed_test.f1pcap")
+        compressed_capture = F1PacketCapture(compressed=True)
+
+        # Copy packets from uncompressed to compressed
+        for timestamp, data in loaded_uncompressed.getPackets():
+            entry = F1PktCapMessage(data, timestamp, is_little_endian=compressed_capture.is_little_endian)
+            compressed_capture.m_packet_history.append(entry)
+            compressed_capture.m_header.num_packets += 1
+
+        # Write compressed file
+        compressed_capture.dumpToFile(compressed_filename)
+
+        # Load the compressed file
+        loaded_compressed = F1PacketCapture(file_name=compressed_filename)
+
+        # Verify packets match
+        self.assertEqual(loaded_uncompressed.getNumPackets(), loaded_compressed.getNumPackets())
+
+        # Compare packets
+        uncompressed_packets = list(loaded_uncompressed.getPackets())
+        compressed_packets = list(loaded_compressed.getPackets())
+
+        for i in range(len(uncompressed_packets)):
+            # Compare timestamps (with small float tolerance)
+            self.assertAlmostEqual(uncompressed_packets[i][0], compressed_packets[i][0], places=6)
+            # Compare data
+            self.assertEqual(uncompressed_packets[i][1], compressed_packets[i][1])
+
+        # Clean up
+        os.remove(uncompressed_filename)
+        os.remove(compressed_filename)
+
+    def test_conversion_helper_method(self):
+        """Test a helper method to convert between formats"""
+        # Create uncompressed capture with test data
+        uncompressed_capture = F1PacketCapture(compressed=False)
+        for i, packet in enumerate(self.test_packets):
+            entry = F1PktCapMessage(packet, self.test_timestamps[i], is_little_endian=uncompressed_capture.is_little_endian)
+            uncompressed_capture.m_packet_history.append(entry)
+            uncompressed_capture.m_header.num_packets += 1
+
+        # Convert to compressed format using a helper method
+        def convert_capture_format(source_capture, target_compressed):
+            """Helper method to convert between compressed/uncompressed formats"""
+            temp_dir = tempfile.gettempdir()
+            temp_filename = os.path.join(temp_dir, f"temp_conversion_{int(time.time())}.f1pcap")
+
+            # Write source to file
+            source_capture.dumpToFile(temp_filename)
+
+            # Create new capture with target compression setting
+            converted = F1PacketCapture(compressed=target_compressed)
+
+            # Load packets from source
+            source_packets = list(source_capture.getPackets())
+
+            # Add packets to new capture
+            for timestamp, data in source_packets:
+                entry = F1PktCapMessage(data, timestamp, is_little_endian=converted.is_little_endian)
+                converted.m_packet_history.append(entry)
+                converted.m_header.num_packets += 1
+
+            # Clean up temp file
+            os.remove(temp_filename)
+
+            return converted
+
+        # Convert uncompressed to compressed
+        compressed_capture = convert_capture_format(uncompressed_capture, True)
+
+        # Verify conversion
+        self.assertTrue(compressed_capture.is_compressed)
+        self.assertEqual(uncompressed_capture.getNumPackets(), compressed_capture.getNumPackets())
+
+        # Compare packets
+        uncompressed_packets = list(uncompressed_capture.getPackets())
+        compressed_packets = list(compressed_capture.getPackets())
+
+        for i in range(len(uncompressed_packets)):
+            # Compare timestamps
+            self.assertEqual(uncompressed_packets[i][0], compressed_packets[i][0])
+            # Compare data
+            self.assertEqual(uncompressed_packets[i][1], compressed_packets[i][1])
+
+        # Now convert back to uncompressed
+        back_to_uncompressed = convert_capture_format(compressed_capture, False)
+
+        # Verify conversion back
+        self.assertFalse(back_to_uncompressed.is_compressed)
+        self.assertEqual(compressed_capture.getNumPackets(), back_to_uncompressed.getNumPackets())
+
+        # Compare packets again
+        back_packets = list(back_to_uncompressed.getPackets())
+
+        for i in range(len(compressed_packets)):
+            # Compare timestamps
+            self.assertEqual(compressed_packets[i][0], back_packets[i][0])
+            # Compare data
+            self.assertEqual(compressed_packets[i][1], back_packets[i][1])
+
+    def test_direct_conversion_method(self):
+        """Test a direct method to convert a file between compressed/uncompressed"""
+        # Create and implement a convert_file function
+        def convert_file(input_filename, output_filename, target_compressed):
+            """Convert a capture file between compressed/uncompressed formats"""
+            # Load source file
+            source_capture = F1PacketCapture(file_name=input_filename)
+
+            # Create target capture with desired compression
+            target_capture = F1PacketCapture(compressed=target_compressed)
+
+            # Copy all packets
+            for timestamp, data in source_capture.getPackets():
+                entry = F1PktCapMessage(data, timestamp, is_little_endian=target_capture.is_little_endian)
+                target_capture.m_packet_history.append(entry)
+                target_capture.m_header.num_packets += 1
+
+            # Write to target file
+            target_capture.dumpToFile(output_filename)
+
+            return target_capture.getNumPackets()
+
+        # Create test capture file
+        uncompressed_capture = F1PacketCapture(compressed=False)
+        for packet in self.test_packets:
+            uncompressed_capture.add(packet)
+
+        # Save to temp file
+        temp_dir = tempfile.gettempdir()
+        uncompressed_filename = os.path.join(temp_dir, "unconverted.f1pcap")
+        compressed_filename = os.path.join(temp_dir, "converted.f1pcap")
+
+        uncompressed_capture.dumpToFile(uncompressed_filename)
+
+        # Convert to compressed
+        packets_converted = convert_file(uncompressed_filename, compressed_filename, True)
+
+        # Verify conversion
+        self.assertEqual(uncompressed_capture.getNumPackets(), packets_converted)
+
+        # Load converted file and check
+        compressed_capture = F1PacketCapture(file_name=compressed_filename)
+
+        # Verify compression flag is set
+        self.assertTrue(compressed_capture.m_header.is_compressed)
+
+        # Compare packets
+        uncompressed_packets = list(uncompressed_capture.getPackets())
+        compressed_packets = list(compressed_capture.getPackets())
+
+        for i in range(len(uncompressed_packets)):
+            # Compare data (timestamps may have floating point differences due to serialization)
+            self.assertEqual(uncompressed_packets[i][1], compressed_packets[i][1])
+
+        # Clean up
+        os.remove(uncompressed_filename)
+        os.remove(compressed_filename)
