@@ -1,0 +1,2 @@
+[lfs]
+    fetchexclude = session_captures/*.f1pcap
