@@ -685,7 +685,6 @@ class DriversListRsp:
         self.m_fastest_s1_ms = TelData._driver_data.m_fastest_s1_ms
         self.m_fastest_s2_ms = TelData._driver_data.m_fastest_s2_ms
         self.m_fastest_s3_ms = TelData._driver_data.m_fastest_s3_ms
-        self.m_time_trial_packet = TelData._driver_data.m_time_trial_packet
 
         # for each driver:
         for index, driver_data in enumerate(TelData._driver_data.m_driver_data):
@@ -714,6 +713,9 @@ class DriversListRsp:
         if not player_obj:
             png_logger.debug("Player not found in TT mode")
             return
+
+        # Init the TT packet copy
+        self.m_time_trial_packet = TelData._driver_data.m_time_trial_packet
 
         # Insert top speed into the lap-history-data records
         if player_obj.m_packet_copies.m_packet_session_history:
