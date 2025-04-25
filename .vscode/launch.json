@@ -1,0 +1,135 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+
+        {
+            "name": "App - Module",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "apps.backend.app",
+            "console": "integratedTerminal",
+            "args": [
+                "--debug"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "App - Module (Replay)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "apps.backend.app",
+            "console": "integratedTerminal",
+            "args": [
+                "--debug",
+                "--replay-server"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Post Race Data Viewer - Module",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "apps.save_viewer.telemetry_post_race_data_viewer",
+            "console": "integratedTerminal",
+            "args": [
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Replayer - Module",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "apps.dev.telemetry_replayer",
+            "console": "integratedTerminal",
+            "args": [
+                "--file-name", "session_captures/f1_24_sp_austria.f1pcap",
+                "--udp-mode",
+                "--speed-multiplier", "10"
+            ]
+        },
+        {
+            "name": "Recorder - Module",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "apps.dev.telemetry_recorder",
+            "console": "integratedTerminal",
+            "args": [
+            ]
+        },
+
+        {
+            "name": "App (Legacy)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "app.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--debug"
+            ]
+        },
+        {
+            "name": "App (Replay) (Legacy)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "app.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--debug",
+                "--replay-server"
+            ]
+        },
+        {
+            "name": "Post Race Data Viewer (Legacy)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "utils/telemetry_post_race_data_viewer.py",
+            "console": "integratedTerminal",
+            "args": [
+            ],
+        },
+        {
+            "name": "Unit Tests",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "tests/unit_tests.py",
+            "console": "integratedTerminal",
+            "args": [
+            ],
+            "cwd" : "${workspaceFolder}"
+        },
+        {
+            "name": "Replayer (Legacy)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "utils/telemetry_replayer.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--file-name", "f1_24_sp_austria.f1pcap",
+                "--udp-mode",
+                "--speed-multiplier", "10"
+            ]
+        },
+        {
+            "name": "Recorder (Legacy)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "utils/telemetry_recorder.py",
+            "console": "integratedTerminal",
+            "args": [
+            ]
+        },
+
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+            ]
+        },
+    ]
+}

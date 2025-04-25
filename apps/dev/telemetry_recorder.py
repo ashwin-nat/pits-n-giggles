@@ -49,7 +49,7 @@ class PacketCaptureTable:
         """
         Initialize the object by creating a new F1PacketCapture instance and a Lock instance.
         """
-        self.m_packet_capture = F1PacketCapture()
+        self.m_packet_capture = F1PacketCapture(compressed=True)
         self.m_lock = Lock()
 
     def add(self, packet: List[bytes]) -> None:
