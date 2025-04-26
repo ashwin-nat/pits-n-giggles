@@ -282,124 +282,6 @@ class F1TelemetryHandler:
                 packet (PacketEventData): The parsed object containing the event data packet's contents
             """
 
-            async def handeSessionStartEvent(packet: PacketEventData) -> None:
-                """
-                Handle and process the session start event
-
-                Args:
-                    packet (PacketEventData): The parsed object containing the session start packet's contents.
-                """
-
-                global g_last_session_uid
-                session_uid = packet.m_header.m_sessionUID
-
-                g_last_session_uid = session_uid
-                await clearAllDataStructures()
-
-            global g_button_debouncer
-
-            # Function to handle BUTTON_STATUS action
-            async def handleButtonStatus(packet: PacketEventData) -> None:
-                """
-                Handle and process the button press event
-
-                Args:
-                    packet (PacketEventData): The parsed object containing the button status packet's contents.
-                """
-
-                if (g_udp_custom_action_code is not None) and \
-                (packet.mEventDetails.isUDPActionPressed(g_udp_custom_action_code)) and \
-                (g_button_debouncer.onButtonPress(g_udp_custom_action_code)):
-                    png_logger.debug('UDP action %d pressed', g_udp_custom_action_code)
-                    await TelState.processCustomMarkerCreate()
-
-                if (g_udp_tyre_delta_action_code is not None) and \
-                (packet.mEventDetails.isUDPActionPressed(g_udp_tyre_delta_action_code)) and \
-                (g_button_debouncer.onButtonPress(g_udp_tyre_delta_action_code)):
-                    png_logger.debug('UDP action %d pressed', g_udp_tyre_delta_action_code)
-                    await TelState.processTyreDeltaSound()
-
-            async def handleFlashBackEvent(packet: PacketEventData) -> None:
-                """
-                Handle and process the flashback event
-
-                Args:
-                    packet (PacketEventData): The parsed object containing the flashback packet's contents.
-                """
-                png_logger.info(f"Flashback event received. Frame ID = {packet.mEventDetails.flashbackFrameIdentifier}")
-
-            async def handleStartLightsEvent(packet: PacketEventData) -> None:
-                """
-                Handle and process the start lights event
-
-                Args:
-                    packet (PacketEventData): The parsed object containing the start lights packet's contents.
-                """
-                # In case session start was missed, clear data structures
-                png_logger.debug(f"Start lights event received. Lights = {packet.mEventDetails.numLights}")
-                if packet.mEventDetails.numLights == 1:
-                    png_logger.info("Session start was missed. Clearing data structures in start lights event")
-                    global g_last_session_uid, g_data_cleared_this_session
-                    session_uid = packet.m_header.m_sessionUID
-
-                    if session_uid != g_last_session_uid:
-                        g_last_session_uid = session_uid
-                        g_data_cleared_this_session = False
-
-                    if not g_data_cleared_this_session:
-                        await clearAllDataStructures()
-                    else:
-                        png_logger.debug("Not clearing data structures in start lights event")
-
-            async def processFastestLapUpdate(packet: PacketEventData) -> None:
-                """Update the data structures with the fastest lap
-
-                Args:
-                    packet (PacketEventData): Fastest lap Event packet
-                """
-
-                TelState._driver_data.processFastestLapUpdate(packet.mEventDetails)
-
-            async def processRetirementEvent(packet: PacketEventData) -> None:
-                """Update the data structures with the driver retirement udpate
-
-                Args:
-                    packet (PacketEventData): Retirement event packet
-                """
-
-                TelState._driver_data.processRetirement(packet.mEventDetails)
-
-            async def processCollisionsEvent(packet: PacketEventData) -> None:
-                """Update the data structures with collisions event udpate.
-
-                Args:
-                    packet (PacketEventData): The event packet
-                """
-
-                record: PacketEventData.Collision = packet.mEventDetails
-                TelState._driver_data.processCollisionEvent(record)
-
-            async def processOvertakeEvent(packet: PacketEventData) -> None:
-                """Add the overtake event to the tracker
-
-                Args:
-                    packet (PacketEventData): Incoming event packet
-                """
-                record: PacketEventData.Overtake = packet.mEventDetails
-                if (overtake_obj := TelState.getOvertakeObj(record.overtakingVehicleIdx,
-                                                           record.beingOvertakenVehicleIdx)):
-                    TelState._driver_data.m_overtakes_history.insert(overtake_obj)
-
-            async def processCollisionsEvent(packet: PacketEventData) -> None:
-                """Update the data structures with collisions event udpate.
-
-                Args:
-                    packet (PacketEventData): The event packet
-                """
-
-                record: PacketEventData.Collision = packet.mEventDetails
-                TelState._driver_data.processCollisionEvent(record)
-
             # Define the handler functions in a dictionary
             event_handler: Dict[PacketEventData.EventPacketType, Callable[[PacketEventData], Awaitable[None]]] = {
                 PacketEventData.EventPacketType.BUTTON_STATUS: handleButtonStatus,
@@ -575,3 +457,121 @@ class F1TelemetryHandler:
             """
 
             TelState._driver_data.processTimeTrialUpdate(packet)
+
+        async def handeSessionStartEvent(packet: PacketEventData) -> None:
+            """
+            Handle and process the session start event
+
+            Args:
+                packet (PacketEventData): The parsed object containing the session start packet's contents.
+            """
+
+            global g_last_session_uid
+            session_uid = packet.m_header.m_sessionUID
+
+            g_last_session_uid = session_uid
+            await clearAllDataStructures()
+
+        global g_button_debouncer
+
+        # Function to handle BUTTON_STATUS action
+        async def handleButtonStatus(packet: PacketEventData) -> None:
+            """
+            Handle and process the button press event
+
+            Args:
+                packet (PacketEventData): The parsed object containing the button status packet's contents.
+            """
+
+            if (g_udp_custom_action_code is not None) and \
+            (packet.mEventDetails.isUDPActionPressed(g_udp_custom_action_code)) and \
+            (g_button_debouncer.onButtonPress(g_udp_custom_action_code)):
+                png_logger.debug('UDP action %d pressed', g_udp_custom_action_code)
+                await TelState.processCustomMarkerCreate()
+
+            if (g_udp_tyre_delta_action_code is not None) and \
+            (packet.mEventDetails.isUDPActionPressed(g_udp_tyre_delta_action_code)) and \
+            (g_button_debouncer.onButtonPress(g_udp_tyre_delta_action_code)):
+                png_logger.debug('UDP action %d pressed', g_udp_tyre_delta_action_code)
+                await TelState.processTyreDeltaSound()
+
+        async def handleFlashBackEvent(packet: PacketEventData) -> None:
+            """
+            Handle and process the flashback event
+
+            Args:
+                packet (PacketEventData): The parsed object containing the flashback packet's contents.
+            """
+            png_logger.info(f"Flashback event received. Frame ID = {packet.mEventDetails.flashbackFrameIdentifier}")
+
+        async def handleStartLightsEvent(packet: PacketEventData) -> None:
+            """
+            Handle and process the start lights event
+
+            Args:
+                packet (PacketEventData): The parsed object containing the start lights packet's contents.
+            """
+            # In case session start was missed, clear data structures
+            png_logger.debug(f"Start lights event received. Lights = {packet.mEventDetails.numLights}")
+            if packet.mEventDetails.numLights == 1:
+                png_logger.info("Session start was missed. Clearing data structures in start lights event")
+                global g_last_session_uid, g_data_cleared_this_session
+                session_uid = packet.m_header.m_sessionUID
+
+                if session_uid != g_last_session_uid:
+                    g_last_session_uid = session_uid
+                    g_data_cleared_this_session = False
+
+                if not g_data_cleared_this_session:
+                    await clearAllDataStructures()
+                else:
+                    png_logger.debug("Not clearing data structures in start lights event")
+
+        async def processFastestLapUpdate(packet: PacketEventData) -> None:
+            """Update the data structures with the fastest lap
+
+            Args:
+                packet (PacketEventData): Fastest lap Event packet
+            """
+
+            TelState._driver_data.processFastestLapUpdate(packet.mEventDetails)
+
+        async def processRetirementEvent(packet: PacketEventData) -> None:
+            """Update the data structures with the driver retirement udpate
+
+            Args:
+                packet (PacketEventData): Retirement event packet
+            """
+
+            TelState._driver_data.processRetirement(packet.mEventDetails)
+
+        async def processCollisionsEvent(packet: PacketEventData) -> None:
+            """Update the data structures with collisions event udpate.
+
+            Args:
+                packet (PacketEventData): The event packet
+            """
+
+            record: PacketEventData.Collision = packet.mEventDetails
+            TelState._driver_data.processCollisionEvent(record)
+
+        async def processOvertakeEvent(packet: PacketEventData) -> None:
+            """Add the overtake event to the tracker
+
+            Args:
+                packet (PacketEventData): Incoming event packet
+            """
+            record: PacketEventData.Overtake = packet.mEventDetails
+            if (overtake_obj := TelState.getOvertakeObj(record.overtakingVehicleIdx,
+                                                        record.beingOvertakenVehicleIdx)):
+                TelState._driver_data.m_overtakes_history.insert(overtake_obj)
+
+        async def processCollisionsEvent(packet: PacketEventData) -> None:
+            """Update the data structures with collisions event udpate.
+
+            Args:
+                packet (PacketEventData): The event packet
+            """
+
+            record: PacketEventData.Collision = packet.mEventDetails
+            TelState._driver_data.processCollisionEvent(record)
