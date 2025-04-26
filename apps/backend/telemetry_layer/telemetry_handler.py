@@ -30,15 +30,20 @@ import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-import lib.race_analyzer as RaceAnalyzer
 import apps.backend.state_mgmt_layer.telemetry_data as TelData
+import lib.race_analyzer as RaceAnalyzer
+from apps.backend.common.png_logger import getLogger
 from lib.button_debouncer import ButtonDebouncer
-from lib.f1_types import (F1PacketType, PacketEventData,
-                          PacketFinalClassificationData, PacketSessionData,
+from lib.f1_types import (F1PacketType, PacketCarDamageData,
+                          PacketCarSetupData, PacketCarStatusData,
+                          PacketCarTelemetryData, PacketEventData,
+                          PacketFinalClassificationData, PacketLapData,
+                          PacketMotionData, PacketParticipantsData,
+                          PacketSessionData, PacketSessionHistoryData,
+                          PacketTimeTrialData, PacketTyreSetsData,
                           SessionType23, SessionType24)
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.packet_forwarder import AsyncUDPForwarder
-from apps.backend.common.png_logger import getLogger
 from lib.telemetry_manager import AsyncF1TelemetryManager
 
 # -------------------------------------- TYPE DEFINITIONS --------------------------------------------------------------
@@ -227,196 +232,218 @@ class F1TelemetryHandler:
         """
         Register callback functions for different types of telemetry packets.
         """
-        # Mapping of packet types to their corresponding handler functions
-        self.m_manager.registerCallbacks({
-            F1PacketType.SESSION: F1TelemetryHandler.handleSessionData,
-            F1PacketType.LAP_DATA: TelData.processLapDataUpdate,
-            F1PacketType.EVENT: F1TelemetryHandler.handleEvent,
-            F1PacketType.PARTICIPANTS: TelData.processParticipantsUpdate,
-            F1PacketType.CAR_TELEMETRY: TelData.processCarTelemetryUpdate,
-            F1PacketType.CAR_STATUS: TelData.processCarStatusUpdate,
-            F1PacketType.FINAL_CLASSIFICATION: F1TelemetryHandler.handleFinalClassification,
-            F1PacketType.CAR_DAMAGE: TelData.processCarDamageUpdate,
-            F1PacketType.SESSION_HISTORY: TelData.processSessionHistoryUpdate,
-            F1PacketType.TYRE_SETS: TelData.processTyreSetsUpdate,
-            F1PacketType.MOTION: TelData.processMotionUpdate,
-            F1PacketType.CAR_SETUPS: TelData.processCarSetupsUpdate,
-            F1PacketType.TIME_TRIAL: TelData.processTimeTrialUpdate,
-        })
 
-        # If the flag is set, register the raw packet callback
         if self.m_should_forward:
-            self.m_manager.registerRawPacketCallback(F1TelemetryHandler.handleRawPacket)
+            @self.m_manager.on_raw_packet()
+            async def handleRawPacket(packet: List[bytes]) -> None:
+                """
+                Handle raw telemetry packet.
+                Parameters:
+                    packet (List[bytes]): The raw telemetry packet.
+                """
+                await AsyncInterTaskCommunicator().send("packet-forward", packet)
 
-    @staticmethod
-    async def handleRawPacket(packet: List[bytes]) -> None:
-        """
-        Handle raw telemetry packet.
-
-        Parameters:
-            packet (List[bytes]): The raw telemetry packet.
-        """
-
-        # InterThreadCommunicator().send("packet-forward", packet)
-        await AsyncInterTaskCommunicator().send("packet-forward", packet)
-
-    @staticmethod
-    async def handleSessionData(packet: PacketSessionData) -> None:
-        """
-        Handle session data telemetry packet.
-
-        Parameters:
-            packet (PacketSessionData): The session data telemetry packet.
-        """
-
-        if packet.m_sessionDuration == 0:
-            png_logger.info("Session duration is 0. clearing data structures")
-            clearAllDataStructures()
-
-        elif TelData.processSessionUpdate(packet):
-            png_logger.info("Session UID changed. clearing data structures")
-            clearAllDataStructures()
-
-    @staticmethod
-    async def handleEvent(packet: PacketEventData) -> None:
-        """Handle the Event packet
-
-        Args:
-            packet (PacketEventData): The parsed object containing the event data packet's contents
-        """
-
-        async def handeSessionStartEvent(packet: PacketEventData) -> None:
+        @self.m_manager.on_packet(F1PacketType.SESSION)
+        async def handleSessionData(packet: PacketSessionData) -> None:
             """
-            Handle and process the session start event
+            Handle session data telemetry packet.
+
+            Parameters:
+                packet (PacketSessionData): The session data telemetry packet.
+            """
+
+            if packet.m_sessionDuration == 0:
+                png_logger.info("Session duration is 0. clearing data structures")
+                clearAllDataStructures()
+
+            elif TelData.processSessionUpdate(packet):
+                png_logger.info("Session UID changed. clearing data structures")
+                clearAllDataStructures()
+
+        @self.m_manager.on_packet(F1PacketType.LAP_DATA)
+        async def processLapDataUpdate(packet: PacketLapData) -> None:
+            """Update the data structures with lap data
 
             Args:
-                packet (PacketEventData): The parsed object containing the session start packet's contents.
+                packet (PacketLapData): Lap Data packet
             """
 
-            global g_last_session_uid
-            session_uid = packet.m_header.m_sessionUID
+            if TelData._driver_data.m_session_info.m_total_laps is not None:
+                TelData._driver_data.processLapDataUpdate(packet)
+                TelData._driver_data.setRaceOngoing()
 
-            g_last_session_uid = session_uid
-            await clearAllDataStructures()
-
-        global g_button_debouncer
-
-        # Function to handle BUTTON_STATUS action
-        async def handleButtonStatus(packet: PacketEventData) -> None:
-            """
-            Handle and process the button press event
+        @self.m_manager.on_packet(F1PacketType.EVENT)
+        async def handleEvent(packet: PacketEventData) -> None:
+            """Handle the Event packet
 
             Args:
-                packet (PacketEventData): The parsed object containing the button status packet's contents.
+                packet (PacketEventData): The parsed object containing the event data packet's contents
             """
 
-            if (g_udp_custom_action_code is not None) and \
-            (packet.mEventDetails.isUDPActionPressed(g_udp_custom_action_code)) and \
-            (g_button_debouncer.onButtonPress(g_udp_custom_action_code)):
-                png_logger.debug('UDP action %d pressed', g_udp_custom_action_code)
-                await TelData.processCustomMarkerCreate()
+            async def handeSessionStartEvent(packet: PacketEventData) -> None:
+                """
+                Handle and process the session start event
 
-            if (g_udp_tyre_delta_action_code is not None) and \
-            (packet.mEventDetails.isUDPActionPressed(g_udp_tyre_delta_action_code)) and \
-            (g_button_debouncer.onButtonPress(g_udp_tyre_delta_action_code)):
-                png_logger.debug('UDP action %d pressed', g_udp_tyre_delta_action_code)
-                await TelData.processTyreDeltaSound()
+                Args:
+                    packet (PacketEventData): The parsed object containing the session start packet's contents.
+                """
 
-        async def handleFlashBackEvent(packet: PacketEventData) -> None:
-            """
-            Handle and process the flashback event
-
-            Args:
-                packet (PacketEventData): The parsed object containing the flashback packet's contents.
-            """
-            png_logger.info(f"Flashback event received. Frame ID = {packet.mEventDetails.flashbackFrameIdentifier}")
-
-        async def handleStartLightsEvent(packet: PacketEventData) -> None:
-            """
-            Handle and process the start lights event
-
-            Args:
-                packet (PacketEventData): The parsed object containing the start lights packet's contents.
-            """
-            # In case session start was missed, clear data structures
-            png_logger.debug(f"Start lights event received. Lights = {packet.mEventDetails.numLights}")
-            if packet.mEventDetails.numLights == 1:
-                png_logger.info("Session start was missed. Clearing data structures in start lights event")
-                global g_last_session_uid, g_data_cleared_this_session
+                global g_last_session_uid
                 session_uid = packet.m_header.m_sessionUID
 
-                if session_uid != g_last_session_uid:
-                    g_last_session_uid = session_uid
-                    g_data_cleared_this_session = False
+                g_last_session_uid = session_uid
+                await clearAllDataStructures()
 
-                if not g_data_cleared_this_session:
-                    await clearAllDataStructures()
+            global g_button_debouncer
+
+            # Function to handle BUTTON_STATUS action
+            async def handleButtonStatus(packet: PacketEventData) -> None:
+                """
+                Handle and process the button press event
+
+                Args:
+                    packet (PacketEventData): The parsed object containing the button status packet's contents.
+                """
+
+                if (g_udp_custom_action_code is not None) and \
+                (packet.mEventDetails.isUDPActionPressed(g_udp_custom_action_code)) and \
+                (g_button_debouncer.onButtonPress(g_udp_custom_action_code)):
+                    png_logger.debug('UDP action %d pressed', g_udp_custom_action_code)
+                    await TelData.processCustomMarkerCreate()
+
+                if (g_udp_tyre_delta_action_code is not None) and \
+                (packet.mEventDetails.isUDPActionPressed(g_udp_tyre_delta_action_code)) and \
+                (g_button_debouncer.onButtonPress(g_udp_tyre_delta_action_code)):
+                    png_logger.debug('UDP action %d pressed', g_udp_tyre_delta_action_code)
+                    await TelData.processTyreDeltaSound()
+
+            async def handleFlashBackEvent(packet: PacketEventData) -> None:
+                """
+                Handle and process the flashback event
+
+                Args:
+                    packet (PacketEventData): The parsed object containing the flashback packet's contents.
+                """
+                png_logger.info(f"Flashback event received. Frame ID = {packet.mEventDetails.flashbackFrameIdentifier}")
+
+            async def handleStartLightsEvent(packet: PacketEventData) -> None:
+                """
+                Handle and process the start lights event
+
+                Args:
+                    packet (PacketEventData): The parsed object containing the start lights packet's contents.
+                """
+                # In case session start was missed, clear data structures
+                png_logger.debug(f"Start lights event received. Lights = {packet.mEventDetails.numLights}")
+                if packet.mEventDetails.numLights == 1:
+                    png_logger.info("Session start was missed. Clearing data structures in start lights event")
+                    global g_last_session_uid, g_data_cleared_this_session
+                    session_uid = packet.m_header.m_sessionUID
+
+                    if session_uid != g_last_session_uid:
+                        g_last_session_uid = session_uid
+                        g_data_cleared_this_session = False
+
+                    if not g_data_cleared_this_session:
+                        await clearAllDataStructures()
+                    else:
+                        png_logger.debug("Not clearing data structures in start lights event")
+
+            # Define the handler functions in a dictionary
+            event_handler = {
+                PacketEventData.EventPacketType.BUTTON_STATUS: handleButtonStatus,
+                PacketEventData.EventPacketType.FASTEST_LAP: TelData.processFastestLapUpdate,
+                PacketEventData.EventPacketType.SESSION_STARTED: handeSessionStartEvent,
+                PacketEventData.EventPacketType.RETIREMENT: TelData.processRetirementEvent,
+                PacketEventData.EventPacketType.OVERTAKE: TelData.processOvertakeEvent,
+                PacketEventData.EventPacketType.COLLISION: TelData.processCollisionsEvent,
+                PacketEventData.EventPacketType.FLASHBACK: handleFlashBackEvent,
+                PacketEventData.EventPacketType.START_LIGHTS: handleStartLightsEvent,
+            }.get(packet.m_eventCode)
+
+            if event_handler:
+                await event_handler(packet)
+
+        @self.m_manager.on_packet(F1PacketType.PARTICIPANTS)
+        async def processParticipantsUpdate(packet: PacketParticipantsData) -> None:
+            """Update the data strucutre with participants information
+
+            Args:
+                packet (PacketParticipantsData): The pariticpants info packet
+            """
+
+            TelData._driver_data.processParticipantsUpdate(packet)
+
+        @self.m_manager.on_packet(F1PacketType.CAR_TELEMETRY)
+        async def processCarTelemetryUpdate(packet: PacketCarTelemetryData) -> None:
+            """Update the data structure with the car telemetry information
+
+            Args:
+                packet (PacketCarTelemetryData): The car telemetry update packet
+            """
+
+            TelData._driver_data.processCarTelemetryUpdate(packet)
+            TelData._driver_data.setRaceOngoing()
+
+        @self.m_manager.on_packet(F1PacketType.CAR_STATUS)
+        async def processCarStatusUpdate(packet: PacketCarStatusData) -> None:
+            """Update the data structures with car status information
+
+            Args:
+                packet (PacketCarStatusData): The car status update packet
+            """
+
+            TelData._driver_data.processCarStatusUpdate(packet)
+            TelData._driver_data.setRaceOngoing()
+
+        @self.m_manager.on_packet(F1PacketType.FINAL_CLASSIFICATION)
+        async def handleFinalClassification(packet: PacketFinalClassificationData) -> None:
+            """
+            Handle and process the final classification packet. This is sent out at the end of the event when the game
+                displays the final classification table
+
+            Arguments
+                packet - PacketCarStatusData object
+            """
+            global g_final_classification_processed
+            if g_final_classification_processed:
+                png_logger.debug('Session UID %d final classification already processed.', packet.m_header.m_sessionUID)
+                return
+            png_logger.info('Received Final Classification Packet.')
+            final_json = TelData.processFinalClassificationUpdate(packet)
+            g_final_classification_processed = True
+
+            # Perform the auto save stuff only for races
+            if event_type_str := str(TelData.getSessionInfo().m_session_type):
+                is_event_supported = True
+                if packet.m_header.m_gameYear == 23:
+                    unsupported_event_types_f1_23 = [
+                        SessionType23.PRACTICE_1,
+                        SessionType23.PRACTICE_2,
+                        SessionType23.PRACTICE_3,
+                        SessionType23.SHORT_PRACTICE,
+                        SessionType23.TIME_TRIAL,
+                        SessionType23.UNKNOWN
+                    ]
+                    for event_type in unsupported_event_types_f1_23:
+                        if str(event_type) in event_type_str:
+                            is_event_supported = False
+                            break
                 else:
-                    png_logger.debug("Not clearing data structures in start lights event")
-
-        # Define the handler functions in a dictionary
-        event_handler = {
-            PacketEventData.EventPacketType.BUTTON_STATUS: handleButtonStatus,
-            PacketEventData.EventPacketType.FASTEST_LAP: TelData.processFastestLapUpdate,
-            PacketEventData.EventPacketType.SESSION_STARTED: handeSessionStartEvent,
-            PacketEventData.EventPacketType.RETIREMENT: TelData.processRetirementEvent,
-            PacketEventData.EventPacketType.OVERTAKE: TelData.processOvertakeEvent,
-            PacketEventData.EventPacketType.COLLISION: TelData.processCollisionsEvent,
-            PacketEventData.EventPacketType.FLASHBACK: handleFlashBackEvent,
-            PacketEventData.EventPacketType.START_LIGHTS: handleStartLightsEvent,
-        }.get(packet.m_eventCode)
-
-        if event_handler:
-            await event_handler(packet)
-
-    @staticmethod
-    async def handleFinalClassification(packet: PacketFinalClassificationData) -> None:
-        """
-        Handle and process the final classification packet. This is sent out at the end of the event when the game
-            displays the final classification table
-
-        Arguments
-            packet - PacketCarStatusData object
-        """
-        global g_final_classification_processed
-        if g_final_classification_processed:
-            png_logger.debug('Session UID %d final classification already processed.', packet.m_header.m_sessionUID)
-            return
-        png_logger.info('Received Final Classification Packet.')
-        final_json = TelData.processFinalClassificationUpdate(packet)
-        g_final_classification_processed = True
-
-        # Perform the auto save stuff only for races
-        if event_type_str := str(TelData.getSessionInfo().m_session_type):
-            is_event_supported = True
-            if packet.m_header.m_gameYear == 23:
-                unsupported_event_types_f1_23 = [
-                    SessionType23.PRACTICE_1,
-                    SessionType23.PRACTICE_2,
-                    SessionType23.PRACTICE_3,
-                    SessionType23.SHORT_PRACTICE,
-                    SessionType23.TIME_TRIAL,
-                    SessionType23.UNKNOWN
-                ]
-                for event_type in unsupported_event_types_f1_23:
-                    if str(event_type) in event_type_str:
-                        is_event_supported = False
-                        break
-            else:
-                unsupported_event_types_f1_24 = [
-                    SessionType24.PRACTICE_1,
-                    SessionType24.PRACTICE_2,
-                    SessionType24.PRACTICE_3,
-                    SessionType24.SHORT_PRACTICE,
-                    SessionType24.TIME_TRIAL,
-                    SessionType24.UNKNOWN
-                ]
-                for event_type in unsupported_event_types_f1_24:
-                    if str(event_type) in event_type_str:
-                        is_event_supported = False
-                        break
-            if is_event_supported:
-                postGameDumpToFile(final_json)
+                    unsupported_event_types_f1_24 = [
+                        SessionType24.PRACTICE_1,
+                        SessionType24.PRACTICE_2,
+                        SessionType24.PRACTICE_3,
+                        SessionType24.SHORT_PRACTICE,
+                        SessionType24.TIME_TRIAL,
+                        SessionType24.UNKNOWN
+                    ]
+                    for event_type in unsupported_event_types_f1_24:
+                        if str(event_type) in event_type_str:
+                            is_event_supported = False
+                            break
+                if is_event_supported:
+                    postGameDumpToFile(final_json)
 
 
             # # Cancel all tasks except itself
@@ -432,3 +459,68 @@ class F1TelemetryHandler:
             # except asyncio.CancelledError:
             #     pass  # Suppress the traceback
             # return  # Ensure it stops running
+
+        @self.m_manager.on_packet(F1PacketType.CAR_DAMAGE)
+        async def processCarDamageUpdate(packet: PacketCarDamageData):
+            """Update the data strucutres with car damage information
+
+            Args:
+                packet (PacketCarDamageData): The car damage update packet
+            """
+
+            TelData._driver_data.processCarDamageUpdate(packet)
+            TelData._driver_data.setRaceOngoing()
+
+        @self.m_manager.on_packet(F1PacketType.SESSION_HISTORY)
+        async def processSessionHistoryUpdate(packet: PacketSessionHistoryData):
+            """Update the data structures with session history information
+
+            Args:
+                packet (PacketSessionHistoryData): The session history update packet
+            """
+
+            TelData._driver_data.processSessionHistoryUpdate(packet)
+            TelData._driver_data.setRaceOngoing()
+
+        @self.m_manager.on_packet(F1PacketType.TYRE_SETS)
+        async def processTyreSetsUpdate(packet: PacketTyreSetsData) -> None:
+            """Update the data structures with tyre history information
+
+            Args:
+                packet (PacketTyreSetsData): The tyre history update packet
+            """
+
+            TelData._driver_data.processTyreSetsUpdate(packet)
+            TelData._driver_data.setRaceOngoing()
+
+        @self.m_manager.on_packet(F1PacketType.MOTION)
+        async def processMotionUpdate(packet: PacketMotionData) -> None:
+            """Update the data structures with motion information
+
+            Args:
+                packet (PacketMotionData): The motion update packet
+            """
+
+            TelData._driver_data.processMotionUpdate(packet)
+
+        @self.m_manager.on_packet(F1PacketType.CAR_SETUPS)
+        async def processCarSetupsUpdate(packet: PacketCarSetupData) -> None:
+            """Update the data structures with car setup information
+
+            Args:
+                packet (PacketCarSetupData): The car setup update packet
+            """
+
+            if not TelData._driver_data.m_process_car_setups:
+                return
+            TelData._driver_data.processCarSetupsUpdate(packet)
+
+        @self.m_manager.on_packet(F1PacketType.TIME_TRIAL)
+        async def processTimeTrialUpdate(packet: PacketTimeTrialData) -> None:
+            """Update the data structures with time trial information
+
+            Args:
+                packet (PacketTimeTrialData): The time trial update packet
+            """
+
+            TelData._driver_data.processTimeTrialUpdate(packet)

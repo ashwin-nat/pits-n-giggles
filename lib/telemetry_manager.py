@@ -51,21 +51,21 @@ class AsyncF1TelemetryManager:
     """
 
     packet_type_map = {
-        F1PacketType.MOTION : PacketMotionData,
-        F1PacketType.SESSION : PacketSessionData,
-        F1PacketType.LAP_DATA : PacketLapData,
-        F1PacketType.EVENT : PacketEventData,
-        F1PacketType.PARTICIPANTS : PacketParticipantsData,
-        F1PacketType.CAR_SETUPS : PacketCarSetupData,
-        F1PacketType.CAR_TELEMETRY : PacketCarTelemetryData,
-        F1PacketType.CAR_STATUS : PacketCarStatusData,
-        F1PacketType.FINAL_CLASSIFICATION : PacketFinalClassificationData,
-        F1PacketType.LOBBY_INFO : PacketLobbyInfoData,
-        F1PacketType.CAR_DAMAGE : PacketCarDamageData,
-        F1PacketType.SESSION_HISTORY : PacketSessionHistoryData,
-        F1PacketType.TYRE_SETS : PacketTyreSetsData,
-        F1PacketType.MOTION_EX : PacketMotionExData,
-        F1PacketType.TIME_TRIAL : PacketTimeTrialData,
+        F1PacketType.MOTION: PacketMotionData,
+        F1PacketType.SESSION: PacketSessionData,
+        F1PacketType.LAP_DATA: PacketLapData,
+        F1PacketType.EVENT: PacketEventData,
+        F1PacketType.PARTICIPANTS: PacketParticipantsData,
+        F1PacketType.CAR_SETUPS: PacketCarSetupData,
+        F1PacketType.CAR_TELEMETRY: PacketCarTelemetryData,
+        F1PacketType.CAR_STATUS: PacketCarStatusData,
+        F1PacketType.FINAL_CLASSIFICATION: PacketFinalClassificationData,
+        F1PacketType.LOBBY_INFO: PacketLobbyInfoData,
+        F1PacketType.CAR_DAMAGE: PacketCarDamageData,
+        F1PacketType.SESSION_HISTORY: PacketSessionHistoryData,
+        F1PacketType.TYRE_SETS: PacketTyreSetsData,
+        F1PacketType.MOTION_EX: PacketMotionExData,
+        F1PacketType.TIME_TRIAL: PacketTimeTrialData,
     }
 
     def __init__(self, port_number: int, logger: Logger = None, replay_server: bool = False):
@@ -86,78 +86,53 @@ class AsyncF1TelemetryManager:
         else:
             self.m_server = AsyncUDPListener(port_number, "0.0.0.0", buffer_size=4096)
         self.m_callbacks: Dict[F1PacketType, Optional[Callable[[object], Awaitable[None]]]] = {
-            F1PacketType.MOTION : None,
-            F1PacketType.SESSION : None,
-            F1PacketType.LAP_DATA : None,
-            F1PacketType.EVENT : None,
-            F1PacketType.PARTICIPANTS : None,
-            F1PacketType.CAR_SETUPS : None,
-            F1PacketType.CAR_TELEMETRY : None,
-            F1PacketType.CAR_STATUS : None,
-            F1PacketType.FINAL_CLASSIFICATION : None,
-            F1PacketType.LOBBY_INFO : None,
-            F1PacketType.CAR_DAMAGE : None,
-            F1PacketType.SESSION_HISTORY : None,
-            F1PacketType.TYRE_SETS : None,
-            F1PacketType.MOTION_EX : None,
+            F1PacketType.MOTION: None,
+            F1PacketType.SESSION: None,
+            F1PacketType.LAP_DATA: None,
+            F1PacketType.EVENT: None,
+            F1PacketType.PARTICIPANTS: None,
+            F1PacketType.CAR_SETUPS: None,
+            F1PacketType.CAR_TELEMETRY: None,
+            F1PacketType.CAR_STATUS: None,
+            F1PacketType.FINAL_CLASSIFICATION: None,
+            F1PacketType.LOBBY_INFO: None,
+            F1PacketType.CAR_DAMAGE: None,
+            F1PacketType.SESSION_HISTORY: None,
+            F1PacketType.TYRE_SETS: None,
+            F1PacketType.MOTION_EX: None,
+            F1PacketType.TIME_TRIAL: None,
         }
         self.m_raw_packet_callback: Optional[Callable[[object], Awaitable[None]]] = None
 
-    def registerRawPacketCallback(self, callback: Callable[[object], Awaitable[None]]):
-        """Register a callback for every UDP message on this socket. This is useful for debugging
+    def on_packet(self, packet_type: F1PacketType):
+        """Decorator to register a callback for a specific packet type
 
         Args:
-            callback (Callable): The callback function to be executed for every incoming UDP packet.
-                It should be a function that takes one argument containing the list of raw bytes
+            packet_type (F1PacketType): The packet type to register the callback for
 
+        Returns:
+            Callable: The decorator function
         """
+        if not F1PacketType.isValid(packet_type):
+            raise ValueError(f'Invalid packet type: {packet_type}')
 
-        self.m_raw_packet_callback = callback
-
-    def registerCallbacks(
-            self,
-            packet_callbacks: Dict[F1PacketType, Optional[Callable[[object], Awaitable[None]]]]) -> None:
-        """
-        Registers multiple callback functions for specific F1 packet types.
-
-        Args:
-            packet_callbacks (Dict[F1PacketType, Optional[Callable[[object], Awaitable[None]]]]):
-                A dictionary where the keys are F1 packet types
-                and the values are callback functions. Each callback should take one argument of the corresponding
-                packet type (e.g., `PacketMotionData` for `F1PacketType.MOTION`).
-                                It should be a function that takes one argument of the corresponding packet type.
-                e.g. if registering for F1PacketType.MOTION event, the arg passed will be PacketMotionData
-                Refer to the the below table for all mappings
-                    # Packet Type Mappings:
-                    +-------------------------------------+-------------------------------------------+
-                    | F1PacketType                        | Corresponding Packet Class                |
-                    +-------------------------------------+-------------------------------------------+
-                    | F1PacketType.MOTION                 | PacketMotionData                          |
-                    | F1PacketType.SESSION                | PacketSessionData                         |
-                    | F1PacketType.LAP_DATA               | PacketLapData                             |
-                    | F1PacketType.EVENT                  | PacketEventData                           |
-                    | F1PacketType.PARTICIPANTS           | PacketParticipantsData                    |
-                    | F1PacketType.CAR_SETUPS             | PacketCarSetupData                        |
-                    | F1PacketType.CAR_TELEMETRY          | PacketCarTelemetryData                    |
-                    | F1PacketType.CAR_STATUS             | PacketCarStatusData                       |
-                    | F1PacketType.FINAL_CLASSIFICATION   | PacketFinalClassificationData             |
-                    | F1PacketType.LOBBY_INFO             | PacketLobbyInfoData                       |
-                    | F1PacketType.CAR_DAMAGE             | PacketCarDamageData                       |
-                    | F1PacketType.SESSION_HISTORY        | PacketSessionHistoryData                  |
-                    | F1PacketType.TYRE_SETS              | PacketTyreSetsData                        |
-                    | F1PacketType.MOTION_EX              | PacketMotionExData                        |
-                    | F1PacketType.TIME_TRIAL             | PacketTimeTrialData                       |
-                    +-------------------------------------+-------------------------------------------+
-
-        Raises:
-            ValueError: If any provided packet type is not a valid F1PacketType.
-        """
-
-        # Validate and register each callback in the dictionary
-        for packet_type, callback in packet_callbacks.items():
-            if not F1PacketType.isValid(packet_type):
-                raise ValueError(f'Invalid packet type: {packet_type}')
+        def decorator(callback: Callable[[object], Awaitable[None]]):
             self.m_callbacks[packet_type] = callback
+            return callback
+
+        return decorator
+
+    def on_raw_packet(self):
+        """Decorator to register a callback for every raw UDP message
+
+        Returns:
+            Callable: The decorator function
+        """
+        def decorator(callback: Callable[[object], Awaitable[None]]):
+            self.m_raw_packet_callback = callback
+            return callback
+
+        return decorator
 
     async def run(self) -> None:
         """Run the telemetry client asynchronously
