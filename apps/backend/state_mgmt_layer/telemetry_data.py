@@ -884,74 +884,6 @@ def processSessionUpdate(packet: PacketSessionData) -> bool:
         clearDataStructures("session update")
     return should_clear
 
-# async def processLapDataUpdate(packet: PacketLapData) -> None:
-#     """Update the data structures with lap data
-
-#     Args:
-#         packet (PacketLapData): Lap Data packet
-#     """
-
-#     if _driver_data.m_session_info.m_total_laps is not None:
-#         _driver_data.processLapDataUpdate(packet)
-#         _driver_data.setRaceOngoing()
-
-async def processFastestLapUpdate(packet: PacketEventData) -> None:
-    """Update the data structures with the fastest lap
-
-    Args:
-        packet (PacketEventData): Fastest lap Event packet
-    """
-
-    _driver_data.processFastestLapUpdate(packet.mEventDetails)
-
-async def processRetirementEvent(packet: PacketEventData) -> None:
-    """Update the data structures with the driver retirement udpate
-
-    Args:
-        packet (PacketEventData): Retirement event packet
-    """
-
-    _driver_data.processRetirement(packet.mEventDetails)
-
-async def processCollisionsEvent(packet: PacketEventData) -> None:
-    """Update the data structures with collisions event udpate.
-
-    Args:
-        packet (PacketEventData.: The event packet
-    """
-
-    record: PacketEventData.Collision = packet.mEventDetails
-    _driver_data.processCollisionEvent(record)
-
-# async def processParticipantsUpdate(packet: PacketParticipantsData) -> None:
-#     """Update the data strucutre with participants information
-
-#     Args:
-#         packet (PacketParticipantsData): The pariticpants info packet
-#     """
-
-#     _driver_data.processParticipantsUpdate(packet)
-
-# async def processCarTelemetryUpdate(packet: PacketCarTelemetryData) -> None:
-#     """Update the data structure with the car telemetry information
-
-#     Args:
-#         packet (PacketCarTelemetryData): The car telemetry update packet
-#     """
-
-#     _driver_data.processCarTelemetryUpdate(packet)
-#     _driver_data.setRaceOngoing()
-
-# async def processCarStatusUpdate(packet: PacketCarStatusData) -> None:
-#     """Update the data structures with car status information
-
-#     Args:
-#         packet (PacketCarStatusData): The car status update packet
-#     """
-
-#     _driver_data.processCarStatusUpdate(packet)
-#     _driver_data.setRaceOngoing()
-
 def processFinalClassificationUpdate(packet: PacketFinalClassificationData) -> Dict[str, Any]:
     """Update the data structures with the final classification information
         Returns a JSON object containing all drivers data
@@ -967,65 +899,6 @@ def processFinalClassificationUpdate(packet: PacketFinalClassificationData) -> D
     _driver_data.setRaceCompleted()
     final_json['custom-markers'] = _custom_markers_history.getJSONList()
     return final_json
-
-# async def processCarDamageUpdate(packet: PacketCarDamageData):
-#     """Update the data strucutres with car damage information
-
-#     Args:
-#         packet (PacketCarDamageData): The car damage update packet
-#     """
-
-#     _driver_data.processCarDamageUpdate(packet)
-#     _driver_data.setRaceOngoing()
-
-# async def processSessionHistoryUpdate(packet: PacketSessionHistoryData):
-#     """Update the data structures with session history information
-
-#     Args:
-#         packet (PacketSessionHistoryData): The session history update packet
-#     """
-
-#     _driver_data.processSessionHistoryUpdate(packet)
-#     _driver_data.setRaceOngoing()
-
-# async def processTyreSetsUpdate(packet: PacketTyreSetsData) -> None:
-#     """Update the data structures with tyre history information
-
-#     Args:
-#         packet (PacketTyreSetsData): The tyre history update packet
-#     """
-
-#     _driver_data.processTyreSetsUpdate(packet)
-#     _driver_data.setRaceOngoing()
-
-# async def processMotionUpdate(packet: PacketMotionData) -> None:
-#     """Update the data structures with motion information
-
-#     Args:
-#         packet (PacketMotionData): The motion update packet
-#     """
-
-#     _driver_data.processMotionUpdate(packet)
-
-# async def processCarSetupsUpdate(packet: PacketCarSetupData) -> None:
-#     """Update the data structures with car setup information
-
-#     Args:
-#         packet (PacketCarSetupData): The car setup update packet
-#     """
-
-#     if not _driver_data.m_process_car_setups:
-#         return
-#     _driver_data.processCarSetupsUpdate(packet)
-
-# async def processTimeTrialUpdate(packet: PacketTimeTrialData) -> None:
-#     """Update the data structures with time trial information
-
-#     Args:
-#         packet (PacketTimeTrialData): The time trial update packet
-#     """
-
-#     _driver_data.processTimeTrialUpdate(packet)
 
 async def processCustomMarkerCreate() -> None:
     """Update the data structures with custom marker information
@@ -1053,16 +926,6 @@ async def processTyreDeltaSound() -> None:
                 m_message=message
             )
         ))
-
-async def processOvertakeEvent(packet: PacketEventData) -> None:
-    """Add the overtake event to the tracker
-
-    Args:
-        packet (PacketEventData): Incoming event packet
-    """
-    record: PacketEventData.Overtake = packet.mEventDetails
-    if (overtake_obj := getOvertakeObj(record.overtakingVehicleIdx, record.beingOvertakenVehicleIdx)):
-        _driver_data.m_overtakes_history.insert(overtake_obj)
 
 # -------------------------------------- UTILTIES ----------------------------------------------------------------------
 

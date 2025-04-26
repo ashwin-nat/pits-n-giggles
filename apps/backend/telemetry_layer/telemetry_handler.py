@@ -28,7 +28,7 @@ import asyncio
 import json
 import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
 import apps.backend.state_mgmt_layer.telemetry_data as TelData
 import lib.race_analyzer as RaceAnalyzer
@@ -115,6 +115,8 @@ def initForwarder(forwarding_targets: List[Tuple[str, int]], tasks: List[asyncio
     # Register the task only if targets are defined
     if forwarding_targets:
         tasks.append(asyncio.create_task(udpForwardingTask(forwarding_targets), name="UDP Forwarder Task"))
+    else:
+        png_logger.debug("No forwarding targets defined. Not registering task.")
 
 # -------------------------------------- THREADS -----------------------------------------------------------------------
 
@@ -349,14 +351,63 @@ class F1TelemetryHandler:
                     else:
                         png_logger.debug("Not clearing data structures in start lights event")
 
+            async def processFastestLapUpdate(packet: PacketEventData) -> None:
+                """Update the data structures with the fastest lap
+
+                Args:
+                    packet (PacketEventData): Fastest lap Event packet
+                """
+
+                TelData._driver_data.processFastestLapUpdate(packet.mEventDetails)
+
+            async def processRetirementEvent(packet: PacketEventData) -> None:
+                """Update the data structures with the driver retirement udpate
+
+                Args:
+                    packet (PacketEventData): Retirement event packet
+                """
+
+                TelData._driver_data.processRetirement(packet.mEventDetails)
+
+            async def processCollisionsEvent(packet: PacketEventData) -> None:
+                """Update the data structures with collisions event udpate.
+
+                Args:
+                    packet (PacketEventData): The event packet
+                """
+
+                record: PacketEventData.Collision = packet.mEventDetails
+                TelData._driver_data.processCollisionEvent(record)
+
+            async def processOvertakeEvent(packet: PacketEventData) -> None:
+                """Add the overtake event to the tracker
+
+                Args:
+                    packet (PacketEventData): Incoming event packet
+                """
+                record: PacketEventData.Overtake = packet.mEventDetails
+                if (overtake_obj := TelData.getOvertakeObj(record.overtakingVehicleIdx,
+                                                           record.beingOvertakenVehicleIdx)):
+                    TelData._driver_data.m_overtakes_history.insert(overtake_obj)
+
+            async def processCollisionsEvent(packet: PacketEventData) -> None:
+                """Update the data structures with collisions event udpate.
+
+                Args:
+                    packet (PacketEventData): The event packet
+                """
+
+                record: PacketEventData.Collision = packet.mEventDetails
+                TelData._driver_data.processCollisionEvent(record)
+
             # Define the handler functions in a dictionary
-            event_handler = {
+            event_handler: Dict[PacketEventData.EventPacketType, Callable[[PacketEventData], Awaitable[None]]] = {
                 PacketEventData.EventPacketType.BUTTON_STATUS: handleButtonStatus,
-                PacketEventData.EventPacketType.FASTEST_LAP: TelData.processFastestLapUpdate,
+                PacketEventData.EventPacketType.FASTEST_LAP: processFastestLapUpdate,
                 PacketEventData.EventPacketType.SESSION_STARTED: handeSessionStartEvent,
-                PacketEventData.EventPacketType.RETIREMENT: TelData.processRetirementEvent,
-                PacketEventData.EventPacketType.OVERTAKE: TelData.processOvertakeEvent,
-                PacketEventData.EventPacketType.COLLISION: TelData.processCollisionsEvent,
+                PacketEventData.EventPacketType.RETIREMENT: processRetirementEvent,
+                PacketEventData.EventPacketType.OVERTAKE: processOvertakeEvent,
+                PacketEventData.EventPacketType.COLLISION: processCollisionsEvent,
                 PacketEventData.EventPacketType.FLASHBACK: handleFlashBackEvent,
                 PacketEventData.EventPacketType.START_LIGHTS: handleStartLightsEvent,
             }.get(packet.m_eventCode)
@@ -445,7 +496,7 @@ class F1TelemetryHandler:
                 if is_event_supported:
                     postGameDumpToFile(final_json)
 
-
+            # Uncomment the below lines for profiling - Kill the process after one session
             # # Cancel all tasks except itself
             # import asyncio
             # current_task = asyncio.current_task()

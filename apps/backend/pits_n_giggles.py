@@ -207,7 +207,8 @@ async def main(args: argparse.Namespace) -> None:
         config.post_race_data_autosave,
         config.udp_custom_action_code,
         config.udp_tyre_delta_action_code,
-        config.process_car_setup
+        config.process_car_setup,
+        png_logger
     )
 
     tasks: List[asyncio.Task] = []
