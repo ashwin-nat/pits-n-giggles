@@ -25,7 +25,7 @@
 from typing import Any, Dict, List, Optional, Union
 
 import lib.race_analyzer as RaceAnalyzer
-import apps.backend.state_mgmt_layer.telemetry_data as TelData
+import apps.backend.state_mgmt_layer.telemetry_state as TelState
 from lib.f1_types import (CarStatusData, F1Utils, LapHistoryData,
                           VisualTyreCompound)
 from lib.tyre_wear_extrapolator import TyreWearPerLap
@@ -64,7 +64,7 @@ class RaceInfoUpdate:
 
         """
 
-        self.m_session_info = TelData.getSessionInfo()
+        self.m_session_info = TelState.getSessionInfo()
         track_length = self.m_session_info.m_packet_session.m_trackLength if self.m_session_info.m_packet_session else None
         self.m_driver_list_rsp = DriversListRsp(self.m_session_info.m_is_spectating, track_length,
                                                 (str(self.m_session_info.m_session_type) == "Time Trial"))
@@ -184,7 +184,7 @@ class OverallRaceStatsRsp:
         """Get the overall race stats and prepare the rsp fields
         """
 
-        self.m_rsp = TelData.getRaceInfo()
+        self.m_rsp = TelState.getRaceInfo()
         self._checkUpdateRecords()
 
     def _checkUpdateRecords(self):
@@ -221,13 +221,13 @@ class OverallRaceStatsRsp:
                 should_recompute_overtakes = True
 
         if should_recompute_overtakes:
-            _, overtake_records = TelData.getOvertakeJSON()
+            _, overtake_records = TelState.getOvertakeJSON()
             self.m_rsp["overtakes"] = self.m_rsp["overtakes"] | overtake_records
 
-        self.m_rsp["custom-markers"] = TelData.getCustomMarkersJSON()
-        if TelData.isPositionHistorySupported():
+        self.m_rsp["custom-markers"] = TelState.getCustomMarkersJSON()
+        if TelState.isPositionHistorySupported():
             drivers_list_rsp = DriversListRsp(is_spectator_mode=True,
-                                              is_tt_mode=str(TelData.getSessionInfo().m_session_type) == "Time Trial")
+                                              is_tt_mode=str(TelState.getSessionInfo().m_session_type) == "Time Trial")
             self.m_rsp["position-history"] = drivers_list_rsp.getPositionHistoryJSON()
             self.m_rsp["tyre-stint-history"] = drivers_list_rsp.getTyreStintHistoryJSON()
 
@@ -252,9 +252,9 @@ class DriverInfoRsp:
             index (int): Index of the driver
         """
 
-        self.m_rsp = TelData.getDriverInfoJsonByIndex(index)
+        self.m_rsp = TelState.getDriverInfoJsonByIndex(index)
         assert self.m_rsp
-        status, overtakes_info = TelData.getOvertakeJSON(self.m_rsp["driver-name"])
+        status, overtakes_info = TelState.getOvertakeJSON(self.m_rsp["driver-name"])
         self.m_rsp["overtakes-status-code"] = str(status)
         self.m_rsp['overtakes'] = overtakes_info
         assert status != GetOvertakesStatus.INVALID_INDEX
@@ -277,35 +277,35 @@ class PlayerTelemetryOverlayUpdate:
         """Get the player telemetry data and prep the fields
         """
 
-        self.m_track_temp               = TelData._driver_data.m_session_info.m_track_temp
-        self.m_air_temp                 = TelData._driver_data.m_session_info.m_air_temp
-        self.m_weather_forecast_samples = TelData._driver_data.m_session_info.m_weather_forecast_samples
+        self.m_track_temp               = TelState._driver_data.m_session_info.m_track_temp
+        self.m_air_temp                 = TelState._driver_data.m_session_info.m_air_temp
+        self.m_weather_forecast_samples = TelState._driver_data.m_session_info.m_weather_forecast_samples
         if self.m_weather_forecast_samples is None:
             self.m_weather_forecast_samples = []
-        self.m_circuit                  = TelData._driver_data.m_session_info.m_track
-        self.m_total_laps               = TelData._driver_data.m_session_info.m_total_laps
-        self.m_game_year                = TelData._driver_data.m_session_info.m_game_year
-        self.m_session_type               = TelData._driver_data.m_session_info.m_session_type
-        self.m_pit_speed_limit          = TelData._driver_data.m_session_info.m_pit_speed_limit
+        self.m_circuit                  = TelState._driver_data.m_session_info.m_track
+        self.m_total_laps               = TelState._driver_data.m_session_info.m_total_laps
+        self.m_game_year                = TelState._driver_data.m_session_info.m_game_year
+        self.m_session_type               = TelState._driver_data.m_session_info.m_session_type
+        self.m_pit_speed_limit          = TelState._driver_data.m_session_info.m_pit_speed_limit
 
-        self.m_next_pit_window          = TelData._driver_data.m_ideal_pit_stop_window
+        self.m_next_pit_window          = TelState._driver_data.m_ideal_pit_stop_window
         self.m_fastest_lap_ms           = \
-            TelData._driver_data.m_driver_data[TelData._driver_data.m_fastest_index].m_lap_info.m_best_lap_ms if \
-                TelData._driver_data.m_fastest_index is not None else None
-        self.m_fastest_s1_ms            = TelData._driver_data.m_fastest_s1_ms
-        self.m_fastest_s2_ms            = TelData._driver_data.m_fastest_s2_ms
-        self.m_fastest_s3_ms            = TelData._driver_data.m_fastest_s3_ms
-        player_index = TelData._driver_data.m_session_info.m_spectator_car_index \
-                        if TelData._driver_data.m_session_info.m_is_spectating \
-                        else TelData._driver_data.m_player_index
+            TelState._driver_data.m_driver_data[TelState._driver_data.m_fastest_index].m_lap_info.m_best_lap_ms if \
+                TelState._driver_data.m_fastest_index is not None else None
+        self.m_fastest_s1_ms            = TelState._driver_data.m_fastest_s1_ms
+        self.m_fastest_s2_ms            = TelState._driver_data.m_fastest_s2_ms
+        self.m_fastest_s3_ms            = TelState._driver_data.m_fastest_s3_ms
+        player_index = TelState._driver_data.m_session_info.m_spectator_car_index \
+                        if TelState._driver_data.m_session_info.m_is_spectating \
+                        else TelState._driver_data.m_player_index
         player_data = (
-            TelData._driver_data.m_driver_data[player_index]
-            if player_index is not None and 0 <= player_index < len(TelData._driver_data.m_driver_data)
+            TelState._driver_data.m_driver_data[player_index]
+            if player_index is not None and 0 <= player_index < len(TelState._driver_data.m_driver_data)
             else None
         )
         player_position = player_data.m_driver_info.position if player_data else None
-        prev_data = TelData._driver_data.getDriverInfoByPosition(player_position - 1) if player_position else None
-        next_data = TelData._driver_data.getDriverInfoByPosition(player_position + 1) if player_position else None
+        prev_data = TelState._driver_data.getDriverInfoByPosition(player_position - 1) if player_position else None
+        next_data = TelState._driver_data.getDriverInfoByPosition(player_position + 1) if player_position else None
 
         self.__initCarTelemetry(player_data)
         self.__initLapTimes(player_data)
@@ -314,7 +314,7 @@ class PlayerTelemetryOverlayUpdate:
         self.__initGForce(player_data)
         self.__initPaceComparison(player_data, prev_data, next_data)
 
-    def __initCarTelemetry(self, player_data: Optional[TelData.DataPerDriver]) -> None:
+    def __initCarTelemetry(self, player_data: Optional[TelState.DataPerDriver]) -> None:
         """Prepares the car telemetry data.
 
         Args:
@@ -330,7 +330,7 @@ class PlayerTelemetryOverlayUpdate:
             self.m_brake    = 0
             self.m_steering = 0
 
-    def __initLapTimes(self, player_data: Optional[TelData.DataPerDriver]) -> None:
+    def __initLapTimes(self, player_data: Optional[TelState.DataPerDriver]) -> None:
         """Prepares the player's lap history data.
 
         Args:
@@ -343,7 +343,7 @@ class PlayerTelemetryOverlayUpdate:
         self.m_speed_trap_record: Optional[float] = player_data.m_packet_copies.m_packet_lap_data.m_speedTrapFastestSpeed \
             if player_data and player_data.m_packet_copies.m_packet_lap_data else None
 
-    def __initTyreWear(self, player_data: Optional[TelData.DataPerDriver]) -> None:
+    def __initTyreWear(self, player_data: Optional[TelState.DataPerDriver]) -> None:
         """Prepares the player's tyre wear data.
 
         Args:
@@ -373,7 +373,7 @@ class PlayerTelemetryOverlayUpdate:
             )
             self.m_tyre_wear_predictions = []
 
-    def __initPenalties(self, player_data: Optional[TelData.DataPerDriver]) -> None:
+    def __initPenalties(self, player_data: Optional[TelState.DataPerDriver]) -> None:
         """Prepares the player's penalties data.
 
         Args:
@@ -395,7 +395,7 @@ class PlayerTelemetryOverlayUpdate:
             self.m_num_sg = 0
             self.m_num_collisions = 0
 
-    def __initGForce(self, player_data: Optional[TelData.DataPerDriver]) -> None:
+    def __initGForce(self, player_data: Optional[TelState.DataPerDriver]) -> None:
         """Prepares the player's g-force data.
 
         Args:
@@ -412,9 +412,9 @@ class PlayerTelemetryOverlayUpdate:
             self.m_g_force_long = 0
 
     def __initPaceComparison(self,
-                             player_data: TelData.DataPerDriver,
-                             prev_data: Optional[TelData.DataPerDriver],
-                             next_data: Optional[TelData.DataPerDriver]) -> None:
+                             player_data: TelState.DataPerDriver,
+                             prev_data: Optional[TelState.DataPerDriver],
+                             next_data: Optional[TelState.DataPerDriver]) -> None:
         """Prepares the player's pace comparison data.
 
         Args:
@@ -472,7 +472,7 @@ class PlayerTelemetryOverlayUpdate:
 
     def __populatePaceCompDataForDriver(self,
                                         json_dict: Dict[str, any],
-                                        driver_obj: Optional[TelData.DataPerDriver]) -> None:
+                                        driver_obj: Optional[TelState.DataPerDriver]) -> None:
         """Populates the player's pace comparison data.
 
         Args:
@@ -624,7 +624,7 @@ class DriversListRsp:
             return []
 
         # Use original list since this request comes only once in a bluemoon
-        return [data_per_driver.getPositionHistoryJSON() for data_per_driver in TelData._driver_data.m_driver_data \
+        return [data_per_driver.getPositionHistoryJSON() for data_per_driver in TelState._driver_data.m_driver_data \
                 if data_per_driver and data_per_driver.is_valid]
 
     def getTyreStintHistoryJSON(self) -> List[Dict[str, Any]]:
@@ -637,7 +637,7 @@ class DriversListRsp:
         if not self.m_json_rsp:
             return []
 
-        return [data_per_driver.getTyreStintHistoryJSON() for data_per_driver in TelData._driver_data.m_driver_data \
+        return [data_per_driver.getTyreStintHistoryJSON() for data_per_driver in TelState._driver_data.m_driver_data \
                 if data_per_driver and data_per_driver.is_valid]
 
     def getBestSectorTimes(self) -> List[Optional[int]]:
@@ -673,30 +673,30 @@ class DriversListRsp:
         """
 
         # Player index can never be none, since the player always an index, even if a spectator (for Lobby packet)
-        if (TelData._driver_data.m_player_index is None) or (TelData._driver_data.m_num_active_cars is None):
+        if (TelState._driver_data.m_player_index is None) or (TelState._driver_data.m_num_active_cars is None):
             return
 
         # Update the list data
-        self.m_next_pit_stop_window = TelData._driver_data.m_ideal_pit_stop_window
-        if TelData._driver_data.m_fastest_index is not None:
-            self.m_fastest_lap = TelData._driver_data.m_driver_data[
-                                    TelData._driver_data.m_fastest_index].m_lap_info.m_best_lap_ms
-            self.m_fastest_lap_driver = TelData._driver_data.m_driver_data[
-                                        TelData._driver_data.m_fastest_index].m_driver_info.name
-            self.m_fastest_lap_tyre = TelData._driver_data.m_driver_data[
-                                        TelData._driver_data.m_fastest_index].m_lap_info.m_best_lap_tyre
+        self.m_next_pit_stop_window = TelState._driver_data.m_ideal_pit_stop_window
+        if TelState._driver_data.m_fastest_index is not None:
+            self.m_fastest_lap = TelState._driver_data.m_driver_data[
+                                    TelState._driver_data.m_fastest_index].m_lap_info.m_best_lap_ms
+            self.m_fastest_lap_driver = TelState._driver_data.m_driver_data[
+                                        TelState._driver_data.m_fastest_index].m_driver_info.name
+            self.m_fastest_lap_tyre = TelState._driver_data.m_driver_data[
+                                        TelState._driver_data.m_fastest_index].m_lap_info.m_best_lap_tyre
 
-        self.m_fastest_s1_ms = TelData._driver_data.m_fastest_s1_ms
-        self.m_fastest_s2_ms = TelData._driver_data.m_fastest_s2_ms
-        self.m_fastest_s3_ms = TelData._driver_data.m_fastest_s3_ms
+        self.m_fastest_s1_ms = TelState._driver_data.m_fastest_s1_ms
+        self.m_fastest_s2_ms = TelState._driver_data.m_fastest_s2_ms
+        self.m_fastest_s3_ms = TelState._driver_data.m_fastest_s3_ms
 
         # for each driver:
-        for index, driver_data in enumerate(TelData._driver_data.m_driver_data):
+        for index, driver_data in enumerate(TelState._driver_data.m_driver_data):
             if (index, driver_data) == (None, None):
                 return
             if not driver_data.is_valid:
                 continue
-            if not 1 <= driver_data.m_driver_info.position <= TelData._driver_data.m_num_active_cars:
+            if not 1 <= driver_data.m_driver_info.position <= TelState._driver_data.m_num_active_cars:
                 continue
             self.m_json_rsp.append(self._getDriverJSON(index,driver_data))
         self.m_json_rsp.sort(key=lambda obj: obj["driver-info"]["position"])
@@ -707,19 +707,19 @@ class DriversListRsp:
         """
 
         # Player index can never be none, since the player always an index, even if a spectator (for Lobby packet)
-        player_index = TelData._driver_data.m_player_index
-        if (player_index is None) or (TelData._driver_data.m_num_active_cars is None):
+        player_index = TelState._driver_data.m_player_index
+        if (player_index is None) or (TelState._driver_data.m_num_active_cars is None):
             return
 
 
         # Player object must be found in TT mode
-        player_obj = TelData._driver_data.m_driver_data[player_index]
+        player_obj = TelState._driver_data.m_driver_data[player_index]
         if not player_obj:
             png_logger.debug("Player not found in TT mode")
             return
 
         # Init the TT packet copy
-        self.m_time_trial_packet = TelData._driver_data.m_time_trial_packet
+        self.m_time_trial_packet = TelState._driver_data.m_time_trial_packet
 
         # Insert top speed into the lap-history-data records
         if player_obj.m_packet_copies.m_packet_session_history:
@@ -773,7 +773,7 @@ class DriversListRsp:
             "position": _getValueOrDefaultValue(driver_data.m_driver_info.position),
             "name": _getValueOrDefaultValue(driver_data.m_driver_info.name),
             "team": _getValueOrDefaultValue(driver_data.m_driver_info.team),
-            "is-fastest": _getValueOrDefaultValue(index == TelData._driver_data.m_fastest_index),
+            "is-fastest": _getValueOrDefaultValue(index == TelState._driver_data.m_fastest_index),
             "is-player": _getValueOrDefaultValue(driver_data.m_driver_info.is_player),
             "dnf-status": _getValueOrDefaultValue(driver_data.m_driver_info.m_dnf_status_code),
             "index": _getValueOrDefaultValue(index),
@@ -1005,7 +1005,7 @@ class LapTimeHistory:
     """
 
     def __init__(self,
-                 driver_data: Optional[TelData.DataPerDriver] = None,
+                 driver_data: Optional[TelState.DataPerDriver] = None,
                  global_fastest_lap_ms: Optional[int] = None,
                  global_fastest_s1_ms: Optional[int] = None,
                  global_fastest_s2_ms: Optional[int] = None,

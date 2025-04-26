@@ -34,7 +34,7 @@ from hypercorn.config import Config
 from pathlib import Path
 from quart import Quart, jsonify, render_template, request, send_from_directory
 
-import apps.backend.state_mgmt_layer.telemetry_data as TelData
+import apps.backend.state_mgmt_layer.telemetry_state as TelState
 import apps.backend.state_mgmt_layer.telemetry_web_api as TelWebAPI
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from apps.backend.common.png_logger import getLogger
@@ -394,7 +394,7 @@ class TelemetryWebServer:
 
         # Check if the given index is valid
         index_int = int(index_arg)
-        if not TelData.isDriverIndexValid(index_int):
+        if not TelState.isDriverIndexValid(index_int):
             error_response = {
                 'error' : 'Invalid parameter value',
                 'message' : 'Invalid index',

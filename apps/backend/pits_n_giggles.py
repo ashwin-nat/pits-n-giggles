@@ -35,7 +35,7 @@ from colorama import Fore, Style, init
 
 from apps.backend.common.config import load_config
 from apps.backend.common.png_logger import initLogger
-from apps.backend.state_mgmt_layer.telemetry_data import initDriverData
+from apps.backend.state_mgmt_layer.telemetry_state import initDriverData
 from apps.backend.telemetry_layer.telemetry_handler import (F1TelemetryHandler, initDirectories,
                                    initForwarder, initTelemetryGlobals)
 from apps.backend.ui_intf_layer.telemetry_server import TelemetryWebServer, initTelemetryWebServer
