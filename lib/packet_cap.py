@@ -65,7 +65,18 @@ class ZlibCompressionHelper(CompressionHelper):
         return True
 
 class F1PktCapFileHeader:
-    """Represents the header of a file containing F1 UDP telemetry packets."""
+    """Represents the header of a file containing F1 UDP telemetry packets.
+    Offset | Size | Description
+    -------+------+----------------------------------------
+     0     | 6    | Magic Number ("F1UDP\0")
+     6     | 1    | Flags byte (bit 0: compression flag)
+     7     | 1    | Version byte:
+           |      |   bit 7: Endianness (1=little, 0=big)
+           |      |   bits 6-4: Major version (3 bits, max 7)
+           |      |   bits 3-0: Minor version (4 bits, max 15)
+     8     | 4    | Number of packets (uint32)
+     12    | Total header length
+    """
 
     # Class attribute for the magic number
     MAGIC_NUMBER = b'F1UDP\0'
@@ -222,6 +233,12 @@ class F1PktCapMessage:
 
     HEADER_LEN = 8
 
+    # Offset | Size | Description
+    # -------+------+----------------------------------------
+    #  0     | 4    | Timestamp (float)
+    #  4     | 4    | Data length (uint32)
+    #  8     | N    | Packet data (raw or compressed)
+
     def __init__(self, data: bytes, timestamp: float = None, is_little_endian: bool = True):
         """
         Initialize a F1PktCapMessage.
@@ -325,14 +342,15 @@ class F1PacketCapture:
         else:
             self.m_compression_helper = NoCompressionHelper()
 
-    def add(self, data: bytes):
+    def add(self, data: bytes, timestamp: float = None):
         """
         Add an entry to the packet history.
 
         Parameters:
         - data (bytes): Raw data for the entry.
+        - timestamp (float): The timestamp to be written, will be initialised with current time if not provided
         """
-        entry = F1PktCapMessage(data, is_little_endian=self.is_little_endian)
+        entry = F1PktCapMessage(data, timestamp=timestamp, is_little_endian=self.is_little_endian)
         self.m_packet_history.append(entry)
         self.m_header.num_packets += 1
 
