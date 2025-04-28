@@ -51,8 +51,6 @@ from lib.telemetry_manager import AsyncF1TelemetryManager
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
 g_directory_mapping: Dict[str, str] = {}
-g_final_classification_processed: bool = False
-g_button_debouncer = ButtonDebouncer()
 png_logger = getLogger()
 
 # -------------------------------------- INITIALIZATION ----------------------------------------------------------------
@@ -107,60 +105,6 @@ async def udpForwardingTask(forwarding_targets: List[Tuple[str, int]]) -> None:
 
 # -------------------------------------- UTILITIES ---------------------------------------------------------------------
 
-def getTimestampStr() -> str:
-    """
-    Get the current timestamp as a string formatted as year_month_day_hour_minute_second.
-
-    Returns:
-        str: A string representing the current timestamp.
-    """
-    return datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-
-def writeDictToJsonFile(data_dict: Dict, file_name: str) -> None:
-    """
-    Write a dictionary containing JSON data to a file.
-
-    Parameters:
-    - data_dict (Dict): Dictionary containing JSON data.
-    - file_name (str): File name to write the data to.
-    """
-    with open(file_name, 'w', encoding='utf-8') as json_file:
-        json.dump(data_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
-
-def postGameDumpToFile(final_json: Dict[str, Any]) -> None:
-    """
-    Write the contents of final_json and player recorded events to a file.
-
-    Arguments:
-        final_json (Dict): Dictionary containing JSON data after final classification
-    """
-
-    global g_directory_mapping
-
-    event_str = TelState.getEventInfoStr()
-    if not event_str:
-        return
-
-    # Save the JSON data
-    global g_post_race_data_autosave
-    if g_post_race_data_autosave:
-        # Add the overtakes as well
-        final_json['overtakes'] = {
-            'records': [record.toJSON() for record in TelState.getOvertakeRecords()]
-        }
-
-        # Next, fastest lap and sector records
-        final_json['records'] = {
-            'fastest' : RaceAnalyzer.getFastestTimesJson(final_json),
-            'tyre-stats' : RaceAnalyzer.getTyreStintRecordsDict(final_json)
-        }
-
-        final_json_file_name = g_directory_mapping['race-info'] + 'race_info_' + \
-                event_str + getTimestampStr() + '.json'
-        writeDictToJsonFile(final_json, final_json_file_name)
-        png_logger.info("Wrote race info to %s", final_json_file_name)
-    else:
-        png_logger.debug("Not saving post race data")
 
 # -------------------------------------- TELEMETRY PACKET HANDLERS -----------------------------------------------------
 
@@ -200,8 +144,9 @@ class F1TelemetryHandler:
         self.m_data_cleared_this_session: bool = False
         self.g_udp_custom_action_code: Optional[int] = udp_custom_action_code
         self.g_udp_tyre_delta_action_code: Optional[int] = udp_tyre_delta_action_code
+        self.g_final_classification_processed: bool = False
         self.g_post_race_data_autosave: bool = post_race_data_autosave
-
+        self.g_button_debouncer: ButtonDebouncer = ButtonDebouncer()
 
         self.m_should_forward = bool(forwarding_targets)
         self.registerCallbacks()
@@ -323,13 +268,13 @@ class F1TelemetryHandler:
             Arguments
                 packet - PacketCarStatusData object
             """
-            global g_final_classification_processed
-            if g_final_classification_processed:
+
+            if self.g_final_classification_processed:
                 png_logger.debug('Session UID %d final classification already processed.', packet.m_header.m_sessionUID)
                 return
             png_logger.info('Received Final Classification Packet.')
             final_json = TelState.processFinalClassificationUpdate(packet)
-            g_final_classification_processed = True
+            self.g_final_classification_processed = True
 
             # Perform the auto save stuff only for races
             if event_type_str := str(TelState.getSessionInfo().m_session_type):
@@ -361,7 +306,7 @@ class F1TelemetryHandler:
                             is_event_supported = False
                             break
                 if is_event_supported:
-                    postGameDumpToFile(final_json)
+                    self.postGameDumpToFile(final_json)
 
             # Uncomment the below lines for profiling - Kill the process after one session
             # # Cancel all tasks except itself
@@ -454,9 +399,6 @@ class F1TelemetryHandler:
             self.m_last_session_uid = packet.m_header.m_sessionUID
             await self.clearAllDataStructures()
 
-        global g_button_debouncer
-
-        # Function to handle BUTTON_STATUS action
         async def handleButtonStatus(packet: PacketEventData) -> None:
             """
             Handle and process the button press event
@@ -467,13 +409,13 @@ class F1TelemetryHandler:
 
             if (self.g_udp_custom_action_code is not None) and \
             (packet.mEventDetails.isUDPActionPressed(self.g_udp_custom_action_code)) and \
-            (g_button_debouncer.onButtonPress(self.g_udp_custom_action_code)):
+            (self.g_button_debouncer.onButtonPress(self.g_udp_custom_action_code)):
                 png_logger.debug('UDP action %d pressed - Custom Marker', self.g_udp_custom_action_code)
                 await TelState.processCustomMarkerCreate()
 
             if (self.g_udp_tyre_delta_action_code is not None) and \
             (packet.mEventDetails.isUDPActionPressed(self.g_udp_tyre_delta_action_code)) and \
-            (g_button_debouncer.onButtonPress(self.g_udp_tyre_delta_action_code)):
+            (self.g_button_debouncer.onButtonPress(self.g_udp_tyre_delta_action_code)):
                 png_logger.debug('UDP action %d pressed - Tyre Delta', self.g_udp_tyre_delta_action_code)
                 await TelState.processTyreDeltaSound()
 
@@ -558,6 +500,7 @@ class F1TelemetryHandler:
             TelState._driver_data.processCollisionEvent(record)
 
     async def clearAllDataStructures(self) -> None:
+        """Clear all the data structures"""
         TelState.processSessionStarted()
         self.m_data_cleared_this_session = True
         self.g_final_classification_processed = False
