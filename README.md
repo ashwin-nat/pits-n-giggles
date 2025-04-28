@@ -81,7 +81,6 @@ Click on any driver's name to access (when you're safely in the pits, of course)
   - Live G-Force visualization (neck muscles not included 💪)
   - Weather forecast (for dramatic "rain is coming" commentary)
 - **Data Forwarding**: Send telemetry to other applications or devices
-- **Packet Capture**: Save raw telemetry packets for replay and analysis (nerd out on data later 🤓)
 - **Distributed Architecture**:
   - Connect with team members across different locations
   - Separate telemetry collection from visualization for optimal performance
