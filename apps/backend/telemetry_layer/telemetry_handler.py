@@ -24,7 +24,6 @@ SOFTWARE.
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import asyncio
 import json
 import logging
 import os
@@ -43,49 +42,11 @@ from lib.f1_types import (F1PacketType, PacketCarDamageData,
                           PacketTimeTrialData, PacketTyreSetsData,
                           SessionType23, SessionType24)
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
-from lib.packet_forwarder import AsyncUDPForwarder
 from lib.telemetry_manager import AsyncF1TelemetryManager
 
 # -------------------------------------- TYPE DEFINITIONS --------------------------------------------------------------
 
-# -------------------------------------- GLOBALS -----------------------------------------------------------------------
-
-# -------------------------------------- INITIALIZATION ----------------------------------------------------------------
-
-def initForwarder(forwarding_targets: List[Tuple[str, int]], tasks: List[asyncio.Task], logger: logging.Logger) -> None:
-    """Init the forwarding thread, if targets are defined
-
-    Args:
-        forwarding_targets (List[Tuple[str, int]]): Forwarding Targets list
-        tasks (List[asyncio.Task]): List of tasks
-        logger (logging.Logger): Logger
-    """
-
-    # Register the task only if targets are defined
-    if forwarding_targets:
-        tasks.append(asyncio.create_task(udpForwardingTask(forwarding_targets, logger), name="UDP Forwarder Task"))
-    else:
-        logger.debug("No forwarding targets defined. Not registering task.")
-
-# -------------------------------------- THREADS -----------------------------------------------------------------------
-
-async def udpForwardingTask(forwarding_targets: List[Tuple[str, int]], logger: logging.Logger) -> None:
-    """UDP Forwarding Task
-
-    Args:
-        forwarding_targets (List[Tuple[str, int]]): Forwarding Targets list
-        logger (logging.Logger): Logger
-    """
-
-    udp_forwarder = AsyncUDPForwarder(forwarding_targets, logger)
-    logger.info(f"Initialised forwarder. Targets={forwarding_targets}")
-    while True:
-        packet = await AsyncInterTaskCommunicator().receive("packet-forward")
-        assert packet is not None
-        await udp_forwarder.forward(packet)
-
-# -------------------------------------- UTILITIES ---------------------------------------------------------------------
-
+# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 # -------------------------------------- TELEMETRY PACKET HANDLERS -----------------------------------------------------
 

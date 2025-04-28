@@ -36,7 +36,7 @@ from colorama import Fore, Style, init
 from apps.backend.common.config import load_config
 from apps.backend.common.png_logger import initLogger
 from apps.backend.state_mgmt_layer.telemetry_state import initDriverData
-from apps.backend.telemetry_layer.telemetry_handler import (F1TelemetryHandler,
+from apps.backend.telemetry_layer import (F1TelemetryHandler,
                                    initForwarder)
 from apps.backend.ui_intf_layer.telemetry_server import TelemetryWebServer, initTelemetryWebServer
 
@@ -130,7 +130,7 @@ def setupWebServerTask(
         ver_str=ver_str
     )
 
-def setupGameTelemetryTask(
+def setupTelemetryTask(
         port_number: int,
         replay_server: bool,
         post_race_data_autosave: bool,
@@ -218,7 +218,7 @@ async def main(args: argparse.Namespace) -> None:
 
     tasks: List[asyncio.Task] = []
 
-    setupGameTelemetryTask(  config.telemetry_port,
+    setupTelemetryTask(  config.telemetry_port,
                             args.replay_server, config.post_race_data_autosave,
                             config.udp_custom_action_code, config.udp_tyre_delta_action_code,
                             config.forwarding_targets, tasks)
