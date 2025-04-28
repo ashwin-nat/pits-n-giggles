@@ -26,13 +26,13 @@ SOFTWARE.
 
 import asyncio
 import json
+import logging
 import os
 from datetime import datetime
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
 import apps.backend.state_mgmt_layer.telemetry_state as TelState
 import lib.race_analyzer as RaceAnalyzer
-from apps.backend.common.png_logger import getLogger
 from lib.button_debouncer import ButtonDebouncer
 from lib.f1_types import (F1PacketType, PacketCarDamageData,
                           PacketCarSetupData, PacketCarStatusData,
@@ -50,31 +50,35 @@ from lib.telemetry_manager import AsyncF1TelemetryManager
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
-g_directory_mapping: Dict[str, str] = {}
-png_logger = getLogger()
-
 # -------------------------------------- INITIALIZATION ----------------------------------------------------------------
 
-def initForwarder(forwarding_targets: List[Tuple[str, int]], tasks: List[asyncio.Task]) -> None:
+def initForwarder(forwarding_targets: List[Tuple[str, int]], tasks: List[asyncio.Task], logger: logging.Logger) -> None:
     """Init the forwarding thread, if targets are defined
 
     Args:
         forwarding_targets (List[Tuple[str, int]]): Forwarding Targets list
         tasks (List[asyncio.Task]): List of tasks
+        logger (logging.Logger): Logger
     """
 
     # Register the task only if targets are defined
     if forwarding_targets:
-        tasks.append(asyncio.create_task(udpForwardingTask(forwarding_targets), name="UDP Forwarder Task"))
+        tasks.append(asyncio.create_task(udpForwardingTask(forwarding_targets, logger), name="UDP Forwarder Task"))
     else:
-        png_logger.debug("No forwarding targets defined. Not registering task.")
+        logger.debug("No forwarding targets defined. Not registering task.")
 
 # -------------------------------------- THREADS -----------------------------------------------------------------------
 
-async def udpForwardingTask(forwarding_targets: List[Tuple[str, int]]) -> None:
+async def udpForwardingTask(forwarding_targets: List[Tuple[str, int]], logger: logging.Logger) -> None:
+    """UDP Forwarding Task
 
-    udp_forwarder = AsyncUDPForwarder(forwarding_targets, png_logger)
-    png_logger.info(f"Initialised forwarder. Targets={forwarding_targets}")
+    Args:
+        forwarding_targets (List[Tuple[str, int]]): Forwarding Targets list
+        logger (logging.Logger): Logger
+    """
+
+    udp_forwarder = AsyncUDPForwarder(forwarding_targets, logger)
+    logger.info(f"Initialised forwarder. Targets={forwarding_targets}")
     while True:
         packet = await AsyncInterTaskCommunicator().receive("packet-forward")
         assert packet is not None
@@ -96,6 +100,7 @@ class F1TelemetryHandler:
     def __init__(self,
         port: int,
         forwarding_targets: List[Tuple[str, int]],
+        logger: logging.Logger,
         udp_custom_action_code: Optional[int] = None,
         udp_tyre_delta_action_code: Optional[int] = None,
         post_race_data_autosave: bool = False,
@@ -106,6 +111,7 @@ class F1TelemetryHandler:
         Parameters:
             - port (int): The port number for telemetry.
             - forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
+            - logger (logging.Logger): Logger
             - udp_custom_action_code (Optional[int]): UDP custom action code.
             - udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code
             - post_race_data_autosave (bool): Save JSON file after race
@@ -113,9 +119,10 @@ class F1TelemetryHandler:
         """
         self.m_manager = AsyncF1TelemetryManager(
             port_number=port,
-            logger=png_logger,
+            logger=logger,
             replay_server=replay_server
         )
+        self.m_logger = logger
 
         self.g_directory_mapping: Dict[str, str] = {}
         self.m_last_session_uid: Optional[int] = None
@@ -164,11 +171,11 @@ class F1TelemetryHandler:
             """
 
             if packet.m_sessionDuration == 0:
-                png_logger.info("Session duration is 0. clearing data structures")
+                self.m_logger.info("Session duration is 0. clearing data structures")
                 await self.clearAllDataStructures()
 
             elif TelState.processSessionUpdate(packet):
-                png_logger.info("Session UID changed. clearing data structures")
+                self.m_logger.info("Session UID changed. clearing data structures")
                 await self.clearAllDataStructures()
 
         @self.m_manager.on_packet(F1PacketType.LAP_DATA)
@@ -249,9 +256,9 @@ class F1TelemetryHandler:
             """
 
             if self.g_final_classification_processed:
-                png_logger.debug('Session UID %d final classification already processed.', packet.m_header.m_sessionUID)
+                self.m_logger.debug('Session UID %d final classification already processed.', packet.m_header.m_sessionUID)
                 return
-            png_logger.info('Received Final Classification Packet.')
+            self.m_logger.info('Received Final Classification Packet.')
             final_json = TelState.processFinalClassificationUpdate(packet)
             self.g_final_classification_processed = True
 
@@ -389,13 +396,13 @@ class F1TelemetryHandler:
             if (self.g_udp_custom_action_code is not None) and \
             (packet.mEventDetails.isUDPActionPressed(self.g_udp_custom_action_code)) and \
             (self.g_button_debouncer.onButtonPress(self.g_udp_custom_action_code)):
-                png_logger.debug('UDP action %d pressed - Custom Marker', self.g_udp_custom_action_code)
+                self.m_logger.debug('UDP action %d pressed - Custom Marker', self.g_udp_custom_action_code)
                 await TelState.processCustomMarkerCreate()
 
             if (self.g_udp_tyre_delta_action_code is not None) and \
             (packet.mEventDetails.isUDPActionPressed(self.g_udp_tyre_delta_action_code)) and \
             (self.g_button_debouncer.onButtonPress(self.g_udp_tyre_delta_action_code)):
-                png_logger.debug('UDP action %d pressed - Tyre Delta', self.g_udp_tyre_delta_action_code)
+                self.m_logger.debug('UDP action %d pressed - Tyre Delta', self.g_udp_tyre_delta_action_code)
                 await TelState.processTyreDeltaSound()
 
         async def handleFlashBackEvent(packet: PacketEventData) -> None:
@@ -405,7 +412,7 @@ class F1TelemetryHandler:
             Args:
                 packet (PacketEventData): The parsed object containing the flashback packet's contents.
             """
-            png_logger.info(f"Flashback event received. Frame ID = {packet.mEventDetails.flashbackFrameIdentifier}")
+            self.m_logger.info(f"Flashback event received. Frame ID = {packet.mEventDetails.flashbackFrameIdentifier}")
 
         async def handleStartLightsEvent(packet: PacketEventData) -> None:
             """
@@ -415,9 +422,9 @@ class F1TelemetryHandler:
                 packet (PacketEventData): The parsed object containing the start lights packet's contents.
             """
             # In case session start was missed, clear data structures
-            png_logger.debug(f"Start lights event received. Lights = {packet.mEventDetails.numLights}")
+            self.m_logger.debug(f"Start lights event received. Lights = {packet.mEventDetails.numLights}")
             if packet.mEventDetails.numLights == 1:
-                png_logger.info("Session start was missed. Clearing data structures in start lights event")
+                self.m_logger.info("Session start was missed. Clearing data structures in start lights event")
                 session_uid = packet.m_header.m_sessionUID
 
                 if session_uid != self.m_last_session_uid:
@@ -427,7 +434,7 @@ class F1TelemetryHandler:
                 if not self.m_data_cleared_this_session:
                     await self.clearAllDataStructures()
                 else:
-                    png_logger.debug("Not clearing data structures in start lights event")
+                    self.m_logger.debug("Not clearing data structures in start lights event")
 
         async def processFastestLapUpdate(packet: PacketEventData) -> None:
             """Update the data structures with the fastest lap
@@ -503,8 +510,6 @@ class F1TelemetryHandler:
             final_json (Dict): Dictionary containing JSON data after final classification
         """
 
-        global g_directory_mapping
-
         event_str = TelState.getEventInfoStr()
         if not event_str:
             return
@@ -527,9 +532,9 @@ class F1TelemetryHandler:
             final_json_file_name = self.g_directory_mapping['race-info'] + 'race_info_' + \
                     event_str + timestamp_str + '.json'
             await self.writeDictToJsonFile(final_json, final_json_file_name)
-            png_logger.info("Wrote race info to %s", final_json_file_name)
+            self.m_logger.info("Wrote race info to %s", final_json_file_name)
         else:
-            png_logger.debug("Not saving post race data")
+            self.m_logger.debug("Not saving post race data")
 
     def initDirectories(self) -> None:
         """
@@ -545,7 +550,7 @@ class F1TelemetryHandler:
             """
             if not os.path.exists(directory):
                 os.makedirs(directory, exist_ok=True)
-                png_logger.info("Directory '%s' created.", directory)
+                self.m_logger.info("Directory '%s' created.", directory)
 
         ts_prefix = datetime.now().strftime("%Y_%m_%d")
         self.g_directory_mapping['race-info'] = f"data/{ts_prefix}/race-info/"

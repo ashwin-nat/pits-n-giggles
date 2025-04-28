@@ -149,15 +149,17 @@ def setupGameTelemetryTask(
         forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
         tasks (List[asyncio.Task]): List of tasks to be executed
     """
-    initForwarder(forwarding_targets, tasks)
-    telemetry_client = F1TelemetryHandler(
+    initForwarder(forwarding_targets, tasks, png_logger)
+    telemetry_server = F1TelemetryHandler(
         port=port_number,
         forwarding_targets=forwarding_targets,
+        logger=png_logger,
         udp_custom_action_code=udp_custom_action_code,
         udp_tyre_delta_action_code=udp_tyre_delta_action_code,
+        post_race_data_autosave=post_race_data_autosave,
         replay_server=replay_server
     )
-    tasks.append(asyncio.create_task(telemetry_client.run(), name="Game Telemetry Listener Task"))
+    tasks.append(asyncio.create_task(telemetry_server.run(), name="Game Telemetry Listener Task"))
 
 
 def printDoNotCloseWarning() -> None:
