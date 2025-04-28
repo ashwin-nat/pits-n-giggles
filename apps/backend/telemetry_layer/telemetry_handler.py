@@ -55,29 +55,6 @@ png_logger = getLogger()
 
 # -------------------------------------- INITIALIZATION ----------------------------------------------------------------
 
-def initDirectories() -> None:
-    """
-    Initialize the necessary directories for storing race information
-    This function creates a directory structure based on the current date if it does not already exist.
-    """
-    def ensureDirectoryExists(directory: str) -> None:
-        """
-        Ensure that the specified directory exists. If it doesn't, create it along with any missing parent directories.
-
-        Parameters:
-        - directory (str): The path of the directory to be checked or created.
-        """
-        if not os.path.exists(directory):
-            os.makedirs(directory, exist_ok=True)
-            png_logger.info("Directory '%s' created.", directory)
-
-    global g_directory_mapping
-    ts_prefix = datetime.now().strftime("%Y_%m_%d")
-    g_directory_mapping['race-info'] = f"data/{ts_prefix}/race-info/"
-
-    for directory in g_directory_mapping.values():
-        ensureDirectoryExists(directory)
-
 def initForwarder(forwarding_targets: List[Tuple[str, int]], tasks: List[asyncio.Task]) -> None:
     """Init the forwarding thread, if targets are defined
 
@@ -140,6 +117,7 @@ class F1TelemetryHandler:
             replay_server=replay_server
         )
 
+        self.g_directory_mapping: Dict[str, str] = {}
         self.m_last_session_uid: Optional[int] = None
         self.m_data_cleared_this_session: bool = False
         self.g_udp_custom_action_code: Optional[int] = udp_custom_action_code
@@ -149,6 +127,7 @@ class F1TelemetryHandler:
         self.g_button_debouncer: ButtonDebouncer = ButtonDebouncer()
 
         self.m_should_forward = bool(forwarding_targets)
+        self.initDirectories()
         self.registerCallbacks()
 
     async def run(self):
@@ -545,9 +524,31 @@ class F1TelemetryHandler:
 
             # Get timestamp in the format - year_month_day_hour_minute_second
             timestamp_str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-            final_json_file_name = g_directory_mapping['race-info'] + 'race_info_' + \
+            final_json_file_name = self.g_directory_mapping['race-info'] + 'race_info_' + \
                     event_str + timestamp_str + '.json'
             await self.writeDictToJsonFile(final_json, final_json_file_name)
             png_logger.info("Wrote race info to %s", final_json_file_name)
         else:
             png_logger.debug("Not saving post race data")
+
+    def initDirectories(self) -> None:
+        """
+        Initialize the necessary directories for storing race information
+        This function creates a directory structure based on the current date if it does not already exist.
+        """
+        def ensureDirectoryExists(directory: str) -> None:
+            """
+            Ensure that the specified directory exists. If it doesn't, create it along with any missing parent directories.
+
+            Parameters:
+            - directory (str): The path of the directory to be checked or created.
+            """
+            if not os.path.exists(directory):
+                os.makedirs(directory, exist_ok=True)
+                png_logger.info("Directory '%s' created.", directory)
+
+        ts_prefix = datetime.now().strftime("%Y_%m_%d")
+        self.g_directory_mapping['race-info'] = f"data/{ts_prefix}/race-info/"
+
+        for directory in self.g_directory_mapping.values():
+            ensureDirectoryExists(directory)

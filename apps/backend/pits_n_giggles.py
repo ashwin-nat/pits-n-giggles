@@ -36,7 +36,7 @@ from colorama import Fore, Style, init
 from apps.backend.common.config import load_config
 from apps.backend.common.png_logger import initLogger
 from apps.backend.state_mgmt_layer.telemetry_state import initDriverData
-from apps.backend.telemetry_layer.telemetry_handler import (F1TelemetryHandler, initDirectories,
+from apps.backend.telemetry_layer.telemetry_handler import (F1TelemetryHandler,
                                    initForwarder)
 from apps.backend.ui_intf_layer.telemetry_server import TelemetryWebServer, initTelemetryWebServer
 
@@ -207,7 +207,6 @@ async def main(args: argparse.Namespace) -> None:
     png_logger.info(f"Python version {sys.version}")
     png_logger.info(config)
 
-    initDirectories()
     initDriverData(
         config.post_race_data_autosave,
         config.udp_custom_action_code,
