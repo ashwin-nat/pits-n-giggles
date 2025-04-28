@@ -24,6 +24,7 @@ SOFTWARE.
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import asyncio
 import json
 import logging
 import os
@@ -47,6 +48,39 @@ from lib.telemetry_manager import AsyncF1TelemetryManager
 # -------------------------------------- TYPE DEFINITIONS --------------------------------------------------------------
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+
+def setupTelemetryTask(
+        port_number: int,
+        replay_server: bool,
+        logger: logging.Logger,
+        post_race_data_autosave: bool,
+        udp_custom_action_code: Optional[int],
+        udp_tyre_delta_action_code: Optional[int],
+        forwarding_targets: List[Tuple[str, int]],
+        tasks: List[asyncio.Task]) -> None:
+    """Entry point to start the F1 telemetry server.
+
+    Args:
+        port_number (int): Port number for the telemetry client.
+        replay_server (bool): Whether to enable the TCP replay debug server.
+        logger (logging.Logger): Logger instance
+        post_race_data_autosave (bool): Whether to autosave race data at the end of the race.
+        udp_custom_action_code (Optional[int]): UDP custom action code.
+        udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code.
+        forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
+        tasks (List[asyncio.Task]): List of tasks to be executed
+    """
+
+    telemetry_server = F1TelemetryHandler(
+        port=port_number,
+        forwarding_targets=forwarding_targets,
+        logger=logger,
+        udp_custom_action_code=udp_custom_action_code,
+        udp_tyre_delta_action_code=udp_tyre_delta_action_code,
+        post_race_data_autosave=post_race_data_autosave,
+        replay_server=replay_server
+    )
+    tasks.append(asyncio.create_task(telemetry_server.run(), name="Game Telemetry Listener Task"))
 
 # -------------------------------------- TELEMETRY PACKET HANDLERS -----------------------------------------------------
 

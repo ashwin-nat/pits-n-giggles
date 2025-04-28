@@ -24,9 +24,8 @@
 
 import asyncio
 import logging
-import os
 from http import HTTPStatus
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import socketio
 from hypercorn.asyncio import serve

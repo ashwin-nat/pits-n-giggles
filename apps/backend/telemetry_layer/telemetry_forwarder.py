@@ -43,7 +43,7 @@ from lib.telemetry_manager import AsyncF1TelemetryManager
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def initForwarder(forwarding_targets: List[Tuple[str, int]], tasks: List[asyncio.Task], logger: logging.Logger) -> None:
+def setupForwarder(forwarding_targets: List[Tuple[str, int]], tasks: List[asyncio.Task], logger: logging.Logger) -> None:
     """Init the forwarding thread, if targets are defined
 
     Args:

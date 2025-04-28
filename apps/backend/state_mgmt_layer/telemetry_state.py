@@ -194,6 +194,7 @@ class DriverData:
 
     MAX_DRIVERS: int = 22
 
+    #TODO: Remove these args. The variables are not used anywhere
     def __init__(self,
                  post_race_autosave: bool,
                  udp_custom_marker_action_code: Optional[int],

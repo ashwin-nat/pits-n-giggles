@@ -22,10 +22,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from .telemetry_forwarder import initForwarder
-from .telemetry_handler import F1TelemetryHandler
+from .telemetry_forwarder import setupForwarder
+from .telemetry_handler import setupTelemetryTask
 
 __all__ = [
-    "initForwarder",
-    "F1TelemetryHandler"
+    "setupForwarder",
+    "setupTelemetryTask"
 ]

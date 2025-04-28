@@ -29,16 +29,16 @@ import os
 import socket
 import sys
 import webbrowser
-from typing import List, Optional, Set, Tuple
+from typing import List, Optional, Set
 
 from colorama import Fore, Style, init
 
 from apps.backend.common.config import load_config
 from apps.backend.common.png_logger import initLogger
 from apps.backend.state_mgmt_layer.telemetry_state import initDriverData
-from apps.backend.telemetry_layer import (F1TelemetryHandler,
-                                   initForwarder)
-from apps.backend.ui_intf_layer.telemetry_server import TelemetryWebServer, initTelemetryWebServer
+from apps.backend.telemetry_layer import setupForwarder, setupTelemetryTask
+from apps.backend.ui_intf_layer.telemetry_server import (
+    TelemetryWebServer, initTelemetryWebServer)
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -130,38 +130,6 @@ def setupWebServerTask(
         ver_str=ver_str
     )
 
-def setupTelemetryTask(
-        port_number: int,
-        replay_server: bool,
-        post_race_data_autosave: bool,
-        udp_custom_action_code: Optional[int],
-        udp_tyre_delta_action_code: Optional[int],
-        forwarding_targets: List[Tuple[str, int]],
-        tasks: List[asyncio.Task]) -> None:
-    """Entry point to start the F1 telemetry server.
-
-    Args:
-        port_number (int): Port number for the telemetry client.
-        replay_server (bool): Whether to enable the TCP replay debug server.
-        post_race_data_autosave (bool): Whether to autosave race data at the end of the race.
-        udp_custom_action_code (Optional[int]): UDP custom action code.
-        udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code.
-        forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
-        tasks (List[asyncio.Task]): List of tasks to be executed
-    """
-    initForwarder(forwarding_targets, tasks, png_logger)
-    telemetry_server = F1TelemetryHandler(
-        port=port_number,
-        forwarding_targets=forwarding_targets,
-        logger=png_logger,
-        udp_custom_action_code=udp_custom_action_code,
-        udp_tyre_delta_action_code=udp_tyre_delta_action_code,
-        post_race_data_autosave=post_race_data_autosave,
-        replay_server=replay_server
-    )
-    tasks.append(asyncio.create_task(telemetry_server.run(), name="Game Telemetry Listener Task"))
-
-
 def printDoNotCloseWarning() -> None:
     """
     Prints a warning message in red and bold.
@@ -210,25 +178,41 @@ async def main(args: argparse.Namespace) -> None:
     png_logger.info(config)
 
     initDriverData(
-        config.post_race_data_autosave,
-        config.udp_custom_action_code,
-        config.udp_tyre_delta_action_code,
-        config.process_car_setup
+        post_race_autosave=config.post_race_data_autosave,
+        udp_custom_marker_action_code=config.udp_custom_action_code,
+        udp_tyre_delta_action_code=config.udp_tyre_delta_action_code,
+        process_car_setups=config.process_car_setup
     )
 
     tasks: List[asyncio.Task] = []
 
-    setupTelemetryTask(  config.telemetry_port,
-                            args.replay_server, config.post_race_data_autosave,
-                            config.udp_custom_action_code, config.udp_tyre_delta_action_code,
-                            config.forwarding_targets, tasks)
+    setupTelemetryTask(
+        port_number=config.telemetry_port,
+        replay_server=args.replay_server,
+        logger=png_logger,
+        post_race_data_autosave=config.post_race_data_autosave,
+        udp_custom_action_code=config.udp_custom_action_code,
+        udp_tyre_delta_action_code=config.udp_tyre_delta_action_code,
+        forwarding_targets=config.forwarding_targets,
+        tasks=tasks
+    )
+    setupForwarder(
+        forwarding_targets=config.forwarding_targets,
+        tasks=tasks,
+        logger=png_logger
+    )
 
-    printDoNotCloseWarning()
-
-    web_server = setupWebServerTask(config.server_port, config.refresh_interval,
-                   config.disable_browser_autoload, config.stream_overlay_start_sample_data, tasks, getVersion())
+    web_server = setupWebServerTask(
+        http_port=config.server_port,
+        client_update_interval_ms=config.refresh_interval,
+        disable_browser_autoload=config.disable_browser_autoload,
+        stream_overlay_start_sample_data=config.stream_overlay_start_sample_data,
+        tasks=tasks,
+        ver_str=getVersion()
+    )
 
     # Run all tasks concurrently
+    printDoNotCloseWarning()
     png_logger.debug("Registered %d Tasks: %s", len(tasks), [task.get_name() for task in tasks])
     try:
         await asyncio.gather(*tasks)
@@ -237,7 +221,6 @@ async def main(args: argparse.Namespace) -> None:
         await web_server.stop()
         for task in tasks:
             task.cancel()
-
         raise  # Ensure proper cancellation behavior
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
