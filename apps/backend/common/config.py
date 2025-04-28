@@ -94,22 +94,6 @@ def load_config(config_file: str = "config.ini") -> Config:
         Config: The config data object
     """
 
-    # Helper methods to fetch values
-    def get_value_str(section: str, key: str) -> str:
-        """Fetch string value from INI or use default from _default_config
-
-        Args:
-            section (str): Section name
-            key (str): Key name
-
-        Returns:
-            str: Value as string for the given key under the given section
-        """
-
-        default_value = _default_config.get(section, {}).get(key, "")
-        value = config.get(section, key, fallback=str(default_value))
-        return value if value != '' else str(default_value)
-
     def get_value_int(section: str, key: str) -> int:
         """Fetch integer value from INI or use default from _default_config.
 

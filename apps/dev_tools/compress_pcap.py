@@ -1,5 +1,6 @@
-import lib.packet_cap as pcap
 import sys
+
+import lib.packet_cap as pcap
 
 if __name__ == '__main__':
     if len(sys.argv) != 3:

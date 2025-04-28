@@ -24,11 +24,13 @@
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+from apps.backend.common.png_logger import getLogger
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
 from lib.f1_types import (F1Utils, LapData, SafetyCarType, SessionType23,
                           SessionType24, TelemetrySetting)
 from lib.tyre_wear_extrapolator import TyreWearPerLap
+
 from .car_info import CarInfo
 from .driver_info import DriverInfo
 from .lap_info import LapInfo
@@ -36,7 +38,6 @@ from .packet_copies import PacketCopies
 from .per_lap_snapshot import PerLapSnapshotEntry
 from .tyre_info import TyreInfo, TyreSetHistoryEntry, TyreSetInfo
 from .warns_pens_info import WarningPenaltyHistory
-from apps.backend.common.png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 

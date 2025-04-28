@@ -25,18 +25,18 @@
 import asyncio
 import logging
 from http import HTTPStatus
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 import socketio
 from hypercorn.asyncio import serve
 from hypercorn.config import Config
-from pathlib import Path
 from quart import Quart, jsonify, render_template, request, send_from_directory
 
 import apps.backend.state_mgmt_layer.telemetry_state as TelState
 import apps.backend.state_mgmt_layer.telemetry_web_api as TelWebAPI
-from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from apps.backend.common.png_logger import getLogger
+from lib.inter_task_communicator import AsyncInterTaskCommunicator
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 

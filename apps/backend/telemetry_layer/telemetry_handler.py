@@ -470,16 +470,6 @@ class F1TelemetryHandler:
                                                         record.beingOvertakenVehicleIdx)):
                 TelState._driver_data.m_overtakes_history.insert(overtake_obj)
 
-        async def processCollisionsEvent(packet: PacketEventData) -> None:
-            """Update the data structures with collisions event udpate.
-
-            Args:
-                packet (PacketEventData): The event packet
-            """
-
-            record: PacketEventData.Collision = packet.mEventDetails
-            TelState._driver_data.processCollisionEvent(record)
-
     async def clearAllDataStructures(self) -> None:
         """Clear all the data structures"""
         TelState.processSessionStarted()

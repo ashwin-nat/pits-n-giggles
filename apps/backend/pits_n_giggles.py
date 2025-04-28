@@ -226,10 +226,10 @@ async def main(args: argparse.Namespace) -> None:
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
 if __name__ == '__main__':
-    args = parseArgs()
-    png_logger = initLogger(file_name='png_log.log', max_size=100000, debug_mode=args.debug)
+    args_obj = parseArgs()
+    png_logger = initLogger(file_name='png_log.log', max_size=100000, debug_mode=args_obj.debug)
     try:
-        asyncio.run(main(args))
+        asyncio.run(main(args_obj))
     except KeyboardInterrupt:
         png_logger.info("Program interrupted by user.")
     except asyncio.CancelledError:

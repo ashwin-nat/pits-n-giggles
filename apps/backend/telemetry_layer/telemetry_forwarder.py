@@ -27,19 +27,8 @@ import asyncio
 import logging
 from typing import List, Tuple
 
-import lib.race_analyzer as RaceAnalyzer
-from lib.button_debouncer import ButtonDebouncer
-from lib.f1_types import (F1PacketType, PacketCarDamageData,
-                          PacketCarSetupData, PacketCarStatusData,
-                          PacketCarTelemetryData, PacketEventData,
-                          PacketFinalClassificationData, PacketLapData,
-                          PacketMotionData, PacketParticipantsData,
-                          PacketSessionData, PacketSessionHistoryData,
-                          PacketTimeTrialData, PacketTyreSetsData,
-                          SessionType23, SessionType24)
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.packet_forwarder import AsyncUDPForwarder
-from lib.telemetry_manager import AsyncF1TelemetryManager
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
