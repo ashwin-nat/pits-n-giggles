@@ -50,34 +50,12 @@ from lib.telemetry_manager import AsyncF1TelemetryManager
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
-g_post_race_data_autosave: bool = False
 g_directory_mapping: Dict[str, str] = {}
-g_udp_custom_action_code: Optional[int] = None
-g_udp_tyre_delta_action_code: Optional[int] = None
 g_final_classification_processed: bool = False
 g_button_debouncer = ButtonDebouncer()
 png_logger = getLogger()
 
 # -------------------------------------- INITIALIZATION ----------------------------------------------------------------
-
-def initTelemetryGlobals(
-    post_race_data_autosave: bool,
-    udp_custom_action_code: Optional[int],
-    udp_tyre_delta_action_code: Optional[int]) -> None:
-    """Initialise the autosave settings
-
-    Args:
-        post_race_data_autosave (bool): Save JSON file after race
-        udp_custom_action_code (Optional[int]): UDP action code to set marker
-        udp_tyre_delta_action_code (Optional[int]): UDP action code to play tyre delta sound
-    """
-
-    global g_post_race_data_autosave
-    global g_udp_custom_action_code
-    global g_udp_tyre_delta_action_code
-    g_post_race_data_autosave = post_race_data_autosave
-    g_udp_custom_action_code = udp_custom_action_code
-    g_udp_tyre_delta_action_code = udp_tyre_delta_action_code
 
 def initDirectories() -> None:
     """
@@ -197,13 +175,20 @@ class F1TelemetryHandler:
     def __init__(self,
         port: int,
         forwarding_targets: List[Tuple[str, int]],
+        udp_custom_action_code: Optional[int] = None,
+        udp_tyre_delta_action_code: Optional[int] = None,
+        post_race_data_autosave: bool = False,
         replay_server: bool = False) -> None:
         """
         Initialize F1TelemetryHandler.
 
         Parameters:
             - port (int): The port number for telemetry.
-            - replay_server: bool: If true, init in replay mode (TCP)
+            - forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
+            - udp_custom_action_code (Optional[int]): UDP custom action code.
+            - udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code
+            - post_race_data_autosave (bool): Save JSON file after race
+            - replay_server: bool: If true, init in replay mode (TCP). Else init in live mode (UDP)
         """
         self.m_manager = AsyncF1TelemetryManager(
             port_number=port,
@@ -213,7 +198,9 @@ class F1TelemetryHandler:
 
         self.m_last_session_uid: Optional[int] = None
         self.m_data_cleared_this_session: bool = False
-
+        self.g_udp_custom_action_code: Optional[int] = udp_custom_action_code
+        self.g_udp_tyre_delta_action_code: Optional[int] = udp_tyre_delta_action_code
+        self.g_post_race_data_autosave: bool = post_race_data_autosave
 
 
         self.m_should_forward = bool(forwarding_targets)
@@ -478,16 +465,16 @@ class F1TelemetryHandler:
                 packet (PacketEventData): The parsed object containing the button status packet's contents.
             """
 
-            if (g_udp_custom_action_code is not None) and \
-            (packet.mEventDetails.isUDPActionPressed(g_udp_custom_action_code)) and \
-            (g_button_debouncer.onButtonPress(g_udp_custom_action_code)):
-                png_logger.debug('UDP action %d pressed', g_udp_custom_action_code)
+            if (self.g_udp_custom_action_code is not None) and \
+            (packet.mEventDetails.isUDPActionPressed(self.g_udp_custom_action_code)) and \
+            (g_button_debouncer.onButtonPress(self.g_udp_custom_action_code)):
+                png_logger.debug('UDP action %d pressed - Custom Marker', self.g_udp_custom_action_code)
                 await TelState.processCustomMarkerCreate()
 
-            if (g_udp_tyre_delta_action_code is not None) and \
-            (packet.mEventDetails.isUDPActionPressed(g_udp_tyre_delta_action_code)) and \
-            (g_button_debouncer.onButtonPress(g_udp_tyre_delta_action_code)):
-                png_logger.debug('UDP action %d pressed', g_udp_tyre_delta_action_code)
+            if (self.g_udp_tyre_delta_action_code is not None) and \
+            (packet.mEventDetails.isUDPActionPressed(self.g_udp_tyre_delta_action_code)) and \
+            (g_button_debouncer.onButtonPress(self.g_udp_tyre_delta_action_code)):
+                png_logger.debug('UDP action %d pressed - Tyre Delta', self.g_udp_tyre_delta_action_code)
                 await TelState.processTyreDeltaSound()
 
         async def handleFlashBackEvent(packet: PacketEventData) -> None:
@@ -574,3 +561,50 @@ class F1TelemetryHandler:
         TelState.processSessionStarted()
         self.m_data_cleared_this_session = True
         self.g_final_classification_processed = False
+
+    async def writeDictToJsonFile(self, data_dict: Dict, file_name: str) -> None:
+        """
+        Write a dictionary containing JSON data to a file.
+
+        Parameters:
+        - data_dict (Dict): Dictionary containing JSON data.
+        - file_name (str): File name to write the data to.
+        """
+        with open(file_name, 'w', encoding='utf-8') as json_file:
+            json.dump(data_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
+
+    async def postGameDumpToFile(self, final_json: Dict[str, Any]) -> None:
+        """
+        Write the contents of final_json and player recorded events to a file.
+
+        Arguments:
+            final_json (Dict): Dictionary containing JSON data after final classification
+        """
+
+        global g_directory_mapping
+
+        event_str = TelState.getEventInfoStr()
+        if not event_str:
+            return
+
+        # Save the JSON data
+        if self.g_post_race_data_autosave:
+            # Add the overtakes as well
+            final_json['overtakes'] = {
+                'records': [record.toJSON() for record in TelState.getOvertakeRecords()]
+            }
+
+            # Next, fastest lap and sector records
+            final_json['records'] = {
+                'fastest' : RaceAnalyzer.getFastestTimesJson(final_json),
+                'tyre-stats' : RaceAnalyzer.getTyreStintRecordsDict(final_json)
+            }
+
+            # Get timestamp in the format - year_month_day_hour_minute_second
+            timestamp_str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+            final_json_file_name = g_directory_mapping['race-info'] + 'race_info_' + \
+                    event_str + timestamp_str + '.json'
+            await self.writeDictToJsonFile(final_json, final_json_file_name)
+            png_logger.info("Wrote race info to %s", final_json_file_name)
+        else:
+            png_logger.debug("Not saving post race data")

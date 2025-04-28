@@ -37,7 +37,7 @@ from apps.backend.common.config import load_config
 from apps.backend.common.png_logger import initLogger
 from apps.backend.state_mgmt_layer.telemetry_state import initDriverData
 from apps.backend.telemetry_layer.telemetry_handler import (F1TelemetryHandler, initDirectories,
-                                   initForwarder, initTelemetryGlobals)
+                                   initForwarder)
 from apps.backend.ui_intf_layer.telemetry_server import TelemetryWebServer, initTelemetryWebServer
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
@@ -149,9 +149,14 @@ def setupGameTelemetryTask(
         forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
         tasks (List[asyncio.Task]): List of tasks to be executed
     """
-    initTelemetryGlobals(post_race_data_autosave, udp_custom_action_code, udp_tyre_delta_action_code)
     initForwarder(forwarding_targets, tasks)
-    telemetry_client = F1TelemetryHandler(port_number, forwarding_targets, replay_server)
+    telemetry_client = F1TelemetryHandler(
+        port=port_number,
+        forwarding_targets=forwarding_targets,
+        udp_custom_action_code=udp_custom_action_code,
+        udp_tyre_delta_action_code=udp_tyre_delta_action_code,
+        replay_server=replay_server
+    )
     tasks.append(asyncio.create_task(telemetry_client.run(), name="Game Telemetry Listener Task"))
 
 
