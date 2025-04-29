@@ -37,8 +37,8 @@ from apps.backend.common.config import load_config
 from apps.backend.common.png_logger import initLogger
 from apps.backend.state_mgmt_layer.telemetry_state import initDriverData
 from apps.backend.telemetry_layer import setupForwarder, setupTelemetryTask
-from apps.backend.ui_intf_layer.telemetry_server import (
-    TelemetryWebServer, initTelemetryWebServer)
+from apps.backend.ui_intf_layer import (TelemetryWebServer,
+                                        initTelemetryWebServer)
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -91,6 +91,7 @@ async def openWebPage(http_port: int) -> None:
 
 def setupWebServerTask(
         http_port: int,
+        logger: logging.Logger,
         client_update_interval_ms: int,
         disable_browser_autoload: bool,
         stream_overlay_start_sample_data: bool,
@@ -100,6 +101,7 @@ def setupWebServerTask(
 
     Args:
         http_port (int): Port number for the HTTP server.
+        logger (logging.Logger): Logger instance.
         client_update_interval_ms (int): Client poll interval in milliseconds.
         disable_browser_autoload (bool): Whether to disable browser autoload.
         stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
@@ -123,6 +125,7 @@ def setupWebServerTask(
 
     return initTelemetryWebServer(
         port=http_port,
+        logger=logger,
         client_update_interval_ms=client_update_interval_ms,
         debug_mode=False,
         stream_overlay_start_sample_data=stream_overlay_start_sample_data,
@@ -204,6 +207,7 @@ async def main(args: argparse.Namespace) -> None:
 
     web_server = setupWebServerTask(
         http_port=config.server_port,
+        logger=png_logger,
         client_update_interval_ms=config.refresh_interval,
         disable_browser_autoload=config.disable_browser_autoload,
         stream_overlay_start_sample_data=config.stream_overlay_start_sample_data,

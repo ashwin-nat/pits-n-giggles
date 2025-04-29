@@ -26,7 +26,7 @@ import asyncio
 import logging
 from http import HTTPStatus
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import socketio
 from hypercorn.asyncio import serve
@@ -35,12 +35,8 @@ from quart import Quart, jsonify, render_template, request, send_from_directory
 
 import apps.backend.state_mgmt_layer.telemetry_state as TelState
 import apps.backend.state_mgmt_layer.telemetry_web_api as TelWebAPI
-from apps.backend.common.png_logger import getLogger
-from lib.inter_task_communicator import AsyncInterTaskCommunicator
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
-
-png_logger = getLogger()
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -58,17 +54,20 @@ class TelemetryWebServer:
         m_sio (socketio.AsyncServer): The Socket.IO server instance.
         m_sio_app (socketio.ASGIApp): The combined Quart and Socket.IO ASGI application.
         m_ver_str (str): The version string.
+        m_logger (logging.Logger): The logger instance.
     """
 
-    def __init__(self, port: int, ver_str: str, debug_mode: bool = False):
+    def __init__(self, port: int, ver_str: str, logger: logging.Logger, debug_mode: bool = False):
         """
         Initialize the TelemetryWebServer.
 
         Args:
             port (int): The port number to run the server on.
             ver_str (str): The version string.
+            logger (logging.Logger): The logger instance.
             debug_mode (bool, optional): Enable or disable debug mode. Defaults to False.
         """
+        self.m_logger: logging.Logger = logger
         self.m_port: int = port
         self.m_ver_str = ver_str
         self.m_debug_mode: bool = debug_mode
@@ -281,7 +280,7 @@ class TelemetryWebServer:
                 sid (str): Session ID of the connected client.
                 environ (Dict[str, Any]): Environment information for the connection.
             """
-            png_logger.debug("Client connected: %s", sid)
+            self.m_logger.debug("Client connected: %s", sid)
 
         @self.m_sio.event
         async def disconnect(sid: str) -> None:
@@ -291,7 +290,7 @@ class TelemetryWebServer:
             Args:
                 sid (str): Session ID of the disconnected client.
             """
-            png_logger.debug("Client disconnected: %s", sid)
+            self.m_logger.debug("Client disconnected: %s", sid)
 
         @self.m_sio.on('register-client')
         async def handleClientRegistration(sid: str, data: Dict[str, str]) -> None:
@@ -302,13 +301,13 @@ class TelemetryWebServer:
                 sid (str): Session ID of the registering client.
                 data (Dict[str, str]): Registration data containing client type.
             """
-            png_logger.debug('Client registered. SID = %s Type = %s', sid, data['type'])
+            self.m_logger.debug('Client registered. SID = %s Type = %s', sid, data['type'])
             if (client_type := data['type']) in {'player-stream-overlay', 'race-table'}:
                 await self.m_sio.enter_room(sid, client_type)
-                png_logger.debug('Client %s joined room %s', sid, client_type)
+                self.m_logger.debug('Client %s joined room %s', sid, client_type)
 
                 room = self.m_sio.manager.rooms.get('/', {}).get('race-table')
-                png_logger.debug('Current members of race-table: %s', room)
+                self.m_logger.debug('Current members of race-table: %s', room)
 
     def _defineDataEndpoints(self) -> None:
         """
@@ -424,103 +423,3 @@ class TelemetryWebServer:
         self._shutdown_event.set()
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
-
-def initTelemetryWebServer(
-    port: int,
-    client_update_interval_ms: int,
-    debug_mode: bool,
-    stream_overlay_start_sample_data: bool,
-    tasks: List[asyncio.Task],
-    ver_str: str) -> TelemetryWebServer:
-    """Initialize the web server
-
-    Args:
-        port (int): Port number
-        client_update_interval_ms (int): How often the client will be updated with new info
-        debug_mode (bool): Debug enabled if true
-        stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
-        tasks (List[asyncio.Task]): List of tasks to be executed
-        ver_str (str): Version string
-
-    Returns:
-        TelemetryWebServer: The initialized web server
-    """
-
-    # First, create the server instance
-    web_server = TelemetryWebServer(
-        port=port,
-        debug_mode=debug_mode,
-        ver_str=ver_str
-    )
-
-    # Register tasks associated with this server
-    tasks.append(asyncio.create_task(web_server.run(), name="Web Server Task"))
-    tasks.append(asyncio.create_task(raceTableClientUpdateTask(client_update_interval_ms, web_server.m_sio),
-                                     name="Race Table Update Task"))
-    tasks.append(asyncio.create_task(streamOverlayUpdateTask(60, stream_overlay_start_sample_data, web_server.m_sio),
-                                     name="Stream Overlay Update Task"))
-    tasks.append(asyncio.create_task(frontEndMessageTask(web_server.m_sio),
-                                     name="Front End Message Task"))
-    return web_server
-
-async def raceTableClientUpdateTask(update_interval_ms: int, sio: socketio.AsyncServer) -> None:
-    """Task to update clients with telemetry data
-
-    Args:
-        update_interval_ms (int): Update interval in milliseconds
-        sio (socketio.AsyncServer): The socketio server instance
-    """
-
-    sleep_duration = update_interval_ms / 1000
-    while True:
-        if not _isRoomEmpty(sio, "race-table"):
-            await sio.emit('race-table-update', TelWebAPI.RaceInfoUpdate().toJSON(), room="race-table")
-        await asyncio.sleep(sleep_duration)
-
-async def streamOverlayUpdateTask(
-    update_interval_ms: int,
-    stream_overlay_start_sample_data: bool,
-    sio: socketio.AsyncServer) -> None:
-    """Task to update clients with player telemetry overlay data
-    Args:
-        update_interval_ms (int): Update interval in milliseconds
-        stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
-        sio (socketio.AsyncServer): The socketio server instance
-    """
-
-    sleep_duration = update_interval_ms / 1000
-    while True:
-        if not _isRoomEmpty(sio, "player-stream-overlay"):
-            await sio.emit(
-                'player-overlay-update',
-                TelWebAPI.PlayerTelemetryOverlayUpdate().toJSON(stream_overlay_start_sample_data),
-                room="player-stream-overlay"
-            )
-        await asyncio.sleep(sleep_duration)
-
-async def frontEndMessageTask(sio: socketio.AsyncServer) -> None:
-    """Task to update clients with telemetry data
-
-    Args:
-        sio (socketio.AsyncServer): The socketio server instance
-    """
-
-    while True:
-        message = await AsyncInterTaskCommunicator().receive("frontend-update")
-        if message:
-            png_logger.debug(f"Received stream update button press {str(message)}")
-            await sio.emit('frontend-update', message.toJSON())
-
-def _isRoomEmpty(sio: socketio.AsyncServer, room_name: str) -> bool:
-    """Check if a room is empty
-
-    Args:
-        sio (socketio.AsyncServer): The socketio server instance
-        room_name (str): The room name
-
-    Returns:
-        bool: True if the room is empty, False otherwise
-    """
-    namespace = '/'
-    room = sio.manager.rooms.get(namespace, {}).get(room_name)
-    return not room  # True if room is None or empty set
