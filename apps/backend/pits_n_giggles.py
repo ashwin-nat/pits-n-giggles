@@ -181,9 +181,6 @@ async def main(args: argparse.Namespace) -> None:
     png_logger.info(config)
 
     initDriverData(
-        post_race_autosave=config.post_race_data_autosave,
-        udp_custom_marker_action_code=config.udp_custom_action_code,
-        udp_tyre_delta_action_code=config.udp_tyre_delta_action_code,
         process_car_setups=config.process_car_setup
     )
 

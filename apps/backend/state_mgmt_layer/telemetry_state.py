@@ -196,16 +196,10 @@ class DriverData:
 
     #TODO: Remove these args. The variables are not used anywhere
     def __init__(self,
-                 post_race_autosave: bool,
-                 udp_custom_marker_action_code: Optional[int],
-                 udp_tyre_delta_action_code: Optional[int],
                  process_car_setups: bool) -> None:
         """Init the DriverData object
 
         Args:
-            post_race_autosave (bool): Will save data to file after race
-            udp_custom_marker_action_code (Optional[int]): The UDP action code for custom marker
-            udp_tyre_delta_action_code (Optional[int]): The UDP action code for tyre delta notification
             process_car_setups (bool): Whether to process car setups packets
         """
 
@@ -226,9 +220,6 @@ class DriverData:
         self.m_session_info: SessionInfo = SessionInfo()
 
         # Config params
-        self.m_post_race_autosave: bool = post_race_autosave
-        self.m_udp_custom_marker_action_code: Optional[int] = udp_custom_marker_action_code
-        self.m_udp_tyre_delta_action_code: Optional[int] = udp_tyre_delta_action_code
         self.m_process_car_setups: bool = process_car_setups
 
     def clear(self) -> None:
@@ -1228,22 +1219,13 @@ def getOvertakeRecords() -> List[OvertakeRecord]:
 
     return _driver_data.m_overtakes_history.getRecords()
 
-def initDriverData(post_race_autosave: bool,
-                 udp_custom_marker_action_code: Optional[int],
-                 udp_tyre_delta_action_code: Optional[int],
-                 process_car_setups: bool) -> None:
+def initDriverData(process_car_setups: bool) -> None:
     """Init the DriverData object
 
     Args:
-        post_race_autosave (bool): Will save data to file after race
-        udp_custom_marker_action_code (Optional[int]): The UDP action code for custom marker
-        udp_tyre_delta_action_code (Optional[int]): The UDP action code for tyre delta notification
         process_car_setups (bool): Whether to process car setups packets
     """
     global _driver_data
     _driver_data = DriverData(
-        post_race_autosave,
-        udp_custom_marker_action_code,
-        udp_tyre_delta_action_code,
         process_car_setups
     )
