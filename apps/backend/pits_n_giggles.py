@@ -181,6 +181,7 @@ async def main(args: argparse.Namespace) -> None:
     png_logger.info(config)
 
     initDriverData(
+        logger=png_logger,
         process_car_setups=config.process_car_setup
     )
 

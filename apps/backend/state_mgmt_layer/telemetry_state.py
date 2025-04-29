@@ -25,8 +25,12 @@
 
 import asyncio
 import json
+import logging
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+from apps.backend.state_mgmt_layer.data_per_driver import DataPerDriver
+from apps.backend.state_mgmt_layer.overtakes import (GetOvertakesStatus,
+                                                     OvertakesHistory)
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
 from lib.custom_marker_tracker import CustomMarkerEntry, CustomMarkersHistory
@@ -41,14 +45,11 @@ from lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils, LapData,
                           SessionType23, SessionType24, TrackID,
                           WeatherForecastSample)
 from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
-                                           ITCMessage, TyreDeltaMessage)
+                                         ITCMessage, TyreDeltaMessage)
 from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.tyre_wear_extrapolator import TyreWearPerLap
-from apps.backend.state_mgmt_layer.data_per_driver import DataPerDriver
-from apps.backend.state_mgmt_layer.overtakes import GetOvertakesStatus, OvertakesHistory
-from apps.backend.common.png_logger import getLogger
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -194,15 +195,17 @@ class DriverData:
 
     MAX_DRIVERS: int = 22
 
-    #TODO: Remove these args. The variables are not used anywhere
     def __init__(self,
+                 logger: logging.Logger,
                  process_car_setups: bool) -> None:
         """Init the DriverData object
 
         Args:
+            logger (logging.Logger): Logger
             process_car_setups (bool): Whether to process car setups packets
         """
 
+        self.m_logger = logger
         self.m_driver_data: List[Optional[DataPerDriver]] = [None] * self.MAX_DRIVERS
         self.m_player_index: Optional[int] = None
         self.m_fastest_index: Optional[int] = None
@@ -222,8 +225,13 @@ class DriverData:
         # Config params
         self.m_process_car_setups: bool = process_car_setups
 
-    def clear(self) -> None:
-        """Clear this object. Clears the m_driver_data list and sets everything else to None
+        self.m_custom_markers_history = CustomMarkersHistory()
+
+    def clear(self, reason: str) -> None:
+        """Clears the DriverData object members. Objects require explicit clearing, primitives can just be set to None
+
+        Args:
+            reason (str): Why the data structures should be cleared. Used for logging
         """
         self.m_driver_data = [None] * self.MAX_DRIVERS
         self.m_player_index = None
@@ -239,8 +247,11 @@ class DriverData:
         self.m_fastest_s3_ms = None
         self.m_overtakes_history.clear()
         self.m_session_info.clear()
+        self.m_custom_markers_history.clear()
 
         # No need to clear config params
+
+        self.m_logger.debug(f"Clearing all data structures. Reason: {reason}")
 
     def setRaceOngoing(self) -> None:
         """
@@ -267,7 +278,7 @@ class DriverData:
         """
 
         if not (obj := self.m_driver_data[index]) and create:
-            png_logger.debug(f"Creating new DataPerDriver for index {index}")
+            self.m_logger.debug(f"Creating new DataPerDriver for index {index}")
             obj = DataPerDriver(self.m_session_info.m_total_laps)
             self.m_driver_data[index] = obj
         return obj
@@ -396,7 +407,7 @@ class DriverData:
                     # rewound to the previous lap. In that case, we need to delete the snapshot for that lap
                     # so that it can be captured again.
                     if (flashback_detected := (obj_to_be_updated.m_lap_info.m_current_lap > lap_data.m_currentLapNum)):
-                        png_logger.debug(f'Driver {obj_to_be_updated}. Lap change due to Flashback detected')
+                        self.m_logger.debug(f'Driver {obj_to_be_updated}. Lap change due to Flashback detected')
 
                     # In this case, the lap data packet lap num may be less than the stored current lap
                     old_lap_num = min(obj_to_be_updated.m_lap_info.m_current_lap, lap_data.m_currentLapNum)
@@ -607,7 +618,7 @@ class DriverData:
         else:
             # Clear the best lap obj (can linger if flashback is used or practice programme is restarted)
             if obj_to_be_updated.m_lap_info.m_last_lap_obj:
-                png_logger.debug(f"Clearing lingering last lap obj for car "
+                self.m_logger.debug(f"Clearing lingering last lap obj for car "
                                  f"{packet.m_carIdx} - {obj_to_be_updated.m_driver_info.name}")
                 obj_to_be_updated.m_lap_info.m_last_lap_obj = None
             obj_to_be_updated.m_lap_info.m_last_lap_ms = None
@@ -621,14 +632,14 @@ class DriverData:
         else:
             # Clear the last lap obj (can linger if flashback is used or practice programme is restarted)
             if obj_to_be_updated.m_lap_info.m_best_lap_obj:
-                png_logger.debug(f"Clearing lingering best lap obj for car {packet.m_carIdx} - "
+                self.m_logger.debug(f"Clearing lingering best lap obj for car {packet.m_carIdx} - "
                                  f"{obj_to_be_updated.m_driver_info.name}")
                 obj_to_be_updated.m_lap_info.m_best_lap_obj = None
             obj_to_be_updated.m_lap_info.m_best_lap_ms = None
             obj_to_be_updated.m_lap_info.m_best_lap_tyre = None
             if packet.m_carIdx == self.m_fastest_index:
                 self.m_fastest_index = None
-                png_logger.debug(f"Cleared fastest_index f{packet.m_carIdx}")
+                self.m_logger.debug(f"Cleared fastest_index f{packet.m_carIdx}")
 
     def processTyreSetsUpdate(self, packet: PacketTyreSetsData) -> None:
         """Process the tyre sets update packet and update the necessary fields
@@ -848,11 +859,168 @@ class DriverData:
                 driver_name=driver_name,
                 is_case_sensitive=True)
 
+    def getTyreDeltaNotificationMessages(self) -> List[TyreDeltaMessage]:
+        """Returns a list of tyre delta notification messages
+
+        Returns:
+            List[TyreDeltaMessage]: A list of tyre delta notification messages
+        """
+
+        # sourcery skip: assign-if-exp, extract-method
+        # N/A for spectating or after race - maybe support this later
+        if (self.m_session_info.m_is_spectating or
+            self.m_session_info.m_packet_final_classification or
+            str(self.m_session_info.m_session_type) == "Time Trial"):
+            return []
+
+        # If player ded, not applicable
+        if (self.m_player_index is None) or (self.m_is_player_dnf):
+            return []
+        # Need tyre set packet info
+        tyre_sets = self.m_driver_data[self.m_player_index].m_packet_copies.m_packet_tyre_sets
+        if not tyre_sets :
+            return []
+
+        # Fitted index needs to be valid
+        fitted_tyre = tyre_sets.m_fitted_tyre_set
+        if not fitted_tyre:
+            self.m_logger.error(f"Invalid fitted tyre index: {json.dumps(tyre_sets.toJSON())}")
+
+        # First find the fitted tyre
+        wet_tyre_compounds = {
+            ActualTyreCompound.WET,
+            ActualTyreCompound.WET_CLASSIC,
+            ActualTyreCompound.WET_F2
+        }
+        inter_tyre_compounds = {
+            ActualTyreCompound.INTER,
+        }
+        slick_tyre_compounds = {
+            ActualTyreCompound.C5,
+            ActualTyreCompound.C4,
+            ActualTyreCompound.C3,
+            ActualTyreCompound.C2,
+            ActualTyreCompound.C1,
+            ActualTyreCompound.C0,
+            ActualTyreCompound.DRY,
+            ActualTyreCompound.SUPER_SOFT,
+            ActualTyreCompound.SOFT,
+            ActualTyreCompound.MEDIUM,
+            ActualTyreCompound.HARD,
+        }
+        if fitted_tyre.m_actualTyreCompound in wet_tyre_compounds:
+            curr_tyre_type = TyreDeltaMessage.TyreType.WET
+        elif fitted_tyre.m_actualTyreCompound in inter_tyre_compounds:
+            curr_tyre_type = TyreDeltaMessage.TyreType.INTER
+        else:
+            curr_tyre_type = TyreDeltaMessage.TyreType.SLICK
+
+        if TyreDeltaMessage.TyreType.SLICK == curr_tyre_type:
+            # Search for the first wet tyre
+            other_tyre_1 = next((tyre_set for tyre_set in reversed(tyre_sets.m_tyreSetData) \
+                                if tyre_set.m_actualTyreCompound in wet_tyre_compounds), None)
+            other_tyre_1_type = TyreDeltaMessage.TyreType.WET
+
+            # Search for the first inter tyre
+            other_tyre_2 = next((tyre_set for tyre_set in reversed(tyre_sets.m_tyreSetData) \
+                                if tyre_set.m_actualTyreCompound in inter_tyre_compounds), None)
+            other_tyre_2_type = TyreDeltaMessage.TyreType.INTER
+
+        elif TyreDeltaMessage.TyreType.INTER == curr_tyre_type:
+            # Search for the first wet tyre
+            other_tyre_1 = next((tyre_set for tyre_set in reversed(tyre_sets.m_tyreSetData) \
+                                if tyre_set.m_actualTyreCompound in wet_tyre_compounds), None)
+            other_tyre_1_type = TyreDeltaMessage.TyreType.WET
+
+            # Search for the first slick tyre
+            other_tyre_2 = next((tyre_set for tyre_set in tyre_sets.m_tyreSetData \
+                                if tyre_set.m_actualTyreCompound in slick_tyre_compounds), None)
+            other_tyre_2_type = TyreDeltaMessage.TyreType.SLICK
+
+        else:
+            # Search for the first slick tyre
+            other_tyre_1 = next((tyre_set for tyre_set in tyre_sets.m_tyreSetData \
+                                if tyre_set.m_actualTyreCompound in slick_tyre_compounds), None)
+            other_tyre_1_type = TyreDeltaMessage.TyreType.SLICK
+
+            # Search for the first inter tyre
+            other_tyre_2 = next((tyre_set for tyre_set in tyre_sets.m_tyreSetData \
+                                if tyre_set.m_actualTyreCompound in inter_tyre_compounds), None)
+            other_tyre_2_type = TyreDeltaMessage.TyreType.INTER
+
+        assert other_tyre_1
+        assert other_tyre_2
+        assert other_tyre_1 != other_tyre_2
+        assert other_tyre_1_type != other_tyre_2_type
+
+        if (not other_tyre_1) or (not other_tyre_2):
+            self.m_logger.error(f"Invalid other tyre index: {json.dumps(tyre_sets.toJSON())}")
+            return []
+
+        return [
+            TyreDeltaMessage(
+                curr_tyre_type=curr_tyre_type,
+                other_tyre_type=other_tyre_1_type,
+                delta=(other_tyre_1.m_lapDeltaTime / 1000)),
+            TyreDeltaMessage(
+                curr_tyre_type=curr_tyre_type,
+                other_tyre_type=other_tyre_2_type,
+                delta=(other_tyre_2.m_lapDeltaTime / 1000)),
+        ]
+
+    def getInsertCustomMarkerEntryObj(self) -> Optional[CustomMarkerEntry]:
+        """
+        Retrieves the custom marker entry object for the player.
+
+        Returns:
+            CustomMarkerEntry: The custom marker entry object for the player. None if any data points is not available
+        """
+
+        if player_data := self._getObjectByIndex(self.m_player_index, create=False):
+            # CSV string - <track>,<event-type>,<lap-num>,<sector-num>
+            lap_num = player_data.m_lap_info.m_current_lap
+            sector = player_data.m_packet_copies.m_packet_lap_data.m_sector
+            curr_lap_time = F1Utils.millisecondsToMinutesSecondsMilliseconds(
+                player_data.m_packet_copies.m_packet_lap_data.m_currentLapTimeInMS)
+            curr_lap_dist = player_data.m_packet_copies.m_packet_lap_data.m_lapDistance
+
+            track = str(self.m_session_info.m_track)
+            event_type = str(self.m_session_info.m_session_type)
+            curr_lap_percent = (
+                f"{F1Utils.floatToStr(float(curr_lap_dist) / float(self.m_session_info.m_track_len) * 100.0)}%"
+                if curr_lap_dist is not None
+                else None
+            )
+
+        else:
+            lap_num = None
+            sector = None
+            curr_lap_time = None
+            curr_lap_dist = None
+
+            track = None
+            event_type = None
+            curr_lap_percent = None
+
+        mandatory_vars = [track, event_type, lap_num, sector, curr_lap_time, curr_lap_percent]
+        if any(var is None for var in mandatory_vars):
+            self.m_logger.warning("Unable to generate player_recorded_event_str")
+            return None
+
+        obj = CustomMarkerEntry(
+            track=track,
+            event_type=event_type,
+            lap=lap_num,
+            sector=sector,
+            curr_lap_time=curr_lap_time,
+            curr_lap_perc=curr_lap_percent
+        )
+        self.m_custom_markers_history.insert(obj)
+        return obj
+
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
 _driver_data: Optional[DriverData] = None
-png_logger = getLogger()
-_custom_markers_history = CustomMarkersHistory()
 
 # -------------------------------------- TELEMETRY PACKET HANDLERS -----------------------------------------------------
 
@@ -889,27 +1057,23 @@ def processFinalClassificationUpdate(packet: PacketFinalClassificationData) -> D
 
     final_json = _driver_data.processFinalClassificationUpdate(packet)
     _driver_data.setRaceCompleted()
-    final_json['custom-markers'] = _custom_markers_history.getJSONList()
+    final_json['custom-markers'] = _driver_data.m_custom_markers_history.getJSONList()
     return final_json
 
 async def processCustomMarkerCreate() -> None:
     """Update the data structures with custom marker information
     """
 
-    custom_marker_obj = getCustomMarkerEntryObj()
-    if custom_marker_obj:
-        _custom_markers_history.insert(custom_marker_obj)
+    if custom_marker_obj := _driver_data.getInsertCustomMarkerEntryObj():
         await AsyncInterTaskCommunicator().send("frontend-update", ITCMessage(
             m_message_type=ITCMessage.MessageType.CUSTOM_MARKER,
             m_message=custom_marker_obj))
-    else:
-        png_logger.warning("Unable to generate player_recorded_event_str")
 
 async def processTyreDeltaSound() -> None:
     """Send the tyre delta notification to the frontend
     """
 
-    messages = getTyreDeltaNotificationMessages()
+    messages = _driver_data.getTyreDeltaNotificationMessages()
     for message in messages:
         asyncio.create_task(AsyncInterTaskCommunicator().send(
             "frontend-update",
@@ -1016,57 +1180,11 @@ def getOvertakeObj(overtaking_car_index: int, being_overtaken_index: int) -> Opt
         overtaken_driver_lap=being_overtaken_car_obj.m_lap_info.m_current_lap,
     )
 
-def getCustomMarkerEntryObj() -> Optional[CustomMarkerEntry]:
-    """
-    Retrieves the custom marker entry object for the player.
-
-    Returns:
-        CustomMarkerEntry: The custom marker entry object for the player. None if any data points is not available
-    """
-
-    if player_data := _driver_data._getObjectByIndex(_driver_data.m_player_index, create=False):
-        # CSV string - <track>,<event-type>,<lap-num>,<sector-num>
-        lap_num = player_data.m_lap_info.m_current_lap
-        sector = player_data.m_packet_copies.m_packet_lap_data.m_sector
-        curr_lap_time = F1Utils.millisecondsToMinutesSecondsMilliseconds(
-            player_data.m_packet_copies.m_packet_lap_data.m_currentLapTimeInMS)
-        curr_lap_dist = player_data.m_packet_copies.m_packet_lap_data.m_lapDistance
-
-        track = str(_driver_data.m_session_info.m_track)
-        event_type = str(_driver_data.m_session_info.m_session_type)
-        curr_lap_percent = (
-            f"{F1Utils.floatToStr(float(curr_lap_dist) / float(_driver_data.m_session_info.m_track_len) * 100.0)}%"
-            if curr_lap_dist is not None
-            else None
-        )
-
-    else:
-        lap_num = None
-        sector = None
-        curr_lap_time = None
-        curr_lap_dist = None
-
-        track = None
-        event_type = None
-        curr_lap_percent = None
-
-    mandatory_vars = [track, event_type, lap_num, sector, curr_lap_time, curr_lap_percent]
-    if any(var is None for var in mandatory_vars):
-        return None
-    return CustomMarkerEntry(
-        track=track,
-        event_type=event_type,
-        lap=lap_num,
-        sector=sector,
-        curr_lap_time=curr_lap_time,
-        curr_lap_perc=curr_lap_percent
-    )
-
 def getCustomMarkersJSON() -> List[Dict[str, Any]]:
     """Returns a list of dictionaries containing custom markers in JSON format.
     """
 
-    return _custom_markers_history.getJSONList()
+    return _driver_data.m_custom_markers_history.getJSONList()
 
 def isPositionHistorySupported() -> bool:
     """Returns whether the position history is supported for the given event type
@@ -1086,117 +1204,6 @@ def clearDataStructures(reason: str) -> None:
 
     """
     _driver_data.clear()
-    _custom_markers_history.clear()
-    png_logger.debug(f"Clearing all data structures. Reason: {reason}")
-
-def getTyreDeltaNotificationMessages() -> List[TyreDeltaMessage]:
-    """Returns a list of tyre delta notification messages
-
-    Returns:
-        List[TyreDeltaMessage]: A list of tyre delta notification messages
-    """
-
-    # sourcery skip: assign-if-exp, extract-method
-    # N/A for spectating or after race - maybe support this later
-    if (_driver_data.m_session_info.m_is_spectating or
-        _driver_data.m_session_info.m_packet_final_classification or
-        str(_driver_data.m_session_info.m_session_type) == "Time Trial"):
-        return []
-
-    # If player ded, not applicable
-    if (_driver_data.m_player_index is None) or (_driver_data.m_is_player_dnf):
-        return []
-    # Need tyre set packet info
-    tyre_sets = _driver_data.m_driver_data[_driver_data.m_player_index].m_packet_copies.m_packet_tyre_sets
-    if not tyre_sets :
-        return []
-
-    # Fitted index needs to be valid
-    fitted_tyre = tyre_sets.m_fitted_tyre_set
-    if not fitted_tyre:
-        png_logger.error(f"Invalid fitted tyre index: {json.dumps(tyre_sets.toJSON())}")
-
-    # First find the fitted tyre
-    wet_tyre_compounds = {
-        ActualTyreCompound.WET,
-        ActualTyreCompound.WET_CLASSIC,
-        ActualTyreCompound.WET_F2
-    }
-    inter_tyre_compounds = {
-        ActualTyreCompound.INTER,
-    }
-    slick_tyre_compounds = {
-        ActualTyreCompound.C5,
-        ActualTyreCompound.C4,
-        ActualTyreCompound.C3,
-        ActualTyreCompound.C2,
-        ActualTyreCompound.C1,
-        ActualTyreCompound.C0,
-        ActualTyreCompound.DRY,
-        ActualTyreCompound.SUPER_SOFT,
-        ActualTyreCompound.SOFT,
-        ActualTyreCompound.MEDIUM,
-        ActualTyreCompound.HARD,
-    }
-    if fitted_tyre.m_actualTyreCompound in wet_tyre_compounds:
-        curr_tyre_type = TyreDeltaMessage.TyreType.WET
-    elif fitted_tyre.m_actualTyreCompound in inter_tyre_compounds:
-        curr_tyre_type = TyreDeltaMessage.TyreType.INTER
-    else:
-        curr_tyre_type = TyreDeltaMessage.TyreType.SLICK
-
-    if TyreDeltaMessage.TyreType.SLICK == curr_tyre_type:
-        # Search for the first wet tyre
-        other_tyre_1 = next((tyre_set for tyre_set in reversed(tyre_sets.m_tyreSetData) \
-                            if tyre_set.m_actualTyreCompound in wet_tyre_compounds), None)
-        other_tyre_1_type = TyreDeltaMessage.TyreType.WET
-
-        # Search for the first inter tyre
-        other_tyre_2 = next((tyre_set for tyre_set in reversed(tyre_sets.m_tyreSetData) \
-                            if tyre_set.m_actualTyreCompound in inter_tyre_compounds), None)
-        other_tyre_2_type = TyreDeltaMessage.TyreType.INTER
-
-    elif TyreDeltaMessage.TyreType.INTER == curr_tyre_type:
-        # Search for the first wet tyre
-        other_tyre_1 = next((tyre_set for tyre_set in reversed(tyre_sets.m_tyreSetData) \
-                            if tyre_set.m_actualTyreCompound in wet_tyre_compounds), None)
-        other_tyre_1_type = TyreDeltaMessage.TyreType.WET
-
-        # Search for the first slick tyre
-        other_tyre_2 = next((tyre_set for tyre_set in tyre_sets.m_tyreSetData \
-                            if tyre_set.m_actualTyreCompound in slick_tyre_compounds), None)
-        other_tyre_2_type = TyreDeltaMessage.TyreType.SLICK
-
-    else:
-        # Search for the first slick tyre
-        other_tyre_1 = next((tyre_set for tyre_set in tyre_sets.m_tyreSetData \
-                            if tyre_set.m_actualTyreCompound in slick_tyre_compounds), None)
-        other_tyre_1_type = TyreDeltaMessage.TyreType.SLICK
-
-        # Search for the first inter tyre
-        other_tyre_2 = next((tyre_set for tyre_set in tyre_sets.m_tyreSetData \
-                            if tyre_set.m_actualTyreCompound in inter_tyre_compounds), None)
-        other_tyre_2_type = TyreDeltaMessage.TyreType.INTER
-
-    assert other_tyre_1
-    assert other_tyre_2
-    assert other_tyre_1 != other_tyre_2
-    assert other_tyre_1_type != other_tyre_2_type
-
-    if (not other_tyre_1) or (not other_tyre_2):
-        png_logger.error(f"Invalid other tyre index: {json.dumps(tyre_sets.toJSON())}")
-        return []
-
-    return [
-        TyreDeltaMessage(
-            curr_tyre_type=curr_tyre_type,
-            other_tyre_type=other_tyre_1_type,
-            delta=(other_tyre_1.m_lapDeltaTime / 1000)),
-        TyreDeltaMessage(
-            curr_tyre_type=curr_tyre_type,
-            other_tyre_type=other_tyre_2_type,
-            delta=(other_tyre_2.m_lapDeltaTime / 1000)),
-    ]
 
 def getOvertakeJSON(driver_name: str=None) -> Tuple[GetOvertakesStatus, Dict[str, Any]]:
     """Get the JSON value containing key overtake information
@@ -1219,13 +1226,15 @@ def getOvertakeRecords() -> List[OvertakeRecord]:
 
     return _driver_data.m_overtakes_history.getRecords()
 
-def initDriverData(process_car_setups: bool) -> None:
+def initDriverData(logger: logging.Logger, process_car_setups: bool) -> None:
     """Init the DriverData object
 
     Args:
+        logger (logging.Logger): Logger
         process_car_setups (bool): Whether to process car setups packets
     """
     global _driver_data
     _driver_data = DriverData(
+        logger,
         process_car_setups
     )
