@@ -181,9 +181,9 @@ class F1TelemetryHandler:
                 packet (PacketLapData): Lap Data packet
             """
 
-            if TelState._driver_data.m_session_info.m_total_laps is not None:
-                TelState._driver_data.processLapDataUpdate(packet)
-                TelState._driver_data.setRaceOngoing()
+            if TelState._session_state.m_session_info.m_total_laps is not None:
+                TelState._session_state.processLapDataUpdate(packet)
+                TelState._session_state.setRaceOngoing()
 
         @self.m_manager.on_packet(F1PacketType.EVENT)
         async def handleEvent(packet: PacketEventData) -> None:
@@ -216,7 +216,7 @@ class F1TelemetryHandler:
                 packet (PacketParticipantsData): The pariticpants info packet
             """
 
-            TelState._driver_data.processParticipantsUpdate(packet)
+            TelState._session_state.processParticipantsUpdate(packet)
 
         @self.m_manager.on_packet(F1PacketType.CAR_TELEMETRY)
         async def processCarTelemetryUpdate(packet: PacketCarTelemetryData) -> None:
@@ -226,8 +226,8 @@ class F1TelemetryHandler:
                 packet (PacketCarTelemetryData): The car telemetry update packet
             """
 
-            TelState._driver_data.processCarTelemetryUpdate(packet)
-            TelState._driver_data.setRaceOngoing()
+            TelState._session_state.processCarTelemetryUpdate(packet)
+            TelState._session_state.setRaceOngoing()
 
         @self.m_manager.on_packet(F1PacketType.CAR_STATUS)
         async def processCarStatusUpdate(packet: PacketCarStatusData) -> None:
@@ -237,8 +237,8 @@ class F1TelemetryHandler:
                 packet (PacketCarStatusData): The car status update packet
             """
 
-            TelState._driver_data.processCarStatusUpdate(packet)
-            TelState._driver_data.setRaceOngoing()
+            TelState._session_state.processCarStatusUpdate(packet)
+            TelState._session_state.setRaceOngoing()
 
         @self.m_manager.on_packet(F1PacketType.FINAL_CLASSIFICATION)
         async def handleFinalClassification(packet: PacketFinalClassificationData) -> None:
@@ -312,8 +312,8 @@ class F1TelemetryHandler:
                 packet (PacketCarDamageData): The car damage update packet
             """
 
-            TelState._driver_data.processCarDamageUpdate(packet)
-            TelState._driver_data.setRaceOngoing()
+            TelState._session_state.processCarDamageUpdate(packet)
+            TelState._session_state.setRaceOngoing()
 
         @self.m_manager.on_packet(F1PacketType.SESSION_HISTORY)
         async def processSessionHistoryUpdate(packet: PacketSessionHistoryData):
@@ -323,8 +323,8 @@ class F1TelemetryHandler:
                 packet (PacketSessionHistoryData): The session history update packet
             """
 
-            TelState._driver_data.processSessionHistoryUpdate(packet)
-            TelState._driver_data.setRaceOngoing()
+            TelState._session_state.processSessionHistoryUpdate(packet)
+            TelState._session_state.setRaceOngoing()
 
         @self.m_manager.on_packet(F1PacketType.TYRE_SETS)
         async def processTyreSetsUpdate(packet: PacketTyreSetsData) -> None:
@@ -334,8 +334,8 @@ class F1TelemetryHandler:
                 packet (PacketTyreSetsData): The tyre history update packet
             """
 
-            TelState._driver_data.processTyreSetsUpdate(packet)
-            TelState._driver_data.setRaceOngoing()
+            TelState._session_state.processTyreSetsUpdate(packet)
+            TelState._session_state.setRaceOngoing()
 
         @self.m_manager.on_packet(F1PacketType.MOTION)
         async def processMotionUpdate(packet: PacketMotionData) -> None:
@@ -345,7 +345,7 @@ class F1TelemetryHandler:
                 packet (PacketMotionData): The motion update packet
             """
 
-            TelState._driver_data.processMotionUpdate(packet)
+            TelState._session_state.processMotionUpdate(packet)
 
         @self.m_manager.on_packet(F1PacketType.CAR_SETUPS)
         async def processCarSetupsUpdate(packet: PacketCarSetupData) -> None:
@@ -355,9 +355,9 @@ class F1TelemetryHandler:
                 packet (PacketCarSetupData): The car setup update packet
             """
 
-            if not TelState._driver_data.m_process_car_setups:
+            if not TelState._session_state.m_process_car_setups:
                 return
-            TelState._driver_data.processCarSetupsUpdate(packet)
+            TelState._session_state.processCarSetupsUpdate(packet)
 
         @self.m_manager.on_packet(F1PacketType.TIME_TRIAL)
         async def processTimeTrialUpdate(packet: PacketTimeTrialData) -> None:
@@ -367,7 +367,7 @@ class F1TelemetryHandler:
                 packet (PacketTimeTrialData): The time trial update packet
             """
 
-            TelState._driver_data.processTimeTrialUpdate(packet)
+            TelState._session_state.processTimeTrialUpdate(packet)
 
         async def handeSessionStartEvent(packet: PacketEventData) -> None:
             """
@@ -438,7 +438,7 @@ class F1TelemetryHandler:
                 packet (PacketEventData): Fastest lap Event packet
             """
 
-            TelState._driver_data.processFastestLapUpdate(packet.mEventDetails)
+            TelState._session_state.processFastestLapUpdate(packet.mEventDetails)
 
         async def processRetirementEvent(packet: PacketEventData) -> None:
             """Update the data structures with the driver retirement udpate
@@ -447,7 +447,7 @@ class F1TelemetryHandler:
                 packet (PacketEventData): Retirement event packet
             """
 
-            TelState._driver_data.processRetirement(packet.mEventDetails)
+            TelState._session_state.processRetirement(packet.mEventDetails)
 
         async def processCollisionsEvent(packet: PacketEventData) -> None:
             """Update the data structures with collisions event udpate.
@@ -457,7 +457,7 @@ class F1TelemetryHandler:
             """
 
             record: PacketEventData.Collision = packet.mEventDetails
-            TelState._driver_data.processCollisionEvent(record)
+            TelState._session_state.processCollisionEvent(record)
 
         async def processOvertakeEvent(packet: PacketEventData) -> None:
             """Add the overtake event to the tracker
@@ -468,7 +468,7 @@ class F1TelemetryHandler:
             record: PacketEventData.Overtake = packet.mEventDetails
             if (overtake_obj := TelState.getOvertakeObj(record.overtakingVehicleIdx,
                                                         record.beingOvertakenVehicleIdx)):
-                TelState._driver_data.m_overtakes_history.insert(overtake_obj)
+                TelState._session_state.m_overtakes_history.insert(overtake_obj)
 
     async def clearAllDataStructures(self) -> None:
         """Clear all the data structures"""

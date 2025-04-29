@@ -166,7 +166,7 @@ class SessionInfo:
         self.m_safety_car_status = packet.m_safetyCarStatus
         return ret_status
 
-class DriverData:
+class SessionState:
     """
     Class that models the data for multiple race drivers.
 
@@ -194,6 +194,27 @@ class DriverData:
     """
 
     MAX_DRIVERS: int = 22
+
+    __slots__ = [
+        'm_logger',
+        'm_driver_data',
+        'm_player_index',
+        'm_fastest_index',
+        'm_num_active_cars',
+        'm_num_dnf_cars',
+        'm_race_completed',
+        'm_is_player_dnf',
+        'm_ideal_pit_stop_window',
+        'm_collision_records',
+        'm_fastest_s1_ms',
+        'm_fastest_s2_ms',
+        'm_fastest_s3_ms',
+        'm_time_trial_packet',
+        'm_overtakes_history',
+        'm_session_info',
+        'm_process_car_setups',
+        'm_custom_markers_history'
+    ]
 
     def __init__(self,
                  logger: logging.Logger,
@@ -424,7 +445,6 @@ class DriverData:
             # If the player is retired, update the bool variable
             if index == self.m_player_index and len(obj_to_be_updated.m_driver_info.m_dnf_status_code) > 0:
                 self.m_is_player_dnf = True
-            self.m_result_status = lap_data.m_resultStatus
 
             # Update warning penalty history and copy of the packet
             obj_to_be_updated.updateLapDataPacketCopy(lap_data, self.m_session_info.m_track_len)
@@ -1020,7 +1040,7 @@ class DriverData:
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
-_driver_data: Optional[DriverData] = None
+_session_state: Optional[SessionState] = None
 
 # -------------------------------------- TELEMETRY PACKET HANDLERS -----------------------------------------------------
 
@@ -1029,7 +1049,7 @@ def processSessionStarted() -> None:
     Reset the data structures when SESSION_STARTED has been received
     """
     clearDataStructures("session started")
-    _driver_data.setRaceOngoing()
+    _session_state.setRaceOngoing()
 
 def processSessionUpdate(packet: PacketSessionData) -> bool:
     """Update the data strctures with session data
@@ -1039,8 +1059,8 @@ def processSessionUpdate(packet: PacketSessionData) -> bool:
         bool - True if all data needs to be reset
     """
 
-    _driver_data.processSessionUpdate(packet)
-    if should_clear := _driver_data.m_session_info.processSessionUpdate(packet):
+    _session_state.processSessionUpdate(packet)
+    if should_clear := _session_state.m_session_info.processSessionUpdate(packet):
         clearDataStructures("session update")
     return should_clear
 
@@ -1055,16 +1075,16 @@ def processFinalClassificationUpdate(packet: PacketFinalClassificationData) -> D
         Dict[str, Any]: Driver data JSON
     """
 
-    final_json = _driver_data.processFinalClassificationUpdate(packet)
-    _driver_data.setRaceCompleted()
-    final_json['custom-markers'] = _driver_data.m_custom_markers_history.getJSONList()
+    final_json = _session_state.processFinalClassificationUpdate(packet)
+    _session_state.setRaceCompleted()
+    final_json['custom-markers'] = _session_state.m_custom_markers_history.getJSONList()
     return final_json
 
 async def processCustomMarkerCreate() -> None:
     """Update the data structures with custom marker information
     """
 
-    if custom_marker_obj := _driver_data.getInsertCustomMarkerEntryObj():
+    if custom_marker_obj := _session_state.getInsertCustomMarkerEntryObj():
         await AsyncInterTaskCommunicator().send("frontend-update", ITCMessage(
             m_message_type=ITCMessage.MessageType.CUSTOM_MARKER,
             m_message=custom_marker_obj))
@@ -1073,7 +1093,7 @@ async def processTyreDeltaSound() -> None:
     """Send the tyre delta notification to the frontend
     """
 
-    messages = _driver_data.getTyreDeltaNotificationMessages()
+    messages = _session_state.getTyreDeltaNotificationMessages()
     for message in messages:
         asyncio.create_task(AsyncInterTaskCommunicator().send(
             "frontend-update",
@@ -1092,7 +1112,7 @@ def getSessionInfo() -> SessionInfo:
     Returns:
         SessionInfo: A copy of the SessionInfo object
     """
-    return _driver_data.m_session_info
+    return _session_state.m_session_info
 
 def getDriverInfoJsonByIndex(index: int) -> Optional[Dict[str, Any]]:
     """Get the driver info JSON for the given index
@@ -1104,14 +1124,14 @@ def getDriverInfoJsonByIndex(index: int) -> Optional[Dict[str, Any]]:
         Optional[Dict[str, Any]]: The driver info JSON
     """
 
-    return _driver_data.getDriverInfoJsonByIndex(index)
+    return _session_state.getDriverInfoJsonByIndex(index)
 
 def getRaceInfo() -> Dict[str, Any]:
     """
     Returns the race information as a dictionary with string keys and any values.
     """
 
-    final_json = _driver_data.getRaceInfoJSON()
+    final_json = _session_state.getRaceInfoJSON()
     if "records" not in final_json:
         final_json['records'] = {
             'fastest' : getFastestTimesJson(final_json),
@@ -1131,8 +1151,8 @@ def isDriverIndexValid(index: int) -> bool:
         bool: True if valid
     """
 
-    return  (0 <= index < len(_driver_data.m_driver_data)) and \
-            (_driver_data.m_driver_data[index] and _driver_data.m_driver_data[index].is_valid)
+    return  (0 <= index < len(_session_state.m_driver_data)) and \
+            (_session_state.m_driver_data[index] and _session_state.m_driver_data[index].is_valid)
 
 def getEventInfoStr() -> Optional[str]:
     """Returns a string with the following format
@@ -1142,8 +1162,8 @@ def getEventInfoStr() -> Optional[str]:
         Optional[str]: The event type string (ends with an underscore), or None if no data is available
     """
 
-    if _driver_data.m_session_info.m_track and _driver_data.m_session_info.m_session_type:
-        return f"{str(_driver_data.m_session_info.m_session_type)}_{str(_driver_data.m_session_info.m_track)}".replace(' ', '_') + '_'
+    if _session_state.m_session_info.m_track and _session_state.m_session_info.m_session_type:
+        return f"{str(_session_state.m_session_info.m_session_type)}_{str(_session_state.m_session_info.m_track)}".replace(' ', '_') + '_'
     return None
 
 def getOvertakeObj(overtaking_car_index: int, being_overtaken_index: int) -> Optional[OvertakeRecord]:
@@ -1160,10 +1180,10 @@ def getOvertakeObj(overtaking_car_index: int, being_overtaken_index: int) -> Opt
             - Current Lap number of car being overtaken
             - Name of driver of car being overtaken
     """
-    if not _driver_data.m_driver_data:
+    if not _session_state.m_driver_data:
         return None
-    overtaking_car_obj = _driver_data._getObjectByIndex(overtaking_car_index, create=False)
-    being_overtaken_car_obj = _driver_data._getObjectByIndex(being_overtaken_index, create=False)
+    overtaking_car_obj = _session_state._getObjectByIndex(overtaking_car_index, create=False)
+    being_overtaken_car_obj = _session_state._getObjectByIndex(being_overtaken_index, create=False)
     if overtaking_car_obj is None or being_overtaken_car_obj is None:
         return None
 
@@ -1184,7 +1204,7 @@ def getCustomMarkersJSON() -> List[Dict[str, Any]]:
     """Returns a list of dictionaries containing custom markers in JSON format.
     """
 
-    return _driver_data.m_custom_markers_history.getJSONList()
+    return _session_state.m_custom_markers_history.getJSONList()
 
 def isPositionHistorySupported() -> bool:
     """Returns whether the position history is supported for the given event type
@@ -1194,7 +1214,7 @@ def isPositionHistorySupported() -> bool:
         bool: True if the position history is supported, False otherwise
     """
 
-    return _driver_data.isPositionHistorySupported()
+    return _session_state.isPositionHistorySupported()
 
 def clearDataStructures(reason: str) -> None:
     """Clears the data structures
@@ -1203,7 +1223,7 @@ def clearDataStructures(reason: str) -> None:
         reason (str): Why the data structures should be cleared
 
     """
-    _driver_data.clear()
+    _session_state.clear(reason)
 
 def getOvertakeJSON(driver_name: str=None) -> Tuple[GetOvertakesStatus, Dict[str, Any]]:
     """Get the JSON value containing key overtake information
@@ -1215,7 +1235,7 @@ def getOvertakeJSON(driver_name: str=None) -> Tuple[GetOvertakesStatus, Dict[str
         Tuple[GetOvertakesStatus, Dict]: Status, JSON value (may be empty)
     """
 
-    return _driver_data.getOvertakeJSON(driver_name)
+    return _session_state.getOvertakeJSON(driver_name)
 
 def getOvertakeRecords() -> List[OvertakeRecord]:
     """Get the overtake records
@@ -1224,7 +1244,7 @@ def getOvertakeRecords() -> List[OvertakeRecord]:
         List[OvertakeRecord]: The list of overtake records
     """
 
-    return _driver_data.m_overtakes_history.getRecords()
+    return _session_state.m_overtakes_history.getRecords()
 
 def initDriverData(logger: logging.Logger, process_car_setups: bool) -> None:
     """Init the DriverData object
@@ -1233,8 +1253,8 @@ def initDriverData(logger: logging.Logger, process_car_setups: bool) -> None:
         logger (logging.Logger): Logger
         process_car_setups (bool): Whether to process car setups packets
     """
-    global _driver_data
-    _driver_data = DriverData(
+    global _session_state
+    _session_state = SessionState(
         logger,
         process_car_setups
     )
