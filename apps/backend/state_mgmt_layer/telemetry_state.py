@@ -1246,7 +1246,7 @@ def getOvertakeRecords() -> List[OvertakeRecord]:
 
     return _session_state.m_overtakes_history.getRecords()
 
-def initDriverData(logger: logging.Logger, process_car_setups: bool) -> None:
+def initSessionState(logger: logging.Logger, process_car_setups: bool) -> None:
     """Init the DriverData object
 
     Args:

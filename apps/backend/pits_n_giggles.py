@@ -35,7 +35,7 @@ from colorama import Fore, Style, init
 
 from apps.backend.common.config import load_config
 from apps.backend.common.png_logger import initLogger
-from apps.backend.state_mgmt_layer.telemetry_state import initDriverData
+from apps.backend.state_mgmt_layer.telemetry_state import initSessionState
 from apps.backend.telemetry_layer import setupForwarder, setupTelemetryTask
 from apps.backend.ui_intf_layer import (TelemetryWebServer,
                                         initTelemetryWebServer)
@@ -180,7 +180,7 @@ async def main(args: argparse.Namespace) -> None:
     png_logger.info(f"Python version {sys.version}")
     png_logger.info(config)
 
-    initDriverData(
+    initSessionState(
         logger=png_logger,
         process_car_setups=config.process_car_setup
     )
