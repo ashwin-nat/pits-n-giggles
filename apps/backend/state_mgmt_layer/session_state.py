@@ -245,6 +245,8 @@ class SessionState:
 
         self.m_custom_markers_history = CustomMarkersHistory()
 
+    ####### Control Methods ########
+
     def clear(self, reason: str) -> None:
         """Clears the DriverData object members. Objects require explicit clearing, primitives can just be set to None
 
@@ -283,108 +285,7 @@ class SessionState:
         """
         self.m_race_completed = True
 
-    def _getObjectByIndex(self, index: int, create: bool = True) -> DataPerDriver:
-        """Looks up and retrieves the object at the specified index.
-            If not found and create is True, creates the object, inserts into the list, and returns it.
-
-        Args:
-            index (int): The driver index
-            create (bool, optional): Whether to create the object if not found. Defaults to True.
-
-        Returns:
-            DataPerDriver: The data object associated with the given index
-        """
-
-        if not (obj := self.m_driver_data[index]) and create:
-            self.m_logger.debug(f"Creating new DataPerDriver for index {index}")
-            obj = DataPerDriver(self.m_session_info.m_total_laps)
-            self.m_driver_data[index] = obj
-        return obj
-
-    def _recomputeFastestLap(self) -> None:
-        """
-        Recomputes the fastest lap and updates the necessary fields
-        """
-
-        self.m_fastest_index = None
-        fastest_time_ms = 500000000000 # cant be slower than this, right?
-        for index, driver_data in enumerate(self.m_driver_data):
-            if not driver_data or not driver_data.is_valid:
-                continue
-            if (driver_data.m_lap_info.m_best_lap_ms) and driver_data.m_lap_info.m_best_lap_ms < fastest_time_ms:
-                fastest_time_ms = driver_data.m_lap_info.m_best_lap_ms
-                self.m_fastest_index = index
-
-    def _shouldRecomputeFastestLap(self, driver_data: DataPerDriver) -> bool:
-        """
-        Check if the fastest lap needs to be recomputed based on a given driver's data.
-
-        Args:
-            driver_data (DataPerDriver): The data for the driver.
-
-        Returns:
-            bool: True if the fastest lap needs to be recomputed, False otherwise.
-        """
-
-        # False if no data is available
-        if self.m_num_active_cars is None or self.m_num_active_cars == 0:
-            return False
-
-        # Driver data is not available
-        if driver_data.m_lap_info.m_best_lap_ms == 0:
-            return False
-
-        # True if fastest lap has not been determined yet
-        if self.m_fastest_index is None:
-            return True
-
-        # Determine this guy's best lap
-        driver_best_lap_ms = None
-        if driver_data.m_packet_copies.m_packet_session_history:
-            # First option, session history data
-            best_lap_index: int = driver_data.m_packet_copies.m_packet_session_history.m_bestLapTimeLapNum - 1
-            # sourcery skip: merge-nested-ifs
-            if 0 <= best_lap_index < len(driver_data.m_packet_copies.m_packet_session_history.m_lapHistoryData):
-                if driver_data.m_packet_copies.m_packet_session_history.m_lapHistoryData[best_lap_index].isLapValid():
-                    driver_best_lap_ms = \
-                        driver_data.m_packet_copies.m_packet_session_history.m_lapHistoryData[best_lap_index].m_lapTimeInMS
-        if driver_best_lap_ms is None:
-            # Second option, from the object itself
-            driver_best_lap_ms = driver_data.m_lap_info.m_best_lap_ms
-
-        # False if this guy does not have a valid best lap
-        if driver_data.m_lap_info.m_best_lap_ms is None:
-            return False
-
-        # Check if this guy's lap is faster than the best lap
-        return self.m_driver_data[self.m_fastest_index].m_lap_info.m_best_lap_ms > driver_best_lap_ms
-
-    def _processSessionUpdateHelper(self, packet: PacketSessionData) -> None:
-        """Process the Session Update packet. Update the total laps and ideal pit window for the player
-
-        Args:
-            packet (PacketSessionData): The incoming parsed packet object
-        """
-
-        self.m_ideal_pit_stop_window = packet.m_pitStopWindowIdealLap
-
-        # First time total laps notification has arrived after driver info (out of order)
-        if packet.m_totalLaps:
-
-            # First update the total laps
-            self.m_session_info.m_total_laps = packet.m_totalLaps
-
-        # Update the max SC status for all drivers
-        for obj_to_be_updated in self.m_driver_data:
-            if not obj_to_be_updated or not obj_to_be_updated.is_valid:
-                continue
-            obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status = (
-                packet.m_safetyCarStatus
-                if obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status is None
-                else max(packet.m_safetyCarStatus, obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status)
-            )
-            obj_to_be_updated.m_tyre_info.m_tyre_wear_extrapolator.total_laps = self.m_session_info.m_total_laps
-            obj_to_be_updated.m_car_info.m_fuel_rate_recommender.total_laps = self.m_session_info.m_total_laps
+    ##### Packet event entry points #####
 
     def processLapDataUpdate(self, packet: PacketLapData) -> None:
         """Process the lap data packet and update the necessary fields
@@ -705,6 +606,54 @@ class SessionState:
 
         self.m_time_trial_packet = packet
 
+
+    def processSessionStarted(self) -> None:
+        """
+        Reset the data structures when SESSION_STARTED has been received
+        """
+        self.clear("session started")
+        self.setRaceOngoing()
+
+    def processSessionUpdate(self, packet: PacketSessionData) -> bool:
+        """Update the data strctures with session data
+        Args:
+            packet (PacketSessionData): Session data packet
+
+            bool - True if all data needs to be reset
+        """
+
+        self._processSessionUpdateHelper(packet)
+        if should_clear := self.m_session_info.processSessionUpdate(packet):
+            self.clear("session update")
+        return should_clear
+
+
+    def processCollisionEvent(self, packet: PacketEventData.Collision) -> None:
+        """Process the collision event update packet and update the necessary fields
+
+        Args:
+            packet (PacketEventData.Collision): The collision event update packet
+        """
+
+        collision_obj = self._getCollisionObj(packet.m_vehicle_1_index, packet.m_vehicle_2_index)
+        if collision_obj:
+            self.m_driver_data[packet.m_vehicle_1_index].m_collision_records.append(collision_obj)
+            self.m_driver_data[packet.m_vehicle_2_index].m_collision_records.append(collision_obj)
+            self.m_collision_records.append(collision_obj)
+
+    def processOvertakeEvent(self, record: PacketEventData.Overtake) -> None:
+        """Processes an overtake event and adds it to the overtake history
+
+        Args:
+            record (PacketEventData.Overtake): The overtake event packet
+        """
+
+        if (overtake_obj := self._getOvertakeObj(record.overtakingVehicleIdx,
+                                                 record.beingOvertakenVehicleIdx)):
+            self.m_overtakes_history.insert(overtake_obj)
+
+    ##### Public Getters #####
+
     def getDriverInfoJsonByIndex(self, index: int) -> Optional[Dict[str, Any]]:
         """Get the driver info JSON for the specified index.
 
@@ -749,60 +698,6 @@ class SessionState:
             # "overtakes" : self.getOvertakeStatsJSON()
         }
 
-    def processCollisionEvent(self, packet: PacketEventData.Collision) -> None:
-        """Process the collision event update packet and update the necessary fields
-
-        Args:
-            packet (PacketEventData.Collision): The collision event update packet
-        """
-
-        collision_obj = self._getCollisionObj(packet.m_vehicle_1_index, packet.m_vehicle_2_index)
-        if collision_obj:
-            self.m_driver_data[packet.m_vehicle_1_index].m_collision_records.append(collision_obj)
-            self.m_driver_data[packet.m_vehicle_2_index].m_collision_records.append(collision_obj)
-            self.m_collision_records.append(collision_obj)
-
-    def _getCollisionObj(self, driver_1_index: int, driver_2_index: int) -> Optional[CollisionRecord]:
-        """Returns a collision object containing collision information
-
-        Args:
-            driver_1_index (int): The index of the first driver
-            driver_2_index (int): The index of the second driver
-
-        Returns:
-            Optional[CollisionRecord]: A collision object containing collision information
-        """
-
-        if not self.m_driver_data:
-            return None
-        driver_1_obj = self._getObjectByIndex(driver_1_index, create=False)
-        driver_2_obj = self._getObjectByIndex(driver_2_index, create=False)
-        if driver_1_obj is None or driver_2_obj is None:
-            return None
-
-        if driver_1_obj.m_driver_info.name is None or \
-            driver_1_obj.m_lap_info.m_current_lap is None or \
-                driver_2_obj.m_driver_info.name is None or \
-                    driver_2_obj.m_lap_info.m_current_lap is None:
-            return None
-
-        return CollisionRecord(
-            driver_1_name=driver_1_obj.m_driver_info.name,
-            driver_1_lap=driver_1_obj.m_lap_info.m_current_lap,
-            driver_1_index=driver_1_index,
-            driver_2_name=driver_2_obj.m_driver_info.name,
-            driver_2_lap=driver_2_obj.m_lap_info.m_current_lap,
-            driver_2_index=driver_2_index
-        )
-
-    def _getClassificationDataListJSON(self):
-        """
-        Return a list of dictionaries containing index, driver name, position, and participant data.
-        """
-
-        return [driver_data.toJSON(index) for index, driver_data in enumerate(self.m_driver_data) \
-                if driver_data and driver_data.is_valid]
-
     def getCollisionStatsJSON(self) -> Dict[str, Any]:
         """Get the collision stats JSON.
 
@@ -814,45 +709,6 @@ class SessionState:
             input_mode=CollisionAnalyzerMode.INPUT_MODE_LIST_COLLISION_RECORDS,
             input_data=self.m_collision_records)
         return collision_analyzer.toJSON()
-
-    def _safeMin(self, arg1: int, arg2: Optional[int]) -> int:
-        """
-        Returns the minimum of two arguments. One is guaranteed to be an integer,
-        and the other may be None. If one argument is None, returns the other.
-
-        :param arg1: An integer value (guaranteed).
-        :param arg2: An integer or None.
-        :return: The smaller of the two integers, or the non-None value if one is None.
-        """
-        return arg1 if arg2 is None else min(arg1, arg2)
-
-    def getDriverInfoByPosition(self, position: int) -> Optional[DataPerDriver]:
-        """
-        Get the driver data by position
-
-        Args:
-            position (int): The position of the driver
-
-        Returns:
-            Optional[DataPerDriver]: The driver data object
-        """
-        return next(
-            (
-                driver_data
-                for driver_data in self.m_driver_data
-                if (driver_data and driver_data.is_valid) and(driver_data.m_driver_info.position == position)
-            ),
-            None,
-        )
-
-    def isPositionHistorySupported(self) -> bool:
-        """Returns whether the position history is supported for the given event type
-            Position history is only supported in race events
-
-        Returns:
-            bool: True if the position history is supported, False otherwise
-        """
-        return bool(self.m_session_info.m_session_type and "Race" in str(self.m_session_info.m_session_type))
 
     def getOvertakeJSON(self, driver_name: str=None) -> Tuple[GetOvertakesStatus, Dict[str, Any]]:
         """Get the JSON value containing key overtake information
@@ -1037,26 +893,24 @@ class SessionState:
         self.m_custom_markers_history.insert(obj)
         return obj
 
-
-    def processSessionStarted(self) -> None:
+    def getDriverInfoByPosition(self, position: int) -> Optional[DataPerDriver]:
         """
-        Reset the data structures when SESSION_STARTED has been received
-        """
-        self.clear("session started")
-        self.setRaceOngoing()
+        Get the driver data by position
 
-    def processSessionUpdate(self, packet: PacketSessionData) -> bool:
-        """Update the data strctures with session data
         Args:
-            packet (PacketSessionData): Session data packet
+            position (int): The position of the driver
 
-            bool - True if all data needs to be reset
+        Returns:
+            Optional[DataPerDriver]: The driver data object
         """
-
-        self._processSessionUpdateHelper(packet)
-        if should_clear := self.m_session_info.processSessionUpdate(packet):
-            self.clear("session update")
-        return should_clear
+        return next(
+            (
+                driver_data
+                for driver_data in self.m_driver_data
+                if (driver_data and driver_data.is_valid) and(driver_data.m_driver_info.position == position)
+            ),
+            None,
+        )
 
     def getEventInfoStr(self) -> Optional[str]:
         """Returns a string with the following format
@@ -1071,6 +925,186 @@ class SessionState:
             track = str(self.m_session_info.m_track)
             return f"{session_type}_{track}".replace(' ', '_') + '_'
         return None
+
+    def getRaceInfo(self) -> Dict[str, Any]:
+        """
+        Returns the race information as a dictionary with string keys and any values.
+        """
+
+        final_json = self.getRaceInfoJSON()
+        if "records" not in final_json:
+            final_json['records'] = {
+                'fastest' : getFastestTimesJson(final_json),
+                'tyre-stats' : getTyreStintRecordsDict(final_json),
+            }
+        return final_json
+
+    def isPositionHistorySupported(self) -> bool:
+        """Returns whether the position history is supported for the given event type
+            Position history is only supported in race events
+
+        Returns:
+            bool: True if the position history is supported, False otherwise
+        """
+        return bool(self.m_session_info.m_session_type and "Race" in str(self.m_session_info.m_session_type))
+
+    ##### Internal Helpers #####
+
+    def _getObjectByIndex(self, index: int, create: bool = True) -> DataPerDriver:
+        """Looks up and retrieves the object at the specified index.
+            If not found and create is True, creates the object, inserts into the list, and returns it.
+
+        Args:
+            index (int): The driver index
+            create (bool, optional): Whether to create the object if not found. Defaults to True.
+
+        Returns:
+            DataPerDriver: The data object associated with the given index
+        """
+
+        if not (obj := self.m_driver_data[index]) and create:
+            self.m_logger.debug(f"Creating new DataPerDriver for index {index}")
+            obj = DataPerDriver(self.m_session_info.m_total_laps)
+            self.m_driver_data[index] = obj
+        return obj
+
+    def _recomputeFastestLap(self) -> None:
+        """
+        Recomputes the fastest lap and updates the necessary fields
+        """
+
+        self.m_fastest_index = None
+        fastest_time_ms = 500000000000 # cant be slower than this, right?
+        for index, driver_data in enumerate(self.m_driver_data):
+            if not driver_data or not driver_data.is_valid:
+                continue
+            if (driver_data.m_lap_info.m_best_lap_ms) and driver_data.m_lap_info.m_best_lap_ms < fastest_time_ms:
+                fastest_time_ms = driver_data.m_lap_info.m_best_lap_ms
+                self.m_fastest_index = index
+
+    def _shouldRecomputeFastestLap(self, driver_data: DataPerDriver) -> bool:
+        """
+        Check if the fastest lap needs to be recomputed based on a given driver's data.
+
+        Args:
+            driver_data (DataPerDriver): The data for the driver.
+
+        Returns:
+            bool: True if the fastest lap needs to be recomputed, False otherwise.
+        """
+
+        # False if no data is available
+        if self.m_num_active_cars is None or self.m_num_active_cars == 0:
+            return False
+
+        # Driver data is not available
+        if driver_data.m_lap_info.m_best_lap_ms == 0:
+            return False
+
+        # True if fastest lap has not been determined yet
+        if self.m_fastest_index is None:
+            return True
+
+        # Determine this guy's best lap
+        driver_best_lap_ms = None
+        if driver_data.m_packet_copies.m_packet_session_history:
+            # First option, session history data
+            best_lap_index: int = driver_data.m_packet_copies.m_packet_session_history.m_bestLapTimeLapNum - 1
+            # sourcery skip: merge-nested-ifs
+            if 0 <= best_lap_index < len(driver_data.m_packet_copies.m_packet_session_history.m_lapHistoryData):
+                if driver_data.m_packet_copies.m_packet_session_history.m_lapHistoryData[best_lap_index].isLapValid():
+                    driver_best_lap_ms = \
+                        driver_data.m_packet_copies.m_packet_session_history.m_lapHistoryData[best_lap_index].m_lapTimeInMS
+        if driver_best_lap_ms is None:
+            # Second option, from the object itself
+            driver_best_lap_ms = driver_data.m_lap_info.m_best_lap_ms
+
+        # False if this guy does not have a valid best lap
+        if driver_data.m_lap_info.m_best_lap_ms is None:
+            return False
+
+        # Check if this guy's lap is faster than the best lap
+        return self.m_driver_data[self.m_fastest_index].m_lap_info.m_best_lap_ms > driver_best_lap_ms
+
+    def _processSessionUpdateHelper(self, packet: PacketSessionData) -> None:
+        """Process the Session Update packet. Update the total laps and ideal pit window for the player
+
+        Args:
+            packet (PacketSessionData): The incoming parsed packet object
+        """
+
+        self.m_ideal_pit_stop_window = packet.m_pitStopWindowIdealLap
+
+        # First time total laps notification has arrived after driver info (out of order)
+        if packet.m_totalLaps:
+
+            # First update the total laps
+            self.m_session_info.m_total_laps = packet.m_totalLaps
+
+        # Update the max SC status for all drivers
+        for obj_to_be_updated in self.m_driver_data:
+            if not obj_to_be_updated or not obj_to_be_updated.is_valid:
+                continue
+            obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status = (
+                packet.m_safetyCarStatus
+                if obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status is None
+                else max(packet.m_safetyCarStatus, obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status)
+            )
+            obj_to_be_updated.m_tyre_info.m_tyre_wear_extrapolator.total_laps = self.m_session_info.m_total_laps
+            obj_to_be_updated.m_car_info.m_fuel_rate_recommender.total_laps = self.m_session_info.m_total_laps
+
+    def _getCollisionObj(self, driver_1_index: int, driver_2_index: int) -> Optional[CollisionRecord]:
+        """Returns a collision object containing collision information
+
+        Args:
+            driver_1_index (int): The index of the first driver
+            driver_2_index (int): The index of the second driver
+
+        Returns:
+            Optional[CollisionRecord]: A collision object containing collision information
+        """
+
+        if not self.m_driver_data:
+            return None
+        driver_1_obj = self._getObjectByIndex(driver_1_index, create=False)
+        driver_2_obj = self._getObjectByIndex(driver_2_index, create=False)
+        if driver_1_obj is None or driver_2_obj is None:
+            return None
+
+        if driver_1_obj.m_driver_info.name is None or \
+            driver_1_obj.m_lap_info.m_current_lap is None or \
+                driver_2_obj.m_driver_info.name is None or \
+                    driver_2_obj.m_lap_info.m_current_lap is None:
+            return None
+
+        return CollisionRecord(
+            driver_1_name=driver_1_obj.m_driver_info.name,
+            driver_1_lap=driver_1_obj.m_lap_info.m_current_lap,
+            driver_1_index=driver_1_index,
+            driver_2_name=driver_2_obj.m_driver_info.name,
+            driver_2_lap=driver_2_obj.m_lap_info.m_current_lap,
+            driver_2_index=driver_2_index
+        )
+
+    def _getClassificationDataListJSON(self):
+        """
+        Return a list of dictionaries containing index, driver name, position, and participant data.
+        """
+
+        return [driver_data.toJSON(index) for index, driver_data in enumerate(self.m_driver_data) \
+                if driver_data and driver_data.is_valid]
+
+
+    def _safeMin(self, arg1: int, arg2: Optional[int]) -> int:
+        """
+        Returns the minimum of two arguments. One is guaranteed to be an integer,
+        and the other may be None. If one argument is None, returns the other.
+
+        :param arg1: An integer value (guaranteed).
+        :param arg2: An integer or None.
+        :return: The smaller of the two integers, or the non-None value if one is None.
+        """
+        return arg1 if arg2 is None else min(arg1, arg2)
 
     def _getOvertakeObj(self, overtaking_car_index: int, being_overtaken_index: int) -> Optional[OvertakeRecord]:
         """Returns an overtake object containing overtake information
@@ -1106,26 +1140,4 @@ class SessionState:
             overtaken_driver_lap=being_overtaken_car_obj.m_lap_info.m_current_lap,
         )
 
-    def processOvertakeEvent(self, record: PacketEventData.Overtake) -> None:
-        """Processes an overtake event and adds it to the overtake history
 
-        Args:
-            record (PacketEventData.Overtake): The overtake event packet
-        """
-
-        if (overtake_obj := self._getOvertakeObj(record.overtakingVehicleIdx,
-                                                 record.beingOvertakenVehicleIdx)):
-            self.m_overtakes_history.insert(overtake_obj)
-
-    def getRaceInfo(self) -> Dict[str, Any]:
-        """
-        Returns the race information as a dictionary with string keys and any values.
-        """
-
-        final_json = self.getRaceInfoJSON()
-        if "records" not in final_json:
-            final_json['records'] = {
-                'fastest' : getFastestTimesJson(final_json),
-                'tyre-stats' : getTyreStintRecordsDict(final_json),
-            }
-        return final_json
