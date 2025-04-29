@@ -31,11 +31,11 @@ import socketio
 import apps.backend.state_mgmt_layer as TelWebAPI
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 
-from .telemetry_server import TelemetryWebServer
+from .telemetry_web_server import TelemetryWebServer
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def initTelemetryWebServer(
+def initUiIntfLayer(
     port: int,
     logger: logging.Logger,
     client_update_interval_ms: int,

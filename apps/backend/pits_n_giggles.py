@@ -36,13 +36,173 @@ from colorama import Fore, Style, init
 from apps.backend.common.config import load_config
 from apps.backend.common.png_logger import initLogger
 from apps.backend.state_mgmt_layer import initStateManagementLayer
-from apps.backend.telemetry_layer import setupForwarder, setupTelemetryTask
+from apps.backend.telemetry_layer import initTelemetryLayer
 from apps.backend.ui_intf_layer import (TelemetryWebServer,
-                                        initTelemetryWebServer)
+                                        initUiIntfLayer)
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
 png_logger: Optional[logging.Logger] = None
+
+# -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
+
+class PngRunner:
+    """Pits n' Giggles Backend Runner"""
+    def __init__(self, logger: logging.Logger, config_file: str, replay_server: bool):
+        """Init the runner. Register necessary tasks
+
+        Args:
+            logger (logging.Logger): Logger object
+            config_file (str): Path to the config file
+            replay_server (bool): If true, runs in TCP debug mode, else UDP live mode
+        """
+        self.m_logger: logging.Logger = logger
+        self.m_config = load_config(config_file)
+        self.m_tasks: List[asyncio.Task] = []
+
+        self.m_logger.info("PID=%d Starting the app with the following options:", os.getpid())
+        self.m_logger.info(f"Python version {sys.version}")
+        self.m_logger.info(self.m_config)
+
+        initStateManagementLayer(logger=self.m_logger, process_car_setups=self.m_config.process_car_setup)
+
+        initTelemetryLayer(
+            port_number=self.m_config.telemetry_port,
+            replay_server=replay_server,
+            logger=self.m_logger,
+            post_race_data_autosave=self.m_config.post_race_data_autosave,
+            udp_custom_action_code=self.m_config.udp_custom_action_code,
+            udp_tyre_delta_action_code=self.m_config.udp_tyre_delta_action_code,
+            forwarding_targets=self.m_config.forwarding_targets,
+            tasks=self.m_tasks
+        )
+        self.m_web_server = self._setupUiIntfLayer(
+            http_port=self.m_config.server_port,
+            logger=self.m_logger,
+            client_update_interval_ms=self.m_config.refresh_interval,
+            disable_browser_autoload=self.m_config.disable_browser_autoload,
+            stream_overlay_start_sample_data=self.m_config.stream_overlay_start_sample_data,
+            tasks=self.m_tasks,
+            ver_str=self._getVersion()
+        )
+
+        # Run all tasks concurrently
+        self._printDoNotCloseWarning()
+        self.m_logger.debug("Registered %d Tasks: %s", len(self.m_tasks), [task.get_name() for task in self.m_tasks])
+
+    async def run(self) -> None:
+
+        try:
+            await asyncio.gather(*self.m_tasks)
+        except asyncio.CancelledError:
+            png_logger.debug("Main task was cancelled.")
+            await self.m_web_server.stop()
+            for task in self.m_tasks:
+                task.cancel()
+            raise  # Ensure proper cancellation behavior
+
+    def _setupUiIntfLayer(self,
+        http_port: int,
+        logger: logging.Logger,
+        client_update_interval_ms: int,
+        disable_browser_autoload: bool,
+        stream_overlay_start_sample_data: bool,
+        tasks: List[asyncio.Task],
+        ver_str: str) -> TelemetryWebServer:
+        """Entry point to start the HTTP server.
+
+        Args:
+            http_port (int): Port number for the HTTP server.
+            logger (logging.Logger): Logger instance.
+            client_update_interval_ms (int): Client poll interval in milliseconds.
+            disable_browser_autoload (bool): Whether to disable browser autoload.
+            stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
+            tasks (List[asyncio.Task]): List of tasks to be executed
+            ver_str (str): Version string
+
+        Returns:
+            TelemetryWebServer: The initialized web server object
+        """
+        # Create a task to open the webpage
+        if not disable_browser_autoload:
+            tasks.append(asyncio.create_task(self._openWebPage(http_port), name="Web page opener Task"))
+
+        log_str = "Starting F1 telemetry server. Open one of the below addresses in your browser\n"
+        ip_addresses = self._getLocalIpAddresses()
+        for ip_addr in ip_addresses:
+            log_str += f"    http://{ip_addr}:{http_port}\n"
+        log_str += "NOTE: The tables will be empty until the red lights appear on the screen before the race start\n"
+        log_str += "That is when the game starts sending telemetry data"
+        self.m_logger.info(log_str)
+
+        return initUiIntfLayer(
+            port=http_port,
+            logger=logger,
+            client_update_interval_ms=client_update_interval_ms,
+            debug_mode=False,
+            stream_overlay_start_sample_data=stream_overlay_start_sample_data,
+            tasks=tasks,
+            ver_str=ver_str
+        )
+
+    def _getLocalIpAddresses(self) -> Set[str]:
+        """Get local IP addresses including '127.0.0.1' and 'localhost'.
+
+        Returns:
+            Set[str]: Set of local IP addresses.
+        """
+        ip_addresses = {'127.0.0.1', 'localhost'}
+        try:
+            for host_name in socket.gethostbyname_ex(socket.gethostname())[2]:
+                ip_addresses.add(host_name)
+        except socket.gaierror as e:
+            # Log the error or handle it as per your requirement
+            self.m_logger.warning("Error occurred: %s. Using default IP addresses.", e)
+        return ip_addresses
+
+    async def _openWebPage(self, http_port: int) -> None:
+        """Open the webpage on a new browser tab.
+
+        Args:
+            http_port (int): Port number of the HTTP server.
+        """
+        await asyncio.sleep(1)
+        webbrowser.open(f'http://localhost:{http_port}', new=2)
+        self.m_logger.debug("Webpage opened. Task completed")
+
+    def _printDoNotCloseWarning(self) -> None:
+        """
+        Prints a warning message in red and bold.
+        Works across Windows CMD, PowerShell, and Linux/macOS terminals.
+        """
+        init(autoreset=True)  # Ensures colors reset automatically and enables ANSI on Windows
+
+        RED = Fore.RED
+        BOLD = Style.BRIGHT
+
+        border = "*" * 60  # Fixed-width border
+        message = [
+            "WARNING: DO NOT CLOSE THIS WINDOW!",
+            "This command line window is required",
+            "for the application to run properly.",
+            "If you close this window, the application",
+            "will stop working."
+        ]
+
+        print(RED + BOLD + border)
+        for line in message:
+            print(RED + BOLD + f"* {line.center(56)} *")
+        print(RED + BOLD + border)
+
+
+    def _getVersion(self) -> str:
+        """Get the version string from env variable
+
+        Returns:
+            str: Version string
+        """
+
+        return os.environ.get('PNG_VERSION', 'dev')
 
 # -------------------------------------- FUNCTION DEFINITIONS ----------------------------------------------------------
 
@@ -64,163 +224,20 @@ def parseArgs() -> argparse.Namespace:
     # Parse the command-line arguments
     return parser.parse_args()
 
-def getLocalIpAddresses() -> Set[str]:
-    """Get local IP addresses including '127.0.0.1' and 'localhost'.
-
-    Returns:
-        Set[str]: Set of local IP addresses.
-    """
-    ip_addresses = {'127.0.0.1', 'localhost'}
-    try:
-        for host_name in socket.gethostbyname_ex(socket.gethostname())[2]:
-            ip_addresses.add(host_name)
-    except socket.gaierror as e:
-        # Log the error or handle it as per your requirement
-        png_logger.warning("Error occurred: %s. Using default IP addresses.", e)
-    return ip_addresses
-
-async def openWebPage(http_port: int) -> None:
-    """Open the webpage on a new browser tab.
-
-    Args:
-        http_port (int): Port number of the HTTP server.
-    """
-    await asyncio.sleep(1)
-    webbrowser.open(f'http://localhost:{http_port}', new=2)
-    png_logger.debug("Webpage opened. Task completed")
-
-def setupWebServerTask(
-        http_port: int,
-        logger: logging.Logger,
-        client_update_interval_ms: int,
-        disable_browser_autoload: bool,
-        stream_overlay_start_sample_data: bool,
-        tasks: List[asyncio.Task],
-        ver_str: str) -> TelemetryWebServer:
-    """Entry point to start the HTTP server.
-
-    Args:
-        http_port (int): Port number for the HTTP server.
-        logger (logging.Logger): Logger instance.
-        client_update_interval_ms (int): Client poll interval in milliseconds.
-        disable_browser_autoload (bool): Whether to disable browser autoload.
-        stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
-        tasks (List[asyncio.Task]): List of tasks to be executed
-        ver_str (str): Version string
-
-    Returns:
-        TelemetryWebServer: The initialized web server object
-    """
-    # Create a task to open the webpage
-    if not disable_browser_autoload:
-        tasks.append(asyncio.create_task(openWebPage(http_port), name="Web page opener Task"))
-
-    log_str = "Starting F1 telemetry server. Open one of the below addresses in your browser\n"
-    ip_addresses = getLocalIpAddresses()
-    for ip_addr in ip_addresses:
-        log_str += f"    http://{ip_addr}:{http_port}\n"
-    log_str += "NOTE: The tables will be empty until the red lights appear on the screen before the race start\n"
-    log_str += "That is when the game starts sending telemetry data"
-    png_logger.info(log_str)
-
-    return initTelemetryWebServer(
-        port=http_port,
-        logger=logger,
-        client_update_interval_ms=client_update_interval_ms,
-        debug_mode=False,
-        stream_overlay_start_sample_data=stream_overlay_start_sample_data,
-        tasks=tasks,
-        ver_str=ver_str
-    )
-
-def printDoNotCloseWarning() -> None:
-    """
-    Prints a warning message in red and bold.
-    Works across Windows CMD, PowerShell, and Linux/macOS terminals.
-    """
-    init(autoreset=True)  # Ensures colors reset automatically and enables ANSI on Windows
-
-    RED = Fore.RED
-    BOLD = Style.BRIGHT
-
-    border = "*" * 60  # Fixed-width border
-    message = [
-        "WARNING: DO NOT CLOSE THIS WINDOW!",
-        "This command line window is required",
-        "for the application to run properly.",
-        "If you close this window, the application",
-        "will stop working."
-    ]
-
-    print(RED + BOLD + border)
-    for line in message:
-        print(RED + BOLD + f"* {line.center(56)} *")
-    print(RED + BOLD + border)
-
-def getVersion() -> str:
-    """Get the version string from env variable
-
-    Returns:
-        str: Version string
-    """
-
-    return os.environ.get('PNG_VERSION', 'dev')
-
-async def main(args: argparse.Namespace) -> None:
+async def main(logger: logging.Logger, args: argparse.Namespace) -> None:
     """Entry point for the application.
 
     Args:
+        logger (logging.Logger): Logger object
         args (argparse.Namespace): Parsed command-line arguments.
     """
 
-    global png_logger
-    config = load_config(args.config_file)
-
-    png_logger.info("PID=%d Starting the app with the following options:", os.getpid())
-    png_logger.info(f"Python version {sys.version}")
-    png_logger.info(config)
-
-    initStateManagementLayer(logger=png_logger, process_car_setups=config.process_car_setup)
-
-    tasks: List[asyncio.Task] = []
-
-    setupTelemetryTask(
-        port_number=config.telemetry_port,
-        replay_server=args.replay_server,
-        logger=png_logger,
-        post_race_data_autosave=config.post_race_data_autosave,
-        udp_custom_action_code=config.udp_custom_action_code,
-        udp_tyre_delta_action_code=config.udp_tyre_delta_action_code,
-        forwarding_targets=config.forwarding_targets,
-        tasks=tasks
+    app = PngRunner(
+        logger=logger,
+        config_file=args.config_file,
+        replay_server=args.replay_server
     )
-    setupForwarder(
-        forwarding_targets=config.forwarding_targets,
-        tasks=tasks,
-        logger=png_logger
-    )
-
-    web_server = setupWebServerTask(
-        http_port=config.server_port,
-        logger=png_logger,
-        client_update_interval_ms=config.refresh_interval,
-        disable_browser_autoload=config.disable_browser_autoload,
-        stream_overlay_start_sample_data=config.stream_overlay_start_sample_data,
-        tasks=tasks,
-        ver_str=getVersion()
-    )
-
-    # Run all tasks concurrently
-    printDoNotCloseWarning()
-    png_logger.debug("Registered %d Tasks: %s", len(tasks), [task.get_name() for task in tasks])
-    try:
-        await asyncio.gather(*tasks)
-    except asyncio.CancelledError:
-        png_logger.debug("Main task was cancelled.")
-        await web_server.stop()
-        for task in tasks:
-            task.cancel()
-        raise  # Ensure proper cancellation behavior
+    await app.run()
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
@@ -228,7 +245,7 @@ if __name__ == '__main__':
     args_obj = parseArgs()
     png_logger = initLogger(file_name='png_log.log', max_size=100000, debug_mode=args_obj.debug)
     try:
-        asyncio.run(main(args_obj))
+        asyncio.run(main(png_logger, args_obj))
     except KeyboardInterrupt:
         png_logger.info("Program interrupted by user.")
     except asyncio.CancelledError:
