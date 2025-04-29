@@ -33,8 +33,7 @@ from hypercorn.asyncio import serve
 from hypercorn.config import Config
 from quart import Quart, jsonify, render_template, request, send_from_directory
 
-import apps.backend.state_mgmt_layer.telemetry_state as TelState
-import apps.backend.state_mgmt_layer.telemetry_web_api as TelWebAPI
+import apps.backend.state_mgmt_layer as TelState
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -227,7 +226,7 @@ class TelemetryWebServer:
             Returns:
                 Tuple[str, int]: JSON response and HTTP status code.
             """
-            return TelWebAPI.RaceInfoUpdate().toJSON(), HTTPStatus.OK
+            return TelState.RaceInfoUpdate().toJSON(), HTTPStatus.OK
 
         @self.m_app.route('/race-info')
         async def raceInfoHTTP() -> Tuple[str, int]:
@@ -237,7 +236,7 @@ class TelemetryWebServer:
             Returns:
                 Tuple[str, int]: JSON response and HTTP status code.
             """
-            return TelWebAPI.OverallRaceStatsRsp().toJSON(), HTTPStatus.OK
+            return TelState.OverallRaceStatsRsp().toJSON(), HTTPStatus.OK
 
         @self.m_app.route('/driver-info')
         async def driverInfoHTTP() -> Tuple[str, int]:
@@ -257,7 +256,7 @@ class TelemetryWebServer:
             Returns:
                 Tuple[str, int]: JSON response and HTTP status code.
             """
-            return TelWebAPI.PlayerTelemetryOverlayUpdate().toJSON(), HTTPStatus.OK
+            return TelState.PlayerTelemetryOverlayUpdate().toJSON(), HTTPStatus.OK
 
     def define_socketio_handlers(self) -> None:
         """
@@ -322,7 +321,7 @@ class TelemetryWebServer:
                 sid (str): Session ID of the requesting client.
                 data (Dict[str, Any]): Request data, potentially including a dummy payload.
             """
-            response = TelWebAPI.OverallRaceStatsRsp().toJSON()
+            response = TelState.OverallRaceStatsRsp().toJSON()
 
             # Re-attach the dummy payload if present
             if "__dummy" in data:
@@ -400,7 +399,7 @@ class TelemetryWebServer:
             return jsonify(error_response), HTTPStatus.BAD_REQUEST
 
         # Process parameters and generate response
-        return TelWebAPI.DriverInfoRsp(index_int).toJSON(), HTTPStatus.OK
+        return TelState.DriverInfoRsp(index_int).toJSON(), HTTPStatus.OK
 
     async def run(self) -> None:
         """

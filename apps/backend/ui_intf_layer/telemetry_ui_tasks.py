@@ -28,7 +28,7 @@ from typing import List
 
 import socketio
 
-import apps.backend.state_mgmt_layer.telemetry_web_api as TelWebAPI
+import apps.backend.state_mgmt_layer as TelWebAPI
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 
 from .telemetry_server import TelemetryWebServer
