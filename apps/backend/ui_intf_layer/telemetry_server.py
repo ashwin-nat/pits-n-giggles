@@ -40,10 +40,7 @@ from lib.inter_task_communicator import AsyncInterTaskCommunicator
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
-_web_server : Optional["TelemetryWebServer"] = None
 png_logger = getLogger()
-_race_table_clients : Set[str] = set()
-_player_overlay_clients : Set[str] = set()
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -306,10 +303,12 @@ class TelemetryWebServer:
                 data (Dict[str, str]): Registration data containing client type.
             """
             png_logger.debug('Client registered. SID = %s Type = %s', sid, data['type'])
-            if data['type'] == 'player-stream-overlay':
-                _player_overlay_clients.add(sid)
-            elif data['type'] == 'race-table':
-                _race_table_clients.add(sid)
+            if (client_type := data['type']) in {'player-stream-overlay', 'race-table'}:
+                await self.m_sio.enter_room(sid, client_type)
+                png_logger.debug('Client %s joined room %s', sid, client_type)
+
+                room = self.m_sio.manager.rooms.get('/', {}).get('race-table')
+                png_logger.debug('Current members of race-table: %s', room)
 
     def _defineDataEndpoints(self) -> None:
         """
@@ -448,22 +447,21 @@ def initTelemetryWebServer(
     """
 
     # First, create the server instance
-    global _web_server
-    _web_server = TelemetryWebServer(
+    web_server = TelemetryWebServer(
         port=port,
         debug_mode=debug_mode,
         ver_str=ver_str
     )
 
     # Register tasks associated with this server
-    tasks.append(asyncio.create_task(_web_server.run(), name="Web Server Task"))
-    tasks.append(asyncio.create_task(raceTableClientUpdateTask(client_update_interval_ms, _web_server.m_sio),
+    tasks.append(asyncio.create_task(web_server.run(), name="Web Server Task"))
+    tasks.append(asyncio.create_task(raceTableClientUpdateTask(client_update_interval_ms, web_server.m_sio),
                                      name="Race Table Update Task"))
-    tasks.append(asyncio.create_task(streamOverlayUpdateTask(60, stream_overlay_start_sample_data, _web_server.m_sio),
+    tasks.append(asyncio.create_task(streamOverlayUpdateTask(60, stream_overlay_start_sample_data, web_server.m_sio),
                                      name="Stream Overlay Update Task"))
-    tasks.append(asyncio.create_task(frontEndMessageTask(_web_server.m_sio),
+    tasks.append(asyncio.create_task(frontEndMessageTask(web_server.m_sio),
                                      name="Front End Message Task"))
-    return _web_server
+    return web_server
 
 async def raceTableClientUpdateTask(update_interval_ms: int, sio: socketio.AsyncServer) -> None:
     """Task to update clients with telemetry data
@@ -473,12 +471,10 @@ async def raceTableClientUpdateTask(update_interval_ms: int, sio: socketio.Async
         sio (socketio.AsyncServer): The socketio server instance
     """
 
-    global _web_server
-    global _race_table_clients
     sleep_duration = update_interval_ms / 1000
     while True:
-        if len(_race_table_clients) > 0:
-            await sio.emit('race-table-update', TelWebAPI.RaceInfoUpdate().toJSON())
+        if not _isRoomEmpty(sio, "race-table"):
+            await sio.emit('race-table-update', TelWebAPI.RaceInfoUpdate().toJSON(), room="race-table")
         await asyncio.sleep(sleep_duration)
 
 async def streamOverlayUpdateTask(
@@ -492,14 +488,14 @@ async def streamOverlayUpdateTask(
         sio (socketio.AsyncServer): The socketio server instance
     """
 
-    global _web_server
-    global _player_overlay_clients
     sleep_duration = update_interval_ms / 1000
     while True:
-        if len(_player_overlay_clients) > 0:
-            await sio.emit('player-overlay-update',
-                                        TelWebAPI.PlayerTelemetryOverlayUpdate()
-                                            .toJSON(stream_overlay_start_sample_data))
+        if not _isRoomEmpty(sio, "player-stream-overlay"):
+            await sio.emit(
+                'player-overlay-update',
+                TelWebAPI.PlayerTelemetryOverlayUpdate().toJSON(stream_overlay_start_sample_data),
+                room="player-stream-overlay"
+            )
         await asyncio.sleep(sleep_duration)
 
 async def frontEndMessageTask(sio: socketio.AsyncServer) -> None:
@@ -514,3 +510,17 @@ async def frontEndMessageTask(sio: socketio.AsyncServer) -> None:
         if message:
             png_logger.debug(f"Received stream update button press {str(message)}")
             await sio.emit('frontend-update', message.toJSON())
+
+def _isRoomEmpty(sio: socketio.AsyncServer, room_name: str) -> bool:
+    """Check if a room is empty
+
+    Args:
+        sio (socketio.AsyncServer): The socketio server instance
+        room_name (str): The room name
+
+    Returns:
+        bool: True if the room is empty, False otherwise
+    """
+    namespace = '/'
+    room = sio.manager.rooms.get(namespace, {}).get(room_name)
+    return not room  # True if room is None or empty set
