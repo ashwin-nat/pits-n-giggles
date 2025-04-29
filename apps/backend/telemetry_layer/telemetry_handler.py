@@ -170,7 +170,7 @@ class F1TelemetryHandler:
                 self.m_logger.info("Session duration is 0. clearing data structures")
                 await self.clearAllDataStructures()
 
-            elif TelState.processSessionUpdate(packet):
+            elif self.m_session_state_ref.processSessionUpdate(packet):
                 self.m_logger.info("Session UID changed. clearing data structures")
                 await self.clearAllDataStructures()
 
@@ -255,11 +255,11 @@ class F1TelemetryHandler:
                 self.m_logger.debug('Session UID %d final classification already processed.', packet.m_header.m_sessionUID)
                 return
             self.m_logger.info('Received Final Classification Packet.')
-            final_json = TelState.processFinalClassificationUpdate(packet)
+            final_json = self.m_session_state_ref.processFinalClassificationUpdate(packet)
             self.g_final_classification_processed = True
 
             # Perform the auto save stuff only for races
-            if event_type_str := str(TelState.getSessionInfo().m_session_type):
+            if event_type_str := str(self.m_session_state_ref.m_session_info.m_session_type):
                 is_event_supported = True
                 if packet.m_header.m_gameYear == 23:
                     unsupported_event_types_f1_23 = [
@@ -467,13 +467,11 @@ class F1TelemetryHandler:
                 packet (PacketEventData): Incoming event packet
             """
             record: PacketEventData.Overtake = packet.mEventDetails
-            if (overtake_obj := TelState.getOvertakeObj(record.overtakingVehicleIdx,
-                                                        record.beingOvertakenVehicleIdx)):
-                self.m_session_state_ref.m_overtakes_history.insert(overtake_obj)
+            self.m_session_state_ref.processOvertakeEvent(record)
 
     async def clearAllDataStructures(self) -> None:
         """Clear all the data structures"""
-        TelState.processSessionStarted()
+        self.m_session_state_ref.processSessionStarted()
         self.m_data_cleared_this_session = True
         self.g_final_classification_processed = False
 
@@ -496,7 +494,7 @@ class F1TelemetryHandler:
             final_json (Dict): Dictionary containing JSON data after final classification
         """
 
-        event_str = TelState.getEventInfoStr()
+        event_str = self.m_session_state_ref.getEventInfoStr()
         if not event_str:
             return
 
@@ -504,7 +502,7 @@ class F1TelemetryHandler:
         if self.g_post_race_data_autosave:
             # Add the overtakes as well
             final_json['overtakes'] = {
-                'records': [record.toJSON() for record in TelState.getOvertakeRecords()]
+                'records': [record.toJSON() for record in self.m_session_state_ref.m_overtakes_history.getRecords()]
             }
 
             # Next, fastest lap and sector records

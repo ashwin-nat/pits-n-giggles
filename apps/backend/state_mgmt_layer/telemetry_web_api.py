@@ -73,7 +73,7 @@ class RaceInfoUpdate:
 
         """
 
-        self.m_session_info = TelState.getSessionInfo()
+        self.m_session_info = _session_state_ref.m_session_info
         track_length = self.m_session_info.m_packet_session.m_trackLength if self.m_session_info.m_packet_session else None
         self.m_driver_list_rsp = DriversListRsp(self.m_session_info.m_is_spectating, track_length,
                                                 (str(self.m_session_info.m_session_type) == "Time Trial"))
@@ -193,7 +193,7 @@ class OverallRaceStatsRsp:
         """Get the overall race stats and prepare the rsp fields
         """
 
-        self.m_rsp = TelState.getRaceInfo()
+        self.m_rsp = _session_state_ref.getRaceInfo()
         self._checkUpdateRecords()
 
     def _checkUpdateRecords(self):
@@ -230,13 +230,14 @@ class OverallRaceStatsRsp:
                 should_recompute_overtakes = True
 
         if should_recompute_overtakes:
-            _, overtake_records = TelState.getOvertakeJSON()
+            _, overtake_records = _session_state_ref.getOvertakeJSON()
             self.m_rsp["overtakes"] = self.m_rsp["overtakes"] | overtake_records
 
-        self.m_rsp["custom-markers"] = TelState.getCustomMarkersJSON()
-        if TelState.isPositionHistorySupported():
-            drivers_list_rsp = DriversListRsp(is_spectator_mode=True,
-                                              is_tt_mode=str(TelState.getSessionInfo().m_session_type) == "Time Trial")
+        self.m_rsp["custom-markers"] = _session_state_ref.m_custom_markers_history.getJSONList()
+        if _session_state_ref.isPositionHistorySupported():
+            drivers_list_rsp = DriversListRsp(
+                                    is_spectator_mode=True,
+                                    is_tt_mode=str(_session_state_ref.m_session_info.m_session_type) == "Time Trial")
             self.m_rsp["position-history"] = drivers_list_rsp.getPositionHistoryJSON()
             self.m_rsp["tyre-stint-history"] = drivers_list_rsp.getTyreStintHistoryJSON()
 
@@ -261,9 +262,9 @@ class DriverInfoRsp:
             index (int): Index of the driver
         """
 
-        self.m_rsp = TelState.getDriverInfoJsonByIndex(index)
+        self.m_rsp = _session_state_ref.getDriverInfoJsonByIndex(index)
         assert self.m_rsp
-        status, overtakes_info = TelState.getOvertakeJSON(self.m_rsp["driver-name"])
+        status, overtakes_info = _session_state_ref.getOvertakeJSON(self.m_rsp["driver-name"])
         self.m_rsp["overtakes-status-code"] = str(status)
         self.m_rsp['overtakes'] = overtakes_info
         assert status != GetOvertakesStatus.INVALID_INDEX

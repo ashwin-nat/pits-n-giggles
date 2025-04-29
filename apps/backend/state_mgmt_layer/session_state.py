@@ -43,7 +43,9 @@ from lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils, LapData,
                           SessionType23, SessionType24, TrackID,
                           WeatherForecastSample)
 from lib.inter_task_communicator import TyreDeltaMessage
-from lib.overtake_analyzer import OvertakeAnalyzer, OvertakeAnalyzerMode
+from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
+                                   OvertakeRecord)
+from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
@@ -357,7 +359,7 @@ class SessionState:
         # Check if this guy's lap is faster than the best lap
         return self.m_driver_data[self.m_fastest_index].m_lap_info.m_best_lap_ms > driver_best_lap_ms
 
-    def processSessionUpdate(self, packet: PacketSessionData) -> None:
+    def _processSessionUpdateHelper(self, packet: PacketSessionData) -> None:
         """Process the Session Update packet. Update the total laps and ideal pit window for the player
 
         Args:
@@ -572,6 +574,8 @@ class SessionState:
             if self.m_session_info.m_packet_session else None
         self.m_session_info.m_packet_final_classification = packet
 
+        self.setRaceCompleted()
+        final_json['custom-markers'] = self.m_custom_markers_history.getJSONList()
         return final_json
 
     def processCarDamageUpdate(self, packet: PacketCarDamageData) -> None:
@@ -1032,3 +1036,96 @@ class SessionState:
         )
         self.m_custom_markers_history.insert(obj)
         return obj
+
+
+    def processSessionStarted(self) -> None:
+        """
+        Reset the data structures when SESSION_STARTED has been received
+        """
+        self.clear("session started")
+        self.setRaceOngoing()
+
+    def processSessionUpdate(self, packet: PacketSessionData) -> bool:
+        """Update the data strctures with session data
+        Args:
+            packet (PacketSessionData): Session data packet
+
+            bool - True if all data needs to be reset
+        """
+
+        self._processSessionUpdateHelper(packet)
+        if should_clear := self.m_session_info.processSessionUpdate(packet):
+            self.clear("session update")
+        return should_clear
+
+    def getEventInfoStr(self) -> Optional[str]:
+        """Returns a string with the following format
+                <event-type> _ <circuit> _
+
+        Returns:
+            Optional[str]: The event type string (ends with an underscore), or None if no data is available
+        """
+
+        if self.m_session_info.m_track and self.m_session_info.m_session_type:
+            session_type = str(self.m_session_info.m_session_type)
+            track = str(self.m_session_info.m_track)
+            return f"{session_type}_{track}".replace(' ', '_') + '_'
+        return None
+
+    def _getOvertakeObj(self, overtaking_car_index: int, being_overtaken_index: int) -> Optional[OvertakeRecord]:
+        """Returns an overtake object containing overtake information
+
+        Args:
+            overtaking_car_index (int): The index of the overtaking car
+            being_overtaken_index (int): The index of the car being overtaken
+
+        Returns:
+            str: CSV-formatted string containing 4 values
+                - Current Lap number of overtaking car
+                - Name of driver of overtaking car
+                - Current Lap number of car being overtaken
+                - Name of driver of car being overtaken
+        """
+        if not self.m_driver_data:
+            return None
+        overtaking_car_obj = self._getObjectByIndex(overtaking_car_index, create=False)
+        being_overtaken_car_obj = self._getObjectByIndex(being_overtaken_index, create=False)
+        if overtaking_car_obj is None or being_overtaken_car_obj is None:
+            return None
+
+        # Prepare data for CSV writing
+        if overtaking_car_obj.m_driver_info.name is None or \
+            overtaking_car_obj.m_lap_info.m_current_lap is None or \
+                being_overtaken_car_obj.m_driver_info.name is None or \
+                    being_overtaken_car_obj.m_lap_info.m_current_lap is None:
+            return None
+        return OvertakeRecord(
+            overtaking_driver_name=overtaking_car_obj.m_driver_info.name,
+            overtaking_driver_lap=overtaking_car_obj.m_lap_info.m_current_lap,
+            overtaken_driver_name=being_overtaken_car_obj.m_driver_info.name,
+            overtaken_driver_lap=being_overtaken_car_obj.m_lap_info.m_current_lap,
+        )
+
+    def processOvertakeEvent(self, record: PacketEventData.Overtake) -> None:
+        """Processes an overtake event and adds it to the overtake history
+
+        Args:
+            record (PacketEventData.Overtake): The overtake event packet
+        """
+
+        if (overtake_obj := self._getOvertakeObj(record.overtakingVehicleIdx,
+                                                 record.beingOvertakenVehicleIdx)):
+            self.m_overtakes_history.insert(overtake_obj)
+
+    def getRaceInfo(self) -> Dict[str, Any]:
+        """
+        Returns the race information as a dictionary with string keys and any values.
+        """
+
+        final_json = self.getRaceInfoJSON()
+        if "records" not in final_json:
+            final_json['records'] = {
+                'fastest' : getFastestTimesJson(final_json),
+                'tyre-stats' : getTyreStintRecordsDict(final_json),
+            }
+        return final_json
