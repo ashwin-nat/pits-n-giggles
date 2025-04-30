@@ -49,12 +49,6 @@ poetry run python -m apps.backend.pits_n_giggles
 poetry run python -m apps.dev.telemetry_replayer --file-name example.f1pcap
 ```
 
-### 🧪 Test Utilities (example)
-
-```bash
-poetry run python -m apps.test.some_test_runner
-```
-
 ---
 
 ## ❗ Notes

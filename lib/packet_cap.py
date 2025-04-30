@@ -55,7 +55,10 @@ class NoCompressionHelper(CompressionHelper):
 
 class ZlibCompressionHelper(CompressionHelper):
     def decompress(self, data: bytes) -> bytes:
-        return zlib.decompress(data)
+        try:
+            return zlib.decompress(data)
+        except zlib.error as e:
+            raise ValueError(f"Zlib decompression failed: {e}") from e
 
     def compress(self, data: bytes) -> bytes:
         return zlib.compress(data)
