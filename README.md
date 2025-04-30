@@ -96,10 +96,10 @@ Mac executables are not yet available as they require building on macOS hardware
 Follow the Python setup instructions below instead.
 
 ### Manual Setup (All Platforms)
-For detailed setup instructions including Python environment configuration, see [RUNNING.md](RUNNING.md).
+For detailed setup instructions including Python environment configuration, see [RUNNING.md](docs/RUNNING.md).
 
 ## Building From Source
-To compile the application from source code, follow the instructions in [BUILDING.md](BUILDING.md). No PhD in computer science required.)
+To compile the application from source code, follow the instructions in [BUILDING.md](docs/BUILDING.md). No PhD in computer science required.)
 
 ### Mac Users
 Mac executables are not yet available as they require building on macOS hardware.
@@ -108,10 +108,10 @@ Mac executables are not yet available as they require building on macOS hardware
 Follow the Python setup instructions below instead.
 
 ### Manual Setup (All Platforms)
-For detailed setup instructions including Python environment configuration, see [RUNNING.md](RUNNING.md).
+For detailed setup instructions including Python environment configuration, see [RUNNING.md](docs/RUNNING.md).
 
 ## Building From Source
-To compile the application from source code, follow the instructions in [BUILDING.md](BUILDING.md).
+To compile the application from source code, follow the instructions in [BUILDING.md](docs/BUILDING.md).
 
 ## Screenshots
 

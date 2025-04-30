@@ -27,10 +27,9 @@ This document outlines the steps to build the `pits-n-giggles` app into an execu
    Once all dependencies are installed, use the following command to build the executable:
 
    ```bash
-   poetry run pyinstaller scripts/png.spec
+   poetry run pyinstaller --clean scripts/png.spec
    ```
 
-   This command tells PyInstaller to build the executable using the `png.spec` file located in the scripts directory.
    This command needs to be executed from the root of the project directory.
 
 2. **Check the `dist/` Folder**:

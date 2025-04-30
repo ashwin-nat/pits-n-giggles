@@ -33,14 +33,16 @@ from typing import Dict, List, Tuple
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
 class UDPForwarder:
-    def __init__(self, forward_addresses: List[Tuple[str, int]]):
+    def __init__(self, forward_addresses: List[Tuple[str, int]], logger: Logger = None):
         """
         Initializes the UDPForwarder instance with forwarding destinations.
 
         :param forward_addresses: A list of tuples, where each tuple consists of an IP address
                                   (str) and a port number (int) to forward packets to.
+        :param logger: Logger instance for logging errors (optional).
         """
         self.m_forward_addresses = forward_addresses
+        self.m_logger = logger
 
     def forward(self, data: bytes) -> None:
         """
@@ -62,7 +64,8 @@ class UDPForwarder:
         try:
             forward_socket.sendto(data, destination)
         except OSError as e:
-            print(f"Error forwarding packet to {destination}: {e}")
+            if self.m_logger:
+                self.m_logger.error(f"Error forwarding packet to {destination}: {e}")
         finally:
             forward_socket.close()
 

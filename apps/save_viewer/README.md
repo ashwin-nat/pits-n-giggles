@@ -13,5 +13,5 @@ The Save Viewer is a utility within the *Pits N Giggles* suite that allows you t
 
 You can run the Save Viewer directly from the root:
 ```bash
-poetry run python -m apps.save_viewer.telemetry_post_race_viewer.py
+poetry run python -m apps.save_viewer.telemetry_post_race_viewer
 ```

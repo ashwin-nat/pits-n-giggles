@@ -33,6 +33,16 @@ All commands below must be run **from the project root directory** (i.e., the fo
 poetry run python -m apps.backend.pits_n_giggles --replay-server
 ```
 
+Note:
+The --replay-server flag enables the replay mode for the backend,
+allowing the server to process pre-recorded events for debugging and testing.
+Without this flag, the server will run in normal mode. For example, to run
+in default mode, use:
+
+```bash
+poetry run python -m apps.backend.pits_n_giggles
+```
+
 ### 🛠 Dev Tools (e.g., telemetry replayer)
 
 ```bash

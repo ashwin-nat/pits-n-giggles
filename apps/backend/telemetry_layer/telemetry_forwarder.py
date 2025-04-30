@@ -59,5 +59,7 @@ async def udpForwardingTask(forwarding_targets: List[Tuple[str, int]], logger: l
     logger.info(f"Initialised forwarder. Targets={forwarding_targets}")
     while True:
         packet = await AsyncInterTaskCommunicator().receive("packet-forward")
-        assert packet is not None
-        await udp_forwarder.forward(packet)
+        if packet is None:
+            logger.error("Received None packet. ")
+        else:
+            await udp_forwarder.forward(packet)
