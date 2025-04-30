@@ -83,7 +83,8 @@ class PngRunner:
             disable_browser_autoload=self.m_config.disable_browser_autoload,
             stream_overlay_start_sample_data=self.m_config.stream_overlay_start_sample_data,
             tasks=self.m_tasks,
-            ver_str=self._getVersion()
+            ver_str=self._getVersion(),
+            debug_mode=args_obj.debug
         )
 
         # Run all tasks concurrently
@@ -91,7 +92,7 @@ class PngRunner:
         self.m_logger.debug("Registered %d Tasks: %s", len(self.m_tasks), [task.get_name() for task in self.m_tasks])
 
     async def run(self) -> None:
-
+        """Main entry point to run the application."""
         try:
             await asyncio.gather(*self.m_tasks)
         except asyncio.CancelledError:
@@ -108,7 +109,8 @@ class PngRunner:
         disable_browser_autoload: bool,
         stream_overlay_start_sample_data: bool,
         tasks: List[asyncio.Task],
-        ver_str: str) -> TelemetryWebServer:
+        ver_str: str,
+        debug_mode: Optional[bool] = False) -> TelemetryWebServer:
         """Entry point to start the HTTP server.
 
         Args:
@@ -119,6 +121,7 @@ class PngRunner:
             stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
             tasks (List[asyncio.Task]): List of tasks to be executed
             ver_str (str): Version string
+            debug_mode (bool, optional): Debug mode. Defaults to False.
 
         Returns:
             TelemetryWebServer: The initialized web server object
@@ -139,7 +142,7 @@ class PngRunner:
             port=http_port,
             logger=logger,
             client_update_interval_ms=client_update_interval_ms,
-            debug_mode=False,
+            debug_mode=debug_mode,
             stream_overlay_start_sample_data=stream_overlay_start_sample_data,
             tasks=tasks,
             ver_str=ver_str

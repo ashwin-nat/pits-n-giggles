@@ -43,7 +43,7 @@ def initUiIntfLayer(
     stream_overlay_start_sample_data: bool,
     tasks: List[asyncio.Task],
     ver_str: str) -> TelemetryWebServer:
-    """Initialize the web server
+    """Initialize the UI interface layer and return then server obj for proper cleanup
 
     Args:
         port (int): Port number

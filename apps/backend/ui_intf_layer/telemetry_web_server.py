@@ -303,10 +303,11 @@ class TelemetryWebServer:
             self.m_logger.debug('Client registered. SID = %s Type = %s', sid, data['type'])
             if (client_type := data['type']) in {'player-stream-overlay', 'race-table'}:
                 await self.m_sio.enter_room(sid, client_type)
-                self.m_logger.debug('Client %s joined room %s', sid, client_type)
+                if self.m_debug_mode:
+                    self.m_logger.debug('Client %s joined room %s', sid, client_type)
 
-                room = self.m_sio.manager.rooms.get('/', {}).get('race-table')
-                self.m_logger.debug('Current members of race-table: %s', room)
+                    room = self.m_sio.manager.rooms.get('/', {}).get('race-table')
+                    self.m_logger.debug('Current members of race-table: %s', room)
 
     def _defineDataEndpoints(self) -> None:
         """
