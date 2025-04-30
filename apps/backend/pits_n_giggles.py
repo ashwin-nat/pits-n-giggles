@@ -57,7 +57,7 @@ class PngRunner:
             replay_server (bool): If true, runs in TCP debug mode, else UDP live mode
         """
         self.m_logger: logging.Logger = logger
-        self.m_config = load_config(config_file)
+        self.m_config = load_config(config_file, logger)
         self.m_tasks: List[asyncio.Task] = []
 
         self.m_logger.info("PID=%d Starting the app with the following options:", os.getpid())

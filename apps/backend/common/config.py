@@ -24,8 +24,9 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import configparser
-from pathlib import Path
+import logging
 from dataclasses import dataclass, fields
+from pathlib import Path
 from typing import List, Tuple
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
@@ -84,11 +85,12 @@ _default_config = {
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def load_config(config_file: str = "config.ini") -> Config:
+def load_config(config_file: str = "config.ini", logger: logging.Logger = None) -> Config:
     """Load settings from an INI file or create it if missing, and add new keys.
 
     Args:
         config_file (str, optional): Path to the config file. Defaults to "config.ini".
+        logger (logging.Logger, optional): Logger instance. Defaults to None.
 
     Returns:
         Config: The config data object
@@ -148,11 +150,13 @@ def load_config(config_file: str = "config.ini") -> Config:
         for key, value in section:
             # Keys must begin with target
             if not key.startswith('target'):
-                print(f"config key {key} under Forwarding does not start with 'target'. Skipping")
+                if logger:
+                    logger.debug(f"config key {key} under Forwarding does not start with 'target'. Skipping")
                 continue
             # empty values are valid, just skip
             if not value.rstrip():
-                print(f"Skipping key {key} because empty value")
+                if logger:
+                    logger.debug(f"Skipping key {key} because empty value")
                 continue
             # Try to split the string at the colon
             try:
@@ -175,7 +179,8 @@ def load_config(config_file: str = "config.ini") -> Config:
 
     # Check if the config file exists; if not, create an empty file
     if not config_path.exists():
-        print(f"Config file {config_file} not found. Creating an empty config file.")
+        if logger:
+            logger.debug(f"Config file {config_file} not found. Creating an empty config file.")
         config_path.touch()  # Creates an empty file
 
     # Read the configuration from the file
@@ -190,7 +195,8 @@ def load_config(config_file: str = "config.ini") -> Config:
             if key not in config[section]:
                 # Convert non-string values to string before writing them into the config
                 config[section][key] = str(default_value) if default_value is not None else ''
-                print(f"Missing config key {section}:{key}. Using default value: {str(default_value)}")
+                if logger:
+                    logger.debug(f"Missing config key {section}:{key}. Using default value: {str(default_value)}")
                 should_write = True
 
     # Save the updated config back to the file
