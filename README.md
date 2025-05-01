@@ -26,7 +26,7 @@ Pits n' Giggles solves this by:
 
 - F1 2023
 - F1 2024
-- *(F1 Manager support coming right after we finish this lap... just one more lap...)*
+- F1 2025 (as soon as EA release the protocol specification doc)
 
 ## Features
 
@@ -109,6 +109,9 @@ Follow the Python setup instructions below instead.
 
 ### Manual Setup (All Platforms)
 For detailed setup instructions including Python environment configuration, see [RUNNING.md](docs/RUNNING.md).
+
+## Setup
+[Detailed Steps in the Wiki](https://github.com/ashwin-nat/pits-n-giggles/wiki)
 
 ## Building From Source
 To compile the application from source code, follow the instructions in [BUILDING.md](docs/BUILDING.md).
