@@ -29,4 +29,6 @@ package-mode = false
 tqdm = "^4.67.1"
 deepdiff = "^8.4.2"
 requests = "^2.32.3"
+yappi = "^1.6.10"
+snakeviz = "^2.2.2"
 

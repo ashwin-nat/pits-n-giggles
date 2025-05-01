@@ -139,6 +139,7 @@ class ITCMessage:
         }
 
 class AsyncInterTaskCommunicator:
+    """Singleton Class for asynchronous inter-task communication"""
     _instance: Optional["AsyncInterTaskCommunicator"] = None
     _last_used_queue = contextvars.ContextVar("last_used_queue", default=None)
 
