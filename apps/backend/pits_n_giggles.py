@@ -282,12 +282,14 @@ if __name__ == '__main__':
 #     yappi.set_clock_type("wall")  # Use "cpu" for CPU-bound tasks
 #     yappi.start()
 
+#     args_obj = parseArgs()
+#     png_logger = initLogger(file_name='png_log.log', max_size=100000, debug_mode=args_obj.debug)
 #     try:
-#         asyncio.run(main())
+#         asyncio.run(main(png_logger, args_obj))
 #     except KeyboardInterrupt:
-#         print("Program interrupted by user.")
+#         png_logger.info("Program interrupted by user.")
 #     except asyncio.CancelledError:
-#         print("Program shutdown gracefully.")
+#         png_logger.info("Program shutdown gracefully.")
 #     finally:
 #         yappi.stop()
 
@@ -301,27 +303,3 @@ if __name__ == '__main__':
 #         print("Generated reports:")
 #         print(" - yappi_profile.html")
 #         print(" - yappi_profile.txt")
-
-# import cProfile
-# import pstats
-
-# if __name__ == '__main__':
-#     with cProfile.Profile() as pr:
-#         try:
-#             asyncio.run(main())
-#         except KeyboardInterrupt:
-#             print("Program interrupted by user.")
-#         except asyncio.CancelledError:
-#             print("Program shutdown gracefully.")
-
-#     print("starting stats dump")
-#     pr.dump_stats("profile_results.prof")  # ✅ Binary format for later analysis
-
-#     stats = pstats.Stats(pr)
-#     stats.sort_stats("cumulative")  # Sort by cumulative time
-
-#     # Write readable profiling results to a text file
-#     with open("profile_results.txt", "w") as f:
-#         stats.stream = f
-#         stats.print_stats()
-#     print("finished stats dump")
