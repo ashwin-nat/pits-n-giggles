@@ -1,151 +1,146 @@
-# Pits n' Giggles
+# Pits n' Giggles 🏎️💨
 
-## Games supported
-- F1 2023
-- F1 2024
-
-## Introduction
-Tired of seeing every car zoom past you in that F1 online lobby? Well this tool can't really help you with that.<br>
-(TBH you just need a better gaming chair. There can't be any other reason, right?)
-
-What this tool can do is provide you with live telemetry data during a race so that you can make more informed decisions.
-
-## Direct executable download (Windows)
-You can download the exe file and skip python setup [from here](https://github.com/ashwin-nat/pits-n-giggles/releases)
-
-## Direct executable download (Mac)
-Not yet supported because I need a mac to build an executable for mac platforms and I do not own one.
-
-## Detailed instructions and other features
-[Head on over to the wiki page to read all about this](https://github.com/ashwin-nat/pits-n-giggles/wiki)
-
-## Prerequisites
-- Python
-  - [Python Setup Guide for Windows](https://www.python.org/downloads/windows/)
-  - [Python Setup Guide for Mac](https://www.python.org/downloads/mac-osx/)
-  - [Python Setup Guide for Linux](https://www.python.org/downloads/source/)
-
-## Features
-- Live updating and display of race data on the UI
-- Supports both player and spectator mode
-- In player mode, displays 5 rows including the player (can be configured)
-- For each driver, displays track position, name, team, ERS %, best lap, last lap, tyre info and fuel info
-  - Tyre info includes average tyre degradation percentage, tyre age, and tyre compound and wear prediction
-
-
-## Detailed Driver Info
-- Clicking on a driver's name shows further detailed info, including:
-  - Car damage
-  - Tyre damage
-  - Tyre wear
-  - Tyre wear prediction
-  - Current lap data (if race is ongoing)
-  - Lap history data
-  - ERS history
-  - Fuel history
-  - Tyre stint history
-
-## Advanced Features
-
-1. Post Race Data Autosave:
-   - This feature can be used to make the tool dump all post race data to a JSON file. It is also disabled by default.
-
-2. Stream Overlays
-   - Enhance your youtube/twitch streams with realtime data
-      - Throttle/Brake/Steering telemetry
-      - Lap time history
-      - Penalties, track/air temp, speed trap record (only F1 24)
-      - Live G Force info
-      - Weather Forecast
-
-3. Forwarding
-   - Forward the telemetry data to multiple other apps/devices that require this data
-
-4. Packet Capture:
-   - This feature can be used to save all the raw incoming packets into a file. It is not enabled by default and needs to be enabled through the command line. The telemetry_replayer.py utility can be used to replay these packets from the specified file to the app, provided the app is launched in --replay-server mode. This is very handy for debugging and development.
-
-## Screenshots
-
-### Main UI
-The primary interface of the application, showcasing the clean and intuitive design.
+A real-time F1 telemetry dashboard for enhancing your racing experience.
+*(Because knowing why you crashed is almost as fun as not crashing!)*
 
 ![Main UI](screenshots/main-ui.png)
 
----
+## Overview
+
+Pits n' Giggles provides live telemetry data during F1 races, giving you valuable insights to make informed decisions on track. While it can't replace that gaming chair you desperately need to catch the competition (seriously, it's always the chair, right? 🪑✨), it offers comprehensive race analytics in an intuitive interface.
+
+### The Problem We Solve 🔧
+
+Most F1 telemetry applications require extensive mouse interaction to access critical data - a major challenge when you're focused on driving. Try clicking precisely while taking Eau Rouge at 300 km/h... we'll wait. ⏱️
+
+Pits n' Giggles solves this by:
+
+- Displaying essential information without requiring active navigation (your hands thank you 🙌)
+- Using a clean, glanceable interface that minimizes distraction (eyes on the road, hotshot!)
+- Implementing a distributed client/server architecture that allows:
+  - Remote monitoring by team members in different geographic locations (backseat drivers, but useful! 🌎)
+  - Separation of display and data collection for flexible setups
+  - Performance analysis without interrupting your driving flow
+
+## Supported Games 🎮
+
+- F1 2023
+- F1 2024
+- *(F1 Manager support coming right after we finish this lap... just one more lap...)*
+
+## Features
+
+### Core Functionality 🏁
+- Real-time telemetry data visualization designed for at-a-glance reading while driving
+- Minimal interaction required - critical data is always visible without clicking (no more "hold my steering wheel" moments)
+- Two specialized view modes:
+  - **Driver Mode**: Streamlined for when you're racing
+  - **Engineer Mode**: Comprehensive when supporting a driver
+- Support for both player and spectator modes (spy on your friends' driving mistakes! 👀)
+- Configurable display (up to 5 rows including player in player mode)
+- Comprehensive driver information:
+  - Track position (for when you need proof you're not last)
+  - Driver name and team
+  - ERS percentage (use it or lose it! ⚡)
+  - Best and last lap times
+  - Detailed tyre information (compound, age, degradation) (tyre whisperer mode activated 🔮)
+  - Fuel status (how many laps until you're pushing your car to the finish line?)
+  - Linear regression-based tyre wear predictions based on your actual driving style
+  - Personalized fuel consumption models that adapt to your driving patterns
+  - Unlike the game's static calculations, our predictions use your real-time data!
+
+### Detailed Driver Analytics 📊
+Click on any driver's name to access (when you're safely in the pits, of course):
+- Car damage breakdown (find out exactly what you hit this time!)
+- Tyre wear statistics and predictions:
+  - Linear regression models based on your actual driving data
+  - More accurate than the game's static calculations
+  - Personalized to your driving style and track conditions
+- Current lap data (during races)
+- Complete lap history (receipts for when your friend claims they were "always faster")
+- ERS deployment history
+- Fuel consumption trends with predictive modeling:
+  - Dynamic calculations based on your throttle patterns
+  - Adapts to your driving style instead of using the game's default estimates
+  - Helps make strategic decisions about fuel saving or pushing
+- Tyre stint history (prove your 40-lap stint on softs was actually genius)
+
+### Advanced Capabilities 🚀
+- **Two Specialized Modes**:
+  - Driver Mode: Focused data for racers at the wheel
+  - Engineer Mode: Comprehensive analysis for team support
+- **Predictive Analytics**:
+  - Custom tyre wear models using linear regression on your actual driving data
+  - Personalized fuel consumption predictions that adapt to your specific throttle/braking patterns
+  - Much more accurate than the game's default calculations which don't account for driving style
+- **Post-Race Data Autosave**: Automatically export race data to JSON (for when you need scientific proof of how unlucky you were)
+- **Stream Overlays**: Enhance your broadcasts with real-time data:
+  - Throttle/Brake/Steering inputs (show viewers your superhuman reflexes)
+  - Lap time history (visual representation of your consistency or lack thereof)
+  - Penalties, track/air temperature, speed trap records (F1 24 only)
+  - Live G-Force visualization (neck muscles not included 💪)
+  - Weather forecast (for dramatic "rain is coming" commentary)
+- **Data Forwarding**: Send telemetry to other applications or devices
+- **Distributed Architecture**:
+  - Connect with team members across different locations
+  - Separate telemetry collection from visualization for optimal performance
+  - Enable remote coaching and strategy support (hear "I told you so" from anywhere in the world! 🌍)
+
+## Installation 🛠️
+
+### Windows Users
+Download the executable directly from our [releases page](https://github.com/ashwin-nat/pits-n-giggles/releases).
+
+### Mac Users
+Mac executables are not yet available as they require building on macOS hardware.
+Follow the Python setup instructions below instead.
+
+### Manual Setup (All Platforms)
+For detailed setup instructions including Python environment configuration, see [RUNNING.md](docs/RUNNING.md).
+
+## Building From Source
+To compile the application from source code, follow the instructions in [BUILDING.md](docs/BUILDING.md). (No PhD in computer science required.)
+
+### Mac Users
+Mac executables are not yet available as they require building on macOS hardware.
+(Anyone want to donate a Mac? ...No? Worth a shot! 🍎)
+
+Follow the Python setup instructions below instead.
+
+### Manual Setup (All Platforms)
+For detailed setup instructions including Python environment configuration, see [RUNNING.md](docs/RUNNING.md).
+
+## Building From Source
+To compile the application from source code, follow the instructions in [BUILDING.md](docs/BUILDING.md).
+
+## Screenshots
+
+### Main Interface
+![Main UI](screenshots/main-ui.png)
 
 ### Driver Details - Lap Times
-A modal view highlighting detailed lap times for a selected driver.
 ![Driver Details - Lap times](screenshots/lap-times-modal-ss.png)
 
----
-
 ### Driver Details - Tyre Stint
-Insights into tyre stints, including usage and performance over laps.
 ![Driver Details - Tyre Stint](screenshots/tyre-stint-modal-ss.png)
 
----
-
-### Stream Overlay
-A sneak peek at the live telemetry stream overlay designed for use with OBS.
+### Stream Overlay Example
 ![Stream Overlay](screenshots/png-stream-overlay.png)
 
-## Running the App (without direct executable)
-- The app can be run using the following commands:
-  - Run the app using Python:
-    ```bash
-    python3 app.py
-    ```
-  - Alternatively, use the provided run scripts:
-    - On Windows:
-      ```bash
-      run.bat
-      ```
-    - On Unix-based systems (e.g., macOS, Linux):
-      ```bash
-      run.sh
-      ```
+## Architecture
+![Architecture Diagram](docs/arch-diagram.png)
 
-## App Architecture
-![alt text](screenshots/arch-diagram.png)
-
-## Launch Options in app.py
-- The following launch options are available in app.py:
-
-| Short Option | Long Option                      | Description                                                                                            | Default Value  |
-|--------------|----------------------------------|--------------------------------------------------------------------------------------------------------|----------------|
-| `-p`         | `--packet-capture-mode`          | Packet capture mode (disabled, enabled, enabled-with-autosave)                                        | `disabled`     |
-| `-t`         | `--telemetry-port`               | Port number for F1 telemetry client                                                                    | `20777`        |
-| `-s`         | `--server-port`                  | Port number for HTTP server                                                                            | `5000`         |
-| `-f`         | `--post-race-data-autosave`      | Autosave all race data into a JSON file at the end of the race                                         | N/A            |
-|              | `--replay-server`                | Enable the TCP replay debug server                                                                     | N/A            |
-|              | `--disable-browser-autoload`      | Set this flag to not open the browser tab automatically                                                | N/A            |
-| `-r`         | `--refresh-interval`             | How often the web page should refresh itself with new data                                              | `200`          |
-| `-l`         | `--log-file`                     | Write output to specified log file (append)                                                            | `None`         |
-| `-d`         | `--debug`                        | Enable debug logs                                                                                      | False          |
-| `-u`         | `--udp-custom-action-code`       | UDP custom action code number for recording event markers                                              | `None`         |
-| `-n`         | `--num-adjacent-cars`           | How many cars adjacent to your car will be included in the UI during race                              | `2`            |
-
-
-## Usage - To build your own app on top of this
-To develop your own app using the telemetry manager module:
-1. Import the telemetry manager module:
-    ```python
-    from telemetry_manager import F1TelemetryManager
-    ```
-2. Create an instance of F1TelemetryManager:
-    ```python
-    telemetry_manager = F1TelemetryManager()
-    ```
-3. Register the callbacks for handling race data. Only register the packet types that you're interested in
-    ```python
-    # Register callbacks
-    telemetry_manager.registerCallback(F1PacketType.SESSION, your_function)
-    ```
-4. Call the run method to start receiving and processing race data:
-    ```python
-    # Start receiving and processing race data
-    telemetry_manager.run()
-    ```
+## Documentation 📚
+For comprehensive documentation and usage guides, visit our [Wiki](https://github.com/ashwin-nat/pits-n-giggles/wiki).
+(It's like the F1 technical regulations, but actually readable!)
 
 ## Credits
-For a few of the charts/graphs in the UI, credits to [F1TelemetryData](https://x.com/F1TelemetryData) on twitter for the ideas
+UI chart and visualization concepts inspired by [F1TelemetryData](https://x.com/F1TelemetryData) on Twitter.
+
+## Contributing 🤝
+Contributions are welcome! Feel free to submit issues or pull requests to help improve Pits n' Giggles.
+(Just like F1, we believe in continuous development... minus the $145 million budget cap.)
+
+## License 📜
+[MIT License](LICENSE)
+(Unless you're the FIA, in which case, we have a completely different license... nevermind.)
