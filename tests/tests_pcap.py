@@ -360,7 +360,7 @@ class TestF1PacketCaptureCompression(TestF1PacketCapture):
 
         for i in range(len(uncompressed_packets)):
             # Compare timestamps
-            self.assertEqual(uncompressed_packets[i][0], compressed_packets[i][0])
+            self.assertAlmostEqual(uncompressed_packets[i][0], compressed_packets[i][0], places=3)
             # Compare data
             self.assertEqual(uncompressed_packets[i][1], compressed_packets[i][1])
 

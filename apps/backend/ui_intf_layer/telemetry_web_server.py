@@ -306,8 +306,8 @@ class TelemetryWebServer:
                 if self.m_debug_mode:
                     self.m_logger.debug('Client %s joined room %s', sid, client_type)
 
-                    room = self.m_sio.manager.rooms.get('/', {}).get('race-table')
-                    self.m_logger.debug('Current members of race-table: %s', room)
+                    room = self.m_sio.manager.rooms.get('/', {}).get(client_type)
+                    self.m_logger.debug(f'Current members of {client_type}: {room}')
 
     def _defineDataEndpoints(self) -> None:
         """

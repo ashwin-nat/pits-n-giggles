@@ -24,7 +24,7 @@
 
 import asyncio
 import logging
-from typing import List
+from typing import List, Optional
 
 import socketio
 
@@ -123,16 +123,16 @@ async def frontEndMessageTask(sio: socketio.AsyncServer) -> None:
         if message:
             await sio.emit('frontend-update', message.toJSON())
 
-def _isRoomEmpty(sio: socketio.AsyncServer, room_name: str) -> bool:
+def _isRoomEmpty(sio: socketio.AsyncServer, room_name: str, namespace: Optional[str] = '/') -> bool:
     """Check if a room is empty
 
     Args:
         sio (socketio.AsyncServer): The socketio server instance
         room_name (str): The room name
+        namespace (Optional[str], optional): The namespace. Defaults to '/'
 
     Returns:
         bool: True if the room is empty, False otherwise
     """
-    namespace = '/'
-    room = sio.manager.rooms.get(namespace, {}).get(room_name)
-    return not room  # True if room is None or empty set
+    participants = list(sio.manager.get_participants(namespace, room_name))
+    return not participants
