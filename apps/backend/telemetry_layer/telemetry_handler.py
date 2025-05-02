@@ -24,6 +24,7 @@ SOFTWARE.
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import aiofiles
 import asyncio
 import json
 import logging
@@ -288,7 +289,7 @@ class F1TelemetryHandler:
                             is_event_supported = False
                             break
                 if is_event_supported:
-                    self.postGameDumpToFile(final_json)
+                    await self.postGameDumpToFile(final_json)
 
             # Uncomment the below lines for profiling - Kill the process after one session
             # # Cancel all tasks except itself
@@ -483,8 +484,9 @@ class F1TelemetryHandler:
         - data_dict (Dict): Dictionary containing JSON data.
         - file_name (str): File name to write the data to.
         """
-        with open(file_name, 'w', encoding='utf-8') as json_file:
-            json.dump(data_dict, json_file, indent=4, ensure_ascii=False, sort_keys=True)
+        json_str = json.dumps(data_dict, indent=4, ensure_ascii=False, sort_keys=True)
+        async with aiofiles.open(file_name, 'w', encoding='utf-8') as json_file:
+            await json_file.write(json_str)
 
     async def postGameDumpToFile(self, final_json: Dict[str, Any]) -> None:
         """
