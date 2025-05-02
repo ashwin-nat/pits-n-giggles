@@ -285,9 +285,7 @@ class TestF1PacketCaptureCompression(TestF1PacketCapture):
 
         # Copy packets from uncompressed to compressed
         for timestamp, data in loaded_uncompressed.getPackets():
-            entry = F1PktCapMessage(data, timestamp, is_little_endian=compressed_capture.is_little_endian)
-            compressed_capture.m_packet_history.append(entry)
-            compressed_capture.m_header.num_packets += 1
+            compressed_capture.add(data, timestamp)
 
         # Write compressed file
         compressed_capture.dumpToFile(compressed_filename)
@@ -317,9 +315,7 @@ class TestF1PacketCaptureCompression(TestF1PacketCapture):
         # Create uncompressed capture with test data
         uncompressed_capture = F1PacketCapture(compressed=False)
         for i, packet in enumerate(self.test_packets):
-            entry = F1PktCapMessage(packet, self.test_timestamps[i], is_little_endian=uncompressed_capture.is_little_endian)
-            uncompressed_capture.m_packet_history.append(entry)
-            uncompressed_capture.m_header.num_packets += 1
+            uncompressed_capture.add(packet, self.test_timestamps[i])
 
         # Convert to compressed format using a helper method
         def convert_capture_format(source_capture, target_compressed):
@@ -338,9 +334,7 @@ class TestF1PacketCaptureCompression(TestF1PacketCapture):
 
             # Add packets to new capture
             for timestamp, data in source_packets:
-                entry = F1PktCapMessage(data, timestamp, is_little_endian=converted.is_little_endian)
-                converted.m_packet_history.append(entry)
-                converted.m_header.num_packets += 1
+                converted.add(data, timestamp)
 
             # Clean up temp file
             os.remove(temp_filename)
@@ -393,9 +387,7 @@ class TestF1PacketCaptureCompression(TestF1PacketCapture):
 
             # Copy all packets
             for timestamp, data in source_capture.getPackets():
-                entry = F1PktCapMessage(data, timestamp, is_little_endian=target_capture.is_little_endian)
-                target_capture.m_packet_history.append(entry)
-                target_capture.m_header.num_packets += 1
+                target_capture.add(data, timestamp)
 
             # Write to target file
             target_capture.dumpToFile(output_filename)
