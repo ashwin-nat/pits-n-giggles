@@ -13,7 +13,7 @@ function textToSpeech(text, volume=g_pref_ttsVolume) {
         speech.voice = preferredVoice; // Assign the preferred voice to the utterance
     }
 
-    speech.rate = 1;    // Normal speed
+    speech.rate = 1.2;    // Normal speed
     speech.pitch = 1;   // Normal pitch
     speech.volume = (volume / 100);  // Full volume
 
