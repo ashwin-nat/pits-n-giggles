@@ -112,6 +112,9 @@ def main():
     try:
         # Read and parse the file
         captured_packets = F1PacketCapture(file_name=args.file_name)
+        print(f'Loaded {args.file_name} with {captured_packets.getNumPackets()} packets.')
+        print(f'File format ver: {captured_packets.m_header._major_version}.{captured_packets.m_header._minor_version}')
+        print(f'Compressed: {captured_packets.m_header.is_compressed}')
         total_bytes = 0
         dropped_packets = 0
         if args.udp_mode:
