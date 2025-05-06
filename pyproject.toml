@@ -31,4 +31,5 @@ deepdiff = "^8.4.2"
 requests = "^2.32.3"
 yappi = "^1.6.10"
 snakeviz = "^2.2.2"
+gdown = "^5.2.0"
 
