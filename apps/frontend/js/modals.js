@@ -155,17 +155,16 @@ class ModalManager {
     // Add event listener to "Play Sample" button
     const playSampleButton = document.getElementById("playSampleButton");
     playSampleButton.onclick = () => {
-      const selectedVoiceName = voiceSelect.value;
-      const selectedVoice = voices.find((voice) => voice.name === selectedVoiceName);
 
-      if (selectedVoice) {
-        const utterance = new SpeechSynthesisUtterance("Copy that, we are checking");
-        utterance.voice = selectedVoice;
-        utterance.volume = parseInt(document.getElementById('volumeRange').value, 10);
-        window.speechSynthesis.speak(utterance);
-      } else {
-        alert("Please select a voice to play the sample.");
-      }
+      const volume = parseInt(document.getElementById('volumeRange').value, 10);
+      const lines = [
+          "Copy that, we are checking",
+          "And box box. Stay Out! Stay Out! Stay Out!",
+          "Must be the water",
+          "OK Kimi, we have now 5 second time penalty",
+      ]
+      const randomLine = lines[Math.floor(Math.random() * lines.length)];
+      textToSpeech(randomLine, volume);
     };
 
     this.settingsModal.show();

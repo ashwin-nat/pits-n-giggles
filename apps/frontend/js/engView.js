@@ -392,7 +392,7 @@ function formatSessionTime(seconds) {
 class EngViewRaceStatus {
     constructor(iconCache) {
         this.iconCache = iconCache;
-        this.raceTimeElement = document.getElementById('raceTime');
+        this.sessionTimeElement = document.getElementById('sessionTime');
         this.raceStatusElement = document.getElementById('raceStatus');
         this.currentLapElement = document.getElementById('currentLap');
         this.scCountElement = document.getElementById('scCount');
@@ -457,6 +457,17 @@ class EngViewRaceStatus {
         }
     }
 
+    #getSessionTimeString(data) {
+        const sessionType = data["event-type"];
+        const eventsWithTimeRemaining = ['Qualifying', 'Practice', 'Sprint Shootout'];
+        const showTimeLeft = eventsWithTimeRemaining.some(type => sessionType.includes(type));
+        if (showTimeLeft) {
+            return formatSessionTime(data["session-time-left"]);
+        } else {
+            return formatSessionTime(data["session-duration-so-far"]);
+        }
+    }
+
     update(data) {
 
         let shouldUpdatePred = false;
@@ -482,7 +493,7 @@ class EngViewRaceStatus {
         this.pitLap = data["player-pit-window"];
 
         this.predictionLapInput.max = this.totalLaps;
-        this.raceTimeElement.textContent = formatSessionTime(data["session-duration-so-far"]);
+        this.sessionTimeElement.textContent = this.#getSessionTimeString(data);
         this.raceStatusElement.textContent = this.#getSCStatusString(data["safety-car-status"]);
 
         let lapText = "";

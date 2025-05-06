@@ -355,7 +355,7 @@ class F1PacketCapture:
         """
         entry = F1PktCapMessage(data, timestamp=timestamp, is_little_endian=self.is_little_endian)
         self.m_packet_history.append(entry)
-        self.m_header.num_packets += 1
+        self.m_header.num_packets = len(self.m_packet_history)
 
     def getNumPackets(self) -> int:
         """Get the number of packets in the list

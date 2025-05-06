@@ -1,10 +1,11 @@
 class RaceTableRowPopulator {
-    constructor(row, rowData, gameYear, isLiveDataMode, iconCache) {
+    constructor(row, rowData, gameYear, isLiveDataMode, iconCache, raceEnded) {
         this.row = row;
         this.rowData = rowData;
         this.gameYear = gameYear;
         this.isLiveDataMode = isLiveDataMode;
         this.iconCache = iconCache;
+        this.raceEnded = raceEnded;
     }
 
     populate() {
@@ -270,43 +271,61 @@ class RaceTableRowPopulator {
         return this;
     }
 
+    #computeFuelMetrics(fuelInfo, raceEnded) {
+        if (raceEnded) {
+          const currFuelRate = fuelInfo["curr-fuel-rate"] !== null
+            ? formatFloatWithTwoDecimals(fuelInfo["curr-fuel-rate"])
+            : "N/A";
+          const lastLapFuelUsed = fuelInfo["last-lap-fuel-used"] !== null
+            ? formatFloatWithTwoDecimals(fuelInfo["last-lap-fuel-used"])
+            : "N/A";
+          const remainingFuel = fuelInfo["remaining-fuel"] !== null
+            ? formatFloatWithTwoDecimals(fuelInfo["fuel-in-tank"])
+            : "N/A";
+          return [
+            `Last: ${lastLapFuelUsed}`,
+            `Rate: ${currFuelRate}`,
+            `Rem: ${remainingFuel}`
+          ];
+        } else {
+          const targetFuelRateAverage = fuelInfo["target-fuel-rate-average"] !== null
+            ? formatFloatWithTwoDecimals(fuelInfo["target-fuel-rate-average"])
+            : "N/A";
+          const targetFuelRateNextLap = fuelInfo["target-fuel-rate-next-lap"] !== null
+            ? formatFloatWithTwoDecimals(fuelInfo["target-fuel-rate-next-lap"])
+            : "N/A";
+          const lastLapFuelUsed = fuelInfo["last-lap-fuel-used"] !== null
+            ? formatFloatWithTwoDecimals(fuelInfo["last-lap-fuel-used"])
+            : "N/A";
+          const surplusLapsPng = fuelInfo["surplus-laps-png"] !== null
+            ? formatFloatWithTwoDecimalsSigned(fuelInfo["surplus-laps-png"])
+            : "N/A";
+          const surplusLapsGame = fuelInfo["surplus-laps-game"] !== null
+            ? formatFloatWithTwoDecimalsSigned(fuelInfo["surplus-laps-game"])
+            : "N/A";
+
+          const laps = g_pref_fuelSurplusLapsPng ? surplusLapsPng : surplusLapsGame;
+          const tgt = g_pref_fuelTargetAverageFormat ? targetFuelRateAverage : targetFuelRateNextLap;
+          return [
+            `Last: ${lastLapFuelUsed}`,
+            `Laps: ${laps}`,
+            `Tgt: ${tgt}`
+          ];
+        }
+    }
+
     addFuelInfo() {
         if (!this.isLiveDataMode) {
-            return this;
+          return this;
         }
         const fuelInfo = this.rowData["fuel-info"];
         const shouldHideFuelColumn = false;
         if (!shouldHideFuelColumn) {
-            // Fuel info
-            const currFuelRate = fuelInfo["curr-fuel-rate"] !== null
-                ? formatFloatWithTwoDecimals(fuelInfo["curr-fuel-rate"])
-                : "N/A";
-            const targetFuelRateAverage = fuelInfo["target-fuel-rate-average"] !== null
-                ? formatFloatWithTwoDecimals(fuelInfo["target-fuel-rate-average"])
-                : "N/A";
-            const targetFuelRateNextLap = fuelInfo["target-fuel-rate-next-lap"] !== null
-                ? formatFloatWithTwoDecimals(fuelInfo["target-fuel-rate-next-lap"])
-                : "N/A";
-            const lastLapFuelUsed = fuelInfo["last-lap-fuel-used"] !== null
-                ? formatFloatWithTwoDecimals(fuelInfo["last-lap-fuel-used"])
-                : "N/A";
-
-            const surplusLapsPng = fuelInfo["surplus-laps-png"] !== null
-                ? formatFloatWithTwoDecimalsSigned(fuelInfo["surplus-laps-png"])
-                : "N/A";
-            const surplusLapsGame = fuelInfo["surplus-laps-game"] !== null
-                ? formatFloatWithTwoDecimalsSigned(fuelInfo["surplus-laps-game"])
-                : "N/A";
-
-
-            this.createMultiLineCell([
-                `Last: ${lastLapFuelUsed}`,
-                `Laps: ${(g_pref_fuelSurplusLapsPng) ? (surplusLapsPng) : (surplusLapsGame)}`,
-                `Tgt: ${(g_pref_fuelTargetAverageFormat) ? (targetFuelRateAverage) : (targetFuelRateNextLap)}`,
-            ]);
+          const metrics = this.#computeFuelMetrics(fuelInfo, this.raceEnded);
+          this.createMultiLineCell(metrics);
         }
         return this;
-    }
+      }
 
     createMultiLineCell(lines, onClick = null) {
         const cell = this.row.insertCell();
