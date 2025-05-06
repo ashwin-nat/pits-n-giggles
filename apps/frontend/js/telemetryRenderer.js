@@ -18,12 +18,12 @@ class TelemetryRenderer {
     this.uiMode = 'Splash';
   }
 
-  renderTelemetryRow(data, gameYear, isLiveDataMode) {
+  renderTelemetryRow(data, gameYear, isLiveDataMode, raceEnded) {
     const { 'driver-info': driverInfo } = data;
     const row = document.createElement('tr');
 
     // Populate row with data
-    new RaceTableRowPopulator(row, data, gameYear, isLiveDataMode, this.iconCache).populate();
+    new RaceTableRowPopulator(row, data, gameYear, isLiveDataMode, this.iconCache, raceEnded).populate();
 
     // Apply CSS classes based on row state
     const cssClasses = this.determineRowClasses(driverInfo, isLiveDataMode);
@@ -98,8 +98,8 @@ class TelemetryRenderer {
   }
 
   // Update or create row based on existing data
-  updateOrCreateRow(row, data, gameYear, isLiveDataMode, driverIndex) {
-    const newRow = this.renderTelemetryRow(data, gameYear, isLiveDataMode);
+  updateOrCreateRow(row, data, gameYear, isLiveDataMode, driverIndex, raceEnded) {
+    const newRow = this.renderTelemetryRow(data, gameYear, isLiveDataMode, raceEnded);
     if (row) {
       row.innerHTML = newRow.innerHTML;
     } else {
@@ -112,6 +112,7 @@ class TelemetryRenderer {
   updateRaceTableData(incomingData) {
     this.setUIMode('Race');
     const isLiveDataMode = incomingData["live-data"];
+    const raceEnded = incomingData["race-ended"];
     this.setDeltaColumnState(isLiveDataMode);
     this.setFuelColumnState(isLiveDataMode);
 
@@ -127,7 +128,7 @@ class TelemetryRenderer {
     tableEntries.forEach(data => {
       const driverIndex = data["driver-info"]["index"];
       let row = driverRowMap.get(driverIndex);
-      row = this.updateOrCreateRow(row, data, gameYear, isLiveDataMode, driverIndex);
+      row = this.updateOrCreateRow(row, data, gameYear, isLiveDataMode, driverIndex, raceEnded);
       this.telemetryTable.appendChild(row);
     });
     // Rows not referenced in tableEntries will be left out
