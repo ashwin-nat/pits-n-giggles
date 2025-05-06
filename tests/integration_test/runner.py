@@ -26,7 +26,15 @@ def main():
 
     # Download test files using gdown
     print("Downloading test files from Google Drive...")
-    files = gdown.download_folder(DRIVE_FOLDER_URL, output=str(CACHE_DIR), quiet=False)
+    try:
+        files = gdown.download_folder(DRIVE_FOLDER_URL, output=str(CACHE_DIR), quiet=False)
+        if not files or len(files) == 0:
+            print("No files were downloaded from Google Drive!")
+            sys.exit(1)
+        print(f"Downloaded {len(files)} test files")
+    except Exception as e:
+        print(f"Error occurred while downloading test files from Google Drive: {e}")
+        sys.exit(1)
     print(f"Downloaded {len(files)} test files")
 
     # Start the app
@@ -61,8 +69,12 @@ def main():
             replayer_cmd = ["poetry", "run", "python", "-m", "apps.dev_tools.telemetry_replayer",
                           "--file-name", file_path]
 
-            result = subprocess.run(replayer_cmd)
-            success = (result.returncode == 0)
+            try:
+                result = subprocess.run(replayer_cmd, timeout=120)
+                success = (result.returncode == 0)
+            except subprocess.TimeoutExpired:
+                print(f"Test FAILED: {file_name} timed out after 120 seconds")
+                success = False
             results.append((file_name, success))
 
             status = "PASSED" if success else "FAILED"

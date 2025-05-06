@@ -165,7 +165,6 @@ class ModalManager {
       ]
       const randomLine = lines[Math.floor(Math.random() * lines.length)];
       textToSpeech(randomLine, volume);
-      console.log("Play sample clicked, volume:", volume);
     };
 
     this.settingsModal.show();
