@@ -4,16 +4,33 @@ import datetime
 import sys
 import os
 import configparser
+import itertools
 import subprocess
 import threading
 import time
 from typing import Dict, Optional
 
+
+# Define racing theme colors
+COLOR_THEME = {
+    "background": "#1E1E1E",       # Dark background
+    "foreground": "#E0E0E0",       # Light text
+    "accent1": "#FF2800",          # Racing red
+    "accent2": "#303030",          # Dark gray
+    "console_bg": "#000000",       # Console black
+    "console_fg": "#00FF00",       # Terminal green
+    "running": "#00CC00",          # Green for running status
+    "stopped": "#FF2800",          # Red for stopped status
+    "warning": "#FFA500"           # Orange for warnings
+}
+
+
 class SubApp:
     """Class to manage a sub-application process"""
-    def __init__(self, name: str, app_path: str, console_app):
+    def __init__(self, name: str, app_path: str, display_name: str, start_by_default: bool, console_app: "RacingConsoleApp"):
         self.name = name
         self.app_path = app_path
+        self.display_name = display_name
         self.console_app = console_app
         self.process: Optional[subprocess.Popen] = None
         self.status_var = tk.StringVar(value="Stopped")
@@ -23,18 +40,17 @@ class SubApp:
     def start(self):
         """Start the sub-application"""
         if self.is_running:
-            self.console_app.log(f"{self.name} is already running.")
+            self.console_app.log(f"{self.display_name} is already running.")
             return
 
         try:
-            # For demonstration, we're stubbing the actual app launch
-            # In a real app, you'd use something like:
+            # In a real app, you'd use:
             # self.process = subprocess.Popen([sys.executable, self.app_path],
-            #                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            #                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-            # Stub implementation to simulate app launch
-            self.console_app.log(f"Starting {self.name}...")
-            self.process = True  # Just a stub, would be a real process object
+            # For demonstration, we're simulating app launch
+            self.console_app.log(f"Starting {self.display_name}...")
+            self.process = True  # Just a stub for demonstration
             self.is_running = True
             self.status_var.set("Running")
 
@@ -42,63 +58,48 @@ class SubApp:
             self.monitor_thread = threading.Thread(target=self._monitor, daemon=True)
             self.monitor_thread.start()
 
-            self.console_app.log(f"{self.name} started successfully.")
+            self.console_app.log(f"{self.display_name} started successfully.")
         except Exception as e:
-            self.console_app.log(f"Error starting {self.name}: {e}")
+            self.console_app.log(f"Error starting {self.display_name}: {e}")
             self.status_var.set("Error")
 
     def stop(self):
         """Stop the sub-application"""
         if not self.is_running:
-            self.console_app.log(f"{self.name} is not running.")
+            self.console_app.log(f"{self.display_name} is not running.")
             return
 
         try:
-            self.console_app.log(f"Stopping {self.name}...")
+            self.console_app.log(f"Stopping {self.display_name}...")
 
             # In a real app, you'd use:
             # if self.process:
             #     self.process.terminate()
             #     self.process.wait(timeout=5)
 
-            # Stub implementation
-            time.sleep(0.5)  # Simulate some shutdown time
+            # Simulation
+            time.sleep(0.5)  # Simulate shutdown time
             self.process = None
             self.is_running = False
             self.status_var.set("Stopped")
-            self.console_app.log(f"{self.name} stopped successfully.")
+            self.console_app.log(f"{self.display_name} stopped successfully.")
         except Exception as e:
-            self.console_app.log(f"Error stopping {self.name}: {e}")
+            self.console_app.log(f"Error stopping {self.display_name}: {e}")
             self.status_var.set("Error")
 
     def _monitor(self):
         """Monitor the sub-application and update its status"""
-        # In a real app, this would check if the process is still alive
-        # and capture output from stdout/stderr
         while self.is_running:
             # For demonstration, we'll occasionally log something
             time.sleep(5)
             if self.is_running:  # Check again in case it was stopped while sleeping
-                self.console_app.log(f"{self.name} - Heartbeat check")
-
-            # In a real app, you might do:
-            # if self.process and self.process.poll() is not None:
-            #     self.is_running = False
-            #     self.status_var.set("Crashed")
-            #     self.console_app.log(f"{self.name} has terminated unexpectedly")
-            #     break
-            #
-            # Read output from the process
-            # if self.process:
-            #     stdout_data = self.process.stdout.readline().decode().strip()
-            #     if stdout_data:
-            #         self.console_app.log(f"{self.name}: {stdout_data}")
+                self.console_app.log(f"{self.display_name} - Heartbeat check")
 
 
 class SettingsWindow:
     def __init__(self, parent, app, config_file="app_settings.ini"):
-        self.parent = parent  # This should be a Tkinter widget
-        self.app = app  # Reference to the ConsoleApp instance
+        self.parent = parent
+        self.app = app
         self.config_file = config_file
         self.settings = configparser.ConfigParser()
 
@@ -119,25 +120,15 @@ class SettingsWindow:
                 "disable_browser_autoload": "False"
             },
             "Logging": {
-                "log_file": "png.log",
+                "log_file": "racing_console.log",
                 "log_file_size": "1000000"
             },
             "Privacy": {
                 "process_car_setup": "False"
             },
             "Forwarding": {
-                "target1": "",
-                "target2": "",
-                "target3": "",
                 "target_moza": "localhost:22024",
                 "target_sec_mon": "localhost:22025"
-            },
-            "Stream Overlay": {
-                "show_sample_data_at_start": "true"
-            },
-            "SubApps": {
-                "subapp1_path": "subapp1.py",
-                "subapp2_path": "subapp2.py"
             }
         }
 
@@ -150,6 +141,9 @@ class SettingsWindow:
         self.window.geometry("600x500")
         self.window.transient(parent)
         self.window.grab_set()
+
+        # Apply theme
+        self.window.configure(bg=COLOR_THEME["background"])
 
         # Create notebook for tabs
         self.notebook = ttk.Notebook(self.window)
@@ -191,7 +185,7 @@ class SettingsWindow:
             self.notebook.add(tab, text=section)
 
             # Create a frame for this section with a scrollbar
-            canvas = tk.Canvas(tab)
+            canvas = tk.Canvas(tab, bg=COLOR_THEME["background"])
             scrollbar = ttk.Scrollbar(tab, orient="vertical", command=canvas.yview)
             scrollable_frame = ttk.Frame(canvas)
 
@@ -257,35 +251,38 @@ class SettingsWindow:
 
             self.save_settings()
             self.window.destroy()
-
-            # Notify the app to reload sub-app paths
-            self.app.load_subapp_paths()
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save settings: {e}")
 
 
-class ConsoleApp:
+class RacingConsoleApp:
     def __init__(self, root):
         self.root = root
         self.version = "1.0.0"
-        self.app_name = "Console Logger"
-        self.config_file = "app_settings.ini"
+        self.app_name = "Racing Console"
+        self.config_file = "racing_console_settings.ini"
+
+        # Apply theme to root window
+        self.root.configure(bg=COLOR_THEME["background"])
 
         # Initialize sub-apps dict
         self.subapps: Dict[str, SubApp] = {}
 
         # Configure the main window
         root.title(f"{self.app_name} v{self.version}")
-        root.geometry("900x700")  # Larger default size for subapp controls
+        root.geometry("900x700")
+
+        # Create custom style
+        self.create_custom_style()
 
         # Create main frames
-        self.header_frame = ttk.Frame(root, padding="10")
+        self.header_frame = ttk.Frame(root, padding="10", style="Racing.TFrame")
         self.header_frame.pack(fill=tk.X)
 
-        self.subapps_frame = ttk.LabelFrame(root, text="Sub-Applications", padding="10")
+        self.subapps_frame = ttk.LabelFrame(root, text="Race Components", padding="10", style="Racing.TLabelframe")
         self.subapps_frame.pack(fill=tk.X, padx=10, pady=5)
 
-        self.console_frame = ttk.Frame(root, padding="10")
+        self.console_frame = ttk.Frame(root, padding="10", style="Racing.TFrame")
         self.console_frame.pack(fill=tk.BOTH, expand=True)
 
         # Set up the header section
@@ -294,16 +291,52 @@ class ConsoleApp:
         # Set up the console section
         self.setup_console()
 
-        # Load settings and configure sub-apps
-        self.load_settings()
+        # Configure hardcoded sub-apps
         self.setup_subapps()
+
+        # Load settings
+        self.load_settings()
 
         # Redirect stdout to our console
         self.stdout_original = sys.stdout
         sys.stdout = self
 
         # Initial log message
-        self.log("Application started")
+        self.log("Racing Console started")
+
+    def create_custom_style(self):
+        """Create custom styles for the application"""
+        style = ttk.Style()
+
+        # Configure the theme
+        style.theme_use("clam")
+
+        # Configure frame styles
+        style.configure("Racing.TFrame", background=COLOR_THEME["background"])
+        style.configure("Racing.TLabelframe", background=COLOR_THEME["background"],
+                       foreground=COLOR_THEME["foreground"])
+        style.configure("Racing.TLabelframe.Label", background=COLOR_THEME["background"],
+                       foreground=COLOR_THEME["accent1"], font=("Arial", 10, "bold"))
+
+        # Configure button styles
+        style.configure("Racing.TButton", background=COLOR_THEME["accent2"],
+                       foreground=COLOR_THEME["foreground"])
+        style.map("Racing.TButton",
+                 background=[("active", COLOR_THEME["accent1"])],
+                 foreground=[("active", COLOR_THEME["background"])])
+
+        # Configure label styles
+        style.configure("Racing.TLabel", background=COLOR_THEME["background"],
+                       foreground=COLOR_THEME["foreground"])
+        style.configure("Header.TLabel", background=COLOR_THEME["background"],
+                       foreground=COLOR_THEME["accent1"], font=("Arial", 14, "bold"))
+        style.configure("Version.TLabel", background=COLOR_THEME["background"],
+                       foreground=COLOR_THEME["foreground"], font=("Arial", 10))
+
+        # Configure status styles
+        style.configure("Running.TLabel", foreground=COLOR_THEME["running"])
+        style.configure("Stopped.TLabel", foreground=COLOR_THEME["stopped"])
+        style.configure("Warning.TLabel", foreground=COLOR_THEME["warning"])
 
     def load_settings(self):
         """Load application settings"""
@@ -327,25 +360,15 @@ class ConsoleApp:
                     "disable_browser_autoload": "False"
                 },
                 "Logging": {
-                    "log_file": "png.log",
+                    "log_file": "racing_console.log",
                     "log_file_size": "1000000"
                 },
                 "Privacy": {
                     "process_car_setup": "False"
                 },
                 "Forwarding": {
-                    "target1": "",
-                    "target2": "",
-                    "target3": "",
                     "target_moza": "localhost:22024",
                     "target_sec_mon": "localhost:22025"
-                },
-                "Stream Overlay": {
-                    "show_sample_data_at_start": "true"
-                },
-                "SubApps": {
-                    "subapp1_path": "subapp1.py",
-                    "subapp2_path": "subapp2.py"
                 }
             }
 
@@ -356,110 +379,118 @@ class ConsoleApp:
 
             with open(self.config_file, 'w') as f:
                 self.settings.write(f)
-
         else:
             self.settings.read(self.config_file)
 
-    def load_subapp_paths(self):
-        """Load/reload sub-app paths from settings"""
-        # First, stop any running sub-apps
-        for subapp in self.subapps.values():
-            if subapp.is_running:
-                subapp.stop()
-
-        # Clear existing UI
-        for widget in self.subapps_frame.winfo_children():
-            widget.destroy()
-
-        # Clear existing subapps
-        self.subapps.clear()
-
-        # Load settings
-        self.load_settings()
-
-        # Setup subapps with new paths
-        self.setup_subapps()
-
     def setup_subapps(self):
-        """Set up the sub-apps UI and control"""
-        # Get subapp paths from settings
-        if not self.settings.has_section("SubApps"):
-            self.settings.add_section("SubApps")
-            self.settings.set("SubApps", "subapp1_path", "subapp1.py")
-            self.settings.set("SubApps", "subapp2_path", "subapp2.py")
-            with open(self.config_file, 'w') as f:
-                self.settings.write(f)
-
-        # Create subapp instances
-        self.subapps["SubApp1"] = SubApp("SubApp1", self.settings.get("SubApps", "subapp1_path"), self)
-        self.subapps["SubApp2"] = SubApp("SubApp2", self.settings.get("SubApps", "subapp2_path"), self)
+        """Set up the hard-coded sub-apps"""
+        # Define our racing-related sub-apps
+        self.subapps = {
+            "telemetry": SubApp(
+                name="telemetry",
+                app_path="telemetry_service.py",
+                display_name="Server",
+                start_by_default=True,
+                console_app=self
+            ),
+            "dashboard": SubApp(
+                name="dashboard",
+                app_path="racing_dashboard.py",
+                display_name="Racing Dashboard",
+                start_by_default=False,
+                console_app=self
+            ),
+        }
 
         # Create UI for each subapp
         for i, (name, subapp) in enumerate(self.subapps.items()):
-            frame = ttk.Frame(self.subapps_frame)
-            frame.grid(row=0, column=i, padx=10, pady=5)
+            frame = ttk.Frame(self.subapps_frame, style="Racing.TFrame")
+            frame.grid(row=0, column=i, padx=15, pady=5)
 
             # Add controls for this subapp
-            label = ttk.Label(frame, text=f"{name}:")
+            label = ttk.Label(frame, text=f"{subapp.display_name}:", style="Racing.TLabel")
             label.grid(row=0, column=0, padx=5, pady=5)
 
-            status_label = ttk.Label(frame, textvariable=subapp.status_var, width=10)
+            status_label = ttk.Label(frame, textvariable=subapp.status_var, width=10, style="Stopped.TLabel")
             status_label.grid(row=0, column=1, padx=5, pady=5)
 
             # Configure status label colors based on status
-            def update_status_color(status_var, label):
+            def update_status_style(status_var, label):
                 status = status_var.get()
                 if status == "Running":
-                    label.configure(foreground="green")
+                    label.configure(style="Running.TLabel")
                 elif status == "Stopped":
-                    label.configure(foreground="black")
+                    label.configure(style="Stopped.TLabel")
                 else:  # Error or other states
-                    label.configure(foreground="red")
+                    label.configure(style="Warning.TLabel")
 
             # Initial color update
-            update_status_color(subapp.status_var, status_label)
+            update_status_style(subapp.status_var, status_label)
 
-            # Set up a trace on the status variable to update colors
+            # Set up a trace on the status variable to update styles
             subapp.status_var.trace_add("write", lambda *args, sv=subapp.status_var, lbl=status_label:
-                                        update_status_color(sv, lbl))
+                                       update_status_style(sv, lbl))
 
-            start_button = ttk.Button(frame, text="Start", command=lambda s=subapp: s.start())
+            start_button = ttk.Button(frame, text="Start", command=lambda s=subapp: s.start(), style="Racing.TButton")
             start_button.grid(row=0, column=2, padx=5, pady=5)
 
-            stop_button = ttk.Button(frame, text="Stop", command=lambda s=subapp: s.stop())
+            stop_button = ttk.Button(frame, text="Stop", command=lambda s=subapp: s.stop(), style="Racing.TButton")
             stop_button.grid(row=0, column=3, padx=5, pady=5)
 
     def setup_header(self):
-        # App info section
-        info_frame = ttk.Frame(self.header_frame)
+        # App info section with racing theme
+        info_frame = ttk.Frame(self.header_frame, style="Racing.TFrame")
         info_frame.pack(side=tk.LEFT)
 
-        app_label = ttk.Label(info_frame, text=f"{self.app_name}", font=("Arial", 14, "bold"))
+        # Create a simple racing flag icon
+        # TODO - replace with app icon
+        canvas = tk.Canvas(info_frame, width=40, height=30, bg=COLOR_THEME["background"],
+                          highlightthickness=0)
+        canvas.pack(side=tk.LEFT, padx=(0, 10))
+
+        # Draw checkered flag pattern
+        square_size = 5
+        for i, j in itertools.product(range(6), range(6)):
+            color = "white" if (i + j) % 2 == 0 else "black"
+            canvas.create_rectangle(
+                i * square_size, j * square_size,
+                (i+1) * square_size, (j+1) * square_size,
+                fill=color, outline=""
+            )
+
+        app_label = ttk.Label(info_frame, text=f"{self.app_name}", style="Header.TLabel")
         app_label.pack(side=tk.LEFT)
 
-        version_label = ttk.Label(info_frame, text=f"v{self.version}", font=("Arial", 10))
+        version_label = ttk.Label(info_frame, text=f"v{self.version}", style="Version.TLabel")
         version_label.pack(side=tk.LEFT, padx=(5, 0))
 
         # Buttons section
-        buttons_frame = ttk.Frame(self.header_frame)
+        buttons_frame = ttk.Frame(self.header_frame, style="Racing.TFrame")
         buttons_frame.pack(side=tk.RIGHT)
 
-        self.settings_button = ttk.Button(buttons_frame, text="Settings", command=self.open_settings)
+        self.settings_button = ttk.Button(buttons_frame, text="Settings",
+                                        command=self.open_settings, style="Racing.TButton")
         self.settings_button.pack(side=tk.LEFT, padx=(0, 10))
 
-        self.clear_button = ttk.Button(buttons_frame, text="Clear Log", command=self.clear_log)
+        self.clear_button = ttk.Button(buttons_frame, text="Clear Log",
+                                     command=self.clear_log, style="Racing.TButton")
         self.clear_button.pack(side=tk.LEFT, padx=(0, 10))
 
-        self.save_button = ttk.Button(buttons_frame, text="Save Log", command=self.save_log)
+        self.save_button = ttk.Button(buttons_frame, text="Save Log",
+                                    command=self.save_log, style="Racing.TButton")
         self.save_button.pack(side=tk.LEFT, padx=(0, 10))
 
-        self.test_button = ttk.Button(buttons_frame, text="Test Log", command=self.test_log)
+        self.test_button = ttk.Button(buttons_frame, text="Test Log",
+                                    command=self.test_log, style="Racing.TButton")
         self.test_button.pack(side=tk.LEFT)
 
     def setup_console(self):
-        # Create a text widget for the console
-        self.console = tk.Text(self.console_frame, wrap=tk.WORD, bg="#000000", fg="#FFFFFF",
-                              font=("Consolas", 10))
+        # Create a text widget for the console with racing theme
+        self.console = tk.Text(self.console_frame, wrap=tk.WORD,
+                             bg=COLOR_THEME["console_bg"],
+                             fg=COLOR_THEME["console_fg"],
+                             insertbackground=COLOR_THEME["console_fg"],
+                             font=("Consolas", 10))
         self.console.pack(fill=tk.BOTH, expand=True)
 
         # Add scrollbar
@@ -490,7 +521,7 @@ class ConsoleApp:
     def save_log(self):
         """Save the console log to a file"""
         try:
-            filename = f"console_log_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+            filename = f"racing_console_log_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
             with open(filename, "w") as f:
                 f.write(self.console.get(1.0, tk.END))
             self.log(f"Log saved to {filename}")
@@ -499,15 +530,15 @@ class ConsoleApp:
 
     def test_log(self):
         """Add some test log entries"""
-        self.log("This is a test log entry")
-        self.log("Another test log entry")
-        print("This is printed using print()")
-        print("Multiple\nline\nprint\nstatement")
+        self.log("Testing telemetry connection...")
+        self.log("Connection established on port 20777")
+        self.log("Receiving packets at 60Hz")
+        print("Tire temperatures nominal")
+        print("Fuel remaining: 45.2 liters")
 
     def open_settings(self):
         """Open the settings window"""
         self.log("Opening settings window")
-        # Pass the root window as the parent and the app instance as a reference
         settings_window = SettingsWindow(self.root, self, self.config_file)
 
     def write(self, text):
@@ -523,7 +554,7 @@ class ConsoleApp:
         """Stop all running sub-apps and restore stdout before closing"""
         for name, subapp in self.subapps.items():
             if subapp.is_running:
-                self.log(f"Stopping {name}...")
+                self.log(f"Stopping {subapp.display_name}...")
                 subapp.stop()
 
         sys.stdout = self.stdout_original
@@ -531,9 +562,7 @@ class ConsoleApp:
 
 if __name__ == "__main__":
     root = tk.Tk()
-    style = ttk.Style()
-    style.theme_use("clam")  # Use a modern theme
-
-    app = ConsoleApp(root)
+    root.iconbitmap("assets/favicon.ico")  # Set the icon for the main window
+    app = RacingConsoleApp(root)
     root.protocol("WM_DELETE_WINDOW", app.on_closing)
     root.mainloop()

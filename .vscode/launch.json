@@ -29,6 +29,17 @@
             "cwd": "${workspaceFolder}"
         },
         {
+            "name": "Launcher - Module",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "apps.launcher.launcher",
+            "console": "integratedTerminal",
+            "args": [
+                "--debug"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
             "name": "Post Race Data Viewer - Module",
             "type": "debugpy",
             "request": "launch",
