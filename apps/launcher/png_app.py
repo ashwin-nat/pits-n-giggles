@@ -34,7 +34,6 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Dict, Optional
 
-from .png_app import PngApp
 from .settings import SettingsWindow
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
@@ -53,6 +52,76 @@ COLOR_THEME = {
 }
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
+
+class PngApp:
+    """Class to manage a sub-application process"""
+    def __init__(self, name: str, app_path: str, display_name: str, start_by_default: bool, console_app: "PngLancher"):
+        self.name = name
+        self.app_path = app_path
+        self.display_name = display_name
+        self.console_app = console_app
+        self.process: Optional[subprocess.Popen] = None
+        self.status_var = tk.StringVar(value="Stopped")
+        self.monitor_thread = None
+        self.is_running = False
+
+    def start(self):
+        """Start the sub-application"""
+        if self.is_running:
+            self.console_app.log(f"{self.display_name} is already running.")
+            return
+
+        try:
+            # In a real app, you'd use:
+            # self.process = subprocess.Popen([sys.executable, self.app_path],
+            #                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            # For demonstration, we're simulating app launch
+            self.console_app.log(f"Starting {self.display_name}...")
+            self.process = True  # Just a stub for demonstration
+            self.is_running = True
+            self.status_var.set("Running")
+
+            # Start a monitoring thread
+            self.monitor_thread = threading.Thread(target=self._monitor, daemon=True)
+            self.monitor_thread.start()
+
+            self.console_app.log(f"{self.display_name} started successfully.")
+        except Exception as e:
+            self.console_app.log(f"Error starting {self.display_name}: {e}")
+            self.status_var.set("Error")
+
+    def stop(self):
+        """Stop the sub-application"""
+        if not self.is_running:
+            self.console_app.log(f"{self.display_name} is not running.")
+            return
+
+        try:
+            self.console_app.log(f"Stopping {self.display_name}...")
+
+            # In a real app, you'd use:
+            # if self.process:
+            #     self.process.terminate()
+            #     self.process.wait(timeout=5)
+
+            # Simulation
+            time.sleep(0.5)  # Simulate shutdown time
+            self.process = None
+            self.is_running = False
+            self.status_var.set("Stopped")
+            self.console_app.log(f"{self.display_name} stopped successfully.")
+        except Exception as e:
+            self.console_app.log(f"Error stopping {self.display_name}: {e}")
+            self.status_var.set("Error")
+
+    def _monitor(self):
+        """Monitor the sub-application and update its status"""
+        while self.is_running:
+            # For demonstration, we'll occasionally log something
+            time.sleep(5)
+            if self.is_running:  # Check again in case it was stopped while sleeping
+                self.console_app.log(f"{self.display_name} - Heartbeat check")
 
 class PngLancher:
     def __init__(self, root: tk.Tk):
@@ -358,73 +427,3 @@ class PngLancher:
 
         sys.stdout = self.stdout_original
         self.root.destroy()
-
-class PngApp:
-    """Class to manage a sub-application process"""
-    def __init__(self, name: str, app_path: str, display_name: str, start_by_default: bool, console_app: "PngLancher"):
-        self.name = name
-        self.app_path = app_path
-        self.display_name = display_name
-        self.console_app = console_app
-        self.process: Optional[subprocess.Popen] = None
-        self.status_var = tk.StringVar(value="Stopped")
-        self.monitor_thread = None
-        self.is_running = False
-
-    def start(self):
-        """Start the sub-application"""
-        if self.is_running:
-            self.console_app.log(f"{self.display_name} is already running.")
-            return
-
-        try:
-            # In a real app, you'd use:
-            # self.process = subprocess.Popen([sys.executable, self.app_path],
-            #                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-            # For demonstration, we're simulating app launch
-            self.console_app.log(f"Starting {self.display_name}...")
-            self.process = True  # Just a stub for demonstration
-            self.is_running = True
-            self.status_var.set("Running")
-
-            # Start a monitoring thread
-            self.monitor_thread = threading.Thread(target=self._monitor, daemon=True)
-            self.monitor_thread.start()
-
-            self.console_app.log(f"{self.display_name} started successfully.")
-        except Exception as e:
-            self.console_app.log(f"Error starting {self.display_name}: {e}")
-            self.status_var.set("Error")
-
-    def stop(self):
-        """Stop the sub-application"""
-        if not self.is_running:
-            self.console_app.log(f"{self.display_name} is not running.")
-            return
-
-        try:
-            self.console_app.log(f"Stopping {self.display_name}...")
-
-            # In a real app, you'd use:
-            # if self.process:
-            #     self.process.terminate()
-            #     self.process.wait(timeout=5)
-
-            # Simulation
-            time.sleep(0.5)  # Simulate shutdown time
-            self.process = None
-            self.is_running = False
-            self.status_var.set("Stopped")
-            self.console_app.log(f"{self.display_name} stopped successfully.")
-        except Exception as e:
-            self.console_app.log(f"Error stopping {self.display_name}: {e}")
-            self.status_var.set("Error")
-
-    def _monitor(self):
-        """Monitor the sub-application and update its status"""
-        while self.is_running:
-            # For demonstration, we'll occasionally log something
-            time.sleep(5)
-            if self.is_running:  # Check again in case it was stopped while sleeping
-                self.console_app.log(f"{self.display_name} - Heartbeat check")
