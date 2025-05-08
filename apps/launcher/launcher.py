@@ -34,7 +34,6 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Dict, Optional
 
-from .png_app import PngApp
 from .settings import SettingsWindow
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
@@ -55,11 +54,13 @@ COLOR_THEME = {
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
 class PngLancher:
-    def __init__(self, root: tk.Tk):
+    def __init__(self, root: tk.Tk, logo_path: str):
+        """Initialize the main application window"""
         self.root = root
         self.version = "1.0.0"
-        self.app_name = "Racing Console"
+        self.app_name = "Pits n' Giggles"
         self.config_file = "racing_console_settings.ini"
+        self.logo_path = logo_path
 
         # Apply theme to root window
         self.root.configure(bg=COLOR_THEME["background"])
@@ -241,21 +242,26 @@ class PngLancher:
         info_frame = ttk.Frame(self.header_frame, style="Racing.TFrame")
         info_frame.pack(side=tk.LEFT)
 
-        # Create a simple racing flag icon
-        # TODO - replace with app icon
-        canvas = tk.Canvas(info_frame, width=40, height=30, bg=COLOR_THEME["background"],
-                          highlightthickness=0)
-        canvas.pack(side=tk.LEFT, padx=(0, 10))
+        # Load the image using PIL/Pillow for better compatibility
+        from PIL import Image, ImageTk
 
-        # Draw checkered flag pattern
-        square_size = 5
-        for i, j in itertools.product(range(6), range(6)):
-            color = "white" if (i + j) % 2 == 0 else "black"
-            canvas.create_rectangle(
-                i * square_size, j * square_size,
-                (i+1) * square_size, (j+1) * square_size,
-                fill=color, outline=""
-            )
+        # Open the image file
+        pil_image = Image.open(self.logo_path)
+
+        # Calculate new dimensions while maintaining aspect ratio
+        target_height = 30
+        width, height = pil_image.size
+        new_width = int(width * (target_height / height))
+
+        # Resize maintaining aspect ratio
+        pil_image = pil_image.resize((new_width, target_height), Image.Resampling.LANCZOS)
+
+        # Convert to PhotoImage that tkinter can use
+        self.logo_image = ImageTk.PhotoImage(pil_image)
+
+        # Create a label to display the image
+        logo_label = tk.Label(info_frame, image=self.logo_image, bg=COLOR_THEME["background"])
+        logo_label.pack(side=tk.LEFT, padx=(0, 10))
 
         app_label = ttk.Label(info_frame, text=f"{self.app_name}", style="Header.TLabel")
         app_label.pack(side=tk.LEFT)

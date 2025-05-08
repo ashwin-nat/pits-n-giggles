@@ -23,28 +23,20 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import tkinter as tk
+from pathlib import Path
+
 from .launcher import PngLancher
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
-# Define racing theme colors
-COLOR_THEME = {
-    "background": "#1E1E1E",       # Dark background
-    "foreground": "#E0E0E0",       # Light text
-    "accent1": "#FF2800",          # Racing red
-    "accent2": "#303030",          # Dark gray
-    "console_bg": "#000000",       # Console black
-    "console_fg": "#00FF00",       # Terminal green
-    "running": "#00CC00",          # Green for running status
-    "stopped": "#FF2800",          # Red for stopped status
-    "warning": "#FFA500"           # Orange for warnings
-}
+ICON_PATH = str(Path.cwd() / "assets" / "logo.png")
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
 if __name__ == "__main__":
     root = tk.Tk()
+    root.title("Pits n' Giggles")
     root.iconbitmap("assets/favicon.ico")  # Set the icon for the main window
-    app = PngLancher(root)
+    app = PngLancher(root, ICON_PATH)
     root.protocol("WM_DELETE_WINDOW", app.on_closing)
     root.mainloop()
