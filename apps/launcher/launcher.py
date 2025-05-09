@@ -24,32 +24,16 @@
 
 import configparser
 import datetime
-import itertools
 import os
 import subprocess
 import sys
 import threading
-import time
 import tkinter as tk
 from tkinter import ttk
 from typing import Dict, Optional
 
 from .settings import SettingsWindow
-
-# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
-
-# Define racing theme colors
-COLOR_THEME = {
-    "background": "#1E1E1E",       # Dark background
-    "foreground": "#E0E0E0",       # Light text
-    "accent1": "#FF2800",          # Racing red
-    "accent2": "#303030",          # Dark gray
-    "console_bg": "#000000",       # Console black
-    "console_fg": "#00FF00",       # Terminal green
-    "running": "#00CC00",          # Green for running status
-    "stopped": "#FF2800",          # Red for stopped status
-    "warning": "#FFA500"           # Orange for warnings
-}
+from .colour_scheme import COLOUR_SCHEME
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -63,7 +47,7 @@ class PngLancher:
         self.logo_path = logo_path
 
         # Apply theme to root window
-        self.root.configure(bg=COLOR_THEME["background"])
+        self.root.configure(bg=COLOUR_SCHEME["background"])
 
         # Initialize sub-apps dict
         self.subapps: Dict[str, PngApp] = {}
@@ -112,31 +96,31 @@ class PngLancher:
         style.theme_use("clam")
 
         # Configure frame styles
-        style.configure("Racing.TFrame", background=COLOR_THEME["background"])
-        style.configure("Racing.TLabelframe", background=COLOR_THEME["background"],
-                       foreground=COLOR_THEME["foreground"])
-        style.configure("Racing.TLabelframe.Label", background=COLOR_THEME["background"],
-                       foreground=COLOR_THEME["accent1"], font=("Arial", 10, "bold"))
+        style.configure("Racing.TFrame", background=COLOUR_SCHEME["background"])
+        style.configure("Racing.TLabelframe", background=COLOUR_SCHEME["background"],
+                       foreground=COLOUR_SCHEME["foreground"])
+        style.configure("Racing.TLabelframe.Label", background=COLOUR_SCHEME["background"],
+                       foreground=COLOUR_SCHEME["accent1"], font=("Arial", 10, "bold"))
 
         # Configure button styles
-        style.configure("Racing.TButton", background=COLOR_THEME["accent2"],
-                       foreground=COLOR_THEME["foreground"])
+        style.configure("Racing.TButton", background=COLOUR_SCHEME["accent2"],
+                       foreground=COLOUR_SCHEME["foreground"])
         style.map("Racing.TButton",
-                 background=[("active", COLOR_THEME["accent1"])],
-                 foreground=[("active", COLOR_THEME["background"])])
+                 background=[("active", COLOUR_SCHEME["accent1"])],
+                 foreground=[("active", COLOUR_SCHEME["background"])])
 
         # Configure label styles
-        style.configure("Racing.TLabel", background=COLOR_THEME["background"],
-                       foreground=COLOR_THEME["foreground"])
-        style.configure("Header.TLabel", background=COLOR_THEME["background"],
-                       foreground=COLOR_THEME["accent1"], font=("Arial", 14, "bold"))
-        style.configure("Version.TLabel", background=COLOR_THEME["background"],
-                       foreground=COLOR_THEME["foreground"], font=("Arial", 10))
+        style.configure("Racing.TLabel", background=COLOUR_SCHEME["background"],
+                       foreground=COLOUR_SCHEME["foreground"])
+        style.configure("Header.TLabel", background=COLOUR_SCHEME["background"],
+                       foreground=COLOUR_SCHEME["accent1"], font=("Arial", 14, "bold"))
+        style.configure("Version.TLabel", background=COLOUR_SCHEME["background"],
+                       foreground=COLOUR_SCHEME["foreground"], font=("Arial", 10))
 
         # Configure status styles
-        style.configure("Running.TLabel", foreground=COLOR_THEME["running"])
-        style.configure("Stopped.TLabel", foreground=COLOR_THEME["stopped"])
-        style.configure("Warning.TLabel", foreground=COLOR_THEME["warning"])
+        style.configure("Running.TLabel", foreground=COLOUR_SCHEME["running"])
+        style.configure("Stopped.TLabel", foreground=COLOUR_SCHEME["stopped"])
+        style.configure("Warning.TLabel", foreground=COLOUR_SCHEME["warning"])
 
     def load_settings(self):
         """Load application settings"""
@@ -186,16 +170,17 @@ class PngLancher:
         """Set up the hard-coded sub-apps"""
         # Define our racing-related sub-apps
         self.subapps = {
-            "telemetry": PngApp(
-                name="telemetry",
-                app_path="telemetry_service.py",
-                display_name="Server",
+            "backend": PngApp(
+                name="backend",
+                module_path="apps.backend.pits_n_giggles",
+                display_name="Backend",
                 start_by_default=True,
-                console_app=self
+                console_app=self,
+                args=["--debug", "--replay-server"]
             ),
             "dashboard": PngApp(
                 name="dashboard",
-                app_path="racing_dashboard.py",
+                module_path="racing_dashboard.py",
                 display_name="Racing Dashboard",
                 start_by_default=False,
                 console_app=self
@@ -237,6 +222,11 @@ class PngLancher:
             stop_button = ttk.Button(frame, text="Stop", command=lambda s=subapp: s.stop(), style="Racing.TButton")
             stop_button.grid(row=0, column=3, padx=5, pady=5)
 
+        # Launch the sub-apps that should start by default
+        for subapp in self.subapps.values():
+            if subapp.start_by_default:
+                subapp.start()
+
     def setup_header(self):
         # App info section with racing theme
         info_frame = ttk.Frame(self.header_frame, style="Racing.TFrame")
@@ -260,7 +250,7 @@ class PngLancher:
         self.logo_image = ImageTk.PhotoImage(pil_image)
 
         # Create a label to display the image
-        logo_label = tk.Label(info_frame, image=self.logo_image, bg=COLOR_THEME["background"])
+        logo_label = tk.Label(info_frame, image=self.logo_image, bg=COLOUR_SCHEME["background"])
         logo_label.pack(side=tk.LEFT, padx=(0, 10))
 
         app_label = ttk.Label(info_frame, text=f"{self.app_name}", style="Header.TLabel")
@@ -292,9 +282,9 @@ class PngLancher:
     def setup_console(self):
         # Create a text widget for the console with racing theme
         self.console = tk.Text(self.console_frame, wrap=tk.WORD,
-                             bg=COLOR_THEME["console_bg"],
-                             fg=COLOR_THEME["console_fg"],
-                             insertbackground=COLOR_THEME["console_fg"],
+                             bg=COLOUR_SCHEME["console_bg"],
+                             fg=COLOUR_SCHEME["console_fg"],
+                             insertbackground=COLOUR_SCHEME["console_fg"],
                              font=("Consolas", 10))
         self.console.pack(fill=tk.BOTH, expand=True)
 
@@ -367,36 +357,47 @@ class PngLancher:
 
 class PngApp:
     """Class to manage a sub-application process"""
-    def __init__(self, name: str, app_path: str, display_name: str, start_by_default: bool, console_app: "PngLancher"):
+    def __init__(self, name: str, module_path: str, display_name: str,
+                start_by_default: bool, console_app: "PngLancher",
+                args: list[str] = None):
+        """Initialize the sub-application
+        :param name: Unique name for the sub-application
+        :param module_path: Path to the sub-application module
+        :param display_name: Display name for the sub-application
+        :param start_by_default: Whether to start this app by default
+        :param console_app: Reference to the main console application
+        """
         self.name = name
-        self.app_path = app_path
+        self.module_path = module_path
         self.display_name = display_name
         self.console_app = console_app
+        self.args = args or []  # Store CLI args
         self.process: Optional[subprocess.Popen] = None
         self.status_var = tk.StringVar(value="Stopped")
-        self.monitor_thread = None
         self.is_running = False
+        self.start_by_default = start_by_default
 
     def start(self):
-        """Start the sub-application"""
+        """Start the sub-application process"""
         if self.is_running:
             self.console_app.log(f"{self.display_name} is already running.")
             return
 
         try:
-            # In a real app, you'd use:
-            # self.process = subprocess.Popen([sys.executable, self.app_path],
-            #                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-            # For demonstration, we're simulating app launch
             self.console_app.log(f"Starting {self.display_name}...")
-            self.process = True  # Just a stub for demonstration
+
+            self.process = subprocess.Popen(
+                [sys.executable, '-m', self.module_path, *self.args],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1
+            )
+
             self.is_running = True
             self.status_var.set("Running")
 
-            # Start a monitoring thread
-            self.monitor_thread = threading.Thread(target=self._monitor, daemon=True)
-            self.monitor_thread.start()
+            threading.Thread(target=self._capture_output, daemon=True).start()
 
             self.console_app.log(f"{self.display_name} started successfully.")
         except Exception as e:
@@ -404,7 +405,6 @@ class PngApp:
             self.status_var.set("Error")
 
     def stop(self):
-        """Stop the sub-application"""
         if not self.is_running:
             self.console_app.log(f"{self.display_name} is not running.")
             return
@@ -412,13 +412,15 @@ class PngApp:
         try:
             self.console_app.log(f"Stopping {self.display_name}...")
 
-            # In a real app, you'd use:
-            # if self.process:
-            #     self.process.terminate()
-            #     self.process.wait(timeout=5)
+            if self.process:
+                self.process.terminate()
+                try:
+                    self.process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    self.console_app.log(f"{self.display_name} did not exit in time. Killing it.")
+                    self.process.kill()
+                    self.process.wait()
 
-            # Simulation
-            time.sleep(0.5)  # Simulate shutdown time
             self.process = None
             self.is_running = False
             self.status_var.set("Stopped")
@@ -427,10 +429,10 @@ class PngApp:
             self.console_app.log(f"Error stopping {self.display_name}: {e}")
             self.status_var.set("Error")
 
-    def _monitor(self):
-        """Monitor the sub-application and update its status"""
-        while self.is_running:
-            # For demonstration, we'll occasionally log something
-            time.sleep(5)
-            if self.is_running:  # Check again in case it was stopped while sleeping
-                self.console_app.log(f"{self.display_name} - Heartbeat check")
+    def _capture_output(self):
+        """Capture and log the subprocess output line by line"""
+        if self.process and self.process.stdout:
+            for line in self.process.stdout:
+                if not line:
+                    break
+                self.console_app.log(line)
