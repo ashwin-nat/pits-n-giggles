@@ -38,13 +38,21 @@ from .colour_scheme import COLOUR_SCHEME
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
 class PngLancher:
-    def __init__(self, root: tk.Tk, logo_path: str):
-        """Initialize the main application window"""
+    def __init__(self, root: tk.Tk, logo_path: str, debug_mode: bool):
+        """Initialize the main application window
+
+        Args:
+            root (tk.Tk): The main Tkinter window
+            logo_path (str): Path to the application logo
+            debug_mode (bool): Flag to enable debug mode
+        """
+
         self.root = root
         self.version = "1.0.0"
         self.app_name = "Pits n' Giggles"
         self.config_file = "racing_console_settings.ini"
         self.logo_path = logo_path
+        self.debug_mode = debug_mode
 
         # Apply theme to root window
         self.root.configure(bg=COLOUR_SCHEME["background"])
@@ -176,7 +184,7 @@ class PngLancher:
                 display_name="Backend",
                 start_by_default=True,
                 console_app=self,
-                args=["--debug", "--replay-server"]
+                args=["--debug", "--replay-server"] if self.debug_mode else []
             ),
             "dashboard": PngApp(
                 name="dashboard",

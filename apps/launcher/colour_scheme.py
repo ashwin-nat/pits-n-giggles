@@ -31,8 +31,8 @@ COLOUR_SCHEME = {
     "accent1": "#FF2800",          # Racing red
     "accent2": "#303030",          # Dark gray
     "console_bg": "#000000",       # Console black
-    "console_fg": "#00FF00",       # Terminal green
-    "running": "#00CC00",          # Green for running status
+    "console_fg": "#FFFFFF",       # Terminal white
+    "running": "#2E8B57",          # Sea Green for running status
     "stopped": "#FF2800",          # Red for stopped status
     "warning": "#FFA500"           # Orange for warnings
 }

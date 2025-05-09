@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import sys
 import tkinter as tk
 from pathlib import Path
 
@@ -34,9 +35,10 @@ ICON_PATH = str(Path.cwd() / "assets" / "logo.png")
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
 if __name__ == "__main__":
+    debug_mode = "--debug" in sys.argv
     root = tk.Tk()
     root.title("Pits n' Giggles")
     root.iconbitmap("assets/favicon.ico")  # Set the icon for the main window
-    app = PngLancher(root, ICON_PATH)
+    app = PngLancher(root, ICON_PATH, debug_mode=debug_mode)
     root.protocol("WM_DELETE_WINDOW", app.on_closing)
     root.mainloop()

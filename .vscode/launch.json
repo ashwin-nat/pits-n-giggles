@@ -5,13 +5,23 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Launcher",
+            "name": "Launcher (debug/replay)",
             "type": "debugpy",
             "request": "launch",
             "module": "apps.launcher.run",
             "console": "integratedTerminal",
             "args": [
                 "--debug"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Launcher",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "apps.launcher.run",
+            "console": "integratedTerminal",
+            "args": [
             ],
             "cwd": "${workspaceFolder}"
         },
