@@ -24,13 +24,14 @@ SOFTWARE.
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import aiofiles
 import asyncio
 import json
 import logging
 import os
 from datetime import datetime
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
+
+import aiofiles
 
 import apps.backend.state_mgmt_layer.telemetry_state as TelState
 import lib.race_analyzer as RaceAnalyzer
