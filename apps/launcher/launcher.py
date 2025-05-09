@@ -385,22 +385,15 @@ class PngApp(ABC):
         """Return a list of button definitions for this app."""
         pass
 
+    @abstractmethod
     def start(self):
         """Start the sub-application process"""
-        if self.is_running:
-            self.console_app.log(f"{self.display_name} is already running.")
-            return
+        pass
 
-        self.console_app.log(f"{self.display_name} dummy start.")
-        self.is_running = True
-
+    @abstractmethod
     def stop(self):
-        if not self.is_running:
-            self.console_app.log(f"{self.display_name} is not running.")
-            return
-
-        self.console_app.log(f"{self.display_name} dummy stop.")
-        self.is_running = False
+        """Stop the sub-application process"""
+        pass
 
     def _capture_output(self):
         """Capture and log the subprocess output line by line"""
@@ -409,6 +402,13 @@ class PngApp(ABC):
                 if not line:
                     break
                 self.console_app.log(line)
+
+    def make_text_var(self, text: str) -> tk.StringVar:
+        """Wrap a static label into a StringVar for consistency with dynamic ones."""
+        var = tk.StringVar()
+        var.set(text)
+        return var
+
 
 class BackendApp(PngApp):
     """Class to manage the backend application process"""
@@ -512,3 +512,21 @@ class SaveViewerApp(PngApp):
             }
         ]
 
+    def start(self):
+        """Start the sub-application process"""
+        if self.is_running:
+            self.console_app.log(f"{self.display_name} is already running.")
+            return
+
+        self.console_app.log(f"{self.display_name} dummy start.")
+        self.is_running = True
+        self.status_var.set("Running")
+
+    def stop(self):
+        if not self.is_running:
+            self.console_app.log(f"{self.display_name} is not running.")
+            return
+
+        self.console_app.log(f"{self.display_name} dummy stop.")
+        self.is_running = False
+        self.status_var.set("Stopped")
