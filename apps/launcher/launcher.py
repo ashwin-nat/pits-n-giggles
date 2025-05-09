@@ -188,7 +188,8 @@ class PngLauncher(ConsoleInterface):
                 args=["--debug", "--replay-server"] if self.debug_mode else []
             ),
             "dashboard": SaveViewerAppMgr(
-                console_app=self
+                console_app=self,
+                args=["--launcher", "--port", "25000"]
             ),
         }
 

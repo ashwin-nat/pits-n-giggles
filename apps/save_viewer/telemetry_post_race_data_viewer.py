@@ -1078,8 +1078,14 @@ def on_closing():
     print("UI done")
     os._exit(0)
 
-import argparse
-import os
+def stdin_input_thread():
+    """Thread to handle stdin input for the launcher mode
+    """
+    while True:
+        file_path = sys.stdin.readline().strip()
+        if file_path:
+            print('Received line:', file_path)
+            open_file_helper(file_path)
 
 def parseArgs() -> argparse.Namespace:
     """Parse the command line args and perform validation
@@ -1092,11 +1098,28 @@ def parseArgs() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Pits n' Giggles save data viewer")
 
     # Add command-line arguments with default values
-    parser.add_argument('-i', '--input-file', nargs="?", default=None, help="Input file name (optional)")
+    parser.add_argument("--launcher", action="store_true", help="Enable launcher mode. Input is expeected via stdin")
+    parser.add_argument("--port", type=int, default=None, help="Port number for the server.")
     parser.add_argument("--version", nargs="?", default="dev", help="Current version string")
 
     # Parse the command-line arguments
-    return parser.parse_args()
+    parsed_args = parser.parse_args()
+
+    if parsed_args.launcher and parsed_args.port is None:
+        print("Port number is required in launcher mode")
+        sys.exit(1)
+
+    return parsed_args
+
+def start_thread(target):
+    """Start a thread for the given target function
+
+    Args:
+        target (function): The target function to run in the thread
+    """
+    thread = Thread(target=target)
+    thread.daemon = True
+    thread.start()
 
 def main():
 
@@ -1104,9 +1127,12 @@ def main():
     global g_port_number
     args = parseArgs()
 
-    g_port_number = find_free_port()
-    ui_thread = Thread(target=start_ui)
-    ui_thread.start()
+    if args.launcher:
+        g_port_number = args.port
+        start_thread(stdin_input_thread)
+    else:
+        g_port_number = find_free_port()
+        start_thread(start_ui)
 
     # Start Flask server after Tkinter UI is initialized
     print(f"Starting server. It can be accessed at http://localhost:{str(g_port_number)}")
