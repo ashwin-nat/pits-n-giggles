@@ -1093,22 +1093,10 @@ def parseArgs() -> argparse.Namespace:
 
     # Add command-line arguments with default values
     parser.add_argument('-i', '--input-file', nargs="?", default=None, help="Input file name (optional)")
-    parser.add_argument('-c', '--cloud', action='store_true', default=False, help="Run the viewer server in cloud mode")
     parser.add_argument("--version", nargs="?", default="dev", help="Current version string")
 
     # Parse the command-line arguments
-    args = parser.parse_args()
-
-    # Validation for the input file
-    if args.input_file and not os.path.isfile(args.input_file):
-        print(f"Error: The input file '{args.input_file}' does not exist or is not a valid file.")
-        exit(1)  # Exit the program or raise an exception based on your needs
-
-    if args.cloud and not args.input_file:
-        print("Error: The input file must be provided in headless mode.")
-        exit(1)
-    return args
-
+    return parser.parse_args()
 
 def main():
 
@@ -1116,22 +1104,9 @@ def main():
     global g_port_number
     args = parseArgs()
 
-    if args.cloud:
-        print("Running in cloud mode")
-        g_port_number = int(os.environ.get("PORT", -1))
-        if g_port_number == -1:
-            print("Error: PORT environment variable is not set.")
-            exit(1)
-    else:
-        g_port_number = find_free_port()
-
-    # Start Tkinter UI if not in cloud mode
-    if not args.cloud:
-        ui_thread = Thread(target=start_ui)
-        ui_thread.start()
-
-    if args.input_file:
-        open_file_helper(args.input_file, open_webpage=False)
+    g_port_number = find_free_port()
+    ui_thread = Thread(target=start_ui)
+    ui_thread.start()
 
     # Start Flask server after Tkinter UI is initialized
     print(f"Starting server. It can be accessed at http://localhost:{str(g_port_number)}")
