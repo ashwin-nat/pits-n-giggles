@@ -88,4 +88,4 @@ class PngAppMgrBase(ABC):
             for line in self.process.stdout:
                 if not line:
                     break
-                self.console_app.log(line, add_newline=False)
+                self.console_app.log(line, is_child_message=True)

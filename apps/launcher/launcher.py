@@ -291,17 +291,17 @@ class PngLauncher(ConsoleInterface):
         """Set up the logger for the application"""
         self.m_logger = get_rotating_logger()
 
-    def log(self, message: str, add_newline: bool=True):
+    def log(self, message: str, is_child_message: bool=False):
         """Add a message to the console with timestamp. Also write to file
         Args:
             message (str): The message to log
-            add_newline (bool): Whether to add a newline at the end of the message
+            is_child_log (bool): Whether the message is from a child process
         """
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        if add_newline:
-            formatted_message = f"[{timestamp}] {message}\n"
+        if is_child_message:
+            formatted_message = f"[{message}"
         else:
-            formatted_message = f"[{timestamp}] {message}"
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            formatted_message = f"[{timestamp}] {message}\n"
 
         self.console.configure(state=tk.NORMAL)
         self.console.insert(tk.END, formatted_message)
