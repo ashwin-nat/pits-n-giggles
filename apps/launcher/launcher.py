@@ -220,16 +220,9 @@ class PngLauncher(ConsoleInterface):
             subapp.status_var.trace_add("write", lambda *args, sv=subapp.status_var, lbl=status_label:
                                         update_status_style(sv, lbl))
 
-            # Dynamically create buttons from subapp
-            for idx, btn in enumerate(subapp.get_buttons()):
-                button = ttk.Button(
-                    frame,
-                    text=btn["text"],
-                    command=btn["command"],
-                    style="Racing.TButton"
-                )
+            # Dynamically create buttons from subapp and add them to the frame
+            for idx, button in enumerate(subapp.get_buttons(frame)):  # Pass the frame here
                 button.grid(row=0, column=2 + idx, padx=5, pady=5)
-
         # Launch the sub-apps that should start by default
         for subapp in self.subapps.values():
             if subapp.start_by_default:

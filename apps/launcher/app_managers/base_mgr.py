@@ -25,6 +25,7 @@
 import subprocess
 import tkinter as tk
 from abc import ABC, abstractmethod
+from tkinter import ttk
 from typing import Optional
 
 from ..console_interface import ConsoleInterface
@@ -54,7 +55,7 @@ class PngAppMgrBase(ABC):
         self.start_by_default = start_by_default
 
     @abstractmethod
-    def get_buttons(self) -> list[dict]:
+    def get_buttons(self, frame: ttk.Frame) -> list[dict]:
         """Return a list of button definitions for this app."""
         ...
 

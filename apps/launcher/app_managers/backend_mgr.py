@@ -25,6 +25,7 @@
 import subprocess
 import sys
 import threading
+from tkinter import ttk
 
 from ..console_interface import ConsoleInterface
 from .base_mgr import PngAppMgrBase
@@ -43,10 +44,24 @@ class BackendAppMgr(PngAppMgrBase):
             args=args
         )
 
-    def get_buttons(self) -> list[dict]:
+    def get_buttons(self, frame: ttk.Frame) -> list[dict]:
+        """Return a list of button objects directly"""
+
         return [
-            {"text": "Start", "command": self.start},
-            {"text": "Stop", "command": self.stop}
+            # Start button
+            ttk.Button(
+                frame,
+                text="Start",
+                command=self.start,
+                style="Racing.TButton"
+            ),
+            # Stop button
+            ttk.Button(
+                frame,
+                text="Stop",
+                command=self.stop,
+                style="Racing.TButton"
+            ),
         ]
 
     def start(self):

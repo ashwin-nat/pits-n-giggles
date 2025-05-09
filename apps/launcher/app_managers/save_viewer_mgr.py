@@ -22,6 +22,8 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+from tkinter import ttk
+
 from ..console_interface import ConsoleInterface
 from .base_mgr import PngAppMgrBase
 
@@ -38,11 +40,24 @@ class SaveViewerAppMgr(PngAppMgrBase):
             console_app=console_app
         )
 
-    def get_buttons(self) -> list[dict]:
+    def get_buttons(self, frame: ttk.Frame) -> list[dict]:
+        """Return a list of button objects directly"""
+
         return [
-            {"text": "Start", "command": self.start},
-            {"text": "Stop", "command": self.stop},
-            {"text": "View", "command": self.view_data}
+            # Start button
+            ttk.Button(
+                frame,
+                text="Start",
+                command=self.start,
+                style="Racing.TButton"
+            ),
+            # Stop button
+            ttk.Button(
+                frame,
+                text="Stop",
+                command=self.stop,
+                style="Racing.TButton"
+            ),
         ]
 
     def start(self):
