@@ -42,8 +42,6 @@ from apps.backend.ui_intf_layer import (TelemetryWebServer,
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
-png_logger: Optional[logging.Logger] = None
-
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
 class PngRunner:
@@ -247,7 +245,7 @@ async def main(logger: logging.Logger, args: argparse.Namespace) -> None:
 
 if __name__ == '__main__':
     args_obj = parseArgs()
-    png_logger = initLogger(file_name='png_log.log', max_size=100000, debug_mode=args_obj.debug)
+    png_logger = initLogger(file_name=args_obj.log_file_name, max_size=100000, debug_mode=args_obj.debug)
     try:
         asyncio.run(main(png_logger, args_obj))
     except KeyboardInterrupt:
