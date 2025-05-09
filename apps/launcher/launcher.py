@@ -31,6 +31,7 @@ import threading
 import tkinter as tk
 from tkinter import ttk
 from typing import Dict, Optional
+from abc import ABC, abstractmethod
 
 from .settings import SettingsWindow
 from .colour_scheme import COLOUR_SCHEME
@@ -176,21 +177,12 @@ class PngLancher:
 
     def setup_subapps(self):
         """Set up the hard-coded sub-apps"""
-        # Define our racing-related sub-apps
         self.subapps = {
-            "backend": PngApp(
-                name="backend",
-                module_path="apps.backend.pits_n_giggles",
-                display_name="Backend",
-                start_by_default=True,
+            "server": BackendApp(
                 console_app=self,
                 args=["--debug", "--replay-server"] if self.debug_mode else []
             ),
-            "dashboard": PngApp(
-                name="dashboard",
-                module_path="racing_dashboard.py",
-                display_name="Racing Dashboard",
-                start_by_default=False,
+            "dashboard": SaveViewerApp(
                 console_app=self
             ),
         }
@@ -214,26 +206,29 @@ class PngLancher:
                     label.configure(style="Running.TLabel")
                 elif status == "Stopped":
                     label.configure(style="Stopped.TLabel")
-                else:  # Error or other states
+                else:
                     label.configure(style="Warning.TLabel")
 
-            # Initial color update
             update_status_style(subapp.status_var, status_label)
 
-            # Set up a trace on the status variable to update styles
             subapp.status_var.trace_add("write", lambda *args, sv=subapp.status_var, lbl=status_label:
-                                       update_status_style(sv, lbl))
+                                        update_status_style(sv, lbl))
 
-            start_button = ttk.Button(frame, text="Start", command=lambda s=subapp: s.start(), style="Racing.TButton")
-            start_button.grid(row=0, column=2, padx=5, pady=5)
-
-            stop_button = ttk.Button(frame, text="Stop", command=lambda s=subapp: s.stop(), style="Racing.TButton")
-            stop_button.grid(row=0, column=3, padx=5, pady=5)
+            # Dynamically create buttons from subapp
+            for idx, btn in enumerate(subapp.get_buttons()):
+                button = ttk.Button(
+                    frame,
+                    text=btn["text"],
+                    command=btn["command"],
+                    style="Racing.TButton"
+                )
+                button.grid(row=0, column=2 + idx, padx=5, pady=5)
 
         # Launch the sub-apps that should start by default
         for subapp in self.subapps.values():
             if subapp.start_by_default:
                 subapp.start()
+
 
     def setup_header(self):
         # App info section with racing theme
@@ -363,7 +358,7 @@ class PngLancher:
         sys.stdout = self.stdout_original
         self.root.destroy()
 
-class PngApp:
+class PngApp(ABC):
     """Class to manage a sub-application process"""
     def __init__(self, name: str, module_path: str, display_name: str,
                 start_by_default: bool, console_app: "PngLancher",
@@ -384,6 +379,61 @@ class PngApp:
         self.status_var = tk.StringVar(value="Stopped")
         self.is_running = False
         self.start_by_default = start_by_default
+
+    @abstractmethod
+    def get_buttons(self) -> list[dict]:
+        """Return a list of button definitions for this app."""
+        pass
+
+    def start(self):
+        """Start the sub-application process"""
+        if self.is_running:
+            self.console_app.log(f"{self.display_name} is already running.")
+            return
+
+        self.console_app.log(f"{self.display_name} dummy start.")
+        self.is_running = True
+
+    def stop(self):
+        if not self.is_running:
+            self.console_app.log(f"{self.display_name} is not running.")
+            return
+
+        self.console_app.log(f"{self.display_name} dummy stop.")
+        self.is_running = False
+
+    def _capture_output(self):
+        """Capture and log the subprocess output line by line"""
+        if self.process and self.process.stdout:
+            for line in self.process.stdout:
+                if not line:
+                    break
+                self.console_app.log(line)
+
+class BackendApp(PngApp):
+    """Class to manage the backend application process"""
+    def __init__(self, console_app: PngLancher, args: list[str] = None):
+        super().__init__(
+            name="backend",
+            module_path="apps.backend.pits_n_giggles",
+            display_name="Backend",
+            start_by_default=True,
+            console_app=console_app,
+            args=args or []
+        )
+
+    def get_buttons(self) -> list[dict]:
+        """Return a list of button definitions for this app."""
+        return [
+            {
+                "text": "Start",
+                "command": self.start
+            },
+            {
+                "text": "Stop",
+                "command": self.stop
+            }
+        ]
 
     def start(self):
         """Start the sub-application process"""
@@ -437,10 +487,28 @@ class PngApp:
             self.console_app.log(f"Error stopping {self.display_name}: {e}")
             self.status_var.set("Error")
 
-    def _capture_output(self):
-        """Capture and log the subprocess output line by line"""
-        if self.process and self.process.stdout:
-            for line in self.process.stdout:
-                if not line:
-                    break
-                self.console_app.log(line)
+class SaveViewerApp(PngApp):
+    """Class to manage the save viewer application process"""
+    def __init__(self, console_app: PngLancher, args: list[str] = None):
+        super().__init__(
+            name="save_viewer",
+            module_path="apps.save_viewer",
+            display_name="Save Viewer",
+            start_by_default=False,
+            console_app=console_app,
+            args=args or []
+        )
+
+    def get_buttons(self) -> list[dict]:
+        """Return a list of button definitions for this app."""
+        return [
+            {
+                "text": "Start",
+                "command": self.start
+            },
+            {
+                "text": "Stop",
+                "command": self.stop
+            }
+        ]
+
