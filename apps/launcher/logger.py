@@ -22,13 +22,35 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from abc import ABC, abstractmethod
+import logging
+from logging.handlers import RotatingFileHandler
 
-# -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
+# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-class ConsoleInterface(ABC):
-    """Abstract base class for console logger interface"""
-    @abstractmethod
-    def log(self, message: str, add_newline: bool = True) -> None:
-        """Log a message to the console"""
-        ...
+def get_rotating_logger(
+    name: str = "png_logger",
+    log_file: str = "png_launcher.log", # TODO: Use a more appropriate path
+    max_bytes: int = 3 * 1024 * 1024,
+    backup_count: int = 3
+) -> logging.Logger:
+    """
+    Sets up and returns a thread-safe logger with no formatting and rotating file handler.
+
+    Args:
+        name (str): Logger name.
+        log_file (str): Path to the log file.
+        max_bytes (int): Max file size before rotation.
+        backup_count (int): Number of backup log files to keep.
+
+    Returns:
+        logging.Logger: Configured logger instance.
+    """
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.INFO)
+
+    if not logger.handlers:
+        handler = RotatingFileHandler(log_file, maxBytes=max_bytes, backupCount=backup_count)
+        handler.setFormatter(logging.Formatter('%(message)s'))  # Raw output
+        logger.addHandler(handler)
+
+    return logger

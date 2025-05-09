@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import configparser
+import logging
 import datetime
 import os
 import sys
@@ -36,6 +37,7 @@ from .app_managers import BackendAppMgr, PngAppMgrBase, SaveViewerAppMgr
 from .colour_scheme import COLOUR_SCHEME
 from .console_interface import ConsoleInterface
 from .settings import SettingsWindow
+from .logger import get_rotating_logger
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -64,7 +66,7 @@ class PngLauncher(ConsoleInterface):
 
         # Configure the main window
         root.title(f"{self.app_name} v{self.version}")
-        root.geometry("900x700")
+        root.geometry("1280x720")
 
         # Create custom style
         self.create_custom_style()
@@ -84,6 +86,9 @@ class PngLauncher(ConsoleInterface):
 
         # Set up the console section
         self.setup_console()
+
+        # Setup the logger
+        self.setup_logger()
 
         # Configure hardcoded sub-apps
         self.setup_subapps()
@@ -272,10 +277,6 @@ class PngLauncher(ConsoleInterface):
                                      command=self.clear_log, style="Racing.TButton")
         self.clear_button.pack(side=tk.LEFT, padx=(0, 10))
 
-        self.save_button = ttk.Button(buttons_frame, text="Save Log",
-                                    command=self.save_log, style="Racing.TButton")
-        self.save_button.pack(side=tk.LEFT, padx=(0, 10))
-
     def setup_console(self):
         # Create a text widget for the console with racing theme
         self.console = tk.Text(self.console_frame, wrap=tk.WORD,
@@ -293,15 +294,27 @@ class PngLauncher(ConsoleInterface):
         # Make text read-only
         self.console.configure(state=tk.DISABLED)
 
-    def log(self, message):
-        """Add a message to the console with timestamp"""
+    def setup_logger(self):
+        """Set up the logger for the application"""
+        self.m_logger = get_rotating_logger()
+
+    def log(self, message: str, add_newline: bool=True):
+        """Add a message to the console with timestamp. Also write to file
+        Args:
+            message (str): The message to log
+            add_newline (bool): Whether to add a newline at the end of the message
+        """
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        formatted_message = f"[{timestamp}] {message}\n"
+        if add_newline:
+            formatted_message = f"[{timestamp}] {message}\n"
+        else:
+            formatted_message = f"[{timestamp}] {message}"
 
         self.console.configure(state=tk.NORMAL)
         self.console.insert(tk.END, formatted_message)
         self.console.see(tk.END)  # Auto-scroll to the end
         self.console.configure(state=tk.DISABLED)
+        self.m_logger.info(message.rstrip())
 
     def clear_log(self):
         """Clear the console log"""
@@ -309,16 +322,6 @@ class PngLauncher(ConsoleInterface):
         self.console.delete(1.0, tk.END)
         self.console.configure(state=tk.DISABLED)
         self.log("Log cleared")
-
-    def save_log(self):
-        """Save the console log to a file"""
-        try:
-            filename = f"racing_console_log_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-            with open(filename, "w") as f:
-                f.write(self.console.get(1.0, tk.END))
-            self.log(f"Log saved to {filename}")
-        except Exception as e:
-            self.log(f"Error saving log: {e}")
 
     def open_settings(self):
         """Open the settings window"""
@@ -332,7 +335,7 @@ class PngLauncher(ConsoleInterface):
 
     def flush(self):
         """Required for stdout redirection"""
-        pass
+        ...
 
     def on_closing(self):
         """Stop all running sub-apps and restore stdout before closing"""

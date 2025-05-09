@@ -56,17 +56,17 @@ class PngAppMgrBase(ABC):
     @abstractmethod
     def get_buttons(self) -> list[dict]:
         """Return a list of button definitions for this app."""
-        pass
+        ...
 
     @abstractmethod
     def start(self):
         """Start the sub-application process"""
-        pass
+        ...
 
     @abstractmethod
     def stop(self):
         """Stop the sub-application process"""
-        pass
+        ...
 
     def _capture_output(self):
         """Capture and log the subprocess output line by line"""
@@ -74,7 +74,7 @@ class PngAppMgrBase(ABC):
             for line in self.process.stdout:
                 if not line:
                     break
-                self.console_app.log(line)
+                self.console_app.log(line, add_newline=False)
 
     def make_text_var(self, text: str) -> tk.StringVar:
         """Wrap a static label into a StringVar for consistency with dynamic ones."""
