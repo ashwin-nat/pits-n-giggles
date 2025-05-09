@@ -26,6 +26,8 @@ import configparser
 import os
 import tkinter as tk
 from tkinter import messagebox, ttk
+from typing import Callable
+from .console_interface import ConsoleInterface
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
@@ -42,43 +44,61 @@ COLOR_THEME = {
     "warning": "#FFA500"           # Orange for warnings
 }
 
+# Default settings - everything is a string in this layer
+DEFAULT_SETTINGS = {
+    "Network": {
+        "telemetry_port": "20777",
+        "server_port": "4768",
+        "save_viewer_port": "4769",
+        "udp_custom_action_code": "12",
+        "udp_tyre_delta_action_code": "11"
+    },
+    "Capture": {
+        "post_race_data_autosave": "True"
+    },
+    "Display": {
+        "refresh_interval": "200",
+        "disable_browser_autoload": "False"
+    },
+    "Logging": {
+        "log_file": "png_launcher.log", # TODO - use proper value
+        "log_file_size": "1000000"
+    },
+    "Privacy": {
+        "process_car_setup": "False"
+    },
+    "Forwarding": {
+        "target_1": "",
+        "target_2": "",
+        "target_3": "",
+    }
+}
+
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
 class SettingsWindow:
-    def __init__(self, parent, app, config_file="app_settings.ini"):
+    """
+    A window for managing application settings.
+
+    This class creates a settings window where the user can view and edit various
+    configuration options for the application. Settings are saved to a configuration file.
+    """
+
+    def __init__(self, parent: tk.Tk, app: ConsoleInterface, save_callback: Callable[[configparser.ConfigParser], None], config_file: str = "app_settings.ini"):
+        """
+        Initialize the SettingsWindow.
+
+        Args:
+            parent: The parent Tkinter window.
+            app: The main application object.
+            save_callback: A callback function to propagate saved settings.
+            config_file: The path to the settings file (defaults to "app_settings.ini").
+        """
         self.parent = parent
         self.app = app
+        self.save_callback = save_callback
         self.config_file = config_file
         self.settings = configparser.ConfigParser()
-
-        # Default settings
-        self.default_settings = {
-            "Network": {
-                "telemetry_port": "20777",
-                "server_port": "5000",
-                "udp_custom_action_code": "12",
-                "udp_tyre_delta_action_code": "11"
-            },
-            "Capture": {
-                "packet_capture_mode": "disabled",
-                "post_race_data_autosave": "True"
-            },
-            "Display": {
-                "refresh_interval": "200",
-                "disable_browser_autoload": "False"
-            },
-            "Logging": {
-                "log_file": "racing_console.log",
-                "log_file_size": "1000000"
-            },
-            "Privacy": {
-                "process_car_setup": "False"
-            },
-            "Forwarding": {
-                "target_moza": "localhost:22024",
-                "target_sec_mon": "localhost:22025"
-            }
-        }
 
         # Load or create settings
         self.load_settings()
@@ -103,13 +123,18 @@ class SettingsWindow:
         # Create save/cancel buttons
         self.create_buttons()
 
-    def load_settings(self):
-        """Load settings from file or create with defaults"""
+    def load_settings(self) -> None:
+        """
+        Load settings from a configuration file or create new ones with defaults.
+
+        This method reads the settings file if it exists, or creates default settings
+        if no settings file is found. It ensures all sections and keys exist.
+        """
         if os.path.exists(self.config_file):
             self.settings.read(self.config_file)
 
         # Ensure all sections and keys exist
-        for section, options in self.default_settings.items():
+        for section, options in DEFAULT_SETTINGS.items():
             if not self.settings.has_section(section):
                 self.settings.add_section(section)
 
@@ -117,15 +142,27 @@ class SettingsWindow:
                 if not self.settings.has_option(section, key):
                     self.settings.set(section, key, value)
 
-    def save_settings(self):
-        """Save settings to file"""
+    def save_settings(self) -> None:
+        """
+        Save the current settings to the configuration file.
+
+        The settings are written to the file specified by `self.config_file`. After saving,
+        the `save_callback` is called to propagate the updated settings.
+        """
         with open(self.config_file, 'w') as f:
             self.settings.write(f)
 
         self.app.log(f"Settings saved to {self.config_file}")
+        self.save_callback(self.settings)
 
-    def create_tabs(self):
-        """Create tabs for each settings section"""
+    def create_tabs(self) -> None:
+        """
+        Create tabs for each settings section and populate them with input fields.
+
+        This method creates a tab for each section in the settings file and populates
+        it with appropriate input widgets (entry, checkbox, combobox, etc.) based on
+        the type of each setting.
+        """
         self.entry_vars = {}
 
         for section in self.settings.sections():
@@ -177,8 +214,14 @@ class SettingsWindow:
                     self.entry_vars[section] = {}
                 self.entry_vars[section][key] = var
 
-    def create_buttons(self):
-        """Create save and cancel buttons"""
+    def create_buttons(self) -> None:
+        """
+        Create the save and cancel buttons at the bottom of the settings window.
+
+        This method creates the buttons and places them in a frame at the bottom of the window.
+        The save button will trigger saving the settings, and the cancel button will close
+        the settings window without saving.
+        """
         button_frame = ttk.Frame(self.window)
         button_frame.pack(fill=tk.X, padx=10, pady=10)
 
@@ -188,8 +231,14 @@ class SettingsWindow:
         cancel_button = ttk.Button(button_frame, text="Cancel", command=self.window.destroy)
         cancel_button.pack(side=tk.RIGHT, padx=5)
 
-    def on_save(self):
-        """Save settings from UI to config"""
+    def on_save(self) -> None:
+        """
+        Save the settings from the UI to the configuration file.
+
+        This method retrieves the current values from the user input fields, updates
+        the settings object, and then calls `save_settings()` to persist the changes.
+        It will also close the settings window after saving.
+        """
         try:
             for section, options in self.entry_vars.items():
                 for key, var in options.items():

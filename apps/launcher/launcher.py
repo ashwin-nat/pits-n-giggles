@@ -35,7 +35,7 @@ from PIL import Image, ImageTk
 from .app_managers import BackendAppMgr, PngAppMgrBase, SaveViewerAppMgr
 from .colour_scheme import COLOUR_SCHEME
 from .console_interface import ConsoleInterface
-from .settings import SettingsWindow
+from .settings import SettingsWindow, DEFAULT_SETTINGS
 from .logger import get_rotating_logger
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
@@ -51,9 +51,9 @@ class PngLauncher(ConsoleInterface):
         """
 
         self.root = root
-        self.version = "1.0.0"
+        self.version = "1.0.0" # TODO - handle version
         self.app_name = "Pits n' Giggles"
-        self.config_file = "racing_console_settings.ini"
+        self.config_file = "racing_console_settings.ini" # TODO: Move to config file
         self.logo_path = logo_path
         self.debug_mode = debug_mode
 
@@ -80,6 +80,9 @@ class PngLauncher(ConsoleInterface):
         self.console_frame = ttk.Frame(root, padding="10", style="Racing.TFrame")
         self.console_frame.pack(fill=tk.BOTH, expand=True)
 
+        # Load settings
+        self.load_settings()
+
         # Set up the header section
         self.setup_header()
 
@@ -91,9 +94,6 @@ class PngLauncher(ConsoleInterface):
 
         # Configure hardcoded sub-apps
         self.setup_subapps()
-
-        # Load settings
-        self.load_settings()
 
         # Redirect stdout to our console
         self.stdout_original = sys.stdout
@@ -142,35 +142,8 @@ class PngLauncher(ConsoleInterface):
 
         # Create default settings if config file doesn't exist
         if not os.path.exists(self.config_file):
-            default_settings = {
-                "Network": {
-                    "telemetry_port": "20777",
-                    "server_port": "5000",
-                    "udp_custom_action_code": "12",
-                    "udp_tyre_delta_action_code": "11"
-                },
-                "Capture": {
-                    "packet_capture_mode": "disabled",
-                    "post_race_data_autosave": "True"
-                },
-                "Display": {
-                    "refresh_interval": "200",
-                    "disable_browser_autoload": "False"
-                },
-                "Logging": {
-                    "log_file": "racing_console.log",
-                    "log_file_size": "1000000"
-                },
-                "Privacy": {
-                    "process_car_setup": "False"
-                },
-                "Forwarding": {
-                    "target_moza": "localhost:22024",
-                    "target_sec_mon": "localhost:22025"
-                }
-            }
 
-            for section, options in default_settings.items():
+            for section, options in DEFAULT_SETTINGS.items():
                 self.settings.add_section(section)
                 for key, value in options.items():
                     self.settings.set(section, key, value)
@@ -183,13 +156,15 @@ class PngLauncher(ConsoleInterface):
     def setup_subapps(self):
         """Set up the hard-coded sub-apps"""
         self.subapps = {
+            # Backend app reads port from config file
             "server": BackendAppMgr(
                 console_app=self,
                 args=["--debug", "--replay-server"] if self.debug_mode else []
             ),
+            # SaveViewer app reads port from args
             "dashboard": SaveViewerAppMgr(
                 console_app=self,
-                args=["--launcher", "--port", "25000"]
+                args=["--launcher", "--port", str(self.settings.get("Network", "save_viewer_port"))],
             ),
         }
 
@@ -320,7 +295,39 @@ class PngLauncher(ConsoleInterface):
     def open_settings(self):
         """Open the settings window"""
         self.log("Opening settings window")
-        SettingsWindow(self.root, self, self.config_file)
+        SettingsWindow(self.root, self, self.save_settings_callback, self.config_file)
+
+    def save_settings_callback(self, new_settings: configparser.ConfigParser) -> None:
+        """Callback function to save settings from the settings window"""
+
+        # Check if any settings have changed
+        settings_changed = False
+
+        for section in new_settings.sections():
+            if not self.settings.has_section(section):
+                settings_changed = True
+                break
+            for key in new_settings[section]:
+                if self.settings.get(section, key) != new_settings.get(section, key):
+                    settings_changed = True
+                    break
+
+        if not settings_changed:
+            self.log("No changes detected, settings not saved.")
+            return  # Exit early if no changes
+
+        self.log("Settings changed, restarting apps...")
+
+        # Save the new settings
+        self.settings = new_settings
+
+        # TODO - update the port numbers in the sub-apps
+        # Restart the sub-apps
+
+    def restart_subapps(self):
+        """Restart all sub-apps"""
+        for name, subapp in self.subapps.items():
+            subapp.restart()
 
     def write(self, text):
         """Handle print statements by redirecting to our log"""

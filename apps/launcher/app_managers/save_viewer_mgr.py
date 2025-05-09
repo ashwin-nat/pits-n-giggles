@@ -119,7 +119,15 @@ class SaveViewerAppMgr(PngAppMgrBase):
     def stop(self):
         """Stop the save viewer process"""
         if self.is_running:
-            self.console_app.log(f"Stopping {self.display_name}...")
+            if self.process:
+                self.process.terminate()
+                try:
+                    self.process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    self.console_app.log(f"{self.display_name} did not exit in time. Killing it.")
+                    self.process.kill()
+                    self.process.wait()
+            self.console_app.log(f"Stopped {self.display_name}...")
             # Implementation of stopping the dashboard
             self.status_var.set("Stopped")
             self.is_running = False
