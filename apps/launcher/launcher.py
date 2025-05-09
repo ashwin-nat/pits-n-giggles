@@ -53,7 +53,7 @@ class PngLauncher(ConsoleInterface):
         self.root = root
         self.version = "1.0.0" # TODO - handle version
         self.app_name = "Pits n' Giggles"
-        self.config_file = "racing_console_settings.ini" # TODO: Move to config file
+        self.config_file = "png_config.ini" # TODO: Move to config file
         self.logo_path = logo_path
         self.debug_mode = debug_mode
 
@@ -142,16 +142,24 @@ class PngLauncher(ConsoleInterface):
 
         # Create default settings if config file doesn't exist
         if not os.path.exists(self.config_file):
-
             for section, options in DEFAULT_SETTINGS.items():
                 self.settings.add_section(section)
                 for key, value in options.items():
                     self.settings.set(section, key, value)
 
-            with open(self.config_file, 'w') as f:
-                self.settings.write(f)
         else:
             self.settings.read(self.config_file)
+
+            # Check for missing keys and add them with default values
+            for section, options in DEFAULT_SETTINGS.items():
+                if not self.settings.has_section(section):
+                    self.settings.add_section(section)
+                for key, value in options.items():
+                    if not self.settings.has_option(section, key):
+                        self.settings.set(section, key, value)
+
+        with open(self.config_file, 'w') as f:
+            self.settings.write(f)
 
     def setup_subapps(self):
         """Set up the hard-coded sub-apps"""
@@ -164,7 +172,7 @@ class PngLauncher(ConsoleInterface):
             # SaveViewer app reads port from args
             "dashboard": SaveViewerAppMgr(
                 console_app=self,
-                args=["--launcher", "--port", str(self.settings.get("Network", "save_viewer_port"))],
+                port_str=str(self.settings.get("Network", "save_viewer_port")),
             ),
         }
 
@@ -321,12 +329,9 @@ class PngLauncher(ConsoleInterface):
         # Save the new settings
         self.settings = new_settings
 
-        # TODO - update the port numbers in the sub-apps
-        # Restart the sub-apps
-
-    def restart_subapps(self):
-        """Restart all sub-apps"""
-        for name, subapp in self.subapps.items():
+        # Propagate settings to sub-apps and restart them
+        for _, subapp in self.subapps.items():
+            subapp.on_settings_change(self.settings)
             subapp.restart()
 
     def write(self, text):

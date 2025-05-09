@@ -27,6 +27,7 @@ import tkinter as tk
 from abc import ABC, abstractmethod
 from tkinter import ttk
 from typing import Optional
+from configparser import ConfigParser
 
 from ..console_interface import ConsoleInterface
 
@@ -69,6 +70,11 @@ class PngAppMgrBase(ABC):
         """Stop the sub-application process"""
         ...
 
+    @abstractmethod
+    def on_settings_change(self, new_settings: ConfigParser):
+        """Handle changes in settings for the sub-application"""
+        ...
+
     def start_stop(self):
         """Start or stop the sub-application process based on its current state"""
         if self.is_running:
@@ -80,7 +86,8 @@ class PngAppMgrBase(ABC):
         """Restart the sub-application process"""
         if self.is_running:
             self.stop()
-        self.start()
+            self.start()
+        # No Op if not running
 
     def _capture_output(self):
         """Capture and log the subprocess output line by line"""

@@ -123,3 +123,9 @@ class BackendAppMgr(PngAppMgrBase):
     def open_dashboard(self):
         self.console_app.log("Opening dashboard viewer...")
         # Implementation of viewing dashboard data
+
+    def on_settings_change(self, new_settings):
+        """Handle changes in settings for the sub-application"""
+
+        # No-op in this case, as the backend app reads the new config from the file
+        return
