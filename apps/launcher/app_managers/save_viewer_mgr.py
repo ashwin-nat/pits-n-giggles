@@ -22,10 +22,11 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from tkinter import ttk, filedialog
 import subprocess
-import threading
 import sys
+import threading
+import webbrowser
+from tkinter import filedialog, ttk
 
 from ..console_interface import ConsoleInterface
 from .base_mgr import PngAppMgrBase
@@ -140,8 +141,8 @@ class SaveViewerAppMgr(PngAppMgrBase):
             self.open_file_button.config(state="disabled")
 
     def open_dashboard(self):
-        self.console_app.log("Opening dashboard viewer...")
-        # Implementation of viewing dashboard data
+        """Open the dashboard viewer in a web browser."""
+        webbrowser.open(f'http://localhost:{self.port_str}', new=2)
 
     def open_file(self):
         file_path = filedialog.askopenfilename()

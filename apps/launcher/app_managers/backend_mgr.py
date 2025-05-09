@@ -25,6 +25,7 @@
 import subprocess
 import sys
 import threading
+import webbrowser
 from tkinter import ttk
 
 from ..console_interface import ConsoleInterface
@@ -34,7 +35,13 @@ from .base_mgr import PngAppMgrBase
 
 class BackendAppMgr(PngAppMgrBase):
     """Implementation of PngApp for backend services"""
-    def __init__(self, console_app: ConsoleInterface, args: list[str] = None):
+    def __init__(self, console_app: ConsoleInterface, port_str: str, args: list[str] = None):
+        """Initialize the backend manager
+        :param console_app: Reference to a console interface for logging
+        :param port_str: Port number to use for the backend
+        :param args: Additional Command line arguments to pass to the backend
+        """
+        self.port_str = port_str
         super().__init__(
             name="server",
             module_path="apps.backend.pits_n_giggles",
@@ -121,11 +128,11 @@ class BackendAppMgr(PngAppMgrBase):
             self.status_var.set("Error")
 
     def open_dashboard(self):
-        self.console_app.log("Opening dashboard viewer...")
-        # Implementation of viewing dashboard data
+        """Open the dashboard viewer in a web browser."""
+        webbrowser.open(f'http://localhost:{self.port_str}', new=2)
 
     def on_settings_change(self, new_settings):
         """Handle changes in settings for the sub-application"""
 
-        # No-op in this case, as the backend app reads the new config from the file
-        return
+        # Update the port number
+        self.port_str = new_settings.get("Network", "server_port")

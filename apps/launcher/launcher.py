@@ -167,6 +167,7 @@ class PngLauncher(ConsoleInterface):
             # Backend app reads port from config file
             "server": BackendAppMgr(
                 console_app=self,
+                port_str=str(self.settings.get("Network", "server_port")),
                 args=["--debug", "--replay-server"] if self.debug_mode else []
             ),
             # SaveViewer app reads port from args
