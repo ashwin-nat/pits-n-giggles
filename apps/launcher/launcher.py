@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) [2024] [Ashwin Natarajan]
+# Copyright (c) [2025] [Ashwin Natarajan]
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,186 +25,19 @@
 import configparser
 import datetime
 import os
-import subprocess
 import sys
-import threading
 import tkinter as tk
-from abc import ABC, abstractmethod
 from tkinter import ttk
-from typing import Dict, Optional
+from typing import Dict
 
 from PIL import Image, ImageTk
 
+from .app_managers import BackendAppMgr, PngAppMgrBase, SaveViewerAppMgr
 from .colour_scheme import COLOUR_SCHEME
+from .console_interface import ConsoleInterface
 from .settings import SettingsWindow
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
-
-class ConsoleInterface(ABC):
-    """Protocol defining the interface a console app must provide"""
-    @abstractmethod
-    def log(self, message: str) -> None:
-        """Log a message to the console"""
-        ...
-
-class PngApp(ABC):
-    """Class to manage a sub-application process"""
-    def __init__(self, name: str, module_path: str, display_name: str,
-                start_by_default: bool, console_app: ConsoleInterface,
-                args: list[str] = None):
-        """Initialize the sub-application
-        :param name: Unique name for the sub-application
-        :param module_path: Path to the sub-application module
-        :param display_name: Display name for the sub-application
-        :param start_by_default: Whether to start this app by default
-        :param console_app: Reference to a console interface for logging
-        """
-        self.name = name
-        self.module_path = module_path
-        self.display_name = display_name
-        self.console_app = console_app
-        self.args = args or []  # Store CLI args
-        self.process: Optional[subprocess.Popen] = None
-        self.status_var = tk.StringVar(value="Stopped")
-        self.is_running = False
-        self.start_by_default = start_by_default
-
-    @abstractmethod
-    def get_buttons(self) -> list[dict]:
-        """Return a list of button definitions for this app."""
-        pass
-
-    @abstractmethod
-    def start(self):
-        """Start the sub-application process"""
-        pass
-
-    @abstractmethod
-    def stop(self):
-        """Stop the sub-application process"""
-        pass
-
-    def _capture_output(self):
-        """Capture and log the subprocess output line by line"""
-        if self.process and self.process.stdout:
-            for line in self.process.stdout:
-                if not line:
-                    break
-                self.console_app.log(line)
-
-    def make_text_var(self, text: str) -> tk.StringVar:
-        """Wrap a static label into a StringVar for consistency with dynamic ones."""
-        var = tk.StringVar()
-        var.set(text)
-        return var
-
-
-class BackendApp(PngApp):
-    """Implementation of PngApp for backend services"""
-    def __init__(self, console_app: ConsoleInterface, args: list[str] = None):
-        super().__init__(
-            name="server",
-            module_path="apps.backend.pits_n_giggles",
-            display_name="Server",
-            start_by_default=True,
-            console_app=console_app,
-            args=args
-        )
-
-    def get_buttons(self) -> list[dict]:
-        return [
-            {"text": "Start", "command": self.start},
-            {"text": "Stop", "command": self.stop}
-        ]
-
-    def start(self):
-        """Start the sub-application process"""
-        if self.is_running:
-            self.console_app.log(f"{self.display_name} is already running.")
-            return
-
-        try:
-            self.console_app.log(f"Starting {self.display_name}...")
-
-            self.process = subprocess.Popen(
-                [sys.executable, '-m', self.module_path, *self.args],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1
-            )
-
-            self.is_running = True
-            self.status_var.set("Running")
-
-            threading.Thread(target=self._capture_output, daemon=True).start()
-
-            self.console_app.log(f"{self.display_name} started successfully.")
-        except Exception as e:
-            self.console_app.log(f"Error starting {self.display_name}: {e}")
-            self.status_var.set("Error")
-
-    def stop(self):
-        if not self.is_running:
-            self.console_app.log(f"{self.display_name} is not running.")
-            return
-
-        try:
-            self.console_app.log(f"Stopping {self.display_name}...")
-
-            if self.process:
-                self.process.terminate()
-                try:
-                    self.process.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    self.console_app.log(f"{self.display_name} did not exit in time. Killing it.")
-                    self.process.kill()
-                    self.process.wait()
-
-            self.process = None
-            self.is_running = False
-            self.status_var.set("Stopped")
-            self.console_app.log(f"{self.display_name} stopped successfully.")
-        except Exception as e:
-            self.console_app.log(f"Error stopping {self.display_name}: {e}")
-            self.status_var.set("Error")
-
-
-class SaveViewerApp(PngApp):
-    """Implementation of PngApp for save viewer"""
-    def __init__(self, console_app: ConsoleInterface):
-        super().__init__(
-            name="dashboard",
-            module_path="dashboard.viewer",
-            display_name="Data Dashboard",
-            start_by_default=False,
-            console_app=console_app
-        )
-
-    def get_buttons(self) -> list[dict]:
-        return [
-            {"text": "Start", "command": self.start},
-            {"text": "Stop", "command": self.stop},
-            {"text": "View", "command": self.view_data}
-        ]
-
-    def start(self):
-        if not self.is_running:
-            self.console_app.log(f"Starting {self.display_name}...")
-            # Implementation of starting the dashboard
-            self.status_var.set("Running")
-            self.is_running = True
-
-    def stop(self):
-        if self.is_running:
-            self.console_app.log(f"Stopping {self.display_name}...")
-            # Implementation of stopping the dashboard
-            self.status_var.set("Stopped")
-            self.is_running = False
-
-    def view_data(self):
-        self.console_app.log("Opening dashboard viewer...")
-        # Implementation of viewing dashboard data
 
 class PngLauncher(ConsoleInterface):
     def __init__(self, root: tk.Tk, logo_path: str, debug_mode: bool):
@@ -227,7 +60,7 @@ class PngLauncher(ConsoleInterface):
         self.root.configure(bg=COLOUR_SCHEME["background"])
 
         # Initialize sub-apps dict
-        self.subapps: Dict[str, PngApp] = {}
+        self.subapps: Dict[str, PngAppMgrBase] = {}
 
         # Configure the main window
         root.title(f"{self.app_name} v{self.version}")
@@ -346,11 +179,11 @@ class PngLauncher(ConsoleInterface):
     def setup_subapps(self):
         """Set up the hard-coded sub-apps"""
         self.subapps = {
-            "server": BackendApp(
+            "server": BackendAppMgr(
                 console_app=self,
                 args=["--debug", "--replay-server"] if self.debug_mode else []
             ),
-            "dashboard": SaveViewerApp(
+            "dashboard": SaveViewerAppMgr(
                 console_app=self
             ),
         }
@@ -396,7 +229,6 @@ class PngLauncher(ConsoleInterface):
         for subapp in self.subapps.values():
             if subapp.start_by_default:
                 subapp.start()
-
 
     def setup_header(self):
         # App info section with racing theme
