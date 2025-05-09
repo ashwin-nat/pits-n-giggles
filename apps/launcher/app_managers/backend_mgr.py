@@ -72,7 +72,7 @@ class BackendAppMgr(PngAppMgrBase):
         )
         return [self.start_stop_button, self.open_dashboard_button]
 
-    def start(self):
+    def start(self):  # sourcery skip: class-extract-method
         """Start the sub-application process"""
         if self.is_running:
             self.console_app.log(f"{self.display_name} is already running.")
