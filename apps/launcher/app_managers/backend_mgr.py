@@ -45,24 +45,25 @@ class BackendAppMgr(PngAppMgrBase):
         )
 
     def get_buttons(self, frame: ttk.Frame) -> list[dict]:
-        """Return a list of button objects directly"""
+        """Return a list of button objects directly
+        :param frame: The frame to place the buttons in
+        :return: List of button objects
+        """
 
-        return [
-            # Start button
-            ttk.Button(
-                frame,
-                text="Start",
-                command=self.start,
-                style="Racing.TButton"
-            ),
-            # Stop button
-            ttk.Button(
-                frame,
-                text="Stop",
-                command=self.stop,
-                style="Racing.TButton"
-            ),
-        ]
+        self.start_stop_button = ttk.Button(
+            frame,
+            text="Start", # Intially, app is stopped
+            command=self.start_stop,
+            style="Racing.TButton"
+        )
+        self.open_dashboard_button = ttk.Button(
+            frame,
+            text="Dashboard",
+            command=self.open_dashboard,
+            style="Racing.TButton",
+            state="disabled"  # Initially disabled until the app is running
+        )
+        return [self.start_stop_button, self.open_dashboard_button]
 
     def start(self):
         """Start the sub-application process"""
@@ -80,18 +81,19 @@ class BackendAppMgr(PngAppMgrBase):
                 text=True,
                 bufsize=1
             )
-
             self.is_running = True
             self.status_var.set("Running")
-
             threading.Thread(target=self._capture_output, daemon=True).start()
 
             self.console_app.log(f"{self.display_name} started successfully.")
+            self.start_stop_button.config(text="Stop")
+            self.open_dashboard_button.config(state="normal")
         except Exception as e:
             self.console_app.log(f"Error starting {self.display_name}: {e}")
             self.status_var.set("Error")
 
     def stop(self):
+        """Stop the sub-application process"""
         if not self.is_running:
             self.console_app.log(f"{self.display_name} is not running.")
             return
@@ -112,7 +114,12 @@ class BackendAppMgr(PngAppMgrBase):
             self.is_running = False
             self.status_var.set("Stopped")
             self.console_app.log(f"{self.display_name} stopped successfully.")
+            self.start_stop_button.config(text="Start")
+            self.open_dashboard_button.config(state="disabled")
         except Exception as e:
             self.console_app.log(f"Error stopping {self.display_name}: {e}")
             self.status_var.set("Error")
 
+    def open_dashboard(self):
+        self.console_app.log("Opening dashboard viewer...")
+        # Implementation of viewing dashboard data

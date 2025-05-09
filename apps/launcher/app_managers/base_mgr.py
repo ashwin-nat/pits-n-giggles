@@ -69,6 +69,19 @@ class PngAppMgrBase(ABC):
         """Stop the sub-application process"""
         ...
 
+    def start_stop(self):
+        """Start or stop the sub-application process based on its current state"""
+        if self.is_running:
+            self.stop()
+        else:
+            self.start()
+
+    def restart(self):
+        """Restart the sub-application process"""
+        if self.is_running:
+            self.stop()
+        self.start()
+
     def _capture_output(self):
         """Capture and log the subprocess output line by line"""
         if self.process and self.process.stdout:
@@ -76,10 +89,3 @@ class PngAppMgrBase(ABC):
                 if not line:
                     break
                 self.console_app.log(line, add_newline=False)
-
-    def make_text_var(self, text: str) -> tk.StringVar:
-        """Wrap a static label into a StringVar for consistency with dynamic ones."""
-        var = tk.StringVar()
-        var.set(text)
-        return var
-

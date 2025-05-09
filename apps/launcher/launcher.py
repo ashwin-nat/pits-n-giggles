@@ -23,7 +23,6 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import configparser
-import logging
 import datetime
 import os
 import sys
