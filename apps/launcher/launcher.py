@@ -299,15 +299,16 @@ class PngLauncher(ConsoleInterface):
         """
         if is_child_message:
             formatted_message = f"[{message}"
+            self.m_logger.info(message.rstrip(), extra={"with_timestamp": False}, stacklevel=2)
         else:
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             formatted_message = f"[{timestamp}] {message}\n"
+            self.m_logger.info(message.rstrip(), extra={"with_timestamp": True}, stacklevel=2)
 
         self.console.configure(state=tk.NORMAL)
         self.console.insert(tk.END, formatted_message)
         self.console.see(tk.END)  # Auto-scroll to the end
         self.console.configure(state=tk.DISABLED)
-        self.m_logger.info(message.rstrip())
 
     def clear_log(self):
         """Clear the console log"""

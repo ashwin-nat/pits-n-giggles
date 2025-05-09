@@ -25,6 +25,39 @@
 import logging
 from logging.handlers import RotatingFileHandler
 
+# -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
+
+class ConditionalTimestampFormatter(logging.Formatter):
+    """
+    A custom logging formatter that conditionally includes a timestamp in log messages.
+
+    Attributes:
+        format_with_ts (logging.Formatter): Formatter with timestamp.
+        format_without_ts (logging.Formatter): Formatter without timestamp.
+    """
+    def __init__(self) -> None:
+        """
+        Initializes the ConditionalTimestampFormatter with two formatters:
+        one with a timestamp and one without.
+        """
+        super().__init__()
+        self.format_with_ts = logging.Formatter('%(asctime)s [%(filename)s:%(lineno)d] - %(message)s')
+        self.format_without_ts = logging.Formatter('%(message)s')
+
+    def format(self, record: logging.LogRecord) -> str:
+        """
+        Formats the log record based on the presence of the 'with_timestamp' attribute.
+
+        Args:
+            record (logging.LogRecord): The log record to format.
+
+        Returns:
+            str: The formatted log message.
+        """
+        use_ts = getattr(record, 'with_timestamp', False)
+        formatter = self.format_with_ts if use_ts else self.format_without_ts
+        return formatter.format(record)
+
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def get_rotating_logger(
@@ -34,7 +67,8 @@ def get_rotating_logger(
     backup_count: int = 3
 ) -> logging.Logger:
     """
-    Sets up and returns a thread-safe logger with no formatting and rotating file handler.
+    Sets up and returns a thread-safe logger with a conditional timestamp formatter
+    and a rotating file handler.
 
     Args:
         name (str): Logger name.
@@ -50,7 +84,7 @@ def get_rotating_logger(
 
     if not logger.handlers:
         handler = RotatingFileHandler(log_file, maxBytes=max_bytes, backupCount=backup_count)
-        handler.setFormatter(logging.Formatter('%(message)s'))  # Raw output
+        handler.setFormatter(ConditionalTimestampFormatter())
         logger.addHandler(handler)
 
     return logger
