@@ -48,13 +48,14 @@ png_logger: Optional[logging.Logger] = None
 
 class PngRunner:
     """Pits n' Giggles Backend Runner"""
-    def __init__(self, logger: logging.Logger, config_file: str, replay_server: bool):
+    def __init__(self, logger: logging.Logger, config_file: str, replay_server: bool, debug_mode: bool):
         """Init the runner. Register necessary tasks
 
         Args:
             logger (logging.Logger): Logger object
             config_file (str): Path to the config file
             replay_server (bool): If true, runs in TCP debug mode, else UDP live mode
+            debug_mode (bool): If true, runs in debug mode
         """
         self.m_logger: logging.Logger = logger
         self.m_config = load_config(config_file, logger)
@@ -84,7 +85,7 @@ class PngRunner:
             stream_overlay_start_sample_data=self.m_config.stream_overlay_start_sample_data,
             tasks=self.m_tasks,
             ver_str=self._getVersion(),
-            debug_mode=args_obj.debug
+            debug_mode=debug_mode
         )
 
         # Run all tasks concurrently
@@ -238,7 +239,8 @@ async def main(logger: logging.Logger, args: argparse.Namespace) -> None:
     app = PngRunner(
         logger=logger,
         config_file=args.config_file,
-        replay_server=args.replay_server
+        replay_server=args.replay_server,
+        debug_mode=args.debug
     )
     await app.run()
 

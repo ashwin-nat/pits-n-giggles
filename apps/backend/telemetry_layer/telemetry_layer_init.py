@@ -43,7 +43,7 @@ def initTelemetryLayer(
     """Initialize the telemetry layer
 
     Args:
-        port (int): Port number for the telemetry client.
+        port_number (int): Port number for the telemetry client.
         replay_server (bool): Whether to enable the TCP replay debug server.
         logger (logging.Logger): Logger instance
         post_race_data_autosave (bool): Whether to autosave race data at the end of the race.

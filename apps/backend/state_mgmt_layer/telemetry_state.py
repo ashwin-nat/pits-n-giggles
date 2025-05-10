@@ -24,10 +24,9 @@
 
 import asyncio
 import logging
-from typing import Any, Dict, Optional
+from typing import Optional
 
 from lib.inter_task_communicator import AsyncInterTaskCommunicator, ITCMessage
-from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 
 from .session_state import SessionState
 
