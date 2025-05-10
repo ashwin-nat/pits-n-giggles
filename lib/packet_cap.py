@@ -317,7 +317,7 @@ class F1PacketCapture:
         """
         if compressed is not None and file_name is not None:
             raise ValueError("Cannot specify both compressed and file_name")
-        elif compressed is None and file_name is None:
+        if compressed is None and file_name is None:
             raise ValueError("Must specify either compressed or file_name")
 
         self.m_packet_history: List[F1PktCapMessage] = []
