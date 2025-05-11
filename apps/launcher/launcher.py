@@ -33,7 +33,7 @@ from typing import Dict
 from PIL import Image, ImageTk
 
 from .app_managers import BackendAppMgr, PngAppMgrBase, SaveViewerAppMgr
-from .colour_scheme import COLOUR_SCHEME
+from .styles import COLOUR_SCHEME
 from .console_interface import ConsoleInterface
 from .settings import SettingsWindow, DEFAULT_SETTINGS
 from .logger import get_rotating_logger
@@ -132,9 +132,9 @@ class PngLauncher(ConsoleInterface):
                        foreground=COLOUR_SCHEME["foreground"], font=("Arial", 10))
 
         # Configure status styles
-        style.configure("Running.TLabel", foreground=COLOUR_SCHEME["running"])
-        style.configure("Stopped.TLabel", foreground=COLOUR_SCHEME["stopped"])
-        style.configure("Warning.TLabel", foreground=COLOUR_SCHEME["warning"])
+        style.configure("Running.TLabel", background=COLOUR_SCHEME["running"])
+        style.configure("Stopped.TLabel", background=COLOUR_SCHEME["stopped"])
+        style.configure("Warning.TLabel", background=COLOUR_SCHEME["warning"])
 
     def load_settings(self):
         """Load application settings"""

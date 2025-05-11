@@ -28,21 +28,9 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 from typing import Callable
 from .console_interface import ConsoleInterface
+from .styles import COLOUR_SCHEME
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
-
-# Define racing theme colors
-COLOR_THEME = {
-    "background": "#1E1E1E",       # Dark background
-    "foreground": "#E0E0E0",       # Light text
-    "accent1": "#FF2800",          # Racing red
-    "accent2": "#303030",          # Dark gray
-    "console_bg": "#000000",       # Console black
-    "console_fg": "#00FF00",       # Terminal green
-    "running": "#00CC00",          # Green for running status
-    "stopped": "#FF2800",          # Red for stopped status
-    "warning": "#FFA500"           # Orange for warnings
-}
 
 # Default settings - everything is a string in this layer
 DEFAULT_SETTINGS = {
@@ -110,9 +98,6 @@ class SettingsWindow:
         self.window.transient(parent)
         self.window.grab_set()
 
-        # Apply theme
-        self.window.configure(bg=COLOR_THEME["background"])
-
         # Create notebook for tabs
         self.notebook = ttk.Notebook(self.window)
         self.notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
@@ -158,25 +143,24 @@ class SettingsWindow:
     def create_tabs(self) -> None:
         """
         Create tabs for each settings section and populate them with input fields.
-
-        This method creates a tab for each section in the settings file and populates
-        it with appropriate input widgets (entry, checkbox, combobox, etc.) based on
-        the type of each setting.
         """
         self.entry_vars = {}
+        bg_color = "#f0f0f0"  # Match default Windows background
 
         for section in self.settings.sections():
-            tab = ttk.Frame(self.notebook, padding=10)
+            tab = ttk.Frame(self.notebook, padding=0)
             self.notebook.add(tab, text=section)
 
-            # Create a frame for this section with a scrollbar
-            canvas = tk.Canvas(tab, bg=COLOR_THEME["background"])
+            # Create canvas and scrollable frame
+            canvas = tk.Canvas(tab, bg=bg_color, highlightthickness=0)
             scrollbar = ttk.Scrollbar(tab, orient="vertical", command=canvas.yview)
-            scrollable_frame = ttk.Frame(canvas)
+
+            # Use a normal tk.Frame so we can set background color
+            scrollable_frame = tk.Frame(canvas, bg=bg_color)
 
             scrollable_frame.bind(
                 "<Configure>",
-                lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+                lambda e, c=canvas: c.configure(scrollregion=c.bbox("all"))
             )
 
             canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
@@ -187,32 +171,26 @@ class SettingsWindow:
 
             # Add settings fields
             for i, (key, value) in enumerate(self.settings[section].items()):
-                # Create a label and entry for each setting
                 label = ttk.Label(scrollable_frame, text=key.replace('_', ' ').title() + ":")
                 label.grid(row=i, column=0, sticky="w", padx=5, pady=5)
 
-                # Use different controls based on value type
                 if value.lower() in ['true', 'false']:
-                    # Boolean - use checkbox
                     var = tk.BooleanVar(value=value.lower() == 'true')
                     control = ttk.Checkbutton(scrollable_frame, variable=var)
                 elif key == 'packet_capture_mode':
-                    # Enumeration - use combobox
                     var = tk.StringVar(value=value)
                     control = ttk.Combobox(scrollable_frame, textvariable=var,
-                                          values=["disabled", "enabled", "auto"])
-                    control.set(value)
+                                        values=["disabled", "enabled", "auto"])
                 else:
-                    # Text entry for everything else
                     var = tk.StringVar(value=value)
                     control = ttk.Entry(scrollable_frame, textvariable=var, width=30)
 
                 control.grid(row=i, column=1, sticky="ew", padx=5, pady=5)
 
-                # Store the variable for later retrieval
                 if section not in self.entry_vars:
                     self.entry_vars[section] = {}
                 self.entry_vars[section][key] = var
+
 
     def create_buttons(self) -> None:
         """
