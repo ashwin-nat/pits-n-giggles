@@ -41,18 +41,19 @@ from .logger import get_rotating_logger
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
 class PngLauncher(ConsoleInterface):
-    def __init__(self, root: tk.Tk, logo_path: str, settings_icon_path: str, debug_mode: bool):
+    def __init__(self, root: tk.Tk, ver_str: str, logo_path: str, settings_icon_path: str, debug_mode: bool):
         """Initialize the main application window
 
         Args:
             root (tk.Tk): The main Tkinter window
+            ver_str (str): Version string
             logo_path (str): Path to the application logo
             settings_icon_path (str): Path to the settings icon
             debug_mode (bool): Flag to enable debug mode
         """
 
         self.root = root
-        self.version = "1.0.0" # TODO - handle version
+        self.version = ver_str if ver_str != 'dev' else '' # TODO - handle version
         self.app_name = "Pits n' Giggles"
         self.config_file = "png_config.ini" # TODO: Move to config file
         self.logo_path = logo_path
@@ -66,7 +67,7 @@ class PngLauncher(ConsoleInterface):
         self.subapps: Dict[str, PngAppMgrBase] = {}
 
         # Configure the main window
-        root.title(f"{self.app_name} v{self.version}")
+        root.title(f"{self.app_name} {self.version}")
         root.geometry("1280x720")
 
         # Create custom style
@@ -241,8 +242,9 @@ class PngLauncher(ConsoleInterface):
         app_label = ttk.Label(info_frame, text=f"{self.app_name}", style="Header.TLabel")
         app_label.pack(side=tk.LEFT)
 
-        version_label = ttk.Label(info_frame, text=f"v{self.version}", style="Version.TLabel")
-        version_label.pack(side=tk.LEFT, padx=(5, 0))
+        if self.version:
+            version_label = ttk.Label(info_frame, text=f"v{self.version}", style="Version.TLabel")
+            version_label.pack(side=tk.LEFT, padx=(5, 0))
 
         # Buttons section
         buttons_frame = ttk.Frame(self.header_frame, style="Racing.TFrame")

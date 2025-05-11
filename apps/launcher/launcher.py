@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import os
 import sys
 import tkinter as tk
 from pathlib import Path
@@ -39,6 +40,15 @@ def resource_path(relative_path):
         # Running from source
         return Path(__file__).parent.parent.parent / relative_path
 
+def get_version() -> str:
+    """Get the version string from env variable
+
+    Returns:
+        str: Version string
+    """
+
+    return os.environ.get('PNG_VERSION', 'dev')
+
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
 APP_ICON_PATH = str(resource_path("assets/logo.png"))
@@ -53,6 +63,12 @@ if __name__ == "__main__":
     root = tk.Tk()
     root.title("Pits n' Giggles")
     root.iconbitmap(resource_path("assets/favicon.ico"))  # Set the icon for the main window
-    app = PngLauncher(root, APP_ICON_PATH, SETTINGS_ICON_PATH, debug_mode=debug_mode)
+    app = PngLauncher(
+        root=root,
+        ver_str=get_version(),
+        logo_path=APP_ICON_PATH,
+        settings_icon_path=SETTINGS_ICON_PATH,
+        debug_mode=debug_mode
+    )
     root.protocol("WM_DELETE_WINDOW", app.on_closing)
     root.mainloop()
