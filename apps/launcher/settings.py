@@ -49,7 +49,7 @@ DEFAULT_SETTINGS = {
         "disable_browser_autoload": "False"
     },
     "Logging": {
-        "log_file": "png_launcher.log", # TODO - use proper value
+        "log_file": "png.log",
         "log_file_size": "1000000"
     },
     "Privacy": {
