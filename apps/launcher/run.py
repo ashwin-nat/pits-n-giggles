@@ -30,7 +30,8 @@ from .launcher import PngLauncher
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
-ICON_PATH = str(Path.cwd() / "assets" / "logo.png")
+APP_ICON_PATH = str(Path.cwd() / "assets" / "logo.png")
+SETTINGS_ICON_PATH = str(Path.cwd() / "assets" / "settings.ico")
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
@@ -39,6 +40,6 @@ if __name__ == "__main__":
     root = tk.Tk()
     root.title("Pits n' Giggles")
     root.iconbitmap("assets/favicon.ico")  # Set the icon for the main window
-    app = PngLauncher(root, ICON_PATH, debug_mode=debug_mode)
+    app = PngLauncher(root, APP_ICON_PATH, SETTINGS_ICON_PATH, debug_mode=debug_mode)
     root.protocol("WM_DELETE_WINDOW", app.on_closing)
     root.mainloop()

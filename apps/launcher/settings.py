@@ -72,7 +72,12 @@ class SettingsWindow:
     configuration options for the application. Settings are saved to a configuration file.
     """
 
-    def __init__(self, parent: tk.Tk, app: ConsoleInterface, save_callback: Callable[[configparser.ConfigParser], None], config_file: str = "app_settings.ini"):
+    def __init__(self,
+                 parent: tk.Tk,
+                 app: ConsoleInterface,
+                 save_callback: Callable[[configparser.ConfigParser], None],
+                 config_file: str,
+                 settings_icon_path: str):
         """
         Initialize the SettingsWindow.
 
@@ -80,7 +85,8 @@ class SettingsWindow:
             parent: The parent Tkinter window.
             app: The main application object.
             save_callback: A callback function to propagate saved settings.
-            config_file: The path to the settings file (defaults to "app_settings.ini").
+            config_file: The path to the settings file.
+            settings_icon_path: The path to the settings icon.
         """
         self.parent = parent
         self.app = app
@@ -97,6 +103,7 @@ class SettingsWindow:
         self.window.geometry("600x500")
         self.window.transient(parent)
         self.window.grab_set()
+        self.window.iconbitmap(settings_icon_path)
 
         # Create notebook for tabs
         self.notebook = ttk.Notebook(self.window)

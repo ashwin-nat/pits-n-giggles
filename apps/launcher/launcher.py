@@ -41,12 +41,13 @@ from .logger import get_rotating_logger
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
 class PngLauncher(ConsoleInterface):
-    def __init__(self, root: tk.Tk, logo_path: str, debug_mode: bool):
+    def __init__(self, root: tk.Tk, logo_path: str, settings_icon_path: str, debug_mode: bool):
         """Initialize the main application window
 
         Args:
             root (tk.Tk): The main Tkinter window
             logo_path (str): Path to the application logo
+            settings_icon_path (str): Path to the settings icon
             debug_mode (bool): Flag to enable debug mode
         """
 
@@ -55,6 +56,7 @@ class PngLauncher(ConsoleInterface):
         self.app_name = "Pits n' Giggles"
         self.config_file = "png_config.ini" # TODO: Move to config file
         self.logo_path = logo_path
+        self.settings_icon_path = settings_icon_path
         self.debug_mode = debug_mode
 
         # Apply theme to root window
@@ -309,7 +311,7 @@ class PngLauncher(ConsoleInterface):
     def open_settings(self):
         """Open the settings window"""
         self.log("Opening settings window")
-        SettingsWindow(self.root, self, self.save_settings_callback, self.config_file)
+        SettingsWindow(self.root, self, self.save_settings_callback, self.config_file, self.settings_icon_path)
 
     def save_settings_callback(self, new_settings: configparser.ConfigParser) -> None:
         """Callback function to save settings from the settings window"""
