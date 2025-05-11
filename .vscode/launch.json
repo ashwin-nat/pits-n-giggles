@@ -8,7 +8,7 @@
             "name": "Launcher (debug/replay)",
             "type": "debugpy",
             "request": "launch",
-            "module": "apps.launcher.run",
+            "module": "apps.launcher.launcher",
             "console": "integratedTerminal",
             "args": [
                 "--debug"
@@ -19,7 +19,7 @@
             "name": "Launcher",
             "type": "debugpy",
             "request": "launch",
-            "module": "apps.launcher.run",
+            "module": "apps.launcher.launcher",
             "console": "integratedTerminal",
             "args": [
             ],
