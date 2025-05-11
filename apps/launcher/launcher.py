@@ -254,6 +254,11 @@ class PngLauncher(ConsoleInterface):
                                      command=self.clear_log, style="Racing.TButton")
         self.clear_button.pack(side=tk.LEFT, padx=(0, 10))
 
+        self.website_button = ttk.Button(buttons_frame, text="Website",
+                                        command=lambda: os.startfile("https://pitsngiggles.com"),
+                                        style="Racing.TButton")
+        self.website_button.pack(side=tk.LEFT, padx=(0, 10))
+
     def setup_console(self):
         # Create a text widget for the console with racing theme
         self.console = tk.Text(self.console_frame, wrap=tk.WORD,
