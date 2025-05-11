@@ -27,8 +27,8 @@ import os
 import tkinter as tk
 from tkinter import messagebox, ttk
 from typing import Callable
+
 from .console_interface import ConsoleInterface
-from .styles import COLOUR_SCHEME
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 

@@ -26,7 +26,7 @@ import sys
 import tkinter as tk
 from pathlib import Path
 
-from .png_launcher import PngLauncher
+from apps.launcher.png_launcher import PngLauncher
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
@@ -37,6 +37,8 @@ SETTINGS_ICON_PATH = str(Path.cwd() / "assets" / "settings.ico")
 
 if __name__ == "__main__":
     debug_mode = "--debug" in sys.argv
+    print("\n\nRunning:", __file__)
+    print("Args:", sys.argv)
     root = tk.Tk()
     root.title("Pits n' Giggles")
     root.iconbitmap("assets/favicon.ico")  # Set the icon for the main window
