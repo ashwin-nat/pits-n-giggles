@@ -22,9 +22,8 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import subprocess
+import os
 import sys
-import threading
 import webbrowser
 from tkinter import ttk
 
@@ -72,67 +71,20 @@ class BackendAppMgr(PngAppMgrBase):
         )
         return [self.start_stop_button, self.open_dashboard_button]
 
-    def start(self):  # sourcery skip: class-extract-method
-        """Start the sub-application process"""
-        if self.is_running:
-            self.console_app.log(f"{self.display_name} is already running.")
-            return
-
-        try:
-            self.console_app.log(f"Starting {self.display_name}...")
-
-            self.process = subprocess.Popen(
-                [sys.executable, '-m', self.module_path, *self.args],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1
-            )
-            self.is_running = True
-            self.status_var.set("Running")
-            threading.Thread(target=self._capture_output, daemon=True).start()
-
-            self.console_app.log(f"{self.display_name} started successfully.")
-            self.start_stop_button.config(text="Stop")
-            self.open_dashboard_button.config(state="normal")
-        except Exception as e:
-            self.console_app.log(f"Error starting {self.display_name}: {e}")
-            self.status_var.set("Error")
-
-    def stop(self):
-        """Stop the sub-application process"""
-        if not self.is_running:
-            self.console_app.log(f"{self.display_name} is not running.")
-            return
-
-        try:
-            self.console_app.log(f"Stopping {self.display_name}...")
-
-            if self.process:
-                self.process.terminate()
-                try:
-                    self.process.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    self.console_app.log(f"{self.display_name} did not exit in time. Killing it.")
-                    self.process.kill()
-                    self.process.wait()
-
-            self.process = None
-            self.is_running = False
-            self.status_var.set("Stopped")
-            self.console_app.log(f"{self.display_name} stopped successfully.")
-            self.start_stop_button.config(text="Start")
-            self.open_dashboard_button.config(state="disabled")
-        except Exception as e:
-            self.console_app.log(f"Error stopping {self.display_name}: {e}")
-            self.status_var.set("Error")
 
     def open_dashboard(self):
         """Open the dashboard viewer in a web browser."""
         webbrowser.open(f'http://localhost:{self.port_str}', new=2)
 
     def on_settings_change(self, new_settings):
-        """Handle changes in settings for the sub-application"""
+        """Handle changes in settings for the backend application"""
 
         # Update the port number
         self.port_str = new_settings.get("Network", "server_port")
+
+    def get_launch_command(self, module_path: str, args: list[str]):
+        """Get the command to launch the backend application"""
+        if not getattr(sys, 'frozen', False):
+            return [sys.executable, "-m", module_path, *args]
+        exe_path = os.path.join(sys._MEIPASS, 'embedded_exes', 'backend.exe')
+        return [exe_path, *args]

@@ -37,8 +37,8 @@ from apps.backend.common.config import load_config
 from apps.backend.common.png_logger import initLogger
 from apps.backend.state_mgmt_layer import initStateManagementLayer
 from apps.backend.telemetry_layer import initTelemetryLayer
-from apps.backend.ui_intf_layer import (TelemetryWebServer,
-                                        initUiIntfLayer)
+from apps.backend.ui_intf_layer import TelemetryWebServer, initUiIntfLayer
+from lib.pid_report import report_pid_from_child
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -246,6 +246,7 @@ async def main(logger: logging.Logger, args: argparse.Namespace) -> None:
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
 if __name__ == '__main__':
+    report_pid_from_child()
     args_obj = parseArgs()
     png_logger = initLogger(file_name=args_obj.log_file_name, max_size=100000, debug_mode=args_obj.debug)
     try:

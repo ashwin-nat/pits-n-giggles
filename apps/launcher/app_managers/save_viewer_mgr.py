@@ -22,9 +22,8 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import subprocess
+import os
 import sys
-import threading
 import webbrowser
 from tkinter import filedialog, ttk
 
@@ -85,61 +84,6 @@ class SaveViewerAppMgr(PngAppMgrBase):
             self.open_dashboard_button,
         ]
 
-    def start(self):
-        """Start the sub-application process"""
-        if self.is_running:
-            self.console_app.log(f"{self.display_name} is already running.")
-            return
-
-        try:
-            self.console_app.log(f"Starting {self.display_name}...")
-
-            self.process = subprocess.Popen(
-                [sys.executable, '-m', self.module_path, *self.args],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1
-            )
-            self.is_running = True
-            self.status_var.set("Running")
-            threading.Thread(target=self._capture_output, daemon=True).start()
-
-            self.console_app.log(f"{self.display_name} started successfully.")
-            self.start_stop_button.config(text="Stop")
-            self.open_dashboard_button.config(state="normal")
-        except Exception as e:
-            self.console_app.log(f"Error starting {self.display_name}: {e}")
-            self.status_var.set("Error")
-
-        self.console_app.log(f"Starting {self.display_name}...")
-        # Implementation of starting the dashboard
-        self.status_var.set("Running")
-        self.is_running = True
-        self.start_stop_button.config(text="Stop")
-        self.open_dashboard_button.config(state="normal")
-        self.open_file_button.config(state="normal")
-
-    def stop(self):
-        """Stop the save viewer process"""
-        if self.is_running:
-            if self.process:
-                self.process.terminate()
-                try:
-                    self.process.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    self.console_app.log(f"{self.display_name} did not exit in time. Killing it.")
-                    self.process.kill()
-                    self.process.wait()
-            self.console_app.log(f"Stopped {self.display_name}...")
-            # Implementation of stopping the dashboard
-            self.status_var.set("Stopped")
-            self.is_running = False
-            self.start_stop_button.config(text="Start")
-            self.open_dashboard_button.config(state="disabled")
-            self.open_file_button.config(state="disabled")
-
     def open_dashboard(self):
         """Open the dashboard viewer in a web browser."""
         webbrowser.open(f'http://localhost:{self.port_str}', new=2)
@@ -164,3 +108,10 @@ class SaveViewerAppMgr(PngAppMgrBase):
         # Update the args with the new port
         self.args = ["--launcher", "--port", new_port] + self.extra_args
         self.console_app.log(f"Updated args: {self.args}")
+
+    def get_launch_command(self, module_path: str, args: list[str]):
+        """Get the command to launch the sub-application"""
+        if not getattr(sys, 'frozen', False):
+            return [sys.executable, "-m", module_path, *args]
+        exe_path = os.path.join(sys._MEIPASS, 'embedded_exes', 'save_viewer.exe')
+        return [exe_path, *args]

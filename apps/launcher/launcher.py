@@ -28,10 +28,21 @@ from pathlib import Path
 
 from apps.launcher.png_launcher import PngLauncher
 
+# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+
+def resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller."""
+    if hasattr(sys, "_MEIPASS"):
+        # Running from PyInstaller bundle
+        return Path(sys._MEIPASS) / relative_path
+    else:
+        # Running from source
+        return Path(__file__).parent.parent.parent / relative_path
+
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
-APP_ICON_PATH = str(Path.cwd() / "assets" / "logo.png")
-SETTINGS_ICON_PATH = str(Path.cwd() / "assets" / "settings.ico")
+APP_ICON_PATH = str(resource_path("assets/logo.png"))
+SETTINGS_ICON_PATH = str(resource_path("assets/settings.ico"))
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
@@ -41,7 +52,7 @@ if __name__ == "__main__":
     print("Args:", sys.argv)
     root = tk.Tk()
     root.title("Pits n' Giggles")
-    root.iconbitmap("assets/favicon.ico")  # Set the icon for the main window
+    root.iconbitmap(resource_path("assets/favicon.ico"))  # Set the icon for the main window
     app = PngLauncher(root, APP_ICON_PATH, SETTINGS_ICON_PATH, debug_mode=debug_mode)
     root.protocol("WM_DELETE_WINDOW", app.on_closing)
     root.mainloop()

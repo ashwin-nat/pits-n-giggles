@@ -21,31 +21,36 @@
 # SOFTWARE.
 # pylint: skip-file
 
-from typing import Dict, Any, List, Set, Tuple, Optional
+import argparse
+import json
+import logging
+import os
+import socket
+import sys
+import tkinter as tk
+import webbrowser
 from http import HTTPStatus
 from pathlib import Path
-import logging
-import json
 from threading import Lock, Thread
-import sys
-import os
-import tkinter as tk
 from tkinter import filedialog
-import webbrowser
-import socket
-import argparse
+from typing import Any, Dict, List, Optional, Set, Tuple
+
 # pylint: disable=unused-import
+from engineio.async_drivers import gevent
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from lib.f1_types import F1Utils, ResultStatus, LapHistoryData
-import lib.race_analyzer as RaceAnalyzer
-import lib.overtake_analyzer as OvertakeAnalyzer
-from lib.tyre_wear_extrapolator import TyreWearPerLap
 from flask import Flask, render_template, request, send_from_directory
 from flask_socketio import SocketIO, emit
-from .logger import png_logger
+
+import lib.overtake_analyzer as OvertakeAnalyzer
+import lib.race_analyzer as RaceAnalyzer
+from apps.save_viewer.logger import png_logger
+from lib.f1_types import F1Utils, LapHistoryData, ResultStatus
+from lib.pid_report import report_pid_from_child
+from lib.tyre_wear_extrapolator import TyreWearPerLap
+
 
 def find_free_port():
     """Find an available port."""
@@ -1135,7 +1140,7 @@ def main():
         start_thread(start_ui)
 
     # Start Flask server after Tkinter UI is initialized
-    png_logger.info(f"Starting server. It can be accessed at http://localhost:{str(g_port_number)}")
+    png_logger.info(f"Starting server. It can be accessed at http://localhost:{str(g_port_number)} PID = {os.getpid()}")
     global _server
     _server = TelemetryWebServer(
         port=g_port_number,
@@ -1143,4 +1148,5 @@ def main():
     _server.run()
 
 if __name__ == "__main__":
+    report_pid_from_child()
     main()
