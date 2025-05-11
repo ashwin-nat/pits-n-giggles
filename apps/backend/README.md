@@ -12,7 +12,6 @@ From the root directory
 poetry run python -m apps.backend.pits_n_giggles
 ```
 
-
 ## App Architecture
 
 ![alt text](../../docs/arch-diagram.png)
