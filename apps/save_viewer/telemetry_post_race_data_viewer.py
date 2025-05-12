@@ -21,31 +21,36 @@
 # SOFTWARE.
 # pylint: skip-file
 
-from typing import Dict, Any, List, Set, Tuple, Optional
+import argparse
+import json
+import logging
+import os
+import socket
+import sys
+import tkinter as tk
+import webbrowser
 from http import HTTPStatus
 from pathlib import Path
-import logging
-import json
 from threading import Lock, Thread
-import sys
-import os
-import tkinter as tk
 from tkinter import filedialog
-import webbrowser
-import socket
-import argparse
+from typing import Any, Dict, List, Optional, Set, Tuple
+
 # pylint: disable=unused-import
 from engineio.async_drivers import gevent
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from lib.f1_types import F1Utils, LapData, ResultStatus, LapHistoryData
-import lib.race_analyzer as RaceAnalyzer
-import lib.overtake_analyzer as OvertakeAnalyzer
-from lib.tyre_wear_extrapolator import TyreWearPerLap
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, send_from_directory
 from flask_socketio import SocketIO, emit
+
+import lib.overtake_analyzer as OvertakeAnalyzer
+import lib.race_analyzer as RaceAnalyzer
+from apps.save_viewer.logger import png_logger
+from lib.f1_types import F1Utils, LapHistoryData, ResultStatus
+from lib.pid_report import report_pid_from_child
+from lib.tyre_wear_extrapolator import TyreWearPerLap
+
 
 def find_free_port():
     """Find an available port."""
@@ -68,7 +73,7 @@ def sendRaceTable() -> None:
     """
     if len(_race_table_clients) > 0:
         _server.m_socketio.emit('race-table-update', getTelemetryInfo())
-        print("Sending race table update")
+        png_logger.info("Sending race table update")
 
 def getDeltaPlusPenaltiesPlusPit(
         delta: str,
@@ -626,8 +631,8 @@ class TelemetryWebServer:
                     f"Please check your project structure or run from the correct directory."
                 )
 
-        print(f"Using base directory: {base_dir}")
-        print(f"Templates directory: {base_dir / 'apps' / 'frontend' / 'html'}")
+        png_logger.info(f"Using base directory: {base_dir}")
+        png_logger.info(f"Templates directory: {base_dir / 'apps' / 'frontend' / 'html'}")
 
         # Initialize Flask app
         self.m_app = Flask(
@@ -762,13 +767,13 @@ class TelemetryWebServer:
         def handleConnect():
             """SocketIO endpoint for handling client connection
             """
-            print("Client connected")
+            png_logger.info(f"Client connected SID = {request.sid}")
 
         @self.m_socketio.on('disconnect')
         def handleDisconnect():
             """SocketIO endpoint for handling client disconnection
             """
-            print("Client disconnected")
+            png_logger.info(f"Client disconnected SID = {request.sid}")
             _player_overlay_clients.discard(request.sid)
             _race_table_clients.discard(request.sid)
 
@@ -794,7 +799,7 @@ class TelemetryWebServer:
         def handleClientRegistration(data):
             """SocketIO endpoint to handle client registration
             """
-            print('Client registered. SID = %s Type = %s', request.sid, data['type'])
+            png_logger.info('Client registered. SID = %s Type = %s', request.sid, data['type'])
             if data['type'] == 'player-stream-overlay':
                 _player_overlay_clients.add(request.sid)
             elif data['type'] == 'race-table':
@@ -1033,7 +1038,7 @@ def open_file_helper(file_path, open_webpage=True):
         if g_should_open_ui and open_webpage:
             g_should_open_ui = False
             webbrowser.open(f'http://localhost:{g_port_number}', new=2)
-    print(f"Opened file: {file_path}")
+    png_logger.info(f"Opened file: {file_path}")
 
 def open_file():
     file_path = filedialog.askopenfilename()
@@ -1053,7 +1058,7 @@ def start_ui():
     global ui_initialized
     if not ui_initialized:
         ui_initialized = True  # Set flag to True
-        print("UI thread")
+        png_logger.info("UI thread")
         root = tk.Tk()
         root.title("F1 Post Race Analyzer")
 
@@ -1075,11 +1080,16 @@ def start_ui():
         root.mainloop()
 
 def on_closing():
-    print("UI done")
+    png_logger.info("UI done")
     os._exit(0)
 
-import argparse
-import os
+def stdin_input_thread():
+    """Thread to handle stdin input for the launcher mode
+    """
+    while True:
+        if file_path := sys.stdin.readline().strip():
+            png_logger.info(f'Received line: {file_path}')
+            open_file_helper(file_path)
 
 def parseArgs() -> argparse.Namespace:
     """Parse the command line args and perform validation
@@ -1092,49 +1102,44 @@ def parseArgs() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Pits n' Giggles save data viewer")
 
     # Add command-line arguments with default values
-    parser.add_argument('-i', '--input-file', nargs="?", default=None, help="Input file name (optional)")
-    parser.add_argument('-c', '--cloud', action='store_true', default=False, help="Run the viewer server in cloud mode")
+    parser.add_argument("--launcher", action="store_true", help="Enable launcher mode. Input is expeected via stdin")
+    parser.add_argument("--port", type=int, default=None, help="Port number for the server.")
     parser.add_argument("--version", nargs="?", default="dev", help="Current version string")
 
     # Parse the command-line arguments
-    args = parser.parse_args()
+    parsed_args = parser.parse_args()
 
-    # Validation for the input file
-    if args.input_file and not os.path.isfile(args.input_file):
-        print(f"Error: The input file '{args.input_file}' does not exist or is not a valid file.")
-        exit(1)  # Exit the program or raise an exception based on your needs
+    if parsed_args.launcher and parsed_args.port is None:
+        png_logger.info("Port number is required in launcher mode")
+        sys.exit(1)
 
-    if args.cloud and not args.input_file:
-        print("Error: The input file must be provided in headless mode.")
-        exit(1)
-    return args
+    return parsed_args
 
+def start_thread(target):
+    """Start a thread for the given target function
+
+    Args:
+        target (function): The target function to run in the thread
+    """
+    thread = Thread(target=target)
+    thread.daemon = True
+    thread.start()
 
 def main():
 
-    print(f"cwd={os.getcwd()}")
+    png_logger.info(f"cwd={os.getcwd()}")
     global g_port_number
     args = parseArgs()
 
-    if args.cloud:
-        print("Running in cloud mode")
-        g_port_number = int(os.environ.get("PORT", -1))
-        if g_port_number == -1:
-            print("Error: PORT environment variable is not set.")
-            exit(1)
+    if args.launcher:
+        g_port_number = args.port
+        start_thread(stdin_input_thread)
     else:
         g_port_number = find_free_port()
-
-    # Start Tkinter UI if not in cloud mode
-    if not args.cloud:
-        ui_thread = Thread(target=start_ui)
-        ui_thread.start()
-
-    if args.input_file:
-        open_file_helper(args.input_file, open_webpage=False)
+        start_thread(start_ui)
 
     # Start Flask server after Tkinter UI is initialized
-    print(f"Starting server. It can be accessed at http://localhost:{str(g_port_number)}")
+    png_logger.info(f"Starting server. It can be accessed at http://localhost:{str(g_port_number)} PID = {os.getpid()}")
     global _server
     _server = TelemetryWebServer(
         port=g_port_number,
@@ -1142,4 +1147,5 @@ def main():
     _server.run()
 
 if __name__ == "__main__":
+    report_pid_from_child()
     main()
