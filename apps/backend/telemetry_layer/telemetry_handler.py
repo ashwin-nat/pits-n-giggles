@@ -485,7 +485,7 @@ class F1TelemetryHandler:
         - data_dict (Dict): Dictionary containing JSON data.
         - file_name (str): File name to write the data to.
         """
-        json_str = json.dumps(data_dict, indent=4, ensure_ascii=False, sort_keys=True)
+        json_str = json.dumps(data_dict, separators=(",", ":"))
         async with aiofiles.open(file_name, 'w', encoding='utf-8') as json_file:
             await json_file.write(json_str)
 
