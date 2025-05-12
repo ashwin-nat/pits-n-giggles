@@ -42,3 +42,7 @@ function processTyreDeltaMessage(data) {
 function processCustomMarkerMessage(data) {
     console.log("processCustomMarkerMessage", data);
 }
+
+function processFinalClassificationNotification(data) {
+    console.log("processFinalClassificationNotification", data);
+}

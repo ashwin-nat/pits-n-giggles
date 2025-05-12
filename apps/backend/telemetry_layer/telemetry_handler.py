@@ -44,7 +44,9 @@ from lib.f1_types import (F1PacketType, PacketCarDamageData,
                           PacketSessionData, PacketSessionHistoryData,
                           PacketTimeTrialData, PacketTyreSetsData,
                           SessionType23, SessionType24)
-from lib.inter_task_communicator import AsyncInterTaskCommunicator
+from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
+                                         FinalClassificationNotification,
+                                         ITCMessage)
 from lib.telemetry_manager import AsyncF1TelemetryManager
 
 # -------------------------------------- TYPE DEFINITIONS --------------------------------------------------------------
@@ -291,6 +293,17 @@ class F1TelemetryHandler:
                             break
                 if is_event_supported:
                     await self.postGameDumpToFile(final_json)
+
+            # Notify the frontend about the final classification
+            if player_info := self.m_session_state_ref.getPlayerDriverInfo():
+                player_position = player_info.m_driver_info.position
+                await AsyncInterTaskCommunicator().send(
+                    "frontend-update",
+                    ITCMessage(
+                        m_message_type=ITCMessage.MessageType.FINAL_CLASSIFICATION_NOTIFICATION,
+                        m_message=FinalClassificationNotification(player_position)
+                    )
+                )
 
             # Uncomment the below lines for profiling - Kill the process after one session
             # # Cancel all tasks except itself
