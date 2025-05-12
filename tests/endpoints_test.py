@@ -60,6 +60,6 @@ endpoints = [
 
 # Example hostname and port
 hostname = "localhost"
-port = 5000
+port = 4768
 
 test_endpoints_with_session(hostname, port, endpoints)

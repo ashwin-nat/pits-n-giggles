@@ -8,7 +8,6 @@ license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.12,<3.14"
 dependencies = [
-    "colorama (>=0.4.6,<0.5.0)",
     "jinja2 (>=3.1.6,<4.0.0)",
     "iniconfig (>=2.1.0,<3.0.0)",
     "pyinstaller (>=6.12.0,<7.0.0)",
@@ -16,6 +15,8 @@ dependencies = [
     "quart (>=0.20.0,<0.21.0)",
     "flask-socketio (>=5.5.1,<6.0.0)",
     "gevent (>=24.11.1,<25.0.0)",
+    "pillow (>=11.2.1,<12.0.0)",
+    "psutil (>=7.0.0,<8.0.0)",
 ]
 
 
@@ -32,4 +33,5 @@ requests = "^2.32.3"
 yappi = "^1.6.10"
 snakeviz = "^2.2.2"
 gdown = "^5.2.0"
+colorama = "^0.4.6"
 

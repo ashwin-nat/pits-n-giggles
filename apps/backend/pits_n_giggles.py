@@ -31,18 +31,14 @@ import sys
 import webbrowser
 from typing import List, Optional, Set
 
-from colorama import Fore, Style, init
-
 from apps.backend.common.config import load_config
 from apps.backend.common.png_logger import initLogger
 from apps.backend.state_mgmt_layer import initStateManagementLayer
 from apps.backend.telemetry_layer import initTelemetryLayer
-from apps.backend.ui_intf_layer import (TelemetryWebServer,
-                                        initUiIntfLayer)
+from apps.backend.ui_intf_layer import TelemetryWebServer, initUiIntfLayer
+from lib.pid_report import report_pid_from_child
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
-
-png_logger: Optional[logging.Logger] = None
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -89,7 +85,6 @@ class PngRunner:
         )
 
         # Run all tasks concurrently
-        self._printDoNotCloseWarning()
         self.m_logger.debug("Registered %d Tasks: %s", len(self.m_tasks), [task.get_name() for task in self.m_tasks])
 
     async def run(self) -> None:
@@ -97,7 +92,7 @@ class PngRunner:
         try:
             await asyncio.gather(*self.m_tasks)
         except asyncio.CancelledError:
-            png_logger.debug("Main task was cancelled.")
+            self.m_logger.debug("Main task was cancelled.")
             await self.m_web_server.stop()
             for task in self.m_tasks:
                 task.cancel()
@@ -174,31 +169,6 @@ class PngRunner:
         webbrowser.open(f'http://localhost:{http_port}', new=2)
         self.m_logger.debug("Webpage opened. Task completed")
 
-    def _printDoNotCloseWarning(self) -> None:
-        """
-        Prints a warning message in red and bold.
-        Works across Windows CMD, PowerShell, and Linux/macOS terminals.
-        """
-        init(autoreset=True)  # Ensures colors reset automatically and enables ANSI on Windows
-
-        RED = Fore.RED
-        BOLD = Style.BRIGHT
-
-        border = "*" * 60  # Fixed-width border
-        message = [
-            "WARNING: DO NOT CLOSE THIS WINDOW!",
-            "This command line window is required",
-            "for the application to run properly.",
-            "If you close this window, the application",
-            "will stop working."
-        ]
-
-        print(RED + BOLD + border)
-        for line in message:
-            print(RED + BOLD + f"* {line.center(56)} *")
-        print(RED + BOLD + border)
-
-
     def _getVersion(self) -> str:
         """Get the version string from env variable
 
@@ -221,9 +191,10 @@ def parseArgs() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Pits n' Giggles Realtime Telemetry Server")
 
     # Add command-line arguments with default values
-    parser.add_argument("config_file", nargs="?", default="png_config.ini", help="Configuration file name (optional)")
+    parser.add_argument("--config-file", nargs="?", default="png_config.ini", help="Configuration file name (optional)")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
     parser.add_argument('--replay-server', action='store_true', help="Enable the TCP replay debug server")
+    parser.add_argument('--log-file-name', type=str, default=None, help="Log file name")
 
     # Parse the command-line arguments
     return parser.parse_args()
@@ -247,8 +218,9 @@ async def main(logger: logging.Logger, args: argparse.Namespace) -> None:
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
 if __name__ == '__main__':
+    report_pid_from_child()
     args_obj = parseArgs()
-    png_logger = initLogger(file_name='png_log.log', max_size=100000, debug_mode=args_obj.debug)
+    png_logger = initLogger(file_name=args_obj.log_file_name, max_size=100000, debug_mode=args_obj.debug)
     try:
         asyncio.run(main(png_logger, args_obj))
     except KeyboardInterrupt:
