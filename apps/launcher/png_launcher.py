@@ -123,8 +123,17 @@ class PngLauncher(ConsoleInterface):
         style.configure("Racing.TButton", background=COLOUR_SCHEME["accent2"],
                        foreground=COLOUR_SCHEME["foreground"])
         style.map("Racing.TButton",
-                 background=[("active", COLOUR_SCHEME["accent1"])],
-                 foreground=[("active", COLOUR_SCHEME["background"])])
+            background=[("active", COLOUR_SCHEME["accent1"])],
+            foreground=[("active", COLOUR_SCHEME["background"])])
+        style.map("Racing.TButton",
+                background=[
+                    ("active", COLOUR_SCHEME["accent1"]),
+                    ("disabled", COLOUR_SCHEME["disabled_bg"])  # or any color you prefer
+                ],
+                foreground=[
+                    ("active", COLOUR_SCHEME["background"]),
+                    ("disabled", COLOUR_SCHEME["disabled_text"])  # define this in your scheme
+                ])
 
         # Configure label styles
         style.configure("Racing.TLabel", background=COLOUR_SCHEME["background"],

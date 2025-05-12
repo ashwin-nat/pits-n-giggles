@@ -35,7 +35,9 @@ _THEMES = {
         "console_fg": "#FFFFFF",       # Terminal white
         "running": "#2E8B57",          # Sea Green for running status
         "stopped": "#FF2800",          # Red for stopped status
-        "warning": "#FFA500"           # Orange for warnings
+        "warning": "#FFA500",          # Orange for warnings
+        "disabled_bg": "#808080",      # Gray for disabled elements
+        "disabled_text": "#FFFFFF",    # White for disabled text
     },
     "midnight_blue": {
         "background": "#1A1B26",       # Deep blue-black background
@@ -46,7 +48,9 @@ _THEMES = {
         "console_fg": "#E0E0E0",       # Light gray text for better eye comfort
         "running": "#9ECE6A",          # Soft green for running status
         "stopped": "#F7768E",          # Soft red for stopped status
-        "warning": "#E0AF68"           # Amber for warnings
+        "warning": "#E0AF68",          # Amber for warnings
+        "disabled_bg": "#808080",      # Gray for disabled elements
+        "disabled_text": "#FFFFFF",    # White for disabled text
     },
     "dark_teal": {
         "background": "#0F111A",       # Very dark background
@@ -57,7 +61,9 @@ _THEMES = {
         "console_fg": "#F8F8F2",       # Off-white console text
         "running": "#26C99E",          # Bright teal for running
         "stopped": "#FF5370",          # Coral red for stopped
-        "warning": "#FFCB6B"           # Bright yellow for warnings
+        "warning": "#FFCB6B",          # Bright yellow for warnings
+        "disabled_bg": "#808080",      # Gray for disabled elements
+        "disabled_text": "#FFFFFF",    # White for disabled text
     },
     "graphite": {
         "background": "#282C34",       # Dark charcoal background
@@ -68,7 +74,9 @@ _THEMES = {
         "console_fg": "#FFFFFF",       # Pure white console text
         "running": "#98C379",          # Muted green for running
         "stopped": "#E06C75",          # Soft red for stopped
-        "warning": "#D19A66"           # Soft orange for warnings
+        "warning": "#D19A66",          # Soft orange for warnings
+        "disabled_bg": "#808080",      # Gray for disabled elements
+        "disabled_text": "#FFFFFF",    # White for disabled text
     },
     "purple_night": {
         "background": "#292D3E",       # Dark purple-blue background
@@ -79,7 +87,9 @@ _THEMES = {
         "console_fg": "#EEFFFF",       # Very light blue-white text
         "running": "#82AAFF",          # Bright blue for running
         "stopped": "#F07178",          # Coral for stopped
-        "warning": "#FFCB6B"           # Gold for warnings
+        "warning": "#FFCB6B",          # Gold for warnings
+        "disabled_bg": "#808080",      # Gray for disabled elements
+        "disabled_text": "#FFFFFF",    # White for disabled text
     },
     "carbon": {
         "background": "#1D1F21",       # Very dark gray background
@@ -90,7 +100,9 @@ _THEMES = {
         "console_fg": "#FFFFFF",       # White console text (maximum contrast)
         "running": "#56B366",          # Vivid green for running
         "stopped": "#E45649",          # Vivid red for stopped
-        "warning": "#E5C07B"           # Soft gold for warnings
+        "warning": "#E5C07B",          # Soft gold for warnings
+        "disabled_bg": "#808080",      # Gray for disabled elements
+        "disabled_text": "#FFFFFF",    # White for disabled text
     },
     "oceanic": {
         "background": "#1B2B34",       # Deep ocean blue background
@@ -101,7 +113,9 @@ _THEMES = {
         "console_fg": "#FAFAFA",       # Almost white text
         "running": "#99C794",          # Soft green for running status
         "stopped": "#EC5F67",          # Coral red for stopped status
-        "warning": "#FAC863"           # Warm yellow for warnings
+        "warning": "#FAC863",          # Warm yellow for warnings
+        "disabled_bg": "#808080",      # Gray for disabled elements
+        "disabled_text": "#FFFFFF",    # White for disabled text
     },
     "azure_night": {
         "background": "#15232D",       # Dark azure background
@@ -112,7 +126,9 @@ _THEMES = {
         "console_fg": "#F0F7FA",       # Ice white console text
         "running": "#7ED321",          # Bright green for running
         "stopped": "#FF5252",          # Bright red for stopped
-        "warning": "#FFCA28"           # Rich amber for warnings
+        "warning": "#FFCA28",          # Rich amber for warnings
+        "disabled_bg": "#808080",      # Gray for disabled elements
+        "disabled_text": "#FFFFFF",    # White for disabled text
     },
     "cobalt": {
         "background": "#193549",       # Deep cobalt blue
@@ -123,7 +139,9 @@ _THEMES = {
         "console_fg": "#FFFFFF",       # White text
         "running": "#3AD900",          # Bright lime green for running
         "stopped": "#FF2600",          # Vivid red for stopped
-        "warning": "#FFC600"           # Bright yellow for warnings
+        "warning": "#FFC600",          # Bright yellow for warnings
+        "disabled_bg": "#808080",      # Gray for disabled elements
+        "disabled_text": "#FFFFFF",    # White for disabled text
     },
     "deep_ocean": {
         "background": "#091B2E",       # Very dark blue-teal
@@ -134,7 +152,9 @@ _THEMES = {
         "console_fg": "#F2FDFF",       # Very light blue-white text
         "running": "#00E3C0",          # Bright teal for running
         "stopped": "#FF6B7F",          # Soft coral for stopped
-        "warning": "#FFD166"           # Soft yellow for warnings
+        "warning": "#FFD166",          # Soft yellow for warnings
+        "disabled_bg": "#808080",      # Gray for disabled elements
+        "disabled_text": "#FFFFFF",    # White for disabled text
     },
     "emerald_dark": {
         "background": "#0C1F17",       # Very dark forest green
@@ -145,7 +165,9 @@ _THEMES = {
         "console_fg": "#F0FFF9",       # Near-white with slight green tint
         "running": "#5DE3A5",          # Bright emerald green for running
         "stopped": "#FF6B6B",          # Soft red for stopped
-        "warning": "#FFD166"           # Golden yellow for warnings
+        "warning": "#FFD166",          # Golden yellow for warnings
+        "disabled_bg": "#808080",      # Gray for disabled elements
+        "disabled_text": "#FFFFFF",    # White for disabled text
     },
     "nordic_fjord": {
         "background": "#0F1C2D",       # Deep blue-teal background
@@ -156,7 +178,9 @@ _THEMES = {
         "console_fg": "#E5E9F0",       # Arctic white console text
         "running": "#A3BE8C",          # Moss green for running
         "stopped": "#BF616A",          # Soft red for stopped
-        "warning": "#EBCB8B"           # Muted gold for warnings
+        "warning": "#EBCB8B",          # Muted gold for warnings
+        "disabled_bg": "#808080",      # Gray for disabled elements
+        "disabled_text": "#FFFFFF",    # White for disabled text
     },
     "deep_horizon": {
         "background": "#1A2B3C",       # Deep blue-teal background
@@ -167,7 +191,9 @@ _THEMES = {
         "console_fg": "#F0F8FA",       # Very light blue-white text
         "running": "#73C990",          # Soft teal-green for running
         "stopped": "#E05252",          # Medium red for stopped
-        "warning": "#E6C454"           # Gold for warnings
+        "warning": "#E6C454",          # Gold for warnings
+        "disabled_bg": "#808080",      # Gray for disabled elements
+        "disabled_text": "#FFFFFF",    # White for disabled text
     },
     "arctic_night": {
         "background": "#151C25",       # Very dark bluish background
@@ -178,7 +204,9 @@ _THEMES = {
         "console_fg": "#E5EEF5",       # Very light icy text
         "running": "#4CAF50",          # Faded green for running
         "stopped": "#DB5860",          # Deep red for stopped
-        "warning": "#DDA448"           # Dark amber for warnings
+        "warning": "#DDA448",          # Dark amber for warnings
+        "disabled_bg": "#808080",      # Gray for disabled elements
+        "disabled_text": "#FFFFFF",    # White for disabled text
     },
 }
 
