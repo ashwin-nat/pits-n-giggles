@@ -25,6 +25,7 @@
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
 # Define all color schemes
+# pylint: disable=consider-using-namedtuple-or-dataclass
 _THEMES = {
     "racing": {
         "background": "#1E1E1E",       # Dark background

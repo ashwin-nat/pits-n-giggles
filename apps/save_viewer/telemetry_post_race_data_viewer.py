@@ -1087,8 +1087,7 @@ def stdin_input_thread():
     """Thread to handle stdin input for the launcher mode
     """
     while True:
-        file_path = sys.stdin.readline().strip()
-        if file_path:
+        if file_path := sys.stdin.readline().strip():
             png_logger.info(f'Received line: {file_path}')
             open_file_helper(file_path)
 

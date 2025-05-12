@@ -22,8 +22,6 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import os
-import sys
 import webbrowser
 from tkinter import filedialog, ttk
 
@@ -109,15 +107,9 @@ class SaveViewerAppMgr(PngAppMgrBase):
 
         new_port = new_settings.get("Network", "save_viewer_port")
         # Update the args with the new port
-        self.args = ["--launcher", "--port", new_port] + self.extra_args
+        self.port_str = new_port
+        self.args = ["--launcher", "--port", self.port_str] + self.extra_args
         self.console_app.log(f"Updated args: {self.args}")
-
-    def get_launch_command(self, module_path: str, args: list[str]):
-        """Get the command to launch the sub-application"""
-        if not getattr(sys, 'frozen', False):
-            return [sys.executable, "-m", module_path, *args]
-        exe_path = os.path.join(sys._MEIPASS, 'embedded_exes', 'save_viewer.exe')
-        return [exe_path, *args]
 
     def post_start(self):
         """Update buttons after app start"""

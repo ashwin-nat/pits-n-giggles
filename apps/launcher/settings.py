@@ -25,6 +25,7 @@
 import configparser
 import os
 import tkinter as tk
+import traceback
 from tkinter import messagebox, ttk
 from typing import Callable
 
@@ -141,7 +142,7 @@ class SettingsWindow:
         The settings are written to the file specified by `self.config_file`. After saving,
         the `save_callback` is called to propagate the updated settings.
         """
-        with open(self.config_file, 'w') as f:
+        with open(self.config_file, 'w', encoding='utf-8') as f:
             self.settings.write(f)
 
         self.app.log(f"Settings saved to {self.config_file}")
@@ -181,7 +182,7 @@ class SettingsWindow:
                 label = ttk.Label(scrollable_frame, text=key.replace('_', ' ').title() + ":")
                 label.grid(row=i, column=0, sticky="w", padx=5, pady=5)
 
-                if value.lower() in ['true', 'false']:
+                if value.lower() in {'true', 'false'}:
                     var = tk.BooleanVar(value=value.lower() == 'true')
                     control = ttk.Checkbutton(scrollable_frame, variable=var)
                 elif key == 'packet_capture_mode':
@@ -233,5 +234,10 @@ class SettingsWindow:
 
             self.save_settings()
             self.window.destroy()
+        # pylint: disable=broad-exception-caught
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save settings: {e}")
+
+            # Capture the stack trace as a string and log it
+            stack_trace = traceback.format_exc()
+            self.app.log(f"Failed to save settings: {e}\n{stack_trace}")

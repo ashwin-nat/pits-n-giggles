@@ -44,12 +44,9 @@ def get_executable_extension() -> str:
     """Get the executable file extension based on the operating system"""
     if sys.platform == "win32":
         return ".exe"
-    elif sys.platform == "darwin":
+    if sys.platform == "darwin":
         return ".app"
-    elif sys.platform.startswith("linux"):
-        return ""
-    else:
-        return ""
+    return "" if sys.platform.startswith("linux") else ""
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -89,22 +86,12 @@ class PngAppMgrBase(ABC):
     @abstractmethod
     def get_buttons(self, frame: ttk.Frame) -> list[dict]:
         """Return a list of button definitions for this app."""
-        ...
-
-    @abstractmethod
-    def start(self):
-        """Start the sub-application process"""
-        ...
-
-    @abstractmethod
-    def stop(self):
-        """Stop the sub-application process"""
-        ...
+        pass
 
     @abstractmethod
     def on_settings_change(self, new_settings: ConfigParser):
         """Handle changes in settings for the sub-application"""
-        ...
+        pass
 
     def get_launch_command(self, module_path: str, args: list[str]):
         """Get the command to launch the backend application"""
@@ -136,6 +123,7 @@ class PngAppMgrBase(ABC):
             launch_command = self.get_launch_command(self.module_path, self.args)
             self.console_app.log(f"Starting {self.display_name}... cwd={os.getcwd()} launch_command={launch_command}")
 
+            # pylint: disable=consider-using-with
             self.process = subprocess.Popen(
                 launch_command,
                 stdout=subprocess.PIPE,
@@ -154,9 +142,11 @@ class PngAppMgrBase(ABC):
             if self._post_start_hook:
                 try:
                     self._post_start_hook()
+                # pylint: disable=broad-exception-caught
                 except Exception as e:
                     self.console_app.log(f"{self.display_name}: Error in post-start hook: {e}")
 
+        # pylint: disable=broad-exception-caught
         except Exception as e:
             self.console_app.log(f"Error starting {self.display_name}: {e}")
             self.status_var.set("Error")
@@ -206,9 +196,11 @@ class PngAppMgrBase(ABC):
             if self._post_stop_hook:
                 try:
                     self._post_stop_hook()
+                # pylint: disable=broad-exception-caught
                 except Exception as e:
                     self.console_app.log(f"{self.display_name}: Error in post-stop hook: {e}")
 
+        # pylint: disable=broad-exception-caught
         except Exception as e:
             self.console_app.log(f"Error stopping {self.display_name}: {e}")
             self.status_var.set("Error")

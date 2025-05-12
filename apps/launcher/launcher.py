@@ -36,9 +36,8 @@ def resource_path(relative_path):
     if hasattr(sys, "_MEIPASS"):
         # Running from PyInstaller bundle
         return Path(sys._MEIPASS) / relative_path
-    else:
-        # Running from source
-        return Path(__file__).parent.parent.parent / relative_path
+    # Running from source
+    return Path(__file__).parent.parent.parent / relative_path
 
 def get_version() -> str:
     """Get the version string from env variable

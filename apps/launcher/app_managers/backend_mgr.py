@@ -22,8 +22,6 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import os
-import sys
 import webbrowser
 from tkinter import ttk
 

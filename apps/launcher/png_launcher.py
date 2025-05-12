@@ -170,7 +170,7 @@ class PngLauncher(ConsoleInterface):
                     if not self.settings.has_option(section, key):
                         self.settings.set(section, key, value)
 
-        with open(self.config_file, 'w') as f:
+        with open(self.config_file, 'w', encoding='utf-8') as f:
             self.settings.write(f)
 
     def setup_subapps(self):
@@ -190,7 +190,7 @@ class PngLauncher(ConsoleInterface):
         }
 
         # Create UI for each subapp
-        for i, (name, subapp) in enumerate(self.subapps.items()):
+        for i, (_, subapp) in enumerate(self.subapps.items()):
             frame = ttk.Frame(self.subapps_frame, style="Racing.TFrame")
             frame.grid(row=0, column=i, padx=15, pady=5)
 
@@ -202,19 +202,10 @@ class PngLauncher(ConsoleInterface):
             status_label.grid(row=0, column=1, padx=5, pady=5)
 
             # Configure status label colors based on status
-            def update_status_style(status_var, label):
-                status = status_var.get()
-                if status == "Running":
-                    label.configure(style="Running.TLabel")
-                elif status == "Stopped":
-                    label.configure(style="Stopped.TLabel")
-                else:
-                    label.configure(style="Warning.TLabel")
-
-            update_status_style(subapp.status_var, status_label)
+            self._update_status_style(subapp.status_var, status_label)
 
             subapp.status_var.trace_add("write", lambda *args, sv=subapp.status_var, lbl=status_label:
-                                        update_status_style(sv, lbl))
+                                        self._update_status_style(sv, lbl))
 
             # Dynamically create buttons from subapp and add them to the frame
             for idx, button in enumerate(subapp.get_buttons(frame)):  # Pass the frame here
@@ -223,6 +214,32 @@ class PngLauncher(ConsoleInterface):
         for subapp in self.subapps.values():
             if subapp.start_by_default:
                 subapp.start()
+
+    def _update_status_style(self, status_var: tk.StringVar, label: ttk.Label) -> None:
+        """
+        Update the style of the label based on the status value.
+
+        This function changes the style of the provided label depending on the
+        value of the given status variable. It adjusts the style to:
+        - "Running.TLabel" for "Running"
+        - "Stopped.TLabel" for "Stopped"
+        - "Warning.TLabel" for other status values.
+
+        Args:
+            status_var (tk.StringVar): The variable holding the status value.
+            label (ttk.Label): The label whose style will be updated.
+
+        Returns:
+            None
+        """
+        status = status_var.get()
+        if status == "Running":
+            label.configure(style="Running.TLabel")
+        elif status == "Stopped":
+            label.configure(style="Stopped.TLabel")
+        else:
+            label.configure(style="Warning.TLabel")
+
 
     def setup_header(self):
         # App info section with racing theme
@@ -297,7 +314,7 @@ class PngLauncher(ConsoleInterface):
         """Add a message to the console with timestamp. Also write to file
         Args:
             message (str): The message to log
-            is_child_log (bool): Whether the message is from a child process
+            is_child_message (bool): Whether the message is from a child process
         """
         if is_child_message:
             formatted_message = f"[{message}"
@@ -360,11 +377,11 @@ class PngLauncher(ConsoleInterface):
 
     def flush(self):
         """Required for stdout redirection"""
-        ...
+        return
 
     def on_closing(self):
         """Stop all running sub-apps and restore stdout before closing"""
-        for name, subapp in self.subapps.items():
+        for _, subapp in self.subapps.items():
             if subapp.is_running:
                 self.log(f"Stopping {subapp.display_name}...")
                 subapp.stop()
