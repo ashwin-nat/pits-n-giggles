@@ -119,9 +119,8 @@ async def frontEndMessageTask(sio: socketio.AsyncServer) -> None:
     """
 
     while True:
-        message = await AsyncInterTaskCommunicator().receive("frontend-update")
-        if message:
-            await sio.emit('frontend-update', message.toJSON())
+        if message := await AsyncInterTaskCommunicator().receive("frontend-update"):
+            await sio.emit('frontend-update', message.toJSON(), room="race-table")
 
 def _isRoomEmpty(sio: socketio.AsyncServer, room_name: str, namespace: Optional[str] = '/') -> bool:
     """Check if a room is empty

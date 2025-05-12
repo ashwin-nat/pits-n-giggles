@@ -294,16 +294,16 @@ class F1TelemetryHandler:
                 if is_event_supported:
                     await self.postGameDumpToFile(final_json)
 
-            # Notify the frontend about the final classification
-            if player_info := self.m_session_state_ref.getPlayerDriverInfo():
-                player_position = player_info.m_driver_info.position
-                await AsyncInterTaskCommunicator().send(
-                    "frontend-update",
-                    ITCMessage(
-                        m_message_type=ITCMessage.MessageType.FINAL_CLASSIFICATION_NOTIFICATION,
-                        m_message=FinalClassificationNotification(player_position)
-                    )
-                )
+                    # Notify the frontend about the final classification
+                    if player_info := self.m_session_state_ref.getPlayerDriverInfo():
+                        player_position = player_info.m_driver_info.position
+                        await AsyncInterTaskCommunicator().send(
+                            "frontend-update",
+                            ITCMessage(
+                                m_message_type=ITCMessage.MessageType.FINAL_CLASSIFICATION_NOTIFICATION,
+                                m_message=FinalClassificationNotification(player_position)
+                            )
+                        )
 
             # Uncomment the below lines for profiling - Kill the process after one session
             # # Cancel all tasks except itself
