@@ -55,7 +55,7 @@ class PngLauncher(ConsoleInterface):
         self.root = root
         self.version = ver_str if ver_str != 'dev' else ''
         self.app_name = "Pits n' Giggles"
-        self.config_file = "png.ini"
+        self.config_file = "png_config.ini"
         self.logo_path = logo_path
         self.settings_icon_path = settings_icon_path
         self.debug_mode = debug_mode
