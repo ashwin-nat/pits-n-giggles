@@ -228,9 +228,6 @@ class PngLauncher(ConsoleInterface):
         Args:
             status_var (tk.StringVar): The variable holding the status value.
             label (ttk.Label): The label whose style will be updated.
-
-        Returns:
-            None
         """
         status = status_var.get()
         if status == "Running":

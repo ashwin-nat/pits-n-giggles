@@ -95,7 +95,7 @@ class PngRunner:
         try:
             await asyncio.gather(*self.m_tasks)
         except asyncio.CancelledError:
-            png_logger.debug("Main task was cancelled.")
+            self.m_logger.debug("Main task was cancelled.")
             await self.m_web_server.stop()
             for task in self.m_tasks:
                 task.cancel()
