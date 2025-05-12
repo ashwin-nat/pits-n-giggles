@@ -1,11 +1,11 @@
 import sys
 import random
 import os
-from PyQt5.QtWidgets import QApplication, QMainWindow
-from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
-from PyQt5.QtCore import Qt, QUrl, QTimer
-from PyQt5.QtWebChannel import QWebChannel
-from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
+from PyQt6.QtWidgets import QApplication, QMainWindow
+from PyQt6.QtWebEngineWidgets import QWebEngineView
+from PyQt6.QtWebEngineCore import QWebEnginePage
+from PyQt6.QtCore import Qt, QUrl, QTimer, QObject, pyqtSignal, pyqtSlot
+from PyQt6.QtWebChannel import QWebChannel
 
 class HUDDataManager(QObject):
     speedChanged = pyqtSignal(int)
@@ -20,12 +20,15 @@ class HUDDataManager(QObject):
 
     @pyqtSlot(result=dict)
     def get_race_data(self):
+        # Generate random data for speed and lap
         self._speed = random.randint(50, 250)
         self._lap = random.randint(1, 5)
 
+        # Emit signals to update the data
         self.speedChanged.emit(self._speed)
         self.lapChanged.emit(self._lap)
 
+        # Return the current data as a dictionary
         return {
             "speed": self._speed,
             "lap": self._lap
@@ -33,6 +36,7 @@ class HUDDataManager(QObject):
 
     @pyqtSlot(result=bool)
     def toggle_border_mode(self):
+        # Toggle border mode
         self._bordered = not self._bordered
         self.borderModeChanged.emit(self._bordered)
         return self._bordered
@@ -55,7 +59,7 @@ class RacingHUDOverlay(QMainWindow):
         self.web_view.setPage(self.web_page)
 
         # Make web view transparent
-        self.web_page.setBackgroundColor(Qt.transparent)
+        self.web_page.setBackgroundColor(Qt.GlobalColor.transparent)
 
         # Set up window
         self.setCentralWidget(self.web_view)
@@ -70,45 +74,47 @@ class RacingHUDOverlay(QMainWindow):
 
         # Timer for updating data
         self.update_timer = QTimer(self)
-        self.update_timer.timeout.connect(self.data_manager.get_race_data)
+        self.update_timer.timeout.connect(self.update_race_data)
         self.update_timer.start(1000)  # Update every second
+
+    def update_race_data(self):
+        # Fetch and update race data
+        self.data_manager.get_race_data()
 
     def setup_window(self, bordered=False):
         if bordered:
-            # Resizable window with title bar
             self.setWindowFlags(
-                Qt.Window |
-                Qt.WindowStaysOnTopHint
+                Qt.WindowType.Window |
+                Qt.WindowType.WindowStaysOnTopHint
             )
         else:
-            # Frameless, transparent overlay
             self.setWindowFlags(
-                Qt.WindowStaysOnTopHint |
-                Qt.FramelessWindowHint |
-                Qt.Tool
+                Qt.WindowType.WindowStaysOnTopHint |
+                Qt.WindowType.FramelessWindowHint |
+                Qt.WindowType.Tool
             )
-            self.setAttribute(Qt.WA_TranslucentBackground)
+            self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         # Set initial size and position
         screen = QApplication.primaryScreen().geometry()
         self.setGeometry(
-            screen.width() - 250,  # Right side of screen
-            50,  # 50 pixels from top
-            250,  # Width
-            150   # Height
+            screen.width() - 250,
+            50,
+            250,
+            150
         )
 
     def keyPressEvent(self, event):
-        # Toggle border mode on F12
-        if event.key() == Qt.Key_F12:
+        if event.key() == Qt.Key.Key_F12:
             self.data_manager.toggle_border_mode()
             self.setup_window(bordered=self.data_manager._bordered)
 
 def main():
+    print('starting app')
     app = QApplication(sys.argv)
     hud = RacingHUDOverlay()
     hud.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 if __name__ == "__main__":
     main()
