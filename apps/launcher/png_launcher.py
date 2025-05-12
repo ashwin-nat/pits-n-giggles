@@ -83,22 +83,13 @@ class PngLauncher(ConsoleInterface):
         self.console_frame = ttk.Frame(root, padding="10", style="Racing.TFrame")
         self.console_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Load settings
+        # Initialisations
         self.load_settings()
-
-        # Set up the header section
         self.setup_header()
-
-        # Set up the console section
         self.setup_console()
-
-        # Setup the logger
         self.setup_logger()
-
-        # Configure hardcoded sub-apps
         self.setup_subapps()
 
-        # Redirect stdout to our console
         self.stdout_original = sys.stdout
         sys.stdout = self
 
@@ -180,7 +171,8 @@ class PngLauncher(ConsoleInterface):
             "server": BackendAppMgr(
                 console_app=self,
                 port_str=str(self.settings.get("Network", "server_port")),
-                args=["--debug", "--replay-server"] if self.debug_mode else []
+                args=["--config-file", self.config_file, "--debug", "--replay-server"] \
+                    if self.debug_mode else ["--config-file", self.config_file ]
             ),
             # SaveViewer app reads port from args
             "dashboard": SaveViewerAppMgr(

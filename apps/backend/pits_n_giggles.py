@@ -219,7 +219,7 @@ def parseArgs() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Pits n' Giggles Realtime Telemetry Server")
 
     # Add command-line arguments with default values
-    parser.add_argument("config_file", nargs="?", default="png_config.ini", help="Configuration file name (optional)")
+    parser.add_argument("--config-file", nargs="?", default="png_config.ini", help="Configuration file name (optional)")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
     parser.add_argument('--replay-server', action='store_true', help="Enable the TCP replay debug server")
     parser.add_argument('--log-file-name', type=str, default=None, help="Log file name")
