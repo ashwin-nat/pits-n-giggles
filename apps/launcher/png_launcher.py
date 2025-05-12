@@ -306,7 +306,7 @@ class PngLauncher(ConsoleInterface):
             is_child_message (bool): Whether the message is from a child process
         """
         if is_child_message:
-            formatted_message = f"[{message}"
+            formatted_message = message
             self.m_logger.info(message.rstrip(), extra={"with_timestamp": False}, stacklevel=2)
         else:
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")

@@ -112,9 +112,10 @@ def get_launcher_data_paths() -> List[Tuple[str, str]]:
     ]
 
     # Add all app executables
-    for app_name in APPS.keys():
-        paths.append((f'../dist/{app_name}.exe', 'embedded_exes'))
-
+    paths.extend(
+        (f'../dist/{app_name}.exe', 'embedded_exes')
+        for app_name in APPS.keys()
+    )
     return paths
 
 
@@ -127,15 +128,23 @@ def create_runtime_hook() -> str:
     Returns:
         str: Path to the created hook file
     """
-    temp_dir = tempfile.mkdtemp()
-    hook_path = os.path.join(temp_dir, 'hook-runtime.py')
+    with tempfile.TemporaryDirectory() as temp_dir:
+        hook_path = os.path.join(temp_dir, 'hook-runtime.py')
 
-    with open(hook_path, 'w') as f:
-        f.write("import os\n")
-        f.write(f"os.environ['PNG_VERSION'] = '{APP_VERSION}'\n")
+        with open(hook_path, 'w') as f:
+            f.write("import os\n")
+            f.write(f"os.environ['PNG_VERSION'] = '{APP_VERSION}'\n")
 
-    return hook_path
+        # Read and return the contents of the hook file
+        with open(hook_path, 'r') as f:
+            hook_contents = f.read()
 
+    # Create a new temporary file that will persist beyond the context manager
+    final_hook = tempfile.mktemp(suffix='.py')
+    with open(final_hook, 'w') as f:
+        f.write(hook_contents)
+
+    return final_hook
 
 def create_analysis(
     script_path: str,
@@ -224,13 +233,13 @@ def cleanup_additional_executables() -> None:
     """
     dist_path = Path('./dist')
 
-    # List of executables to delete (all apps except launcher)
-    executables_to_delete = [f"{app_name}.exe" for app_name in APPS.keys()]
+    # List of base executable names to delete (all apps except launcher)
+    executables_to_delete = list(APPS.keys())
 
-    # Remove specified executables
-    for exe_file in executables_to_delete:
-        file_path = dist_path / exe_file
-        if file_path.exists():
+    # Remove specified executables using wildcard matching
+    for app_name in executables_to_delete:
+        matching_files = list(dist_path.glob(f"{app_name}*"))
+        for file_path in matching_files:
             print(f"Removing additional executable: {file_path}")
             file_path.unlink()
 
@@ -290,7 +299,7 @@ def build_all_apps():
         built_executables[app_name] = exe
 
     # Build launcher after all other apps are built
-    print(f"Building launcher...")
+    print("Building launcher...")
 
     # Get the launcher data paths function
     launcher_data_paths_func = globals()[LAUNCHER_CONFIG["data_paths_func"]]

@@ -149,56 +149,31 @@ class SettingsWindow:
         self.save_callback(self.settings)
 
     def create_tabs(self) -> None:
-        """
-        Create tabs for each settings section and populate them with input fields.
-        """
         self.entry_vars = {}
-        bg_color = "#f0f0f0"  # Match default Windows background
 
         for section in self.settings.sections():
-            tab = ttk.Frame(self.notebook, padding=0)
+            tab = ttk.Frame(self.notebook, padding=10)
             self.notebook.add(tab, text=section)
+            tab.columnconfigure(1, weight=1)
 
-            # Create canvas and scrollable frame
-            canvas = tk.Canvas(tab, bg=bg_color, highlightthickness=0)
-            scrollbar = ttk.Scrollbar(tab, orient="vertical", command=canvas.yview)
-
-            # Use a normal tk.Frame so we can set background color
-            scrollable_frame = tk.Frame(canvas, bg=bg_color)
-
-            scrollable_frame.bind(
-                "<Configure>",
-                lambda e, c=canvas: c.configure(scrollregion=c.bbox("all"))
-            )
-
-            canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-            canvas.configure(yscrollcommand=scrollbar.set)
-
-            canvas.pack(side="left", fill="both", expand=True)
-            scrollbar.pack(side="right", fill="y")
-
-            # Add settings fields
             for i, (key, value) in enumerate(self.settings[section].items()):
-                label = ttk.Label(scrollable_frame, text=key.replace('_', ' ').title() + ":")
+                label = ttk.Label(tab, text=key.replace('_', ' ').title() + ":")
                 label.grid(row=i, column=0, sticky="w", padx=5, pady=5)
 
+                # choose control based on value/content
                 if value.lower() in {'true', 'false'}:
                     var = tk.BooleanVar(value=value.lower() == 'true')
-                    control = ttk.Checkbutton(scrollable_frame, variable=var)
+                    control = ttk.Checkbutton(tab, variable=var)
                 elif key == 'packet_capture_mode':
                     var = tk.StringVar(value=value)
-                    control = ttk.Combobox(scrollable_frame, textvariable=var,
+                    control = ttk.Combobox(tab, textvariable=var,
                                         values=["disabled", "enabled", "auto"])
                 else:
                     var = tk.StringVar(value=value)
-                    control = ttk.Entry(scrollable_frame, textvariable=var, width=30)
+                    control = ttk.Entry(tab, textvariable=var, width=30)
 
                 control.grid(row=i, column=1, sticky="ew", padx=5, pady=5)
-
-                if section not in self.entry_vars:
-                    self.entry_vars[section] = {}
-                self.entry_vars[section][key] = var
-
+                self.entry_vars.setdefault(section, {})[key] = var
 
     def create_buttons(self) -> None:
         """

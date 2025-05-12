@@ -80,6 +80,7 @@ def get_rotating_logger(
         logging.Logger: Configured logger instance.
     """
     logger = logging.getLogger(name)
+    logger.propagate = False
     logger.setLevel(logging.INFO)
 
     if not logger.handlers:
