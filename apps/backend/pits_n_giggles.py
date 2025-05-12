@@ -31,8 +31,6 @@ import sys
 import webbrowser
 from typing import List, Optional, Set
 
-from colorama import Fore, Style, init
-
 from apps.backend.common.config import load_config
 from apps.backend.common.png_logger import initLogger
 from apps.backend.state_mgmt_layer import initStateManagementLayer
@@ -87,7 +85,6 @@ class PngRunner:
         )
 
         # Run all tasks concurrently
-        self._printDoNotCloseWarning()
         self.m_logger.debug("Registered %d Tasks: %s", len(self.m_tasks), [task.get_name() for task in self.m_tasks])
 
     async def run(self) -> None:
@@ -171,31 +168,6 @@ class PngRunner:
         await asyncio.sleep(1)
         webbrowser.open(f'http://localhost:{http_port}', new=2)
         self.m_logger.debug("Webpage opened. Task completed")
-
-    def _printDoNotCloseWarning(self) -> None:
-        """
-        Prints a warning message in red and bold.
-        Works across Windows CMD, PowerShell, and Linux/macOS terminals.
-        """
-        init(autoreset=True)  # Ensures colors reset automatically and enables ANSI on Windows
-
-        RED = Fore.RED
-        BOLD = Style.BRIGHT
-
-        border = "*" * 60  # Fixed-width border
-        message = [
-            "WARNING: DO NOT CLOSE THIS WINDOW!",
-            "This command line window is required",
-            "for the application to run properly.",
-            "If you close this window, the application",
-            "will stop working."
-        ]
-
-        print(RED + BOLD + border)
-        for line in message:
-            print(RED + BOLD + f"* {line.center(56)} *")
-        print(RED + BOLD + border)
-
 
     def _getVersion(self) -> str:
         """Get the version string from env variable

@@ -130,6 +130,9 @@ To compile the application from source code, follow the instructions in [BUILDIN
 ### Stream Overlay Example
 ![Stream Overlay](screenshots/png-stream-overlay.png)
 
+### Launcher
+![App Launcher](screenshots/launcher.png)
+
 ## Architecture
 ![Architecture Diagram](docs/arch-diagram.png)
 
