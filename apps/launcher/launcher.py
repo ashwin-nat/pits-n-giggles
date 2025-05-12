@@ -58,8 +58,6 @@ SETTINGS_ICON_PATH = str(resource_path("assets/settings.ico"))
 
 if __name__ == "__main__":
     debug_mode = "--debug" in sys.argv
-    print("\n\nRunning:", __file__)
-    print("Args:", sys.argv)
     root = tk.Tk()
     root.title("Pits n' Giggles")
     root.iconbitmap(resource_path("assets/favicon.ico"))  # Set the icon for the main window

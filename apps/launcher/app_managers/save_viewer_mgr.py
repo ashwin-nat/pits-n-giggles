@@ -46,11 +46,14 @@ class SaveViewerAppMgr(PngAppMgrBase):
         super().__init__(
             name="save_viewer",
             module_path="apps.save_viewer.telemetry_post_race_data_viewer",
+            exe_name_without_ext="save_viewer",
             display_name="Save Viewer",
             start_by_default=True,
             console_app=console_app,
             args=args + self.extra_args
         )
+        self.register_post_start(self.post_start)
+        self.register_post_stop(self.post_stop)
 
     def get_buttons(self, frame: ttk.Frame) -> list[dict]:
         """Return a list of button objects directly
@@ -115,3 +118,13 @@ class SaveViewerAppMgr(PngAppMgrBase):
             return [sys.executable, "-m", module_path, *args]
         exe_path = os.path.join(sys._MEIPASS, 'embedded_exes', 'save_viewer.exe')
         return [exe_path, *args]
+
+    def post_start(self):
+        """Update buttons after app start"""
+        self.start_stop_button.config(text="Stop")
+        self.open_dashboard_button.config(state="normal")
+
+    def post_stop(self):
+        """Update buttons after app stop"""
+        self.start_stop_button.config(text="Start")
+        self.open_dashboard_button.config(state="disabled")

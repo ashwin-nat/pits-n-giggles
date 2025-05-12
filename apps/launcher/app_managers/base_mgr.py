@@ -24,12 +24,13 @@
 
 import os
 import subprocess
+import sys
 import threading
 import tkinter as tk
 from abc import ABC, abstractmethod
 from configparser import ConfigParser
 from tkinter import ttk
-from typing import Optional
+from typing import Callable, Optional
 
 import psutil
 
@@ -37,16 +38,35 @@ from lib.pid_report import extract_pid_from_line
 
 from ..console_interface import ConsoleInterface
 
+# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+
+def get_executable_extension() -> str:
+    """Get the executable file extension based on the operating system"""
+    if sys.platform == "win32":
+        return ".exe"
+    elif sys.platform == "darwin":
+        return ".app"
+    elif sys.platform.startswith("linux"):
+        return ""
+    else:
+        return ""
+
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
 class PngAppMgrBase(ABC):
     """Class to manage a sub-application process"""
-    def __init__(self, name: str, module_path: str, display_name: str,
-                start_by_default: bool, console_app: ConsoleInterface,
-                args: list[str] = None):
+    def __init__(self,
+                 name: str,
+                 module_path: str,
+                 exe_name_without_ext: str,
+                 display_name: str,
+                 start_by_default: bool,
+                 console_app: ConsoleInterface,
+                 args: list[str] = None):
         """Initialize the sub-application
         :param name: Unique name for the sub-application
         :param module_path: Path to the sub-application module
+        :param exe_name_without_ext: Executable name without extension
         :param display_name: Display name for the sub-application
         :param start_by_default: Whether to start this app by default
         :param console_app: Reference to a console interface for logging
@@ -54,6 +74,7 @@ class PngAppMgrBase(ABC):
         self.name = name
         self.module_path = module_path
         self.display_name = display_name
+        self.exec_name = exe_name_without_ext + get_executable_extension()
         self.console_app = console_app
         self.args = args or []  # Store CLI args
         self.process: Optional[subprocess.Popen] = None
@@ -61,6 +82,9 @@ class PngAppMgrBase(ABC):
         self.is_running = False
         self.start_by_default = start_by_default
         self.child_pid = None
+        self._post_start_hook: Optional[Callable[[], None]] = None
+        self._post_stop_hook: Optional[Callable[[], None]] = None
+
 
     @abstractmethod
     def get_buttons(self, frame: ttk.Frame) -> list[dict]:
@@ -82,10 +106,25 @@ class PngAppMgrBase(ABC):
         """Handle changes in settings for the sub-application"""
         ...
 
-    @abstractmethod
     def get_launch_command(self, module_path: str, args: list[str]):
-        """Get the command to launch the sub-application"""
-        ...
+        """Get the command to launch the backend application"""
+
+        # In dev environment, run python with the module path
+        if not getattr(sys, 'frozen', False):
+            return [sys.executable, "-m", module_path, *args]
+        # In PyInstaller frozen mode, the executable is in sys._MEIPASS in embedded_exes dir
+        exe_path = os.path.join(sys._MEIPASS, 'embedded_exes', self.exec_name)
+        return [exe_path, *args]
+
+    def register_post_start(self, func: Callable[[], None]):
+        """Register a post-start callback."""
+        self._post_start_hook = func
+        return func
+
+    def register_post_stop(self, func: Callable[[], None]):
+        """Register a post-stop callback."""
+        self._post_stop_hook = func
+        return func
 
     def start(self):
         """Start the sub-application process"""
@@ -112,9 +151,12 @@ class PngAppMgrBase(ABC):
 
             self.console_app.log(f"{self.display_name} started successfully. PID = {self.child_pid}")
 
-            # TODO: Add a post start callback for this
-            self.start_stop_button.config(text="Stop")
-            self.open_dashboard_button.config(state="normal")
+            if self._post_start_hook:
+                try:
+                    self._post_start_hook()
+                except Exception as e:
+                    self.console_app.log(f"{self.display_name}: Error in post-start hook: {e}")
+
         except Exception as e:
             self.console_app.log(f"Error starting {self.display_name}: {e}")
             self.status_var.set("Error")
@@ -161,9 +203,11 @@ class PngAppMgrBase(ABC):
             self.status_var.set("Stopped")
             self.console_app.log(f"{self.display_name} stopped successfully. Terminated PID = {used_pid}")
 
-            # TODO: add a post stop callback for this
-            self.start_stop_button.config(text="Start")
-            self.open_dashboard_button.config(state="disabled")
+            if self._post_stop_hook:
+                try:
+                    self._post_stop_hook()
+                except Exception as e:
+                    self.console_app.log(f"{self.display_name}: Error in post-stop hook: {e}")
 
         except Exception as e:
             self.console_app.log(f"Error stopping {self.display_name}: {e}")

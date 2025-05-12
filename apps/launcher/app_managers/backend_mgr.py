@@ -44,11 +44,14 @@ class BackendAppMgr(PngAppMgrBase):
         super().__init__(
             name="server",
             module_path="apps.backend.pits_n_giggles",
+            exe_name_without_ext="backend",
             display_name="Server",
             start_by_default=True,
             console_app=console_app,
             args=args
         )
+        self.register_post_start(self.post_start)
+        self.register_post_stop(self.post_stop)
 
     def get_buttons(self, frame: ttk.Frame) -> list[dict]:
         """Return a list of button objects directly
@@ -71,7 +74,6 @@ class BackendAppMgr(PngAppMgrBase):
         )
         return [self.start_stop_button, self.open_dashboard_button]
 
-
     def open_dashboard(self):
         """Open the dashboard viewer in a web browser."""
         webbrowser.open(f'http://localhost:{self.port_str}', new=2)
@@ -82,9 +84,12 @@ class BackendAppMgr(PngAppMgrBase):
         # Update the port number
         self.port_str = new_settings.get("Network", "server_port")
 
-    def get_launch_command(self, module_path: str, args: list[str]):
-        """Get the command to launch the backend application"""
-        if not getattr(sys, 'frozen', False):
-            return [sys.executable, "-m", module_path, *args]
-        exe_path = os.path.join(sys._MEIPASS, 'embedded_exes', 'backend.exe')
-        return [exe_path, *args]
+    def post_start(self):
+        """Update buttons after app start"""
+        self.start_stop_button.config(text="Stop")
+        self.open_dashboard_button.config(state="normal")
+
+    def post_stop(self):
+        """Update buttons after app stop"""
+        self.start_stop_button.config(text="Start")
+        self.open_dashboard_button.config(state="disabled")
