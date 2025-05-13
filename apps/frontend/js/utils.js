@@ -277,8 +277,8 @@ function randomInRange(min, max) {
 }
 
 function shootConfetti(durationMs) {
-    animationEnd = Date.now() + durationMs,
-    defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+    const animationEnd = Date.now() + durationMs;
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
 
     const interval = setInterval(function() {
         const timeLeft = animationEnd - Date.now();

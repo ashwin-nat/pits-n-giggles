@@ -126,26 +126,17 @@ class FinalClassificationNotification:
 
 @dataclass(frozen=True)
 class ITCMessage:
-    class MessageType(Enum):
-        CUSTOM_MARKER = 1
-        TYRE_DELTA_NOTIFICATION = 2
-        UDP_PACKET_FORWARD = 3
-        FINAL_CLASSIFICATION_NOTIFICATION = 4
-        # Add more message types as needed
-
-        def __repr__(self) -> str:
-            """Return a string representation of the ITCMessage object."""
-            return {
-                ITCMessage.MessageType.CUSTOM_MARKER: "custom-marker",
-                ITCMessage.MessageType.TYRE_DELTA_NOTIFICATION: "tyre-delta",
-                ITCMessage.MessageType.UDP_PACKET_FORWARD: "udp-packet-forward",
-                ITCMessage.MessageType.FINAL_CLASSIFICATION_NOTIFICATION: "final-classification-notification",
-            }[self]
+    class MessageType(str, Enum):
+        CUSTOM_MARKER                      = "custom-marker"
+        TYRE_DELTA_NOTIFICATION            = "tyre-delta"
+        UDP_PACKET_FORWARD                 = "udp-packet-forward"
+        FINAL_CLASSIFICATION_NOTIFICATION  = "final-classification-notification"
 
         def __str__(self) -> str:
-            """Return a string representation of the ITCMessage object."""
-            return self.__repr__()
+            return self.value
 
+        def __repr__(self) -> str:
+            return self.value
     m_message_type: "ITCMessage.MessageType"
     m_message: Any
 

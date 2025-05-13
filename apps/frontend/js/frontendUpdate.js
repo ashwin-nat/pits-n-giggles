@@ -48,7 +48,7 @@ function processFinalClassificationNotification(data) {
     const playerPosition = data['player-position'];
     if (playerPosition && playerPosition >= 1 && playerPosition <= 3) {
         console.log("Podium finish! Player position:", playerPosition);
-        const confettDurationMs = 10000;
-        shootConfetti(confettDurationMs);
+        const confettiDurationMs = 10000;
+        shootConfetti(confettiDurationMs);
     }
 }
