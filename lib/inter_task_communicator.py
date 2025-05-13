@@ -97,25 +97,46 @@ class TyreDeltaMessage:
             "tyre-delta": self.m_delta
         }
 
+class FinalClassificationNotification:
+    def __init__(self, player_position: int) -> None:
+        """Initialize the FinalClassificationNotification object.
+
+        Args:
+            player_position (int): The player's position in the final classification
+        """
+        self.m_player_position = player_position
+
+    def __repr__(self) -> str:
+        """Return a string representation of the FinalClassificationNotification object."""
+        return f"FinalClassificationNotification(player_position={self.m_player_position})"
+
+    def __str__(self) -> str:
+        """Return a string representation of the FinalClassificationNotification object."""
+        return self.__repr__()
+
+    def toJSON(self) -> Dict[str, Any]:
+        """Get the JSON representation of this object.
+
+        Returns:
+            Dict[str, Any]: The JSON representation of this object.
+        """
+        return {
+            "player-position": self.m_player_position
+        }
+
 @dataclass(frozen=True)
 class ITCMessage:
-    class MessageType(Enum):
-        CUSTOM_MARKER = 1
-        TYRE_DELTA_NOTIFICATION = 2
-        UDP_PACKET_FORWARD = 3
-        # Add more message types as needed
-
-        def __repr__(self) -> str:
-            """Return a string representation of the ITCMessage object."""
-            return {
-                ITCMessage.MessageType.CUSTOM_MARKER: "custom-marker",
-                ITCMessage.MessageType.TYRE_DELTA_NOTIFICATION: "tyre-delta",
-            }[self]
+    class MessageType(str, Enum):
+        CUSTOM_MARKER                      = "custom-marker"
+        TYRE_DELTA_NOTIFICATION            = "tyre-delta"
+        UDP_PACKET_FORWARD                 = "udp-packet-forward"
+        FINAL_CLASSIFICATION_NOTIFICATION  = "final-classification-notification"
 
         def __str__(self) -> str:
-            """Return a string representation of the ITCMessage object."""
-            return self.__repr__()
+            return self.value
 
+        def __repr__(self) -> str:
+            return self.value
     m_message_type: "ITCMessage.MessageType"
     m_message: Any
 

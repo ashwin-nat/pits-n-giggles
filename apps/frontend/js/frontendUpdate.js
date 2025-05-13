@@ -42,3 +42,13 @@ function processTyreDeltaMessage(data) {
 function processCustomMarkerMessage(data) {
     console.log("processCustomMarkerMessage", data);
 }
+
+function processFinalClassificationNotification(data) {
+    console.log("processFinalClassificationNotification", data);
+    const playerPosition = data['player-position'];
+    if (playerPosition && playerPosition >= 1 && playerPosition <= 3) {
+        console.log("Podium finish! Player position:", playerPosition);
+        const confettiDurationMs = 10000;
+        shootConfetti(confettiDurationMs);
+    }
+}
