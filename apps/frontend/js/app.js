@@ -74,6 +74,9 @@ socketio.on('frontend-update', function (data) {
         case 'tyre-delta':
             processTyreDeltaMessage(data['message']);
             break;
+        case 'final-classification-notification':
+            processFinalClassificationNotification(data['message']);
+            break
         default:
             console.error("received unsupported message type in frontend-update");
     }
