@@ -19,6 +19,8 @@ dependencies = [
     "psutil (>=7.0.0,<8.0.0)",
     "pyqt6 (==6.8)",
     "pyqt6-webengine (==6.8.0)",
+    "pygame (>=2.6.1,<3.0.0)",
+    "pywin32 (>=310,<311)",
 ]
 
 

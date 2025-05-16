@@ -16,7 +16,7 @@ class HUDDataManager(QObject):
         super().__init__()
         self._speed = 0
         self._lap = 0
-        self._bordered = False
+        self._bordered = True
 
     @pyqtSlot(result=dict)
     def get_race_data(self):
@@ -104,10 +104,13 @@ class RacingHUDOverlay(QMainWindow):
             150
         )
 
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key.Key_F12:
-            self.data_manager.toggle_border_mode()
-            self.setup_window(bordered=self.data_manager._bordered)
+    @pyqtSlot()
+    def toggle_bordered_mode(self):
+        bordered = self.data_manager.toggle_border_mode()
+        self.hide()
+        self.setup_window(bordered=bordered)
+        self.show()
+
 
 def main():
     print('starting app')
