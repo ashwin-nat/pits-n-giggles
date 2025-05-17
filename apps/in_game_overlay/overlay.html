@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Overlay</title>
+  <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+  <style>
+    body {
+      margin: 0;
+      background: transparent;
+      color: lime;
+      font-size: 48px;
+      font-family: monospace;
+      text-align: center;
+    }
+    #number {
+      margin-top: 100px;
+    }
+  </style>
+</head>
+<body>
+  <div id="number">--</div>
+  <script>
+    // Wait for the page to fully load
+    document.addEventListener("DOMContentLoaded", function() {
+      setTimeout(initWebChannel, 100); // Small delay to ensure everything is ready
+    });
+
+    function initWebChannel() {
+      console.log("Initializing WebChannel...");
+      new QWebChannel(qt.webChannelTransport, function (channel) {
+        console.log("Channel created, available objects:", Object.keys(channel.objects));
+        const backend = channel.objects.backend;
+
+        if (!backend) {
+          console.error("Backend not available!");
+          return;
+        }
+
+        if (!backend.dataChanged) {
+          console.error("dataChanged signal not available!");
+          return;
+        }
+
+        backend.dataChanged.connect(function (jsonData) {
+          try {
+            // Parse the JSON string back to an object
+            const data = JSON.parse(jsonData);
+            console.log("Data received:", data);
+            const el = document.getElementById("number");
+
+            if (!el) {
+              console.error("Element #number not found!");
+              return;
+            }
+
+            if (!data) {
+              console.error("Received null data!");
+              return;
+            }
+
+            if ("value" in data) {
+              el.textContent = data.value;
+            } else {
+              console.warn("Value property not found in data:", data);
+            }
+          } catch (error) {
+            console.error("Error parsing JSON data:", error, jsonData);
+          }
+        });
+
+        console.log("QWebChannel connected successfully!");
+      });
+    }
+
+    // Also initialize if the document is already loaded
+    if (document.readyState !== "loading") {
+      console.log("Document already loaded, initializing WebChannel...");
+      setTimeout(initWebChannel, 100);
+    }
+  </script>
+</body>
+</html>

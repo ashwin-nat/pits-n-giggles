@@ -85,8 +85,20 @@ class TelemetryWebServer:
         )
         self.m_app.config['PROPAGATE_EXCEPTIONS'] = False
 
-        self.m_sio: socketio.AsyncServer = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins="*")
-        self.m_sio_app: socketio.ASGIApp = socketio.ASGIApp(self.m_sio, self.m_app)
+        # Explicitly enable WebSocket support with proper configuration
+        self.m_sio: socketio.AsyncServer = socketio.AsyncServer(
+            async_mode='asgi',
+            cors_allowed_origins="*",
+            # Explicitly specify allowed transports
+            allow_upgrades=True,
+            transports=['websocket', 'polling']
+        )
+        self.m_sio_app: socketio.ASGIApp = socketio.ASGIApp(
+            self.m_sio,
+            self.m_app,
+            # Enable WebSocket for the ASGI application
+            socketio_path='/socket.io'
+        )
 
         # Define routes and socket handlers
         self.define_routes()
@@ -279,7 +291,11 @@ class TelemetryWebServer:
                 sid (str): Session ID of the connected client.
                 environ (Dict[str, Any]): Environment information for the connection.
             """
-            self.m_logger.debug("Client connected: %s", sid)
+            transport = environ.get('asgi.scope', {}).get('query_string', b'').decode('utf-8')
+            if self.m_debug_mode:
+                self.m_logger.debug("Client connected: %s with transport info: %s", sid, transport)
+            else:
+                self.m_logger.debug("Client connected: %s", sid)
 
         @self.m_sio.event
         async def disconnect(sid: str) -> None:
@@ -301,13 +317,16 @@ class TelemetryWebServer:
                 data (Dict[str, str]): Registration data containing client type.
             """
             self.m_logger.debug('Client registered. SID = %s Type = %s', sid, data['type'])
-            if (client_type := data['type']) in {'player-stream-overlay', 'race-table'}:
+            if (client_type := data['type']) in {'player-stream-overlay', 'race-table', 'on-screen-hud-overlay'}:
                 await self.m_sio.enter_room(sid, client_type)
                 if self.m_debug_mode:
                     self.m_logger.debug('Client %s joined room %s', sid, client_type)
 
                     room = self.m_sio.manager.rooms.get('/', {}).get(client_type)
                     self.m_logger.debug(f'Current members of {client_type}: {room}')
+            else:
+                self.m_logger.warning('Client %s tried to register with an invalid type: %s', sid, client_type)
+                await self.m_sio.disconnect(sid)
 
     def _defineDataEndpoints(self) -> None:
         """
@@ -411,11 +430,19 @@ class TelemetryWebServer:
 
         config = Config()
         config.bind = [f"0.0.0.0:{self.m_port}"]
+        # Enable WebSocket protocol
+        config.websocket_ping_interval = 25  # Keep connections alive
+        config.websocket_timeout = 60  # Longer timeout for WebSockets
+
         if not self.m_debug_mode:
             config.errorlog = None  # Disable error log output
             config.accesslog = None  # Disable access log output
             logging.getLogger("hypercorn.error").setLevel(logging.CRITICAL)   # Suppresses startup messages
             logging.getLogger("hypercorn.access").setLevel(logging.CRITICAL)  # Suppresses request logs
+        else:
+            # In debug mode, enable more verbose logs
+            config.loglevel = "DEBUG"
+
         await serve(self.m_sio_app, config, shutdown_trigger=self._shutdown_event.wait)
 
     async def stop(self) -> None:

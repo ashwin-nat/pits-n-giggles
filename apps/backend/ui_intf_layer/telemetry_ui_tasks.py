@@ -150,8 +150,5 @@ def _isRoomEmpty(sio: socketio.AsyncServer, room_name: str, namespace: Optional[
     Returns:
         bool: True if the room is empty, False otherwise
     """
-    # TODO: temp
-    if room_name == "on-screen-hud-overlay":
-        return False
     participants = list(sio.manager.get_participants(namespace, room_name))
     return not participants
