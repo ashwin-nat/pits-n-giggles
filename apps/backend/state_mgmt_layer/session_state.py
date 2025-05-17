@@ -972,6 +972,10 @@ class SessionState:
             DataPerDriver: The data object associated with the given index
         """
 
+        if index is None:
+            self.m_logger.error("Invalid index: None")
+            return None
+
         if not (obj := self.m_driver_data[index]) and create:
             self.m_logger.debug(f"Creating new DataPerDriver for index {index}")
             obj = DataPerDriver(self.m_session_info.m_total_laps)
