@@ -33,7 +33,7 @@ from lib.inter_task_communicator import AsyncInterTaskCommunicator
 
 from .telemetry_web_server import TelemetryWebServer
 
-# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+# -------------------------------------- TASKS -------------------------------------------------------------------------
 
 def initUiIntfLayer(
     port: int,
@@ -74,6 +74,8 @@ def initUiIntfLayer(
                                      name="Stream Overlay Update Task"))
     tasks.append(asyncio.create_task(frontEndMessageTask(web_server.m_sio),
                                      name="Front End Message Task"))
+    tasks.append(asyncio.create_task(onScreenHudOverlayUpdateTask(33, web_server.m_sio), # TODO: Make this configurable
+                                     name="On Screen HUD Overlay Update Task"))
     return web_server
 
 async def raceTableClientUpdateTask(update_interval_ms: int, sio: socketio.AsyncServer) -> None:
@@ -122,6 +124,21 @@ async def frontEndMessageTask(sio: socketio.AsyncServer) -> None:
         if message := await AsyncInterTaskCommunicator().receive("frontend-update"):
             await sio.emit('frontend-update', message.toJSON(), room="race-table")
 
+async def onScreenHudOverlayUpdateTask(update_interval_ms: int, sio: socketio.AsyncServer) -> None:
+    """Task to update clients with telemetry data
+    Args:
+        update_interval_ms (int): Update interval in milliseconds
+        sio (socketio.AsyncServer): The socketio server instance
+    """
+    sleep_duration = update_interval_ms / 1000
+    while True:
+        if not _isRoomEmpty(sio, "on-screen-hud-overlay"):
+            await sio.emit('on-screen-hud-overlay-update', TelWebAPI.PlayerOnScreenOverlayUpdate().toJSON(),
+                           room="on-screen-hud-overlay")
+        await asyncio.sleep(sleep_duration)
+
+# -------------------------------------- HELPER FUNCTIONS --------------------------------------------------------------
+
 def _isRoomEmpty(sio: socketio.AsyncServer, room_name: str, namespace: Optional[str] = '/') -> bool:
     """Check if a room is empty
 
@@ -133,5 +150,8 @@ def _isRoomEmpty(sio: socketio.AsyncServer, room_name: str, namespace: Optional[
     Returns:
         bool: True if the room is empty, False otherwise
     """
+    # TODO: temp
+    if room_name == "on-screen-hud-overlay":
+        return False
     participants = list(sio.manager.get_participants(namespace, room_name))
     return not participants

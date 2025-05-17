@@ -565,6 +565,30 @@ class PlayerTelemetryOverlayUpdate:
             "pace-comparison" : self.m_pace_comp_json,
         }
 
+class PlayerOnScreenOverlayUpdate:
+    """
+    Player on-screen overlay update class.
+    """
+
+    def __init__(self):
+        """Get the player on-screen overlay data and prep the fields
+        """
+
+        self.m_player_index = _session_state_ref.m_player_index
+        self.m_packet_motion = _session_state_ref.m_packet_motion if self.m_player_index is not None else None
+
+    def toJSON(self) -> Dict[str, Any]:
+        """Dump this object into JSON
+
+        Returns:
+            Dict[str, Any]: The JSON dump
+        """
+
+        return {
+            "player-index" : self.m_player_index,
+            "car-motion-data" : self.m_packet_motion.toJSON()["car-motion-data"] if self.m_packet_motion else [],
+        }
+
 # ------------------------- HELPER - CLASSES ---------------------------------------------------------------------------
 
 class DriversListRsp:

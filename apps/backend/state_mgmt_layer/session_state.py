@@ -188,6 +188,8 @@ class SessionState:
         m_udp_custom_marker_action_code (Optional[int]): The UDP action code for custom marker
         m_udp_tyre_delta_action_code (Optional[int]): The UDP action code for tyre delta notification
         m_process_car_setups (bool): Flag indicating whether to process car setups packets.
+        m_custom_markers_history (CustomMarkersHistory): An instance tracking custom markers history.
+        m_packet_motion (Optional[PacketMotionData]): A copy of the last saved motion packet
     """
 
     MAX_DRIVERS: int = 22
@@ -210,7 +212,8 @@ class SessionState:
         'm_overtakes_history',
         'm_session_info',
         'm_process_car_setups',
-        'm_custom_markers_history'
+        'm_custom_markers_history',
+        'm_packet_motion',
     ]
 
     def __init__(self,
@@ -239,6 +242,7 @@ class SessionState:
         self.m_time_trial_packet : Optional[PacketTimeTrialData] = None
         self.m_overtakes_history = OvertakesHistory()
         self.m_session_info: SessionInfo = SessionInfo()
+        self.m_packet_motion: Optional[PacketMotionData] = None
 
         # Config params
         self.m_process_car_setups: bool = process_car_setups
@@ -268,6 +272,7 @@ class SessionState:
         self.m_overtakes_history.clear()
         self.m_session_info.clear()
         self.m_custom_markers_history.clear()
+        self.m_packet_motion = None
 
         # No need to clear config params
 
@@ -582,9 +587,13 @@ class SessionState:
             packet (PacketMotionData): The motion update packet
         """
 
+        # Update the motion data for each car
         for index, motion_data in enumerate(packet.m_carMotionData):
             obj_to_be_updated = self._getObjectByIndex(index)
             obj_to_be_updated.m_packet_copies.m_packet_motion = motion_data
+
+        # Update the packet copy
+        self.m_packet_motion = packet
 
     def processCarSetupsUpdate(self, packet: PacketCarSetupData) -> None:
         """Process the car setup update packet and update the necessary fields
