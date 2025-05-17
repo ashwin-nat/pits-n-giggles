@@ -850,6 +850,10 @@ class SessionState:
         Returns:
             CustomMarkerEntry: The custom marker entry object for the player. None if any data points is not available
         """
+        # Check if player data is available
+        if self.m_player_index is None:
+            self.m_logger.debug("Player index is None. Cannot generate player_recorded_event_str")
+            return None
 
         if player_data := self._getObjectByIndex(self.m_player_index, create=False):
             # CSV string - <track>,<event-type>,<lap-num>,<sector-num>
@@ -972,9 +976,7 @@ class SessionState:
             DataPerDriver: The data object associated with the given index
         """
 
-        if index is None:
-            self.m_logger.error("Invalid index: None")
-            return None
+        assert index is not None, "Index cannot be None"
 
         if not (obj := self.m_driver_data[index]) and create:
             self.m_logger.debug(f"Creating new DataPerDriver for index {index}")
