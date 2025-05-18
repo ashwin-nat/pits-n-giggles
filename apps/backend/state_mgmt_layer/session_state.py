@@ -923,8 +923,9 @@ class SessionState:
         Returns:
             Optional[DataPerDriver]: The player driver data object
         """
-        return self._getObjectByIndex(self.m_player_index) if self.m_player_index is not None else None
-
+        if self.m_player_index is None:
+            return None
+        return self._getObjectByIndex(self.m_player_index, create=False)
 
     def getEventInfoStr(self) -> Optional[str]:
         """Returns a string with the following format
