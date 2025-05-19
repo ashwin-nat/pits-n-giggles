@@ -48,6 +48,18 @@
             ],
             "cwd": "${workspaceFolder}"
         },
+
+        {
+            "name": "HUD",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "apps.in_game_overlay.overlay_gui",
+            "console": "integratedTerminal",
+            "args": [
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+
         {
             "name": "Launcher - Module",
             "type": "debugpy",

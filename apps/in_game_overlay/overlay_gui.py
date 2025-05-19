@@ -22,15 +22,20 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import sys
-import random
 import json
-from PyQt6.QtCore import Qt, QUrl, QObject, pyqtSignal, QTimer
-from PyQt6.QtWidgets import QApplication, QMainWindow
-from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtWebEngineCore import QWebEnginePage
-from PyQt6.QtWebChannel import QWebChannel
+import random
+import sys
+import threading
 from pathlib import Path
+
+from PyQt6.QtCore import QObject, Qt, QTimer, QUrl, pyqtSignal
+from PyQt6.QtWebChannel import QWebChannel
+from PyQt6.QtWebEngineCore import QWebEnginePage
+from PyQt6.QtWebEngineWidgets import QWebEngineView
+from PyQt6.QtWidgets import QApplication, QMainWindow
+
+from apps.in_game_overlay.overlay_receiver import OverlayUpdateReceiver
+
 
 class BackendBridge(QObject):
     dataChanged = pyqtSignal(str)
@@ -74,7 +79,7 @@ class OverlayWindow(QMainWindow):
         self.view.setUrl(QUrl.fromLocalFile(str(html_path.resolve())))
 
         # Give page time to load before sending data
-        QTimer.singleShot(1000, self.start_data_timer)
+        # QTimer.singleShot(1000, self.start_data_timer)
 
     def start_data_timer(self):
         # Timer for sending data every second
@@ -82,11 +87,15 @@ class OverlayWindow(QMainWindow):
         self.timer.timeout.connect(self.send_random_data)
         self.timer.start(1000)
 
+    def on_data_update(self, data):
+        # Handle data received from JavaScript
+        self.bridge.send_data(data)
+
     def send_random_data(self):
         value = random.randint(0, 99)
         payload = {"value": value}
         print(f"Sending data: {payload}")
-        self.bridge.send_data(payload)
+        self.on_data_update(payload)
 
     def toggle_bordered_mode(self):
         if self.windowFlags() & Qt.WindowType.FramelessWindowHint:
@@ -106,9 +115,34 @@ class OverlayWindow(QMainWindow):
 
         self.show()  # Necessary to re-apply window flags
 
+def client_recv_thread(window: OverlayWindow, server_port: int = 4768):
+    """
+    Function to run the client receiver in a separate thread.
+
+    Args:
+        window (OverlayWindow): The overlay window instance.
+        server_port (int): The port number for the server connection.
+    """
+
+    server_url = f"http://localhost:{server_port}"
+    receiver = OverlayUpdateReceiver(server_url=server_url, logger=None)
+    receiver.register_event_handler(
+        event_name="on-screen-hud-overlay-update",
+        callback=lambda data: window.on_data_update(data))
+    receiver.run()
+
 if __name__ == "__main__":
+    port = 4768
     app = QApplication(sys.argv)
     window = OverlayWindow()
+
+    recv_thread = threading.Thread(
+        target=client_recv_thread,
+        args=(window,port),
+        daemon=True
+    )
+    recv_thread.start()
+
     # window.toggle_bordered_mode()
     window.show()
     sys.exit(app.exec())
