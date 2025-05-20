@@ -1,0 +1,101 @@
+:root {
+  --f1-red: #e10600;
+  --f1-black: #15151e;
+  --f1-white: #ffffff;
+  --player-color: #00ff00;
+  --opponent-color: #ff3838;
+  --radar-size: min(80vmin, 500px);
+  --car-size: 12px;
+  --grid-line-color: rgba(255, 255, 255, 0.1);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#radar-container {
+  width: var(--radar-size);
+  height: var(--radar-size);
+  position: relative;
+}
+
+#f1-radar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.radar-grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+
+.radar-grid-line {
+  position: absolute;
+  background-color: var(--grid-line-color);
+}
+
+.radar-grid-circle {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid var(--grid-line-color);
+}
+
+.radar-car {
+  position: absolute;
+  width: var(--car-size);
+  height: calc(var(--car-size) * 1.8);
+  transform: translate(-50%, -50%);
+  transition: all 0.2s ease-out;
+}
+
+.player-car {
+  background-color: var(--player-color);
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.7);
+  z-index: 10;
+}
+
+.opponent-car {
+  background-color: var(--opponent-color);
+  box-shadow: 0 0 8px rgba(255, 56, 56, 0.6);
+  z-index: 5;
+}
+
+.velocity-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.6;
+  transform-origin: center bottom;
+  pointer-events: none;
+}
+
+.player-car .velocity-indicator {
+  background: linear-gradient(to top, rgba(0, 255, 0, 0.5), transparent);
+}
+
+.opponent-car .velocity-indicator {
+  background: linear-gradient(to top, rgba(255, 56, 56, 0.5), transparent);
+}

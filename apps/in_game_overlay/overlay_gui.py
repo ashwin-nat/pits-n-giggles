@@ -36,6 +36,24 @@ from PyQt6.QtWidgets import QApplication, QMainWindow
 
 from apps.in_game_overlay.overlay_receiver import OverlayUpdateReceiver
 
+import logging
+import sys
+
+logger = logging.getLogger("overlay")
+logger.setLevel(logging.DEBUG)
+
+file_handler = logging.FileHandler("overlay.log", encoding="utf-8")
+file_handler.setLevel(logging.DEBUG)
+
+formatter = logging.Formatter(
+    "%(asctime)s [%(levelname)s] %(message)s",
+    "%Y-%m-%d %H:%M:%S"
+)
+file_handler.setFormatter(formatter)
+
+# Make sure we don't add multiple handlers
+if not logger.hasHandlers():
+    logger.addHandler(file_handler)
 
 class BackendBridge(QObject):
     dataChanged = pyqtSignal(str)
@@ -48,11 +66,19 @@ class BackendBridge(QObject):
 class CustomWebEnginePage(QWebEnginePage):
     def javaScriptConsoleMessage(self, level, message, line, sourceID):
         # Override the console message method
-        print(f"JS {message}")
+        logger.info(f"JS {message}")
 
 class OverlayWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, logger=None):
+        """
+        Initialize the overlay window.
+        Args:
+            logger (logging.Logger): Logger instance for logging messages.
+        """
         super().__init__()
+
+        self.logger = logger
+
         self.setWindowTitle("F1 HUD Overlay")
         self.setGeometry(100, 100, 500, 300)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
@@ -75,7 +101,8 @@ class OverlayWindow(QMainWindow):
         self.view.page().setWebChannel(self.channel)
 
         # Load HTML file
-        html_path = Path(__file__).parent / "overlay.html"
+        # html_path = Path(__file__).parent / "overlay.html"
+        html_path = Path(__file__).parent / "radar.html"
         self.view.setUrl(QUrl.fromLocalFile(str(html_path.resolve())))
 
         # Give page time to load before sending data
@@ -94,7 +121,7 @@ class OverlayWindow(QMainWindow):
     def send_random_data(self):
         value = random.randint(0, 99)
         payload = {"value": value}
-        print(f"Sending data: {payload}")
+        self.logger(f"Sending data: {payload}")
         self.on_data_update(payload)
 
     def toggle_bordered_mode(self):
@@ -115,34 +142,45 @@ class OverlayWindow(QMainWindow):
 
         self.show()  # Necessary to re-apply window flags
 
-def client_recv_thread(window: OverlayWindow, server_port: int = 4768):
+def client_recv_thread(window: OverlayWindow, server_port: int):
     """
     Function to run the client receiver in a separate thread.
 
     Args:
         window (OverlayWindow): The overlay window instance.
         server_port (int): The port number for the server connection.
+        logger (logging.Logger): Logger instance for logging messages.
     """
 
     server_url = f"http://localhost:{server_port}"
-    receiver = OverlayUpdateReceiver(server_url=server_url, logger=None)
+    receiver = OverlayUpdateReceiver(server_url=server_url, logger=logger)
     receiver.register_event_handler(
         event_name="on-screen-hud-overlay-update",
         callback=lambda data: window.on_data_update(data))
     receiver.run()
 
+def get_logger() -> logging.Logger:
+    """
+    Create a logger for the overlay.
+
+    Returns:
+        logging.Logger: Configured logger instance.
+    """
+
+
 if __name__ == "__main__":
+    logger.info("Starting overlay GUI...")
     port = 4768
     app = QApplication(sys.argv)
     window = OverlayWindow()
 
     recv_thread = threading.Thread(
         target=client_recv_thread,
-        args=(window,port),
+        args=(window, port),
         daemon=True
     )
     recv_thread.start()
 
-    # window.toggle_bordered_mode()
+    window.toggle_bordered_mode()
     window.show()
     sys.exit(app.exec())
