@@ -1,0 +1,38 @@
+name: Auto Respond to New Issues
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  respond:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add a comment to the issue
+        uses: peter-evans/issue-comment@v2
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          body: |
+            ### 🚨 **Thank you for submitting a bug report!** 🚨
+
+            Hi @${{ github.actor }}! Thanks for helping us improve **Pits n' Giggles**. 🏎️💨
+
+            We've received your report and will take a look at it soon. Here's what happens next:
+
+            ### 🛠️ **What we need from you:**
+            - If you haven't already, please ensure you have provided the following:
+              - Log file (`png.log`)  
+              - Screenshots (optional but helpful)
+              - **Steps to reproduce** — as specific as possible (e.g. which game mode, settings, etc.)
+
+            ### ⏳ **What’s next?**
+            - Our team will investigate the issue based on your provided information. If we need more details or clarification, we’ll reach out.
+            - Please allow up to **72 hours** for an initial response. If your issue is urgent, feel free to **@mention** us in a comment.
+
+            ### 🧑‍💻 **Next Steps:**
+            - Meanwhile, you can check the known issues and the FAQ in the [README](https://link_to_your_readme).
+            - Ensure your **Pits n' Giggles version** is up to date. Older versions may have bugs already fixed.
+
+            We'll do our best to fix this as soon as possible. Thanks for your patience!
+
+            **— Pits n' Giggles Team** 🚗💨
