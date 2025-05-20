@@ -210,7 +210,8 @@ class SessionState:
         'm_overtakes_history',
         'm_session_info',
         'm_process_car_setups',
-        'm_custom_markers_history'
+        'm_custom_markers_history',
+        'm_first_session_update_received',
     ]
 
     def __init__(self,
@@ -239,6 +240,7 @@ class SessionState:
         self.m_time_trial_packet : Optional[PacketTimeTrialData] = None
         self.m_overtakes_history = OvertakesHistory()
         self.m_session_info: SessionInfo = SessionInfo()
+        self.m_first_session_update_received: bool = False
 
         # Config params
         self.m_process_car_setups: bool = process_car_setups
@@ -266,6 +268,7 @@ class SessionState:
         self.m_fastest_s2_ms = None
         self.m_fastest_s3_ms = None
         self.m_overtakes_history.clear()
+        self.m_first_session_update_received = False
         self.m_session_info.clear()
         self.m_custom_markers_history.clear()
 
@@ -1049,6 +1052,18 @@ class SessionState:
         Args:
             packet (PacketSessionData): The incoming parsed packet object
         """
+
+        if not self.m_first_session_update_received:
+            # This is the first session update for this session. log the session info only once
+            self.m_first_session_update_received = True
+            self.m_logger.info("Session update received: "
+                               f"Game Year: {packet.m_header.m_gameYear}, "
+                               f"ID: {packet.m_header.m_sessionUID}, "
+                               f"Formula: {packet.m_formula}, "
+                               f"Track: {str(packet.m_trackId)}, "
+                               f"Session Type: {str(packet.m_sessionType)}, "
+                               f"Weather: {str(packet.m_weather)}, "
+                               f"Total Laps: {packet.m_totalLaps}, ")
 
         self.m_ideal_pit_stop_window = packet.m_pitStopWindowIdealLap
 
