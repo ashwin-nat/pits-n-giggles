@@ -1,38 +1,39 @@
-name: Auto Respond to New Issues
+name: Check Bug Report Fields
 
 on:
   issues:
     types: [opened]
 
 jobs:
-  respond:
+  check-missing-fields:
     runs-on: ubuntu-latest
     steps:
-      - name: Add a comment to the issue
-        uses: peter-evans/issue-comment@v2
+      - name: Check for missing fields in the bug report
+        uses: actions/github-script@v6
         with:
-          issue-number: ${{ github.event.issue.number }}
-          body: |
-            ### 🚨 **Thank you for submitting a bug report!** 🚨
+          script: |
+            const issue = context.payload.issue;
+            let missingFields = [];
 
-            Hi @${{ github.actor }}! Thanks for helping us improve **Pits n' Giggles**. 🏎️💨
+            // Check if required fields are missing
+            if (!issue.body.includes('**Log File**')) {
+              missingFields.push('Log File');
+            }
+            if (!issue.body.includes('**Steps to Reproduce**')) {
+              missingFields.push('Steps to Reproduce');
+            }
 
-            We've received your report and will take a look at it soon. Here's what happens next:
+            if (missingFields.length > 0) {
+              const comment = `Thanks for submitting your bug report! However, it looks like the following required fields are missing:
+              - ${missingFields.join(', ')}
+              
+              Please update your issue with the missing information. If you're unsure how to gather these, feel free to reach out! We'll get to your report once the information is complete.`;
 
-            ### 🛠️ **What we need from you:**
-            - If you haven't already, please ensure you have provided the following:
-              - Log file (`png.log`)  
-              - Screenshots (optional but helpful)
-              - **Steps to reproduce** — as specific as possible (e.g. which game mode, settings, etc.)
-
-            ### ⏳ **What’s next?**
-            - Our team will investigate the issue based on your provided information. If we need more details or clarification, we’ll reach out.
-            - Please allow up to **72 hours** for an initial response. If your issue is urgent, feel free to **@mention** us in a comment.
-
-            ### 🧑‍💻 **Next Steps:**
-            - Meanwhile, you can check the known issues and the FAQ in the [README](https://link_to_your_readme).
-            - Ensure your **Pits n' Giggles version** is up to date. Older versions may have bugs already fixed.
-
-            We'll do our best to fix this as soon as possible. Thanks for your patience!
-
-            **— Pits n' Giggles Team** 🚗💨
+              // Post the comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: comment
+              });
+            }
