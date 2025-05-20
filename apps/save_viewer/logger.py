@@ -24,7 +24,7 @@
 import logging
 
 png_logger = logging.getLogger("save_viewer")
-png_logger.setLevel(logging.DEBUG)
+png_logger.setLevel(logging.INFO)
 
 handler = logging.StreamHandler()
 formatter = logging.Formatter(

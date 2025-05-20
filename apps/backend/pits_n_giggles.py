@@ -56,8 +56,9 @@ class PngRunner:
         self.m_logger: logging.Logger = logger
         self.m_config = load_config(config_file, logger)
         self.m_tasks: List[asyncio.Task] = []
+        self.m_version: str = self._getVersion()
 
-        self.m_logger.info("PID=%d Starting the app with the following options:", os.getpid())
+        self.m_logger.info(f"PID={os.getpid()} Starting the app. Version {self.m_version}")
         self.m_logger.info(f"Python version {sys.version}")
         self.m_logger.info(self.m_config)
 
@@ -80,7 +81,7 @@ class PngRunner:
             disable_browser_autoload=self.m_config.disable_browser_autoload,
             stream_overlay_start_sample_data=self.m_config.stream_overlay_start_sample_data,
             tasks=self.m_tasks,
-            ver_str=self._getVersion(),
+            ver_str=self.m_version,
             debug_mode=debug_mode
         )
 

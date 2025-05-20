@@ -73,7 +73,7 @@ def sendRaceTable() -> None:
     """
     if len(_race_table_clients) > 0:
         _server.m_socketio.emit('race-table-update', getTelemetryInfo())
-        png_logger.info("Sending race table update")
+        png_logger.debug("Sending race table update")
 
 def getDeltaPlusPenaltiesPlusPit(
         delta: str,
@@ -631,8 +631,8 @@ class TelemetryWebServer:
                     f"Please check your project structure or run from the correct directory."
                 )
 
-        png_logger.info(f"Using base directory: {base_dir}")
-        png_logger.info(f"Templates directory: {base_dir / 'apps' / 'frontend' / 'html'}")
+        png_logger.debug(f"Using base directory: {base_dir}")
+        png_logger.debug(f"Templates directory: {base_dir / 'apps' / 'frontend' / 'html'}")
 
         # Initialize Flask app
         self.m_app = Flask(
@@ -668,7 +668,7 @@ class TelemetryWebServer:
             Returns:
                 str: HTML page content.
             """
-            return render_template('index.html', live_data_mode=False, version=self.m_ver_str)
+            return render_template('driver-view.html', live_data_mode=False, version=self.m_ver_str)
 
         # Define your endpoint
         @self.m_app.route('/telemetry-info')
@@ -1058,7 +1058,6 @@ def start_ui():
     global ui_initialized
     if not ui_initialized:
         ui_initialized = True  # Set flag to True
-        png_logger.info("UI thread")
         root = tk.Tk()
         root.title("F1 Post Race Analyzer")
 
@@ -1088,7 +1087,7 @@ def stdin_input_thread():
     """
     while True:
         if file_path := sys.stdin.readline().strip():
-            png_logger.info(f'Received line: {file_path}')
+            png_logger.debug(f'Received line: {file_path}')
             open_file_helper(file_path)
 
 def parseArgs() -> argparse.Namespace:
@@ -1127,7 +1126,7 @@ def start_thread(target):
 
 def main():
 
-    png_logger.info(f"cwd={os.getcwd()}")
+    png_logger.debug(f"cwd={os.getcwd()}")
     global g_port_number
     args = parseArgs()
 
@@ -1139,6 +1138,7 @@ def main():
         start_thread(start_ui)
 
     # Start Flask server after Tkinter UI is initialized
+    png_logger.info(f"Starting app with version {args.version}")
     png_logger.info(f"Starting server. It can be accessed at http://localhost:{str(g_port_number)} PID = {os.getpid()}")
     global _server
     _server = TelemetryWebServer(

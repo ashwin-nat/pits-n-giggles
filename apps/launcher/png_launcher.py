@@ -94,7 +94,7 @@ class PngLauncher(ConsoleInterface):
         sys.stdout = self
 
         # Initial log message
-        self.log("Pits n' Giggles started")
+        self.log(f"Pits n' Giggles started. Version: {self.version}")
 
     def create_custom_style(self):
         """Create custom styles for the application"""

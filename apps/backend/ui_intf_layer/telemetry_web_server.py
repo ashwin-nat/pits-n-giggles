@@ -189,7 +189,7 @@ class TelemetryWebServer:
             Returns:
                 str: Rendered HTML content for the index page.
             """
-            return await render_template('index.html', live_data_mode=True, version=self.m_ver_str)
+            return await render_template('driver-view.html', live_data_mode=True, version=self.m_ver_str)
 
         @self.m_app.route('/eng-view')
         async def engineerView() -> str:
