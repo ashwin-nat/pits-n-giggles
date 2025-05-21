@@ -25,16 +25,13 @@ SOFTWARE.
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
-import json
 import logging
-import os
 from datetime import datetime
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
-import aiofiles
-
 import apps.backend.state_mgmt_layer.telemetry_state as TelState
 import lib.race_analyzer as RaceAnalyzer
+from apps.backend.data_store_layer import writeDictToJsonFile
 from lib.button_debouncer import ButtonDebouncer
 from lib.f1_types import (F1PacketType, PacketCarDamageData,
                           PacketCarSetupData, PacketCarStatusData,
@@ -49,8 +46,6 @@ from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
                                          ITCMessage)
 from lib.telemetry_manager import AsyncF1TelemetryManager
 
-# -------------------------------------- TYPE DEFINITIONS --------------------------------------------------------------
-
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def setupTelemetryTask(
@@ -61,6 +56,7 @@ def setupTelemetryTask(
         udp_custom_action_code: Optional[int],
         udp_tyre_delta_action_code: Optional[int],
         forwarding_targets: List[Tuple[str, int]],
+        dir_map: Dict[str, str],
         tasks: List[asyncio.Task]) -> None:
     """Entry point to start the F1 telemetry server.
 
@@ -72,6 +68,7 @@ def setupTelemetryTask(
         udp_custom_action_code (Optional[int]): UDP custom action code.
         udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code.
         forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
+        dir_map (Dict[str, str]): Directory map for telemetry data.
         tasks (List[asyncio.Task]): List of tasks to be executed
     """
 
@@ -79,10 +76,11 @@ def setupTelemetryTask(
         port=port_number,
         forwarding_targets=forwarding_targets,
         logger=logger,
+        dir_map=dir_map,
         udp_custom_action_code=udp_custom_action_code,
         udp_tyre_delta_action_code=udp_tyre_delta_action_code,
         post_race_data_autosave=post_race_data_autosave,
-        replay_server=replay_server
+        replay_server=replay_server,
     )
     tasks.append(asyncio.create_task(telemetry_server.run(), name="Game Telemetry Listener Task"))
 
@@ -100,6 +98,7 @@ class F1TelemetryHandler:
         port: int,
         forwarding_targets: List[Tuple[str, int]],
         logger: logging.Logger,
+        dir_map: Dict[str, str],
         udp_custom_action_code: Optional[int] = None,
         udp_tyre_delta_action_code: Optional[int] = None,
         post_race_data_autosave: bool = False,
@@ -111,6 +110,7 @@ class F1TelemetryHandler:
             - port (int): The port number for telemetry.
             - forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
             - logger (logging.Logger): Logger
+            - dir_map (Dict[str, str]): Directory map for telemetry data.
             - udp_custom_action_code (Optional[int]): UDP custom action code.
             - udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code
             - post_race_data_autosave (bool): Save JSON file after race
@@ -124,7 +124,7 @@ class F1TelemetryHandler:
         self.m_logger: logging.Logger = logger
         self.m_session_state_ref: TelState.SessionState = TelState.getSessionStateRef()
 
-        self.g_directory_mapping: Dict[str, str] = {}
+        self.g_directory_mapping: Dict[str, str] = dir_map
         self.m_last_session_uid: Optional[int] = None
         self.m_data_cleared_this_session: bool = False
         self.g_udp_custom_action_code: Optional[int] = udp_custom_action_code
@@ -134,7 +134,6 @@ class F1TelemetryHandler:
         self.g_button_debouncer: ButtonDebouncer = ButtonDebouncer()
 
         self.m_should_forward: bool = bool(forwarding_targets)
-        self.initDirectories()
         self.registerCallbacks()
 
     async def run(self):
@@ -490,18 +489,6 @@ class F1TelemetryHandler:
         self.m_data_cleared_this_session = True
         self.g_final_classification_processed = False
 
-    async def writeDictToJsonFile(self, data_dict: Dict, file_name: str) -> None:
-        """
-        Write a dictionary containing JSON data to a file.
-
-        Parameters:
-        - data_dict (Dict): Dictionary containing JSON data.
-        - file_name (str): File name to write the data to.
-        """
-        json_str = json.dumps(data_dict, separators=(",", ":"))
-        async with aiofiles.open(file_name, 'w', encoding='utf-8') as json_file:
-            await json_file.write(json_str)
-
     async def postGameDumpToFile(self, final_json: Dict[str, Any]) -> None:
         """
         Write the contents of final_json and player recorded events to a file.
@@ -531,29 +518,7 @@ class F1TelemetryHandler:
             timestamp_str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
             final_json_file_name = self.g_directory_mapping['race-info'] + 'race_info_' + \
                     event_str + timestamp_str + '.json'
-            await self.writeDictToJsonFile(final_json, final_json_file_name)
+            await writeDictToJsonFile(final_json, final_json_file_name)
             self.m_logger.info("Wrote race info to %s", final_json_file_name)
         else:
             self.m_logger.debug("Not saving post race data")
-
-    def initDirectories(self) -> None:
-        """
-        Initialize the necessary directories for storing race information
-        This function creates a directory structure based on the current date if it does not already exist.
-        """
-        def ensureDirectoryExists(directory: str) -> None:
-            """
-            Ensure that the specified directory exists. If it doesn't, create it along with any missing parent directories.
-
-            Parameters:
-            - directory (str): The path of the directory to be checked or created.
-            """
-            if not os.path.exists(directory):
-                os.makedirs(directory, exist_ok=True)
-                self.m_logger.info("Directory '%s' created.", directory)
-
-        ts_prefix = datetime.now().strftime("%Y_%m_%d")
-        self.g_directory_mapping['race-info'] = f"data/{ts_prefix}/race-info/"
-
-        for directory in self.g_directory_mapping.values():
-            ensureDirectoryExists(directory)

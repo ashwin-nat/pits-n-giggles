@@ -24,7 +24,7 @@
 
 import asyncio
 import logging
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from .telemetry_forwarder import setupForwarder
 from .telemetry_handler import setupTelemetryTask
@@ -39,6 +39,7 @@ def initTelemetryLayer(
         udp_custom_action_code: Optional[int],
         udp_tyre_delta_action_code: Optional[int],
         forwarding_targets: List[Tuple[str, int]],
+        dir_map: Dict[str, str],
         tasks: List[asyncio.Task]) -> None:
     """Initialize the telemetry layer
 
@@ -50,6 +51,7 @@ def initTelemetryLayer(
         udp_custom_action_code (Optional[int]): UDP custom action code.
         udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code.
         forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
+        dir_map (Dict[str, str]): Directory map for telemetry data.
         tasks (List[asyncio.Task]): List of tasks to be executed
     """
 
@@ -57,6 +59,7 @@ def initTelemetryLayer(
         port_number=port_number,
         replay_server=replay_server,
         logger=logger,
+        dir_map=dir_map,
         post_race_data_autosave=post_race_data_autosave,
         udp_custom_action_code=udp_custom_action_code,
         udp_tyre_delta_action_code=udp_tyre_delta_action_code,

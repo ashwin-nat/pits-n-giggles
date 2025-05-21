@@ -36,6 +36,7 @@ from apps.backend.common.png_logger import initLogger
 from apps.backend.state_mgmt_layer import initStateManagementLayer
 from apps.backend.telemetry_layer import initTelemetryLayer
 from apps.backend.ui_intf_layer import TelemetryWebServer, initUiIntfLayer
+from apps.backend.data_store_layer import initDataStoreLayer
 from lib.pid_report import report_pid_from_child
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
@@ -62,6 +63,8 @@ class PngRunner:
         self.m_logger.info(f"Python version {sys.version}")
         self.m_logger.info(self.m_config)
 
+        dir_map = initDataStoreLayer(self.m_logger)
+
         initStateManagementLayer(logger=self.m_logger, process_car_setups=self.m_config.process_car_setup)
 
         initTelemetryLayer(
@@ -72,6 +75,7 @@ class PngRunner:
             udp_custom_action_code=self.m_config.udp_custom_action_code,
             udp_tyre_delta_action_code=self.m_config.udp_tyre_delta_action_code,
             forwarding_targets=self.m_config.forwarding_targets,
+            dir_map=dir_map,
             tasks=self.m_tasks
         )
         self.m_web_server = self._setupUiIntfLayer(
