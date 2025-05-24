@@ -1,0 +1,68 @@
+erDiagram
+    GameVersion {
+        int id PK
+        string title
+    }
+
+    Team {
+        int id PK
+        string canonical_name
+    }
+
+    TeamAlias {
+        int id PK
+        int team_id FK
+        int game_version_id FK
+        string alias_name
+    }
+
+    DrivingSession {
+        int id PK
+        int team_id FK
+        int game_version_id FK
+        string track
+        string game_mode
+        string car
+        int distance_m
+        int distance_laps
+        datetime session_date
+        int start_position
+        int finish_position
+        int laps_led
+        int lap_distance_m
+    }
+
+    SessionTyreDistance {
+        int id PK
+        int session_id FK
+        string actual_compound
+        string visual_compound
+        int distance_m
+        int distance_laps
+    }
+
+    SessionWeatherDistance {
+        int id PK
+        int session_id FK
+        string weather_type
+        int distance_m
+        int distance_laps
+    }
+
+    %% Relationships
+    GameVersion ||--o{ TeamAlias : "has many"
+    GameVersion ||--o{ DrivingSession : "has many"
+
+    Team ||--o{ TeamAlias : "has many"
+    Team ||--o{ DrivingSession : "has many"
+
+    TeamAlias }o--|| Team : "belongs to"
+    TeamAlias }o--|| GameVersion : "belongs to"
+
+    DrivingSession }o--|| Team : "belongs to"
+    DrivingSession }o--|| GameVersion : "belongs to"
+    DrivingSession ||--o{ SessionTyreDistance : "has many"
+    DrivingSession ||--o{ SessionWeatherDistance : "has many"
+
+    SessionTyreDistance }o--|| DrivingSession : "belongs to"
+    SessionWeatherDistance }o--|| DrivingSession : "belongs to"
