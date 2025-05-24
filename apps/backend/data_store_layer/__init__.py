@@ -22,14 +22,12 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .history_tracker import HistoricDistanceTracker
 from .data_store_layer_init import initDataStoreLayer
 from .session_save import writeDictToJsonFile
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    "HistoricDistanceTracker",
 
     "initDataStoreLayer",
 
