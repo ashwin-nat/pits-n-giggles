@@ -63,7 +63,7 @@ class PngRunner:
         self.m_logger.info(f"Python version {sys.version}")
         self.m_logger.info(self.m_config)
 
-        dir_map = initDataStoreLayer(self.m_logger)
+        dir_map = initDataStoreLayer(self.m_logger, self.m_tasks)
 
         initStateManagementLayer(logger=self.m_logger, process_car_setups=self.m_config.process_car_setup)
 

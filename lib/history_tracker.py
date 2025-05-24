@@ -24,6 +24,7 @@
 
 import asyncio
 import datetime
+import logging
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -195,15 +196,17 @@ class SessionWeatherDistance(Base):
     def __repr__(self):
         return f"<SessionWeatherDistance(id={self.id}, session_id={self.session_id}, weather_type='{self.weather_type}', distance_laps={self.distance_laps})>"
 
-
 class RacingDatabase:
-    def __init__(self, db_url: str = 'sqlite+aiosqlite:///racing_data.db'):
+    def __init__(self, logger: Optional[logging.Logger] = None, db_name: Optional[str] = 'png'):
         """
         Initialize the racing database.
 
         Args:
-            db_url: The SQLAlchemy database URL. Default is an async SQLite database.
+            logger: Logger to use for logging.
+            db_name: Name of the database file to create. (without extension)
         """
+        db_url = f'sqlite+aiosqlite:///{db_name}.db'
+        self.logger = logger
         self.engine = create_async_engine(db_url, echo=False)
         self.async_session = sessionmaker(
             self.engine, expire_on_commit=False, class_=AsyncSession

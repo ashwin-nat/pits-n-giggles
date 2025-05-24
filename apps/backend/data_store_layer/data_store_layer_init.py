@@ -22,15 +22,24 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .dir_layout import initDirectories
-from typing import Dict
+import asyncio
 import logging
+from typing import Dict, List
+
+from .dir_layout import initDirectories
+from lib.history_tracker import RacingDatabase
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def initDataStoreLayer(logger: logging.Logger) -> Dict[str, str]:
+async def initDB(logger: logging.Logger) -> None:
+
+    db = RacingDatabase(logger)
+    await db.create_tables()
+
+def initDataStoreLayer(logger: logging.Logger, tasks: List[asyncio.Task]) -> Dict[str, str]:
     """
     Initialize the data store.
     """
 
+    tasks.append(asyncio.create_task(initDB(logger), name="DB init task"))
     return initDirectories(logger)
