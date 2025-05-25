@@ -1323,6 +1323,7 @@ class PacketSessionData:
             self.m_sliProNativeSupport,
             self.m_numMarshalZones,
         ) = unpacked_data
+        self.m_isSpectating = bool(self.m_isSpectating)
         if WeatherForecastSample.WeatherCondition.isValid(self.m_weather):
             self.m_weather = WeatherForecastSample.WeatherCondition(self.m_weather)
         if TrackID.isValid(self.m_trackId):

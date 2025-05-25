@@ -367,6 +367,7 @@ class PacketParticipantsData:
         # Iterate over packet[1:] in steps of packet_len,
         # creating ParticipantData objects for each segment and passing the game year.
 
+        # TODO: dont construct the objects for cars that are not active, since they are going to be discarded anyway
         self.m_participants.extend(
             ParticipantData(packet[i:i + packet_len], header.m_gameYear)
             for i in range(1, len(packet), packet_len)

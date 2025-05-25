@@ -159,6 +159,7 @@ class SessionInfo:
         self.m_total_laps = packet.m_totalLaps
         self.m_packet_session = packet
         self.m_is_spectating = packet.m_isSpectating
+        self.m_spectator_car_index = packet.m_spectatorCarIndex
         self.m_game_year = packet.m_header.m_gameYear
         self.m_safety_car_status = packet.m_safetyCarStatus
         return ret_status
@@ -391,16 +392,13 @@ class SessionState:
             packet (PacketParticipantsData): Participants update packet
         """
 
+        self.m_player_index = packet.m_header.m_playerCarIndex if packet.m_header.m_playerCarIndex != 255 else None
         for index, participant in enumerate(packet.m_participants):
             obj_to_be_updated = self._getObjectByIndex(index)
             obj_to_be_updated.m_driver_info.name = participant.m_name
             obj_to_be_updated.m_driver_info.team = str(participant.m_teamId)
             obj_to_be_updated.m_driver_info.driver_number = participant.m_raceNumber
-            if (index == packet.m_header.m_playerCarIndex):
-                obj_to_be_updated.m_driver_info.is_player = True
-                self.m_player_index = index
-            else:
-                obj_to_be_updated.m_driver_info.is_player = False
+            obj_to_be_updated.m_driver_info.is_player = (index == packet.m_header.m_playerCarIndex)
             obj_to_be_updated.m_driver_info.telemetry_restrictions = participant.m_yourTelemetry
             obj_to_be_updated.m_packet_copies.m_packet_particpant_data = participant
 
