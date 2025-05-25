@@ -156,6 +156,7 @@ class RaceInfoUpdate:
         )
 
         # Supporting only single player entry, split screen unsupported. player_entry should've been found by now
+        # Move this logic to front end. this is UI's job, no need to overload backend
         if player_entry:
             player_last_lap = player_entry["lap-info"]["last-lap"]
             player_best_lap = player_entry["lap-info"]["best-lap"]
