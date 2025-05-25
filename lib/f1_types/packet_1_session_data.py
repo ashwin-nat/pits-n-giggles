@@ -1207,6 +1207,7 @@ class PacketSessionData:
             return self.name
 
     def __init__(self, header: PacketHeader, data: bytes) -> None:
+        # sourcery skip: low-code-quality
         """Construct a PacketSessionData object
 
         Args:
@@ -1302,7 +1303,7 @@ class PacketSessionData:
         else:
             self.m_maxWeatherForecastSamples = self.F1_24_MAX_NUM_WEATHER_FORECAST_SAMPLES
         # First, section 0
-        section_0_raw_data = data[0:self.PACKET_LEN_SECTION_0]
+        section_0_raw_data = data[:self.PACKET_LEN_SECTION_0]
         byte_index_so_far = self.PACKET_LEN_SECTION_0
         unpacked_data = struct.unpack(self.PACKET_FORMAT_SECTION_0, section_0_raw_data)
         (
@@ -1424,9 +1425,9 @@ class PacketSessionData:
         if RuleSet.isValid(self.m_ruleSet):
             self.m_ruleSet = RuleSet(self.m_ruleSet)
 
+        self.m_weekendStructure = [0] * 12
         # Section 5 - F1 24 specific stuff
         if header.m_gameYear == 24:
-            self.m_weekendStructure = [0] * 12
             section_5_raw_data = data[byte_index_so_far:byte_index_so_far + self.PACKET_LEN_SECTION_5]
             unpacked_data = struct.unpack(self.PACKET_FORMAT_SECTION_5, section_5_raw_data)
             (
@@ -1500,7 +1501,6 @@ class PacketSessionData:
             self.m_affectsLicenceLevelSolo = 0
             self.m_affectsLicenceLevelMP = 0
             self.m_numSessionsInWeekend = 0
-            self.m_weekendStructure = [0] * 12
             self.m_sector2LapDistanceStart = 0.0
             self.m_sector3LapDistanceStart = 0.0
 
