@@ -133,6 +133,11 @@ class SessionInfo:
         self.m_packet_session = None
         self.m_game_year = None
 
+    @property
+    def is_valid(self) -> bool:
+        """Checks if the SessionInfo object is valid (contains data) """
+        return self.m_packet_session
+
     def processSessionUpdate(self, packet: PacketSessionData) -> bool:
         """Populates the fields from the session data packet
         Args:
@@ -276,6 +281,12 @@ class SessionState:
         # No need to clear config params
 
         self.m_logger.debug(f"Clearing all data structures. Reason: {reason}")
+
+    @property
+    def is_data_available(self) -> bool:
+        """Checks if data is available for at least one driver
+        """
+        return self.m_session_info.is_valid and (sum(obj and obj.is_valid for obj in self.m_driver_data) > 0)
 
     def setRaceOngoing(self) -> None:
         """
@@ -1058,6 +1069,7 @@ class SessionState:
                                f"Game Year: {packet.m_header.m_gameYear}, "
                                f"ID: {packet.m_header.m_sessionUID}, "
                                f"Formula: {packet.m_formula}, "
+                               f"Game mode: {packet.m_gameMode}, "
                                f"Track: {str(packet.m_trackId)}, "
                                f"Session Type: {str(packet.m_sessionType)}, "
                                f"Weather: {str(packet.m_weather)}, "

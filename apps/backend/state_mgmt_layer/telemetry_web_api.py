@@ -683,7 +683,7 @@ class DriversListRsp:
         """
 
         # Player index can never be none, since the player always an index, even if a spectator (for Lobby packet)
-        if (_session_state_ref.m_player_index is None) or (_session_state_ref.m_num_active_cars is None):
+        if not _session_state_ref.is_data_available:
             return
 
         # Update the list data
