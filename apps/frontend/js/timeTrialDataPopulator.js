@@ -44,18 +44,17 @@ class TimeTrialTtDataPopulator {
     }
 
     clearCells() {
+        this.totalTimeCell.textContent = '---';
+        this.s1Cell.textContent = '---';
+        this.s2Cell.textContent = '---';
+        this.s3Cell.textContent = '---';
+        this.validCell.textContent = '---';
 
-        this.totalTimeCell = '---';
-        this.s1Cell = '---';
-        this.s2Cell = '---';
-        this.s3Cell = '---';
-        this.validCell = '---';
-
-        this.tcCell = '---';
-        this.absCell = '---';
-        this.gearboxCell = '---';
-        this.eqPerfCell = '---';
-        this.custSetupCell = '---';
+        this.tcCell.textContent = '---';
+        this.absCell.textContent = '---';
+        this.gearboxCell.textContent = '---';
+        this.eqPerfCell.textContent = '---';
+        this.custSetupCell.textContent = '---';
     }
 
     populateCells(ttPacket) {
