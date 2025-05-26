@@ -18,7 +18,7 @@ class TelemetryRenderer {
     this.uiMode = 'Splash';
   }
 
-  renderTelemetryRow(data, gameYear, isLiveDataMode, raceEnded) {
+  renderTelemetryRow(data, gameYear, isLiveDataMode, raceEnded, spectatorIndex) {
     const { 'driver-info': driverInfo } = data;
     const row = document.createElement('tr');
 
@@ -26,16 +26,17 @@ class TelemetryRenderer {
     new RaceTableRowPopulator(row, data, gameYear, isLiveDataMode, this.iconCache, raceEnded).populate();
 
     // Apply CSS classes based on row state
-    const cssClasses = this.determineRowClasses(driverInfo, isLiveDataMode);
+    const cssClasses = this.determineRowClasses(driverInfo, isLiveDataMode, spectatorIndex);
     row.classList.add(...cssClasses);
 
     return row;
   }
 
-  determineRowClasses(driverInfo, isLiveDataMode) {
+  determineRowClasses(driverInfo, isLiveDataMode, spectatorIndex) {
     const classes = [];
 
-    if (driverInfo['is-player']) {
+    if ((spectatorIndex !== null && driverInfo['index'] === spectatorIndex) ||
+        (spectatorIndex === null && driverInfo['is-player'])) {
       classes.push('player-row');
     }
 
@@ -98,8 +99,8 @@ class TelemetryRenderer {
   }
 
   // Update or create row based on existing data
-  updateOrCreateRow(row, data, gameYear, isLiveDataMode, driverIndex, raceEnded) {
-    const newRow = this.renderTelemetryRow(data, gameYear, isLiveDataMode, raceEnded);
+  updateOrCreateRow(row, data, gameYear, isLiveDataMode, driverIndex, raceEnded, spectatorIndex) {
+    const newRow = this.renderTelemetryRow(data, gameYear, isLiveDataMode, raceEnded, spectatorIndex);
     if (row) {
       row.innerHTML = newRow.innerHTML;
     } else {
@@ -113,10 +114,17 @@ class TelemetryRenderer {
     this.setUIMode('Race');
     const isLiveDataMode = incomingData["live-data"];
     const raceEnded = incomingData["race-ended"];
+    const spectatorMode = incomingData["is-spectating"];
+    const spectatorCarIndex = incomingData["spectator-car-index"];
     this.setDeltaColumnState(isLiveDataMode);
     this.setFuelColumnState(isLiveDataMode);
 
     const tableEntries = this.getRelevantRaceTableRows(incomingData);
+    updateReferenceLapTimes(tableEntries,
+      (spectatorMode) ?
+      ((entry) => entry["driver-info"]?.["index"] == spectatorCarIndex) :
+      ((entry) => entry["driver-info"]?.["is-player"])
+    );
     const gameYear = incomingData["f1-game-year"];
     this.indexByPosition = incomingData["table-entries"].map(entry => entry["driver-info"]["index"]);
 
@@ -128,7 +136,7 @@ class TelemetryRenderer {
     tableEntries.forEach(data => {
       const driverIndex = data["driver-info"]["index"];
       let row = driverRowMap.get(driverIndex);
-      row = this.updateOrCreateRow(row, data, gameYear, isLiveDataMode, driverIndex, raceEnded);
+      row = this.updateOrCreateRow(row, data, gameYear, isLiveDataMode, driverIndex, raceEnded, spectatorCarIndex);
       this.telemetryTable.appendChild(row);
     });
     // Rows not referenced in tableEntries will be left out

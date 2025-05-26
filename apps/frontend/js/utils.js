@@ -303,3 +303,44 @@ function shootConfetti(durationMs) {
             }));
     }, 250);
 }
+
+function updateReferenceLapTimes(tableEntriesJson, matchFn = (entry) => entry["driver-info"]?.["is-player"]) {
+  const referenceEntry = tableEntriesJson.find(matchFn);
+
+  if (referenceEntry) {
+    const refLastLap = referenceEntry["lap-info"]["last-lap"];
+    const refBestLap = referenceEntry["lap-info"]["best-lap"];
+    const referenceIndex = referenceEntry["driver-info"]?.["index"];
+
+    tableEntriesJson.forEach((tableEntry) => {
+      const isReference = tableEntry["driver-info"]?.["index"] === referenceIndex;
+
+      const lastLap = tableEntry["lap-info"]["last-lap"];
+      const bestLap = tableEntry["lap-info"]["best-lap"];
+
+      if (isReference) {
+        // Copy from self
+        lastLap["lap-time-ms-player"] = lastLap["lap-time-ms"];
+        lastLap["s1-time-ms-player"] = lastLap["s1-time-ms"];
+        lastLap["s2-time-ms-player"] = lastLap["s2-time-ms"];
+        lastLap["s3-time-ms-player"] = lastLap["s3-time-ms"];
+
+        bestLap["lap-time-ms-player"] = bestLap["lap-time-ms"];
+        bestLap["s1-time-ms-player"] = bestLap["s1-time-ms"];
+        bestLap["s2-time-ms-player"] = bestLap["s2-time-ms"];
+        bestLap["s3-time-ms-player"] = bestLap["s3-time-ms"];
+      } else {
+        // Copy from reference
+        lastLap["lap-time-ms-player"] = refLastLap["lap-time-ms"];
+        lastLap["s1-time-ms-player"] = refLastLap["s1-time-ms"];
+        lastLap["s2-time-ms-player"] = refLastLap["s2-time-ms"];
+        lastLap["s3-time-ms-player"] = refLastLap["s3-time-ms"];
+
+        bestLap["lap-time-ms-player"] = refBestLap["lap-time-ms"];
+        bestLap["s1-time-ms-player"] = refBestLap["s1-time-ms"];
+        bestLap["s2-time-ms-player"] = refBestLap["s2-time-ms"];
+        bestLap["s3-time-ms-player"] = refBestLap["s3-time-ms"];
+      }
+    });
+  }
+}

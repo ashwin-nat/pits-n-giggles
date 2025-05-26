@@ -164,7 +164,7 @@ class SessionInfo:
         self.m_total_laps = packet.m_totalLaps
         self.m_packet_session = packet
         self.m_is_spectating = packet.m_isSpectating
-        self.m_spectator_car_index = packet.m_spectatorCarIndex
+        self.m_spectator_car_index = packet.m_spectatorCarIndex if packet.m_spectatorCarIndex != 255 else None
         self.m_game_year = packet.m_header.m_gameYear
         self.m_safety_car_status = packet.m_safetyCarStatus
         return ret_status
