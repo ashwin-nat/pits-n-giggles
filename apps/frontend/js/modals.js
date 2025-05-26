@@ -9,7 +9,9 @@ class ModalManager {
     this.setupEventListeners();
     console.log("Modal manager initialized with driverModal:", driverModal,
       "settingsModal:", settingsModal, "raceStatsModal:", raceStatsModal);
-    this.toggleFuelTargetShowSetting(g_pref_showFuelTarget);
+    if(settingsModal) {
+      this.toggleFuelTargetShowSetting(g_pref_showFuelTarget);
+    }
   }
 
   setupEventListeners() {

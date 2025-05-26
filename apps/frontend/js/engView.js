@@ -523,7 +523,7 @@ class EngViewWeatherTable {
     }
 
     update(weatherData) {
-        const sessionWeather = transformForecast(weatherData)[0];
+        const sessionWeather = (weatherData.length === 0) ? [] : transformForecast(weatherData)[0];
         // Limit to first 5 entries
         const limitedData = sessionWeather.slice(0, 5);
 
