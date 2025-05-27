@@ -26,8 +26,8 @@ from enum import Enum
 from typing import Any, Dict, List, Union
 
 from .common import (GameMode, GearboxAssistMode, PacketHeader,
-                     PacketParsingError, RuleSet, SafetyCarType, SessionLength,
-                     SessionType23, SessionType24, TrackID)
+                     RuleSet, SafetyCarType, SessionLength,
+                     SessionType23, SessionType24, TrackID, _validate_parse_fixed_segments)
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -1339,25 +1339,14 @@ class PacketSessionData:
             self.m_formula = PacketSessionData.FormulaType(self.m_formula)
 
         # Next section 1, marshalZones
-        section_1_size = MarshalZone.PACKET_LEN * self.m_maxMarshalZones
-        section_1_raw_data = data[byte_index_so_far:byte_index_so_far + section_1_size]
-        byte_index_so_far += section_1_size
-
-        # Validate marshal zones
-        expected_marshal_len = self.m_numMarshalZones * MarshalZone.PACKET_LEN
-        if section_1_size < expected_marshal_len:
-            raise PacketParsingError(
-                f"Insufficient marshal zone data: expected {expected_marshal_len} bytes, "
-                f"got {len(section_1_raw_data)} bytes for {self.m_numMarshalZones} zones"
-            )
-
-        # Iterate over section_1_raw_data in steps of MarshalZone.PACKET_LEN,
-        # creating MarshalZone objects for each segment.
-        self.m_marshalZones = [
-            MarshalZone(section_1_raw_data[i:i + MarshalZone.PACKET_LEN])
-            for i in range(0, self.m_numMarshalZones * MarshalZone.PACKET_LEN, MarshalZone.PACKET_LEN)
-        ]
-        section_1_raw_data = None
+        self.m_marshalZones, byte_index_so_far = _validate_parse_fixed_segments(
+            data=data,
+            offset=byte_index_so_far,
+            item_cls=MarshalZone,
+            item_len=MarshalZone.PACKET_LEN,
+            count=self.m_numMarshalZones,
+            max_count=self.m_maxMarshalZones,
+        )
 
         # Section 2, till numWeatherForecastSamples
         section_2_raw_data = data[byte_index_so_far:byte_index_so_far + self.PACKET_LEN_SECTION_2]
@@ -1373,26 +1362,16 @@ class PacketSessionData:
         section_2_raw_data = None
 
         # Section 3 - weather forecast samples
-        section_3_size = WeatherForecastSample.PACKET_LEN * self.m_maxWeatherForecastSamples
-        section_3_raw_data = data[byte_index_so_far:byte_index_so_far + section_3_size]
-        byte_index_so_far += section_3_size
+        self.m_weatherForecastSamples, byte_index_so_far = _validate_parse_fixed_segments(
+            data=data,
+            offset=byte_index_so_far,
+            item_cls=WeatherForecastSample,
+            item_len=WeatherForecastSample.PACKET_LEN,
+            count=self.m_numWeatherForecastSamples,
+            max_count=self.m_maxWeatherForecastSamples,
+            game_year=header.m_gameYear
+        )
 
-        # Validate weather forecast data
-        expected_weather_len = self.m_numWeatherForecastSamples * WeatherForecastSample.PACKET_LEN
-        if section_3_size < expected_weather_len:
-            raise PacketParsingError(
-                f"Insufficient weather forecast data: expected {expected_weather_len} bytes, "
-                f"got {len(section_3_raw_data)} bytes for {self.m_numWeatherForecastSamples} samples"
-            )
-
-        # Iterate over section_3_raw_data in steps of WeatherForecastSample.PACKET_LEN,
-        # creating WeatherForecastSample objects for each segment of data.
-        self.m_weatherForecastSamples = [
-            WeatherForecastSample(section_3_raw_data[i:i + WeatherForecastSample.PACKET_LEN], header.m_gameYear)
-            for i in range(0, self.m_numWeatherForecastSamples * WeatherForecastSample.PACKET_LEN,
-                           WeatherForecastSample.PACKET_LEN)
-        ]
-        section_3_raw_data = None
 
         # Section 4 - rest of the packet
         section_4_raw_data = data[byte_index_so_far:byte_index_so_far + self.PACKET_LEN_SECTION_4]

@@ -286,7 +286,7 @@ class SessionState:
     def is_data_available(self) -> bool:
         """Checks if data is available for at least one driver
         """
-        return self.m_session_info.is_valid and (sum(obj and obj.is_valid for obj in self.m_driver_data) > 0)
+        return self.m_session_info.is_valid and any(obj and obj.is_valid for obj in self.m_driver_data)
 
     def setRaceOngoing(self) -> None:
         """

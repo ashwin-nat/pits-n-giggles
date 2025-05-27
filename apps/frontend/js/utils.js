@@ -304,6 +304,12 @@ function shootConfetti(durationMs) {
     }, 250);
 }
 
+/**
+ * mutate the input JSON and inserts reference lap times into every driver object
+ * @param {Array} tableEntriesJson - Array of table entry objects.
+ * @param {Function} matchFn - Function to identify the reference entry.
+ * @returns {Array} New array with updated lap times.
+ */
 function updateReferenceLapTimes(tableEntriesJson, matchFn = (entry) => entry["driver-info"]?.["is-player"]) {
   const referenceEntry = tableEntriesJson.find(matchFn);
 

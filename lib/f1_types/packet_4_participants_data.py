@@ -24,7 +24,7 @@
 import struct
 from typing import Any, Dict, List, Optional, Union
 
-from .common import (Nationality, PacketHeader, PacketParsingError, Platform,
+from .common import (Nationality, PacketHeader, _validate_parse_fixed_segments, Platform,
                      TeamID23, TeamID24, TelemetrySetting)
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -348,7 +348,7 @@ class PacketParticipantsData:
                 The length of m_participants should not exceed max_participants.
     """
 
-    max_participants = 22
+    MAX_PARTICIPANTS = 22
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
         """
         Initializes a PacketParticipantsData object by unpacking the provided binary data.
@@ -363,25 +363,17 @@ class PacketParticipantsData:
 
         self.m_header: PacketHeader = header         # PacketHeader
         self.m_numActiveCars: int = struct.unpack("<B", packet[:1])[0]
-        self.m_participants: List[ParticipantData] = []            # ParticipantData[22]
         packet_len = ParticipantData.PACKET_LEN_23 if (header.m_gameYear == 23) else ParticipantData.PACKET_LEN_24
 
-        # Validate packet size
-        expected_participant_data_len = self.m_numActiveCars * packet_len
-        available_data_len = len(packet) - 1  # -1 for the first byte
-        if available_data_len < expected_participant_data_len:
-            raise PacketParsingError(
-                f"Insufficient participant data: expected {expected_participant_data_len} bytes, "
-                f"got {available_data_len} bytes for {self.m_numActiveCars} active cars"
-            )
-
-        # Iterate over packet[1:] in steps of packet_len,
-        # creating ParticipantData objects for each segment and passing the game year.
-
-        # Only construct ParticipantData for active cars
-        self.m_participants.extend(
-            ParticipantData(packet[i:i + packet_len], header.m_gameYear)
-            for i in range(1, 1 + self.m_numActiveCars * packet_len, packet_len)
+        self.m_participants: List[ParticipantData]
+        self.m_participants, _ = _validate_parse_fixed_segments(
+            data=packet,
+            offset=1,
+            item_cls=ParticipantData,
+            item_len=packet_len,
+            count=self.m_numActiveCars,
+            max_count=self.MAX_PARTICIPANTS,
+            game_year=header.m_gameYear
         )
 
     def __str__(self) -> str:
