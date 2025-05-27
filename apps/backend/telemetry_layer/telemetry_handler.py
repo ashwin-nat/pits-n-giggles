@@ -304,6 +304,7 @@ class F1TelemetryHandler:
                             )
                         )
 
+            # ------------ PROFILER MODE --------------
             # Uncomment the below lines for profiling - Kill the process after one session
             # # Cancel all tasks except itself
             # import asyncio

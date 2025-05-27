@@ -1,11 +1,12 @@
 class RaceTableRowPopulator {
-    constructor(row, rowData, gameYear, isLiveDataMode, iconCache, raceEnded) {
+    constructor(row, rowData, gameYear, isLiveDataMode, iconCache, raceEnded, spectatorIndex) {
         this.row = row;
         this.rowData = rowData;
         this.gameYear = gameYear;
         this.isLiveDataMode = isLiveDataMode;
         this.iconCache = iconCache;
         this.raceEnded = raceEnded;
+        this.spectatorIndex = spectatorIndex;
     }
 
     populate() {
@@ -78,48 +79,37 @@ class RaceTableRowPopulator {
 
     // Repeat similar patterns for other add functions
     addBestLapInfo() {
-        const isSpectating = this.rowData["driver-info"]["is-spectating"];
         const isPlayer = this.rowData["driver-info"]["is-player"];
         const lapInfo = this.rowData["lap-info"]["best-lap"];
+        const index = this.rowData["driver-info"]["index"];
         const speedTrapRecord = this.rowData["lap-info"]["speed-trap-record-kmph"];
         let cell;
-        if (g_pref_bestLapAbsoluteFormat || isSpectating) {
-            const lapStr = formatLapTime(lapInfo["lap-time-ms"]);
-            if (this.gameYear == 23) {
-                cell = this.row.insertCell();
-                cell.textContent = lapStr;
-            } else {
+        const lapContent = getFormattedLapTimeStr({
+            lapTimeMs: lapInfo["lap-time-ms"],
+            lapTimeMsPlayer: lapInfo["lap-time-ms-player"],
+            isPlayer,
+            index,
+            spectatorIndex: this.spectatorIndex,
+            showAbsoluteFormat: g_pref_bestLapAbsoluteFormat
+        });
 
-                let speedTrapValue;
-                if (speedTrapRecord) {
-                    speedTrapValue = formatFloatWithTwoDecimals(speedTrapRecord) + ' kmph';
-                } else {
-                    speedTrapValue = "---";
-                }
-                cell = this.createMultiLineCell([
-                    lapStr,
-                    speedTrapValue,
-                ]);
-            }
+        const speedTrapValue = speedTrapRecord != null
+            ? formatFloatWithTwoDecimals(speedTrapRecord) + ' kmph'
+            : "---";
+
+        // Game-specific layout:
+        // - In F1 23, use a single-line cell with just the lap content
+        // - in F1 24+, use a multi-line cell with lap content and speed trap info
+        if (this.gameYear == 23) {
+            cell = this.row.insertCell();
+            cell.textContent = lapContent;
         } else {
-            const lapDeltaStr = formatLapDelta(lapInfo["lap-time-ms"],
-                lapInfo["lap-time-ms-player"], isPlayer);
-            if (this.gameYear == 23) {
-                cell = this.row.insertCell();
-                cell.textContent = lapDeltaStr;
-            } else {
-                let speedTrapValue;
-                if (speedTrapRecord != null) {
-                    speedTrapValue = formatFloatWithTwoDecimals(speedTrapRecord) + ' kmph';
-                } else {
-                    speedTrapValue = "---";
-                }
-                cell = this.createMultiLineCell([
-                    lapDeltaStr,
-                    speedTrapValue,
-                ]);
-            }
+            cell = this.createMultiLineCell([
+                lapContent,
+                speedTrapValue
+            ]);
         }
+
         if (lapInfo["lap-time-ms"]) {
             this.addSectorInfo(cell, lapInfo["sector-status"]);
         }
@@ -127,22 +117,25 @@ class RaceTableRowPopulator {
     }
 
     addLastLapInfo() {
-        const isSpectating = this.rowData["driver-info"]["is-spectating"];
         const isPlayer = this.rowData["driver-info"]["is-player"];
+        const index = this.rowData["driver-info"]["index"];
         const lapInfo = this.rowData["lap-info"]["last-lap"];
         const cellContent = [];
         if (this.gameYear > 23) {
             // one line to pad against speed trap record
             cellContent.push(null);
         }
-        if (g_pref_lastLapAbsoluteFormat || isSpectating) {
-            const lapStr = formatLapTime(lapInfo["lap-time-ms"]);
-            cellContent.push(lapStr);
-        } else {
-            const lapDeltaStr = formatLapDelta(lapInfo["lap-time-ms"],
-                lapInfo["lap-time-ms-player"], isPlayer);
-            cellContent.push(lapDeltaStr);
-        }
+
+        const lapTimeContent = getFormattedLapTimeStr({
+            lapTimeMs: lapInfo["lap-time-ms"],
+            lapTimeMsPlayer: lapInfo["lap-time-ms-player"],
+            isPlayer,
+            index,
+            spectatorIndex: this.spectatorIndex,
+            showAbsoluteFormat: g_pref_lastLapAbsoluteFormat
+        });
+        cellContent.push(lapTimeContent);
+
         const cell = this.createMultiLineCell(cellContent);
         if (lapInfo["lap-time-ms"]) {
             this.addSectorInfo(cell, lapInfo["sector-status"]);

@@ -42,6 +42,11 @@ class InvalidPacketLengthError(Exception):
     def __init__(self, message):
         super().__init__(f"Invalid packet length. {message}")
 
+class PacketParsingError(Exception):
+    """Raised when packet data is malformed or insufficient"""
+    def __init__(self, message):
+        super().__init__(f"Malformed packet. {message}")
+
 # -------------------- COMMON CLASSES ------------------------------------------
 class F1PacketType(Enum):
     """Class of enum representing the different packet types emitted by the game
@@ -1613,3 +1618,47 @@ class PacketHeader:
                            self.m_sessionTime, self.m_frameIdentifier,
                            self.m_overallFrameIdentifier, self.m_playerCarIndex,
                            self.m_secondaryPlayerCarIndex)
+
+# --------------------- HELPER FUNCTIONS ---------------------------------------
+
+def _validate_parse_fixed_segments(
+    data: bytes,
+    offset: int,
+    item_cls: type,
+    item_len: int,
+    count: int,
+    max_count: int,
+    **item_kwargs) -> tuple[list[Any], int]:
+    """
+    Parse a fixed number of items from the data.
+
+    Args:
+        data (bytes): The data to parse.
+        offset (int): The starting offset in the data.
+        item_cls (type): The class of the items to parse.
+        item_len (int): The length of each item.
+        count (int): The number of items to parse.
+        max_count (int): The maximum number of items that can be parsed.
+        **item_kwargs: Additional keyword arguments passed to the item constructor.
+
+    Raises:
+        PacketParsingError: If the data is not enough to parse the specified number of items.
+
+    Returns:
+        tuple[list[Any], int]: A tuple containing a list of parsed items and the updated offset.
+
+    """
+
+    total_raw_len = max_count * item_len
+    raw = data[offset : offset + total_raw_len]
+    expected_len = count * item_len
+    if len(raw) < expected_len:
+        raise PacketParsingError(
+            f"Insufficient {item_cls.__name__} data: "
+            f"expected {expected_len} bytes, got {len(raw)} for {count} items"
+        )
+    items = [
+        item_cls(raw[i : i + item_len], **item_kwargs)
+        for i in range(0, expected_len, item_len)
+    ]
+    return items, offset + total_raw_len

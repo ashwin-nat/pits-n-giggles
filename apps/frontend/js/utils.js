@@ -303,3 +303,73 @@ function shootConfetti(durationMs) {
             }));
     }, 250);
 }
+
+/**
+ * mutate the input JSON and inserts reference lap times into every driver object
+ * @param {Array} tableEntriesJson - Array of table entry objects.
+ * @param {Function} matchFn - Function to identify the reference entry.
+ * @returns {Array} New array with updated lap times.
+ */
+function updateReferenceLapTimes(tableEntriesJson, matchFn = (entry) => entry["driver-info"]?.["is-player"]) {
+  const referenceEntry = tableEntriesJson.find(matchFn);
+
+  if (referenceEntry) {
+    const refLastLap = referenceEntry["lap-info"]["last-lap"];
+    const refBestLap = referenceEntry["lap-info"]["best-lap"];
+    const referenceIndex = referenceEntry["driver-info"]?.["index"];
+
+    tableEntriesJson.forEach((tableEntry) => {
+      const isReference = tableEntry["driver-info"]?.["index"] === referenceIndex;
+
+      const lastLap = tableEntry["lap-info"]["last-lap"];
+      const bestLap = tableEntry["lap-info"]["best-lap"];
+
+      if (isReference) {
+        // Copy from self
+        lastLap["lap-time-ms-player"] = lastLap["lap-time-ms"];
+        lastLap["s1-time-ms-player"] = lastLap["s1-time-ms"];
+        lastLap["s2-time-ms-player"] = lastLap["s2-time-ms"];
+        lastLap["s3-time-ms-player"] = lastLap["s3-time-ms"];
+
+        bestLap["lap-time-ms-player"] = bestLap["lap-time-ms"];
+        bestLap["s1-time-ms-player"] = bestLap["s1-time-ms"];
+        bestLap["s2-time-ms-player"] = bestLap["s2-time-ms"];
+        bestLap["s3-time-ms-player"] = bestLap["s3-time-ms"];
+      } else {
+        // Copy from reference
+        lastLap["lap-time-ms-player"] = refLastLap["lap-time-ms"];
+        lastLap["s1-time-ms-player"] = refLastLap["s1-time-ms"];
+        lastLap["s2-time-ms-player"] = refLastLap["s2-time-ms"];
+        lastLap["s3-time-ms-player"] = refLastLap["s3-time-ms"];
+
+        bestLap["lap-time-ms-player"] = refBestLap["lap-time-ms"];
+        bestLap["s1-time-ms-player"] = refBestLap["s1-time-ms"];
+        bestLap["s2-time-ms-player"] = refBestLap["s2-time-ms"];
+        bestLap["s3-time-ms-player"] = refBestLap["s3-time-ms"];
+      }
+    });
+  }
+}
+
+function getFormattedLapTimeStr({
+    lapTimeMs,
+    lapTimeMsPlayer,
+    isPlayer,
+    index,
+    spectatorIndex,
+    showAbsoluteFormat}) {
+
+    const isSpectating = spectatorIndex !== null;
+    const isReferenceCar = spectatorIndex === index;
+
+    if (showAbsoluteFormat || !isSpectating || isReferenceCar) {
+        // Show absolute time if:
+        // - preference is absolute format
+        // - user is playing (not spectating) and the current row is the player
+        // - or spectating and the current driver is the selected one
+        return formatLapTime(lapTimeMs);
+    } else {
+        // Show delta for other cars while spectating
+        return formatLapDelta(lapTimeMs, lapTimeMsPlayer, isPlayer, index);
+    }
+}

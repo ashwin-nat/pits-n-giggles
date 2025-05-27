@@ -13,10 +13,11 @@ function getShortERSMode(mode) {
 
 // Class to handle table row creation and updates
 class EngViewRaceTableRow {
-    constructor(driver, isSpectating, iconCache, eventType) {
+    constructor(driver, isSpectating, iconCache, eventType, spectatorIndex) {
         this.driver = driver;
         this.isSpectating = isSpectating;
         this.iconCache = iconCache;
+        this.spectatorIndex = spectatorIndex;
         this.element = document.createElement('tr');
         if (eventType === "Time Trial") {
             this.renderTT();
@@ -296,8 +297,15 @@ class EngViewRaceTableRow {
     }
 
     render() {
-        // Add the player-row class if this is the player's row
-        if (this.driver["driver-info"]["is-player"]) {
+        const isSpectating = this.spectatorIndex !== null;
+        const isReferenceDriver = this.driver["driver-info"]['index'] === this.spectatorIndex;
+        const isPlayerDriver = this.driver["driver-info"]['is-player'];
+
+        // Determine if this row represents the reference driver —
+        // either the selected driver while spectating, or the actual player while driving
+        const isPlayerRow = (isSpectating && isReferenceDriver) || (!isSpectating && isPlayerDriver);
+
+        if (isPlayerRow) {
             this.element.classList.add('player-row');
         } else {
             this.element.classList.remove('player-row');
@@ -362,19 +370,24 @@ class EngViewRaceTable {
         this.rows.clear();
     }
 
-    update(drivers, isSpectating, eventType) {
+    update(drivers, isSpectating, eventType, spectatorCarIndex) {
         // Clear the existing table body
         this.clear();
 
         // Time trial not supported
         if (eventType === "Time Trial") {
-            const row = new EngViewRaceTableRow(null, isSpectating, this.iconCache, eventType);
+            const row = new EngViewRaceTableRow(null, isSpectating, this.iconCache, eventType, spectatorCarIndex);
             this.rows.set(1, row);
             this.tableBody.appendChild(row.element);
         } else {
             // Repopulate the table with the new driver data
+            updateReferenceLapTimes(drivers,
+                (isSpectating) ?
+                ((entry) => entry["driver-info"]?.["index"] == spectatorCarIndex) :
+                ((entry) => entry["driver-info"]?.["is-player"])
+                );
             drivers.forEach(driver => {
-                const row = new EngViewRaceTableRow(driver, isSpectating, this.iconCache, eventType);
+                const row = new EngViewRaceTableRow(driver, isSpectating, this.iconCache, eventType, spectatorCarIndex);
                 this.rows.set(driver.position, row);
                 this.tableBody.appendChild(row.element);
             });
@@ -605,13 +618,14 @@ socketio.on('connect', function () {
 // Receive details from server
 socketio.on('race-table-update', function (data) {
 
-    const tableEntries  = data["table-entries"];
-    const isSpectating  = data["is-spectating"];
-    const eventType     = data["event-type"];
+    const tableEntries      = data["table-entries"];
+    const isSpectating      = data["is-spectating"];
+    const eventType         = data["event-type"];
+    const spectatorCarIndex = data["spectator-car-index"];
     if (tableEntries) {
-        raceTable.update(tableEntries, isSpectating, eventType);
+        raceTable.update(tableEntries, isSpectating, eventType, spectatorCarIndex);
     } else if (eventType === "Time Trial") {
-        raceTable.update(tableEntries, isSpectating, eventType);
+        raceTable.update(tableEntries, isSpectating, eventType, spectatorCarIndex);
     }
     raceStatus.update(data);
     weatherTable.update(data["weather-forecast-samples"]);

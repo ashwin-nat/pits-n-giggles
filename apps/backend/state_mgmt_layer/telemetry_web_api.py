@@ -123,13 +123,13 @@ class RaceInfoUpdate:
             "num-red-flags" : _getValueOrDefaultValue(self.m_session_info.m_packet_session.m_numRedFlagPeriods \
                                                           if self.m_session_info.m_packet_session else None, 0),
             "player-pit-window" : _getValueOrDefaultValue(self.m_driver_list_rsp.m_next_pit_stop_window, None),
+            "spectator-car-index" : _getValueOrDefaultValue(self.m_session_info.m_spectator_car_index, None),
         }
 
         if str(self.m_session_info.m_session_type) == "Time Trial":
             final_json["tt-data"] = self.m_driver_list_rsp.toJSON()
         else:
             final_json["table-entries"] = self.m_driver_list_rsp.toJSON()
-            self._updatePlayerLapTimes(final_json["table-entries"])
 
         final_json["fastest-lap-overall"] = _getValueOrDefaultValue(
             self.m_driver_list_rsp.m_fastest_lap, default_value=0)
@@ -138,51 +138,6 @@ class RaceInfoUpdate:
         final_json["fastest-lap-overall-tyre"] = str(self.m_driver_list_rsp.m_fastest_lap_tyre) \
             if self.m_driver_list_rsp.m_fastest_lap_tyre else None
         return final_json
-
-    def _updatePlayerLapTimes(self,table_entries_json: List[Dict[str, Any]]) -> None:
-        """Update the lap-info key's contents
-
-        Args:
-            table_entries_json (List[Dict[str, Any]]): The "table-entries" list
-        """
-
-        player_entry = next(
-            (
-                table_entry
-                for table_entry in table_entries_json
-                if table_entry["driver-info"]["is-player"]
-            ),
-            None,
-        )
-
-        # Supporting only single player entry, split screen unsupported. player_entry should've been found by now
-        if player_entry:
-            player_last_lap = player_entry["lap-info"]["last-lap"]
-            player_best_lap = player_entry["lap-info"]["best-lap"]
-            for table_entry in table_entries_json:
-                # Update last lap time for player in every object
-                if table_entry["driver-info"]["index"] != player_entry["driver-info"]["index"]:
-                    # Current entry is NOT the player entry
-                    table_entry["lap-info"]["last-lap"]["lap-time-ms-player"] = player_last_lap["lap-time-ms"]
-                    table_entry["lap-info"]["last-lap"]["s1-time-ms-player"] = player_last_lap["s1-time-ms"]
-                    table_entry["lap-info"]["last-lap"]["s2-time-ms-player"] = player_last_lap["s2-time-ms"]
-                    table_entry["lap-info"]["last-lap"]["s3-time-ms-player"] = player_last_lap["s3-time-ms"]
-
-                    table_entry["lap-info"]["best-lap"]["lap-time-ms-player"] = player_best_lap["lap-time-ms"]
-                    table_entry["lap-info"]["best-lap"]["s1-time-ms-player"] = player_best_lap["s1-time-ms"]
-                    table_entry["lap-info"]["best-lap"]["s2-time-ms-player"] = player_best_lap["s2-time-ms"]
-                    table_entry["lap-info"]["best-lap"]["s3-time-ms-player"] = player_best_lap["s3-time-ms"]
-                else:
-                    # Current entry is the player entry
-                    table_entry["lap-info"]["last-lap"]["lap-time-ms-player"] = table_entry["lap-info"]["last-lap"]["lap-time-ms"]
-                    table_entry["lap-info"]["last-lap"]["s1-time-ms-player"] = table_entry["lap-info"]["last-lap"]["s1-time-ms"]
-                    table_entry["lap-info"]["last-lap"]["s2-time-ms-player"] = table_entry["lap-info"]["last-lap"]["s2-time-ms"]
-                    table_entry["lap-info"]["last-lap"]["s3-time-ms-player"] = table_entry["lap-info"]["last-lap"]["s3-time-ms"]
-
-                    table_entry["lap-info"]["best-lap"]["lap-time-ms-player"] = table_entry["lap-info"]["best-lap"]["lap-time-ms"]
-                    table_entry["lap-info"]["best-lap"]["s1-time-ms-player"] = table_entry["lap-info"]["best-lap"]["s1-time-ms"]
-                    table_entry["lap-info"]["best-lap"]["s2-time-ms-player"] = table_entry["lap-info"]["best-lap"]["s2-time-ms"]
-                    table_entry["lap-info"]["best-lap"]["s3-time-ms-player"] = table_entry["lap-info"]["best-lap"]["s3-time-ms"]
 
 class OverallRaceStatsRsp:
     """
@@ -683,7 +638,7 @@ class DriversListRsp:
         """
 
         # Player index can never be none, since the player always an index, even if a spectator (for Lobby packet)
-        if (_session_state_ref.m_player_index is None) or (_session_state_ref.m_num_active_cars is None):
+        if not _session_state_ref.is_data_available:
             return
 
         # Update the list data
