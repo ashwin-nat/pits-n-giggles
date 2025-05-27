@@ -1044,9 +1044,9 @@ class TrackID(Enum):
             "Abu_Dhabi": "Abu Dhabi",
             "Baku_Azerbaijan": "Baku",
             "Portimao": "Portimão",
-            "Silverstone_Reverse": "Silverstone (Reverse)",
-            "Austria_Reverse": "Austria (Reverse)",
-            "Zandvoort_Reverse": "Zandvoort (Reverse)",
+            "Silverstone_Reverse": "Silverstone (Rev)",
+            "Austria_Reverse": "Austria (Rev)",
+            "Zandvoort_Reverse": "Zandvoort (Rev)",
         }.get(self.name, self.name.replace("_", " "))
 
     @staticmethod
