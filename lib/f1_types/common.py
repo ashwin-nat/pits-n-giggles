@@ -139,6 +139,46 @@ class ResultStatus(Enum):
         }
         return status_mapping.get(self.value, "---")
 
+class ResultReason(Enum):
+    """
+    Enumeration representing the result reason of a driver after a racing session.
+    """
+
+    INVALID = 0
+    RETIRED = 1
+    FINISHED = 2
+    TERMINAL_DAMAGE = 3
+    INACTIVE = 4
+    NOT_ENOUGH_LAPS_COMPLETED = 5
+    BLACK_FLAGGED = 6
+    RED_FLAGGED = 7
+    MECHANICAL_FAILURE = 8
+    SESSION_SKIPPED = 9
+    SESSION_SIMULATED = 10
+
+    @staticmethod
+    def isValid(result_reason: int) -> bool:
+        """Check if the given result reason is valid.
+
+        Args:
+            result_reason (int): The result status to be validated.
+
+        Returns:
+            bool: True if valid.
+        """
+        if isinstance(result_reason, ResultReason):
+            return True  # It's already an instance of ResultReason
+        return any(result_reason == member.value for member in ResultReason)
+
+    def __str__(self) -> str:
+        """
+        Returns a human-readable string representation of the result status.
+
+        Returns:
+            str: String representation of the result status.
+        """
+        return self.name.lower()
+
 class SessionType23(Enum):
     """
     Enum class representing F1 session types.
@@ -990,6 +1030,9 @@ class TrackID(Enum):
     Miami = 30
     Las_Vegas = 31
     Losail = 32
+    Silverstone_Reverse = 39
+    Austria_Reverse = 40
+    Zandvoort_Reverse = 41
 
     def __str__(self):
         """
@@ -1000,7 +1043,10 @@ class TrackID(Enum):
             "Sakhir_Bahrain": "Sakhir",
             "Abu_Dhabi": "Abu Dhabi",
             "Baku_Azerbaijan": "Baku",
-            "Portimao": "Portimão"
+            "Portimao": "Portimão",
+            "Silverstone_Reverse": "Silverstone (Reverse)",
+            "Austria_Reverse": "Austria (Reverse)",
+            "Zandvoort_Reverse": "Zandvoort (Reverse)",
         }.get(self.name, self.name.replace("_", " "))
 
     @staticmethod

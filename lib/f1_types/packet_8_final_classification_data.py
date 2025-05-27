@@ -22,8 +22,10 @@
 
 
 import struct
-from typing import Dict, Any, List
-from .common import PacketHeader, F1Utils, ResultStatus, ActualTyreCompound, VisualTyreCompound
+from typing import Any, Dict, List
+
+from .common import (ActualTyreCompound, F1Utils, PacketHeader, ResultReason,
+                     ResultStatus, VisualTyreCompound)
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -58,8 +60,8 @@ class FinalClassificationData:
         "B" # uint8     m_points;                // Number of points scored
         "B" # uint8     m_numPitStops;           // Number of pit stops made
         "B" # uint8     m_resultStatus;          // Result status - 0 = invalid, 1 = inactive, 2 = active
-                                        #    // 3 = finished, 4 = didnotfinish, 5 = disqualified
-                                        #    // 6 = not classified, 7 = retired
+                                            #    // 3 = finished, 4 = didnotfinish, 5 = disqualified
+                                            #    // 6 = not classified, 7 = retired
         "I" # uint32    m_bestLapTimeInMS;       // Best lap time of the session in milliseconds
         "d" # double    m_totalRaceTime;         // Total race time in seconds without penalties
         "B" # uint8     m_penaltiesTime;         // Total penalties accumulated in seconds
@@ -71,60 +73,130 @@ class FinalClassificationData:
     )
     PACKET_LEN = struct.calcsize(PACKET_FORMAT)
 
-    def __init__(self, data) -> None:
+    PACKET_FORMAT_25 = ("<"
+        "B" # uint8     m_position;              // Finishing position
+        "B" # uint8     m_numLaps;               // Number of laps completed
+        "B" # uint8     m_gridPosition;          // Grid position of the car
+        "B" # uint8     m_points;                // Number of points scored
+        "B" # uint8     m_numPitStops;           // Number of pit stops made
+        "B" # uint8     m_resultStatus;          // Result status - 0 = invalid, 1 = inactive, 2 = active
+                                            #    // 3 = finished, 4 = didnotfinish, 5 = disqualified
+                                            #    // 6 = not classified, 7 = retired
+        "B" # uint8 m_resultReason;               // Result reason - 0 = invalid, 1 = retired, 2 = finished
+                                                # // 3 = terminal damage, 4 = inactive, 5 = not enough laps completed
+                                                # // 6 = black flagged, 7 = red flagged, 8 = mechanical failure
+                                                # // 9 = session skipped, 10 = session simulated
+        "I" # uint32    m_bestLapTimeInMS;       // Best lap time of the session in milliseconds
+        "d" # double    m_totalRaceTime;         // Total race time in seconds without penalties
+        "B" # uint8     m_penaltiesTime;         // Total penalties accumulated in seconds
+        "B" # uint8     m_numPenalties;          // Number of penalties applied to this driver
+        "B" # uint8     m_numTyreStints;         // Number of tyres stints up to maximum
+        "8B" # uint8     m_tyreStintsActual[8];   // Actual tyres used by this driver
+        "8B" # uint8     m_tyreStintsVisual[8];   // Visual tyres used by this driver
+        "8B" # uint8     m_tyreStintsEndLaps[8];  // The lap number stints end on
+    )
+    PACKET_LEN_25 = struct.calcsize(PACKET_FORMAT_25)
+
+    def __init__(self, data: bytes, game_year: int) -> None:
         """
         Initializes FinalClassificationData with raw data.
 
         Args:
             data (bytes): Raw data representing final classification for a car in a race.
+            game_year (int): The year of the game.
         """
 
         self.m_tyreStintsActual: List[int] = [0] * 8
         self.m_tyreStintsVisual: List[int] = [0] * 8
         self.m_tyreStintsEndLaps: List[int] = [0] * 8
-        (
-            self.m_position,
-            self.m_numLaps,
-            self.m_gridPosition,
-            self.m_points,
-            self.m_numPitStops,
-            self.m_resultStatus,
-            self.m_bestLapTimeInMS,
-            self.m_totalRaceTime,
-            self.m_penaltiesTime,
-            self.m_numPenalties,
-            self.m_numTyreStints,
-            # self.m_tyreStintsActual,  # array of 8
-            self.m_tyreStintsActual[0],
-            self.m_tyreStintsActual[1],
-            self.m_tyreStintsActual[2],
-            self.m_tyreStintsActual[3],
-            self.m_tyreStintsActual[4],
-            self.m_tyreStintsActual[5],
-            self.m_tyreStintsActual[6],
-            self.m_tyreStintsActual[7],
-            # self.m_tyreStintsVisual,  # array of 8
-            self.m_tyreStintsVisual[0],
-            self.m_tyreStintsVisual[1],
-            self.m_tyreStintsVisual[2],
-            self.m_tyreStintsVisual[3],
-            self.m_tyreStintsVisual[4],
-            self.m_tyreStintsVisual[5],
-            self.m_tyreStintsVisual[6],
-            self.m_tyreStintsVisual[7],
-            # self.m_tyreStintsEndLaps,  # array of 8
-            self.m_tyreStintsEndLaps[0],
-            self.m_tyreStintsEndLaps[1],
-            self.m_tyreStintsEndLaps[2],
-            self.m_tyreStintsEndLaps[3],
-            self.m_tyreStintsEndLaps[4],
-            self.m_tyreStintsEndLaps[5],
-            self.m_tyreStintsEndLaps[6],
-            self.m_tyreStintsEndLaps[7]
-        ) = struct.unpack(self.PACKET_FORMAT, data)
+        if game_year <= 24:
+            (
+                self.m_position,
+                self.m_numLaps,
+                self.m_gridPosition,
+                self.m_points,
+                self.m_numPitStops,
+                self.m_resultStatus,
+                self.m_bestLapTimeInMS,
+                self.m_totalRaceTime,
+                self.m_penaltiesTime,
+                self.m_numPenalties,
+                self.m_numTyreStints,
+                # self.m_tyreStintsActual,  # array of 8
+                self.m_tyreStintsActual[0],
+                self.m_tyreStintsActual[1],
+                self.m_tyreStintsActual[2],
+                self.m_tyreStintsActual[3],
+                self.m_tyreStintsActual[4],
+                self.m_tyreStintsActual[5],
+                self.m_tyreStintsActual[6],
+                self.m_tyreStintsActual[7],
+                # self.m_tyreStintsVisual,  # array of 8
+                self.m_tyreStintsVisual[0],
+                self.m_tyreStintsVisual[1],
+                self.m_tyreStintsVisual[2],
+                self.m_tyreStintsVisual[3],
+                self.m_tyreStintsVisual[4],
+                self.m_tyreStintsVisual[5],
+                self.m_tyreStintsVisual[6],
+                self.m_tyreStintsVisual[7],
+                # self.m_tyreStintsEndLaps,  # array of 8
+                self.m_tyreStintsEndLaps[0],
+                self.m_tyreStintsEndLaps[1],
+                self.m_tyreStintsEndLaps[2],
+                self.m_tyreStintsEndLaps[3],
+                self.m_tyreStintsEndLaps[4],
+                self.m_tyreStintsEndLaps[5],
+                self.m_tyreStintsEndLaps[6],
+                self.m_tyreStintsEndLaps[7]
+            ) = struct.unpack(self.PACKET_FORMAT, data)
+        else: # F1 25+
+            (
+                self.m_position,
+                self.m_numLaps,
+                self.m_gridPosition,
+                self.m_points,
+                self.m_numPitStops,
+                self.m_resultStatus,
+                self.m_resultReason,
+                self.m_bestLapTimeInMS,
+                self.m_totalRaceTime,
+                self.m_penaltiesTime,
+                self.m_numPenalties,
+                self.m_numTyreStints,
+                # self.m_tyreStintsActual,  # array of 8
+                self.m_tyreStintsActual[0],
+                self.m_tyreStintsActual[1],
+                self.m_tyreStintsActual[2],
+                self.m_tyreStintsActual[3],
+                self.m_tyreStintsActual[4],
+                self.m_tyreStintsActual[5],
+                self.m_tyreStintsActual[6],
+                self.m_tyreStintsActual[7],
+                # self.m_tyreStintsVisual,  # array of 8
+                self.m_tyreStintsVisual[0],
+                self.m_tyreStintsVisual[1],
+                self.m_tyreStintsVisual[2],
+                self.m_tyreStintsVisual[3],
+                self.m_tyreStintsVisual[4],
+                self.m_tyreStintsVisual[5],
+                self.m_tyreStintsVisual[6],
+                self.m_tyreStintsVisual[7],
+                # self.m_tyreStintsEndLaps,  # array of 8
+                self.m_tyreStintsEndLaps[0],
+                self.m_tyreStintsEndLaps[1],
+                self.m_tyreStintsEndLaps[2],
+                self.m_tyreStintsEndLaps[3],
+                self.m_tyreStintsEndLaps[4],
+                self.m_tyreStintsEndLaps[5],
+                self.m_tyreStintsEndLaps[6],
+                self.m_tyreStintsEndLaps[7]
+            ) = struct.unpack(self.PACKET_FORMAT_25, data)
 
         if ResultStatus.isValid(self.m_resultStatus):
             self.m_resultStatus = ResultStatus(self.m_resultStatus)
+        if ResultReason.isValid(self.m_resultReason):
+            self.m_resultReason = ResultReason(self.m_resultReason)
 
         # Trim the tyre stints info
         self.m_tyreStintsActual     = self.m_tyreStintsActual[:self.m_numTyreStints]
@@ -420,12 +492,17 @@ class PacketFinalClassificationData:
 
         self.m_header: PacketHeader = header
         self.m_numCars: int = struct.unpack("<B", packet[:1])[0]
+
+        if header.m_gameYear <= 24:
+            packet_len = FinalClassificationData.PACKET_LEN
+        else:
+            packet_len = FinalClassificationData.PACKET_LEN_25
         # Iterate over packet[1:] in steps of FinalClassificationData.PACKET_LEN,
         # creating FinalClassificationData objects for each segment.
 
         self.m_classificationData: List[FinalClassificationData] = [
-            FinalClassificationData(packet[i:i + FinalClassificationData.PACKET_LEN])
-            for i in range(1, len(packet), FinalClassificationData.PACKET_LEN)
+            FinalClassificationData(packet[i:i + packet_len], header.m_gameYear)
+            for i in range(1, len(packet), packet_len)
         ]
         # strip the non-applicable data
         self.m_classificationData = self.m_classificationData[:self.m_numCars]
