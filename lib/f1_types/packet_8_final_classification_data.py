@@ -109,6 +109,7 @@ class FinalClassificationData:
         self.m_tyreStintsActual: List[int] = [0] * 8
         self.m_tyreStintsVisual: List[int] = [0] * 8
         self.m_tyreStintsEndLaps: List[int] = [0] * 8
+        self.m_resultReason: ResultReason = ResultReason.INVALID
         if game_year <= 24:
             (
                 self.m_position,
@@ -253,6 +254,7 @@ class FinalClassificationData:
             "points": self.m_points,
             "num-pit-stops": self.m_numPitStops,
             "result-status": str(self.m_resultStatus),
+            "result-reason": str(self.m_resultReason),
             "best-lap-time-ms": self.m_bestLapTimeInMS,
             "best-lap-time-str": F1Utils.millisecondsToMinutesSecondsMilliseconds(self.m_bestLapTimeInMS),
             "total-race-time": self.m_totalRaceTime,
@@ -283,6 +285,7 @@ class FinalClassificationData:
             self.m_points == other.m_points and
             self.m_numPitStops == other.m_numPitStops and
             self.m_resultStatus == other.m_resultStatus and
+            self.m_resultReason == other.m_resultReason and
             self.m_bestLapTimeInMS == other.m_bestLapTimeInMS and
             self.m_totalRaceTime == other.m_totalRaceTime and
             self.m_penaltiesTime == other.m_penaltiesTime and
