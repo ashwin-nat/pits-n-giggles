@@ -29,6 +29,55 @@ from .common import (Nationality, PacketHeader, _validate_parse_fixed_segments, 
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
+class LiveryColour:
+    """
+    A class representing a livery colour in a racing simulation.
+
+    Attributes:
+        m_red (int): Red component (0-255).
+        m_green (int): Green component (0-255).
+        m_blue (int): Blue component (0-255).
+    """
+
+    PACKET_FORMAT = ("<"
+        "B" # uint8      red
+        "B" # uint8      green
+        "B" # uint8      blue
+    )
+    PACKET_LEN = struct.calcsize(PACKET_FORMAT)
+
+    def __init__(self, data: bytes) -> None:
+        """Initializes a LiveryColour object with the given raw data."""
+        self.m_red: int
+        self.m_green: int
+        self.m_blue: int
+
+        self.m_red, self.m_green, self.m_blue = struct.unpack(self.PACKET_FORMAT, data)
+
+    def toJSON(self) -> Dict[str, Any]:
+        """Returns a dictionary representation of the LiveryColour object."""
+        return {
+            "red": self.m_red,
+            "green": self.m_green,
+            "blue": self.m_blue,
+        }
+
+    def __eq__(self, other: "LiveryColour") -> bool:
+        """Compares two LiveryColour objects for equality."""
+        return self.m_red == other.m_red and self.m_green == other.m_green and self.m_blue == other.m_blue
+
+    def __ne__(self, other: "LiveryColour") -> bool:
+        """Compares two LiveryColour objects for inequality."""
+        return not self.__eq__(other)
+
+    def __str__(self) -> str:
+        """Returns a string representation of the LiveryColour object."""
+        return f"Red: {self.m_red}, Green: {self.m_green}, Blue: {self.m_blue}"
+
+    def __repr__(self) -> str:
+        """Returns a string representation of the LiveryColour object."""
+        return self.__str__()
+
 class ParticipantData:
     """
     A class representing participant data in a racing simulation.
@@ -84,6 +133,26 @@ class ParticipantData:
     )
     PACKET_LEN_24 = struct.calcsize(PACKET_FORMAT_24)
 
+    MAX_LIVERY_COLOURS = 4
+    PACKET_FORMAT_25_BASE = ("<"
+        "B" # uint8      m_aiControlled;      // Whether the vehicle is AI (1) or Human (0) controlled
+        "B" # uint8      m_driverId;       // Driver id - see appendix, 255 if network human
+        "B" # uint8      m_networkId;       // Network id – unique identifier for network players
+        "B" # uint8      m_teamId;            // Team id - see appendix
+        "B" # uint8      m_myTeam;            // My team flag – 1 = My Team, 0 = otherwise
+        "B" # uint8      m_raceNumber;        // Race number of the car
+        "B" # uint8      m_nationality;       // Nationality of the driver
+        "32s" # char     m_name[32];          // Name of participant in UTF-8 format – null terminated
+                                        # // Will be truncated with … (U+2026) if too long
+        "B" # uint8      m_yourTelemetry;     // The player's UDP setting, 0 = restricted, 1 = public
+        "B" # uint8      m_showOnlineNames;   // The player's show online names setting, 0 = off, 1 = on
+        "H" # uint16     m_techLevel          // F1 World tech level
+        "B" # uint8      m_platform;          // 1 = Steam, 3 = PlayStation, 4 = Xbox, 6 = Origin, 255 = unknown
+        "B" # uint8      m_numColours          // Number of colors in the livery
+    )
+    PACKET_LEN_25_BASE = struct.calcsize(PACKET_FORMAT_25_BASE)
+    PACKET_LEN_25 = PACKET_LEN_25_BASE + LiveryColour.PACKET_LEN * MAX_LIVERY_COLOURS
+
     def __init__(self, data: bytes, game_year: int) -> None:
         """
         Initializes a ParticipantData object by unpacking the provided binary data.
@@ -96,6 +165,8 @@ class ParticipantData:
             struct.error: If the binary data does not match the expected format.
         """
         self.m_gameYear = game_year
+        self.m_numColours: int = 0
+        self.m_liveryColours: List[LiveryColour]
         if game_year == 23:
             unpacked_data = struct.unpack(self.PACKET_FORMAT_23, data)
             (
@@ -112,7 +183,7 @@ class ParticipantData:
                 self.m_platform
             ) = unpacked_data
             self.m_techLevel = 0
-        else:
+        elif game_year == 24:
             unpacked_data = struct.unpack(self.PACKET_FORMAT_24, data)
             (
                 self.m_aiControlled,
@@ -128,6 +199,33 @@ class ParticipantData:
                 self.m_techLevel,
                 self.m_platform
             ) = unpacked_data
+        else:
+
+            unpacked_data = struct.unpack(self.PACKET_FORMAT_25_BASE, data[: self.PACKET_LEN_25_BASE])
+            (
+                self.m_aiControlled,
+                self.m_driverId,
+                self.networkId,
+                self.m_teamId,
+                self.m_myTeam,
+                self.m_raceNumber,
+                self.m_nationality,
+                self.m_name,
+                self.m_yourTelemetry,
+                self.m_showOnlineNames,
+                self.m_techLevel,
+                self.m_platform,
+                self.m_numColours
+            ) = unpacked_data
+
+            self.m_liveryColours, _ = _validate_parse_fixed_segments(
+                data=data,
+                offset=self.PACKET_LEN_25_BASE,
+                item_cls=LiveryColour,
+                item_len=LiveryColour.PACKET_LEN,
+                count=self.m_numColours,
+                max_count=self.MAX_LIVERY_COLOURS
+            )
 
         self.m_name = self.m_name.decode('utf-8', errors='replace').rstrip('\x00')
         if Platform.isValid(self.m_platform):
@@ -363,7 +461,13 @@ class PacketParticipantsData:
 
         self.m_header: PacketHeader = header         # PacketHeader
         self.m_numActiveCars: int = struct.unpack("<B", packet[:1])[0]
-        packet_len = ParticipantData.PACKET_LEN_23 if (header.m_gameYear == 23) else ParticipantData.PACKET_LEN_24
+        match header.m_gameYear:
+            case 23:
+                packet_len = ParticipantData.PACKET_LEN_23
+            case 24:
+                packet_len = ParticipantData.PACKET_LEN_24
+            case _:
+                packet_len = ParticipantData.PACKET_LEN_25
 
         self.m_participants: List[ParticipantData]
         self.m_participants, _ = _validate_parse_fixed_segments(

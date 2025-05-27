@@ -32,7 +32,8 @@ from .packet_1_session_data import (MarshalZone, PacketSessionData,
                                     WeatherForecastSample)
 from .packet_2_lap_data import LapData, PacketLapData
 from .packet_3_event_data import PacketEventData
-from .packet_4_participants_data import PacketParticipantsData, ParticipantData
+from .packet_4_participants_data import (LiveryColour, PacketParticipantsData,
+                                         ParticipantData)
 from .packet_5_car_setups_data import CarSetupData, PacketCarSetupData
 from .packet_6_car_telemetry_data import (CarTelemetryData,
                                           PacketCarTelemetryData)
@@ -89,6 +90,7 @@ __all__ = [
     "PacketEventData",
 
     # Packet 4 - Participants Data
+    "LiveryColour",
     "PacketParticipantsData",
     "ParticipantData",
 
