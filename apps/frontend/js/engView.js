@@ -297,9 +297,15 @@ class EngViewRaceTableRow {
     }
 
     render() {
-        // Add the player-row class if this is the player's row
-        if ((this.spectatorIndex !== null && this.driver["driver-info"]['index'] === spectatorIndex) ||
-            (this.spectatorIndex === null && this.driver["driver-info"]['is-player'])) {
+        const isSpectating = this.spectatorIndex !== null;
+        const isReferenceDriver = this.driver["driver-info"]['index'] === this.spectatorIndex;
+        const isPlayerDriver = this.driver["driver-info"]['is-player'];
+
+        // Determine if this row represents the reference driver —
+        // either the selected driver while spectating, or the actual player while driving
+        const isPlayerRow = (isSpectating && isReferenceDriver) || (!isSpectating && isPlayerDriver);
+
+        if (isPlayerRow) {
             this.element.classList.add('player-row');
         } else {
             this.element.classList.remove('player-row');

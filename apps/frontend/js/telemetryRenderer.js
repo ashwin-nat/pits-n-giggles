@@ -23,7 +23,7 @@ class TelemetryRenderer {
     const row = document.createElement('tr');
 
     // Populate row with data
-    new RaceTableRowPopulator(row, data, gameYear, isLiveDataMode, this.iconCache, raceEnded).populate();
+    new RaceTableRowPopulator(row, data, gameYear, isLiveDataMode, this.iconCache, raceEnded, spectatorIndex).populate();
 
     // Apply CSS classes based on row state
     const cssClasses = this.determineRowClasses(driverInfo, isLiveDataMode, spectatorIndex);

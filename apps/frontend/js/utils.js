@@ -344,3 +344,26 @@ function updateReferenceLapTimes(tableEntriesJson, matchFn = (entry) => entry["d
     });
   }
 }
+
+function getFormattedLapTimeStr({
+    lapTimeMs,
+    lapTimeMsPlayer,
+    isPlayer,
+    index,
+    spectatorIndex,
+    showAbsoluteFormat}) {
+
+    const isSpectating = spectatorIndex !== null;
+    const isReferenceCar = spectatorIndex === index;
+
+    if (showAbsoluteFormat || !isSpectating || isReferenceCar) {
+        // Show absolute time if:
+        // - preference is absolute format
+        // - user is playing (not spectating) and the current row is the player
+        // - or spectating and the current driver is the selected one
+        return formatLapTime(lapTimeMs);
+    } else {
+        // Show delta for other cars while spectating
+        return formatLapDelta(lapTimeMs, lapTimeMsPlayer, isPlayer, index);
+    }
+}
