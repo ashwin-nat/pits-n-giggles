@@ -22,9 +22,12 @@
 
 
 import struct
-from typing import Dict, List, Any, Optional, Union
 from enum import Enum
-from .common import PacketHeader, F1PacketType, TeamID23, TeamID24, Nationality, Platform, TelemetrySetting
+from typing import Any, Dict, List, Optional, Union
+
+from .common import (F1PacketType, Nationality, PacketHeader, Platform,
+                     TeamID23, TeamID24, TelemetrySetting,
+                     _validate_parse_fixed_segments)
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -316,6 +319,7 @@ class PacketLobbyInfoData:
         The class is designed to parse and represent the lobby information data packet.
     """
 
+    MAX_PLAYERS: int = 22
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
         """
         Initializes PacketLobbyInfoData with raw data.
@@ -332,12 +336,16 @@ class PacketLobbyInfoData:
         else: # 24
             packet_len = LobbyInfoData.PACKET_LEN_24
 
-        self.m_lobbyPlayers: List[LobbyInfoData] = [
-            LobbyInfoData(packet[i:i + packet_len], header.m_packetFormat)
-            for i in range(1, len(packet), packet_len)
-        ]
-        # Trim the list
-        self.m_lobbyPlayers = self.m_lobbyPlayers[:self.m_numPlayers]
+        self.m_lobbyPlayers: List[LobbyInfoData]
+        self.m_lobbyPlayers, _ = _validate_parse_fixed_segments(
+            data=packet,
+            offset=1,
+            item_cls=LobbyInfoData,
+            item_len=packet_len,
+            count=self.m_numPlayers,
+            max_count=self.MAX_PLAYERS,
+            packet_format=header.m_packetFormat
+        )
 
     def toJSON(self, include_header: bool=False) -> Dict[str, Any]:
         """

@@ -25,9 +25,9 @@ import struct
 from enum import Enum
 from typing import Any, Dict, List, Union
 
-from .common import (GameMode, GearboxAssistMode, PacketHeader, RuleSet,
-                     SafetyCarType, SessionLength, SessionType23,
-                     SessionType24, TrackID)
+from .common import (GameMode, GearboxAssistMode, PacketHeader,
+                     RuleSet, SafetyCarType, SessionLength,
+                     SessionType23, SessionType24, TrackID, _validate_parse_fixed_segments)
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -1207,6 +1207,7 @@ class PacketSessionData:
             return self.name
 
     def __init__(self, header: PacketHeader, data: bytes) -> None:
+        # sourcery skip: low-code-quality
         """Construct a PacketSessionData object
 
         Args:
@@ -1302,7 +1303,7 @@ class PacketSessionData:
         else:
             self.m_maxWeatherForecastSamples = self.F1_24_MAX_NUM_WEATHER_FORECAST_SAMPLES
         # First, section 0
-        section_0_raw_data = data[0:self.PACKET_LEN_SECTION_0]
+        section_0_raw_data = data[:self.PACKET_LEN_SECTION_0]
         byte_index_so_far = self.PACKET_LEN_SECTION_0
         unpacked_data = struct.unpack(self.PACKET_FORMAT_SECTION_0, section_0_raw_data)
         (
@@ -1323,6 +1324,7 @@ class PacketSessionData:
             self.m_sliProNativeSupport,
             self.m_numMarshalZones,
         ) = unpacked_data
+        self.m_isSpectating = bool(self.m_isSpectating)
         if WeatherForecastSample.WeatherCondition.isValid(self.m_weather):
             self.m_weather = WeatherForecastSample.WeatherCondition(self.m_weather)
         if TrackID.isValid(self.m_trackId):
@@ -1337,19 +1339,14 @@ class PacketSessionData:
             self.m_formula = PacketSessionData.FormulaType(self.m_formula)
 
         # Next section 1, marshalZones
-        section_1_size = MarshalZone.PACKET_LEN * self.m_maxMarshalZones
-        section_1_raw_data = data[byte_index_so_far:byte_index_so_far + section_1_size]
-        byte_index_so_far += section_1_size
-
-        # Iterate over section_1_raw_data in steps of MarshalZone.PACKET_LEN,
-        # creating MarshalZone objects for each segment.
-        self.m_marshalZones = [
-            MarshalZone(section_1_raw_data[i:i + MarshalZone.PACKET_LEN])
-            for i in range(0, len(section_1_raw_data), MarshalZone.PACKET_LEN)
-        ]
-        # Trim the unnecessary marshalZones
-        self.m_marshalZones = self.m_marshalZones[:self.m_numMarshalZones]
-        section_1_raw_data = None
+        self.m_marshalZones, byte_index_so_far = _validate_parse_fixed_segments(
+            data=data,
+            offset=byte_index_so_far,
+            item_cls=MarshalZone,
+            item_len=MarshalZone.PACKET_LEN,
+            count=self.m_numMarshalZones,
+            max_count=self.m_maxMarshalZones,
+        )
 
         # Section 2, till numWeatherForecastSamples
         section_2_raw_data = data[byte_index_so_far:byte_index_so_far + self.PACKET_LEN_SECTION_2]
@@ -1365,19 +1362,16 @@ class PacketSessionData:
         section_2_raw_data = None
 
         # Section 3 - weather forecast samples
-        section_3_size = WeatherForecastSample.PACKET_LEN * self.m_maxWeatherForecastSamples
-        section_3_raw_data = data[byte_index_so_far:byte_index_so_far + section_3_size]
-        byte_index_so_far += section_3_size
-        # Iterate over section_3_raw_data in steps of WeatherForecastSample.PACKET_LEN,
-        # creating WeatherForecastSample objects for each segment and passing the game year.
+        self.m_weatherForecastSamples, byte_index_so_far = _validate_parse_fixed_segments(
+            data=data,
+            offset=byte_index_so_far,
+            item_cls=WeatherForecastSample,
+            item_len=WeatherForecastSample.PACKET_LEN,
+            count=self.m_numWeatherForecastSamples,
+            max_count=self.m_maxWeatherForecastSamples,
+            game_year=header.m_gameYear
+        )
 
-        self.m_weatherForecastSamples = [
-            WeatherForecastSample(section_3_raw_data[i:i + WeatherForecastSample.PACKET_LEN], header.m_gameYear)
-            for i in range(0, len(section_3_raw_data), WeatherForecastSample.PACKET_LEN)
-        ]
-        # Trim the unnecessary weatherForecastSamples
-        self.m_weatherForecastSamples = self.m_weatherForecastSamples[:self.m_numWeatherForecastSamples]
-        section_3_raw_data = None
 
         # Section 4 - rest of the packet
         section_4_raw_data = data[byte_index_so_far:byte_index_so_far + self.PACKET_LEN_SECTION_4]
@@ -1423,9 +1417,9 @@ class PacketSessionData:
         if RuleSet.isValid(self.m_ruleSet):
             self.m_ruleSet = RuleSet(self.m_ruleSet)
 
+        self.m_weekendStructure = [0] * 12
         # Section 5 - F1 24 specific stuff
         if header.m_gameYear == 24:
-            self.m_weekendStructure = [0] * 12
             section_5_raw_data = data[byte_index_so_far:byte_index_so_far + self.PACKET_LEN_SECTION_5]
             unpacked_data = struct.unpack(self.PACKET_FORMAT_SECTION_5, section_5_raw_data)
             (
@@ -1499,7 +1493,6 @@ class PacketSessionData:
             self.m_affectsLicenceLevelSolo = 0
             self.m_affectsLicenceLevelMP = 0
             self.m_numSessionsInWeekend = 0
-            self.m_weekendStructure = [0] * 12
             self.m_sector2LapDistanceStart = 0.0
             self.m_sector3LapDistanceStart = 0.0
 
@@ -1719,7 +1712,7 @@ class PacketSessionData:
         if self.m_header.m_gameYear == 24:
             return self.__eq_f1_24(other)
 
-        return True
+        return NotImplemented
 
     def __eq_f1_23(self, other: "PacketSessionData") -> bool:
         """

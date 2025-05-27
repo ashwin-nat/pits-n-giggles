@@ -27,7 +27,7 @@ import struct
 from typing import Any, Dict, List, Optional
 
 from .common import (ActualTyreCompound, F1Utils, PacketHeader,
-                     VisualTyreCompound)
+                     VisualTyreCompound, _validate_parse_fixed_segments)
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -411,36 +411,24 @@ class PacketSessionHistoryData:
         self.m_tyreStintsHistoryData: List[TyreStintHistoryData] = []
 
         # Next, parse the lap history data
-        # Extract the total lap history data slice from the packet, based on the expected length.
-        # Then, iterate over it in steps of LapHistoryData.PACKET_LEN, creating LapHistoryData objects.
-
-        len_total_lap_hist = LapHistoryData.PACKET_LEN * PacketSessionHistoryData.MAX_LAPS
-        # Extract a slice of data from bytes_index_so_far to bytes_index_so_far + len_total_lap_hist.
-        # If the indices are out of bounds, Python's slicing naturally returns an empty bytes object.
-
-        laps_history_data_all = data[bytes_index_so_far:bytes_index_so_far + len_total_lap_hist]
-
-        self.m_lapHistoryData = [
-            LapHistoryData(laps_history_data_all[i:i + LapHistoryData.PACKET_LEN])
-            for i in range(0, len_total_lap_hist, LapHistoryData.PACKET_LEN)
-        ]
-        bytes_index_so_far += len_total_lap_hist
+        self.m_lapHistoryData, bytes_index_so_far = _validate_parse_fixed_segments(
+            data=data,
+            offset=bytes_index_so_far,
+            item_cls=LapHistoryData,
+            item_len=LapHistoryData.PACKET_LEN,
+            count=self.m_numLaps,
+            max_count=PacketSessionHistoryData.MAX_LAPS,
+        )
 
         # Finally, parse tyre stint data
-        # Extract the total tyre stint history data slice from the packet, based on the expected length.
-        # Then, iterate over it in steps of TyreStintHistoryData.PACKET_LEN, creating TyreStintHistoryData objects.
-
-        len_total_tyre_stint = PacketSessionHistoryData.MAX_TYRE_STINT_COUNT * TyreStintHistoryData.PACKET_LEN
-        tyre_stint_history_all = data[bytes_index_so_far:bytes_index_so_far + len_total_tyre_stint]
-
-        self.m_tyreStintsHistoryData = [
-            TyreStintHistoryData(tyre_stint_history_all[i:i + TyreStintHistoryData.PACKET_LEN])
-            for i in range(0, len_total_tyre_stint, TyreStintHistoryData.PACKET_LEN)
-        ]
-
-        # Trim the tyre stint and lap history lists
-        self.m_lapHistoryData = self.m_lapHistoryData[:self.m_numLaps]
-        self.m_tyreStintsHistoryData = self.m_tyreStintsHistoryData[:self.m_numTyreStints]
+        self.m_tyreStintsHistoryData, bytes_index_so_far = _validate_parse_fixed_segments(
+            data=data,
+            offset=bytes_index_so_far,
+            item_cls=TyreStintHistoryData,
+            item_len=TyreStintHistoryData.PACKET_LEN,
+            count=self.m_numTyreStints,
+            max_count=PacketSessionHistoryData.MAX_TYRE_STINT_COUNT,
+        )
 
     def __str__(self) -> str:
         """
