@@ -27,7 +27,7 @@ import struct
 from typing import Any, Dict, List, Optional
 
 from .common import (ActualTyreCompound, F1Utils, PacketHeader,
-                     VisualTyreCompound)
+                     PacketParsingError, VisualTyreCompound)
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -418,11 +418,18 @@ class PacketSessionHistoryData:
         # Extract a slice of data from bytes_index_so_far to bytes_index_so_far + len_total_lap_hist.
         # If the indices are out of bounds, Python's slicing naturally returns an empty bytes object.
 
-        laps_history_data_all = data[bytes_index_so_far:bytes_index_so_far + len_total_lap_hist]
+        laps_history_data_raw = data[bytes_index_so_far:bytes_index_so_far + len_total_lap_hist]
+        # Validate lap history data
+        expected_lap_data_len = self.m_numLaps * LapHistoryData.PACKET_LEN
+        if len(laps_history_data_raw) < expected_lap_data_len:
+            raise PacketParsingError(
+                f"Insufficient lap history data: expected {expected_lap_data_len} bytes, "
+                f"got {len(laps_history_data_raw)} bytes for {self.m_numLaps} laps"
+            )
 
         self.m_lapHistoryData = [
-            LapHistoryData(laps_history_data_all[i:i + LapHistoryData.PACKET_LEN])
-            for i in range(0, len_total_lap_hist, LapHistoryData.PACKET_LEN)
+            LapHistoryData(laps_history_data_raw[i:i + LapHistoryData.PACKET_LEN])
+            for i in range(0, self.m_numLaps * LapHistoryData.PACKET_LEN, LapHistoryData.PACKET_LEN)
         ]
         bytes_index_so_far += len_total_lap_hist
 
@@ -431,16 +438,19 @@ class PacketSessionHistoryData:
         # Then, iterate over it in steps of TyreStintHistoryData.PACKET_LEN, creating TyreStintHistoryData objects.
 
         len_total_tyre_stint = PacketSessionHistoryData.MAX_TYRE_STINT_COUNT * TyreStintHistoryData.PACKET_LEN
-        tyre_stint_history_all = data[bytes_index_so_far:bytes_index_so_far + len_total_tyre_stint]
+        tyre_stint_history_raw = data[bytes_index_so_far:bytes_index_so_far + len_total_tyre_stint]
+        # Validate tyre stint data
+        expected_stint_data_len = self.m_numTyreStints * TyreStintHistoryData.PACKET_LEN
+        if len(tyre_stint_history_raw) < expected_stint_data_len:
+            raise PacketParsingError(
+                f"Insufficient tyre stint data: expected {expected_stint_data_len} bytes, "
+                f"got {len(tyre_stint_history_raw)} bytes for {self.m_numTyreStints} stints"
+            )
 
         self.m_tyreStintsHistoryData = [
-            TyreStintHistoryData(tyre_stint_history_all[i:i + TyreStintHistoryData.PACKET_LEN])
-            for i in range(0, len_total_tyre_stint, TyreStintHistoryData.PACKET_LEN)
+            TyreStintHistoryData(tyre_stint_history_raw[i:i + TyreStintHistoryData.PACKET_LEN])
+            for i in range(0, self.m_numTyreStints * TyreStintHistoryData.PACKET_LEN, TyreStintHistoryData.PACKET_LEN)
         ]
-
-        # Trim the tyre stint and lap history lists
-        self.m_lapHistoryData = self.m_lapHistoryData[:self.m_numLaps]
-        self.m_tyreStintsHistoryData = self.m_tyreStintsHistoryData[:self.m_numTyreStints]
 
     def __str__(self) -> str:
         """

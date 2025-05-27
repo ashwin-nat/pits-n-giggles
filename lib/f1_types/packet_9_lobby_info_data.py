@@ -22,9 +22,12 @@
 
 
 import struct
-from typing import Dict, List, Any, Optional, Union
 from enum import Enum
-from .common import PacketHeader, F1PacketType, TeamID23, TeamID24, Nationality, Platform, TelemetrySetting
+from typing import Any, Dict, List, Optional, Union
+
+from .common import (F1PacketType, Nationality, PacketHeader,
+                     PacketParsingError, Platform, TeamID23, TeamID24,
+                     TelemetrySetting)
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -332,12 +335,19 @@ class PacketLobbyInfoData:
         else: # 24
             packet_len = LobbyInfoData.PACKET_LEN_24
 
+        # Validate packet size
+        expected_lobby_data_len = self.m_numPlayers * packet_len
+        available_data_len = len(packet) - 1  # -1 for the first byte
+        if available_data_len < expected_lobby_data_len:
+            raise PacketParsingError(
+                f"Insufficient lobby player data: expected {expected_lobby_data_len} bytes, "
+                f"got {available_data_len} bytes for {self.m_numPlayers} players"
+            )
+
         self.m_lobbyPlayers: List[LobbyInfoData] = [
             LobbyInfoData(packet[i:i + packet_len], header.m_packetFormat)
-            for i in range(1, len(packet), packet_len)
+            for i in range(1, 1 + self.m_numPlayers * packet_len, packet_len)
         ]
-        # Trim the list
-        self.m_lobbyPlayers = self.m_lobbyPlayers[:self.m_numPlayers]
 
     def toJSON(self, include_header: bool=False) -> Dict[str, Any]:
         """

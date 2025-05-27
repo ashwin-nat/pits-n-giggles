@@ -42,6 +42,11 @@ class InvalidPacketLengthError(Exception):
     def __init__(self, message):
         super().__init__(f"Invalid packet length. {message}")
 
+class PacketParsingError(Exception):
+    """Raised when packet data is malformed or insufficient"""
+    def __init__(self, message):
+        super().__init__(f"Malformed packet. {message}")
+
 # -------------------- COMMON CLASSES ------------------------------------------
 class F1PacketType(Enum):
     """Class of enum representing the different packet types emitted by the game

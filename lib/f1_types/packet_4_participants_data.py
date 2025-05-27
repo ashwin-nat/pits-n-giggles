@@ -22,8 +22,10 @@
 
 
 import struct
-from typing import Dict, Any, List, Union, Optional
-from .common import PacketHeader, Platform, Nationality, TeamID23, TeamID24, TelemetrySetting
+from typing import Any, Dict, List, Optional, Union
+
+from .common import (Nationality, PacketHeader, PacketParsingError, Platform,
+                     TeamID23, TeamID24, TelemetrySetting)
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -362,18 +364,25 @@ class PacketParticipantsData:
         self.m_header: PacketHeader = header         # PacketHeader
         self.m_numActiveCars: int = struct.unpack("<B", packet[:1])[0]
         self.m_participants: List[ParticipantData] = []            # ParticipantData[22]
-
         packet_len = ParticipantData.PACKET_LEN_23 if (header.m_gameYear == 23) else ParticipantData.PACKET_LEN_24
+
+        # Validate packet size
+        expected_participant_data_len = self.m_numActiveCars * packet_len
+        available_data_len = len(packet) - 1  # -1 for the first byte
+        if available_data_len < expected_participant_data_len:
+            raise PacketParsingError(
+                f"Insufficient participant data: expected {expected_participant_data_len} bytes, "
+                f"got {available_data_len} bytes for {self.m_numActiveCars} active cars"
+            )
+
         # Iterate over packet[1:] in steps of packet_len,
         # creating ParticipantData objects for each segment and passing the game year.
 
-        # TODO: dont construct the objects for cars that are not active, since they are going to be discarded anyway
+        # Only construct ParticipantData for active cars
         self.m_participants.extend(
             ParticipantData(packet[i:i + packet_len], header.m_gameYear)
-            for i in range(1, len(packet), packet_len)
+            for i in range(1, 1 + self.m_numActiveCars * packet_len, packet_len)
         )
-        # Trim the list
-        self.m_participants = self.m_participants[:self.m_numActiveCars]
 
     def __str__(self) -> str:
         """
