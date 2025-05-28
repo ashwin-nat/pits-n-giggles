@@ -35,6 +35,7 @@ from .tests_packet_11_session_history_data import TestPacketSessionHistoryData
 from .tests_packet_12_tyre_sets_data import TestPacketTyreSetsData
 from .tests_packet_13_motion_ex_data import TestPacketMotionExData
 from .tests_packet_14_time_trial_data import TestPacketTimeTrialData
+from .tests_packet_15_lap_positions_data import TestPacketLapPositionsData
 
 __all__ = [
     'TestPacketCarMotionData',
@@ -51,5 +52,6 @@ __all__ = [
     'TestPacketSessionHistoryData',
     'TestPacketTyreSetsData',
     'TestPacketMotionExData',
-    'TestPacketTimeTrialData'
+    'TestPacketTimeTrialData',
+    'TestPacketLapPositionsData',
 ]
