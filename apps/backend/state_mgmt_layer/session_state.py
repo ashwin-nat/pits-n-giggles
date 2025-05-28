@@ -783,6 +783,7 @@ class SessionState:
             ActualTyreCompound.INTER,
         }
         slick_tyre_compounds = {
+            ActualTyreCompound.C6,
             ActualTyreCompound.C5,
             ActualTyreCompound.C4,
             ActualTyreCompound.C3,

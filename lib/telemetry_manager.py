@@ -29,11 +29,11 @@ from lib.f1_types import (F1PacketType, InvalidPacketLengthError,
                           PacketCarDamageData, PacketCarSetupData,
                           PacketCarStatusData, PacketCarTelemetryData,
                           PacketEventData, PacketFinalClassificationData,
-                          PacketHeader, PacketLapData, PacketLobbyInfoData,
-                          PacketMotionData, PacketMotionExData,
-                          PacketParticipantsData, PacketSessionData,
-                          PacketSessionHistoryData, PacketTimeTrialData,
-                          PacketTyreSetsData)
+                          PacketHeader, PacketLapData, PacketLapPositionsData,
+                          PacketLobbyInfoData, PacketMotionData,
+                          PacketMotionExData, PacketParticipantsData,
+                          PacketSessionData, PacketSessionHistoryData,
+                          PacketTimeTrialData, PacketTyreSetsData)
 from lib.socket_receiver import (AsyncTCPListener, AsyncUDPListener,
                                  TCPListener, UDPListener)
 
@@ -71,6 +71,7 @@ class AsyncF1TelemetryManager:
         F1PacketType.TYRE_SETS: PacketTyreSetsData,
         F1PacketType.MOTION_EX: PacketMotionExData,
         F1PacketType.TIME_TRIAL: PacketTimeTrialData,
+        F1PacketType.LAP_POSITIONS: PacketLapPositionsData,
     }
 
     MIN_GAME_YEAR = 23

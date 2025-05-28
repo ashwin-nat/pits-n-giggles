@@ -66,6 +66,7 @@ class F1PacketType(Enum):
     TYRE_SETS = 12
     MOTION_EX = 13
     TIME_TRIAL = 14
+    LAP_POSITIONS = 15
 
     @staticmethod
     def isValid(packet_type) -> bool:
@@ -308,6 +309,7 @@ class ActualTyreCompound(Enum):
     Enumeration representing different tyre compounds used in Formula 1 and Formula 2.
 
     Attributes:
+        C6 (int): F1 Modern - C6
         C5 (int): F1 Modern - C5
         C4 (int): F1 Modern - C4
         C3 (int): F1 Modern - C3
@@ -328,6 +330,7 @@ class ActualTyreCompound(Enum):
             Each attribute represents a unique tyre compound identified by an integer value.
     """
 
+    C6 = 22
     C5 = 16
     C4 = 17
     C3 = 18
@@ -1116,6 +1119,11 @@ class GameMode(Enum):
     CAREER_24_ONLINE = 24
     MY_TEAM_CAREER_24 = 25
     CURATED_CAREER_24 = 26
+    MY_TEAM_CAREER_25 = 27
+    DRIVER_CAREER_25 = 28
+    CAREER_25_ONLINE = 29
+    CHALLENGE_CAREER = 30
+    APEX_STORY = 75
     BENCHMARK = 127
 
     def __str__(self) -> str:

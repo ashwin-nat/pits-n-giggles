@@ -48,6 +48,7 @@ from .packet_11_session_history_data import (LapHistoryData,
 from .packet_12_tyre_sets_packet import PacketTyreSetsData, TyreSetData
 from .packet_13_motion_ex_data import PacketMotionExData
 from .packet_14_time_trial_data import PacketTimeTrialData, TimeTrialDataSet
+from .packet_15_lap_positions_data import PacketLapPositionsData
 
 # Import other packet classes here
 __all__ = [
@@ -132,5 +133,8 @@ __all__ = [
 
     # Packet 14 - Time Trial
     "PacketTimeTrialData",
-    "TimeTrialDataSet"
+    "TimeTrialDataSet",
+
+    # Packet 15 - Lap positions
+    "PacketLapPositionsData",
 ]
