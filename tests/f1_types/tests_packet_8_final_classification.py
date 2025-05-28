@@ -45,7 +45,7 @@ class TestPacketFinalClassificationData(F1TypesTest):
         generated_test_obj = PacketFinalClassificationData.from_values(
             self.m_header_24,
             self.m_num_players,
-            [self._generateRandomFinalClassificationData() for _ in range(self.m_num_players)]
+            [self._generateRandomFinalClassificationData(game_year=24) for _ in range(self.m_num_players)]
         )
         serialised_test_obj = generated_test_obj.to_bytes()
         header_bytes = serialised_test_obj[:PacketHeader.PACKET_LEN]
@@ -64,7 +64,7 @@ class TestPacketFinalClassificationData(F1TypesTest):
         generated_test_obj = PacketFinalClassificationData.from_values(
             self.m_header_23,
             self.m_num_players,
-            [self._generateRandomFinalClassificationData() for _ in range(self.m_num_players)]
+            [self._generateRandomFinalClassificationData(game_year=23) for _ in range(self.m_num_players)]
         )
         serialised_test_obj = generated_test_obj.to_bytes()
         header_bytes = serialised_test_obj[:PacketHeader.PACKET_LEN]
@@ -571,15 +571,19 @@ class TestPacketFinalClassificationData(F1TypesTest):
         parsed_json = parsed_packet.toJSON()
         self.jsonComparisionUtil(expected_json, parsed_json)
 
-    def _generateRandomFinalClassificationData(self) -> FinalClassificationData:
+    def _generateRandomFinalClassificationData(self, game_year: int) -> FinalClassificationData:
         """
         Generate a random car status data object
+
+        Args:
+            game_year (int): Game year
 
         Returns:
             FinalClassificationData: A random car status data object
         """
 
         return FinalClassificationData.from_values(
+            game_year=game_year,
             position=random.randrange(1,22),
             num_laps=random.randrange(0,70),
             grid_position=random.randrange(1,22),

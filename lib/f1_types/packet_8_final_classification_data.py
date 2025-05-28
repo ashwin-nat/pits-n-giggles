@@ -110,6 +110,7 @@ class FinalClassificationData:
         self.m_tyreStintsVisual: List[int] = [0] * 8
         self.m_tyreStintsEndLaps: List[int] = [0] * 8
         self.m_resultReason: ResultReason = ResultReason.INVALID
+        self.m_gameYear = game_year
         if game_year <= 24:
             (
                 self.m_position,
@@ -247,14 +248,13 @@ class FinalClassificationData:
             Dict[str, Any]: JSON-compatible dictionary with kebab-case keys representing the FinalClassificationData instance.
         """
 
-        return {
+        res = {
             "position": self.m_position,
             "num-laps": self.m_numLaps,
             "grid-position": self.m_gridPosition,
             "points": self.m_points,
             "num-pit-stops": self.m_numPitStops,
             "result-status": str(self.m_resultStatus),
-            "result-reason": str(self.m_resultReason),
             "best-lap-time-ms": self.m_bestLapTimeInMS,
             "best-lap-time-str": F1Utils.millisecondsToMinutesSecondsMilliseconds(self.m_bestLapTimeInMS),
             "total-race-time": self.m_totalRaceTime,
@@ -266,6 +266,11 @@ class FinalClassificationData:
             "tyre-stints-visual": [str(compound) for compound in self.m_tyreStintsVisual],
             "tyre-stints-end-laps": self.m_tyreStintsEndLaps,
         }
+
+        if self.m_gameYear >= 25:
+            res["result-reason"] = str(self.m_resultReason)
+
+        return res
 
     def __eq__(self, other: "FinalClassificationData") -> bool:
         """
@@ -380,6 +385,7 @@ class FinalClassificationData:
 
     @classmethod
     def from_values(cls,
+            game_year: int,
             position: int,
             num_laps: int,
             grid_position: int,
@@ -467,7 +473,7 @@ class FinalClassificationData:
             tyre_stints_end_laps_5,
             tyre_stints_end_laps_6,
             tyre_stints_end_laps_7
-        ))
+        ), game_year=game_year)
 
 class PacketFinalClassificationData:
     """

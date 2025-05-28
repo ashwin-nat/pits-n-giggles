@@ -339,6 +339,7 @@ class CarDamageData:
 
     @classmethod
     def from_values(cls,
+        game_year: int,
         tyres_wear: List[float],
         tyres_damage: List[int],
         brakes_damage: List[int],
@@ -402,7 +403,7 @@ class CarDamageData:
             engine_tc_wear,
             engine_blown,
             engine_seized,
-        ))
+        ), game_year)
 
 
 class PacketCarDamageData:

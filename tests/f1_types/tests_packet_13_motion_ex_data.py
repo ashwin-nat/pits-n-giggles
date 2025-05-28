@@ -113,11 +113,24 @@ class TestPacketMotionExData(F1TypesTest):
                 2122.850830078125,
                 2186.943115234375
             ],
-            "front-aero-height": 0,
-            "rear-aero-height": 0,
-            "front-roll-angle": 0,
-            "rear-roll-angle": 0,
-            "chassis-yaw": 0
+            "front-aero-height": 0.0,
+            "rear-aero-height": 0.0,
+            "front-roll-angle": 0.0,
+            "rear-roll-angle": 0.0,
+            "chassis-yaw": 0.0,
+            "chassis-pitch": 0.0,
+            "wheel-camber" : [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+            ],
+            "wheel-camber-gain": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+            ],
         }
 
         parsed_packet = PacketMotionExData(self.m_header_23, raw_packet)
@@ -206,7 +219,20 @@ class TestPacketMotionExData(F1TypesTest):
             "rear-aero-height": 0.06005645543336868,
             "front-roll-angle": -1.5258365237968974e-06,
             "rear-roll-angle": 0.0003165488305967301,
-            "chassis-yaw": 0.0
+            "chassis-yaw": 0.0,
+            "chassis-pitch": 0.0,
+            "wheel-camber" : [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+            ],
+            "wheel-camber-gain": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+            ],
         }
 
         parsed_packet = PacketMotionExData(self.m_header_24, raw_packet)

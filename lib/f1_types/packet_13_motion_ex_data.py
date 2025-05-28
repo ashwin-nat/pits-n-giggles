@@ -241,7 +241,10 @@ class PacketMotionExData:
             f"Rear AERO Height: {self.m_rearAeroHeight}, "
             f"Front Roll Angle: {self.m_frontRollAngle}, "
             f"Rear Roll Angle: {self.m_rearRollAngle}, "
-            f"Chassis Yaw: {self.m_chassisYaw}"
+            f"Chassis Yaw: {self.m_chassisYaw}",
+            f"Chassis Pitch: {self.m_chassisPitch}, "
+            f"Wheel Camber: {str(self.m_wheelCamber)}, "
+            f"Wheel Camber Gain: {str(self.m_wheelCamberGain)}"
         )
 
     def toJSON(self, include_header: bool=False) -> Dict[str, Any]:
@@ -280,7 +283,10 @@ class PacketMotionExData:
             "rear-aero-height": self.m_rearAeroHeight,
             "front-roll-angle": self.m_frontRollAngle,
             "rear-roll-angle": self.m_rearRollAngle,
-            "chassis-yaw": self.m_chassisYaw
+            "chassis-yaw": self.m_chassisYaw,
+            "chassis-pitch": self.m_chassisPitch,
+            "wheel-camber": self.m_wheelCamber,
+            "wheel-camber-gain": self.m_wheelCamberGain
         }
         if include_header:
             json_data["header"] = self.m_header.toJSON()
