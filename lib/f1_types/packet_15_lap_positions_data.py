@@ -25,9 +25,7 @@ import struct
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-from .common import (F1PacketType, Nationality, PacketHeader, Platform,
-                     TeamID23, TeamID24, TelemetrySetting,
-                     _validate_parse_fixed_segments)
+from .common import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 

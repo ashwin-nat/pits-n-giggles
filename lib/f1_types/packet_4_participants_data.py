@@ -25,7 +25,7 @@ import struct
 from typing import Any, Dict, List, Optional, Union
 
 from .common import (Nationality, PacketHeader, _validate_parse_fixed_segments, Platform,
-                     TeamID23, TeamID24, TelemetrySetting)
+                     TeamID23, TeamID24, TeamID25, TelemetrySetting)
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -232,8 +232,10 @@ class ParticipantData:
             self.m_platform = Platform(self.m_platform)
         if game_year == 23 and TeamID23.isValid(self.m_teamId):
             self.m_teamId = TeamID23(self.m_teamId)
-        elif TeamID24.isValid(self.m_teamId):
+        elif game_year == 24 and TeamID24.isValid(self.m_teamId):
             self.m_teamId = TeamID24(self.m_teamId)
+        elif game_year == 25 and TeamID25.isValid(self.m_teamId):
+            self.m_teamId = TeamID25(self.m_teamId)
         if TelemetrySetting.isValid(self.m_yourTelemetry):
             self.m_yourTelemetry = TelemetrySetting(self.m_yourTelemetry)
         if Nationality.isValid(self.m_nationality):
@@ -368,7 +370,7 @@ class ParticipantData:
                     ai_controlled: bool,
                     driver_id: int,
                     network_id: int,
-                    team_id: Union[TeamID23, TeamID24],
+                    team_id: Union[TeamID23, TeamID24, TeamID25],
                     my_team: bool,
                     race_number: int,
                     nationality: Nationality,
@@ -386,7 +388,7 @@ class ParticipantData:
             ai_controlled (bool): Whether the car is an AI car or not.
             driver_id (int): ID of the car's driver.
             network_id (int): ID of the car on the network.
-            team_id (Union[TeamID23, TeamID24]): ID of the car's team.
+            team_id (Union[TeamID23, TeamID24, TeamID25]): ID of the car's team.
             my_team (bool): Whether the car is on its team or not.
             race_number (int): Race number of the car.
             nationality (Nationality): Nationality of the car.

@@ -493,4 +493,6 @@ class TestPacketLobbyInfoData(F1TypesTest):
                 ready_status=random.choice(list(LobbyInfoData.ReadyStatus))
             )
 
+        # TODO: Implement for 25
+
         raise NotImplementedError(f"Test not implemented for game year {header.m_gameYear}")

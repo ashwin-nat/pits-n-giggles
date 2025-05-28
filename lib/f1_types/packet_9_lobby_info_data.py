@@ -26,7 +26,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
 from .common import (F1PacketType, Nationality, PacketHeader, Platform,
-                     TeamID23, TeamID24, TelemetrySetting,
+                     TeamID23, TeamID24, TeamID25, TelemetrySetting,
                      _validate_parse_fixed_segments)
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -74,6 +74,21 @@ class LobbyInfoData:
         "B" # uint8     m_readyStatus;       // 0 = not ready, 1 = ready, 2 = spectating
     )
     PACKET_LEN_24 = struct.calcsize(PACKET_FORMAT_24)
+
+    PACKET_FORMAT_25 = ("<"
+        "B" # uint8     m_aiControlled;      // Whether the vehicle is AI (1) or Human (0) controlled
+        "B" # uint8     m_teamId;            // Team id - see appendix (255 if no team currently selected)
+        "B" # uint8     m_nationality;       // Nationality of the driver
+        "B" # uint8     m_platform;          // 1 = Steam, 3 = PlayStation, 4 = Xbox, 6 = Origin, 255 = unknown
+        "32s" # char    m_name[32];	         // Name of participant in UTF-8 format – null terminated
+                                    #        // Will be truncated with ... (U+2026) if too long
+        "B" # uint8     m_carNumber;         // Car number of the player
+        "B" # uint8     m_yourTelemetry;     // The player's UDP setting, 0 = restricted, 1 = public
+        "B" # uint8     m_showOnlineNames;   // The player's show online names setting, 0 = off, 1 = on
+        "H" # uint16    m_techLevel;         // F1 World tech level
+        "B" # uint8     m_readyStatus;       // 0 = not ready, 1 = ready, 2 = spectating
+    )
+    PACKET_LEN_25 = struct.calcsize(PACKET_FORMAT_25)
 
     class ReadyStatus(Enum):
         """
@@ -128,6 +143,11 @@ class LobbyInfoData:
             self.m_showOnlineNames = True
             self.m_techLevel = 0
         else:
+            if packet_format == 2024:
+                packet_format = self.PACKET_FORMAT_24
+            elif packet_format == 2025:
+                packet_format = self.PACKET_FORMAT_25
+
             (
                 self.m_aiControlled,
                 self.m_teamId,
@@ -139,7 +159,7 @@ class LobbyInfoData:
                 self.m_showOnlineNames,
                 self.m_techLevel,
                 self.m_readyStatus,
-            ) = struct.unpack(self.PACKET_FORMAT_24, data)
+            ) = struct.unpack(packet_format, data)
             if TelemetrySetting.isValid(self.m_yourTelemetry):
                 self.m_yourTelemetry = TelemetrySetting(self.m_yourTelemetry)
 
@@ -147,8 +167,11 @@ class LobbyInfoData:
 
         if packet_format == 2023 and TeamID23.isValid(self.m_teamId):
             self.m_teamId = TeamID23(self.m_teamId)
-        elif TeamID24.isValid(self.m_teamId):
+        elif packet_format == 2024 and TeamID24.isValid(self.m_teamId):
             self.m_teamId = TeamID24(self.m_teamId)
+        elif packet_format == 2025 and TeamID25.isValid(self.m_teamId):
+            self.m_teamId = TeamID25(self.m_teamId)
+
         if Nationality.isValid(self.m_nationality):
             self.m_nationality = Nationality(self.m_nationality)
         if Platform.isValid(self.m_platform):
@@ -252,7 +275,7 @@ class LobbyInfoData:
     def from_values(cls,
                     header: PacketHeader,
                     ai_controlled: bool,
-                    team_id: Union[TeamID23, TeamID24],
+                    team_id: Union[TeamID23, TeamID24, TeamID25],
                     nationality: Nationality,
                     platform: Platform,
                     name: str,
@@ -267,7 +290,7 @@ class LobbyInfoData:
         Args:
             header (PacketHeader): The header of the telemetry packet.
             ai_controlled (bool): Whether the car is controlled by an AI car.
-            team_id (TeamID23): Team ID of the player.
+            team_id (TeamID23 | TeamID24 | TeamID25): Team ID of the player.
             nationality (Nationality): Nationality of the player.
             platform (Platform): Platform on which the player is participating.
             name (str): Name of the player.

@@ -22,9 +22,13 @@
 
 import random
 from typing import Optional
-from lib.f1_types import ParticipantData, PacketParticipantsData, F1PacketType, PacketHeader, \
-    TeamID23, TeamID24, Nationality, TelemetrySetting, Platform
+
+from lib.f1_types import (F1PacketType, Nationality, PacketHeader,
+                          PacketParticipantsData, ParticipantData, Platform,
+                          TeamID23, TeamID24, TeamID25, TelemetrySetting)
+
 from .tests_parser_base import F1TypesTest
+
 
 class TestPacketParticipantsData(F1TypesTest):
     """
@@ -682,8 +686,11 @@ class TestPacketParticipantsData(F1TypesTest):
         if header.m_gameYear == 23:
             team_id = random.choice(list(TeamID23))
             tech_level = 0
-        else:
+        elif header.m_gameYear == 24:
             team_id = random.choice(list(TeamID24))
+            tech_level = random.getrandbits(16)
+        elif header.m_gameYear == 25:
+            team_id = random.choice(list(TeamID25))
             tech_level = random.getrandbits(16)
         return ParticipantData.from_values(
             header,

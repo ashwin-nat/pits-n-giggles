@@ -25,8 +25,9 @@ from .common import (ActualTyreCompound, F1PacketType, F1Utils,
                      GearboxAssistMode, InvalidPacketLengthError, Nationality,
                      PacketHeader, Platform, ResultReason, ResultStatus,
                      SafetyCarType, SessionLength, SessionType23,
-                     SessionType24, TeamID23, TeamID24, TelemetrySetting,
-                     TrackID, TractionControlAssistMode, VisualTyreCompound)
+                     SessionType24, TeamID23, TeamID24, TeamID25,
+                     TelemetrySetting, TrackID, TractionControlAssistMode,
+                     VisualTyreCompound)
 from .packet_0_car_motion_data import CarMotionData, PacketMotionData
 from .packet_1_session_data import (MarshalZone, PacketSessionData,
                                     WeatherForecastSample)
@@ -67,6 +68,7 @@ __all__ = [
     "Platform",
     "TeamID23",
     "TeamID24",
+    "TeamID25",
     "F1Utils",
     "PacketHeader",
     "TrackID",

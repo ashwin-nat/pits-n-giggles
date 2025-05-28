@@ -21,9 +21,13 @@
 # SOFTWARE.
 
 import random
-from lib.f1_types import PacketTimeTrialData, TimeTrialDataSet, F1PacketType, PacketHeader, TeamID24, \
-    GearboxAssistMode, TractionControlAssistMode
+
+from lib.f1_types import (F1PacketType, GearboxAssistMode, PacketHeader,
+                          PacketTimeTrialData, TeamID24, TeamID25,
+                          TimeTrialDataSet, TractionControlAssistMode)
+
 from .tests_parser_base import F1TypesTest
+
 
 class TestPacketTimeTrialData(F1TypesTest):
     """
@@ -134,7 +138,7 @@ class TestPacketTimeTrialData(F1TypesTest):
         s3_time_ms = random.randrange(0, 60000)
         return TimeTrialDataSet.from_values(
             car_index=index,
-            team_id=random.choice(list(TeamID24)),
+            team_id=random.choice(list(TeamID24)), # TODO - use game year
             lap_time_in_ms=(s1_time_ms + s2_time_ms + s3_time_ms),
             sector1_time_in_ms=s1_time_ms,
             sector2_time_in_ms=s2_time_ms,

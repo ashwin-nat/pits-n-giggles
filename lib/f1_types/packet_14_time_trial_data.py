@@ -22,9 +22,9 @@
 
 
 import struct
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
-from .common import (F1Utils, GearboxAssistMode, PacketHeader, TeamID24,
+from .common import (F1Utils, GearboxAssistMode, PacketHeader, TeamID24, TeamID25,
                      TractionControlAssistMode)
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -62,12 +62,13 @@ class TimeTrialDataSet:
     )
     PACKET_LEN = struct.calcsize(PACKET_FORMAT)
 
-    def __init__(self, data: bytes) -> None:
+    def __init__(self, data: bytes, game_year: int) -> None:
         """
         Initializes a TimeTrialDataSet object by unpacking the provided binary data.
 
         Parameters:
             data (bytes): Binary data to be unpacked.
+            game_year (int): The game year.
 
         Raises:
             struct.error: If the binary data does not match the expected format.
@@ -90,8 +91,12 @@ class TimeTrialDataSet:
         ) = unpacked_data
 
         # No ned to check game year, since this packet type is not available in F1 23
-        if TeamID24.isValid(self.m_teamId):
-            self.m_teamId = TeamID24(self.m_teamId)
+        if game_year < 25:
+            if TeamID24.isValid(self.m_teamId):
+                self.m_teamId = TeamID24(self.m_teamId)
+        else:
+            if TeamID25.isValid(self.m_teamId):
+                self.m_teamId = TeamID25(self.m_teamId)
         if TractionControlAssistMode.isValid(self.m_tractionControl):
             self.m_tractionControl = TractionControlAssistMode(self.m_tractionControl)
         if GearboxAssistMode.isValid(self.m_gearboxAssist):
@@ -189,7 +194,7 @@ class TimeTrialDataSet:
     @classmethod
     def from_values(cls,
                     car_index: int,
-                    team_id: TeamID24,
+                    team_id: Union[TeamID24, TeamID25],
                     lap_time_in_ms: int,
                     sector1_time_in_ms: int,
                     sector2_time_in_ms: int,
@@ -204,7 +209,7 @@ class TimeTrialDataSet:
 
         Args:
             car_index (int): The car index
-            team_id (TeamID24): The team id
+            team_id (TeamID24 | TeamID25): The team id
             lap_time_in_ms (int): The lap time in milliseconds
             sector1_time_in_ms (int): The sector 1 time in milliseconds
             sector2_time_in_ms (int): The sector 2 time in milliseconds
@@ -266,17 +271,17 @@ class PacketTimeTrialData:
         bytes_so_far = 0
         raw_data = data[:bytes_so_far + TimeTrialDataSet.PACKET_LEN]
         bytes_so_far += TimeTrialDataSet.PACKET_LEN
-        self.m_playerSessionBestDataSet = TimeTrialDataSet(raw_data)
+        self.m_playerSessionBestDataSet = TimeTrialDataSet(raw_data, header.m_gameYear)
 
         # Next, the personal best data set
         raw_data = data[bytes_so_far:bytes_so_far + TimeTrialDataSet.PACKET_LEN]
         bytes_so_far += TimeTrialDataSet.PACKET_LEN
-        self.m_personalBestDataSet = TimeTrialDataSet(raw_data)
+        self.m_personalBestDataSet = TimeTrialDataSet(raw_data, header.m_gameYear)
 
         # Finally, the rival data set
         raw_data = data[bytes_so_far:bytes_so_far + TimeTrialDataSet.PACKET_LEN]
         bytes_so_far += TimeTrialDataSet.PACKET_LEN
-        self.m_rivalSessionBestDataSet = TimeTrialDataSet(raw_data)
+        self.m_rivalSessionBestDataSet = TimeTrialDataSet(raw_data, header.m_gameYear)
 
     def toJSON(self, include_header: bool=False) -> Dict[str, Any]:
         """Get the JSON dump of this object

@@ -998,6 +998,56 @@ class TeamID24(Enum):
             return True  # It's already an instance of TeamID24
         return any(team_id == member.value for member in TeamID24)
 
+
+class TeamID25(Enum):
+    MERCEDES = 0
+    FERRARI = 1
+    RED_BULL_RACING = 2
+    WILLIAMS = 3
+    ASTON_MARTIN = 4
+    ALPINE = 5
+    RB = 6
+    HAAS = 7
+    MCLAREN = 8
+    SAUBER = 9
+    F1_GENERIC = 41
+    F1_CUSTOM_TEAM = 104
+    KONNERSPORT = 129
+    APXGP_24 = 142
+    APXGP_25 = 154
+    KONNERSPORT_24 = 155
+    ART_GP_24 = 158
+    CAMPOS_24 = 159
+    RODIN_MOTORSPORT_24 = 160
+    AIX_RACING_24 = 161
+    DAMS_24 = 162
+    HITECH_24 = 163
+    MP_MOTORSPORT_24 = 164
+    PREMA_24 = 165
+    TRIDENT_24 = 166
+    VAN_AMERSFOORT_RACING_24 = 167
+    INVICTA_24 = 168
+    MERCEDES_24 = 185
+    FERRARI_24 = 186
+    RED_BULL_RACING_24 = 187
+    WILLIAMS_24 = 188
+    ASTON_MARTIN_24 = 189
+    ALPINE_24 = 190
+    RB_24 = 191
+    HAAS_24 = 192
+    MCLAREN_24 = 193
+    SAUBER_24 = 194
+
+    def __str__(self):
+        return self.name.replace("_", " ").title().replace("Gp", "GP").replace("24", "'24").replace("25", "'25")
+
+    @staticmethod
+    def isValid(value: int) -> bool:
+        if isinstance(value, TeamID25):
+            return True  # It's already an instance of TeamID25
+        return any(value == member.value for member in TeamID25)
+
+
 class TrackID(Enum):
     """
     Enum class representing F1 track IDs and their corresponding names.
@@ -1090,11 +1140,11 @@ class GameMode(Enum):
         ONLINE_WEEKLY_EVENT (int): Online Weekly Event
         STORY_MODE (int): Story Mode
         CAREER_22 (int): Career ‘22
-        CAREER_22_ONLINE (int): Career ’22 Online
+        CAREER_22_ONLINE (int): Career '22 Online
         CAREER_23 (int): Career ‘23
-        CAREER_23_ONLINE (int): Career ’23 Online
+        CAREER_23_ONLINE (int): Career '23 Online
         DRIVER_CAREER_24 (int): Driver Career ‘24
-        CAREER_24_ONLINE (int): Career ’24 Online
+        CAREER_24_ONLINE (int): Career '24 Online
         MY_TEAM_CAREER_24 (int): My Team Career ‘24
         CURATED_CAREER_24 (int): Curated Career ‘24
         BENCHMARK (int): Benchmark
