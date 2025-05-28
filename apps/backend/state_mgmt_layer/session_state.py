@@ -138,6 +138,11 @@ class SessionInfo:
         """Checks if the SessionInfo object is valid (contains data) """
         return self.m_packet_session
 
+    @property
+    def session_ended(self) -> bool:
+        """Checks if the session has ended"""
+        return bool(self.m_packet_final_classification)
+
     def processSessionUpdate(self, packet: PacketSessionData) -> bool:
         """Populates the fields from the session data packet
         Args:
@@ -478,7 +483,8 @@ class SessionState:
             obj_to_be_updated.m_packet_copies.m_packet_final_classification = data
             final_json["classification-data"][index] = obj_to_be_updated.toJSON(index)
             if is_position_history_supported:
-                final_json["position-history"].append(obj_to_be_updated.getPositionHistoryJSON())
+                final_json["position-history"].append(
+                    obj_to_be_updated.getPositionHistoryJSON(packet.m_header.m_gameYear, session_ended=True))
                 final_json["tyre-stint-history"].append(obj_to_be_updated.getTyreStintHistoryJSON())
         final_json['classification-data'] = sorted(final_json['classification-data'], key=lambda x: x['track-position'])
         final_json['game-year'] = self.m_session_info.m_game_year
@@ -624,6 +630,9 @@ class SessionState:
         Args:
             packet (PacketLapPositionsData): The lap positions update packet
         """
+
+        if not self.isPositionHistorySupported():
+            return
 
         position_hist_by_index = F1Utils.transposeLapPositions(packet.m_lapPositions)
         for index, position_hist in enumerate(position_hist_by_index):
@@ -1105,8 +1114,7 @@ class SessionState:
                 if obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status is None
                 else max(packet.m_safetyCarStatus, obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status)
             )
-            obj_to_be_updated.m_tyre_info.m_tyre_wear_extrapolator.total_laps = self.m_session_info.m_total_laps
-            obj_to_be_updated.m_car_info.m_fuel_rate_recommender.total_laps = self.m_session_info.m_total_laps
+            obj_to_be_updated.updateTotalLaps(packet.m_totalLaps)
 
     def _getCollisionObj(self, driver_1_index: int, driver_2_index: int) -> Optional[CollisionRecord]:
         """Returns a collision object containing collision information

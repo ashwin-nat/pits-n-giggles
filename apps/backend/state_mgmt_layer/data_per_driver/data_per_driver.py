@@ -115,8 +115,10 @@ class DataPerDriver:
         self.m_latest_snapshot_lap_num: Optional[int] = None
 
         # Positions history (F1 25+)
-        assert total_laps > 0
-        self.m_position_history: List[int] = [0] * (total_laps + 1) # +1 for zeroth lap
+        if total_laps:
+            self.m_position_history: List[int] = [0] * (total_laps + 1) # +1 for zeroth lap
+        else:
+            self.m_position_history: List[int] = None
 
     @property
     def is_valid(self) -> bool:
@@ -378,6 +380,19 @@ class DataPerDriver:
                     'tyre-set' : tyre_set_data.toJSON() if tyre_set_data else None,
                 })
         return ret
+
+    def updateTotalLaps(self, total_laps: int) -> None:
+        """Update the total number of laps in all relevant members
+
+        Args:
+            total_laps (int): The total number of laps.
+        """
+
+        self.m_tyre_info.m_tyre_wear_extrapolator.total_laps = total_laps
+        self.m_car_info.m_fuel_rate_recommender.total_laps   = total_laps
+
+        if not self.m_position_history:
+            self.m_position_history = [0] * (total_laps + 1) # +1 for zeroth lap
 
     def _handleFlashBack(self, old_lap_number: int) -> None:
         """Handle a flashback. Remove data from the histories
@@ -714,8 +729,12 @@ class DataPerDriver:
             "surplus-laps-game" : 0.0,
         }
 
-    def getPositionHistoryJSON(self) -> Dict[str, Any]:
+    def getPositionHistoryJSON(self, game_year: int, session_ended: bool) -> Dict[str, Any]:
         """Get the position history JSON.
+
+        Args:
+            game_year (int): The game year
+            session_ended (bool): Whether the session has ended
 
         Returns:
             Dict[str, Any]: Position history JSON
@@ -725,14 +744,34 @@ class DataPerDriver:
             "name": self.m_driver_info.name,
             "team": self.m_driver_info.team,
             "driver-number": self.m_driver_info.driver_number,
-            "driver-position-history": [
-                {
-                    "lap-number": lap_number,
-                    "position": snapshot_record.m_track_position
-                }
-                for lap_number, snapshot_record in self._getNextLapSnapshot()
-            ]
+            "driver-position-history": self._getPositionHistoryHelper(game_year, session_ended),
         }
+
+    def _getPositionHistoryHelper(self, game_year: int, session_ended: bool) -> List[Tuple[int, int]]:
+        """Get the position history based on game year
+
+        Args:
+            game_year (int): The game year
+            session_ended (bool): Whether the session has ended
+
+        Returns:
+            List[Tuple[int, int]]: Position history
+        """
+
+        if game_year >= 25:
+            # Use the newer position history telemetry data on supported games
+            return [{"lap-number": lap, "position": position} \
+                    for lap, position in enumerate(self.m_position_history) \
+                        if session_ended or (lap < self.m_lap_info.m_current_lap)]
+
+        # Fetch from per lap snapshots
+        return [
+            {
+                "lap-number": lap_number,
+                "position": snapshot_record.m_track_position
+            }
+            for lap_number, snapshot_record in self._getNextLapSnapshot()
+        ]
 
     def getTyreStintHistoryJSON(self) -> Dict[str, Any]:
         """Get the tyre stint history JSON.
@@ -861,6 +900,11 @@ class DataPerDriver:
             packet (PacketLapPositionsData): The incoming lap positions packet
             position_history (List[int]): The position history
         """
+
+        # Defer this update if the position history is not yet initialized
+        if not self.m_position_history:
+            png_logger.debug(f"Position history not yet initialized. {self.__str__()}")
+            return
 
         assert len(position_history) == packet.m_numLaps
 
