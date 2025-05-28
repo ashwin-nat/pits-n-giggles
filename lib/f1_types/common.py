@@ -25,11 +25,12 @@
 ## official document.
 ## F1 23 - https://answers.ea.com/t5/General-Discussion/F1-23-UDP-Specification/m-p/12633159
 ## F1 24 - https://answers.ea.com/t5/General-Discussion/F1-24-UDP-Specification/td-p/13745220
+## F1 25 - https://forums.ea.com/blog/f1-games-game-info-hub-en/ea-sports%E2%84%A2-f1%C2%AE25-udp-specification/12187347
 
 
 import struct
 from enum import Enum, IntEnum
-from typing import Any, Dict, Optional, Set, Union
+from typing import Any, Dict, List, Optional, Set, Union
 
 # ------------------------- ERROR CLASSES --------------------------------------
 
@@ -355,6 +356,7 @@ class ActualTyreCompound(Enum):
             str: String representation of the tyre compound.
         """
         return {
+            ActualTyreCompound.C6: "C6",
             ActualTyreCompound.C5: "C5",
             ActualTyreCompound.C4: "C4",
             ActualTyreCompound.C3: "C3",
@@ -1477,6 +1479,41 @@ class F1Utils:
             SessionType24.PRACTICE_3,
             SessionType24.SHORT_PRACTICE,
         ]
+
+    @staticmethod
+    def transposeLapPositions(lap_major: List[List[int]]) -> List[List[int]]:
+        """
+        Transpose a 2D list of lap position data from lap-major to car-major order.
+
+        The input list is expected to have the format:
+            lap_major[lap_index][car_index] -> position
+
+        The output list will have the format:
+            car_major[car_index][lap_index] -> position
+
+        Args:
+            lap_major (List[List[int]]): 2D list where each inner list represents
+                                        the positions of all cars for a single lap.
+
+        Returns:
+            List[List[int]]: Transposed 2D list where each inner list represents
+                            the positions of one car across all laps.
+
+        Example:
+            lap_major = [
+                [1, 2, 3],  # lap 0
+                [2, 1, 3],  # lap 1
+            ]
+
+            Result:
+            [
+                [1, 2],  # car 0
+                [2, 1],  # car 1
+                [3, 3],  # car 2
+            ]
+        """
+        # Transpose using zip and map. zip(*lap_major) groups values per car index.
+        return [list(car_lap_positions) for car_lap_positions in zip(*lap_major)]
 
 # -------------------- HEADER PARSING ------------------------------------------
 

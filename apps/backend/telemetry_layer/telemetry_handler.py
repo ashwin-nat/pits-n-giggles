@@ -394,7 +394,7 @@ class F1TelemetryHandler:
                 packet (PacketLapPositionsData): The lap positions update packet
             """
 
-            pass
+            self.m_session_state_ref.processLapPositionsUpdate(packet)
 
         async def handeSessionStartEvent(packet: PacketEventData) -> None:
             """

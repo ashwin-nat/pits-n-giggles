@@ -27,7 +27,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from apps.backend.common.png_logger import getLogger
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
-from lib.f1_types import (F1Utils, LapData, SafetyCarType, SessionType23,
+from lib.f1_types import (F1Utils, LapData, SafetyCarType, SessionType23, PacketLapPositionsData,
                           SessionType24, TelemetrySetting)
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 
@@ -58,6 +58,8 @@ class DataPerDriver:
         m_warning_penalty_history (WarningPenaltyHistory): History of warnings and penalties received by the driver.
         m_packet_copies (PacketCopies): Copies of various data packets related to the driver's performance.
         m_per_lap_snapshots (Dict[int, PerLapSnapshotEntry]): Snapshots of the driver's performance per lap
+        m_latest_snapshot_lap_num (int): The lap number of the latest snapshot
+        m_position_history (List[int]): List of positions of the driver
     """
 
     __slots__ = (
@@ -70,6 +72,7 @@ class DataPerDriver:
         "m_packet_copies",
         "m_per_lap_snapshots",
         "m_latest_snapshot_lap_num",
+        "m_position_history",
         )
 
     def __repr__(self) -> str:
@@ -110,6 +113,10 @@ class DataPerDriver:
         # Per lap snapshot
         self.m_per_lap_snapshots: Dict[int, PerLapSnapshotEntry] = {}
         self.m_latest_snapshot_lap_num: Optional[int] = None
+
+        # Positions history (F1 25+)
+        assert total_laps > 0
+        self.m_position_history: List[int] = [0] * (total_laps + 1) # +1 for zeroth lap
 
     @property
     def is_valid(self) -> bool:
@@ -846,3 +853,39 @@ class DataPerDriver:
             return F1Utils.SECTOR_STATUS_INVALID
         # Meh sector
         return F1Utils.SECTOR_STATUS_YELLOW
+
+    def processPositionsHistoryUpdate(self, packet: PacketLapPositionsData, position_history: List[int]) -> None:
+        """Update the position history and packet copy.
+
+        Args:
+            packet (PacketLapPositionsData): The incoming lap positions packet
+            position_history (List[int]): The position history
+        """
+
+        assert len(position_history) == packet.m_numLaps
+
+        # Update the history and packet copy
+        self._insert_sublist(
+            target=self.m_position_history,
+            insert=position_history,
+            start=packet.m_lapStart
+        )
+
+    def _insert_sublist(self,target: List[int], insert: List[int], start: int) -> None:
+        """
+        Inserts elements of `insert` into `target` starting at index `start`.
+
+        Modifies the `target` list in-place.
+
+        Args:
+            target (List[int]): The list to insert into (must be large enough).
+            insert (List[int]): The list of items to insert.
+            start (int): The index in `target` at which to start inserting.
+
+        Raises:
+            ValueError: If the insertion would exceed the bounds of `target`.
+        """
+        if start < 0 or start + len(insert) > len(target):
+            raise ValueError("Insert range goes out of bounds of the target list.")
+
+        target[start:start + len(insert)] = insert

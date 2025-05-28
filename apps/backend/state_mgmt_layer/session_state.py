@@ -36,12 +36,12 @@ from lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils, LapData,
                           PacketCarDamageData, PacketCarSetupData,
                           PacketCarStatusData, PacketCarTelemetryData,
                           PacketEventData, PacketFinalClassificationData,
-                          PacketLapData, PacketMotionData,
-                          PacketParticipantsData, PacketSessionData,
-                          PacketSessionHistoryData, PacketTimeTrialData,
-                          PacketTyreSetsData, ResultStatus, SafetyCarType,
-                          SessionType23, SessionType24, TrackID,
-                          WeatherForecastSample)
+                          PacketLapData, PacketLapPositionsData,
+                          PacketMotionData, PacketParticipantsData,
+                          PacketSessionData, PacketSessionHistoryData,
+                          PacketTimeTrialData, PacketTyreSetsData,
+                          ResultStatus, SafetyCarType, SessionType23,
+                          SessionType24, TrackID, WeatherForecastSample)
 from lib.inter_task_communicator import TyreDeltaMessage
 from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
@@ -617,6 +617,18 @@ class SessionState:
         """
 
         self.m_time_trial_packet = packet
+
+    def processLapPositionsUpdate(self, packet: PacketLapPositionsData) -> None:
+        """Process the lap positions update packet and update the necessary fields
+
+        Args:
+            packet (PacketLapPositionsData): The lap positions update packet
+        """
+
+        position_hist_by_index = F1Utils.transposeLapPositions(packet.m_lapPositions)
+        for index, position_hist in enumerate(position_hist_by_index):
+            if obj_to_be_updated := self._getObjectByIndex(index, create=False):
+                obj_to_be_updated.processPositionsHistoryUpdate(packet, position_hist)
 
 
     def processSessionStarted(self) -> None:
