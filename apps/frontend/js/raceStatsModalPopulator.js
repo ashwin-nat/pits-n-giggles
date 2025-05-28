@@ -17,7 +17,7 @@ class RaceStatsModalPopulator {
             { id: 'tyre-stint-records', label: 'Tyre Stint Records' },
             { id: 'custom-markers', label: 'Custom Markers' },
             { id: 'position-history', label: 'Position History' },
-            { id: 'tyre-stint-history', label: 'Tyre Stint History (WIP)' },
+            // { id: 'tyre-stint-history', label: 'Tyre Stint History (WIP)' },
         ];
 
         // Sort tabs alphabetically based on the label
@@ -56,7 +56,7 @@ class RaceStatsModalPopulator {
             { id: 'tyre-stint-records', method: this.populateTyreStintRecordsTab },
             { id: 'custom-markers', method: this.populateCustomMarkersTab },
             { id: 'position-history', method: this.populatePositionHistoryTab },
-            { id: 'tyre-stint-history', method: this.populateTyreStintHistoryTab },
+            // { id: 'tyre-stint-history', method: this.populateTyreStintHistoryTab },
         ];
 
         // Sort tabs alphabetically based on the label
