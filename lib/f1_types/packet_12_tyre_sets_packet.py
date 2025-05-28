@@ -93,7 +93,7 @@ class TyreSetData:
             self.m_visualTyreCompound = VisualTyreCompound(self.m_visualTyreCompound)
         if self.m_gameYear == 23 and SessionType23.isValid(self.m_recommendedSession):
             self.m_recommendedSession = SessionType23(self.m_recommendedSession)
-        elif self.m_gameYear == 24 and SessionType24.isValid(self.m_recommendedSession):
+        elif self.m_gameYear in {24, 25} and SessionType24.isValid(self.m_recommendedSession):
             self.m_recommendedSession = SessionType24(self.m_recommendedSession)
         self.m_fitted = bool(self.m_fitted)
 
