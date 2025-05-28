@@ -998,7 +998,6 @@ class TeamID24(Enum):
             return True  # It's already an instance of TeamID24
         return any(team_id == member.value for member in TeamID24)
 
-
 class TeamID25(Enum):
     MERCEDES = 0
     FERRARI = 1
