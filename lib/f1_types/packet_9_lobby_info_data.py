@@ -125,7 +125,7 @@ class LobbyInfoData:
 
         Args:
             data (bytes): Raw data representing lobby information for a player.
-            packet_format (int): Packet format
+            packet_format (int): Packet format # TODO: switch to game year for consistency
         """
 
         self.packet_format = packet_format
@@ -165,11 +165,11 @@ class LobbyInfoData:
 
         self.m_name = self.m_name.decode('utf-8', errors='replace').rstrip('\x00')
 
-        if packet_format == 2023 and TeamID23.isValid(self.m_teamId):
+        if self.packet_format == 2023 and TeamID23.isValid(self.m_teamId):
             self.m_teamId = TeamID23(self.m_teamId)
-        elif packet_format == 2024 and TeamID24.isValid(self.m_teamId):
+        elif self.packet_format == 2024 and TeamID24.isValid(self.m_teamId):
             self.m_teamId = TeamID24(self.m_teamId)
-        elif packet_format == 2025 and TeamID25.isValid(self.m_teamId):
+        elif self.packet_format == 2025 and TeamID25.isValid(self.m_teamId):
             self.m_teamId = TeamID25(self.m_teamId)
 
         if Nationality.isValid(self.m_nationality):

@@ -193,6 +193,7 @@ class TimeTrialDataSet:
 
     @classmethod
     def from_values(cls,
+                    game_year: int,
                     car_index: int,
                     team_id: Union[TeamID24, TeamID25],
                     lap_time_in_ms: int,
@@ -208,6 +209,7 @@ class TimeTrialDataSet:
         """Create a new TimeTrialDataSet object from the provided values
 
         Args:
+            game_year (int): The game year
             car_index (int): The car index
             team_id (TeamID24 | TeamID25): The team id
             lap_time_in_ms (int): The lap time in milliseconds
@@ -239,7 +241,7 @@ class TimeTrialDataSet:
                 equal_car_performance,
                 custom_setup,
                 is_valid
-            )
+            ), game_year
         )
 
 class PacketTimeTrialData:
