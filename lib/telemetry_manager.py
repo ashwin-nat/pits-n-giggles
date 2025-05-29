@@ -29,17 +29,22 @@ from lib.f1_types import (F1PacketType, InvalidPacketLengthError,
                           PacketCarDamageData, PacketCarSetupData,
                           PacketCarStatusData, PacketCarTelemetryData,
                           PacketEventData, PacketFinalClassificationData,
-                          PacketHeader, PacketLapData, PacketLobbyInfoData,
-                          PacketMotionData, PacketMotionExData,
-                          PacketParticipantsData, PacketSessionData,
-                          PacketSessionHistoryData, PacketTimeTrialData,
-                          PacketTyreSetsData)
+                          PacketHeader, PacketLapData, PacketLapPositionsData,
+                          PacketLobbyInfoData, PacketMotionData,
+                          PacketMotionExData, PacketParticipantsData,
+                          PacketSessionData, PacketSessionHistoryData,
+                          PacketTimeTrialData, PacketTyreSetsData)
 from lib.socket_receiver import (AsyncTCPListener, AsyncUDPListener,
                                  TCPListener, UDPListener)
 
 # ------------------------- GLOBALS ------------------------------------------------------------------------------------
 
 # ------------------------- CLASSES ------------------------------------------------------------------------------------
+
+class UnsupportedGameYear(Exception):
+    """Raised when packet data is malformed or insufficient"""
+    def __init__(self, game_year):
+        super().__init__(f"Unsupported game year. {game_year}")
 
 class AsyncF1TelemetryManager:
     """
@@ -66,7 +71,10 @@ class AsyncF1TelemetryManager:
         F1PacketType.TYRE_SETS: PacketTyreSetsData,
         F1PacketType.MOTION_EX: PacketMotionExData,
         F1PacketType.TIME_TRIAL: PacketTimeTrialData,
+        F1PacketType.LAP_POSITIONS: PacketLapPositionsData,
     }
+
+    MIN_GAME_YEAR = 23
 
     def __init__(self, port_number: int, logger: Logger = None, replay_server: bool = False):
         """Init the telemetry manager app and all its sub components
@@ -150,6 +158,8 @@ class AsyncF1TelemetryManager:
             raw_packet = await self.m_server.getNextMessage()
             try:
                 await self._processPacket(should_parse_packet, raw_packet)
+            except UnsupportedGameYear as e:
+                self.m_logger.error(e, exc_info=True)
             except Exception as e:
                 self.m_logger.error("Error processing packet: %s", e, exc_info=True)
                 raise  # Re-raises the caught exception
@@ -177,6 +187,9 @@ class AsyncF1TelemetryManager:
         if not header.is_supported_packet_type:
             # Unsupported packet type, skip
             return
+
+        if header.m_gameYear < self.MIN_GAME_YEAR:
+            raise UnsupportedGameYear(header.m_gameYear)
 
         # Parse the payload and call the registered callback
         payload_raw = raw_packet[PacketHeader.PACKET_LEN:]

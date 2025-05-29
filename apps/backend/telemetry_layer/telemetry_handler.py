@@ -40,10 +40,10 @@ from lib.f1_types import (F1PacketType, PacketCarDamageData,
                           PacketCarSetupData, PacketCarStatusData,
                           PacketCarTelemetryData, PacketEventData,
                           PacketFinalClassificationData, PacketLapData,
-                          PacketMotionData, PacketParticipantsData,
-                          PacketSessionData, PacketSessionHistoryData,
-                          PacketTimeTrialData, PacketTyreSetsData,
-                          SessionType23, SessionType24)
+                          PacketLapPositionsData, PacketMotionData,
+                          PacketParticipantsData, PacketSessionData,
+                          PacketSessionHistoryData, PacketTimeTrialData,
+                          PacketTyreSetsData, SessionType23, SessionType24)
 from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
                                          FinalClassificationNotification,
                                          ITCMessage)
@@ -385,6 +385,16 @@ class F1TelemetryHandler:
             """
 
             self.m_session_state_ref.processTimeTrialUpdate(packet)
+
+        @self.m_manager.on_packet(F1PacketType.LAP_POSITIONS)
+        async def processLapPositionsUpdate(packet: PacketLapPositionsData) -> None:
+            """Update the data structures with lap positions information
+
+            Args:
+                packet (PacketLapPositionsData): The lap positions update packet
+            """
+
+            self.m_session_state_ref.processLapPositionsUpdate(packet)
 
         async def handeSessionStartEvent(packet: PacketEventData) -> None:
             """

@@ -94,6 +94,16 @@ class PacketMotionExData:
                                                         #  // of motion - radians)
     )
     PACKET_LEN_EXTRA_24 = struct.calcsize(PACKET_FORMAT_24_EXTRA)
+    PACKET_LEN_24 = PACKET_LEN_23 + PACKET_LEN_EXTRA_24
+
+    PACKET_FORMAT_25_EXTRA = ("<"
+        "f" # float         m_chassisPitch                 // Chassis pitch relative to the dir of motion in radians
+        "4f" # float        m_wheelCamber[4]               // Camber angle for each wheel in radians
+        "4f" # float        m_wheelCamberGain[4];          // Camber gain for each wheel in radians, difference
+                                                        #  // between active camber and dynamic camber
+    )
+    PACKET_LEN_EXTRA_25 = struct.calcsize(PACKET_FORMAT_25_EXTRA)
+    PACKET_LEN_25 = PACKET_LEN_23 + PACKET_LEN_EXTRA_24 + PACKET_LEN_EXTRA_25
 
     def __init__(self, header: PacketHeader, data: bytes) -> None:
         """
@@ -115,6 +125,16 @@ class PacketMotionExData:
         self.m_wheelLatForce = [0.0] * 4
         self.m_wheelLongForce = [0.0] * 4
         self.m_wheelVertForce = [0.0] * 4
+        self.m_frontAeroHeight: float = 0.0
+        self.m_rearAeroHeight: float = 0.0
+        self.m_frontRollAngle: float = 0.0
+        self.m_rearRollAngle: float = 0.0
+        self.m_chassisYaw: float = 0.0
+        self.m_chassisPitch: float = 0.0
+        self.m_wheelCamber: float = [0.0] * 4
+        self.m_wheelCamberGain: float = [0.0] * 4
+
+        # Common stuff
         (
             self.m_suspensionPosition[0],           # array of floats
             self.m_suspensionPosition[1],           # array of floats
@@ -166,22 +186,32 @@ class PacketMotionExData:
 
         ) = struct.unpack(self.PACKET_FORMAT_23, data[0:self.PACKET_LEN_23])
 
-        if header.m_gameYear == 24:
-            (
-                self.m_frontAeroHeight,             # float
-                self.m_rearAeroHeight,              # float
-                self.m_frontRollAngle,              # float
-                self.m_rearRollAngle,               # float
-                self.m_chassisYaw,                  # float
-            ) = struct.unpack(self.PACKET_FORMAT_24_EXTRA,
-                                data[self.PACKET_LEN_23:self.PACKET_LEN_23 + self.PACKET_LEN_EXTRA_24])
-
-        else:
-            self.m_frontAeroHeight: float = 0
-            self.m_rearAeroHeight: float = 0
-            self.m_frontRollAngle: float = 0
-            self.m_rearRollAngle: float = 0
-            self.m_chassisYaw: float = 0
+        if header.m_gameYear > 23:
+            curr_offset = self.PACKET_LEN_23
+            if header.m_gameYear >= 24:
+                (
+                    self.m_frontAeroHeight,             # float
+                    self.m_rearAeroHeight,              # float
+                    self.m_frontRollAngle,              # float
+                    self.m_rearRollAngle,               # float
+                    self.m_chassisYaw,                  # float
+                ) = struct.unpack(self.PACKET_FORMAT_24_EXTRA,
+                                    data[curr_offset:curr_offset + self.PACKET_LEN_EXTRA_24])
+                curr_offset += self.PACKET_LEN_EXTRA_24
+            if header.m_gameYear >= 25:
+                (
+                    self.m_chassisPitch,                # float
+                    self.m_wheelCamber[0],             # array of floats
+                    self.m_wheelCamber[1],             # array of floats
+                    self.m_wheelCamber[2],             # array of floats
+                    self.m_wheelCamber[3],             # array of floats
+                    self.m_wheelCamberGain[0],         # array of floats
+                    self.m_wheelCamberGain[1],         # array of floats
+                    self.m_wheelCamberGain[2],         # array of floats
+                    self.m_wheelCamberGain[3],         # array of floats
+                ) = struct.unpack(self.PACKET_FORMAT_25_EXTRA,
+                                    data[curr_offset:curr_offset + self.PACKET_LEN_EXTRA_25])
+                curr_offset += self.PACKET_LEN_EXTRA_25
 
     def __str__(self) -> str:
         """
@@ -211,7 +241,10 @@ class PacketMotionExData:
             f"Rear AERO Height: {self.m_rearAeroHeight}, "
             f"Front Roll Angle: {self.m_frontRollAngle}, "
             f"Rear Roll Angle: {self.m_rearRollAngle}, "
-            f"Chassis Yaw: {self.m_chassisYaw}"
+            f"Chassis Yaw: {self.m_chassisYaw}",
+            f"Chassis Pitch: {self.m_chassisPitch}, "
+            f"Wheel Camber: {str(self.m_wheelCamber)}, "
+            f"Wheel Camber Gain: {str(self.m_wheelCamberGain)}"
         )
 
     def toJSON(self, include_header: bool=False) -> Dict[str, Any]:
@@ -250,7 +283,10 @@ class PacketMotionExData:
             "rear-aero-height": self.m_rearAeroHeight,
             "front-roll-angle": self.m_frontRollAngle,
             "rear-roll-angle": self.m_rearRollAngle,
-            "chassis-yaw": self.m_chassisYaw
+            "chassis-yaw": self.m_chassisYaw,
+            "chassis-pitch": self.m_chassisPitch,
+            "wheel-camber": self.m_wheelCamber,
+            "wheel-camber-gain": self.m_wheelCamberGain
         }
         if include_header:
             json_data["header"] = self.m_header.toJSON()

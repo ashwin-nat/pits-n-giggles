@@ -109,7 +109,7 @@ class RaceInfoUpdate:
                     "rain-probability": str(sample.m_rainPercentage)
                 } for sample in self.m_session_info.m_weather_forecast_samples
             ],
-            "race-ended" : bool(self.m_session_info.m_packet_final_classification),
+            "race-ended" : self.m_session_info.session_ended,
             "is-spectating" : _getValueOrDefaultValue(self.m_session_info.m_is_spectating, False),
             "session-type"  : str(self.m_session_info.m_session_type) \
                 if self.m_session_info.m_session_type is not None else "---",
@@ -589,8 +589,11 @@ class DriversListRsp:
             return []
 
         # Use original list since this request comes only once in a bluemoon
-        return [data_per_driver.getPositionHistoryJSON() for data_per_driver in _session_state_ref.m_driver_data \
-                if data_per_driver and data_per_driver.is_valid]
+        game_year = _session_state_ref.m_session_info.m_game_year
+        session_ended = _session_state_ref.m_session_info.session_ended
+        return [data_per_driver.getPositionHistoryJSON(game_year, session_ended) \
+                for data_per_driver in _session_state_ref.m_driver_data \
+                    if data_per_driver and data_per_driver.is_valid]
 
     def getTyreStintHistoryJSON(self) -> List[Dict[str, Any]]:
         """Get tyre stint history.

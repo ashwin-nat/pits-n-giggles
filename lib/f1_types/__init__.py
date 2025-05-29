@@ -21,42 +21,35 @@
 # SOFTWARE.
 
 
-from .common import (
-    InvalidPacketLengthError,
-    F1PacketType,
-    ResultStatus,
-    SessionType23,
-    SessionType24,
-    ActualTyreCompound,
-    VisualTyreCompound,
-    SafetyCarType,
-    TelemetrySetting,
-    Nationality,
-    Platform,
-    TeamID23,
-    TeamID24,
-    F1Utils,
-    PacketHeader,
-    TrackID,
-    TractionControlAssistMode,
-    GearboxAssistMode,
-    SessionLength,
-)
-from .packet_0_car_motion_data import PacketMotionData, CarMotionData
-from .packet_1_session_data import MarshalZone, WeatherForecastSample, PacketSessionData
+from .common import (ActualTyreCompound, F1PacketType, F1Utils,
+                     GearboxAssistMode, InvalidPacketLengthError, Nationality,
+                     PacketHeader, Platform, ResultReason, ResultStatus,
+                     SafetyCarType, SessionLength, SessionType23,
+                     SessionType24, TeamID23, TeamID24, TeamID25,
+                     TelemetrySetting, TrackID, TractionControlAssistMode,
+                     VisualTyreCompound)
+from .packet_0_car_motion_data import CarMotionData, PacketMotionData
+from .packet_1_session_data import (MarshalZone, PacketSessionData,
+                                    WeatherForecastSample)
 from .packet_2_lap_data import LapData, PacketLapData
 from .packet_3_event_data import PacketEventData
-from .packet_4_participants_data import PacketParticipantsData, ParticipantData
-from .packet_5_car_setups_data import PacketCarSetupData, CarSetupData
-from .packet_6_car_telemetry_data import PacketCarTelemetryData, CarTelemetryData
-from .packet_7_car_status_data import PacketCarStatusData, CarStatusData
-from .packet_8_final_classification_data import PacketFinalClassificationData, FinalClassificationData
-from .packet_9_lobby_info_data import PacketLobbyInfoData, LobbyInfoData
-from .packet_10_car_damage_data import PacketCarDamageData, CarDamageData
-from .packet_11_session_history_data import PacketSessionHistoryData, TyreStintHistoryData, LapHistoryData
+from .packet_4_participants_data import (LiveryColour, PacketParticipantsData,
+                                         ParticipantData)
+from .packet_5_car_setups_data import CarSetupData, PacketCarSetupData
+from .packet_6_car_telemetry_data import (CarTelemetryData,
+                                          PacketCarTelemetryData)
+from .packet_7_car_status_data import CarStatusData, PacketCarStatusData
+from .packet_8_final_classification_data import (FinalClassificationData,
+                                                 PacketFinalClassificationData)
+from .packet_9_lobby_info_data import LobbyInfoData, PacketLobbyInfoData
+from .packet_10_car_damage_data import CarDamageData, PacketCarDamageData
+from .packet_11_session_history_data import (LapHistoryData,
+                                             PacketSessionHistoryData,
+                                             TyreStintHistoryData)
 from .packet_12_tyre_sets_packet import PacketTyreSetsData, TyreSetData
 from .packet_13_motion_ex_data import PacketMotionExData
 from .packet_14_time_trial_data import PacketTimeTrialData, TimeTrialDataSet
+from .packet_15_lap_positions_data import PacketLapPositionsData
 
 # Import other packet classes here
 __all__ = [
@@ -64,6 +57,7 @@ __all__ = [
     "InvalidPacketLengthError",
     "F1PacketType",
     "ResultStatus",
+    "ResultReason",
     "SessionType23",
     "SessionType24",
     "ActualTyreCompound",
@@ -74,6 +68,7 @@ __all__ = [
     "Platform",
     "TeamID23",
     "TeamID24",
+    "TeamID25",
     "F1Utils",
     "PacketHeader",
     "TrackID",
@@ -98,6 +93,7 @@ __all__ = [
     "PacketEventData",
 
     # Packet 4 - Participants Data
+    "LiveryColour",
     "PacketParticipantsData",
     "ParticipantData",
 
@@ -139,5 +135,8 @@ __all__ = [
 
     # Packet 14 - Time Trial
     "PacketTimeTrialData",
-    "TimeTrialDataSet"
+    "TimeTrialDataSet",
+
+    # Packet 15 - Lap positions
+    "PacketLapPositionsData",
 ]

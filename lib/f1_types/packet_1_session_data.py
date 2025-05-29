@@ -384,7 +384,7 @@ class WeatherForecastSample:
             self.m_trackTemperatureChange = WeatherForecastSample.TrackTemperatureChange(self.m_trackTemperatureChange)
         if game_year == 23 and SessionType23.isValid(self.m_sessionType):
             self.m_sessionType = SessionType23(self.m_sessionType)
-        elif game_year == 24 and SessionType24.isValid(self.m_sessionType):
+        elif SessionType24.isValid(self.m_sessionType):
             self.m_sessionType = SessionType24(self.m_sessionType)
 
     def __str__(self) -> str:
@@ -1330,9 +1330,9 @@ class PacketSessionData:
         if TrackID.isValid(self.m_trackId):
             self.m_trackId = TrackID(self.m_trackId)
 
-        if header.m_gameYear == 23 and SessionType23.isValid(self.m_sessionType):
+        if header.m_gameYear <= 23 and SessionType23.isValid(self.m_sessionType):
             self.m_sessionType = SessionType23(self.m_sessionType)
-        elif header.m_gameYear == 24 and SessionType24.isValid(self.m_sessionType):
+        elif SessionType24.isValid(self.m_sessionType):
             self.m_sessionType = SessionType24(self.m_sessionType)
 
         if PacketSessionData.FormulaType.isValid(self.m_formula):
