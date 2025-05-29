@@ -91,12 +91,10 @@ class TimeTrialDataSet:
         ) = unpacked_data
 
         # No ned to check game year, since this packet type is not available in F1 23
-        if game_year < 25:
-            if TeamID24.isValid(self.m_teamId):
+        if game_year < 25 and TeamID24.isValid(self.m_teamId):
                 self.m_teamId = TeamID24(self.m_teamId)
-        else:
-            if TeamID25.isValid(self.m_teamId):
-                self.m_teamId = TeamID25(self.m_teamId)
+        elif TeamID25.isValid(self.m_teamId):
+            self.m_teamId = TeamID25(self.m_teamId)
         if TractionControlAssistMode.isValid(self.m_tractionControl):
             self.m_tractionControl = TractionControlAssistMode(self.m_tractionControl)
         if GearboxAssistMode.isValid(self.m_gearboxAssist):

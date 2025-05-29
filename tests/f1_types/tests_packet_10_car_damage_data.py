@@ -37,6 +37,24 @@ class TestPacketCarDamageData(F1TypesTest):
         self.m_header_24 = F1TypesTest.getRandomHeader(F1PacketType.CAR_DAMAGE, 24, self.m_num_players)
         self.m_header_25 = F1TypesTest.getRandomHeader(F1PacketType.CAR_DAMAGE, 25, self.m_num_players)
 
+    def test_f1_25_random(self):
+        """
+        Test for F1 2025 with an randomly generated packet
+        """
+
+        generated_test_obj = PacketCarDamageData.from_values(
+            self.m_header_25,
+            [self._generateRandomCarDamageData(game_year=25) for _ in range(self.m_num_players)]
+        )
+        serialised_test_obj = generated_test_obj.to_bytes()
+        header_bytes = serialised_test_obj[:PacketHeader.PACKET_LEN]
+        parsed_header = PacketHeader(header_bytes)
+        self.assertEqual(self.m_header_25, parsed_header)
+        payload_bytes = serialised_test_obj[PacketHeader.PACKET_LEN:]
+        parsed_obj = PacketCarDamageData(parsed_header, payload_bytes)
+        self.assertEqual(generated_test_obj, parsed_obj)
+        self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
+
     def test_f1_24_random(self):
         """
         Test for F1 2024 with an randomly generated packet
@@ -1800,6 +1818,7 @@ class TestPacketCarDamageData(F1TypesTest):
             tyres_wear=[random.uniform(0.0, 100.0) for _ in range(4)],
             tyres_damage=[random.randrange(0, 100) for _ in range(4)],
             brakes_damage=[random.randrange(0, 100) for _ in range(4)],
+            tyre_blisters=[random.randrange(0, 100) for _ in range(4)],
             fl_wing_damage=random.randrange(0, 100),
             fr_wing_damage=random.randrange(0, 100),
             rear_wing_damage=random.randrange(0, 100),

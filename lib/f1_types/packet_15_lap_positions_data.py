@@ -54,11 +54,8 @@ class PacketLapPositionsData:
         self.m_numLaps, self.m_lapStart = struct.unpack("<BB", packet[:2])
         flat_array = struct.unpack(f"<{self.TOTAL_BYTES}B", packet[2:])
 
-        # Convert the flat list into a 2D list: 50 rows (laps), each with 22 cars
-        self.m_lapPositions = [list(flat_array[i * self.MAX_CARS:(i + 1) * self.MAX_CARS]) for i in range(self.MAX_LAPS)]
-
-        # Trim laps
-        self.m_lapPositions = self.m_lapPositions[:self.m_numLaps]
+        # Convert the flat list into a 2D list: m_numLaps rows (laps), each with 22 cars
+        self.m_lapPositions = [list(flat_array[i * self.MAX_CARS:(i + 1) * self.MAX_CARS]) for i in range(self.m_numLaps)]
 
     def toJSON(self, include_header: bool=False) -> Dict[str, Any]:
         """Converts the PacketLapPositions object to a dictionary suitable for JSON serialization.

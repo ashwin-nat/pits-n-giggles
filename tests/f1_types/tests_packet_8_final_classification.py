@@ -21,9 +21,14 @@
 # SOFTWARE.
 
 import random
-from lib.f1_types import FinalClassificationData, PacketFinalClassificationData, F1PacketType, \
-    PacketHeader, ResultStatus, VisualTyreCompound, ActualTyreCompound
+
+from lib.f1_types import (ActualTyreCompound, F1PacketType,
+                          FinalClassificationData,
+                          PacketFinalClassificationData, PacketHeader,
+                          ResultReason, ResultStatus, VisualTyreCompound)
+
 from .tests_parser_base import F1TypesTest
+
 
 class TestPacketFinalClassificationData(F1TypesTest):
     """
@@ -37,6 +42,25 @@ class TestPacketFinalClassificationData(F1TypesTest):
         self.m_header_23 = F1TypesTest.getRandomHeader(F1PacketType.FINAL_CLASSIFICATION, 23, self.m_num_players)
         self.m_header_24 = F1TypesTest.getRandomHeader(F1PacketType.FINAL_CLASSIFICATION, 24, self.m_num_players)
         self.m_header_25 = F1TypesTest.getRandomHeader(F1PacketType.FINAL_CLASSIFICATION, 25, self.m_num_players)
+
+    def test_f1_25_random(self):
+        """
+        Test for F1 2025 with an randomly generated packet
+        """
+
+        generated_test_obj = PacketFinalClassificationData.from_values(
+            self.m_header_25,
+            self.m_num_players,
+            [self._generateRandomFinalClassificationData(game_year=25) for _ in range(self.m_num_players)]
+        )
+        serialised_test_obj = generated_test_obj.to_bytes()
+        header_bytes = serialised_test_obj[:PacketHeader.PACKET_LEN]
+        parsed_header = PacketHeader(header_bytes)
+        self.assertEqual(self.m_header_25, parsed_header)
+        payload_bytes = serialised_test_obj[PacketHeader.PACKET_LEN:]
+        parsed_obj = PacketFinalClassificationData(parsed_header, payload_bytes)
+        self.assertEqual(generated_test_obj, parsed_obj)
+        self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
 
     def test_f1_24_random(self):
         """
@@ -595,44 +619,91 @@ class TestPacketFinalClassificationData(F1TypesTest):
             FinalClassificationData: A random car status data object
         """
 
-        return FinalClassificationData.from_values(
-            game_year=game_year,
-            position=random.randrange(1,22),
-            num_laps=random.randrange(0,70),
-            grid_position=random.randrange(1,22),
-            points=random.randrange(0,30),
-            num_pit_stops=random.randrange(0,4),
-            result_status=random.choice(list(ResultStatus)),
-            best_lap_time_in_ms=random.getrandbits(24),
-            total_race_time=F1TypesTest.getRandomFloat(),
-            penalties_time=random.randrange(0,80),
-            num_penalties=random.randrange(0,20),
-            num_tyre_stints=random.randrange(0,8),
-            # tyre_stints_actual,  # array of 8
-            tyre_stints_actual_0=random.choice(list(ActualTyreCompound)),
-            tyre_stints_actual_1=random.choice(list(ActualTyreCompound)),
-            tyre_stints_actual_2=random.choice(list(ActualTyreCompound)),
-            tyre_stints_actual_3=random.choice(list(ActualTyreCompound)),
-            tyre_stints_actual_4=random.choice(list(ActualTyreCompound)),
-            tyre_stints_actual_5=random.choice(list(ActualTyreCompound)),
-            tyre_stints_actual_6=random.choice(list(ActualTyreCompound)),
-            tyre_stints_actual_7=random.choice(list(ActualTyreCompound)),
-            # tyre_stints_visual,  # array of 8
-            tyre_stints_visual_0=random.choice(list(VisualTyreCompound)),
-            tyre_stints_visual_1=random.choice(list(VisualTyreCompound)),
-            tyre_stints_visual_2=random.choice(list(VisualTyreCompound)),
-            tyre_stints_visual_3=random.choice(list(VisualTyreCompound)),
-            tyre_stints_visual_4=random.choice(list(VisualTyreCompound)),
-            tyre_stints_visual_5=random.choice(list(VisualTyreCompound)),
-            tyre_stints_visual_6=random.choice(list(VisualTyreCompound)),
-            tyre_stints_visual_7=random.choice(list(VisualTyreCompound)),
-            # tyre_stints_end_laps,  # array of 8
-            tyre_stints_end_laps_0=random.randrange(0,22),
-            tyre_stints_end_laps_1=random.randrange(0,22),
-            tyre_stints_end_laps_2=random.randrange(0,22),
-            tyre_stints_end_laps_3=random.randrange(0,22),
-            tyre_stints_end_laps_4=random.randrange(0,22),
-            tyre_stints_end_laps_5=random.randrange(0,22),
-            tyre_stints_end_laps_6=random.randrange(0,22),
-            tyre_stints_end_laps_7=random.randrange(0,22)
-        )
+        if game_year in {23, 24}:
+            return FinalClassificationData.from_values(
+                game_year=game_year,
+                position=random.randrange(1,22),
+                num_laps=random.randrange(0,70),
+                grid_position=random.randrange(1,22),
+                points=random.randrange(0,30),
+                num_pit_stops=random.randrange(0,4),
+                result_status=random.choice(list(ResultStatus)),
+                result_reason=random.choice(list(ResultReason)), # unused field
+                best_lap_time_in_ms=random.getrandbits(24),
+                total_race_time=F1TypesTest.getRandomFloat(),
+                penalties_time=random.randrange(0,80),
+                num_penalties=random.randrange(0,20),
+                num_tyre_stints=random.randrange(0,8),
+                # tyre_stints_actual,  # array of 8
+                tyre_stints_actual_0=random.choice(list(ActualTyreCompound)),
+                tyre_stints_actual_1=random.choice(list(ActualTyreCompound)),
+                tyre_stints_actual_2=random.choice(list(ActualTyreCompound)),
+                tyre_stints_actual_3=random.choice(list(ActualTyreCompound)),
+                tyre_stints_actual_4=random.choice(list(ActualTyreCompound)),
+                tyre_stints_actual_5=random.choice(list(ActualTyreCompound)),
+                tyre_stints_actual_6=random.choice(list(ActualTyreCompound)),
+                tyre_stints_actual_7=random.choice(list(ActualTyreCompound)),
+                # tyre_stints_visual,  # array of 8
+                tyre_stints_visual_0=random.choice(list(VisualTyreCompound)),
+                tyre_stints_visual_1=random.choice(list(VisualTyreCompound)),
+                tyre_stints_visual_2=random.choice(list(VisualTyreCompound)),
+                tyre_stints_visual_3=random.choice(list(VisualTyreCompound)),
+                tyre_stints_visual_4=random.choice(list(VisualTyreCompound)),
+                tyre_stints_visual_5=random.choice(list(VisualTyreCompound)),
+                tyre_stints_visual_6=random.choice(list(VisualTyreCompound)),
+                tyre_stints_visual_7=random.choice(list(VisualTyreCompound)),
+                # tyre_stints_end_laps,  # array of 8
+                tyre_stints_end_laps_0=random.randrange(0,22),
+                tyre_stints_end_laps_1=random.randrange(0,22),
+                tyre_stints_end_laps_2=random.randrange(0,22),
+                tyre_stints_end_laps_3=random.randrange(0,22),
+                tyre_stints_end_laps_4=random.randrange(0,22),
+                tyre_stints_end_laps_5=random.randrange(0,22),
+                tyre_stints_end_laps_6=random.randrange(0,22),
+                tyre_stints_end_laps_7=random.randrange(0,22)
+            )
+        if game_year == 25:
+            return FinalClassificationData.from_values(
+                game_year=game_year,
+                position=random.randrange(1,22),
+                num_laps=random.randrange(0,70),
+                grid_position=random.randrange(1,22),
+                points=random.randrange(0,30),
+                num_pit_stops=random.randrange(0,4),
+                result_status=random.choice(list(ResultStatus)),
+                result_reason=random.choice(list(ResultReason)),
+                best_lap_time_in_ms=random.getrandbits(24),
+                total_race_time=F1TypesTest.getRandomFloat(),
+                penalties_time=random.randrange(0,80),
+                num_penalties=random.randrange(0,20),
+                num_tyre_stints=random.randrange(0,8),
+                # tyre_stints_actual,  # array of 8
+                tyre_stints_actual_0=random.choice(list(ActualTyreCompound)),
+                tyre_stints_actual_1=random.choice(list(ActualTyreCompound)),
+                tyre_stints_actual_2=random.choice(list(ActualTyreCompound)),
+                tyre_stints_actual_3=random.choice(list(ActualTyreCompound)),
+                tyre_stints_actual_4=random.choice(list(ActualTyreCompound)),
+                tyre_stints_actual_5=random.choice(list(ActualTyreCompound)),
+                tyre_stints_actual_6=random.choice(list(ActualTyreCompound)),
+                tyre_stints_actual_7=random.choice(list(ActualTyreCompound)),
+                # tyre_stints_visual,  # array of 8
+                tyre_stints_visual_0=random.choice(list(VisualTyreCompound)),
+                tyre_stints_visual_1=random.choice(list(VisualTyreCompound)),
+                tyre_stints_visual_2=random.choice(list(VisualTyreCompound)),
+                tyre_stints_visual_3=random.choice(list(VisualTyreCompound)),
+                tyre_stints_visual_4=random.choice(list(VisualTyreCompound)),
+                tyre_stints_visual_5=random.choice(list(VisualTyreCompound)),
+                tyre_stints_visual_6=random.choice(list(VisualTyreCompound)),
+                tyre_stints_visual_7=random.choice(list(VisualTyreCompound)),
+                # tyre_stints_end_laps,  # array of 8
+                tyre_stints_end_laps_0=random.randrange(0,22),
+                tyre_stints_end_laps_1=random.randrange(0,22),
+                tyre_stints_end_laps_2=random.randrange(0,22),
+                tyre_stints_end_laps_3=random.randrange(0,22),
+                tyre_stints_end_laps_4=random.randrange(0,22),
+                tyre_stints_end_laps_5=random.randrange(0,22),
+                tyre_stints_end_laps_6=random.randrange(0,22),
+                tyre_stints_end_laps_7=random.randrange(0,22)
+            )
+
+        raise NotImplementedError(f"Unsupported game year: {game_year}")

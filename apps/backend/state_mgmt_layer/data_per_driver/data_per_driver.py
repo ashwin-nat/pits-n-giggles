@@ -22,7 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, Iterator
 
 from apps.backend.common.png_logger import getLogger
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
@@ -732,46 +732,44 @@ class DataPerDriver:
     def getPositionHistoryJSON(self, game_year: int, session_ended: bool) -> Dict[str, Any]:
         """Get the position history JSON.
 
-        Args:
-            game_year (int): The game year
-            session_ended (bool): Whether the session has ended
-
         Returns:
             Dict[str, Any]: Position history JSON
         """
-
         return {
             "name": self.m_driver_info.name,
             "team": self.m_driver_info.team,
             "driver-number": self.m_driver_info.driver_number,
-            "driver-position-history": self._getPositionHistoryHelper(game_year, session_ended),
+            "driver-position-history": [
+                {"lap-number": lap, "position": pos}
+                for lap, pos in self._positionHistoryHelper(game_year, session_ended)
+            ],
         }
 
-    def _getPositionHistoryHelper(self, game_year: int, session_ended: bool) -> List[Tuple[int, int]]:
-        """Get the position history based on game year
+    def _positionHistoryHelper(self, game_year: int, session_ended: bool) -> Iterator[Tuple[int, int]]:
+        """Helper function to get the position history
 
         Args:
             game_year (int): The game year
             session_ended (bool): Whether the session has ended
 
         Returns:
-            List[Tuple[int, int]]: Position history
+            Iterator[Tuple[int, int]]: The position history
         """
 
         if game_year >= 25:
-            # Use the newer position history telemetry data on supported games
-            return [{"lap-number": lap, "position": position} \
-                    for lap, position in enumerate(self.m_position_history) \
-                        if session_ended or (lap < self.m_lap_info.m_current_lap)]
-
-        # Fetch from per lap snapshots
-        return [
-            {
-                "lap-number": lap_number,
-                "position": snapshot_record.m_track_position
-            }
-            for lap_number, snapshot_record in self._getNextLapSnapshot()
-        ]
+            max_lap = (
+                len(self.m_position_history) - 1
+                if session_ended
+                else self.m_lap_info.m_current_lap - 1
+            )
+            for lap, pos in enumerate(self.m_position_history):
+                if lap <= max_lap:
+                    yield lap, pos
+        else:
+            yield from (
+                (lap, snap.m_track_position)
+                for lap, snap in self._getNextLapSnapshot()
+            )
 
     def getTyreStintHistoryJSON(self) -> Dict[str, Any]:
         """Get the tyre stint history JSON.

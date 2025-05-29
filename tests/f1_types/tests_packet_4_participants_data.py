@@ -23,9 +23,10 @@
 import random
 from typing import Optional
 
-from lib.f1_types import (F1PacketType, Nationality, PacketHeader,
-                          PacketParticipantsData, ParticipantData, Platform,
-                          TeamID23, TeamID24, TeamID25, TelemetrySetting)
+from lib.f1_types import (F1PacketType, LiveryColour, Nationality,
+                          PacketHeader, PacketParticipantsData,
+                          ParticipantData, Platform, TeamID23, TeamID24,
+                          TeamID25, TelemetrySetting)
 
 from .tests_parser_base import F1TypesTest
 
@@ -42,6 +43,24 @@ class TestPacketParticipantsData(F1TypesTest):
         self.m_header_23 = F1TypesTest.getRandomHeader(F1PacketType.PARTICIPANTS, 23, self.m_num_players)
         self.m_header_24 = F1TypesTest.getRandomHeader(F1PacketType.PARTICIPANTS, 24, self.m_num_players)
         self.m_header_25 = F1TypesTest.getRandomHeader(F1PacketType.PARTICIPANTS, 25, self.m_num_players)
+
+    def test_f1_25_random(self):
+        """
+        Test for F1 2025 with an randomly generated packet
+        """
+
+        random_participants = [self._getRandomParticipantData(self.m_header_25) for _ in range(self.m_num_players)]
+
+        generated_test_obj = PacketParticipantsData.from_values(
+            self.m_header_25, self.m_num_players, random_participants)
+        serialised_test_obj = generated_test_obj.to_bytes()
+        header_bytes = serialised_test_obj[:PacketHeader.PACKET_LEN]
+        parsed_header = PacketHeader(header_bytes)
+        self.assertEqual(self.m_header_25, parsed_header)
+        payload_bytes = serialised_test_obj[PacketHeader.PACKET_LEN:]
+        parsed_obj = PacketParticipantsData(parsed_header, payload_bytes)
+        self.assertEqual(generated_test_obj, parsed_obj)
+        self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
 
     def test_f1_24_random(self):
         """
@@ -697,15 +716,19 @@ class TestPacketParticipantsData(F1TypesTest):
             ParticipantData: The random participant data
         """
 
+        tech_level = random.getrandbits(16)
+        num_colours = 4
+        liveries = [
+            LiveryColour.from_values(random.randint(0,255), random.randint(0,255), random.randint(0,255))
+            for _ in range(num_colours)
+        ]
+
         if header.m_gameYear == 23:
             team_id = random.choice(list(TeamID23))
-            tech_level = 0
         elif header.m_gameYear == 24:
             team_id = random.choice(list(TeamID24))
-            tech_level = random.getrandbits(16)
         elif header.m_gameYear == 25:
             team_id = random.choice(list(TeamID25))
-            tech_level = random.getrandbits(16)
         return ParticipantData.from_values(
             header,
             ai_controlled=F1TypesTest.getRandomBool(),
@@ -719,5 +742,7 @@ class TestPacketParticipantsData(F1TypesTest):
             your_telemetry=random.choice(list(TelemetrySetting)),
             show_online_names=F1TypesTest.getRandomBool(),
             platform=random.choice(list(Platform)),
-            tech_level=tech_level
+            tech_level=tech_level,
+            num_colours=num_colours,
+            liveries=liveries,
         )

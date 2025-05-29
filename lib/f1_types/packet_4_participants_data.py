@@ -78,6 +78,13 @@ class LiveryColour:
         """Returns a string representation of the LiveryColour object."""
         return self.__str__()
 
+    @classmethod
+    def from_values(cls, red: int, green: int, blue: int) -> "LiveryColour":
+        return LiveryColour(struct.pack(LiveryColour.PACKET_FORMAT, red, green, blue))
+
+    def to_bytes(self) -> bytes:
+        return struct.pack(LiveryColour.PACKET_FORMAT, self.m_red, self.m_green, self.m_blue)
+
 class ParticipantData:
     """
     A class representing participant data in a racing simulation.
@@ -311,20 +318,49 @@ class ParticipantData:
                 self.m_showOnlineNames,
                 self.m_platform.value
             )
-        return struct.pack(self.PACKET_FORMAT_24,
-            self.m_aiControlled,
-            self.m_driverId,
-            self.networkId,
-            self.m_teamId.value,
-            self.m_myTeam,
-            self.m_raceNumber,
-            self.m_nationality.value,
-            self.m_name.encode('utf-8'),
-            self.m_yourTelemetry.value,
-            self.m_showOnlineNames,
-            self.m_techLevel,
-            self.m_platform.value
-        )
+        if self.m_gameYear == 24:
+            return struct.pack(self.PACKET_FORMAT_24,
+                self.m_aiControlled,
+                self.m_driverId,
+                self.networkId,
+                self.m_teamId.value,
+                self.m_myTeam,
+                self.m_raceNumber,
+                self.m_nationality.value,
+                self.m_name.encode('utf-8'),
+                self.m_yourTelemetry.value,
+                self.m_showOnlineNames,
+                self.m_techLevel,
+                self.m_platform.value
+            )
+        else:
+            return struct.pack(self.PACKET_FORMAT_25_BASE + "BBB" * self.MAX_LIVERY_COLOURS,
+                self.m_aiControlled,
+                self.m_driverId,
+                self.networkId,
+                self.m_teamId.value,
+                self.m_myTeam,
+                self.m_raceNumber,
+                self.m_nationality.value,
+                self.m_name.encode('utf-8'),
+                self.m_yourTelemetry.value,
+                self.m_showOnlineNames,
+                self.m_techLevel,
+                self.m_platform.value,
+                self.m_numColours,
+                self.m_liveryColours[0].m_red,
+                self.m_liveryColours[0].m_green,
+                self.m_liveryColours[0].m_blue,
+                self.m_liveryColours[1].m_red,
+                self.m_liveryColours[1].m_green,
+                self.m_liveryColours[1].m_blue,
+                self.m_liveryColours[2].m_red,
+                self.m_liveryColours[2].m_green,
+                self.m_liveryColours[2].m_blue,
+                self.m_liveryColours[3].m_red,
+                self.m_liveryColours[3].m_green,
+                self.m_liveryColours[3].m_blue,
+            )
 
     def __eq__(self, other: "ParticipantData") -> bool:
         """
@@ -378,7 +414,9 @@ class ParticipantData:
                     your_telemetry: TelemetrySetting,
                     show_online_names: bool,
                     platform: Platform,
-                    tech_level: Optional[int] = 0
+                    tech_level: Optional[int] = 0,
+                    num_colours: Optional[int] = 4,
+                    liveries: Optional[List[LiveryColour]] = None,
                     ) -> "ParticipantData":
         """
         Creates a new ParticipantData object with the provided values.
@@ -397,6 +435,8 @@ class ParticipantData:
             show_online_names (bool): Whether to show online names or not.
             platform (Platform): Platform of the car.
             tech_level (Optional[int], optional): Tech level of the car. Defaults to 0. Will only be considered for 24
+            num_colours (Optional[int], optional): Number of colours of the car. Defaults to 4.
+            liveries (Optional[List[LiveryColour]], optional): List of livery colours of the car. Defaults to None.
 
         Returns:
             ParticipantData: A new ParticipantData object with the provided values.
@@ -416,7 +456,7 @@ class ParticipantData:
                 show_online_names,
                 platform.value
             )
-        else:
+        elif header.m_gameYear == 24:
             data = struct.pack(ParticipantData.PACKET_FORMAT_24,
                 ai_controlled,
                 driver_id,
@@ -430,6 +470,35 @@ class ParticipantData:
                 show_online_names,
                 tech_level,
                 platform.value
+            )
+        elif header.m_gameYear == 25:
+            # one byte for num colours, 3*4 bytes for liveries
+            data = struct.pack(ParticipantData.PACKET_FORMAT_25_BASE + "BBB" * 4,
+                ai_controlled,
+                driver_id,
+                network_id,
+                team_id.value,
+                my_team,
+                race_number,
+                nationality.value,
+                name.encode('utf-8'),
+                your_telemetry.value,
+                show_online_names,
+                tech_level,
+                platform.value,
+                num_colours,
+                liveries[0].m_red,
+                liveries[0].m_green,
+                liveries[0].m_blue,
+                liveries[1].m_red,
+                liveries[1].m_green,
+                liveries[1].m_blue,
+                liveries[2].m_red,
+                liveries[2].m_green,
+                liveries[2].m_blue,
+                liveries[3].m_red,
+                liveries[3].m_green,
+                liveries[3].m_blue
             )
         return cls(data, header.m_gameYear)
 
