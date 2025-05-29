@@ -241,7 +241,7 @@ class PacketMotionExData:
             f"Rear AERO Height: {self.m_rearAeroHeight}, "
             f"Front Roll Angle: {self.m_frontRollAngle}, "
             f"Rear Roll Angle: {self.m_rearRollAngle}, "
-            f"Chassis Yaw: {self.m_chassisYaw}",
+            f"Chassis Yaw: {self.m_chassisYaw}, "
             f"Chassis Pitch: {self.m_chassisPitch}, "
             f"Wheel Camber: {str(self.m_wheelCamber)}, "
             f"Wheel Camber Gain: {str(self.m_wheelCamberGain)}"

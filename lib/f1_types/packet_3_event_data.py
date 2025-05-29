@@ -141,13 +141,13 @@ class PacketEventData:
             lapTime (float): Lap time in seconds.
         """
 
-        def __init__(self, data: bytes, game_year: int) -> None:
+        def __init__(self, data: bytes, _game_year: int) -> None:
             """
             Initializes a FastestLap object by unpacking the provided binary data.
 
             Parameters:
                 data (bytes): Binary data to be unpacked.
-                game_year (int): The game year.
+                _game_year (int): The game year.
 
             Raises:
                 struct.error: If the binary data does not match the expected format.
@@ -356,13 +356,13 @@ class PacketEventData:
         Attributes:
             vehicleIdx(int) - The index of the vehicle that pitted (the teammates index)
         """
-        def __init__(self, data: bytes, game_year: int):
+        def __init__(self, data: bytes, _game_year: int):
             """
             Initializes a TeamMateInPits object by unpacking the provided binary data.
 
             Parameters:
                 data (bytes): Binary data to be unpacked.
-                game_year (int): The game year.
+                _game_year (int): The game year.
 
             Raises:
                 struct.error: If the binary data does not match the expected format.
@@ -416,13 +416,13 @@ class PacketEventData:
         Attributes:
             vehicleIdx(int) - The index of the vehicle that pitted (the teammates index)
         """
-        def __init__(self, data: bytes, game_year: int):
+        def __init__(self, data: bytes, _game_year: int):
             """
             Initializes a RaceWinner object by unpacking the provided binary data.
 
             Parameters:
                 data (bytes): Binary data to be unpacked.
-                game_year (int): The game year.
+                _game_year (int): The game year.
 
             Raises:
                 struct.error: If the binary data does not match the expected format.
@@ -600,12 +600,12 @@ class PacketEventData:
                     return True  # It's already an instance of SafetyCarStatus
                 return any(infringement_type == member.value for member in  PacketEventData.Penalty.InfringementType)
 
-        def __init__(self, data: bytes, game_year: int):
+        def __init__(self, data: bytes, _game_year: int):
             """Parse the penalty event packet into this object
 
             Args:
                 data (bytes): The packet containing the event data.
-                game_year (int): The game year.
+                _game_year (int): The game year.
             """
 
             format_str = "<BBBBBBB"
@@ -691,13 +691,13 @@ class PacketEventData:
             fastestSpeedInSession (float): The speed of the fastest vehicle in the session.
         """
 
-        def __init__(self, data: bytes, game_year: int) -> None:
+        def __init__(self, data: bytes, _game_year: int) -> None:
             """
             Initializes a SpeedTrap object by unpacking the provided binary data.
 
             Parameters:
                 data (bytes): Binary data to be unpacked.
-                game_year (int): The game year.
+                _game_year (int): The game year.
 
             Raises:
                 struct.error: If the binary data does not match the expected format.
@@ -788,13 +788,13 @@ class PacketEventData:
             numLights (int): The number of lights in the start lights sequence.
         """
 
-        def __init__(self, data: bytes, game_year: int) -> None:
+        def __init__(self, data: bytes, _game_year: int) -> None:
             """
             Initializes a StartLights object by unpacking the provided binary data.
 
             Parameters:
                 data (bytes): Binary data to be unpacked.
-                game_year (int): The game year.
+                _game_year (int): The game year.
 
             Raises:
                 struct.error: If the binary data does not match the expected format.
@@ -845,13 +845,13 @@ class PacketEventData:
             vehicleIdx (int): The index of the vehicle serving the drive-through penalty.
         """
 
-        def __init__(self, data: bytes, game_year: int) -> None:
+        def __init__(self, data: bytes, _game_year: int) -> None:
             """
             Initializes a DriveThroughPenaltyServed object by unpacking the provided binary data.
 
             Parameters:
                 data (bytes): Binary data to be unpacked.
-                game_year (int): The game year.
+                _game_year (int): The game year.
 
             Raises:
                 struct.error: If the binary data does not match the expected format.
@@ -991,13 +991,13 @@ class PacketEventData:
             flashbackSessionTime (float): Session time when the flashback was initiated, in seconds.
         """
 
-        def __init__(self, data: bytes, game_year: int) -> None:
+        def __init__(self, data: bytes, _game_year: int) -> None:
             """
             Initializes a Flashback object by unpacking the provided binary data.
 
             Parameters:
                 data (bytes): Binary data to be unpacked.
-                game_year (int): The game year.
+                _game_year (int): The game year.
 
             Raises:
                 struct.error: If the binary data does not match the expected format.
@@ -1098,13 +1098,13 @@ class PacketEventData:
         UDP_ACTION_11 = 0x40000000
         UDP_ACTION_12 = 0x80000000
 
-        def __init__(self, data: bytes, game_year: int) -> None:
+        def __init__(self, data: bytes, _game_year: int) -> None:
             """
             Initializes a Buttons object by unpacking the provided binary data.
 
             Parameters:
                 data (bytes): Binary data to be unpacked.
-                game_year (int): The game year.
+                _game_year (int): The game year.
 
             Raises:
                 struct.error: If the binary data does not match the expected format.
@@ -1211,13 +1211,13 @@ class PacketEventData:
             beingOvertakenVehicleIdx (int): The index of the vehicle being overtaken.
         """
 
-        def __init__(self, data: bytes, game_year: int) -> None:
+        def __init__(self, data: bytes, _game_year: int) -> None:
             """
             Initializes an Overtake object by unpacking the provided binary data.
 
             Parameters:
                 data (bytes): Binary data to be unpacked.
-                game_year (int): The game year.
+                _game_year (int): The game year.
 
             Raises:
                 struct.error: If the binary data does not match the expected format.
@@ -1285,13 +1285,13 @@ class PacketEventData:
             m_event_type (SafetyCarEventType): Refer SafetyCarEventType enumeration
         """
 
-        def __init__(self, data: bytes, game_year: int) -> None:
+        def __init__(self, data: bytes, _game_year: int) -> None:
             """
             Initializes an Overtake object by unpacking the provided binary data.
 
             Parameters:
                 data (bytes): Binary data to be unpacked.
-                game_year (int): The game year.
+                _game_year (int): The game year.
 
             Raises:
                 struct.error: If the binary data does not match the expected format.
@@ -1362,13 +1362,13 @@ class PacketEventData:
             m_vehicle_2_index (int): The index of the vehicle being overtaken.
         """
 
-        def __init__(self, data: bytes, game_year: int) -> None:
+        def __init__(self, data: bytes, _game_year: int) -> None:
             """
             Initializes a Collision object by unpacking the provided binary data.
 
             Parameters:
                 data (bytes): Binary data to be unpacked.
-                game_year (int): The game year.
+                _game_year (int): The game year.
 
             Raises:
                 struct.error: If the binary data does not match the expected format.

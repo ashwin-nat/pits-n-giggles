@@ -145,7 +145,7 @@ class LobbyInfoData:
         else:
             if game_year == 24:
                 packet_format = self.PACKET_FORMAT_24
-            elif game_year == 25:
+            else:
                 packet_format = self.PACKET_FORMAT_25
 
             (
