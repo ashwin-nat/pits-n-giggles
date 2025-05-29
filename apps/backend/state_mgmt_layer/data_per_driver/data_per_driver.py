@@ -22,12 +22,12 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, Iterator
 
 from apps.backend.common.png_logger import getLogger
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
-from lib.f1_types import (F1Utils, LapData, SafetyCarType, SessionType23,
+from lib.f1_types import (F1Utils, LapData, SafetyCarType, SessionType23, PacketLapPositionsData,
                           SessionType24, TelemetrySetting)
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 
@@ -58,6 +58,8 @@ class DataPerDriver:
         m_warning_penalty_history (WarningPenaltyHistory): History of warnings and penalties received by the driver.
         m_packet_copies (PacketCopies): Copies of various data packets related to the driver's performance.
         m_per_lap_snapshots (Dict[int, PerLapSnapshotEntry]): Snapshots of the driver's performance per lap
+        m_latest_snapshot_lap_num (int): The lap number of the latest snapshot
+        m_position_history (List[int]): List of positions of the driver
     """
 
     __slots__ = (
@@ -70,6 +72,7 @@ class DataPerDriver:
         "m_packet_copies",
         "m_per_lap_snapshots",
         "m_latest_snapshot_lap_num",
+        "m_position_history",
         )
 
     def __repr__(self) -> str:
@@ -110,6 +113,12 @@ class DataPerDriver:
         # Per lap snapshot
         self.m_per_lap_snapshots: Dict[int, PerLapSnapshotEntry] = {}
         self.m_latest_snapshot_lap_num: Optional[int] = None
+
+        # Positions history (F1 25+)
+        if total_laps:
+            self.m_position_history: List[int] = [0] * (total_laps + 1) # +1 for zeroth lap
+        else:
+            self.m_position_history: List[int] = None
 
     @property
     def is_valid(self) -> bool:
@@ -371,6 +380,19 @@ class DataPerDriver:
                     'tyre-set' : tyre_set_data.toJSON() if tyre_set_data else None,
                 })
         return ret
+
+    def updateTotalLaps(self, total_laps: int) -> None:
+        """Update the total number of laps in all relevant members
+
+        Args:
+            total_laps (int): The total number of laps.
+        """
+
+        self.m_tyre_info.m_tyre_wear_extrapolator.total_laps = total_laps
+        self.m_car_info.m_fuel_rate_recommender.total_laps   = total_laps
+
+        if not self.m_position_history:
+            self.m_position_history = [0] * (total_laps + 1) # +1 for zeroth lap
 
     def _handleFlashBack(self, old_lap_number: int) -> None:
         """Handle a flashback. Remove data from the histories
@@ -707,25 +729,47 @@ class DataPerDriver:
             "surplus-laps-game" : 0.0,
         }
 
-    def getPositionHistoryJSON(self) -> Dict[str, Any]:
+    def getPositionHistoryJSON(self, game_year: int, session_ended: bool) -> Dict[str, Any]:
         """Get the position history JSON.
 
         Returns:
             Dict[str, Any]: Position history JSON
         """
-
         return {
             "name": self.m_driver_info.name,
             "team": self.m_driver_info.team,
             "driver-number": self.m_driver_info.driver_number,
             "driver-position-history": [
-                {
-                    "lap-number": lap_number,
-                    "position": snapshot_record.m_track_position
-                }
-                for lap_number, snapshot_record in self._getNextLapSnapshot()
-            ]
+                {"lap-number": lap, "position": pos}
+                for lap, pos in self._positionHistoryHelper(game_year, session_ended)
+            ],
         }
+
+    def _positionHistoryHelper(self, game_year: int, session_ended: bool) -> Iterator[Tuple[int, int]]:
+        """Helper function to get the position history
+
+        Args:
+            game_year (int): The game year
+            session_ended (bool): Whether the session has ended
+
+        Returns:
+            Iterator[Tuple[int, int]]: The position history
+        """
+
+        if game_year >= 25:
+            max_lap = (
+                len(self.m_position_history) - 1
+                if session_ended
+                else self.m_lap_info.m_current_lap - 1
+            )
+            for lap, pos in enumerate(self.m_position_history):
+                if lap <= max_lap:
+                    yield lap, pos
+        else:
+            yield from (
+                (lap, snap.m_track_position)
+                for lap, snap in self._getNextLapSnapshot()
+            )
 
     def getTyreStintHistoryJSON(self) -> Dict[str, Any]:
         """Get the tyre stint history JSON.
@@ -846,3 +890,44 @@ class DataPerDriver:
             return F1Utils.SECTOR_STATUS_INVALID
         # Meh sector
         return F1Utils.SECTOR_STATUS_YELLOW
+
+    def processPositionsHistoryUpdate(self, packet: PacketLapPositionsData, position_history: List[int]) -> None:
+        """Update the position history and packet copy.
+
+        Args:
+            packet (PacketLapPositionsData): The incoming lap positions packet
+            position_history (List[int]): The position history
+        """
+
+        # Defer this update if the position history is not yet initialized
+        if not self.m_position_history:
+            png_logger.debug(f"Position history not yet initialized. {self.__str__()}")
+            return
+
+        assert len(position_history) == packet.m_numLaps
+
+        # Update the history and packet copy
+        self._insert_sublist(
+            target=self.m_position_history,
+            insert=position_history,
+            start=packet.m_lapStart
+        )
+
+    def _insert_sublist(self,target: List[int], insert: List[int], start: int) -> None:
+        """
+        Inserts elements of `insert` into `target` starting at index `start`.
+
+        Modifies the `target` list in-place.
+
+        Args:
+            target (List[int]): The list to insert into (must be large enough).
+            insert (List[int]): The list of items to insert.
+            start (int): The index in `target` at which to start inserting.
+
+        Raises:
+            ValueError: If the insertion would exceed the bounds of `target`.
+        """
+        if start < 0 or start + len(insert) > len(target):
+            raise ValueError("Insert range goes out of bounds of the target list.")
+
+        target[start:start + len(insert)] = insert

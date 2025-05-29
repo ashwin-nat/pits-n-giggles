@@ -34,8 +34,9 @@ class TestPacketCarMotionData(F1TypesTest):
         """
         self.m_num_players = random.randint(1, 22)
         self.m_header_23 = F1TypesTest.getRandomHeader(F1PacketType.MOTION, 23, self.m_num_players)
-        self.m_header_24 = F1TypesTest.getRandomHeader(F1PacketType.MOTION, 23, self.m_num_players)
-        self.m_packet_23_24 = (
+        self.m_header_24 = F1TypesTest.getRandomHeader(F1PacketType.MOTION, 24, self.m_num_players)
+        self.m_header_25 = F1TypesTest.getRandomHeader(F1PacketType.MOTION, 25, self.m_num_players)
+        self.m_packet_23_24_25 = (
             b'\x0c\xb3\x87\xc3\xc8\x98kA\x88\xe74\xc4A\xf7=9\x0e\x89\x82\xba\n\x1f5\xba\xfe\xba\x02\x015\x94\xcck\xc8'
             b'\x00\xff\xbab\x11\xfc6\xa7R!7\x98Zk\xb7\n\x9e$\xc0\x80$\x01\xbc\'D\xc8\xbb\x82k\x93\xc3\xd0\x03}AI\xcaA'
             b'\xc4\xb2\x83\x08;\xa1\xb6\xfd\xb9\xe2gi;\xa1\xbb\xd2\x00\xcd\x933l\x88\xff\xa0\xbb\xafA_5\xa2\x9c+6\x84'
@@ -83,7 +84,7 @@ class TestPacketCarMotionData(F1TypesTest):
             b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
             b'\x00\x00\x00\x00\x00\x00\x00'
         )
-        self.m_expected_json_23_24 = {
+        self.m_expected_json_23_24_25 = {
             "car-motion-data": [
                 {
                     "world-position": {
@@ -832,23 +833,52 @@ class TestPacketCarMotionData(F1TypesTest):
         self.assertEqual(generated_test_obj, parsed_obj)
         self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
 
+    def test_f1_25_random(self):
+        """
+        Test for F1 2025 with randomly generated data
+        """
+
+        # First, generate the random PacketMotionData object and serialise it
+        car_motion_objects = [self._generateRandomCarMotionData() for _ in range(self.m_num_players)]
+        generated_test_obj = PacketMotionData.from_values(self.m_header_25, car_motion_objects)
+        serialised_test_obj = generated_test_obj.to_bytes()
+
+        # Extract the header and parse it
+        header_bytes = serialised_test_obj[:PacketHeader.PACKET_LEN]
+        parsed_header = PacketHeader(header_bytes)
+
+        # Extract the payload, parse and test it
+        payload_bytes = serialised_test_obj[PacketHeader.PACKET_LEN:]
+        parsed_obj = PacketMotionData(parsed_header, payload_bytes)
+        self.assertEqual(generated_test_obj, parsed_obj)
+        self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
+
     def test_f1_23_actual(self):
         """
         Test for F1 2023 with an actual game packet
         """
 
-        parsed_packet = PacketMotionData(self.m_header_23, self.m_packet_23_24)
+        parsed_packet = PacketMotionData(self.m_header_23, self.m_packet_23_24_25)
         parsed_json = parsed_packet.toJSON()
-        self.jsonComparisionUtil(self.m_expected_json_23_24, parsed_json)
+        self.jsonComparisionUtil(self.m_expected_json_23_24_25, parsed_json)
 
     def test_f1_24_actual(self):
         """
         Test for F1 2024 with an actual game packet
         """
 
-        parsed_packet = PacketMotionData(self.m_header_24, self.m_packet_23_24)
+        parsed_packet = PacketMotionData(self.m_header_24, self.m_packet_23_24_25)
         parsed_json = parsed_packet.toJSON()
-        self.jsonComparisionUtil(self.m_expected_json_23_24, parsed_json)
+        self.jsonComparisionUtil(self.m_expected_json_23_24_25, parsed_json)
+
+    def test_f1_25_actual(self):
+        """
+        Test for F1 2025 with an actual game packet
+        """
+
+        parsed_packet = PacketMotionData(self.m_header_25, self.m_packet_23_24_25)
+        parsed_json = parsed_packet.toJSON()
+        self.jsonComparisionUtil(self.m_expected_json_23_24_25, parsed_json)
 
     def _generateRandomCarMotionData(self) -> CarMotionData:
         """Generate a random CarMotionData object

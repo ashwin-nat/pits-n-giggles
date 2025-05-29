@@ -35,6 +35,7 @@ class CarDamageData:
         m_tyresWear (List[float]): List of tyre wear percentages for each tyre.
         m_tyresDamage (List[int]): List of tyre damage percentages for each tyre.
         m_brakesDamage (List[int]): List of brake damage percentages for each brake.
+        m_tyresBlisters (List[int]): List of tyre blister percentages for each tyre.
         m_frontLeftWingDamage (int): Front left wing damage percentage.
         m_frontRightWingDamage (int): Front right wing damage percentage.
         m_rearWingDamage (int): Rear wing damage percentage.
@@ -83,7 +84,33 @@ class CarDamageData:
     )
     PACKET_LEN = struct.calcsize(PACKET_FORMAT)
 
-    def __init__(self, data) -> None:
+    PACKET_FORMAT_25 = ("<"
+        "4f" # float     m_tyresWear[4];                     // Tyre wear (percentage)
+        "4B" # uint8     m_tyresDamage[4];                   // Tyre damage (percentage)
+        "4B" # uint8     m_brakesDamage[4];                  // Brakes damage (percentage)
+        "4B" # uint8     m_tyreBlisters[4];                  // Tyre Blisters (percentage)
+        "B" # uint8     m_frontLeftWingDamage;              // Front left wing damage (percentage)
+        "B" # uint8     m_frontRightWingDamage;             // Front right wing damage (percentage)
+        "B" # uint8     m_rearWingDamage;                   // Rear wing damage (percentage)
+        "B" # uint8     m_floorDamage;                      // Floor damage (percentage)
+        "B" # uint8     m_diffuserDamage;                   // Diffuser damage (percentage)
+        "B" # uint8     m_sidepodDamage;                    // Sidepod damage (percentage)
+        "B" # uint8     m_drsFault;                         // Indicator for DRS fault, 0 = OK, 1 = fault
+        "B" # uint8     m_ersFault;                         // Indicator for ERS fault, 0 = OK, 1 = fault
+        "B" # uint8     m_gearBoxDamage;                    // Gear box damage (percentage)
+        "B" # uint8     m_engineDamage;                     // Engine damage (percentage)
+        "B" # uint8     m_engineMGUHWear;                   // Engine wear MGU-H (percentage)
+        "B" # uint8     m_engineESWear;                     // Engine wear ES (percentage)
+        "B" # uint8     m_engineCEWear;                     // Engine wear CE (percentage)
+        "B" # uint8     m_engineICEWear;                    // Engine wear ICE (percentage)
+        "B" # uint8     m_engineMGUKWear;                   // Engine wear MGU-K (percentage)
+        "B" # uint8     m_engineTCWear;                     // Engine wear TC (percentage)
+        "B" # uint8     m_engineBlown;                      // Engine blown, 0 = OK, 1 = fault
+        "B" # uint8     m_engineSeized;                     // Engine seized, 0 = OK, 1 = fault
+    )
+    PACKET_LEN_25 = struct.calcsize(PACKET_FORMAT_25)
+
+    def __init__(self, data, game_year) -> None:
         """
         Initializes CarDamageData with raw data.
 
@@ -93,38 +120,78 @@ class CarDamageData:
         self.m_tyresWear = [0.0] * 4
         self.m_tyresDamage = [0] * 4
         self.m_brakesDamage = [0] * 4
-        (
-            self.m_tyresWear[0],
-            self.m_tyresWear[1],
-            self.m_tyresWear[2],
-            self.m_tyresWear[3],
-            self.m_tyresDamage[0],
-            self.m_tyresDamage[1],
-            self.m_tyresDamage[2],
-            self.m_tyresDamage[3],
-            self.m_brakesDamage[0],
-            self.m_brakesDamage[1],
-            self.m_brakesDamage[2],
-            self.m_brakesDamage[3],
-            self.m_frontLeftWingDamage,
-            self.m_frontRightWingDamage,
-            self.m_rearWingDamage,
-            self.m_floorDamage,
-            self.m_diffuserDamage,
-            self.m_sidepodDamage,
-            self.m_drsFault,
-            self.m_ersFault,
-            self.m_gearBoxDamage,
-            self.m_engineDamage,
-            self.m_engineMGUHWear,
-            self.m_engineESWear,
-            self.m_engineCEWear,
-            self.m_engineICEWear,
-            self.m_engineMGUKWear,
-            self.m_engineTCWear,
-            self.m_engineBlown,
-            self.m_engineSeized,
-        ) = struct.unpack(self.PACKET_FORMAT, data)
+        self.m_tyreBlisters = [0] * 4
+        self.m_gameYear = game_year
+        if game_year >= 25:
+            (
+                self.m_tyresWear[0],
+                self.m_tyresWear[1],
+                self.m_tyresWear[2],
+                self.m_tyresWear[3],
+                self.m_tyresDamage[0],
+                self.m_tyresDamage[1],
+                self.m_tyresDamage[2],
+                self.m_tyresDamage[3],
+                self.m_brakesDamage[0],
+                self.m_brakesDamage[1],
+                self.m_brakesDamage[2],
+                self.m_brakesDamage[3],
+                self.m_tyreBlisters[0],
+                self.m_tyreBlisters[1],
+                self.m_tyreBlisters[2],
+                self.m_tyreBlisters[3],
+                self.m_frontLeftWingDamage,
+                self.m_frontRightWingDamage,
+                self.m_rearWingDamage,
+                self.m_floorDamage,
+                self.m_diffuserDamage,
+                self.m_sidepodDamage,
+                self.m_drsFault,
+                self.m_ersFault,
+                self.m_gearBoxDamage,
+                self.m_engineDamage,
+                self.m_engineMGUHWear,
+                self.m_engineESWear,
+                self.m_engineCEWear,
+                self.m_engineICEWear,
+                self.m_engineMGUKWear,
+                self.m_engineTCWear,
+                self.m_engineBlown,
+                self.m_engineSeized,
+            ) = struct.unpack(self.PACKET_FORMAT_25, data)
+        else:
+            (
+                self.m_tyresWear[0],
+                self.m_tyresWear[1],
+                self.m_tyresWear[2],
+                self.m_tyresWear[3],
+                self.m_tyresDamage[0],
+                self.m_tyresDamage[1],
+                self.m_tyresDamage[2],
+                self.m_tyresDamage[3],
+                self.m_brakesDamage[0],
+                self.m_brakesDamage[1],
+                self.m_brakesDamage[2],
+                self.m_brakesDamage[3],
+                self.m_frontLeftWingDamage,
+                self.m_frontRightWingDamage,
+                self.m_rearWingDamage,
+                self.m_floorDamage,
+                self.m_diffuserDamage,
+                self.m_sidepodDamage,
+                self.m_drsFault,
+                self.m_ersFault,
+                self.m_gearBoxDamage,
+                self.m_engineDamage,
+                self.m_engineMGUHWear,
+                self.m_engineESWear,
+                self.m_engineCEWear,
+                self.m_engineICEWear,
+                self.m_engineMGUKWear,
+                self.m_engineTCWear,
+                self.m_engineBlown,
+                self.m_engineSeized,
+            ) = struct.unpack(self.PACKET_FORMAT, data)
 
         self.m_drsFault = bool(self.m_drsFault)
         self.m_ersFault = bool(self.m_ersFault)
@@ -239,44 +306,84 @@ class CarDamageData:
             bytes: Bytes representing the CarDamageData instance.
         """
 
-        return struct.pack(self.PACKET_FORMAT,
-            self.m_tyresWear[0],
-            self.m_tyresWear[1],
-            self.m_tyresWear[2],
-            self.m_tyresWear[3],
-            self.m_tyresDamage[0],
-            self.m_tyresDamage[1],
-            self.m_tyresDamage[2],
-            self.m_tyresDamage[3],
-            self.m_brakesDamage[0],
-            self.m_brakesDamage[1],
-            self.m_brakesDamage[2],
-            self.m_brakesDamage[3],
-            self.m_frontLeftWingDamage,
-            self.m_frontRightWingDamage,
-            self.m_rearWingDamage,
-            self.m_floorDamage,
-            self.m_diffuserDamage,
-            self.m_sidepodDamage,
-            self.m_drsFault,
-            self.m_ersFault,
-            self.m_gearBoxDamage,
-            self.m_engineDamage,
-            self.m_engineMGUHWear,
-            self.m_engineESWear,
-            self.m_engineCEWear,
-            self.m_engineICEWear,
-            self.m_engineMGUKWear,
-            self.m_engineTCWear,
-            self.m_engineBlown,
-            self.m_engineSeized,
-        )
+        if self.m_gameYear < 25:
+            return struct.pack(self.PACKET_FORMAT,
+                self.m_tyresWear[0],
+                self.m_tyresWear[1],
+                self.m_tyresWear[2],
+                self.m_tyresWear[3],
+                self.m_tyresDamage[0],
+                self.m_tyresDamage[1],
+                self.m_tyresDamage[2],
+                self.m_tyresDamage[3],
+                self.m_brakesDamage[0],
+                self.m_brakesDamage[1],
+                self.m_brakesDamage[2],
+                self.m_brakesDamage[3],
+                self.m_frontLeftWingDamage,
+                self.m_frontRightWingDamage,
+                self.m_rearWingDamage,
+                self.m_floorDamage,
+                self.m_diffuserDamage,
+                self.m_sidepodDamage,
+                self.m_drsFault,
+                self.m_ersFault,
+                self.m_gearBoxDamage,
+                self.m_engineDamage,
+                self.m_engineMGUHWear,
+                self.m_engineESWear,
+                self.m_engineCEWear,
+                self.m_engineICEWear,
+                self.m_engineMGUKWear,
+                self.m_engineTCWear,
+                self.m_engineBlown,
+                self.m_engineSeized,
+            )
+        else:
+            return struct.pack(self.PACKET_FORMAT_25,
+                self.m_tyresWear[0],
+                self.m_tyresWear[1],
+                self.m_tyresWear[2],
+                self.m_tyresWear[3],
+                self.m_tyresDamage[0],
+                self.m_tyresDamage[1],
+                self.m_tyresDamage[2],
+                self.m_tyresDamage[3],
+                self.m_brakesDamage[0],
+                self.m_brakesDamage[1],
+                self.m_brakesDamage[2],
+                self.m_brakesDamage[3],
+                self.m_tyreBlisters[0],
+                self.m_tyreBlisters[1],
+                self.m_tyreBlisters[2],
+                self.m_tyreBlisters[3],
+                self.m_frontLeftWingDamage,
+                self.m_frontRightWingDamage,
+                self.m_rearWingDamage,
+                self.m_floorDamage,
+                self.m_diffuserDamage,
+                self.m_sidepodDamage,
+                self.m_drsFault,
+                self.m_ersFault,
+                self.m_gearBoxDamage,
+                self.m_engineDamage,
+                self.m_engineMGUHWear,
+                self.m_engineESWear,
+                self.m_engineCEWear,
+                self.m_engineICEWear,
+                self.m_engineMGUKWear,
+                self.m_engineTCWear,
+                self.m_engineBlown,
+                self.m_engineSeized,
+            )
 
     @classmethod
     def from_values(cls,
+        game_year: int,
         tyres_wear: List[float],
         tyres_damage: List[int],
         brakes_damage: List[int],
+        tyre_blisters: List[int],
         fl_wing_damage: int,
         fr_wing_damage: int,
         rear_wing_damage: int,
@@ -306,38 +413,76 @@ class CarDamageData:
             CarDamageData: A new CarDamageData object with the provided values.
         """
 
-        return cls(struct.pack(cls.PACKET_FORMAT,
-            tyres_wear[0],
-            tyres_wear[1],
-            tyres_wear[2],
-            tyres_wear[3],
-            tyres_damage[0],
-            tyres_damage[1],
-            tyres_damage[2],
-            tyres_damage[3],
-            brakes_damage[0],
-            brakes_damage[1],
-            brakes_damage[2],
-            brakes_damage[3],
-            fl_wing_damage,
-            fr_wing_damage,
-            rear_wing_damage,
-            floor_damage,
-            diffuser_damage,
-            sidepod_damage,
-            drs_fault,
-            ers_fault,
-            gear_box_damage,
-            engine_damage,
-            engine_mguh_wear,
-            engine_es_wear,
-            engine_ce_wear,
-            engine_ice_wear,
-            engine_mguk_wear,
-            engine_tc_wear,
-            engine_blown,
-            engine_seized,
-        ))
+        if game_year < 25:
+            return cls(struct.pack(cls.PACKET_FORMAT,
+                tyres_wear[0],
+                tyres_wear[1],
+                tyres_wear[2],
+                tyres_wear[3],
+                tyres_damage[0],
+                tyres_damage[1],
+                tyres_damage[2],
+                tyres_damage[3],
+                brakes_damage[0],
+                brakes_damage[1],
+                brakes_damage[2],
+                brakes_damage[3],
+                fl_wing_damage,
+                fr_wing_damage,
+                rear_wing_damage,
+                floor_damage,
+                diffuser_damage,
+                sidepod_damage,
+                drs_fault,
+                ers_fault,
+                gear_box_damage,
+                engine_damage,
+                engine_mguh_wear,
+                engine_es_wear,
+                engine_ce_wear,
+                engine_ice_wear,
+                engine_mguk_wear,
+                engine_tc_wear,
+                engine_blown,
+                engine_seized,
+            ), game_year)
+        else:
+            return cls(struct.pack(cls.PACKET_FORMAT_25,
+                tyres_wear[0],
+                tyres_wear[1],
+                tyres_wear[2],
+                tyres_wear[3],
+                tyres_damage[0],
+                tyres_damage[1],
+                tyres_damage[2],
+                tyres_damage[3],
+                brakes_damage[0],
+                brakes_damage[1],
+                brakes_damage[2],
+                brakes_damage[3],
+                tyre_blisters[0],
+                tyre_blisters[1],
+                tyre_blisters[2],
+                tyre_blisters[3],
+                fl_wing_damage,
+                fr_wing_damage,
+                rear_wing_damage,
+                floor_damage,
+                diffuser_damage,
+                sidepod_damage,
+                drs_fault,
+                ers_fault,
+                gear_box_damage,
+                engine_damage,
+                engine_mguh_wear,
+                engine_es_wear,
+                engine_ce_wear,
+                engine_ice_wear,
+                engine_mguk_wear,
+                engine_tc_wear,
+                engine_blown,
+                engine_seized,
+            ), game_year)
 
 
 class PacketCarDamageData:
@@ -362,10 +507,14 @@ class PacketCarDamageData:
         """
 
         self.m_header: PacketHeader = header
+        if header.m_gameYear >= 25:
+            packet_len = CarDamageData.PACKET_LEN_25
+        else:
+            packet_len = CarDamageData.PACKET_LEN
         # Slice the data bytes in steps of CarDamageData.PACKET_LEN to create CarDamageData objects.
         self.m_carDamageData = [
-            CarDamageData(data[i:i + CarDamageData.PACKET_LEN])
-            for i in range(0, len(data), CarDamageData.PACKET_LEN)
+            CarDamageData(data[i:i + packet_len], header.m_gameYear)
+            for i in range(0, len(data), packet_len)
         ]
 
     def __str__(self) -> str:

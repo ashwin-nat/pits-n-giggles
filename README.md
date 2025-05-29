@@ -26,7 +26,7 @@ Pits n' Giggles solves this by:
 
 - F1 2023
 - F1 2024
-- F1 2025 (as soon as EA release the protocol specification doc)
+- F1 2025
 
 ## Features
 
@@ -77,7 +77,7 @@ Click on any driver's name to access (when you're safely in the pits, of course)
 - **Stream Overlays**: Enhance your broadcasts with real-time data:
   - Throttle/Brake/Steering inputs (show viewers your superhuman reflexes)
   - Lap time history (visual representation of your consistency or lack thereof)
-  - Penalties, track/air temperature, speed trap records (F1 24 only)
+  - Penalties, track/air temperature, speed trap records (F1 24 onwards)
   - Live G-Force visualization (neck muscles not included 💪)
   - Weather forecast (for dramatic "rain is coming" commentary)
 - **Data Forwarding**: Send telemetry to other applications or devices

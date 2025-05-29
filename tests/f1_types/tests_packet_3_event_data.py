@@ -69,3 +69,16 @@ class TestPacketEventData(F1TypesTest):
         parsed_json = parsed_packet.toJSON()
         self.jsonComparisionUtil(expected_json, parsed_json)
 
+    def test_f1_25_fastest_lap(self):
+        """
+        Test for F1 2025 with an actual game packet. Fastest Lap event
+        """
+
+        random_header = F1TypesTest.getRandomHeader(F1PacketType.EVENT, 25, self.m_num_players)
+        raw_packet = b'FTLP\x07\x14.\x89B\x00\x00\x00\x02\x1amP'
+        expected_json = {"event-string-code": "FTLP", "event-details": {"vehicle-idx": 7, "lap-time": 68.58999633789062}}
+
+        parsed_packet = PacketEventData(random_header, raw_packet)
+        parsed_json = parsed_packet.toJSON()
+        self.jsonComparisionUtil(expected_json, parsed_json)
+

@@ -25,11 +25,12 @@
 ## official document.
 ## F1 23 - https://answers.ea.com/t5/General-Discussion/F1-23-UDP-Specification/m-p/12633159
 ## F1 24 - https://answers.ea.com/t5/General-Discussion/F1-24-UDP-Specification/td-p/13745220
+## F1 25 - https://forums.ea.com/blog/f1-games-game-info-hub-en/ea-sports%E2%84%A2-f1%C2%AE25-udp-specification/12187347
 
 
 import struct
 from enum import Enum, IntEnum
-from typing import Any, Dict, Optional, Set, Union
+from typing import Any, Dict, List, Optional, Set, Union
 
 # ------------------------- ERROR CLASSES --------------------------------------
 
@@ -66,6 +67,7 @@ class F1PacketType(Enum):
     TYRE_SETS = 12
     MOTION_EX = 13
     TIME_TRIAL = 14
+    LAP_POSITIONS = 15
 
     @staticmethod
     def isValid(packet_type) -> bool:
@@ -138,6 +140,46 @@ class ResultStatus(Enum):
             7: "RETIRED",
         }
         return status_mapping.get(self.value, "---")
+
+class ResultReason(Enum):
+    """
+    Enumeration representing the result reason of a driver after a racing session.
+    """
+
+    INVALID = 0
+    RETIRED = 1
+    FINISHED = 2
+    TERMINAL_DAMAGE = 3
+    INACTIVE = 4
+    NOT_ENOUGH_LAPS_COMPLETED = 5
+    BLACK_FLAGGED = 6
+    RED_FLAGGED = 7
+    MECHANICAL_FAILURE = 8
+    SESSION_SKIPPED = 9
+    SESSION_SIMULATED = 10
+
+    @staticmethod
+    def isValid(result_reason: int) -> bool:
+        """Check if the given result reason is valid.
+
+        Args:
+            result_reason (int): The result status to be validated.
+
+        Returns:
+            bool: True if valid.
+        """
+        if isinstance(result_reason, ResultReason):
+            return True  # It's already an instance of ResultReason
+        return any(result_reason == member.value for member in ResultReason)
+
+    def __str__(self) -> str:
+        """
+        Returns a human-readable string representation of the result status.
+
+        Returns:
+            str: String representation of the result status.
+        """
+        return self.name.lower()
 
 class SessionType23(Enum):
     """
@@ -268,6 +310,7 @@ class ActualTyreCompound(Enum):
     Enumeration representing different tyre compounds used in Formula 1 and Formula 2.
 
     Attributes:
+        C6 (int): F1 Modern - C6
         C5 (int): F1 Modern - C5
         C4 (int): F1 Modern - C4
         C3 (int): F1 Modern - C3
@@ -288,6 +331,7 @@ class ActualTyreCompound(Enum):
             Each attribute represents a unique tyre compound identified by an integer value.
     """
 
+    C6 = 22
     C5 = 16
     C4 = 17
     C3 = 18
@@ -312,6 +356,7 @@ class ActualTyreCompound(Enum):
             str: String representation of the tyre compound.
         """
         return {
+            ActualTyreCompound.C6: "C6",
             ActualTyreCompound.C5: "C5",
             ActualTyreCompound.C4: "C4",
             ActualTyreCompound.C3: "C3",
@@ -953,6 +998,55 @@ class TeamID24(Enum):
             return True  # It's already an instance of TeamID24
         return any(team_id == member.value for member in TeamID24)
 
+class TeamID25(Enum):
+    MERCEDES = 0
+    FERRARI = 1
+    RED_BULL_RACING = 2
+    WILLIAMS = 3
+    ASTON_MARTIN = 4
+    ALPINE = 5
+    RB = 6
+    HAAS = 7
+    MCLAREN = 8
+    SAUBER = 9
+    F1_GENERIC = 41
+    F1_CUSTOM_TEAM = 104
+    KONNERSPORT = 129
+    APXGP_24 = 142
+    APXGP_25 = 154
+    KONNERSPORT_24 = 155
+    ART_GP_24 = 158
+    CAMPOS_24 = 159
+    RODIN_MOTORSPORT_24 = 160
+    AIX_RACING_24 = 161
+    DAMS_24 = 162
+    HITECH_24 = 163
+    MP_MOTORSPORT_24 = 164
+    PREMA_24 = 165
+    TRIDENT_24 = 166
+    VAN_AMERSFOORT_RACING_24 = 167
+    INVICTA_24 = 168
+    MERCEDES_24 = 185
+    FERRARI_24 = 186
+    RED_BULL_RACING_24 = 187
+    WILLIAMS_24 = 188
+    ASTON_MARTIN_24 = 189
+    ALPINE_24 = 190
+    RB_24 = 191
+    HAAS_24 = 192
+    MCLAREN_24 = 193
+    SAUBER_24 = 194
+
+    def __str__(self):
+        return self.name.replace("_", " ").title().replace("Gp", "GP").replace("24", "'24").replace("25", "'25")
+
+    @staticmethod
+    def isValid(value: int) -> bool:
+        if isinstance(value, TeamID25):
+            return True  # It's already an instance of TeamID25
+        return any(value == member.value for member in TeamID25)
+
+
 class TrackID(Enum):
     """
     Enum class representing F1 track IDs and their corresponding names.
@@ -990,6 +1084,9 @@ class TrackID(Enum):
     Miami = 30
     Las_Vegas = 31
     Losail = 32
+    Silverstone_Reverse = 39
+    Austria_Reverse = 40
+    Zandvoort_Reverse = 41
 
     def __str__(self):
         """
@@ -1000,7 +1097,10 @@ class TrackID(Enum):
             "Sakhir_Bahrain": "Sakhir",
             "Abu_Dhabi": "Abu Dhabi",
             "Baku_Azerbaijan": "Baku",
-            "Portimao": "Portimão"
+            "Portimao": "Portimão",
+            "Silverstone_Reverse": "Silverstone (Rev)",
+            "Austria_Reverse": "Austria (Rev)",
+            "Zandvoort_Reverse": "Zandvoort (Rev)",
         }.get(self.name, self.name.replace("_", " "))
 
     @staticmethod
@@ -1039,11 +1139,11 @@ class GameMode(Enum):
         ONLINE_WEEKLY_EVENT (int): Online Weekly Event
         STORY_MODE (int): Story Mode
         CAREER_22 (int): Career ‘22
-        CAREER_22_ONLINE (int): Career ’22 Online
+        CAREER_22_ONLINE (int): Career '22 Online
         CAREER_23 (int): Career ‘23
-        CAREER_23_ONLINE (int): Career ’23 Online
+        CAREER_23_ONLINE (int): Career '23 Online
         DRIVER_CAREER_24 (int): Driver Career ‘24
-        CAREER_24_ONLINE (int): Career ’24 Online
+        CAREER_24_ONLINE (int): Career '24 Online
         MY_TEAM_CAREER_24 (int): My Team Career ‘24
         CURATED_CAREER_24 (int): Curated Career ‘24
         BENCHMARK (int): Benchmark
@@ -1070,6 +1170,11 @@ class GameMode(Enum):
     CAREER_24_ONLINE = 24
     MY_TEAM_CAREER_24 = 25
     CURATED_CAREER_24 = 26
+    MY_TEAM_CAREER_25 = 27
+    DRIVER_CAREER_25 = 28
+    CAREER_25_ONLINE = 29
+    CHALLENGE_CAREER = 30
+    APEX_STORY = 75
     BENCHMARK = 127
 
     def __str__(self) -> str:
@@ -1423,6 +1528,41 @@ class F1Utils:
             SessionType24.PRACTICE_3,
             SessionType24.SHORT_PRACTICE,
         ]
+
+    @staticmethod
+    def transposeLapPositions(lap_major: List[List[int]]) -> List[List[int]]:
+        """
+        Transpose a 2D list of lap position data from lap-major to car-major order.
+
+        The input list is expected to have the format:
+            lap_major[lap_index][car_index] -> position
+
+        The output list will have the format:
+            car_major[car_index][lap_index] -> position
+
+        Args:
+            lap_major (List[List[int]]): 2D list where each inner list represents
+                                        the positions of all cars for a single lap.
+
+        Returns:
+            List[List[int]]: Transposed 2D list where each inner list represents
+                            the positions of one car across all laps.
+
+        Example:
+            lap_major = [
+                [1, 2, 3],  # lap 0
+                [2, 1, 3],  # lap 1
+            ]
+
+            Result:
+            [
+                [1, 2],  # car 0
+                [2, 1],  # car 1
+                [3, 3],  # car 2
+            ]
+        """
+        # Transpose using zip and map. zip(*lap_major) groups values per car index.
+        return [list(car_lap_positions) for car_lap_positions in zip(*lap_major)]
 
 # -------------------- HEADER PARSING ------------------------------------------
 

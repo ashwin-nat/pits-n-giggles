@@ -141,12 +141,13 @@ class PacketEventData:
             lapTime (float): Lap time in seconds.
         """
 
-        def __init__(self, data: bytes):
+        def __init__(self, data: bytes, game_year: int) -> None:
             """
             Initializes a FastestLap object by unpacking the provided binary data.
 
             Parameters:
                 data (bytes): Binary data to be unpacked.
+                game_year (int): The game year.
 
             Raises:
                 struct.error: If the binary data does not match the expected format.
@@ -209,9 +210,54 @@ class PacketEventData:
         Attributes:
             vehicleIdx(int) - The index of the vehicle that retired
         """
-        def __init__(self, data):
-            format_str = "<B"
-            self.vehicleIdx = struct.unpack(format_str, data[: struct.calcsize(format_str)])[0]
+
+        class Reason(Enum):
+            INVALID = 0
+            RETIRED = 1
+            FINISHED = 2
+            TERMINAL_DAMAGE = 3
+            INACTIVE = 4
+            NOT_ENOUGH_LAPS = 5
+            BLACK_FLAGGED = 6
+            RED_FLAGGED = 7
+            MECHANICAL_FAILURE = 8
+            SESSION_SKIPPED = 9
+            SESSION_SIMULATED = 10
+
+            def __str__(self):
+                return self.name.replace("_", " ").title()
+
+            @staticmethod
+            def isValid(value: int) -> bool:
+                """Check if the given integer is a valid Reason code."""
+                if isinstance(value, PacketEventData.Retirement.Reason):
+                    return True
+                return PacketEventData.Retirement.Reason.INVALID.value <= value <= \
+                            PacketEventData.Retirement.Reason.SESSION_SIMULATED.value
+
+        def __init__(self, data: bytes, game_year: int):
+            """
+            Initializes a Retirement object by unpacking the provided binary data.
+
+            Parameters:
+                data (bytes): Binary data to be unpacked.
+                game_year (int): The game year.
+
+            Raises:
+                struct.error: If the binary data does not match the expected format.
+            """
+            if game_year >= 25:
+                format_str = "<BB"
+                self.vehicleIdx, self.m_reason = struct.unpack(format_str, data[: struct.calcsize(format_str)])
+                if PacketEventData.Retirement.Reason.isValid(self.m_reason):
+                    self.m_reason = PacketEventData.Retirement.Reason(self.m_reason)
+                else:
+                    self.m_reason = PacketEventData.Retirement.Reason.INVALID
+
+            else:
+                format_str = "<B"
+                self.vehicleIdx = struct.unpack(format_str, data[: struct.calcsize(format_str)])[0]
+                self.m_reason = PacketEventData.Retirement.Reason.INVALID
 
         def __str__(self):
             return f"Retirement(vehicleIdx={self.vehicleIdx})"
@@ -251,6 +297,58 @@ class PacketEventData:
             """
             return not self.__eq__(other)
 
+    class DrsDisabled:
+        """
+        The class representing the DRSEVENT disabled event. This is sent when DRS is disabled
+        Attributes:
+            reason(int) - The reason for disabling DRS
+        """
+
+        class Reason(Enum):
+            WET_TRACK = 0
+            SAFETY_CAR_DEPLOYED = 1
+            RED_FLAG = 2
+            MIN_LAP_NOT_REACHED = 3
+
+            def __str__(self):
+                return self.name.replace("_", " ").title()
+
+            @staticmethod
+            def isValid(value: int) -> bool:
+                """Check if the given integer is a valid Reason code."""
+                if isinstance(value, PacketEventData.DrsDisabled.Reason):
+                    return True
+                return PacketEventData.DrsDisabled.Reason.WET_TRACK.value <= value <= \
+                            PacketEventData.DrsDisabled.Reason.MIN_LAP_NOT_REACHED.value
+
+        def __init__(self, data: bytes, game_year: int):
+            """
+            Initializes a DrsDisabled object by unpacking the provided binary data.
+
+            Parameters:
+                data (bytes): Binary data to be unpacked.
+                game_year (int): The game year.
+
+            Raises:
+                struct.error: If the binary data does not match the expected format.
+            """
+            if game_year < 25:
+                self.m_reason = None
+                return
+            format_str = "<B"
+            self.m_reason = struct.unpack(format_str, data[: struct.calcsize(format_str)])[0]
+            if PacketEventData.DrsDisabled.Reason.isValid(self.m_reason):
+                self.m_reason = PacketEventData.DrsDisabled.Reason(self.m_reason)
+
+        def __str__(self):
+            return f"DrsDisabled(reason={self.m_reason})"
+
+        def __eq__(self, other: "PacketEventData.DrsDisabled") -> bool:
+            return self.m_reason == other.m_reason
+
+        def __ne__(self, other: "PacketEventData.DrsDisabled") -> bool:
+            return not self.__eq__(other)
+
     class TeamMateInPits:
         """
         The class representing the TEAMMATE IN PITS event. This is sent when the player's teammate pits.
@@ -258,7 +356,17 @@ class PacketEventData:
         Attributes:
             vehicleIdx(int) - The index of the vehicle that pitted (the teammates index)
         """
-        def __init__(self, data):
+        def __init__(self, data: bytes, game_year: int):
+            """
+            Initializes a TeamMateInPits object by unpacking the provided binary data.
+
+            Parameters:
+                data (bytes): Binary data to be unpacked.
+                game_year (int): The game year.
+
+            Raises:
+                struct.error: If the binary data does not match the expected format.
+            """
             format_str = "<B"
             self.vehicleIdx = struct.unpack(
                 format_str, data[: struct.calcsize(format_str)]
@@ -308,7 +416,17 @@ class PacketEventData:
         Attributes:
             vehicleIdx(int) - The index of the vehicle that pitted (the teammates index)
         """
-        def __init__(self, data):
+        def __init__(self, data: bytes, game_year: int):
+            """
+            Initializes a RaceWinner object by unpacking the provided binary data.
+
+            Parameters:
+                data (bytes): Binary data to be unpacked.
+                game_year (int): The game year.
+
+            Raises:
+                struct.error: If the binary data does not match the expected format.
+            """
             format_str = "<B"
             self.vehicleIdx = struct.unpack(format_str, data[: struct.calcsize(format_str)])[0]
 
@@ -482,11 +600,12 @@ class PacketEventData:
                     return True  # It's already an instance of SafetyCarStatus
                 return any(infringement_type == member.value for member in  PacketEventData.Penalty.InfringementType)
 
-        def __init__(self, data: bytes):
+        def __init__(self, data: bytes, game_year: int):
             """Parse the penalty event packet into this object
 
             Args:
                 data (bytes): The packet containing the event data.
+                game_year (int): The game year.
             """
 
             format_str = "<BBBBBBB"
@@ -572,12 +691,13 @@ class PacketEventData:
             fastestSpeedInSession (float): The speed of the fastest vehicle in the session.
         """
 
-        def __init__(self, data: bytes) -> None:
+        def __init__(self, data: bytes, game_year: int) -> None:
             """
             Initializes a SpeedTrap object by unpacking the provided binary data.
 
             Parameters:
                 data (bytes): Binary data to be unpacked.
+                game_year (int): The game year.
 
             Raises:
                 struct.error: If the binary data does not match the expected format.
@@ -668,12 +788,13 @@ class PacketEventData:
             numLights (int): The number of lights in the start lights sequence.
         """
 
-        def __init__(self, data: bytes) -> None:
+        def __init__(self, data: bytes, game_year: int) -> None:
             """
             Initializes a StartLights object by unpacking the provided binary data.
 
             Parameters:
                 data (bytes): Binary data to be unpacked.
+                game_year (int): The game year.
 
             Raises:
                 struct.error: If the binary data does not match the expected format.
@@ -724,12 +845,13 @@ class PacketEventData:
             vehicleIdx (int): The index of the vehicle serving the drive-through penalty.
         """
 
-        def __init__(self, data: bytes) -> None:
+        def __init__(self, data: bytes, game_year: int) -> None:
             """
             Initializes a DriveThroughPenaltyServed object by unpacking the provided binary data.
 
             Parameters:
                 data (bytes): Binary data to be unpacked.
+                game_year (int): The game year.
 
             Raises:
                 struct.error: If the binary data does not match the expected format.
@@ -793,19 +915,25 @@ class PacketEventData:
             vehicleIdx (int): The index of the vehicle serving the stop-go penalty.
         """
 
-        def __init__(self, data: bytes) -> None:
+        def __init__(self, data: bytes, game_year: int) -> None:
             """
             Initializes a StopGoPenaltyServed object by unpacking the provided binary data.
 
             Parameters:
                 data (bytes): Binary data to be unpacked.
+                game_year (int): The game year.
 
             Raises:
                 struct.error: If the binary data does not match the expected format.
             """
 
-            format_str = "<B"
-            self.vehicleIdx = struct.unpack(format_str, data[:struct.calcsize(format_str)])
+            if game_year < 25:
+                format_str = "<B"
+                self.vehicleIdx = struct.unpack(format_str, data[:struct.calcsize(format_str)])
+                self.stopTime = 0.0
+            else:
+                format_str = "<Bf"
+                self.vehicleIdx, self.stopTime = struct.unpack(format_str, data[:struct.calcsize(format_str)])
 
         def __str__(self) -> str:
             """
@@ -815,7 +943,7 @@ class PacketEventData:
                 str: String representation of the object.
             """
 
-            return f"StopGoPenaltyServed(vehicleIdx={self.vehicleIdx})"
+            return f"StopGoPenaltyServed(vehicleIdx={self.vehicleIdx} stopTime={self.stopTime})"
 
         def toJSON(self) -> Dict[str, Any]:
             """
@@ -826,7 +954,8 @@ class PacketEventData:
             """
 
             return {
-                "vehicle-idx": self.vehicleIdx
+                "vehicle-idx": self.vehicleIdx,
+                "stop-time": self.stopTime
             }
 
         def __eq__(self, other: "PacketEventData.StopGoPenaltyServed") -> bool:
@@ -862,12 +991,13 @@ class PacketEventData:
             flashbackSessionTime (float): Session time when the flashback was initiated, in seconds.
         """
 
-        def __init__(self, data: bytes) -> None:
+        def __init__(self, data: bytes, game_year: int) -> None:
             """
             Initializes a Flashback object by unpacking the provided binary data.
 
             Parameters:
                 data (bytes): Binary data to be unpacked.
+                game_year (int): The game year.
 
             Raises:
                 struct.error: If the binary data does not match the expected format.
@@ -968,12 +1098,13 @@ class PacketEventData:
         UDP_ACTION_11 = 0x40000000
         UDP_ACTION_12 = 0x80000000
 
-        def __init__(self, data: bytes) -> None:
+        def __init__(self, data: bytes, game_year: int) -> None:
             """
             Initializes a Buttons object by unpacking the provided binary data.
 
             Parameters:
                 data (bytes): Binary data to be unpacked.
+                game_year (int): The game year.
 
             Raises:
                 struct.error: If the binary data does not match the expected format.
@@ -1080,12 +1211,13 @@ class PacketEventData:
             beingOvertakenVehicleIdx (int): The index of the vehicle being overtaken.
         """
 
-        def __init__(self, data: bytes) -> None:
+        def __init__(self, data: bytes, game_year: int) -> None:
             """
             Initializes an Overtake object by unpacking the provided binary data.
 
             Parameters:
                 data (bytes): Binary data to be unpacked.
+                game_year (int): The game year.
 
             Raises:
                 struct.error: If the binary data does not match the expected format.
@@ -1153,12 +1285,13 @@ class PacketEventData:
             m_event_type (SafetyCarEventType): Refer SafetyCarEventType enumeration
         """
 
-        def __init__(self, data: bytes) -> None:
+        def __init__(self, data: bytes, game_year: int) -> None:
             """
             Initializes an Overtake object by unpacking the provided binary data.
 
             Parameters:
                 data (bytes): Binary data to be unpacked.
+                game_year (int): The game year.
 
             Raises:
                 struct.error: If the binary data does not match the expected format.
@@ -1229,12 +1362,13 @@ class PacketEventData:
             m_vehicle_2_index (int): The index of the vehicle being overtaken.
         """
 
-        def __init__(self, data: bytes) -> None:
+        def __init__(self, data: bytes, game_year: int) -> None:
             """
             Initializes a Collision object by unpacking the provided binary data.
 
             Parameters:
                 data (bytes): Binary data to be unpacked.
+                game_year (int): The game year.
 
             Raises:
                 struct.error: If the binary data does not match the expected format.
@@ -1292,16 +1426,16 @@ class PacketEventData:
             return not self.__eq__(other)
 
     # Mappings between the event type and the type of object to parse into
-    event_type_map: Dict[EventPacketType, Optional[Type[Union[FastestLap, Retirement, TeamMateInPits, RaceWinner,
-                                                         Penalty, SpeedTrap, StartLights, DriveThroughPenaltyServed,
-                                                         StopGoPenaltyServed, Flashback, Buttons, Overtake,
-                                                         SafetyCarEvent, Collision]]]] = {
+    event_type_map: Dict[EventPacketType, Optional[Type[Union[FastestLap, Retirement, DrsDisabled, TeamMateInPits,
+                                                              RaceWinner, Penalty, SpeedTrap, StartLights,
+                                                              DriveThroughPenaltyServed, StopGoPenaltyServed, Flashback,
+                                                              Buttons, Overtake, SafetyCarEvent, Collision]]]] = {
         EventPacketType.SESSION_STARTED: None,
         EventPacketType.SESSION_ENDED: None,
         EventPacketType.FASTEST_LAP: FastestLap,
         EventPacketType.RETIREMENT: Retirement,
         EventPacketType.DRS_ENABLED: None,
-        EventPacketType.DRS_DISABLED: None,
+        EventPacketType.DRS_DISABLED: DrsDisabled,
         EventPacketType.TEAM_MATE_IN_PITS: TeamMateInPits,
         EventPacketType.CHEQUERED_FLAG: None,
         EventPacketType.RACE_WINNER: RaceWinner,
@@ -1344,7 +1478,7 @@ class PacketEventData:
 
         # Parse the optional data, if any
         if PacketEventData.event_type_map.get(self.m_eventCode):
-            self.mEventDetails = PacketEventData.event_type_map[self.m_eventCode](packet[4:])
+            self.mEventDetails = PacketEventData.event_type_map[self.m_eventCode](packet[4:], header.m_gameYear)
         else:
             self.mEventDetails = None
 
