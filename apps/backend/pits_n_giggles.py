@@ -58,9 +58,7 @@ class PngRunner:
         self.m_tasks: List[asyncio.Task] = []
         self.m_version: str = self._getVersion()
 
-        self.m_logger.info(f"PID={os.getpid()} Starting the app. Version {self.m_version}")
-        self.m_logger.info(f"Python version {sys.version}")
-        self.m_logger.info(self.m_config)
+        self.m_logger.debug(self.m_config)
 
         initStateManagementLayer(logger=self.m_logger, process_car_setups=self.m_config.process_car_setup)
 
