@@ -359,14 +359,13 @@ function getFormattedLapTimeStr({
     spectatorIndex,
     showAbsoluteFormat}) {
 
-    const isSpectating = spectatorIndex !== null;
     const isReferenceCar = spectatorIndex === index;
 
-    if (showAbsoluteFormat || !isSpectating || isReferenceCar) {
+    if (showAbsoluteFormat || isPlayer || isReferenceCar) {
         // Show absolute time if:
         // - preference is absolute format
-        // - user is playing (not spectating) and the current row is the player
-        // - or spectating and the current driver is the selected one
+        // - current car is player (hence not spectator mode)
+        // - spectator mode and current car is reference car
         return formatLapTime(lapTimeMs);
     } else {
         // Show delta for other cars while spectating
