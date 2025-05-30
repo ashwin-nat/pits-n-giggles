@@ -59,9 +59,7 @@ class PngRunner:
         self.m_tasks: List[asyncio.Task] = []
         self.m_version: str = self._getVersion()
 
-        self.m_logger.info(f"PID={os.getpid()} Starting the app. Version {self.m_version}")
-        self.m_logger.info(f"Python version {sys.version}")
-        self.m_logger.info(self.m_config)
+        self.m_logger.debug(self.m_config)
 
         dir_map = initDataStoreLayer(self.m_logger, self.m_tasks)
 

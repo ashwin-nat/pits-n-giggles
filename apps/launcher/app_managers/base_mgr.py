@@ -121,7 +121,7 @@ class PngAppMgrBase(ABC):
 
         try:
             launch_command = self.get_launch_command(self.module_path, self.args)
-            self.console_app.log(f"Starting {self.display_name}... cwd={os.getcwd()} launch_command={launch_command}")
+            self.console_app.log(f"Starting {self.display_name}...")
 
             # pylint: disable=consider-using-with
             self.process = subprocess.Popen(
@@ -228,4 +228,5 @@ class PngAppMgrBase(ABC):
                 if pid := extract_pid_from_line(line):
                     self.console_app.log(f"{self.display_name} PID update: {pid} changed = {self.process.pid != pid}")
                     self.child_pid = pid
-                self.console_app.log(line, is_child_message=True)
+                else:
+                    self.console_app.log(line, is_child_message=True)

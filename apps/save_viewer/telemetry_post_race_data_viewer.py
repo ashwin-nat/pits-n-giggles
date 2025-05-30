@@ -1138,8 +1138,8 @@ def main():
         start_thread(start_ui)
 
     # Start Flask server after Tkinter UI is initialized
-    png_logger.info(f"Starting app with version {args.version}")
-    png_logger.info(f"Starting server. It can be accessed at http://localhost:{str(g_port_number)} PID = {os.getpid()}")
+    png_logger.info(f"Starting server. It can be accessed at http://localhost:{str(g_port_number)} "
+                    f"PID = {os.getpid()} Version = {args.version}")
     global _server
     _server = TelemetryWebServer(
         port=g_port_number,

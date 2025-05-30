@@ -70,11 +70,22 @@ class BackendAppMgr(PngAppMgrBase):
             style="Racing.TButton",
             state="disabled"  # Initially disabled until the app is running
         )
-        return [self.start_stop_button, self.open_dashboard_button]
+        self.open_obs_overlay_button = ttk.Button(
+            frame,
+            text="Stream overlay",
+            command=self.open_obs_overlay,
+            style="Racing.TButton",
+            state="disabled"  # Initially disabled until the app is running
+        )
+        return [self.start_stop_button, self.open_dashboard_button, self.open_obs_overlay_button]
 
     def open_dashboard(self):
         """Open the dashboard viewer in a web browser."""
         webbrowser.open(f'http://localhost:{self.port_str}', new=2)
+
+    def open_obs_overlay(self):
+        """Open the OBS overlay page in a web browser."""
+        webbrowser.open(f'http://localhost:{self.port_str}/player-stream-overlay', new=2)
 
     def on_settings_change(self, new_settings):
         """Handle changes in settings for the backend application"""
@@ -86,8 +97,10 @@ class BackendAppMgr(PngAppMgrBase):
         """Update buttons after app start"""
         self.start_stop_button.config(text="Stop")
         self.open_dashboard_button.config(state="normal")
+        self.open_obs_overlay_button.config(state="normal")
 
     def post_stop(self):
         """Update buttons after app stop"""
         self.start_stop_button.config(text="Start")
         self.open_dashboard_button.config(state="disabled")
+        self.open_obs_overlay_button.config(state="disabled")

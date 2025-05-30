@@ -333,34 +333,33 @@ class ParticipantData:
                 self.m_techLevel,
                 self.m_platform.value
             )
-        else:
-            return struct.pack(self.PACKET_FORMAT_25_BASE + "BBB" * self.MAX_LIVERY_COLOURS,
-                self.m_aiControlled,
-                self.m_driverId,
-                self.networkId,
-                self.m_teamId.value,
-                self.m_myTeam,
-                self.m_raceNumber,
-                self.m_nationality.value,
-                self.m_name.encode('utf-8'),
-                self.m_yourTelemetry.value,
-                self.m_showOnlineNames,
-                self.m_techLevel,
-                self.m_platform.value,
-                self.m_numColours,
-                self.m_liveryColours[0].m_red,
-                self.m_liveryColours[0].m_green,
-                self.m_liveryColours[0].m_blue,
-                self.m_liveryColours[1].m_red,
-                self.m_liveryColours[1].m_green,
-                self.m_liveryColours[1].m_blue,
-                self.m_liveryColours[2].m_red,
-                self.m_liveryColours[2].m_green,
-                self.m_liveryColours[2].m_blue,
-                self.m_liveryColours[3].m_red,
-                self.m_liveryColours[3].m_green,
-                self.m_liveryColours[3].m_blue,
-            )
+        return struct.pack(self.PACKET_FORMAT_25_BASE + "BBB" * self.MAX_LIVERY_COLOURS,
+            self.m_aiControlled,
+            self.m_driverId,
+            self.networkId,
+            self.m_teamId.value,
+            self.m_myTeam,
+            self.m_raceNumber,
+            self.m_nationality.value,
+            self.m_name.encode('utf-8'),
+            self.m_yourTelemetry.value,
+            self.m_showOnlineNames,
+            self.m_techLevel,
+            self.m_platform.value,
+            self.m_numColours,
+            self.m_liveryColours[0].m_red,
+            self.m_liveryColours[0].m_green,
+            self.m_liveryColours[0].m_blue,
+            self.m_liveryColours[1].m_red,
+            self.m_liveryColours[1].m_green,
+            self.m_liveryColours[1].m_blue,
+            self.m_liveryColours[2].m_red,
+            self.m_liveryColours[2].m_green,
+            self.m_liveryColours[2].m_blue,
+            self.m_liveryColours[3].m_red,
+            self.m_liveryColours[3].m_green,
+            self.m_liveryColours[3].m_blue,
+        )
 
     def __eq__(self, other: "ParticipantData") -> bool:
         """
@@ -500,6 +499,8 @@ class ParticipantData:
                 liveries[3].m_green,
                 liveries[3].m_blue
             )
+        else:
+            raise NotImplementedError(f"Unsupported game year: {header.m_gameYear}")
         return cls(data, header.m_gameYear)
 
 class PacketParticipantsData:
