@@ -756,20 +756,20 @@ class DataPerDriver:
             Iterator[Tuple[int, int]]: The position history
         """
 
-        if game_year >= 25:
-            max_lap = (
-                len(self.m_position_history) - 1
-                if session_ended
-                else self.m_lap_info.m_current_lap - 1
-            )
-            for lap, pos in enumerate(self.m_position_history):
-                if lap <= max_lap:
-                    yield lap, pos
-        else:
-            yield from (
-                (lap, snap.m_track_position)
-                for lap, snap in self._getNextLapSnapshot()
-            )
+        # if game_year >= 25:
+        #     max_lap = (
+        #         len(self.m_position_history) - 1
+        #         if session_ended
+        #         else self.m_lap_info.m_current_lap - 1
+        #     )
+        #     for lap, pos in enumerate(self.m_position_history):
+        #         if lap <= max_lap:
+        #             yield lap, pos
+        # else:
+        yield from (
+            (lap, snap.m_track_position)
+            for lap, snap in self._getNextLapSnapshot()
+        )
 
     def getTyreStintHistoryJSON(self) -> Dict[str, Any]:
         """Get the tyre stint history JSON.
