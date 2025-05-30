@@ -592,13 +592,16 @@ let timeoutIntervalId;
 let timeoutIntervalMs = 3000;
 let socketio;
 
-socketio = io.connect('http://' + location.hostname + ':' + location.port, {
-    reconnection: true,           // Enables reconnection
-    reconnectionAttempts: Infinity, // Number of attempts before giving up (Infinity means never stop trying)
-    reconnectionDelay: 1000,      // Initial delay before reconnection (in ms)
-    reconnectionDelayMax: 5000,   // Maximum delay between reconnections (in ms)
-    randomizationFactor: 0.5,     // Randomization factor to prevent reconnection storms
-    timeout: 20000                // Connection timeout before giving up (in ms)
+socketio = io.connect(`${location.protocol}//` + location.hostname + ':' + location.port, {
+    reconnection: true,
+    reconnectionAttempts: 3,
+    reconnectionDelay: 500,
+    reconnectionDelayMax: 2000,
+    randomizationFactor: 0.2,
+    timeout: 5000,
+    transports: ['websocket', 'polling'], // WebSocket first, polling fallback
+    upgrade: true,
+    rememberUpgrade: true
 });
 console.log("SocketIO initialized");
 
