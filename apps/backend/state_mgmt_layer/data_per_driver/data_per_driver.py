@@ -413,7 +413,7 @@ class DataPerDriver:
         self.m_tyre_info.m_tyre_set_history_manager.remove(outdated_laps)
         self.m_car_info.m_fuel_rate_recommender.remove(outdated_laps)
 
-        png_logger.info(f'Driver {self} - detected flashback. outdated_laps: {outdated_laps}')
+        png_logger.debug(f'Driver {self} - detected flashback. outdated_laps: {outdated_laps}')
 
     def onLapChange(self,
         old_lap_number: int,
