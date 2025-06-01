@@ -50,6 +50,7 @@ from apps.save_viewer.logger import png_logger
 from lib.f1_types import F1Utils, LapHistoryData, ResultStatus
 from lib.pid_report import report_pid_from_child
 from lib.tyre_wear_extrapolator import TyreWearPerLap
+from lib.version import get_version
 
 
 def find_free_port():
@@ -1103,7 +1104,6 @@ def parseArgs() -> argparse.Namespace:
     # Add command-line arguments with default values
     parser.add_argument("--launcher", action="store_true", help="Enable launcher mode. Input is expeected via stdin")
     parser.add_argument("--port", type=int, default=None, help="Port number for the server.")
-    parser.add_argument("--version", nargs="?", default="dev", help="Current version string")
 
     # Parse the command-line arguments
     parsed_args = parser.parse_args()
@@ -1129,6 +1129,7 @@ def main():
     png_logger.debug(f"cwd={os.getcwd()}")
     global g_port_number
     args = parseArgs()
+    version = get_version()
 
     if args.launcher:
         g_port_number = args.port
@@ -1139,11 +1140,11 @@ def main():
 
     # Start Flask server after Tkinter UI is initialized
     png_logger.info(f"Starting server. It can be accessed at http://localhost:{str(g_port_number)} "
-                    f"PID = {os.getpid()} Version = {args.version}")
+                    f"PID = {os.getpid()} Version = {version}")
     global _server
     _server = TelemetryWebServer(
         port=g_port_number,
-        ver_str=args.version)
+        ver_str=version)
     _server.run()
 
 if __name__ == "__main__":
