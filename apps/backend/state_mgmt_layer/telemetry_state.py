@@ -53,13 +53,10 @@ async def processTyreDeltaSound() -> None:
 
     messages = _session_state.getTyreDeltaNotificationMessages()
     for message in messages:
-        asyncio.create_task(AsyncInterTaskCommunicator().send(
-            "frontend-update",
+        await AsyncInterTaskCommunicator().send("frontend-update",
             ITCMessage(
                 m_message_type=ITCMessage.MessageType.TYRE_DELTA_NOTIFICATION,
-                m_message=message
-            )
-        ))
+                m_message=message))
 
 # -------------------------------------- UTILTIES ----------------------------------------------------------------------
 
