@@ -338,11 +338,11 @@
         });
 
         socket.on('player-overlay-update', function (data) {
-            if (!firstDataReceived && data["f1-game-year"] !== null) {
+            if (!firstDataReceived && data["f1-packet-format"] !== null) {
                 firstDataReceived = true;
             }
             if (!firstDataReceived && data['show-sample-data-at-start']) {
-                if (data["f1-game-year"] === null) {
+                if (data["f1-packet-format"] === null) {
                     data = sampleStreamOverlayJSON;
                 } else {
                     firstDataReceived = true;
@@ -351,7 +351,7 @@
 
             // Update the widgets with the actual data
             carTelemetryWidget.update(data["car-telemetry"]);
-            pensStatsWidget.update(data["penalties-and-stats"], data["f1-game-year"]);
+            pensStatsWidget.update(data["penalties-and-stats"], data["f1-packet-format"]);
             lapTimesWidget.update(data["lap-time-history"]);
             weatherWidget.update(data["weather-forecast-samples"].slice(0, maxWeatherSamples + 1));
             gForceDisplayWidget.update(data["g-force"]);

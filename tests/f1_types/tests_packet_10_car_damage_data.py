@@ -44,7 +44,7 @@ class TestPacketCarDamageData(F1TypesTest):
 
         generated_test_obj = PacketCarDamageData.from_values(
             self.m_header_25,
-            [self._generateRandomCarDamageData(game_year=25) for _ in range(self.m_num_players)]
+            [self._generateRandomCarDamageData(packet_format=2025) for _ in range(self.m_num_players)]
         )
         serialised_test_obj = generated_test_obj.to_bytes()
         header_bytes = serialised_test_obj[:PacketHeader.PACKET_LEN]
@@ -62,7 +62,7 @@ class TestPacketCarDamageData(F1TypesTest):
 
         generated_test_obj = PacketCarDamageData.from_values(
             self.m_header_24,
-            [self._generateRandomCarDamageData(game_year=24) for _ in range(self.m_num_players)]
+            [self._generateRandomCarDamageData(packet_format=2024) for _ in range(self.m_num_players)]
         )
         serialised_test_obj = generated_test_obj.to_bytes()
         header_bytes = serialised_test_obj[:PacketHeader.PACKET_LEN]
@@ -80,7 +80,7 @@ class TestPacketCarDamageData(F1TypesTest):
 
         generated_test_obj = PacketCarDamageData.from_values(
             self.m_header_23,
-            [self._generateRandomCarDamageData(game_year=23) for _ in range(self.m_num_players)]
+            [self._generateRandomCarDamageData(packet_format=2023) for _ in range(self.m_num_players)]
         )
         serialised_test_obj = generated_test_obj.to_bytes()
         header_bytes = serialised_test_obj[:PacketHeader.PACKET_LEN]
@@ -1802,19 +1802,19 @@ class TestPacketCarDamageData(F1TypesTest):
         parsed_json = parsed_packet.toJSON()
         self.jsonComparisionUtil(expected_json, parsed_json)
 
-    def _generateRandomCarDamageData(self, game_year: int) -> CarDamageData:
+    def _generateRandomCarDamageData(self, packet_format: int) -> CarDamageData:
         """
         Generate a random car damage data object
 
         Args:
-            game_year (int): The game year
+            packet_format (int): The packet format
 
         Returns:
             LobbyInfoData: A random car damage data object
         """
 
         return CarDamageData.from_values(
-            game_year=game_year,
+            packet_format=packet_format,
             tyres_wear=[random.uniform(0.0, 100.0) for _ in range(4)],
             tyres_damage=[random.randrange(0, 100) for _ in range(4)],
             brakes_damage=[random.randrange(0, 100) for _ in range(4)],

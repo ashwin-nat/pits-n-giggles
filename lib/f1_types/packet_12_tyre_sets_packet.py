@@ -65,16 +65,16 @@ class TyreSetData:
     )
     PACKET_LEN = struct.calcsize(PACKET_FORMAT)
 
-    def __init__(self, data: bytes, game_year: int) -> None:
+    def __init__(self, data: bytes, packet_format: int) -> None:
         """
         Initializes TyreSetData with raw data.
 
         Args:
             data (bytes): Raw data representing information about a tyre set.
-            game_year (int): The current game year.
+            packet_format (int): The packet format version.
         """
 
-        self.m_gameYear = game_year
+        self.m_packetFormat = packet_format
         (
             self.m_actualTyreCompound,
             self.m_visualTyreCompound,
@@ -91,9 +91,9 @@ class TyreSetData:
             self.m_actualTyreCompound = ActualTyreCompound(self.m_actualTyreCompound)
         if VisualTyreCompound.isValid(self.m_visualTyreCompound):
             self.m_visualTyreCompound = VisualTyreCompound(self.m_visualTyreCompound)
-        if self.m_gameYear == 23 and SessionType23.isValid(self.m_recommendedSession):
+        if self.m_packetFormat == 2023 and SessionType23.isValid(self.m_recommendedSession):
             self.m_recommendedSession = SessionType23(self.m_recommendedSession)
-        elif self.m_gameYear in {24, 25} and SessionType24.isValid(self.m_recommendedSession):
+        elif self.m_packetFormat in {2024, 2025} and SessionType24.isValid(self.m_recommendedSession):
             self.m_recommendedSession = SessionType24(self.m_recommendedSession)
         self.m_fitted = bool(self.m_fitted)
 
@@ -190,7 +190,7 @@ class TyreSetData:
 
     @classmethod
     def from_values(cls,
-                game_year: int,
+                packet_format: int,
                 actual_tyre_compound: ActualTyreCompound,
                 visual_tyre_compound: VisualTyreCompound,
                 wear: int,
@@ -204,7 +204,7 @@ class TyreSetData:
         Creates a new TyreSetData object from the given values
 
         Args:
-            game_year (int): Game year
+            packet_format (int): Packet format
             actual_tyre_compound (ActualTyreCompound): Actual tyre compound
             visual_tyre_compound (VisualTyreCompound): Visual tyre compound
             wear (int): Wear percentage
@@ -227,7 +227,7 @@ class TyreSetData:
             life_span,
             usable_life,
             lap_delta_time,
-            fitted), game_year)
+            fitted), packet_format)
 
 class PacketTyreSetsData:
     """
@@ -261,7 +261,7 @@ class PacketTyreSetsData:
         full_tyre_set_data_raw = data[1:1 + tyre_set_data_full_len]
 
         self.m_tyreSetData = [
-            TyreSetData(full_tyre_set_data_raw[i:i + TyreSetData.PACKET_LEN], header.m_gameYear)
+            TyreSetData(full_tyre_set_data_raw[i:i + TyreSetData.PACKET_LEN], header.m_packetFormat)
             for i in range(0, tyre_set_data_full_len, TyreSetData.PACKET_LEN)
         ]
         self.m_fittedIdx: int = struct.unpack("<B", data[(1 + tyre_set_data_full_len):])[0]

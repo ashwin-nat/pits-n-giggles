@@ -22,9 +22,9 @@ class TimeTrialTtDataPopulator {
         this.custSetupCell  = document.getElementById(`${sectionPrefix}CustomSetup`);
     }
 
-    populate(ttPacket, gameYear) {
+    populate(ttPacket, packetFormat) {
 
-        if (gameYear < 24) {
+        if (packetFormat < 2024) {
             this.clearCells();
             this.showUnsupportedDiv();
             return;
@@ -96,12 +96,12 @@ class TimeTrialDataPopulator {
         this.rivalSessionBestPopulator      = new TimeTrialTtDataPopulator('ttRivalSessionBest');
     }
 
-    populate(incomingData, gameYear) {
-        this.populateTimeTrialTable(incomingData["session-history"], gameYear);
-        this.populateTimeTrialTtData(incomingData["tt-data"], gameYear);
+    populate(incomingData, packetFormat) {
+        this.populateTimeTrialTable(incomingData["session-history"], packetFormat);
+        this.populateTimeTrialTtData(incomingData["tt-data"], packetFormat);
     }
 
-    populateTimeTrialTable(incomingData, gameYear) {
+    populateTimeTrialTable(incomingData, packetFormat) {
         if (!incomingData || !incomingData["lap-history-data"]) {
             return;
         }
@@ -160,15 +160,15 @@ class TimeTrialDataPopulator {
         });
     }
 
-    populateTimeTrialTtData(ttData, gameYear) {
+    populateTimeTrialTtData(ttData, packetFormat) {
 
         const playerPersonalBestPacket = (ttData) ? (ttData["personal-best-data-set"]) : (null);
         const playerSessionBestPacket = (ttData) ? (ttData["player-session-best-data-set"]) : (null);
         const rivalSessionBestPacket = (ttData) ? (ttData["rival-session-best-data-set"]) : (null);
 
-        this.playerPersonalBestPopulator.populate(playerPersonalBestPacket, gameYear);
-        this.playerSessionBestPopulator.populate(playerSessionBestPacket, gameYear);
-        this.rivalSessionBestPopulator.populate(rivalSessionBestPacket, gameYear);
+        this.playerPersonalBestPopulator.populate(playerPersonalBestPacket, packetFormat);
+        this.playerSessionBestPopulator.populate(playerSessionBestPacket, packetFormat);
+        this.rivalSessionBestPopulator.populate(rivalSessionBestPacket, packetFormat);
     }
 
     applyColourToCell(cell, lapNum, pbLapNum, isValid) {

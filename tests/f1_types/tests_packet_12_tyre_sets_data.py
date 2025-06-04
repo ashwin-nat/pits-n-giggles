@@ -562,9 +562,9 @@ class TestPacketTyreSetsData(F1TypesTest):
             TyreSetData: Random tyre set data
         """
 
-        session_obj_type = SessionType23 if header.m_gameYear == 23 else SessionType24
+        session_obj_type = SessionType23 if header.m_packetFormat == 2023 else SessionType24
         return TyreSetData.from_values(
-            game_year=header.m_gameYear,
+            packet_format=header.m_packetFormat,
             actual_tyre_compound=random.choice(list(ActualTyreCompound)),
             visual_tyre_compound=random.choice(list(VisualTyreCompound)),
             wear=random.randint(0, 100),

@@ -413,7 +413,7 @@ class DataPerDriver:
         self.m_tyre_info.m_tyre_set_history_manager.remove(outdated_laps)
         self.m_car_info.m_fuel_rate_recommender.remove(outdated_laps)
 
-        png_logger.debug(f'Driver {self} - detected flashback. outdated_laps: {outdated_laps}')
+        png_logger.debug("Driver %s - detected flashback. outdated_laps: %s", str(self), outdated_laps)
 
     def onLapChange(self,
         old_lap_number: int,
@@ -467,7 +467,8 @@ class DataPerDriver:
 
         # Check if the old lap number is already present in the snapshots (lap already processed)
         if old_lap_number in self.m_per_lap_snapshots:
-            png_logger.debug(f'Driver {self} - lap {old_lap_number} already in per_lap_snapshots. Possible flashback')
+            png_logger.debug("Driver %s - lap %d already in per_lap_snapshots. Possible flashback",
+                             str(self), old_lap_number)
             return
 
         # Store the snapshot data for the old lap
@@ -517,7 +518,7 @@ class DataPerDriver:
         # Now clear the per lap max stuff
         self.m_lap_info.m_top_speed_kmph_this_lap = None
         self.m_driver_info.m_curr_lap_max_sc_status = None
-        png_logger.debug(f'Driver {self} - inserted snapshot for lap {old_lap_number}')
+        png_logger.debug("Driver %s - lap %d added to per_lap_snapshots", str(self), old_lap_number)
 
     def shouldCaptureZerothLapSnapshot(self) -> bool:
         """
@@ -636,15 +637,10 @@ class DataPerDriver:
 
         return self.m_packet_copies.m_packet_tyre_sets.m_fittedIdx if self.m_packet_copies.m_packet_tyre_sets else None
 
-    def _getNextLapSnapshot(self) -> List[Tuple[int, PerLapSnapshotEntry]]:
-        """
-        Returns a generator for each lap's snapshot in order.
-
-        Returns:
-            List[Tuple[int, PerLapSnapshotEntry]]: List of Tuple containing lap number and snapshot data for each lap.
-        """
-        return [(lap_number, self.m_per_lap_snapshots[lap_number]) \
-                for lap_number in sorted(self.m_per_lap_snapshots.keys())]
+    def _getNextLapSnapshot(self) -> Iterator[Tuple[int, PerLapSnapshotEntry]]:
+        """Yields (lap number, snapshot) for each lap in chronological order."""
+        for lap_number in sorted(self.m_per_lap_snapshots.keys()):
+            yield lap_number, self.m_per_lap_snapshots[lap_number]
 
     def getTyreSetInfoAtLap(self, lap_num: Optional[int] = None) -> Optional[TyreSetInfo]:
         """Get the tyre set info at the specified lap number
@@ -730,7 +726,7 @@ class DataPerDriver:
             "surplus-laps-game" : 0.0,
         }
 
-    def getPositionHistoryJSON(self, game_year: int, session_ended: bool) -> Dict[str, Any]:
+    def getPositionHistoryJSON(self) -> Dict[str, Any]:
         """Get the position history JSON.
 
         Returns:
@@ -741,36 +737,10 @@ class DataPerDriver:
             "team": self.m_driver_info.team,
             "driver-number": self.m_driver_info.driver_number,
             "driver-position-history": [
-                {"lap-number": lap, "position": pos}
-                for lap, pos in self._positionHistoryHelper(game_year, session_ended)
+                {"lap-number": lap, "position": snapshot.m_track_position}
+                for lap, snapshot in self._getNextLapSnapshot()
             ],
         }
-
-    def _positionHistoryHelper(self, game_year: int, session_ended: bool) -> Iterator[Tuple[int, int]]:
-        """Helper function to get the position history
-
-        Args:
-            game_year (int): The game year
-            session_ended (bool): Whether the session has ended
-
-        Returns:
-            Iterator[Tuple[int, int]]: The position history
-        """
-
-        # if game_year >= 25:
-        #     max_lap = (
-        #         len(self.m_position_history) - 1
-        #         if session_ended
-        #         else self.m_lap_info.m_current_lap - 1
-        #     )
-        #     for lap, pos in enumerate(self.m_position_history):
-        #         if lap <= max_lap:
-        #             yield lap, pos
-        # else:
-        yield from (
-            (lap, snap.m_track_position)
-            for lap, snap in self._getNextLapSnapshot()
-        )
 
     def getTyreStintHistoryJSON(self) -> Dict[str, Any]:
         """Get the tyre stint history JSON.
@@ -902,7 +872,7 @@ class DataPerDriver:
 
         # Defer this update if the position history is not yet initialized
         if not self.m_position_history:
-            png_logger.debug(f"Position history not yet initialized. {self.__str__()}")
+            png_logger.debug("Position history: %s", str(self.m_position_history))
             return
 
         assert len(position_history) == packet.m_numLaps

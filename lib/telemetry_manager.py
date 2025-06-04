@@ -41,10 +41,10 @@ from lib.socket_receiver import (AsyncTCPListener, AsyncUDPListener,
 
 # ------------------------- CLASSES ------------------------------------------------------------------------------------
 
-class UnsupportedGameYear(Exception):
+class UnsupportedPacketFormat(Exception):
     """Raised when packet data is malformed or insufficient"""
-    def __init__(self, game_year):
-        super().__init__(f"Unsupported game year. {game_year}")
+    def __init__(self, packet_format):
+        super().__init__(f"Unsupported packet format. {packet_format}")
 
 class AsyncF1TelemetryManager:
     """
@@ -74,7 +74,7 @@ class AsyncF1TelemetryManager:
         F1PacketType.LAP_POSITIONS: PacketLapPositionsData,
     }
 
-    MIN_GAME_YEAR = 23
+    MIN_PACKET_FORMAT = 2023
 
     def __init__(self, port_number: int, logger: Logger = None, replay_server: bool = False):
         """Init the telemetry manager app and all its sub components
@@ -158,7 +158,7 @@ class AsyncF1TelemetryManager:
             raw_packet = await self.m_server.getNextMessage()
             try:
                 await self._processPacket(should_parse_packet, raw_packet)
-            except UnsupportedGameYear as e:
+            except UnsupportedPacketFormat as e:
                 self.m_logger.error(e, exc_info=True)
             except Exception as e:
                 self.m_logger.error("Error processing packet: %s", e, exc_info=True)
@@ -188,8 +188,8 @@ class AsyncF1TelemetryManager:
             # Unsupported packet type, skip
             return
 
-        if header.m_gameYear < self.MIN_GAME_YEAR:
-            raise UnsupportedGameYear(header.m_gameYear)
+        if header.m_packetFormat < self.MIN_PACKET_FORMAT:
+            raise UnsupportedPacketFormat(header.m_packetFormat)
 
         # Parse the payload and call the registered callback
         payload_raw = raw_packet[PacketHeader.PACKET_LEN:]
