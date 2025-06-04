@@ -186,9 +186,9 @@ class PacketMotionExData:
 
         ) = struct.unpack(self.PACKET_FORMAT_23, data[0:self.PACKET_LEN_23])
 
-        if header.m_gameYear > 23:
+        if header.m_packetFormat > 2023:
             curr_offset = self.PACKET_LEN_23
-            if header.m_gameYear >= 24:
+            if header.m_packetFormat >= 2024:
                 (
                     self.m_frontAeroHeight,             # float
                     self.m_rearAeroHeight,              # float
@@ -198,7 +198,7 @@ class PacketMotionExData:
                 ) = struct.unpack(self.PACKET_FORMAT_24_EXTRA,
                                     data[curr_offset:curr_offset + self.PACKET_LEN_EXTRA_24])
                 curr_offset += self.PACKET_LEN_EXTRA_24
-            if header.m_gameYear >= 25:
+            if header.m_packetFormat >= 2025:
                 (
                     self.m_chassisPitch,                # float
                     self.m_wheelCamber[0],             # array of floats

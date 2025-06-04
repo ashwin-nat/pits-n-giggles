@@ -251,8 +251,8 @@ class TyreSetHistoryManager:
         # If the first stint has garbage data, remove it (this happens if the user customizes the strat before race)
         if self.m_history[0].m_end_lap < self.m_history[0].m_start_lap:
             garbage_obj = self.m_history.pop(0)
-            png_logger.debug(f"Removed garbage tyre stint history record.\n"
-                                f"{json.dumps(garbage_obj.toJSON(include_tyre_wear_history=False), indent=4)}")
+            png_logger.debug("Removed garbage tyre stint history record.\n %s",
+                             json.dumps(garbage_obj.toJSON(include_tyre_wear_history=False), indent=4))
 
     def getEntries(self) -> List[TyreSetHistoryEntry]:
         """Get all entries in the tyre set history collection

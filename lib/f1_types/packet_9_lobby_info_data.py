@@ -119,17 +119,17 @@ class LobbyInfoData:
                 return self.name
             return f'Marshal Zone Flag type {str(self.value)}'
 
-    def __init__(self, data: bytes, game_year: int) -> None:
+    def __init__(self, data: bytes, packet_format: int) -> None:
         """
         Initializes LobbyInfoData with raw data.
 
         Args:
             data (bytes): Raw data representing lobby information for a player.
-            game_year (int): Game year
+            packet_format (int): The packet format version.
         """
 
-        self.game_year = game_year
-        if game_year == 23:
+        self.packet_format = packet_format
+        if packet_format == 2023:
             (
                 self.m_aiControlled,
                 self.m_teamId,
@@ -143,7 +143,7 @@ class LobbyInfoData:
             self.m_showOnlineNames = True
             self.m_techLevel = 0
         else:
-            if game_year == 24:
+            if packet_format == 2024:
                 packet_format = self.PACKET_FORMAT_24
             else:
                 packet_format = self.PACKET_FORMAT_25
@@ -165,11 +165,11 @@ class LobbyInfoData:
 
         self.m_name = self.m_name.decode('utf-8', errors='replace').rstrip('\x00')
 
-        if self.game_year == 23 and TeamID23.isValid(self.m_teamId):
+        if self.packet_format == 2023 and TeamID23.isValid(self.m_teamId):
             self.m_teamId = TeamID23(self.m_teamId)
-        elif self.game_year == 24 and TeamID24.isValid(self.m_teamId):
+        elif self.packet_format == 2024 and TeamID24.isValid(self.m_teamId):
             self.m_teamId = TeamID24(self.m_teamId)
-        elif self.game_year == 25 and TeamID25.isValid(self.m_teamId):
+        elif self.packet_format == 2025 and TeamID25.isValid(self.m_teamId):
             self.m_teamId = TeamID25(self.m_teamId)
 
         if Nationality.isValid(self.m_nationality):
@@ -212,7 +212,7 @@ class LobbyInfoData:
         """
 
         return (
-            self.game_year == other.game_year and
+            self.packet_format == other.packet_format and
             self.m_aiControlled == other.m_aiControlled and
             self.m_teamId == other.m_teamId and
             self.m_nationality == other.m_nationality and
@@ -245,7 +245,7 @@ class LobbyInfoData:
             bytes: Raw data representing the LobbyInfoData instance.
         """
 
-        if self.game_year == 23:
+        if self.packet_format == 2023:
             return struct.pack(self.PACKET_FORMAT_23,
                 self.m_aiControlled,
                 self.m_teamId.value,
@@ -255,7 +255,7 @@ class LobbyInfoData:
                 self.m_carNumber,
                 self.m_readyStatus.value,
             )
-        if self.game_year == 24:
+        if self.packet_format == 2024:
             return struct.pack(self.PACKET_FORMAT_24,
                 self.m_aiControlled,
                 self.m_teamId.value,
@@ -268,7 +268,7 @@ class LobbyInfoData:
                 self.m_techLevel,
                 self.m_readyStatus.value,
             )
-        if self.game_year == 25:
+        if self.packet_format == 2025:
             return struct.pack(self.PACKET_FORMAT_25,
                 self.m_aiControlled,
                 self.m_teamId.value,
@@ -282,7 +282,7 @@ class LobbyInfoData:
                 self.m_readyStatus.value,
             )
 
-        raise NotImplementedError(f"Unsupported game year: {self.game_year}")
+        raise NotImplementedError(f"Unsupported packet format: {self.packet_format}")
 
     @classmethod
     def from_values(cls,
@@ -317,7 +317,7 @@ class LobbyInfoData:
             LobbyInfoData: A new LobbyInfoData object.
         """
 
-        if header.m_gameYear == 23:
+        if header.m_packetFormat == 2023:
             return cls(struct.pack(cls.PACKET_FORMAT_23,
                 ai_controlled,
                 team_id.value,
@@ -326,8 +326,8 @@ class LobbyInfoData:
                 name.encode('utf-8'),
                 car_number,
                 ready_status.value,
-            ), header.m_gameYear)
-        if header.m_gameYear == 24:
+            ), header.m_packetFormat)
+        if header.m_packetFormat == 2024:
             return cls(struct.pack(cls.PACKET_FORMAT_24,
                 ai_controlled,
                 team_id.value,
@@ -339,8 +339,8 @@ class LobbyInfoData:
                 show_online_names,
                 tech_level,
                 ready_status.value,
-            ), header.m_gameYear)
-        if header.m_gameYear == 25:
+            ), header.m_packetFormat)
+        if header.m_packetFormat == 2025:
             return cls(struct.pack(cls.PACKET_FORMAT_25,
                 ai_controlled,
                 team_id.value,
@@ -352,9 +352,9 @@ class LobbyInfoData:
                 show_online_names,
                 tech_level,
                 ready_status.value,
-            ), header.m_gameYear)
+            ), header.m_packetFormat)
 
-        raise NotImplementedError(f"Unsupported game year: {header.m_gameYear}")
+        raise NotImplementedError(f"Unsupported packet format: {header.m_packetFormat}")
 
 class PacketLobbyInfoData:
     """
@@ -381,9 +381,9 @@ class PacketLobbyInfoData:
 
         self.m_header: PacketHeader = header
         self.m_numPlayers: int = struct.unpack("<B", packet[:1])[0]
-        if header.m_gameYear == 23:
+        if header.m_packetFormat == 2023:
             packet_len = LobbyInfoData.PACKET_LEN_23
-        elif header.m_gameYear == 24:
+        elif header.m_packetFormat == 2024:
             packet_len = LobbyInfoData.PACKET_LEN_24
         else:
             packet_len = LobbyInfoData.PACKET_LEN_25
@@ -396,7 +396,7 @@ class PacketLobbyInfoData:
             item_len=packet_len,
             count=self.m_numPlayers,
             max_count=self.MAX_PLAYERS,
-            game_year=header.m_gameYear
+            packet_format=header.m_packetFormat
         )
 
     def toJSON(self, include_header: bool=False) -> Dict[str, Any]:

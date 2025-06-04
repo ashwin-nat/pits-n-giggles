@@ -92,6 +92,7 @@ class RaceInfoUpdate:
             # First, global fields
             "live-data" : True,
             "f1-game-year" : _getValueOrDefaultValue(self.m_session_info.m_game_year, None),
+            "packet-format" : _getValueOrDefaultValue(self.m_session_info.m_packet_format, None),
             "circuit": str(self.m_session_info.m_track) if self.m_session_info.m_track is not None else "---",
             "track-temperature": _getValueOrDefaultValue(self.m_session_info.m_track_temp, default_value=0),
             "air-temperature": _getValueOrDefaultValue(self.m_session_info.m_air_temp, default_value=0),
@@ -250,6 +251,7 @@ class PlayerTelemetryOverlayUpdate:
         self.m_circuit                  = _session_state_ref.m_session_info.m_track
         self.m_total_laps               = _session_state_ref.m_session_info.m_total_laps
         self.m_game_year                = _session_state_ref.m_session_info.m_game_year
+        self.m_packet_format            = _session_state_ref.m_session_info.m_packet_format
         self.m_session_type               = _session_state_ref.m_session_info.m_session_type
         self.m_pit_speed_limit          = _session_state_ref.m_session_info.m_pit_speed_limit
 
@@ -589,9 +591,7 @@ class DriversListRsp:
             return []
 
         # Use original list since this request comes only once in a bluemoon
-        game_year = _session_state_ref.m_session_info.m_game_year
-        session_ended = _session_state_ref.m_session_info.session_ended
-        return [data_per_driver.getPositionHistoryJSON(game_year, session_ended) \
+        return [data_per_driver.getPositionHistoryJSON() \
                 for data_per_driver in _session_state_ref.m_driver_data \
                     if data_per_driver and data_per_driver.is_valid]
 

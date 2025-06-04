@@ -7,6 +7,7 @@ function getDefaultOverlayData() {
         },
         "event-type": "Race",
         "f1-game-year": 24,
+        "f1-packet-format" : 2024,
         "g-force": {
             "lat": 0.36567622423171997,
             "long": 0.37355566024780273,

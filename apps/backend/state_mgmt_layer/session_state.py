@@ -70,6 +70,7 @@ class SessionInfo:
          - m_packet_session (Optional[PacketSessionData]): Copy of the last saved session packet
          - m_packet_final_classification (Optional[PacketFinalClassificationData]): The final classification packet
          - m_game_year (Optional[int]): The current game year
+         - m_packet_format (Optional[int]): The current packet format
     """
 
     def __init__(self):
@@ -91,6 +92,7 @@ class SessionInfo:
         self.m_packet_session: Optional[PacketSessionData] = None
         self.m_packet_final_classification : Optional[PacketFinalClassificationData] = None
         self.m_game_year : Optional[int] = None
+        self.m_packet_format : Optional[int] = None
 
     def __str__(self) -> str:
         """Dump the SessionInfo object to a readable string
@@ -132,6 +134,7 @@ class SessionInfo:
         self.m_packet_final_classification = None
         self.m_packet_session = None
         self.m_game_year = None
+        self.m_packet_format = None
 
     @property
     def is_valid(self) -> bool:
@@ -171,6 +174,7 @@ class SessionInfo:
         self.m_is_spectating = packet.m_isSpectating
         self.m_spectator_car_index = packet.m_spectatorCarIndex if packet.m_spectatorCarIndex != 255 else None
         self.m_game_year = packet.m_header.m_gameYear
+        self.m_packet_format = packet.m_header.m_packetFormat
         self.m_safety_car_status = packet.m_safetyCarStatus
         return ret_status
 
@@ -484,10 +488,11 @@ class SessionState:
             final_json["classification-data"][index] = obj_to_be_updated.toJSON(index)
             if is_position_history_supported:
                 final_json["position-history"].append(
-                    obj_to_be_updated.getPositionHistoryJSON(packet.m_header.m_gameYear, session_ended=True))
+                    obj_to_be_updated.getPositionHistoryJSON())
                 final_json["tyre-stint-history"].append(obj_to_be_updated.getTyreStintHistoryJSON())
         final_json['classification-data'] = sorted(final_json['classification-data'], key=lambda x: x['track-position'])
         final_json['game-year'] = self.m_session_info.m_game_year
+        final_json['packet-format'] = self.m_session_info.m_packet_format
 
         final_json["session-info"] = self.m_session_info.m_packet_session.toJSON() \
             if self.m_session_info.m_packet_session else None

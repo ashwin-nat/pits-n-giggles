@@ -51,7 +51,7 @@ class TestPacketFinalClassificationData(F1TypesTest):
         generated_test_obj = PacketFinalClassificationData.from_values(
             self.m_header_25,
             self.m_num_players,
-            [self._generateRandomFinalClassificationData(game_year=25) for _ in range(self.m_num_players)]
+            [self._generateRandomFinalClassificationData(packet_format=2025) for _ in range(self.m_num_players)]
         )
         serialised_test_obj = generated_test_obj.to_bytes()
         header_bytes = serialised_test_obj[:PacketHeader.PACKET_LEN]
@@ -70,7 +70,7 @@ class TestPacketFinalClassificationData(F1TypesTest):
         generated_test_obj = PacketFinalClassificationData.from_values(
             self.m_header_24,
             self.m_num_players,
-            [self._generateRandomFinalClassificationData(game_year=24) for _ in range(self.m_num_players)]
+            [self._generateRandomFinalClassificationData(packet_format=2024) for _ in range(self.m_num_players)]
         )
         serialised_test_obj = generated_test_obj.to_bytes()
         header_bytes = serialised_test_obj[:PacketHeader.PACKET_LEN]
@@ -89,7 +89,7 @@ class TestPacketFinalClassificationData(F1TypesTest):
         generated_test_obj = PacketFinalClassificationData.from_values(
             self.m_header_23,
             self.m_num_players,
-            [self._generateRandomFinalClassificationData(game_year=23) for _ in range(self.m_num_players)]
+            [self._generateRandomFinalClassificationData(packet_format=2023) for _ in range(self.m_num_players)]
         )
         serialised_test_obj = generated_test_obj.to_bytes()
         header_bytes = serialised_test_obj[:PacketHeader.PACKET_LEN]
@@ -608,20 +608,20 @@ class TestPacketFinalClassificationData(F1TypesTest):
         parsed_json = parsed_packet.toJSON()
         self.jsonComparisionUtil(expected_json, parsed_json)
 
-    def _generateRandomFinalClassificationData(self, game_year: int) -> FinalClassificationData:
+    def _generateRandomFinalClassificationData(self, packet_format: int) -> FinalClassificationData:
         """
         Generate a random car status data object
 
         Args:
-            game_year (int): Game year
+            packet_format (int): Packet format
 
         Returns:
             FinalClassificationData: A random car status data object
         """
 
-        if game_year in {23, 24}:
+        if packet_format in {2023, 2024}:
             return FinalClassificationData.from_values(
-                game_year=game_year,
+                packet_format=packet_format,
                 position=random.randrange(1,22),
                 num_laps=random.randrange(0,70),
                 grid_position=random.randrange(1,22),
@@ -662,9 +662,9 @@ class TestPacketFinalClassificationData(F1TypesTest):
                 tyre_stints_end_laps_6=random.randrange(0,22),
                 tyre_stints_end_laps_7=random.randrange(0,22)
             )
-        if game_year == 25:
+        if packet_format == 2025:
             return FinalClassificationData.from_values(
-                game_year=game_year,
+                packet_format=packet_format,
                 position=random.randrange(1,22),
                 num_laps=random.randrange(0,70),
                 grid_position=random.randrange(1,22),
@@ -706,4 +706,4 @@ class TestPacketFinalClassificationData(F1TypesTest):
                 tyre_stints_end_laps_7=random.randrange(0,22)
             )
 
-        raise NotImplementedError(f"Unsupported game year: {game_year}")
+        raise NotImplementedError(f"Unsupported game year: {packet_format}")

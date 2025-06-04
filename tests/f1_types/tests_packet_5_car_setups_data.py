@@ -1269,12 +1269,12 @@ class TestPacketCarSetupData(F1TypesTest):
             CarSetupData: The random car setup data object
         """
 
-        if header.m_gameYear == 23:
+        if header.m_packetFormat == 2023:
             engine_braking = 0
         else:
             engine_braking = random.getrandbits(8)
         return CarSetupData.from_values(
-            header.m_gameYear,
+            header.m_packetFormat,
             front_wing=random.getrandbits(8),
             rear_wing=random.getrandbits(8),
             on_throttle=random.getrandbits(8),

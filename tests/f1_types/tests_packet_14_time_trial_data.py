@@ -147,28 +147,28 @@ class TestPacketTimeTrialData(F1TypesTest):
         self.assertEqual(generated_test_obj, parsed_obj)
         self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
 
-    def _generateRandomTimeTrialDataSet(self, index: int, game_year: int) -> TimeTrialDataSet:
+    def _generateRandomTimeTrialDataSet(self, index: int, packet_format: int) -> TimeTrialDataSet:
         """
         Generates a random TimeTrialDataSet
 
         Args:
             index (int): The index of the car
-            game_year (int): The game year
+            packet_format (int): The packet format
 
         Returns:
             TimeTrialDataSet: A random TimeTrialDataSet
         """
 
-        if game_year == 24:
+        if packet_format == 2024:
             team_id_type = TeamID24
-        elif game_year == 25:
+        elif packet_format == 2025:
             team_id_type = TeamID25
 
         s1_time_ms = random.randrange(0, 60000)
         s2_time_ms = random.randrange(0, 60000)
         s3_time_ms = random.randrange(0, 60000)
         return TimeTrialDataSet.from_values(
-            game_year=game_year,
+            game_year=packet_format,
             car_index=index,
             team_id=random.choice(list(team_id_type)),
             lap_time_in_ms=(s1_time_ms + s2_time_ms + s3_time_ms),
@@ -196,7 +196,7 @@ class TestPacketTimeTrialData(F1TypesTest):
 
         return PacketTimeTrialData.from_values(
             header=header,
-            player_session_best_data_set=self._generateRandomTimeTrialDataSet(0, header.m_gameYear),
-            personal_best_data_set=self._generateRandomTimeTrialDataSet(1, header.m_gameYear),
-            rival_session_best_data_set=self._generateRandomTimeTrialDataSet(2, header.m_gameYear),
+            player_session_best_data_set=self._generateRandomTimeTrialDataSet(0, header.m_packetFormat),
+            personal_best_data_set=self._generateRandomTimeTrialDataSet(1, header.m_packetFormat),
+            rival_session_best_data_set=self._generateRandomTimeTrialDataSet(2, header.m_packetFormat),
         )

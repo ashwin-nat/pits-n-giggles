@@ -723,11 +723,11 @@ class TestPacketParticipantsData(F1TypesTest):
             for _ in range(num_colours)
         ]
 
-        if header.m_gameYear == 23:
+        if header.m_packetFormat == 2023:
             team_id = random.choice(list(TeamID23))
-        elif header.m_gameYear == 24:
+        elif header.m_packetFormat == 2024:
             team_id = random.choice(list(TeamID24))
-        elif header.m_gameYear == 25:
+        elif header.m_packetFormat == 2025:
             team_id = random.choice(list(TeamID25))
         return ParticipantData.from_values(
             header,

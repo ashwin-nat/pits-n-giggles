@@ -27,7 +27,6 @@ import asyncio
 import logging
 import os
 import socket
-import sys
 import webbrowser
 from typing import List, Optional, Set
 
@@ -38,6 +37,7 @@ from apps.backend.telemetry_layer import initTelemetryLayer
 from apps.backend.ui_intf_layer import TelemetryWebServer, initUiIntfLayer
 from apps.backend.data_store_layer import initDataStoreLayer
 from lib.pid_report import report_pid_from_child
+from lib.version import get_version
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -57,7 +57,7 @@ class PngRunner:
         self.m_logger: logging.Logger = logger
         self.m_config = load_config(config_file, logger)
         self.m_tasks: List[asyncio.Task] = []
-        self.m_version: str = self._getVersion()
+        self.m_version: str = get_version()
 
         self.m_logger.debug(self.m_config)
 

@@ -25,7 +25,8 @@ import struct
 from typing import Any, Dict, List
 
 from .common import (ActualTyreCompound, F1Utils, PacketHeader, ResultReason,
-                     ResultStatus, VisualTyreCompound)
+                     ResultStatus, VisualTyreCompound,
+                     _validate_parse_fixed_segments)
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -97,21 +98,21 @@ class FinalClassificationData:
     )
     PACKET_LEN_25 = struct.calcsize(PACKET_FORMAT_25)
 
-    def __init__(self, data: bytes, game_year: int) -> None:
+    def __init__(self, data: bytes, packet_format: int) -> None:
         """
         Initializes FinalClassificationData with raw data.
 
         Args:
             data (bytes): Raw data representing final classification for a car in a race.
-            game_year (int): The year of the game.
+            packet_format (int): Packet format version.
         """
 
         self.m_tyreStintsActual: List[int] = [0] * 8
         self.m_tyreStintsVisual: List[int] = [0] * 8
         self.m_tyreStintsEndLaps: List[int] = [0] * 8
         self.m_resultReason: ResultReason = ResultReason.INVALID
-        self.m_gameYear = game_year
-        if game_year <= 24:
+        self.m_packetFormat = packet_format
+        if packet_format <= 2024:
             (
                 self.m_position,
                 self.m_numLaps,
@@ -267,7 +268,7 @@ class FinalClassificationData:
             "tyre-stints-end-laps": self.m_tyreStintsEndLaps,
         }
 
-        if self.m_gameYear >= 25:
+        if self.m_packetFormat >= 2025:
             res["result-reason"] = str(self.m_resultReason)
 
         return res
@@ -345,7 +346,7 @@ class FinalClassificationData:
         tyre_stints_actual: List[ActualTyreCompound] = pad_array(self.m_tyreStintsActual)
         tyre_stints_end_laps = pad_array(self.m_tyreStintsEndLaps)
 
-        if self.m_gameYear < 25:
+        if self.m_packetFormat < 2025:
             return struct.pack(self.PACKET_FORMAT,
                 self.m_position,
                 self.m_numLaps,
@@ -425,7 +426,7 @@ class FinalClassificationData:
 
     @classmethod
     def from_values(cls,
-            game_year: int,
+            packet_format: int,
             position: int,
             num_laps: int,
             grid_position: int,
@@ -475,7 +476,7 @@ class FinalClassificationData:
             FinalClassificationData: A new FinalClassificationData object initialized with the provided values.
         """
 
-        if game_year < 25:
+        if packet_format < 2025:
             return cls(struct.pack(cls.PACKET_FORMAT,
                 position,
                 num_laps,
@@ -515,7 +516,7 @@ class FinalClassificationData:
                 tyre_stints_end_laps_5,
                 tyre_stints_end_laps_6,
                 tyre_stints_end_laps_7
-            ), game_year=game_year)
+            ), packet_format=packet_format)
 
         return cls(struct.pack(cls.PACKET_FORMAT_25,
             position,
@@ -557,7 +558,7 @@ class FinalClassificationData:
             tyre_stints_end_laps_5,
             tyre_stints_end_laps_6,
             tyre_stints_end_laps_7
-        ), game_year=game_year)
+        ), packet_format=packet_format)
 
 class PacketFinalClassificationData:
     """
@@ -572,7 +573,7 @@ class PacketFinalClassificationData:
         The class is designed to parse and represent the final classification data packet.
     """
 
-    max_cars = 22
+    MAX_CARS = 22
 
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
         """
@@ -586,19 +587,23 @@ class PacketFinalClassificationData:
         self.m_header: PacketHeader = header
         self.m_numCars: int = struct.unpack("<B", packet[:1])[0]
 
-        if header.m_gameYear <= 24:
+        if header.m_packetFormat <= 2024:
             packet_len = FinalClassificationData.PACKET_LEN
         else:
             packet_len = FinalClassificationData.PACKET_LEN_25
 
         # Iterate over packet[1:] in steps of packet_len,
         # creating FinalClassificationData objects for each segment.
-        self.m_classificationData: List[FinalClassificationData] = [
-            FinalClassificationData(packet[i:i + packet_len], header.m_gameYear)
-            for i in range(1, len(packet), packet_len)
-        ]
-        # strip the non-applicable data
-        self.m_classificationData = self.m_classificationData[:self.m_numCars]
+        self.m_classificationData: List[FinalClassificationData]
+        self.m_classificationData, _ = _validate_parse_fixed_segments(
+            data=packet,
+            offset=1,
+            item_cls=FinalClassificationData,
+            item_len=packet_len,
+            count=self.m_numCars,
+            max_count=self.MAX_CARS,
+            packet_format=header.m_packetFormat
+        )
 
     def __str__(self) -> str:
         """

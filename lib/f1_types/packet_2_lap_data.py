@@ -144,7 +144,7 @@ class LapData:
     PACKET_LEN_24:int = struct.calcsize(PACKET_FORMAT_24)
 
     # Type hints declaration for fields
-    m_gameYear: int
+    m_packetFormat: int
     m_lastLapTimeInMS: int
     m_currentLapTimeInMS: int
     m_sector1TimeInMS: int
@@ -295,21 +295,21 @@ class LapData:
             }
             return sector_mapping.get(self.value, "---")
 
-    def __init__(self, data: bytes, game_year: int) -> None:
+    def __init__(self, data: bytes, packet_format: int) -> None:
         """
         Initialize LapData instance by unpacking binary data.
 
         Args:
         - data (bytes): Binary data containing lap information.
-        - game_year (int): The year of the game.
+        - packet_format (int): The format version of the packet.
 
         Raises:
         - struct.error: If the binary data does not match the expected format.
         """
 
         # Assign the members from unpacked_data
-        self.m_gameYear = game_year
-        if game_year == 23:
+        self.m_packetFormat = packet_format
+        if packet_format == 2023:
             raw_data = data[:self.PACKET_LEN_23]
             (
                 self.m_lastLapTimeInMS,
@@ -495,7 +495,7 @@ class LapData:
             return False
 
         return (
-            self.m_gameYear == other.m_gameYear and
+            self.m_packetFormat == other.m_packetFormat and
             self.m_lastLapTimeInMS == other.m_lastLapTimeInMS and
             self.m_currentLapTimeInMS == other.m_currentLapTimeInMS and
             self.m_sector1TimeInMS == other.m_sector1TimeInMS and
@@ -568,7 +568,7 @@ class PacketLapData:
         # Determine LapData size based on game year
         # F1 game data structures can vary between game versions
         lap_data_obj_size = LapData.PACKET_LEN_24  # Default to 2024 format
-        if header.m_gameYear == 23:
+        if header.m_packetFormat == 2023:
             lap_data_obj_size = LapData.PACKET_LEN_23  # Use 2023 format if needed
 
         # Calculate expected packet length:
@@ -594,7 +594,7 @@ class PacketLapData:
 
             # Extract this car's binary data and create a LapData object
             car_data = packet[start_idx:end_idx]
-            self.m_lapData.append(LapData(car_data, header.m_gameYear))
+            self.m_lapData.append(LapData(car_data, header.m_packetFormat))
 
         # Extract time trial indices from the last 2 bytes
         # These identify personal best and rival cars in time trial mode

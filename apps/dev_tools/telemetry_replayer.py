@@ -139,13 +139,22 @@ def main():
                     dropped_packets += 1
                     continue
 
-                total_bytes += sendBytesUDP(packet, args.ip_addr, args.port)
+                try:
+                    total_bytes += sendBytesUDP(packet, args.ip_addr, args.port)
+                except Exception as e:
+                    print(f"Failed to send to {args.ip_addr}:{args.port} — {e}")
+                    sys.exit(1)
+
                 prev_timestamp = timestamp
         else:
             # TCP mode
             total_packets = captured_packets.getNumPackets()
             client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client_socket.connect((args.ip_addr, args.port))
+            try:
+                client_socket.connect((args.ip_addr, args.port))
+            except Exception as e:
+                print(f"Failed to connect to {args.ip_addr}:{args.port} — {e}")
+                sys.exit(1)
 
             # Disable Nagle's algorithm if specified
             if args.no_nagle:
@@ -170,7 +179,12 @@ def main():
                 message_length_bytes = struct.pack('!I', message_length)
 
                 # Send the message length followed by the actual message
-                client_socket.sendall(message_length_bytes + packet)
+                try:
+                    client_socket.sendall(message_length_bytes + packet)
+                except Exception as e:
+                    print(f"Failed to send to {args.ip_addr}:{args.port} — {e}")
+                    sys.exit(1)
+
                 total_bytes += message_length
 
 

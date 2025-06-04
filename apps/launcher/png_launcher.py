@@ -175,7 +175,7 @@ class PngLauncher(ConsoleInterface):
                     if self.debug_mode else ["--config-file", self.config_file ]
             ),
             # SaveViewer app reads port from args
-            "dashboard": SaveViewerAppMgr(
+            "save_viewer": SaveViewerAppMgr(
                 console_app=self,
                 port_str=str(self.settings.get("Network", "save_viewer_port")),
             ),

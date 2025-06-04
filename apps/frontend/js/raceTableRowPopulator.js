@@ -1,8 +1,8 @@
 class RaceTableRowPopulator {
-    constructor(row, rowData, gameYear, isLiveDataMode, iconCache, raceEnded, spectatorIndex) {
+    constructor(row, rowData, packetFormat, isLiveDataMode, iconCache, raceEnded, spectatorIndex) {
         this.row = row;
         this.rowData = rowData;
-        this.gameYear = gameYear;
+        this.packetFormat = packetFormat;
         this.isLiveDataMode = isLiveDataMode;
         this.iconCache = iconCache;
         this.raceEnded = raceEnded;
@@ -100,7 +100,7 @@ class RaceTableRowPopulator {
         // Game-specific layout:
         // - In F1 23, use a single-line cell with just the lap content
         // - in F1 24+, use a multi-line cell with lap content and speed trap info
-        if (this.gameYear == 23) {
+        if (this.packetFormat == 2023) {
             cell = this.row.insertCell();
             cell.textContent = lapContent;
         } else {
@@ -121,7 +121,7 @@ class RaceTableRowPopulator {
         const index = this.rowData["driver-info"]["index"];
         const lapInfo = this.rowData["lap-info"]["last-lap"];
         const cellContent = [];
-        if (this.gameYear > 23) {
+        if (this.packetFormat > 2023) {
             // one line to pad against speed trap record
             cellContent.push(null);
         }

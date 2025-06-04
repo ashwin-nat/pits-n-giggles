@@ -183,6 +183,12 @@ class AsyncInterTaskCommunicator:
             self._initialized = True
 
     async def send(self, queue_name: str, message: Any) -> None:
+        """Send a message to the specified queue. The last used queue is cached at a task level.
+
+        Args:
+            queue_name (str): The name of the queue to send the message to.
+            message (Any): The message to send.
+        """
         q = await self._get_queue(queue_name)
         await q.put(message)
 

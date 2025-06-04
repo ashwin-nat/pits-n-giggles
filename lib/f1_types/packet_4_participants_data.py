@@ -160,21 +160,21 @@ class ParticipantData:
     PACKET_LEN_25_BASE = struct.calcsize(PACKET_FORMAT_25_BASE)
     PACKET_LEN_25 = PACKET_LEN_25_BASE + LiveryColour.PACKET_LEN * MAX_LIVERY_COLOURS
 
-    def __init__(self, data: bytes, game_year: int) -> None:
+    def __init__(self, data: bytes, packet_format: int) -> None:
         """
         Initializes a ParticipantData object by unpacking the provided binary data.
 
         Parameters:
             data (bytes): Binary data to be unpacked.
-            game_year (int): Year of the game.
+            packet_format (int): The packet format
 
         Raises:
             struct.error: If the binary data does not match the expected format.
         """
-        self.m_gameYear = game_year
+        self.m_packetFormat = packet_format
         self.m_numColours: int = 0
         self.m_liveryColours: List[LiveryColour]
-        if game_year == 23:
+        if packet_format == 2023:
             unpacked_data = struct.unpack(self.PACKET_FORMAT_23, data)
             (
                 self.m_aiControlled,
@@ -190,7 +190,7 @@ class ParticipantData:
                 self.m_platform
             ) = unpacked_data
             self.m_techLevel = 0
-        elif game_year == 24:
+        elif packet_format == 2024:
             unpacked_data = struct.unpack(self.PACKET_FORMAT_24, data)
             (
                 self.m_aiControlled,
@@ -237,11 +237,11 @@ class ParticipantData:
         self.m_name = self.m_name.decode('utf-8', errors='replace').rstrip('\x00')
         if Platform.isValid(self.m_platform):
             self.m_platform = Platform(self.m_platform)
-        if game_year == 23 and TeamID23.isValid(self.m_teamId):
+        if packet_format == 2023 and TeamID23.isValid(self.m_teamId):
             self.m_teamId = TeamID23(self.m_teamId)
-        elif game_year == 24 and TeamID24.isValid(self.m_teamId):
+        elif packet_format == 2024 and TeamID24.isValid(self.m_teamId):
             self.m_teamId = TeamID24(self.m_teamId)
-        elif game_year == 25 and TeamID25.isValid(self.m_teamId):
+        elif packet_format == 2025 and TeamID25.isValid(self.m_teamId):
             self.m_teamId = TeamID25(self.m_teamId)
         if TelemetrySetting.isValid(self.m_yourTelemetry):
             self.m_yourTelemetry = TelemetrySetting(self.m_yourTelemetry)
@@ -304,7 +304,7 @@ class ParticipantData:
         Returns:
             bytes: Bytes representation of the ParticipantData instance.
         """
-        if self.m_gameYear == 23:
+        if self.m_packetFormat == 2023:
             return struct.pack(self.PACKET_FORMAT_23,
                 self.m_aiControlled,
                 self.m_driverId,
@@ -318,7 +318,7 @@ class ParticipantData:
                 self.m_showOnlineNames,
                 self.m_platform.value
             )
-        if self.m_gameYear == 24:
+        if self.m_packetFormat == 2024:
             return struct.pack(self.PACKET_FORMAT_24,
                 self.m_aiControlled,
                 self.m_driverId,
@@ -372,7 +372,7 @@ class ParticipantData:
             bool: True if the objects are equal, False otherwise.
         """
         return (
-            self.m_gameYear == other.m_gameYear and
+            self.m_packetFormat == other.m_packetFormat and
             self.m_aiControlled == other.m_aiControlled and
             self.m_driverId == other.m_driverId and
             self.networkId == other.networkId and
@@ -441,7 +441,7 @@ class ParticipantData:
             ParticipantData: A new ParticipantData object with the provided values.
         """
 
-        if header.m_gameYear == 23:
+        if header.m_packetFormat == 2023:
             data = struct.pack(ParticipantData.PACKET_FORMAT_23,
                 ai_controlled,
                 driver_id,
@@ -455,7 +455,7 @@ class ParticipantData:
                 show_online_names,
                 platform.value
             )
-        elif header.m_gameYear == 24:
+        elif header.m_packetFormat == 2024:
             data = struct.pack(ParticipantData.PACKET_FORMAT_24,
                 ai_controlled,
                 driver_id,
@@ -470,7 +470,7 @@ class ParticipantData:
                 tech_level,
                 platform.value
             )
-        elif header.m_gameYear == 25:
+        elif header.m_packetFormat == 2025:
             # one byte for num colours, 3*4 bytes for liveries
             data = struct.pack(ParticipantData.PACKET_FORMAT_25_BASE + "BBB" * 4,
                 ai_controlled,
@@ -500,8 +500,8 @@ class ParticipantData:
                 liveries[3].m_blue
             )
         else:
-            raise NotImplementedError(f"Unsupported game year: {header.m_gameYear}")
-        return cls(data, header.m_gameYear)
+            raise NotImplementedError(f"Unsupported packet format: {header.m_packetFormat}")
+        return cls(data, header.m_packetFormat)
 
 class PacketParticipantsData:
     """
@@ -533,10 +533,10 @@ class PacketParticipantsData:
 
         self.m_header: PacketHeader = header         # PacketHeader
         self.m_numActiveCars: int = struct.unpack("<B", packet[:1])[0]
-        match header.m_gameYear:
-            case 23:
+        match header.m_packetFormat:
+            case 2023:
                 packet_len = ParticipantData.PACKET_LEN_23
-            case 24:
+            case 2024:
                 packet_len = ParticipantData.PACKET_LEN_24
             case _:
                 packet_len = ParticipantData.PACKET_LEN_25
@@ -549,7 +549,7 @@ class PacketParticipantsData:
             item_len=packet_len,
             count=self.m_numActiveCars,
             max_count=self.MAX_PARTICIPANTS,
-            game_year=header.m_gameYear
+            packet_format=header.m_packetFormat
         )
 
     def __str__(self) -> str:

@@ -543,8 +543,12 @@
           }
 
           if (updateInfo.hasUpdate) {
-            console.log(`New version found: ${updateInfo.latestVersion}`);
-            showToast(`New version available: ${updateInfo.latestVersion}`, 10000);
+            const lastNotifiedVersion = localStorage.getItem('lastNotifiedVersion');
+            // Only show the toast if the user hasn't already been notified about this version
+            if (!lastNotifiedVersion || lastNotifiedVersion !== updateInfo.latestVersion) {
+              showToast(`New version available: ${updateInfo.latestVersion}`, 3000);
+              localStorage.setItem('lastNotifiedVersion', updateInfo.latestVersion);
+            }
           } else {
             console.log('No new version found.');
           }
