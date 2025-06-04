@@ -22,9 +22,9 @@ class TimeTrialTtDataPopulator {
         this.custSetupCell  = document.getElementById(`${sectionPrefix}CustomSetup`);
     }
 
-    populate(ttPacket, gameYear) {
+    populate(ttPacket, packetFormat) {
 
-        if (gameYear < 24) {
+        if (packetFormat < 2024) {
             this.clearCells();
             this.showUnsupportedDiv();
             return;

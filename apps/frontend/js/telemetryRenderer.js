@@ -18,12 +18,12 @@ class TelemetryRenderer {
     this.uiMode = 'Splash';
   }
 
-  renderTelemetryRow(data, gameYear, isLiveDataMode, raceEnded, spectatorIndex) {
+  renderTelemetryRow(data, packetFormat, isLiveDataMode, raceEnded, spectatorIndex) {
     const { 'driver-info': driverInfo } = data;
     const row = document.createElement('tr');
 
     // Populate row with data
-    new RaceTableRowPopulator(row, data, gameYear, isLiveDataMode, this.iconCache, raceEnded, spectatorIndex).populate();
+    new RaceTableRowPopulator(row, data, packetFormat, isLiveDataMode, this.iconCache, raceEnded, spectatorIndex).populate();
 
     // Apply CSS classes based on row state
     const cssClasses = this.determineRowClasses(driverInfo, isLiveDataMode, spectatorIndex);
@@ -75,7 +75,7 @@ class TelemetryRenderer {
 
     // enable the time trial UI and set the data
     this.setUIMode('Time Trial');
-    this.timeTrialDataPopulator.populate(incomingData["tt-data"], incomingData["f1-game-year"]);
+    this.timeTrialDataPopulator.populate(incomingData["tt-data"], incomingData["f1-packet-format"]);
   }
 
   // Extract existing driver rows and remove them from the DOM
@@ -99,8 +99,8 @@ class TelemetryRenderer {
   }
 
   // Update or create row based on existing data
-  updateOrCreateRow(row, data, gameYear, isLiveDataMode, driverIndex, raceEnded, spectatorIndex) {
-    const newRow = this.renderTelemetryRow(data, gameYear, isLiveDataMode, raceEnded, spectatorIndex);
+  updateOrCreateRow(row, data, packetFormat, isLiveDataMode, driverIndex, raceEnded, spectatorIndex) {
+    const newRow = this.renderTelemetryRow(data, packetFormat, isLiveDataMode, raceEnded, spectatorIndex);
     if (row) {
       row.innerHTML = newRow.innerHTML;
     } else {
@@ -125,7 +125,7 @@ class TelemetryRenderer {
       ((entry) => entry["driver-info"]?.["index"] == spectatorCarIndex) :
       ((entry) => entry["driver-info"]?.["is-player"])
     );
-    const gameYear = incomingData["f1-game-year"];
+    const packetFormat = incomingData["f1-packet-format"];
     this.indexByPosition = incomingData["table-entries"].map(entry => entry["driver-info"]["index"]);
 
     // Extract and remove existing driver rows
@@ -136,7 +136,7 @@ class TelemetryRenderer {
     tableEntries.forEach(data => {
       const driverIndex = data["driver-info"]["index"];
       let row = driverRowMap.get(driverIndex);
-      row = this.updateOrCreateRow(row, data, gameYear, isLiveDataMode, driverIndex, raceEnded, spectatorCarIndex);
+      row = this.updateOrCreateRow(row, data, packetFormat, isLiveDataMode, driverIndex, raceEnded, spectatorCarIndex);
       this.telemetryTable.appendChild(row);
     });
     // Rows not referenced in tableEntries will be left out
