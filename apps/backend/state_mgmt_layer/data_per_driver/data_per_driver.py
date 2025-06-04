@@ -413,7 +413,7 @@ class DataPerDriver:
         self.m_tyre_info.m_tyre_set_history_manager.remove(outdated_laps)
         self.m_car_info.m_fuel_rate_recommender.remove(outdated_laps)
 
-        png_logger.debug(f'Driver {self} - detected flashback. outdated_laps: {outdated_laps}')
+        png_logger.debug("Driver %s - detected flashback. outdated_laps: %s", str(self), outdated_laps)
 
     def onLapChange(self,
         old_lap_number: int,
@@ -467,7 +467,8 @@ class DataPerDriver:
 
         # Check if the old lap number is already present in the snapshots (lap already processed)
         if old_lap_number in self.m_per_lap_snapshots:
-            png_logger.debug(f'Driver {self} - lap {old_lap_number} already in per_lap_snapshots. Possible flashback')
+            png_logger.debug("Driver %s - lap %d already in per_lap_snapshots. Possible flashback",
+                             str(self), old_lap_number)
             return
 
         # Store the snapshot data for the old lap
@@ -517,7 +518,7 @@ class DataPerDriver:
         # Now clear the per lap max stuff
         self.m_lap_info.m_top_speed_kmph_this_lap = None
         self.m_driver_info.m_curr_lap_max_sc_status = None
-        png_logger.debug(f'Driver {self} - inserted snapshot for lap {old_lap_number}')
+        png_logger.debug("Driver %s - lap %d added to per_lap_snapshots", str(self), old_lap_number)
 
     def shouldCaptureZerothLapSnapshot(self) -> bool:
         """
@@ -750,15 +751,12 @@ class DataPerDriver:
             ],
         }
 
-    def _positionHistoryHelper(self, packet_format: int, session_ended: bool) -> Iterator[Tuple[int, int]]:
+    def _positionHistoryHelper(self, _packet_format: int, _session_ended: bool) -> Iterator[Tuple[int, int]]:
         """Helper function to get the position history
 
         Args:
-            packet_format (int): The packet format
-            session_ended (bool): Whether the session has ended
-
-        Returns:
-            Iterator[Tuple[int, int]]: The position history
+            _packet_format (int): The packet format
+            _session_ended (bool): Whether the session has ended
         """
 
         # if packet_format >= 2025:
@@ -906,7 +904,7 @@ class DataPerDriver:
 
         # Defer this update if the position history is not yet initialized
         if not self.m_position_history:
-            png_logger.debug(f"Position history not yet initialized. {self.__str__()}")
+            png_logger.debug("Position history: %s", str(self.m_position_history))
             return
 
         assert len(position_history) == packet.m_numLaps
