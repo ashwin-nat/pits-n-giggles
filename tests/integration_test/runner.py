@@ -104,5 +104,6 @@ def main():
     return success_count == len(results)
 
 if __name__ == "__main__":
+    port = 20777
     success = main()
     sys.exit(0 if success else 1)
