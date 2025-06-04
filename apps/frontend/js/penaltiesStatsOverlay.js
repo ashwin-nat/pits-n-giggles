@@ -10,13 +10,13 @@ class PenaltiesStatsWidget {
   }
 
   // Method to update the UI with the penalties stats
-  update(penaltiesStats, gameYear) {
+  update(penaltiesStats, packetFormat) {
     // Update the individual penalty stats
-    this.updatePenaltiesStats(penaltiesStats, gameYear);
+    this.updatePenaltiesStats(penaltiesStats, packetFormat);
   }
 
   // Method to update the penalties stats in the UI
-  updatePenaltiesStats(pensStats, gameYear) {
+  updatePenaltiesStats(pensStats, packetFormat) {
     const airTemp = pensStats['air-temperature'];
     const trackTemp = pensStats['track-temperature'];
     const trackLimits = pensStats['corner-cutting-warnings'];
@@ -35,7 +35,7 @@ class PenaltiesStatsWidget {
     this.pitLaneSpeedLimitSpan.style.display = (pitLaneSpeedLimit !== null && pitLaneSpeedLimit !== undefined) ? "inline-flex" : "none";
 
     // speed trap support from F1 24 onwards
-    if (gameYear >= 24) {
+    if (packetFormat >= 2024) {
       this.speedTrapDiv.style.display = "";
       if (speedTrap !== null && speedTrap !== undefined && speedTrap !== 0.0) {
         this.speedTrapSpan.textContent = formatFloatWithTwoDecimals(speedTrap);

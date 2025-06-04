@@ -40,10 +40,10 @@ from lib.f1_types import (F1PacketType, PacketCarDamageData,
                           PacketCarSetupData, PacketCarStatusData,
                           PacketCarTelemetryData, PacketEventData,
                           PacketFinalClassificationData, PacketLapData,
-                          PacketLapPositionsData, PacketMotionData,
-                          PacketParticipantsData, PacketSessionData,
-                          PacketSessionHistoryData, PacketTimeTrialData,
-                          PacketTyreSetsData, SessionType23, SessionType24)
+                          PacketMotionData, PacketParticipantsData,
+                          PacketSessionData, PacketSessionHistoryData,
+                          PacketTimeTrialData, PacketTyreSetsData,
+                          SessionType23, SessionType24)
 from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
                                          FinalClassificationNotification,
                                          ITCMessage)
@@ -265,7 +265,7 @@ class F1TelemetryHandler:
             # Perform the auto save stuff only for races
             if event_type_str := str(self.m_session_state_ref.m_session_info.m_session_type):
                 is_event_supported = True
-                if packet.m_header.m_gameYear == 23:
+                if packet.m_header.m_packetFormat == 2023:
                     unsupported_event_types_f1_23 = [
                         SessionType23.PRACTICE_1,
                         SessionType23.PRACTICE_2,
@@ -386,15 +386,17 @@ class F1TelemetryHandler:
 
             self.m_session_state_ref.processTimeTrialUpdate(packet)
 
-        @self.m_manager.on_packet(F1PacketType.LAP_POSITIONS)
-        async def processLapPositionsUpdate(packet: PacketLapPositionsData) -> None:
-            """Update the data structures with lap positions information
+        # We're not using this data, no need to waste CPU cycles processing it.
+        # Commenting it out for now
+        # @self.m_manager.on_packet(F1PacketType.LAP_POSITIONS)
+        # async def processLapPositionsUpdate(packet: PacketLapPositionsData) -> None:
+        #     """Update the data structures with lap positions information
 
-            Args:
-                packet (PacketLapPositionsData): The lap positions update packet
-            """
+        #     Args:
+        #         packet (PacketLapPositionsData): The lap positions update packet
+        #     """
 
-            self.m_session_state_ref.processLapPositionsUpdate(packet)
+        #     self.m_session_state_ref.processLapPositionsUpdate(packet)
 
         async def handeSessionStartEvent(packet: PacketEventData) -> None:
             """

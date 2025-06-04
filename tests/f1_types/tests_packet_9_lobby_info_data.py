@@ -493,7 +493,7 @@ class TestPacketLobbyInfoData(F1TypesTest):
             LobbyInfoData: A random lobby info data object
         """
 
-        if header.m_gameYear == 23:
+        if header.m_packetFormat == 2023:
             return LobbyInfoData.from_values(
                 header=header,
                 ai_controlled=F1TypesTest.getRandomBool(),
@@ -503,7 +503,7 @@ class TestPacketLobbyInfoData(F1TypesTest):
                 name=F1TypesTest.getRandomUserName(),
                 car_number=random.randint(1, 99),
             )
-        if header.m_gameYear == 24:
+        if header.m_packetFormat == 2024:
             return LobbyInfoData.from_values(
                 header=header,
                 ai_controlled=F1TypesTest.getRandomBool(),
@@ -517,7 +517,7 @@ class TestPacketLobbyInfoData(F1TypesTest):
                 tech_level=random.randrange(0,5000),
                 ready_status=random.choice(list(LobbyInfoData.ReadyStatus))
             )
-        if header.m_gameYear == 25:
+        if header.m_packetFormat == 2025:
             return LobbyInfoData.from_values(
                 header=header,
                 ai_controlled=F1TypesTest.getRandomBool(),
@@ -532,4 +532,4 @@ class TestPacketLobbyInfoData(F1TypesTest):
                 ready_status=random.choice(list(LobbyInfoData.ReadyStatus))
             )
 
-        raise NotImplementedError(f"Test not implemented for game year {header.m_gameYear}")
+        raise NotImplementedError(f"Test not implemented for packet format {header.m_packetFormat}")

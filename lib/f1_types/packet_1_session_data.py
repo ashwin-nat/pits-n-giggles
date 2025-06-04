@@ -345,12 +345,12 @@ class WeatherForecastSample:
                 WeatherForecastSample.AirTemperatureChange.NO_CHANGE: "No Temperature Change",
             }[self]
 
-    def __init__(self, data: bytes, game_year: int) -> None:
+    def __init__(self, data: bytes, packet_format: int) -> None:
         """Unpack the given raw bytes into this object
 
         Args:
             data (bytes): List of raw bytes received as part of this
-            game_year (int): The year of the game
+            packet_format (int): The format of the packet
         """
 
         # Declare the type hints
@@ -382,7 +382,7 @@ class WeatherForecastSample:
             self.m_airTemperatureChange = WeatherForecastSample.AirTemperatureChange(self.m_airTemperatureChange)
         if WeatherForecastSample.TrackTemperatureChange.isValid(self.m_trackTemperatureChange):
             self.m_trackTemperatureChange = WeatherForecastSample.TrackTemperatureChange(self.m_trackTemperatureChange)
-        if game_year == 23 and SessionType23.isValid(self.m_sessionType):
+        if packet_format == 2023 and SessionType23.isValid(self.m_sessionType):
             self.m_sessionType = SessionType23(self.m_sessionType)
         elif SessionType24.isValid(self.m_sessionType):
             self.m_sessionType = SessionType24(self.m_sessionType)
@@ -1298,7 +1298,7 @@ class PacketSessionData:
         self.m_sector3LapDistanceStart: float    # // Distance in m around track where sector 3
 
         self.m_maxMarshalZones = self.F1_23_MAX_NUM_MARSHAL_ZONES
-        if header.m_gameYear == 23:
+        if header.m_packetFormat == 2023:
             self.m_maxWeatherForecastSamples = self.F1_23_MAX_NUM_WEATHER_FORECAST_SAMPLES
         else:
             self.m_maxWeatherForecastSamples = self.F1_24_MAX_NUM_WEATHER_FORECAST_SAMPLES
@@ -1330,7 +1330,7 @@ class PacketSessionData:
         if TrackID.isValid(self.m_trackId):
             self.m_trackId = TrackID(self.m_trackId)
 
-        if header.m_gameYear <= 23 and SessionType23.isValid(self.m_sessionType):
+        if header.m_packetFormat == 2023 and SessionType23.isValid(self.m_sessionType):
             self.m_sessionType = SessionType23(self.m_sessionType)
         elif SessionType24.isValid(self.m_sessionType):
             self.m_sessionType = SessionType24(self.m_sessionType)
@@ -1369,7 +1369,7 @@ class PacketSessionData:
             item_len=WeatherForecastSample.PACKET_LEN,
             count=self.m_numWeatherForecastSamples,
             max_count=self.m_maxWeatherForecastSamples,
-            game_year=header.m_gameYear
+            packet_format=header.m_packetFormat
         )
 
 
@@ -1419,7 +1419,7 @@ class PacketSessionData:
 
         self.m_weekendStructure = [0] * 12
         # Section 5 - F1 24 specific stuff
-        if header.m_gameYear == 24:
+        if header.m_packetFormat == 2024:
             section_5_raw_data = data[byte_index_so_far:byte_index_so_far + self.PACKET_LEN_SECTION_5]
             unpacked_data = struct.unpack(self.PACKET_FORMAT_SECTION_5, section_5_raw_data)
             (
@@ -1709,7 +1709,7 @@ class PacketSessionData:
         if not self.__eq_f1_23(other):
             return False
 
-        if self.m_header.m_gameYear == 24:
+        if self.m_header.m_packetFormat == 2024:
             return self.__eq_f1_24(other)
 
         return NotImplemented

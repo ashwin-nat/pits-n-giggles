@@ -22,8 +22,9 @@
 
 
 import struct
-from typing import List, Dict, Any
-from .common import PacketHeader
+from typing import Any, Dict, List
+
+from .common import PacketHeader, _validate_parse_fixed_segments
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -110,19 +111,20 @@ class CarDamageData:
     )
     PACKET_LEN_25 = struct.calcsize(PACKET_FORMAT_25)
 
-    def __init__(self, data, game_year) -> None:
+    def __init__(self, data, packet_format) -> None:
         """
         Initializes CarDamageData with raw data.
 
         Args:
             data (bytes): Raw data representing the packet for car damage data.
+            packet_format (int): Packet format version.
         """
         self.m_tyresWear = [0.0] * 4
         self.m_tyresDamage = [0] * 4
         self.m_brakesDamage = [0] * 4
         self.m_tyreBlisters = [0] * 4
-        self.m_gameYear = game_year
-        if game_year >= 25:
+        self.m_packetFormat = packet_format
+        if packet_format >= 2025:
             (
                 self.m_tyresWear[0],
                 self.m_tyresWear[1],
@@ -306,7 +308,7 @@ class CarDamageData:
             bytes: Bytes representing the CarDamageData instance.
         """
 
-        if self.m_gameYear < 25:
+        if self.m_packetFormat < 2025:
             return struct.pack(self.PACKET_FORMAT,
                 self.m_tyresWear[0],
                 self.m_tyresWear[1],
@@ -378,7 +380,7 @@ class CarDamageData:
 
     @classmethod
     def from_values(cls,
-        game_year: int,
+        packet_format: int,
         tyres_wear: List[float],
         tyres_damage: List[int],
         brakes_damage: List[int],
@@ -412,7 +414,7 @@ class CarDamageData:
             CarDamageData: A new CarDamageData object with the provided values.
         """
 
-        if game_year < 25:
+        if packet_format < 2025:
             return cls(struct.pack(cls.PACKET_FORMAT,
                 tyres_wear[0],
                 tyres_wear[1],
@@ -444,7 +446,7 @@ class CarDamageData:
                 engine_tc_wear,
                 engine_blown,
                 engine_seized,
-            ), game_year)
+            ), packet_format)
         return cls(struct.pack(cls.PACKET_FORMAT_25,
             tyres_wear[0],
             tyres_wear[1],
@@ -480,7 +482,7 @@ class CarDamageData:
             engine_tc_wear,
             engine_blown,
             engine_seized,
-        ), game_year)
+        ), packet_format)
 
 
 class PacketCarDamageData:
@@ -495,6 +497,8 @@ class PacketCarDamageData:
         The class is designed to parse and represent the car damage data packet.
     """
 
+    MAX_CARS = 22
+
     def __init__(self, header: PacketHeader, data: bytes) -> None:
         """
         Initializes PacketCarDamageData with raw data.
@@ -505,15 +509,21 @@ class PacketCarDamageData:
         """
 
         self.m_header: PacketHeader = header
-        if header.m_gameYear >= 25:
+        if header.m_packetFormat >= 2025:
             packet_len = CarDamageData.PACKET_LEN_25
         else:
             packet_len = CarDamageData.PACKET_LEN
         # Slice the data bytes in steps of CarDamageData.PACKET_LEN to create CarDamageData objects.
-        self.m_carDamageData = [
-            CarDamageData(data[i:i + packet_len], header.m_gameYear)
-            for i in range(0, len(data), packet_len)
-        ]
+        self.m_carDamageData: List[CarDamageData]
+        self.m_carDamageData, _ = _validate_parse_fixed_segments(
+            data=data,
+            offset=0,
+            item_cls=CarDamageData,
+            item_len=packet_len,
+            count=self.MAX_CARS,
+            max_count=self.MAX_CARS,
+            packet_format=header.m_packetFormat
+        )
 
     def __str__(self) -> str:
         """

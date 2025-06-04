@@ -16,3 +16,4 @@ dist/*
 png-venv/
 .vercel
 *yappi*
+*.part
