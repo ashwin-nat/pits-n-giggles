@@ -1,6 +1,5 @@
 /* F1 Tyre Stint Chart Styles */
 .f1-tsc-container {
-  background: #141414;
   color: #ffffff;
   border-radius: 8px;
   padding: 15px;
@@ -48,18 +47,24 @@
   font-weight: 700;
 }
 
+.f1-tsc-laps {
+  flex-direction: column-reverse;
+}
+
 .f1-tsc-lap-markers {
   display: flex;
   position: relative;
   margin: 0 0 10px 200px;
-  height: 20px;
+  height: 30px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .f1-tsc-lap-marker {
   position: absolute;
   transform: translateX(-50%);
-  font-size: 12px;
-  color: #666;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  bottom: 8px;
 }
 
 .f1-tsc-content {
@@ -67,6 +72,9 @@
   flex-direction: column;
   gap: 8px;
   width: 100%;
+  background: #141414;
+  border-radius: 8px;
+  padding: 8px;
 }
 
 .f1-tsc-row {
