@@ -407,10 +407,15 @@ class RaceStatsModalPopulator {
         //source: https://www.reddit.com/r/formula1/comments/1avhmjb/f1_2024_hex_codes/
         const teamColors = {
             'Red Bull Racing': 'rgba(54,113,198, 1)',   // Blue
+            'Red Bull': 'rgba(54,113,198, 1)',          // Blue
+
             'VCARB': 'rgba(102,146,255, 1)',            // Blue
+            'RB': 'rgba(102,146,255, 1)',              // Blue
+
             'Mercedes': 'rgba(39,244,210, 1)',          // Teal
             'Ferrari': 'rgba(232,0,45, 1)',             // Red
             'McLaren': 'rgba(255,128,0, 1)',            // Papaya Orange
+            'Mclaren': 'rgba(255,128,0, 1)',            // Papaya Orange
             'Aston Martin': 'rgba(34,153,113, 1)',      // Green
             'Alpine': 'rgba(255,135,188, 1)',           // Blue
             'Alpha Tauri': 'rgba(30, 40, 80, 1)',       // Dark Blue

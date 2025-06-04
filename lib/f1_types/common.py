@@ -1041,6 +1041,8 @@ class TeamID25(Enum):
     def __str__(self):
         if self.value == 255:
             return self.name
+        if self.value == 6:
+            return "RB"
         return self.name.replace("_", " ").title().replace("Gp", "GP").replace("24", "'24").replace("25", "'25")
 
     @staticmethod
