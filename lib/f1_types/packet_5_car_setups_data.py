@@ -109,19 +109,20 @@ class CarSetupData:
     )
     PACKET_LEN_24 = struct.calcsize(PACKET_FORMAT_24)
 
-    def __init__(self, data: bytes, game_year: int) -> None:
+    def __init__(self, data: bytes, packet_format: int) -> None:
         """
         Initializes a CarSetupData object by unpacking the provided binary data.
 
         Parameters:
             data (bytes): Binary data to be unpacked.
+            packet_format (int): The packet format
 
         Raises:
             struct.error: If the binary data does not match the expected format.
         """
 
-        self.m_gameYear = game_year
-        if game_year == 23:
+        self.m_packetFormat = packet_format
+        if packet_format == 2023:
             unpacked_data = struct.unpack(self.PACKET_FORMAT_23, data)
             (
                 self.m_frontWing,
@@ -291,7 +292,7 @@ class CarSetupData:
         """
 
         return (
-            self.m_gameYear == other.m_gameYear and
+            self.m_packetFormat == other.m_packetFormat and
             self.m_frontWing == other.m_frontWing and
             self.m_rearWing == other.m_rearWing and
             self.m_onThrottle == other.m_onThrottle and
@@ -337,7 +338,7 @@ class CarSetupData:
             bytes: Bytes representation of the CarSetupData object.
         """
 
-        if self.m_gameYear == 23:
+        if self.m_packetFormat == 2023:
             return struct.pack(self.PACKET_FORMAT_23,
                 self.m_frontWing,
                 self.m_rearWing,
@@ -362,7 +363,7 @@ class CarSetupData:
                 self.m_ballast,
                 self.m_fuelLoad
             )
-        if self.m_gameYear == 24:
+        if self.m_packetFormat == 2024:
             return struct.pack(self.PACKET_FORMAT_24,
                 self.m_frontWing,
                 self.m_rearWing,
@@ -389,10 +390,10 @@ class CarSetupData:
                 self.m_fuelLoad
             )
 
-        raise NotImplementedError(f"Invalid game year: {self.m_gameYear}")
+        raise NotImplementedError(f"Invalid packet format: {self.m_packetFormat}")
 
     @classmethod
-    def from_values(cls, game_year: int,
+    def from_values(cls, packet_format: int,
                     front_wing: int,
                     rear_wing: int,
                     on_throttle: int,
@@ -426,7 +427,7 @@ class CarSetupData:
             CarSetupData: The created CarSetupData object.
         """
 
-        if game_year == 23:
+        if packet_format == 2023:
             raw_packet = struct.pack(cls.PACKET_FORMAT_23,
                 front_wing,
                 rear_wing,
@@ -451,9 +452,9 @@ class CarSetupData:
                 ballast,
                 fuel_load
             )
-            return cls(raw_packet, game_year)
+            return cls(raw_packet, packet_format)
 
-        if game_year == 24:
+        if packet_format == 2024:
             raw_packet = struct.pack(cls.PACKET_FORMAT_24,
                 front_wing,
                 rear_wing,
@@ -479,8 +480,8 @@ class CarSetupData:
                 ballast,
                 fuel_load
             )
-            return cls(raw_packet, game_year)
-        raise NotImplementedError(f"Invalid game year: {game_year}")
+            return cls(raw_packet, packet_format)
+        raise NotImplementedError(f"Invalid game year: {packet_format}")
 
 class PacketCarSetupData:
     """
@@ -510,8 +511,8 @@ class PacketCarSetupData:
         self.m_header: PacketHeader = header
         self.m_carSetups: List[CarSetupData] = []
 
-        packet_len = CarSetupData.PACKET_LEN_23 if (header.m_gameYear == 23) else CarSetupData.PACKET_LEN_24
-        if header.m_gameYear == 23:
+        packet_len = CarSetupData.PACKET_LEN_23 if (header.m_packetFormat == 2023) else CarSetupData.PACKET_LEN_24
+        if header.m_packetFormat == 2023:
             packet_len = CarSetupData.PACKET_LEN_23
             # Iterate over car_setups_raw_data in steps of packet_len,
             # splitting it into chunks of packet_len.
@@ -531,7 +532,7 @@ class PacketCarSetupData:
             ]
             self.m_nextFrontWingValue: float = struct.unpack("<f", packet[packet_len*22:])[0]
         for setup_per_car_raw_data in car_setups_raw_data:
-            self.m_carSetups.append(CarSetupData(setup_per_car_raw_data, header.m_gameYear))
+            self.m_carSetups.append(CarSetupData(setup_per_car_raw_data, header.m_packetFormat))
 
     def __str__(self) -> str:
         """
@@ -604,7 +605,7 @@ class PacketCarSetupData:
         """
 
         raw_packet = self.m_header.to_bytes() + b''.join(setup.to_bytes() for setup in self.m_carSetups)
-        if self.m_header.m_gameYear != 23:
+        if self.m_header.m_packetFormat != 2023:
             raw_packet += struct.pack("<f", self.m_nextFrontWingValue)
         return raw_packet
 
@@ -625,11 +626,11 @@ class PacketCarSetupData:
             PacketCarSetupData: A PacketCarSetupData object initialized with the provided values.
         """
 
-        if header.m_gameYear == 23:
+        if header.m_packetFormat == 2023:
             raw_bytes = b''.join([setup.to_bytes() for setup in car_setups])
             return cls(header, raw_bytes)
-        if header.m_gameYear == 24:
+        if header.m_packetFormat == 2024:
             raw_bytes = b''.join([setup.to_bytes() for setup in car_setups])
             raw_bytes += struct.pack("<f", next_front_wing_value)
             return cls(header, raw_bytes)
-        raise NotImplementedError(f"Unsupported game year: {header.m_gameYear}")
+        raise NotImplementedError(f"Unsupported packet format: {header.m_packetFormat}")
