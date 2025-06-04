@@ -40,10 +40,10 @@ from lib.f1_types import (F1PacketType, PacketCarDamageData,
                           PacketCarSetupData, PacketCarStatusData,
                           PacketCarTelemetryData, PacketEventData,
                           PacketFinalClassificationData, PacketLapData,
-                          PacketLapPositionsData, PacketMotionData,
-                          PacketParticipantsData, PacketSessionData,
-                          PacketSessionHistoryData, PacketTimeTrialData,
-                          PacketTyreSetsData, SessionType23, SessionType24)
+                          PacketMotionData, PacketParticipantsData,
+                          PacketSessionData, PacketSessionHistoryData,
+                          PacketTimeTrialData, PacketTyreSetsData,
+                          SessionType23, SessionType24)
 from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
                                          FinalClassificationNotification,
                                          ITCMessage)
