@@ -60,10 +60,10 @@ def main():
     # Run each test file
     results = []
     try:
-        for file_path in files:
+        for index, file_path in enumerate(files):
             file_name = os.path.basename(file_path)
             print('=' * 40)
-            print(f"\nRunning test: {file_name}")
+            print(f"\nRunning test {index+1} of {len(files)}: {file_name}")
 
             # Run telemetry replayer and show output in real-time
             replayer_cmd = ["poetry", "run", "python", "-m", "apps.dev_tools.telemetry_replayer",
@@ -78,7 +78,7 @@ def main():
             results.append((file_name, success))
 
             status = "PASSED" if success else "FAILED"
-            print(f"Test {status}: {file_name}")
+            print(f"Test {index+1} of {len(files)} {status}: {file_name}")
 
         time.sleep(10)
     finally:
