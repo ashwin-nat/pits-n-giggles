@@ -481,7 +481,7 @@ class CarSetupData:
                 fuel_load
             )
             return cls(raw_packet, packet_format)
-        raise NotImplementedError(f"Invalid game year: {packet_format}")
+        raise NotImplementedError(f"Invalid packet format: {packet_format}")
 
 class PacketCarSetupData:
     """

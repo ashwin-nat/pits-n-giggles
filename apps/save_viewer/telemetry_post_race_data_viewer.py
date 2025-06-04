@@ -311,7 +311,7 @@ def getTelemetryInfo():
             "weather-forecast-samples": [],
             "race-ended" : True,
             "f1-game-year" : g_json_data["game-year"],
-            "f1-packet-format" : g_json_data.get("packet-format", None),
+            "f1-packet-format" : g_json_data.get("packet-format"),
             "is-spectating" : False,
         }
         for sample in g_json_data["session-info"]["weather-forecast-samples"]:

@@ -43,8 +43,8 @@ from lib.socket_receiver import (AsyncTCPListener, AsyncUDPListener,
 
 class UnsupportedPacketFormat(Exception):
     """Raised when packet data is malformed or insufficient"""
-    def __init__(self, game_year):
-        super().__init__(f"Unsupported game year. {game_year}")
+    def __init__(self, packet_format):
+        super().__init__(f"Unsupported packet format. {packet_format}")
 
 class AsyncF1TelemetryManager:
     """
