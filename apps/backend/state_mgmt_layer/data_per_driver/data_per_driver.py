@@ -637,15 +637,10 @@ class DataPerDriver:
 
         return self.m_packet_copies.m_packet_tyre_sets.m_fittedIdx if self.m_packet_copies.m_packet_tyre_sets else None
 
-    def _getNextLapSnapshot(self) -> List[Tuple[int, PerLapSnapshotEntry]]:
-        """
-        Returns a generator for each lap's snapshot in order.
-
-        Returns:
-            List[Tuple[int, PerLapSnapshotEntry]]: List of Tuple containing lap number and snapshot data for each lap.
-        """
-        return [(lap_number, self.m_per_lap_snapshots[lap_number]) \
-                for lap_number in sorted(self.m_per_lap_snapshots.keys())]
+    def _getNextLapSnapshot(self) -> Iterator[Tuple[int, PerLapSnapshotEntry]]:
+        """Yields (lap number, snapshot) for each lap in chronological order."""
+        for lap_number in sorted(self.m_per_lap_snapshots.keys()):
+            yield lap_number, self.m_per_lap_snapshots[lap_number]
 
     def getTyreSetInfoAtLap(self, lap_num: Optional[int] = None) -> Optional[TyreSetInfo]:
         """Get the tyre set info at the specified lap number
@@ -731,12 +726,8 @@ class DataPerDriver:
             "surplus-laps-game" : 0.0,
         }
 
-    def getPositionHistoryJSON(self, packet_format: int, session_ended: bool) -> Dict[str, Any]:
+    def getPositionHistoryJSON(self) -> Dict[str, Any]:
         """Get the position history JSON.
-
-        Args:
-            packet_format (int): The packet format
-            session_ended (bool): Whether the session has ended
 
         Returns:
             Dict[str, Any]: Position history JSON
@@ -746,33 +737,10 @@ class DataPerDriver:
             "team": self.m_driver_info.team,
             "driver-number": self.m_driver_info.driver_number,
             "driver-position-history": [
-                {"lap-number": lap, "position": pos}
-                for lap, pos in self._positionHistoryHelper(packet_format, session_ended)
+                {"lap-number": lap, "position": snapshot.m_track_position}
+                for lap, snapshot in self._getNextLapSnapshot()
             ],
         }
-
-    def _positionHistoryHelper(self, _packet_format: int, _session_ended: bool) -> Iterator[Tuple[int, int]]:
-        """Helper function to get the position history
-
-        Args:
-            _packet_format (int): The packet format
-            _session_ended (bool): Whether the session has ended
-        """
-
-        # if packet_format >= 2025:
-        #     max_lap = (
-        #         len(self.m_position_history) - 1
-        #         if session_ended
-        #         else self.m_lap_info.m_current_lap - 1
-        #     )
-        #     for lap, pos in enumerate(self.m_position_history):
-        #         if lap <= max_lap:
-        #             yield lap, pos
-        # else:
-        yield from (
-            (lap, snap.m_track_position)
-            for lap, snap in self._getNextLapSnapshot()
-        )
 
     def getTyreStintHistoryJSON(self) -> Dict[str, Any]:
         """Get the tyre stint history JSON.

@@ -488,7 +488,7 @@ class SessionState:
             final_json["classification-data"][index] = obj_to_be_updated.toJSON(index)
             if is_position_history_supported:
                 final_json["position-history"].append(
-                    obj_to_be_updated.getPositionHistoryJSON(packet.m_header.m_packetFormat, session_ended=True))
+                    obj_to_be_updated.getPositionHistoryJSON())
                 final_json["tyre-stint-history"].append(obj_to_be_updated.getTyreStintHistoryJSON())
         final_json['classification-data'] = sorted(final_json['classification-data'], key=lambda x: x['track-position'])
         final_json['game-year'] = self.m_session_info.m_game_year

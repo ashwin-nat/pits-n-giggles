@@ -591,9 +591,7 @@ class DriversListRsp:
             return []
 
         # Use original list since this request comes only once in a bluemoon
-        packet_format = _session_state_ref.m_session_info.m_packet_format
-        session_ended = _session_state_ref.m_session_info.session_ended
-        return [data_per_driver.getPositionHistoryJSON(packet_format, session_ended) \
+        return [data_per_driver.getPositionHistoryJSON() \
                 for data_per_driver in _session_state_ref.m_driver_data \
                     if data_per_driver and data_per_driver.is_valid]
 

@@ -386,15 +386,17 @@ class F1TelemetryHandler:
 
             self.m_session_state_ref.processTimeTrialUpdate(packet)
 
-        @self.m_manager.on_packet(F1PacketType.LAP_POSITIONS)
-        async def processLapPositionsUpdate(packet: PacketLapPositionsData) -> None:
-            """Update the data structures with lap positions information
+        # We're not using this data, no need to waste CPU cycles processing it.
+        # Commenting it out for now
+        # @self.m_manager.on_packet(F1PacketType.LAP_POSITIONS)
+        # async def processLapPositionsUpdate(packet: PacketLapPositionsData) -> None:
+        #     """Update the data structures with lap positions information
 
-            Args:
-                packet (PacketLapPositionsData): The lap positions update packet
-            """
+        #     Args:
+        #         packet (PacketLapPositionsData): The lap positions update packet
+        #     """
 
-            self.m_session_state_ref.processLapPositionsUpdate(packet)
+        #     self.m_session_state_ref.processLapPositionsUpdate(packet)
 
         async def handeSessionStartEvent(packet: PacketEventData) -> None:
             """
