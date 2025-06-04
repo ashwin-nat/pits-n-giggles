@@ -25,7 +25,8 @@ import struct
 from typing import Any, Dict, List
 
 from .common import (ActualTyreCompound, F1Utils, PacketHeader, ResultReason,
-                     ResultStatus, VisualTyreCompound)
+                     ResultStatus, VisualTyreCompound,
+                     _validate_parse_fixed_segments)
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -572,7 +573,7 @@ class PacketFinalClassificationData:
         The class is designed to parse and represent the final classification data packet.
     """
 
-    max_cars = 22
+    MAX_CARS = 22
 
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
         """
@@ -593,12 +594,16 @@ class PacketFinalClassificationData:
 
         # Iterate over packet[1:] in steps of packet_len,
         # creating FinalClassificationData objects for each segment.
-        self.m_classificationData: List[FinalClassificationData] = [
-            FinalClassificationData(packet[i:i + packet_len], header.m_packetFormat)
-            for i in range(1, len(packet), packet_len)
-        ]
-        # strip the non-applicable data
-        self.m_classificationData = self.m_classificationData[:self.m_numCars]
+        self.m_classificationData: List[FinalClassificationData]
+        self.m_classificationData, _ = _validate_parse_fixed_segments(
+            data=packet,
+            offset=1,
+            item_cls=FinalClassificationData,
+            item_len=packet_len,
+            count=self.m_numCars,
+            max_count=self.MAX_CARS,
+            packet_format=header.m_packetFormat
+        )
 
     def __str__(self) -> str:
         """
