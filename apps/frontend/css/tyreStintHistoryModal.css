@@ -1,156 +1,197 @@
-.f1-standings-container {
-    font-family: 'Formula1', -apple-system, BlinkMacSystemFont, sans-serif;
-    width: 100%;
-    height: 100vh;
-    padding: 20px;
-    border-radius: 8px;
-    display: flex;
-    flex-direction: column;
-  }
+/* F1 Tyre Stint Chart Styles */
+.f1-tsc-container {
+  background: #141414;
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 15px;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: fit-content;
+}
 
-  .f1-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-  }
+.f1-tsc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 0 10px;
+}
 
-  .f1-track-name {
-    font-size: 2.5rem;
-    font-weight: bold;
-    margin: 0;
-  }
+.f1-tsc-track-name {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
 
-  .f1-race-info {
-    display: flex;
-    gap: 20px;
-  }
+.f1-tsc-info {
+  display: flex;
+  gap: 20px;
+}
 
-  .f1-info-box {
-    text-align: center;
-  }
+.f1-tsc-temp, .f1-tsc-laps {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #1f1f1f;
+  padding: 5px 15px;
+  border-radius: 4px;
+}
 
-  .f1-temp, .f1-laps {
-    display: block;
-    font-size: 1.2rem;
-    font-weight: bold;
-  }
+.f1-tsc-temp-label {
+  font-size: 10px;
+  opacity: 0.7;
+  margin-bottom: 2px;
+}
 
-  .f1-label {
-    font-size: 0.8rem;
-    opacity: 0.8;
-  }
+.f1-tsc-temp-value {
+  font-size: 16px;
+  font-weight: 700;
+}
 
-  .f1-lap-indicators {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 10px;
-    padding: 0 40px;
-  }
+.f1-tsc-lap-markers {
+  display: flex;
+  position: relative;
+  margin: 0 0 10px 200px;
+  height: 20px;
+}
 
-  .f1-lap-number {
-    font-size: 0.8rem;
-    opacity: 0.7;
-  }
+.f1-tsc-lap-marker {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 12px;
+  color: #666;
+}
 
-  .f1-driver-row {
-    display: flex;
-    align-items: center;
-    margin-bottom: 8px;
-    padding: 8px;
-    border-radius: 4px;
-    height: calc((100vh - 200px) / 20); /* Distribute remaining space evenly */
-  }
+.f1-tsc-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
 
-  .f1-driver-row:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-  }
+.f1-tsc-row {
+  display: flex;
+  height: 40px;
+  align-items: center;
+  background: #1f1f1f;
+  width: 100%;
+}
 
-  .f1-driver-info {
-    width: 300px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
+.f1-tsc-driver-info {
+  width: 200px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  gap: 15px;
+  flex-shrink: 0;
+}
 
-  .f1-position {
-    width: 25px;
-    text-align: right;
-  }
+.f1-tsc-position {
+  font-size: 14px;
+  font-weight: 700;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
 
-  .f1-driver-number {
-    font-weight: bold;
-  }
+.f1-tsc-driver {
+  flex-grow: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
 
-  .f1-driver-name {
-    font-weight: bold;
-    text-transform: uppercase;
-  }
+.f1-tsc-name {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1;
+}
 
-  .f1-team {
-    font-size: 0.8rem;
-    opacity: 0.7;
-  }
+.f1-tsc-delta {
+  font-size: 11px;
+  color: #888;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1;
+}
 
-  .f1-delta {
-    font-size: 0.8rem;
-  }
+.f1-tsc-stints {
+  position: relative;
+  flex-grow: 1;
+  height: 100%;
+  background: #141414;
+}
 
-  .f1-delta.positive {
-    color: #4CAF50;
-  }
+.f1-tsc-stint {
+  position: absolute;
+  height: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+}
 
-  .f1-delta.negative {
-    color: #F44336;
-  }
+.f1-tsc-tyre-icon {
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 30px;
+  width: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
 
-  .f1-stint-timeline {
-    flex-grow: 1;
-    height: 20px;
-    position: relative;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-  }
+.f1-tsc-tyre-icon svg {
+  height: 100%;
+  width: 100%;
+}
 
-  .f1-tyre-stint {
-    position: absolute;
-    height: 100%;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    padding-right: 4px;
-  }
+.f1-tsc-dnf {
+  position: absolute;
+  width: 3px;
+  height: 100%;
+  background: #ff0000;
+}
 
-  .f1-tyre-icon {
-    height: 24px;
-    width: 24px;
-    object-fit: contain;
-  }
+/* Tyre compound colors */
+.f1-tsc-soft {
+  background: #ff1801;
+  color: white;
+}
 
-  .tyre-soft {
-    background-color: #FF1E1E;
-  }
+.f1-tsc-super-soft {
+  background: #9b00ad;
+  color: white;
+}
 
-  .tyre-medium {
-    background-color: #FFF200;
-  }
+.f1-tsc-medium {
+  background: #ffd700;
+  color: black;
+}
 
-  .tyre-hard {
-    background-color: #FFFFFF;
-  }
+.f1-tsc-hard {
+  background: #ffffff;
+  color: black;
+}
 
-  .tyre-intermediate {
-    background-color: #43B02A;
-  }
+.f1-tsc-intermediate {
+  background: #00ff00;
+  color: black;
+}
 
-  .tyre-wet {
-    background-color: #0067AD;
-  }
+.f1-tsc-inters {
+  background: #00ff00;
+  color: black;
+}
 
-  .f1-standings-list {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-  }
+.f1-tsc-wet {
+  background: #0000ff;
+  color: white;
+}

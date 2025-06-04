@@ -1,7 +1,12 @@
 class RaceStatsModalPopulator {
-    constructor(data) {
+    constructor(data, iconCache) {
         this.data = data;
         this.tableClassNames = 'table table-bordered table-striped table-dark table-sm align-middle';
+        this.iconCache = iconCache;
+        console.log("🔍 iconCache contents:");
+        Object.entries(iconCache).forEach(([key, value]) => {
+            console.log(`- ${key}: ${value === null ? "null" : "not null"}`);
+        });
     }
 
     // Method to create the navigation tabs
@@ -17,7 +22,7 @@ class RaceStatsModalPopulator {
             { id: 'tyre-stint-records', label: 'Tyre Stint Records' },
             { id: 'custom-markers', label: 'Custom Markers' },
             { id: 'position-history', label: 'Position History' },
-            // { id: 'tyre-stint-history', label: 'Tyre Stint History (WIP)' },
+            { id: 'tyre-stint-history', label: 'Tyre Stint History (WIP)' },
         ];
 
         // Sort tabs alphabetically based on the label
@@ -56,7 +61,7 @@ class RaceStatsModalPopulator {
             { id: 'tyre-stint-records', method: this.populateTyreStintRecordsTab },
             { id: 'custom-markers', method: this.populateCustomMarkersTab },
             { id: 'position-history', method: this.populatePositionHistoryTab },
-            // { id: 'tyre-stint-history', method: this.populateTyreStintHistoryTab },
+            { id: 'tyre-stint-history', method: this.populateTyreStintHistoryTab },
         ];
 
         // Sort tabs alphabetically based on the label
@@ -294,20 +299,34 @@ class RaceStatsModalPopulator {
     populateTyreStintHistoryTab(tabPane) {
 
         const tyreStintHistoryGraphSubDiv = document.createElement('div');
+        // Initialize the chart
+        const chart = new TyreStintChart(tyreStintHistoryGraphSubDiv, {
+            height: 25,
+            gap: 5,
+            padding: 20,
+            totalLaps: 29,
+            trackName: "Sakhir",
+            airTemp: "22",
+            trackTemp: "35"
+            }, this.iconCache);
+
+        chart.updateChart(("tyre-stint-history" in this.data) ? (this.data["tyre-stint-history"]) : ([]));
+        // chart.initTooltips();
+
         // TODO: use actual values
-        const trackName = 'SAKHIR';
-        const airTemp = 32;
-        const trackTemp = 25;
-        const numLaps = 5;
-        const chart = new TyreStintHistoryChart(
-            tyreStintHistoryGraphSubDiv,
-            ("tyre-stint-history" in this.data) ? (this.data["tyre-stint-history"]) : ([]),
-            trackName,
-            trackTemp,
-            airTemp,
-            numLaps  // Now using actual number of laps from the data
-        );
-        chart.draw();
+        // const trackName = 'SAKHIR';
+        // const airTemp = 32;
+        // const trackTemp = 25;
+        // const numLaps = 5;
+        // const chart = new TyreStintHistoryChart(
+        //     tyreStintHistoryGraphSubDiv,
+        //     ("tyre-stint-history" in this.data) ? (this.data["tyre-stint-history"]) : ([]),
+        //     trackName,
+        //     trackTemp,
+        //     airTemp,
+        //     numLaps  // Now using actual number of laps from the data
+        // );
+        // chart.draw();
         tabPane.appendChild(tyreStintHistoryGraphSubDiv);
     }
 

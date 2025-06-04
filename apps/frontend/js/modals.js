@@ -234,7 +234,11 @@ class ModalManager {
     modalBody.innerHTML = '';
 
     // Create the modal content using the RaceStatsModalPopulator class
-    const modalDataPopulator = new RaceStatsModalPopulator(data);
+    console.log("🔍 iconCache contents:");
+    Object.entries(this.iconCache).forEach(([key, value]) => {
+        console.log(`- ${key}: ${value === null ? "null" : "not null"}`);
+    });
+    const modalDataPopulator = new RaceStatsModalPopulator(data, this.iconCache);
 
     // Create and append navigation tabs
     const navTabs = modalDataPopulator.createNavTabs();
