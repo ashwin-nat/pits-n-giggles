@@ -17,7 +17,7 @@ import gdown
 DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/13tIadKMvi3kuItkovT6GUTTHOL3YM6n_?usp=drive_link"
 CACHE_DIR = Path("test_data")
 
-def main():
+def main(port):
     # Create test data directory if it doesn't exist
     CACHE_DIR.mkdir(exist_ok=True)
 
@@ -67,7 +67,7 @@ def main():
 
             # Run telemetry replayer and show output in real-time
             replayer_cmd = ["poetry", "run", "python", "-m", "apps.dev_tools.telemetry_replayer",
-                          "--file-name", file_path]
+                          "--file-name", file_path, "--port", str(port)]
 
             try:
                 result = subprocess.run(replayer_cmd, timeout=120)
@@ -105,5 +105,5 @@ def main():
 
 if __name__ == "__main__":
     port = 20777
-    success = main()
+    success = main(port)
     sys.exit(0 if success else 1)
