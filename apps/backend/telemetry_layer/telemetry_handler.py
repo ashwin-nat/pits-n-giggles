@@ -265,7 +265,7 @@ class F1TelemetryHandler:
             # Perform the auto save stuff only for races
             if event_type_str := str(self.m_session_state_ref.m_session_info.m_session_type):
                 is_event_supported = True
-                if packet.m_header.m_gameYear == 23:
+                if packet.m_header.m_packetFormat == 2023:
                     unsupported_event_types_f1_23 = [
                         SessionType23.PRACTICE_1,
                         SessionType23.PRACTICE_2,

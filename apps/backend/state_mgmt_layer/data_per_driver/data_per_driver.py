@@ -730,8 +730,12 @@ class DataPerDriver:
             "surplus-laps-game" : 0.0,
         }
 
-    def getPositionHistoryJSON(self, game_year: int, session_ended: bool) -> Dict[str, Any]:
+    def getPositionHistoryJSON(self, packet_format: int, session_ended: bool) -> Dict[str, Any]:
         """Get the position history JSON.
+
+        Args:
+            packet_format (int): The packet format
+            session_ended (bool): Whether the session has ended
 
         Returns:
             Dict[str, Any]: Position history JSON
@@ -742,22 +746,22 @@ class DataPerDriver:
             "driver-number": self.m_driver_info.driver_number,
             "driver-position-history": [
                 {"lap-number": lap, "position": pos}
-                for lap, pos in self._positionHistoryHelper(game_year, session_ended)
+                for lap, pos in self._positionHistoryHelper(packet_format, session_ended)
             ],
         }
 
-    def _positionHistoryHelper(self, game_year: int, session_ended: bool) -> Iterator[Tuple[int, int]]:
+    def _positionHistoryHelper(self, packet_format: int, session_ended: bool) -> Iterator[Tuple[int, int]]:
         """Helper function to get the position history
 
         Args:
-            game_year (int): The game year
+            packet_format (int): The packet format
             session_ended (bool): Whether the session has ended
 
         Returns:
             Iterator[Tuple[int, int]]: The position history
         """
 
-        # if game_year >= 25:
+        # if packet_format >= 2025:
         #     max_lap = (
         #         len(self.m_position_history) - 1
         #         if session_ended
