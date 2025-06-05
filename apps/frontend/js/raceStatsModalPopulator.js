@@ -3,10 +3,6 @@ class RaceStatsModalPopulator {
         this.data = data;
         this.tableClassNames = 'table table-bordered table-striped table-dark table-sm align-middle';
         this.iconCache = iconCache;
-        console.log("🔍 iconCache contents:");
-        Object.entries(iconCache).forEach(([key, value]) => {
-            console.log(`- ${key}: ${value === null ? "null" : "not null"}`);
-        });
     }
 
     // Method to create the navigation tabs
@@ -22,7 +18,7 @@ class RaceStatsModalPopulator {
             { id: 'tyre-stint-records', label: 'Tyre Stint Records' },
             { id: 'custom-markers', label: 'Custom Markers' },
             { id: 'position-history', label: 'Position History' },
-            { id: 'tyre-stint-history', label: 'Tyre Stint History (WIP)' },
+            { id: 'tyre-stint-history', label: 'Tyre Stint History' },
         ];
 
         // Sort tabs alphabetically based on the label
