@@ -298,6 +298,9 @@ class RaceStatsModalPopulator {
 
     populateTyreStintHistoryTab(tabPane) {
 
+        if (this.data["session-info"] == null) {
+            return;
+        }
         const tyreStintHistoryGraphSubDiv = document.createElement('div');
         let data, isNewStyle;
         if ("tyre-stint-history" in this.data && this.data["tyre-stint-history"].length > 0) {

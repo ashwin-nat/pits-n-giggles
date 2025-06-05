@@ -70,14 +70,17 @@ class TyreStintChart {
 
     const lapMarkers = document.createElement('div');
     lapMarkers.classList.add('f1-tsc-lap-markers');
-    const intervals = [1, 5, 10, 15, 20, 25];
+
+    // Calculate lap intervals based on total laps
+    const intervals = this.calculateLapIntervals(this.options.maxLaps);
     intervals.forEach(lap => {
       const marker = document.createElement('div');
       marker.classList.add('f1-tsc-lap-marker');
-      marker.style.left = `${(lap / this.options.maxLaps) * 100}%`;
+      marker.style.left = `${((lap - 1) / (this.options.maxLaps)) * 100}%`;
       marker.textContent = lap;
       lapMarkers.appendChild(marker);
     });
+
     lapMarkersContainer.appendChild(lapMarkers);
     this.container.appendChild(lapMarkersContainer);
 
@@ -85,6 +88,28 @@ class TyreStintChart {
     this.chartContent = document.createElement('div');
     this.chartContent.classList.add('f1-tsc-content');
     this.container.appendChild(this.chartContent);
+  }
+
+  calculateLapIntervals(totalLaps) {
+    if (totalLaps <= 5) {
+      return Array.from({length: totalLaps}, (_, i) => i + 1);
+    } else if (totalLaps < 40) {
+      const step = Math.ceil(totalLaps / 4);
+      const intervals = [];
+      for (let lap = 1; lap <= totalLaps; lap += step) {
+        intervals.push(lap);
+      }
+      if (!intervals.includes(totalLaps)) {
+        intervals.push(totalLaps);
+      }
+      return intervals;
+    } else {
+      const intervals = [];
+      for (let lap = 10; lap <= totalLaps; lap += 10) {
+        intervals.push(lap);
+      }
+      return intervals;
+    }
   }
 
   updateChart(data) {
@@ -121,7 +146,7 @@ class TyreStintChart {
 
     const teamEl = document.createElement('div');
     teamEl.classList.add('f1-tsc-team');
-    teamEl.textContent = getTeamName(driver.team);
+    teamEl.textContent = driver.team;
 
     driverEl.appendChild(nameEl);
     driverEl.appendChild(teamEl);
@@ -165,8 +190,10 @@ class TyreStintChart {
     const stints = document.createElement('div');
     stints.classList.add('f1-tsc-stints');
 
+    let dnfMarkerLeftPosition = 0.0;
     driver['tyre-stint-history'].forEach(stint => {
       const stintEl = this.createStintElement(stint);
+      dnfMarkerLeftPosition += stintEl.style.width;
       stints.appendChild(stintEl);
     });
 
@@ -175,7 +202,7 @@ class TyreStintChart {
     if (lastStint && lastStint['end-lap'] < this.options.maxLaps) {
       const dnfMarker = document.createElement('div');
       dnfMarker.classList.add('f1-tsc-dnf');
-      dnfMarker.style.left = `${(lastStint['end-lap'] / this.options.maxLaps) * 100}%`;
+      dnfMarker.style.left = dnfMarkerLeftPosition;
       stints.appendChild(dnfMarker);
     }
 
@@ -193,8 +220,8 @@ class TyreStintChart {
     const stintEl = document.createElement('div');
     stintEl.classList.add('f1-tsc-stint');
     stintEl.classList.add(`f1-tsc-${compound.toLowerCase().replace(/\s+/g, '-')}`);
-    stintEl.style.left = `${(startLap / this.options.maxLaps) * 100}%`;
-    stintEl.style.width = `${((endLap - startLap) / this.options.maxLaps) * 100}%`;
+    stintEl.style.left = `${((startLap - 1) / (this.options.maxLaps)) * 100}%`;
+    stintEl.style.width = `${((endLap - startLap) / (this.options.maxLaps)) * 100}%`;
 
     // Add tyre icon and tooltip
     if (this.iconCache) {
@@ -204,10 +231,8 @@ class TyreStintChart {
         iconWrapper.classList.add('f1-tsc-tyre-icon');
         iconWrapper.appendChild(svgElement.cloneNode(true));
 
-        console.log('Adding tooltip events to tyre icon');
         // Add tooltip events
         iconWrapper.addEventListener('mouseover', (e) => {
-          console.log('Mouseover event triggered');
           const tooltipContent = `
             ${compound} Tyre<br>
             Laps: ${startLap} - ${endLap}<br>
@@ -219,12 +244,10 @@ class TyreStintChart {
         });
 
         iconWrapper.addEventListener('mousemove', (e) => {
-          console.log('Mousemove event triggered');
           this.updateTooltipPosition(e);
         });
 
         iconWrapper.addEventListener('mouseout', () => {
-          console.log('Mouseout event triggered');
           this.tooltip.style.display = 'none';
         });
 
@@ -239,6 +262,5 @@ class TyreStintChart {
     const offset = 10;
     this.tooltip.style.left = `${e.pageX + offset}px`;
     this.tooltip.style.top = `${e.pageY + offset}px`;
-    console.log('Tooltip position updated:', { left: this.tooltip.style.left, top: this.tooltip.style.top });
   }
 }
