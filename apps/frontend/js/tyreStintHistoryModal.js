@@ -263,7 +263,21 @@ class TyreStintChart {
 
   updateTooltipPosition(e) {
     const offset = 10;
-    this.tooltip.style.left = `${e.pageX + offset}px`;
-    this.tooltip.style.top = `${e.pageY + offset}px`;
+    const tooltipRect = this.tooltip.getBoundingClientRect();
+    const tooltipWidth = tooltipRect.width;
+    const tooltipHeight = tooltipRect.height;
+
+    let left = e.pageX + offset;
+    let top = e.pageY + offset;
+
+    // Clamp right and bottom edges
+    const maxLeft = window.innerWidth - tooltipWidth;
+    const maxTop = window.innerHeight - tooltipHeight;
+
+    left = Math.min(left, maxLeft);
+    top = Math.min(top, maxTop);
+
+    this.tooltip.style.left = `${left}px`;
+    this.tooltip.style.top = `${top}px`;
   }
 }

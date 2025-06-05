@@ -4,7 +4,7 @@
   border-radius: 8px;
   width: 100%;
   box-sizing: border-box;
-  padding: 0 20px;
+  padding: 20px 20px;
 }
 
 .f1-tsc-header {
@@ -88,7 +88,7 @@
   padding-bottom: 50px;
   border-radius: 8px;
   overflow: hidden;
-  padding: 0 20px;
+  padding: 20px 20px;
 }
 
 .f1-tsc-row {
@@ -237,11 +237,6 @@
 
 .f1-tsc-hard {
   background: #ffffff;
-  color: black;
-}
-
-.f1-tsc-intermediate {
-  background: #00ff00;
   color: black;
 }
 
