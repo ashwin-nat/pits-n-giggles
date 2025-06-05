@@ -133,6 +133,12 @@ To compile the application from source code, follow the instructions in [BUILDIN
 ### Launcher
 ![App Launcher](screenshots/launcher.png)
 
+### Position History
+![Position History](screenshots/position-history.png)
+
+### Tyre Stint History
+![Tyre Stint History](screenshots/tyre-stint-history.png)
+
 ## Architecture
 ![Architecture Diagram](docs/arch-diagram.png)
 
