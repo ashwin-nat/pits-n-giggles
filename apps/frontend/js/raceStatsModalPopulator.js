@@ -297,16 +297,20 @@ class RaceStatsModalPopulator {
         if (this.data["session-info"] == null) {
             return;
         }
-        const tyreStintHistoryGraphSubDiv = document.createElement('div');
+
         let data, isNewStyle;
         if ("tyre-stint-history" in this.data && this.data["tyre-stint-history"].length > 0) {
             data = this.data["tyre-stint-history"];
             isNewStyle = false;
-        } else {
+        } else if ("tyre-stint-history-v2" in this.data && this.data["tyre-stint-history-v2"].length > 0) {
             data = this.data["tyre-stint-history-v2"];
             isNewStyle = true;
+        } else {
+            console.log("Tyre Stint History data not available");
+            return;
         }
         // Initialize the chart
+        const tyreStintHistoryGraphSubDiv = document.createElement('div');
         const chart = new TyreStintChart(tyreStintHistoryGraphSubDiv, {
             height: 25,
             gap: 5,
