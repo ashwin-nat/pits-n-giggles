@@ -146,7 +146,7 @@ class TyreStintChart {
 
     const teamEl = document.createElement('div');
     teamEl.classList.add('f1-tsc-team');
-    teamEl.textContent = driver.team;
+    teamEl.textContent = getTeamName(driver.team);
 
     driverEl.appendChild(nameEl);
     driverEl.appendChild(teamEl);
