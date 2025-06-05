@@ -193,7 +193,9 @@ class TyreStintChart {
     let dnfMarkerLeftPosition = 0.0;
     driver['tyre-stint-history'].forEach(stint => {
       const stintEl = this.createStintElement(stint);
-      dnfMarkerLeftPosition += stintEl.style.width;
+      const widthStr = stintEl.style.width || "0%";
+      const widthNum = parseFloat(widthStr); // removes '%' and converts to float
+      dnfMarkerLeftPosition += widthNum;
       stints.appendChild(stintEl);
     });
 
@@ -202,7 +204,8 @@ class TyreStintChart {
     if (lastStint && lastStint['end-lap'] < this.options.maxLaps) {
       const dnfMarker = document.createElement('div');
       dnfMarker.classList.add('f1-tsc-dnf');
-      dnfMarker.style.left = dnfMarkerLeftPosition;
+      dnfMarker.style.left = `${dnfMarkerLeftPosition}%`;
+      console.log('setting dnfMarkerLeftPosition', dnfMarkerLeftPosition);
       stints.appendChild(dnfMarker);
     }
 
