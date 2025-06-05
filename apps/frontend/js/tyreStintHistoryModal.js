@@ -14,11 +14,23 @@ class TyreStintChart {
       maxLaps: options.totalLaps || 0,
       trackName: options.trackName || '',
       airTemp: options.airTemp || '',
-      trackTemp: options.trackTemp || ''
+      trackTemp: options.trackTemp || '',
+      isNewStyle: options.isNewStyle || false
     };
 
     this.iconCache = iconCache;
+    console.log('Creating tooltip...');
+    this.tooltip = this.createTooltip();
     this.initializeChart();
+  }
+
+  createTooltip() {
+    const tooltip = document.createElement('div');
+    tooltip.classList.add('f1-tsc-tooltip');
+    tooltip.style.display = 'none';
+    document.body.appendChild(tooltip);
+    console.log('Tooltip created and added to body');
+    return tooltip;
   }
 
   initializeChart() {
@@ -40,14 +52,22 @@ class TyreStintChart {
           <span class="f1-tsc-temp-value">${this.options.airTemp}°C</span>
         </div>
         <div class="f1-tsc-laps">
-          <span class="f1-tsc-temp-value">${this.options.maxLaps}</span>
           <span class="f1-tsc-temp-label">LAPS</span>
+          <span class="f1-tsc-temp-value">${this.options.maxLaps}</span>
         </div>
       </div>
     `;
     this.container.appendChild(header);
 
-    // Add lap markers
+    // Add lap markers with axis label
+    const lapMarkersContainer = document.createElement('div');
+    lapMarkersContainer.classList.add('f1-tsc-lap-markers-container');
+
+    const axisLabel = document.createElement('div');
+    axisLabel.classList.add('f1-tsc-axis-label');
+    axisLabel.textContent = 'LAP NUMBER';
+    lapMarkersContainer.appendChild(axisLabel);
+
     const lapMarkers = document.createElement('div');
     lapMarkers.classList.add('f1-tsc-lap-markers');
     const intervals = [1, 5, 10, 15, 20, 25];
@@ -58,7 +78,8 @@ class TyreStintChart {
       marker.textContent = lap;
       lapMarkers.appendChild(marker);
     });
-    this.container.appendChild(lapMarkers);
+    lapMarkersContainer.appendChild(lapMarkers);
+    this.container.appendChild(lapMarkersContainer);
 
     // Container for driver rows
     this.chartContent = document.createElement('div');
@@ -98,15 +119,47 @@ class TyreStintChart {
     nameEl.classList.add('f1-tsc-name');
     nameEl.textContent = driver.name;
 
-    const deltaEl = document.createElement('div');
-    deltaEl.classList.add('f1-tsc-delta');
-    const deltaTime = (driver['delta-to-leader'] / 1000).toFixed(3);
-    deltaEl.textContent = position === 1 ? 'LEADER' : `+${deltaTime}`;
+    const teamEl = document.createElement('div');
+    teamEl.classList.add('f1-tsc-team');
+    teamEl.textContent = getTeamName(driver.team);
 
     driverEl.appendChild(nameEl);
-    driverEl.appendChild(deltaEl);
+    driverEl.appendChild(teamEl);
+
+    const rightInfo = document.createElement('div');
+    rightInfo.classList.add('f1-tsc-right-info');
+
+    // Position change with chevron
+    if (driver.position && driver['grid-position']) {
+      const posChange = driver['grid-position'] - driver.position;
+      const changeEl = document.createElement('div');
+      changeEl.classList.add('f1-tsc-position-text');
+
+      if (posChange > 0) {
+        changeEl.classList.add('gained');
+        changeEl.innerHTML = `▲ ${posChange}`;
+      } else if (posChange < 0) {
+        changeEl.classList.add('lost');
+        changeEl.innerHTML = `▼ ${Math.abs(posChange)}`;
+      } else {
+        changeEl.classList.add('neutral');
+        changeEl.innerHTML = `― 0`;
+      }
+
+      rightInfo.appendChild(changeEl);
+    }
+
+    if (this.options.isNewStyle) {
+      const deltaEl = document.createElement('div');
+      deltaEl.classList.add('f1-tsc-delta');
+      const deltaTime = (driver['delta-to-leader'] / 1000).toFixed(3);
+      deltaEl.textContent = position === 1 ? 'LEADER' : `+${deltaTime}`;
+      rightInfo.appendChild(deltaEl);
+    }
+
     info.appendChild(positionEl);
     info.appendChild(driverEl);
+    info.appendChild(rightInfo);
 
     // Stint visualization
     const stints = document.createElement('div');
@@ -143,17 +196,49 @@ class TyreStintChart {
     stintEl.style.left = `${(startLap / this.options.maxLaps) * 100}%`;
     stintEl.style.width = `${((endLap - startLap) / this.options.maxLaps) * 100}%`;
 
-    // Add tyre icon using the iconCache class
+    // Add tyre icon and tooltip
     if (this.iconCache) {
       const svgElement = this.iconCache.getIcon(compound);
       if (svgElement) {
         const iconWrapper = document.createElement('div');
         iconWrapper.classList.add('f1-tsc-tyre-icon');
         iconWrapper.appendChild(svgElement.cloneNode(true));
+
+        console.log('Adding tooltip events to tyre icon');
+        // Add tooltip events
+        iconWrapper.addEventListener('mouseover', (e) => {
+          console.log('Mouseover event triggered');
+          const tooltipContent = `
+            ${compound} Tyre<br>
+            Laps: ${startLap} - ${endLap}<br>
+            Duration: ${endLap - startLap + 1} laps
+          `;
+          this.tooltip.innerHTML = tooltipContent;
+          this.tooltip.style.display = 'block';
+          this.updateTooltipPosition(e);
+        });
+
+        iconWrapper.addEventListener('mousemove', (e) => {
+          console.log('Mousemove event triggered');
+          this.updateTooltipPosition(e);
+        });
+
+        iconWrapper.addEventListener('mouseout', () => {
+          console.log('Mouseout event triggered');
+          this.tooltip.style.display = 'none';
+        });
+
         stintEl.appendChild(iconWrapper);
       }
     }
 
     return stintEl;
+  }
+
+  updateTooltipPosition(e) {
+    const offset = 10;
+    this.tooltip.style.left = `${e.pageX + offset}px`;
+    this.tooltip.style.top = `${e.pageY + offset}px`;
+    console.log('Tooltip position updated:', { left: this.tooltip.style.left, top: this.tooltip.style.top });
   }
 }

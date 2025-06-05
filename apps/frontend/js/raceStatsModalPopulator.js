@@ -299,18 +299,28 @@ class RaceStatsModalPopulator {
     populateTyreStintHistoryTab(tabPane) {
 
         const tyreStintHistoryGraphSubDiv = document.createElement('div');
+        let data, isNewStyle;
+        if ("tyre-stint-history" in this.data && this.data["tyre-stint-history"].length > 0) {
+            data = this.data["tyre-stint-history"];
+            isNewStyle = false;
+        } else {
+            data = this.data["tyre-stint-history-v2"];
+            isNewStyle = true;
+        }
         // Initialize the chart
         const chart = new TyreStintChart(tyreStintHistoryGraphSubDiv, {
             height: 25,
             gap: 5,
             padding: 20,
-            totalLaps: 29,
-            trackName: "Sakhir",
-            airTemp: "22",
-            trackTemp: "35"
+            totalLaps: this.data["session-info"]["total-laps"],
+            trackName: this.data["session-info"]["track-id"],
+            airTemp: this.data["session-info"]["air-temperature"],
+            trackTemp: this.data["session-info"]["track-temperature"],
+            isNewStyle: isNewStyle,
             }, this.iconCache);
 
-        chart.updateChart(("tyre-stint-history" in this.data) ? (this.data["tyre-stint-history"]) : ([]));
+
+        chart.updateChart(data);
         // chart.initTooltips();
 
         // TODO: use actual values

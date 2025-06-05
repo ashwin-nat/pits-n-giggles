@@ -195,7 +195,10 @@ class OverallRaceStatsRsp:
                                     is_spectator_mode=True,
                                     is_tt_mode=str(_session_state_ref.m_session_info.m_session_type) == "Time Trial")
             self.m_rsp["position-history"] = drivers_list_rsp.getPositionHistoryJSON()
-            self.m_rsp["tyre-stint-history"] = drivers_list_rsp.getTyreStintHistoryJSON()
+            if _session_state_ref.m_session_info.m_packet_format == 2023:
+                self.m_rsp["tyre-stint-history"] = drivers_list_rsp.getTyreStintHistoryJSON()
+            else:
+                self.m_rsp["tyre-stint-history-v2"] = drivers_list_rsp.getTyreStintHistoryJSONv2()
 
     def toJSON(self) -> Dict[str, Any]:
         """Dump this object into JSON
@@ -605,8 +608,25 @@ class DriversListRsp:
         if not self.m_json_rsp:
             return []
 
-        return [data_per_driver.getTyreStintHistoryJSON() for data_per_driver in _session_state_ref.m_driver_data \
+        ret = [data_per_driver.getTyreStintHistoryJSON() \
+                for data_per_driver in _session_state_ref.m_driver_data \
                 if data_per_driver and data_per_driver.is_valid]
+        return sorted(ret, key=lambda x: x["position"])
+
+    def getTyreStintHistoryJSONv2(self) -> List[Dict[str, Any]]:
+        """Get tyre stint history.
+
+        Returns:
+            List[Dict[str, Any]]: The tyre stint history JSON
+        """
+
+        if not self.m_json_rsp:
+            return []
+
+        ret = [data_per_driver.getTyreStintHistoryJSONv2() \
+                for data_per_driver in _session_state_ref.m_driver_data \
+                if data_per_driver and data_per_driver.is_valid]
+        return sorted(ret, key=lambda x: x["position"])
 
     def getBestSectorTimes(self) -> List[Optional[int]]:
         """Get best sector times.
@@ -739,6 +759,7 @@ class DriversListRsp:
 
         return {
             "position": _getValueOrDefaultValue(driver_data.m_driver_info.position),
+            "grid-position": _getValueOrDefaultValue(driver_data.m_driver_info.grid_position),
             "name": _getValueOrDefaultValue(driver_data.m_driver_info.name),
             "team": _getValueOrDefaultValue(driver_data.m_driver_info.team),
             "is-fastest": _getValueOrDefaultValue(index == _session_state_ref.m_fastest_index),

@@ -2,10 +2,8 @@
 .f1-tsc-container {
   color: #ffffff;
   border-radius: 8px;
-  padding: 15px;
   width: 100%;
   box-sizing: border-box;
-  min-height: fit-content;
 }
 
 .f1-tsc-header {
@@ -47,42 +45,42 @@
   font-weight: 700;
 }
 
-.f1-tsc-laps {
-  flex-direction: column-reverse;
-}
-
 .f1-tsc-lap-markers {
   display: flex;
   position: relative;
   margin: 0 0 10px 200px;
   height: 30px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
 }
 
 .f1-tsc-lap-marker {
   position: absolute;
   transform: translateX(-50%);
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.8);
   bottom: 8px;
 }
 
 .f1-tsc-content {
   display: flex;
   flex-direction: column;
-  gap: 8px;
   width: 100%;
   background: #141414;
   border-radius: 8px;
-  padding: 8px;
+  overflow: hidden;
 }
 
 .f1-tsc-row {
   display: flex;
   height: 40px;
   align-items: center;
-  background: #1f1f1f;
   width: 100%;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: #1a1a1a;
+}
+
+.f1-tsc-row:last-child {
+  border-bottom: none;
 }
 
 .f1-tsc-driver-info {
@@ -108,7 +106,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 4px;
+  gap: 2px;
 }
 
 .f1-tsc-name {
@@ -120,7 +118,7 @@
   line-height: 1;
 }
 
-.f1-tsc-delta {
+.f1-tsc-team {
   font-size: 11px;
   color: #888;
   white-space: nowrap;
@@ -129,11 +127,47 @@
   line-height: 1;
 }
 
+.f1-tsc-right-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.f1-tsc-position-text {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.f1-tsc-position-text.gained {
+  color: #00ff00;
+}
+
+.f1-tsc-position-text.lost {
+  color: #ff0000;
+}
+
+.f1-tsc-position-text.neutral {
+  color: #888;
+}
+
+.f1-tsc-delta {
+  font-size: 11px;
+  color: #888;
+  line-height: 1;
+}
+
 .f1-tsc-stints {
   position: relative;
   flex-grow: 1;
   height: 100%;
   background: #141414;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .f1-tsc-stint {
@@ -145,7 +179,7 @@
 
 .f1-tsc-tyre-icon {
   position: absolute;
-  left: 2px;
+  left: -15px;
   top: 50%;
   transform: translateY(-50%);
   height: 30px;
@@ -154,11 +188,7 @@
   align-items: center;
   justify-content: center;
   z-index: 1;
-}
-
-.f1-tsc-tyre-icon svg {
-  height: 100%;
-  width: 100%;
+  cursor: pointer;
 }
 
 .f1-tsc-dnf {
@@ -202,4 +232,20 @@
 .f1-tsc-wet {
   background: #0000ff;
   color: white;
+}
+
+/* Tooltip styles */
+.f1-tsc-tooltip {
+  position: fixed;
+  background: rgba(20, 20, 20, 0.95);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  pointer-events: none;
+  z-index: 9999;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
