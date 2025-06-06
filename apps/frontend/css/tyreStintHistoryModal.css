@@ -61,7 +61,7 @@
   margin-right: 10px;
   width: 200px;
   text-align: right;
-  padding-right: 20px;
+  padding-right: 10px;
   flex-shrink: 0;
 }
 
@@ -89,6 +89,7 @@
   border-radius: 8px;
   overflow: hidden;
   padding: 20px 20px;
+  margin-bottom: 20px;
 }
 
 .f1-tsc-row {
@@ -111,7 +112,7 @@
   padding: 0 10px;
   gap: 15px;
   flex-shrink: 0;
-  margin-right: 20px;
+  margin-right: 10px;
 }
 
 .f1-tsc-position {
@@ -188,7 +189,7 @@
   position: relative;
   flex-grow: 1;
   height: 100%;
-  background: #141414;
+  margin-right: 20px;
 }
 
 .f1-tsc-stint {
@@ -196,6 +197,7 @@
   height: 8px;
   top: 50%;
   transform: translateY(-50%);
+  cursor: pointer;
 }
 
 .f1-tsc-tyre-icon {
