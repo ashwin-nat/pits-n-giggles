@@ -292,8 +292,7 @@ class TelemetryRenderer {
 
   setDeltaColumnState(isLiveDataMode) {
     // hide the column in live mode
-    const shouldHide = isLiveDataMode;
-    this.hideColumn('DELTA', isLiveDataMode);
+    this.hideColumn('DELTA 🛈', isLiveDataMode);
   }
 
   setFuelColumnState(isLiveDataMode) {
