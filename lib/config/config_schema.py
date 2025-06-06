@@ -22,9 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import os
 import re
-from pathlib import Path
 from typing import ClassVar, Optional
 
 from pydantic import BaseModel, Field, field_validator
@@ -52,7 +50,7 @@ class LoggingSettings(BaseModel):
     # Pydantic v2 field validators receive the model class as 'cls' automatically.
     # Not a classmethod, so we disable the no-self-argument warning.
     @field_validator("log_file")
-    def validate_log_file(cls, v: str) -> str:
+    def validate_log_file(cls, v: str) -> str: # pylint: disable=no-self-argument
         if not v or not v.strip():
             raise ValueError("Log file name cannot be empty")
         v = v.strip()
