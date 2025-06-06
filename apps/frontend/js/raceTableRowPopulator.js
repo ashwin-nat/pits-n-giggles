@@ -382,35 +382,23 @@ class RaceTableRowPopulator {
     }
 
     addErsBar(cell, ersPerc) {
-
-        if (ersPerc === null) {
+        if (ersPerc == null) return;
+        if (ersPerc < 0.0 || ersPerc > 100.0) {
+            console.error(`ERS percentage is out of range: ${ersPerc}`);
             return;
         }
 
-        // Container for the ERS bar
-        const ersbar = document.createElement('div');
-        ersbar.classList.add('d-flex', 'w-100', 'p-0');
-        ersbar.style.height = '0.33em';
-        ersbar.style.backgroundColor = '#222'; // Background for empty bar
-        ersbar.style.borderRadius = '0.25rem';
-        ersbar.style.overflow = 'hidden';
+        const levelClass = ersPerc > 15 ? 'normal' : 'low';
 
-        // Clamp percentage to [0, 100]
-        const clampedPerc = Math.min(Math.max(ersPerc, 0), 100);
-        const batteryNormal = '#00e676';
-        const batteryLow = '#ff1744';
-        const fillColor = (ersPerc > 15.0) ? batteryNormal : batteryLow;
+        const bar = document.createElement('div');
+        bar.className = 'ers-bar';
 
-        // Create the fill bar
         const fill = document.createElement('div');
-        fill.style.width = `${clampedPerc}%`;
-        fill.style.backgroundColor = fillColor;
-        fill.style.transition = 'width 0.2s ease-in-out';
-        fill.style.borderRadius = '0.25rem 0 0 0.25rem';
+        fill.className = `ers-bar__fill ers-bar__fill--${levelClass}`;
+        fill.style.width = `${ersPerc}%`;
 
-        // Append fill to container
-        ersbar.appendChild(fill);
-        cell.appendChild(ersbar);
+        bar.append(fill);
+        cell.append(bar);
     }
 
 }
