@@ -27,7 +27,7 @@ from tkinter import filedialog, ttk
 
 from ..console_interface import ConsoleInterface
 from .base_mgr import PngAppMgrBase
-from ..config import PngSettings
+from lib.config import PngSettings
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 

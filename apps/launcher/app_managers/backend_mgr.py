@@ -25,9 +25,10 @@
 import webbrowser
 from tkinter import ttk
 
+from lib.config import PngSettings
+
 from ..console_interface import ConsoleInterface
 from .base_mgr import PngAppMgrBase
-from ..config import PngSettings
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 

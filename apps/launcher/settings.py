@@ -23,48 +23,17 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import configparser
-import os
 import tkinter as tk
-import traceback
 from tkinter import BooleanVar, IntVar, StringVar, messagebox, ttk
 from typing import Callable
 
 from pydantic import ValidationError
 
-from .config import PngSettings, load_config_from_ini, save_config_to_ini
+from lib.config import PngSettings, load_config_from_ini, save_config_to_ini
+
 from .console_interface import ConsoleInterface
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
-
-# Default settings - everything is a string in this layer
-DEFAULT_SETTINGS = {
-    "Network": {
-        "telemetry_port": "20777",
-        "server_port": "4768",
-        "save_viewer_port": "4769",
-        "udp_custom_action_code": "12",
-        "udp_tyre_delta_action_code": "11"
-    },
-    "Capture": {
-        "post_race_data_autosave": "True"
-    },
-    "Display": {
-        "refresh_interval": "200",
-        "disable_browser_autoload": "False"
-    },
-    "Logging": {
-        "log_file": "png.log",
-        "log_file_size": "1000000"
-    },
-    "Privacy": {
-        "process_car_setup": "False"
-    },
-    "Forwarding": {
-        "target_1": "",
-        "target_2": "",
-        "target_3": "",
-    }
-}
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
