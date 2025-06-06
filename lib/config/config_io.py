@@ -24,6 +24,7 @@
 
 import os
 from configparser import ConfigParser
+from typing import Any
 
 from .config_schema import PngSettings
 
@@ -50,7 +51,7 @@ def load_config_from_ini(path: str) -> PngSettings:
         model = PngSettings.model_validate(raw)
 
         # Save updated config if the loaded raw data differs from fully parsed+serialized model
-        if raw != model.model_dump():
+        if raw != _stringify_dict(model.model_dump()):
             save_config_to_ini(model, path)
     else:
         model = PngSettings()
@@ -69,3 +70,24 @@ def save_config_to_ini(settings: PngSettings, path: str) -> None:
     cp.read_dict(settings.model_dump(by_alias=True))
     with open(path, 'w', encoding='utf-8') as f:
         cp.write(f)
+
+def _stringify_dict(d: Any) -> Any:
+    """
+    Recursively converts all values in a nested dictionary to strings.
+
+    Args:
+        d (Any): The input data structure, typically a dictionary or a nested dictionary.
+
+    Returns:
+        Any: A new data structure with the same keys as `d`, but all leaf values converted to strings.
+             Non-dict inputs are converted to strings directly.
+
+    Example:
+        >>> stringify_dict({'a': 1, 'b': {'c': True}})
+        {'a': '1', 'b': {'c': 'True'}}
+    """
+    if isinstance(d, dict):
+        # Recursively apply to each key-value pair
+        return {k: _stringify_dict(v) for k, v in d.items()}
+    # Base case: convert non-dict leaf value to string
+    return str(d)

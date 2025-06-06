@@ -91,7 +91,7 @@ class TestLoggingSettings(TestF1ConfigBase):
 
         # Invalid values: zero and negative
         for invalid_size in (0, -1, -100):
-            with self.assertRaises(ValueError):
+            with self.assertRaises(ValidationError):
                 LoggingSettings(log_file_size=invalid_size)
 
     def test_log_file_path_validation(self):
@@ -103,12 +103,12 @@ class TestLoggingSettings(TestF1ConfigBase):
 
         # Directory components should raise
         for invalid_path in ("logs/app.log", "logs\\app.log", "/var/log/app.log", "C:\\logs\\app.log"):
-            with self.assertRaises(ValueError, msg=f"Expected ValueError for path: {invalid_path}"):
+            with self.assertRaises(ValidationError, msg=f"Expected ValidationError for path: {invalid_path}"):
                 LoggingSettings(log_file=invalid_path)
 
         # Empty or whitespace-only strings should raise
         for bad in ("", "   "):
-            with self.assertRaises(ValueError):
+            with self.assertRaises(ValidationError):
                 LoggingSettings(log_file=bad)
 
         # Leading/trailing spaces should be stripped and accepted if valid

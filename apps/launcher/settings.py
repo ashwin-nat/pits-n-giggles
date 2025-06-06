@@ -103,16 +103,14 @@ class SettingsWindow:
         self.entry_vars = {}
 
         # To populate UI, iterate through fields like:
-        for section_name, section_model in self.settings:
+        for section_name, field in type(self.settings).model_fields.items():
+            section_model = getattr(self.settings, section_name)
             section_name_formatted = self._pascal_to_title(section_name)
             tab = ttk.Frame(self.notebook)
             self.notebook.add(tab, text=section_name_formatted)
             self.entry_vars.setdefault(section_name, {})
 
-            # Use model_fields instead of __fields__
-            model_fields = section_model.model_fields
-
-            for i, (field_name, field) in enumerate(model_fields.items()):
+            for i, (field_name, field) in enumerate(type(section_model).model_fields.items()):
                 label_text = field.description or field_name
                 label = ttk.Label(tab, text=f"{label_text}:")
                 label.grid(row=i, column=0, sticky="w", padx=5, pady=5)
@@ -127,6 +125,7 @@ class SettingsWindow:
 
                 control.grid(row=i, column=1, sticky="ew", padx=5, pady=5)
                 self.entry_vars[section_name][field_name] = var
+
 
     def create_buttons(self) -> None:
         """

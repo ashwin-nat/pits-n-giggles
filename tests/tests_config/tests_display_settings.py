@@ -72,5 +72,5 @@ class TestDisplaySettings(TestF1ConfigBase):
         self.assertFalse(display.disable_browser_autoload)
 
     def test_invalid_disable_browser_autoload(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             DisplaySettings(disable_browser_autoload="notaboolean")

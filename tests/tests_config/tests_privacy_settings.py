@@ -92,8 +92,8 @@ class TestPrivacySettings(TestF1ConfigBase):
         self.assertFalse(privacy_settings.process_car_setup)
 
         # Invalid types should raise validation errors
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             PrivacySettings(process_car_setup="notabool")
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             PrivacySettings(process_car_setup=123)

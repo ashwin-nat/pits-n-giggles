@@ -91,7 +91,7 @@ class ForwardingSettings(BaseModel):
     def validate_hostport(cls, val): # pylint: disable=no-self-argument
         if val is None:
             return ""
-        v = val.rstrip()
+        v = val.strip()
         if not v:
             return v  # allow empty string
         match = cls.hostport_pattern.match(v)

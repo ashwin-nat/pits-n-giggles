@@ -321,7 +321,7 @@ class PngLauncher(ConsoleInterface):
         # Propagate settings to sub-apps and restart them
         for _, subapp in self.subapps.items():
             # Check if the subapp needs to be restarted
-            if subapp.on_settings_change(self.settings):
+            if subapp.on_settings_change(new_settings):
                 subapp.restart()
 
     def write(self, text):

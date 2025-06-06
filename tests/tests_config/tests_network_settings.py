@@ -87,31 +87,31 @@ class TestNetworkSettings(TestF1ConfigBase):
         self.assertEqual(net.udp_custom_action_code, 12)
 
     def test_invalid_telemetry_port(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             NetworkSettings(telemetry_port=-1)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             NetworkSettings(telemetry_port=70000)
 
     def test_invalid_server_port(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             NetworkSettings(server_port=-1)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             NetworkSettings(server_port=70000)
 
     def test_invalid_save_viewer_port(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             NetworkSettings(save_viewer_port=-5)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             NetworkSettings(save_viewer_port=70000)
 
     def test_invalid_udp_tyre_delta_action_code(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             NetworkSettings(udp_tyre_delta_action_code=0)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             NetworkSettings(udp_tyre_delta_action_code=13)
 
     def test_invalid_udp_custom_action_code(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             NetworkSettings(udp_custom_action_code=0)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             NetworkSettings(udp_custom_action_code=13)

@@ -128,8 +128,8 @@ capture_enabled = true
     def test_whitespace_handling(self):
         """Test that whitespace is properly handled"""
         # Leading whitespace should cause validation error due to regex pattern
-        with self.assertRaises(ValidationError):
-            ForwardingSettings(target_1="  localhost:8080")
+        settings = ForwardingSettings(target_1="  localhost:8080")
+        self.assertEqual(settings.target_1, "localhost:8080")
 
         # Test with only trailing whitespace - should be stripped by rstrip()
         settings = ForwardingSettings(target_1="localhost:8080   ")

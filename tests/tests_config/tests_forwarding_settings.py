@@ -165,25 +165,25 @@ class TestForwardingSettings(TestF1ConfigBase):
         self.assertEqual(f.forwarding_targets, expected)
 
     def test_invalid_hostport_format(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             ForwardingSettings(target_1="noport")
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             ForwardingSettings(target_1="host:port:extra")
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             ForwardingSettings(target_1=":8080")
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             ForwardingSettings(target_1="host:")
 
     def test_port_out_of_range(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             ForwardingSettings(target_1="host:0")
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             ForwardingSettings(target_1="host:70000")
 
     def test_port_non_numeric(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             ForwardingSettings(target_1="host:notanumber")
 
     def test_whitespace_trimmed(self):
-        with self.assertRaises(ValueError):
-            ForwardingSettings(target_1="  myhost.com:1234  ")
+        settings = ForwardingSettings(target_1="  myhost.com:1234  ")
+        self.assertEqual(settings.target_1, "myhost.com:1234")

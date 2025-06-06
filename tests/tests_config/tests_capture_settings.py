@@ -58,5 +58,5 @@ class TestCaptureSettings(TestF1ConfigBase):
         self.assertFalse(capture_str_false.post_race_data_autosave)
 
     def test_invalid_type_raises(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             CaptureSettings(post_race_data_autosave="notaboolean")
