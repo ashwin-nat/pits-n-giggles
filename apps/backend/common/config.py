@@ -73,11 +73,6 @@ _default_config = {
     'Privacy': {
         'process_car_setup': True, # Boolean
     },
-    'Forwarding': {
-        'target1': '',
-        'target2': '',
-        'target3': '',
-    },
     'Stream Overlay' : {
         'show_sample_data_at_start' : False, # Boolean
     }
@@ -143,6 +138,9 @@ def load_config(config_file: str = "config.ini", logger: logging.Logger = None) 
         Returns:
             List[Tuple[str, int]]: _description_
         """
+
+        if not config.has_section('Forwarding'):
+            return []
 
         section = config.items('Forwarding')
         ret_list = []
