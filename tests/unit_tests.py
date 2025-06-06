@@ -48,7 +48,8 @@ from tests_collision_analyzer import (TestCollisionAnalyzer,
 from tests_config import (TestCaptureSettings, TestConfigIO,
                           TestDisplaySettings, TestEdgeCases,
                           TestForwardingSettings, TestLoggingSettings,
-                          TestNetworkSettings, TestPrivacySettings,
+                          TestMissingSectionsAndKeys, TestNetworkSettings,
+                          TestPngSettings, TestPrivacySettings,
                           TestSampleSettingsFixture)
 from tests_custom_markers import (TestCustomMarkerEntry,
                                   TestCustomMarkersHistory)
