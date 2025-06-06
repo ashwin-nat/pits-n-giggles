@@ -371,6 +371,7 @@ def getTelemetryInfo():
                     },
                     "ers-info": {
                         "ers-percent": f'{F1Utils.floatToStr(ers_perc)}%',
+                        "ers-percent-float": ers_perc,
                         "ers-mode": (
                             data_per_driver["car-status"]["ers-deploy-mode"]
                             if "ers-deploy-mode"

@@ -57,10 +57,11 @@ class RaceTableRowPopulator {
 
     addErsInfo() {
         const ersInfo = this.rowData["ers-info"];
-        this.createMultiLineCell([
+        const cell = this.createMultiLineCell([
+            `${ersInfo["ers-mode"].toUpperCase()}`,
             `${ersInfo["ers-percent"]}`,
-            `${ersInfo["ers-mode"]}`,
         ]);
+        this.addErsBar(cell, ersInfo["ers-percent-float"]);
         return this;
     }
 
@@ -378,6 +379,26 @@ class RaceTableRowPopulator {
 
         // Append the sector bar to the cell
         cell.appendChild(sectorBar);
+    }
+
+    addErsBar(cell, ersPerc) {
+        if (ersPerc == null) return;
+        if (ersPerc < 0.0 || ersPerc > 100.0) {
+            console.error(`ERS percentage is out of range: ${ersPerc}`);
+            return;
+        }
+
+        const levelClass = ersPerc > 15 ? 'normal' : 'low';
+
+        const bar = document.createElement('div');
+        bar.className = 'ers-bar';
+
+        const fill = document.createElement('div');
+        fill.className = `ers-bar__fill ers-bar__fill--${levelClass}`;
+        fill.style.width = `${ersPerc}%`;
+
+        bar.append(fill);
+        cell.append(bar);
     }
 
 }

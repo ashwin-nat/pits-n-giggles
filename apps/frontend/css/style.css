@@ -201,9 +201,9 @@ body {
 }
 
 .telemetry-table th:nth-child(1) { width: 5%; } /* POS */
-.telemetry-table th:nth-child(2) { width: 15%; } /* DRIVER */
+.telemetry-table th:nth-child(2) { width: 13%; } /* DRIVER */
 .telemetry-table th:nth-child(3) { width: 8%; } /* DELTA */
-.telemetry-table th:nth-child(4) { width: 8%; } /* ERS */
+.telemetry-table th:nth-child(4) { width: 10%; } /* ERS */
 .telemetry-table th:nth-child(5) { width: 12%; } /* WARNS/PENS */
 .telemetry-table th:nth-child(8) { width: 12%; } /* TYRE INFO */
 .telemetry-table th:nth-child(9) { width: 10%; } /* WEAR PREDICTION */
@@ -399,4 +399,26 @@ body {
 a {
   text-decoration: none; /* Removes the underline */
   color: inherit; /* Inherits the color from the parent element */
+}
+
+.ers-bar {
+  display: flex;
+  width: 100%;
+  height: .33em;
+  background-color: #222;
+  border-radius: .25rem;
+  overflow: hidden;
+}
+
+.ers-bar__fill {
+  transition: width .2s ease-in-out;
+  border-radius: .25rem 0 0 .25rem;
+}
+
+.ers-bar__fill--normal {
+  background-color: #00e676;
+}
+
+.ers-bar__fill--low {
+  background-color: #ff1744;
 }
