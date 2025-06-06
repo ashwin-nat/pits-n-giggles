@@ -22,7 +22,9 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import os
 import re
+from pathlib import Path
 from typing import ClassVar, Optional
 
 from pydantic import BaseModel, Field, field_validator
@@ -44,8 +46,22 @@ class DisplaySettings(BaseModel):
     disable_browser_autoload: bool = Field(False, description="Disable automatic opening of the web page in the browser")
 
 class LoggingSettings(BaseModel):
-    log_file: str = Field("png.log", description="Path to the log file")
+    log_file: str = Field("png.log", description="Path to the log file (relative only)")
     log_file_size: int = Field(1_000_000, gt=0, description="Maximum size of the log file (bytes)")
+
+    # Pydantic v2 field validators receive the model class as 'cls' automatically.
+    # Not a classmethod, so we disable the no-self-argument warning.
+    @field_validator("log_file")
+    def validate_log_file(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Log file name cannot be empty")
+        v = v.strip()
+        if "/" in v or "\\" in v:
+            raise ValueError("Only a file name in the current directory is allowed")
+        return v
+
+    class Config:
+        str_strip_whitespace = True
 
 class PrivacySettings(BaseModel):
     process_car_setup: bool = Field(False, description="Whether to process car setup data")

@@ -83,24 +83,34 @@ class TestLoggingSettings(TestF1ConfigBase):
         self.assertEqual(settings.log_file_size, 1_000_000)
 
     def test_log_file_size_validation(self):
+        """Test valid and invalid log_file_size values"""
         # Valid value
         valid_size = 500_000
         logging_settings = LoggingSettings(log_file_size=valid_size)
         self.assertEqual(logging_settings.log_file_size, valid_size)
 
-        # Zero or negative should raise
-        with self.assertRaises(ValueError):
-            LoggingSettings(log_file_size=0)
+        # Invalid values: zero and negative
+        for invalid_size in (0, -1, -100):
+            with self.assertRaises(ValueError):
+                LoggingSettings(log_file_size=invalid_size)
 
-        with self.assertRaises(ValueError):
-            LoggingSettings(log_file_size=-100)
+    def test_log_file_path_validation(self):
+        """Test that only bare file names are allowed for log_file"""
 
-    def test_log_file_string(self):
-        # Custom log file path should be accepted
-        path = "/var/log/custom.log"
-        logging_settings = LoggingSettings(log_file=path)
-        self.assertEqual(logging_settings.log_file, path)
+        # Valid filename
+        settings = LoggingSettings(log_file="app.log")
+        self.assertEqual(settings.log_file, "app.log")
 
-        # Empty string is allowed? (Depends on your model - here we allow it)
-        logging_settings = LoggingSettings(log_file="")
-        self.assertEqual(logging_settings.log_file, "")
+        # Directory components should raise
+        for invalid_path in ("logs/app.log", "logs\\app.log", "/var/log/app.log", "C:\\logs\\app.log"):
+            with self.assertRaises(ValueError, msg=f"Expected ValueError for path: {invalid_path}"):
+                LoggingSettings(log_file=invalid_path)
+
+        # Empty or whitespace-only strings should raise
+        for bad in ("", "   "):
+            with self.assertRaises(ValueError):
+                LoggingSettings(log_file=bad)
+
+        # Leading/trailing spaces should be stripped and accepted if valid
+        settings = LoggingSettings(log_file="  app.log  ")
+        self.assertEqual(settings.log_file, "app.log")
