@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import configparser
+import re
 import tkinter as tk
 from tkinter import BooleanVar, IntVar, StringVar, messagebox, ttk
 from typing import Callable
@@ -103,8 +104,9 @@ class SettingsWindow:
 
         # To populate UI, iterate through fields like:
         for section_name, section_model in self.settings:
+            section_name_formatted = self._pascal_to_title(section_name)
             tab = ttk.Frame(self.notebook)
-            self.notebook.add(tab, text=section_name)
+            self.notebook.add(tab, text=section_name_formatted)
             self.entry_vars.setdefault(section_name, {})
 
             for i, (field_name, field) in enumerate(section_model.__fields__.items()):
@@ -193,3 +195,8 @@ class SettingsWindow:
                 msg = err["msg"]
                 error_messages.append(f"{loc}: {msg}")
             messagebox.showerror("Invalid Settings", "\n".join(error_messages))
+
+    def _pascal_to_title(self, s: str) -> str:
+        """Convert a string from pascalCase to Title Case."""
+        # Insert a space before each capital letter (except the first one)
+        return re.sub(r'(?<!^)(?=[A-Z])', ' ', s).title()

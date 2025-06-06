@@ -50,6 +50,9 @@ class LoggingSettings(BaseModel):
 class PrivacySettings(BaseModel):
     process_car_setup: bool = Field(False, description="Whether to process car setup data")
 
+class StreamOverlay(BaseModel):
+    show_sample_data_at_start: bool = Field(False, description="Show sample data until first real data arrives")
+
 class ForwardingSettings(BaseModel):
     target_1: Optional[str] = ""
     target_2: Optional[str] = ""
@@ -81,6 +84,27 @@ class ForwardingSettings(BaseModel):
             raise ValueError(f"Port number out of range in '{v}'")
         return v
 
+    @property
+    def forwarding_targets(self) -> list[tuple[str, int]]:
+        ret = []
+        if self.target_1:
+            ret.append((self._parse_hostport(self.target_1)))
+        if self.target_2:
+            ret.append((self._parse_hostport(self.target_2)))
+        if self.target_3:
+            ret.append((self._parse_hostport(self.target_3)))
+        return ret
+
+    def _parse_hostport(self, value: str) -> tuple[str, int]:
+        """
+        Parse a host:port string into (host, port) tuple.
+
+        Raises:
+            ValueError: if format is invalid or port is out of range.
+        """
+        host, port_str = value.strip().split(":")
+        return host, int(port_str)
+
 class PngSettings(BaseModel):
     Network: NetworkSettings
     Capture: CaptureSettings
@@ -88,6 +112,15 @@ class PngSettings(BaseModel):
     Logging: LoggingSettings
     Privacy: PrivacySettings
     Forwarding: ForwardingSettings
+    StreamOverlay: StreamOverlay
 
     class Config:
         str_strip_whitespace = True
+
+    def __str__(self) -> str:
+        lines = ["PngSettings:"]
+        for section_name, section_model in self:
+            lines.append(f"  [{section_name}]")
+            for field_name, value in section_model:
+                lines.append(f"    {field_name} = {value}")
+        return "\n".join(lines)

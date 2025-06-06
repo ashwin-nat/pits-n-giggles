@@ -21,11 +21,12 @@
 # SOFTWARE.
 # pylint: skip-file
 
+import configparser
 import os
 import sys
 import tempfile
+
 from pydantic import ValidationError
-import configparser
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -34,9 +35,9 @@ from tests_base import F1TelemetryUnitTestsBase
 
 from lib.config import (CaptureSettings, DisplaySettings, ForwardingSettings,
                         LoggingSettings, NetworkSettings, PngSettings,
-                        PrivacySettings, load_config_from_ini,
+                        PrivacySettings, StreamOverlay, load_config_from_ini,
                         save_config_to_ini)
-from lib.config.config_io import dict_to_configparser, configparser_to_dict
+from lib.config.config_io import configparser_to_dict, dict_to_configparser
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -294,7 +295,8 @@ class TestConfigIO(TestF1ConfigBase):
             Display=DisplaySettings(refresh_interval=150),
             Logging=LoggingSettings(log_file="test.log"),
             Privacy=PrivacySettings(process_car_setup=True),
-            Forwarding=ForwardingSettings(target_1="localhost:8080")
+            Forwarding=ForwardingSettings(target_1="localhost:8080"),
+            StreamOverlay=StreamOverlay()
         )
 
         with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.ini') as f:
@@ -408,6 +410,9 @@ target_1 = localhost:8080
             Forwarding=ForwardingSettings(
                 target_1="server1.example.com:8080",
                 target_2="server2.example.com:9090"
+            ),
+            StreamOverlay=StreamOverlay(
+                show_sample_data_at_start=True
             )
         )
 
@@ -491,7 +496,8 @@ class TestSampleSettingsFixture(TestF1ConfigBase):
             Display=DisplaySettings(),
             Logging=LoggingSettings(),
             Privacy=PrivacySettings(),
-            Forwarding=ForwardingSettings()
+            Forwarding=ForwardingSettings(),
+            StreamOverlay=StreamOverlay()
         )
 
     def test_sample_settings_created(self):

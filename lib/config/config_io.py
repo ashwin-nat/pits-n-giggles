@@ -27,7 +27,8 @@ import os
 
 from .config_schema import (CaptureSettings, DisplaySettings,
                             ForwardingSettings, LoggingSettings,
-                            NetworkSettings, PngSettings, PrivacySettings)
+                            NetworkSettings, PngSettings, PrivacySettings,
+                            StreamOverlay)
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -69,9 +70,33 @@ def load_config_from_ini(path: str) -> PngSettings:
     if os.path.exists(path):
         cp.read(path)
         raw_dict = configparser_to_dict(cp)
-        return PngSettings(**raw_dict)
+
+        # Create full default model
+        default_model = PngSettings(
+            Network=NetworkSettings(),
+            Capture=CaptureSettings(),
+            Display=DisplaySettings(),
+            Logging=LoggingSettings(),
+            Privacy=PrivacySettings(),
+            Forwarding=ForwardingSettings(),
+            StreamOverlay=StreamOverlay(),
+        )
+
+        # Deep copy of raw_dict to allow mutation
+        merged_dict = {}
+        for section_name, section_model in default_model:
+            merged_dict[section_name] = raw_dict.get(section_name, {}).copy()
+            for key, default_value in section_model.model_dump().items():
+                merged_dict[section_name].setdefault(key, default_value)
+
+        # If the merged config differs from original raw config, save the updated one
+        if merged_dict != raw_dict:
+            model = PngSettings(**merged_dict)
+            save_config_to_ini(model, path)
+        else:
+            model = PngSettings(**raw_dict)
     else:
-        # Create default model and save it to file
+        # File doesn't exist; use all defaults and save
         model = PngSettings(
             Network=NetworkSettings(),
             Capture=CaptureSettings(),
@@ -79,17 +104,14 @@ def load_config_from_ini(path: str) -> PngSettings:
             Logging=LoggingSettings(),
             Privacy=PrivacySettings(),
             Forwarding=ForwardingSettings(),
+            StreamOverlay=StreamOverlay(),
         )
         save_config_to_ini(model, path)
-        return model
 
-def save_config_to_ini(settings: PngSettings, path: str) -> None:
-    """Save a PngSettings model to an INI file.
+    return model
 
-    Args:
-        settings (PngSettings): The PngSettings model to save.
-        path (str): The path to the INI file.
-    """
-    cp = dict_to_configparser(settings.dict(by_alias=True))
+def save_config_to_ini(settings: PngSettings, path: str):
+    cp = dict_to_configparser(settings.model_dump(by_alias=True))
     with open(path, 'w', encoding='utf-8') as f:
         cp.write(f)
+
