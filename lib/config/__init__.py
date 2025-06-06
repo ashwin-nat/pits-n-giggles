@@ -26,7 +26,7 @@ from .config_io import load_config_from_ini, save_config_to_ini
 from .config_schema import (CaptureSettings, DisplaySettings,
                             ForwardingSettings, LoggingSettings,
                             NetworkSettings, PngSettings, PrivacySettings,
-                            StreamOverlay)
+                            StreamOverlaySettings)
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -38,7 +38,7 @@ __all__ = [
     'NetworkSettings',
     'PngSettings',
     'PrivacySettings',
-    'StreamOverlay',
+    'StreamOverlaySettings',
 
     'load_config_from_ini',
     'save_config_to_ini',

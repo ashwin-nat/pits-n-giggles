@@ -35,9 +35,8 @@ from tests_base import F1TelemetryUnitTestsBase
 
 from lib.config import (CaptureSettings, DisplaySettings, ForwardingSettings,
                         LoggingSettings, NetworkSettings, PngSettings,
-                        PrivacySettings, StreamOverlay, load_config_from_ini,
+                        PrivacySettings, StreamOverlaySettings, load_config_from_ini,
                         save_config_to_ini)
-from lib.config.config_io import configparser_to_dict, dict_to_configparser
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -231,7 +230,7 @@ class TestPngSettings(TestF1ConfigBase):
             Logging=LoggingSettings(),
             Privacy=PrivacySettings(),
             Forwarding=ForwardingSettings(),
-            StreamOverlay=StreamOverlay(),
+            StreamOverlay=StreamOverlaySettings(),
         )
 
         self.assertIsInstance(settings.Network, NetworkSettings)
@@ -256,31 +255,6 @@ class TestPngSettings(TestF1ConfigBase):
 class TestConfigIO(TestF1ConfigBase):
     """Test configuration I/O functions"""
 
-    def test_configparser_to_dict(self):
-        """Test converting ConfigParser to dictionary"""
-        cp = configparser.ConfigParser()
-        cp['Section1'] = {'key1': 'value1', 'key2': 'value2'}
-        cp['Section2'] = {'key3': 'value3'}
-
-        result = configparser_to_dict(cp)
-        expected = {
-            'Section1': {'key1': 'value1', 'key2': 'value2'},
-            'Section2': {'key3': 'value3'}
-        }
-        self.assertEqual(result, expected)
-
-    def test_dict_to_configparser(self):
-        """Test converting dictionary to ConfigParser"""
-        data = {
-            'Section1': {'key1': 'value1', 'key2': 42},
-            'Section2': {'key3': True}
-        }
-
-        cp = dict_to_configparser(data)
-        self.assertEqual(cp['Section1']['key1'], 'value1')
-        self.assertEqual(cp['Section1']['key2'], '42')  # Should be string
-        self.assertEqual(cp['Section2']['key3'], 'True')  # Should be string
-
     def test_save_config_to_ini(self):
         """Test saving configuration to INI file"""
         settings = PngSettings(
@@ -290,7 +264,7 @@ class TestConfigIO(TestF1ConfigBase):
             Logging=LoggingSettings(log_file="test.log"),
             Privacy=PrivacySettings(process_car_setup=True),
             Forwarding=ForwardingSettings(target_1="localhost:8080"),
-            StreamOverlay=StreamOverlay()
+            StreamOverlay=StreamOverlaySettings()
         )
 
         with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.ini') as f:
@@ -405,7 +379,7 @@ target_1 = localhost:8080
                 target_1="server1.example.com:8080",
                 target_2="server2.example.com:9090"
             ),
-            StreamOverlay=StreamOverlay(
+            StreamOverlay=StreamOverlaySettings(
                 show_sample_data_at_start=True
             )
         )
@@ -459,6 +433,28 @@ invalid_key = value
             if os.path.exists(temp_path):
                 os.unlink(temp_path)
 
+    def test_malformed_ini_section_header(self):
+        """Test handling of syntactically malformed INI section headers"""
+        malformed_section_content = """
+[Network
+telemetry_port = 12345
+server_port = 9999
+
+[Capture
+capture_enabled = true
+"""
+
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.ini') as f:
+            f.write(malformed_section_content)
+            temp_path = f.name
+
+        try:
+            # Should raise configparser.Error due to malformed section headers
+            with self.assertRaises(configparser.Error):
+                load_config_from_ini(temp_path)
+        finally:
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
     def test_whitespace_handling(self):
         """Test that whitespace is properly handled"""
         # Leading whitespace should cause validation error due to regex pattern
@@ -489,7 +485,7 @@ class TestSampleSettingsFixture(TestF1ConfigBase):
             Logging=LoggingSettings(),
             Privacy=PrivacySettings(),
             Forwarding=ForwardingSettings(),
-            StreamOverlay=StreamOverlay()
+            StreamOverlay=StreamOverlaySettings()
         )
 
     def test_sample_settings_created(self):
@@ -755,3 +751,222 @@ target_1 = localhost:8080
         # Ensure original values are still present
         self.assertIn("telemetry_port = 20777", saved_content)
         self.assertIn("target_1 = localhost:8080", saved_content)
+
+class TestForwardingTargets(TestF1ConfigBase):
+    def test_empty_targets(self):
+        f = ForwardingSettings(target_1="", target_2="", target_3="")
+        self.assertEqual(f.forwarding_targets, [])
+
+    def test_none_targets(self):
+        f = ForwardingSettings(target_1=None, target_2=None, target_3=None)
+        self.assertEqual(f.forwarding_targets, [])
+
+    def test_single_valid_target(self):
+        f = ForwardingSettings(target_1="localhost:8080")
+        self.assertEqual(f.forwarding_targets, [("localhost", 8080)])
+
+    def test_multiple_valid_targets(self):
+        f = ForwardingSettings(
+            target_1="host1.example.com:1234",
+            target_2="192.168.1.10:65535",
+            target_3="myhost:1"
+        )
+        expected = [
+            ("host1.example.com", 1234),
+            ("192.168.1.10", 65535),
+            ("myhost", 1),
+        ]
+        self.assertEqual(f.forwarding_targets, expected)
+
+    def test_invalid_hostport_format(self):
+        with self.assertRaises(ValueError):
+            ForwardingSettings(target_1="noport")
+        with self.assertRaises(ValueError):
+            ForwardingSettings(target_1="host:port:extra")
+        with self.assertRaises(ValueError):
+            ForwardingSettings(target_1=":8080")
+        with self.assertRaises(ValueError):
+            ForwardingSettings(target_1="host:")
+
+    def test_port_out_of_range(self):
+        with self.assertRaises(ValueError):
+            ForwardingSettings(target_1="host:0")
+        with self.assertRaises(ValueError):
+            ForwardingSettings(target_1="host:70000")
+
+    def test_port_non_numeric(self):
+        with self.assertRaises(ValueError):
+            ForwardingSettings(target_1="host:notanumber")
+
+    def test_whitespace_trimmed(self):
+        with self.assertRaises(ValueError):
+            ForwardingSettings(target_1="  myhost.com:1234  ")
+
+class TestNetworkSettings(TestF1ConfigBase):
+
+    def test_default_values(self):
+        net = NetworkSettings()
+        self.assertEqual(net.telemetry_port, 20777)
+        self.assertEqual(net.server_port, 4768)
+        self.assertEqual(net.save_viewer_port, 4769)
+        self.assertEqual(net.udp_tyre_delta_action_code, 11)
+        self.assertEqual(net.udp_custom_action_code, 12)
+
+    def test_valid_port_ranges(self):
+        net = NetworkSettings(
+            telemetry_port=0,
+            server_port=65535,
+            save_viewer_port=12345,
+            udp_tyre_delta_action_code=1,
+            udp_custom_action_code=12,
+        )
+        self.assertEqual(net.telemetry_port, 0)
+        self.assertEqual(net.server_port, 65535)
+        self.assertEqual(net.save_viewer_port, 12345)
+        self.assertEqual(net.udp_tyre_delta_action_code, 1)
+        self.assertEqual(net.udp_custom_action_code, 12)
+
+    def test_invalid_telemetry_port(self):
+        with self.assertRaises(ValueError):
+            NetworkSettings(telemetry_port=-1)
+        with self.assertRaises(ValueError):
+            NetworkSettings(telemetry_port=70000)
+
+    def test_invalid_server_port(self):
+        with self.assertRaises(ValueError):
+            NetworkSettings(server_port=-1)
+        with self.assertRaises(ValueError):
+            NetworkSettings(server_port=70000)
+
+    def test_invalid_save_viewer_port(self):
+        with self.assertRaises(ValueError):
+            NetworkSettings(save_viewer_port=-5)
+        with self.assertRaises(ValueError):
+            NetworkSettings(save_viewer_port=70000)
+
+    def test_invalid_udp_tyre_delta_action_code(self):
+        with self.assertRaises(ValueError):
+            NetworkSettings(udp_tyre_delta_action_code=0)
+        with self.assertRaises(ValueError):
+            NetworkSettings(udp_tyre_delta_action_code=13)
+
+    def test_invalid_udp_custom_action_code(self):
+        with self.assertRaises(ValueError):
+            NetworkSettings(udp_custom_action_code=0)
+        with self.assertRaises(ValueError):
+            NetworkSettings(udp_custom_action_code=13)
+
+class TestCaptureSettings(TestF1ConfigBase):
+
+    def test_default_values(self):
+        capture = CaptureSettings()
+        self.assertFalse(capture.post_race_data_autosave)
+
+    def test_boolean_validation(self):
+        capture_true = CaptureSettings(post_race_data_autosave=True)
+        self.assertTrue(capture_true.post_race_data_autosave)
+
+        capture_false = CaptureSettings(post_race_data_autosave=False)
+        self.assertFalse(capture_false.post_race_data_autosave)
+
+        # Also test coercion from strings if you want
+        capture_str_true = CaptureSettings(post_race_data_autosave="True")
+        self.assertTrue(capture_str_true.post_race_data_autosave)
+
+        capture_str_false = CaptureSettings(post_race_data_autosave="False")
+        self.assertFalse(capture_str_false.post_race_data_autosave)
+
+    def test_invalid_type_raises(self):
+        with self.assertRaises(ValueError):
+            CaptureSettings(post_race_data_autosave="notaboolean")
+
+class TestDisplaySettings(TestF1ConfigBase):
+
+    def test_default_values(self):
+        display = DisplaySettings()
+        self.assertEqual(display.refresh_interval, 200)
+        self.assertFalse(display.disable_browser_autoload)
+
+    def test_refresh_interval_validation(self):
+        # Valid value
+        display = DisplaySettings(refresh_interval=100)
+        self.assertEqual(display.refresh_interval, 100)
+
+        # Zero or negative should raise
+        with self.assertRaises(ValueError):
+            DisplaySettings(refresh_interval=0)
+
+        with self.assertRaises(ValueError):
+            DisplaySettings(refresh_interval=-10)
+
+    def test_disable_browser_autoload_boolean(self):
+        # Default is False
+        display = DisplaySettings()
+        self.assertFalse(display.disable_browser_autoload)
+
+        # True is accepted
+        display = DisplaySettings(disable_browser_autoload=True)
+        self.assertTrue(display.disable_browser_autoload)
+
+        # String coercion works
+        display = DisplaySettings(disable_browser_autoload="True")
+        self.assertTrue(display.disable_browser_autoload)
+
+        display = DisplaySettings(disable_browser_autoload="False")
+        self.assertFalse(display.disable_browser_autoload)
+
+    def test_invalid_disable_browser_autoload(self):
+        with self.assertRaises(ValueError):
+            DisplaySettings(disable_browser_autoload="notaboolean")
+
+class TestLoggingSettings(TestF1ConfigBase):
+
+    def test_default_values(self):
+        logging_settings = LoggingSettings()
+        self.assertEqual(logging_settings.log_file, "png.log")
+        self.assertEqual(logging_settings.log_file_size, 1_000_000)
+
+    def test_log_file_size_validation(self):
+        # Valid value
+        valid_size = 500_000
+        logging_settings = LoggingSettings(log_file_size=valid_size)
+        self.assertEqual(logging_settings.log_file_size, valid_size)
+
+        # Zero or negative should raise
+        with self.assertRaises(ValueError):
+            LoggingSettings(log_file_size=0)
+
+        with self.assertRaises(ValueError):
+            LoggingSettings(log_file_size=-100)
+
+    def test_log_file_string(self):
+        # Custom log file path should be accepted
+        path = "/var/log/custom.log"
+        logging_settings = LoggingSettings(log_file=path)
+        self.assertEqual(logging_settings.log_file, path)
+
+        # Empty string is allowed? (Depends on your model - here we allow it)
+        logging_settings = LoggingSettings(log_file="")
+        self.assertEqual(logging_settings.log_file, "")
+
+class TestPrivacySettings(TestF1ConfigBase):
+
+    def test_default_values(self):
+        privacy_settings = PrivacySettings()
+        self.assertFalse(privacy_settings.process_car_setup)
+
+    def test_process_car_setup_boolean_validation(self):
+        # Accept explicit True
+        privacy_settings = PrivacySettings(process_car_setup=True)
+        self.assertTrue(privacy_settings.process_car_setup)
+
+        # Accept explicit False
+        privacy_settings = PrivacySettings(process_car_setup=False)
+        self.assertFalse(privacy_settings.process_car_setup)
+
+        # Invalid types should raise validation errors
+        with self.assertRaises(ValueError):
+            PrivacySettings(process_car_setup="notabool")
+
+        with self.assertRaises(ValueError):
+            PrivacySettings(process_car_setup=123)

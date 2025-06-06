@@ -22,96 +22,50 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import configparser
 import os
+from configparser import ConfigParser
 
-from .config_schema import (CaptureSettings, DisplaySettings,
-                            ForwardingSettings, LoggingSettings,
-                            NetworkSettings, PngSettings, PrivacySettings,
-                            StreamOverlay)
+from .config_schema import PngSettings
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def configparser_to_dict(cp: configparser.ConfigParser) -> dict:
-    """Convert a ConfigParser object to a dictionary
-
-    Args:
-        cp (ConfigParser): The ConfigParser object to convert.
-
-    Returns:
-        dict: A dictionary representation of the ConfigParser object.
-    """
-    return {s: dict(cp.items(s)) for s in cp.sections()}
-
-def dict_to_configparser(data: dict) -> configparser.ConfigParser:
-    """Convert a dictionary to a ConfigParser object
-
-    Args:
-        data (dict): The dictionary to convert.
-
-    Returns:
-        ConfigParser: A ConfigParser object representation of the dictionary.
-    """
-    cp = configparser.ConfigParser()
-    for section, values in data.items():
-        cp[section] = {k: str(v) for k, v in values.items()}
-    return cp
 
 def load_config_from_ini(path: str) -> PngSettings:
-    """Load a PngSettings model from an INI file. Creates with defaults if file does not exist
+    """Load and validate configuration from INI file.
 
     Args:
-        path (str): The path to the INI file.
+        path (str): Path to INI file.
 
     Returns:
-        PngSettings: The loaded PngSettings model.
+        PngSettings: Parsed and validated configuration.
     """
-    cp = configparser.ConfigParser()
+    cp = ConfigParser()
+    raw = {}
+
     if os.path.exists(path):
         cp.read(path)
-        raw_dict = configparser_to_dict(cp)
+        raw = {section: dict(cp.items(section)) for section in cp.sections()}
 
-        # Create full default model
-        default_model = PngSettings(
-            Network=NetworkSettings(),
-            Capture=CaptureSettings(),
-            Display=DisplaySettings(),
-            Logging=LoggingSettings(),
-            Privacy=PrivacySettings(),
-            Forwarding=ForwardingSettings(),
-            StreamOverlay=StreamOverlay(),
-        )
+        # Pydantic v2: parse raw dict with coercion, nested models, validation
+        model = PngSettings.model_validate(raw)
 
-        # Deep copy of raw_dict to allow mutation
-        merged_dict = {}
-        for section_name, section_model in default_model:
-            merged_dict[section_name] = raw_dict.get(section_name, {}).copy()
-            for key, default_value in section_model.model_dump().items():
-                merged_dict[section_name].setdefault(key, default_value)
-
-        # If the merged config differs from original raw config, save the updated one
-        if merged_dict != raw_dict:
-            model = PngSettings(**merged_dict)
+        # Save updated config if the loaded raw data differs from fully parsed+serialized model
+        if raw != model.model_dump():
             save_config_to_ini(model, path)
-        else:
-            model = PngSettings(**raw_dict)
     else:
-        # File doesn't exist; use all defaults and save
-        model = PngSettings(
-            Network=NetworkSettings(),
-            Capture=CaptureSettings(),
-            Display=DisplaySettings(),
-            Logging=LoggingSettings(),
-            Privacy=PrivacySettings(),
-            Forwarding=ForwardingSettings(),
-            StreamOverlay=StreamOverlay(),
-        )
+        model = PngSettings()
         save_config_to_ini(model, path)
 
     return model
 
-def save_config_to_ini(settings: PngSettings, path: str):
-    cp = dict_to_configparser(settings.model_dump(by_alias=True))
+def save_config_to_ini(settings: PngSettings, path: str) -> None:
+    """Save PngSettings model to INI file.
+
+    Args:
+        settings (PngSettings): Parsed and validated configuration.
+        path (str): Path to INI file.
+    """
+    cp = ConfigParser()
+    cp.read_dict(settings.model_dump(by_alias=True))
     with open(path, 'w', encoding='utf-8') as f:
         cp.write(f)
-

@@ -46,11 +46,11 @@ from tests_collision_analyzer import (TestCollisionAnalyzer,
                                       TestCollisionPairKey,
                                       TestCollisionRecord)
 from tests_config import (TestCaptureSettings, TestConfigIO,
-                          TestDisplaySettings, TestEdgeCases,
-                          TestForwardingSettings, TestLoggingSettings,
-                          TestMissingSectionsAndKeys, TestNetworkSettings,
-                          TestPngSettings, TestPrivacySettings,
-                          TestSampleSettingsFixture)
+                          TestDisplaySettings, TestEdgeCases, TestPrivacySettings,
+                          TestForwardingSettings, TestForwardingTargets,
+                          TestLoggingSettings, TestMissingSectionsAndKeys,
+                          TestNetworkSettings, TestPngSettings,
+                          TestPrivacySettings, TestSampleSettingsFixture)
 from tests_custom_markers import (TestCustomMarkerEntry,
                                   TestCustomMarkersHistory)
 from tests_data_per_driver import (TestTyreSetHistoryEntry,

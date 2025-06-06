@@ -109,18 +109,18 @@ class SettingsWindow:
             self.notebook.add(tab, text=section_name_formatted)
             self.entry_vars.setdefault(section_name, {})
 
-            for i, (field_name, field) in enumerate(section_model.__fields__.items()):
-                label_text = field.description if field.description else field_name
-                label = ttk.Label(tab, text=label_text + ":")
+            # Use model_fields instead of __fields__
+            model_fields = section_model.model_fields
+
+            for i, (field_name, field) in enumerate(model_fields.items()):
+                label_text = field.description or field_name
+                label = ttk.Label(tab, text=f"{label_text}:")
                 label.grid(row=i, column=0, sticky="w", padx=5, pady=5)
 
                 value = getattr(section_model, field_name)
                 if isinstance(value, bool):
                     var = BooleanVar(value=value)
                     control = ttk.Checkbutton(tab, variable=var)
-                elif field_name == 'packet_capture_mode':
-                    var = StringVar(value=value)
-                    control = ttk.Combobox(tab, textvariable=var, values=["disabled", "enabled", "auto"])
                 else:
                     var = StringVar(value=str(value))
                     control = ttk.Entry(tab, textvariable=var, width=30)

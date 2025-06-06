@@ -50,7 +50,7 @@ class LoggingSettings(BaseModel):
 class PrivacySettings(BaseModel):
     process_car_setup: bool = Field(False, description="Whether to process car setup data")
 
-class StreamOverlay(BaseModel):
+class StreamOverlaySettings(BaseModel):
     show_sample_data_at_start: bool = Field(False, description="Show sample data until first real data arrives")
 
 class ForwardingSettings(BaseModel):
@@ -108,13 +108,13 @@ class ForwardingSettings(BaseModel):
         return host, int(port_str)
 
 class PngSettings(BaseModel):
-    Network: NetworkSettings
-    Capture: CaptureSettings
-    Display: DisplaySettings
-    Logging: LoggingSettings
-    Privacy: PrivacySettings
-    Forwarding: ForwardingSettings
-    StreamOverlay: StreamOverlay
+    Network: NetworkSettings = Field(default_factory=NetworkSettings)
+    Capture: CaptureSettings = Field(default_factory=CaptureSettings)
+    Display: DisplaySettings = Field(default_factory=DisplaySettings)
+    Logging: LoggingSettings = Field(default_factory=LoggingSettings)
+    Privacy: PrivacySettings = Field(default_factory=PrivacySettings)
+    Forwarding: ForwardingSettings = Field(default_factory=ForwardingSettings)
+    StreamOverlay: StreamOverlaySettings = Field(default_factory=StreamOverlaySettings)
 
     class Config:
         str_strip_whitespace = True
@@ -123,6 +123,8 @@ class PngSettings(BaseModel):
         lines = ["PngSettings:"]
         for section_name, section_model in self:
             lines.append(f"  [{section_name}]")
-            for field_name, value in section_model:
-                lines.append(f"    {field_name} = {value}")
+            lines.extend(
+                f"    {field_name} = {value}"
+                for field_name, value in section_model
+            )
         return "\n".join(lines)
