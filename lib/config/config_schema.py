@@ -68,6 +68,8 @@ class ForwardingSettings(BaseModel):
 
     @field_validator('target_1', 'target_2', 'target_3', mode='before')
     def validate_hostport(cls, val):
+        if val is None:
+            return ""
         v = val.rstrip()
         if not v:
             return v  # allow empty string
