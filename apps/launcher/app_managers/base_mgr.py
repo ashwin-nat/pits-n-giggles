@@ -33,10 +33,10 @@ from typing import Callable, Optional
 
 import psutil
 
+from lib.config import PngSettings
 from lib.pid_report import extract_pid_from_line
 
 from ..console_interface import ConsoleInterface
-from lib.config import PngSettings
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 

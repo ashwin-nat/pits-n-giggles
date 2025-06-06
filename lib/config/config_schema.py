@@ -69,6 +69,7 @@ class ForwardingSettings(BaseModel):
         re.VERBOSE,
     )
 
+    @classmethod
     @field_validator('target_1', 'target_2', 'target_3', mode='before')
     def validate_hostport(cls, val):
         if val is None:

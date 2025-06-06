@@ -25,7 +25,7 @@
 import configparser
 import re
 import tkinter as tk
-from tkinter import BooleanVar, IntVar, StringVar, messagebox, ttk
+from tkinter import BooleanVar, StringVar, messagebox, ttk
 from typing import Callable
 
 from pydantic import ValidationError
@@ -158,35 +158,21 @@ class SettingsWindow:
         - Calls a callback if provided
         - Displays errors in a user-friendly format if validation fails
         """
+        data = {}
+
+        # Gather input values from each tab and field
+        for section, section_data in self.entry_vars.items():
+            data[section] = {}
+            for key, var in section_data.items():
+                val = var.get()
+                # Strip whitespace from strings only
+                if isinstance(val, str):
+                    val = val.strip()
+                data[section][key] = val
+
         try:
-            data = {}
-
-            # Gather input values from each tab and field
-            for section, section_data in self.entry_vars.items():
-                data[section] = {}
-                for key, var in section_data.items():
-                    val = var.get()
-                    # Strip whitespace from strings only
-                    if isinstance(val, str):
-                        val = val.strip()
-                    data[section][key] = val
-
             # Build new model to validate and capture changes
             new_model = PngSettings(**data)
-
-            # If settings haven't changed, skip saving and callback
-            if new_model == self.settings:
-                return
-            self.settings = new_model
-
-            # Save new settings to config file
-            save_config_to_ini(new_model, self.config_file)
-            self.app.log(f"Settings saved to {self.config_file}")
-
-            # Run any registered save callback
-            if self.save_callback:
-                self.save_callback(new_model)
-
         except ValidationError as ve:
             # Show all validation issues nicely
             error_messages = []
@@ -195,6 +181,21 @@ class SettingsWindow:
                 msg = err["msg"]
                 error_messages.append(f"{loc}: {msg}")
             messagebox.showerror("Invalid Settings", "\n".join(error_messages))
+            return
+
+        # If settings haven't changed, skip saving and callback
+        if new_model == self.settings:
+            return
+
+        self.settings = new_model
+
+        # Save new settings to config file
+        save_config_to_ini(new_model, self.config_file)
+        self.app.log(f"Settings saved to {self.config_file}")
+
+        # Run any registered save callback
+        if self.save_callback:
+            self.save_callback(new_model)
 
     def _pascal_to_title(self, s: str) -> str:
         """Convert a string from pascalCase to Title Case."""

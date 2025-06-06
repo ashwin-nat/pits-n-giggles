@@ -22,7 +22,6 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import configparser
 import datetime
 import os
 import sys
@@ -32,13 +31,13 @@ from typing import Dict
 
 from PIL import Image, ImageTk
 
-from .app_managers import BackendAppMgr, PngAppMgrBase, SaveViewerAppMgr
-from .styles import COLOUR_SCHEME
-from .console_interface import ConsoleInterface
-from .settings import SettingsWindow
-from .logger import get_rotating_logger
-
 from lib.config import PngSettings, load_config_from_ini
+
+from .app_managers import BackendAppMgr, PngAppMgrBase, SaveViewerAppMgr
+from .console_interface import ConsoleInterface
+from .logger import get_rotating_logger
+from .settings import SettingsWindow
+from .styles import COLOUR_SCHEME
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
