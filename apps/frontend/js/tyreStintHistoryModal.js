@@ -366,7 +366,7 @@ class TyreStintChart {
     if (lastStint && lastStint['end-lap'] < this.options.totalLaps) {
       const dnfMarker = document.createElement('div');
       dnfMarker.classList.add('f1-tsc-dnf');
-      dnfMarker.style.left = ((lastStint['end-lap']) / this.options.totalLaps) * 100 + '%';
+      dnfMarker.style.left = ((lastStint['end-lap'] - 1) / this.options.totalLaps) * 100 + '%';
       stints.appendChild(dnfMarker);
     }
 
