@@ -201,9 +201,9 @@ body {
 }
 
 .telemetry-table th:nth-child(1) { width: 5%; } /* POS */
-.telemetry-table th:nth-child(2) { width: 15%; } /* DRIVER */
+.telemetry-table th:nth-child(2) { width: 13%; } /* DRIVER */
 .telemetry-table th:nth-child(3) { width: 8%; } /* DELTA */
-.telemetry-table th:nth-child(4) { width: 8%; } /* ERS */
+.telemetry-table th:nth-child(4) { width: 10%; } /* ERS */
 .telemetry-table th:nth-child(5) { width: 12%; } /* WARNS/PENS */
 .telemetry-table th:nth-child(8) { width: 12%; } /* TYRE INFO */
 .telemetry-table th:nth-child(9) { width: 10%; } /* WEAR PREDICTION */
