@@ -156,7 +156,7 @@ class TyreStintChart {
 
     const trackName = document.createElement('div');
     trackName.classList.add('f1-tsc-track-name');
-    trackName.textContent = this.options.trackName.toUpperCase();
+    trackName.textContent = replaceRevSuffix(this.options.trackName.toUpperCase());
     header.appendChild(trackName);
 
     const info = document.createElement('div');

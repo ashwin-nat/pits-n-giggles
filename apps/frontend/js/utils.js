@@ -372,3 +372,7 @@ function getFormattedLapTimeStr({
         return formatLapDelta(lapTimeMs, lapTimeMsPlayer, isPlayer, index);
     }
 }
+
+function replaceRevSuffix(str) {
+  return str.replace(/\(REV\)$/, '⇄');
+}
