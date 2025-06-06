@@ -26,10 +26,13 @@ import configparser
 import os
 import tkinter as tk
 import traceback
-from tkinter import messagebox, ttk
+from tkinter import messagebox, ttk, BooleanVar, StringVar, IntVar
 from typing import Callable
+from pydantic import ValidationError
 
 from .console_interface import ConsoleInterface
+from .config_io import load_config_from_ini, save_config_to_ini
+from .config_schema import PngSettings
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
@@ -123,17 +126,8 @@ class SettingsWindow:
         This method reads the settings file if it exists, or creates default settings
         if no settings file is found. It ensures all sections and keys exist.
         """
-        if os.path.exists(self.config_file):
-            self.settings.read(self.config_file)
 
-        # Ensure all sections and keys exist
-        for section, options in DEFAULT_SETTINGS.items():
-            if not self.settings.has_section(section):
-                self.settings.add_section(section)
-
-            for key, value in options.items():
-                if not self.settings.has_option(section, key):
-                    self.settings.set(section, key, value)
+        self.settings = load_config_from_ini(self.config_file)
 
     def save_settings(self) -> None:
         """
@@ -142,8 +136,21 @@ class SettingsWindow:
         The settings are written to the file specified by `self.config_file`. After saving,
         the `save_callback` is called to propagate the updated settings.
         """
-        with open(self.config_file, 'w', encoding='utf-8') as f:
-            self.settings.write(f)
+
+        try:
+            data = {}
+            for section, section_data in self.entry_vars.items():
+                data[section] = {
+                    key: var.get() for key, var in section_data.items()
+                }
+            new_model = PngSettings(**data)
+            save_config_to_ini(new_model, self.config_file)
+        except ValidationError as ve:
+            messagebox.showerror("Invalid Settings", ve.json(indent=2))
+            return
+
+        # with open(self.config_file, 'w', encoding='utf-8') as f:
+        #     self.settings.write(f)
 
         self.app.log(f"Settings saved to {self.config_file}")
         self.save_callback(self.settings)
@@ -151,29 +158,30 @@ class SettingsWindow:
     def create_tabs(self) -> None:
         self.entry_vars = {}
 
-        for section in self.settings.sections():
-            tab = ttk.Frame(self.notebook, padding=10)
-            self.notebook.add(tab, text=section)
-            tab.columnconfigure(1, weight=1)
+        # To populate UI, iterate through fields like:
+        for section_name, section_model in self.settings:
+            tab = ttk.Frame(self.notebook)
+            self.notebook.add(tab, text=section_name)
+            self.entry_vars.setdefault(section_name, {})
 
-            for i, (key, value) in enumerate(self.settings[section].items()):
-                label = ttk.Label(tab, text=key.replace('_', ' ').title() + ":")
+            for i, (field_name, field) in enumerate(section_model.__fields__.items()):
+                label_text = field.description if field.description else field_name
+                label = ttk.Label(tab, text=label_text + ":")
                 label.grid(row=i, column=0, sticky="w", padx=5, pady=5)
 
-                # choose control based on value/content
-                if value.lower() in {'true', 'false'}:
-                    var = tk.BooleanVar(value=value.lower() == 'true')
+                value = getattr(section_model, field_name)
+                if isinstance(value, bool):
+                    var = BooleanVar(value=value)
                     control = ttk.Checkbutton(tab, variable=var)
-                elif key == 'packet_capture_mode':
-                    var = tk.StringVar(value=value)
-                    control = ttk.Combobox(tab, textvariable=var,
-                                        values=["disabled", "enabled", "auto"])
+                elif field_name == 'packet_capture_mode':
+                    var = StringVar(value=value)
+                    control = ttk.Combobox(tab, textvariable=var, values=["disabled", "enabled", "auto"])
                 else:
-                    var = tk.StringVar(value=value)
+                    var = StringVar(value=str(value))
                     control = ttk.Entry(tab, textvariable=var, width=30)
 
                 control.grid(row=i, column=1, sticky="ew", padx=5, pady=5)
-                self.entry_vars.setdefault(section, {})[key] = var
+                self.entry_vars[section_name][field_name] = var
 
     def create_buttons(self) -> None:
         """
@@ -200,19 +208,14 @@ class SettingsWindow:
         the settings object, and then calls `save_settings()` to persist the changes.
         It will also close the settings window after saving.
         """
+
         try:
-            for section, options in self.entry_vars.items():
-                for key, var in options.items():
-                    # Convert boolean to string
-                    value = str(var.get()) if isinstance(var, tk.BooleanVar) else var.get()
-                    self.settings.set(section, key, value)
-
-            self.save_settings()
-            self.window.destroy()
-        # pylint: disable=broad-exception-caught
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to save settings: {e}")
-
-            # Capture the stack trace as a string and log it
-            stack_trace = traceback.format_exc()
-            self.app.log(f"Failed to save settings: {e}\n{stack_trace}")
+            data = {}
+            for section, section_data in self.entry_vars.items():
+                data[section] = {
+                    key: var.get() for key, var in section_data.items()
+                }
+            new_model = PngSettings(**data)
+            save_config_to_ini(new_model, self.config_file)
+        except ValidationError as ve:
+            messagebox.showerror("Invalid Settings", ve.json(indent=2))

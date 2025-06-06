@@ -38,6 +38,9 @@ from .console_interface import ConsoleInterface
 from .settings import SettingsWindow, DEFAULT_SETTINGS
 from .logger import get_rotating_logger
 
+from .config_schema import PngSettings
+from .config_io import load_config_from_ini
+
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
 class PngLauncher(ConsoleInterface):
@@ -141,28 +144,7 @@ class PngLauncher(ConsoleInterface):
 
     def load_settings(self):
         """Load application settings"""
-        self.settings = configparser.ConfigParser()
-
-        # Create default settings if config file doesn't exist
-        if not os.path.exists(self.config_file):
-            for section, options in DEFAULT_SETTINGS.items():
-                self.settings.add_section(section)
-                for key, value in options.items():
-                    self.settings.set(section, key, value)
-
-        else:
-            self.settings.read(self.config_file)
-
-            # Check for missing keys and add them with default values
-            for section, options in DEFAULT_SETTINGS.items():
-                if not self.settings.has_section(section):
-                    self.settings.add_section(section)
-                for key, value in options.items():
-                    if not self.settings.has_option(section, key):
-                        self.settings.set(section, key, value)
-
-        with open(self.config_file, 'w', encoding='utf-8') as f:
-            self.settings.write(f)
+        self.settings = load_config_from_ini(self.config_file)
 
     def setup_subapps(self):
         """Set up the hard-coded sub-apps"""
@@ -170,14 +152,14 @@ class PngLauncher(ConsoleInterface):
             # Backend app reads port from config file
             "server": BackendAppMgr(
                 console_app=self,
-                port_str=str(self.settings.get("Network", "server_port")),
+                port_str=str(self.settings.Network.server_port),
                 args=["--config-file", self.config_file, "--debug", "--replay-server"] \
                     if self.debug_mode else ["--config-file", self.config_file ]
             ),
             # SaveViewer app reads port from args
             "save_viewer": SaveViewerAppMgr(
                 console_app=self,
-                port_str=str(self.settings.get("Network", "save_viewer_port")),
+                port_str=str(self.settings.Network.save_viewer_port),
             ),
         }
 
