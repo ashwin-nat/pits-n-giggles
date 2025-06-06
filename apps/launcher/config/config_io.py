@@ -29,6 +29,7 @@ from .config_schema import (CaptureSettings, DisplaySettings,
                             ForwardingSettings, LoggingSettings,
                             NetworkSettings, PngSettings, PrivacySettings)
 
+# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def configparser_to_dict(cp: configparser.ConfigParser) -> dict:
     """Convert a ConfigParser object to a dictionary
@@ -56,7 +57,7 @@ def dict_to_configparser(data: dict) -> configparser.ConfigParser:
     return cp
 
 def load_config_from_ini(path: str) -> PngSettings:
-    """Load a PngSettings model from an INI file.
+    """Load a PngSettings model from an INI file. Creates with defaults if file does not exist
 
     Args:
         path (str): The path to the INI file.

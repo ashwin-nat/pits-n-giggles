@@ -23,10 +23,11 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import re
-from typing import Optional
+from typing import ClassVar, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
+# -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
 class NetworkSettings(BaseModel):
     telemetry_port: int = Field(20777, ge=0, le=65535, description="F1 UDP Telemetry Port")
@@ -49,28 +50,28 @@ class LoggingSettings(BaseModel):
 class PrivacySettings(BaseModel):
     process_car_setup: bool = Field(False, description="Whether to process car setup data")
 
-
 class ForwardingSettings(BaseModel):
     target_1: Optional[str] = ""
     target_2: Optional[str] = ""
     target_3: Optional[str] = ""
 
-    _hostport_pattern = re.compile(
+    hostport_pattern: ClassVar[re.Pattern] = re.compile(
         r"""
-        ^
-        ([a-zA-Z0-9.-]+)      # hostname or IP part (basic)
+        ^                             # Start of string
+        ([a-zA-Z0-9.-]+)              # Hostname or IP
         :
-        ([0-9]{1,5})          # port number
-        $
+        ([0-9]{1,5})                  # Port number
+        $                             # End of string
         """,
-        re.VERBOSE
+        re.VERBOSE,
     )
 
     @field_validator('target_1', 'target_2', 'target_3', mode='before')
-    def validate_hostport(cls, v):
+    def validate_hostport(cls, val):
+        v = val.rstrip()
         if not v:
             return v  # allow empty string
-        match = cls._hostport_pattern.match(v)
+        match = cls.hostport_pattern.match(v)
         if not match:
             raise ValueError(f"Invalid host:port format: '{v}'")
         port = int(match.group(2))
@@ -85,3 +86,6 @@ class PngSettings(BaseModel):
     Logging: LoggingSettings
     Privacy: PrivacySettings
     Forwarding: ForwardingSettings
+
+    class Config:
+        str_strip_whitespace = True

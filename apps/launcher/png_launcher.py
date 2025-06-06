@@ -38,8 +38,7 @@ from .console_interface import ConsoleInterface
 from .settings import SettingsWindow, DEFAULT_SETTINGS
 from .logger import get_rotating_logger
 
-from .config_schema import PngSettings
-from .config_io import load_config_from_ini
+from .config import PngSettings, load_config_from_ini
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 

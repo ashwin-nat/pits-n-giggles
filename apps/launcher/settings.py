@@ -26,13 +26,13 @@ import configparser
 import os
 import tkinter as tk
 import traceback
-from tkinter import messagebox, ttk, BooleanVar, StringVar, IntVar
+from tkinter import BooleanVar, IntVar, StringVar, messagebox, ttk
 from typing import Callable
+
 from pydantic import ValidationError
 
+from .config import PngSettings, load_config_from_ini, save_config_to_ini
 from .console_interface import ConsoleInterface
-from .config_io import load_config_from_ini, save_config_to_ini
-from .config_schema import PngSettings
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
@@ -148,9 +148,6 @@ class SettingsWindow:
         except ValidationError as ve:
             messagebox.showerror("Invalid Settings", ve.json(indent=2))
             return
-
-        # with open(self.config_file, 'w', encoding='utf-8') as f:
-        #     self.settings.write(f)
 
         self.app.log(f"Settings saved to {self.config_file}")
         self.save_callback(self.settings)
