@@ -336,8 +336,10 @@ class SessionState:
 
             # Update the position, time and other fields
             obj_to_be_updated.m_driver_info.position = lap_data.m_carPosition
+            obj_to_be_updated.m_driver_info.grid_position = lap_data.m_gridPosition
             obj_to_be_updated.m_lap_info.m_delta_to_car_in_front = lap_data.m_deltaToCarInFrontInMS
-            obj_to_be_updated.m_lap_info.m_delta_to_leader = lap_data.m_deltaToRaceLeaderInMS
+            obj_to_be_updated.m_lap_info.m_delta_to_leader = \
+                lap_data.m_deltaToRaceLeaderInMS + (lap_data.m_deltaToRaceLeaderMinutes * 60000)
 
             # Update the per lap snapshot data structure if lap info is available
             if (obj_to_be_updated.m_lap_info.m_current_lap is not None):
@@ -475,7 +477,10 @@ class SessionState:
         is_position_history_supported = self.isPositionHistorySupported()
         if is_position_history_supported:
             final_json["position-history"] = []
-            final_json["tyre-stint-history"] = []
+            # for f1 23, we use old style
+            if self.m_session_info.m_packet_format == 2023:
+                final_json["tyre-stint-history"] = []
+
         for index, data in enumerate(packet.m_classificationData):
             obj_to_be_updated = self._getObjectByIndex(index, create=False)
             # Perform the final snapshot
@@ -485,11 +490,14 @@ class SessionState:
             obj_to_be_updated.m_per_lap_snapshots[data.m_numLaps].m_track_position = data.m_position
             obj_to_be_updated.m_driver_info.position = data.m_position
             obj_to_be_updated.m_packet_copies.m_packet_final_classification = data
+            obj_to_be_updated.m_lap_info.m_total_race_time = data.m_totalRaceTime
             final_json["classification-data"][index] = obj_to_be_updated.toJSON(index)
             if is_position_history_supported:
                 final_json["position-history"].append(
                     obj_to_be_updated.getPositionHistoryJSON())
-                final_json["tyre-stint-history"].append(obj_to_be_updated.getTyreStintHistoryJSON())
+                # for f1 23, we use old style
+                if self.m_session_info.m_packet_format == 2023:
+                    final_json["tyre-stint-history"].append(obj_to_be_updated.getTyreStintHistoryJSON())
         final_json['classification-data'] = sorted(final_json['classification-data'], key=lambda x: x['track-position'])
         final_json['game-year'] = self.m_session_info.m_game_year
         final_json['packet-format'] = self.m_session_info.m_packet_format
@@ -497,6 +505,10 @@ class SessionState:
         final_json["session-info"] = self.m_session_info.m_packet_session.toJSON() \
             if self.m_session_info.m_packet_session else None
         self.m_session_info.m_packet_final_classification = packet
+
+        # for newer f1 games, use new style
+        if is_position_history_supported and self.m_session_info.m_packet_format > 2023:
+            final_json["tyre-stint-history-v2"] = self.getTyreStintHistoryJSONv2()
 
         self.setRaceCompleted()
         final_json['custom-markers'] = self.m_custom_markers_history.getJSONList()
@@ -733,6 +745,8 @@ class SessionState:
         return {
             "classification-data" : self._getClassificationDataListJSON(),
             "collisions" : self.getCollisionStatsJSON(),
+            "session-info" : self.m_session_info.m_packet_session.toJSON() \
+                if self.m_session_info.m_packet_session else None,
             # "overtakes" : self.getOvertakeStatsJSON()
         }
 
@@ -1001,6 +1015,21 @@ class SessionState:
             bool: True if the position history is supported, False otherwise
         """
         return bool(self.m_session_info.m_session_type and "Race" in str(self.m_session_info.m_session_type))
+
+    def getTyreStintHistoryJSONv2(self) -> List[Dict[str, Any]]:
+        """Get tyre stint history.
+
+        Returns:
+            List[Dict[str, Any]]: The tyre stint history JSON
+        """
+
+        ret = [
+            driver_data.getTyreStintHistoryJSONv2()
+            for driver_data in self.m_driver_data
+            if driver_data and driver_data.is_valid
+        ]
+        ret.sort(key=lambda x: x['position'])
+        return ret
 
     ##### Internal Helpers #####
 

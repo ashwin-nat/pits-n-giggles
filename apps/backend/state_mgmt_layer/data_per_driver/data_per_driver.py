@@ -754,6 +754,26 @@ class DataPerDriver:
             "team": self.m_driver_info.team,
             "driver-number": self.m_driver_info.driver_number,
             "delta-to-leader" : self.m_lap_info.m_delta_to_leader,
+            "position" : self.m_driver_info.position,
+            "tyre-stint-history": self._getTyreSetHistoryJSON(include_wear_history=False),
+        }
+
+    def getTyreStintHistoryJSONv2(self) -> Dict[str, Any]:
+        """Get the tyre stint history JSON.
+
+        Returns:
+            Dict[str, Any]: Tyre stint history JSON
+        """
+
+        return {
+            "name": self.m_driver_info.name,
+            "team": self.m_driver_info.team,
+            "driver-number": self.m_driver_info.driver_number,
+            "delta-to-leader" : self.m_lap_info.m_delta_to_leader,
+            "race-time" : self.m_lap_info.m_total_race_time,
+            "result-status" : self.m_driver_info.m_dnf_status_code,
+            "position" : self.m_driver_info.position,
+            "grid-position" : self.m_driver_info.grid_position,
             "tyre-stint-history": self._getTyreSetHistoryJSON(include_wear_history=False),
         }
 

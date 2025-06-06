@@ -1,7 +1,8 @@
 class RaceStatsModalPopulator {
-    constructor(data) {
+    constructor(data, iconCache) {
         this.data = data;
         this.tableClassNames = 'table table-bordered table-striped table-dark table-sm align-middle';
+        this.iconCache = iconCache;
     }
 
     // Method to create the navigation tabs
@@ -17,7 +18,7 @@ class RaceStatsModalPopulator {
             { id: 'tyre-stint-records', label: 'Tyre Stint Records' },
             { id: 'custom-markers', label: 'Custom Markers' },
             { id: 'position-history', label: 'Position History' },
-            // { id: 'tyre-stint-history', label: 'Tyre Stint History (WIP)' },
+            { id: 'tyre-stint-history', label: 'Tyre Stint History' },
         ];
 
         // Sort tabs alphabetically based on the label
@@ -56,7 +57,7 @@ class RaceStatsModalPopulator {
             { id: 'tyre-stint-records', method: this.populateTyreStintRecordsTab },
             { id: 'custom-markers', method: this.populateCustomMarkersTab },
             { id: 'position-history', method: this.populatePositionHistoryTab },
-            // { id: 'tyre-stint-history', method: this.populateTyreStintHistoryTab },
+            { id: 'tyre-stint-history', method: this.populateTyreStintHistoryTab },
         ];
 
         // Sort tabs alphabetically based on the label
@@ -293,21 +294,52 @@ class RaceStatsModalPopulator {
 
     populateTyreStintHistoryTab(tabPane) {
 
+        if (this.data["session-info"] == null) {
+            return;
+        }
+
+        let data, isNewStyle;
+        if ("tyre-stint-history" in this.data && this.data["tyre-stint-history"].length > 0) {
+            data = this.data["tyre-stint-history"];
+            isNewStyle = false;
+        } else if ("tyre-stint-history-v2" in this.data && this.data["tyre-stint-history-v2"].length > 0) {
+            data = this.data["tyre-stint-history-v2"];
+            isNewStyle = true;
+        } else {
+            console.log("Tyre Stint History data not available");
+            return;
+        }
+        // Initialize the chart
         const tyreStintHistoryGraphSubDiv = document.createElement('div');
+        const chart = new TyreStintChart(tyreStintHistoryGraphSubDiv, {
+            height: 25,
+            gap: 5,
+            padding: 20,
+            totalLaps: this.data["session-info"]["total-laps"],
+            trackName: this.data["session-info"]["track-id"],
+            airTemp: this.data["session-info"]["air-temperature"],
+            trackTemp: this.data["session-info"]["track-temperature"],
+            isNewStyle: isNewStyle,
+            }, this.iconCache);
+
+
+        chart.updateChart(data);
+        // chart.initTooltips();
+
         // TODO: use actual values
-        const trackName = 'SAKHIR';
-        const airTemp = 32;
-        const trackTemp = 25;
-        const numLaps = 5;
-        const chart = new TyreStintHistoryChart(
-            tyreStintHistoryGraphSubDiv,
-            ("tyre-stint-history" in this.data) ? (this.data["tyre-stint-history"]) : ([]),
-            trackName,
-            trackTemp,
-            airTemp,
-            numLaps  // Now using actual number of laps from the data
-        );
-        chart.draw();
+        // const trackName = 'SAKHIR';
+        // const airTemp = 32;
+        // const trackTemp = 25;
+        // const numLaps = 5;
+        // const chart = new TyreStintHistoryChart(
+        //     tyreStintHistoryGraphSubDiv,
+        //     ("tyre-stint-history" in this.data) ? (this.data["tyre-stint-history"]) : ([]),
+        //     trackName,
+        //     trackTemp,
+        //     airTemp,
+        //     numLaps  // Now using actual number of laps from the data
+        // );
+        // chart.draw();
         tabPane.appendChild(tyreStintHistoryGraphSubDiv);
     }
 
@@ -388,10 +420,15 @@ class RaceStatsModalPopulator {
         //source: https://www.reddit.com/r/formula1/comments/1avhmjb/f1_2024_hex_codes/
         const teamColors = {
             'Red Bull Racing': 'rgba(54,113,198, 1)',   // Blue
+            'Red Bull': 'rgba(54,113,198, 1)',          // Blue
+
             'VCARB': 'rgba(102,146,255, 1)',            // Blue
+            'RB': 'rgba(102,146,255, 1)',              // Blue
+
             'Mercedes': 'rgba(39,244,210, 1)',          // Teal
             'Ferrari': 'rgba(232,0,45, 1)',             // Red
             'McLaren': 'rgba(255,128,0, 1)',            // Papaya Orange
+            'Mclaren': 'rgba(255,128,0, 1)',            // Papaya Orange
             'Aston Martin': 'rgba(34,153,113, 1)',      // Green
             'Alpine': 'rgba(255,135,188, 1)',           // Blue
             'Alpha Tauri': 'rgba(30, 40, 80, 1)',       // Dark Blue
