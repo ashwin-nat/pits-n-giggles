@@ -27,6 +27,7 @@ from tkinter import ttk
 
 from ..console_interface import ConsoleInterface
 from .base_mgr import PngAppMgrBase
+from ..config import PngSettings
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -87,11 +88,11 @@ class BackendAppMgr(PngAppMgrBase):
         """Open the OBS overlay page in a web browser."""
         webbrowser.open(f'http://localhost:{self.port_str}/player-stream-overlay', new=2)
 
-    def on_settings_change(self, new_settings):
+    def on_settings_change(self, new_settings: PngSettings):
         """Handle changes in settings for the backend application"""
 
         # Update the port number
-        self.port_str = new_settings.get("Network", "server_port")
+        self.port_str = str(new_settings.Network.server_port)
 
     def post_start(self):
         """Update buttons after app start"""

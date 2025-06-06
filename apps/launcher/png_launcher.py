@@ -309,26 +309,10 @@ class PngLauncher(ConsoleInterface):
     def open_settings(self):
         """Open the settings window"""
         self.log("Opening settings window")
-        SettingsWindow(self.root, self, self.save_settings_callback, self.config_file, self.settings_icon_path)
+        SettingsWindow(self.root, self, self.settings_change_callback, self.config_file, self.settings_icon_path)
 
-    def save_settings_callback(self, new_settings: configparser.ConfigParser) -> None:
+    def settings_change_callback(self, new_settings: PngSettings) -> None:
         """Callback function to save settings from the settings window"""
-
-        # Check if any settings have changed
-        settings_changed = False
-
-        for section in new_settings.sections():
-            if not self.settings.has_section(section):
-                settings_changed = True
-                break
-            for key in new_settings[section]:
-                if self.settings.get(section, key) != new_settings.get(section, key):
-                    settings_changed = True
-                    break
-
-        if not settings_changed:
-            self.log("No changes detected, settings not saved.")
-            return  # Exit early if no changes
 
         self.log("Settings changed, restarting apps...")
 

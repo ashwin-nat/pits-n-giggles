@@ -129,29 +129,6 @@ class SettingsWindow:
 
         self.settings = load_config_from_ini(self.config_file)
 
-    def save_settings(self) -> None:
-        """
-        Save the current settings to the configuration file.
-
-        The settings are written to the file specified by `self.config_file`. After saving,
-        the `save_callback` is called to propagate the updated settings.
-        """
-
-        try:
-            data = {}
-            for section, section_data in self.entry_vars.items():
-                data[section] = {
-                    key: var.get() for key, var in section_data.items()
-                }
-            new_model = PngSettings(**data)
-            save_config_to_ini(new_model, self.config_file)
-        except ValidationError as ve:
-            messagebox.showerror("Invalid Settings", ve.json(indent=2))
-            return
-
-        self.app.log(f"Settings saved to {self.config_file}")
-        self.save_callback(self.settings)
-
     def create_tabs(self) -> None:
         self.entry_vars = {}
 
@@ -201,18 +178,49 @@ class SettingsWindow:
         """
         Save the settings from the UI to the configuration file.
 
-        This method retrieves the current values from the user input fields, updates
-        the settings object, and then calls `save_settings()` to persist the changes.
-        It will also close the settings window after saving.
+        This method:
+        - Collects user inputs from the UI
+        - Strips trailing spaces from all string values
+        - Validates the data by building a new PngSettings model
+        - Compares it to the existing model to detect changes
+        - Saves the config to the INI file if changed
+        - Calls a callback if provided
+        - Displays errors in a user-friendly format if validation fails
         """
-
         try:
             data = {}
+
+            # Gather input values from each tab and field
             for section, section_data in self.entry_vars.items():
-                data[section] = {
-                    key: var.get() for key, var in section_data.items()
-                }
+                data[section] = {}
+                for key, var in section_data.items():
+                    val = var.get()
+                    # Strip whitespace from strings only
+                    if isinstance(val, str):
+                        val = val.strip()
+                    data[section][key] = val
+
+            # Build new model to validate and capture changes
             new_model = PngSettings(**data)
+
+            # If settings haven't changed, skip saving and callback
+            if new_model == self.settings:
+                return
+            self.settings = new_model
+
+            # Save new settings to config file
             save_config_to_ini(new_model, self.config_file)
+            self.app.log(f"Settings saved to {self.config_file}")
+
+            # Run any registered save callback
+            if self.save_callback:
+                self.save_callback(new_model)
+
         except ValidationError as ve:
-            messagebox.showerror("Invalid Settings", ve.json(indent=2))
+            # Show all validation issues nicely
+            error_messages = []
+            for err in ve.errors():
+                loc = " > ".join(str(x) for x in err["loc"])
+                msg = err["msg"]
+                error_messages.append(f"{loc}: {msg}")
+            messagebox.showerror("Invalid Settings", "\n".join(error_messages))

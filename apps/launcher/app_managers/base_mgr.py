@@ -28,7 +28,6 @@ import sys
 import threading
 import tkinter as tk
 from abc import ABC, abstractmethod
-from configparser import ConfigParser
 from tkinter import ttk
 from typing import Callable, Optional
 
@@ -37,6 +36,7 @@ import psutil
 from lib.pid_report import extract_pid_from_line
 
 from ..console_interface import ConsoleInterface
+from ..config import PngSettings
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -89,7 +89,7 @@ class PngAppMgrBase(ABC):
         pass
 
     @abstractmethod
-    def on_settings_change(self, new_settings: ConfigParser):
+    def on_settings_change(self, new_settings: PngSettings):
         """Handle changes in settings for the sub-application"""
         pass
 
