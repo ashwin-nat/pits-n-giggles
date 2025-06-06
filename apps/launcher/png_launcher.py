@@ -321,8 +321,9 @@ class PngLauncher(ConsoleInterface):
 
         # Propagate settings to sub-apps and restart them
         for _, subapp in self.subapps.items():
-            subapp.on_settings_change(self.settings)
-            subapp.restart()
+            # Check if the subapp needs to be restarted
+            if subapp.on_settings_change(self.settings):
+                subapp.restart()
 
     def write(self, text):
         """Handle print statements by redirecting to our log"""

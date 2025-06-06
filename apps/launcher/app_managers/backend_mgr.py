@@ -89,11 +89,19 @@ class BackendAppMgr(PngAppMgrBase):
         """Open the OBS overlay page in a web browser."""
         webbrowser.open(f'http://localhost:{self.port_str}/player-stream-overlay', new=2)
 
-    def on_settings_change(self, new_settings: PngSettings):
-        """Handle changes in settings for the backend application"""
+    def on_settings_change(self, new_settings: PngSettings) -> bool:
+        """Handle changes in settings for the backend application
+
+        :param new_settings: New settings
+
+        :return: True if the app needs to be restarted
+        """
 
         # Update the port number
         self.port_str = str(new_settings.Network.server_port)
+
+        # Always restart the backend, since there are so many settings, it's easier to just restart it
+        return True
 
     def post_start(self):
         """Update buttons after app start"""

@@ -89,8 +89,13 @@ class PngAppMgrBase(ABC):
         pass
 
     @abstractmethod
-    def on_settings_change(self, new_settings: PngSettings):
-        """Handle changes in settings for the sub-application"""
+    def on_settings_change(self, new_settings: PngSettings) -> bool:
+        """Handle changes in settings for the sub-application
+
+        :param new_settings: New settings
+
+        :return: True if the app needs to be restarted
+        """
         pass
 
     def get_launch_command(self, module_path: str, args: list[str]):
