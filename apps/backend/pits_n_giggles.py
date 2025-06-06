@@ -30,11 +30,11 @@ import socket
 import webbrowser
 from typing import List, Optional, Set
 
-from apps.backend.common.config import load_config
 from apps.backend.common.png_logger import initLogger
 from apps.backend.state_mgmt_layer import initStateManagementLayer
 from apps.backend.telemetry_layer import initTelemetryLayer
 from apps.backend.ui_intf_layer import TelemetryWebServer, initUiIntfLayer
+from lib.config import load_config_from_ini
 from lib.pid_report import report_pid_from_child
 from lib.version import get_version
 
@@ -54,30 +54,30 @@ class PngRunner:
             debug_mode (bool): If true, runs in debug mode
         """
         self.m_logger: logging.Logger = logger
-        self.m_config = load_config(config_file, logger)
+        self.m_config = load_config_from_ini(config_file)
         self.m_tasks: List[asyncio.Task] = []
         self.m_version: str = get_version()
 
         self.m_logger.debug(self.m_config)
 
-        initStateManagementLayer(logger=self.m_logger, process_car_setups=self.m_config.process_car_setup)
+        initStateManagementLayer(logger=self.m_logger, process_car_setups=self.m_config.Privacy.process_car_setup)
 
         initTelemetryLayer(
-            port_number=self.m_config.telemetry_port,
+            port_number=self.m_config.Network.telemetry_port,
             replay_server=replay_server,
             logger=self.m_logger,
-            post_race_data_autosave=self.m_config.post_race_data_autosave,
-            udp_custom_action_code=self.m_config.udp_custom_action_code,
-            udp_tyre_delta_action_code=self.m_config.udp_tyre_delta_action_code,
-            forwarding_targets=self.m_config.forwarding_targets,
+            post_race_data_autosave=self.m_config.Capture.post_race_data_autosave,
+            udp_custom_action_code=self.m_config.Network.udp_custom_action_code,
+            udp_tyre_delta_action_code=self.m_config.Network.udp_tyre_delta_action_code,
+            forwarding_targets=self.m_config.Forwarding.forwarding_targets,
             tasks=self.m_tasks
         )
         self.m_web_server = self._setupUiIntfLayer(
-            http_port=self.m_config.server_port,
+            http_port=self.m_config.Network.server_port,
             logger=self.m_logger,
-            client_update_interval_ms=self.m_config.refresh_interval,
-            disable_browser_autoload=self.m_config.disable_browser_autoload,
-            stream_overlay_start_sample_data=self.m_config.stream_overlay_start_sample_data,
+            client_update_interval_ms=self.m_config.Display.refresh_interval,
+            disable_browser_autoload=self.m_config.Display.disable_browser_autoload,
+            stream_overlay_start_sample_data=self.m_config.StreamOverlay.show_sample_data_at_start,
             tasks=self.m_tasks,
             ver_str=self.m_version,
             debug_mode=debug_mode

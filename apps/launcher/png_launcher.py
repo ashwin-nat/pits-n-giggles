@@ -22,7 +22,6 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import configparser
 import datetime
 import os
 import sys
@@ -32,11 +31,13 @@ from typing import Dict
 
 from PIL import Image, ImageTk
 
+from lib.config import PngSettings, load_config_from_ini
+
 from .app_managers import BackendAppMgr, PngAppMgrBase, SaveViewerAppMgr
-from .styles import COLOUR_SCHEME
 from .console_interface import ConsoleInterface
-from .settings import SettingsWindow, DEFAULT_SETTINGS
 from .logger import get_rotating_logger
+from .settings import SettingsWindow
+from .styles import COLOUR_SCHEME
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -141,28 +142,7 @@ class PngLauncher(ConsoleInterface):
 
     def load_settings(self):
         """Load application settings"""
-        self.settings = configparser.ConfigParser()
-
-        # Create default settings if config file doesn't exist
-        if not os.path.exists(self.config_file):
-            for section, options in DEFAULT_SETTINGS.items():
-                self.settings.add_section(section)
-                for key, value in options.items():
-                    self.settings.set(section, key, value)
-
-        else:
-            self.settings.read(self.config_file)
-
-            # Check for missing keys and add them with default values
-            for section, options in DEFAULT_SETTINGS.items():
-                if not self.settings.has_section(section):
-                    self.settings.add_section(section)
-                for key, value in options.items():
-                    if not self.settings.has_option(section, key):
-                        self.settings.set(section, key, value)
-
-        with open(self.config_file, 'w', encoding='utf-8') as f:
-            self.settings.write(f)
+        self.settings = load_config_from_ini(self.config_file)
 
     def setup_subapps(self):
         """Set up the hard-coded sub-apps"""
@@ -170,14 +150,14 @@ class PngLauncher(ConsoleInterface):
             # Backend app reads port from config file
             "server": BackendAppMgr(
                 console_app=self,
-                port_str=str(self.settings.get("Network", "server_port")),
+                port_str=str(self.settings.Network.server_port),
                 args=["--config-file", self.config_file, "--debug", "--replay-server"] \
                     if self.debug_mode else ["--config-file", self.config_file ]
             ),
             # SaveViewer app reads port from args
             "save_viewer": SaveViewerAppMgr(
                 console_app=self,
-                port_str=str(self.settings.get("Network", "save_viewer_port")),
+                port_str=str(self.settings.Network.save_viewer_port),
             ),
         }
 
@@ -328,26 +308,10 @@ class PngLauncher(ConsoleInterface):
     def open_settings(self):
         """Open the settings window"""
         self.log("Opening settings window")
-        SettingsWindow(self.root, self, self.save_settings_callback, self.config_file, self.settings_icon_path)
+        SettingsWindow(self.root, self, self.settings_change_callback, self.config_file, self.settings_icon_path)
 
-    def save_settings_callback(self, new_settings: configparser.ConfigParser) -> None:
+    def settings_change_callback(self, new_settings: PngSettings) -> None:
         """Callback function to save settings from the settings window"""
-
-        # Check if any settings have changed
-        settings_changed = False
-
-        for section in new_settings.sections():
-            if not self.settings.has_section(section):
-                settings_changed = True
-                break
-            for key in new_settings[section]:
-                if self.settings.get(section, key) != new_settings.get(section, key):
-                    settings_changed = True
-                    break
-
-        if not settings_changed:
-            self.log("No changes detected, settings not saved.")
-            return  # Exit early if no changes
 
         self.log("Settings changed, restarting apps...")
 
@@ -356,8 +320,9 @@ class PngLauncher(ConsoleInterface):
 
         # Propagate settings to sub-apps and restart them
         for _, subapp in self.subapps.items():
-            subapp.on_settings_change(self.settings)
-            subapp.restart()
+            # Check if the subapp needs to be restarted
+            if subapp.on_settings_change(new_settings):
+                subapp.restart()
 
     def write(self, text):
         """Handle print statements by redirecting to our log"""
