@@ -794,6 +794,7 @@ class DriversListRsp:
 
         return {
             "ers-percent": _getValueOrDefaultValue(ers_perc),
+            "ers-percent-float": _getValueOrDefaultValue(driver_data.m_car_info.m_ers_perc),
             "ers-mode": _getValueOrDefaultValue(ers_mode),
             "ers-harvested-by-mguk-this-lap": self._calculateERSPercentage(car_status.m_ersHarvestedThisLapMGUK \
                                                                            if car_status else 0.0),

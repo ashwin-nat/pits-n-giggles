@@ -57,10 +57,11 @@ class RaceTableRowPopulator {
 
     addErsInfo() {
         const ersInfo = this.rowData["ers-info"];
-        this.createMultiLineCell([
+        const cell = this.createMultiLineCell([
             `${ersInfo["ers-percent"]}`,
             `${ersInfo["ers-mode"]}`,
         ]);
+        this.addErsBar(cell, ersInfo["ers-percent-float"], ersInfo["ers-mode"]);
         return this;
     }
 
@@ -378,6 +379,41 @@ class RaceTableRowPopulator {
 
         // Append the sector bar to the cell
         cell.appendChild(sectorBar);
+    }
+
+    addErsBar(cell, ersPerc, ersMode) {
+
+        // Container for the ERS bar
+        const ersbar = document.createElement('div');
+        ersbar.classList.add('d-flex', 'w-100', 'p-0');
+        ersbar.style.height = '1rem';
+        ersbar.style.backgroundColor = '#222'; // Background for empty bar
+        ersbar.style.borderRadius = '0.25rem';
+        ersbar.style.overflow = 'hidden';
+
+        // Clamp percentage to [0, 100]
+        const clampedPerc = Math.min(Math.max(ersPerc, 0), 100);
+
+        // Determine fill color based on mode
+        const modeColors = {
+            'none': '#888',        // Gray
+            'medium': '#dde579',   // yellow
+            'overtake': '#ff1744', // Red
+            'hotlap': '#00e676',   // Blue
+        };
+
+        const fillColor = modeColors[ersMode.toLowerCase()] || '#00e5ff'; // Default: cyan
+
+        // Create the fill bar
+        const fill = document.createElement('div');
+        fill.style.width = `${clampedPerc}%`;
+        fill.style.backgroundColor = fillColor;
+        fill.style.transition = 'width 0.2s ease-in-out';
+        fill.style.borderRadius = '0.25rem 0 0 0.25rem';
+
+        // Append fill to container
+        ersbar.appendChild(fill);
+        cell.appendChild(ersbar);
     }
 
 }
