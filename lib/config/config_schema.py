@@ -69,9 +69,10 @@ class ForwardingSettings(BaseModel):
         re.VERBOSE,
     )
 
-    @classmethod
+    # Pydantic v2 field validators receive the model class as 'cls' automatically.
+    # Not a classmethod, so we disable the no-self-argument warning.
     @field_validator('target_1', 'target_2', 'target_3', mode='before')
-    def validate_hostport(cls, val):
+    def validate_hostport(cls, val): # pylint: disable=no-self-argument
         if val is None:
             return ""
         v = val.rstrip()
