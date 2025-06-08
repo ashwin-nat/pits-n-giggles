@@ -56,7 +56,7 @@ Fixes #<issue_number> <!-- optional -->
 
 To run pylint
 ```
-pylint --rcfile scripts/.pylintrc lib src
+pylint --rcfile scripts/.pylintrc lib apps
 ```
 
 ---
