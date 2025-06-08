@@ -53,13 +53,18 @@ class F1TyreManager {
     return compoundOrder[compound] || 999;
   }
 
+  // Check if a tyre is used based on wear or life span
+  isTyreUsed(tyre) {
+    return tyre.wear > 0 || tyre['usable-life'] < tyre['life-span'];
+  }
+
   groupTyres(tyreSets) {
     const groups = new Map();
 
     tyreSets.forEach((tyre, originalIndex) => {
       const tyreWithIndex = { ...tyre, originalIndex };
       const compound = tyre['visual-tyre-compound'];
-      const isNew = tyre.wear === 0;
+      const isNew = tyre.wear === 0 && tyre['usable-life'] === tyre['life-span'];
       const isAvailable = tyre.available;
       const isFitted = tyre.fitted;
 
@@ -187,10 +192,19 @@ class F1TyreManager {
     const compoundClass = this.getCompoundClass(compound);
     const isAvailable = tyre.available;
     const isFitted = tyre.fitted;
+    const isUsed = this.isTyreUsed(tyre);
     const isGroup = tyreGroup.isGroup && tyreGroup.count > 1;
 
-    // Main card container
-    const card = this.createElement('div', `f1-ts-tyre-card f1-ts-compound-${compoundClass}${!isAvailable ? ' f1-ts-not-available' : ''}`);
+    // Main card container - add fitted class if tyre is fitted
+    let cardClasses = `f1-ts-tyre-card f1-ts-compound-${compoundClass}`;
+    if (!isAvailable) {
+      cardClasses += ' f1-ts-not-available';
+    }
+    if (isFitted) {
+      cardClasses += ' f1-ts-fitted-card';
+    }
+
+    const card = this.createElement('div', cardClasses);
 
     // Add count badge for grouped tyres
     if (isGroup) {
@@ -216,8 +230,24 @@ class F1TyreManager {
     // Status row
     const statusRow = this.createElement('div', 'f1-ts-status-row');
 
-    const availabilityBadge = this.createElement('span', `f1-ts-status-badge ${isAvailable ? 'f1-ts-available' : 'f1-ts-unavailable'}`,
-      isAvailable ? '✓ Available' : '✗ Used');
+    // Determine status text based on availability and usage - fitted takes precedence
+    let statusText, statusClass;
+    if (!isAvailable) {
+      statusText = '✗ Unavailable';
+      statusClass = 'f1-ts-unavailable';
+    } else if (isFitted) {
+      // Fitted takes precedence - don't show used status for fitted tyres
+      statusText = '✓ Available';
+      statusClass = 'f1-ts-available';
+    } else if (isUsed) {
+      statusText = '⚠ Used';
+      statusClass = 'f1-ts-unavailable';
+    } else {
+      statusText = '✓ Available';
+      statusClass = 'f1-ts-available';
+    }
+
+    const availabilityBadge = this.createElement('span', `f1-ts-status-badge ${statusClass}`, statusText);
     statusRow.appendChild(availabilityBadge);
 
     if (isFitted) {
@@ -228,10 +258,10 @@ class F1TyreManager {
     // Info grid
     const infoGrid = this.createElement('div', 'f1-ts-info-grid');
 
-    // Life span info - for groups, show the common value
+    // Life info - flipped numerator and denominator, renamed to "Life (laps)"
     const lifeSpanItem = this.createElement('div', 'f1-ts-info-item');
-    lifeSpanItem.appendChild(this.createElement('div', 'f1-ts-info-label', 'Life Span'));
-    lifeSpanItem.appendChild(this.createElement('div', 'f1-ts-info-value', `${tyre['usable-life']}/${tyre['life-span']}`));
+    lifeSpanItem.appendChild(this.createElement('div', 'f1-ts-info-label', 'Life (laps)'));
+    lifeSpanItem.appendChild(this.createElement('div', 'f1-ts-info-value', `${tyre['life-span']}/${tyre['usable-life']}`));
 
     // Wear info - for new tyre groups, always show 0%
     const wearItem = this.createElement('div', 'f1-ts-info-item');

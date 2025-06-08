@@ -36,6 +36,11 @@
   overflow: hidden;
 }
 
+/* Make fitted tyres have underglow only */
+.f1-ts-tyre-card.f1-ts-fitted-card {
+  box-shadow: 0 8px 25px rgba(255, 107, 53, 0.6);
+}
+
 /* Count badge for grouped tyres */
 .f1-ts-count-badge {
   position: absolute;
@@ -260,8 +265,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 25px;
+  height: 25px;
 }
 
 .f1-ts-tyre-icon svg {
