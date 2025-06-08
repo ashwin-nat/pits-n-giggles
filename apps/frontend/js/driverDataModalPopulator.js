@@ -3,6 +3,7 @@ class DriverModalPopulator {
         this.data = data;
         this.tableClassNames = 'table table-bordered table-striped table-dark table-sm align-middle';
         this.iconCache = iconCache;
+        this.telemetryEnabled = (this.data["participant-data"]["telemetry-setting"] === "Public");
     }
 
     populateLapTimesTab(tabPane) {
@@ -159,6 +160,10 @@ class DriverModalPopulator {
     }
 
     populateFuelUsageTab(tabPane) {
+        if (!this.telemetryEnabled) {
+            this.populateTelemetryDisabledMessage(tabPane);
+            return;
+        }
         const fuelUsagePerLap = [];
 
         const leftPanePopulator = (leftDiv) => {
@@ -258,6 +263,10 @@ class DriverModalPopulator {
     }
 
     populateTyreStintHistoryTab(tabPane) {
+        if (!this.telemetryEnabled) {
+            this.populateTelemetryDisabledMessage(tabPane);
+            return;
+        }
 
         const graphDataFL = [];
         const graphDataFR = [];
@@ -410,6 +419,10 @@ class DriverModalPopulator {
     }
 
     populateERSHistoryTab(tabPane) {
+        if (!this.telemetryEnabled) {
+            this.populateTelemetryDisabledMessage(tabPane);
+            return;
+        }
 
         const graphDataDeployed = [];
         const graphDataRemaining = [];
@@ -533,10 +546,18 @@ class DriverModalPopulator {
     }
 
     populateCarDamageTab(tabPane) {
+        if (!this.telemetryEnabled) {
+            this.populateTelemetryDisabledMessage(tabPane);
+            return;
+        }
         this.showRawDataInTable(tabPane, this.data["car-damage"], "Car damage data not available");
     }
 
     populateTyreWearPredictionTab(tabPane) {
+        if (!this.telemetryEnabled) {
+            this.populateTelemetryDisabledMessage(tabPane);
+            return;
+        }
         if (!this.data.hasOwnProperty("tyre-wear-predictions")) {
             // no need to even create this tab
             return;
@@ -771,6 +792,11 @@ class DriverModalPopulator {
 
     populateTyreSetsInfoTab(tabPane) {
 
+        if (!this.telemetryEnabled) {
+            this.populateTelemetryDisabledMessage(tabPane);
+            return;
+        }
+
         // Create manager with required parameters
         const manager = new F1TyreManager(tabPane, this.iconCache);
 
@@ -939,42 +965,6 @@ class DriverModalPopulator {
         }
     }
 
-    sanitizeTyreSetData(tyreSetData) {
-        // Step 1: Filter out unavailable tyres
-        const availableTyres = tyreSetData
-            .filter(tyre => tyre.available === true)
-            .map((tyre, index) => ({ ...tyre, index }));
-
-        // Step 2: Group tyres by both "actual-tyre-compound" and "visual-tyre-compound"
-        const groupedTyres = availableTyres.reduce((acc, tyre) => {
-            const { "actual-tyre-compound": actualCompound, "visual-tyre-compound": visualCompound } = tyre;
-
-            // Ensure the actual-tyre-compound group exists
-            if (!acc[actualCompound]) {
-                acc[actualCompound] = {};
-            }
-
-            // Ensure the visual-tyre-compound group exists within the actual-tyre-compound group
-            if (!acc[actualCompound][visualCompound]) {
-                acc[actualCompound][visualCompound] = [];
-            }
-
-            // Add the tyre to the appropriate group
-            acc[actualCompound][visualCompound].push(tyre);
-
-            return acc; // Return the accumulator for the next iteration
-        }, {}); // Start with an empty object
-
-        // Step 3: Convert the grouped object into the desired array structure
-        return Object.keys(groupedTyres).map(actualCompound => {
-            return Object.keys(groupedTyres[actualCompound]).map(visualCompound => ({
-                "actual-tyre-compound": actualCompound,
-                "visual-tyre-compound": visualCompound,
-                "tyre-sets": groupedTyres[actualCompound][visualCompound]
-            }));
-        }).flat();
-    }
-
     showRawDataInTable(tabPane, data, errorMessage) {
         if (data === null) {
 
@@ -1045,5 +1035,27 @@ class DriverModalPopulator {
         }
 
         this.createModalDivElelements(tabPane, leftPanePopulator, rightPanePopulator);
+    }
+
+    populateTelemetryDisabledMessage(tabPane) {
+        // Create the alert container
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert d-flex justify-content-center align-items-center text-center mb-3';
+        alertDiv.setAttribute('role', 'alert');
+
+        // Create the icon
+        const icon = document.createElement('i');
+        icon.className = 'bi bi-exclamation-triangle-fill me-2';
+
+        // Create the message span
+        const message = document.createElement('span');
+        message.textContent = 'Telemetry has been set to Restricted';
+
+        // Combine icon and message
+        alertDiv.appendChild(icon);
+        alertDiv.appendChild(message);
+
+        // Add to the tab pane
+        tabPane.appendChild(alertDiv);
     }
 }
