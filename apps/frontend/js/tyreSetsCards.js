@@ -185,7 +185,6 @@ class F1TyreManager {
     const tyre = tyreGroup;
     const compound = tyre['visual-tyre-compound'];
     const compoundClass = this.getCompoundClass(compound);
-    const wearPercentage = tyre.wear; // Use wear directly as it's already a percentage
     const isAvailable = tyre.available;
     const isFitted = tyre.fitted;
     const isGroup = tyreGroup.isGroup && tyreGroup.count > 1;
@@ -263,17 +262,10 @@ class F1TyreManager {
     infoGrid.appendChild(deltaItem);
     infoGrid.appendChild(setItem);
 
-    // Wear bar
-    const wearBar = this.createElement('div', 'f1-ts-wear-bar');
-    const wearFill = this.createElement('div', 'f1-ts-wear-fill');
-    wearFill.style.width = `${wearPercentage}%`;
-    wearBar.appendChild(wearFill);
-
     // Assemble card
     card.appendChild(header);
     card.appendChild(statusRow);
     card.appendChild(infoGrid);
-    card.appendChild(wearBar);
 
     return card;
   }

@@ -32,29 +32,8 @@
   border-radius: 12px;
   padding: 20px;
   border: 3px solid;
-  transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
-}
-
-.f1-ts-tyre-card:hover {
-  transform: translateY(-5px);
-}
-
-.f1-ts-tyre-card::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-  transform: scale(0);
-  transition: transform 0.6s ease;
-}
-
-.f1-ts-tyre-card:hover::before {
-  transform: scale(1);
 }
 
 /* Count badge for grouped tyres */
@@ -213,21 +192,6 @@
   font-size: 1rem;
   font-weight: 600;
   color: #fff;
-}
-
-.f1-ts-wear-bar {
-  background: #333;
-  height: 6px;
-  border-radius: 3px;
-  overflow: hidden;
-  margin-top: 10px;
-}
-
-.f1-ts-wear-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #00ff00 0%, #ffd700 50%, #ff1e1e 100%);
-  border-radius: 3px;
-  transition: width 0.3s ease;
 }
 
 .f1-ts-session-info {
