@@ -507,8 +507,12 @@ class SessionState:
         self.m_session_info.m_packet_final_classification = packet
 
         # for newer f1 games, use new style
-        if is_position_history_supported and self.m_session_info.m_packet_format > 2023:
-            final_json["tyre-stint-history-v2"] = self.getTyreStintHistoryJSONv2()
+        if is_position_history_supported:
+            if self.m_session_info.m_packet_format > 2023:
+                final_json["tyre-stint-history-v2"] = self.getTyreStintHistoryJSONv2()
+            else:
+                # Old style position history is not sorted
+                final_json["tyre-stint-history"].sort(key=lambda x: x['position'])
 
         self.setRaceCompleted()
         final_json['custom-markers'] = self.m_custom_markers_history.getJSONList()

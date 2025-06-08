@@ -81,6 +81,34 @@
   bottom: 8px;
 }
 
+/* Grid lines container - positioned to overlay the chart content */
+.f1-tsc-grid-container {
+  position: relative;
+  width: 100%;
+}
+
+.f1-tsc-grid-lines {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.f1-tsc-grid-line {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 1px;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.3) 0px,
+    rgba(255, 255, 255, 0.3) 2px,
+    transparent 2px,
+    transparent 4px
+  );
+}
+
 .f1-tsc-content {
   display: flex;
   flex-direction: column;
@@ -90,6 +118,8 @@
   overflow: hidden;
   padding: 20px 20px;
   margin-bottom: 20px;
+  position: relative;
+  z-index: 2;
 }
 
 .f1-tsc-row {
@@ -198,6 +228,7 @@
   top: 50%;
   transform: translateY(-50%);
   cursor: pointer;
+  z-index: 3;
 }
 
 .f1-tsc-tyre-icon {
@@ -210,7 +241,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1;
+  z-index: 4;
   cursor: pointer;
 }
 
@@ -219,6 +250,20 @@
   width: 3px;
   height: 100%;
   background: #ff0000;
+  z-index: 3;
+}
+
+/* Telemetry restricted message */
+.f1-tsc-telemetry-restricted {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+  letter-spacing: 1px;
+  z-index: 3;
 }
 
 /* Tyre compound colors */

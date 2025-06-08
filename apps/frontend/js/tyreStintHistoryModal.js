@@ -51,13 +51,31 @@ class TyreStintChart {
         continue;
       }
 
+      // Create processed driver object
+      const processedDriver = {};
+      for (const key in driver) {
+        if (driver.hasOwnProperty(key)) {
+          processedDriver[key] = driver[key];
+        }
+      }
+
+      // Check if stint history exists and is an array
       if (!driver['tyre-stint-history'] || !Array.isArray(driver['tyre-stint-history'])) {
         console.error('Invalid tyre stint history for driver ' + (driver.name || 'unknown'));
+        processedDriver['tyre-stint-history'] = [];
+        processedData.push(processedDriver);
         continue;
       }
 
       const processedStints = [];
       const stints = driver['tyre-stint-history'];
+
+      // Handle empty stint history - keep the driver but with empty stints
+      if (stints.length === 0) {
+        processedDriver['tyre-stint-history'] = [];
+        processedData.push(processedDriver);
+        continue;
+      }
 
       for (let j = 0; j < stints.length; j++) {
         const stint = stints[j];
@@ -75,16 +93,8 @@ class TyreStintChart {
         processedStints.push(stint);
       }
 
-      if (processedStints.length > 0) {
-        const processedDriver = {};
-        for (const key in driver) {
-          if (driver.hasOwnProperty(key)) {
-            processedDriver[key] = driver[key];
-          }
-        }
-        processedDriver['tyre-stint-history'] = processedStints;
-        processedData.push(processedDriver);
-      }
+      processedDriver['tyre-stint-history'] = processedStints;
+      processedData.push(processedDriver);
     }
 
     return processedData;
@@ -156,7 +166,7 @@ class TyreStintChart {
 
     const trackName = document.createElement('div');
     trackName.classList.add('f1-tsc-track-name');
-    trackName.textContent = replaceRevSuffix(this.options.trackName.toUpperCase());
+    trackName.textContent = this.options.trackName.toUpperCase();
     header.appendChild(trackName);
 
     const info = document.createElement('div');
@@ -231,10 +241,30 @@ class TyreStintChart {
     lapMarkersContainer.appendChild(lapMarkers);
     this.container.appendChild(lapMarkersContainer);
 
-    // Container for driver rows
+    // Create grid container that will hold both grid lines and chart content
+    this.gridContainer = document.createElement('div');
+    this.gridContainer.classList.add('f1-tsc-grid-container');
+
+    // Container for driver rows (this will be the reference for grid positioning)
     this.chartContent = document.createElement('div');
     this.chartContent.classList.add('f1-tsc-content');
-    this.container.appendChild(this.chartContent);
+    this.gridContainer.appendChild(this.chartContent);
+
+    // Create grid lines container AFTER chart content so we can position it correctly
+    this.gridLines = document.createElement('div');
+    this.gridLines.classList.add('f1-tsc-grid-lines');
+
+    // Add grid lines for each lap marker interval
+    for (let i = 0; i < intervals.length; i++) {
+      const lap = intervals[i];
+      const gridLine = document.createElement('div');
+      gridLine.classList.add('f1-tsc-grid-line');
+      gridLine.style.left = ((lap - 1) / this.options.totalLaps) * 100 + '%';
+      this.gridLines.appendChild(gridLine);
+    }
+
+    this.gridContainer.appendChild(this.gridLines);
+    this.container.appendChild(this.gridContainer);
   }
 
   calculateLapIntervals(totalLaps) {
@@ -285,6 +315,32 @@ class TyreStintChart {
       const row = this.createDriverRow(driver, i + 1);
       this.chartContent.appendChild(row);
     }
+
+    // Position grid lines to align with stint areas after content is added
+    this.positionGridLines();
+  }
+
+  positionGridLines() {
+    // Get the first row to measure the stint area position
+    const firstRow = this.chartContent.querySelector('.f1-tsc-row');
+    if (!firstRow) return;
+
+    const driverInfo = firstRow.querySelector('.f1-tsc-driver-info');
+    const stints = firstRow.querySelector('.f1-tsc-stints');
+
+    if (!driverInfo || !stints) return;
+
+    // Calculate the left offset (driver info width + margin)
+    const driverInfoRect = driverInfo.getBoundingClientRect();
+    const stintsRect = stints.getBoundingClientRect();
+    const containerRect = this.gridContainer.getBoundingClientRect();
+
+    const leftOffset = stintsRect.left - containerRect.left;
+    const rightOffset = containerRect.right - stintsRect.right;
+
+    // Update grid lines positioning
+    this.gridLines.style.left = leftOffset + 'px';
+    this.gridLines.style.right = rightOffset + 'px';
   }
 
   createDriverRow(driver, position) {
@@ -308,7 +364,7 @@ class TyreStintChart {
 
     const teamEl = document.createElement('div');
     teamEl.classList.add('f1-tsc-team');
-    teamEl.textContent = getTeamName(driver.team);
+    teamEl.textContent = driver.team;
 
     driverEl.appendChild(nameEl);
     driverEl.appendChild(teamEl);
@@ -354,20 +410,39 @@ class TyreStintChart {
     const stints = document.createElement('div');
     stints.classList.add('f1-tsc-stints');
 
+    // Check telemetry settings BEFORE processing stint data
+    const telemetrySettings = driver['telemetry-settings'];
+    const hasPublicTelemetry = telemetrySettings === 'Public';
     const stintHistory = driver['tyre-stint-history'];
-    for (let i = 0; i < stintHistory.length; i++) {
-      const stint = stintHistory[i];
-      const stintEl = this.createStintElement(stint);
-      stints.appendChild(stintEl);
-    }
 
-    // Check for DNF - calculate position based on last stint's end lap
-    const lastStint = stintHistory[stintHistory.length - 1];
-    if (lastStint && lastStint['end-lap'] < this.options.totalLaps) {
-      const dnfMarker = document.createElement('div');
-      dnfMarker.classList.add('f1-tsc-dnf');
-      dnfMarker.style.left = ((lastStint['end-lap'] - 1) / this.options.totalLaps) * 100 + '%';
-      stints.appendChild(dnfMarker);
+    if (!hasPublicTelemetry) {
+      // Show telemetry restricted message
+      const restrictedMessage = document.createElement('div');
+      restrictedMessage.classList.add('f1-tsc-telemetry-restricted');
+      restrictedMessage.textContent = 'TELEMETRY RESTRICTED';
+      stints.appendChild(restrictedMessage);
+    } else if (!stintHistory || stintHistory.length === 0) {
+      // Show telemetry restricted message for empty stint history too
+      const restrictedMessage = document.createElement('div');
+      restrictedMessage.classList.add('f1-tsc-telemetry-restricted');
+      restrictedMessage.textContent = 'TELEMETRY RESTRICTED';
+      stints.appendChild(restrictedMessage);
+    } else {
+      // Normal stint processing for public telemetry
+      for (let i = 0; i < stintHistory.length; i++) {
+        const stint = stintHistory[i];
+        const stintEl = this.createStintElement(stint);
+        stints.appendChild(stintEl);
+      }
+
+      // Check for DNF - calculate position based on last stint's end lap
+      const lastStint = stintHistory[stintHistory.length - 1];
+      if (lastStint && lastStint['end-lap'] < this.options.totalLaps) {
+        const dnfMarker = document.createElement('div');
+        dnfMarker.classList.add('f1-tsc-dnf');
+        dnfMarker.style.left = ((lastStint['end-lap']) / this.options.totalLaps) * 100 + '%';
+        stints.appendChild(dnfMarker);
+      }
     }
 
     row.appendChild(info);
