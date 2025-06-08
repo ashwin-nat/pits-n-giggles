@@ -298,7 +298,7 @@ class TelemetryRenderer {
   setFuelColumnState(isLiveDataMode) {
     // show the column in live mode
     const shouldHide = !isLiveDataMode;
-    this.hideColumn('FUEL', shouldHide);
+    this.hideColumn('FUEL 🛈', shouldHide);
   }
 
   hideColumn(columnName, shouldHide) {
