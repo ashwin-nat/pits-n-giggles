@@ -3,7 +3,7 @@ class DriverModalPopulator {
         this.data = data;
         this.tableClassNames = 'table table-bordered table-striped table-dark table-sm align-middle';
         this.iconCache = iconCache;
-        this.telemetryEnabled = (this.data["participant-data"]["telemetry-setting"] === "Public");
+        this.telemetryEnabled = (this.data?.["participant-data"]?.["telemetry-setting"] === "Public");
     }
 
     populateLapTimesTab(tabPane) {

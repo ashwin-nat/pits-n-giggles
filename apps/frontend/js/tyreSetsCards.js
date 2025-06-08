@@ -24,10 +24,7 @@ class F1TyreManager {
   }
 
   getTyreIcon(compound) {
-    if (this.iconCache && this.iconCache.getIcon) {
-      return this.iconCache.getIcon(compound);
-    }
-    return null; // Return null if no icon cache available
+    return this.iconCache.getIcon(compound);
   }
 
   getCompoundClass(compound) {
@@ -129,7 +126,9 @@ class F1TyreManager {
   }
 
   formatDeltaTime(deltaTime) {
-    if (deltaTime === 0) return 'Baseline';
+    if (deltaTime === 0) {
+      return 'Baseline';
+    }
     const seconds = (deltaTime / 1000).toFixed(3);
     return deltaTime > 0 ? `+${seconds}s` : `${seconds}s`;
   }
@@ -172,8 +171,12 @@ class F1TyreManager {
 
   createElement(tag, className = '', textContent = '') {
     const element = document.createElement(tag);
-    if (className) element.className = className;
-    if (textContent) element.textContent = textContent;
+    if (className) {
+      element.className = className;
+    }
+    if (textContent) {
+      element.textContent = textContent;
+    }
     return element;
   }
 
