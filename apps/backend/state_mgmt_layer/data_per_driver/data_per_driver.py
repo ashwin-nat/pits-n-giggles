@@ -752,7 +752,7 @@ class DataPerDriver:
         return {
             "name": self.m_driver_info.name,
             "team": self.m_driver_info.team,
-            "telemetry-settings" : self.m_driver_info.telemetry_restrictions,
+            "telemetry-settings" : str(self.m_driver_info.telemetry_restrictions),
             "driver-number": self.m_driver_info.driver_number,
             "delta-to-leader" : self.m_lap_info.m_delta_to_leader,
             "position" : self.m_driver_info.position,
@@ -769,7 +769,7 @@ class DataPerDriver:
         return {
             "name": self.m_driver_info.name,
             "team": self.m_driver_info.team,
-            "telemetry-settings" : self.m_driver_info.telemetry_restrictions,
+            "telemetry-settings" : str(self.m_driver_info.telemetry_restrictions),
             "driver-number": self.m_driver_info.driver_number,
             "delta-to-leader" : self.m_lap_info.m_delta_to_leader,
             "race-time" : self.m_lap_info.m_total_race_time,
