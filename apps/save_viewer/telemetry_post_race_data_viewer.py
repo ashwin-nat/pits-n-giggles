@@ -312,6 +312,7 @@ def getTelemetryInfo():
             "race-ended" : True,
             "f1-game-year" : g_json_data["game-year"],
             "f1-packet-format" : g_json_data.get("packet-format"),
+            "packet-format" : g_json_data.get("packet-format"),
             "is-spectating" : False,
         }
         for sample in g_json_data["session-info"]["weather-forecast-samples"]:
@@ -371,6 +372,7 @@ def getTelemetryInfo():
                     },
                     "ers-info": {
                         "ers-percent": f'{F1Utils.floatToStr(ers_perc)}%',
+                        "ers-percent-float": ers_perc,
                         "ers-mode": (
                             data_per_driver["car-status"]["ers-deploy-mode"]
                             if "ers-deploy-mode"
@@ -583,6 +585,49 @@ def handleDriverInfoRequest(index: str, is_str_input: bool=True) -> Tuple[Dict[s
     }
     return error_response, HTTPStatus.BAD_REQUEST
 
+def getDriverByNameTeam(name, team, classification_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Get driver by name. (assumes lock is already acquired)
+
+    Args:
+        name (str): Name of the driver
+        classification_data (List[Dict[str, Any]]): Classification data
+
+    Returns:
+        Dict[str, Any]: Driver data
+    """
+    return next(
+        (
+            driver
+            for driver in classification_data
+            if (driver["driver-name"] == name) and (driver["team"] == team)
+        ),
+        None,
+    )
+
+def getTyreStintHistoryJSON() -> List[Dict[str, Any]]:
+    """Get tyre stint history. (Assumes lock is already acquired)"""
+    global g_json_data
+    if not g_json_data:
+        return []
+
+    old_style = g_json_data.get("tyre-stint-history", [])
+    for driver_entry in old_style:
+        if not (driver_data := getDriverByNameTeam(driver_entry["name"], driver_entry["team"], g_json_data["classification-data"])):
+            # if required data is not available for any of the drivers, return empty list
+            png_logger.debug(f"Driver data not available for {driver_entry['name']}")
+            return []
+        # Insert position, grid position, proper delta, result status
+        if "position" not in driver_entry:
+            driver_entry["position"] = driver_data["final-classification"]["position"]
+        if "grid-position" not in driver_entry:
+            driver_entry["grid-position"] = driver_data["final-classification"]["grid-position"]
+        if "result-status" not in driver_entry:
+            driver_entry["result-status"] = driver_data["final-classification"]["result-status"]
+        if "telemetry-settings" not in driver_entry:
+            driver_entry["telemetry-settings"] = driver_data["telemetry-settings"]
+
+    return sorted(old_style, key=lambda x: x["position"])
+
 def handleRaceInfoRequest() -> Tuple[Dict[str, Any], HTTPStatus]:
 
     with g_json_lock:
@@ -592,14 +637,22 @@ def handleRaceInfoRequest() -> Tuple[Dict[str, Any], HTTPStatus]:
         if not g_json_data:
             return {}, HTTPStatus.OK
 
-        return {
+        ret = {
+            "session-info" : g_json_data["session-info"],
             "records" : g_json_data.get("records", None),
             "classification-data" : g_json_data.get("classification-data", None),
             "overtakes" : g_json_data.get("overtakes", None),
             "custom-markers" : g_json_data.get("custom-markers", []),
             "position-history" : g_json_data.get("position-history", []),
-            "tyre-stint-history" : g_json_data.get("tyre-stint-history", []),
-        }, HTTPStatus.OK
+            # "tyre-stint-history" : getTyreStintHistoryJSON(),
+        }
+
+        if new_style := g_json_data.get("tyre-stint-history-v2"):
+            ret["tyre-stint-history-v2"] = new_style
+        else:
+            ret["tyre-stint-history"] = getTyreStintHistoryJSON()
+
+        return ret, HTTPStatus.OK
 
 class TelemetryWebServer:
     def __init__(self, port: int, ver_str: str):

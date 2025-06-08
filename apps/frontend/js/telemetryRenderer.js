@@ -75,7 +75,7 @@ class TelemetryRenderer {
 
     // enable the time trial UI and set the data
     this.setUIMode('Time Trial');
-    this.timeTrialDataPopulator.populate(incomingData["tt-data"], incomingData["f1-packet-format"]);
+    this.timeTrialDataPopulator.populate(incomingData["tt-data"], incomingData["packet-format"]);
   }
 
   // Extract existing driver rows and remove them from the DOM
@@ -125,7 +125,7 @@ class TelemetryRenderer {
       ((entry) => entry["driver-info"]?.["index"] == spectatorCarIndex) :
       ((entry) => entry["driver-info"]?.["is-player"])
     );
-    const packetFormat = incomingData["f1-packet-format"];
+    const packetFormat = incomingData["packet-format"];
     this.indexByPosition = incomingData["table-entries"].map(entry => entry["driver-info"]["index"]);
 
     // Extract and remove existing driver rows
@@ -188,7 +188,7 @@ class TelemetryRenderer {
     } else {
       // Create the first div for the track name
       const trackNameDiv = document.createElement("div");
-      trackNameDiv.textContent = trackName.toUpperCase();
+      trackNameDiv.textContent = replaceRevSuffix(trackName.toUpperCase());
       trackNameDiv.style.textAlign = "center";
       trackNameDiv.style.margin = "0 auto";
       trackNameContainer.appendChild(trackNameDiv);
@@ -292,14 +292,13 @@ class TelemetryRenderer {
 
   setDeltaColumnState(isLiveDataMode) {
     // hide the column in live mode
-    const shouldHide = isLiveDataMode;
-    this.hideColumn('DELTA', isLiveDataMode);
+    this.hideColumn('DELTA 🛈', isLiveDataMode);
   }
 
   setFuelColumnState(isLiveDataMode) {
     // show the column in live mode
     const shouldHide = !isLiveDataMode;
-    this.hideColumn('FUEL', shouldHide);
+    this.hideColumn('FUEL 🛈', shouldHide);
   }
 
   hideColumn(columnName, shouldHide) {

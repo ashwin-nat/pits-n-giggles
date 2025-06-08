@@ -23,45 +23,18 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import configparser
-import os
+import re
 import tkinter as tk
-import traceback
-from tkinter import messagebox, ttk
+from tkinter import BooleanVar, StringVar, messagebox, ttk
 from typing import Callable
+
+from pydantic import ValidationError
+
+from lib.config import PngSettings, load_config_from_ini, save_config_to_ini
 
 from .console_interface import ConsoleInterface
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
-
-# Default settings - everything is a string in this layer
-DEFAULT_SETTINGS = {
-    "Network": {
-        "telemetry_port": "20777",
-        "server_port": "4768",
-        "save_viewer_port": "4769",
-        "udp_custom_action_code": "12",
-        "udp_tyre_delta_action_code": "11"
-    },
-    "Capture": {
-        "post_race_data_autosave": "True"
-    },
-    "Display": {
-        "refresh_interval": "200",
-        "disable_browser_autoload": "False"
-    },
-    "Logging": {
-        "log_file": "png.log",
-        "log_file_size": "1000000"
-    },
-    "Privacy": {
-        "process_car_setup": "False"
-    },
-    "Forwarding": {
-        "target_1": "",
-        "target_2": "",
-        "target_3": "",
-    }
-}
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -123,57 +96,36 @@ class SettingsWindow:
         This method reads the settings file if it exists, or creates default settings
         if no settings file is found. It ensures all sections and keys exist.
         """
-        if os.path.exists(self.config_file):
-            self.settings.read(self.config_file)
 
-        # Ensure all sections and keys exist
-        for section, options in DEFAULT_SETTINGS.items():
-            if not self.settings.has_section(section):
-                self.settings.add_section(section)
-
-            for key, value in options.items():
-                if not self.settings.has_option(section, key):
-                    self.settings.set(section, key, value)
-
-    def save_settings(self) -> None:
-        """
-        Save the current settings to the configuration file.
-
-        The settings are written to the file specified by `self.config_file`. After saving,
-        the `save_callback` is called to propagate the updated settings.
-        """
-        with open(self.config_file, 'w', encoding='utf-8') as f:
-            self.settings.write(f)
-
-        self.app.log(f"Settings saved to {self.config_file}")
-        self.save_callback(self.settings)
+        self.settings = load_config_from_ini(self.config_file)
 
     def create_tabs(self) -> None:
         self.entry_vars = {}
 
-        for section in self.settings.sections():
-            tab = ttk.Frame(self.notebook, padding=10)
-            self.notebook.add(tab, text=section)
-            tab.columnconfigure(1, weight=1)
+        # To populate UI, iterate through fields like:
+        for section_name, field in type(self.settings).model_fields.items():
+            section_model = getattr(self.settings, section_name)
+            section_name_formatted = self._pascal_to_title(section_name)
+            tab = ttk.Frame(self.notebook)
+            self.notebook.add(tab, text=section_name_formatted)
+            self.entry_vars.setdefault(section_name, {})
 
-            for i, (key, value) in enumerate(self.settings[section].items()):
-                label = ttk.Label(tab, text=key.replace('_', ' ').title() + ":")
+            for i, (field_name, field) in enumerate(type(section_model).model_fields.items()):
+                label_text = field.description or field_name
+                label = ttk.Label(tab, text=f"{label_text}:")
                 label.grid(row=i, column=0, sticky="w", padx=5, pady=5)
 
-                # choose control based on value/content
-                if value.lower() in {'true', 'false'}:
-                    var = tk.BooleanVar(value=value.lower() == 'true')
+                value = getattr(section_model, field_name)
+                if isinstance(value, bool):
+                    var = BooleanVar(value=value)
                     control = ttk.Checkbutton(tab, variable=var)
-                elif key == 'packet_capture_mode':
-                    var = tk.StringVar(value=value)
-                    control = ttk.Combobox(tab, textvariable=var,
-                                        values=["disabled", "enabled", "auto"])
                 else:
-                    var = tk.StringVar(value=value)
+                    var = StringVar(value=str(value))
                     control = ttk.Entry(tab, textvariable=var, width=30)
 
                 control.grid(row=i, column=1, sticky="ew", padx=5, pady=5)
-                self.entry_vars.setdefault(section, {})[key] = var
+                self.entry_vars[section_name][field_name] = var
+
 
     def create_buttons(self) -> None:
         """
@@ -196,23 +148,55 @@ class SettingsWindow:
         """
         Save the settings from the UI to the configuration file.
 
-        This method retrieves the current values from the user input fields, updates
-        the settings object, and then calls `save_settings()` to persist the changes.
-        It will also close the settings window after saving.
+        This method:
+        - Collects user inputs from the UI
+        - Strips trailing spaces from all string values
+        - Validates the data by building a new PngSettings model
+        - Compares it to the existing model to detect changes
+        - Saves the config to the INI file if changed
+        - Calls a callback if provided
+        - Displays errors in a user-friendly format if validation fails
         """
+        data = {}
+
+        # Gather input values from each tab and field
+        for section, section_data in self.entry_vars.items():
+            data[section] = {}
+            for key, var in section_data.items():
+                val = var.get()
+                # Strip whitespace from strings only
+                if isinstance(val, str):
+                    val = val.strip()
+                data[section][key] = val
+
         try:
-            for section, options in self.entry_vars.items():
-                for key, var in options.items():
-                    # Convert boolean to string
-                    value = str(var.get()) if isinstance(var, tk.BooleanVar) else var.get()
-                    self.settings.set(section, key, value)
+            # Build new model to validate and capture changes
+            new_model = PngSettings(**data)
+        except ValidationError as ve:
+            # Show all validation issues nicely
+            error_messages = []
+            for err in ve.errors():
+                loc = " > ".join(str(x) for x in err["loc"])
+                msg = err["msg"]
+                error_messages.append(f"{loc}: {msg}")
+            messagebox.showerror("Invalid Settings", "\n".join(error_messages))
+            return
 
-            self.save_settings()
-            self.window.destroy()
-        # pylint: disable=broad-exception-caught
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to save settings: {e}")
+        # If settings haven't changed, skip saving and callback
+        if new_model == self.settings:
+            return
 
-            # Capture the stack trace as a string and log it
-            stack_trace = traceback.format_exc()
-            self.app.log(f"Failed to save settings: {e}\n{stack_trace}")
+        self.settings = new_model
+
+        # Save new settings to config file
+        save_config_to_ini(new_model, self.config_file)
+        self.app.log(f"Settings saved to {self.config_file}")
+
+        # Run any registered save callback
+        if self.save_callback:
+            self.save_callback(new_model)
+
+    def _pascal_to_title(self, s: str) -> str:
+        """Convert a string from pascalCase to Title Case."""
+        # Insert a space before each capital letter (except the first one)
+        return re.sub(r'(?<!^)(?=[A-Z])', ' ', s).title()

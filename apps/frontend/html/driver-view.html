@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/conditions.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/speedLimit.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tyreStintHistoryModal.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tyreSetsCards.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js"></script>
@@ -80,15 +81,15 @@
               <tr>
                 <th>POS</th>
                 <th>DRIVER</th>
-                <th id="delta-th" data-bs-toggle="tooltip">DELTA</th>
+                <th id="delta-th" data-bs-toggle="tooltip">DELTA 🛈</th>
                 <th>ERS</th>
                 <th>WARNS/PENS</th>
-                <th id="best-lap-th" class="best-lap" data-bs-toggle="tooltip">BEST LAP</th>
-                <th id="last-lap-th" class="last-lap" data-bs-toggle="tooltip">LAST LAP</th>
-                <th id="tyre-info-th" data-bs-toggle="tooltip">TYRE INFO</th>
+                <th id="best-lap-th" class="best-lap" data-bs-toggle="tooltip">BEST LAP 🛈</th>
+                <th id="last-lap-th" class="last-lap" data-bs-toggle="tooltip">LAST LAP 🛈</th>
+                <th id="tyre-info-th" data-bs-toggle="tooltip">TYRE INFO 🛈</th>
                 <th id="wear-prediction-th">WEAR PREDICTION</th>
                 <th>WING DAMAGE</th>
-                <th id="fuel-info-th" data-bs-toggle="tooltip">FUEL</th>
+                <th id="fuel-info-th" data-bs-toggle="tooltip">FUEL 🛈</th>
               </tr>
             </thead>
             <tbody id="telemetry-data">
@@ -524,6 +525,7 @@
     <script src="{{ url_for('static', filename='js/graph.js') }}"></script>
     <script src="{{ url_for('static', filename='js/driverDataModalPopulator.js') }}"></script>
     <script src="{{ url_for('static', filename='js/raceStatsModalPopulator.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/tyreSetsCards.js') }}"></script>
     <script src="{{ url_for('static', filename='js/tyreStintHistoryModal.js') }}"></script>
     <script src="{{ url_for('static', filename='js/modals.js') }}"></script>
     <script src="{{ url_for('static', filename='js/raceTableRowPopulator.js') }}"></script>

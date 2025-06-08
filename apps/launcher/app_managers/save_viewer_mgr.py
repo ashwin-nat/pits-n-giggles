@@ -25,6 +25,8 @@
 import webbrowser
 from tkinter import filedialog, ttk
 
+from lib.config import PngSettings
+
 from ..console_interface import ConsoleInterface
 from .base_mgr import PngAppMgrBase
 
@@ -99,17 +101,23 @@ class SaveViewerAppMgr(PngAppMgrBase):
             else:
                 self.console_app.log("No process running to send the file path to.")
 
-    def on_settings_change(self, new_settings):
-        """Handle changes in settings for the sub-application"""
+    def on_settings_change(self, new_settings: PngSettings) -> bool:
+        """Handle changes in settings for the sub-application
+
+        :param new_settings: New settings
+
+        :return: True if the app needs to be restarted
+        """
         # Implementation of handling settings changes
         self.console_app.log(f"Settings changed for {self.display_name}")
-        # Update the args
+        should_restart = self.port_str != str(new_settings.Network.save_viewer_port)
 
-        new_port = new_settings.get("Network", "save_viewer_port")
         # Update the args with the new port
-        self.port_str = new_port
+        self.port_str = str(new_settings.Network.save_viewer_port)
         self.args = ["--launcher", "--port", self.port_str] + self.extra_args
         self.console_app.log(f"Updated args: {self.args}")
+
+        return should_restart
 
     def post_start(self):
         """Update buttons after app start"""

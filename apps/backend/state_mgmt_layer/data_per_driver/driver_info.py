@@ -42,6 +42,7 @@ class DriverInfo:
     Attributes:
         name (Optional[str]): The name of the driver.
         position (Optional[int]): The current position of the driver in the race.
+        grid_position (Optional[int]): The starting grid position of the driver.
         team (Optional[str]): The team to which the driver belongs.
         is_player (Optional[bool]): Indicates whether the driver is the player.
         telemetry_restrictions (Optional[TelemetrySetting]): Telemetry settings indicating the level of data available for the driver.
@@ -52,6 +53,7 @@ class DriverInfo:
     """
     name: Optional[str] = None
     position: Optional[int] = None
+    grid_position: Optional[int] = None
     team: Optional[str] = None
     is_player: Optional[bool] = None
     telemetry_restrictions: Optional[TelemetrySetting] = None
