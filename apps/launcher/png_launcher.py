@@ -61,6 +61,9 @@ class PngLauncher(ConsoleInterface):
         self.settings_icon_path = settings_icon_path
         self.debug_mode = debug_mode
 
+        # Init logger before anything else
+        self.setup_logger()
+
         # Apply theme to root window
         self.root.configure(bg=COLOUR_SCHEME["background"])
 
@@ -88,7 +91,6 @@ class PngLauncher(ConsoleInterface):
         self.load_settings()
         self.setup_header()
         self.setup_console()
-        self.setup_logger()
         self.setup_subapps()
 
         self.stdout_original = sys.stdout
@@ -142,7 +144,7 @@ class PngLauncher(ConsoleInterface):
 
     def load_settings(self):
         """Load application settings"""
-        self.settings = load_config_from_ini(self.config_file)
+        self.settings = load_config_from_ini(self.config_file, self.m_logger)
 
     def setup_subapps(self):
         """Set up the hard-coded sub-apps"""
@@ -308,7 +310,14 @@ class PngLauncher(ConsoleInterface):
     def open_settings(self):
         """Open the settings window"""
         self.log("Opening settings window")
-        SettingsWindow(self.root, self, self.settings_change_callback, self.config_file, self.settings_icon_path)
+        SettingsWindow(
+            parent=self.root,
+            app=self,
+            settings=self.settings,
+            save_callback=self.settings_change_callback,
+            config_file=self.config_file,
+            settings_icon_path=self.settings_icon_path
+        )
 
     def settings_change_callback(self, new_settings: PngSettings) -> None:
         """Callback function to save settings from the settings window"""

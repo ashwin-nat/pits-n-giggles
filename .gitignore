@@ -17,3 +17,4 @@ png-venv/
 .vercel
 *yappi*
 *.part
+.invalid
