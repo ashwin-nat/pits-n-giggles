@@ -126,7 +126,7 @@ class F1TyreManager {
   formatDeltaTime(deltaTime) {
     if (deltaTime === 0) return 'Baseline';
     const seconds = (deltaTime / 1000).toFixed(3);
-    return `+${seconds}s`;
+    return deltaTime > 0 ? `+${seconds}s` : `${seconds}s`;
   }
 
   getAvailabilityStats() {
@@ -176,9 +176,6 @@ class F1TyreManager {
     const iconSpan = this.createElement('span', 'f1-ts-tyre-icon');
     const iconElement = this.getTyreIcon(compound);
     if (iconElement) {
-      // Remove any fill attributes that might cause issues
-      iconElement.removeAttribute('fill');
-      iconElement.style.fill = 'none';
       iconSpan.appendChild(iconElement);
     }
     return iconSpan;
@@ -248,17 +245,17 @@ class F1TyreManager {
     const deltaValue = this.createElement('div', 'f1-ts-info-value f1-ts-delta-time', this.formatDeltaTime(tyre['lap-delta-time']));
     deltaItem.appendChild(deltaValue);
 
-    // Set number info (show range for groups, single number for individuals)
+    // Set number info (show range for groups, single number for individuals) - start from 0
     const setItem = this.createElement('div', 'f1-ts-info-item');
     setItem.appendChild(this.createElement('div', 'f1-ts-info-label', isGroup ? 'Sets' : 'Set #'));
     if (isGroup) {
-      const setNumbers = tyreGroup.groupedTyres.map(t => t.originalIndex + 1).sort((a, b) => a - b);
+      const setNumbers = tyreGroup.groupedTyres.map(t => t.originalIndex).sort((a, b) => a - b);
       const setRange = setNumbers.length > 2 ?
         `${setNumbers[0]}-${setNumbers[setNumbers.length - 1]}` :
         setNumbers.join(', ');
       setItem.appendChild(this.createElement('div', 'f1-ts-info-value', setRange));
     } else {
-      setItem.appendChild(this.createElement('div', 'f1-ts-info-value', `${tyre.originalIndex + 1}`));
+      setItem.appendChild(this.createElement('div', 'f1-ts-info-value', `${tyre.originalIndex}`));
     }
 
     infoGrid.appendChild(lifeSpanItem);
@@ -272,25 +269,11 @@ class F1TyreManager {
     wearFill.style.width = `${wearPercentage}%`;
     wearBar.appendChild(wearFill);
 
-    // Session info - for groups, show the most common session or "Mixed" if different
-    const sessionInfo = this.createElement('div', 'f1-ts-session-info');
-    sessionInfo.appendChild(this.createElement('strong', '', 'Recommended: '));
-
-    if (isGroup) {
-      const sessions = tyreGroup.groupedTyres.map(t => t['recommended-session']);
-      const uniqueSessions = [...new Set(sessions)];
-      const sessionText = uniqueSessions.length === 1 ? uniqueSessions[0] : 'Mixed';
-      sessionInfo.appendChild(document.createTextNode(sessionText));
-    } else {
-      sessionInfo.appendChild(document.createTextNode(tyre['recommended-session']));
-    }
-
     // Assemble card
     card.appendChild(header);
     card.appendChild(statusRow);
     card.appendChild(infoGrid);
     card.appendChild(wearBar);
-    card.appendChild(sessionInfo);
 
     return card;
   }
@@ -298,7 +281,7 @@ class F1TyreManager {
   createSummarySection(stats) {
     const summary = this.createElement('div', 'f1-ts-summary');
 
-    const title = this.createElement('div', 'f1-ts-summary-title', '📊 Tyre Inventory Summary');
+    const title = this.createElement('div', 'f1-ts-summary-title', '📊 Summary');
     summary.appendChild(title);
 
     const statsGrid = this.createElement('div', 'f1-ts-summary-stats');

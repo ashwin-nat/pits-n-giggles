@@ -6,6 +6,7 @@
   border-radius: 12px;
   color: #ffffff;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  overflow: auto;
 }
 
 .f1-ts-title {
@@ -30,7 +31,7 @@
   background: linear-gradient(145deg, #2a2a2a, #1e1e1e);
   border-radius: 12px;
   padding: 20px;
-  border-left: 5px solid;
+  border: 3px solid;
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
@@ -38,7 +39,6 @@
 
 .f1-ts-tyre-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
 }
 
 .f1-ts-tyre-card::before {
@@ -57,25 +57,44 @@
   transform: scale(1);
 }
 
+/* Count badge for grouped tyres */
+.f1-ts-count-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(255, 30, 30, 0.9);
+  color: white;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
 /* Tyre Compound Colors */
 .f1-ts-compound-soft {
-  border-left-color: #ff1e1e;
+  border-color: #ff1e1e;
 }
 
 .f1-ts-compound-medium {
-  border-left-color: #ffd700;
+  border-color: #ffd700;
 }
 
 .f1-ts-compound-hard {
-  border-left-color: #ffffff;
+  border-color: #ffffff;
 }
 
 .f1-ts-compound-inters {
-  border-left-color: #00ff00;
+  border-color: #00ff00;
 }
 
 .f1-ts-compound-wet {
-  border-left-color: #0066ff;
+  border-color: #0066ff;
 }
 
 .f1-ts-tyre-header {
@@ -227,15 +246,15 @@
 }
 
 .f1-ts-summary {
-  background: rgba(255, 30, 30, 0.1);
-  border: 1px solid #ff1e1e;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 8px;
   padding: 15px;
   margin-top: 20px;
 }
 
 .f1-ts-summary-title {
-  color: #ff1e1e;
+  color: #ffffff;
   font-weight: 700;
   margin-bottom: 10px;
   text-transform: uppercase;
@@ -284,5 +303,5 @@
 .f1-ts-tyre-icon svg {
   width: 100%;
   height: 100%;
-  fill: currentColor;
+  fill: none;
 }
