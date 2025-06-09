@@ -879,6 +879,9 @@ class DriverModalPopulator {
             tabs.push({ id: 'tyre-wear-prediction', label: 'Tyre Wear Prediction' });
         }
 
+        // Sort tabs alphabetically based on the label
+        tabs.sort((a, b) => a.id.localeCompare(b.id));
+
         tabs.forEach((tab, index) => {
             const navItem = document.createElement('li');
             navItem.className = 'nav-item';
@@ -926,6 +929,9 @@ class DriverModalPopulator {
         if (this.tyreWearPredictionsAvailable) {
             tabs.push({ id: 'tyre-wear-prediction', method: this.populateTyreWearPredictionTab });
         }
+
+        // Sort tabs alphabetically based on the label
+        tabs.sort((a, b) => a.id.localeCompare(b.id));
 
         tabs.forEach((tab, index) => {
             const tabPane = document.createElement('div');
