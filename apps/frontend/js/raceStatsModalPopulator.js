@@ -82,56 +82,8 @@ class RaceStatsModalPopulator {
     populateLapTimeRecordsTab(tabPane) {
 
         const containerDiv = document.createElement('div');
-        containerDiv.className = 'd-flex table-responsive';
-
-        const table = document.createElement('table');
-        table.className = this.tableClassNames;
-
-        // Create table header
-        const thead = document.createElement('thead');
-        const headerRow = document.createElement('tr');
-        const headers = [
-            'Category',
-            'Driver',
-            'Team',
-            'Lap',
-            'Time',
-        ];
-
-        headers.forEach(headerText => {
-            const th = document.createElement('th');
-            th.textContent = headerText;
-            th.setAttribute('scope', 'col');  // Adds semantic meaning
-            th.className = 'text-nowrap';     // Prevents text wrapping
-            headerRow.appendChild(th);
-        });
-
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
-
-        // Create table body
-        const timesRecordsTableBody = document.createElement('tbody');
-
-        if (this.isFastestRecordAvailable(this.data)) {
-            if ('lap' in this.data["records"]["fastest"]) {
-                this.insertFastestRow(this.data, timesRecordsTableBody, "Lap", "lap");
-            }
-            if ('s1' in this.data["records"]["fastest"]) {
-                this.insertFastestRow(this.data, timesRecordsTableBody, "Sector 1", "s1");
-            }
-            if ('s2' in this.data["records"]["fastest"]) {
-                this.insertFastestRow(this.data, timesRecordsTableBody, "Sector 2", "s2");
-            }
-            if ('s3' in this.data["records"]["fastest"]) {
-                this.insertFastestRow(this.data, timesRecordsTableBody, "Sector 3", "s3");
-            }
-        } else {
-            const row = timesRecordsTableBody.insertRow();
-            row.innerHTML = '<td colspan="5">Fastest Times Records data not available</td>';
-        }
-
-        table.appendChild(timesRecordsTableBody);
-        containerDiv.appendChild(table);
+        const records = new F1LapSectorRecords(containerDiv);
+        records.update(this.data["records"]["fastest"]);
         tabPane.appendChild(containerDiv);
     }
 
@@ -195,48 +147,8 @@ class RaceStatsModalPopulator {
     populateTyreStintRecordsTab(tabPane) {
 
         const containerDiv = document.createElement('div');
-        containerDiv.className = 'd-flex table-responsive';
-
-        const table = document.createElement('table');
-        table.className = this.tableClassNames;
-
-        // Create table header
-        const thead = document.createElement('thead');
-        const headerRow = document.createElement('tr');
-        const headers = [
-            'Compound',
-            'Category',
-            'Driver',
-            'Record',
-        ];
-
-        headers.forEach(headerText => {
-            const th = document.createElement('th');
-            th.textContent = headerText;
-            headerRow.appendChild(th);
-        });
-
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
-
-        // Create table body
-        const tyreStintRecordsTableBody = document.createElement('tbody');
-        if ("records" in this.data && 'tyre-stats' in this.data["records"] && this.data["records"]["tyre-stats"] != null &&
-            !this.isObjectEmpty(this.data["records"]["tyre-stats"])) {
-
-            const tyreStats = this.data["records"]["tyre-stats"];
-            for (let compound in tyreStats) {
-                const compoundRecords = tyreStats[compound];
-                this.insertTyreStintRecordRow(tyreStintRecordsTableBody, compound, compoundRecords);
-            }
-
-        } else {
-            const row = tyreStintRecordsTableBody.insertRow();
-            row.innerHTML = '<td colspan="4">Tyre Stint Records data not available</td>';
-        }
-
-        table.appendChild(tyreStintRecordsTableBody);
-        containerDiv.appendChild(table);
+        const records = new F1TyreRecords(containerDiv, this.iconCache);
+        records.update(this.data["records"]["tyre-stats"]);
         tabPane.appendChild(containerDiv);
     }
 

@@ -151,6 +151,8 @@ class OverallRaceStatsRsp:
 
         self.m_rsp = _session_state_ref.getRaceInfo()
         self._checkUpdateRecords()
+        # Remove the classification-data key as it is not used by the frontend
+        self.m_rsp.pop('classification-data', None)
 
     def _checkUpdateRecords(self):
         """

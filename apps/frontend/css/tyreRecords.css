@@ -1,0 +1,341 @@
+/* F1 Tyre Records Component Styles */
+
+.f1-tyre-records-wrapper {
+  --f1-primary: #e10600;
+  --f1-primary-light: #ff1e1e;
+  --f1-primary-dark: #b30500;
+  --f1-secondary: #15151e;
+  --f1-secondary-light: #2a2a3a;
+  --f1-accent: #ffd700;
+  --f1-text-primary: #ffffff;
+  --f1-text-secondary: #b0b0b0;
+  --f1-text-muted: #888888;
+  --f1-background: #0d1117;
+  --f1-card-bg: #161b22;
+  --f1-border: #30363d;
+  --f1-shadow: rgba(0, 0, 0, 0.3);
+  --f1-shadow-hover: rgba(225, 6, 0, 0.2);
+
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  background: linear-gradient(135deg, var(--f1-background) 0%, var(--f1-secondary) 100%);
+  border-radius: 12px;
+  padding: 24px;
+  color: var(--f1-text-primary);
+  min-height: 400px;
+  position: relative;
+  overflow: hidden;
+}
+
+.f1-tyre-records-wrapper::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--f1-primary) 0%, var(--f1-accent) 50%, var(--f1-primary) 100%);
+  border-radius: 12px 12px 0 0;
+}
+
+.f1-tyre-records-content {
+  position: relative;
+}
+
+.f1-tyre-records-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  align-items: start;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.f1-tyre-records-card {
+  background: var(--f1-card-bg);
+  border: 1px solid var(--f1-border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  box-shadow: 0 4px 12px var(--f1-shadow);
+  max-width: 350px;
+  margin: 0 auto;
+}
+
+.f1-tyre-records-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px var(--f1-shadow-hover);
+  border-color: var(--f1-primary);
+}
+
+.f1-tyre-records-card-header {
+  padding: 20px;
+  background: linear-gradient(135deg, var(--f1-secondary-light) 0%, var(--f1-secondary) 100%);
+  border-bottom: 1px solid var(--f1-border);
+  position: relative;
+}
+
+.f1-tyre-records-card-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 20px;
+  right: 20px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, var(--f1-primary) 50%, transparent 100%);
+}
+
+.f1-tyre-records-tyre-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.f1-tyre-records-tyre-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  flex-shrink: 0;
+  font-size: 32px;
+}
+
+.f1-tyre-records-tyre-icon-fallback {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--f1-text-primary);
+  background: linear-gradient(135deg, var(--f1-primary) 0%, var(--f1-primary-light) 100%);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(225, 6, 0, 0.3);
+}
+
+.f1-tyre-records-tyre-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.f1-tyre-records-compound-name {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+  color: var(--f1-text-primary);
+  letter-spacing: -0.01em;
+}
+
+.f1-tyre-records-compound-code {
+  font-size: 14px;
+  color: var(--f1-text-secondary);
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.f1-tyre-records-card-body {
+  padding: 20px;
+}
+
+.f1-tyre-records-record-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.f1-tyre-records-record-item:last-child {
+  margin-bottom: 0;
+}
+
+.f1-tyre-records-record-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(225, 6, 0, 0.3);
+  transform: translateX(4px);
+}
+
+.f1-tyre-records-record-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(225, 6, 0, 0.2) 0%, rgba(255, 215, 0, 0.2) 100%);
+  font-size: 16px;
+  flex-shrink: 0;
+  border: 1px solid rgba(225, 6, 0, 0.3);
+  color: var(--f1-text-primary);
+}
+
+.f1-tyre-records-record-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.f1-tyre-records-record-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--f1-text-primary);
+  margin-bottom: 4px;
+  letter-spacing: -0.01em;
+}
+
+.f1-tyre-records-record-driver {
+  font-size: 13px;
+  color: var(--f1-text-secondary);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.f1-tyre-records-record-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--f1-accent);
+  text-align: right;
+  flex-shrink: 0;
+  min-width: fit-content;
+}
+
+.f1-tyre-records-empty-state {
+  text-align: center;
+  padding: 64px 20px;
+  color: var(--f1-text-muted);
+}
+
+.f1-tyre-records-empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.f1-tyre-records-empty-text {
+  font-size: 16px;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Bootstrap Icons CDN - Load if not already available */
+@import url('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css');
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .f1-tyre-records-wrapper {
+    padding: 16px;
+  }
+
+  .f1-tyre-records-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .f1-tyre-records-card-header,
+  .f1-tyre-records-card-body {
+    padding: 16px;
+  }
+
+  .f1-tyre-records-tyre-info {
+    gap: 12px;
+  }
+
+  .f1-tyre-records-tyre-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 28px;
+  }
+
+  .f1-tyre-records-tyre-icon-fallback {
+    width: 40px;
+    height: 40px;
+  }
+
+  .f1-tyre-records-compound-name {
+    font-size: 18px;
+  }
+
+  .f1-tyre-records-record-item {
+    padding: 12px;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .f1-tyre-records-record-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .f1-tyre-records-record-value {
+    align-self: flex-end;
+    margin-top: -24px;
+  }
+
+  .f1-tyre-records-record-content {
+    width: 100%;
+  }
+}
+
+/* Animation for data updates */
+@keyframes f1-tyre-records-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.f1-tyre-records-card {
+  animation: f1-tyre-records-fade-in 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.f1-tyre-records-card:nth-child(1) { animation-delay: 0.1s; }
+.f1-tyre-records-card:nth-child(2) { animation-delay: 0.2s; }
+.f1-tyre-records-card:nth-child(3) { animation-delay: 0.3s; }
+.f1-tyre-records-card:nth-child(4) { animation-delay: 0.4s; }
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .f1-tyre-records-wrapper {
+    --f1-primary: #ff0000;
+    --f1-background: #000000;
+    --f1-card-bg: #1a1a1a;
+    --f1-text-primary: #ffffff;
+    --f1-border: #666666;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .f1-tyre-records-card,
+  .f1-tyre-records-record-item {
+    transition: none;
+    animation: none;
+  }
+
+  .f1-tyre-records-card:hover {
+    transform: none;
+  }
+
+  .f1-tyre-records-record-item:hover {
+    transform: none;
+  }
+}

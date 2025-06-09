@@ -1004,11 +1004,10 @@ class SessionState:
         """
 
         final_json = self.getRaceInfoJSON()
-        if "records" not in final_json:
-            final_json['records'] = {
-                'fastest' : getFastestTimesJson(final_json),
-                'tyre-stats' : getTyreStintRecordsDict(final_json),
-            }
+        final_json['records'] = {
+            'fastest' : getFastestTimesJson(final_json),
+            'tyre-stats' : getTyreStintRecordsDict(final_json),
+        }
         return final_json
 
     def isPositionHistorySupported(self) -> bool:
