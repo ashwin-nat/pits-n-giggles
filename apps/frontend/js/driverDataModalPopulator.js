@@ -634,71 +634,6 @@ class DriverModalPopulator {
             leftDiv.appendChild(table);
         };
 
-        /* Create and populate the table
-        const leftPanePopulator = (leftDiv) => {
-            const table = document.createElement('table');
-            table.className = this.tableClassNames ;
-
-            // Create table header
-            const thead = document.createElement('thead');
-            const headerRow = document.createElement('tr');
-            const headers = [
-                'Lap',
-                'FL',
-                'FR',
-                'RL',
-                'RR',
-                'Average'
-            ];
-
-            headers.forEach(headerText => {
-                const th = document.createElement('th');
-                th.textContent = headerText;
-                headerRow.appendChild(th);
-            });
-
-            thead.appendChild(headerRow);
-            table.appendChild(thead);
-
-            // Create table body
-            const tbody = document.createElement('tbody');
-            if (predictions.length > 0) {
-                predictions.forEach((predictionData) => {
-                    const currentLapNum = predictionData["lap-number"];
-                    const flWear = formatFloatWithTwoDecimals(predictionData["front-left-wear"]) + "%";
-                    const frWear = formatFloatWithTwoDecimals(predictionData["front-right-wear"]) + "%";
-                    const rlWear = formatFloatWithTwoDecimals(predictionData["rear-left-wear"]) + "%";
-                    const rrWear = formatFloatWithTwoDecimals(predictionData["rear-right-wear"]) + "%";
-                    const average = formatFloatWithTwoDecimals(predictionData["average"]) + "%";
-                    const row = tbody.insertRow();
-                    this.populateTableRow(row, [
-                        currentLapNum,
-                        flWear,
-                        frWear,
-                        rlWear,
-                        rrWear,
-                        average
-                    ]);
-
-                    if (currentLapNum == selectedPitStop) {
-                        row.classList.add('border', 'border-white');
-                    }
-
-                    // update the graph data
-                    graphDataFL.push({ x: parseFloat(currentLapNum), y: predictionData["front-left-wear"], desc: predictionData["desc"] });
-                    graphDataFR.push({ x: parseFloat(currentLapNum), y: predictionData["front-right-wear"], desc: predictionData["desc"] });
-                    graphDataRL.push({ x: parseFloat(currentLapNum), y: predictionData["rear-left-wear"], desc: predictionData["desc"] });
-                    graphDataRR.push({ x: parseFloat(currentLapNum), y: predictionData["rear-right-wear"], desc: predictionData["desc"] });
-                });
-            } else {
-                const row = tbody.insertRow();
-                row.innerHTML = '<td colspan="6">Tyre wear prediction data not available</td>';
-            }
-
-            table.appendChild(tbody);
-            divElement.appendChild(table);
-        };
-
         /* Now create and populate the graph */
         const rightPanePopulator = (rightDiv) => {
             const datasets = [
@@ -944,9 +879,6 @@ class DriverModalPopulator {
             tabs.push({ id: 'tyre-wear-prediction', label: 'Tyre Wear Prediction' });
         }
 
-        // Sort tabs alphabetically based on the label
-        tabs.sort((a, b) => a.label.localeCompare(b.label));
-
         tabs.forEach((tab, index) => {
             const navItem = document.createElement('li');
             navItem.className = 'nav-item';
@@ -994,9 +926,6 @@ class DriverModalPopulator {
         if (this.tyreWearPredictionsAvailable) {
             tabs.push({ id: 'tyre-wear-prediction', method: this.populateTyreWearPredictionTab });
         }
-
-        // Sort tabs alphabetically based on the label
-        tabs.sort((a, b) => a.id.localeCompare(b.id));
 
         tabs.forEach((tab, index) => {
             const tabPane = document.createElement('div');

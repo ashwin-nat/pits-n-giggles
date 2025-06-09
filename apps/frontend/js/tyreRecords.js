@@ -92,7 +92,11 @@ class F1TyreRecords {
     if (!iconElement) {
       iconElement = document.createElement('div');
       iconElement.className = 'f1-tyre-records-tyre-icon';
-      iconElement.innerHTML = `<span class="f1-tyre-records-tyre-icon-fallback">${visualCompound.charAt(0)}</span>`;
+
+      const fallbackIcon = document.createElement('span');
+      fallbackIcon.className = 'f1-tyre-records-tyre-icon-fallback';
+      fallbackIcon.textContent = visualCompound.charAt(0);
+      iconElement.appendChild(fallbackIcon);
     }
 
     const tyreText = document.createElement('div');
