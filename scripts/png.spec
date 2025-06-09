@@ -10,15 +10,14 @@ and they will automatically be built and included in the launcher.
 import os
 import sys
 import tempfile
-import shutil
 from pathlib import Path
-from typing import List, Tuple, Dict, Any, Optional
+from typing import List, Tuple, Any, Optional
 
 # ===== APPLICATION CONFIGURATION =====
 
 # Core application info
 APP_NAME = "pits_n_giggles"
-APP_VERSION = "2.6.0"
+APP_VERSION = "2.7.0"
 ICON_PATH = "../assets/favicon.ico"
 
 # Define all applications to be built
