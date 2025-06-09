@@ -82,56 +82,8 @@ class RaceStatsModalPopulator {
     populateLapTimeRecordsTab(tabPane) {
 
         const containerDiv = document.createElement('div');
-        containerDiv.className = 'd-flex table-responsive';
-
-        const table = document.createElement('table');
-        table.className = this.tableClassNames;
-
-        // Create table header
-        const thead = document.createElement('thead');
-        const headerRow = document.createElement('tr');
-        const headers = [
-            'Category',
-            'Driver',
-            'Team',
-            'Lap',
-            'Time',
-        ];
-
-        headers.forEach(headerText => {
-            const th = document.createElement('th');
-            th.textContent = headerText;
-            th.setAttribute('scope', 'col');  // Adds semantic meaning
-            th.className = 'text-nowrap';     // Prevents text wrapping
-            headerRow.appendChild(th);
-        });
-
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
-
-        // Create table body
-        const timesRecordsTableBody = document.createElement('tbody');
-
-        if (this.isFastestRecordAvailable(this.data)) {
-            if ('lap' in this.data["records"]["fastest"]) {
-                this.insertFastestRow(this.data, timesRecordsTableBody, "Lap", "lap");
-            }
-            if ('s1' in this.data["records"]["fastest"]) {
-                this.insertFastestRow(this.data, timesRecordsTableBody, "Sector 1", "s1");
-            }
-            if ('s2' in this.data["records"]["fastest"]) {
-                this.insertFastestRow(this.data, timesRecordsTableBody, "Sector 2", "s2");
-            }
-            if ('s3' in this.data["records"]["fastest"]) {
-                this.insertFastestRow(this.data, timesRecordsTableBody, "Sector 3", "s3");
-            }
-        } else {
-            const row = timesRecordsTableBody.insertRow();
-            row.innerHTML = '<td colspan="5">Fastest Times Records data not available</td>';
-        }
-
-        table.appendChild(timesRecordsTableBody);
-        containerDiv.appendChild(table);
+        const records = new F1LapSectorRecords(containerDiv);
+        records.update(this.data["records"]["fastest"]);
         tabPane.appendChild(containerDiv);
     }
 

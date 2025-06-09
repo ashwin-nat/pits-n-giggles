@@ -747,7 +747,7 @@ class SessionState:
         """
 
         return {
-            # "classification-data" : self._getClassificationDataListJSON(), # TODO - remove
+            "classification-data" : self._getClassificationDataListJSON(),
             "collisions" : self.getCollisionStatsJSON(),
             "session-info" : self.m_session_info.m_packet_session.toJSON() \
                 if self.m_session_info.m_packet_session else None,
