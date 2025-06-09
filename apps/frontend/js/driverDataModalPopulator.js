@@ -4,6 +4,7 @@ class DriverModalPopulator {
         this.tableClassNames = 'table table-bordered table-striped table-dark table-sm align-middle';
         this.iconCache = iconCache;
         this.telemetryEnabled = (this.data?.["participant-data"]?.["telemetry-setting"] === "Public");
+        this.tyreWearPredictionsAvailable = this.data?.["tyre-wear-predictions"]?.["status"];
     }
 
     populateLapTimesTab(tabPane) {
@@ -832,7 +833,6 @@ class DriverModalPopulator {
             { id: 'tyre-stint-history', label: 'Tyre Stint History' },
             { id: 'ers-history', label: 'ERS Usage History' },
             { id: 'car-damage', label: 'Car Damage' },
-            { id: 'tyre-wear-prediction', label: 'Tyre Wear Prediction' },
             { id: 'warns-pens-info', label: 'Warns/Pens' },
             { id: 'collisions-info', label: 'Collisions' },
             { id: 'tyre-sets', label: 'Tyre Sets' },
@@ -840,6 +840,10 @@ class DriverModalPopulator {
 
         if ('car-setup' in this.data) {
             tabs.push({ id: 'car-setup', label: 'Car Setup' });
+        }
+
+        if (this.tyreWearPredictionsAvailable) {
+            tabs.push({ id: 'tyre-wear-prediction', label: 'Tyre Wear Prediction' });
         }
 
         // Sort tabs alphabetically based on the label
@@ -880,7 +884,6 @@ class DriverModalPopulator {
             { id: 'tyre-stint-history', method: this.populateTyreStintHistoryTab },
             { id: 'ers-history', method: this.populateERSHistoryTab },
             { id: 'car-damage', method: this.populateCarDamageTab },
-            { id: 'tyre-wear-prediction', method: this.populateTyreWearPredictionTab },
             { id: 'warns-pens-info', method: this.populateWarnsPensInfoTab },
             { id: 'collisions-info', method: this.populateCollisionsInfoTab },
             { id: 'tyre-sets', method: this.populateTyreSetsInfoTab },
@@ -890,6 +893,9 @@ class DriverModalPopulator {
           tabs.push({ id: 'car-setup', method: this.populateCarSetupTab });
         }
 
+        if (this.tyreWearPredictionsAvailable) {
+            tabs.push({ id: 'tyre-wear-prediction', method: this.populateTyreWearPredictionTab });
+        }
 
         // Sort tabs alphabetically based on the label
         tabs.sort((a, b) => a.id.localeCompare(b.id));
