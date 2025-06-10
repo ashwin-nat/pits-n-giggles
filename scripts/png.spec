@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# type: ignore
 """
 PyInstaller build script for Pits n' Giggles application suite.
 This script builds multiple executables and bundles them into a launcher application.
