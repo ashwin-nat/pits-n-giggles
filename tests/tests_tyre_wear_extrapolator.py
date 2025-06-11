@@ -190,3 +190,60 @@ class TestTyreWearExtrapolatorWithNonRacingLaps(TestTyreWearPrediction):
         # Add second valid racing lap
         self.extrapolator.add(TyreWearPerLap(66, 68, 65, 66, lap_number=8, is_racing_lap=True))
         self.assertTrue(self.extrapolator.isDataSufficient())
+
+class TestTyreWearExtrapolatorWithMissingLaps(TestTyreWearPrediction):
+
+    def test_missing_mid_lap(self):
+        data = [
+            TyreWearPerLap(1.0, 1.1, 1.2, 1.3, lap_number=10, is_racing_lap=True),
+            # Missing lap 11
+            TyreWearPerLap(1.5, 1.6, 1.7, 1.8, lap_number=12, is_racing_lap=True),
+        ]
+        extrap = TyreWearExtrapolator(initial_data=data, total_laps=15)
+
+        self.assertTrue(extrap.isDataSufficient())
+        pred = extrap.getTyreWearPrediction(15)
+
+        self.assertIsNotNone(pred)
+        self.assertEqual(pred.lap_number, 15)
+
+    def test_missing_final_lap(self):
+        data = [
+            TyreWearPerLap(1.0, 1.1, 1.2, 1.3, lap_number=20, is_racing_lap=True),
+        ]
+        extrap = TyreWearExtrapolator(initial_data=data, total_laps=25)
+
+        self.assertEqual(extrap.remaining_laps, 5)
+        self.assertEqual(extrap.predicted_tyre_wear[-1].lap_number, 25)
+
+    def test_racing_and_nonracing_with_gap(self):
+        data = [
+            TyreWearPerLap(1.0, 1.0, 1.0, 1.0, lap_number=5, is_racing_lap=True),
+            TyreWearPerLap(1.2, 1.2, 1.2, 1.2, lap_number=6, is_racing_lap=False),
+            # Missing lap 7
+            TyreWearPerLap(1.5, 1.5, 1.5, 1.5, lap_number=8, is_racing_lap=True),
+        ]
+        extrap = TyreWearExtrapolator(initial_data=data, total_laps=10)
+
+        self.assertEqual(len(extrap.m_racing_data), 2)
+        self.assertTrue(extrap.isDataSufficient())
+
+    def test_insufficient_data_due_to_gaps(self):
+        data = [
+            TyreWearPerLap(1.0, 1.0, 1.0, 1.0, lap_number=3, is_racing_lap=True),
+        ]
+        extrap = TyreWearExtrapolator(initial_data=data, total_laps=10)
+
+        self.assertFalse(extrap.isDataSufficient())
+
+    def test_recovery_after_missing_laps(self):
+        data = [
+            TyreWearPerLap(1.0, 1.0, 1.0, 1.0, lap_number=2, is_racing_lap=True),
+        ]
+        extrap = TyreWearExtrapolator(initial_data=data, total_laps=6)
+
+        self.assertFalse(extrap.isDataSufficient())
+
+        extrap.add(TyreWearPerLap(2.0, 2.0, 2.0, 2.0, lap_number=4, is_racing_lap=True))
+        self.assertTrue(extrap.isDataSufficient())
+        self.assertIsNotNone(extrap.getTyreWearPrediction(6))

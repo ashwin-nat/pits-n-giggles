@@ -71,6 +71,7 @@ from tests_pid_report import TestPidReport
 from tests_race_analyzer import TestGetFastestTimesJson
 from tests_tyre_wear_extrapolator import (
     TestSimpleLinearRegression, TestTyreWearExtrapolator,
+    TestTyreWearExtrapolatorWithMissingLaps,
     TestTyreWearExtrapolatorWithNonRacingLaps)
 from tests_udp_forwarder import TestAsyncUDPForwarder, TestUDPForwarder
 
