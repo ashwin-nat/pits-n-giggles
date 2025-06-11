@@ -22,121 +22,12 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
+
+from .simple_linear_regression import SimpleLinearRegression
+from .tyre_wear_per_lap import TyreWearPerLap
 
 # ------------------------- CLASS DEFINITIONS --------------------------------------------------------------------------
-class SimpleLinearRegression:
-    """A simple linear regression class to perform linear regression using least squares method."""
-
-    def __init__(self):
-        self.m = 0.0  # Slope
-        self.c = 0.0  # Intercept
-        self.r2 = 0.0  # R-squared
-
-    def fit(self, x: List[int], y: List[float]) -> None:
-        """Fit a simple linear regression model using least squares method
-
-        Args:
-            x (List[int]): List of x values
-            y (List[float]): List of y values
-        """
-        if not x or not y:
-            raise ValueError("Both x and y must be non-empty lists.")
-        if len(x) != len(y):
-            raise ValueError("x and y must be of the same length.")
-
-        if len(x) == 1:  # Special case when there's only one point
-            self.m = 0  # No slope with only one point, or assume a default value
-            self.c = y[0]  # The intercept is just the first y value (starting wear)
-        else:
-            # Calculate the slope and intercept normally for more than one point
-            mean_x = sum(x) / len(x)
-            mean_y = sum(y) / len(y)
-
-            numerator = sum((x[i] - mean_x) * (y[i] - mean_y) for i in range(len(x)))
-            denominator = sum((x[i] - mean_x) ** 2 for i in range(len(x)))
-
-            self.m = numerator / denominator if denominator != 0 else 0
-            self.c = mean_y - self.m * mean_x  # Intercept
-
-        self.r2 = self.score(x, y)
-
-    def predict(self, x: int) -> float:
-        """Predict the y value for a given x value using the simple linear regression model."""
-        if not isinstance(x, int):
-            raise ValueError(f"Expected x to be an int, got {type(x)} instead.")
-        return self.m * x + self.c
-
-    def score(self, x: List[int], y: List[float]) -> float:
-        """Compute R² (coefficient of determination) for given data.
-
-        Args:
-            x (List[int]): Input x values.
-            y (List[float]): Actual y values.
-
-        Returns:
-            float: R² score (1.0 = perfect fit, 0.0 = no explanatory power).
-        """
-        if len(x) != len(y) or not x:
-            raise ValueError("x and y must be non-empty and of equal length.")
-
-        mean_y = sum(y) / len(y)
-        y_pred = [self.predict(xi) for xi in x]
-
-        ss_res = sum((y[i] - y_pred[i]) ** 2 for i in range(len(y)))
-        ss_tot = sum((y[i] - mean_y) ** 2 for i in range(len(y)))
-
-        if ss_tot == 0:
-            return 1.0 if ss_res == 0 else 0.0  # Edge case: all y values are the same
-
-        return 1 - (ss_res / ss_tot)
-
-@dataclass(slots=True)
-class TyreWearPerLap:
-    """Class representing the tyre wear percentage per lap.
-
-    Attributes:
-        fl_tyre_wear (float): Front left tyre wear percentage.
-        fr_tyre_wear (float): Front right tyre wear percentage.
-        rl_tyre_wear (float): Rear left tyre wear percentage.
-        rr_tyre_wear (float): Rear right tyre wear percentage.
-        lap_number (Optional[int]): Lap number.
-        is_racing_lap (bool): Whether it's a racing lap or not.
-        desc (Optional[str]): Description of the lap (e.g., pit stop, VSC).
-    """
-    fl_tyre_wear: float
-    fr_tyre_wear: float
-    rl_tyre_wear: float
-    rr_tyre_wear: float
-    lap_number: Optional[int] = None
-    is_racing_lap: bool = True
-    desc: Optional[str] = None
-
-    @property
-    def m_average(self) -> float:
-        """
-        Return the average tyre wear by calculating the sum of all tyre wears and dividing by 4.
-        """
-        return (self.fl_tyre_wear + self.fr_tyre_wear + self.rl_tyre_wear + self.rr_tyre_wear) / 4.0
-
-    def toJSON(self) -> Dict[str, Any]:
-        """
-        Return a dictionary representing the object in JSON format.
-
-        Returns:
-            Dict[str, Any]: The JSON representation of the object.
-        """
-
-        return {
-            "lap-number": self.lap_number,
-            "front-left-wear": self.fl_tyre_wear,
-            "front-right-wear": self.fr_tyre_wear,
-            "rear-left-wear": self.rl_tyre_wear,
-            "rear-right-wear": self.rr_tyre_wear,
-            "average" : self.m_average,
-            "desc" : self.desc
-        }
 
 class TyreWearExtrapolatorPerSegment:
     """Class representing the tyre wear.
