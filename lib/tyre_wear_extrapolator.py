@@ -20,7 +20,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
+
 
 class SimpleLinearRegression:
     """A simple linear regression class to perform linear regression using least squares method."""
@@ -59,58 +61,26 @@ class SimpleLinearRegression:
             raise ValueError(f"Expected x to be an int, got {type(x)} instead.")
         return self.m * x + self.c
 
+@dataclass(slots=True)
 class TyreWearPerLap:
     """Class representing the tyre wear percentage per lap.
 
-    Attributtes:
-        lap_number (int): Lap number.
+    Attributes:
         fl_tyre_wear (float): Front left tyre wear percentage.
         fr_tyre_wear (float): Front right tyre wear percentage.
         rl_tyre_wear (float): Rear left tyre wear percentage.
         rr_tyre_wear (float): Rear right tyre wear percentage.
-        is_racing_lap (bool): Whether it's a racing lap or not. (non SC/VSC lap)
+        lap_number (Optional[int]): Lap number.
+        is_racing_lap (bool): Whether it's a racing lap or not.
+        desc (Optional[str]): Description of the lap (e.g., pit stop, VSC).
     """
-    def __init__(self,
-        fl_tyre_wear: float,
-        fr_tyre_wear: float,
-        rl_tyre_wear: float,
-        rr_tyre_wear: float,
-        lap_number: Optional[int] = None,
-        is_racing_lap: Optional[bool] = True,
-        desc: Optional[str] = None):
-        """
-        Initialize a TyreWearPerLap object.
-
-        Args:
-            fl_tyre_wear (float): Front left tyre wear percentage.
-            fr_tyre_wear (float): Front right tyre wear percentage.
-            rl_tyre_wear (float): Rear left tyre wear percentage.
-            rr_tyre_wear (float): Rear right tyre wear percentage.
-            lap_number (int, optional): Lap number. Defaults to None.
-            is_racing_lap (bool, optional): Whether it's a racing lap or not. Defaults to True.
-            desc (str, optional): Description of the lap. Defaults to None.
-        """
-        self.lap_number: int        = lap_number
-        self.fl_tyre_wear: float    = fl_tyre_wear
-        self.fr_tyre_wear: float    = fr_tyre_wear
-        self.rl_tyre_wear: float    = rl_tyre_wear
-        self.rr_tyre_wear: float    = rr_tyre_wear
-        self.is_racing_lap: bool    = is_racing_lap
-        self.m_desc: Optional[str]  = desc
-
-    def __str__(self) -> str:
-        """
-        Returns a string representation of the TyreWearPerLap object.
-        """
-        return (
-            f"Lap {str(self.lap_number)}: "
-            f"FL {self.fl_tyre_wear}, "
-            f"FR {self.fr_tyre_wear}, "
-            f"RL {self.rl_tyre_wear}, "
-            f"RR {self.rr_tyre_wear}, "
-            f"Average {self.m_average}, "
-            f"Desc: {str(self.m_desc)}"
-        )
+    fl_tyre_wear: float
+    fr_tyre_wear: float
+    rl_tyre_wear: float
+    rr_tyre_wear: float
+    lap_number: Optional[int] = None
+    is_racing_lap: bool = True
+    desc: Optional[str] = None
 
     @property
     def m_average(self) -> float:
@@ -134,7 +104,7 @@ class TyreWearPerLap:
             "rear-left-wear": self.rl_tyre_wear,
             "rear-right-wear": self.rr_tyre_wear,
             "average" : self.m_average,
-            "desc" : self.m_desc
+            "desc" : self.desc
         }
 
 class TyreWearExtrapolatorPerSegment:
