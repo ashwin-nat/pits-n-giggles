@@ -20,10 +20,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# ------------------------- IMPORTS ------------------------------------------------------------------------------------
+
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
-
+# ------------------------- CLASS DEFINITIONS --------------------------------------------------------------------------
 class SimpleLinearRegression:
     """A simple linear regression class to perform linear regression using least squares method."""
 
@@ -265,7 +267,6 @@ class TyreWearExtrapolator:
 
         if self.m_racing_data:
             self._performRegressions(self.m_racing_data)
-
 
     def _updateDataList(self, new_data: List[TyreWearPerLap]):
         """
