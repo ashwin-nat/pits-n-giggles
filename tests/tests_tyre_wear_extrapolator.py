@@ -71,6 +71,27 @@ class TestSimpleLinearRegression(TestTyreWearPrediction):
         with self.assertRaises(ValueError):
             model.predict('string')  # Passing a non-integer type
 
+    def test_fit_with_discontinuous_laps(self):
+        model = SimpleLinearRegression()
+        x = [1, 3, 4, 6]  # Skipped laps
+        y = [90, 80, 75, 65]
+        model.fit(x, y)
+        self.assertTrue(0 <= model.r2 <= 1)
+
+    def test_fit_with_poor_fit(self):
+        model = SimpleLinearRegression()
+        x = [1, 2, 3, 4, 5]
+        y = [10, 9, 11, 10, 9]  # Noisy, weak correlation
+        model.fit(x, y)
+        self.assertLess(model.r2, 0.5)
+
+    def test_fit_with_perfect_fit(self):
+        model = SimpleLinearRegression()
+        x = [1, 2, 3, 4, 5]
+        y = [5, 10, 15, 20, 25]
+        model.fit(x, y)
+        self.assertAlmostEqual(model.r2, 1.0)
+
 class TestTyreWearExtrapolator(TestTyreWearPrediction):
 
     def setUp(self):
