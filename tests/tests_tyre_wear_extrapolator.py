@@ -146,3 +146,47 @@ class TestTyreWearExtrapolator(TestTyreWearPrediction):
 
     def test_num_samples(self):
         self.assertEqual(self.extrapolator.num_samples, len(self.sample_data))
+
+class TestTyreWearExtrapolatorWithNonRacingLaps(TestTyreWearPrediction):
+    def setUp(self):
+        self.mixed_data: List[TyreWearPerLap] = [
+            TyreWearPerLap(80, 81, 78, 79, lap_number=1, is_racing_lap=True),
+            TyreWearPerLap(79, 79, 78, 78, lap_number=2, is_racing_lap=False),  # SC lap
+            TyreWearPerLap(77, 76, 75, 74, lap_number=3, is_racing_lap=True),
+            TyreWearPerLap(76, 76, 76, 76, lap_number=4, is_racing_lap=False),  # VSC lap
+            TyreWearPerLap(72, 73, 70, 71, lap_number=5, is_racing_lap=True),
+        ]
+        self.total_laps = 10
+        self.extrapolator = TyreWearExtrapolator(self.mixed_data, self.total_laps)
+
+    def test_racing_laps_are_filtered_correctly(self):
+        """Only racing laps should be used for predictions."""
+        racing_laps = [lap for lap in self.mixed_data if lap.is_racing_lap]
+        self.assertEqual(self.extrapolator.num_samples, len(racing_laps))
+
+    def test_prediction_ignores_non_racing_laps(self):
+        """Prediction should be based only on racing laps."""
+        pred = self.extrapolator.getTyreWearPrediction(lap_number=10)
+        self.assertIsInstance(pred, TyreWearPerLap)
+        self.assertEqual(pred.lap_number, 10)
+
+    def test_remaining_laps_ignores_non_racing_laps(self):
+        """Remaining laps calculation should still work based on actual lap numbers."""
+        self.assertEqual(self.extrapolator.remaining_laps, 5)  # last racing lap was lap 5
+
+    def test_clear_and_add_with_mixed_laps(self):
+        """Clearing and adding new laps with mixed types should still behave correctly."""
+        self.extrapolator.clear()
+        self.assertFalse(self.extrapolator.isDataSufficient())
+
+        # Add only non-racing lap
+        self.extrapolator.add(TyreWearPerLap(70, 70, 70, 70, lap_number=6, is_racing_lap=False))
+        self.assertFalse(self.extrapolator.isDataSufficient())
+
+        # Add first valid racing lap
+        self.extrapolator.add(TyreWearPerLap(68, 69, 67, 68, lap_number=7, is_racing_lap=True))
+        self.assertFalse(self.extrapolator.isDataSufficient())  # Still insufficient, only 1 racing lap
+
+        # Add second valid racing lap
+        self.extrapolator.add(TyreWearPerLap(66, 68, 65, 66, lap_number=8, is_racing_lap=True))
+        self.assertTrue(self.extrapolator.isDataSufficient())

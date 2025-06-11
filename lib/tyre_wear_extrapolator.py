@@ -184,9 +184,7 @@ class TyreWearExtrapolator:
         if (self.m_total_laps is None) or (self.m_remaining_laps is None) or (self.m_remaining_laps <= 0):
             return False
 
-        racing_data = [point for interval in self.m_intervals \
-                       if all(point.is_racing_lap for point in interval) for point in interval]
-        ret_status = (len(racing_data) > 1)
+        ret_status = len(self.m_racing_data) > 1
         if ret_status:
             assert len(self.m_predicted_tyre_wear) > 0
         return ret_status
@@ -254,18 +252,20 @@ class TyreWearExtrapolator:
         """Recompute the tyre wear extrapolator
         """
 
-        # This happens in quali
+        # This happens in quali/FP
         if self.m_total_laps is None:
             return
 
-        # Recompute the segments
         self.m_intervals = self._segmentData(self.m_initial_data)
-        racing_data = [point for interval in self.m_intervals \
-                           if all(point.is_racing_lap for point in interval) for point in interval]
 
-        # Recompute the regression models
-        if racing_data:
-            self._performRegressions(racing_data)
+        # Cache racing data for efficient access
+        self.m_racing_data = []
+        # Flatten only those intervals where all laps are racing laps
+        self._recomputeRacingLapsData()
+
+        if self.m_racing_data:
+            self._performRegressions(self.m_racing_data)
+
 
     def _updateDataList(self, new_data: List[TyreWearPerLap]):
         """
@@ -276,6 +276,10 @@ class TyreWearExtrapolator:
         """
 
         self.m_initial_data.extend(new_data)
+
+        # Recompute intervals and racing data cache
+        self.m_intervals = self._segmentData(self.m_initial_data)
+        self._recomputeRacingLapsData()
         self._recompute()
 
     def _performRegressions(self, racing_data: List[TyreWearPerLap]):
@@ -342,7 +346,7 @@ class TyreWearExtrapolator:
         assert self.m_rl_regression is not None
         assert self.m_rr_regression is not None
 
-        return len(self.m_initial_data)
+        return len(self.m_racing_data)
 
     def _initMembers(self, initial_data: List[TyreWearPerLap], total_laps: int) -> None:
         """Initialise the member variables. Can be called multiple times to reuse the extrapolator object
@@ -352,27 +356,28 @@ class TyreWearExtrapolator:
             total_laps (int): The total number of laps in this race (None in quali)
         """
 
-        self.m_initial_data : List[TyreWearPerLap] = initial_data
-        self.m_intervals : List[List[TyreWearPerLap]] = self._segmentData(initial_data)
-        self.m_total_laps : int = total_laps
-        if self.m_initial_data:
-            self.m_remaining_laps : int = total_laps - self.m_initial_data[-1].lap_number
-        else:
-            self.m_remaining_laps : int = total_laps
-        self.m_predicted_tyre_wear: List[TyreWearPerLap] = []
-        self.m_fl_regression : SimpleLinearRegression = None
-        self.m_fr_regression : SimpleLinearRegression = None
-        self.m_rl_regression : SimpleLinearRegression = None
-        self.m_rr_regression : SimpleLinearRegression = None
+        self.m_initial_data: List[TyreWearPerLap] = initial_data
+        self.m_intervals: List[List[TyreWearPerLap]] = self._segmentData(initial_data)
+        self.m_total_laps: int = total_laps
 
-        # Can't init the data models if there is no data
-        if not self.m_initial_data:
+        if self.m_initial_data:
+            self.m_remaining_laps: int = total_laps - self.m_initial_data[-1].lap_number
+        else:
+            self.m_remaining_laps: int = total_laps
+
+        self.m_predicted_tyre_wear: List[TyreWearPerLap] = []
+        self.m_fl_regression: SimpleLinearRegression = None
+        self.m_fr_regression: SimpleLinearRegression = None
+        self.m_rl_regression: SimpleLinearRegression = None
+        self.m_rr_regression: SimpleLinearRegression = None
+
+        # Cache racing data for efficient access
+        self._recomputeRacingLapsData()
+
+        if not self.m_racing_data:
             return
 
-        # Combine all laps, excluding non-racing laps
-        racing_data = [point for interval in self.m_intervals \
-                           if all(point.is_racing_lap for point in interval) for point in interval]
-        self._performRegressions(racing_data)
+        self._performRegressions(self.m_racing_data)
 
     def _extrapolateTyreWear(self) -> None:
         """Extrapolate the tyre wear for the remaining laps of the race and stores in m_predicted_tyre_wear
@@ -406,30 +411,49 @@ class TyreWearExtrapolator:
 
     def _segmentData(self, data: List[TyreWearPerLap]) -> List[List[TyreWearPerLap]]:
         """
-        Segment the data into intervals based on racing laps.
+        Segment the data into intervals based on racing mode.
+
+        A new segment is started whenever the `is_racing_lap` flag changes.
+        This helps us isolate continuous runs of either racing laps or non-racing laps.
 
         Args:
             data (List[TyreWearPerLap]): List of TyreWearPerLap objects.
 
         Returns:
-            List[List[TyreWearPerLap]]: Segmented intervals.
+            List[List[TyreWearPerLap]]: Segmented intervals, where each interval contains
+            laps with the same `is_racing_lap` flag.
         """
 
-        segment_indices : List[Tuple[int, int]] = []
-        is_racing_mode = None
-        curr_start_index = None
+        segment_indices : List[Tuple[int, int]] = []  # Stores (start_index, end_index) of each segment
+        is_racing_mode = None                         # Tracks current segment's mode (True/False)
+        curr_start_index = None                       # Start index of the current segment
 
         for i, point in enumerate(data):
             if is_racing_mode is None:
+                # This is the first point — initialize the first segment
                 is_racing_mode = point.is_racing_lap
                 curr_start_index = i
             elif is_racing_mode != point.is_racing_lap:
-                segment_indices.append((curr_start_index, i-1))
+                # Detected a switch in mode (racing <-> non-racing)
+                # Close the previous segment
+                segment_indices.append((curr_start_index, i - 1))
+
+                # Start a new segment
                 curr_start_index = i
                 is_racing_mode = point.is_racing_lap
-        segment_indices.append((curr_start_index, len(data)-1))
 
+        # Add the final segment (either first and only, or the tail)
+        segment_indices.append((curr_start_index, len(data) - 1))
+
+        # Slice and return the segments
         return [
             data[start_index : end_index + 1]
             for start_index, end_index in segment_indices
         ]
+
+    def _recomputeRacingLapsData(self) -> None:
+        """Recompute the racing data cache for efficient access"""
+        self.m_racing_data = []
+        for interval in self.m_intervals:
+            if all(point.is_racing_lap for point in interval):
+                self.m_racing_data.extend(interval)
