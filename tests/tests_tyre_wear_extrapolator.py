@@ -24,8 +24,9 @@ from typing import List
 
 from tests_base import F1TelemetryUnitTestsBase
 
-from lib.tyre_wear_extrapolator import (SimpleLinearRegression,
-                                        TyreWearExtrapolator, TyreWearPerLap)
+from lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
+from lib.tyre_wear_extrapolator.simple_linear_regression import SimpleLinearRegression
+
 
 class TestTyreWearPrediction(F1TelemetryUnitTestsBase):
     pass
