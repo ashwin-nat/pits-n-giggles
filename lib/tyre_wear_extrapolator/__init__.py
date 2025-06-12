@@ -22,10 +22,12 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-from .simple_linear_regression import SimpleLinearRegression
 from .tyre_wear_extrapolator import TyreWearExtrapolator
 from .tyre_wear_per_lap import TyreWearPerLap
 
 # ------------------------- EXPORTS ------------------------------------------------------------------------------------
 
-__all__ = ["TyreWearPerLap", "TyreWearExtrapolator", "SimpleLinearRegression"]
+__all__ = [
+    "TyreWearPerLap",
+    "TyreWearExtrapolator",
+]

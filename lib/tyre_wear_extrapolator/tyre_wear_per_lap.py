@@ -25,8 +25,8 @@
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
-
 # ------------------------- CLASS DEFINITIONS --------------------------------------------------------------------------
+
 @dataclass(slots=True)
 class TyreWearPerLap:
     """Class representing the tyre wear percentage per lap.
