@@ -233,10 +233,6 @@ class TyreWearExtrapolator:
         """
         Get the number of samples from the regression models and ensure they are equal before returning the number of samples from the front left regression model.
         """
-        assert self.m_fl_regression is not None
-        assert self.m_fr_regression is not None
-        assert self.m_rl_regression is not None
-        assert self.m_rr_regression is not None
 
         return len(self.m_racing_data)
 

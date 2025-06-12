@@ -22,7 +22,7 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-from typing import List
+from typing import List, Tuple
 
 # ------------------------- CLASS DEFINITIONS --------------------------------------------------------------------------
 
@@ -46,20 +46,7 @@ class SimpleLinearRegression:
         if len(x) != len(y):
             raise ValueError("x and y must be of the same length.")
 
-        if len(x) == 1:  # Special case when there's only one point
-            self.m = 0  # No slope with only one point, or assume a default value
-            self.c = y[0]  # The intercept is just the first y value (starting wear)
-        else:
-            # Calculate the slope and intercept normally for more than one point
-            mean_x = sum(x) / len(x)
-            mean_y = sum(y) / len(y)
-
-            numerator = sum((x[i] - mean_x) * (y[i] - mean_y) for i in range(len(x)))
-            denominator = sum((x[i] - mean_x) ** 2 for i in range(len(x)))
-
-            self.m = numerator / denominator if denominator != 0 else 0
-            self.c = mean_y - self.m * mean_x  # Intercept
-
+        self.m, self.c = self._compute_m_c(x, y)
         self.r2 = self.score(x, y)
 
     def predict(self, x: int) -> float:
@@ -91,3 +78,22 @@ class SimpleLinearRegression:
             return 1.0 if ss_res == 0 else 0.0  # Edge case: all y values are the same
 
         return 1 - (ss_res / ss_tot)
+
+    def _compute_m_c(self, x, y) -> Tuple[int, int]:
+        """Compute the slope and intercept for a simple linear regression model."""
+
+        if len(x) == 1:  # Special case when there's only one point
+            m = 0  # No slope with only one point, or assume a default value
+            c = y[0]  # The intercept is just the first y value (starting wear)
+        else:
+            # Calculate the slope and intercept normally for more than one point
+            mean_x = sum(x) / len(x)
+            mean_y = sum(y) / len(y)
+
+            numerator = sum((x[i] - mean_x) * (y[i] - mean_y) for i in range(len(x)))
+            denominator = sum((x[i] - mean_x) ** 2 for i in range(len(x)))
+
+            m = numerator / denominator if denominator != 0 else 0
+            c = mean_y - m * mean_x  # Intercept
+
+        return m, c

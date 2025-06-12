@@ -148,6 +148,14 @@ class TestTyreWearExtrapolator(TestTyreWearPrediction):
     def test_num_samples(self):
         self.assertEqual(self.extrapolator.num_samples, len(self.sample_data))
 
+    def test_empty_initial_data(self):
+        # Create extrapolator with empty data
+        extrapolator = TyreWearExtrapolator(initial_data=[], total_laps=None)
+        # isDataSufficient should be False
+        self.assertFalse(extrapolator.isDataSufficient())
+        # num_samples should be 0
+        self.assertEqual(extrapolator.num_samples, 0)
+
 class TestTyreWearExtrapolatorWithNonRacingLaps(TestTyreWearPrediction):
     def setUp(self):
         self.mixed_data: List[TyreWearPerLap] = [
