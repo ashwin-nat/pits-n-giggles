@@ -283,6 +283,7 @@ def getTelemetryInfo():
                 "f1-game-year" : None,
                 "f1-packet-format" : None,
                 "is-spectating" : False,
+                "spectator-car-index" : None
             }
         if "records" in g_json_data:
             if "fastest" in g_json_data["records"]:
@@ -314,6 +315,7 @@ def getTelemetryInfo():
             "f1-packet-format" : g_json_data.get("packet-format"),
             "packet-format" : g_json_data.get("packet-format"),
             "is-spectating" : False,
+            "spectator-car-index" : None
         }
         for sample in g_json_data["session-info"]["weather-forecast-samples"]:
             json_response["weather-forecast-samples"].append(
