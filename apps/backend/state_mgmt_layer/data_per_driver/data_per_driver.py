@@ -597,21 +597,19 @@ class DataPerDriver:
                                                 initial_tyre_wear=initial_tyre_wear,
                     ))
             elif fitted_index != self.m_tyre_info.m_tyre_set_history_manager.getLastEntry().m_fitted_index:
-
-                tyre_change_lap_num = self.m_lap_info.m_current_lap if F1Utils.isFinishLineAfterPitGarage(track) \
-                                        else self.m_lap_info.m_current_lap - 1
+                lap_number = self.m_lap_info.m_current_lap - 1
                 # create a new tyre set entry with initial data.
                 initial_tyre_wear = TyreWearPerLap(
                     fl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
                     fr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
                     rl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
                     rr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
-                    lap_number=tyre_change_lap_num,
+                    lap_number=lap_number,
                     is_racing_lap=True,
                     desc=f"tyre set change detected. key={str(fitted_tyre_set_key)}"
                 )
                 self.m_tyre_info.m_tyre_set_history_manager.add(TyreSetHistoryEntry(
-                                            start_lap=self.m_lap_info.m_current_lap, # new
+                                            start_lap=lap_number,
                                             index=fitted_index,
                                             tyre_set_key=fitted_tyre_set_key,
                                             initial_tyre_wear=initial_tyre_wear,
