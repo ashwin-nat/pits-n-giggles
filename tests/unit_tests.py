@@ -45,12 +45,12 @@ from tests_base import CustomTestResult, F1TelemetryUnitTestsBase
 from tests_collision_analyzer import (TestCollisionAnalyzer,
                                       TestCollisionPairKey,
                                       TestCollisionRecord)
-from tests_config import (TestCaptureSettings, TestConfigIO, TestLoadConfigFromIni,
+from tests_config import (TestCaptureSettings, TestConfigIO,
                           TestDisplaySettings, TestEdgeCases,
-                          TestForwardingSettings, TestLoggingSettings,
-                          TestMissingSectionsAndKeys, TestNetworkSettings,
-                          TestPngSettings, TestPrivacySettings,
-                          TestSampleSettingsFixture)
+                          TestForwardingSettings, TestLoadConfigFromIni,
+                          TestLoggingSettings, TestMissingSectionsAndKeys,
+                          TestNetworkSettings, TestPngSettings,
+                          TestPrivacySettings, TestSampleSettingsFixture)
 from tests_custom_markers import (TestCustomMarkerEntry,
                                   TestCustomMarkersHistory)
 from tests_data_per_driver import (TestTyreSetHistoryEntry,
@@ -69,8 +69,10 @@ from tests_pcap import (FullPCapTests, TestF1PacketCaptureCompression,
                         TestF1PacketCaptureHeader)
 from tests_pid_report import TestPidReport
 from tests_race_analyzer import TestGetFastestTimesJson
-from tests_tyre_wear_extrapolator import (TestSimpleLinearRegression,
-                                          TestTyreWearExtrapolator)
+from tests_tyre_wear_extrapolator import (
+    TestSimpleLinearRegression, TestTyreWearExtrapolator,
+    TestTyreWearExtrapolatorWithMissingLaps,
+    TestTyreWearExtrapolatorWithNonRacingLaps)
 from tests_udp_forwarder import TestAsyncUDPForwarder, TestUDPForwarder
 
 # Initialize colorama
