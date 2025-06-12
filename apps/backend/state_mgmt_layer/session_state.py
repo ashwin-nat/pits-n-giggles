@@ -612,7 +612,7 @@ class SessionState:
         obj_to_be_updated.m_tyre_info.tyre_life_remaining_laps = packet.m_tyreSetData[packet.m_fittedIdx].m_lifeSpan
 
         # Update the tyre set history
-        obj_to_be_updated.updateTyreSetData(fitted_index=packet.m_fittedIdx)
+        obj_to_be_updated.updateTyreSetData(fitted_index=packet.m_fittedIdx, track=self.m_session_info.m_track)
 
     def processMotionUpdate(self, packet: PacketMotionData) -> None:
         """Process the motion update packet and update the necessary fields

@@ -243,7 +243,7 @@ class TyreSetHistoryManager:
         for i in range(len(self.m_history) - 1):
             current_stint = self.m_history[i]
             next_stint = self.m_history[i + 1]
-            current_stint.m_end_lap = next_stint.m_start_lap
+            current_stint.m_end_lap = next_stint.m_start_lap - 1
 
         # For the last tyre stint, get end lap num from session history
         self.m_history[-1].m_end_lap = final_lap_num
