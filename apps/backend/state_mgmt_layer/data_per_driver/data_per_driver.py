@@ -587,8 +587,8 @@ class DataPerDriver:
             return
 
         # This can happen if tyre sets packets arrives before lap data packet
+        fitted_tyre_set_key = self._getCurrentTyreSetKey()
         if self.m_lap_info.m_current_lap is not None:
-            fitted_tyre_set_key = self._getCurrentTyreSetKey()
             if not self.m_tyre_info.m_tyre_set_history_manager.length:
                 if 0 in self.m_per_lap_snapshots:
                     # Start of race, enter the tyre wear data along with starting value
@@ -668,12 +668,11 @@ class DataPerDriver:
         """
 
         curr_is_pitting = lap_data.m_pitStatus in {LapData.PitStatus.PITTING, LapData.PitStatus.IN_PIT_AREA}
-        if not self.m_lap_info.m_is_pitting and curr_is_pitting:
+        if not self.m_lap_info.m_is_pitting and curr_is_pitting and F1Utils.isFinishLineAfterPitGarage(track):
             # entering pits
-            if F1Utils.isFinishLineAfterPitGarage(track):
-                # note down curr tyre wear for delayed tyre set change handling
-                # take a deepcopy since this obj is volatile
-                self.m_pending_events_data = deepcopy(self.m_tyre_info.tyre_wear)
+            # note down curr tyre wear for delayed tyre set change handling
+            # take a deepcopy since this obj is volatile
+            self.m_pending_events_data = deepcopy(self.m_tyre_info.tyre_wear)
 
         self.m_lap_info.m_is_pitting = lap_data.m_pitStatus in \
                 [LapData.PitStatus.PITTING, LapData.PitStatus.IN_PIT_AREA]

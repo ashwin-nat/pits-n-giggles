@@ -33,7 +33,7 @@ from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
 from lib.custom_marker_tracker import CustomMarkerEntry, CustomMarkersHistory
 from lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils,
-                          PacketCarDamageData, PacketCarSetupData,
+                          PacketCarDamageData, PacketCarSetupData, LapData,
                           PacketCarStatusData, PacketCarTelemetryData,
                           PacketEventData, PacketFinalClassificationData,
                           PacketLapData, PacketLapPositionsData,
@@ -352,7 +352,7 @@ class SessionState:
         if should_recompute_fastest_lap:
             self._recomputeFastestLap()
 
-    def _updateDriverPositionData(self, driver_obj: object, lap_data: object) -> None:
+    def _updateDriverPositionData(self, driver_obj: DataPerDriver, lap_data: LapData) -> None:
         """Update driver position and timing information
 
         Args:
@@ -367,7 +367,7 @@ class SessionState:
             (lap_data.m_deltaToRaceLeaderMinutes * 60000)
         )
 
-    def _handleLapChangeLogic(self, driver_obj: object, lap_data: object) -> None:
+    def _handleLapChangeLogic(self, driver_obj: DataPerDriver, lap_data: LapData) -> None:
         """Handle lap change detection and snapshot capture
 
         Args:
@@ -403,7 +403,7 @@ class SessionState:
             driver_obj.m_pending_events_mgr.onEvent(DriverPendingEvents.LAP_CHANGE_EVENT)
 
 
-    def _updateDriverStatus(self, driver_obj: object, lap_data: object, driver_index: int) -> None:
+    def _updateDriverStatus(self, driver_obj: DataPerDriver, lap_data: LapData, driver_index: int) -> None:
         """Update driver's current status including DNF status
 
         Args:
