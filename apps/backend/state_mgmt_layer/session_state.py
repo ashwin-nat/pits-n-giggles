@@ -323,68 +323,115 @@ class SessionState:
         """
 
         num_active_cars = 0
-        should_recompute = False
-        result_str_map = {
-            ResultStatus.DID_NOT_FINISH : "DNF",
-            ResultStatus.DISQUALIFIED : "DSQ",
-            ResultStatus.RETIRED : "DNF"
-        }
+        should_recompute_fastest_lap = False
         for index, lap_data in enumerate(packet.m_lapData):
             if lap_data.m_resultStatus == ResultStatus.INVALID:
                 continue
 
             num_active_cars += 1
+            driver_obj = self._getObjectByIndex(index)
 
-            # Fetch the driver's object
-            obj_to_be_updated = self._getObjectByIndex(index)
+            # Update driver position and timing data
+            self._updateDriverPositionData(driver_obj, lap_data)
 
-            # Update the position, time and other fields
-            obj_to_be_updated.m_driver_info.position = lap_data.m_carPosition
-            obj_to_be_updated.m_driver_info.grid_position = lap_data.m_gridPosition
-            obj_to_be_updated.m_lap_info.m_delta_to_car_in_front = lap_data.m_deltaToCarInFrontInMS
-            obj_to_be_updated.m_lap_info.m_delta_to_leader = \
-                lap_data.m_deltaToRaceLeaderInMS + (lap_data.m_deltaToRaceLeaderMinutes * 60000)
+            # Handle lap changes and snapshots
+            if driver_obj.m_lap_info.m_current_lap is not None:
+                self._handleLapChangeLogic(driver_obj, lap_data)
 
-            # Update the per lap snapshot data structure if lap info is available
-            if (obj_to_be_updated.m_lap_info.m_current_lap is not None):
-                if obj_to_be_updated.shouldCaptureZerothLapSnapshot():
-                    obj_to_be_updated.onLapChange(old_lap_number=0, session_type=self.m_session_info.m_session_type)
+            # Update current lap and process driver status
+            self._updateDriverStatus(driver_obj, lap_data, index)
 
-                # Now, Take snapshots only at end of laps (i.e.) when m_current_lap is changing
-                if (obj_to_be_updated.m_lap_info.m_current_lap != lap_data.m_currentLapNum):
-                    # If flashback is used in the pits or just after crossing the start/finish line, the game may be
-                    # rewound to the previous lap. In that case, we need to delete the snapshot for that lap
-                    # so that it can be captured again.
-                    if (flashback_detected := (obj_to_be_updated.m_lap_info.m_current_lap > lap_data.m_currentLapNum)):
-                        self.m_logger.debug(f'Driver {obj_to_be_updated}. Lap change due to Flashback detected')
+            # Update packet copy and check for fastest lap recomputation
+            driver_obj.updateLapDataPacketCopy(lap_data, self.m_session_info.m_track_len)
 
-                    # In this case, the lap data packet lap num may be less than the stored current lap
-                    old_lap_num = min(obj_to_be_updated.m_lap_info.m_current_lap, lap_data.m_currentLapNum)
-                    obj_to_be_updated.onLapChange(old_lap_number=old_lap_num,
-                                                  session_type=self.m_session_info.m_session_type,
-                                                  is_flashback=flashback_detected)
-                    obj_to_be_updated.m_lap_info.m_current_lap =  lap_data.m_currentLapNum
-                    obj_to_be_updated.m_pending_events_mgr.onEvent(DriverPendingEvents.LAP_CHANGE_EVENT)
-
-            # Now, update the current lap number and other shit
-            obj_to_be_updated.m_lap_info.m_current_lap =  lap_data.m_currentLapNum
-            obj_to_be_updated.processPittingStatus(lap_data, self.m_session_info.m_track)
-            obj_to_be_updated.m_driver_info.m_dnf_status_code = result_str_map.get(lap_data.m_resultStatus, "")
-            # If the player is retired, update the bool variable
-            if index == self.m_player_index and len(obj_to_be_updated.m_driver_info.m_dnf_status_code) > 0:
-                self.m_is_player_dnf = True
-
-            # Update warning penalty history and copy of the packet
-            obj_to_be_updated.updateLapDataPacketCopy(lap_data, self.m_session_info.m_track_len)
-
-            # Check if fastest lap needs to be recomputed
-            if not should_recompute:
-                should_recompute = self._shouldRecomputeFastestLap(obj_to_be_updated)
+            if not should_recompute_fastest_lap:
+                should_recompute_fastest_lap = self._shouldRecomputeFastestLap(driver_obj)
 
         self.m_num_active_cars = num_active_cars
-        # Recompute the fastest lap if required
-        if should_recompute:
+
+        if should_recompute_fastest_lap:
             self._recomputeFastestLap()
+
+    def _updateDriverPositionData(self, driver_obj: object, lap_data: object) -> None:
+        """Update driver position and timing information
+
+        Args:
+            driver_obj: Driver object to update
+            lap_data: Lap data containing position and timing information
+        """
+        driver_obj.m_driver_info.position = lap_data.m_carPosition
+        driver_obj.m_driver_info.grid_position = lap_data.m_gridPosition
+        driver_obj.m_lap_info.m_delta_to_car_in_front = lap_data.m_deltaToCarInFrontInMS
+        driver_obj.m_lap_info.m_delta_to_leader = (
+            lap_data.m_deltaToRaceLeaderInMS +
+            (lap_data.m_deltaToRaceLeaderMinutes * 60000)
+        )
+
+    def _handleLapChangeLogic(self, driver_obj: object, lap_data: object) -> None:
+        """Handle lap change detection and snapshot capture
+
+        Args:
+            driver_obj: Driver object to check for lap changes
+            lap_data: Lap data containing current lap number
+        """
+        # Capture zeroth lap snapshot if needed
+        if driver_obj.shouldCaptureZerothLapSnapshot():
+            driver_obj.onLapChange(
+                old_lap_number=0,
+                session_type=self.m_session_info.m_session_type
+            )
+
+        current_lap = driver_obj.m_lap_info.m_current_lap
+        new_lap = lap_data.m_currentLapNum
+
+        # Check for lap change
+        if current_lap != new_lap:
+            flashback_detected = current_lap > new_lap
+
+            if flashback_detected:
+                self.m_logger.debug(f'Driver {driver_obj}. Lap change due to Flashback detected')
+
+            # Use the minimum lap number to handle flashback scenarios
+            old_lap_num = min(current_lap, new_lap)
+            driver_obj.onLapChange(
+                old_lap_number=old_lap_num,
+                session_type=self.m_session_info.m_session_type,
+                is_flashback=flashback_detected
+            )
+
+            driver_obj.m_lap_info.m_current_lap = new_lap
+            driver_obj.m_pending_events_mgr.onEvent(DriverPendingEvents.LAP_CHANGE_EVENT)
+
+
+    def _updateDriverStatus(self, driver_obj: object, lap_data: object, driver_index: int) -> None:
+        """Update driver's current status including DNF status
+
+        Args:
+            driver_obj: Driver object to update
+            lap_data: Lap data containing status information
+            driver_index: Index of the driver in the race
+        """
+        RESULT_STATUS_MAP = {
+            ResultStatus.DID_NOT_FINISH: "DNF",
+            ResultStatus.DISQUALIFIED: "DSQ",
+            ResultStatus.RETIRED: "DNF"
+        }
+
+        # Update current lap number
+        driver_obj.m_lap_info.m_current_lap = lap_data.m_currentLapNum
+
+        # Process pitting status
+        driver_obj.processPittingStatus(lap_data, self.m_session_info.m_track)
+
+        # Update DNF status
+        driver_obj.m_driver_info.m_dnf_status_code = RESULT_STATUS_MAP.get(
+            lap_data.m_resultStatus, ""
+        )
+
+        # Check if player is DNF
+        if (driver_index == self.m_player_index and
+            driver_obj.m_driver_info.m_dnf_status_code):
+            self.m_is_player_dnf = True
 
     def processFastestLapUpdate(self, packet: PacketEventData.FastestLap) -> None:
         """Process the fastest lap update event notification
