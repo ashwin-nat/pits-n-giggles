@@ -26,7 +26,7 @@ import json
 import logging
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from apps.backend.state_mgmt_layer.data_per_driver import DataPerDriver
+from apps.backend.state_mgmt_layer.data_per_driver import DataPerDriver, DriverPendingEvents
 from apps.backend.state_mgmt_layer.overtakes import (GetOvertakesStatus,
                                                      OvertakesHistory)
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
@@ -363,12 +363,12 @@ class SessionState:
                     obj_to_be_updated.onLapChange(old_lap_number=old_lap_num,
                                                   session_type=self.m_session_info.m_session_type,
                                                   is_flashback=flashback_detected)
+                    obj_to_be_updated.m_lap_info.m_current_lap =  lap_data.m_currentLapNum
+                    obj_to_be_updated.m_pending_events_mgr.onEvent(DriverPendingEvents.LAP_CHANGE_EVENT)
 
             # Now, update the current lap number and other shit
             obj_to_be_updated.m_lap_info.m_current_lap =  lap_data.m_currentLapNum
-            obj_to_be_updated.m_lap_info.m_is_pitting = lap_data.m_pitStatus in \
-                [LapData.PitStatus.PITTING, LapData.PitStatus.IN_PIT_AREA]
-            obj_to_be_updated.m_driver_info.m_num_pitstops = lap_data.m_numPitStops
+            obj_to_be_updated.processPittingStatus(lap_data, self.m_session_info.m_track)
             obj_to_be_updated.m_driver_info.m_dnf_status_code = result_str_map.get(lap_data.m_resultStatus, "")
             # If the player is retired, update the bool variable
             if index == self.m_player_index and len(obj_to_be_updated.m_driver_info.m_dnf_status_code) > 0:
@@ -541,6 +541,7 @@ class SessionState:
             obj_to_be_updated.m_car_info.m_fl_wing_damage = car_damage.m_frontLeftWingDamage
             obj_to_be_updated.m_car_info.m_fr_wing_damage = car_damage.m_frontRightWingDamage
             obj_to_be_updated.m_car_info.m_rear_wing_damage = car_damage.m_rearWingDamage
+            obj_to_be_updated.m_pending_events_mgr.onEvent(DriverPendingEvents.CAR_DMG_PKT_EVENT)
 
     def processSessionHistoryUpdate(self, packet: PacketSessionHistoryData) -> None:
         """Process the session history update packet and update the necessary fields

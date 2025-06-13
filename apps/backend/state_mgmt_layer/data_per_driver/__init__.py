@@ -20,14 +20,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from .tyre_info import TyreSetInfo, TyreSetHistoryEntry, TyreSetHistoryManager, TyreInfo
-from .warns_pens_info import WarningPenaltyEntry, WarningPenaltyHistory
-from .per_lap_snapshot import PerLapSnapshotEntry
+from .car_info import CarInfo
+from .data_per_driver import DataPerDriver
 from .driver_info import DriverInfo
 from .lap_info import LapInfo
 from .packet_copies import PacketCopies
-from .car_info import CarInfo
-from .data_per_driver import DataPerDriver
+from .pending_events import DriverPendingEvents
+from .per_lap_snapshot import PerLapSnapshotEntry
+from .tyre_info import (TyreInfo, TyreSetHistoryEntry, TyreSetHistoryManager,
+                        TyreSetInfo)
+from .warns_pens_info import WarningPenaltyEntry, WarningPenaltyHistory
 
 __all__ = [
     'TyreSetInfo',
@@ -49,4 +51,6 @@ __all__ = [
     'CarInfo',
 
     'DataPerDriver',
+
+    'DriverPendingEvents',
 ]

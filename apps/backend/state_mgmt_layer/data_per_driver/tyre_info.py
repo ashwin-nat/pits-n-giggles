@@ -208,6 +208,16 @@ class TyreSetHistoryManager:
             raise IndexError("Tyre history is empty, cannot add tyre wear info")
         self.m_history[-1].m_tyre_wear_history.append(tyre_wear_info)
 
+    def overwriteLatestTyreWear(self, tyre_wear_info: TyreWearPerLap) -> None:
+        """Overwrite tyre wear info for the specified tyre wear history item at the given index
+
+        Args:
+            tyre_wear_info (TyreWearPerLap): Tyre wear of latest lap
+        """
+        if not self.m_history:
+            raise IndexError("Tyre history is empty, cannot overwrite tyre wear info")
+        self.m_history[-1].m_tyre_wear_history[-1] = tyre_wear_info
+
     def remove(self, laps: List[int]) -> None:
         """Remove the specified laps from the tyre set history
 
@@ -331,9 +341,9 @@ class TyreInfo:
     total_laps: InitVar[int]
 
     tyre_age: Optional[int] = None
-    tyre_vis_compound: Optional["VisualTyreCompound"] = None
-    tyre_act_compound: Optional["ActualTyreCompound"] = None
-    tyre_wear: Optional["TyreWearPerLap"] = None
+    tyre_vis_compound: Optional[VisualTyreCompound] = None
+    tyre_act_compound: Optional[ActualTyreCompound] = None
+    tyre_wear: Optional[TyreWearPerLap] = None
     tyre_surface_temp: Optional[float] = None
     tyre_inner_temp: Optional[float] = None
     tyre_life_remaining_laps: Optional[int] = None
