@@ -23,7 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from enum import Enum, auto
-from typing import Any, Callable, Set, Tuple, Dict
+from typing import Any, Callable, Set, Dict
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -70,9 +70,6 @@ class PendingEventsManager:
         Args:
             events (Set[DriverPendingEvents]): Events that must occur before the callback is triggered.
             **kwargs (Any): Keyword arguments to pass to the callback.
-
-        Returns:
-            None
         """
         self._pending_events = set(events)
         self._callback_kwargs = kwargs
@@ -85,9 +82,6 @@ class PendingEventsManager:
 
         Args:
             event (DriverPendingEvents): The event that occurred.
-
-        Returns:
-            None
         """
         if event not in self._pending_events:
             return

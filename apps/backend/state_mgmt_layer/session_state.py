@@ -32,7 +32,7 @@ from apps.backend.state_mgmt_layer.overtakes import (GetOvertakesStatus,
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
 from lib.custom_marker_tracker import CustomMarkerEntry, CustomMarkersHistory
-from lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils, LapData,
+from lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils,
                           PacketCarDamageData, PacketCarSetupData,
                           PacketCarStatusData, PacketCarTelemetryData,
                           PacketEventData, PacketFinalClassificationData,
