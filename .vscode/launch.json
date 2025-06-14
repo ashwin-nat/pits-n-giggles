@@ -32,7 +32,8 @@
             "module": "apps.backend.pits_n_giggles",
             "console": "integratedTerminal",
             "args": [
-                "--debug"
+                "--debug",
+                "--log-file-name", "png_backend_debug.log"
             ],
             "cwd": "${workspaceFolder}"
         },
@@ -44,7 +45,8 @@
             "console": "integratedTerminal",
             "args": [
                 "--debug",
-                "--replay-server"
+                "--replay-server",
+                "--log-file-name", "png_backend_debug.log"
             ],
             "cwd": "${workspaceFolder}"
         },

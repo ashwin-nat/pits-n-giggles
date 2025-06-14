@@ -22,19 +22,22 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Any, Dict, List, Optional, Tuple, Union, Iterator
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
+from copy import deepcopy
 
 from apps.backend.common.png_logger import getLogger
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
-from lib.f1_types import (F1Utils, LapData, SafetyCarType, SessionType23, PacketLapPositionsData,
-                          SessionType24, TelemetrySetting)
+from lib.f1_types import (F1Utils, LapData, PacketLapPositionsData,
+                          SafetyCarType, SessionType23, SessionType24,
+                          TelemetrySetting, TrackID)
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 
 from .car_info import CarInfo
 from .driver_info import DriverInfo
 from .lap_info import LapInfo
 from .packet_copies import PacketCopies
+from .pending_events import DriverPendingEvents, PendingEventsManager
 from .per_lap_snapshot import PerLapSnapshotEntry
 from .tyre_info import TyreInfo, TyreSetHistoryEntry, TyreSetInfo
 from .warns_pens_info import WarningPenaltyHistory
@@ -73,7 +76,9 @@ class DataPerDriver:
         "m_per_lap_snapshots",
         "m_latest_snapshot_lap_num",
         "m_position_history",
-        )
+        "m_pending_events_mgr",
+        "m_pending_events_data",
+    )
 
     def __repr__(self) -> str:
         """Get the string representation of this object
@@ -119,6 +124,12 @@ class DataPerDriver:
             self.m_position_history: List[int] = [0] * (total_laps + 1) # +1 for zeroth lap
         else:
             self.m_position_history: List[int] = None
+
+        # Pending events
+        self.m_pending_events_mgr: PendingEventsManager = PendingEventsManager(
+            callback=self._delayedTyreSetsChange
+        )
+        self.m_pending_events_data: Optional[Any] = None
 
     @property
     def is_valid(self) -> bool:
@@ -561,12 +572,13 @@ class DataPerDriver:
 
         return self.m_latest_snapshot_lap_num is not None
 
-    def updateTyreSetData(self, fitted_index: int) -> None:
+    def updateTyreSetData(self, fitted_index: int, track: TrackID) -> None:
         """Update the current tyre set in the history list, if required.
                NOTE: The tyre history is ignored if the player has disabled telemetry
 
         Args:
             fitted_index (int): The fitted tyre set index
+            track (TrackID): The track ID enum
         """
 
         # doing this because some fields in the player obj may be none and handling this is a mess
@@ -575,8 +587,8 @@ class DataPerDriver:
             return
 
         # This can happen if tyre sets packets arrives before lap data packet
+        fitted_tyre_set_key = self._getCurrentTyreSetKey()
         if self.m_lap_info.m_current_lap is not None:
-            fitted_tyre_set_key = self._getCurrentTyreSetKey()
             if not self.m_tyre_info.m_tyre_set_history_manager.length:
                 if 0 in self.m_per_lap_snapshots:
                     # Start of race, enter the tyre wear data along with starting value
@@ -596,27 +608,106 @@ class DataPerDriver:
                                                 initial_tyre_wear=initial_tyre_wear,
                     ))
             elif fitted_index != self.m_tyre_info.m_tyre_set_history_manager.getLastEntry().m_fitted_index:
-                lap_number = self.m_lap_info.m_current_lap - 1
-                # create a new tyre set entry with initial data.
-                initial_tyre_wear = TyreWearPerLap(
-                    fl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
-                    fr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
-                    rl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
-                    rr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
-                    lap_number=lap_number,
-                    is_racing_lap=True,
-                    desc=f"tyre set change detected. key={str(fitted_tyre_set_key)}"
-                )
-                self.m_tyre_info.m_tyre_set_history_manager.add(TyreSetHistoryEntry(
-                                            start_lap=lap_number,
-                                            index=fitted_index,
-                                            tyre_set_key=fitted_tyre_set_key,
-                                            initial_tyre_wear=initial_tyre_wear,
-                ))
+                # Tyre set change detected
+                if F1Utils.isFinishLineAfterPitGarage(track):
+                    # In these tracks, the tyre set change happens before lap completion. this causes the prev lap's
+                    # tyre wear data could get lost. Hence, the tyre set change operation is delayed and handled after
+                    #     - lap change
+                    #     - car damage packet (new updated tyre wear for the new tyre set)
+                    if not self.m_pending_events_mgr.areEventsPending():
+                        png_logger.debug("Driver %s - lap %d tyre set change detected. Registering for delayed handling",
+                                        str(self), self.m_lap_info.m_current_lap)
+                        self.m_pending_events_mgr.register(
+                            events={DriverPendingEvents.CAR_DMG_PKT_EVENT, DriverPendingEvents.LAP_CHANGE_EVENT},
+                            initial_tyre_wear=self.m_pending_events_data)
+                        self.m_pending_events_data = None
+                else:
+                    initial_tyre_wear = TyreWearPerLap(
+                        fl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
+                        fr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
+                        rl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
+                        rr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
+                        lap_number=self.m_lap_info.m_current_lap-1, # -1 because this is the end of last lap value
+                        is_racing_lap=True,
+                        desc=f"tyre set change detected. key={str(fitted_tyre_set_key)}"
+                    )
+                    self.onTyreSetChange(
+                        fitted_index=fitted_index,
+                        fitted_tyre_set_key=fitted_tyre_set_key,
+                        lap_number=self.m_lap_info.m_current_lap,
+                        initial_tyre_wear=initial_tyre_wear
+                    )
 
-                # Tyre set change detected. clear the extrapolation data
-                self.m_tyre_info.m_tyre_wear_extrapolator.clear()
-                self.m_tyre_info.m_tyre_wear_extrapolator.add(initial_tyre_wear)
+    def onTyreSetChange(self, fitted_index: int, fitted_tyre_set_key: str, lap_number: int, initial_tyre_wear: TyreWearPerLap) -> None:
+        """Update the tyre set history list, if required.
+
+        Args:
+            fitted_index (int): The fitted tyre set index
+            fitted_tyre_set_key (str): The fitted tyre set key
+            lap_number (int): The lap number
+            initial_tyre_wear (TyreWearPerLap): The initial tyre wear
+        """
+
+        self.m_tyre_info.m_tyre_set_history_manager.add(TyreSetHistoryEntry(
+                                    start_lap=lap_number,
+                                    index=fitted_index,
+                                    tyre_set_key=fitted_tyre_set_key,
+                                    initial_tyre_wear=initial_tyre_wear,
+        ))
+
+        # Tyre set change detected. clear the extrapolation data
+        self.m_tyre_info.m_tyre_wear_extrapolator.clear()
+        self.m_tyre_info.m_tyre_wear_extrapolator.add(initial_tyre_wear)
+
+    def processPittingStatus(self, lap_data: LapData, track: TrackID) -> None:
+        """Process the pit status data
+
+        Args:
+            lap_data (LapData): The lap data
+            track (TrackID): The track ID enum
+        """
+
+        curr_is_pitting = lap_data.m_pitStatus in {LapData.PitStatus.PITTING, LapData.PitStatus.IN_PIT_AREA}
+        if not self.m_lap_info.m_is_pitting and curr_is_pitting and F1Utils.isFinishLineAfterPitGarage(track):
+            # entering pits
+            # note down curr tyre wear for delayed tyre set change handling
+            # take a deepcopy since this obj is volatile
+            self.m_pending_events_data = deepcopy(self.m_tyre_info.tyre_wear)
+
+        self.m_lap_info.m_is_pitting = lap_data.m_pitStatus in \
+                [LapData.PitStatus.PITTING, LapData.PitStatus.IN_PIT_AREA]
+        self.m_driver_info.m_num_pitstops = lap_data.m_numPitStops
+
+    def _delayedTyreSetsChange(self, initial_tyre_wear: TyreWearPerLap) -> None:
+        """Process the delayed tyre set change
+
+        Args:
+            initial_tyre_wear (TyreWearPerLap): The initial tyre wear data
+        """
+
+        png_logger.debug("Driver %s - processing delayed tyre set change", str(self))
+        initial_tyre_wear.lap_number = self.m_lap_info.m_current_lap - 1
+        tyre_set_key = self.m_packet_copies.m_packet_tyre_sets.getFittedTyreSetKey()
+        initial_tyre_wear.desc = f"Delayed tyre set change. old tyre val. key={tyre_set_key}"
+
+        # First, overwrite the end of lap-1 snapshot's tyre wear
+        self.m_tyre_info.m_tyre_set_history_manager.overwriteLatestTyreWear(initial_tyre_wear)
+
+        initial_tyre_wear = TyreWearPerLap(
+            fl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
+            fr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
+            rl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
+            rr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
+            lap_number=self.m_lap_info.m_current_lap-1, # -1 because this is the end of last lap value
+            is_racing_lap=True,
+            desc=f"Delayed tyre set change. new tyre val. key={str(self.m_packet_copies.m_packet_tyre_sets.getFittedTyreSetKey())}"
+        )
+        self.onTyreSetChange(
+            fitted_index=self.m_packet_copies.m_packet_tyre_sets.m_fittedIdx,
+            fitted_tyre_set_key=tyre_set_key,
+            lap_number=self.m_lap_info.m_current_lap,
+            initial_tyre_wear=initial_tyre_wear
+        )
 
     def _getCurrentTyreSetKey(self) -> Optional[str]:
         """Get the unique ID key for the currently equipped tyre set

@@ -70,6 +70,7 @@ class PngRunner:
             udp_custom_action_code=self.m_config.Network.udp_custom_action_code,
             udp_tyre_delta_action_code=self.m_config.Network.udp_tyre_delta_action_code,
             forwarding_targets=self.m_config.Forwarding.forwarding_targets,
+            ver_str=self.m_version,
             tasks=self.m_tasks
         )
         self.m_web_server = self._setupUiIntfLayer(
