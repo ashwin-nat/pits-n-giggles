@@ -36,6 +36,7 @@ import aiofiles
 import apps.backend.state_mgmt_layer.telemetry_state as TelState
 import lib.race_analyzer as RaceAnalyzer
 from lib.button_debouncer import ButtonDebouncer
+from lib.config import CaptureSettings
 from lib.f1_types import (F1PacketType, PacketCarDamageData,
                           PacketCarSetupData, PacketCarStatusData,
                           PacketCarTelemetryData, PacketEventData,
@@ -57,7 +58,7 @@ def setupTelemetryTask(
         port_number: int,
         replay_server: bool,
         logger: logging.Logger,
-        post_race_data_autosave: bool,
+        capture_settings: CaptureSettings,
         udp_custom_action_code: Optional[int],
         udp_tyre_delta_action_code: Optional[int],
         forwarding_targets: List[Tuple[str, int]],
@@ -69,7 +70,7 @@ def setupTelemetryTask(
         port_number (int): Port number for the telemetry client.
         replay_server (bool): Whether to enable the TCP replay debug server.
         logger (logging.Logger): Logger instance
-        post_race_data_autosave (bool): Whether to autosave race data at the end of the race.
+        capture_settings (CaptureSettings): Capture settings
         udp_custom_action_code (Optional[int]): UDP custom action code.
         udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code.
         forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
@@ -81,9 +82,9 @@ def setupTelemetryTask(
         port=port_number,
         forwarding_targets=forwarding_targets,
         logger=logger,
+        capture_settings=capture_settings,
         udp_custom_action_code=udp_custom_action_code,
         udp_tyre_delta_action_code=udp_tyre_delta_action_code,
-        post_race_data_autosave=post_race_data_autosave,
         replay_server=replay_server,
         ver_str=ver_str
     )
@@ -103,9 +104,9 @@ class F1TelemetryHandler:
         port: int,
         forwarding_targets: List[Tuple[str, int]],
         logger: logging.Logger,
+        capture_settings: CaptureSettings,
         udp_custom_action_code: Optional[int] = None,
         udp_tyre_delta_action_code: Optional[int] = None,
-        post_race_data_autosave: bool = False,
         replay_server: bool = False,
         ver_str: str = "dev") -> None:
         """
@@ -115,9 +116,9 @@ class F1TelemetryHandler:
             - port (int): The port number for telemetry.
             - forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
             - logger (logging.Logger): Logger
+            - capture_settings (CaptureSettings): Capture settings
             - udp_custom_action_code (Optional[int]): UDP custom action code.
             - udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code
-            - post_race_data_autosave (bool): Save JSON file after race
             - replay_server: bool: If true, init in replay mode (TCP). Else init in live mode (UDP)
             - ver_str (str): Version string
         """
@@ -135,7 +136,8 @@ class F1TelemetryHandler:
         self.g_udp_custom_action_code: Optional[int] = udp_custom_action_code
         self.g_udp_tyre_delta_action_code: Optional[int] = udp_tyre_delta_action_code
         self.g_final_classification_processed: bool = False
-        self.g_post_race_data_autosave: bool = post_race_data_autosave
+        self.g_post_race_data_autosave: bool = capture_settings.post_race_data_autosave
+        self.m_capture_settings: CaptureSettings = capture_settings
         self.g_button_debouncer: ButtonDebouncer = ButtonDebouncer()
 
         self.m_should_forward: bool = bool(forwarding_targets)
