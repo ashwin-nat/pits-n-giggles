@@ -4,6 +4,7 @@ class DriverModalPopulator {
         this.tableClassNames = 'table table-bordered table-striped table-dark table-sm align-middle';
         this.iconCache = iconCache;
         this.telemetryEnabled = (this.data?.["participant-data"]?.["telemetry-setting"] === "Public");
+        this.tyreWearPredictionsAvailable = this.data?.["tyre-wear-predictions"]?.["status"];
     }
 
     populateLapTimesTab(tabPane) {
@@ -564,9 +565,12 @@ class DriverModalPopulator {
         }
         const selectedPitStop = this.data["tyre-wear-predictions"]["selected-pit-stop-lap"];
         const predictions = this.data["tyre-wear-predictions"]["predictions"];
-        const { firstHalf, secondHalf } = splitArray(predictions);
+        const graphDataFL = [];
+        const graphDataFR = [];
+        const graphDataRL = [];
+        const graphDataRR = [];
 
-        const panePopulator = (divElement, tableData) => {
+        const leftPanePopulator = (leftDiv) => {
             const table = document.createElement('table');
             table.className = this.tableClassNames ;
 
@@ -593,8 +597,8 @@ class DriverModalPopulator {
 
             // Create table body
             const tbody = document.createElement('tbody');
-            if (tableData.length > 0) {
-                tableData.forEach((predictionData) => {
+            if (predictions.length > 0) {
+                predictions.forEach((predictionData) => {
                     const currentLapNum = predictionData["lap-number"];
                     const flWear = formatFloatWithTwoDecimals(predictionData["front-left-wear"]) + "%";
                     const frWear = formatFloatWithTwoDecimals(predictionData["front-right-wear"]) + "%";
@@ -614,6 +618,12 @@ class DriverModalPopulator {
                     if (currentLapNum == selectedPitStop) {
                         row.classList.add('border', 'border-white');
                     }
+
+                    // update the graph data
+                    graphDataFL.push({ x: parseFloat(currentLapNum), y: predictionData["front-left-wear"], desc: predictionData["desc"] });
+                    graphDataFR.push({ x: parseFloat(currentLapNum), y: predictionData["front-right-wear"], desc: predictionData["desc"] });
+                    graphDataRL.push({ x: parseFloat(currentLapNum), y: predictionData["rear-left-wear"], desc: predictionData["desc"] });
+                    graphDataRR.push({ x: parseFloat(currentLapNum), y: predictionData["rear-right-wear"], desc: predictionData["desc"] });
                 });
             } else {
                 const row = tbody.insertRow();
@@ -621,14 +631,38 @@ class DriverModalPopulator {
             }
 
             table.appendChild(tbody);
-            divElement.appendChild(table);
+            leftDiv.appendChild(table);
         };
 
-        const leftPanePopulator = (leftDiv) => {
-            panePopulator(leftDiv, firstHalf);
-        };
+        /* Now create and populate the graph */
         const rightPanePopulator = (rightDiv) => {
-            panePopulator(rightDiv, secondHalf);
+            const datasets = [
+                {
+                    label: 'FL',
+                    data: graphDataFL
+                },
+                {
+                    label: 'FR',
+                    data: graphDataFR
+                },
+                {
+                    label: 'RL',
+                    data: graphDataRL
+                },
+                {
+                    label: 'RR',
+                    data: graphDataRR
+                }
+            ];
+            const limits = {
+                min: 0,
+            }
+
+            // Pass the graph data to plotGraph function
+            const canvas = document.createElement('canvas');
+            rightDiv.classList.add('chart-container');
+            plotGraph(canvas, datasets, 'Lap', 'Tyre Wear %', false, limits);
+            rightDiv.appendChild(canvas);
         };
         this.createModalDivElelements(tabPane, leftPanePopulator, rightPanePopulator);
     }
@@ -832,7 +866,6 @@ class DriverModalPopulator {
             { id: 'tyre-stint-history', label: 'Tyre Stint History' },
             { id: 'ers-history', label: 'ERS Usage History' },
             { id: 'car-damage', label: 'Car Damage' },
-            { id: 'tyre-wear-prediction', label: 'Tyre Wear Prediction' },
             { id: 'warns-pens-info', label: 'Warns/Pens' },
             { id: 'collisions-info', label: 'Collisions' },
             { id: 'tyre-sets', label: 'Tyre Sets' },
@@ -842,8 +875,12 @@ class DriverModalPopulator {
             tabs.push({ id: 'car-setup', label: 'Car Setup' });
         }
 
+        if (this.tyreWearPredictionsAvailable) {
+            tabs.push({ id: 'tyre-wear-prediction', label: 'Tyre Wear Prediction' });
+        }
+
         // Sort tabs alphabetically based on the label
-        tabs.sort((a, b) => a.label.localeCompare(b.label));
+        tabs.sort((a, b) => a.id.localeCompare(b.id));
 
         tabs.forEach((tab, index) => {
             const navItem = document.createElement('li');
@@ -880,7 +917,6 @@ class DriverModalPopulator {
             { id: 'tyre-stint-history', method: this.populateTyreStintHistoryTab },
             { id: 'ers-history', method: this.populateERSHistoryTab },
             { id: 'car-damage', method: this.populateCarDamageTab },
-            { id: 'tyre-wear-prediction', method: this.populateTyreWearPredictionTab },
             { id: 'warns-pens-info', method: this.populateWarnsPensInfoTab },
             { id: 'collisions-info', method: this.populateCollisionsInfoTab },
             { id: 'tyre-sets', method: this.populateTyreSetsInfoTab },
@@ -890,6 +926,9 @@ class DriverModalPopulator {
           tabs.push({ id: 'car-setup', method: this.populateCarSetupTab });
         }
 
+        if (this.tyreWearPredictionsAvailable) {
+            tabs.push({ id: 'tyre-wear-prediction', method: this.populateTyreWearPredictionTab });
+        }
 
         // Sort tabs alphabetically based on the label
         tabs.sort((a, b) => a.id.localeCompare(b.id));

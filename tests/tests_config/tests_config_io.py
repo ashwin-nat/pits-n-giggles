@@ -37,6 +37,7 @@ from pydantic import ValidationError
 from lib.config import LoggingSettings
 
 from .tests_config_base import TestF1ConfigBase
+from unittest.mock import Mock, patch
 
 # ----------------------------------------------------------------------------------------------------------------------
 # MIT License
@@ -235,3 +236,64 @@ target_1 = localhost:8080
         finally:
             if os.path.exists(temp_path):
                 os.unlink(temp_path)
+
+class TestLoadConfigFromIni(TestF1ConfigBase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.ini_path = os.path.join(self.temp_dir.name, "config.ini")
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def _write_ini(self, ini_dict: dict[str, dict[str, str]]):
+        cp = configparser.ConfigParser()
+        cp.read_dict(ini_dict)
+        with open(self.ini_path, "w", encoding="utf-8") as f:
+            cp.write(f)
+
+    def test_valid_config_loads_correctly(self):
+        ini_data = {
+            "Network": {"telemetry_port": "20778"},
+            "Display": {"refresh_interval": "250"},
+            "Logging": {"log_file": "mylog.txt"},
+            "Forwarding": {"target_1": "127.0.0.1:9000"},
+        }
+        self._write_ini(ini_data)
+
+        config = load_config_from_ini(self.ini_path)
+        self.assertEqual(config.Network.telemetry_port, 20778)
+        self.assertEqual(config.Display.refresh_interval, 250)
+        self.assertEqual(config.Logging.log_file, "mylog.txt")
+        self.assertEqual(config.Forwarding.target_1, "127.0.0.1:9000")
+
+    def test_invalid_config_creates_backup_and_falls_back_to_defaults(self):
+        ini_data = {
+            "Display": {"refresh_interval": "0"},  # invalid: must be > 0
+            "Logging": {"log_file": "C:/invalid.log"},  # invalid: not relative
+        }
+        self._write_ini(ini_data)
+
+        config = load_config_from_ini(self.ini_path)
+        self.assertEqual(config.Display.refresh_interval, 200)  # default
+        self.assertEqual(config.Logging.log_file, "png.log")  # default
+
+        self.assertTrue(os.path.exists(self.ini_path + ".invalid"))
+
+    def test_missing_ini_creates_default_config_file(self):
+        self.assertFalse(os.path.exists(self.ini_path))
+
+        config = load_config_from_ini(self.ini_path)
+        self.assertTrue(os.path.exists(self.ini_path))
+        self.assertIsInstance(config, PngSettings)
+
+    def test_partial_config_with_one_invalid_field_falls_back(self):
+        ini_data = {
+            "Network": {"telemetry_port": "20779"},
+            "Forwarding": {"target_1": "bad-value"},  # invalid format
+        }
+        self._write_ini(ini_data)
+
+        config = load_config_from_ini(self.ini_path)
+        self.assertEqual(config.Network.telemetry_port, 20777)
+        self.assertEqual(config.Forwarding.target_1, "")  # fallback default
+        self.assertTrue(os.path.exists(self.ini_path + ".invalid"))

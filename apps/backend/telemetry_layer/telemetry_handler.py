@@ -57,6 +57,7 @@ def setupTelemetryTask(
         udp_tyre_delta_action_code: Optional[int],
         forwarding_targets: List[Tuple[str, int]],
         dir_map: Dict[str, str],
+        ver_str: str,
         tasks: List[asyncio.Task]) -> None:
     """Entry point to start the F1 telemetry server.
 
@@ -69,6 +70,7 @@ def setupTelemetryTask(
         udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code.
         forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
         dir_map (Dict[str, str]): Directory map for telemetry data.
+        ver_str (str): Version string
         tasks (List[asyncio.Task]): List of tasks to be executed
     """
 
@@ -81,6 +83,7 @@ def setupTelemetryTask(
         udp_tyre_delta_action_code=udp_tyre_delta_action_code,
         post_race_data_autosave=post_race_data_autosave,
         replay_server=replay_server,
+        ver_str=ver_str
     )
     tasks.append(asyncio.create_task(telemetry_server.run(), name="Game Telemetry Listener Task"))
 
@@ -102,7 +105,8 @@ class F1TelemetryHandler:
         udp_custom_action_code: Optional[int] = None,
         udp_tyre_delta_action_code: Optional[int] = None,
         post_race_data_autosave: bool = False,
-        replay_server: bool = False) -> None:
+        replay_server: bool = False,
+        ver_str: str = "dev") -> None:
         """
         Initialize F1TelemetryHandler.
 
@@ -115,6 +119,7 @@ class F1TelemetryHandler:
             - udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code
             - post_race_data_autosave (bool): Save JSON file after race
             - replay_server: bool: If true, init in replay mode (TCP). Else init in live mode (UDP)
+            - ver_str (str): Version string
         """
         self.m_manager = AsyncF1TelemetryManager(
             port_number=port,
@@ -134,6 +139,8 @@ class F1TelemetryHandler:
         self.g_button_debouncer: ButtonDebouncer = ButtonDebouncer()
 
         self.m_should_forward: bool = bool(forwarding_targets)
+        self.m_version: str = ver_str
+        self.initDirectories()
         self.registerCallbacks()
 
     async def run(self):
@@ -513,6 +520,8 @@ class F1TelemetryHandler:
         event_str = self.m_session_state_ref.getEventInfoStr()
         if not event_str:
             return
+
+        final_json['version'] = self.m_version
 
         # Save the JSON data
         if self.g_post_race_data_autosave:

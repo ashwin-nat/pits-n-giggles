@@ -55,7 +55,7 @@ class PngRunner:
             debug_mode (bool): If true, runs in debug mode
         """
         self.m_logger: logging.Logger = logger
-        self.m_config = load_config_from_ini(config_file)
+        self.m_config = load_config_from_ini(config_file, logger)
         self.m_tasks: List[asyncio.Task] = []
         self.m_version: str = get_version()
 
@@ -74,6 +74,7 @@ class PngRunner:
             udp_tyre_delta_action_code=self.m_config.Network.udp_tyre_delta_action_code,
             forwarding_targets=self.m_config.Forwarding.forwarding_targets,
             dir_map=dir_map,
+            ver_str=self.m_version,
             tasks=self.m_tasks
         )
         self.m_web_server = self._setupUiIntfLayer(

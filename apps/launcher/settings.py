@@ -30,7 +30,7 @@ from typing import Callable
 
 from pydantic import ValidationError
 
-from lib.config import PngSettings, load_config_from_ini, save_config_to_ini
+from lib.config import PngSettings, save_config_to_ini
 
 from .console_interface import ConsoleInterface
 
@@ -49,6 +49,7 @@ class SettingsWindow:
     def __init__(self,
                  parent: tk.Tk,
                  app: ConsoleInterface,
+                 settings: PngSettings,
                  save_callback: Callable[[configparser.ConfigParser], None],
                  config_file: str,
                  settings_icon_path: str):
@@ -69,7 +70,7 @@ class SettingsWindow:
         self.settings = configparser.ConfigParser()
 
         # Load or create settings
-        self.load_settings()
+        self.settings = settings
 
         # Create settings window
         self.window = tk.Toplevel(parent)
@@ -88,16 +89,6 @@ class SettingsWindow:
 
         # Create save/cancel buttons
         self.create_buttons()
-
-    def load_settings(self) -> None:
-        """
-        Load settings from a configuration file or create new ones with defaults.
-
-        This method reads the settings file if it exists, or creates default settings
-        if no settings file is found. It ensures all sections and keys exist.
-        """
-
-        self.settings = load_config_from_ini(self.config_file)
 
     def create_tabs(self) -> None:
         self.entry_vars = {}

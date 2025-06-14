@@ -40,6 +40,7 @@ def initTelemetryLayer(
         udp_tyre_delta_action_code: Optional[int],
         forwarding_targets: List[Tuple[str, int]],
         dir_map: Dict[str, str],
+        ver_str: str,
         tasks: List[asyncio.Task]) -> None:
     """Initialize the telemetry layer
 
@@ -52,6 +53,7 @@ def initTelemetryLayer(
         udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code.
         forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
         dir_map (Dict[str, str]): Directory map for telemetry data.
+        ver_str (str): Version string
         tasks (List[asyncio.Task]): List of tasks to be executed
     """
 
@@ -64,6 +66,7 @@ def initTelemetryLayer(
         udp_custom_action_code=udp_custom_action_code,
         udp_tyre_delta_action_code=udp_tyre_delta_action_code,
         forwarding_targets=forwarding_targets,
+        ver_str=ver_str,
         tasks=tasks
     )
     setupForwarder(
