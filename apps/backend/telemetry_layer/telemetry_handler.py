@@ -270,48 +270,20 @@ class F1TelemetryHandler:
             final_json = self.m_session_state_ref.processFinalClassificationUpdate(packet)
             self.g_final_classification_processed = True
 
-            # Perform the auto save stuff only for races
-            if event_type_str := str(self.m_session_state_ref.m_session_info.m_session_type):
-                is_event_supported = True
-                if packet.m_header.m_packetFormat == 2023:
-                    unsupported_event_types_f1_23 = [
-                        SessionType23.PRACTICE_1,
-                        SessionType23.PRACTICE_2,
-                        SessionType23.PRACTICE_3,
-                        SessionType23.SHORT_PRACTICE,
-                        SessionType23.TIME_TRIAL,
-                        SessionType23.UNKNOWN
-                    ]
-                    for event_type in unsupported_event_types_f1_23:
-                        if str(event_type) in event_type_str:
-                            is_event_supported = False
-                            break
-                else:
-                    unsupported_event_types_f1_24 = [
-                        SessionType24.PRACTICE_1,
-                        SessionType24.PRACTICE_2,
-                        SessionType24.PRACTICE_3,
-                        SessionType24.SHORT_PRACTICE,
-                        SessionType24.TIME_TRIAL,
-                        SessionType24.UNKNOWN
-                    ]
-                    for event_type in unsupported_event_types_f1_24:
-                        if str(event_type) in event_type_str:
-                            is_event_supported = False
-                            break
-                if is_event_supported:
-                    await self.postGameDumpToFile(final_json)
+            # Perform the auto save stuff only if configured
+            if self._shouldSaveData():
+                await self.postGameDumpToFile(final_json)
 
-                    # Notify the frontend about the final classification
-                    if player_info := self.m_session_state_ref.getPlayerDriverInfo():
-                        player_position = player_info.m_driver_info.position
-                        await AsyncInterTaskCommunicator().send(
-                            "frontend-update",
-                            ITCMessage(
-                                m_message_type=ITCMessage.MessageType.FINAL_CLASSIFICATION_NOTIFICATION,
-                                m_message=FinalClassificationNotification(player_position)
-                            )
-                        )
+            # Notify the frontend about the final classification
+            if player_info := self.m_session_state_ref.getPlayerDriverInfo():
+                player_position = player_info.m_driver_info.position
+                await AsyncInterTaskCommunicator().send(
+                    "frontend-update",
+                    ITCMessage(
+                        m_message_type=ITCMessage.MessageType.FINAL_CLASSIFICATION_NOTIFICATION,
+                        m_message=FinalClassificationNotification(player_position)
+                    )
+                )
 
             # ------------ PROFILER MODE --------------
             # Uncomment the below lines for profiling - Kill the process after one session
@@ -580,3 +552,24 @@ class F1TelemetryHandler:
 
         for directory in self.g_directory_mapping.values():
             ensureDirectoryExists(directory)
+
+    def _shouldSaveData(self) -> bool:
+        """
+        Check if data should be saved based on the current session type.
+
+        Returns:
+            bool: True if data should be saved, False otherwise.
+        """
+
+        if not self.m_session_state_ref.m_session_info:
+            return False
+        curr_session_type = self.m_session_state_ref.m_session_info.m_session_type
+
+        if curr_session_type.isFpTypeSession() and self.m_capture_settings.post_fp_data_autosave:
+            return True
+        elif curr_session_type.isQualiTypeSession() and self.m_capture_settings.post_quali_data_autosave:
+            return True
+        elif curr_session_type.isRaceTypeSession() and self.m_capture_settings.post_race_data_autosave:
+            return True
+        else:
+            return False
