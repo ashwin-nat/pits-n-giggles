@@ -28,13 +28,14 @@ import sys
 import threading
 import tkinter as tk
 from abc import ABC, abstractmethod
-from tkinter import ttk
+from tkinter import ttk, messagebox
 from typing import Callable, Optional
 
 import psutil
 
 from lib.config import PngSettings
 from lib.pid_report import extract_pid_from_line
+from lib.error_codes import PNG_ERROR_CODE_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN
 
 from ..console_interface import ConsoleInterface
 
@@ -141,6 +142,7 @@ class PngAppMgrBase(ABC):
             self.child_pid = self.process.pid
             self.status_var.set("Running")
             threading.Thread(target=self._capture_output, daemon=True).start()
+            threading.Thread(target=self._monitor_process_exit, daemon=True).start()
 
             self.console_app.log(f"{self.display_name} started successfully. PID = {self.child_pid}")
 
@@ -235,3 +237,45 @@ class PngAppMgrBase(ABC):
                     self.child_pid = pid
                 else:
                     self.console_app.log(line, is_child_message=True)
+
+    def _monitor_process_exit(self):
+        try:
+            if not self.process:
+                return
+            ret_code = self.process.wait()
+
+            if self.is_running:
+                self.console_app.log(f"{self.display_name} exited unexpectedly with code {ret_code}")
+                self.is_running = False
+                self.child_pid = None
+                self.process = None
+
+                if ret_code == PNG_ERROR_CODE_PORT_IN_USE:
+                    messagebox.showerror(
+                        title=f"{self.display_name} - Port In Use",
+                        message=f"{self.display_name} failed to start because the required port is already in use.\n"
+                                f"Please close the conflicting app or change the port in settings."
+                    )
+                    self.status_var.set("Port Conflict")
+                elif ret_code == PNG_ERROR_CODE_UNKNOWN:
+                    messagebox.showerror(
+                        title=f"{self.display_name} - Unknown Error",
+                        message=f"{self.display_name} failed to start due to an unknown error.\n"
+                                f"Please check the logs for more details."
+                    )
+                    self.status_var.set("Crashed")
+                else:
+                    messagebox.showerror(
+                        title=f"{self.display_name} - Unknown Error",
+                        message=f"{self.display_name} failed to start due to an unknown error.\n"
+                                f"Please check the logs for more details."
+                    )
+                    self.status_var.set("Crashed")
+
+                if self._post_stop_hook:
+                    try:
+                        self._post_stop_hook()
+                    except Exception as e:
+                        self.console_app.log(f"{self.display_name}: Error in post-stop hook after crash: {e}")
+        finally:
+            self.process = None
