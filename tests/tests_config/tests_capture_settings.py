@@ -41,7 +41,9 @@ class TestCaptureSettings(TestF1ConfigBase):
     def test_default_values(self):
         """Test default values"""
         settings = CaptureSettings()
-        self.assertFalse(settings.post_race_data_autosave)
+        self.assertTrue(settings.post_race_data_autosave)
+        self.assertTrue(settings.post_quali_data_autosave)
+        self.assertFalse(settings.post_fp_data_autosave)
 
     def test_boolean_validation(self):
         capture_true = CaptureSettings(post_race_data_autosave=True)
