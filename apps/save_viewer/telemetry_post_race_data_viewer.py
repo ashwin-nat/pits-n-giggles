@@ -961,15 +961,12 @@ class TelemetryWebServer:
         logging.getLogger('gevent').setLevel(logging.ERROR)
         logging.getLogger('websocket').setLevel(logging.ERROR)
 
-        try:
-            self.m_socketio.run(
-                app=self.m_app,
-                debug=False,
-                host="0.0.0.0",
-                port=self.m_port,
-                use_reloader=False)
-        except OSError as e:
-            raise
+        self.m_socketio.run(
+            app=self.m_app,
+            debug=False,
+            host="0.0.0.0",
+            port=self.m_port,
+            use_reloader=False)
 
 def checkRecomputeJSON(json_data : Dict[str, Any]) -> bool:
 

@@ -53,6 +53,27 @@ def get_executable_extension() -> str:
 
 class PngAppMgrBase(ABC):
     """Class to manage a sub-application process"""
+
+    EXIT_ERRORS = {
+        PNG_ERROR_CODE_PORT_IN_USE: {
+            "title": "Port In Use",
+            "message": (
+                "failed to start because the required port is already in use.\n"
+                "Please close the conflicting app or change the port in settings."
+            ),
+            "status": "Port Conflict",
+        },
+        PNG_ERROR_CODE_UNKNOWN: {
+            "title": "Unknown Error",
+            "message": (
+                "failed to start due to an unknown error.\n"
+                "Please check the logs for more details."
+            ),
+            "status": "Crashed",
+        },
+    }
+    DEFAULT_EXIT = EXIT_ERRORS[PNG_ERROR_CODE_UNKNOWN]
+
     def __init__(self,
                  name: str,
                  module_path: str,
@@ -250,32 +271,20 @@ class PngAppMgrBase(ABC):
                 self.child_pid = None
                 self.process = None
 
-                if ret_code == PNG_ERROR_CODE_PORT_IN_USE:
-                    messagebox.showerror(
-                        title=f"{self.display_name} - Port In Use",
-                        message=f"{self.display_name} failed to start because the required port is already in use.\n"
-                                f"Please close the conflicting app or change the port in settings."
-                    )
-                    self.status_var.set("Port Conflict")
-                elif ret_code == PNG_ERROR_CODE_UNKNOWN:
-                    messagebox.showerror(
-                        title=f"{self.display_name} - Unknown Error",
-                        message=f"{self.display_name} failed to start due to an unknown error.\n"
-                                f"Please check the logs for more details."
-                    )
-                    self.status_var.set("Crashed")
-                else:
-                    messagebox.showerror(
-                        title=f"{self.display_name} - Unknown Error",
-                        message=f"{self.display_name} failed to start due to an unknown error.\n"
-                                f"Please check the logs for more details."
-                    )
-                    self.status_var.set("Crashed")
+                # pick lookup or default
+                info = self.EXIT_ERRORS.get(ret_code, self.DEFAULT_EXIT)
+                messagebox.showerror(
+                    title=f"{self.display_name} - {info['title']}",
+                    message=f"{self.display_name} {info['message']}"
+                )
+                self.status_var.set(info["status"])
 
                 if self._post_stop_hook:
                     try:
                         self._post_stop_hook()
-                    except Exception as e: # pylint: disable=broad-exception-caught
-                        self.console_app.log(f"{self.display_name}: Error in post-stop hook after crash: {e}")
+                    except Exception as e:
+                        self.console_app.log(
+                            f"{self.display_name}: Error in post-stop hook after crash: {e}"
+                        )
         finally:
             self.process = None
