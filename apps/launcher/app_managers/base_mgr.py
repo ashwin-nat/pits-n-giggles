@@ -244,8 +244,7 @@ class PngAppMgrBase(ABC):
         """Restart the sub-application process"""
         if self.is_running:
             self.stop()
-            self.start()
-        # No Op if not running
+        self.start()
 
     def _capture_output(self):
         """Capture and log the subprocess output line by line"""
