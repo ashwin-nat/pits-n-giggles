@@ -36,14 +36,14 @@ import aiofiles
 import apps.backend.state_mgmt_layer.telemetry_state as TelState
 import lib.race_analyzer as RaceAnalyzer
 from lib.button_debouncer import ButtonDebouncer
+from lib.config import CaptureSettings
 from lib.f1_types import (F1PacketType, PacketCarDamageData,
                           PacketCarSetupData, PacketCarStatusData,
                           PacketCarTelemetryData, PacketEventData,
                           PacketFinalClassificationData, PacketLapData,
                           PacketMotionData, PacketParticipantsData,
                           PacketSessionData, PacketSessionHistoryData,
-                          PacketTimeTrialData, PacketTyreSetsData,
-                          SessionType23, SessionType24)
+                          PacketTimeTrialData, PacketTyreSetsData)
 from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
                                          FinalClassificationNotification,
                                          ITCMessage)
@@ -57,7 +57,7 @@ def setupTelemetryTask(
         port_number: int,
         replay_server: bool,
         logger: logging.Logger,
-        post_race_data_autosave: bool,
+        capture_settings: CaptureSettings,
         udp_custom_action_code: Optional[int],
         udp_tyre_delta_action_code: Optional[int],
         forwarding_targets: List[Tuple[str, int]],
@@ -69,7 +69,7 @@ def setupTelemetryTask(
         port_number (int): Port number for the telemetry client.
         replay_server (bool): Whether to enable the TCP replay debug server.
         logger (logging.Logger): Logger instance
-        post_race_data_autosave (bool): Whether to autosave race data at the end of the race.
+        capture_settings (CaptureSettings): Capture settings
         udp_custom_action_code (Optional[int]): UDP custom action code.
         udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code.
         forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
@@ -81,9 +81,9 @@ def setupTelemetryTask(
         port=port_number,
         forwarding_targets=forwarding_targets,
         logger=logger,
+        capture_settings=capture_settings,
         udp_custom_action_code=udp_custom_action_code,
         udp_tyre_delta_action_code=udp_tyre_delta_action_code,
-        post_race_data_autosave=post_race_data_autosave,
         replay_server=replay_server,
         ver_str=ver_str
     )
@@ -103,9 +103,9 @@ class F1TelemetryHandler:
         port: int,
         forwarding_targets: List[Tuple[str, int]],
         logger: logging.Logger,
+        capture_settings: CaptureSettings,
         udp_custom_action_code: Optional[int] = None,
         udp_tyre_delta_action_code: Optional[int] = None,
-        post_race_data_autosave: bool = False,
         replay_server: bool = False,
         ver_str: str = "dev") -> None:
         """
@@ -115,9 +115,9 @@ class F1TelemetryHandler:
             - port (int): The port number for telemetry.
             - forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
             - logger (logging.Logger): Logger
+            - capture_settings (CaptureSettings): Capture settings
             - udp_custom_action_code (Optional[int]): UDP custom action code.
             - udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code
-            - post_race_data_autosave (bool): Save JSON file after race
             - replay_server: bool: If true, init in replay mode (TCP). Else init in live mode (UDP)
             - ver_str (str): Version string
         """
@@ -129,14 +129,15 @@ class F1TelemetryHandler:
         self.m_logger: logging.Logger = logger
         self.m_session_state_ref: TelState.SessionState = TelState.getSessionStateRef()
 
-        self.g_directory_mapping: Dict[str, str] = {}
+        self.m_directory_mapping: Dict[str, str] = {}
         self.m_last_session_uid: Optional[int] = None
         self.m_data_cleared_this_session: bool = False
-        self.g_udp_custom_action_code: Optional[int] = udp_custom_action_code
-        self.g_udp_tyre_delta_action_code: Optional[int] = udp_tyre_delta_action_code
-        self.g_final_classification_processed: bool = False
-        self.g_post_race_data_autosave: bool = post_race_data_autosave
-        self.g_button_debouncer: ButtonDebouncer = ButtonDebouncer()
+        self.m_udp_custom_action_code: Optional[int] = udp_custom_action_code
+        self.m_udp_tyre_delta_action_code: Optional[int] = udp_tyre_delta_action_code
+        self.m_final_classification_processed: bool = False
+        self.m_post_race_data_autosave: bool = capture_settings.post_race_data_autosave
+        self.m_capture_settings: CaptureSettings = capture_settings
+        self.m_button_debouncer: ButtonDebouncer = ButtonDebouncer()
 
         self.m_should_forward: bool = bool(forwarding_targets)
         self.m_version: str = ver_str
@@ -261,55 +262,27 @@ class F1TelemetryHandler:
                 packet - PacketCarStatusData object
             """
 
-            if self.g_final_classification_processed:
+            if self.m_final_classification_processed:
                 self.m_logger.debug('Session UID %d final classification already processed.', packet.m_header.m_sessionUID)
                 return
             self.m_logger.info('Received Final Classification Packet.')
             final_json = self.m_session_state_ref.processFinalClassificationUpdate(packet)
-            self.g_final_classification_processed = True
+            self.m_final_classification_processed = True
 
-            # Perform the auto save stuff only for races
-            if event_type_str := str(self.m_session_state_ref.m_session_info.m_session_type):
-                is_event_supported = True
-                if packet.m_header.m_packetFormat == 2023:
-                    unsupported_event_types_f1_23 = [
-                        SessionType23.PRACTICE_1,
-                        SessionType23.PRACTICE_2,
-                        SessionType23.PRACTICE_3,
-                        SessionType23.SHORT_PRACTICE,
-                        SessionType23.TIME_TRIAL,
-                        SessionType23.UNKNOWN
-                    ]
-                    for event_type in unsupported_event_types_f1_23:
-                        if str(event_type) in event_type_str:
-                            is_event_supported = False
-                            break
-                else:
-                    unsupported_event_types_f1_24 = [
-                        SessionType24.PRACTICE_1,
-                        SessionType24.PRACTICE_2,
-                        SessionType24.PRACTICE_3,
-                        SessionType24.SHORT_PRACTICE,
-                        SessionType24.TIME_TRIAL,
-                        SessionType24.UNKNOWN
-                    ]
-                    for event_type in unsupported_event_types_f1_24:
-                        if str(event_type) in event_type_str:
-                            is_event_supported = False
-                            break
-                if is_event_supported:
-                    await self.postGameDumpToFile(final_json)
+            # Perform the auto save stuff only if configured
+            if self._shouldSaveData():
+                await self.postGameDumpToFile(final_json)
 
-                    # Notify the frontend about the final classification
-                    if player_info := self.m_session_state_ref.getPlayerDriverInfo():
-                        player_position = player_info.m_driver_info.position
-                        await AsyncInterTaskCommunicator().send(
-                            "frontend-update",
-                            ITCMessage(
-                                m_message_type=ITCMessage.MessageType.FINAL_CLASSIFICATION_NOTIFICATION,
-                                m_message=FinalClassificationNotification(player_position)
-                            )
-                        )
+            # Notify the frontend about the final classification
+            if player_info := self.m_session_state_ref.getPlayerDriverInfo():
+                player_position = player_info.m_driver_info.position
+                await AsyncInterTaskCommunicator().send(
+                    "frontend-update",
+                    ITCMessage(
+                        m_message_type=ITCMessage.MessageType.FINAL_CLASSIFICATION_NOTIFICATION,
+                        m_message=FinalClassificationNotification(player_position)
+                    )
+                )
 
             # ------------ PROFILER MODE --------------
             # Uncomment the below lines for profiling - Kill the process after one session
@@ -423,16 +396,16 @@ class F1TelemetryHandler:
                 packet (PacketEventData): The parsed object containing the button status packet's contents.
             """
 
-            if (self.g_udp_custom_action_code is not None) and \
-            (packet.mEventDetails.isUDPActionPressed(self.g_udp_custom_action_code)) and \
-            (self.g_button_debouncer.onButtonPress(self.g_udp_custom_action_code)):
-                self.m_logger.debug('UDP action %d pressed - Custom Marker', self.g_udp_custom_action_code)
+            if (self.m_udp_custom_action_code is not None) and \
+            (packet.mEventDetails.isUDPActionPressed(self.m_udp_custom_action_code)) and \
+            (self.m_button_debouncer.onButtonPress(self.m_udp_custom_action_code)):
+                self.m_logger.debug('UDP action %d pressed - Custom Marker', self.m_udp_custom_action_code)
                 await TelState.processCustomMarkerCreate()
 
-            if (self.g_udp_tyre_delta_action_code is not None) and \
-            (packet.mEventDetails.isUDPActionPressed(self.g_udp_tyre_delta_action_code)) and \
-            (self.g_button_debouncer.onButtonPress(self.g_udp_tyre_delta_action_code)):
-                self.m_logger.debug('UDP action %d pressed - Tyre Delta', self.g_udp_tyre_delta_action_code)
+            if (self.m_udp_tyre_delta_action_code is not None) and \
+            (packet.mEventDetails.isUDPActionPressed(self.m_udp_tyre_delta_action_code)) and \
+            (self.m_button_debouncer.onButtonPress(self.m_udp_tyre_delta_action_code)):
+                self.m_logger.debug('UDP action %d pressed - Tyre Delta', self.m_udp_tyre_delta_action_code)
                 await TelState.processTyreDeltaSound()
 
         async def handleFlashBackEvent(packet: PacketEventData) -> None:
@@ -507,7 +480,7 @@ class F1TelemetryHandler:
         """Clear all the data structures"""
         self.m_session_state_ref.processSessionStarted()
         self.m_data_cleared_this_session = True
-        self.g_final_classification_processed = False
+        self.m_final_classification_processed = False
 
     async def writeDictToJsonFile(self, data_dict: Dict, file_name: str) -> None:
         """
@@ -536,7 +509,7 @@ class F1TelemetryHandler:
         final_json['version'] = self.m_version
 
         # Save the JSON data
-        if self.g_post_race_data_autosave:
+        if self.m_post_race_data_autosave:
             # Add the overtakes as well
             final_json['overtakes'] = {
                 'records': [record.toJSON() for record in self.m_session_state_ref.m_overtakes_history.getRecords()]
@@ -550,7 +523,7 @@ class F1TelemetryHandler:
 
             # Get timestamp in the format - year_month_day_hour_minute_second
             timestamp_str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-            final_json_file_name = self.g_directory_mapping['race-info'] + 'race_info_' + \
+            final_json_file_name = self.m_directory_mapping['race-info'] + 'race_info_' + \
                     event_str + timestamp_str + '.json'
             await self.writeDictToJsonFile(final_json, final_json_file_name)
             self.m_logger.info("Wrote race info to %s", final_json_file_name)
@@ -574,7 +547,27 @@ class F1TelemetryHandler:
                 self.m_logger.info("Directory '%s' created.", directory)
 
         ts_prefix = datetime.now().strftime("%Y_%m_%d")
-        self.g_directory_mapping['race-info'] = f"data/{ts_prefix}/race-info/"
+        self.m_directory_mapping['race-info'] = f"data/{ts_prefix}/race-info/"
 
-        for directory in self.g_directory_mapping.values():
+        for directory in self.m_directory_mapping.values():
             ensureDirectoryExists(directory)
+
+    def _shouldSaveData(self) -> bool:
+        """
+        Check if data should be saved based on the current session type.
+
+        Returns:
+            bool: True if data should be saved, False otherwise.
+        """
+
+        if not self.m_session_state_ref.m_session_info:
+            return False
+        curr_session_type = self.m_session_state_ref.m_session_info.m_session_type
+
+        if curr_session_type.isFpTypeSession() and self.m_capture_settings.post_fp_data_autosave:
+            return True
+        if curr_session_type.isQualiTypeSession() and self.m_capture_settings.post_quali_data_autosave:
+            return True
+        if curr_session_type.isRaceTypeSession() and self.m_capture_settings.post_race_data_autosave:
+            return True
+        return False

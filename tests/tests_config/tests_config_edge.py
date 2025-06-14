@@ -301,7 +301,9 @@ udp_custom_action_code = 5
         self.assertEqual(config.Network.udp_tyre_delta_action_code, 11)
         self.assertEqual(config.Network.udp_custom_action_code, 12)
 
-        self.assertFalse(config.Capture.post_race_data_autosave)
+        self.assertTrue(config.Capture.post_race_data_autosave)
+        self.assertTrue(config.Capture.post_quali_data_autosave)
+        self.assertFalse(config.Capture.post_fp_data_autosave)
 
         self.assertEqual(config.Display.refresh_interval, 200)
         self.assertFalse(config.Display.disable_browser_autoload)
@@ -353,7 +355,9 @@ target_2 = example.com:9090
         self.assertEqual(config.Forwarding.target_3, "")
 
         # Verify completely missing sections have all defaults
-        self.assertFalse(config.Capture.post_race_data_autosave)
+        self.assertTrue(config.Capture.post_race_data_autosave)
+        self.assertTrue(config.Capture.post_quali_data_autosave)
+        self.assertFalse(config.Capture.post_fp_data_autosave)
         self.assertEqual(config.Logging.log_file, "png.log")
         self.assertEqual(config.Logging.log_file_size, 1_000_000)
         self.assertFalse(config.StreamOverlay.show_sample_data_at_start)
@@ -376,7 +380,9 @@ log_file_size = 500000
         # Verify all other sections have defaults
         self.assertEqual(config.Network.telemetry_port, 20777)
         self.assertEqual(config.Network.server_port, 4768)
-        self.assertFalse(config.Capture.post_race_data_autosave)
+        self.assertTrue(config.Capture.post_race_data_autosave)
+        self.assertTrue(config.Capture.post_quali_data_autosave)
+        self.assertFalse(config.Capture.post_fp_data_autosave)
         self.assertEqual(config.Display.refresh_interval, 200)
         self.assertFalse(config.Privacy.process_car_setup)
         self.assertEqual(config.Forwarding.target_1, "")

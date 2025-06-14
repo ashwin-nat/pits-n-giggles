@@ -81,7 +81,8 @@ class PngLauncher(ConsoleInterface):
         self.header_frame = ttk.Frame(root, padding="10", style="Racing.TFrame")
         self.header_frame.pack(fill=tk.X)
 
-        self.subapps_frame = ttk.LabelFrame(root, text="Race Components", padding="10", style="Racing.TLabelframe")
+        self.subapps_frame = ttk.LabelFrame(root, text="Pits n' Giggles subsystems",
+                                            padding="10", style="Racing.TLabelframe")
         self.subapps_frame.pack(fill=tk.X, padx=10, pady=5)
 
         self.console_frame = ttk.Frame(root, padding="10", style="Racing.TFrame")

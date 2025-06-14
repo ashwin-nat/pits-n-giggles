@@ -23,7 +23,10 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
+import errno
 import logging
+import socket
+import sys
 from http import HTTPStatus
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
@@ -34,6 +37,7 @@ from hypercorn.config import Config
 from quart import Quart, jsonify, render_template, request, send_from_directory
 
 import apps.backend.state_mgmt_layer as TelState
+from lib.error_codes import PNG_ERROR_CODE_PORT_IN_USE
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -409,6 +413,10 @@ class TelemetryWebServer:
         Sets up the server configuration and starts serving the application.
         """
 
+        if not _is_port_available(self.m_port):
+            self.m_logger.error(f"Port {self.m_port} is already in use")
+            sys.exit(PNG_ERROR_CODE_PORT_IN_USE)
+
         config = Config()
         config.bind = [f"0.0.0.0:{self.m_port}"]
         if not self.m_debug_mode:
@@ -423,3 +431,14 @@ class TelemetryWebServer:
         self._shutdown_event.set()
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+
+def _is_port_available(port: int) -> bool:
+    """Check if a TCP port is available on localhost."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.bind(('0.0.0.0', port))
+            return True
+        except OSError as e:
+            if e.errno == errno.EADDRINUSE:
+                return False
+            raise  # unexpected error

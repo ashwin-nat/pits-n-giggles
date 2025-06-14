@@ -26,6 +26,8 @@ import asyncio
 import logging
 from typing import List, Optional, Tuple
 
+from lib.config import CaptureSettings
+
 from .telemetry_forwarder import setupForwarder
 from .telemetry_handler import setupTelemetryTask
 
@@ -35,7 +37,7 @@ def initTelemetryLayer(
         port_number: int,
         replay_server: bool,
         logger: logging.Logger,
-        post_race_data_autosave: bool,
+        capture_settings: CaptureSettings,
         udp_custom_action_code: Optional[int],
         udp_tyre_delta_action_code: Optional[int],
         forwarding_targets: List[Tuple[str, int]],
@@ -47,7 +49,7 @@ def initTelemetryLayer(
         port_number (int): Port number for the telemetry client.
         replay_server (bool): Whether to enable the TCP replay debug server.
         logger (logging.Logger): Logger instance
-        post_race_data_autosave (bool): Whether to autosave race data at the end of the race.
+        capture_settings (CaptureSettings): Capture settings
         udp_custom_action_code (Optional[int]): UDP custom action code.
         udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code.
         forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
@@ -59,7 +61,7 @@ def initTelemetryLayer(
         port_number=port_number,
         replay_server=replay_server,
         logger=logger,
-        post_race_data_autosave=post_race_data_autosave,
+        capture_settings=capture_settings,
         udp_custom_action_code=udp_custom_action_code,
         udp_tyre_delta_action_code=udp_tyre_delta_action_code,
         forwarding_targets=forwarding_targets,
