@@ -38,7 +38,8 @@ from f1_types import (TestPacketCarDamageData, TestPacketCarMotionData,
                       TestPacketLapPositionsData, TestPacketLobbyInfoData,
                       TestPacketMotionExData, TestPacketParticipantsData,
                       TestPacketSessionData, TestPacketSessionHistoryData,
-                      TestPacketTimeTrialData, TestPacketTyreSetsData)
+                      TestPacketTimeTrialData, TestPacketTyreSetsData,
+                      TestSessionType23, TestSessionType24)
 # pylint: disable=unused-import wrong-import-position
 # sourcery skip: dont-import-test-modules
 from tests_base import CustomTestResult, F1TelemetryUnitTestsBase

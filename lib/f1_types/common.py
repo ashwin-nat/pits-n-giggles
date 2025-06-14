@@ -224,6 +224,48 @@ class SessionType23(Enum):
         """
         return self.name.replace('_', ' ').title()
 
+    def isFpTypeSession(self) -> bool:
+        """
+        Check if the session type is a free practice session.
+
+        Returns:
+            bool: True if the session type is a free practice session, False otherwise.
+        """
+        return self in {
+            SessionType23.PRACTICE_1,
+            SessionType23.PRACTICE_2,
+            SessionType23.PRACTICE_3,
+            SessionType23.SHORT_PRACTICE,
+        }
+
+    def isQualiTypeSession(self) -> bool:
+        """
+        Check if the session type is a qualifying session.
+
+        Returns:
+            bool: True if the session type is a qualifying session, False otherwise.
+        """
+        return self in {
+            SessionType23.QUALIFYING_1,
+            SessionType23.QUALIFYING_2,
+            SessionType23.QUALIFYING_3,
+            SessionType23.SHORT_QUALIFYING,
+            SessionType23.ONE_SHOT_QUALIFYING,
+        }
+
+    def isRaceTypeSession(self) -> bool:
+        """
+        Check if the session type is a race session.
+
+        Returns:
+            bool: True if the session type is a race session, False otherwise.
+        """
+        return self in {
+            SessionType23.RACE,
+            SessionType23.RACE_2,
+            SessionType23.RACE_3,
+        }
+
 class SessionType24(Enum):
     UNKNOWN = 0
     PRACTICE_1 = 1
@@ -268,6 +310,54 @@ class SessionType24(Enum):
             str: String representation of the SessionType24.
         """
         return self.name.replace('_', ' ').title()
+
+    def isFpTypeSession(self) -> bool:
+        """
+        Check if the session type is a free practice session.
+
+        Returns:
+            bool: True if the session type is a free practice session, False otherwise.
+        """
+        return self in {
+            SessionType24.PRACTICE_1,
+            SessionType24.PRACTICE_2,
+            SessionType24.PRACTICE_3,
+            SessionType24.SHORT_PRACTICE,
+        }
+
+    def isQualiTypeSession(self) -> bool:
+        """
+        Check if the session type is a qualifying session.
+
+        Returns:
+            bool: True if the session type is a qualifying session, False otherwise.
+        """
+        return self in {
+            SessionType24.QUALIFYING_1,
+            SessionType24.QUALIFYING_2,
+            SessionType24.QUALIFYING_3,
+            SessionType24.SHORT_QUALIFYING,
+            SessionType24.ONE_SHOT_QUALIFYING,
+            SessionType24.SPRINT_SHOOTOUT_1,
+            SessionType24.SPRINT_SHOOTOUT_2,
+            SessionType24.SPRINT_SHOOTOUT_3,
+            SessionType24.SHORT_SPRINT_SHOOTOUT,
+            SessionType24.ONE_SHOT_SPRINT_SHOOTOUT,
+        }
+
+    def isRaceTypeSession(self) -> bool:
+        """
+        Check if the session type is a race session.
+
+        Returns:
+            bool: True if the session type is a race session, False otherwise.
+        """
+        return self in {
+            SessionType24.RACE,
+            SessionType24.RACE_2,
+            SessionType24.RACE_3,
+            SessionType24.TIME_TRIAL,
+        }
 
 class SessionLength(Enum):
     """
