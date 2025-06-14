@@ -21,6 +21,7 @@
 # SOFTWARE.
 # pylint: skip-file
 
+import errno
 import argparse
 import json
 import logging
@@ -51,6 +52,7 @@ from lib.f1_types import F1Utils, LapHistoryData, ResultStatus
 from lib.pid_report import report_pid_from_child
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 from lib.version import get_version
+from lib.error_codes import PNG_ERROR_CODE_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN
 
 
 def find_free_port():
@@ -1202,7 +1204,14 @@ def main():
     _server = TelemetryWebServer(
         port=g_port_number,
         ver_str=version)
-    _server.run()
+    try:
+        _server.run()
+    except OSError as e:
+        png_logger.error(e)
+        if e.errno == errno.EADDRINUSE:
+            sys.exit(PNG_ERROR_CODE_PORT_IN_USE)
+        else:
+            sys.exit(PNG_ERROR_CODE_UNKNOWN)
 
 if __name__ == "__main__":
     report_pid_from_child()

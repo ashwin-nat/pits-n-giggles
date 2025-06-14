@@ -37,7 +37,11 @@ class NetworkSettings(BaseModel):
     udp_custom_action_code: int = Field(12, ge=1, le=12, description="Custom Marker: UDP Action Code")
 
 class CaptureSettings(BaseModel):
-    post_race_data_autosave: bool = Field(False, description="Whether to autosave race data at the end of the race")
+    post_race_data_autosave: bool = Field(True, description="Autosave race data at the end of races")
+    post_quali_data_autosave: bool = Field(True,
+                                           description="Autosave qualifying data at the end of qualifying sessions")
+    post_fp_data_autosave: bool = Field(False,
+                                        description="Autosave free practice data at the end of free practice sessions")
 
 class DisplaySettings(BaseModel):
     refresh_interval: int = Field(200, gt=0, description="Pits n' Giggles client update interval (ms)")
