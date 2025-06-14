@@ -43,8 +43,7 @@ from lib.f1_types import (F1PacketType, PacketCarDamageData,
                           PacketFinalClassificationData, PacketLapData,
                           PacketMotionData, PacketParticipantsData,
                           PacketSessionData, PacketSessionHistoryData,
-                          PacketTimeTrialData, PacketTyreSetsData,
-                          SessionType23, SessionType24)
+                          PacketTimeTrialData, PacketTyreSetsData)
 from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
                                          FinalClassificationNotification,
                                          ITCMessage)
@@ -567,9 +566,8 @@ class F1TelemetryHandler:
 
         if curr_session_type.isFpTypeSession() and self.m_capture_settings.post_fp_data_autosave:
             return True
-        elif curr_session_type.isQualiTypeSession() and self.m_capture_settings.post_quali_data_autosave:
+        if curr_session_type.isQualiTypeSession() and self.m_capture_settings.post_quali_data_autosave:
             return True
-        elif curr_session_type.isRaceTypeSession() and self.m_capture_settings.post_race_data_autosave:
+        if curr_session_type.isRaceTypeSession() and self.m_capture_settings.post_race_data_autosave:
             return True
-        else:
-            return False
+        return False
