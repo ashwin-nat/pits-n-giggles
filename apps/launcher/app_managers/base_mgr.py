@@ -99,6 +99,7 @@ class PngAppMgrBase(ABC):
         self.process: Optional[subprocess.Popen] = None
         self.status_var = tk.StringVar(value="Stopped")
         self.is_running = False
+        self._is_restarting = threading.Event()
         self.start_by_default = start_by_default
         self.child_pid = None
         self._post_start_hook: Optional[Callable[[], None]] = None
@@ -242,9 +243,11 @@ class PngAppMgrBase(ABC):
 
     def restart(self):
         """Restart the sub-application process"""
+        self._is_restarting.set()
         if self.is_running:
             self.stop()
         self.start()
+        self._is_restarting.clear()
 
     def _capture_output(self):
         """Capture and log the subprocess output line by line"""
@@ -259,10 +262,21 @@ class PngAppMgrBase(ABC):
                     self.console_app.log(line, is_child_message=True)
 
     def _monitor_process_exit(self):
+        this_process = self.process  # Store reference to the process this thread is watching
         try:
-            if not self.process:
+            if not this_process:
                 return
-            ret_code = self.process.wait()
+            ret_code = this_process.wait()
+
+            # Skip if a new process has been started after this thread began
+            if self.process is not this_process:
+                return
+
+            # Skip expected exit during restart
+            # Exit code 15 occurs when the process is terminated during a restart (e.g., via .terminate()).
+            # It's expected in this case, so we ignore it to avoid falsely showing a crash.
+            if self._is_restarting.is_set() and ret_code == 15:
+                return
 
             if self.is_running:
                 self.console_app.log(f"{self.display_name} exited unexpectedly with code {ret_code}")
@@ -286,4 +300,6 @@ class PngAppMgrBase(ABC):
                             f"{self.display_name}: Error in post-stop hook after crash: {e}"
                         )
         finally:
-            self.process = None
+            # Only clear process if we're still monitoring the current one
+            if self.process is this_process:
+                self.process = None
