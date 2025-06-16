@@ -69,9 +69,10 @@ class F1LapSectorRecords {
 
     const driverInfo = this.createElement('div', 'f1-lapsec-records-driver-info');
 
+    const teamNameStr = getTeamName(this.data.lap['team-id']);
     const driverDetails = this.createElement('div', 'f1-lapsec-records-driver-details');
     const driverName = this.createElement('h3', '', this.data.lap['driver-name'] || 'Unknown Driver');
-    const teamName = this.createElement('p', '', this.data.lap['team-id'] || 'Unknown Team');
+    const teamName = this.createElement('p', '', teamNameStr);
     driverDetails.appendChild(driverName);
     driverDetails.appendChild(teamName);
 
@@ -89,7 +90,7 @@ class F1LapSectorRecords {
 
     const teamStat = this.createElement('div', 'f1-lapsec-records-stat');
     const teamLabel = this.createElement('p', 'f1-lapsec-records-stat-label', 'Team');
-    const teamValue = this.createElement('p', 'f1-lapsec-records-stat-value', this.data.lap['team-id'] || 'Unknown');
+    const teamValue = this.createElement('p', 'f1-lapsec-records-stat-value', teamNameStr || 'Unknown');
     teamStat.appendChild(teamLabel);
     teamStat.appendChild(teamValue);
 
@@ -142,10 +143,10 @@ class F1LapSectorRecords {
     header.appendChild(label);
     header.appendChild(time);
 
+    const teamNameStr = getTeamName(sectorData['team-id']);
     const driver = this.createElement('p', 'f1-lapsec-records-sector-driver',
       sectorData['driver-name'] || 'Unknown Driver');
-    const team = this.createElement('p', 'f1-lapsec-records-sector-team',
-      sectorData['team-id'] || 'Unknown Team');
+    const team = this.createElement('p', 'f1-lapsec-records-sector-team', teamNameStr);
 
     sector.appendChild(header);
     sector.appendChild(driver);
