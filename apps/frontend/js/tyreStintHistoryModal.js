@@ -464,8 +464,8 @@ class TyreStintChart {
     // Position: where the stint starts (lap 1 = 0%, lap 2 = 1/totalLaps%, etc.)
     stintEl.style.left = ((startLap - 1) / this.options.totalLaps) * 100 + '%';
 
-    // Width: how many laps the stint covers (FIXED: endLap - startLap, not +1)
-    const stintLength = endLap - startLap;
+    // Width: how many laps the stint covers (+1 because endLap is inclusive)
+    const stintLength = endLap - startLap + 1;
     stintEl.style.width = (stintLength / this.options.totalLaps) * 100 + '%';
 
     // Add tyre icon and tooltip
