@@ -562,7 +562,7 @@ class F1TelemetryHandler:
             bool: True if data should be saved, False otherwise.
         """
 
-        if not self.m_session_state_ref.m_session_info:
+        if not self.m_session_state_ref.m_session_info.is_valid or not self.m_session_state_ref.m_session_info:
             return False
         curr_session_type = self.m_session_state_ref.m_session_info.m_session_type
 
