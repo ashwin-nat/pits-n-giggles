@@ -28,13 +28,14 @@ import sys
 import threading
 import tkinter as tk
 from abc import ABC, abstractmethod
-from tkinter import ttk
+from tkinter import ttk, messagebox
 from typing import Callable, Optional
 
 import psutil
 
 from lib.config import PngSettings
 from lib.pid_report import extract_pid_from_line
+from lib.error_codes import PNG_ERROR_CODE_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN
 
 from ..console_interface import ConsoleInterface
 
@@ -52,6 +53,27 @@ def get_executable_extension() -> str:
 
 class PngAppMgrBase(ABC):
     """Class to manage a sub-application process"""
+
+    EXIT_ERRORS = {
+        PNG_ERROR_CODE_PORT_IN_USE: {
+            "title": "Port In Use",
+            "message": (
+                "failed to start because the required port is already in use.\n"
+                "Please close the conflicting app or change the port in settings."
+            ),
+            "status": "Port Conflict",
+        },
+        PNG_ERROR_CODE_UNKNOWN: {
+            "title": "Unknown Error",
+            "message": (
+                "failed to start due to an unknown error.\n"
+                "Please check the logs for more details."
+            ),
+            "status": "Crashed",
+        },
+    }
+    DEFAULT_EXIT = EXIT_ERRORS[PNG_ERROR_CODE_UNKNOWN]
+
     def __init__(self,
                  name: str,
                  module_path: str,
@@ -77,6 +99,7 @@ class PngAppMgrBase(ABC):
         self.process: Optional[subprocess.Popen] = None
         self.status_var = tk.StringVar(value="Stopped")
         self.is_running = False
+        self._is_restarting = threading.Event()
         self.start_by_default = start_by_default
         self.child_pid = None
         self._post_start_hook: Optional[Callable[[], None]] = None
@@ -141,6 +164,7 @@ class PngAppMgrBase(ABC):
             self.child_pid = self.process.pid
             self.status_var.set("Running")
             threading.Thread(target=self._capture_output, daemon=True).start()
+            threading.Thread(target=self._monitor_process_exit, daemon=True).start()
 
             self.console_app.log(f"{self.display_name} started successfully. PID = {self.child_pid}")
 
@@ -219,10 +243,11 @@ class PngAppMgrBase(ABC):
 
     def restart(self):
         """Restart the sub-application process"""
+        self._is_restarting.set()
         if self.is_running:
             self.stop()
-            self.start()
-        # No Op if not running
+        self.start()
+        self._is_restarting.clear()
 
     def _capture_output(self):
         """Capture and log the subprocess output line by line"""
@@ -235,3 +260,46 @@ class PngAppMgrBase(ABC):
                     self.child_pid = pid
                 else:
                     self.console_app.log(line, is_child_message=True)
+
+    def _monitor_process_exit(self):
+        this_process = self.process  # Store reference to the process this thread is watching
+        try:
+            if not this_process:
+                return
+            ret_code = this_process.wait()
+
+            # Skip if a new process has been started after this thread began
+            if self.process is not this_process:
+                return
+
+            # Skip expected exit during restart
+            # Exit code 15 occurs when the process is terminated during a restart (e.g., via .terminate()).
+            # It's expected in this case, so we ignore it to avoid falsely showing a crash.
+            if self._is_restarting.is_set() and ret_code == 15:
+                return
+
+            if self.is_running:
+                self.console_app.log(f"{self.display_name} exited unexpectedly with code {ret_code}")
+                self.is_running = False
+                self.child_pid = None
+                self.process = None
+
+                # pick lookup or default
+                info = self.EXIT_ERRORS.get(ret_code, self.DEFAULT_EXIT)
+                messagebox.showerror(
+                    title=f"{self.display_name} - {info['title']}",
+                    message=f"{self.display_name} {info['message']}"
+                )
+                self.status_var.set(info["status"])
+
+                if self._post_stop_hook:
+                    try:
+                        self._post_stop_hook()
+                    except Exception as e:
+                        self.console_app.log(
+                            f"{self.display_name}: Error in post-stop hook after crash: {e}"
+                        )
+        finally:
+            # Only clear process if we're still monitoring the current one
+            if self.process is this_process:
+                self.process = None

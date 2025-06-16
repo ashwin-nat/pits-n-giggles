@@ -20,6 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+from .tests_common import TestSessionType23, TestSessionType24
 from .tests_packet_0_car_motion_data import TestPacketCarMotionData
 from .tests_packet_1_session_data import TestPacketSessionData
 from .tests_packet_2_lap_data import TestPacketLapData
@@ -28,7 +29,8 @@ from .tests_packet_4_participants_data import TestPacketParticipantsData
 from .tests_packet_5_car_setups_data import TestPacketCarSetupData
 from .tests_packet_6_car_telemetry_data import TestPacketCarTelemetryData
 from .tests_packet_7_status_data import TestPacketCarStatusData
-from .tests_packet_8_final_classification import TestPacketFinalClassificationData
+from .tests_packet_8_final_classification import \
+    TestPacketFinalClassificationData
 from .tests_packet_9_lobby_info_data import TestPacketLobbyInfoData
 from .tests_packet_10_car_damage_data import TestPacketCarDamageData
 from .tests_packet_11_session_history_data import TestPacketSessionHistoryData
@@ -38,6 +40,8 @@ from .tests_packet_14_time_trial_data import TestPacketTimeTrialData
 from .tests_packet_15_lap_positions_data import TestPacketLapPositionsData
 
 __all__ = [
+    'TestSessionType23',
+    'TestSessionType24',
     'TestPacketCarMotionData',
     'TestPacketSessionData',
     'TestPacketLapData',

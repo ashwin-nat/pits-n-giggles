@@ -175,7 +175,9 @@ target_1 = localhost:8080
 
             # Should return default settings
             self.assertEqual(settings.Network.telemetry_port, 20777)
-            self.assertFalse(settings.Capture.post_race_data_autosave)
+            self.assertTrue(settings.Capture.post_race_data_autosave)
+            self.assertTrue(settings.Capture.post_quali_data_autosave)
+            self.assertFalse(settings.Capture.post_fp_data_autosave)
             self.assertEqual(settings.Display.refresh_interval, 200)
 
             # File should have been created
