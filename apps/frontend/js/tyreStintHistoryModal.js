@@ -34,116 +34,6 @@ class TyreStintChart {
     this.initializeChart();
   }
 
-  // Static utility methods
-  static processStintData(data) {
-    if (!data || !Array.isArray(data)) {
-      console.error('Invalid data format: data must be an array');
-      return [];
-    }
-
-    const processedData = [];
-
-    for (let i = 0; i < data.length; i++) {
-      const driver = data[i];
-
-      if (!driver || typeof driver !== 'object') {
-        console.error('Invalid driver data format');
-        continue;
-      }
-
-      // Create processed driver object
-      const processedDriver = {};
-      for (const key in driver) {
-        if (driver.hasOwnProperty(key)) {
-          processedDriver[key] = driver[key];
-        }
-      }
-
-      // Check if stint history exists and is an array
-      if (!driver['tyre-stint-history'] || !Array.isArray(driver['tyre-stint-history'])) {
-        console.error('Invalid tyre stint history for driver ' + (driver.name || 'unknown'));
-        processedDriver['tyre-stint-history'] = [];
-        processedData.push(processedDriver);
-        continue;
-      }
-
-      const processedStints = [];
-      const stints = driver['tyre-stint-history'];
-
-      // Handle empty stint history - keep the driver but with empty stints
-      if (stints.length === 0) {
-        processedDriver['tyre-stint-history'] = [];
-        processedData.push(processedDriver);
-        continue;
-      }
-
-      for (let j = 0; j < stints.length; j++) {
-        const stint = stints[j];
-
-        if (!stint || typeof stint !== 'object') {
-          console.error('Invalid stint data format');
-          continue;
-        }
-
-        if (!stint['tyre-set-data'] || typeof stint['tyre-set-data'] !== 'object') {
-          console.error('Invalid tyre set data format');
-          continue;
-        }
-
-        processedStints.push(stint);
-      }
-
-      processedDriver['tyre-stint-history'] = processedStints;
-      processedData.push(processedDriver);
-    }
-
-    return processedData;
-  }
-
-  static getTotalLaps(data) {
-    if (!data || !Array.isArray(data) || data.length === 0) {
-      return 0;
-    }
-
-    let maxLap = 0;
-
-    for (let i = 0; i < data.length; i++) {
-      const driver = data[i];
-      const stints = driver['tyre-stint-history'];
-
-      if (stints && stints.length > 0) {
-        const lastStint = stints[stints.length - 1];
-        if (lastStint && typeof lastStint['end-lap'] === 'number') {
-          maxLap = Math.max(maxLap, lastStint['end-lap']);
-        }
-      }
-    }
-
-    return maxLap;
-  }
-
-  static sortDriversByPosition(data) {
-    if (!data || !Array.isArray(data)) {
-      return [];
-    }
-
-    const sortedData = data.slice();
-
-    return sortedData.sort(function(a, b) {
-      if ('delta-to-leader' in a && 'delta-to-leader' in b) {
-        return a['delta-to-leader'] - b['delta-to-leader'];
-      }
-
-      if ('driver-number' in a && 'driver-number' in b) {
-        return a['driver-number'] - b['driver-number'];
-      }
-
-      const nameA = a.name || '';
-      const nameB = b.name || '';
-      return nameA.localeCompare(nameB);
-    });
-  }
-
   createTooltip() {
     const tooltip = document.createElement('div');
     tooltip.classList.add('f1-tsc-tooltip');
@@ -312,7 +202,7 @@ class TyreStintChart {
 
     for (let i = 0; i < data.length; i++) {
       const driver = data[i];
-      const row = this.createDriverRow(driver, i + 1);
+      const row = this.createDriverRow(driver);
       this.chartContent.appendChild(row);
     }
 
@@ -343,7 +233,10 @@ class TyreStintChart {
     this.gridLines.style.right = rightOffset + 'px';
   }
 
-  createDriverRow(driver, position) {
+  createDriverRow(driver) {
+    const position = driver.position;
+    const dnf = driver["result-status"] === "DNF";
+
     const row = document.createElement('div');
     row.classList.add('f1-tsc-row');
 
@@ -398,7 +291,7 @@ class TyreStintChart {
       const deltaEl = document.createElement('div');
       deltaEl.classList.add('f1-tsc-delta');
       const deltaTime = (driver['delta-to-leader'] / 1000).toFixed(3);
-      deltaEl.textContent = position === 1 ? 'LEADER' : '+' + deltaTime;
+      deltaEl.textContent = (dnf) ? ("DNF") : ((position === 1 ? 'LEADER' : '+' + deltaTime));
       rightInfo.appendChild(deltaEl);
     }
 
