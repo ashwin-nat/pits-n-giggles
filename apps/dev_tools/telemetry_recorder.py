@@ -21,8 +21,10 @@
 # SOFTWARE.
 # pylint: skip-file
 
+import asyncio
 import sys
 import os
+import time
 import tkinter as tk
 from tkinter import messagebox, filedialog
 from typing import List
@@ -31,7 +33,7 @@ from typing import List
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from lib.packet_cap import F1PacketCapture
-from lib.telemetry_manager import F1TelemetryManager
+from lib.telemetry_manager import AsyncF1TelemetryManager
 from lib.packet_forwarder import UDPForwarder
 from threading import Thread, Lock, Condition
 import queue
@@ -152,53 +154,41 @@ class SimpleApp:
                 messagebox.showinfo("Info", f"Data has been successfully written to file {file_path}. "
                                             f"Number of packets is {num_packets}")
 
-def raw_packet_callback(raw_packet: bytes):
-    global g_capture_table
-    # global g_queue
-    # g_queue.put(raw_packet)
-    g_capture_table.add(raw_packet)
-
-
-def telemetry_manager_thread():
+async def async_telemetry_main():
+    """Main function for async telemetry. This runs its own asyncio event loop"""
     global g_port_num
     global g_start_condition
 
-    with g_start_condition:
-        g_start_condition.wait()
+    # Wait until start signal is received
+    def wait_for_port():
+        with g_start_condition:
+            g_start_condition.wait()
+        return g_port_num
 
-    print(f"received notification. starting server on port {g_port_num}")
-    telemetry_manager = F1TelemetryManager(port_number=g_port_num)
-    telemetry_manager.registerRawPacketCallback(raw_packet_callback)
-    telemetry_manager.run()
+    loop = asyncio.get_running_loop()
+    port = await loop.run_in_executor(None, wait_for_port)
 
-
-def udpForwardingThread() -> None:
-    """Thread that forwards all UDP packets to specified targets
-
-    Args:
-        forwarding_targets (List[Tuple[str, int]]): List of tuple of target
-            Each tuple is a pair of IP addr/hostname (str), port number (int)
-    """
-
-    forwarding_targets = [("127.0.0.1", 20777)]
-    udp_forwarder = UDPForwarder(forwarding_targets)
-    while True:
-        packet = g_queue.get()
-        assert packet is not None
-
-        udp_forwarder.forward(packet)
-
+    print(f"[async telemetry] Starting server on port {port}")
+    telemetry_manager = AsyncF1TelemetryManager(port_number=port)
+    @telemetry_manager.on_raw_packet()
+    async def handleRawPacket(packet: List[bytes]) -> None:
+        """
+        Handle raw telemetry packet.
+        Parameters:
+            packet (List[bytes]): The raw telemetry packet.
+        """
+        global g_capture_table
+        g_capture_table.add(packet)
+    await telemetry_manager.run()
 
 if __name__ == "__main__":
 
-    # forwarding_thread = Thread(target=udpForwardingThread)
-    # forwarding_thread.daemon = True
-    # forwarding_thread.start()
-
-    f1_telemetry_thread = Thread(target=telemetry_manager_thread)
-    f1_telemetry_thread.daemon = True
+    f1_telemetry_thread = Thread(
+        target=lambda: asyncio.run(async_telemetry_main()),
+        daemon=True
+    )
     f1_telemetry_thread.start()
-    import time
+
     time.sleep(1)
     root = tk.Tk()
     app = SimpleApp(root)

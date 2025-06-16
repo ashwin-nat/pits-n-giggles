@@ -262,6 +262,7 @@ class PngAppMgrBase(ABC):
                     self.console_app.log(line, is_child_message=True)
 
     def _monitor_process_exit(self):
+        """subprocess monitoring thread to handle unexpected exits"""
         this_process = self.process  # Store reference to the process this thread is watching
         try:
             if not this_process:
@@ -275,31 +276,54 @@ class PngAppMgrBase(ABC):
             # Skip expected exit during restart
             # Exit code 15 occurs when the process is terminated during a restart (e.g., via .terminate()).
             # It's expected in this case, so we ignore it to avoid falsely showing a crash.
-            if self._is_restarting.is_set() and ret_code == 15:
+            if self._is_restart_exit_expected(ret_code):
                 return
 
             if self.is_running:
-                self.console_app.log(f"{self.display_name} exited unexpectedly with code {ret_code}")
-                self.is_running = False
-                self.child_pid = None
-                self.process = None
+                self._handle_unexpected_exit(ret_code)
 
-                # pick lookup or default
-                info = self.EXIT_ERRORS.get(ret_code, self.DEFAULT_EXIT)
-                messagebox.showerror(
-                    title=f"{self.display_name} - {info['title']}",
-                    message=f"{self.display_name} {info['message']}"
-                )
-                self.status_var.set(info["status"])
-
-                if self._post_stop_hook:
-                    try:
-                        self._post_stop_hook()
-                    except Exception as e:
-                        self.console_app.log(
-                            f"{self.display_name}: Error in post-stop hook after crash: {e}"
-                        )
         finally:
-            # Only clear process if we're still monitoring the current one
             if self.process is this_process:
                 self.process = None
+
+    def _is_restart_exit_expected(self, ret_code: int) -> bool:
+        """
+        Check if the process was restarted intentionally with code 15.
+
+        :param ret_code: Exit code of the process
+        """
+        return self._is_restarting.is_set() and ret_code == 15
+
+    def _handle_unexpected_exit(self, ret_code: int) -> None:
+        """
+        Handle unexpected process exit: logging, UI update, error dialog.
+
+        :param ret_code: Exit code of the process
+        """
+        self.console_app.log(f"{self.display_name} exited unexpectedly with code {ret_code}")
+        self.is_running = False
+        self.child_pid = None
+        self.process = None
+
+        info = self.EXIT_ERRORS.get(ret_code, self.DEFAULT_EXIT)
+        messagebox.showerror(
+            title=f"{self.display_name} - {info['title']}",
+            message=f"{self.display_name} {info['message']}"
+        )
+        self.status_var.set(info["status"])
+
+        if self._post_stop_hook:
+            self._run_post_stop_hook()
+
+    def _run_post_stop_hook(self) -> None:
+        """
+        Safely execute the post-stop hook with error logging.
+        """
+        try:
+            self._post_stop_hook()
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            # suppressing linter warning here since this is dependent on the child process
+            # out of scope of the launcher code.
+            self.console_app.log(
+                f"{self.display_name}: Error in post-stop hook after crash: {e}"
+            )
