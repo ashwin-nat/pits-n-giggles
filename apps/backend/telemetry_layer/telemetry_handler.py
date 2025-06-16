@@ -572,4 +572,4 @@ class F1TelemetryHandler:
             return True
         if curr_session_type.isRaceTypeSession() and self.m_capture_settings.post_race_data_autosave:
             return True
-        return False
+        return False # Time trial, movie or story mode

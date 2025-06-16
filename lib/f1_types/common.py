@@ -356,7 +356,6 @@ class SessionType24(Enum):
             SessionType24.RACE,
             SessionType24.RACE_2,
             SessionType24.RACE_3,
-            SessionType24.TIME_TRIAL,
         }
 
 class SessionLength(Enum):
