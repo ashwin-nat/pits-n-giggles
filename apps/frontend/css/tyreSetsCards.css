@@ -199,7 +199,12 @@
   color: #fff;
 }
 
-.f1-ts-delta-time {
+.f1-ts-delta-time-good {
+  color: #10e71b;
+  font-weight: 700;
+}
+
+.f1-ts-delta-time-bad {
   color: #ffd700;
   font-weight: 700;
 }

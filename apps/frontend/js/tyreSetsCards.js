@@ -274,7 +274,8 @@ class F1TyreManager {
     // Delta time info
     const deltaItem = this.createElement('div', 'f1-ts-info-item');
     deltaItem.appendChild(this.createElement('div', 'f1-ts-info-label', 'Delta Time'));
-    const deltaValue = this.createElement('div', 'f1-ts-info-value f1-ts-delta-time', this.formatDeltaTime(tyre['lap-delta-time']));
+    const deltaClass = (tyre['lap-delta-time'] < 0) ? ('f1-ts-delta-time-good') : ('f1-ts-delta-time-bad');
+    const deltaValue = this.createElement('div', `f1-ts-info-value ${deltaClass}`, this.formatDeltaTime(tyre['lap-delta-time']));
     deltaItem.appendChild(deltaValue);
 
     // Set number info (show range for groups, single number for individuals) - start from 0
