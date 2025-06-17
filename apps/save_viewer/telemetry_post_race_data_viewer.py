@@ -339,6 +339,9 @@ def getTelemetryInfo():
         best_s3_time = g_json_data["records"]["fastest"]["s3"]["time"]
         for data_per_driver in g_json_data["classification-data"]:
             index = data_per_driver["index"]
+            # skip dummy/blank entries
+            if data_per_driver["driver-name"] is None or data_per_driver["team"] is None:
+                continue
             is_fastest = (index == g_json_data["records"]["fastest"]["lap"]["driver-index"])
             position = data_per_driver["final-classification"]["position"]
             if position == 1:
