@@ -1883,6 +1883,7 @@ def _validate_parse_fixed_segments(
 
     Raises:
         PacketParsingError: If the data is not enough to parse the specified number of items.
+        PacketCountValidationError: If the specified number of items is greater than the maximum allowed.
 
     Returns:
         tuple[list[Any], int]: A tuple containing a list of parsed items and the updated offset.

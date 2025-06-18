@@ -18,7 +18,7 @@ from typing import List, Tuple, Any, Optional
 
 # Core application info
 APP_NAME = "pits_n_giggles"
-APP_VERSION = "2.7.1"
+APP_VERSION = "2.7.2"
 ICON_PATH = "../assets/favicon.ico"
 
 # Define all applications to be built
