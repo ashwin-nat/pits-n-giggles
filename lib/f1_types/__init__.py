@@ -23,7 +23,8 @@
 
 from .common import (ActualTyreCompound, F1PacketType, F1Utils,
                      GearboxAssistMode, InvalidPacketLengthError, Nationality,
-                     PacketHeader, Platform, ResultReason, ResultStatus,
+                     PacketCountValidationError, PacketHeader,
+                     PacketParsingError, Platform, ResultReason, ResultStatus,
                      SafetyCarType, SessionLength, SessionType23,
                      SessionType24, TeamID23, TeamID24, TeamID25,
                      TelemetrySetting, TrackID, TractionControlAssistMode,
@@ -55,6 +56,8 @@ from .packet_15_lap_positions_data import PacketLapPositionsData
 __all__ = [
     # Common Stuff
     "InvalidPacketLengthError",
+    "PacketParsingError",
+    "PacketCountValidationError",
     "F1PacketType",
     "ResultStatus",
     "ResultReason",

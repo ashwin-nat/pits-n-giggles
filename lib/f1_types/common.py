@@ -48,6 +48,11 @@ class PacketParsingError(Exception):
     def __init__(self, message):
         super().__init__(f"Malformed packet. {message}")
 
+class PacketCountValidationError(Exception):
+    """Raised when sub-packet count validation against max count fails"""
+    def __init__(self, message):
+        super().__init__(f"Packet count validation error. {message}")
+
 # -------------------- COMMON CLASSES ------------------------------------------
 class F1PacketType(Enum):
     """Class of enum representing the different packet types emitted by the game
@@ -1887,10 +1892,12 @@ def _validate_parse_fixed_segments(
     total_raw_len = max_count * item_len
     raw = data[offset : offset + total_raw_len]
     expected_len = count * item_len
-    if len(raw) < expected_len:
+    if count > max_count:
+        raise PacketCountValidationError(f"Too many {item_cls.__name__} items: {count} > {max_count}")
+    if total_raw_len < expected_len:
         raise PacketParsingError(
             f"Insufficient {item_cls.__name__} data: "
-            f"expected {expected_len} bytes, got {len(raw)} for {count} items"
+            f"expected {expected_len} bytes, got {total_raw_len} for {count} items"
         )
     items = [
         item_cls(raw[i : i + item_len], **item_kwargs)
