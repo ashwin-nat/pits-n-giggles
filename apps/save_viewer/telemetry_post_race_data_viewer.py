@@ -343,7 +343,7 @@ def getTelemetryInfo():
             if data_per_driver["driver-name"] is None or data_per_driver["team"] is None:
                 continue
             is_fastest = (index == g_json_data["records"]["fastest"]["lap"]["driver-index"])
-            position = data_per_driver["final-classification"]["position"]
+            position = data_per_driver["track-position"]
             if position == 1:
                 delta_relative = 0
             else:
