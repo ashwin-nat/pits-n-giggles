@@ -278,7 +278,7 @@ class F1TelemetryHandler:
             session_type = self.m_session_state_ref.m_session_info.m_session_type
             player_info = self.m_session_state_ref.getPlayerDriverInfo()
 
-            if (session_type.isRaceTypeSession() or session_type.isQualiTypeSession()) and player_info:
+            if session_type and (session_type.isRaceTypeSession() or session_type.isQualiTypeSession()) and player_info:
                 player_position = player_info.m_driver_info.position
                 message = ITCMessage(
                     m_message_type=ITCMessage.MessageType.FINAL_CLASSIFICATION_NOTIFICATION,
@@ -551,9 +551,10 @@ class F1TelemetryHandler:
             bool: True if data should be saved, False otherwise.
         """
 
-        if not self.m_session_state_ref.m_session_info.is_valid or not self.m_session_state_ref.m_session_info:
-            return False
         curr_session_type = self.m_session_state_ref.m_session_info.m_session_type
+        if not curr_session_type:
+            self.m_logger.error("Session type in None. Not saving data.")
+            return False
 
         if curr_session_type.isFpTypeSession() and self.m_capture_settings.post_fp_data_autosave:
             return True
@@ -561,4 +562,4 @@ class F1TelemetryHandler:
             return True
         if curr_session_type.isRaceTypeSession() and self.m_capture_settings.post_race_data_autosave:
             return True
-        return False
+        return False # Time trial, movie or story mode

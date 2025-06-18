@@ -28,13 +28,15 @@ from typing import Awaitable, Callable, Dict, Optional
 from lib.f1_types import (F1PacketType, InvalidPacketLengthError,
                           PacketCarDamageData, PacketCarSetupData,
                           PacketCarStatusData, PacketCarTelemetryData,
-                          PacketEventData, PacketFinalClassificationData,
-                          PacketHeader, PacketLapData, PacketLapPositionsData,
+                          PacketCountValidationError, PacketEventData,
+                          PacketFinalClassificationData, PacketHeader,
+                          PacketLapData, PacketLapPositionsData,
                           PacketLobbyInfoData, PacketMotionData,
-                          PacketMotionExData, PacketParticipantsData,
-                          PacketSessionData, PacketSessionHistoryData,
-                          PacketTimeTrialData, PacketTyreSetsData)
-from lib.socket_receiver import (AsyncTCPListener, AsyncUDPListener)
+                          PacketMotionExData, PacketParsingError,
+                          PacketParticipantsData, PacketSessionData,
+                          PacketSessionHistoryData, PacketTimeTrialData,
+                          PacketTyreSetsData)
+from lib.socket_receiver import AsyncTCPListener, AsyncUDPListener
 
 # ------------------------- GLOBALS ------------------------------------------------------------------------------------
 
@@ -216,7 +218,7 @@ class AsyncF1TelemetryManager:
         payload_raw = raw_packet[PacketHeader.PACKET_LEN:]
         try:
             packet = AsyncF1TelemetryManager.packet_type_map[header.m_packetId](header, payload_raw)
-        except InvalidPacketLengthError as e:
+        except (InvalidPacketLengthError, PacketParsingError, PacketCountValidationError) as e:
             self.m_logger.error("Cannot parse packet of type %s. Error = %s", str(header.m_packetId), str(e))
             return
         if callback := self.m_callbacks.get(header.m_packetId, None):

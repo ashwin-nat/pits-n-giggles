@@ -138,7 +138,23 @@ class DataPerDriver:
         Returns:
             bool: True if valid
         """
-        return bool(self.m_driver_info.position or self.m_driver_info.name or self.m_driver_info.team)
+
+        has_valid_position = (
+            self.m_driver_info.position is not None and
+            1 <= self.m_driver_info.position <= 22
+        )
+
+        # In FP/quali, if someone has finished their laps, retired and disconnected, their participants data will
+        # be removed. Hence we need to also look into their lap time history
+        history = self.m_packet_copies.m_packet_session_history
+        has_driver_info = (
+            self.m_driver_info.name or
+            self.m_driver_info.team or
+            (history and history.is_valid)
+        )
+
+        return has_valid_position and bool(has_driver_info)
+
 
     def toJSON(self,
                index: Optional[int] = None,
@@ -606,6 +622,17 @@ class DataPerDriver:
                                                 index=fitted_index,
                                                 tyre_set_key=fitted_tyre_set_key,
                                                 initial_tyre_wear=initial_tyre_wear,
+                    ))
+
+                # If we have joined the session late, need to create a history entry
+                if not self.m_tyre_info.m_tyre_set_history_manager.length and self.m_tyre_info.tyre_wear:
+                    initial_tyre_wear = deepcopy(self.m_tyre_info.tyre_wear)
+                    initial_tyre_wear.desc = "initial tyre wear"
+                    self.m_tyre_info.m_tyre_set_history_manager.add(TyreSetHistoryEntry(
+                        start_lap=self.m_lap_info.m_current_lap,
+                        index=fitted_index,
+                        tyre_set_key=fitted_tyre_set_key,
+                        initial_tyre_wear=initial_tyre_wear
                     ))
             elif fitted_index != self.m_tyre_info.m_tyre_set_history_manager.getLastEntry().m_fitted_index:
                 # Tyre set change detected

@@ -140,7 +140,6 @@ class TestSessionType24(F1TypesTest):
             SessionType24.RACE,
             SessionType24.RACE_2,
             SessionType24.RACE_3,
-            SessionType24.TIME_TRIAL
         ]
         for session in race_sessions:
             with self.subTest(session=session):

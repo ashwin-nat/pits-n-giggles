@@ -511,6 +511,17 @@ class PacketSessionHistoryData:
             return self.m_lapHistoryData[self.m_bestLapTimeLapNum - 1]
         return None
 
+    @property
+    def is_valid(self) -> bool:
+        """Checks if the PacketSessionHistoryData instance is valid (contains data)"""
+        return (
+            self.m_numLaps > 0
+            and self.m_bestLapTimeLapNum > 0
+            and self.m_bestSector1LapNum > 0
+            and self.m_bestSector2LapNum > 0
+            and self.m_bestSector3LapNum > 0
+        )
+
     def __eq__(self, other: "PacketSessionHistoryData") -> bool:
         """
         Compare two PacketSessionHistoryData instances for equality.
