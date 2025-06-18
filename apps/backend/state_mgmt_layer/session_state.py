@@ -289,7 +289,7 @@ class SessionState:
 
         # No need to clear config params
 
-        self.m_logger.debug(f"Clearing all data structures. Reason: {reason}")
+        self.m_logger.info(f"Clearing all internals. Reason: {reason}")
 
     @property
     def is_data_available(self) -> bool:
