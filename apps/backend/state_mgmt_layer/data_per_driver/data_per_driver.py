@@ -623,6 +623,17 @@ class DataPerDriver:
                                                 tyre_set_key=fitted_tyre_set_key,
                                                 initial_tyre_wear=initial_tyre_wear,
                     ))
+
+                # If we have joined the session late, need to create a history entry
+                if not self.m_tyre_info.m_tyre_set_history_manager.length and self.m_tyre_info.tyre_wear:
+                    initial_tyre_wear = deepcopy(self.m_tyre_info.tyre_wear)
+                    initial_tyre_wear.desc = "initial tyre wear"
+                    self.m_tyre_info.m_tyre_set_history_manager.add(TyreSetHistoryEntry(
+                        start_lap=self.m_lap_info.m_current_lap,
+                        index=fitted_index,
+                        tyre_set_key=fitted_tyre_set_key,
+                        initial_tyre_wear=initial_tyre_wear
+                    ))
             elif fitted_index != self.m_tyre_info.m_tyre_set_history_manager.getLastEntry().m_fitted_index:
                 # Tyre set change detected
                 if F1Utils.isFinishLineAfterPitGarage(track):
