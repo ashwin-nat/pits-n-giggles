@@ -138,7 +138,7 @@ class DataPerDriver:
         Returns:
             bool: True if valid
         """
-        return bool(self.m_driver_info.position or self.m_driver_info.name or self.m_driver_info.team)
+        return bool(self.m_driver_info.name or self.m_driver_info.team)
 
     def toJSON(self,
                index: Optional[int] = None,
