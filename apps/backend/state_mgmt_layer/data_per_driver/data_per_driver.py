@@ -700,6 +700,7 @@ class DataPerDriver:
             # note down curr tyre wear for delayed tyre set change handling
             # take a deepcopy since this obj is volatile
             self.m_pending_events_data = deepcopy(self.m_tyre_info.tyre_wear)
+            self.m_pending_events_mgr.onEvent(DriverPendingEvents.PITTING_EVENT)
 
         self.m_lap_info.m_is_pitting = lap_data.m_pitStatus in \
                 [LapData.PitStatus.PITTING, LapData.PitStatus.IN_PIT_AREA]

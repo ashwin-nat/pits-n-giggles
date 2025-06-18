@@ -33,6 +33,7 @@ class DriverPendingEvents(Enum):
     """
     LAP_CHANGE_EVENT = auto()
     CAR_DMG_PKT_EVENT = auto()
+    PITTING_EVENT = auto()
 
     def __str__(self) -> str:
         """
