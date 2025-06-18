@@ -537,9 +537,15 @@ class SessionState:
             # Perform the final snapshot
             obj_to_be_updated.onLapChange(
                 old_lap_number=data.m_numLaps, session_type=self.m_session_info.m_session_type)
+
             # Sometimes, lapInfo is unreliable. update the track position
-            obj_to_be_updated.m_per_lap_snapshots[data.m_numLaps].m_track_position = data.m_position
-            obj_to_be_updated.m_driver_info.position = data.m_position
+            # But, if someone finishes their quali, retires and disconnects,
+            # F1 game decides that their final classification position is 255 for some reason
+            # if so, disregard it
+            if data.m_position and data.m_position != 255:
+                obj_to_be_updated.m_driver_info.position = data.m_position
+                obj_to_be_updated.m_per_lap_snapshots[data.m_numLaps].m_track_position = data.m_position
+
             obj_to_be_updated.m_packet_copies.m_packet_final_classification = data
             obj_to_be_updated.m_lap_info.m_total_race_time = data.m_totalRaceTime
             final_json["classification-data"][index] = obj_to_be_updated.toJSON(index)
