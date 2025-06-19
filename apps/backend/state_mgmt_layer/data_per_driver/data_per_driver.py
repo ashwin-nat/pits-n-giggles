@@ -129,7 +129,6 @@ class DataPerDriver:
         self.m_pending_events_mgr: PendingEventsManager = PendingEventsManager(
             callback=self._delayedTyreSetsChange
         )
-        self.m_pending_events_data: Optional[Any] = None
 
     @property
     def is_valid(self) -> bool:
@@ -645,9 +644,8 @@ class DataPerDriver:
                         png_logger.debug("Driver %s - lap %d tyre set change detected. Registering for delayed handling",
                                         str(self), self.m_lap_info.m_current_lap)
                         self.m_pending_events_mgr.register(
-                            events={DriverPendingEvents.CAR_DMG_PKT_EVENT, DriverPendingEvents.LAP_CHANGE_EVENT},
-                            initial_tyre_wear=self.m_pending_events_data)
-                        self.m_pending_events_data = None
+                            events={DriverPendingEvents.CAR_DMG_PKT_EVENT, DriverPendingEvents.LAP_CHANGE_EVENT, DriverPendingEvents.PITTING_EVENT},
+                            initial_tyre_wear=self.m_pending_events_mgr.data)
                 else:
                     initial_tyre_wear = TyreWearPerLap(
                         fl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
@@ -699,7 +697,7 @@ class DataPerDriver:
             # entering pits
             # note down curr tyre wear for delayed tyre set change handling
             # take a deepcopy since this obj is volatile
-            self.m_pending_events_data = deepcopy(self.m_tyre_info.tyre_wear)
+            self.m_pending_events_mgr.data = deepcopy(self.m_tyre_info.tyre_wear)
             self.m_pending_events_mgr.onEvent(DriverPendingEvents.PITTING_EVENT)
 
         self.m_lap_info.m_is_pitting = lap_data.m_pitStatus in \
