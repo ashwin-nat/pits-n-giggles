@@ -33,6 +33,7 @@ class DriverPendingEvents(Enum):
     """
     LAP_CHANGE_EVENT = auto()
     CAR_DMG_PKT_EVENT = auto()
+    PITTING_EVENT = auto()
 
     def __str__(self) -> str:
         """
@@ -60,6 +61,7 @@ class PendingEventsManager:
         self._pending_events: Set[DriverPendingEvents] = set()
         self._callback: Callable[..., None] = callback
         self._callback_kwargs: Dict[str, Any] = {}
+        self._opt_data: Any = None
 
     def register(self,
                  events: Set[DriverPendingEvents],
@@ -90,6 +92,7 @@ class PendingEventsManager:
 
         if not self._pending_events:
             self._callback(**self._callback_kwargs)
+            self._opt_data = None
 
     def areEventsPending(self) -> bool:
         """
@@ -99,3 +102,13 @@ class PendingEventsManager:
             bool: True if there are pending events, False otherwise.
         """
         return bool(self._pending_events)
+
+    @property
+    def data(self) -> Any:
+        """Getter for the optional data."""
+        return self._opt_data
+
+    @data.setter
+    def data(self, data: Any):
+        """Setter for the optional data. The optional data will be cleared after the callback is triggered."""
+        self._opt_data = data
