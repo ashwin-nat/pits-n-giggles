@@ -39,6 +39,7 @@ from lib.f1_types import (F1PacketType, InvalidPacketLengthError,
 from lib.socket_receiver import AsyncTCPListener, AsyncUDPListener
 
 # ------------------------- GLOBALS ------------------------------------------------------------------------------------
+F1TelemetryCallback = Optional[Callable[[object], Awaitable[None]]]
 
 # ------------------------- CLASSES ------------------------------------------------------------------------------------
 
@@ -116,23 +117,8 @@ class AsyncF1TelemetryManager:
             self.m_server = AsyncTCPListener(port_number, "localhost")
         else:
             self.m_server = AsyncUDPListener(port_number, "0.0.0.0", buffer_size=4096)
-        self.m_callbacks: Dict[F1PacketType, Optional[Callable[[object], Awaitable[None]]]] = {
-            F1PacketType.MOTION: None,
-            F1PacketType.SESSION: None,
-            F1PacketType.LAP_DATA: None,
-            F1PacketType.EVENT: None,
-            F1PacketType.PARTICIPANTS: None,
-            F1PacketType.CAR_SETUPS: None,
-            F1PacketType.CAR_TELEMETRY: None,
-            F1PacketType.CAR_STATUS: None,
-            F1PacketType.FINAL_CLASSIFICATION: None,
-            F1PacketType.LOBBY_INFO: None,
-            F1PacketType.CAR_DAMAGE: None,
-            F1PacketType.SESSION_HISTORY: None,
-            F1PacketType.TYRE_SETS: None,
-            F1PacketType.MOTION_EX: None,
-            F1PacketType.TIME_TRIAL: None,
-        }
+        self.m_callbacks: Dict[F1PacketType, F1TelemetryCallback] = {ptype: None for ptype in self.packet_type_map}
+
         self.m_raw_packet_callback: Optional[Callable[[object], Awaitable[None]]] = None
 
     def on_packet(self, packet_type: F1PacketType):
