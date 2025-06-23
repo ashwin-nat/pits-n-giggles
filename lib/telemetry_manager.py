@@ -22,6 +22,9 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
+import json
+import os
+from datetime import datetime
 from logging import Logger
 from typing import Awaitable, Callable, Dict, Optional
 
@@ -208,4 +211,42 @@ class AsyncF1TelemetryManager:
             self.m_logger.error("Cannot parse packet of type %s. Error = %s", str(header.m_packetId), str(e))
             return
         if callback := self.m_callbacks.get(header.m_packetId, None):
-            await callback(packet)
+            try:
+                await callback(packet)
+            except Exception as e:
+                packet_file = self._dumpPacketToFile(packet)
+                self.m_logger.exception(
+                    "Exception while handling packet callback.\n"
+                    "Packet type: %s\nException type: %s\nMessage: %s\n"
+                    "Header: %s\nPacket dumped to: %s",
+                    str(header.m_packetId),
+                    type(e).__name__,
+                    str(e),
+                    json.dumps(header.toJSON(), indent=2),
+                    packet_file,
+                )
+                raise
+
+    def _dumpPacketToFile(self, packet_obj: object, directory: str = "crash_packet_dumps") -> str:
+        """Dump packet JSON to a timestamped file and return the file path.
+
+        Args:
+            packet_obj (object): The packet object to dump.
+            directory (str, optional): The directory to dump the packet to. Defaults to "crash_packet_dumps".
+
+        Returns:
+            str: The file path of the dumped packet.
+
+        """
+        os.makedirs(directory, exist_ok=True)
+
+        timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")
+        filename = f"{timestamp}.json"
+        filepath = os.path.join(directory, filename)
+
+        try:
+            with open(filepath, "w", encoding="utf-8") as f:
+                json.dump(packet_obj.toJSON(), f, ensure_ascii=False, indent=2)
+            return filepath
+        except Exception as e: # pylint: disable=broad-except
+            return f"<Failed to write packet to file: {e}>"
