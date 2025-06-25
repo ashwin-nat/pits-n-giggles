@@ -200,28 +200,6 @@ class EngViewRaceTableRow {
         }
 
         return [
-            // Last Lap
-            {
-                value: this.createLapInfoCellTwoRow(formatLapTime(lastLapInfo["lap-time-ms"]),
-                    formatDelta(lastLapInfo["lap-time-ms-player"] - lastLapInfo["lap-time-ms"]), yellowSector),
-                border: false
-            },
-            {
-                value: this.createLapInfoCellTwoRow(formatSectorTime(lastLapInfo["s1-time-ms"]),
-                    formatDelta(lastLapInfo["s1-time-ms-player"] - lastLapInfo["s1-time-ms"]), lastLapInfo["sector-status"][0]),
-                border: false
-            },
-            {
-                value: this.createLapInfoCellTwoRow(formatSectorTime(lastLapInfo["s2-time-ms"]),
-                    formatDelta(lastLapInfo["s2-time-ms-player"] - lastLapInfo["s2-time-ms"]), lastLapInfo["sector-status"][1]),
-                border: false
-            },
-            {
-                value: this.createLapInfoCellTwoRow(formatSectorTime(lastLapInfo["s3-time-ms"]),
-                    formatDelta(lastLapInfo["s3-time-ms-player"] - lastLapInfo["s3-time-ms"]), lastLapInfo["sector-status"][2]),
-                border: true
-            },
-
             // Best Lap
             {
                 value: this.createLapInfoCellTwoRow(formatLapTime(bestLapInfo["lap-time-ms"]),
@@ -241,6 +219,27 @@ class EngViewRaceTableRow {
             {
                 value: this.createLapInfoCellTwoRow(formatSectorTime(bestLapInfo["s3-time-ms"]),
                     formatDelta(bestLapInfo["s3-time-ms-player"] - bestLapInfo["s3-time-ms"]), bestLapInfo["sector-status"][2]),
+                border: true
+            },
+            // Last Lap
+            {
+                value: this.createLapInfoCellTwoRow(formatLapTime(lastLapInfo["lap-time-ms"]),
+                    formatDelta(lastLapInfo["lap-time-ms-player"] - lastLapInfo["lap-time-ms"]), yellowSector),
+                border: false
+            },
+            {
+                value: this.createLapInfoCellTwoRow(formatSectorTime(lastLapInfo["s1-time-ms"]),
+                    formatDelta(lastLapInfo["s1-time-ms-player"] - lastLapInfo["s1-time-ms"]), lastLapInfo["sector-status"][0]),
+                border: false
+            },
+            {
+                value: this.createLapInfoCellTwoRow(formatSectorTime(lastLapInfo["s2-time-ms"]),
+                    formatDelta(lastLapInfo["s2-time-ms-player"] - lastLapInfo["s2-time-ms"]), lastLapInfo["sector-status"][1]),
+                border: false
+            },
+            {
+                value: this.createLapInfoCellTwoRow(formatSectorTime(lastLapInfo["s3-time-ms"]),
+                    formatDelta(lastLapInfo["s3-time-ms-player"] - lastLapInfo["s3-time-ms"]), lastLapInfo["sector-status"][2]),
                 border: true
             },
         ];
