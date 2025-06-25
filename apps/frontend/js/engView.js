@@ -168,20 +168,6 @@ class EngViewRaceTableRow {
         // in spectator mode, there is no need for delta
         if (this.isSpectating || isPlayer) {
             return [
-                // Last Lap
-                {
-                    value: this.createLapInfoCellSingleRow(formatLapTime(lastLapInfo["lap-time-ms"]), yellowSector)
-                },
-                {
-                    value: this.createLapInfoCellSingleRow(formatSectorTime(lastLapInfo["s1-time-ms"]), lastLapInfo["sector-status"][0])
-                },
-                {
-                    value: this.createLapInfoCellSingleRow(formatSectorTime(lastLapInfo["s2-time-ms"]), lastLapInfo["sector-status"][1])
-                },
-                {
-                    value: this.createLapInfoCellSingleRow(formatSectorTime(lastLapInfo["s3-time-ms"]), lastLapInfo["sector-status"][2]),
-                    border: true
-                },
                 // Best Lap
                 {
                     value: this.createLapInfoCellSingleRow(formatLapTime(bestLapInfo["lap-time-ms"]), yellowSector)
@@ -194,6 +180,20 @@ class EngViewRaceTableRow {
                 },
                 {
                     value: this.createLapInfoCellSingleRow(formatSectorTime(bestLapInfo["s3-time-ms"]), bestLapInfo["sector-status"][2]),
+                    border: true
+                },
+                // Last Lap
+                {
+                    value: this.createLapInfoCellSingleRow(formatLapTime(lastLapInfo["lap-time-ms"]), yellowSector)
+                },
+                {
+                    value: this.createLapInfoCellSingleRow(formatSectorTime(lastLapInfo["s1-time-ms"]), lastLapInfo["sector-status"][0])
+                },
+                {
+                    value: this.createLapInfoCellSingleRow(formatSectorTime(lastLapInfo["s2-time-ms"]), lastLapInfo["sector-status"][1])
+                },
+                {
+                    value: this.createLapInfoCellSingleRow(formatSectorTime(lastLapInfo["s3-time-ms"]), lastLapInfo["sector-status"][2]),
                     border: true
                 },
             ];
