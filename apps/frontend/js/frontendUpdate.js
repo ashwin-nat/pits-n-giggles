@@ -52,3 +52,13 @@ function processFinalClassificationNotification(data) {
         shootConfetti(confettiDurationMs);
     }
 }
+
+function processTyreDeltaMessageV2(data, iconCache) {
+    if (g_pref_tyreDeltaNotificationTtsFormat) {
+        // Since its TTS format, reuse the old format code
+        data["tyre-delta-messages"].forEach(message => processTyreDeltaMessage(message));
+    } else {
+        const tyreDeltaToast = new TyreDeltaToast(iconCache);
+        tyreDeltaToast.show(data);
+    }
+}
