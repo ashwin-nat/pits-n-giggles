@@ -41,37 +41,29 @@ class ModalManager {
       console.error("Driver modal not initialized");
       return;
     }
+    const modalTitle = document.querySelector('#driverModal .driver-modal-header .modal-title');
+    const modalBody = document.querySelector('#driverModal .modal-body');
+    const refreshButton = document.getElementById('refreshButtonDriver');
 
-    // Set up a one-time listener that triggers after modal is fully shown
-    const onShown = () => {
-      const modalTitle = document.querySelector('#driverModal .driver-modal-header .modal-title');
-      const modalBody = document.querySelector('#driverModal .modal-body');
-      const refreshButton = document.getElementById('refreshButtonDriver');
+    // Update modal title
+    modalTitle.textContent = `${data["driver-name"]} - ${getTeamName(data["team"])}`;
 
-      // Update modal title
-      modalTitle.textContent = `${data["driver-name"]} - ${getTeamName(data["team"])}`;
+    // Clear existing content
+    modalBody.innerHTML = '';
 
-      // Clear existing content
-      modalBody.innerHTML = '';
+    // Create the modal content using the DriverModalPopulator class
+    const modalDataPopulator = new DriverModalPopulator(data, this.iconCache);
 
-      // Create the modal content using the DriverModalPopulator class
-      const modalDataPopulator = new DriverModalPopulator(data, this.iconCache);
+    // Create and append navigation tabs
+    const navTabs = modalDataPopulator.createNavTabs();
+    modalBody.appendChild(navTabs);
 
-      // Create and append navigation tabs
-      const navTabs = modalDataPopulator.createNavTabs();
-      modalBody.appendChild(navTabs);
+    // Create and append tab content
+    const tabContent = modalDataPopulator.createTabContent();
+    modalBody.appendChild(tabContent);
 
-      // Create and append tab content
-      const tabContent = modalDataPopulator.createTabContent();
-      modalBody.appendChild(tabContent);
-
-      // Event Listeners for Buttons
-      refreshButton.onclick = () => this.refreshDriverData(data);
-
-      // Remove event listener after it's run
-      document.getElementById('driverModal').removeEventListener('shown.bs.modal', onShown);
-    };
-    document.getElementById('driverModal').addEventListener('shown.bs.modal', onShown);
+    // Event Listeners for Buttons
+    refreshButton.onclick = () => this.refreshDriverData(data);
 
     // Show the modal
     this.driverModal.show();
@@ -102,87 +94,80 @@ class ModalManager {
       return;
     }
 
-    // Set up a one-time listener that triggers after modal is fully shown
-    const onShown = () => {
+    // Populate the fields with the default values
+    document.getElementById("carsToShow").value = g_pref_numAdjacentCars;
+    document.getElementById("teamNameInput").value = g_pref_myTeamName;
 
-      // Populate the fields with the default values
-      document.getElementById("carsToShow").value = g_pref_numAdjacentCars;
-      document.getElementById("teamNameInput").value = g_pref_myTeamName;
+    // Set the radio buttons for time format
+    document.getElementById("timeFormat12").checked = !g_pref_is24HourFormat;
+    document.getElementById("timeFormat24").checked = g_pref_is24HourFormat;
 
-      // Set the radio buttons for time format
-      document.getElementById("timeFormat12").checked = !g_pref_is24HourFormat;
-      document.getElementById("timeFormat24").checked = g_pref_is24HourFormat;
+    // Set the radio buttons for last lap time format
+    document.getElementById("lastLapAbsolute").checked = g_pref_lastLapAbsoluteFormat;
+    document.getElementById("lastLapRelative").checked = !g_pref_lastLapAbsoluteFormat;
 
-      // Set the radio buttons for last lap time format
-      document.getElementById("lastLapAbsolute").checked = g_pref_lastLapAbsoluteFormat;
-      document.getElementById("lastLapRelative").checked = !g_pref_lastLapAbsoluteFormat;
+    // Set the radio buttons for best lap time format
+    document.getElementById("bestLapAbsolute").checked = g_pref_bestLapAbsoluteFormat;
+    document.getElementById("bestLapRelative").checked = !g_pref_bestLapAbsoluteFormat;
 
-      // Set the radio buttons for best lap time format
-      document.getElementById("bestLapAbsolute").checked = g_pref_bestLapAbsoluteFormat;
-      document.getElementById("bestLapRelative").checked = !g_pref_bestLapAbsoluteFormat;
+    // Set the radio buttons for tyre wear format
+    document.getElementById("tyreWearAbsolute").checked = !g_pref_tyreWearAverageFormat;
+    document.getElementById("tyreWearRelative").checked = g_pref_tyreWearAverageFormat;
 
-      // Set the radio buttons for tyre wear format
-      document.getElementById("tyreWearAbsolute").checked = !g_pref_tyreWearAverageFormat;
-      document.getElementById("tyreWearRelative").checked = g_pref_tyreWearAverageFormat;
+    // Set the radio buttons for tyre wear format
+    document.getElementById("deltaLeader").checked = !g_pref_relativeDelta;
+    document.getElementById("deltaRelative").checked = g_pref_relativeDelta;
 
-      // Set the radio buttons for tyre wear format
-      document.getElementById("deltaLeader").checked = !g_pref_relativeDelta;
-      document.getElementById("deltaRelative").checked = g_pref_relativeDelta;
+    // Set the radio buttons for fuel surplus laps source
+    document.getElementById("fuelSurplusLapsGame").checked = !g_pref_fuelSurplusLapsPng;
+    document.getElementById("fuelSurplusLapsPng").checked = g_pref_fuelSurplusLapsPng;
 
-      // Set the radio buttons for fuel surplus laps source
-      document.getElementById("fuelSurplusLapsGame").checked = !g_pref_fuelSurplusLapsPng;
-      document.getElementById("fuelSurplusLapsPng").checked = g_pref_fuelSurplusLapsPng;
+    // Set the switch for fuel target show
+    document.getElementById("fuelTargetEnabled").checked = g_pref_showFuelTarget;
 
-      // Set the switch for fuel target show
-      document.getElementById("fuelTargetEnabled").checked = g_pref_showFuelTarget;
+    // Set the radio buttons for fuel
+    document.getElementById("fuelTargetAverage").checked = g_pref_fuelTargetAverageFormat;
+    document.getElementById("fuelTargetNextLap").checked = !g_pref_fuelTargetAverageFormat;
 
-      // Set the radio buttons for fuel
-      document.getElementById("fuelTargetAverage").checked = g_pref_fuelTargetAverageFormat;
-      document.getElementById("fuelTargetNextLap").checked = !g_pref_fuelTargetAverageFormat;
+    // Set initial value for volume slider
+    const volumeSlider = document.getElementById('volumeRange');
+    const volumeLabel = document.getElementById('volumeLabel');
+    volumeSlider.value = g_pref_ttsVolume;
+    volumeLabel.textContent = g_pref_ttsVolume;
 
-      // Set initial value for volume slider
-      const volumeSlider = document.getElementById('volumeRange');
-      const volumeLabel = document.getElementById('volumeLabel');
-      volumeSlider.value = g_pref_ttsVolume;
-      volumeLabel.textContent = g_pref_ttsVolume;
+    // Populate the "Text to Speech Voice" dropdown
+    const voiceSelect = document.getElementById("voiceSelect");
+    voiceSelect.innerHTML = ""; // Clear existing options
+    const voices = window.speechSynthesis.getVoices(); // Get available voices
+    console.log("voices", voices);
 
-      // Populate the "Text to Speech Voice" dropdown
-      const voiceSelect = document.getElementById("voiceSelect");
-      voiceSelect.innerHTML = ""; // Clear existing options
-      const voices = window.speechSynthesis.getVoices(); // Get available voices
-      console.log("voices", voices);
+    const defaultVoice = voices[0]?.name || ""; // Use the first voice as default if available
+    const selectedVoice = g_pref_ttsVoice || defaultVoice; // Use g_pref_ttsVoice if not null/empty, otherwise default voice
 
-      const defaultVoice = voices[0]?.name || ""; // Use the first voice as default if available
-      const selectedVoice = g_pref_ttsVoice || defaultVoice; // Use g_pref_ttsVoice if not null/empty, otherwise default voice
+    voices.forEach((voice) => {
+      const option = document.createElement("option");
+      option.value = voice.name; // Use the voice name as the value
+      option.textContent = `${voice.name} (${voice.lang})`; // Display voice name and language
+      if (voice.name === selectedVoice) {
+        option.selected = true; // Select the appropriate voice
+      }
+      voiceSelect.appendChild(option);
+    });
 
-      voices.forEach((voice) => {
-        const option = document.createElement("option");
-        option.value = voice.name; // Use the voice name as the value
-        option.textContent = `${voice.name} (${voice.lang})`; // Display voice name and language
-        if (voice.name === selectedVoice) {
-          option.selected = true; // Select the appropriate voice
-        }
-        voiceSelect.appendChild(option);
-      });
+    // Add event listener to "Play Sample" button
+    const playSampleButton = document.getElementById("playSampleButton");
+    playSampleButton.onclick = () => {
 
-      // Add event listener to "Play Sample" button
-      const playSampleButton = document.getElementById("playSampleButton");
-      playSampleButton.onclick = () => {
-
-        const volume = parseInt(document.getElementById('volumeRange').value, 10);
-        const lines = [
-            "Copy that, we are checking",
-            "And box box. Stay Out! Stay Out! Stay Out!",
-            "Must be the water",
-            "OK Kimi, we have now 5 second time penalty",
-        ]
-        const randomLine = lines[Math.floor(Math.random() * lines.length)];
-        textToSpeech(randomLine, volume);
-      };
-
-      document.getElementById('settingsModal').removeEventListener('shown.bs.modal', onShown);
-    }
-    document.getElementById('settingsModal').addEventListener('shown.bs.modal', onShown);
+      const volume = parseInt(document.getElementById('volumeRange').value, 10);
+      const lines = [
+          "Copy that, we are checking",
+          "And box box. Stay Out! Stay Out! Stay Out!",
+          "Must be the water",
+          "OK Kimi, we have now 5 second time penalty",
+      ]
+      const randomLine = lines[Math.floor(Math.random() * lines.length)];
+      textToSpeech(randomLine, volume);
+    };
 
     this.settingsModal.show();
   }
@@ -238,38 +223,29 @@ class ModalManager {
       return;
     }
 
-    // Set up a one-time listener that triggers after modal is fully shown
-    const onShown = () => {
+    const modalTitle = document.querySelector('#raceStatsModal .race-stats-modal-header .modal-title');
+    const modalBody = document.querySelector('#raceStatsModal .modal-body');
+    const refreshButton = document.getElementById('refreshButtonRace');
 
-      const modalTitle = document.querySelector('#raceStatsModal .race-stats-modal-header .modal-title');
-      const modalBody = document.querySelector('#raceStatsModal .modal-body');
-      const refreshButton = document.getElementById('refreshButtonRace');
+    // Update modal title
+    modalTitle.textContent = `RACE STATS`;
 
-      // Update modal title
-      modalTitle.textContent = `RACE STATS`;
+    // Clear existing content
+    modalBody.innerHTML = '';
 
-      // Clear existing content
-      modalBody.innerHTML = '';
+    // Create the modal content using the RaceStatsModalPopulator class
+    const modalDataPopulator = new RaceStatsModalPopulator(data, this.iconCache);
 
-      // Create the modal content using the RaceStatsModalPopulator class
-      const modalDataPopulator = new RaceStatsModalPopulator(data, this.iconCache);
+    // Create and append navigation tabs
+    const navTabs = modalDataPopulator.createNavTabs();
+    modalBody.appendChild(navTabs);
 
-      // Create and append navigation tabs
-      const navTabs = modalDataPopulator.createNavTabs();
-      modalBody.appendChild(navTabs);
+    // Create and append tab content
+    const tabContent = modalDataPopulator.createTabContent();
+    modalBody.appendChild(tabContent);
 
-      // Create and append tab content
-      const tabContent = modalDataPopulator.createTabContent();
-      modalBody.appendChild(tabContent);
-
-      // Event Listeners for Buttons
-      refreshButton.onclick = () => this.refreshRaceStatsData(data);
-
-      // Remove event listener after it's run
-      document.getElementById('raceStatsModal').removeEventListener('shown.bs.modal', onShown);
-    }
-
-    document.getElementById('raceStatsModal').addEventListener('shown.bs.modal', onShown);
+    // Event Listeners for Buttons
+    refreshButton.onclick = () => this.refreshRaceStatsData(data);
 
     // Show the modal
     this.raceStatsModal.show();
