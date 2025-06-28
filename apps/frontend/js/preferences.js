@@ -13,6 +13,7 @@ let g_pref_numWeatherPredictionSamples;
 let g_pref_ttsVoice;
 let g_pref_ttsVolume;
 let g_pref_tyreDeltaNotificationTtsFormat;
+let g_pref_tyreDeltaNotificationOsdDurationSec;
 
 function loadPreferences() {
     let missingPreference = false;
@@ -119,6 +120,14 @@ function loadPreferences() {
         missingPreference = true;
     }
 
+    g_pref_tyreDeltaNotificationOsdDurationSec = localStorage.getItem('tyreDeltaNotificationOsdDurationSec');
+    if ((g_pref_tyreDeltaNotificationOsdDurationSec === null) || (g_pref_tyreDeltaNotificationOsdDurationSec === "")) {
+        g_pref_tyreDeltaNotificationOsdDurationSec = 5;
+        missingPreference = true;
+    } else {
+        g_pref_tyreDeltaNotificationOsdDurationSec = parseInt(g_pref_tyreDeltaNotificationOsdDurationSec, 10); // localstorage saves everthing as string
+    }
+
     // If any preference was missing, save all current preferences
     if (missingPreference) {
         savePreferences();
@@ -138,7 +147,8 @@ function loadPreferences() {
         g_pref_numWeatherPredictionSamples,
         g_pref_ttsVoice,
         g_pref_ttsVolume,
-        g_pref_tyreDeltaNotificationTtsFormat
+        g_pref_tyreDeltaNotificationTtsFormat,
+        g_pref_tyreDeltaNotificationOsdDurationSec
     });
     updateAllTooltips();
 }
@@ -158,6 +168,7 @@ function savePreferences() {
     localStorage.setItem('ttsVoice', g_pref_ttsVoice);
     localStorage.setItem('ttsVolume', g_pref_ttsVolume);
     localStorage.setItem('tyreDeltaNotificationTtsFormat', g_pref_tyreDeltaNotificationTtsFormat);
+    localStorage.setItem('tyreDeltaNotificationOsdDurationSec', g_pref_tyreDeltaNotificationOsdDurationSec);
 
     console.log("Saved Preferences:", {
         g_pref_myTeamName,
@@ -173,7 +184,8 @@ function savePreferences() {
         g_pref_numWeatherPredictionSamples,
         g_pref_ttsVoice,
         g_pref_ttsVolume,
-        g_pref_tyreDeltaNotificationTtsFormat
+        g_pref_tyreDeltaNotificationTtsFormat,
+        g_pref_tyreDeltaNotificationOsdDurationSec
     });
 
     updateAllTooltips();

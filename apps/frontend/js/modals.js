@@ -21,6 +21,9 @@ class ModalManager {
       document.getElementById('fuelTargetEnabled').addEventListener('change', (event) => {
         this.toggleFuelTargetShowSetting(event.target.checked);
       });
+      document.getElementById('fuelTargetEnabled').addEventListener('change', (event) => {
+        this.toggleFuelTargetShowSetting(event.target.checked);
+      });
     }
     if (this.raceStatsModal) {
       document.getElementById('race-stats-btn').addEventListener('click', () => {
@@ -181,6 +184,7 @@ class ModalManager {
     // Validate numAdjacentCars input
     const numAdjacentCars_temp = this.validateIntField('carsToShow', "Number of adjacent cars");
     const numWeatherForecastSamples_temp = this.validateIntField('weatherSamplesToShow', 'Number of weather forecast samples');
+    const osdDurationSec_temp = this.validateIntField('tyreDeltaOsdDuration', 'OSD duration in seconds');
     if ((null === numAdjacentCars_temp) || (null === numWeatherForecastSamples_temp)) {
       return;
     }
@@ -200,6 +204,7 @@ class ModalManager {
     g_pref_ttsVoice = document.getElementById('voiceSelect').value;
     g_pref_ttsVolume = parseInt(document.getElementById('volumeRange').value, 10);
     g_pref_tyreDeltaNotificationTtsFormat = (document.querySelector('input[name="tyreDeltaNotificationFormat"]:checked').value === "tts") ? (true) : (false);
+    g_pref_tyreDeltaNotificationOsdDurationSec = osdDurationSec_temp;
     savePreferences();
 
     this.settingsModal.hide();
