@@ -24,6 +24,20 @@ class ModalManager {
       document.getElementById('fuelTargetEnabled').addEventListener('change', (event) => {
         this.toggleFuelTargetShowSetting(event.target.checked);
       });
+
+      const ttsRadio = document.getElementById("tyreDeltaTTS");
+      const osdRadio = document.getElementById("tyreDeltaOSD");
+      ttsRadio.addEventListener("change", () => {
+        if (ttsRadio.checked) {
+          this.handleTyreDeltaFormatChange("tts");
+        }
+      });
+
+      osdRadio.addEventListener("change", () => {
+        if (osdRadio.checked) {
+          this.handleTyreDeltaFormatChange("osd");
+        }
+      });
     }
     if (this.raceStatsModal) {
       document.getElementById('race-stats-btn').addEventListener('click', () => {
@@ -31,6 +45,25 @@ class ModalManager {
       });
     }
   }
+
+  handleTyreDeltaFormatChange(format) {
+    console.log("Tyre Delta Notification Format changed to:", format);
+
+    const ttsFields = ['volumeRange', 'playSampleButton'];
+    const osdFields = ['tyreDeltaOsdDuration'];
+
+    const enable = ids => ids.forEach(id => document.getElementById(id).disabled = false);
+    const disable = ids => ids.forEach(id => document.getElementById(id).disabled = true);
+
+    if (format === "tts") {
+      enable(ttsFields);
+      disable(osdFields);
+    } else if (format === "osd") {
+      disable(ttsFields);
+      enable(osdFields);
+    }
+  }
+
 
   toggleFuelTargetShowSetting(enabled) {
     const isDisabled = !enabled; // Disable when checkbox is unchecked
@@ -175,6 +208,9 @@ class ModalManager {
       const randomLine = lines[Math.floor(Math.random() * lines.length)];
       textToSpeech(randomLine, volume);
     };
+
+    // set initial tyre delta mode
+    this.handleTyreDeltaFormatChange(g_pref_tyreDeltaNotificationTtsFormat ? "tts" : "osd");
 
     this.settingsModal.show();
   }
