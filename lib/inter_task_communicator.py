@@ -97,6 +97,34 @@ class TyreDeltaMessage:
             "tyre-delta": self.m_delta
         }
 
+class TyreDeltaNotificationMessageCollection:
+    def __init__(self, tyre_delta_messages: list[TyreDeltaMessage]) -> None:
+        """Initialize the TyreDeltaNotificationMessageCollection object.
+
+        Args:
+            tyre_delta_messages (list[TyreDeltaMessage]): The list of tyre delta messages
+        """
+        self.m_tyre_delta_messages = tyre_delta_messages
+
+    def __repr__(self) -> str:
+        """Return a string representation of the TyreDeltaNotificationMessageCollection object."""
+        return f"TyreDeltaNotificationMessageCollection(tyre_delta_messages={self.m_tyre_delta_messages})"
+
+    def __str__(self) -> str:
+        """Return a string representation of the TyreDeltaNotificationMessageCollection object."""
+        return self.__repr__()
+
+    def toJSON(self) -> Dict[str, Any]:
+        """Get the JSON representation of this object.
+
+        Returns:
+            Dict[str, Any]: The JSON representation of this object.
+        """
+        return {
+            "curr-tyre-type" : str(self.m_tyre_delta_messages[0].m_curr_tyre_type),
+            "tyre-delta-messages": [message.toJSON() for message in self.m_tyre_delta_messages]
+        }
+
 class FinalClassificationNotification:
     def __init__(self, player_position: int) -> None:
         """Initialize the FinalClassificationNotification object.
@@ -129,6 +157,7 @@ class ITCMessage:
     class MessageType(str, Enum):
         CUSTOM_MARKER                      = "custom-marker"
         TYRE_DELTA_NOTIFICATION            = "tyre-delta"
+        TYRE_DELTA_NOTIFICATION_V2         = "tyre-delta-v2"
         UDP_PACKET_FORWARD                 = "udp-packet-forward"
         FINAL_CLASSIFICATION_NOTIFICATION  = "final-classification-notification"
 
