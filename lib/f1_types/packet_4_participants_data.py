@@ -313,7 +313,7 @@ class ParticipantData:
         Returns:
             str: The name of the participant.
         """
-        if self.m_yourTelemetry and self.m_showOnlineNames:
+        if self.m_aiControlled or (self.m_yourTelemetry and self.m_showOnlineNames):
             return self.m_name
 
         if self.m_teamId in self.GENERIC_TEAMS:
