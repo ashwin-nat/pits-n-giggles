@@ -107,6 +107,14 @@ class ParticipantData:
             The m_platform attribute is an instance of Platform.
     """
 
+    GENERIC_TEAMS = {
+        TeamID23.F1_CUSTOM_TEAM,
+        TeamID24.F1_CUSTOM_TEAM,
+        TeamID24.F1_GENERIC,
+        TeamID25.F1_CUSTOM_TEAM,
+        TeamID25.F1_GENERIC,
+    }
+
     PACKET_FORMAT_23 = ("<"
         "B" # uint8      m_aiControlled;      // Whether the vehicle is AI (1) or Human (0) controlled
         "B" # uint8      m_driverId;       // Driver id - see appendix, 255 if network human
@@ -296,6 +304,21 @@ class ParticipantData:
             "tech-level" : self.m_techLevel,
             "platform": str(self.m_platform)
         }
+
+    @property
+    def name(self) -> str:
+        """
+        Get the name of the participant. If yourTelemetry is disabled, return the team name and driver number
+
+        Returns:
+            str: The name of the participant.
+        """
+        if self.m_yourTelemetry and self.m_showOnlineNames:
+            return self.m_name
+
+        if self.m_teamId in self.GENERIC_TEAMS:
+            return f"Player #{self.m_driverId}"
+        return f"{self.m_teamId} #{self.m_driverId}"
 
     def to_bytes(self) -> bytes:
         """

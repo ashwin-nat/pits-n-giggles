@@ -819,6 +819,15 @@ class TelemetrySetting(Enum):
             TelemetrySetting.PUBLIC: "Public",
         }.get(self)
 
+    def __bool__(self) -> bool:
+        """
+        Returns True if the telemetry setting is public, False otherwise.
+
+        Returns:
+            bool: True if public, False otherwise.
+        """
+        return self == TelemetrySetting.PUBLIC
+
     @staticmethod
     def isValid(telemetry_setting_code: int) -> bool:
         """Check if the given telemetry setting code is valid.
