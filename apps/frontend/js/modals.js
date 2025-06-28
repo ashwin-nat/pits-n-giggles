@@ -129,6 +129,10 @@ class ModalManager {
     document.getElementById("fuelTargetAverage").checked = g_pref_fuelTargetAverageFormat;
     document.getElementById("fuelTargetNextLap").checked = !g_pref_fuelTargetAverageFormat;
 
+    // Set the radio buttons for tyre delta notification
+    document.getElementById("tyreDeltaTTS").checked = g_pref_tyreDeltaNotificationTtsFormat;
+    document.getElementById("tyreDeltaOSD").checked = !g_pref_tyreDeltaNotificationTtsFormat;
+
     // Set initial value for volume slider
     const volumeSlider = document.getElementById('volumeRange');
     const volumeLabel = document.getElementById('volumeLabel');
@@ -195,6 +199,7 @@ class ModalManager {
     g_pref_numWeatherPredictionSamples = numWeatherForecastSamples_temp;
     g_pref_ttsVoice = document.getElementById('voiceSelect').value;
     g_pref_ttsVolume = parseInt(document.getElementById('volumeRange').value, 10);
+    g_pref_tyreDeltaNotificationTtsFormat = (document.querySelector('input[name="tyreDeltaNotificationFormat"]:checked').value === "tts") ? (true) : (false);
     savePreferences();
 
     this.settingsModal.hide();

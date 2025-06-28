@@ -12,6 +12,7 @@ let g_pref_numAdjacentCars;
 let g_pref_numWeatherPredictionSamples;
 let g_pref_ttsVoice;
 let g_pref_ttsVolume;
+let g_pref_tyreDeltaNotificationTtsFormat;
 
 function loadPreferences() {
     let missingPreference = false;
@@ -111,6 +112,13 @@ function loadPreferences() {
         g_pref_ttsVolume = parseInt(g_pref_ttsVolume, 10);
     }
 
+    if (localStorage.getItem('tyreDeltaNotificationTtsFormat') !== null) {
+        g_pref_tyreDeltaNotificationTtsFormat = localStorage.getItem('tyreDeltaNotificationTtsFormat') === 'true';
+    } else {
+        g_pref_tyreDeltaNotificationTtsFormat = true;
+        missingPreference = true;
+    }
+
     // If any preference was missing, save all current preferences
     if (missingPreference) {
         savePreferences();
@@ -130,6 +138,7 @@ function loadPreferences() {
         g_pref_numWeatherPredictionSamples,
         g_pref_ttsVoice,
         g_pref_ttsVolume,
+        g_pref_tyreDeltaNotificationTtsFormat
     });
     updateAllTooltips();
 }
@@ -148,6 +157,7 @@ function savePreferences() {
     localStorage.setItem('numWeatherPredictionSamples', g_pref_numWeatherPredictionSamples);
     localStorage.setItem('ttsVoice', g_pref_ttsVoice);
     localStorage.setItem('ttsVolume', g_pref_ttsVolume);
+    localStorage.setItem('tyreDeltaNotificationTtsFormat', g_pref_tyreDeltaNotificationTtsFormat);
 
     console.log("Saved Preferences:", {
         g_pref_myTeamName,
@@ -163,6 +173,7 @@ function savePreferences() {
         g_pref_numWeatherPredictionSamples,
         g_pref_ttsVoice,
         g_pref_ttsVolume,
+        g_pref_tyreDeltaNotificationTtsFormat
     });
 
     updateAllTooltips();
