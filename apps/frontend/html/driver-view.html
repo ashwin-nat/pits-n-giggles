@@ -543,12 +543,53 @@
     <!-- Tyre Delta Toast Container -->
     <div class="position-fixed top-50 start-50 translate-middle" style="z-index: 1055;">
         <div id="tyreDeltaToast" class="toast tyre-delta-toast" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="toast-header tyre-delta-toast-header text-center">
+            <div class="toast-header tyre-delta-toast-header">
                 <strong class="tyre-delta-header-title">Tyre Delta</strong>
             </div>
             <div class="toast-body tyre-delta-toast-body">
                 <div class="row g-3" id="tyreDeltaCards">
-                    <!-- Cards will be populated by JavaScript -->
+                    <!-- Card 1 -->
+                    <div class="col-md-6">
+                        <div class="card tyre-delta-card">
+                            <div class="card-body tyre-delta-card-body">
+                                <div class="tyre-delta-icon-section">
+                                    <div class="tyre-delta-icon-container" id="iconContainer1">
+                                        <!-- Icon will be inserted here -->
+                                    </div>
+                                </div>
+                                <div class="tyre-delta-content-section">
+                                    <div class="tyre-delta-tyre-name" id="tyreName1">
+                                        <!-- Tyre name will be set here -->
+                                    </div>
+                                    <div class="tyre-delta-label">Time Delta</div>
+                                    <div class="tyre-delta-value" id="deltaValue1">
+                                        <!-- Delta value will be set here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Card 2 -->
+                    <div class="col-md-6">
+                        <div class="card tyre-delta-card">
+                            <div class="card-body tyre-delta-card-body">
+                                <div class="tyre-delta-icon-section">
+                                    <div class="tyre-delta-icon-container" id="iconContainer2">
+                                        <!-- Icon will be inserted here -->
+                                    </div>
+                                </div>
+                                <div class="tyre-delta-content-section">
+                                    <div class="tyre-delta-tyre-name" id="tyreName2">
+                                        <!-- Tyre name will be set here -->
+                                    </div>
+                                    <div class="tyre-delta-label">Time Delta</div>
+                                    <div class="tyre-delta-value" id="deltaValue2">
+                                        <!-- Delta value will be set here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

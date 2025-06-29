@@ -58,7 +58,7 @@ function processTyreDeltaMessageV2(data, iconCache) {
         // Since its TTS format, reuse the old format code
         data["tyre-delta-messages"].forEach(message => processTyreDeltaMessage(message));
     } else {
-        const tyreDeltaToast = new TyreDeltaToast(iconCache);
+        const tyreDeltaToast = new TyreDeltaToast(iconCache, g_pref_tyreDeltaNotificationOsdDurationSec * 1000);
         tyreDeltaToast.show(data);
     }
 }

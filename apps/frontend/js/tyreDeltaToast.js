@@ -15,12 +15,39 @@ class TyreDeltaToast {
     }
 
     show(data) {
+        // If there's already a toast showing, destroy it first
+        if (this.toast && this.isShowing()) {
+            this.destroyToast();
+        }
+
+        // Create a new toast instance
+        this.initializeToast();
+
+        // Populate content and show
         this.populateToastContent(data);
         this.toast.show();
     }
 
     hide() {
-        this.toast.hide();
+        if (this.toast) {
+            this.toast.hide();
+        }
+    }
+
+    destroyToast() {
+        if (this.toast) {
+            // Hide the toast immediately
+            this.toast.hide();
+
+            // Dispose of the Bootstrap toast instance
+            this.toast.dispose();
+
+            // Remove any Bootstrap classes that might be lingering
+            this.toastElement.classList.remove('show', 'showing', 'hide');
+
+            // Clear the toast reference
+            this.toast = null;
+        }
     }
 
     // Helper method to get the correct icon parameter
@@ -29,114 +56,65 @@ class TyreDeltaToast {
     }
 
     // Helper method to safely render icon
-    renderIcon(tyreType) {
+    renderIcon(tyreType, container) {
         const iconParam = this.getIconParam(tyreType);
         const icon = this.iconCache.getIcon(iconParam);
 
-        // Handle different icon return types
-        if (typeof icon === 'string') {
-            return icon;
-        } else if (icon && icon.outerHTML) {
-            // SVG element
-            return icon.outerHTML;
-        } else if (icon && typeof icon.toString === 'function') {
-            return icon.toString();
+        // Clear existing content
+        while (container.firstChild) {
+            container.removeChild(container.firstChild);
         }
 
-        return ''; // fallback
+        // Handle different icon return types
+        if (icon && icon.nodeType === Node.ELEMENT_NODE) {
+            // SVG element - clone and append
+            container.appendChild(icon.cloneNode(true));
+        } else if (typeof icon === 'string') {
+            // String content - create text node
+            container.appendChild(document.createTextNode(icon));
+        }
     }
 
     populateToastContent(data) {
-        // Populate delta cards
-        const cardsContainer = document.getElementById('tyreDeltaCards');
-        cardsContainer.innerHTML = '';
+        const messages = data['tyre-delta-messages'];
 
-        data['tyre-delta-messages'].forEach((message, index) => {
-            const card = this.createDeltaCard(message, index);
-            cardsContainer.appendChild(card);
-        });
-    }
+        // Populate up to 2 cards
+        for (let i = 0; i < Math.min(messages.length, 2); i++) {
+            const message = messages[i];
+            const cardIndex = i + 1;
 
-    createDeltaCard(message, index) {
-        const col = document.createElement('div');
-        col.className = 'col-md-6';
+            // Get elements
+            const iconContainer = document.getElementById(`iconContainer${cardIndex}`);
+            const tyreName = document.getElementById(`tyreName${cardIndex}`);
+            const deltaValue = document.getElementById(`deltaValue${cardIndex}`);
 
-        const card = document.createElement('div');
-        card.className = 'card tyre-delta-card';
+            // Set icon
+            this.renderIcon(message['other-tyre-type'], iconContainer);
 
-        const cardBody = document.createElement('div');
-        cardBody.className = 'card-body tyre-delta-card-body';
+            // Set tyre name
+            tyreName.textContent = message['other-tyre-type'];
 
-        // Left half - Icon section
-        const iconSection = document.createElement('div');
-        iconSection.className = 'tyre-delta-icon-section';
+            // Set delta value
+            const deltaSign = message['tyre-delta'] > 0 ? '+' : '';
+            deltaValue.textContent = `${deltaSign}${message['tyre-delta'].toFixed(3)}s`;
 
-        const iconContainer = document.createElement('div');
-        iconContainer.className = 'tyre-delta-icon-container';
-        iconContainer.innerHTML = this.renderIcon(message['other-tyre-type']);
+            // Remove existing color classes
+            deltaValue.classList.remove('tyre-delta-positive', 'tyre-delta-negative', 'tyre-delta-neutral');
 
-        iconSection.appendChild(iconContainer);
-
-        // Right half - Content section
-        const contentSection = document.createElement('div');
-        contentSection.className = 'tyre-delta-content-section';
-
-        // Tyre type name
-        const tyreName = document.createElement('div');
-        tyreName.className = 'tyre-delta-tyre-name';
-        tyreName.textContent = message['other-tyre-type'];
-
-        // Delta label
-        const deltaLabel = document.createElement('div');
-        deltaLabel.className = 'tyre-delta-label';
-        deltaLabel.textContent = 'Time Delta';
-
-        // Delta value
-        const deltaValue = document.createElement('div');
-        deltaValue.className = 'tyre-delta-value';
-        const deltaSign = message['tyre-delta'] > 0 ? '+' : '';
-        deltaValue.textContent = `${deltaSign}${message['tyre-delta'].toFixed(3)}s`;
-
-        // Add color coding for delta
-        if (message['tyre-delta'] > 0) {
-            deltaValue.classList.add('tyre-delta-positive');
-        } else if (message['tyre-delta'] < 0) {
-            deltaValue.classList.add('tyre-delta-negative');
-        } else {
-            deltaValue.classList.add('tyre-delta-neutral');
+            // Add appropriate color class
+            if (message['tyre-delta'] > 0) {
+                deltaValue.classList.add('tyre-delta-positive');
+            } else if (message['tyre-delta'] < 0) {
+                deltaValue.classList.add('tyre-delta-negative');
+            } else {
+                deltaValue.classList.add('tyre-delta-neutral');
+            }
         }
-
-        contentSection.appendChild(tyreName);
-        contentSection.appendChild(deltaLabel);
-        contentSection.appendChild(deltaValue);
-
-        cardBody.appendChild(iconSection);
-        cardBody.appendChild(contentSection);
-        card.appendChild(cardBody);
-        col.appendChild(card);
-
-        return col;
     }
 
     // Method to check if toast is currently showing
     isShowing() {
-        return this.toastElement.classList.contains('show');
-    }
-
-    // Method to add event listeners
-    onShow(callback) {
-        this.toastElement.addEventListener('show.bs.toast', callback);
-    }
-
-    onHide(callback) {
-        this.toastElement.addEventListener('hide.bs.toast', callback);
-    }
-
-    onShown(callback) {
-        this.toastElement.addEventListener('shown.bs.toast', callback);
-    }
-
-    onHidden(callback) {
-        this.toastElement.addEventListener('hidden.bs.toast', callback);
+        return this.toastElement.classList.contains('show') ||
+               this.toastElement.classList.contains('showing');
     }
 }
