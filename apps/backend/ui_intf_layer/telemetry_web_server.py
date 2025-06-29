@@ -401,7 +401,7 @@ class TelemetryWebServer:
                 'message' : 'Invalid index',
                 'index' : index_arg
             }
-            return jsonify(error_response), HTTPStatus.BAD_REQUEST
+            return jsonify(error_response), HTTPStatus.NOT_FOUND
 
         # Process parameters and generate response
         return TelState.DriverInfoRsp(index_int).toJSON(), HTTPStatus.OK
