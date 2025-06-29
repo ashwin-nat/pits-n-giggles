@@ -21,6 +21,20 @@ class ModalManager {
       document.getElementById('fuelTargetEnabled').addEventListener('change', (event) => {
         this.toggleFuelTargetShowSetting(event.target.checked);
       });
+
+      const ttsRadio = document.getElementById("tyreDeltaTTS");
+      const osdRadio = document.getElementById("tyreDeltaOSD");
+      ttsRadio.addEventListener("change", () => {
+        if (ttsRadio.checked) {
+          this.handleTyreDeltaFormatChange("tts");
+        }
+      });
+
+      osdRadio.addEventListener("change", () => {
+        if (osdRadio.checked) {
+          this.handleTyreDeltaFormatChange("osd");
+        }
+      });
     }
     if (this.raceStatsModal) {
       document.getElementById('race-stats-btn').addEventListener('click', () => {
@@ -28,6 +42,25 @@ class ModalManager {
       });
     }
   }
+
+  handleTyreDeltaFormatChange(format) {
+    console.log("Tyre Delta Notification Format changed to:", format);
+
+    const ttsFields = ['volumeRange', 'playSampleButton'];
+    const osdFields = ['tyreDeltaOsdDuration'];
+
+    const enable = ids => ids.forEach(id => document.getElementById(id).disabled = false);
+    const disable = ids => ids.forEach(id => document.getElementById(id).disabled = true);
+
+    if (format === "tts") {
+      enable(ttsFields);
+      disable(osdFields);
+    } else if (format === "osd") {
+      disable(ttsFields);
+      enable(osdFields);
+    }
+  }
+
 
   toggleFuelTargetShowSetting(enabled) {
     const isDisabled = !enabled; // Disable when checkbox is unchecked
@@ -129,6 +162,10 @@ class ModalManager {
     document.getElementById("fuelTargetAverage").checked = g_pref_fuelTargetAverageFormat;
     document.getElementById("fuelTargetNextLap").checked = !g_pref_fuelTargetAverageFormat;
 
+    // Set the radio buttons for tyre delta notification
+    document.getElementById("tyreDeltaTTS").checked = g_pref_tyreDeltaNotificationTtsFormat;
+    document.getElementById("tyreDeltaOSD").checked = !g_pref_tyreDeltaNotificationTtsFormat;
+
     // Set initial value for volume slider
     const volumeSlider = document.getElementById('volumeRange');
     const volumeLabel = document.getElementById('volumeLabel');
@@ -169,6 +206,9 @@ class ModalManager {
       textToSpeech(randomLine, volume);
     };
 
+    // set initial tyre delta mode
+    this.handleTyreDeltaFormatChange(g_pref_tyreDeltaNotificationTtsFormat ? "tts" : "osd");
+
     this.settingsModal.show();
   }
 
@@ -177,6 +217,7 @@ class ModalManager {
     // Validate numAdjacentCars input
     const numAdjacentCars_temp = this.validateIntField('carsToShow', "Number of adjacent cars");
     const numWeatherForecastSamples_temp = this.validateIntField('weatherSamplesToShow', 'Number of weather forecast samples');
+    const osdDurationSec_temp = this.validateIntField('tyreDeltaOsdDuration', 'OSD duration in seconds');
     if ((null === numAdjacentCars_temp) || (null === numWeatherForecastSamples_temp)) {
       return;
     }
@@ -195,6 +236,8 @@ class ModalManager {
     g_pref_numWeatherPredictionSamples = numWeatherForecastSamples_temp;
     g_pref_ttsVoice = document.getElementById('voiceSelect').value;
     g_pref_ttsVolume = parseInt(document.getElementById('volumeRange').value, 10);
+    g_pref_tyreDeltaNotificationTtsFormat = (document.querySelector('input[name="tyreDeltaNotificationFormat"]:checked').value === "tts") ? (true) : (false);
+    g_pref_tyreDeltaNotificationOsdDurationSec = osdDurationSec_temp;
     savePreferences();
 
     this.settingsModal.hide();
