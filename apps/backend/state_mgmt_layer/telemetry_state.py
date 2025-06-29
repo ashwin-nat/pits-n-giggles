@@ -47,16 +47,15 @@ async def processCustomMarkerCreate() -> None:
             m_message=custom_marker_obj))
 
 async def processTyreDeltaSound() -> None:
-    """Send the tyre delta notification to the frontend
-    """
-
-    messages = _session_state.getTyreDeltaNotificationMessages()
-    if not messages:
-        return
-
-    await AsyncInterTaskCommunicator().send("frontend-update",
-        ITCMessage(m_message_type=ITCMessage.MessageType.TYRE_DELTA_NOTIFICATION_V2,
-                   m_message=TyreDeltaNotificationMessageCollection(messages)))
+    """Send the tyre delta notification to the frontend."""
+    if messages := _session_state.getTyreDeltaNotificationMessages():
+        await AsyncInterTaskCommunicator().send(
+            "frontend-update",
+            ITCMessage(
+                m_message_type=ITCMessage.MessageType.TYRE_DELTA_NOTIFICATION_V2,
+                m_message=TyreDeltaNotificationMessageCollection(messages)
+            )
+        )
 
 # -------------------------------------- UTILTIES ----------------------------------------------------------------------
 

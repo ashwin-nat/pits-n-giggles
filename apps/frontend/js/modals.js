@@ -21,9 +21,6 @@ class ModalManager {
       document.getElementById('fuelTargetEnabled').addEventListener('change', (event) => {
         this.toggleFuelTargetShowSetting(event.target.checked);
       });
-      document.getElementById('fuelTargetEnabled').addEventListener('change', (event) => {
-        this.toggleFuelTargetShowSetting(event.target.checked);
-      });
 
       const ttsRadio = document.getElementById("tyreDeltaTTS");
       const osdRadio = document.getElementById("tyreDeltaOSD");
