@@ -35,4 +35,5 @@ yappi = "^1.6.10"
 snakeviz = "^2.2.2"
 gdown = "^5.2.0"
 colorama = "^0.4.6"
+aiohttp = "^3.12.13"
 

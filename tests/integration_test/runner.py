@@ -3,15 +3,22 @@
 Simple integration test for Pits n Giggles App
 """
 
+import asyncio
 import os
+import platform
 import signal
 import subprocess
 import sys
 import time
-import platform
 from pathlib import Path
 
+import aiohttp
 import gdown
+
+# Add the parent directory to the Python path
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+from lib.config import load_config_from_ini
 
 # Google Drive folder URL
 DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/13tIadKMvi3kuItkovT6GUTTHOL3YM6n_?usp=drive_link"
@@ -21,8 +28,39 @@ CACHE_DIR = Path("test_data")
 def get_cached_files() -> list[str]:
     return sorted(str(p) for p in CACHE_DIR.glob("*.f1pcap"))
 
+def check_endpoints_blocking(urls):
+    """
+    Blocking wrapper for async endpoint check.
+    """
+    return asyncio.run(_check_endpoints_async(urls))
 
-def main(port):
+
+async def _check_endpoints_async(urls):
+    """
+    Asynchronously check each URL and print the result.
+    """
+    results = []
+
+    async def fetch(session, url):
+        try:
+            async with session.get(url, timeout=5) as response:
+                if response.status in {200, 404}:
+                    print(f"  ✅ Endpoint check PASSED: {url}")
+                    return (url, True)
+                else:
+                    print(f"  ❌ Endpoint check FAILED ({response.status}): {url}")
+                    return (url, False)
+        except Exception as e:
+            print(f"  ❌ Endpoint check FAILED (exception): {url} — {e}")
+            return (url, False)
+
+    async with aiohttp.ClientSession() as session:
+        tasks = [fetch(session, url) for url in urls]
+        results = await asyncio.gather(*tasks)
+
+    return results
+
+def main(telemetry_port, http_port):
     # Create test data directory if it doesn't exist
     CACHE_DIR.mkdir(exist_ok=True)
 
@@ -56,6 +94,16 @@ def main(port):
                 print("No test files available to run.")
                 sys.exit(1)
 
+    http_endpoints = [
+        f"http://localhost:{http_port}/telemetry-info",
+        f"http://localhost:{http_port}/race-info",
+        f"http://localhost:{http_port}/stream-overlay-info",
+        *[
+            f"http://localhost:{http_port}/driver-info?index={i}"
+            for i in range(23) # one index too high so that 404 is sent
+        ]
+    ]
+
     # Start the app
     print("\nStarting app in replay server mode...")
     app_cmd = ["poetry", "run", "python", "-m", "apps.backend.pits_n_giggles",
@@ -85,17 +133,27 @@ def main(port):
             print(f"\nRunning test {index + 1} of {len(files)}: {file_name}")
 
             replayer_cmd = ["poetry", "run", "python", "-m", "apps.dev_tools.telemetry_replayer",
-                            "--file-name", file_path, "--port", str(port)]
+                            "--file-name", str(file_path), "--port", str(telemetry_port)]
+
+            replay_success = False
+            endpoint_status = []
 
             try:
                 result = subprocess.run(replayer_cmd, timeout=120)
-                success = (result.returncode == 0)
+                replay_success = (result.returncode == 0)
             except subprocess.TimeoutExpired:
                 print(f"Test FAILED: {file_name} timed out after 120 seconds")
-                success = False
 
-            results.append((file_name, success))
-            status = "PASSED" if success else "FAILED"
+            if replay_success:
+                endpoint_status = check_endpoints_blocking(http_endpoints)
+            else:
+                print("  ⚠️ Skipping endpoint checks since replayer failed")
+                endpoint_status = [(url, False) for url in http_endpoints]
+
+            overall_success = replay_success and all(ok for _, ok in endpoint_status)
+            results.append((file_name, overall_success, replay_success, endpoint_status))
+
+            status = "PASSED" if overall_success else "FAILED"
             print(f"Test {index + 1} of {len(files)} {status}: {file_name}")
 
         time.sleep(10)
@@ -108,17 +166,22 @@ def main(port):
 
     # Print summary
     print("\n===== TEST RESULTS =====")
-    success_count = sum(success for _, success in results)
-    print(f"Passed: {success_count}/{len(results)}")
+    success_count = sum(overall for _, overall, _, _ in results)
+    print(f"Passed: {success_count}/{len(results)}\n")
 
-    for file_name, success in results:
-        status = "PASS" if success else "FAIL"
+    for file_name, overall, replay_success, endpoint_status in results:
+        status = "PASS" if overall else "FAIL"
         print(f"{status}: {file_name}")
+
+        if not replay_success:
+            print("  ↳ ❌ Replayer failed")
+        for url, ok in endpoint_status:
+            if not ok:
+                print(f"  ↳ ❌ Endpoint failed: {url}")
 
     return success_count == len(results)
 
-
 if __name__ == "__main__":
-    port = 20778
-    success = main(port)
+    settings = load_config_from_ini("png_config.ini")
+    success = main(settings.Network.telemetry_port, settings.Network.server_port)
     sys.exit(0 if success else 1)
