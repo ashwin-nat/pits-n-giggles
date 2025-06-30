@@ -701,7 +701,6 @@ class DriversListRsp:
         if (player_index is None) or (_session_state_ref.m_num_active_cars is None):
             return
 
-
         # Player object must be found in TT mode
         player_obj = _session_state_ref.m_driver_data[player_index]
         if not player_obj:
@@ -719,11 +718,66 @@ class DriversListRsp:
                     if (index + 1) in player_obj.m_per_lap_snapshots else None
         else:
             session_history = None
+
+        self.m_fastest_lap = player_obj.m_lap_info.m_best_lap_ms
+        self.m_fastest_lap_driver = player_obj.m_driver_info.name
+        self.m_fastest_lap_tyre = player_obj.m_lap_info.m_best_lap_tyre
         self.m_json_rsp = {
             "current-lap" : player_obj.m_lap_info.m_current_lap,
             "session-history": session_history,
             "tt-data": self.m_time_trial_packet.toJSON() if self.m_time_trial_packet else None,
+            "tt-setups" : self._getTTSetupJSON(),
         }
+
+    def _getTTSetupJSON(self) -> Dict[str, Any]:
+        """Get the TT setup JSON data.
+
+        Returns:
+            Dict[str, Any]: TT setup JSON data.
+        """
+        if not self.m_time_trial_packet:
+            return {
+                "personal-best-setup": None,
+                "player-session-best-setup": None,
+                "rival-session-best-setup": None
+            }
+
+        personal_best_setup: Optional[dict[str, Any]] = None
+        session_best_setup: Optional[dict[str, Any]] = None
+        rival_setup: Optional[dict[str, Any]] = None
+
+        personal_best_idx = self.m_time_trial_packet.m_personalBestDataSet.m_carIdx
+        session_best_idx = self.m_time_trial_packet.m_playerSessionBestDataSet.m_carIdx
+        rival_idx = self.m_time_trial_packet.m_rivalSessionBestDataSet.m_carIdx
+
+        # The game always references personal best with index 2 and session best with index 0
+        # If the personal best is the same as the session best, then we can use the session best index
+        # since the personal best index may contain some unrelated car setup
+        if self.m_time_trial_packet.m_playerSessionBestDataSet.m_lapTimeInMS == self.m_time_trial_packet.m_personalBestDataSet.m_lapTimeInMS:
+            personal_best_idx = session_best_idx
+
+        if (driver := self._safeGetDriver(personal_best_idx)) and driver.m_packet_copies.m_packet_car_setup:
+            personal_best_setup = driver.m_packet_copies.m_packet_car_setup.toJSON()
+
+        if (driver := self._safeGetDriver(session_best_idx)) and driver.m_packet_copies.m_packet_car_setup:
+            session_best_setup = driver.m_packet_copies.m_packet_car_setup.toJSON()
+
+        if (driver := self._safeGetDriver(rival_idx)) and driver.m_packet_copies.m_packet_car_setup:
+            rival_setup = driver.m_packet_copies.m_packet_car_setup.toJSON()
+
+        return {
+            "personal-best-setup": personal_best_setup,
+            "player-session-best-setup": session_best_setup,
+            "rival-session-best-setup": rival_setup,
+        }
+
+    def _safeGetDriver(self, index: int) -> Optional[DataPerDriver]:
+        """Safely get a non-None DataPerDriver from m_driver_data by index."""
+        if 0 <= index < len(_session_state_ref.m_driver_data):
+            driver = _session_state_ref.m_driver_data[index]
+            if driver is not None:
+                return driver
+        return None
 
     def _getDriverJSON(self, index: int, driver_data: DataPerDriver) -> Dict[str, Any]:
         """Get the driver JSON data.

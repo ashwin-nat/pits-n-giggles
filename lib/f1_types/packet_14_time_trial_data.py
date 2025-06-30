@@ -24,8 +24,7 @@
 import struct
 from typing import Any, Dict, Union
 
-from .common import (F1Utils, GearboxAssistMode, PacketHeader, TeamID24, TeamID25,
-                     TractionControlAssistMode)
+from .common import F1Utils, PacketHeader, TeamID24, TeamID25
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -39,9 +38,9 @@ class TimeTrialDataSet:
         m_sector1TimeInMS (uint32): Sector 1 time in milliseconds
         m_sector2TimeInMS (uint32): Sector 2 time in milliseconds
         m_sector3TimeInMS (uint32): Sector 3 time in milliseconds
-        m_tractionControl (TractionControlAssistMode): Refer TractionControlAssistMode enumeration
-        m_gearboxAssist (int): 1 = manual, 2 = manual & suggested gear, 3 = auto
-        m_antiLockBrakes (bool): 0 (off) - 1 (on)
+        m_tractionControl (bool): false = assist off, true = assist on
+        m_gearboxAssist (bool): false = assist off, true = assist on
+        m_antiLockBrakes (bool): false = assist off, true = assist on
         m_equalCarPerformance (bool): 0 = Realistic, 1 = Equal
         m_customSetup (bool): 0 = No, 1 = Yes
         m_valid (bool): 0 = invalid, 1 = valid
@@ -53,14 +52,27 @@ class TimeTrialDataSet:
         "I" # uint32    m_sector1TimeInMS;          // Sector 1 time in milliseconds
         "I" # uint32    m_sector2TimeInMS;          // Sector 2 time in milliseconds
         "I" # uint32    m_sector3TimeInMS;          // Sector 3 time in milliseconds
-        "B" # uint8     m_tractionControl;          // 0 = off, 1 = medium, 2 = full
-        "B" # uint8     m_gearboxAssist;            // 1 = manual, 2 = manual & suggested gear, 3 = auto
-        "B" # uint8     m_antiLockBrakes;           // 0 (off) - 1 (on)
+        "B" # uint8     m_tractionControl;          // 0 = assist off, 1 = assist on
+        "B" # uint8     m_gearboxAssist;            // 0 = assist off, 1 = assist on
+        "B" # uint8     m_antiLockBrakes;           // 0 = assist off, 1 = assist on
         "B" # uint8     m_equalCarPerformance;      // 0 = Realistic, 1 = Equal
         "B" # uint8     m_customSetup;              // 0 = No, 1 = Yes
         "B" # uint8     m_valid;                    // 0 = invalid, 1 = valid
     )
     PACKET_LEN = struct.calcsize(PACKET_FORMAT)
+
+    m_carIdx: int
+    m_teamId: Union[TeamID24, TeamID25]
+    m_lapTimeInMS: int
+    m_sector1TimeInMS: int
+    m_sector2TimeInMS: int
+    m_sector3TimeInMS: int
+    m_tractionControl: bool
+    m_gearboxAssist: bool
+    m_antiLockBrakes: bool
+    m_equalCarPerformance: bool
+    m_customSetup: bool
+    m_isValid: bool
 
     def __init__(self, data: bytes, packet_format: int) -> None:
         """
@@ -95,10 +107,8 @@ class TimeTrialDataSet:
                 self.m_teamId = TeamID24(self.m_teamId)
         elif TeamID25.isValid(self.m_teamId):
             self.m_teamId = TeamID25(self.m_teamId)
-        if TractionControlAssistMode.isValid(self.m_tractionControl):
-            self.m_tractionControl = TractionControlAssistMode(self.m_tractionControl)
-        if GearboxAssistMode.isValid(self.m_gearboxAssist):
-            self.m_gearboxAssist = GearboxAssistMode(self.m_gearboxAssist)
+        self.m_tractionControl = bool(self.m_tractionControl)
+        self.m_gearboxAssist = bool(self.m_gearboxAssist)
         self.m_antiLockBrakes = bool(self.m_antiLockBrakes)
         self.m_equalCarPerformance = bool(self.m_equalCarPerformance)
         self.m_customSetup = bool(self.m_customSetup)
@@ -122,8 +132,8 @@ class TimeTrialDataSet:
             "sector-2-time-str": F1Utils.getLapTimeStr(self.m_sector2TimeInMS),
             "sector3-time-in-ms": self.m_sector3TimeInMS,
             "sector-3-time-str": F1Utils.getLapTimeStr(self.m_sector3TimeInMS),
-            "traction-control": str(self.m_tractionControl),
-            "gearbox-assist": str(self.m_gearboxAssist),
+            "traction-control": self.m_tractionControl,
+            "gearbox-assist": self.m_gearboxAssist,
             "anti-lock-brakes": self.m_antiLockBrakes,
             "equal-car-performance": self.m_equalCarPerformance,
             "custom-setup": self.m_customSetup,
@@ -181,8 +191,8 @@ class TimeTrialDataSet:
             self.m_sector1TimeInMS,
             self.m_sector2TimeInMS,
             self.m_sector3TimeInMS,
-            self.m_tractionControl.value,
-            self.m_gearboxAssist.value,
+            self.m_tractionControl,
+            self.m_gearboxAssist,
             self.m_antiLockBrakes,
             self.m_equalCarPerformance,
             self.m_customSetup,
@@ -198,8 +208,8 @@ class TimeTrialDataSet:
                     sector1_time_in_ms: int,
                     sector2_time_in_ms: int,
                     sector3_time_in_ms: int,
-                    traction_control: TractionControlAssistMode,
-                    gearbox_assist: GearboxAssistMode,
+                    traction_control: bool,
+                    gearbox_assist: bool,
                     anti_lock_brakes: bool,
                     equal_car_performance: bool,
                     custom_setup: bool,
@@ -233,8 +243,8 @@ class TimeTrialDataSet:
                 sector1_time_in_ms,
                 sector2_time_in_ms,
                 sector3_time_in_ms,
-                traction_control.value,
-                gearbox_assist.value,
+                traction_control,
+                gearbox_assist,
                 anti_lock_brakes,
                 equal_car_performance,
                 custom_setup,
