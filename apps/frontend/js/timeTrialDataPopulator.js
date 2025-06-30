@@ -23,7 +23,7 @@ class TimeTrialDataPopulator {
             // Only update comparison data if packet format is 2024 or later
             if (packetFormat >= 2024) {
                 this.restoreComparisonCards();
-                this.updateComparisonData(data['tt-data']);
+                this.updateComparisonData(data['tt-data'], data['tt-setups']);
             } else {
                 this.hideComparisonCardsForOlderFormat();
             }
@@ -286,32 +286,35 @@ class TimeTrialDataPopulator {
     /**
      * Update comparison data (personal best, session best, rival best)
      */
-    updateComparisonData(ttData) {
+    updateComparisonData(ttData, ttSetups) {
         if (!ttData) return;
 
         // Personal Best
         const pbData = ttData['personal-best-data-set'];
+        const pbSetup = ttSetups['personal-best-setup'];
         if (pbData) {
-            this.updateComparisonCard('pb', pbData);
+            this.updateComparisonCard('pb', pbData, pbSetup);
         }
 
         // Session Best
         const sbData = ttData['player-session-best-data-set'];
+        const sbSetup = ttSetups['player-session-best-setup'];
         if (sbData) {
-            this.updateComparisonCard('sb', sbData);
+            this.updateComparisonCard('sb', sbData, sbSetup);
         }
 
         // Rival Best
         const rivalData = ttData['rival-session-best-data-set'];
+        const rivalSetup = ttSetups['rival-session-best-setup'];
         if (rivalData) {
-            this.updateComparisonCard('rival', rivalData);
+            this.updateComparisonCard('rival', rivalData, rivalSetup);
         }
     }
 
     /**
      * Update individual comparison card
      */
-    updateComparisonCard(prefix, data) {
+    updateComparisonCard(prefix, data, setup) {
         const timeElement = document.getElementById(`tt-${prefix}-time`);
         const s1Element = document.getElementById(`tt-${prefix}-s1`);
         const s2Element = document.getElementById(`tt-${prefix}-s2`);
@@ -319,8 +322,6 @@ class TimeTrialDataPopulator {
         const tcElement = document.getElementById(`tt-${prefix}-tc`);
         const absElement = document.getElementById(`tt-${prefix}-abs`);
         const gearsElement = document.getElementById(`tt-${prefix}-gears`);
-        // TODO: Populate wings data from actual data source
-        // const wingsElement = document.getElementById(`tt-${prefix}-wings`);
 
         if (timeElement) timeElement.textContent = data['lap-time-str'] || '--:--:---';
         if (s1Element) s1Element.textContent = data['sector-1-time-str'] || '--:---';
@@ -329,6 +330,13 @@ class TimeTrialDataPopulator {
         if (tcElement) tcElement.textContent = `TC: ${this.getAssistText(data['traction-control'])}`;
         if (absElement) absElement.textContent = `ABS: ${this.getAssistText(data['anti-lock-brakes'])}`;
         if (gearsElement) gearsElement.textContent = `Gears: ${this.getAssistText(data['gearbox-assist'])}`;
+
+        const wingsElement = document.getElementById(`tt-${prefix}-wings`);
+        if (wingsElement && setup && setup['is-valid']) {
+            const frontWing = setup['front-wing'];
+            const rearWing = setup['rear-wing'];
+            wingsElement.textContent = `${frontWing} - ${rearWing}`;
+        }
     }
 
     getAssistText(assistValue) {
@@ -406,6 +414,7 @@ class TimeTrialDataPopulator {
             const tcEl = document.getElementById(`tt-${prefix}-tc`);
             const absEl = document.getElementById(`tt-${prefix}-abs`);
             const gearsEl = document.getElementById(`tt-${prefix}-gears`);
+            const wingsEl = document.getElementById(`tt-${prefix}-wings`);
 
             if (timeEl) timeEl.textContent = '--:--:---';
             if (s1El) s1El.textContent = '--:---';
@@ -414,6 +423,7 @@ class TimeTrialDataPopulator {
             if (tcEl) tcEl.textContent = 'TC: -';
             if (absEl) absEl.textContent = 'ABS: -';
             if (gearsEl) gearsEl.textContent = 'Gears: -';
+            if (wingsEl) wingsEl.textContent = '-';
         });
 
         // Clear theoretical best and session info
