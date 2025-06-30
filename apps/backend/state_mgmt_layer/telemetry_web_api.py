@@ -701,7 +701,6 @@ class DriversListRsp:
         if (player_index is None) or (_session_state_ref.m_num_active_cars is None):
             return
 
-
         # Player object must be found in TT mode
         player_obj = _session_state_ref.m_driver_data[player_index]
         if not player_obj:
@@ -719,6 +718,10 @@ class DriversListRsp:
                     if (index + 1) in player_obj.m_per_lap_snapshots else None
         else:
             session_history = None
+
+        self.m_fastest_lap = player_obj.m_lap_info.m_best_lap_ms
+        self.m_fastest_lap_driver = player_obj.m_driver_info.name
+        self.m_fastest_lap_tyre = player_obj.m_lap_info.m_best_lap_tyre
         self.m_json_rsp = {
             "current-lap" : player_obj.m_lap_info.m_current_lap,
             "session-history": session_history,
