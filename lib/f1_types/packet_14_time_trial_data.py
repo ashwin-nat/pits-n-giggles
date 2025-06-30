@@ -62,6 +62,19 @@ class TimeTrialDataSet:
     )
     PACKET_LEN = struct.calcsize(PACKET_FORMAT)
 
+    m_carIdx: int
+    m_teamId: Union[TeamID24, TeamID25]
+    m_lapTimeInMS: int
+    m_sector1TimeInMS: int
+    m_sector2TimeInMS: int
+    m_sector3TimeInMS: int
+    m_tractionControl: bool
+    m_gearboxAssist: bool
+    m_antiLockBrakes: bool
+    m_equalCarPerformance: bool
+    m_customSetup: bool
+    m_isValid: bool
+
     def __init__(self, data: bytes, packet_format: int) -> None:
         """
         Initializes a TimeTrialDataSet object by unpacking the provided binary data.
