@@ -33,12 +33,25 @@ class TimeTrialDataPopulator {
         const bestLapIndex = sessionHistory['best-lap-time-lap-num'] - 1;
 
         tbody.innerHTML = '';
+        const lapValidMask = 1;
+        const s1ValidMask = 2;
+        const s2ValidMask = 4;
+        const s3ValidMask = 8;
+
+        const bestLapTimeLapNum = sessionHistory["best-lap-time-lap-num"];
+        const bestS1TimeLapNum  = sessionHistory["best-sector-1-lap-num"];
+        const bestS2TimeLapNum  = sessionHistory["best-sector-2-lap-num"];
+        const bestS3TimeLapNum  = sessionHistory["best-sector-3-lap-num"];
 
         lapData.forEach((lap, index) => {
             const row = document.createElement('tr');
             const lapNum = index + 1;
-            const isBestLap = index === bestLapIndex;
-            const isValid = this.isLapValid(lap['lap-valid-bit-flags']);
+
+            const validBitFlags = lap['lap-valid-bit-flags'];
+            const isLapValid = validBitFlags & lapValidMask;
+            const isS1Valid = validBitFlags & s1ValidMask;
+            const isS2Valid = validBitFlags & s2ValidMask;
+            const isS3Valid = validBitFlags & s3ValidMask;
 
             const lapCell = document.createElement('td');
             const lapStrong = document.createElement('strong');
@@ -46,25 +59,23 @@ class TimeTrialDataPopulator {
             lapCell.appendChild(lapStrong);
 
             const s1Cell = document.createElement('td');
-            s1Cell.textContent = lap['sector-1-time-str'] || '--:---';
-            if (!isValid) s1Cell.classList.add('tt-invalid-lap');
+            s1Cell.textContent = (lap["sector-1-time-in-ms"]) ? (lap['sector-1-time-str']) : ('--:---');
+            this.applyColourToCell(s1Cell, lapNum, bestS1TimeLapNum, isS1Valid);
 
             const s2Cell = document.createElement('td');
-            s2Cell.textContent = lap['sector-2-time-str'] || '--:---';
-            if (!isValid) s2Cell.classList.add('tt-invalid-lap');
+            s2Cell.textContent = (lap["sector-2-time-in-ms"]) ? (lap['sector-2-time-str']) : ('--:---');
+            this.applyColourToCell(s2Cell, lapNum, bestS2TimeLapNum, isS2Valid);
 
             const s3Cell = document.createElement('td');
-            s3Cell.textContent = lap['sector-3-time-str'] || '--:---';
-            if (!isValid) s3Cell.classList.add('tt-invalid-lap');
+            s3Cell.textContent = (lap["sector-3-time-in-ms"]) ? (lap['sector-3-time-str']) : ('--:---');
+            this.applyColourToCell(s3Cell, lapNum, bestS3TimeLapNum, isS3Valid);
 
             const lapTimeCell = document.createElement('td');
-            lapTimeCell.textContent = lap['lap-time-str'] || '--:--:---';
-            if (isBestLap) lapTimeCell.classList.add('tt-best-time');
-            if (!isValid) lapTimeCell.classList.add('tt-invalid-lap');
+            lapTimeCell.textContent = (lap["lap-time-in-ms"]) ? (lap['lap-time-str']) : ('--:---');;
+            this.applyColourToCell(lapTimeCell, lapNum, bestLapTimeLapNum, isLapValid);
 
             const speedCell = document.createElement('td');
             speedCell.textContent = lap['top-speed-kmph'] || '-';
-            if (!isValid) speedCell.classList.add('tt-invalid-lap');
 
             row.appendChild(lapCell);
             row.appendChild(s1Cell);
@@ -79,6 +90,19 @@ class TimeTrialDataPopulator {
         // Scroll to bottom to show latest lap
         if (tbody.parentElement) {
             tbody.parentElement.scrollTop = tbody.parentElement.scrollHeight;
+        }
+    }
+
+    /**
+     * Apply color based on conditions
+     */
+    applyColourToCell(cell, lapNum, pbLapNum, isValid) {
+        if (pbLapNum && (lapNum === pbLapNum)) {
+            // green time
+            cell.classList.add("tt-best-time");
+        } else if (!isValid) {
+            // red time
+            cell.classList.add("tt-invalid-lap");
         }
     }
 
@@ -140,33 +164,34 @@ class TimeTrialDataPopulator {
         }
 
         const lapData = sessionHistory['lap-history-data'];
-        let bestS1 = null, bestS2 = null, bestS3 = null;
-        let bestS1Time = Infinity, bestS2Time = Infinity, bestS3Time = Infinity;
+        let bestS1TimeStr = null, bestS2TimeStr = null, bestS3TimeStr = null;
+        let bestS1TimeMs = Infinity, bestS2TimeMs = Infinity, bestS3TimeMs = Infinity;
 
-        // Find best sector times from valid laps
-        lapData.forEach(lap => {
-            if (this.isLapValid(lap['lap-valid-bit-flags'])) {
-                if (lap['sector-1-time-in-ms'] && lap['sector-1-time-in-ms'] < bestS1Time) {
-                    bestS1Time = lap['sector-1-time-in-ms'];
-                    bestS1 = lap['sector-1-time-str'];
-                }
-                if (lap['sector-2-time-in-ms'] && lap['sector-2-time-in-ms'] < bestS2Time) {
-                    bestS2Time = lap['sector-2-time-in-ms'];
-                    bestS2 = lap['sector-2-time-str'];
-                }
-                if (lap['sector-3-time-in-ms'] && lap['sector-3-time-in-ms'] < bestS3Time) {
-                    bestS3Time = lap['sector-3-time-in-ms'];
-                    bestS3 = lap['sector-3-time-str'];
-                }
-            }
-        });
+        const bestS1LapNum = sessionHistory["best-sector-1-lap-num"];
+        const bestS2LapNum = sessionHistory["best-sector-2-lap-num"];
+        const bestS3LapNum = sessionHistory["best-sector-3-lap-num"];
+
+        if (bestS1LapNum && bestS1LapNum < lapData.length) {
+            bestS1TimeStr = lapData[bestS1LapNum - 1]['sector-1-time-str'];
+            bestS1TimeMs = lapData[bestS1LapNum - 1]['sector-1-time-in-ms'];
+        }
+
+        if (bestS2LapNum && bestS2LapNum < lapData.length) {
+            bestS2TimeStr = lapData[bestS2LapNum - 1]['sector-2-time-str'];
+            bestS2TimeMs = lapData[bestS2LapNum - 1]['sector-2-time-in-ms'];
+        }
+
+        if (bestS3LapNum && bestS3LapNum < lapData.length) {
+            bestS3TimeStr = lapData[bestS3LapNum - 1]['sector-3-time-str'];
+            bestS3TimeMs = lapData[bestS3LapNum - 1]['sector-3-time-in-ms'];
+        }
 
         // Calculate theoretical best time
         let theoreticalTimeMs = 0;
         let theoreticalTimeStr = '--:--:---';
 
-        if (bestS1Time !== Infinity && bestS2Time !== Infinity && bestS3Time !== Infinity) {
-            theoreticalTimeMs = bestS1Time + bestS2Time + bestS3Time;
+        if (bestS1TimeMs !== Infinity && bestS2TimeMs !== Infinity && bestS3TimeMs !== Infinity) {
+            theoreticalTimeMs = bestS1TimeMs + bestS2TimeMs + bestS3TimeMs;
             const minutes = Math.floor(theoreticalTimeMs / 60000);
             const seconds = Math.floor((theoreticalTimeMs % 60000) / 1000);
             const milliseconds = theoreticalTimeMs % 1000;
@@ -180,37 +205,9 @@ class TimeTrialDataPopulator {
         const s3Element = document.getElementById('tt-theoretical-s3');
 
         if (timeElement) timeElement.textContent = theoreticalTimeStr;
-        if (s1Element) s1Element.textContent = bestS1 || '--:---';
-        if (s2Element) s2Element.textContent = bestS2 || '--:---';
-        if (s3Element) s3Element.textContent = bestS3 || '--:---';
-
-        // Update session info
-        const bestLapElement = document.getElementById('tt-best-lap-num');
-        const bestS1Element = document.getElementById('tt-best-s1-lap');
-        const bestS2Element = document.getElementById('tt-best-s2-lap');
-        const bestS3Element = document.getElementById('tt-best-s3-lap');
-
-        if (bestLapElement) {
-            bestLapElement.textContent = sessionHistory['best-lap-time-lap-num'] || '-';
-        }
-        if (bestS1Element) {
-            bestS1Element.textContent = `Lap ${sessionHistory['best-sector-1-lap-num'] || '-'}`;
-        }
-        if (bestS2Element) {
-            bestS2Element.textContent = `Lap ${sessionHistory['best-sector-2-lap-num'] || '-'}`;
-        }
-        if (bestS3Element) {
-            bestS3Element.textContent = `Lap ${sessionHistory['best-sector-3-lap-num'] || '-'}`;
-        }
-    }
-
-    /**
-     * Check if lap is valid based on bit flags
-     */
-    isLapValid(validBitFlags) {
-        // Assuming valid lap has certain bits set
-        // This is a simplified check - adjust based on your data format
-        return validBitFlags && validBitFlags > 0;
+        if (s1Element) s1Element.textContent = bestS1TimeStr || '--:---';
+        if (s2Element) s2Element.textContent = bestS2TimeStr || '--:---';
+        if (s3Element) s3Element.textContent = bestS3TimeStr || '--:---';
     }
 
     /**
@@ -252,14 +249,6 @@ class TimeTrialDataPopulator {
                     el.textContent = '--:---';
                 }
             }
-        });
-
-        const sessionInfoElements = [
-            'tt-best-lap-num', 'tt-best-s1-lap', 'tt-best-s2-lap', 'tt-best-s3-lap'
-        ];
-        sessionInfoElements.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.textContent = '-';
         });
     }
 }

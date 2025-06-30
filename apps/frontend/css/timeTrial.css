@@ -90,13 +90,13 @@
 }
 
 .tt-best-time {
-    color: #ff6b35 !important;
+    color: #45ff35 !important;
     font-weight: bold;
 }
 
 .tt-invalid-lap {
     color: #ff4757 !important;
-    text-decoration: line-through;
+    font-weight: bold;
 }
 
 /* Comparison Section */
