@@ -608,6 +608,8 @@ class DriversListRsp:
             List[Dict[str, Any]]: The speed trap records JSON
         """
 
+        if not _session_state_ref.m_session_info or _session_state_ref.m_session_info.m_packet_format < 2024:
+            return []
         if not self.m_json_rsp:
             return []
 

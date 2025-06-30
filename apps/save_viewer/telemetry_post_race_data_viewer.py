@@ -650,7 +650,7 @@ def handleRaceInfoRequest() -> Tuple[Dict[str, Any], HTTPStatus]:
             "overtakes" : g_json_data.get("overtakes", None),
             "custom-markers" : g_json_data.get("custom-markers", []),
             "position-history" : g_json_data.get("position-history", []),
-            "speed-trap-records" : g_json_data.get("speed-trap-records", None),
+            "speed-trap-records" : g_json_data.get("speed-trap-records", []),
         }
 
         if new_style := g_json_data.get("tyre-stint-history-v2"):
