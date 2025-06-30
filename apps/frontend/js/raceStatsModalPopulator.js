@@ -236,22 +236,6 @@ class RaceStatsModalPopulator {
 
 
         chart.updateChart(data);
-        // chart.initTooltips();
-
-        // TODO: use actual values
-        // const trackName = 'SAKHIR';
-        // const airTemp = 32;
-        // const trackTemp = 25;
-        // const numLaps = 5;
-        // const chart = new TyreStintHistoryChart(
-        //     tyreStintHistoryGraphSubDiv,
-        //     ("tyre-stint-history" in this.data) ? (this.data["tyre-stint-history"]) : ([]),
-        //     trackName,
-        //     trackTemp,
-        //     airTemp,
-        //     numLaps  // Now using actual number of laps from the data
-        // );
-        // chart.draw();
         tabPane.appendChild(tyreStintHistoryGraphSubDiv);
     }
 
