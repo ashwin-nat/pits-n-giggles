@@ -24,8 +24,7 @@
 import struct
 from typing import Any, Dict, Union
 
-from .common import (F1Utils, GearboxAssistMode, PacketHeader, TeamID24, TeamID25,
-                     TractionControlAssistMode)
+from .common import F1Utils, PacketHeader, TeamID24, TeamID25
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
