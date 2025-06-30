@@ -1,0 +1,354 @@
+class BarChart {
+    constructor(container) {
+        // Validate container input
+        if (!container || !(container instanceof HTMLElement)) {
+            throw new Error('Container must be a valid DOM element');
+        }
+
+        this.container = container;
+        this.chart = null;
+        this.canvas = null;
+    }
+
+    /**
+     * Renders a bar chart with the provided data and options
+     * @param {Array} data - Array of data objects [{label: string, value: number, color?: string}]
+     * @param {Object} options - Chart configuration options (optional)
+     * @param {string} options.title - Chart title (optional)
+     * @param {number} options.bufferPercent - Buffer percentage for y-axis (default: 10)
+     * @param {string} options.defaultColor - Default bar color (default: '#3498db')
+     * @param {Object} options.styling - Additional styling options (optional)
+     */
+    render(data, options) {
+        options = options || {};
+
+        // Validate data input
+        if (!data || !Array.isArray(data) || data.length === 0) {
+            throw new Error('Data must be a non-empty array');
+        }
+
+        // Destroy existing chart if it exists
+        if (this.chart) {
+            this.chart.destroy();
+        }
+
+        // Clear container content
+        this.container.innerHTML = '';
+
+        // Set default options
+        var config = {
+            title: options.title || '',
+            bufferPercent: options.bufferPercent || 10,
+            defaultColor: options.defaultColor || '#3498db',
+            styling: options.styling || {}
+        };
+
+        // Merge options into config
+        for (var key in options) {
+            if (options.hasOwnProperty(key)) {
+                config[key] = options[key];
+            }
+        }
+
+        // Create canvas element
+        this.canvas = document.createElement('canvas');
+        this.canvas.className = 'bar-chart-canvas';
+
+        // Apply custom styling to canvas if provided
+        if (config.styling.canvasStyle) {
+            for (var styleKey in config.styling.canvasStyle) {
+                if (config.styling.canvasStyle.hasOwnProperty(styleKey)) {
+                    this.canvas.style[styleKey] = config.styling.canvasStyle[styleKey];
+                }
+            }
+        }
+
+        this.container.appendChild(this.canvas);
+
+        // Prepare chart data
+        var chartData = this._prepareChartData(data, config);
+
+        // Calculate dynamic y-axis range
+        var yAxisConfig = this._calculateYAxisRange(data, config.bufferPercent);
+
+        // Create chart configuration
+        var chartConfig = {
+            type: 'bar',
+            data: chartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: !!config.title,
+                        text: config.title,
+                        font: {
+                            size: 16,
+                            weight: 'bold'
+                        },
+                        color: config.styling.titleColor || '#333'
+                    },
+                    legend: {
+                        display: false // Hide legend for single dataset
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleColor: '#fff',
+                        bodyColor: '#fff',
+                        borderColor: config.defaultColor,
+                        borderWidth: 1,
+                        callbacks: {
+                            label: function (context) {
+                                return 'Value: ' + context.parsed.y;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: this._mergeObjects(yAxisConfig, {
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.1)',
+                            borderColor: '#666'
+                        },
+                        ticks: {
+                            color: config.styling.axisColor || '#666',
+                            font: {
+                                size: 12
+                            }
+                        }
+                    }),
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            color: config.styling.axisColor || '#666',
+                            font: {
+                                size: 12
+                            },
+                            maxRotation: 45,
+                            minRotation: 0
+                        }
+                    }
+                },
+                animation: {
+                    duration: 800,
+                    easing: 'easeOutQuart'
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                }
+            }
+        };
+
+        // Apply additional chart options if provided
+        if (config.styling.chartOptions) {
+            this._mergeDeep(chartConfig.options, config.styling.chartOptions);
+        }
+
+        // Create the chart
+        this.chart = new Chart(this.canvas, chartConfig);
+
+        return this.chart;
+    }
+
+    /**
+     * Updates the chart with new data
+     * @param {Array} newData - New data array
+     * @param {Object} options - Update options (optional)
+     */
+    updateData(newData, options) {
+        options = options || {};
+
+        if (!this.chart) {
+            throw new Error('Chart must be rendered before updating data');
+        }
+
+        var config = {
+            bufferPercent: options.bufferPercent || 10,
+            defaultColor: options.defaultColor || '#3498db'
+        };
+
+        // Merge options into config
+        for (var key in options) {
+            if (options.hasOwnProperty(key)) {
+                config[key] = options[key];
+            }
+        }
+
+        // Update chart data
+        var chartData = this._prepareChartData(newData, config);
+        this.chart.data = chartData;
+
+        // Update y-axis range
+        var yAxisConfig = this._calculateYAxisRange(newData, config.bufferPercent);
+        this.chart.options.scales.y = this._mergeObjects(this.chart.options.scales.y, yAxisConfig);
+
+        // Update chart
+        this.chart.update('active');
+    }
+
+    /**
+     * Destroys the chart and cleans up resources
+     */
+    destroy() {
+        if (this.chart) {
+            this.chart.destroy();
+            this.chart = null;
+        }
+        if (this.canvas) {
+            this.canvas.remove();
+            this.canvas = null;
+        }
+    }
+
+    /**
+     * Prepares data for Chart.js format
+     * @private
+     */
+    _prepareChartData(data, config) {
+        var labels = [];
+        var values = [];
+        var colors = [];
+
+        for (var i = 0; i < data.length; i++) {
+            labels.push(data[i].label);
+            values.push(data[i].value);
+            colors.push(data[i].color || config.defaultColor);
+        }
+
+        var borderColors = [];
+        var hoverBackgroundColors = [];
+        var hoverBorderColors = [];
+
+        for (var j = 0; j < colors.length; j++) {
+            borderColors.push(this._darkenColor(colors[j], 0.2));
+            hoverBackgroundColors.push(this._lightenColor(colors[j], 0.1));
+            hoverBorderColors.push(this._darkenColor(colors[j], 0.3));
+        }
+
+        return {
+            labels: labels,
+            datasets: [{
+                data: values,
+                backgroundColor: colors,
+                borderColor: borderColors,
+                borderWidth: 2,
+                borderRadius: 4,
+                borderSkipped: false,
+                hoverBackgroundColor: hoverBackgroundColors,
+                hoverBorderColor: hoverBorderColors,
+                hoverBorderWidth: 3
+            }]
+        };
+    }
+
+    /**
+     * Calculates dynamic y-axis range with buffer
+     * @private
+     */
+    _calculateYAxisRange(data, bufferPercent) {
+        var values = [];
+        for (var i = 0; i < data.length; i++) {
+            values.push(data[i].value);
+        }
+
+        var minValue = Math.min.apply(Math, values);
+        var maxValue = Math.max.apply(Math, values);
+
+        var range = maxValue - minValue;
+        var buffer = range * (bufferPercent / 100);
+
+        // Calculate suggested min and max with buffer
+        var suggestedMin = minValue - buffer;
+        var suggestedMax = maxValue + buffer;
+
+        // Ensure min doesn't go below 0 if all values are positive
+        if (minValue >= 0 && suggestedMin < 0) {
+            suggestedMin = 0;
+        }
+
+        return {
+            beginAtZero: minValue >= 0,
+            suggestedMin: suggestedMin,
+            suggestedMax: suggestedMax
+        };
+    }
+
+    /**
+     * Darkens a color by a given factor
+     * @private
+     */
+    _darkenColor(color, factor) {
+        var hex = color.replace('#', '');
+        var r = parseInt(hex.substr(0, 2), 16);
+        var g = parseInt(hex.substr(2, 2), 16);
+        var b = parseInt(hex.substr(4, 2), 16);
+
+        var newR = Math.round(r * (1 - factor));
+        var newG = Math.round(g * (1 - factor));
+        var newB = Math.round(b * (1 - factor));
+
+        return '#' + newR.toString(16).padStart(2, '0') + newG.toString(16).padStart(2, '0') + newB.toString(16).padStart(2, '0');
+    }
+
+    /**
+     * Lightens a color by a given factor
+     * @private
+     */
+    _lightenColor(color, factor) {
+        var hex = color.replace('#', '');
+        var r = parseInt(hex.substr(0, 2), 16);
+        var g = parseInt(hex.substr(2, 2), 16);
+        var b = parseInt(hex.substr(4, 2), 16);
+
+        var newR = Math.round(r + (255 - r) * factor);
+        var newG = Math.round(g + (255 - g) * factor);
+        var newB = Math.round(b + (255 - b) * factor);
+
+        return '#' + newR.toString(16).padStart(2, '0') + newG.toString(16).padStart(2, '0') + newB.toString(16).padStart(2, '0');
+    }
+
+    /**
+     * Merge two objects
+     * @private
+     */
+    _mergeObjects(target, source) {
+        var result = {};
+
+        // Copy target properties
+        for (var key in target) {
+            if (target.hasOwnProperty(key)) {
+                result[key] = target[key];
+            }
+        }
+
+        // Copy source properties (overwriting target)
+        for (var key in source) {
+            if (source.hasOwnProperty(key)) {
+                result[key] = source[key];
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Deep merge objects
+     * @private
+     */
+    _mergeDeep(target, source) {
+        for (var key in source) {
+            if (source.hasOwnProperty(key)) {
+                if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+                    if (!target[key]) target[key] = {};
+                    this._mergeDeep(target[key], source[key]);
+                } else {
+                    target[key] = source[key];
+                }
+            }
+        }
+        return target;
+    }
+}

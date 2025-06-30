@@ -19,6 +19,7 @@ class RaceStatsModalPopulator {
             { id: 'custom-markers', label: 'Custom Markers' },
             { id: 'position-history', label: 'Position History' },
             { id: 'tyre-stint-history', label: 'Tyre Stint History' },
+            { id: 'speed-trap-records', label: 'Speed Trap Records' },
         ];
 
         // Sort tabs alphabetically based on the label
@@ -58,6 +59,7 @@ class RaceStatsModalPopulator {
             { id: 'custom-markers', method: this.populateCustomMarkersTab },
             { id: 'position-history', method: this.populatePositionHistoryTab },
             { id: 'tyre-stint-history', method: this.populateTyreStintHistoryTab },
+            { id: 'speed-trap-records', method: this.populateSpeedTrapRecordsTab },
         ];
 
         // Sort tabs alphabetically based on the label
@@ -237,6 +239,16 @@ class RaceStatsModalPopulator {
 
         chart.updateChart(data);
         tabPane.appendChild(tyreStintHistoryGraphSubDiv);
+    }
+
+    populateSpeedTrapRecordsTab(tabPane) {
+        console.log("populateSpeedTrapRecordsTab", this.data["speed-trap-records"]);
+
+        if (this.data["speed-trap-records"].length == 0) {
+            console.log("Speed Trap Records data not available");
+            // TODO: Add message
+            return;
+        }
     }
 
     // Utils
