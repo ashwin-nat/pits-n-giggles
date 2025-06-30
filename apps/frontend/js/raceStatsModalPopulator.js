@@ -3,6 +3,30 @@ class RaceStatsModalPopulator {
         this.data = data;
         this.tableClassNames = 'table table-bordered table-striped table-dark table-sm align-middle';
         this.iconCache = iconCache;
+        this.defaultColors = [
+            'rgba(75, 192, 192, 1)',   // Teal
+            'rgba(255, 99, 132, 1)',   // Red
+            'rgba(54, 162, 235, 1)',   // Blue
+            'rgba(255, 206, 86, 1)',   // Yellow
+            'rgba(153, 102, 255, 1)',  // Purple
+            'rgba(255, 159, 64, 1)',   // Orange
+            'rgba(199, 199, 199, 1)',  // Gray
+            'rgba(255, 99, 71, 1)',    // Tomato
+            'rgba(60, 179, 113, 1)',   // Medium Sea Green
+            'rgba(123, 104, 238, 1)',  // Medium Slate Blue
+            'rgba(0, 128, 128, 1)',    // Teal
+            'rgba(240, 128, 128, 1)',  // Light Coral
+            'rgba(75, 0, 130, 1)',     // Indigo
+            'rgba(250, 128, 114, 1)',  // Salmon
+            'rgba(34, 139, 34, 1)',    // Forest Green
+            'rgba(255, 215, 0, 1)',    // Gold
+            'rgba(0, 191, 255, 1)',    // Deep Sky Blue
+            'rgba(219, 112, 147, 1)',  // Pale Violet Red
+            'rgba(46, 139, 87, 1)',    // Sea Green
+            'rgba(139, 69, 19, 1)',    // Saddle Brown
+            'rgba(255, 140, 0, 1)',    // Dark Orange
+            'rgba(72, 61, 139, 1)'     // Dark Slate Blue
+        ];
     }
 
     // Method to create the navigation tabs
@@ -249,6 +273,20 @@ class RaceStatsModalPopulator {
             // TODO: Add message
             return;
         }
+
+        const chartDiv = document.createElement('div');
+        const chart = new BarChart(chartDiv);
+        let chartData = [];
+        this.data["speed-trap-records"].forEach((record) => {
+            chartData.push({ label: record["name"], value: record["speed-trap-record-kmph"], color: this.getF1TeamColor(record["team"]) });
+        });
+        chart.render(chartData, {
+            title: "Speed Trap Records",
+            xLabel: "Driver",
+            yLabel: "Speed (km/h)",
+        });
+
+        tabPane.appendChild(chartDiv);
     }
 
     // Utils
@@ -345,37 +383,19 @@ class RaceStatsModalPopulator {
             'Williams': 'rgba(100,196,255, 1)',         // Blue
             'Sauber': 'rgba(82,226,82,1)',              // Fresh Green
         };
-        return teamColors[teamName] || null;
+
+
+        if (teamName in teamColors) {
+            return teamColors[teamName];
+        }
+
+        // Fallback: return random default color
+        const randomIndex = Math.floor(Math.random() * this.defaultColors.length);
+        return this.defaultColors[randomIndex];
     }
 
     plotGraphPositionHistory(canvas, datasets, xAxisLabel, yAxisLabel) {
         const ctx = canvas.getContext('2d');
-
-        // Define default colors to cycle through if no custom color is provided
-        const defaultColors = [
-            'rgba(75, 192, 192, 1)',   // Teal
-            'rgba(255, 99, 132, 1)',   // Red
-            'rgba(54, 162, 235, 1)',   // Blue
-            'rgba(255, 206, 86, 1)',   // Yellow
-            'rgba(153, 102, 255, 1)',  // Purple
-            'rgba(255, 159, 64, 1)',   // Orange
-            'rgba(199, 199, 199, 1)',  // Gray
-            'rgba(255, 99, 71, 1)',    // Tomato
-            'rgba(60, 179, 113, 1)',   // Medium Sea Green
-            'rgba(123, 104, 238, 1)',  // Medium Slate Blue
-            'rgba(0, 128, 128, 1)',    // Teal
-            'rgba(240, 128, 128, 1)',  // Light Coral
-            'rgba(75, 0, 130, 1)',     // Indigo
-            'rgba(250, 128, 114, 1)',  // Salmon
-            'rgba(34, 139, 34, 1)',    // Forest Green
-            'rgba(255, 215, 0, 1)',    // Gold
-            'rgba(0, 191, 255, 1)',    // Deep Sky Blue
-            'rgba(219, 112, 147, 1)',  // Pale Violet Red
-            'rgba(46, 139, 87, 1)',    // Sea Green
-            'rgba(139, 69, 19, 1)',    // Saddle Brown
-            'rgba(255, 140, 0, 1)',    // Dark Orange
-            'rgba(72, 61, 139, 1)'     // Dark Slate Blue
-        ];
 
         // Find the maximum x value across all datasets
         const maxX = Math.max(...datasets.flatMap(dataset => dataset.data.map(entry => entry.x)));
@@ -396,7 +416,7 @@ class RaceStatsModalPopulator {
                         // Only draw label if we have valid coordinates
                         if (lastPoint && typeof lastPoint.y === 'number') {
                             // Use the custom line color for the label text or default color
-                            ctx.fillStyle = dataset.borderColor || defaultColors[index % defaultColors.length];
+                            ctx.fillStyle = dataset.borderColor;
                             ctx.font = 'bold 16px sans-serif';
                             ctx.textAlign = 'left';
                             ctx.textBaseline = 'middle';
@@ -414,8 +434,8 @@ class RaceStatsModalPopulator {
             ...dataset,
             data: dataset.data.map(entry => ({x: entry.x, y: entry.y})), // Preserve x,y format
             label: dataset.label,
-            borderColor: dataset.borderColor || defaultColors[index % defaultColors.length],
-            backgroundColor: dataset.backgroundColor || defaultColors[index % defaultColors.length].replace('1)', '0.2)'),
+            borderColor: dataset.borderColor,
+            backgroundColor: dataset.backgroundColor || this.defaultColors[index % this.defaultColors.length].replace('1)', '0.2)'),
             borderWidth: 2,
             spanGaps: false, // Don't connect points across gaps
         }));

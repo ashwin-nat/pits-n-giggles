@@ -78,25 +78,33 @@ class BarChart {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                categoryPercentage: 0.6, // Make bars less wide
+                barPercentage: 0.9, // Make individual bars less wide
                 plugins: {
                     title: {
                         display: !!config.title,
                         text: config.title,
                         font: {
-                            size: 16,
+                            size: 18,
                             weight: 'bold'
                         },
-                        color: config.styling.titleColor || '#333'
+                        color: config.styling.titleColor || '#ffffff', // White text for visibility
+                        padding: {
+                            top: 10,
+                            bottom: 20
+                        }
                     },
                     legend: {
                         display: false // Hide legend for single dataset
                     },
                     tooltip: {
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        backgroundColor: 'rgba(0, 0, 0, 0.9)',
                         titleColor: '#fff',
                         bodyColor: '#fff',
-                        borderColor: config.defaultColor,
+                        borderColor: '#fff',
                         borderWidth: 1,
+                        cornerRadius: 6,
+                        displayColors: false,
                         callbacks: {
                             label: function (context) {
                                 return 'Value: ' + context.parsed.y;
@@ -107,14 +115,20 @@ class BarChart {
                 scales: {
                     y: this._mergeObjects(yAxisConfig, {
                         grid: {
-                            color: 'rgba(0, 0, 0, 0.1)',
-                            borderColor: '#666'
+                            color: 'rgba(255, 255, 255, 0.2)', // Light grid lines for visibility
+                            borderColor: 'rgba(255, 255, 255, 0.5)',
+                            lineWidth: 1
                         },
                         ticks: {
-                            color: config.styling.axisColor || '#666',
+                            color: config.styling.axisColor || '#ffffff', // White text
                             font: {
-                                size: 12
-                            }
+                                size: 12,
+                                weight: '500'
+                            },
+                            padding: 8
+                        },
+                        border: {
+                            color: 'rgba(255, 255, 255, 0.5)'
                         }
                     }),
                     x: {
@@ -122,12 +136,17 @@ class BarChart {
                             display: false
                         },
                         ticks: {
-                            color: config.styling.axisColor || '#666',
+                            color: config.styling.axisColor || '#ffffff', // White text
                             font: {
-                                size: 12
+                                size: 12,
+                                weight: '500'
                             },
                             maxRotation: 45,
-                            minRotation: 0
+                            minRotation: 0,
+                            padding: 8
+                        },
+                        border: {
+                            color: 'rgba(255, 255, 255, 0.5)'
                         }
                     }
                 },
