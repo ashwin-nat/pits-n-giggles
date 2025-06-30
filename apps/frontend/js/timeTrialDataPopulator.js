@@ -326,10 +326,13 @@ class TimeTrialDataPopulator {
         if (s1Element) s1Element.textContent = data['sector-1-time-str'] || '--:---';
         if (s2Element) s2Element.textContent = data['sector-2-time-str'] || '--:---';
         if (s3Element) s3Element.textContent = data['sector-3-time-str'] || '--:---';
-        if (tcElement) tcElement.textContent = `TC: ${data['traction-control'] || '-'}`;
-        if (absElement) absElement.textContent = `ABS: ${data['anti-lock-brakes'] ? 'ON' : 'OFF'}`;
-        // TODO: Populate gears data from actual data source instead of hardcoding
-        if (gearsElement) gearsElement.textContent = `Gears: AUTO`;
+        if (tcElement) tcElement.textContent = `TC: ${this.getAssistText(data['traction-control'])}`;
+        if (absElement) absElement.textContent = `ABS: ${this.getAssistText(data['anti-lock-brakes'])}`;
+        if (gearsElement) gearsElement.textContent = `Gears: ${this.getAssistText(data['gearbox-assist'])}`;
+    }
+
+    getAssistText(assistValue) {
+        return assistValue ? '✅' : '❌';
     }
 
     /**
