@@ -735,6 +735,13 @@ class DriversListRsp:
         Returns:
             Dict[str, Any]: TT setup JSON data.
         """
+        if not self.m_time_trial_packet:
+            return {
+                "personal-best-setup": None,
+                "player-session-best-setup": None,
+                "rival-session-best-setup": None
+            }
+
         personal_best_setup: Optional[dict[str, Any]] = None
         session_best_setup: Optional[dict[str, Any]] = None
         rival_setup: Optional[dict[str, Any]] = None
