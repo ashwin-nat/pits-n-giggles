@@ -561,7 +561,8 @@ class SessionState:
                 if self.m_session_info.m_packet_format == 2023:
                     final_json["tyre-stint-history"].append(obj_to_be_updated.getTyreStintHistoryJSON())
         final_json['classification-data'] = sorted(final_json['classification-data'], key=lambda x: x['track-position'])
-        final_json['speed-trap-records'] = sorted(speed_trap_records, key=lambda x: x['speed-trap-record-kmph'])
+        final_json['speed-trap-records'] = sorted(speed_trap_records,
+                                                  key=lambda x: x['speed-trap-record-kmph'], reverse=True)
         final_json['game-year'] = self.m_session_info.m_game_year
         final_json['packet-format'] = self.m_session_info.m_packet_format
 

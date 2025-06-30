@@ -201,6 +201,7 @@ class OverallRaceStatsRsp:
                 self.m_rsp["tyre-stint-history"] = drivers_list_rsp.getTyreStintHistoryJSON()
             else:
                 self.m_rsp["tyre-stint-history-v2"] = drivers_list_rsp.getTyreStintHistoryJSONv2()
+        self.m_rsp["speed-trap-records"] = drivers_list_rsp.getSpeedTrapRecordsJSON()
 
     def toJSON(self) -> Dict[str, Any]:
         """Dump this object into JSON
@@ -599,6 +600,22 @@ class DriversListRsp:
         return [data_per_driver.getPositionHistoryJSON() \
                 for data_per_driver in _session_state_ref.m_driver_data \
                     if data_per_driver and data_per_driver.is_valid]
+
+    def getSpeedTrapRecordsJSON(self) -> List[Dict[str, Any]]:
+        """Get speed trap records.
+
+        Returns:
+            List[Dict[str, Any]]: The speed trap records JSON
+        """
+
+        if not self.m_json_rsp:
+            return []
+
+        # Use original list since this request comes only once in a bluemoon
+        ret = [data_per_driver.getSpeedTrapRecordJSON() \
+                for data_per_driver in _session_state_ref.m_driver_data \
+                if data_per_driver and data_per_driver.is_valid]
+        return sorted(ret, key=lambda x: x["speed-trap-record-kmph"], reverse=True)
 
     def getTyreStintHistoryJSON(self) -> List[Dict[str, Any]]:
         """Get tyre stint history.
