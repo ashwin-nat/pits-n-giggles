@@ -750,6 +750,10 @@ class DriversListRsp:
         session_best_idx = self.m_time_trial_packet.m_playerSessionBestDataSet.m_carIdx
         rival_idx = self.m_time_trial_packet.m_rivalSessionBestDataSet.m_carIdx
 
+        # Since game doesn't do this, possible bug
+        if self.m_time_trial_packet.m_playerSessionBestDataSet.m_lapTimeInMS == self.m_time_trial_packet.m_personalBestDataSet.m_lapTimeInMS:
+            personal_best_idx = session_best_idx
+
         if (driver := self._safeGetDriver(personal_best_idx)) and driver.m_packet_copies.m_packet_car_setup:
             personal_best_setup = driver.m_packet_copies.m_packet_car_setup.toJSON()
 
