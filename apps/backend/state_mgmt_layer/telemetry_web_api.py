@@ -726,7 +726,45 @@ class DriversListRsp:
             "current-lap" : player_obj.m_lap_info.m_current_lap,
             "session-history": session_history,
             "tt-data": self.m_time_trial_packet.toJSON() if self.m_time_trial_packet else None,
+            "tt-setups" : self._getTTSetupJSON(),
         }
+
+    def _getTTSetupJSON(self) -> Dict[str, Any]:
+        """Get the TT setup JSON data.
+
+        Returns:
+            Dict[str, Any]: TT setup JSON data.
+        """
+        personal_best_setup: Optional[dict[str, Any]] = None
+        session_best_setup: Optional[dict[str, Any]] = None
+        rival_setup: Optional[dict[str, Any]] = None
+
+        personal_best_idx = self.m_time_trial_packet.m_personalBestDataSet.m_carIdx
+        session_best_idx = self.m_time_trial_packet.m_playerSessionBestDataSet.m_carIdx
+        rival_idx = self.m_time_trial_packet.m_rivalSessionBestDataSet.m_carIdx
+
+        if (driver := self._safeGetDriver(personal_best_idx)) and driver.m_packet_copies.m_packet_car_setup:
+            personal_best_setup = driver.m_packet_copies.m_packet_car_setup.toJSON()
+
+        if (driver := self._safeGetDriver(session_best_idx)) and driver.m_packet_copies.m_packet_car_setup:
+            session_best_setup = driver.m_packet_copies.m_packet_car_setup.toJSON()
+
+        if (driver := self._safeGetDriver(rival_idx)) and driver.m_packet_copies.m_packet_car_setup:
+            rival_setup = driver.m_packet_copies.m_packet_car_setup.toJSON()
+
+        return {
+            "personal-best-setup": personal_best_setup,
+            "session-best-setup": session_best_setup,
+            "rival-setup": rival_setup,
+        }
+
+    def _safeGetDriver(self, index: int) -> Optional[DataPerDriver]:
+        """Safely get a non-None DataPerDriver from m_driver_data by index."""
+        if 0 <= index < len(_session_state_ref.m_driver_data):
+            driver = _session_state_ref.m_driver_data[index]
+            if driver is not None:
+                return driver
+        return None
 
     def _getDriverJSON(self, index: int, driver_data: DataPerDriver) -> Dict[str, Any]:
         """Get the driver JSON data.
