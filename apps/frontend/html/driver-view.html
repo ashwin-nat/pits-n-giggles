@@ -21,6 +21,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/lapSectorRecords.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tyreRecords.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tyreDeltaToast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/timeTrial.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js"></script>
@@ -103,181 +104,145 @@
 
         <!-- Time Trial Body -->
         <div class="telemetry-time-trial-wrapper" id="time-trial-div" style="display: none;">
-          <div class="telemetry-time-trial-wrapper d-flex w-100 h-100">
-            <!-- Left Side (50%) -->
-            <div class="flex-grow-1 h-100 telemetry-time-trial-wrapper overflow-auto" id="time-trial-table-div" style="width: 50%;">
-              <div class="section-header text-center fw-bold">Lap Time History</div>
-              <table class="table table-striped table-bordered table-dark text-center" >
-                <thead>
-                  <tr>
-                    <th>Lap</th>
-                    <th>S1</th>
-                    <th>S2</th>
-                    <th>S3</th>
-                    <th>Total</th>
-                    <th>Top Speed</th>
-                  </tr>
-                </thead>
-                <tbody id="tt-lap-time-table">
-                  <!-- Populated by JavaScript -->
-                </tbody>
-              </table>
-            </div>
-
-            <!-- Right Side (50%) -->
-            <div class="d-flex flex-column telemetry-time-trial-wrapper time-trial-tt-data overflow-none" id="time-trial-tt-data-div" style="width: 50%;">
-              <!-- Section 1 -->
-              <div class="time-trial-tt-data-section" id="tt-data-section-1">
-                <div class="section-header text-center fw-bold">Player Session Best</div>
-                <div class="time-trial-tt-data-tables" id="ttPlayerSessionBestDiv">
-                  <!-- First Table -->
-                  <table class="table table-striped table-bordered table-dark text-center time-trial-tt-data-table">
-                    <thead>
-                      <tr>
-                        <th>Total</th>
-                        <th>S1</th>
-                        <th>S2</th>
-                        <th>S3</th>
-                        <th>Valid</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td id="ttPlayerSessionBestTotal">---</td>
-                        <td id="ttPlayerSessionBestS1">---</td>
-                        <td id="ttPlayerSessionBestS2">---</td>
-                        <td id="ttPlayerSessionBestS3">---</td>
-                        <td id="ttPlayerSessionBestValid">---</td>
-                      </tr>
-                    </tbody>
-                  </table>
-
-                  <!-- Second Table -->
-                  <table class="table table-striped table-bordered table-dark text-center time-trial-tt-data-table">
-                    <thead>
-                      <tr>
-                        <th>TC</th>
-                        <th>ABS</th>
-                        <th>Gears</th>
-                        <th>Eq. Perf.</th>
-                        <th>Cust. Setup</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td id="ttPlayerSessionBestTC">---</td>
-                        <td id="ttPlayerSessionBestABS">---</td>
-                        <td id="ttPlayerSessionBestGearbox">---</td>
-                        <td id="ttPlayerSessionBestEqualPerformance">---</td>
-                        <td id="ttPlayerSessionBestCustomSetup">---</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+          <div id="tt-container" class="tt-container">
+              <!-- Left Half - Lap Times Table -->
+              <div class="tt-left-panel">
+                  <div class="tt-table-container">
+                      <table class="table table-dark table-striped tt-lap-table">
+                          <thead class="tt-table-head">
+                              <tr>
+                                  <th>Lap</th>
+                                  <th>S1</th>
+                                  <th>S2</th>
+                                  <th>S3</th>
+                                  <th>Lap Time</th>
+                                  <th>vMax</th>
+                              </tr>
+                          </thead>
+                          <tbody id="tt-lap-table-body">
+                              <!-- Lap data will be inserted here -->
+                          </tbody>
+                      </table>
+                  </div>
               </div>
 
-              <!-- Section 2 -->
-              <div class="time-trial-tt-data-section" id="tt-data-section-2">
-                <div class="section-header text-center fw-bold">Player Personal Best</div>
+              <!-- Right Half - Comparison Data -->
+              <div class="tt-right-panel">
+                  <div class="tt-comparison-container">
+                      <!-- Personal Best -->
+                      <div class="tt-comparison-card tt-personal-best">
+                          <div class="tt-card-header">
+                              <div class="tt-card-header-content">
+                                  <h6 class="tt-card-title">Personal Best</h6>
+                                  <div class="tt-main-time" id="tt-pb-time">--:--:---</div>
+                              </div>
+                              <div class="tt-wings">Wings: <span id="tt-pb-wings">50-50</span></div>
+                          </div>
+                          <div class="tt-card-body">
+                              <div class="tt-sectors">
+                                  <div class="tt-sector">S1: <span id="tt-pb-s1">--:---</span></div>
+                                  <div class="tt-sector">S2: <span id="tt-pb-s2">--:---</span></div>
+                                  <div class="tt-sector">S3: <span id="tt-pb-s3">--:---</span></div>
+                              </div>
+                              <div class="tt-details">
+                                  <div class="tt-assists">
+                                      <span class="tt-assist" id="tt-pb-tc">TC: -</span>
+                                      <span class="tt-assist" id="tt-pb-abs">ABS: -</span>
+                                      <span class="tt-assist" id="tt-pb-gears">Gears: -</span>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
 
-                <div class="time-trial-tt-data-tables" id="ttPlayerPersonalBestDiv">
-                  <!-- First Table -->
-                  <table class="table table-striped table-bordered table-dark text-center time-trial-tt-data-table">
-                    <thead>
-                      <tr>
-                        <th>Total</th>
-                        <th>S1</th>
-                        <th>S2</th>
-                        <th>S3</th>
-                        <th>Valid</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td id="ttPlayerPersonalBestTotal">---</td>
-                        <td id="ttPlayerPersonalBestS1">---</td>
-                        <td id="ttPlayerPersonalBestS2">---</td>
-                        <td id="ttPlayerPersonalBestS3">---</td>
-                        <td id="ttPlayerPersonalBestValid">---</td>
-                      </tr>
-                    </tbody>
-                  </table>
+                      <!-- Session Best -->
+                      <div class="tt-comparison-card tt-session-best">
+                          <div class="tt-card-header">
+                              <div class="tt-card-header-content">
+                                  <h6 class="tt-card-title">Session Best</h6>
+                                  <div class="tt-main-time" id="tt-sb-time">--:--:---</div>
+                              </div>
+                              <div class="tt-wings">Wings: <span id="tt-sb-wings">50-50</span></div>
+                          </div>
+                          <div class="tt-card-body">
+                              <div class="tt-sectors">
+                                  <div class="tt-sector">S1: <span id="tt-sb-s1">--:---</span></div>
+                                  <div class="tt-sector">S2: <span id="tt-sb-s2">--:---</span></div>
+                                  <div class="tt-sector">S3: <span id="tt-sb-s3">--:---</span></div>
+                              </div>
+                              <div class="tt-details">
+                                  <div class="tt-assists">
+                                      <span class="tt-assist" id="tt-sb-tc">TC: -</span>
+                                      <span class="tt-assist" id="tt-sb-abs">ABS: -</span>
+                                      <span class="tt-assist" id="tt-sb-gears">Gears: -</span>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
 
-                  <!-- Second Table -->
-                  <table class="table table-striped table-bordered table-dark text-center time-trial-tt-data-table">
-                    <thead>
-                      <tr>
-                        <th>TC</th>
-                        <th>ABS</th>
-                        <th>Gears</th>
-                        <th>Eq. Perf.</th>
-                        <th>Cust. Setup</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td id="ttPlayerPersonalBestTC">---</td>
-                        <td id="ttPlayerPersonalBestABS">---</td>
-                        <td id="ttPlayerPersonalBestGearbox">---</td>
-                        <td id="ttPlayerPersonalBestEqualPerformance">---</td>
-                        <td id="ttPlayerPersonalBestCustomSetup">---</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                      <!-- Rival Best -->
+                      <div class="tt-comparison-card tt-rival-best">
+                          <div class="tt-card-header">
+                              <div class="tt-card-header-content">
+                                  <h6 class="tt-card-title">Rival Best</h6>
+                                  <div class="tt-main-time" id="tt-rival-time">--:--:---</div>
+                              </div>
+                              <div class="tt-wings">Wings: <span id="tt-rival-wings">50-50</span></div>
+                          </div>
+                          <div class="tt-card-body">
+                              <div class="tt-sectors">
+                                  <div class="tt-sector">S1: <span id="tt-rival-s1">--:---</span></div>
+                                  <div class="tt-sector">S2: <span id="tt-rival-s2">--:---</span></div>
+                                  <div class="tt-sector">S3: <span id="tt-rival-s3">--:---</span></div>
+                              </div>
+                              <div class="tt-details">
+                                  <div class="tt-assists">
+                                      <span class="tt-assist" id="tt-rival-tc">TC: -</span>
+                                      <span class="tt-assist" id="tt-rival-abs">ABS: -</span>
+                                      <span class="tt-assist" id="tt-rival-gears">Gears: -</span>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+
+                      <!-- Theoretical Best & Session Info Combined -->
+                      <div class="tt-comparison-card tt-theoretical-best">
+                          <div class="tt-card-header">
+                              <div class="tt-card-header-content">
+                                  <h6 class="tt-card-title">Theoretical Best</h6>
+                                  <div class="tt-main-time" id="tt-theoretical-time">--:--:---</div>
+                              </div>
+                          </div>
+                          <div class="tt-card-body">
+                              <div class="tt-sectors">
+                                  <div class="tt-sector">S1: <span id="tt-theoretical-s1">--:---</span></div>
+                                  <div class="tt-sector">S2: <span id="tt-theoretical-s2">--:---</span></div>
+                                  <div class="tt-sector">S3: <span id="tt-theoretical-s3">--:---</span></div>
+                              </div>
+                              <div class="tt-details">
+                                  <div class="tt-theoretical-note">Best sectors combined</div>
+                                  <div class="tt-session-info-grid">
+                                      <div class="tt-info-item">
+                                          <span class="tt-info-label">Best Lap:</span>
+                                          <span id="tt-best-lap-num" class="tt-info-value">-</span>
+                                      </div>
+                                      <div class="tt-info-item">
+                                          <span class="tt-info-label">Best S1:</span>
+                                          <span id="tt-best-s1-lap" class="tt-info-value">Lap -</span>
+                                      </div>
+                                      <div class="tt-info-item">
+                                          <span class="tt-info-label">Best S2:</span>
+                                          <span id="tt-best-s2-lap" class="tt-info-value">Lap -</span>
+                                      </div>
+                                      <div class="tt-info-item">
+                                          <span class="tt-info-label">Best S3:</span>
+                                          <span id="tt-best-s3-lap" class="tt-info-value">Lap -</span>
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
               </div>
-
-              <!-- Section 3 -->
-              <div class="time-trial-tt-data-section" id="tt-data-section-3">
-                <div class="section-header text-center fw-bold">Rival Session Best</div>
-
-                <div class="time-trial-tt-data-tables" id="ttRivalSessionBestDiv">
-                  <!-- First Table -->
-                  <table class="table table-striped table-bordered table-dark text-center time-trial-tt-data-table">
-                    <thead>
-                      <tr>
-                        <th>Total</th>
-                        <th>S1</th>
-                        <th>S2</th>
-                        <th>S3</th>
-                        <th>Valid</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td id="ttRivalSessionBestTotal">---</td>
-                        <td id="ttRivalSessionBestS1">---</td>
-                        <td id="ttRivalSessionBestS2">---</td>
-                        <td id="ttRivalSessionBestS3">---</td>
-                        <td id="ttRivalSessionBestValid">---</td>
-                      </tr>
-                    </tbody>
-                  </table>
-
-                  <!-- Second Table -->
-                  <table class="table table-striped table-bordered table-dark text-center time-trial-tt-data-table">
-                    <thead>
-                      <tr>
-                        <th>TC</th>
-                        <th>ABS</th>
-                        <th>Gears</th>
-                        <th>Eq. Perf.</th>
-                        <th>Cust. Setup</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td id="ttRivalSessionBestTC">---</td>
-                        <td id="ttRivalSessionBestABS">---</td>
-                        <td id="ttRivalSessionBestGearbox">---</td>
-                        <td id="ttRivalSessionBestEqualPerformance">---</td>
-                        <td id="ttRivalSessionBestCustomSetup">---</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </main>

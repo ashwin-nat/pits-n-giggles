@@ -1,0 +1,307 @@
+/* Time Trial UI Styles - Horizontal Layout */
+.tt-container {
+    height: 100%;
+    display: flex;
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    color: #ffffff;
+    overflow: hidden;
+}
+
+/* Left Panel - Lap Times Table */
+.tt-left-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 15px;
+    border-right: 2px solid #444;
+    min-width: 0; /* Allows flex shrinking */
+    overflow: hidden;
+}
+
+/* Right Panel - Comparison Data */
+.tt-right-panel {
+    width: 400px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 15px;
+    overflow: hidden;
+}
+
+/* Current Lap Display */
+.tt-current-lap {
+    font-size: 20px;
+    color: #ccc;
+    margin-bottom: 15px;
+    flex-shrink: 0;
+}
+
+.tt-lap-badge {
+    background: #00ff41;
+    color: #000;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    margin-left: 5px;
+    font-size: 20px;
+}
+
+/* Lap Times Table */
+.tt-table-container {
+    flex: 1;
+    overflow-y: auto;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    min-height: 0;
+}
+
+.tt-lap-table {
+    margin: 0;
+    font-size: 20px;
+}
+
+.tt-table-head th {
+    background: #333;
+    color: #ffffff;
+    font-weight: 600;
+    text-align: center;
+    border: none;
+    padding: 10px 6px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    font-size: 20px;
+}
+
+.tt-lap-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.tt-lap-table tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.tt-lap-table td {
+    text-align: center;
+    padding: 8px 4px;
+    border: none;
+    font-weight: 500;
+    font-size: 20px;
+}
+
+.tt-best-time {
+    color: #ff6b35 !important;
+    font-weight: bold;
+}
+
+.tt-invalid-lap {
+    color: #ff4757 !important;
+    text-decoration: line-through;
+}
+
+/* Comparison Section */
+.tt-comparison-container {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+}
+
+.tt-comparison-card {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid #444;
+    border-radius: 8px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    flex-shrink: 0;
+}
+
+.tt-comparison-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+}
+
+.tt-personal-best {
+    border-left: 4px solid #00ff41;
+}
+
+.tt-session-best {
+    border-left: 4px solid #ffa502;
+}
+
+.tt-rival-best {
+    border-left: 4px solid #ff4757;
+}
+
+.tt-theoretical-best {
+    border-left: 4px solid #9c88ff;
+}
+
+.tt-card-header {
+    padding: 10px 12px;
+    border-bottom: 1px solid #555;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.tt-card-header-content {
+    flex: 1;
+}
+
+.tt-card-title {
+    margin: 0 0 5px 0;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.tt-personal-best .tt-card-title {
+    color: #00ff41;
+}
+
+.tt-session-best .tt-card-title {
+    color: #ffa502;
+}
+
+.tt-rival-best .tt-card-title {
+    color: #ff4757;
+}
+
+.tt-theoretical-best .tt-card-title {
+    color: #9c88ff;
+}
+
+.tt-main-time {
+    font-size: 18px;
+    font-weight: bold;
+    color: #ffffff;
+    font-family: 'Courier New', monospace;
+    margin: 0;
+}
+
+.tt-wings {
+    font-size: 11px;
+    color: #ccc;
+    margin-top: 3px;
+    flex-shrink: 0;
+    margin-left: 10px;
+}
+
+.tt-card-body {
+    padding: 12px;
+}
+
+.tt-sectors {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-size: 13px;
+}
+
+.tt-sector {
+    color: #ccc;
+    font-family: 'Courier New', monospace;
+}
+
+.tt-details {
+    border-top: 1px solid #555;
+    padding-top: 8px;
+}
+
+.tt-assists {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.tt-assist {
+    font-size: 10px;
+    background: #333;
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: #ccc;
+}
+
+.tt-theoretical-note {
+    font-size: 11px;
+    color: #9c88ff;
+    text-align: center;
+    font-style: italic;
+    margin-bottom: 8px;
+}
+
+.tt-session-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    font-size: 11px;
+}
+
+.tt-info-item {
+    display: flex;
+    justify-content: space-between;
+}
+
+.tt-info-label {
+    color: #ccc;
+}
+
+.tt-info-value {
+    color: #ffffff;
+    font-weight: 600;
+}
+
+/* Scrollbar Styling */
+.tt-table-container::-webkit-scrollbar,
+.tt-comparison-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.tt-table-container::-webkit-scrollbar-track,
+.tt-comparison-container::-webkit-scrollbar-track {
+    background: #333;
+    border-radius: 3px;
+}
+
+.tt-table-container::-webkit-scrollbar-thumb,
+.tt-comparison-container::-webkit-scrollbar-thumb {
+    background: #666;
+    border-radius: 3px;
+}
+
+.tt-table-container::-webkit-scrollbar-thumb:hover,
+.tt-comparison-container::-webkit-scrollbar-thumb:hover {
+    background: #888;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .tt-container {
+        flex-direction: column;
+    }
+
+    .tt-left-panel {
+        border-right: none;
+        border-bottom: 2px solid #444;
+        flex: 1;
+    }
+
+    .tt-right-panel {
+        width: auto;
+        height: 300px;
+        flex-shrink: 0;
+    }
+
+    .tt-main-time {
+        font-size: 16px;
+    }
+
+    .tt-sectors {
+        flex-direction: column;
+        gap: 2px;
+    }
+}
