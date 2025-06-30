@@ -332,10 +332,12 @@ class TimeTrialDataPopulator {
         if (gearsElement) gearsElement.textContent = `Gears: ${this.getAssistText(data['gearbox-assist'])}`;
 
         const wingsElement = document.getElementById(`tt-${prefix}-wings`);
-        if (wingsElement && setup && setup['is-valid']) {
+        if (wingsElement && setup && setup['is-valid'] && data['is-valid']) {
             const frontWing = setup['front-wing'];
             const rearWing = setup['rear-wing'];
             wingsElement.textContent = `${frontWing} - ${rearWing}`;
+        } else {
+            wingsElement.textContent = '-';
         }
     }
 
