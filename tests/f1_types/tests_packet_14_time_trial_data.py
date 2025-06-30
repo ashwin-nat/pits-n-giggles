@@ -59,8 +59,8 @@ class TestPacketTimeTrialData(F1TypesTest):
             "sector-2-time-str": "00.000",
             "sector3-time-in-ms": 0,
             "sector-3-time-str": "00.000",
-            "traction-control": "MEDIUM",
-            "gearbox-assist": "Unknown",
+            "traction-control": True,
+            "gearbox-assist": False,
             "anti-lock-brakes": False,
             "equal-car-performance": True,
             "custom-setup": False,
@@ -77,8 +77,8 @@ class TestPacketTimeTrialData(F1TypesTest):
             "sector-2-time-str": "28.112",
             "sector3-time-in-ms": 41278,
             "sector-3-time-str": "41.278",
-            "traction-control": "OFF",
-            "gearbox-assist": "Unknown",
+            "traction-control": False,
+            "gearbox-assist": False,
             "anti-lock-brakes": False,
             "equal-car-performance": True,
             "custom-setup": True,
@@ -95,8 +95,8 @@ class TestPacketTimeTrialData(F1TypesTest):
             "sector-2-time-str": "28.310",
             "sector3-time-in-ms": 40350,
             "sector-3-time-str": "40.350",
-            "traction-control": "MEDIUM",
-            "gearbox-assist": "Unknown",
+            "traction-control": True,
+            "gearbox-assist": False,
             "anti-lock-brakes": True,
             "equal-car-performance": False,
             "custom-setup": False,
@@ -111,7 +111,7 @@ class TestPacketTimeTrialData(F1TypesTest):
     def test_f1_25_actual(self):
 
         raw_packet = b'\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-        expected_json = {"player-session-best-data-set": {"car-index": 0, "team": "Williams", "lap-time-ms": 0, "lap-time-str": "00.000", "sector-1-time-ms": 0, "sector-1-time-str": "00.000", "sector-2-time-in-ms": 0, "sector-2-time-str": "00.000", "sector3-time-in-ms": 0, "sector-3-time-str": "00.000", "traction-control": "OFF", "gearbox-assist": "Unknown", "anti-lock-brakes": False, "equal-car-performance": True, "custom-setup": False, "is-valid": True}, "personal-best-data-set": {"car-index": 0, "team": "Mercedes", "lap-time-ms": 0, "lap-time-str": "00.000", "sector-1-time-ms": 0, "sector-1-time-str": "00.000", "sector-2-time-in-ms": 0, "sector-2-time-str": "00.000", "sector3-time-in-ms": 0, "sector-3-time-str": "00.000", "traction-control": "OFF", "gearbox-assist": "Unknown", "anti-lock-brakes": False, "equal-car-performance": False, "custom-setup": False, "is-valid": False}, "rival-session-best-data-set": {"car-index": 0, "team": "Mercedes", "lap-time-ms": 0, "lap-time-str": "00.000", "sector-1-time-ms": 0, "sector-1-time-str": "00.000", "sector-2-time-in-ms": 0, "sector-2-time-str": "00.000", "sector3-time-in-ms": 0, "sector-3-time-str": "00.000", "traction-control": "OFF", "gearbox-assist": "Unknown", "anti-lock-brakes": False, "equal-car-performance": False, "custom-setup": False, "is-valid": False}}
+        expected_json = {"player-session-best-data-set": {"car-index": 0, "team": "Williams", "lap-time-ms": 0, "lap-time-str": "00.000", "sector-1-time-ms": 0, "sector-1-time-str": "00.000", "sector-2-time-in-ms": 0, "sector-2-time-str": "00.000", "sector3-time-in-ms": 0, "sector-3-time-str": "00.000", "traction-control": False, "gearbox-assist": False, "anti-lock-brakes": False, "equal-car-performance": True, "custom-setup": False, "is-valid": True}, "personal-best-data-set": {"car-index": 0, "team": "Mercedes", "lap-time-ms": 0, "lap-time-str": "00.000", "sector-1-time-ms": 0, "sector-1-time-str": "00.000", "sector-2-time-in-ms": 0, "sector-2-time-str": "00.000", "sector3-time-in-ms": 0, "sector-3-time-str": "00.000", "traction-control": False, "gearbox-assist": False, "anti-lock-brakes": False, "equal-car-performance": False, "custom-setup": False, "is-valid": False}, "rival-session-best-data-set": {"car-index": 0, "team": "Mercedes", "lap-time-ms": 0, "lap-time-str": "00.000", "sector-1-time-ms": 0, "sector-1-time-str": "00.000", "sector-2-time-in-ms": 0, "sector-2-time-str": "00.000", "sector3-time-in-ms": 0, "sector-3-time-str": "00.000", "traction-control": False, "gearbox-assist": False, "anti-lock-brakes": False, "equal-car-performance": False, "custom-setup": False, "is-valid": False}}
 
         parsed_packet = PacketTimeTrialData(self.m_header_25, raw_packet)
         parsed_json = parsed_packet.toJSON()
@@ -175,8 +175,8 @@ class TestPacketTimeTrialData(F1TypesTest):
             sector1_time_in_ms=s1_time_ms,
             sector2_time_in_ms=s2_time_ms,
             sector3_time_in_ms=s3_time_ms,
-            traction_control=random.choice(list(TractionControlAssistMode)),
-            gearbox_assist=random.choice(list(GearboxAssistMode)),
+            traction_control=F1TypesTest.getRandomBool(),
+            gearbox_assist=F1TypesTest.getRandomBool(),
             anti_lock_brakes=F1TypesTest.getRandomBool(),
             equal_car_performance=F1TypesTest.getRandomBool(),
             custom_setup=F1TypesTest.getRandomBool(),
