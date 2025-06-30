@@ -1,6 +1,7 @@
 class TimeTrialDataPopulator {
     constructor() {
         this.container = document.getElementById('tt-container');
+        this.lastData = null;
         if (!this.container) {
             throw new Error('Time Trial container not found');
         }
@@ -9,15 +10,191 @@ class TimeTrialDataPopulator {
     /**
      * Main method to populate the UI with time trial data
      * @param {Object} data - The time trial data object
+     * @param {number} packetFormat - The packet format version
      */
-    populate(data) {
+    populate(data, packetFormat) {
         try {
+            if (_.isEqual(data, this.lastData)) {
+                return;
+            }
+
             this.updateLapHistory(data['session-history']);
-            this.updateComparisonData(data['tt-data']);
+
+            // Only update comparison data if packet format is 2024 or later
+            if (packetFormat >= 2024) {
+                this.restoreComparisonCards();
+                this.updateComparisonData(data['tt-data']);
+            } else {
+                this.hideComparisonCardsForOlderFormat();
+            }
+
             this.updateTheoreticalBestAndSessionInfo(data['session-history']);
+            this.lastData = data;
         } catch (error) {
             console.error('Error populating time trial data:', error);
         }
+    }
+
+    /**
+     * Restore comparison cards to their original structure for F1 2024+ format
+     */
+    restoreComparisonCards() {
+        const cardConfigs = [
+            { class: 'tt-personal-best', prefix: 'pb', title: 'Personal Best' },
+            { class: 'tt-session-best', prefix: 'sb', title: 'Session Best' },
+            { class: 'tt-rival-best', prefix: 'rival', title: 'Rival Best' }
+        ];
+
+        cardConfigs.forEach(config => {
+            const card = document.querySelector(`.${config.class}`);
+            if (card) {
+                this.restoreCardStructure(card, config);
+            }
+        });
+    }
+
+    /**
+     * Restore individual card structure
+     */
+    restoreCardStructure(card, config) {
+        // Clear existing content
+        while (card.firstChild) {
+            card.removeChild(card.firstChild);
+        }
+
+        // Create header
+        const cardHeader = document.createElement('div');
+        cardHeader.className = 'tt-card-header';
+
+        const headerContent = document.createElement('div');
+        headerContent.className = 'tt-card-header-content';
+
+        const title = document.createElement('h6');
+        title.className = 'tt-card-title';
+        title.textContent = config.title;
+
+        const mainTime = document.createElement('div');
+        mainTime.className = 'tt-main-time';
+        mainTime.id = `tt-${config.prefix}-time`;
+        mainTime.textContent = '--:--:---';
+
+        headerContent.appendChild(title);
+        headerContent.appendChild(mainTime);
+
+        const wings = document.createElement('div');
+        wings.className = 'tt-wings';
+        wings.textContent = 'Wings: ';
+        const wingsSpan = document.createElement('span');
+        wingsSpan.id = `tt-${config.prefix}-wings`;
+        wingsSpan.textContent = '50-50';
+        wings.appendChild(wingsSpan);
+
+        cardHeader.appendChild(headerContent);
+        cardHeader.appendChild(wings);
+
+        // Create body
+        const cardBody = document.createElement('div');
+        cardBody.className = 'tt-card-body';
+
+        const sectors = document.createElement('div');
+        sectors.className = 'tt-sectors';
+
+        ['s1', 's2', 's3'].forEach(sector => {
+            const sectorDiv = document.createElement('div');
+            sectorDiv.className = 'tt-sector';
+            sectorDiv.textContent = `${sector.toUpperCase()}: `;
+            const sectorSpan = document.createElement('span');
+            sectorSpan.id = `tt-${config.prefix}-${sector}`;
+            sectorSpan.textContent = '--:---';
+            sectorDiv.appendChild(sectorSpan);
+            sectors.appendChild(sectorDiv);
+        });
+
+        const details = document.createElement('div');
+        details.className = 'tt-details';
+
+        const assists = document.createElement('div');
+        assists.className = 'tt-assists';
+
+        ['tc', 'abs', 'gears'].forEach(assist => {
+            const assistSpan = document.createElement('span');
+            assistSpan.className = 'tt-assist';
+            assistSpan.id = `tt-${config.prefix}-${assist}`;
+            assistSpan.textContent = assist === 'tc' ? 'TC: -' : assist === 'abs' ? 'ABS: -' : 'Gears: -';
+            assists.appendChild(assistSpan);
+        });
+
+        details.appendChild(assists);
+        cardBody.appendChild(sectors);
+        cardBody.appendChild(details);
+
+        card.appendChild(cardHeader);
+        card.appendChild(cardBody);
+    }
+
+    /**
+     * Hide comparison cards and show unsupported message for older formats
+     */
+    hideComparisonCardsForOlderFormat() {
+        const cards = ['tt-personal-best', 'tt-session-best', 'tt-rival-best'];
+        cards.forEach(cardClass => {
+            const card = document.querySelector(`.${cardClass}`);
+            if (card) {
+                this.showUnsupportedMessage(card);
+            }
+        });
+    }
+
+    /**
+     * Show unsupported message for a card
+     */
+    showUnsupportedMessage(card) {
+        // Clear existing content
+        while (card.firstChild) {
+            card.removeChild(card.firstChild);
+        }
+
+        // Get the original title from the card class
+        let title = 'Feature';
+        if (card.classList.contains('tt-personal-best')) title = 'Personal Best';
+        else if (card.classList.contains('tt-session-best')) title = 'Session Best';
+        else if (card.classList.contains('tt-rival-best')) title = 'Rival Best';
+
+        // Create header with unsupported message
+        const cardHeader = document.createElement('div');
+        cardHeader.className = 'tt-card-header';
+
+        const headerContent = document.createElement('div');
+        headerContent.className = 'tt-card-header-content';
+
+        const titleElement = document.createElement('h6');
+        titleElement.className = 'tt-card-title';
+        titleElement.textContent = title;
+
+        const mainTime = document.createElement('div');
+        mainTime.className = 'tt-main-time';
+        mainTime.style.fontSize = '14px';
+        mainTime.style.color = '#888';
+        mainTime.textContent = 'F1 2024+ Only';
+
+        headerContent.appendChild(titleElement);
+        headerContent.appendChild(mainTime);
+        cardHeader.appendChild(headerContent);
+
+        // Create body with message
+        const cardBody = document.createElement('div');
+        cardBody.className = 'tt-card-body';
+
+        const message = document.createElement('div');
+        message.style.textAlign = 'center';
+        message.style.color = '#888';
+        message.style.fontSize = '12px';
+        message.style.padding = '10px';
+        message.textContent = 'This feature requires F1 2024 or later packet format';
+
+        cardBody.appendChild(message);
+        card.appendChild(cardHeader);
+        card.appendChild(cardBody);
     }
 
     /**
