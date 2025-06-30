@@ -750,7 +750,9 @@ class DriversListRsp:
         session_best_idx = self.m_time_trial_packet.m_playerSessionBestDataSet.m_carIdx
         rival_idx = self.m_time_trial_packet.m_rivalSessionBestDataSet.m_carIdx
 
-        # Since game doesn't do this, possible bug
+        # The game always references personal best with index 2 and session best with index 0
+        # If the personal best is the same as the session best, then we can use the session best index
+        # since the personal best index may contain some unrelated car setup
         if self.m_time_trial_packet.m_playerSessionBestDataSet.m_lapTimeInMS == self.m_time_trial_packet.m_personalBestDataSet.m_lapTimeInMS:
             personal_best_idx = session_best_idx
 
