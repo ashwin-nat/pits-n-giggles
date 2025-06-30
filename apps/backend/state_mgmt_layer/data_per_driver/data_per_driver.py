@@ -61,7 +61,6 @@ class DataPerDriver:
         m_warning_penalty_history (WarningPenaltyHistory): History of warnings and penalties received by the driver.
         m_packet_copies (PacketCopies): Copies of various data packets related to the driver's performance.
         m_per_lap_snapshots (Dict[int, PerLapSnapshotEntry]): Snapshots of the driver's performance per lap
-        m_latest_snapshot_lap_num (int): The lap number of the latest snapshot
         m_position_history (List[int]): List of positions of the driver
     """
 
@@ -74,10 +73,8 @@ class DataPerDriver:
         "m_warning_penalty_history",
         "m_packet_copies",
         "m_per_lap_snapshots",
-        "m_latest_snapshot_lap_num",
         "m_position_history",
         "m_pending_events_mgr",
-        "m_pending_events_data",
     )
 
     def __repr__(self) -> str:
