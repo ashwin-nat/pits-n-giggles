@@ -754,8 +754,8 @@ class DriversListRsp:
 
         return {
             "personal-best-setup": personal_best_setup,
-            "session-best-setup": session_best_setup,
-            "rival-setup": rival_setup,
+            "player-session-best-setup": session_best_setup,
+            "rival-session-best-setup": rival_setup,
         }
 
     def _safeGetDriver(self, index: int) -> Optional[DataPerDriver]:
