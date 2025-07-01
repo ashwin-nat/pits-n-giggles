@@ -233,6 +233,7 @@ class RaceStatsModalPopulator {
     populateTyreStintHistoryTab(tabPane) {
 
         if (this.data["session-info"] == null) {
+            this.showDataNotAvailableMessage(tabPane, "Tyre stint history data not available");
             return;
         }
 
@@ -269,8 +270,7 @@ class RaceStatsModalPopulator {
         console.log("populateSpeedTrapRecordsTab", this.data["speed-trap-records"]);
 
         if (this.data["speed-trap-records"].length == 0) {
-            console.log("Speed Trap Records data not available");
-            // TODO: Add message
+            this.showDataNotAvailableMessage(tabPane, "Speed Trap Records data not available");
             return;
         }
 
@@ -556,5 +556,22 @@ class RaceStatsModalPopulator {
             return name.toUpperCase();
         }
         return name.substring(0, 3).toUpperCase();
+    }
+
+    showDataNotAvailableMessage(tabPane, text) {
+        // Create the alert container
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert d-flex justify-content-center align-items-center text-center mb-3';
+        alertDiv.setAttribute('role', 'alert');
+
+        // Create the message span
+        const message = document.createElement('span');
+        message.textContent = text;
+
+        // Combine icon and message
+        alertDiv.appendChild(message);
+
+        // Add to the tab pane
+        tabPane.appendChild(alertDiv);
     }
 }

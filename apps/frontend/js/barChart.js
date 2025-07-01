@@ -36,7 +36,7 @@ class BarChart {
         this.container.innerHTML = '';
 
         // Set default options
-        var config = {
+        const config = {
             title: options.title || '',
             bufferPercent: options.bufferPercent || 10,
             defaultColor: options.defaultColor || '#3498db',
@@ -44,7 +44,7 @@ class BarChart {
         };
 
         // Merge options into config
-        for (var key in options) {
+        for (const key in options) {
             if (options.hasOwnProperty(key)) {
                 config[key] = options[key];
             }
@@ -66,13 +66,13 @@ class BarChart {
         this.container.appendChild(this.canvas);
 
         // Prepare chart data
-        var chartData = this._prepareChartData(data, config);
+        const chartData = this._prepareChartData(data, config);
 
         // Calculate dynamic y-axis range
-        var yAxisConfig = this._calculateYAxisRange(data, config.bufferPercent);
+        const yAxisConfig = this._calculateYAxisRange(data, config.bufferPercent);
 
         // Create chart configuration
-        var chartConfig = {
+        const chartConfig = {
             type: 'bar',
             data: chartData,
             options: {
@@ -184,24 +184,24 @@ class BarChart {
             throw new Error('Chart must be rendered before updating data');
         }
 
-        var config = {
+        const config = {
             bufferPercent: options.bufferPercent || 10,
             defaultColor: options.defaultColor || '#3498db'
         };
 
         // Merge options into config
-        for (var key in options) {
+        for (const key in options) {
             if (options.hasOwnProperty(key)) {
                 config[key] = options[key];
             }
         }
 
         // Update chart data
-        var chartData = this._prepareChartData(newData, config);
+        const chartData = this._prepareChartData(newData, config);
         this.chart.data = chartData;
 
         // Update y-axis range
-        var yAxisConfig = this._calculateYAxisRange(newData, config.bufferPercent);
+        const yAxisConfig = this._calculateYAxisRange(newData, config.bufferPercent);
         this.chart.options.scales.y = this._mergeObjects(this.chart.options.scales.y, yAxisConfig);
 
         // Update chart
@@ -227,21 +227,21 @@ class BarChart {
      * @private
      */
     _prepareChartData(data, config) {
-        var labels = [];
-        var values = [];
-        var colors = [];
+        const labels = [];
+        const values = [];
+        const colors = [];
 
-        for (var i = 0; i < data.length; i++) {
+        for (let i = 0; i < data.length; i++) {
             labels.push(data[i].label);
             values.push(data[i].value);
             colors.push(data[i].color || config.defaultColor);
         }
 
-        var borderColors = [];
-        var hoverBackgroundColors = [];
-        var hoverBorderColors = [];
+        const borderColors = [];
+        const hoverBackgroundColors = [];
+        const hoverBorderColors = [];
 
-        for (var j = 0; j < colors.length; j++) {
+        for (let j = 0; j < colors.length; j++) {
             borderColors.push(this._darkenColor(colors[j], 0.2));
             hoverBackgroundColors.push(this._lightenColor(colors[j], 0.1));
             hoverBorderColors.push(this._darkenColor(colors[j], 0.3));
@@ -268,20 +268,20 @@ class BarChart {
      * @private
      */
     _calculateYAxisRange(data, bufferPercent) {
-        var values = [];
-        for (var i = 0; i < data.length; i++) {
+        const values = [];
+        for (let i = 0; i < data.length; i++) {
             values.push(data[i].value);
         }
 
-        var minValue = Math.min.apply(Math, values);
-        var maxValue = Math.max.apply(Math, values);
+        const minValue = Math.min.apply(Math, values);
+        const maxValue = Math.max.apply(Math, values);
 
-        var range = maxValue - minValue;
-        var buffer = range * (bufferPercent / 100);
+        const range = maxValue - minValue;
+        const buffer = range * (bufferPercent / 100);
 
         // Calculate suggested min and max with buffer
-        var suggestedMin = minValue - buffer;
-        var suggestedMax = maxValue + buffer;
+        const suggestedMin = minValue - buffer;
+        const suggestedMax = maxValue + buffer;
 
         // Ensure min doesn't go below 0 if all values are positive
         if (minValue >= 0 && suggestedMin < 0) {
@@ -296,20 +296,26 @@ class BarChart {
     }
 
     /**
-     * Darkens a color by a given factor
-     * @private
+     * Darkens a given color by a specified factor.
+     *
+     * This function uses the tinycolor2 library to parse any valid CSS color input
+     * (e.g., hex, rgb, rgba, hsl, named colors) and returns a darker version of that color.
+     *
+     * @param {string} color - The input color to darken. Can be any valid CSS color string.
+     * @param {number} factor - A value between 0 and 1 representing how much to darken the color.
+     *                          0 = no change, 1 = full black.
+     * @returns {string} A hex color string (e.g., "#335577") representing the darkened color.
      */
     _darkenColor(color, factor) {
-        var hex = color.replace('#', '');
-        var r = parseInt(hex.substr(0, 2), 16);
-        var g = parseInt(hex.substr(2, 2), 16);
-        var b = parseInt(hex.substr(4, 2), 16);
+        // Create a tinycolor object from the input color
+        const tc = tinycolor(color);
 
-        var newR = Math.round(r * (1 - factor));
-        var newG = Math.round(g * (1 - factor));
-        var newB = Math.round(b * (1 - factor));
+        // tinycolor.darken expects a percentage between 0–100,
+        // so we multiply our 0–1 factor by 100 to match its API.
+        const darkened = tc.darken(factor * 100);
 
-        return '#' + newR.toString(16).padStart(2, '0') + newG.toString(16).padStart(2, '0') + newB.toString(16).padStart(2, '0');
+        // Return the resulting color as a 6-digit hex string
+        return darkened.toHexString();
     }
 
     /**
