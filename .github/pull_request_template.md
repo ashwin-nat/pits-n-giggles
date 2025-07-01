@@ -32,7 +32,6 @@ Fixes #<issue_number> <!-- optional -->
 - Attach test command/output:
 
 ```
-
 <paste result here>
 ```
 
