@@ -595,8 +595,7 @@ class DataPerDriver:
         # and we can process this then.
         # doing this because some fields in the player obj may be none and handling this is a mess
         # several none checks will be required to handle players that have disabled telemetry. not worth it
-        if self.m_driver_info.telemetry_restrictions is None or \
-            self.m_driver_info.telemetry_restrictions != TelemetrySetting.PUBLIC:
+        if self.m_driver_info.telemetry_restrictions != TelemetrySetting.PUBLIC:
             return
 
         # This can happen if tyre sets packets arrives before lap data packet
@@ -627,16 +626,6 @@ class DataPerDriver:
                                             str(self))
                         del self.m_per_lap_snapshots[0]
 
-                # If we have joined the session late, need to create a history entry
-                # if not self.m_tyre_info.m_tyre_set_history_manager.length and self.m_tyre_info.tyre_wear:
-                #     initial_tyre_wear = deepcopy(self.m_tyre_info.tyre_wear)
-                #     initial_tyre_wear.desc = "initial tyre wear"
-                #     self.m_tyre_info.m_tyre_set_history_manager.add(TyreSetHistoryEntry(
-                #         start_lap=self.m_lap_info.m_current_lap,
-                #         index=fitted_index,
-                #         tyre_set_key=fitted_tyre_set_key,
-                #         initial_tyre_wear=initial_tyre_wear
-                #     ))
             elif fitted_index != self.m_tyre_info.m_tyre_set_history_manager.getLastEntry().m_fitted_index:
                 # Tyre set change detected
                 if F1Utils.isFinishLineAfterPitGarage(track):
@@ -650,6 +639,7 @@ class DataPerDriver:
                         self.m_pending_events_mgr.register(
                             events={DriverPendingEvents.CAR_DMG_PKT_EVENT, DriverPendingEvents.LAP_CHANGE_EVENT},
                             initial_tyre_wear=self.m_pending_events_mgr.data)
+                        self.m_pending_events_mgr.data = None
                 else:
                     initial_tyre_wear = TyreWearPerLap(
                         fl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
@@ -702,7 +692,6 @@ class DataPerDriver:
             # note down curr tyre wear for delayed tyre set change handling
             # take a deepcopy since this obj is volatile
             self.m_pending_events_mgr.data = deepcopy(self.m_tyre_info.tyre_wear)
-            self.m_pending_events_mgr.onEvent(DriverPendingEvents.PITTING_EVENT)
 
         self.m_lap_info.m_is_pitting = lap_data.m_pitStatus in \
                 [LapData.PitStatus.PITTING, LapData.PitStatus.IN_PIT_AREA]

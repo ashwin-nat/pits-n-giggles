@@ -83,7 +83,6 @@ class PendingEventsManager:
         """
         self._pending_events = set(events)
         self._callback_kwargs = kwargs
-        self._opt_data = None # Clear the optional data when events are registered
 
     def onEvent(self, event: DriverPendingEvents) -> None:
         """
