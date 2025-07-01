@@ -78,12 +78,7 @@ pylint --rcfile scripts/.pylintrc lib apps
 Explain your test updates here:
 
 ```
-<details>
-<summary>Click to expand</summary>
-
 Explain what was added/updated, or write "N/A" if not applicable.
-
-</details>
 ```
 
 ---
