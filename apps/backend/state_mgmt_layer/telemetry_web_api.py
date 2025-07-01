@@ -192,15 +192,16 @@ class OverallRaceStatsRsp:
             self.m_rsp["overtakes"] = self.m_rsp["overtakes"] | overtake_records
 
         self.m_rsp["custom-markers"] = _session_state_ref.m_custom_markers_history.getJSONList()
+        drivers_list_rsp = DriversListRsp(
+                                is_spectator_mode=True,
+                                is_tt_mode=_session_state_ref.m_session_info.m_session_type.isTimeTrialTypeSession())
         if _session_state_ref.isPositionHistorySupported():
-            drivers_list_rsp = DriversListRsp(
-                                    is_spectator_mode=True,
-                                    is_tt_mode=str(_session_state_ref.m_session_info.m_session_type) == "Time Trial")
             self.m_rsp["position-history"] = drivers_list_rsp.getPositionHistoryJSON()
             if _session_state_ref.m_session_info.m_packet_format == 2023:
                 self.m_rsp["tyre-stint-history"] = drivers_list_rsp.getTyreStintHistoryJSON()
             else:
                 self.m_rsp["tyre-stint-history-v2"] = drivers_list_rsp.getTyreStintHistoryJSONv2()
+        self.m_rsp["speed-trap-records"] = drivers_list_rsp.getSpeedTrapRecordsJSON()
 
     def toJSON(self) -> Dict[str, Any]:
         """Dump this object into JSON
@@ -599,6 +600,24 @@ class DriversListRsp:
         return [data_per_driver.getPositionHistoryJSON() \
                 for data_per_driver in _session_state_ref.m_driver_data \
                     if data_per_driver and data_per_driver.is_valid]
+
+    def getSpeedTrapRecordsJSON(self) -> List[Dict[str, Any]]:
+        """Get speed trap records.
+
+        Returns:
+            List[Dict[str, Any]]: The speed trap records JSON
+        """
+
+        if not _session_state_ref.m_session_info or _session_state_ref.m_session_info.m_packet_format < 2024:
+            return []
+        if not self.m_json_rsp:
+            return []
+
+        # Use original list since this request comes only once in a bluemoon
+        ret = [data_per_driver.getSpeedTrapRecordJSON() \
+                for data_per_driver in _session_state_ref.m_driver_data \
+                if data_per_driver and data_per_driver.is_valid]
+        return sorted(ret, key=lambda x: x["speed-trap-record-kmph"], reverse=True)
 
     def getTyreStintHistoryJSON(self) -> List[Dict[str, Any]]:
         """Get tyre stint history.

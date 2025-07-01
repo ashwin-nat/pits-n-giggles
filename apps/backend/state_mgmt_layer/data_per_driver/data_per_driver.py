@@ -863,6 +863,20 @@ class DataPerDriver:
             ],
         }
 
+    def getSpeedTrapRecordJSON(self) -> Dict[str, Any]:
+        """Get the speed trap record JSON.
+
+        Returns:
+            Dict[str, Any]: Speed trap record JSON
+        """
+
+        return {
+            "name": self.m_driver_info.name,
+            "team": self.m_driver_info.team,
+            "driver-number": self.m_driver_info.driver_number,
+            "speed-trap-record-kmph": self.m_lap_info.m_speed_trap_record,
+        }
+
     def getTyreStintHistoryJSON(self) -> Dict[str, Any]:
         """Get the tyre stint history JSON.
 

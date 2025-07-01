@@ -647,11 +647,10 @@ def handleRaceInfoRequest() -> Tuple[Dict[str, Any], HTTPStatus]:
         ret = {
             "session-info" : g_json_data["session-info"],
             "records" : g_json_data.get("records", None),
-            # "classification-data" : g_json_data.get("classification-data", None), # TODO - remove
             "overtakes" : g_json_data.get("overtakes", None),
             "custom-markers" : g_json_data.get("custom-markers", []),
             "position-history" : g_json_data.get("position-history", []),
-            # "tyre-stint-history" : getTyreStintHistoryJSON(),
+            "speed-trap-records" : g_json_data.get("speed-trap-records", []),
         }
 
         if new_style := g_json_data.get("tyre-stint-history-v2"):

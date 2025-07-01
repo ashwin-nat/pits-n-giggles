@@ -22,12 +22,14 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tyreRecords.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tyreDeltaToast.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/timeTrial.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/barChart.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tsparticles/confetti@3.0.3/tsparticles.confetti.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tinycolor/1.4.2/tinycolor.min.js"></script>
   </head>
   <body>
     <div class="dashboard-container">
@@ -558,6 +560,7 @@
     <script src="{{ url_for('static', filename='js/telemetryRenderer.js') }}"></script>
     <script src="{{ url_for('static', filename='js/frontendUpdate.js') }}"></script>
     <script src="{{ url_for('static', filename='js/tyreDeltaToast.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/barChart.js') }}"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script src="{{ url_for('static', filename='js/updater.js') }}"></script>
     <script>
