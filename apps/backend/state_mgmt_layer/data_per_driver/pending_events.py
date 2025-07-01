@@ -33,7 +33,15 @@ class DriverPendingEvents(Enum):
     """
     LAP_CHANGE_EVENT = auto()
     CAR_DMG_PKT_EVENT = auto()
-    PITTING_EVENT = auto()
+
+    def __repr__(self) -> str:
+        """
+        Returns the name of the enum member as a string.
+
+        Returns:
+            str: Name of the enum member.
+        """
+        return self.name
 
     def __str__(self) -> str:
         """
@@ -75,6 +83,7 @@ class PendingEventsManager:
         """
         self._pending_events = set(events)
         self._callback_kwargs = kwargs
+        self._opt_data = None # Clear the optional data when events are registered
 
     def onEvent(self, event: DriverPendingEvents) -> None:
         """
@@ -89,7 +98,6 @@ class PendingEventsManager:
             return
 
         self._pending_events.remove(event)
-
         if not self._pending_events:
             self._callback(**self._callback_kwargs)
             self._opt_data = None

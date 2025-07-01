@@ -539,7 +539,7 @@ class DataPerDriver:
         # Now clear the per lap max stuff
         self.m_lap_info.m_top_speed_kmph_this_lap = None
         self.m_driver_info.m_curr_lap_max_sc_status = None
-        png_logger.debug("Driver %s - lap %d added to per_lap_snapshots", str(self), old_lap_number)
+        # png_logger.debug("Driver %s - lap %d added to per_lap_snapshots", str(self), old_lap_number)
 
     def shouldCaptureZerothLapSnapshot(self) -> bool:
         """
@@ -648,7 +648,7 @@ class DataPerDriver:
                         png_logger.debug("Driver %s - lap %d tyre set change detected. Registering for delayed handling",
                                         str(self), self.m_lap_info.m_current_lap)
                         self.m_pending_events_mgr.register(
-                            events={DriverPendingEvents.CAR_DMG_PKT_EVENT, DriverPendingEvents.LAP_CHANGE_EVENT, DriverPendingEvents.PITTING_EVENT},
+                            events={DriverPendingEvents.CAR_DMG_PKT_EVENT, DriverPendingEvents.LAP_CHANGE_EVENT},
                             initial_tyre_wear=self.m_pending_events_mgr.data)
                 else:
                     initial_tyre_wear = TyreWearPerLap(
