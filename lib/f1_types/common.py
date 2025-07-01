@@ -271,6 +271,15 @@ class SessionType23(Enum):
             SessionType23.RACE_3,
         }
 
+    def isTimeTrialTypeSession(self) -> bool:
+        """
+        Check if the session type is a time trial session.
+
+        Returns:
+            bool: True if the session type is a time trial session, False otherwise.
+        """
+        return self == SessionType23.TIME_TRIAL
+
 class SessionType24(Enum):
     UNKNOWN = 0
     PRACTICE_1 = 1
@@ -362,6 +371,15 @@ class SessionType24(Enum):
             SessionType24.RACE_2,
             SessionType24.RACE_3,
         }
+
+    def isTimeTrialTypeSession(self) -> bool:
+        """
+        Check if the session type is a time trial session.
+
+        Returns:
+            bool: True if the session type is a time trial session, False otherwise.
+        """
+        return self == SessionType24.TIME_TRIAL
 
 class SessionLength(Enum):
     """

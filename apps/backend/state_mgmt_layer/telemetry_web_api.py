@@ -192,10 +192,10 @@ class OverallRaceStatsRsp:
             self.m_rsp["overtakes"] = self.m_rsp["overtakes"] | overtake_records
 
         self.m_rsp["custom-markers"] = _session_state_ref.m_custom_markers_history.getJSONList()
+        drivers_list_rsp = DriversListRsp(
+                                is_spectator_mode=True,
+                                is_tt_mode=_session_state_ref.m_session_info.m_session_type.isTimeTrialTypeSession())
         if _session_state_ref.isPositionHistorySupported():
-            drivers_list_rsp = DriversListRsp(
-                                    is_spectator_mode=True,
-                                    is_tt_mode=str(_session_state_ref.m_session_info.m_session_type) == "Time Trial")
             self.m_rsp["position-history"] = drivers_list_rsp.getPositionHistoryJSON()
             if _session_state_ref.m_session_info.m_packet_format == 2023:
                 self.m_rsp["tyre-stint-history"] = drivers_list_rsp.getTyreStintHistoryJSON()
