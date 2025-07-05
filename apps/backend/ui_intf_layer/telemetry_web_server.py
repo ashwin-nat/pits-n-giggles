@@ -461,14 +461,3 @@ def _is_port_available(port: int) -> bool:
             if e.errno == errno.EADDRINUSE:
                 return False
             raise  # unexpected error
-
-def _is_allowed_origin(origin: str) -> bool:
-    # Allow localhost for dev
-    if origin and origin.startswith("https://localhost"):
-        return True
-
-    # Allow any origin under your production domain
-    if origin and origin.endswith(".pitsngiggles.com"):
-        return True
-
-    return False

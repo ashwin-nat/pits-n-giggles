@@ -26,7 +26,7 @@ import os
 import shutil
 from configparser import ConfigParser
 from logging import Logger
-from typing import Any, Optional
+from typing import Any, Optional, Dict, Set, Tuple
 
 from pydantic import ValidationError
 
@@ -49,46 +49,12 @@ def load_config_from_ini(path: str, logger: Optional[Logger] = None) -> PngSetti
     Returns:
         PngSettings: Fully validated config with missing or invalid parts repaired.
     """
-    cp = ConfigParser()
-    raw: dict[str, dict[str, str]] = {}
-
     if os.path.exists(path):
-        # Parse INI file into a nested dict: {section -> {key: value, ...}}
-        cp.read(path)
-        raw = {section: dict(cp.items(section)) for section in cp.sections()}
-
-        updated = False  # Tracks whether config needs to be rewritten
-        restored_invalid_sections = set()  # Tracks which sections failed validation
-        validated_fields = {}  # Stores validated sections to pass to PngSettings
-
-        # Go through each section defined in PngSettings
-        for field_name, model_field in PngSettings.model_fields.items():
-            section_model_cls = model_field.annotation
-            section_data = raw.get(field_name, {})
-
-            try:
-                # Validate section using its submodel (only this section)
-                section_model = section_model_cls.model_validate(section_data)
-            except ValidationError as e:
-                # Section is present but invalid → fallback to default
-                section_model = model_field.default_factory()
-                restored_invalid_sections.add(field_name)
-                updated = True
-                if logger:
-                    logger.warning("Invalid config in section [%s], using defaults.", field_name)
-                    logger.debug("%s", e)
-
-            validated_fields[field_name] = section_model
-
-        # Create final config model from per-section validation
-        model = PngSettings(**validated_fields)
-
-        # Save updated config if we added defaults or repaired anything
-        if updated or raw != _stringify_dict(model.model_dump()):
-            if restored_invalid_sections:
-                _backup_invalid_file(path, logger)   # Backup only if something was invalid
-            save_config_to_ini(model, path)
-
+        raw = _load_raw_ini(path)
+        validated, restored, updated = _validate_sections(raw, logger)
+        model = PngSettings(**validated)
+        _maybe_update_config(raw, model, path, logger, updated, restored)
+        _log_invalid_keys(raw, model, logger)
         return model
 
     # No config file found → create one with defaults
@@ -124,7 +90,7 @@ def _stringify_dict(d: Any) -> Any:
         return {k: _stringify_dict(v) for k, v in d.items()}
     return "" if d is None else str(d)
 
-def _backup_invalid_file(path: str, logger: Optional[Any]) -> None:
+def _backup_invalid_file(path: str, logger: Optional[Logger]) -> None:
     """
     Back up the invalid configuration file.
 
@@ -162,3 +128,59 @@ def _log_invalid_keys(raw: dict[str, dict[str, str]], defaults: PngSettings, log
             else:
                 default_value = default_dict[section][key]
                 logger.debug("Fallback: [%s].[%s] = %r -> default = %r", section, key, value, default_value)
+
+def _load_raw_ini(path: str) -> Dict[str, Dict[str, str]]:
+    """Parse INI file into a nested dictionary."""
+    cp = ConfigParser()
+    cp.read(path)
+    return {section: dict(cp.items(section)) for section in cp.sections()}
+
+def _validate_sections(
+    raw: Dict[str, Dict[str, str]],
+    logger: Optional[Logger],
+) -> Tuple[Dict[str, Any], Set[str], bool]:
+    """
+    Validate each section against its corresponding pydantic submodel.
+
+    Returns:
+        - Dict[str, Any]: validated section models
+        - Set[str]: names of sections that were invalid and restored to defaults
+        - bool: whether the config was updated due to invalid or missing fields
+    """
+    validated: Dict[str, Any] = {}
+    restored: Set[str] = set()
+    updated: bool = False
+
+    for field_name, model_field in PngSettings.model_fields.items():
+        section_model_cls = model_field.annotation
+        section_data = raw.get(field_name, {})
+
+        try:
+            section_model = section_model_cls.model_validate(section_data)
+        except ValidationError as e:
+            section_model = model_field.default_factory()
+            restored.add(field_name)
+            updated = True
+            if logger:
+                logger.warning("Invalid config in section [%s], using defaults.", field_name)
+                logger.debug("%s", e)
+
+        validated[field_name] = section_model
+
+    return validated, restored, updated
+
+def _maybe_update_config(
+    raw: Dict[str, Dict[str, str]],
+    model: PngSettings,
+    path: str,
+    logger: Optional[Logger],
+    updated: bool,
+    restored_sections: Set[str],
+) -> None:
+    """
+    Rewrite the config file if changes were made or defaults were applied.
+    """
+    if updated or raw != _stringify_dict(model.model_dump()):
+        if restored_sections:
+            _backup_invalid_file(path, logger)
+        save_config_to_ini(model, path)

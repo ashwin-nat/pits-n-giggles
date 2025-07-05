@@ -30,7 +30,8 @@ from pydantic_core import core_schema
 
 class FilePathStr(str):
     """
-    A string type that represents a path to an existing file.
+    A string type that represents a path to an existing file. It does NOT validate if the file exists.
+    That is the responsibility of the user.
 
     This type is used in Pydantic models to ensure that a given string
     points to a file that exists on disk. Useful for configuration paths
@@ -51,7 +52,7 @@ class FilePathStr(str):
     @classmethod
     def validate(cls, value: Any) -> str:
         """
-        Validate that the input is a string and that it points to an existing file.
+        Validate that the input is a string. Does NOT check if the file exists.
 
         Args:
             value (Any): The value to validate.

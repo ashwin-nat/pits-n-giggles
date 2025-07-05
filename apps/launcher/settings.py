@@ -107,10 +107,11 @@ class SettingsWindow:
             self.notebook.add(tab, text=section_name_formatted)
             self.entry_vars.setdefault(section_name, {})
 
-            # Configure grid columns - make sure we have 3 columns
+            # Configure grid columns - make sure we have 4 columns (including 2 for buttons)
             tab.columnconfigure(0, weight=0)  # Labels column
             tab.columnconfigure(1, weight=1)  # Entry fields column
-            tab.columnconfigure(2, weight=0)  # Buttons column
+            tab.columnconfigure(2, weight=0)  # Button column (e.g., Save)
+            tab.columnconfigure(3, weight=0)  # Button column (e.g., Clear)
 
             model_fields = type(section_model).model_fields
             for i, (field_name, field) in enumerate(model_fields.items()):
@@ -119,7 +120,6 @@ class SettingsWindow:
                 label.grid(row=i, column=0, sticky="w", padx=5, pady=5)
 
                 value = getattr(section_model, field_name)
-
                 annotation = field.annotation
                 origin = get_origin(annotation)
                 args = get_args(annotation)
@@ -133,7 +133,6 @@ class SettingsWindow:
                     var = BooleanVar(value=value)
                     control = ttk.Checkbutton(tab, variable=var)
                     control.grid(row=i, column=1, sticky="w", padx=5, pady=5)
-                    self.entry_vars[section_name][field_name] = var
 
                 elif is_file_path:
                     var = StringVar(value=str(value))
@@ -158,12 +157,13 @@ class SettingsWindow:
                     )
                     clear_btn.grid(row=i, column=3, sticky="w", padx=(0, 5), pady=5)
 
-                    self.entry_vars[section_name][field_name] = var
                 else:
                     var = StringVar(value=str(value))
                     control = ttk.Entry(tab, textvariable=var, width=30)
                     control.grid(row=i, column=1, sticky="ew", padx=5, pady=5)
-                    self.entry_vars[section_name][field_name] = var
+
+                # ⬇️ Hoisted line (common to all branches)
+                self.entry_vars[section_name][field_name] = var
 
     def create_buttons(self) -> None:
         """
@@ -259,6 +259,5 @@ class SettingsWindow:
         Args:
             var (StringVar): The variable to update with the selected file path.
         """
-        file_path = filedialog.askopenfilename()
-        if file_path:
+        if file_path := filedialog.askopenfilename():
             var.set(file_path)
