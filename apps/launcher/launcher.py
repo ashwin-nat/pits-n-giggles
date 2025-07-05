@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import atexit
 import os
 import shutil
 import sys
@@ -31,17 +32,27 @@ import tkinter as tk
 from apps.launcher.png_launcher import PngLauncher
 from lib.version import get_version
 
+# -------------------------------------- GLOBALS -----------------------------------------------------------------------
+
+_temp_icon_file = None
+
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def resource_path(relative_path):
+    """
+    Get absolute path to resource, works for dev and for PyInstaller.
+    """
     if getattr(sys, 'frozen', False):
         return os.path.join(sys._MEIPASS, relative_path)
-    return os.path.join(os.path.abspath("."), relative_path)
+    # Base path is project root (2 levels up from this file)
+    base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    return os.path.join(base_path, relative_path)
 
 def load_icon_safely(icon_relative_path):
     """
     Workaround for tkinter.iconbitmap() failing to load .ico from _MEIPASS.
     """
+    global _temp_icon_file
     icon_path = resource_path(icon_relative_path)
 
     if getattr(sys, 'frozen', False):
@@ -49,8 +60,23 @@ def load_icon_safely(icon_relative_path):
         tmp_fd, tmp_icon_path = tempfile.mkstemp(suffix=".ico")
         os.close(tmp_fd)
         shutil.copyfile(icon_path, tmp_icon_path)
+        _temp_icon_file = tmp_icon_path
         return tmp_icon_path
     return icon_path
+
+def _cleanup_temp_icon():
+    """
+    Cleanup temp icon file.
+    """
+    global _temp_icon_file
+    if _temp_icon_file and os.path.exists(_temp_icon_file):
+        try:
+            os.remove(_temp_icon_file)
+        except Exception:
+            pass
+        _temp_icon_file = None
+
+atexit.register(_cleanup_temp_icon)
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
