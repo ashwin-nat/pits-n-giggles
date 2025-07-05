@@ -72,7 +72,7 @@ def _cleanup_temp_icon():
     if _temp_icon_file and os.path.exists(_temp_icon_file):
         try:
             os.remove(_temp_icon_file)
-        except Exception:
+        except Exception: # pylint: disable=broad-except
             pass
         _temp_icon_file = None
 

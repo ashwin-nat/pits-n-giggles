@@ -174,7 +174,7 @@ class PngAppMgrBase(ABC):
         if self._post_start_hook:
             try:
                 self._post_start_hook()
-            except Exception as e:
+            except Exception as e: # pylint: disable=broad-exception-caught
                 self.console_app.log(f"{self.display_name}: Error in post-start hook: {e}")
 
     def stop(self):

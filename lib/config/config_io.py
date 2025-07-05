@@ -26,7 +26,7 @@ import os
 import shutil
 from configparser import ConfigParser
 from logging import Logger
-from typing import Any, Optional, Callable
+from typing import Any, Optional
 
 from pydantic import ValidationError
 

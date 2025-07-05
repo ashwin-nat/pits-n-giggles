@@ -22,11 +22,9 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import os
+from typing import Any
 
 from pydantic_core import core_schema
-
-from typing import Any
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -40,14 +38,10 @@ class FilePathStr(str):
     """
 
     @classmethod
-    def __get_pydantic_core_schema__(cls, source_type, handler) -> core_schema.CoreSchema:
+    def __get_pydantic_core_schema__(cls, __source_type, __handler) -> core_schema.CoreSchema:
         """
         Hook used by Pydantic v2 to define custom validation logic
         for this type.
-
-        Args:
-            source_type (Any): The original source type (unused).
-            handler (GetCoreSchemaHandler): Schema handler (unused here).
 
         Returns:
             CoreSchema: A schema that uses `validate` to check values.
