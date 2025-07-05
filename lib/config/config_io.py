@@ -26,7 +26,7 @@ import os
 import shutil
 from configparser import ConfigParser
 from logging import Logger
-from typing import Any, Optional
+from typing import Any, Optional, Callable
 
 from pydantic import ValidationError
 
@@ -34,7 +34,7 @@ from .config_schema import PngSettings
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def load_config_from_ini(path: str, logger: Optional[Any] = None) -> PngSettings:
+def load_config_from_ini(path: str, logger: Optional[Logger] = None) -> PngSettings:
     """
     Load and validate configuration from INI file.
 
@@ -63,8 +63,11 @@ def load_config_from_ini(path: str, logger: Optional[Any] = None) -> PngSettings
 
         # Go through each section defined in PngSettings
         for field_name, model_field in PngSettings.model_fields.items():
-            section_data = raw.get(field_name, {})  # Load section from INI (may be missing)
-            section_model_cls = model_field.annotation  # The Pydantic model for that section
+            section_model_cls = model_field.annotation
+            section_data = raw.get(field_name, {})
+
+            # Recursively normalize empty strings ("") to None
+            section_data = _for_each_leaf(section_data, lambda leaf_val: None if leaf_val == "" else leaf_val)
 
             try:
                 # Validate section using its submodel (only this section)
@@ -80,19 +83,13 @@ def load_config_from_ini(path: str, logger: Optional[Any] = None) -> PngSettings
 
             validated_fields[field_name] = section_model
 
-        # Add any missing sections (new fields not in user's INI file)
-        for field_name, model_field in PngSettings.model_fields.items():
-            if field_name not in validated_fields:
-                validated_fields[field_name] = model_field.default_factory()
-                updated = True
-
         # Create final config model from per-section validation
         model = PngSettings(**validated_fields)
 
         # Save updated config if we added defaults or repaired anything
         if updated or raw != _stringify_dict(model.model_dump()):
             if restored_invalid_sections:
-                _backup_invalid_file(path, logger)  # Backup only if something was invalid
+                _backup_invalid_file(path, logger)   # Backup only if something was invalid
             save_config_to_ini(model, path)
 
         return model
@@ -130,6 +127,23 @@ def _stringify_dict(d: Any) -> Any:
         return {k: _stringify_dict(v) for k, v in d.items()}
     return "" if d is None else str(d)
 
+def _for_each_leaf(dict_data: Any, transform: Callable[[Any], Any]) -> Any:
+    """
+    Recursively apply a transformation function to all leaf values in a nested structure.
+
+    Args:
+        dict_data (Any): Input structure (dict, list, set, tuple, or primitive).
+        transform (Callable[[Any], Any]): Function to apply to each leaf value.
+
+    Returns:
+        Any: Transformed structure with the same shape.
+    """
+    if isinstance(dict_data, dict):
+        return {k: _for_each_leaf(v, transform) for k, v in dict_data.items()}
+    elif isinstance(dict_data, (list, tuple, set)):
+        return type(dict_data)(_for_each_leaf(v, transform) for v in dict_data)
+    else:
+        return transform(dict_data)
 
 def _backup_invalid_file(path: str, logger: Optional[Any]) -> None:
     """

@@ -33,6 +33,7 @@ from .tests_logging_settings import TestLoggingSettings
 from .tests_network_settings import TestNetworkSettings
 from .tests_png_settings import TestPngSettings
 from .tests_privacy_settings import TestPrivacySettings
+from .tests_https_settings import TestHttpsSettings
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -49,4 +50,5 @@ __all__ = [
     "TestNetworkSettings",
     "TestPngSettings",
     "TestPrivacySettings",
+    "TestHttpsSettings",
 ]

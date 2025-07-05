@@ -51,7 +51,7 @@ from tests_config import (TestCaptureSettings, TestConfigIO,
                           TestForwardingSettings, TestLoadConfigFromIni,
                           TestLoggingSettings, TestMissingSectionsAndKeys,
                           TestNetworkSettings, TestPngSettings,
-                          TestPrivacySettings, TestSampleSettingsFixture)
+                          TestPrivacySettings, TestSampleSettingsFixture, TestHttpsSettings)
 # from tests_custom_markers import (TestCustomMarkerEntry,
 #                                   TestCustomMarkersHistory)
 # from tests_data_per_driver import (TestTyreSetHistoryEntry,
