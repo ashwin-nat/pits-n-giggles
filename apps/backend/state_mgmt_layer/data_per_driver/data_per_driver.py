@@ -539,7 +539,7 @@ class DataPerDriver:
         # Now clear the per lap max stuff
         self.m_lap_info.m_top_speed_kmph_this_lap = None
         self.m_driver_info.m_curr_lap_max_sc_status = None
-        # png_logger.debug("Driver %s - lap %d added to per_lap_snapshots", str(self), old_lap_number)
+        png_logger.debug("Driver %s - lap %d added to per_lap_snapshots", str(self), old_lap_number)
 
     def shouldCaptureZerothLapSnapshot(self) -> bool:
         """
