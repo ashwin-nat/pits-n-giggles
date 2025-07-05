@@ -25,7 +25,7 @@
 import re
 from typing import ClassVar, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, FilePath, field_validator
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -125,6 +125,19 @@ class ForwardingSettings(BaseModel):
         host, port_str = value.strip().split(":")
         return host, int(port_str)
 
+class HttpsSettings(BaseModel):
+    enabled: bool = Field(False, description="Enable HTTPS support (disable if you don't know what you're doing)")
+    key_file_path: Optional[FilePath] = Field(None, description="Path to SSL private key file")
+    cert_file_path: Optional[FilePath] = Field(None, description="Path to SSL certificate file")
+
+    def model_post_init(self, __context) -> None:
+        """Post-initialization validation to ensure SSL files are provided when HTTPS is enabled."""
+        if self.enabled:
+            if self.key_file_path is None:
+                raise ValueError("Key file is required when HTTPS is enabled")
+            if self.cert_file_path is None:
+                raise ValueError("Certificate file is required when HTTPS is enabled")
+
 class PngSettings(BaseModel):
     Network: NetworkSettings = Field(default_factory=NetworkSettings)
     Capture: CaptureSettings = Field(default_factory=CaptureSettings)
@@ -133,6 +146,7 @@ class PngSettings(BaseModel):
     Privacy: PrivacySettings = Field(default_factory=PrivacySettings)
     Forwarding: ForwardingSettings = Field(default_factory=ForwardingSettings)
     StreamOverlay: StreamOverlaySettings = Field(default_factory=StreamOverlaySettings)
+    HTTPS: HttpsSettings = Field(default_factory=HttpsSettings)
 
     class Config:
         str_strip_whitespace = True

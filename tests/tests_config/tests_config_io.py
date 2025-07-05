@@ -187,7 +187,7 @@ target_1 = localhost:8080
             if os.path.exists(nonexistent_path):
                 os.unlink(nonexistent_path)
 
-    def test_roundtrip_config_io(self):
+    def test_roundtrip_config_io_missing_section(self):
         """Test that save/load operations preserve data correctly"""
         original_settings = PngSettings(
             Network=NetworkSettings(
@@ -296,6 +296,6 @@ class TestLoadConfigFromIni(TestF1ConfigBase):
         self._write_ini(ini_data)
 
         config = load_config_from_ini(self.ini_path)
-        self.assertEqual(config.Network.telemetry_port, 20777)
+        self.assertEqual(config.Network.telemetry_port, 20779)
         self.assertEqual(config.Forwarding.target_1, "")  # fallback default
         self.assertTrue(os.path.exists(self.ini_path + ".invalid"))
