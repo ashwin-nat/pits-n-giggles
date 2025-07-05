@@ -106,7 +106,7 @@ def main(telemetry_port, http_port):
 
     # Start the app
     print("\nStarting app in replay server mode...")
-    app_cmd = ["poetry", "run", "python", "-m", "apps.backend.pits_n_giggles",
+    app_cmd = ["poetry", "run", "python", "-m", "apps.backend",
                "--replay-server", "--debug"]
 
     if is_windows:
