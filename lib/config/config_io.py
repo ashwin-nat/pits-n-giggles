@@ -34,47 +34,67 @@ from .config_schema import PngSettings
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def load_config_from_ini(path: str, logger: Optional[Any] = None) -> PngSettings:
+def load_config_from_ini(path: str, logger: Optional[Logger] = None) -> PngSettings:
     """
     Load and validate configuration from INI file.
 
-    Falls back to defaults and repairs config if invalid.
+    - If the config file is missing: write full defaults to disk.
+    - If any section is invalid: only that section is replaced with defaults.
+    - If new fields/sections were introduced: add them and update the file.
 
     Args:
-        path (str): Path to INI file.
-        logger (Optional[Any]): Optional logger for debug/info logs.
+        path (str): Path to the INI file.
+        logger (Optional[Any]): Logger for debug/info logs.
 
     Returns:
-        PngSettings: Parsed and validated configuration.
+        PngSettings: Fully validated config with missing or invalid parts repaired.
     """
     cp = ConfigParser()
     raw: dict[str, dict[str, str]] = {}
 
     if os.path.exists(path):
+        # Parse INI file into a nested dict: {section -> {key: value, ...}}
         cp.read(path)
         raw = {section: dict(cp.items(section)) for section in cp.sections()}
 
-        try:
-            model = PngSettings.model_validate(raw)
-            if raw != _stringify_dict(model.model_dump()):
-                save_config_to_ini(model, path)
-            return model
+        updated = False  # Tracks whether config needs to be rewritten
+        restored_invalid_sections = set()  # Tracks which sections failed validation
+        validated_fields = {}  # Stores validated sections to pass to PngSettings
 
-        except ValidationError as e:
-            if logger:
-                logger.warning("Invalid configuration in %s, falling back to defaults.", path)
-                logger.debug("%s", e)
+        # Go through each section defined in PngSettings
+        for field_name, model_field in PngSettings.model_fields.items():
+            section_model_cls = model_field.annotation
+            section_data = raw.get(field_name, {})
 
-            _backup_invalid_file(path, logger)
-            defaults = PngSettings()
-            _log_invalid_keys(raw, defaults, logger)
-            save_config_to_ini(defaults, path)
-            return defaults
+            try:
+                # Validate section using its submodel (only this section)
+                section_model = section_model_cls.model_validate(section_data)
+            except ValidationError as e:
+                # Section is present but invalid → fallback to default
+                section_model = model_field.default_factory()
+                restored_invalid_sections.add(field_name)
+                updated = True
+                if logger:
+                    logger.warning("Invalid config in section [%s], using defaults.", field_name)
+                    logger.debug("%s", e)
 
+            validated_fields[field_name] = section_model
+
+        # Create final config model from per-section validation
+        model = PngSettings(**validated_fields)
+
+        # Save updated config if we added defaults or repaired anything
+        if updated or raw != _stringify_dict(model.model_dump()):
+            if restored_invalid_sections:
+                _backup_invalid_file(path, logger)   # Backup only if something was invalid
+            save_config_to_ini(model, path)
+
+        return model
+
+    # No config file found → create one with defaults
     model = PngSettings()
     save_config_to_ini(model, path)
     return model
-
 
 def save_config_to_ini(settings: PngSettings, path: str) -> None:
     """
@@ -85,7 +105,8 @@ def save_config_to_ini(settings: PngSettings, path: str) -> None:
         path (str): Path to the INI file.
     """
     cp = ConfigParser()
-    cp.read_dict(settings.model_dump(by_alias=True))
+    stringified = _stringify_dict(settings.model_dump(by_alias=True))
+    cp.read_dict(stringified)
     with open(path, 'w', encoding='utf-8') as f:
         cp.write(f)
 
@@ -101,8 +122,7 @@ def _stringify_dict(d: Any) -> Any:
     """
     if isinstance(d, dict):
         return {k: _stringify_dict(v) for k, v in d.items()}
-    return str(d)
-
+    return "" if d is None else str(d)
 
 def _backup_invalid_file(path: str, logger: Optional[Any]) -> None:
     """

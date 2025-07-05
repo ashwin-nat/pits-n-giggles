@@ -31,13 +31,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import os
 import sys
+from unittest.mock import Mock, patch
 
 from pydantic import ValidationError
 
 from lib.config import LoggingSettings
 
 from .tests_config_base import TestF1ConfigBase
-from unittest.mock import Mock, patch
 
 # ----------------------------------------------------------------------------------------------------------------------
 # MIT License
@@ -72,8 +72,8 @@ import configparser
 import tempfile
 
 from lib.config import (CaptureSettings, DisplaySettings, ForwardingSettings,
-                        LoggingSettings, NetworkSettings, PngSettings,
-                        PrivacySettings, StreamOverlaySettings,
+                        HttpsSettings, LoggingSettings, NetworkSettings,
+                        PngSettings, PrivacySettings, StreamOverlaySettings,
                         load_config_from_ini, save_config_to_ini)
 
 from .tests_config_base import TestF1ConfigBase
@@ -118,7 +118,7 @@ class TestConfigIO(TestF1ConfigBase):
             if os.path.exists(temp_path):
                 os.unlink(temp_path)
 
-    def test_load_config_from_existing_ini(self):
+    def test_load_config_from_existing_ini_old_config(self):
         """Test loading configuration from existing INI file"""
         # Create a temporary INI file
         ini_content = """[Network]
@@ -155,10 +155,90 @@ target_1 = localhost:8080
             self.assertEqual(settings.Logging.log_file, "custom.log")
             self.assertTrue(settings.Privacy.process_car_setup)
             self.assertEqual(settings.Forwarding.target_1, "localhost:8080")
+            self.assertEqual(settings.HTTPS.enabled, False)
+            self.assertEqual(settings.HTTPS.cert_file_path, "")
+            self.assertEqual(settings.HTTPS.key_file_path, "")
 
         finally:
             if os.path.exists(temp_path):
                 os.unlink(temp_path)
+
+    def test_load_config_from_existing_ini_with_https(self):
+        """Test loading configuration from existing INI file with HTTPS section included"""
+
+        # Create temp cert and key files to satisfy FilePath validation
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.key') as key_file, \
+            tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.crt') as cert_file:
+
+            key_path = key_file.name
+            cert_path = cert_file.name
+
+        ini_content = f"""[Network]
+telemetry_port = 12345
+server_port = 9999
+
+[Capture]
+post_race_data_autosave = True
+
+[Display]
+refresh_interval = 150
+disable_browser_autoload = True
+
+[Logging]
+log_file = custom.log
+log_file_size = 1000000
+
+[Privacy]
+process_car_setup = True
+
+[Forwarding]
+target_1 = localhost:8080
+target_2 = anotherhost:8081
+
+[StreamOverlay]
+show_sample_data_at_start = True
+
+[HTTPS]
+enabled = True
+key_file_path = {key_path}
+cert_file_path = {cert_path}
+"""
+
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.ini') as f:
+            f.write(ini_content)
+            temp_path = f.name
+
+        try:
+            settings = load_config_from_ini(temp_path)
+
+            # Check various fields
+            self.assertEqual(settings.Network.telemetry_port, 12345)
+            self.assertEqual(settings.Network.server_port, 9999)
+
+            self.assertTrue(settings.Capture.post_race_data_autosave)
+            self.assertEqual(settings.Display.refresh_interval, 150)
+            self.assertTrue(settings.Display.disable_browser_autoload)
+
+            self.assertEqual(settings.Logging.log_file, "custom.log")
+            self.assertEqual(settings.Logging.log_file_size, 1_000_000)
+
+            self.assertTrue(settings.Privacy.process_car_setup)
+            self.assertEqual(settings.Forwarding.target_1, "localhost:8080")
+            self.assertEqual(settings.Forwarding.target_2, "anotherhost:8081")
+
+            self.assertTrue(settings.StreamOverlay.show_sample_data_at_start)
+
+            self.assertTrue(settings.HTTPS.enabled)
+            self.assertEqual(str(settings.HTTPS.key_file_path), key_path)
+            self.assertEqual(str(settings.HTTPS.cert_file_path), cert_path)
+
+        finally:
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+            if os.path.exists(key_path):
+                os.unlink(key_path)
+            if os.path.exists(cert_path):
+                os.unlink(cert_path)
 
     def test_load_config_from_nonexistent_file(self):
         """Test loading config when file doesn't exist creates default and saves it"""
@@ -187,7 +267,7 @@ target_1 = localhost:8080
             if os.path.exists(nonexistent_path):
                 os.unlink(nonexistent_path)
 
-    def test_roundtrip_config_io(self):
+    def test_roundtrip_config_io_missing_section(self):
         """Test that save/load operations preserve data correctly"""
         original_settings = PngSettings(
             Network=NetworkSettings(
@@ -234,10 +314,87 @@ target_1 = localhost:8080
             self.assertEqual(loaded_settings.Privacy.process_car_setup, original_settings.Privacy.process_car_setup)
             self.assertEqual(loaded_settings.Forwarding.target_1, original_settings.Forwarding.target_1)
             self.assertEqual(loaded_settings.Forwarding.target_2, original_settings.Forwarding.target_2)
+            self.assertEqual(loaded_settings.HTTPS.enabled, original_settings.HTTPS.enabled)
+            self.assertEqual(str(loaded_settings.HTTPS.key_file_path), str(original_settings.HTTPS.key_file_path))
+            self.assertEqual(str(loaded_settings.HTTPS.cert_file_path), str(original_settings.HTTPS.cert_file_path))
 
         finally:
             if os.path.exists(temp_path):
                 os.unlink(temp_path)
+
+    def test_roundtrip_config_io_https_section(self):
+        """Test that HTTPS section is correctly saved and loaded, including file path validation."""
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.key') as key_file, \
+             tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.crt') as cert_file:
+
+            key_path = key_file.name
+            cert_path = cert_file.name
+
+        # Use try-finally to ensure cleanup
+        try:
+            original_settings = PngSettings(
+                Network=NetworkSettings(
+                    telemetry_port=11111,
+                    server_port=22222,
+                    udp_tyre_delta_action_code=5
+                ),
+                Capture=CaptureSettings(post_race_data_autosave=True),
+                Display=DisplaySettings(
+                    refresh_interval=300,
+                    disable_browser_autoload=True
+                ),
+                Logging=LoggingSettings(
+                    log_file="roundtrip.log",
+                    log_file_size=2_000_000
+                ),
+                Privacy=PrivacySettings(process_car_setup=True),
+                Forwarding=ForwardingSettings(
+                    target_1="server1.example.com:8080",
+                    target_2="server2.example.com:9090"
+                ),
+                StreamOverlay=StreamOverlaySettings(
+                    show_sample_data_at_start=True
+                ),
+                HTTPS=HttpsSettings(
+                    enabled=True,
+                    key_file_path=key_path,
+                    cert_file_path=cert_path
+                )
+            )
+
+            with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.ini') as f:
+                temp_ini_path = f.name
+
+            try:
+                # Save and reload
+                save_config_to_ini(original_settings, temp_ini_path)
+                loaded_settings = load_config_from_ini(temp_ini_path)
+
+                # Compare all values
+                self.assertEqual(loaded_settings.Network.telemetry_port, original_settings.Network.telemetry_port)
+                self.assertEqual(loaded_settings.Network.server_port, original_settings.Network.server_port)
+                self.assertEqual(loaded_settings.Network.udp_tyre_delta_action_code, original_settings.Network.udp_tyre_delta_action_code)
+                self.assertEqual(loaded_settings.Capture.post_race_data_autosave, original_settings.Capture.post_race_data_autosave)
+                self.assertEqual(loaded_settings.Display.refresh_interval, original_settings.Display.refresh_interval)
+                self.assertEqual(loaded_settings.Display.disable_browser_autoload, original_settings.Display.disable_browser_autoload)
+                self.assertEqual(loaded_settings.Logging.log_file, original_settings.Logging.log_file)
+                self.assertEqual(loaded_settings.Logging.log_file_size, original_settings.Logging.log_file_size)
+                self.assertEqual(loaded_settings.Privacy.process_car_setup, original_settings.Privacy.process_car_setup)
+                self.assertEqual(loaded_settings.Forwarding.target_1, original_settings.Forwarding.target_1)
+                self.assertEqual(loaded_settings.Forwarding.target_2, original_settings.Forwarding.target_2)
+                self.assertEqual(loaded_settings.HTTPS.enabled, original_settings.HTTPS.enabled)
+                self.assertEqual(str(loaded_settings.HTTPS.key_file_path), str(original_settings.HTTPS.key_file_path))
+                self.assertEqual(str(loaded_settings.HTTPS.cert_file_path), str(original_settings.HTTPS.cert_file_path))
+
+            finally:
+                if os.path.exists(temp_ini_path):
+                    os.unlink(temp_ini_path)
+
+        finally:
+            if os.path.exists(key_path):
+                os.unlink(key_path)
+            if os.path.exists(cert_path):
+                os.unlink(cert_path)
 
 class TestLoadConfigFromIni(TestF1ConfigBase):
     def setUp(self):
@@ -296,6 +453,6 @@ class TestLoadConfigFromIni(TestF1ConfigBase):
         self._write_ini(ini_data)
 
         config = load_config_from_ini(self.ini_path)
-        self.assertEqual(config.Network.telemetry_port, 20777)
+        self.assertEqual(config.Network.telemetry_port, 20779)
         self.assertEqual(config.Forwarding.target_1, "")  # fallback default
         self.assertTrue(os.path.exists(self.ini_path + ".invalid"))

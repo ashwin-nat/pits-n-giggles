@@ -22,10 +22,13 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import os
 import re
 from typing import ClassVar, Optional
 
 from pydantic import BaseModel, Field, field_validator
+
+from .file_path_str import FilePathStr
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -125,6 +128,23 @@ class ForwardingSettings(BaseModel):
         host, port_str = value.strip().split(":")
         return host, int(port_str)
 
+class HttpsSettings(BaseModel):
+    enabled: bool = Field(False, description="Enable HTTPS support")
+    key_file_path: FilePathStr = Field("", description="Path to SSL private key file")
+    cert_file_path: FilePathStr = Field("", description="Path to SSL certificate file")
+
+    def model_post_init(self, __context) -> None:
+        """Validate file existence only if HTTPS is enabled."""
+        if self.enabled:
+            if not self.key_file_path.strip() or not os.path.isfile(self.key_file_path):
+                raise ValueError("Key file is required and must exist when HTTPS is enabled")
+            if not self.cert_file_path.strip() or not os.path.isfile(self.cert_file_path):
+                raise ValueError("Certificate file is required and must exist when HTTPS is enabled")
+
+    @property
+    def proto(self) -> str:
+        return "https" if self.enabled else "http"
+
 class PngSettings(BaseModel):
     Network: NetworkSettings = Field(default_factory=NetworkSettings)
     Capture: CaptureSettings = Field(default_factory=CaptureSettings)
@@ -133,6 +153,7 @@ class PngSettings(BaseModel):
     Privacy: PrivacySettings = Field(default_factory=PrivacySettings)
     Forwarding: ForwardingSettings = Field(default_factory=ForwardingSettings)
     StreamOverlay: StreamOverlaySettings = Field(default_factory=StreamOverlaySettings)
+    HTTPS: HttpsSettings = Field(default_factory=HttpsSettings)
 
     class Config:
         str_strip_whitespace = True

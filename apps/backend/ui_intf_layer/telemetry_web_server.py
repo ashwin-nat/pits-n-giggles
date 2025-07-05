@@ -32,8 +32,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 import socketio
-from hypercorn.asyncio import serve
-from hypercorn.config import Config
+import uvicorn
 from quart import Quart, jsonify, render_template, request, send_from_directory
 
 import apps.backend.state_mgmt_layer as TelState
@@ -60,7 +59,13 @@ class TelemetryWebServer:
         m_logger (logging.Logger): The logger instance.
     """
 
-    def __init__(self, port: int, ver_str: str, logger: logging.Logger, debug_mode: bool = False):
+    def __init__(self,
+                 port: int,
+                 ver_str: str,
+                 logger: logging.Logger,
+                 cert_path: Optional[str] = None,
+                 key_path: Optional[str] = None,
+                 debug_mode: bool = False):
         """
         Initialize the TelemetryWebServer.
 
@@ -73,6 +78,8 @@ class TelemetryWebServer:
         self.m_logger: logging.Logger = logger
         self.m_port: int = port
         self.m_ver_str = ver_str
+        self.m_cert_path: Optional[str] = cert_path
+        self.m_key_path: Optional[str] = key_path
         self.m_debug_mode: bool = debug_mode
         self._shutdown_event = asyncio.Event()
 
@@ -89,7 +96,12 @@ class TelemetryWebServer:
         )
         self.m_app.config['PROPAGATE_EXCEPTIONS'] = False
 
-        self.m_sio: socketio.AsyncServer = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins="*")
+        self.m_sio = socketio.AsyncServer(
+            async_mode='asgi',
+            cors_allowed_origins="*",
+            logger=False,
+            engineio_logger=False
+        )
         self.m_sio_app: socketio.ASGIApp = socketio.ASGIApp(self.m_sio, self.m_app)
 
         # Define routes and socket handlers
@@ -406,9 +418,10 @@ class TelemetryWebServer:
         # Process parameters and generate response
         return TelState.DriverInfoRsp(index_int).toJSON(), HTTPStatus.OK
 
+
     async def run(self) -> None:
         """
-        Run the web server asynchronously.
+        Run the web server asynchronously using Uvicorn.
 
         Sets up the server configuration and starts serving the application.
         """
@@ -417,14 +430,20 @@ class TelemetryWebServer:
             self.m_logger.error(f"Port {self.m_port} is already in use")
             sys.exit(PNG_ERROR_CODE_PORT_IN_USE)
 
-        config = Config()
-        config.bind = [f"0.0.0.0:{self.m_port}"]
-        if not self.m_debug_mode:
-            config.errorlog = None  # Disable error log output
-            config.accesslog = None  # Disable access log output
-            logging.getLogger("hypercorn.error").setLevel(logging.CRITICAL)   # Suppresses startup messages
-            logging.getLogger("hypercorn.access").setLevel(logging.CRITICAL)  # Suppresses request logs
-        await serve(self.m_sio_app, config, shutdown_trigger=self._shutdown_event.wait)
+        self.m_logger.info(f"Running on {'https' if self.m_cert_path else 'http'}://0.0.0.0:{self.m_port}")
+
+        config = uvicorn.Config(
+            self.m_sio_app,
+            host="0.0.0.0",
+            port=self.m_port,
+            log_level="warning",
+            ssl_certfile=self.m_cert_path,
+            ssl_keyfile=self.m_key_path
+        )
+
+        server = uvicorn.Server(config)
+        await server.serve()
+
 
     async def stop(self) -> None:
         """Stop the web server."""
@@ -442,3 +461,14 @@ def _is_port_available(port: int) -> bool:
             if e.errno == errno.EADDRINUSE:
                 return False
             raise  # unexpected error
+
+def _is_allowed_origin(origin: str) -> bool:
+    # Allow localhost for dev
+    if origin and origin.startswith("https://localhost"):
+        return True
+
+    # Allow any origin under your production domain
+    if origin and origin.endswith(".pitsngiggles.com"):
+        return True
+
+    return False

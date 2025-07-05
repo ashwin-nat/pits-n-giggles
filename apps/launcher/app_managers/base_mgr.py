@@ -96,6 +96,7 @@ class PngAppMgrBase(ABC):
         self.console_app = console_app
         self.args = args or []  # Store CLI args
         self.process: Optional[subprocess.Popen] = None
+        self._process_lock = threading.Lock()
         self.status_var = tk.StringVar(value="Stopped")
         self.is_running = False
         self._is_restarting = threading.Event()
@@ -103,7 +104,6 @@ class PngAppMgrBase(ABC):
         self.child_pid = None
         self._post_start_hook: Optional[Callable[[], None]] = None
         self._post_stop_hook: Optional[Callable[[], None]] = None
-
 
     @abstractmethod
     def get_buttons(self, frame: ttk.Frame) -> list[dict]:
@@ -142,11 +142,13 @@ class PngAppMgrBase(ABC):
 
     def start(self):
         """Start the sub-application process"""
-        if self.is_running:
-            self.console_app.log(f"{self.display_name} is already running.")
-            return
+        with self._process_lock:
+            if self.is_running:
+                self.console_app.log(f"{self.display_name} is already running.")
+                return
 
-        try:
+            # Start the subprocess and update all related state variables atomically
+            # so no other thread sees a partially updated state.
             launch_command = self.get_launch_command(self.module_path, self.args)
             self.console_app.log(f"Starting {self.display_name}...")
 
@@ -162,37 +164,34 @@ class PngAppMgrBase(ABC):
             self.is_running = True
             self.child_pid = self.process.pid
             self.status_var.set("Running")
-            threading.Thread(target=self._capture_output, daemon=True).start()
-            threading.Thread(target=self._monitor_process_exit, daemon=True).start()
 
-            self.console_app.log(f"{self.display_name} started successfully. PID = {self.child_pid}")
+        # Start output capture and monitor threads outside the lock to avoid deadlocks
+        threading.Thread(target=self._capture_output, daemon=True).start()
+        threading.Thread(target=self._monitor_process_exit, daemon=True).start()
 
-            if self._post_start_hook:
-                try:
-                    self._post_start_hook()
-                # pylint: disable=broad-exception-caught
-                except Exception as e:
-                    self.console_app.log(f"{self.display_name}: Error in post-start hook: {e}")
+        self.console_app.log(f"{self.display_name} started successfully. PID = {self.child_pid}")
 
-        # pylint: disable=broad-exception-caught
-        except Exception as e:
-            self.console_app.log(f"Error starting {self.display_name}: {e}")
-            self.status_var.set("Error")
+        if self._post_start_hook:
+            try:
+                self._post_start_hook()
+            except Exception as e: # pylint: disable=broad-exception-caught
+                self.console_app.log(f"{self.display_name}: Error in post-start hook: {e}")
 
     def stop(self):
-        """Stop the sub-application process"""
-        if not self.is_running:
-            self.console_app.log(f"{self.display_name} is not running.")
-            return
+        with self._process_lock:
+            if not self.is_running:
+                self.console_app.log(f"{self.display_name} is not running.")
+                return
 
-        try:
             self.console_app.log(f"Stopping {self.display_name}...")
 
             reported_pid = self.child_pid
             popen_pid = self.process.pid if self.process else None
             used_pid = reported_pid or popen_pid
 
-            # Attempt to terminate the reported child PID directly if it's different
+            # Terminate actual child process or subprocess as appropriate
+            # All state updates below are done while holding the lock to ensure
+            # consistent visibility across threads.
             if reported_pid and reported_pid != popen_pid:
                 self.console_app.log(f"Terminating actual child PID {reported_pid} (launched by PyInstaller stub)")
                 try:
@@ -214,24 +213,19 @@ class PngAppMgrBase(ABC):
                     self.process.kill()
                     self.process.wait()
 
-            # Cleanup state
+            # Clear process-related state atomically to avoid race conditions
             self.process = None
             self.child_pid = None
             self.is_running = False
             self.status_var.set("Stopped")
-            self.console_app.log(f"{self.display_name} stopped successfully. Terminated PID = {used_pid}")
+        self.console_app.log(f"{self.display_name} stopped successfully. Terminated PID = {used_pid}")
 
-            if self._post_stop_hook:
-                try:
-                    self._post_stop_hook()
-                # pylint: disable=broad-exception-caught
-                except Exception as e:
-                    self.console_app.log(f"{self.display_name}: Error in post-stop hook: {e}")
-
-        # pylint: disable=broad-exception-caught
-        except Exception as e:
-            self.console_app.log(f"Error stopping {self.display_name}: {e}")
-            self.status_var.set("Error")
+        if self._post_stop_hook:
+            try:
+                self._post_stop_hook()
+            # pylint: disable=broad-exception-caught
+            except Exception as e:
+                self.console_app.log(f"{self.display_name}: Error in post-stop hook: {e}")
 
     def start_stop(self):
         """Start or stop the sub-application process based on its current state"""
@@ -249,16 +243,38 @@ class PngAppMgrBase(ABC):
         self._is_restarting.clear()
 
     def _capture_output(self):
-        """Capture and log the subprocess output line by line"""
-        if self.process and self.process.stdout:
-            for line in self.process.stdout:
-                if not line:
-                    break
-                if pid := extract_pid_from_line(line):
-                    self.console_app.log(f"{self.display_name} PID update: {pid} changed = {self.process.pid != pid}")
+        """Capture and log the subprocess output line by line, safely synchronized.
+
+        This method:
+        - Takes a snapshot of the subprocess and its stdout once under the lock to avoid race conditions.
+        - Iterates over the stdout file-like iterator to read lines until EOF (pipe closed).
+        - Updates shared state with locking only when needed.
+        - Exits cleanly when the process stdout closes (process ends or is terminated).
+        """
+
+        # Snapshot process and stdout once under the lock
+        with self._process_lock:
+            process = self.process
+            # If process or its stdout isn't available, exit immediately.
+            if not process or not process.stdout:
+                return
+            stdout = process.stdout
+
+        # Read lines until EOF (when pipe closes)
+        for line in stdout:
+            if not line:
+                # EOF reached
+                break
+
+            if pid := extract_pid_from_line(line):
+                with self._process_lock:
+                    # Check current PID safely in case process changed meanwhile
+                    current_pid = self.process.pid if self.process else None
+                    changed = current_pid is not None and current_pid != pid
                     self.child_pid = pid
-                else:
-                    self.console_app.log(line, is_child_message=True)
+                self.console_app.log(f"{self.display_name} PID update: {pid} changed = {changed}")
+            else:
+                self.console_app.log(line, is_child_message=True)
 
     def _monitor_process_exit(self):
         """subprocess monitoring thread to handle unexpected exits"""

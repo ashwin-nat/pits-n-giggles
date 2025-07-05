@@ -18,3 +18,4 @@ png-venv/
 *yappi*
 *.part
 .invalid
+*.pem

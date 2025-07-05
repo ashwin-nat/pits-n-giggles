@@ -23,6 +23,7 @@
 import os
 import sys
 import runpy
+import traceback
 
 def _prod_pre_checks():
     # Allowed modules for dispatch
@@ -50,8 +51,7 @@ def _prod_pre_checks():
 
     try:
         runpy.run_module(module, run_name="__main__")
-    except Exception as e:
-        import traceback
+    except Exception as e: # pylint: disable=broad-exception-caught
         print(f"[dispatcher] ERROR: Exception during run_module: {e}")
         traceback.print_exc()
         sys.exit(1)
@@ -77,7 +77,6 @@ def _prod_pre_checks():
     # pylint: disable=broad-exception-caught
     except Exception as e:
         print(f"[__main__.py] Error launching module {module}: {e}")
-        import traceback
         traceback.print_exc()
     sys.exit(0)
 
@@ -89,9 +88,9 @@ def _prod_pre_checks():
     # This block is never executed, but it's scanned by PyInstaller's static analysis.
     # pylint: disable=using-constant-test
     # pylint: disable=unused-import
-    if False:
-        import apps.backend.__main__
-        import apps.save_viewer.__main__
+    if False: # pylint: disable=unreachable
+        import apps.backend.__main__ # pylint: disable=import-outside-toplevel
+        import apps.save_viewer.__main__ # pylint: disable=import-outside-toplevel
 
 if getattr(sys, 'frozen', False) and '--module' in sys.argv:
     _prod_pre_checks()
@@ -107,7 +106,6 @@ if __name__ == "__main__":
     # pylint: disable=broad-exception-caught
     except Exception as e:
         print(f"[__main__.py] Failed to import launcher: {e}")
-        import traceback
         traceback.print_exc()
         sys.exit(1)
 
