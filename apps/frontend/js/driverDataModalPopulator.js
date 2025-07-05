@@ -276,7 +276,7 @@ class DriverModalPopulator {
         const leftPanePopulator = (leftDiv) => {
             const tyreSetsHistoryData = this.data["tyre-set-history"];
             const table = document.createElement('table');
-            table.className = this.tableClassNames ;
+            table.className = this.tableClassNames;
 
             // Create table header
             const thead = document.createElement('thead');
@@ -318,6 +318,7 @@ class DriverModalPopulator {
 
                     const row = tbody.insertRow();
                     const stintId = count + 1;
+                    const collapseId = `collapse-stint-${stintId}`;
 
                     let compound = "---";
                     let tyreWear = "---";
@@ -339,6 +340,13 @@ class DriverModalPopulator {
                         tyreWearPerLap = formatFloatWithTwoDecimals(wearPerLap) + "%";
                     }
 
+                    // Make row clickable and add Bootstrap collapse attributes
+                    row.style.cursor = 'pointer';
+                    row.setAttribute('data-bs-toggle', 'collapse');
+                    row.setAttribute('data-bs-target', `#${collapseId}`);
+                    row.setAttribute('aria-expanded', 'false');
+                    row.setAttribute('aria-controls', collapseId);
+
                     // Populate table
                     this.populateTableRow(row, [
                         stintId,
@@ -349,6 +357,72 @@ class DriverModalPopulator {
                         tyreWear,
                         tyreWearPerLap,
                     ]);
+
+                    // Create collapsible sub-row for lap-by-lap data
+                    if ("tyre-wear-history" in stintData && stintData["tyre-wear-history"].length > 0) {
+                        const collapseRow = tbody.insertRow();
+                        const collapseCell = collapseRow.insertCell();
+                        collapseCell.colSpan = 7;
+                        collapseCell.style.padding = '0';
+                        collapseCell.style.border = 'none';
+
+                        const collapseDiv = document.createElement('div');
+                        collapseDiv.className = 'collapse';
+                        collapseDiv.id = collapseId;
+
+                        const subTable = document.createElement('table');
+                        subTable.className = this.tableClassNames + ' mb-0';
+                        subTable.style.backgroundColor = '#f8f9fa';
+
+                        // Create sub-table header
+                        const subThead = document.createElement('thead');
+                        const subHeaderRow = document.createElement('tr');
+                        const subHeaders = ['Lap', 'Front Left', 'Front Right', 'Rear Left', 'Rear Right'];
+
+                        subHeaders.forEach(headerText => {
+                            const th = document.createElement('th');
+                            th.textContent = headerText;
+                            th.style.fontSize = '0.9em';
+                            th.style.padding = '0.5rem';
+                            subHeaderRow.appendChild(th);
+                        });
+
+                        subThead.appendChild(subHeaderRow);
+                        subTable.appendChild(subThead);
+
+                        // Create sub-table body
+                        const subTbody = document.createElement('tbody');
+                        const wearHistory = stintData["tyre-wear-history"];
+
+                        wearHistory.forEach(wearData => {
+                            const subRow = subTbody.insertRow();
+                            subRow.style.fontSize = '0.9em';
+
+                            const lapCell = subRow.insertCell();
+                            lapCell.textContent = wearData["lap-number"];
+                            lapCell.style.padding = '0.5rem';
+
+                            const flCell = subRow.insertCell();
+                            flCell.textContent = formatFloatWithTwoDecimals(wearData["front-left-wear"]) + '%';
+                            flCell.style.padding = '0.5rem';
+
+                            const frCell = subRow.insertCell();
+                            frCell.textContent = formatFloatWithTwoDecimals(wearData["front-right-wear"]) + '%';
+                            frCell.style.padding = '0.5rem';
+
+                            const rlCell = subRow.insertCell();
+                            rlCell.textContent = formatFloatWithTwoDecimals(wearData["rear-left-wear"]) + '%';
+                            rlCell.style.padding = '0.5rem';
+
+                            const rrCell = subRow.insertCell();
+                            rrCell.textContent = formatFloatWithTwoDecimals(wearData["rear-right-wear"]) + '%';
+                            rrCell.style.padding = '0.5rem';
+                        });
+
+                        subTable.appendChild(subTbody);
+                        collapseDiv.appendChild(subTable);
+                        collapseCell.appendChild(collapseDiv);
+                    }
 
                     // Populate graph data set
                     if ("tyre-wear-history" in stintData && stintData["tyre-wear-history"].length > 0) {
@@ -380,7 +454,7 @@ class DriverModalPopulator {
                 });
             } else {
                 const row = tbody.insertRow();
-                row.innerHTML = '<td colspan="8">Tyre Stint History data not yet available</td>';
+                row.innerHTML = '<td colspan="7">Tyre Stint History data not yet available</td>';
             }
 
             table.appendChild(tbody);
@@ -418,6 +492,7 @@ class DriverModalPopulator {
 
         this.createModalDivElelements(tabPane, leftPanePopulator, rightPanePopulator);
     }
+
 
     populateERSHistoryTab(tabPane) {
         if (!this.telemetryEnabled) {

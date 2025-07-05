@@ -61,7 +61,6 @@ class DataPerDriver:
         m_warning_penalty_history (WarningPenaltyHistory): History of warnings and penalties received by the driver.
         m_packet_copies (PacketCopies): Copies of various data packets related to the driver's performance.
         m_per_lap_snapshots (Dict[int, PerLapSnapshotEntry]): Snapshots of the driver's performance per lap
-        m_latest_snapshot_lap_num (int): The lap number of the latest snapshot
         m_position_history (List[int]): List of positions of the driver
     """
 
@@ -74,10 +73,8 @@ class DataPerDriver:
         "m_warning_penalty_history",
         "m_packet_copies",
         "m_per_lap_snapshots",
-        "m_latest_snapshot_lap_num",
         "m_position_history",
         "m_pending_events_mgr",
-        "m_pending_events_data",
     )
 
     def __repr__(self) -> str:
@@ -117,7 +114,6 @@ class DataPerDriver:
 
         # Per lap snapshot
         self.m_per_lap_snapshots: Dict[int, PerLapSnapshotEntry] = {}
-        self.m_latest_snapshot_lap_num: Optional[int] = None
 
         # Positions history (F1 25+)
         if total_laps:
@@ -506,7 +502,6 @@ class DataPerDriver:
             track_position=self.m_driver_info.position,
             top_speed_kmph=self.m_lap_info.m_top_speed_kmph_this_lap,
         )
-        self.m_latest_snapshot_lap_num = old_lap_number
 
         # Add the tyre wear data into the tyre stint history
         if old_lap_number and self.m_tyre_info.m_tyre_set_history_manager.length:
@@ -585,7 +580,7 @@ class DataPerDriver:
             bool - True if zeroth lap snapshot data is available
         """
 
-        return self.m_latest_snapshot_lap_num is not None
+        return bool(self.m_per_lap_snapshots.get(0))
 
     def updateTyreSetData(self, fitted_index: int, track: TrackID) -> None:
         """Update the current tyre set in the history list, if required.
@@ -596,6 +591,8 @@ class DataPerDriver:
             track (TrackID): The track ID enum
         """
 
+        # If telemetry restrictions is none, that means participants packet has not yet arrived. it eventuall will
+        # and we can process this then.
         # doing this because some fields in the player obj may be none and handling this is a mess
         # several none checks will be required to handle players that have disabled telemetry. not worth it
         if self.m_driver_info.telemetry_restrictions != TelemetrySetting.PUBLIC:
@@ -605,34 +602,30 @@ class DataPerDriver:
         fitted_tyre_set_key = self._getCurrentTyreSetKey()
         if self.m_lap_info.m_current_lap is not None:
             if not self.m_tyre_info.m_tyre_set_history_manager.length:
-                if 0 in self.m_per_lap_snapshots:
-                    # Start of race, enter the tyre wear data along with starting value
-                    initial_tyre_wear = TyreWearPerLap(
-                        fl_tyre_wear=self.m_per_lap_snapshots[0].m_car_damage_packet.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
-                        fr_tyre_wear=self.m_per_lap_snapshots[0].m_car_damage_packet.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
-                        rl_tyre_wear=self.m_per_lap_snapshots[0].m_car_damage_packet.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
-                        rr_tyre_wear=self.m_per_lap_snapshots[0].m_car_damage_packet.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
-                        lap_number=0,
-                        is_racing_lap=True,
-                        desc="end of zeroth lap data point"
-                    )
-                    self.m_tyre_info.m_tyre_set_history_manager.add(TyreSetHistoryEntry(
-                                                start_lap=self.m_lap_info.m_current_lap,
-                                                index=fitted_index,
-                                                tyre_set_key=fitted_tyre_set_key,
-                                                initial_tyre_wear=initial_tyre_wear,
-                    ))
+                if zeroth_lap_snapshot := self.m_per_lap_snapshots.get(0):
+                    if car_dmg_pkt := zeroth_lap_snapshot.m_car_damage_packet:
+                        # Start of race, enter the tyre wear data along with starting value
+                        initial_tyre_wear = TyreWearPerLap(
+                            fl_tyre_wear=car_dmg_pkt.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
+                            fr_tyre_wear=car_dmg_pkt.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
+                            rl_tyre_wear=car_dmg_pkt.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
+                            rr_tyre_wear=car_dmg_pkt.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
+                            lap_number=0,
+                            is_racing_lap=True,
+                            desc="end of zeroth lap data point"
+                        )
+                        self.m_tyre_info.m_tyre_set_history_manager.add(TyreSetHistoryEntry(
+                                                    start_lap=self.m_lap_info.m_current_lap,
+                                                    index=fitted_index,
+                                                    tyre_set_key=fitted_tyre_set_key,
+                                                    initial_tyre_wear=initial_tyre_wear,
+                        ))
+                    else:
+                        png_logger.debug("Driver %s - zeroth lap snapshot available but no car damage packet. "
+                                         "Hence clearing the zeroth lap snapshot to trigger it to happen again",
+                                            str(self))
+                        del self.m_per_lap_snapshots[0]
 
-                # If we have joined the session late, need to create a history entry
-                if not self.m_tyre_info.m_tyre_set_history_manager.length and self.m_tyre_info.tyre_wear:
-                    initial_tyre_wear = deepcopy(self.m_tyre_info.tyre_wear)
-                    initial_tyre_wear.desc = "initial tyre wear"
-                    self.m_tyre_info.m_tyre_set_history_manager.add(TyreSetHistoryEntry(
-                        start_lap=self.m_lap_info.m_current_lap,
-                        index=fitted_index,
-                        tyre_set_key=fitted_tyre_set_key,
-                        initial_tyre_wear=initial_tyre_wear
-                    ))
             elif fitted_index != self.m_tyre_info.m_tyre_set_history_manager.getLastEntry().m_fitted_index:
                 # Tyre set change detected
                 if F1Utils.isFinishLineAfterPitGarage(track):
@@ -644,8 +637,9 @@ class DataPerDriver:
                         png_logger.debug("Driver %s - lap %d tyre set change detected. Registering for delayed handling",
                                         str(self), self.m_lap_info.m_current_lap)
                         self.m_pending_events_mgr.register(
-                            events={DriverPendingEvents.CAR_DMG_PKT_EVENT, DriverPendingEvents.LAP_CHANGE_EVENT, DriverPendingEvents.PITTING_EVENT},
+                            events={DriverPendingEvents.CAR_DMG_PKT_EVENT, DriverPendingEvents.LAP_CHANGE_EVENT},
                             initial_tyre_wear=self.m_pending_events_mgr.data)
+                        self.m_pending_events_mgr.data = None
                 else:
                     initial_tyre_wear = TyreWearPerLap(
                         fl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
@@ -698,7 +692,6 @@ class DataPerDriver:
             # note down curr tyre wear for delayed tyre set change handling
             # take a deepcopy since this obj is volatile
             self.m_pending_events_mgr.data = deepcopy(self.m_tyre_info.tyre_wear)
-            self.m_pending_events_mgr.onEvent(DriverPendingEvents.PITTING_EVENT)
 
         self.m_lap_info.m_is_pitting = lap_data.m_pitStatus in \
                 [LapData.PitStatus.PITTING, LapData.PitStatus.IN_PIT_AREA]
@@ -857,6 +850,20 @@ class DataPerDriver:
                 {"lap-number": lap, "position": snapshot.m_track_position}
                 for lap, snapshot in self._getNextLapSnapshot()
             ],
+        }
+
+    def getSpeedTrapRecordJSON(self) -> Dict[str, Any]:
+        """Get the speed trap record JSON.
+
+        Returns:
+            Dict[str, Any]: Speed trap record JSON
+        """
+
+        return {
+            "name": self.m_driver_info.name,
+            "team": self.m_driver_info.team,
+            "driver-number": self.m_driver_info.driver_number,
+            "speed-trap-record-kmph": self.m_lap_info.m_speed_trap_record,
         }
 
     def getTyreStintHistoryJSON(self) -> Dict[str, Any]:

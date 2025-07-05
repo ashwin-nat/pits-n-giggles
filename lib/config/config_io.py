@@ -26,7 +26,7 @@ import os
 import shutil
 from configparser import ConfigParser
 from logging import Logger
-from typing import Any, Optional
+from typing import Any, Optional, Dict, Set, Tuple
 
 from pydantic import ValidationError
 
@@ -34,47 +34,33 @@ from .config_schema import PngSettings
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def load_config_from_ini(path: str, logger: Optional[Any] = None) -> PngSettings:
+def load_config_from_ini(path: str, logger: Optional[Logger] = None) -> PngSettings:
     """
     Load and validate configuration from INI file.
 
-    Falls back to defaults and repairs config if invalid.
+    - If the config file is missing: write full defaults to disk.
+    - If any section is invalid: only that section is replaced with defaults.
+    - If new fields/sections were introduced: add them and update the file.
 
     Args:
-        path (str): Path to INI file.
-        logger (Optional[Any]): Optional logger for debug/info logs.
+        path (str): Path to the INI file.
+        logger (Optional[Any]): Logger for debug/info logs.
 
     Returns:
-        PngSettings: Parsed and validated configuration.
+        PngSettings: Fully validated config with missing or invalid parts repaired.
     """
-    cp = ConfigParser()
-    raw: dict[str, dict[str, str]] = {}
-
     if os.path.exists(path):
-        cp.read(path)
-        raw = {section: dict(cp.items(section)) for section in cp.sections()}
+        raw = _load_raw_ini(path)
+        validated, restored, updated = _validate_sections(raw, logger)
+        model = PngSettings(**validated)
+        _maybe_update_config(raw, model, path, logger, updated, restored)
+        _log_invalid_keys(raw, model, logger)
+        return model
 
-        try:
-            model = PngSettings.model_validate(raw)
-            if raw != _stringify_dict(model.model_dump()):
-                save_config_to_ini(model, path)
-            return model
-
-        except ValidationError as e:
-            if logger:
-                logger.warning("Invalid configuration in %s, falling back to defaults.", path)
-                logger.debug("%s", e)
-
-            _backup_invalid_file(path, logger)
-            defaults = PngSettings()
-            _log_invalid_keys(raw, defaults, logger)
-            save_config_to_ini(defaults, path)
-            return defaults
-
+    # No config file found → create one with defaults
     model = PngSettings()
     save_config_to_ini(model, path)
     return model
-
 
 def save_config_to_ini(settings: PngSettings, path: str) -> None:
     """
@@ -85,7 +71,8 @@ def save_config_to_ini(settings: PngSettings, path: str) -> None:
         path (str): Path to the INI file.
     """
     cp = ConfigParser()
-    cp.read_dict(settings.model_dump(by_alias=True))
+    stringified = _stringify_dict(settings.model_dump(by_alias=True))
+    cp.read_dict(stringified)
     with open(path, 'w', encoding='utf-8') as f:
         cp.write(f)
 
@@ -101,10 +88,9 @@ def _stringify_dict(d: Any) -> Any:
     """
     if isinstance(d, dict):
         return {k: _stringify_dict(v) for k, v in d.items()}
-    return str(d)
+    return "" if d is None else str(d)
 
-
-def _backup_invalid_file(path: str, logger: Optional[Any]) -> None:
+def _backup_invalid_file(path: str, logger: Optional[Logger]) -> None:
     """
     Back up the invalid configuration file.
 
@@ -142,3 +128,59 @@ def _log_invalid_keys(raw: dict[str, dict[str, str]], defaults: PngSettings, log
             else:
                 default_value = default_dict[section][key]
                 logger.debug("Fallback: [%s].[%s] = %r -> default = %r", section, key, value, default_value)
+
+def _load_raw_ini(path: str) -> Dict[str, Dict[str, str]]:
+    """Parse INI file into a nested dictionary."""
+    cp = ConfigParser()
+    cp.read(path)
+    return {section: dict(cp.items(section)) for section in cp.sections()}
+
+def _validate_sections(
+    raw: Dict[str, Dict[str, str]],
+    logger: Optional[Logger],
+) -> Tuple[Dict[str, Any], Set[str], bool]:
+    """
+    Validate each section against its corresponding pydantic submodel.
+
+    Returns:
+        - Dict[str, Any]: validated section models
+        - Set[str]: names of sections that were invalid and restored to defaults
+        - bool: whether the config was updated due to invalid or missing fields
+    """
+    validated: Dict[str, Any] = {}
+    restored: Set[str] = set()
+    updated: bool = False
+
+    for field_name, model_field in PngSettings.model_fields.items():
+        section_model_cls = model_field.annotation
+        section_data = raw.get(field_name, {})
+
+        try:
+            section_model = section_model_cls.model_validate(section_data)
+        except ValidationError as e:
+            section_model = model_field.default_factory()
+            restored.add(field_name)
+            updated = True
+            if logger:
+                logger.warning("Invalid config in section [%s], using defaults.", field_name)
+                logger.debug("%s", e)
+
+        validated[field_name] = section_model
+
+    return validated, restored, updated
+
+def _maybe_update_config(
+    raw: Dict[str, Dict[str, str]],
+    model: PngSettings,
+    path: str,
+    logger: Optional[Logger],
+    updated: bool,
+    restored_sections: Set[str],
+) -> None:
+    """
+    Rewrite the config file if changes were made or defaults were applied.
+    """
+    if updated or raw != _stringify_dict(model.model_dump()):
+        if restored_sections:
+            _backup_invalid_file(path, logger)
+        save_config_to_ini(model, path)

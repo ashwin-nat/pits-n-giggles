@@ -28,4 +28,4 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 
 # Set PYTHONPATH and run the app as a module
-PYTHONPATH="$(pwd)" python -O -m apps.backend.pits_n_giggles
+PYTHONPATH="$(pwd)" python -O -m apps.backend

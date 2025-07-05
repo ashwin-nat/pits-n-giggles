@@ -8,7 +8,7 @@
             "name": "Launcher (debug/replay)",
             "type": "debugpy",
             "request": "launch",
-            "module": "apps.launcher.launcher",
+            "module": "apps.launcher",
             "console": "integratedTerminal",
             "args": [
                 "--debug"
@@ -19,7 +19,7 @@
             "name": "Launcher",
             "type": "debugpy",
             "request": "launch",
-            "module": "apps.launcher.launcher",
+            "module": "apps.launcher",
             "console": "integratedTerminal",
             "args": [
             ],
@@ -29,7 +29,7 @@
             "name": "App - Module",
             "type": "debugpy",
             "request": "launch",
-            "module": "apps.backend.pits_n_giggles",
+            "module": "apps.backend",
             "console": "integratedTerminal",
             "args": [
                 "--debug",
@@ -41,7 +41,7 @@
             "name": "App - Module (Replay)",
             "type": "debugpy",
             "request": "launch",
-            "module": "apps.backend.pits_n_giggles",
+            "module": "apps.backend",
             "console": "integratedTerminal",
             "args": [
                 "--debug",
@@ -51,21 +51,10 @@
             "cwd": "${workspaceFolder}"
         },
         {
-            "name": "Launcher - Module",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "apps.launcher.launcher",
-            "console": "integratedTerminal",
-            "args": [
-                "--debug"
-            ],
-            "cwd": "${workspaceFolder}"
-        },
-        {
             "name": "Post Race Data Viewer - Module",
             "type": "debugpy",
             "request": "launch",
-            "module": "apps.save_viewer.telemetry_post_race_data_viewer",
+            "module": "apps.save_viewer",
             "console": "integratedTerminal",
             "args": [
             ],

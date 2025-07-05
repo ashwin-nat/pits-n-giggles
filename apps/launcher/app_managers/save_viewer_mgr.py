@@ -45,7 +45,7 @@ class SaveViewerAppMgr(PngAppMgrBase):
         self.extra_args = extra_args or []
         super().__init__(
             name="save_viewer",
-            module_path="apps.save_viewer.telemetry_post_race_data_viewer",
+            module_path="apps.save_viewer",
             exe_name_without_ext="save_viewer",
             display_name="Save Viewer",
             start_by_default=True,

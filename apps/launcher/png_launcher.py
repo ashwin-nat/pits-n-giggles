@@ -155,7 +155,8 @@ class PngLauncher(ConsoleInterface):
                 console_app=self,
                 port_str=str(self.settings.Network.server_port),
                 args=["--config-file", self.config_file, "--debug", "--replay-server"] \
-                    if self.debug_mode else ["--config-file", self.config_file ]
+                    if self.debug_mode else ["--config-file", self.config_file ],
+                proto=self.settings.HTTPS.proto
             ),
             # SaveViewer app reads port from args
             "save_viewer": SaveViewerAppMgr(

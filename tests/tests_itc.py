@@ -38,7 +38,7 @@ from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-class TestAsyncInterThreadCommunicator(F1TelemetryUnitTestsBase):
+class TestAsyncInterTaskCommunicator(F1TelemetryUnitTestsBase):
     def setUp(self):
         """Create a fresh communicator for each test"""
         self.communicator = AsyncInterTaskCommunicator()

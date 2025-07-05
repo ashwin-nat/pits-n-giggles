@@ -20,6 +20,7 @@ dependencies = [
     "sqlalchemy (>=2.0.41,<3.0.0)",
     "aiosqlite (>=0.21.0,<0.22.0)",
     "pydantic (>=2.11.5,<3.0.0)",
+    "uvicorn (>=0.35.0,<0.36.0)",
 ]
 
 
@@ -37,4 +38,5 @@ yappi = "^1.6.10"
 snakeviz = "^2.2.2"
 gdown = "^5.2.0"
 colorama = "^0.4.6"
+aiohttp = "^3.12.13"
 

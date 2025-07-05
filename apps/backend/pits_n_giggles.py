@@ -128,7 +128,8 @@ class PngRunner:
         """
         # Create a task to open the webpage
         if not disable_browser_autoload:
-            tasks.append(asyncio.create_task(self._openWebPage(http_port), name="Web page opener Task"))
+            proto = self.m_config.HTTPS.proto
+            tasks.append(asyncio.create_task(self._openWebPage(http_port, proto), name="Web page opener Task"))
 
         log_str = "Starting F1 telemetry server. Open one of the below addresses in your browser\n"
         ip_addresses = self._getLocalIpAddresses()
@@ -138,6 +139,14 @@ class PngRunner:
         log_str += "That is when the game starts sending telemetry data"
         self.m_logger.info(log_str)
 
+        # Read the cert files only if HTTPS is enabled
+        if not self.m_config.HTTPS.enabled:
+            cert_path = None
+            key_path = None
+        else:
+            cert_path = self.m_config.HTTPS.cert_file_path
+            key_path = self.m_config.HTTPS.key_file_path
+
         return initUiIntfLayer(
             port=http_port,
             logger=logger,
@@ -145,7 +154,9 @@ class PngRunner:
             debug_mode=debug_mode,
             stream_overlay_start_sample_data=stream_overlay_start_sample_data,
             tasks=tasks,
-            ver_str=ver_str
+            ver_str=ver_str,
+            cert_path=cert_path,
+            key_path=key_path
         )
 
     def _getLocalIpAddresses(self) -> Set[str]:
@@ -163,14 +174,15 @@ class PngRunner:
             self.m_logger.warning("Error occurred: %s. Using default IP addresses.", e)
         return ip_addresses
 
-    async def _openWebPage(self, http_port: int) -> None:
+    async def _openWebPage(self, http_port: int, proto: str) -> None:
         """Open the webpage on a new browser tab.
 
         Args:
             http_port (int): Port number of the HTTP server.
+            proto (str): Protocol ('http' or 'https').
         """
         await asyncio.sleep(1)
-        webbrowser.open(f'http://localhost:{http_port}', new=2)
+        webbrowser.open(f'{proto}://localhost:{http_port}', new=2)
         self.m_logger.debug("Webpage opened. Task completed")
 
     def _getVersion(self) -> str:
@@ -221,7 +233,7 @@ async def main(logger: logging.Logger, args: argparse.Namespace) -> None:
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
-if __name__ == '__main__':
+def entry_point():
     report_pid_from_child()
     args_obj = parseArgs()
     png_logger = initLogger(file_name=args_obj.log_file_name, max_size=100000, debug_mode=args_obj.debug)
@@ -256,7 +268,7 @@ if __name__ == '__main__':
 #         stats.stream = f
 #         stats.print_stats()
 
-# if __name__ == "__main__":
+# def entry_point():
 #     yappi.set_clock_type("wall")  # Use "cpu" for CPU-bound tasks
 #     yappi.start()
 

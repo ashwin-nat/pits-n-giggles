@@ -42,7 +42,9 @@ def initUiIntfLayer(
     debug_mode: bool,
     stream_overlay_start_sample_data: bool,
     tasks: List[asyncio.Task],
-    ver_str: str) -> TelemetryWebServer:
+    ver_str: str,
+    cert_path: Optional[str],
+    key_path: Optional[str]) -> TelemetryWebServer:
     """Initialize the UI interface layer and return then server obj for proper cleanup
 
     Args:
@@ -53,6 +55,8 @@ def initUiIntfLayer(
         stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
         tasks (List[asyncio.Task]): List of tasks to be executed
         ver_str (str): Version string
+        cert_path (Optional[str]): Path to the certificate file
+        key_path (Optional[str]): Path to the key file
 
     Returns:
         TelemetryWebServer: The initialized web server
@@ -63,6 +67,8 @@ def initUiIntfLayer(
         port=port,
         ver_str=ver_str,
         logger=logger,
+        cert_path=cert_path,
+        key_path=key_path,
         debug_mode=debug_mode,
     )
 

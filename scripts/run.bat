@@ -31,7 +31,7 @@ pip install -r requirements.txt
 
 REM Run the app with correct PYTHONPATH
 set PYTHONPATH=%cd%
-python -O -m apps.backend.pits_n_giggles
+python -O -m apps.backend
 
 REM Keep window open after running
 pause

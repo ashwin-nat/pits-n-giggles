@@ -47,11 +47,13 @@ from tests_collision_analyzer import (TestCollisionAnalyzer,
                                       TestCollisionPairKey,
                                       TestCollisionRecord)
 from tests_config import (TestCaptureSettings, TestConfigIO,
-                          TestDisplaySettings, TestEdgeCases,
-                          TestForwardingSettings, TestLoadConfigFromIni,
-                          TestLoggingSettings, TestMissingSectionsAndKeys,
-                          TestNetworkSettings, TestPngSettings,
-                          TestPrivacySettings, TestSampleSettingsFixture)
+                          TestDisplaySettings, TestEdgeCases, TestFilePathStr,
+                          TestForwardingSettings, TestHttpsSettings,
+                          TestLoadConfigFromIni, TestLoggingSettings,
+                          TestMissingSectionsAndKeys, TestNetworkSettings,
+                          TestPngSettings, TestPrivacySettings,
+                          TestSampleSettingsFixture)
+
 from tests_custom_markers import (TestCustomMarkerEntry,
                                   TestCustomMarkersHistory)
 from tests_data_per_driver import (TestTyreSetHistoryEntry,
@@ -61,7 +63,7 @@ from tests_fuel_recommender import (TestFuelRateRecommenderMisc,
                                     TestFuelRateRecommenderRemove,
                                     TestFuelRemainingPerLap)
 from tests_history_tracker import TestDataClasses, TestRacingDatabase
-from tests_itc import TestAsyncInterThreadCommunicator
+from tests_itc import TestAsyncInterTaskCommunicator
 from tests_overtake_analyzer import (TestOvertakeAnalyzerEmptyInput,
                                      TestOvertakeAnalyzerFileCsv,
                                      TestOvertakeAnalyzerInvalidData,

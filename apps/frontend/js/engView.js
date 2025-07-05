@@ -168,20 +168,6 @@ class EngViewRaceTableRow {
         // in spectator mode, there is no need for delta
         if (this.isSpectating || isPlayer) {
             return [
-                // Last Lap
-                {
-                    value: this.createLapInfoCellSingleRow(formatLapTime(lastLapInfo["lap-time-ms"]), yellowSector)
-                },
-                {
-                    value: this.createLapInfoCellSingleRow(formatSectorTime(lastLapInfo["s1-time-ms"]), lastLapInfo["sector-status"][0])
-                },
-                {
-                    value: this.createLapInfoCellSingleRow(formatSectorTime(lastLapInfo["s2-time-ms"]), lastLapInfo["sector-status"][1])
-                },
-                {
-                    value: this.createLapInfoCellSingleRow(formatSectorTime(lastLapInfo["s3-time-ms"]), lastLapInfo["sector-status"][2]),
-                    border: true
-                },
                 // Best Lap
                 {
                     value: this.createLapInfoCellSingleRow(formatLapTime(bestLapInfo["lap-time-ms"]), yellowSector)
@@ -196,32 +182,24 @@ class EngViewRaceTableRow {
                     value: this.createLapInfoCellSingleRow(formatSectorTime(bestLapInfo["s3-time-ms"]), bestLapInfo["sector-status"][2]),
                     border: true
                 },
+                // Last Lap
+                {
+                    value: this.createLapInfoCellSingleRow(formatLapTime(lastLapInfo["lap-time-ms"]), yellowSector)
+                },
+                {
+                    value: this.createLapInfoCellSingleRow(formatSectorTime(lastLapInfo["s1-time-ms"]), lastLapInfo["sector-status"][0])
+                },
+                {
+                    value: this.createLapInfoCellSingleRow(formatSectorTime(lastLapInfo["s2-time-ms"]), lastLapInfo["sector-status"][1])
+                },
+                {
+                    value: this.createLapInfoCellSingleRow(formatSectorTime(lastLapInfo["s3-time-ms"]), lastLapInfo["sector-status"][2]),
+                    border: true
+                },
             ];
         }
 
         return [
-            // Last Lap
-            {
-                value: this.createLapInfoCellTwoRow(formatLapTime(lastLapInfo["lap-time-ms"]),
-                    formatDelta(lastLapInfo["lap-time-ms-player"] - lastLapInfo["lap-time-ms"]), yellowSector),
-                border: false
-            },
-            {
-                value: this.createLapInfoCellTwoRow(formatSectorTime(lastLapInfo["s1-time-ms"]),
-                    formatDelta(lastLapInfo["s1-time-ms-player"] - lastLapInfo["s1-time-ms"]), lastLapInfo["sector-status"][0]),
-                border: false
-            },
-            {
-                value: this.createLapInfoCellTwoRow(formatSectorTime(lastLapInfo["s2-time-ms"]),
-                    formatDelta(lastLapInfo["s2-time-ms-player"] - lastLapInfo["s2-time-ms"]), lastLapInfo["sector-status"][1]),
-                border: false
-            },
-            {
-                value: this.createLapInfoCellTwoRow(formatSectorTime(lastLapInfo["s3-time-ms"]),
-                    formatDelta(lastLapInfo["s3-time-ms-player"] - lastLapInfo["s3-time-ms"]), lastLapInfo["sector-status"][2]),
-                border: true
-            },
-
             // Best Lap
             {
                 value: this.createLapInfoCellTwoRow(formatLapTime(bestLapInfo["lap-time-ms"]),
@@ -241,6 +219,27 @@ class EngViewRaceTableRow {
             {
                 value: this.createLapInfoCellTwoRow(formatSectorTime(bestLapInfo["s3-time-ms"]),
                     formatDelta(bestLapInfo["s3-time-ms-player"] - bestLapInfo["s3-time-ms"]), bestLapInfo["sector-status"][2]),
+                border: true
+            },
+            // Last Lap
+            {
+                value: this.createLapInfoCellTwoRow(formatLapTime(lastLapInfo["lap-time-ms"]),
+                    formatDelta(lastLapInfo["lap-time-ms-player"] - lastLapInfo["lap-time-ms"]), yellowSector),
+                border: false
+            },
+            {
+                value: this.createLapInfoCellTwoRow(formatSectorTime(lastLapInfo["s1-time-ms"]),
+                    formatDelta(lastLapInfo["s1-time-ms-player"] - lastLapInfo["s1-time-ms"]), lastLapInfo["sector-status"][0]),
+                border: false
+            },
+            {
+                value: this.createLapInfoCellTwoRow(formatSectorTime(lastLapInfo["s2-time-ms"]),
+                    formatDelta(lastLapInfo["s2-time-ms-player"] - lastLapInfo["s2-time-ms"]), lastLapInfo["sector-status"][1]),
+                border: false
+            },
+            {
+                value: this.createLapInfoCellTwoRow(formatSectorTime(lastLapInfo["s3-time-ms"]),
+                    formatDelta(lastLapInfo["s3-time-ms-player"] - lastLapInfo["s3-time-ms"]), lastLapInfo["sector-status"][2]),
                 border: true
             },
         ];
@@ -592,16 +591,18 @@ let timeoutIntervalId;
 let timeoutIntervalMs = 3000;
 let socketio;
 
-socketio = io.connect(`${location.protocol}//` + location.hostname + ':' + location.port, {
+const connectStart = Date.now();
+socketio = io(`${location.protocol}//${location.hostname}:${location.port}`, {
     reconnection: true,
-    reconnectionAttempts: 3,
-    reconnectionDelay: 500,
-    reconnectionDelayMax: 2000,
-    randomizationFactor: 0.2,
-    timeout: 5000,
-    transports: ['websocket', 'polling'], // WebSocket first, polling fallback
+    reconnectionAttempts: 5,         // increased for flakier networks
+    reconnectionDelay: 500,          // base delay
+    reconnectionDelayMax: 3000,      // allow more time for retries
+    randomizationFactor: 0.3,        // more jitter helps on bad links
+    timeout: 7000,                   // wait a bit longer before timing out
+    transports: ['websocket', 'polling'], // try WS, fallback to polling
     upgrade: true,
-    rememberUpgrade: true
+    rememberUpgrade: true,
+    secure: location.protocol === 'https:', // optional: makes intent explicit
 });
 console.log("SocketIO initialized");
 
@@ -616,6 +617,15 @@ function clearSocketIoRequestTimeout() {
 
 socketio.on('connect', function () {
     socketio.emit('register-client', { type: 'race-table' });
+    console.log(`⏱️ Socket connected in ${Date.now() - connectStart}ms`);
+});
+
+socketio.on('connect_error', (err) => {
+    console.warn('❌ Socket connection error:', err.message);
+});
+
+socketio.on('reconnect_attempt', attempt => {
+    console.log(`🔁 Reconnection attempt ${attempt}`);
 });
 
 // Receive details from server

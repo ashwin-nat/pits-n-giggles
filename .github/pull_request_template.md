@@ -29,20 +29,29 @@ Fixes #<issue_number> <!-- optional -->
 ### ✅ Unit Tests
 
 - [ ] All unit tests pass
-- Attach test command/output (e.g., `poetry run python tests/unit_tests.py`):
+- Attach test command/output:
 
 ```
-
 <paste result here>
+```
+
+To run the unit test suite
+```bash
+poetry run python tests/unit_tests.py
 ```
 
 ### ✅ Integration Tests
 
 * [ ] All integration tests pass
-* Attach test command/output (e.g., `poetry run python tests/integration_test/runner.py `):
+* Attach test command/output:
 
 ```
 <paste result here>
+```
+
+To run the integration test
+```bash
+poetry run python tests/integration_test/runner.py
 ```
 
 ### ✅ Pylint
@@ -55,7 +64,7 @@ Fixes #<issue_number> <!-- optional -->
 ```
 
 To run pylint
-```
+```bash
 pylint --rcfile scripts/.pylintrc lib apps
 ```
 
@@ -69,12 +78,7 @@ pylint --rcfile scripts/.pylintrc lib apps
 Explain your test updates here:
 
 ```
-<details>
-<summary>Click to expand</summary>
-
 Explain what was added/updated, or write "N/A" if not applicable.
-
-</details>
 ```
 
 ---

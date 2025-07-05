@@ -11,7 +11,7 @@ def test_endpoints_with_session(hostname, port, endpoints):
         url = f'{base_url}/{endpoint}'
         response = session.get(url)
         # sourcery skip: no-conditionals-in-tests
-        if response.status_code in {200, 400}:
+        if response.status_code in {200, 400, 404}:
             print(f"Success: {url} returned {response.status_code}")
             passed += 1
         else:

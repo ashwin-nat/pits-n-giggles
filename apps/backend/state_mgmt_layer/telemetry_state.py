@@ -25,7 +25,7 @@
 import logging
 from typing import Optional
 
-from lib.inter_task_communicator import AsyncInterTaskCommunicator, ITCMessage
+from lib.inter_task_communicator import AsyncInterTaskCommunicator, ITCMessage, TyreDeltaNotificationMessageCollection
 
 from .session_state import SessionState
 
@@ -47,15 +47,15 @@ async def processCustomMarkerCreate() -> None:
             m_message=custom_marker_obj))
 
 async def processTyreDeltaSound() -> None:
-    """Send the tyre delta notification to the frontend
-    """
-
-    messages = _session_state.getTyreDeltaNotificationMessages()
-    for message in messages:
-        await AsyncInterTaskCommunicator().send("frontend-update",
+    """Send the tyre delta notification to the frontend."""
+    if messages := _session_state.getTyreDeltaNotificationMessages():
+        await AsyncInterTaskCommunicator().send(
+            "frontend-update",
             ITCMessage(
-                m_message_type=ITCMessage.MessageType.TYRE_DELTA_NOTIFICATION,
-                m_message=message))
+                m_message_type=ITCMessage.MessageType.TYRE_DELTA_NOTIFICATION_V2,
+                m_message=TyreDeltaNotificationMessageCollection(messages)
+            )
+        )
 
 # -------------------------------------- UTILTIES ----------------------------------------------------------------------
 

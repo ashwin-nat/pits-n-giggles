@@ -433,6 +433,9 @@ class SessionState:
             driver_obj.m_driver_info.m_dnf_status_code):
             self.m_is_player_dnf = True
 
+        # Speed trap
+        driver_obj.m_lap_info.m_speed_trap_record = lap_data.m_speedTrapFastestSpeed
+
     def processFastestLapUpdate(self, packet: PacketEventData.FastestLap) -> None:
         """Process the fastest lap update event notification
 
@@ -468,7 +471,7 @@ class SessionState:
         self.m_player_index = packet.m_header.m_playerCarIndex if packet.m_header.m_playerCarIndex != 255 else None
         for index, participant in enumerate(packet.m_participants):
             obj_to_be_updated = self._getObjectByIndex(index)
-            obj_to_be_updated.m_driver_info.name = participant.m_name
+            obj_to_be_updated.m_driver_info.name = participant.name
             obj_to_be_updated.m_driver_info.team = str(participant.m_teamId)
             obj_to_be_updated.m_driver_info.driver_number = participant.m_raceNumber
             obj_to_be_updated.m_driver_info.is_player = (index == packet.m_header.m_playerCarIndex)
@@ -525,6 +528,7 @@ class SessionState:
         """
 
         final_json = packet.toJSON()
+        speed_trap_records = []
         is_position_history_supported = self.isPositionHistorySupported()
         if is_position_history_supported:
             final_json["position-history"] = []
@@ -549,6 +553,7 @@ class SessionState:
             obj_to_be_updated.m_packet_copies.m_packet_final_classification = data
             obj_to_be_updated.m_lap_info.m_total_race_time = data.m_totalRaceTime
             final_json["classification-data"][index] = obj_to_be_updated.toJSON(index)
+            speed_trap_records.append(obj_to_be_updated.getSpeedTrapRecordJSON())
             if is_position_history_supported:
                 final_json["position-history"].append(
                     obj_to_be_updated.getPositionHistoryJSON())
@@ -556,6 +561,11 @@ class SessionState:
                 if self.m_session_info.m_packet_format == 2023:
                     final_json["tyre-stint-history"].append(obj_to_be_updated.getTyreStintHistoryJSON())
         final_json['classification-data'] = sorted(final_json['classification-data'], key=lambda x: x['track-position'])
+        if self.m_session_info.m_packet_format > 2023:
+            final_json['speed-trap-records'] = sorted(speed_trap_records,
+                                                  key=lambda x: x['speed-trap-record-kmph'], reverse=True)
+        else:
+            final_json['speed-trap-records'] = [] # Speed trap records are not supported before 2024
         final_json['game-year'] = self.m_session_info.m_game_year
         final_json['packet-format'] = self.m_session_info.m_packet_format
 

@@ -322,7 +322,20 @@
     <script>
         const sampleStreamOverlayJSON = getDefaultOverlayData();
         let firstDataReceived = false;
-        const socket = io();
+        const connectStart = Date.now();
+        const socketio = io(`${location.protocol}//${location.hostname}:${location.port}`, {
+            reconnection: true,
+            reconnectionAttempts: 5,         // increased for flakier networks
+            reconnectionDelay: 500,          // base delay
+            reconnectionDelayMax: 3000,      // allow more time for retries
+            randomizationFactor: 0.3,        // more jitter helps on bad links
+            timeout: 7000,                   // wait a bit longer before timing out
+            transports: ['websocket', 'polling'], // try WS, fallback to polling
+            upgrade: true,
+            rememberUpgrade: true,
+            secure: location.protocol === 'https:', // optional: makes intent explicit
+        });
+        console.log("SocketIO initialized");
         const iconCache = new IconCache();
         const carTelemetryWidget = new CarTelemetryWidget();
         const gForceDisplayWidget = new GForceDisplay('gforce-display');
@@ -333,8 +346,17 @@
 
         const maxWeatherSamples = 5;
         // Emit a custom event to register client type upon connection
-        socket.on('connect', function () {
-            socket.emit('register-client', { type: 'player-stream-overlay' });
+        socketio.on('connect', function () {
+            socketio.emit('register-client', { type: 'player-stream-overlay' });
+            console.log(`⏱️ Socket connected in ${Date.now() - connectStart}ms`);
+        });
+
+        socketio.on('connect_error', (err) => {
+            console.warn('❌ Socket connection error:', err.message);
+        });
+
+        socketio.on('reconnect_attempt', attempt => {
+            console.log(`🔁 Reconnection attempt ${attempt}`);
         });
 
         socket.on('player-overlay-update', function (data) {

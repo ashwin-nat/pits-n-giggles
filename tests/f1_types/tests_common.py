@@ -86,6 +86,23 @@ class TestSessionType23(F1TypesTest):
             with self.subTest(session=session):
                 self.assertFalse(session.isRaceTypeSession())
 
+    def test_is_time_trial_type_session(self):
+        time_trial_sessions = [
+            SessionType23.TIME_TRIAL
+        ]
+        for session in time_trial_sessions:
+            with self.subTest(session=session):
+                self.assertTrue(session.isTimeTrialTypeSession())
+
+        non_time_trial_sessions = [
+            SessionType23.QUALIFYING_1,
+            SessionType23.PRACTICE_1,
+            SessionType23.RACE
+        ]
+        for session in non_time_trial_sessions:
+            with self.subTest(session=session):
+                self.assertFalse(session.isTimeTrialTypeSession())
+
 class TestSessionType24(F1TypesTest):
 
     def test_is_fp_type_session(self):
@@ -154,3 +171,19 @@ class TestSessionType24(F1TypesTest):
             with self.subTest(session=session):
                 self.assertFalse(session.isRaceTypeSession())
 
+    def test_is_time_trial_type_session(self):
+        time_trial_sessions = [
+            SessionType24.TIME_TRIAL
+        ]
+        for session in time_trial_sessions:
+            with self.subTest(session=session):
+                self.assertTrue(session.isTimeTrialTypeSession())
+
+        non_time_trial_sessions = [
+            SessionType24.QUALIFYING_1,
+            SessionType24.SPRINT_SHOOTOUT_1,
+            SessionType24.RACE
+        ]
+        for session in non_time_trial_sessions:
+            with self.subTest(session=session):
+                self.assertFalse(session.isTimeTrialTypeSession())

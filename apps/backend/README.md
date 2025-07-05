@@ -9,7 +9,7 @@ This app is the brain (and heart) behind Pits n' Giggles. It does the following
 
 From the root directory
 ```bash
-poetry run python -m apps.backend.pits_n_giggles
+poetry run python -m apps.backend
 ```
 
 ## App Architecture
@@ -69,7 +69,7 @@ Follow these steps to profile Pits n' Giggles using Yappi:
 Run the backend in debug mode with the replay server enabled:
 
 ```bash
-poetry run python -m apps.backend.pits_n_giggles --replay-server --debug
+poetry run python -m apps.backend --replay-server --debug
 ````
 
 ### 4. Play a Replay File

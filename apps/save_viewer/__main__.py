@@ -20,29 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# -------------------------------------- IMPORTS -----------------------------------------------------------------------
+from apps.save_viewer.telemetry_post_race_data_viewer import entry_point
 
-from .config_io import load_config_from_ini, save_config_to_ini
-from .config_schema import (CaptureSettings, DisplaySettings, FilePathStr,
-                            ForwardingSettings, HttpsSettings, LoggingSettings,
-                            NetworkSettings, PngSettings, PrivacySettings,
-                            StreamOverlaySettings)
-
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
-
-__all__ = [
-    'CaptureSettings',
-    'DisplaySettings',
-    'ForwardingSettings',
-    'LoggingSettings',
-    'NetworkSettings',
-    'PngSettings',
-    'PrivacySettings',
-    'StreamOverlaySettings',
-    'HttpsSettings',
-
-    'FilePathStr',
-
-    'load_config_from_ini',
-    'save_config_to_ini',
-]
+if __name__ == "__main__":
+    entry_point()
