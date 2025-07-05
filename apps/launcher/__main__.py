@@ -35,6 +35,7 @@ if getattr(sys, 'frozen', False) and '--module' in sys.argv:
 
     try:
         runpy.run_module(module, run_name="__main__")
+    # pylint: disable=broad-exception-caught
     except Exception as e:
         print(f"[__main__.py] Error launching module {module}: {e}")
         import traceback
@@ -47,10 +48,11 @@ if getattr(sys, 'frozen', False) and '--module' in sys.argv:
 # --------------------------------------------------------------------------------------------------
 # PyInstaller won't include these unless we explicitly reference them.
 # This block is never executed, but it's scanned by PyInstaller's static analysis.
-
+# pylint: disable=using-constant-test
+# pylint: disable=unused-import
 if False:
-    import apps.backend.__main__  # noqa: F401
-    import apps.save_viewer.__main__  # noqa: F401
+    import apps.backend.__main__
+    import apps.save_viewer.__main__
 
 
 # --------------------------------------------------------------------------------------------------
@@ -60,6 +62,7 @@ if False:
 if __name__ == "__main__":
     try:
         from apps.launcher.launcher import entry_point
+    # pylint: disable=broad-exception-caught
     except Exception as e:
         print(f"[__main__.py] Failed to import launcher: {e}")
         import traceback

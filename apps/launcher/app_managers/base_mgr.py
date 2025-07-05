@@ -22,20 +22,19 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import os
 import subprocess
 import sys
 import threading
 import tkinter as tk
 from abc import ABC, abstractmethod
-from tkinter import ttk, messagebox
+from tkinter import messagebox, ttk
 from typing import Callable, Optional
 
 import psutil
 
 from lib.config import PngSettings
-from lib.pid_report import extract_pid_from_line
 from lib.error_codes import PNG_ERROR_CODE_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN
+from lib.pid_report import extract_pid_from_line
 
 from ..console_interface import ConsoleInterface
 
@@ -128,8 +127,7 @@ class PngAppMgrBase(ABC):
         """
         if getattr(sys, "frozen", False):
             return [sys.executable, "--module", module_path, *args]
-        else:
-            return [sys.executable, "-m", module_path, *args]
+        return [sys.executable, "-m", module_path, *args]
 
 
     def register_post_start(self, func: Callable[[], None]):

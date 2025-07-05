@@ -50,8 +50,7 @@ def load_icon_safely(icon_relative_path):
         os.close(tmp_fd)
         shutil.copyfile(icon_path, tmp_icon_path)
         return tmp_icon_path
-    else:
-        return icon_path
+    return icon_path
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
