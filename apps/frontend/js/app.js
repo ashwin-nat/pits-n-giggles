@@ -12,16 +12,18 @@ let socketio;
 const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
 const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 
-socketio = io.connect(`${location.protocol}//` + location.hostname + ':' + location.port, {
+const connectStart = Date.now();
+socketio = io(`${location.protocol}//${location.hostname}:${location.port}`, {
     reconnection: true,
-    reconnectionAttempts: 3,
-    reconnectionDelay: 500,
-    reconnectionDelayMax: 2000,
-    randomizationFactor: 0.2,
-    timeout: 5000,
-    transports: ['websocket', 'polling'], // WebSocket first, polling fallback
+    reconnectionAttempts: 5,         // increased for flakier networks
+    reconnectionDelay: 500,          // base delay
+    reconnectionDelayMax: 3000,      // allow more time for retries
+    randomizationFactor: 0.3,        // more jitter helps on bad links
+    timeout: 7000,                   // wait a bit longer before timing out
+    transports: ['websocket', 'polling'], // try WS, fallback to polling
     upgrade: true,
-    rememberUpgrade: true
+    rememberUpgrade: true,
+    secure: location.protocol === 'https:', // optional: makes intent explicit
 });
 console.log("SocketIO initialized");
 
@@ -32,6 +34,15 @@ function clearSocketIoRequestTimeout() {
 
 socketio.on('connect', function () {
     socketio.emit('register-client', { type: 'race-table' });
+    console.log(`⏱️ Socket connected in ${Date.now() - connectStart}ms`);
+});
+
+socketio.on('connect_error', (err) => {
+    console.warn('❌ Socket connection error:', err.message);
+});
+
+socketio.on('reconnect_attempt', attempt => {
+    console.log(`🔁 Reconnection attempt ${attempt}`);
 });
 
 // Receive details from server
