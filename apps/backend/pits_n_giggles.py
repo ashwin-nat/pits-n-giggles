@@ -124,7 +124,7 @@ class PngRunner:
         """
         # Create a task to open the webpage
         if not disable_browser_autoload:
-            proto = "https" if self.m_config.HTTPS.enabled else "http"
+            proto = self.m_config.HTTPS.proto
             tasks.append(asyncio.create_task(self._openWebPage(http_port, proto), name="Web page opener Task"))
 
         log_str = "Starting F1 telemetry server. Open one of the below addresses in your browser\n"

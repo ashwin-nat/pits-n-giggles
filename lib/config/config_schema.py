@@ -141,6 +141,10 @@ class HttpsSettings(BaseModel):
             if not self.cert_file_path.strip() or not os.path.isfile(self.cert_file_path):
                 raise ValueError("Certificate file is required and must exist when HTTPS is enabled")
 
+    @property
+    def proto(self) -> str:
+        return "https" if self.enabled else "http"
+
 class PngSettings(BaseModel):
     Network: NetworkSettings = Field(default_factory=NetworkSettings)
     Capture: CaptureSettings = Field(default_factory=CaptureSettings)
