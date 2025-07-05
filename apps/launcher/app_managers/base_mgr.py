@@ -127,10 +127,8 @@ class PngAppMgrBase(ABC):
         In frozen (PyInstaller) builds, use `runpy.run_module()` to avoid `-m` issues.
         """
         if getattr(sys, "frozen", False):
-            self.console_app.log(f"[frozen] Launching via --module: {module_path}")
             return [sys.executable, "--module", module_path, *args]
         else:
-            self.console_app.log(f"[dev] Launching via -m: {module_path}")
             return [sys.executable, "-m", module_path, *args]
 
 
