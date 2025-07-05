@@ -122,14 +122,17 @@ class PngAppMgrBase(ABC):
         pass
 
     def get_launch_command(self, module_path: str, args: list[str]):
-        """Get the command to launch the backend application"""
-
-        # In dev environment, run python with the module path
-        if not getattr(sys, 'frozen', False):
+        """
+        Returns the subprocess launch command for a given module.
+        In frozen (PyInstaller) builds, use `runpy.run_module()` to avoid `-m` issues.
+        """
+        if getattr(sys, "frozen", False):
+            self.console_app.log(f"[frozen] Launching via --module: {module_path}")
+            return [sys.executable, "--module", module_path, *args]
+        else:
+            self.console_app.log(f"[dev] Launching via -m: {module_path}")
             return [sys.executable, "-m", module_path, *args]
-        # In PyInstaller frozen mode, the executable is in sys._MEIPASS in embedded_exes dir
-        exe_path = os.path.join(sys._MEIPASS, 'embedded_exes', self.exec_name)
-        return [exe_path, *args]
+
 
     def register_post_start(self, func: Callable[[], None]):
         """Register a post-start callback."""
