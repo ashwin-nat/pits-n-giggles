@@ -135,6 +135,14 @@ class PngRunner:
         log_str += "That is when the game starts sending telemetry data"
         self.m_logger.info(log_str)
 
+        # Read the cert files only if HTTPS is enabled
+        if not self.m_config.HTTPS.enabled:
+            cert_path = None
+            key_path = None
+        else:
+            cert_path = self.m_config.HTTPS.cert_file_path
+            key_path = self.m_config.HTTPS.key_file_path
+
         return initUiIntfLayer(
             port=http_port,
             logger=logger,
@@ -143,8 +151,8 @@ class PngRunner:
             stream_overlay_start_sample_data=stream_overlay_start_sample_data,
             tasks=tasks,
             ver_str=ver_str,
-            cert_path=self.m_config.HTTPS.cert_file_path,
-            key_path=self.m_config.HTTPS.key_file_path
+            cert_path=cert_path,
+            key_path=key_path
         )
 
     def _getLocalIpAddresses(self) -> Set[str]:
