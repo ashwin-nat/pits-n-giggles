@@ -234,6 +234,9 @@ class SettingsWindow:
         if self.save_callback:
             self.save_callback(new_model)
 
+        # Show a success message
+        messagebox.showinfo("Settings Saved", "Settings saved successfully.")
+
     def _pascal_to_title(self, name: str) -> str:
         """
         Convert PascalCase or ALLCAPS section names to a title format.
