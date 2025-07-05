@@ -11,7 +11,7 @@ from PyInstaller.building.build_main import Analysis, PYZ, EXE, COLLECT
 # --------------------------------------------------------------------------------------------------
 
 APP_NAME = "pits_n_giggles"
-APP_VERSION = "2.8.1"
+APP_VERSION = "2.8.0"
 ICON_PATH = "../assets/favicon.ico"
 
 APP_BASENAME = f"{APP_NAME}_{APP_VERSION}"
