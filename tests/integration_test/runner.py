@@ -7,12 +7,13 @@ import asyncio
 import os
 import platform
 import signal
+import ssl
 import subprocess
 import sys
 import time
 from pathlib import Path
 
-import aiohttp
+from aiohttp import ClientSession, TCPConnector
 import gdown
 
 # Add the parent directory to the Python path
@@ -41,26 +42,32 @@ async def _check_endpoints_async(urls):
     """
     results = []
 
-    async def fetch(session, url):
-        try:
-            async with session.get(url, timeout=5) as response:
-                if response.status in {200, 404}:
-                    print(f"  ✅ Endpoint check PASSED: {url}")
-                    return (url, True)
-                else:
-                    print(f"  ❌ Endpoint check FAILED ({response.status}): {url}")
-                    return (url, False)
-        except Exception as e:
-            print(f"  ❌ Endpoint check FAILED (exception): {url} — {e}")
-            return (url, False)
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
 
-    async with aiohttp.ClientSession() as session:
-        tasks = [fetch(session, url) for url in urls]
+    connector = TCPConnector(ssl=ssl_context)
+
+    async with ClientSession(connector=connector) as session:
+        async def fetch(url):
+            try:
+                async with session.get(url, timeout=5) as response:
+                    if response.status in {200, 404}:
+                        print(f"  ✅ Endpoint check PASSED: {url}")
+                        return (url, True)
+                    else:
+                        print(f"  ❌ Endpoint check FAILED ({response.status}): {url}")
+                        return (url, False)
+            except Exception as e:
+                print(f"  ❌ Endpoint check FAILED (exception): {url} — {e}")
+                return (url, False)
+
+        tasks = [fetch(url) for url in urls]
         results = await asyncio.gather(*tasks)
 
     return results
 
-def main(telemetry_port, http_port):
+def main(telemetry_port, http_port, proto):
     # Create test data directory if it doesn't exist
     CACHE_DIR.mkdir(exist_ok=True)
 
@@ -95,11 +102,11 @@ def main(telemetry_port, http_port):
                 sys.exit(1)
 
     http_endpoints = [
-        f"http://localhost:{http_port}/telemetry-info",
-        f"http://localhost:{http_port}/race-info",
-        f"http://localhost:{http_port}/stream-overlay-info",
+        f"{proto}://localhost:{http_port}/telemetry-info",
+        f"{proto}://localhost:{http_port}/race-info",
+        f"{proto}://localhost:{http_port}/stream-overlay-info",
         *[
-            f"http://localhost:{http_port}/driver-info?index={i}"
+            f"{proto}://localhost:{http_port}/driver-info?index={i}"
             for i in range(23) # one index too high so that 404 is sent
         ]
     ]
@@ -183,5 +190,5 @@ def main(telemetry_port, http_port):
 
 if __name__ == "__main__":
     settings = load_config_from_ini("png_config.ini")
-    success = main(settings.Network.telemetry_port, settings.Network.server_port)
+    success = main(settings.Network.telemetry_port, settings.Network.server_port, settings.HTTPS.proto)
     sys.exit(0 if success else 1)
