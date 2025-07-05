@@ -436,7 +436,7 @@ class TelemetryWebServer:
             self.m_sio_app,
             host="0.0.0.0",
             port=self.m_port,
-            log_level="debug" if self.m_debug_mode else "error",
+            log_level="warning",
             ssl_certfile=self.m_cert_path,
             ssl_keyfile=self.m_key_path
         )
