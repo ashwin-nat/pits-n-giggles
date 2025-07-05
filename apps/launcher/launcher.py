@@ -22,63 +22,14 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import importlib.util
 import os
-import runpy
 import shutil
 import sys
 import tempfile
 import tkinter as tk
-from pathlib import Path
 
 from apps.launcher.png_launcher import PngLauncher
 from lib.version import get_version
-
-print("\nlauncher starting...\n")
-# Prevent fork bomb: if launcher is launched via `-m`, kill immediately and log
-
-if getattr(sys, 'frozen', False):
-    log_path = Path(sys.executable).with_name("launcher_entry.log")
-    with log_path.open("a", encoding="utf-8") as f:
-        f.write("[LAUNCHER ENTERED]\n")
-        f.write(f"sys.argv: {sys.argv}\n")
-
-print('fork bomb check passed\n')
-
-# Force PyInstaller to include __main__.py files
-if False:
-    import apps.backend.__main__
-    import apps.save_viewer.__main__
-
-if getattr(sys, 'frozen', False) and '--module' in sys.argv:
-    idx = sys.argv.index('--module')
-    module = sys.argv[idx + 1]
-    args = sys.argv[idx + 2:]
-
-    sys.path.insert(0, os.path.join(sys._MEIPASS))
-
-    print(f"[dispatcher] sys.path = {sys.path}")
-    print(f"[dispatcher] attempting run_module('{module}')")
-
-    # Check whether the module can be found
-    spec = importlib.util.find_spec(module)
-    if spec is None:
-        print(f"[dispatcher] Module '{module}' NOT FOUND in sys.path")
-    else:
-        print(f"[dispatcher] Module '{module}' found at: {spec.origin}")
-
-    sys.argv = [module] + args
-
-    try:
-        runpy.run_module(module, run_name="__main__")
-    except Exception as e:
-        print(f"[dispatcher] Exception during run_module: {e}")
-        import traceback
-        traceback.print_exc()
-
-    sys.exit(0)
-
-print(">> running launcher main()")
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -110,7 +61,6 @@ SETTINGS_ICON_PATH = str(resource_path("assets/settings.ico"))
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
 def entry_point():
-    print(">> running launcher entry_point()")
     debug_mode = "--debug" in sys.argv
     root = tk.Tk()
     root.title("Pits n' Giggles")
