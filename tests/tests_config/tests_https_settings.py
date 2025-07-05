@@ -43,8 +43,8 @@ class TestHttpsSettings(TestF1ConfigBase):
         """Test that default values are set correctly"""
         settings = HttpsSettings()
         self.assertFalse(settings.enabled)
-        self.assertIsNone(settings.key_file_path)
-        self.assertIsNone(settings.cert_file_path)
+        self.assertEqual("", settings.key_file_path)
+        self.assertEqual("", settings.cert_file_path)
 
     def test_enabled_without_key_should_fail(self):
         """HTTPS enabled without key should raise appropriate error"""

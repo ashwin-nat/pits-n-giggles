@@ -28,6 +28,8 @@ from typing import ClassVar, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
+from .file_path_str import FilePathStr
+
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
 class NetworkSettings(BaseModel):
@@ -127,16 +129,16 @@ class ForwardingSettings(BaseModel):
         return host, int(port_str)
 
 class HttpsSettings(BaseModel):
-    enabled: bool = Field(False, description="Enable HTTPS support (disable if you don't know what you're doing)")
-    key_file_path: Optional[str] = Field(None, description="Path to SSL private key file")
-    cert_file_path: Optional[str] = Field(None, description="Path to SSL certificate file")
+    enabled: bool = Field(False, description="Enable HTTPS support")
+    key_file_path: FilePathStr = Field("", description="Path to SSL private key file")
+    cert_file_path: FilePathStr = Field("", description="Path to SSL certificate file")
 
     def model_post_init(self, __context) -> None:
-        """Post-initialization validation to ensure SSL files exist when HTTPS is enabled."""
+        """Validate file existence only if HTTPS is enabled."""
         if self.enabled:
-            if not self.key_file_path or not os.path.isfile(self.key_file_path):
+            if not self.key_file_path.strip() or not os.path.isfile(self.key_file_path):
                 raise ValueError("Key file is required and must exist when HTTPS is enabled")
-            if not self.cert_file_path or not os.path.isfile(self.cert_file_path):
+            if not self.cert_file_path.strip() or not os.path.isfile(self.cert_file_path):
                 raise ValueError("Certificate file is required and must exist when HTTPS is enabled")
 
 class PngSettings(BaseModel):

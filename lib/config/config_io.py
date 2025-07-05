@@ -66,9 +66,6 @@ def load_config_from_ini(path: str, logger: Optional[Logger] = None) -> PngSetti
             section_model_cls = model_field.annotation
             section_data = raw.get(field_name, {})
 
-            # Recursively normalize empty strings ("") to None
-            section_data = _for_each_leaf(section_data, lambda leaf_val: None if leaf_val == "" else leaf_val)
-
             try:
                 # Validate section using its submodel (only this section)
                 section_model = section_model_cls.model_validate(section_data)
@@ -126,24 +123,6 @@ def _stringify_dict(d: Any) -> Any:
     if isinstance(d, dict):
         return {k: _stringify_dict(v) for k, v in d.items()}
     return "" if d is None else str(d)
-
-def _for_each_leaf(dict_data: Any, transform: Callable[[Any], Any]) -> Any:
-    """
-    Recursively apply a transformation function to all leaf values in a nested structure.
-
-    Args:
-        dict_data (Any): Input structure (dict, list, set, tuple, or primitive).
-        transform (Callable[[Any], Any]): Function to apply to each leaf value.
-
-    Returns:
-        Any: Transformed structure with the same shape.
-    """
-    if isinstance(dict_data, dict):
-        return {k: _for_each_leaf(v, transform) for k, v in dict_data.items()}
-    elif isinstance(dict_data, (list, tuple, set)):
-        return type(dict_data)(_for_each_leaf(v, transform) for v in dict_data)
-    else:
-        return transform(dict_data)
 
 def _backup_invalid_file(path: str, logger: Optional[Any]) -> None:
     """
