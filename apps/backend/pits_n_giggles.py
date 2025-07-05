@@ -217,7 +217,7 @@ async def main(logger: logging.Logger, args: argparse.Namespace) -> None:
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
-if __name__ == '__main__':
+def entry_point():
     report_pid_from_child()
     args_obj = parseArgs()
     png_logger = initLogger(file_name=args_obj.log_file_name, max_size=100000, debug_mode=args_obj.debug)
@@ -252,7 +252,7 @@ if __name__ == '__main__':
 #         stats.stream = f
 #         stats.print_stats()
 
-# if __name__ == "__main__":
+# def entry_point():
 #     yappi.set_clock_type("wall")  # Use "cpu" for CPU-bound tasks
 #     yappi.start()
 

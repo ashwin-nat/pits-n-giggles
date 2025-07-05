@@ -1215,6 +1215,7 @@ def main():
         else:
             sys.exit(PNG_ERROR_CODE_UNKNOWN)
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
+def entry_point():
     report_pid_from_child()
     main()

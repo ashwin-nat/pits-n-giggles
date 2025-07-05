@@ -22,22 +22,61 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import atexit
+import os
+import shutil
 import sys
+import tempfile
 import tkinter as tk
-from pathlib import Path
 
 from apps.launcher.png_launcher import PngLauncher
 from lib.version import get_version
 
+# -------------------------------------- GLOBALS -----------------------------------------------------------------------
+
+_temp_icon_file = None
+
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def resource_path(relative_path):
-    """Get absolute path to resource, works for dev and for PyInstaller."""
-    if hasattr(sys, "_MEIPASS"):
-        # Running from PyInstaller bundle
-        return Path(sys._MEIPASS) / relative_path
-    # Running from source
-    return Path(__file__).parent.parent.parent / relative_path
+    """
+    Get absolute path to resource, works for dev and for PyInstaller.
+    """
+    if getattr(sys, 'frozen', False):
+        return os.path.join(sys._MEIPASS, relative_path)
+    # Base path is project root (2 levels up from this file)
+    base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    return os.path.join(base_path, relative_path)
+
+def load_icon_safely(icon_relative_path):
+    """
+    Workaround for tkinter.iconbitmap() failing to load .ico from _MEIPASS.
+    """
+    global _temp_icon_file
+    icon_path = resource_path(icon_relative_path)
+
+    if getattr(sys, 'frozen', False):
+        # Copy .ico file to a real temp file so tkinter can access it
+        tmp_fd, tmp_icon_path = tempfile.mkstemp(suffix=".ico")
+        os.close(tmp_fd)
+        shutil.copyfile(icon_path, tmp_icon_path)
+        _temp_icon_file = tmp_icon_path
+        return tmp_icon_path
+    return icon_path
+
+def _cleanup_temp_icon():
+    """
+    Cleanup temp icon file.
+    """
+    global _temp_icon_file
+    if _temp_icon_file and os.path.exists(_temp_icon_file):
+        try:
+            os.remove(_temp_icon_file)
+        except Exception:
+            pass
+        _temp_icon_file = None
+
+atexit.register(_cleanup_temp_icon)
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
@@ -46,11 +85,11 @@ SETTINGS_ICON_PATH = str(resource_path("assets/settings.ico"))
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
-if __name__ == "__main__":
+def entry_point():
     debug_mode = "--debug" in sys.argv
     root = tk.Tk()
     root.title("Pits n' Giggles")
-    root.iconbitmap(resource_path("assets/favicon.ico"))  # Set the icon for the main window
+    root.iconbitmap(load_icon_safely("assets/favicon.ico"))  # Set the icon for the main window
     app = PngLauncher(
         root=root,
         ver_str=get_version(),

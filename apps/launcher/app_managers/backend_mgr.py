@@ -43,7 +43,7 @@ class BackendAppMgr(PngAppMgrBase):
         self.port_str = port_str
         super().__init__(
             name="server",
-            module_path="apps.backend.pits_n_giggles",
+            module_path="apps.backend",
             exe_name_without_ext="backend",
             display_name="Server",
             start_by_default=True,
