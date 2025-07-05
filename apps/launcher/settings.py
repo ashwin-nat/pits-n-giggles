@@ -25,12 +25,12 @@
 import configparser
 import re
 import tkinter as tk
-from tkinter import BooleanVar, StringVar, messagebox, ttk
-from typing import Callable
+from tkinter import BooleanVar, StringVar, messagebox, ttk, filedialog
+from typing import Callable, get_args, get_origin, Union
 
 from pydantic import ValidationError
 
-from lib.config import PngSettings, save_config_to_ini
+from lib.config import FilePathStr, PngSettings, save_config_to_ini
 
 from .console_interface import ConsoleInterface
 
@@ -91,9 +91,15 @@ class SettingsWindow:
         self.create_buttons()
 
     def create_tabs(self) -> None:
+        """
+        Create tabs for each section of the settings using the schema model.
+
+        - Boolean fields get checkboxes.
+        - FilePathStr fields get an entry box with a 'Browse...' button.
+        - Other fields get standard entry boxes.
+        """
         self.entry_vars = {}
 
-        # To populate UI, iterate through fields like:
         for section_name, field in type(self.settings).model_fields.items():
             section_model = getattr(self.settings, section_name)
             section_name_formatted = self._pascal_to_title(section_name)
@@ -101,22 +107,63 @@ class SettingsWindow:
             self.notebook.add(tab, text=section_name_formatted)
             self.entry_vars.setdefault(section_name, {})
 
-            for i, (field_name, field) in enumerate(type(section_model).model_fields.items()):
+            # Configure grid columns - make sure we have 3 columns
+            tab.columnconfigure(0, weight=0)  # Labels column
+            tab.columnconfigure(1, weight=1)  # Entry fields column
+            tab.columnconfigure(2, weight=0)  # Buttons column
+
+            model_fields = type(section_model).model_fields
+            for i, (field_name, field) in enumerate(model_fields.items()):
                 label_text = field.description or field_name
                 label = ttk.Label(tab, text=f"{label_text}:")
                 label.grid(row=i, column=0, sticky="w", padx=5, pady=5)
 
                 value = getattr(section_model, field_name)
+
+                annotation = field.annotation
+                origin = get_origin(annotation)
+                args = get_args(annotation)
+                is_file_path = (
+                    annotation is FilePathStr or
+                    origin is FilePathStr or
+                    (origin is Union and FilePathStr in args)
+                )
+
                 if isinstance(value, bool):
                     var = BooleanVar(value=value)
                     control = ttk.Checkbutton(tab, variable=var)
+                    control.grid(row=i, column=1, sticky="w", padx=5, pady=5)
+                    self.entry_vars[section_name][field_name] = var
+
+                elif is_file_path:
+                    var = StringVar(value=str(value))
+
+                    # Entry field
+                    entry = ttk.Entry(tab, textvariable=var)
+                    entry.grid(row=i, column=1, sticky="ew", padx=(5, 2), pady=5)
+
+                    # Browse button
+                    browse_btn = ttk.Button(
+                        tab,
+                        text="Browse...",
+                        command=lambda v=var: self._browse_file(v)
+                    )
+                    browse_btn.grid(row=i, column=2, sticky="w", padx=(2, 2), pady=5)
+
+                    # Clear button
+                    clear_btn = ttk.Button(
+                        tab,
+                        text="Clear",
+                        command=lambda v=var: v.set("")
+                    )
+                    clear_btn.grid(row=i, column=3, sticky="w", padx=(0, 5), pady=5)
+
+                    self.entry_vars[section_name][field_name] = var
                 else:
                     var = StringVar(value=str(value))
                     control = ttk.Entry(tab, textvariable=var, width=30)
-
-                control.grid(row=i, column=1, sticky="ew", padx=5, pady=5)
-                self.entry_vars[section_name][field_name] = var
-
+                    control.grid(row=i, column=1, sticky="ew", padx=5, pady=5)
+                    self.entry_vars[section_name][field_name] = var
 
     def create_buttons(self) -> None:
         """
@@ -187,7 +234,28 @@ class SettingsWindow:
         if self.save_callback:
             self.save_callback(new_model)
 
-    def _pascal_to_title(self, s: str) -> str:
-        """Convert a string from pascalCase to Title Case."""
-        # Insert a space before each capital letter (except the first one)
-        return re.sub(r'(?<!^)(?=[A-Z])', ' ', s).title()
+    def _pascal_to_title(self, name: str) -> str:
+        """
+        Convert PascalCase or ALLCAPS section names to a title format.
+
+        Examples:
+            'LoggingSettings' → 'Logging Settings'
+            'StreamOverlay'   → 'Stream Overlay'
+            'HTTPS'           → 'HTTPS'
+        """
+        if name.isupper():
+            return name  # Leave acronyms like HTTPS, UDP unchanged
+
+        # Insert space before capital letters that are followed by lowercase letters
+        return re.sub(r'(?<=[a-z])(?=[A-Z])', ' ', name)
+
+    def _browse_file(self, var: StringVar) -> None:
+        """
+        Open a file dialog and set the selected path into the given StringVar.
+
+        Args:
+            var (StringVar): The variable to update with the selected file path.
+        """
+        file_path = filedialog.askopenfilename()
+        if file_path:
+            var.set(file_path)
