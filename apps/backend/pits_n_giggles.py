@@ -38,7 +38,7 @@ from apps.backend.ui_intf_layer import TelemetryWebServer, initUiIntfLayer
 from lib.config import load_config_from_ini
 from lib.pid_report import report_pid_from_child
 from lib.version import get_version
-from lib.error_status import PngError, PngPortInUseError
+from lib.error_status import PngError
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
