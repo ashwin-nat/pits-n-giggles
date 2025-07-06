@@ -21,7 +21,18 @@
 # SOFTWARE.
 
 
-# -------------------------------------- CONSTANTS -----------------------------------------------------------------------
+# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
 PNG_ERROR_CODE_PORT_IN_USE = 100
 PNG_ERROR_CODE_UNKNOWN = 999
+
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
+
+class PngError(Exception):
+    def __init__(self, exit_code: int, message: str = ""):
+        self.exit_code = exit_code
+        super().__init__(f"exiting with code {exit_code}: {message}")
+
+class PngPortInUseError(PngError):
+    def __init__(self):
+        super().__init__(PNG_ERROR_CODE_PORT_IN_USE, "Port already in use")

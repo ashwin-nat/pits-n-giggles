@@ -27,6 +27,7 @@ import asyncio
 import logging
 import os
 import socket
+import sys
 import webbrowser
 from typing import List, Optional, Set
 
@@ -37,6 +38,7 @@ from apps.backend.ui_intf_layer import TelemetryWebServer, initUiIntfLayer
 from lib.config import load_config_from_ini
 from lib.pid_report import report_pid_from_child
 from lib.version import get_version
+from lib.error_status import PngError, PngPortInUseError
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -225,7 +227,11 @@ async def main(logger: logging.Logger, args: argparse.Namespace) -> None:
         replay_server=args.replay_server,
         debug_mode=args.debug
     )
-    await app.run()
+    try:
+        await app.run()
+    except PngError as e:
+        logger.error(f"Terminating due to Error: {e} with code {e.exit_code}")
+        sys.exit(e.exit_code)
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 

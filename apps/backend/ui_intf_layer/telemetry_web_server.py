@@ -36,7 +36,7 @@ import uvicorn
 from quart import Quart, jsonify, render_template, request, send_from_directory
 
 import apps.backend.state_mgmt_layer as TelState
-from lib.error_codes import PNG_ERROR_CODE_PORT_IN_USE
+from lib.error_status import PngPortInUseError
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -428,7 +428,9 @@ class TelemetryWebServer:
 
         if not _is_port_available(self.m_port):
             self.m_logger.error(f"Port {self.m_port} is already in use")
-            sys.exit(PNG_ERROR_CODE_PORT_IN_USE)
+            raise PngPortInUseError()
+            # sys.exit(PNG_ERROR_CODE_PORT_IN_USE)
+
 
         self.m_logger.info(f"Running on {'https' if self.m_cert_path else 'http'}://0.0.0.0:{self.m_port}")
 

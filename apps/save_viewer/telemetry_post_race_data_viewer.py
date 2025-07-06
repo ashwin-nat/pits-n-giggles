@@ -52,7 +52,7 @@ from lib.f1_types import F1Utils, LapHistoryData, ResultStatus
 from lib.pid_report import report_pid_from_child
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 from lib.version import get_version
-from lib.error_codes import PNG_ERROR_CODE_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN
+from lib.error_status import PNG_ERROR_CODE_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN
 
 
 def find_free_port():
@@ -1215,7 +1215,6 @@ def main():
         else:
             sys.exit(PNG_ERROR_CODE_UNKNOWN)
 
-# if __name__ == "__main__":
 def entry_point():
     report_pid_from_child()
     main()
