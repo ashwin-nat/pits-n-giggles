@@ -26,7 +26,7 @@ import os
 import re
 from typing import ClassVar, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from .file_path_str import FilePathStr
 
@@ -38,6 +38,22 @@ class NetworkSettings(BaseModel):
     save_viewer_port: int = Field(4769, ge=0, le=65535, description="Pits n' Giggles Save Data Viewer Port")
     udp_tyre_delta_action_code: int = Field(11, ge=1, le=12, description="Tyre Delta Marker: UDP Action Code")
     udp_custom_action_code: int = Field(12, ge=1, le=12, description="Custom Marker: UDP Action Code")
+
+    @model_validator(mode="after")
+    def check_ports_and_action_codes(self) -> "NetworkSettings":
+        fields_map = type(self).model_fields
+
+        if self.server_port == self.save_viewer_port:
+            desc1 = fields_map["server_port"].description
+            desc2 = fields_map["save_viewer_port"].description
+            raise ValueError(f"{desc1} and {desc2} must not be the same (both are {self.server_port})")
+
+        if self.udp_tyre_delta_action_code == self.udp_custom_action_code:
+            desc1 = fields_map["udp_tyre_delta_action_code"].description
+            desc2 = fields_map["udp_custom_action_code"].description
+            raise ValueError(f"{desc1} and {desc2} must not be the same (both are {self.udp_tyre_delta_action_code})")
+
+        return self
 
 class CaptureSettings(BaseModel):
     post_race_data_autosave: bool = Field(True, description="Autosave race data at the end of races")
