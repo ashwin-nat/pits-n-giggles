@@ -33,7 +33,7 @@ from typing import Callable, Optional
 import psutil
 
 from lib.config import PngSettings
-from lib.error_codes import PNG_ERROR_CODE_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN
+from lib.error_status import PNG_ERROR_CODE_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN
 from lib.pid_report import extract_pid_from_line
 
 from ..console_interface import ConsoleInterface
@@ -74,7 +74,7 @@ class PngAppMgrBase(ABC):
     DEFAULT_EXIT = EXIT_ERRORS[PNG_ERROR_CODE_UNKNOWN]
 
     def __init__(self,
-                 name: str,
+                 port_conflict_settings_field: str,
                  module_path: str,
                  exe_name_without_ext: str,
                  display_name: str,
@@ -82,14 +82,14 @@ class PngAppMgrBase(ABC):
                  console_app: ConsoleInterface,
                  args: list[str] = None):
         """Initialize the sub-application
-        :param name: Unique name for the sub-application
+        :param port_conflict_settings_field: Settings field to check for port conflicts
         :param module_path: Path to the sub-application module
         :param exe_name_without_ext: Executable name without extension
         :param display_name: Display name for the sub-application
         :param start_by_default: Whether to start this app by default
         :param console_app: Reference to a console interface for logging
         """
-        self.name = name
+        self.port_conflict_settings_field = port_conflict_settings_field
         self.module_path = module_path
         self.display_name = display_name
         self.exec_name = exe_name_without_ext + get_executable_extension()
@@ -321,9 +321,14 @@ class PngAppMgrBase(ABC):
         self.process = None
 
         info = self.EXIT_ERRORS.get(ret_code, self.DEFAULT_EXIT)
+        err_msg = f"{self.display_name} {info['message']}"
+
+        if info["status"] == "Port Conflict":
+            err_msg += f". Please fix the following field in the settings: {self.port_conflict_settings_field}"
+        self.console_app.log(err_msg)
         messagebox.showerror(
             title=f"{self.display_name} - {info['title']}",
-            message=f"{self.display_name} {info['message']}"
+            message=err_msg,
         )
         self.status_var.set(info["status"])
 

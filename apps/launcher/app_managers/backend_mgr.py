@@ -44,7 +44,7 @@ class BackendAppMgr(PngAppMgrBase):
         self.port_str = port_str
         self.proto = proto
         super().__init__(
-            name="server",
+            port_conflict_settings_field='Network -> "Pits n\' Giggles HTTP Server Port"',
             module_path="apps.backend",
             exe_name_without_ext="backend",
             display_name="Server",
