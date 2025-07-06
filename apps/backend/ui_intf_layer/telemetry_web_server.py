@@ -26,7 +26,6 @@ import asyncio
 import errno
 import logging
 import socket
-import sys
 from http import HTTPStatus
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
