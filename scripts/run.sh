@@ -1,31 +1,29 @@
 #!/bin/bash
 
-# Move to the directory where the script is located
+# Exit on error
+set -e
+
+# Move to the directory where the script is located (scripts/)
 cd "$(dirname "$0")"
 
-# Move to project root (one level up from /scripts)
-cd ..
-
 # Check if Python 3 is installed
-if command -v python &> /dev/null; then
-    echo "Python 3 is installed."
-else
+if ! command -v python3 &> /dev/null; then
     echo "Python 3 is not installed. Please install Python 3 before proceeding."
     exit 1
 fi
 
-# Check if virtual environment exists, create if not
+# Check if virtual environment exists in scripts/, create if not
 if [ ! -d "png-venv" ]; then
-    echo "Creating virtual environment 'png-venv'..."
-    python -m venv png-venv
+    echo "Creating virtual environment 'png-venv' in scripts/..."
+    python3 -m venv png-venv
 fi
 
-# Activate virtual environment
+# Activate the virtual environment
 source png-venv/bin/activate
 
-# Upgrade pip and install prerequisites
+# Upgrade pip and install requirements from project root
 python -m pip install --upgrade pip
-pip install -r requirements.txt
+pip install -r ../requirements.txt
 
-# Set PYTHONPATH and run the app as a module
-PYTHONPATH="$(pwd)" python -O -m apps.backend
+# Set PYTHONPATH to project root and run the app
+PYTHONPATH="$(pwd)/.." python -O -m apps.launcher

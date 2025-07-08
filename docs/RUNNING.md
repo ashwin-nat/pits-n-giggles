@@ -25,6 +25,12 @@ This sets up a virtual environment and installs everything defined in `pyproject
 
 ## ▶️ Running Apps
 
+The app can be launched by using the command
+
+```bash
+poetry run python -m apps.launcher
+```
+
 All commands below must be run **from the project root directory** (i.e., the folder containing `pyproject.toml`).
 
 ### 🧠 Backend App
