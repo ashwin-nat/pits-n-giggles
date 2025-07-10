@@ -265,6 +265,9 @@ class F1TelemetryHandler:
             if self.m_final_classification_processed:
                 self.m_logger.debug('Session UID %d final classification already processed.', packet.m_header.m_sessionUID)
                 return
+            if not self.m_session_state_ref.m_session_info.is_valid:
+                self.m_logger.error('Final classification event. Session data not available. Not saving data.')
+                return
             self.m_logger.info('Received Final Classification Packet.')
             final_json = self.m_session_state_ref.processFinalClassificationUpdate(packet)
             self.m_final_classification_processed = True
