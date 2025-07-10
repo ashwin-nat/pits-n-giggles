@@ -93,8 +93,8 @@ class SaveViewerAppMgr(PngAppMgrBase):
 
     def open_file(self):
         file_path = filedialog.askopenfilename()
-        self.console_app.log(f"Selected file: {file_path}")
         if file_path:
+            self.console_app.log(f"Selected file: {file_path}")
             if self.process:
                 self.process.stdin.write(file_path + '\n')
                 self.process.stdin.flush()
