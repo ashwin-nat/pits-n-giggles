@@ -27,7 +27,7 @@ import os
 import time
 import tkinter as tk
 from tkinter import messagebox, filedialog
-from typing import List
+from typing import List, Tuple
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -82,6 +82,19 @@ class PacketCaptureTable:
         """
         with self.m_lock:
             return self.m_packet_capture.getNumPackets()
+
+    def dumpToFile(self, path: str) -> Tuple[str, int, int]:
+        """
+        Dumps the packet history to a file while acquiring a lock to ensure thread safety.
+
+        Parameters:
+            path (str): The path to the file to be written to.
+
+        Returns:
+            Tuple[str, int, int]: A tuple containing the filename, number of packets, and number of bytes written.
+        """
+        with self.m_lock:
+            return self.m_packet_capture.dumpToFile(path)
 
 g_capture_table = PacketCaptureTable()
 
@@ -146,7 +159,7 @@ class SimpleApp:
                                                  filetypes=[("Custom files", "*.f1pcap"), ("All files", "*.*")])
         if file_path:
             global g_capture_table
-            _, num_packets, _ = g_capture_table.m_packet_capture.dumpToFile(file_path)
+            _, num_packets, _ = g_capture_table.dumpToFile(file_path)
             g_capture_table.clear()
             if num_packets == 0:
                 messagebox.showinfo("Info", "No data to save!")
