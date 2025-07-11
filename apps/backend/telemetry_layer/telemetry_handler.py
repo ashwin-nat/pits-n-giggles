@@ -179,11 +179,11 @@ class F1TelemetryHandler:
 
             if packet.m_sessionDuration == 0:
                 self.m_logger.info("Session duration is 0. clearing data structures")
-                await self.clearAllDataStructures()
+                await self.clearAllDataStructures("Session duration is 0")
 
             elif self.m_session_state_ref.processSessionUpdate(packet):
                 self.m_logger.info("Session UID changed. clearing data structures")
-                await self.clearAllDataStructures()
+                await self.clearAllDataStructures("Session UID changed")
 
         @self.m_manager.on_packet(F1PacketType.LAP_DATA)
         async def processLapDataUpdate(packet: PacketLapData) -> None:
@@ -391,7 +391,7 @@ class F1TelemetryHandler:
             """
 
             self.m_last_session_uid = packet.m_header.m_sessionUID
-            await self.clearAllDataStructures()
+            await self.clearAllDataStructures("SESSION_START event")
 
         async def handleButtonStatus(packet: PacketEventData) -> None:
             """
@@ -440,7 +440,7 @@ class F1TelemetryHandler:
                     self.m_data_cleared_this_session = False
 
                 if not self.m_data_cleared_this_session:
-                    await self.clearAllDataStructures()
+                    await self.clearAllDataStructures("Start lights event")
                 else:
                     self.m_logger.debug("Not clearing data structures in start lights event")
 
@@ -481,9 +481,13 @@ class F1TelemetryHandler:
             record: PacketEventData.Overtake = packet.mEventDetails
             self.m_session_state_ref.processOvertakeEvent(record)
 
-    async def clearAllDataStructures(self) -> None:
-        """Clear all the data structures"""
-        self.m_session_state_ref.processSessionStarted()
+    async def clearAllDataStructures(self, reason: str) -> None:
+        """Clear all the data structures
+
+        Args:
+            reason (str): Reason for clearing
+        """
+        self.m_session_state_ref.processSessionStarted(reason)
         self.m_data_cleared_this_session = True
         self.m_final_classification_processed = False
 

@@ -729,11 +729,14 @@ class SessionState:
                 obj_to_be_updated.processPositionsHistoryUpdate(packet, position_hist)
 
 
-    def processSessionStarted(self) -> None:
+    def processSessionStarted(self, reason: str) -> None:
         """
         Reset the data structures when SESSION_STARTED has been received
+
+        Args:
+            reason (str): Reason for clearing
         """
-        self.clear("session started")
+        self.clear(reason)
         self.setRaceOngoing()
 
     def processSessionUpdate(self, packet: PacketSessionData) -> bool:
