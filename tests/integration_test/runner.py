@@ -53,13 +53,13 @@ async def _check_endpoints_async(urls):
             try:
                 async with session.get(url, timeout=5) as response:
                     if response.status in {200, 404}:
-                        print(f"  ✅ Endpoint check PASSED: {url}")
+                        print(f"  [OK] Endpoint check PASSED: {url}")
                         return (url, True)
                     else:
-                        print(f"  ❌ Endpoint check FAILED ({response.status}): {url}")
+                        print(f"  [FAIL] Endpoint check FAILED ({response.status}): {url}")
                         return (url, False)
             except Exception as e:
-                print(f"  ❌ Endpoint check FAILED (exception): {url} — {e}")
+                print(f"  [FAIL] Endpoint check FAILED (exception): {url} — {e}")
                 return (url, False)
 
         tasks = [fetch(url) for url in urls]
@@ -181,10 +181,10 @@ def main(telemetry_port, http_port, proto):
         print(f"{status}: {file_name}")
 
         if not replay_success:
-            print("  ↳ ❌ Replayer failed")
+            print("  ↳ [FAIL] Replayer failed")
         for url, ok in endpoint_status:
             if not ok:
-                print(f"  ↳ ❌ Endpoint failed: {url}")
+                print(f"  ↳ [FAIL] Endpoint failed: {url}")
 
     return success_count == len(results)
 
