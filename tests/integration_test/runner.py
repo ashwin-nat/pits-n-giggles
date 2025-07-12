@@ -30,16 +30,10 @@ def get_cached_files() -> list[str]:
     return sorted(str(p) for p in CACHE_DIR.glob("*.f1pcap"))
 
 def check_endpoints_blocking(urls):
-    """
-    Blocking wrapper for async endpoint check.
-    """
     return asyncio.run(_check_endpoints_async(urls))
 
 
 async def _check_endpoints_async(urls):
-    """
-    Asynchronously check each URL and print the result.
-    """
     results = []
 
     ssl_context = ssl.create_default_context()
@@ -59,7 +53,7 @@ async def _check_endpoints_async(urls):
                         print(f"  [FAIL] Endpoint check FAILED ({response.status}): {url}")
                         return (url, False)
             except Exception as e:
-                print(f"  [FAIL] Endpoint check FAILED (exception): {url} — {e}")
+                print(f"  [FAIL] Endpoint check FAILED (exception): {url} - {e}")
                 return (url, False)
 
         tasks = [fetch(url) for url in urls]
@@ -68,15 +62,13 @@ async def _check_endpoints_async(urls):
     return results
 
 def main(telemetry_port, http_port, proto):
-    # Create test data directory if it doesn't exist
     CACHE_DIR.mkdir(exist_ok=True)
-
     is_windows = platform.system() == "Windows"
 
     print("Checking for cached test files...")
     cached_files = get_cached_files()
     if cached_files:
-        print(f"Found {len(cached_files)} cached files — skipping download")
+        print(f"Found {len(cached_files)} cached files - skipping download")
         files = cached_files
     else:
         print("No cached files found. Downloading test files from Google Drive...")
@@ -85,7 +77,7 @@ def main(telemetry_port, http_port, proto):
                 DRIVE_FOLDER_URL,
                 output=str(CACHE_DIR),
                 quiet=False,
-                remaining_ok=True  # Skip re-downloading existing files
+                remaining_ok=True
             )
             if not files:
                 print("No files were downloaded from Google Drive!")
@@ -93,7 +85,6 @@ def main(telemetry_port, http_port, proto):
             print(f"Downloaded {len(files)} test files")
         except Exception as e:
             print(f"Error occurred while downloading test files from Google Drive: {e}")
-            # Try using any cached files even if download failed
             files = get_cached_files()
             if files:
                 print(f"Using {len(files)} cached files")
@@ -107,55 +98,64 @@ def main(telemetry_port, http_port, proto):
         f"{proto}://localhost:{http_port}/stream-overlay-info",
         *[
             f"{proto}://localhost:{http_port}/driver-info?index={i}"
-            for i in range(23) # one index too high so that 404 is sent
+            for i in range(23)
         ]
     ]
 
-    # Start the app
     print("\nStarting app in replay server mode...")
-    app_cmd = ["poetry", "run", "python", "-m", "apps.backend",
-               "--replay-server", "--debug"]
+    app_cmd = ["poetry", "run", "python", "-m", "apps.backend", "--replay-server", "--debug"]
 
     if is_windows:
-        app_process = subprocess.Popen(
-            app_cmd,
-            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
-        )
+        app_process = subprocess.Popen(app_cmd, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
     else:
-        app_process = subprocess.Popen(
-            app_cmd,
-            start_new_session=True
-        )
+        app_process = subprocess.Popen(app_cmd, start_new_session=True)
 
-    # Wait for app to start
     print("Waiting for app to start...")
     time.sleep(5)
 
-    # Run each test file
     results = []
     try:
         for index, file_path in enumerate(files):
+            # If app is already dead, don't even try to replay
+            if app_process.poll() is not None:
+                print(f"\n[FAIL] App crashed or exited unexpectedly (code={app_process.returncode}) - aborting remaining tests")
+                break
+
             file_name = os.path.basename(file_path)
-            print('=' * 40)
+            print("=" * 40)
             print(f"\nRunning test {index + 1} of {len(files)}: {file_name}")
 
-            replayer_cmd = ["poetry", "run", "python", "-m", "apps.dev_tools.telemetry_replayer",
-                            "--file-name", str(file_path), "--port", str(telemetry_port)]
+            # Build replayer command
+            replayer_cmd = [
+                "poetry", "run", "python", "-m", "apps.dev_tools.telemetry_replayer",
+                "--file-name", str(file_path),
+                "--port", str(telemetry_port)
+            ]
 
             replay_success = False
             endpoint_status = []
 
+            # Launch the replayer — will cause file decompression
             try:
                 result = subprocess.run(replayer_cmd, timeout=120)
                 replay_success = (result.returncode == 0)
             except subprocess.TimeoutExpired:
-                print(f"Test FAILED: {file_name} timed out after 120 seconds")
+                print(f"[FAIL] Test FAILED: {file_name} timed out after 120 seconds")
 
-            if replay_success:
-                endpoint_status = check_endpoints_blocking(http_endpoints)
-            else:
-                print("  ⚠️ Skipping endpoint checks since replayer failed")
-                endpoint_status = [(url, False) for url in http_endpoints]
+            # Abort early if replay failed and app has crashed
+            if not replay_success:
+                print(f"[FAIL] App crashed during replay (code={app_process.returncode}) - aborting remaining tests")
+                results.append((file_name, False, replay_success, []))
+                break
+
+            # If app crashed during replay
+            if app_process.poll() is not None:
+                print(f"[FAIL] App crashed during replay (code={app_process.returncode}) - skipping endpoint checks")
+                results.append((file_name, False, replay_success, []))
+                break
+
+            # Only run endpoint checks if replay succeeded and app is still alive
+            endpoint_status = check_endpoints_blocking(http_endpoints)
 
             overall_success = replay_success and all(ok for _, ok in endpoint_status)
             results.append((file_name, overall_success, replay_success, endpoint_status))
@@ -163,15 +163,22 @@ def main(telemetry_port, http_port, proto):
             status = "PASSED" if overall_success else "FAILED"
             print(f"Test {index + 1} of {len(files)} {status}: {file_name}")
 
-        time.sleep(10)
     finally:
         print(f"\nStopping app... PID={app_process.pid}")
         if is_windows:
-            subprocess.call(["taskkill", "/F", "/T", "/PID", str(app_process.pid)])
+            if app_process.poll() is None:
+                try:
+                    subprocess.call(["taskkill", "/F", "/T", "/PID", str(app_process.pid)])
+                except Exception as e:
+                    print(f"[WARN] Could not terminate app: {e}")
+            else:
+                print(f"App already exited (PID={app_process.pid})")
         else:
-            os.killpg(app_process.pid, signal.SIGKILL)
+            try:
+                os.killpg(app_process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                print("[WARN] App already exited")
 
-    # Print summary
     print("\n===== TEST RESULTS =====")
     success_count = sum(overall for _, overall, _, _ in results)
     print(f"Passed: {success_count}/{len(results)}\n")
@@ -181,14 +188,18 @@ def main(telemetry_port, http_port, proto):
         print(f"{status}: {file_name}")
 
         if not replay_success:
-            print("  ↳ [FAIL] Replayer failed")
+            print("  [FAIL] Replayer failed")
         for url, ok in endpoint_status:
             if not ok:
-                print(f"  ↳ [FAIL] Endpoint failed: {url}")
+                print(f"  [FAIL] Endpoint failed: {url}")
 
     return success_count == len(results)
 
 if __name__ == "__main__":
     settings = load_config_from_ini("png_config.ini")
-    success = main(settings.Network.telemetry_port, settings.Network.server_port, settings.HTTPS.proto)
+    success = main(
+        telemetry_port=settings.Network.telemetry_port,
+        http_port=settings.Network.server_port,
+        proto=settings.HTTPS.proto
+    )
     sys.exit(0 if success else 1)
