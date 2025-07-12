@@ -22,10 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
+import logging
 from copy import deepcopy
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 
-from apps.backend.common.png_logger import getLogger
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
 from lib.f1_types import (F1Utils, LapData, PacketLapPositionsData,
@@ -44,8 +44,6 @@ from .warns_pens_info import WarningPenaltyHistory
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
-png_logger = getLogger()
-
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
 class DataPerDriver:
@@ -53,6 +51,8 @@ class DataPerDriver:
     Class that models the data stored per race driver.
 
     Attributes:
+        m_index (int): The index of the driver.
+        m_logger (logging.Logger): Logger object
         m_driver_info (DriverInfo): Contains driver's position, name, and team.
         m_lap_info (LapInfo): Details regarding the driver's lap times.
         m_tyre_info (TyreInfo): Information about the driver's tire usage and condition.
@@ -65,6 +65,8 @@ class DataPerDriver:
     """
 
     __slots__ = (
+        "m_index",
+        "m_logger",
         "m_driver_info",
         "m_lap_info",
         "m_tyre_info",
@@ -95,14 +97,25 @@ class DataPerDriver:
 
         return self.__repr__()
 
-    def __init__(self, total_laps):
+    def __init__(self,
+                 index: int,
+                 logger: logging.Logger,
+                 total_laps: Optional[int]):
         """
         Init the data per driver fields
+
+        Args:
+            index (int): The index of the driver.
+            logger (logging.Logger): Logger object
+            total_laps (Optional[int]): The total number of laps. May be None
         """
+
+        self.m_index = index
+        self.m_logger = logger
 
         self.m_driver_info: DriverInfo = DriverInfo()
         self.m_lap_info: LapInfo = LapInfo()
-        self.m_tyre_info: TyreInfo = TyreInfo(total_laps)
+        self.m_tyre_info: TyreInfo = TyreInfo(total_laps, self.m_logger)
 
         self.m_car_info: CarInfo = CarInfo(total_laps)
 
@@ -330,10 +343,10 @@ class DataPerDriver:
                         'rear-left-wear': car_damage_data.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
                     })
                 else:
-                    png_logger.debug('car damage data not available for lap %d driver %s', lap_number,
+                    self.m_logger.debug('car damage data not available for lap %d driver %s', lap_number,
                         self.m_driver_info.name)
             else:
-                png_logger.debug('per lap snapshot not available for lap %d driver %s', lap_number,
+                self.m_logger.debug('per lap snapshot not available for lap %d driver %s', lap_number,
                     self.m_driver_info.name)
         return tyre_wear_history
 
@@ -435,7 +448,7 @@ class DataPerDriver:
         self.m_tyre_info.m_tyre_set_history_manager.remove(outdated_laps)
         self.m_car_info.m_fuel_rate_recommender.remove(outdated_laps)
 
-        png_logger.debug("Driver %s - detected flashback. outdated_laps: %s", str(self), outdated_laps)
+        self.m_logger.debug("Driver %s - detected flashback. outdated_laps: %s", str(self), outdated_laps)
 
     def onLapChange(self,
         old_lap_number: int,
@@ -489,7 +502,7 @@ class DataPerDriver:
 
         # Check if the old lap number is already present in the snapshots (lap already processed)
         if old_lap_number in self.m_per_lap_snapshots:
-            png_logger.debug("Driver %s - lap %d already in per_lap_snapshots. Possible flashback",
+            self.m_logger.debug("Driver %s - lap %d already in per_lap_snapshots. Possible flashback",
                              str(self), old_lap_number)
             return
 
@@ -539,7 +552,7 @@ class DataPerDriver:
         # Now clear the per lap max stuff
         self.m_lap_info.m_top_speed_kmph_this_lap = None
         self.m_driver_info.m_curr_lap_max_sc_status = None
-        png_logger.debug("Driver %s - lap %d added to per_lap_snapshots", str(self), old_lap_number)
+        self.m_logger.debug("Driver %s - lap %d added to per_lap_snapshots", str(self), old_lap_number)
 
     def shouldCaptureZerothLapSnapshot(self) -> bool:
         """
@@ -621,7 +634,7 @@ class DataPerDriver:
                                                     initial_tyre_wear=initial_tyre_wear,
                         ))
                     else:
-                        png_logger.debug("Driver %s - zeroth lap snapshot available but no car damage packet. "
+                        self.m_logger.debug("Driver %s - zeroth lap snapshot available but no car damage packet. "
                                          "Hence clearing the zeroth lap snapshot to trigger it to happen again",
                                             str(self))
                         del self.m_per_lap_snapshots[0]
@@ -634,7 +647,7 @@ class DataPerDriver:
                     #     - lap change
                     #     - car damage packet (new updated tyre wear for the new tyre set)
                     if not self.m_pending_events_mgr.areEventsPending():
-                        png_logger.debug("Driver %s - lap %d tyre set change detected. Registering for delayed handling",
+                        self.m_logger.debug("Driver %s - lap %d tyre set change detected. Registering for delayed handling",
                                         str(self), self.m_lap_info.m_current_lap)
                         self.m_pending_events_mgr.register(
                             events={DriverPendingEvents.CAR_DMG_PKT_EVENT, DriverPendingEvents.LAP_CHANGE_EVENT},
@@ -704,7 +717,7 @@ class DataPerDriver:
             initial_tyre_wear (TyreWearPerLap): The initial tyre wear data
         """
 
-        png_logger.debug("Driver %s - processing delayed tyre set change", str(self))
+        self.m_logger.debug("Driver %s - processing delayed tyre set change", str(self))
         initial_tyre_wear.lap_number = self.m_lap_info.m_current_lap - 1
         tyre_set_key = self.m_packet_copies.m_packet_tyre_sets.getFittedTyreSetKey()
         initial_tyre_wear.desc = f"Delayed tyre set change. old tyre val. key={tyre_set_key}"
@@ -1018,7 +1031,7 @@ class DataPerDriver:
 
         # Defer this update if the position history is not yet initialized
         if not self.m_position_history:
-            png_logger.debug("Position history: %s", str(self.m_position_history))
+            self.m_logger.debug("Position history: %s", str(self.m_position_history))
             return
 
         assert len(position_history) == packet.m_numLaps

@@ -30,11 +30,8 @@ from lib.f1_types import (CarDamageData, CarMotionData, CarSetupData,
                           FinalClassificationData, LapData,
                           PacketSessionHistoryData, PacketTyreSetsData,
                           ParticipantData)
-from apps.backend.common.png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
-
-png_logger = getLogger()
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 

@@ -1123,7 +1123,10 @@ class SessionState:
 
         if not (obj := self.m_driver_data[index]) and create:
             self.m_logger.debug(f"Creating new DataPerDriver for index {index}")
-            obj = DataPerDriver(self.m_session_info.m_total_laps)
+            obj = DataPerDriver(
+                index=index,
+                logger=self.m_logger,
+                total_laps=self.m_session_info.m_total_laps)
             self.m_driver_data[index] = obj
         return obj
 

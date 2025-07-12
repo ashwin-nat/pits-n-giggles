@@ -66,14 +66,6 @@ def initLogger(file_name: str = None, max_size: int = 1000000, debug_mode: bool 
 
     return png_logger
 
-def getLogger() -> logging.Logger:
-    """Get the PNG logger
-
-    Returns:
-        logging.Logger: The logger object
-    """
-    return logging.getLogger('png')
-
 def _clearFileIfRequired(file_name: str, max_size: int) -> None:
     """Clear the file if it is larger than 1 MB.
 
