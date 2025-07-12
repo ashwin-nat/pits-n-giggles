@@ -329,7 +329,7 @@ class SessionState:
                 continue
 
             num_active_cars += 1
-            driver_obj = self._getObjectByIndex(index)
+            driver_obj = self._getObjectByIndex(index, reason="Lap data update")
 
             # Update driver position and timing data
             self._updateDriverPositionData(driver_obj, lap_data)
@@ -476,7 +476,7 @@ class SessionState:
 
         self.m_player_index = packet.m_header.m_playerCarIndex if packet.m_header.m_playerCarIndex != 255 else None
         for index, participant in enumerate(packet.m_participants):
-            obj_to_be_updated = self._getObjectByIndex(index)
+            obj_to_be_updated = self._getObjectByIndex(index, reason='Participants update')
             obj_to_be_updated.m_driver_info.name = participant.name
             obj_to_be_updated.m_driver_info.team = str(participant.m_teamId)
             obj_to_be_updated.m_driver_info.driver_number = participant.m_raceNumber
@@ -492,7 +492,7 @@ class SessionState:
         """
 
         for index, car_telemetry_data in enumerate(packet.m_carTelemetryData):
-            obj_to_be_updated = self._getObjectByIndex(index)
+            obj_to_be_updated = self._getObjectByIndex(index, reason='Car Telemetry update')
             obj_to_be_updated.m_car_info.m_drs_activated = bool(car_telemetry_data.m_drs)
             obj_to_be_updated.m_tyre_info.tyre_inner_temp = \
                     sum(car_telemetry_data.m_tyresInnerTemperature)/len(car_telemetry_data.m_tyresInnerTemperature)
@@ -513,7 +513,7 @@ class SessionState:
         """
 
         for index, car_status_data in enumerate(packet.m_carStatusData):
-            obj_to_be_updated = self._getObjectByIndex(index)
+            obj_to_be_updated = self._getObjectByIndex(index, reason='Car Status update')
             obj_to_be_updated.m_car_info.m_ers_perc = (car_status_data.m_ersStoreEnergy/CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0
             obj_to_be_updated.m_tyre_info.tyre_age = car_status_data.m_tyresAgeLaps
             obj_to_be_updated.m_tyre_info.tyre_vis_compound = car_status_data.m_visualTyreCompound
@@ -598,7 +598,7 @@ class SessionState:
             packet (PacketCarDamageData): The car damage update packet
         """
         for index, car_damage in enumerate(packet.m_carDamageData):
-            obj_to_be_updated = self._getObjectByIndex(index)
+            obj_to_be_updated = self._getObjectByIndex(index, reason='Car damage update')
             obj_to_be_updated.m_packet_copies.m_packet_car_damage = car_damage
             obj_to_be_updated.m_tyre_info.tyre_wear = TyreWearPerLap(
                 fl_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
@@ -620,7 +620,7 @@ class SessionState:
         """
 
         # Update the fastest lap variable
-        obj_to_be_updated = self._getObjectByIndex(packet.m_carIdx)
+        obj_to_be_updated = self._getObjectByIndex(packet.m_carIdx, reason='Session history update')
         obj_to_be_updated.m_packet_copies.m_packet_session_history = packet
         if (packet.m_bestLapTimeLapNum > 0) and (packet.m_bestLapTimeLapNum <= packet.m_numLaps):
             obj_to_be_updated.m_lap_info.m_best_lap_ms = packet.m_lapHistoryData[packet.m_bestLapTimeLapNum-1].m_lapTimeInMS
@@ -681,7 +681,7 @@ class SessionState:
             packet (PacketTyreSetsData): The tyre sets update packet
         """
 
-        obj_to_be_updated = self._getObjectByIndex(packet.m_carIdx)
+        obj_to_be_updated = self._getObjectByIndex(packet.m_carIdx, reason='Tyre sets update')
         obj_to_be_updated.m_packet_copies.m_packet_tyre_sets = packet
         obj_to_be_updated.m_tyre_info.tyre_life_remaining_laps = packet.m_tyreSetData[packet.m_fittedIdx].m_lifeSpan
 
@@ -696,7 +696,7 @@ class SessionState:
         """
 
         for index, motion_data in enumerate(packet.m_carMotionData):
-            obj_to_be_updated = self._getObjectByIndex(index)
+            obj_to_be_updated = self._getObjectByIndex(index, reason='Motion update')
             obj_to_be_updated.m_packet_copies.m_packet_motion = motion_data
 
     def processCarSetupsUpdate(self, packet: PacketCarSetupData) -> None:
@@ -707,7 +707,7 @@ class SessionState:
         """
 
         for index, car_setup in enumerate(packet.m_carSetups):
-            obj_to_be_updated = self._getObjectByIndex(index)
+            obj_to_be_updated = self._getObjectByIndex(index, reason='Car setup update')
             obj_to_be_updated.m_packet_copies.m_packet_car_setup = car_setup
 
     def processTimeTrialUpdate(self, packet: PacketTimeTrialData) -> None:
@@ -1113,13 +1113,14 @@ class SessionState:
 
     ##### Internal Helpers #####
 
-    def _getObjectByIndex(self, index: int, create: bool = True) -> DataPerDriver:
+    def _getObjectByIndex(self, index: int, create: bool = True, reason: str = None) -> DataPerDriver:
         """Looks up and retrieves the object at the specified index.
             If not found and create is True, creates the object, inserts into the list, and returns it.
 
         Args:
             index (int): The driver index
             create (bool, optional): Whether to create the object if not found. Defaults to True.
+            reason (str, optional): The reason for creating the object. Defaults to None.
 
         Returns:
             DataPerDriver: The data object associated with the given index
@@ -1128,7 +1129,7 @@ class SessionState:
         assert index is not None, "Index cannot be None"
 
         if not (obj := self.m_driver_data[index]) and create:
-            self.m_logger.debug(f"Creating new DataPerDriver for index {index}")
+            self.m_logger.debug(f"Creating new DataPerDriver for index {index}. Reason: {reason}")
             obj = DataPerDriver(
                 index=index,
                 logger=self.m_logger,
