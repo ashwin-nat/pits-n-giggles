@@ -22,14 +22,12 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import List
+from logging import Logger
+from typing import List, Optional
 from enum import Enum, auto
 from lib.overtake_analyzer import OvertakeRecord
-from apps.backend.common.png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
-
-png_logger = getLogger()
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -64,11 +62,15 @@ class OvertakesHistory:
     """Class representing the history of all overtakes
     """
 
-    def __init__(self):
+    def __init__(self, logger: Optional[Logger] = None):
         """Initialise the overtakes history tracker
+
+        Args:
+            logger (Logger): Logger
         """
 
         self.m_overtakes_history: List[OvertakeRecord] = []
+        self.m_logger = logger
 
     def insert(self, overtake_record: OvertakeRecord) -> None:
         """Insert the overtake into the history table
@@ -80,8 +82,8 @@ class OvertakesHistory:
         if len(self.m_overtakes_history) == 0:
             overtake_record.m_row_id = 0
             self.m_overtakes_history.append(overtake_record)
-        elif self.m_overtakes_history[-1] == overtake_record:
-            png_logger.debug("not adding repeated overtake record %s", str(overtake_record))
+        elif (self.m_overtakes_history[-1] == overtake_record) and self.m_logger:
+            self.m_logger.debug("not adding repeated overtake record %s", str(overtake_record))
         else:
             overtake_record.m_row_id = len(self.m_overtakes_history)
             self.m_overtakes_history.append(overtake_record)

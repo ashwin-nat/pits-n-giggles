@@ -24,16 +24,14 @@
 
 import json
 from dataclasses import InitVar, dataclass, field
+from logging import Logger
 from typing import Any, Dict, List, Optional
 
 from lib.f1_types import (ActualTyreCompound, PacketTyreSetsData,
                           VisualTyreCompound)
 from lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
-from apps.backend.common.png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
-
-png_logger = getLogger()
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 class TyreSetInfo:
@@ -172,11 +170,15 @@ class TyreSetHistoryManager:
     """Class that manages the info per tyre set usage
     """
 
-    def __init__(self):
+    def __init__(self, logger: Logger):
         """Init the manager object
+
+        Args:
+            logger (Optional[Logger]): Logger
         """
 
         self.m_history: List[TyreSetHistoryEntry] = []
+        self.m_logger = logger
 
     @property
     def length(self) -> int:
@@ -261,7 +263,7 @@ class TyreSetHistoryManager:
         # If the first stint has garbage data, remove it (this happens if the user customizes the strat before race)
         if self.m_history[0].m_end_lap < self.m_history[0].m_start_lap:
             garbage_obj = self.m_history.pop(0)
-            png_logger.debug("Removed garbage tyre stint history record.\n %s",
+            self.m_logger.debug("Removed garbage tyre stint history record.\n %s",
                              json.dumps(garbage_obj.toJSON(include_tyre_wear_history=False), indent=4))
 
     def getEntries(self) -> List[TyreSetHistoryEntry]:
