@@ -348,17 +348,20 @@ class F1TelemetryHandler:
 
             self.m_session_state_ref.processMotionUpdate(packet)
 
-        @self.m_manager.on_packet(F1PacketType.CAR_SETUPS)
-        async def processCarSetupsUpdate(packet: PacketCarSetupData) -> None:
-            """Update the data structures with car setup information
+        # Register the car setup handler if and only if user has allowed this
+        if self.m_session_state_ref.m_process_car_setups:
+            self.m_logger.debug("Processing car setups")
+            @self.m_manager.on_packet(F1PacketType.CAR_SETUPS)
+            async def processCarSetupsUpdate(packet: PacketCarSetupData) -> None:
+                """Update the data structures with car setup information
 
-            Args:
-                packet (PacketCarSetupData): The car setup update packet
-            """
+                Args:
+                    packet (PacketCarSetupData): The car setup update packet
+                """
 
-            if not self.m_session_state_ref.m_process_car_setups:
-                return
-            self.m_session_state_ref.processCarSetupsUpdate(packet)
+                self.m_session_state_ref.processCarSetupsUpdate(packet)
+        else:
+            self.m_logger.debug("Not processing car setups")
 
         @self.m_manager.on_packet(F1PacketType.TIME_TRIAL)
         async def processTimeTrialUpdate(packet: PacketTimeTrialData) -> None:
