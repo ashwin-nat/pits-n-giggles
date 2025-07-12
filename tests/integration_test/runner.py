@@ -66,8 +66,7 @@ def main(telemetry_port, http_port, proto):
     is_windows = platform.system() == "Windows"
 
     print("Checking for cached test files...")
-    cached_files = get_cached_files()
-    if cached_files:
+    if cached_files := get_cached_files():
         print(f"Found {len(cached_files)} cached files - skipping download")
         files = cached_files
     else:

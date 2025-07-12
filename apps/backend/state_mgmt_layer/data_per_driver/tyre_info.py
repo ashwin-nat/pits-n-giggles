@@ -362,4 +362,3 @@ class TyreInfo:
         self.m_logger = logger
         self.m_tyre_set_history_manager = TyreSetHistoryManager(self.m_logger)
         self.m_tyre_wear_extrapolator = TyreWearExtrapolator([], total_laps=total_laps)
-        self.m_logger.info("TyreInfo initialized")
