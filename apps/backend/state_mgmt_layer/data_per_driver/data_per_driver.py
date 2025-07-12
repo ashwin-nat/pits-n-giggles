@@ -29,8 +29,7 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
 from lib.f1_types import (F1Utils, LapData, PacketLapPositionsData,
-                          SafetyCarType, SessionType23, SessionType24,
-                          TelemetrySetting, TrackID)
+                          SafetyCarType, SessionType23, SessionType24, TrackID)
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 
 from .car_info import CarInfo
