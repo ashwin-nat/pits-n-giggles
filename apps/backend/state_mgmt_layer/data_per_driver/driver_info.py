@@ -53,7 +53,7 @@ class DriverInfo:
     grid_position: Optional[int] = None
     team: Optional[str] = None
     is_player: Optional[bool] = None
-    telemetry_restrictions: Optional[TelemetrySetting] = None
+    telemetry_setting: Optional[TelemetrySetting] = None
     driver_number: Optional[int] = None
     m_num_pitstops: Optional[int] = None
     m_dnf_status_code: Optional[str] = None
