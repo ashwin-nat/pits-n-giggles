@@ -481,7 +481,7 @@ class SessionState:
             obj_to_be_updated.m_driver_info.team = str(participant.m_teamId)
             obj_to_be_updated.m_driver_info.driver_number = participant.m_raceNumber
             obj_to_be_updated.m_driver_info.is_player = (index == packet.m_header.m_playerCarIndex)
-            obj_to_be_updated.m_driver_info.telemetry_restrictions = participant.m_yourTelemetry
+            obj_to_be_updated.m_driver_info.telemetry_setting = participant.m_yourTelemetry
             obj_to_be_updated.m_packet_copies.m_packet_particpant_data = participant
 
     def processCarTelemetryUpdate(self, packet: PacketCarTelemetryData) -> None:
