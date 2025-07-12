@@ -357,7 +357,9 @@ class TyreInfo:
 
     m_logger: Logger = field(init=False, repr=False)
 
-    def __post_init__(self, total_laps: int):
-        """Init the utility objects with external init-only arg"""
+    def __post_init__(self, total_laps: int, logger: Logger):
+        """Init the utility objects and store logger"""
+        self.m_logger = logger
         self.m_tyre_set_history_manager = TyreSetHistoryManager(self.m_logger)
         self.m_tyre_wear_extrapolator = TyreWearExtrapolator([], total_laps=total_laps)
+        self.m_logger.info("TyreInfo initialized")
