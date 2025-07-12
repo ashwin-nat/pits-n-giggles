@@ -458,7 +458,7 @@ class SessionState:
             packet (PacketEventData.Retirement): The retirement update object
         """
 
-        if not (obj_to_be_updated := self._getObjectByIndex(packet.vehicleIdx)):
+        if not (obj_to_be_updated := self._getObjectByIndex(packet.vehicleIdx, create=False)):
             self.m_logger.debug(f"Retirement update event. Driver object not found for index {packet.vehicleIdx}"
                                 ". Skipping")
             return
