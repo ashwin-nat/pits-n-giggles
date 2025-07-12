@@ -608,7 +608,7 @@ class DataPerDriver:
         # and we can process this then.
         # doing this because some fields in the player obj may be none and handling this is a mess
         # several none checks will be required to handle players that have disabled telemetry. not worth it
-        if self.m_driver_info.telemetry_setting != TelemetrySetting.PUBLIC:
+        if not self.m_driver_info.telemetry_setting:
             return
 
         # This can happen if tyre sets packets arrives before lap data packet
