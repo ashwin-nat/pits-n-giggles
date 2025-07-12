@@ -115,7 +115,7 @@ class DataPerDriver:
 
         self.m_driver_info: DriverInfo = DriverInfo()
         self.m_lap_info: LapInfo = LapInfo()
-        self.m_tyre_info: TyreInfo = TyreInfo(total_laps)
+        self.m_tyre_info: TyreInfo = TyreInfo(total_laps, self.m_logger)
 
         self.m_car_info: CarInfo = CarInfo(total_laps)
 

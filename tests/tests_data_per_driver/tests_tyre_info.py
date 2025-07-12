@@ -20,6 +20,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# -------------------------------------- IMPORTS -----------------------------------------------------------------------
+
+import logging
 import random
 from unittest.mock import MagicMock
 
@@ -185,7 +188,11 @@ class TestTyreSetHistoryEntry(TestTyreSets):
 class TestTyreSetHistoryManager(TestTyreSets):
 
     def setUp(self):
-        self.manager = TyreSetHistoryManager()
+        # Create a dummy logger that discards all logs
+        dummy_logger = logging.getLogger("dummy.test.logger")
+        dummy_logger.addHandler(logging.NullHandler())
+        dummy_logger.propagate = False
+        self.manager = TyreSetHistoryManager(dummy_logger)
 
 def test_remove_empty_history(self):
     """Test remove method with empty history."""

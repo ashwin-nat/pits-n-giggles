@@ -330,6 +330,7 @@ class TyreInfo:
     Class that models the tire information for a race driver.
 
     Attributes:
+        total_laps (int): The total number of laps in the race
         tyre_age (Optional[int]): The age of the driver's current set of tires.
         tyre_vis_compound (Optional[VisualTyreCompound]): The visual type of tire compound being used.
         tyre_act_compound (Optional[ActualTyreCompound]): The actual type of tire compound being used.
@@ -341,6 +342,7 @@ class TyreInfo:
         m_tyre_wear_extrapolator (TyreWearExtrapolator): Predicts the tire wear for upcoming laps.
     """
     total_laps: InitVar[int]
+    logger: InitVar[Logger]
 
     tyre_age: Optional[int] = None
     tyre_vis_compound: Optional[VisualTyreCompound] = None
@@ -353,7 +355,9 @@ class TyreInfo:
     m_tyre_set_history_manager: "TyreSetHistoryManager" = field(init=False)
     m_tyre_wear_extrapolator: "TyreWearExtrapolator" = field(init=False)
 
+    m_logger: Logger = field(init=False, repr=False)
+
     def __post_init__(self, total_laps: int):
         """Init the utility objects with external init-only arg"""
-        self.m_tyre_set_history_manager = TyreSetHistoryManager()
+        self.m_tyre_set_history_manager = TyreSetHistoryManager(self.m_logger)
         self.m_tyre_wear_extrapolator = TyreWearExtrapolator([], total_laps=total_laps)
