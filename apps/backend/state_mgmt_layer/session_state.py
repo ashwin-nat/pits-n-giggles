@@ -443,7 +443,10 @@ class SessionState:
             packet (PacketEventData.FastestLap): The fastest lap update object
         """
 
-        obj_to_be_updated = self._getObjectByIndex(packet.vehicleIdx)
+        if not (obj_to_be_updated := self._getObjectByIndex(packet.vehicleIdx, create=False)):
+            self.m_logger.debug(f"Fastest lap update event. Driver object not found for index {packet.vehicleIdx}"
+                                ". Skipping")
+            return
         obj_to_be_updated.m_lap_info.m_best_lap_ms = int(packet.lapTime * 1000) # Convert to int ms, since everything is in int ms
         obj_to_be_updated.m_lap_info.m_best_lap_tyre = obj_to_be_updated.m_tyre_info.tyre_vis_compound
         self.m_fastest_index = packet.vehicleIdx
@@ -455,9 +458,12 @@ class SessionState:
             packet (PacketEventData.Retirement): The retirement update object
         """
 
-        obj_to_be_updated = self._getObjectByIndex(packet.vehicleIdx)
-        obj_to_be_updated.m_driver_info.m_dnf_status_code = 'DNF'
+        if not (obj_to_be_updated := self._getObjectByIndex(packet.vehicleIdx)):
+            self.m_logger.debug(f"Retirement update event. Driver object not found for index {packet.vehicleIdx}"
+                                ". Skipping")
+            return
 
+        obj_to_be_updated.m_driver_info.m_dnf_status_code = 'DNF'
         if packet.vehicleIdx == self.m_player_index:
             self.m_is_player_dnf = True
 
@@ -789,7 +795,7 @@ class SessionState:
             Optional[Dict[str, Any]]: Driver info JSON. None if invalid index or data not yet available
         """
 
-        driver_info_obj = self._getObjectByIndex(index)
+        driver_info_obj = self._getObjectByIndex(index, create=False)
         if not driver_info_obj:
             return None
         if self.m_race_completed:
