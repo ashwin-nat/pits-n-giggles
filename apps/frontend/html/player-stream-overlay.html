@@ -359,7 +359,7 @@
             console.log(`🔁 Reconnection attempt ${attempt}`);
         });
 
-        socket.on('player-overlay-update', function (data) {
+        socketio.on('player-overlay-update', function (data) {
             if (!firstDataReceived && data["f1-packet-format"] !== null) {
                 firstDataReceived = true;
             }
