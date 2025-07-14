@@ -24,11 +24,11 @@
 
 import datetime
 import sys
+import threading
 import tkinter as tk
 import webbrowser
-import threading
 from tkinter import ttk
-from typing import Dict
+from typing import Callable, Dict
 
 from PIL import Image, ImageTk
 
@@ -99,7 +99,7 @@ class PngLauncher(ConsoleInterface):
         self.stdout_original = sys.stdout
         sys.stdout = self
 
-        # Check for updates in parallel
+        # Check for updates in parallel (no-op in dev mode)
         if self.version:
             threading.Thread(target=self.check_for_updates_background, daemon=True).start()
 
@@ -227,28 +227,19 @@ class PngLauncher(ConsoleInterface):
         else:
             label.configure(style="Warning.TLabel")
 
-
     def setup_header(self):
         # App info section with racing theme
         info_frame = ttk.Frame(self.header_frame, style="Racing.TFrame")
         info_frame.pack(side=tk.LEFT)
 
-        # Load the image using PIL/Pillow for better compatibility
-        # Open the image file
+        # Load the image using PIL/Pillow
         pil_image = Image.open(self.logo_path)
-
-        # Calculate new dimensions while maintaining aspect ratio
         target_height = 30
         width, height = pil_image.size
         new_width = int(width * (target_height / height))
-
-        # Resize maintaining aspect ratio
         pil_image = pil_image.resize((new_width, target_height), Image.Resampling.LANCZOS)
-
-        # Convert to PhotoImage that tkinter can use
         self.logo_image = ImageTk.PhotoImage(pil_image)
 
-        # Create a label to display the image
         logo_label = tk.Label(info_frame, image=self.logo_image, bg=COLOUR_SCHEME["background"])
         logo_label.pack(side=tk.LEFT, padx=(0, 10))
 
@@ -263,28 +254,20 @@ class PngLauncher(ConsoleInterface):
         buttons_frame = ttk.Frame(self.header_frame, style="Racing.TFrame")
         buttons_frame.pack(side=tk.RIGHT)
 
-        self.settings_button = ttk.Button(buttons_frame, text="Settings",
-                                        command=self.open_settings, style="Racing.TButton")
-        self.settings_button.pack(side=tk.LEFT, padx=(0, 10))
+        self._add_header_button(buttons_frame, "Settings", self.open_settings)
+        self._add_header_button(buttons_frame, "Clear Log", self.clear_log)
 
-        self.clear_button = ttk.Button(buttons_frame, text="Clear Log",
-                                     command=self.clear_log, style="Racing.TButton")
-        self.clear_button.pack(side=tk.LEFT, padx=(0, 10))
+        # External links
+        self._add_header_button(buttons_frame, "Tips n' Tricks", lambda: webbrowser.open("https://pitsngiggles.com/blog"))
+        self._add_header_button(buttons_frame, "Discord", lambda: webbrowser.open("https://discord.gg/qQsSEHhW2V"))
+        self.update_button = self._add_header_button(
+            buttons_frame, "Updates", lambda: webbrowser.open("https://pitsngiggles.com/releases")
+        )
 
-        self.website_button = ttk.Button(buttons_frame, text="Tips n' Tricks",
-                                        command=lambda: webbrowser.open("https://pitsngiggles.com/blog"),
-                                        style="Racing.TButton")
-        self.website_button.pack(side=tk.LEFT, padx=(0, 10))
-
-        self.discord_button = ttk.Button(buttons_frame, text="Discord",
-                                        command=lambda: webbrowser.open("https://discord.gg/qQsSEHhW2V"),
-                                        style="Racing.TButton")
-        self.discord_button.pack(side=tk.LEFT, padx=(0, 10))
-
-        self.update_button = ttk.Button(buttons_frame, text="Updates",
-                                        command=lambda: webbrowser.open("https://pitsngiggles.com/releases"),
-                                        style="Racing.TButton")
-        self.update_button.pack(side=tk.LEFT, padx=(0, 10))
+    def _add_header_button(self, parent, text: str, command: Callable) -> ttk.Button:
+        btn = ttk.Button(parent, text=text, command=command, style="Racing.TButton")
+        btn.pack(side=tk.LEFT, padx=(0, 10))
+        return btn
 
     def setup_console(self):
         # Create a text widget for the console with racing theme
