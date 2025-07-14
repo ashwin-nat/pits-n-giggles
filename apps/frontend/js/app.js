@@ -64,21 +64,6 @@ socketio.on('race-info-response', function (data) {
     }
 });
 
-socketio.on('driver-info-response', function (data) {
-    clearSocketIoRequestTimeout();
-    if (!('error' in data)) {
-        if ('__dummy' in data) {
-            // this request is meant for a synchronous listener, ignore
-            console.debug("Ignoring driver-info-response in main listener");
-        } else {
-            window.modalManager.openDriverModal(data, iconCache);
-        }
-    } else {
-        console.error("Received error for driver-info request", data);
-        // showToast("Received error for driver info request");
-    }
-});
-
 socketio.on('frontend-update', function (data) {
     console.log("frontend-update", data);
     switch (data['message-type']) {

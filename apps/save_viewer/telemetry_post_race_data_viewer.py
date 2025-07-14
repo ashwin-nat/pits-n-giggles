@@ -846,17 +846,6 @@ class TelemetryWebServer:
             """
             emit("race-info-response", handleRaceInfoRequest(), broadcast=False)
 
-        @self.m_socketio.on('driver-info')
-        def handleDriverInfo(data: Dict[str, Any]):
-            """SocketIO endpoint to handle driver info request
-
-            Args:
-                data (Dict[str, Any]): The JSON response. Will contain the key "error" in case of failure
-            """
-            index = data.get("index")
-            driver_info, _ = handleDriverInfoRequest(index, is_str_input=False)
-            emit("driver-info-response", driver_info, broadcast=False)
-
         @self.m_socketio.on('register-client')
         def handleClientRegistration(data):
             """SocketIO endpoint to handle client registration

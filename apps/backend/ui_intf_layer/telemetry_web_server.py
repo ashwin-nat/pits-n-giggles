@@ -344,23 +344,6 @@ class TelemetryWebServer:
                 response["__dummy"] = data
             await self.m_sio.emit("race-info-response", response, to=sid)
 
-        @self.m_sio.on('driver-info')
-        async def driverInfoSIO(sid: str, data: Dict[str, Any]) -> None:
-            """
-            Handle driver info request via Socket.IO.
-
-            Args:
-                sid (str): Session ID of the requesting client.
-                data (Dict[str, Any]): Request data with driver index and optional dummy payload.
-            """
-            response, _ = self._processDriverInfoRequest(data.get("index"))
-
-            # Re-attach the dummy payload if present
-            dummy_payload = data.get("__dummy")
-            if dummy_payload:
-                response["__dummy"] = dummy_payload
-            await self.m_sio.emit("driver-info-response", response, to=sid)
-
     def _validateIntGetRequestParam(self, param: Any, param_name: str) -> Optional[Dict[str, Any]]:
         """
         Validate integer get request parameter.

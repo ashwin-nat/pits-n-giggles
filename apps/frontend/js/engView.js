@@ -128,7 +128,19 @@ class EngViewRaceTableRow {
             {value: this.createPositionStatusCell(driverInfo["position"], driverInfo), border: true},
             {value: this.createMultiLineCellOnClick(driverInfo["name"], driverInfo["team"], () => {
                 console.log("Sending driver info request", driverInfo["name"], driverInfo["index"]);
-                socketio.emit('driver-info', { index: driverInfo["index"] });
+                fetch(`/driver-info?index=${driverInfo["index"]}`)
+                    .then(response => {
+                        if (!response.ok) throw new Error("Network response was not ok");
+                        return response.json(); // or .text() if you expect plain text
+                    })
+                    .then(data => {
+                        console.log("Driver info fetched:", data);
+                        // optionally do something with the response
+                        window.modalManager.openDriverModal(data, this.iconCache);
+                    })
+                    .catch(err => {
+                        console.error("Fetch error:", err);
+                    });
             }), border: true},
         ];
     }
@@ -657,22 +669,6 @@ socketio.on('race-info-response', function (data) {
     // } else {
     //     console.error("Received error for race-info request", data);
     // }
-});
-
-socketio.on('driver-info-response', function (data) {
-    clearSocketIoRequestTimeout();
-    console.log("Received driver-info-response", data);
-    if (!('error' in data)) {
-        if ('__dummy' in data) {
-            // this request is meant for a synchronous listener, ignore
-            console.debug("Ignoring driver-info-response in main listener");
-        } else {
-            window.modalManager.openDriverModal(data, iconCache);
-        }
-    } else {
-        console.error("Received error for driver-info request", data);
-        // showToast("Received error for driver info request");
-    }
 });
 
 socketio.on('frontend-update', function (data) {
