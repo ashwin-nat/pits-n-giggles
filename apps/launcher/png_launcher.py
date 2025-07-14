@@ -383,7 +383,7 @@ class PngLauncher(ConsoleInterface):
         try:
             if is_update_available(self.version):
                 self.root.after(0, self.mark_update_button_available)
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-exception-caught
             self.log(f"[Update Check] Failed: {e}")
 
     def mark_update_button_available(self) -> None:
