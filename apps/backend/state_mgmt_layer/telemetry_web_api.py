@@ -830,8 +830,8 @@ class DriversListRsp:
         Returns:
             Dict[str, Any]: Driver information section for JSON response.
         """
-        telemetry_restrictions = str(driver_data.m_driver_info.telemetry_restrictions) \
-            if driver_data.m_driver_info.telemetry_restrictions is not None else "N/A"
+        telemetry_restrictions = str(driver_data.m_driver_info.telemetry_setting) \
+            if driver_data.m_driver_info.telemetry_setting is not None else "N/A"
 
         return {
             "position": _getValueOrDefaultValue(driver_data.m_driver_info.position),

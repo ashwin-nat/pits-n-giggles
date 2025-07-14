@@ -29,8 +29,7 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
 from lib.f1_types import (F1Utils, LapData, PacketLapPositionsData,
-                          SafetyCarType, SessionType23, SessionType24,
-                          TelemetrySetting, TrackID)
+                          SafetyCarType, SessionType23, SessionType24, TrackID)
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 
 from .car_info import CarInfo
@@ -187,7 +186,7 @@ class DataPerDriver:
         final_json["driver-name"] = self.m_driver_info.name
         final_json["track-position"] = self.m_driver_info.position
         final_json["team"] = self.m_driver_info.team
-        final_json["telemetry-settings"] = str(self.m_driver_info.telemetry_restrictions)
+        final_json["telemetry-settings"] = str(self.m_driver_info.telemetry_setting)
         final_json["current-lap"] = self.m_lap_info.m_current_lap
         final_json["top-speed-kmph"] = self.m_lap_info.m_top_speed_kmph_this_lap
 
@@ -608,7 +607,7 @@ class DataPerDriver:
         # and we can process this then.
         # doing this because some fields in the player obj may be none and handling this is a mess
         # several none checks will be required to handle players that have disabled telemetry. not worth it
-        if self.m_driver_info.telemetry_restrictions != TelemetrySetting.PUBLIC:
+        if not self.m_driver_info.telemetry_setting:
             return
 
         # This can happen if tyre sets packets arrives before lap data packet
@@ -889,7 +888,7 @@ class DataPerDriver:
         return {
             "name": self.m_driver_info.name,
             "team": self.m_driver_info.team,
-            "telemetry-settings" : str(self.m_driver_info.telemetry_restrictions),
+            "telemetry-settings" : str(self.m_driver_info.telemetry_setting),
             "driver-number": self.m_driver_info.driver_number,
             "delta-to-leader" : self.m_lap_info.m_delta_to_leader,
             "position" : self.m_driver_info.position,
@@ -906,7 +905,7 @@ class DataPerDriver:
         return {
             "name": self.m_driver_info.name,
             "team": self.m_driver_info.team,
-            "telemetry-settings" : str(self.m_driver_info.telemetry_restrictions),
+            "telemetry-settings" : str(self.m_driver_info.telemetry_setting),
             "driver-number": self.m_driver_info.driver_number,
             "delta-to-leader" : self.m_lap_info.m_delta_to_leader,
             "race-time" : self.m_lap_info.m_total_race_time,
