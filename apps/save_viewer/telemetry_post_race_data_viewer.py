@@ -21,8 +21,8 @@
 # SOFTWARE.
 # pylint: skip-file
 
-import errno
 import argparse
+import errno
 import json
 import logging
 import os
@@ -36,6 +36,7 @@ from threading import Lock, Thread
 from tkinter import filedialog
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+import msgpack
 # pylint: disable=unused-import
 from engineio.async_drivers import gevent
 
@@ -48,11 +49,11 @@ from flask_socketio import SocketIO, emit
 import lib.overtake_analyzer as OvertakeAnalyzer
 import lib.race_analyzer as RaceAnalyzer
 from apps.save_viewer.logger import png_logger
+from lib.error_status import PNG_ERROR_CODE_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN
 from lib.f1_types import F1Utils, LapHistoryData, ResultStatus
 from lib.pid_report import report_pid_from_child
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 from lib.version import get_version
-from lib.error_status import PNG_ERROR_CODE_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN
 
 
 def find_free_port():
@@ -75,7 +76,8 @@ def sendRaceTable() -> None:
     """Send race table to all connected clients
     """
     if len(_race_table_clients) > 0:
-        _server.m_socketio.emit('race-table-update', getTelemetryInfo())
+        packed = msgpack.packb(getTelemetryInfo(), use_bin_type=True)
+        _server.m_socketio.emit('race-table-update', packed)
         png_logger.debug("Sending race table update")
 
 def getDeltaPlusPenaltiesPlusPit(

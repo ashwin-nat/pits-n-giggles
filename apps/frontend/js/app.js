@@ -46,11 +46,13 @@ socketio.on('reconnect_attempt', attempt => {
 });
 
 // Receive details from server
-socketio.on('race-table-update', function (data) {
+socketio.on('race-table-update', function (binaryData) {
+    const data = window.msgpack.decode(new Uint8Array(binaryData));
     telemetryRenderer.updateDashboard(data);
 });
 
-socketio.on('frontend-update', function (data) {
+socketio.on('frontend-update', function (binaryData) {
+    const data = window.msgpack.decode(new Uint8Array(binaryData));
     console.log("frontend-update", data);
     switch (data['message-type']) {
         case 'custom-marker':

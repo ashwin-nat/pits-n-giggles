@@ -22,6 +22,7 @@
     <!-- <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-streaming"></script> -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
     <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js"></script>
+    <script src="https://rawgit.com/kawanet/msgpack-lite/master/dist/msgpack.min.js"></script>
     <style>
         /* Make the body take up the full height */
         html,
@@ -359,7 +360,8 @@
             console.log(`🔁 Reconnection attempt ${attempt}`);
         });
 
-        socketio.on('player-overlay-update', function (data) {
+        socketio.on('player-overlay-update', function (binaryData) {
+            const data = window.msgpack.decode(new Uint8Array(binaryData));
             if (!firstDataReceived && data["f1-packet-format"] !== null) {
                 firstDataReceived = true;
             }

@@ -641,7 +641,9 @@ socketio.on('reconnect_attempt', attempt => {
 });
 
 // Receive details from server
-socketio.on('race-table-update', function (data) {
+socketio.on('race-table-update', function (binaryData) {
+
+    const data = window.msgpack.decode(new Uint8Array(binaryData));
 
     const tableEntries      = data["table-entries"];
     const isSpectating      = data["is-spectating"];
