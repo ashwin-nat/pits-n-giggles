@@ -16,7 +16,7 @@
             "cwd": "${workspaceFolder}"
         },
         {
-            "name": "Launcher",
+            "name": "Launcher (debug/live)",
             "type": "debugpy",
             "request": "launch",
             "module": "apps.launcher",
@@ -24,6 +24,20 @@
             "args": [
             ],
             "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Launcher (debug/replay/versioned)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "apps.launcher",
+            "console": "integratedTerminal",
+            "args": [
+                "--debug"
+            ],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PNG_VERSION": "2.8.0"
+            }
         },
         {
             "name": "App - Module",

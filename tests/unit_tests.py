@@ -43,6 +43,7 @@ from f1_types import (TestPacketCarDamageData, TestPacketCarMotionData,
 # pylint: disable=unused-import wrong-import-position
 # sourcery skip: dont-import-test-modules
 from tests_base import CustomTestResult, F1TelemetryUnitTestsBase
+from tests_version import TestIsUpdateAvailable, TestGetVersion
 from tests_collision_analyzer import (TestCollisionAnalyzer,
                                       TestCollisionPairKey,
                                       TestCollisionRecord)

@@ -23,15 +23,17 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import datetime
-import os
 import sys
+import threading
 import tkinter as tk
+import webbrowser
 from tkinter import ttk
-from typing import Dict
+from typing import Callable, Dict
 
 from PIL import Image, ImageTk
 
 from lib.config import PngSettings, load_config_from_ini
+from lib.version import is_update_available
 
 from .app_managers import BackendAppMgr, PngAppMgrBase, SaveViewerAppMgr
 from .console_interface import ConsoleInterface
@@ -97,6 +99,10 @@ class PngLauncher(ConsoleInterface):
         self.stdout_original = sys.stdout
         sys.stdout = self
 
+        # Check for updates in parallel (no-op in dev mode)
+        if self.version:
+            threading.Thread(target=self.check_for_updates_background, daemon=True).start()
+
         # Initial log message
         self.log(f"Pits n' Giggles started. Version: {self.version}")
 
@@ -142,6 +148,14 @@ class PngLauncher(ConsoleInterface):
         style.configure("Running.TLabel", background=COLOUR_SCHEME["running"])
         style.configure("Stopped.TLabel", background=COLOUR_SCHEME["stopped"])
         style.configure("Warning.TLabel", background=COLOUR_SCHEME["warning"])
+
+        style.configure("UpdateAvailable.TButton",
+            background="#4592BB",
+            foreground=COLOUR_SCHEME["foreground"])
+
+        style.map("UpdateAvailable.TButton",
+            background=[("active", "#2E6A8A")],
+            foreground=[("active", COLOUR_SCHEME["background"])])
 
     def load_settings(self):
         """Load application settings"""
@@ -213,28 +227,19 @@ class PngLauncher(ConsoleInterface):
         else:
             label.configure(style="Warning.TLabel")
 
-
     def setup_header(self):
         # App info section with racing theme
         info_frame = ttk.Frame(self.header_frame, style="Racing.TFrame")
         info_frame.pack(side=tk.LEFT)
 
-        # Load the image using PIL/Pillow for better compatibility
-        # Open the image file
+        # Load the image using PIL/Pillow
         pil_image = Image.open(self.logo_path)
-
-        # Calculate new dimensions while maintaining aspect ratio
         target_height = 30
         width, height = pil_image.size
         new_width = int(width * (target_height / height))
-
-        # Resize maintaining aspect ratio
         pil_image = pil_image.resize((new_width, target_height), Image.Resampling.LANCZOS)
-
-        # Convert to PhotoImage that tkinter can use
         self.logo_image = ImageTk.PhotoImage(pil_image)
 
-        # Create a label to display the image
         logo_label = tk.Label(info_frame, image=self.logo_image, bg=COLOUR_SCHEME["background"])
         logo_label.pack(side=tk.LEFT, padx=(0, 10))
 
@@ -249,18 +254,20 @@ class PngLauncher(ConsoleInterface):
         buttons_frame = ttk.Frame(self.header_frame, style="Racing.TFrame")
         buttons_frame.pack(side=tk.RIGHT)
 
-        self.settings_button = ttk.Button(buttons_frame, text="Settings",
-                                        command=self.open_settings, style="Racing.TButton")
-        self.settings_button.pack(side=tk.LEFT, padx=(0, 10))
+        self._add_header_button(buttons_frame, "Settings", self.open_settings)
+        self._add_header_button(buttons_frame, "Clear Log", self.clear_log)
 
-        self.clear_button = ttk.Button(buttons_frame, text="Clear Log",
-                                     command=self.clear_log, style="Racing.TButton")
-        self.clear_button.pack(side=tk.LEFT, padx=(0, 10))
+        # External links
+        self._add_header_button(buttons_frame, "Tips n' Tricks", lambda: webbrowser.open("https://pitsngiggles.com/blog"))
+        self._add_header_button(buttons_frame, "Discord", lambda: webbrowser.open("https://discord.gg/qQsSEHhW2V"))
+        self.update_button = self._add_header_button(
+            buttons_frame, "Updates", lambda: webbrowser.open("https://pitsngiggles.com/releases")
+        )
 
-        self.website_button = ttk.Button(buttons_frame, text="Website",
-                                        command=lambda: os.startfile("https://pitsngiggles.com"),
-                                        style="Racing.TButton")
-        self.website_button.pack(side=tk.LEFT, padx=(0, 10))
+    def _add_header_button(self, parent, text: str, command: Callable) -> ttk.Button:
+        btn = ttk.Button(parent, text=text, command=command, style="Racing.TButton")
+        btn.pack(side=tk.LEFT, padx=(0, 10))
+        return btn
 
     def setup_console(self):
         # Create a text widget for the console with racing theme
@@ -353,3 +360,16 @@ class PngLauncher(ConsoleInterface):
 
         sys.stdout = self.stdout_original
         self.root.destroy()
+
+    def check_for_updates_background(self) -> None:
+        """Background thread to check if an update is available"""
+        try:
+            if is_update_available(self.version):
+                self.root.after(0, self.mark_update_button_available)
+        except Exception as e: # pylint: disable=broad-exception-caught
+            self.log(f"[Update Check] Failed: {e}")
+
+    def mark_update_button_available(self) -> None:
+        """Highlight the update button to indicate an update is available"""
+        self.update_button.configure(style="UpdateAvailable.TButton")
+        self.update_button.configure(text="Update Available!")
