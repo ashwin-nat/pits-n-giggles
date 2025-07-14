@@ -21,6 +21,8 @@
 # SOFTWARE.
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
+
+import json
 import os
 import requests
 from packaging import version
@@ -67,12 +69,10 @@ def is_update_available(curr_version_str: str,
         for release in releases:
             if release.get("prerelease", False):
                 continue
-            tag = release.get("tag_name", "").lstrip("v")
-            if not tag:
-                continue
-            return version.parse(tag) > curr_version
+            if tag := release.get("tag_name", "").lstrip("v"):
+                return version.parse(tag) > curr_version
 
         return False
 
-    except requests.exceptions.RequestException:
+    except (requests.exceptions.RequestException, json.JSONDecodeError, ValueError):
         return False

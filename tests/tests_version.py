@@ -21,6 +21,7 @@
 # SOFTWARE.
 # pylint: skip-file
 
+import json
 import os
 import sys
 from unittest.mock import patch, Mock
@@ -85,6 +86,27 @@ class TestIsUpdateAvailable(F1TelemetryUnitTestsBase):
             {"tag_name": "v2.0.0", "prerelease": False}
         ]
         self.assertFalse(is_update_available("2.0.0", api_endpoint="mock://test/releases"))
+
+    @patch("lib.version.requests.get")  # replace with your actual module path
+    def test_json_decode_error_returns_false(self, mock_get):
+        mock_response = Mock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.side_effect = json.JSONDecodeError("Expecting value", "doc", 0)
+        mock_get.return_value = mock_response
+
+        self.assertFalse(is_update_available("1.2.3", api_endpoint="mock://test/releases"))
+
+    @patch("lib.version.requests.get")  # replace with your actual module path
+    def test_invalid_version_string_returns_false(self, mock_get):
+        mock_response = Mock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = [
+            {"tag_name": "!!!not-a-version", "prerelease": False}
+        ]
+        mock_get.return_value = mock_response
+
+        self.assertFalse(is_update_available("1.2.3", api_endpoint="mock://test/releases"))
+
 
 class TestGetVersion(F1TelemetryUnitTestsBase):
 
