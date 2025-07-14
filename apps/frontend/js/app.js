@@ -50,20 +50,6 @@ socketio.on('race-table-update', function (data) {
     telemetryRenderer.updateDashboard(data);
 });
 
-socketio.on('race-info-response', function (data) {
-    clearSocketIoRequestTimeout();
-    if (!('error' in data)) {
-        if ('__dummy' in data) {
-            // this request is meant for a synchronous listener, ignore
-            console.debug("Ignoring race-info-response in main listener");
-        } else {
-            window.modalManager.openRaceStatsModal(data);
-        }
-    } else {
-        console.error("Received error for race-info request", data);
-    }
-});
-
 socketio.on('frontend-update', function (data) {
     console.log("frontend-update", data);
     switch (data['message-type']) {

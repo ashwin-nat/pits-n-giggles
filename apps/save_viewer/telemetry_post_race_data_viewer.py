@@ -839,13 +839,6 @@ class TelemetryWebServer:
             _player_overlay_clients.discard(request.sid)
             _race_table_clients.discard(request.sid)
 
-        @self.m_socketio.on('race-info')
-        # pylint: disable=unused-argument
-        def handeRaceInfo(dummy_arg: Any):
-            """SocketIO endpoint to handle race info request
-            """
-            emit("race-info-response", handleRaceInfoRequest(), broadcast=False)
-
         @self.m_socketio.on('register-client')
         def handleClientRegistration(data):
             """SocketIO endpoint to handle client registration

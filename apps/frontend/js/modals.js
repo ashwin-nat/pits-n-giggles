@@ -38,7 +38,17 @@ class ModalManager {
     }
     if (this.raceStatsModal) {
       document.getElementById('race-stats-btn').addEventListener('click', () => {
-        socketio.emit('race-info', { 'message': 'dummy' });
+        fetch(`/race-info`)
+          .then(response => {
+              if (!response.ok) throw new Error("Network response was not ok");
+              return response.json(); // or .text() if you expect plain text
+          })
+          .then(data => {
+              window.modalManager.openRaceStatsModal(data);
+          })
+          .catch(err => {
+              console.error("Fetch error:", err);
+          });
       });
     }
   }
