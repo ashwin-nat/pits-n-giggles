@@ -85,3 +85,17 @@ class TestIsUpdateAvailable(F1TelemetryUnitTestsBase):
             {"tag_name": "v2.0.0", "prerelease": False}
         ]
         self.assertFalse(is_update_available("2.0.0", api_endpoint="mock://test/releases"))
+
+class TestGetVersion(F1TelemetryUnitTestsBase):
+
+    @patch.dict(os.environ, {'PNG_VERSION': '2.1.0'})
+    def test_returns_env_value(self):
+        self.assertEqual(get_version(), '2.1.0')
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_returns_default_when_env_missing(self):
+        self.assertEqual(get_version(), 'dev')
+
+    @patch.dict(os.environ, {'PNG_VERSION': ''})
+    def test_returns_empty_string_if_env_is_empty(self):
+        self.assertEqual(get_version(), '')
