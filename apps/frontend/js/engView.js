@@ -95,20 +95,26 @@ class EngViewRaceTableRow {
     }
 
     createMultiLineCellOnClick(row1Content, row2Content, onClick) {
-        const container = document.createElement("div");
+        const container = document.createElement("a");
+        container.href = "#";
+        container.style.textDecoration = "none"; // Optional: remove underline
+        container.style.color = "inherit";       // Optional: preserve inherited text color
 
         const row1 = document.createElement("div");
         row1.className = "eng-view-tyre-row-1";
         row1.textContent = row1Content;
-        row1.addEventListener("click", onClick);
 
         const row2 = document.createElement("div");
         row2.className = "eng-view-tyre-row-2";
         row2.textContent = row2Content;
-        row2.addEventListener("click", onClick);
 
         container.appendChild(row1);
         container.appendChild(row2);
+
+        container.addEventListener("click", (e) => {
+            e.preventDefault(); // Prevent actual jump to "#"
+            onClick(e);
+        });
 
         return container;
     }
