@@ -179,11 +179,11 @@ class F1TelemetryHandler:
 
             if packet.m_sessionDuration == 0:
                 self.m_logger.info("Session duration is 0. clearing data structures")
-                await self.clearAllDataStructures()
+                self.clearAllDataStructures("Session duration is 0")
 
             elif self.m_session_state_ref.processSessionUpdate(packet):
                 self.m_logger.info("Session UID changed. clearing data structures")
-                await self.clearAllDataStructures()
+                self.clearAllDataStructures("Session UID changed")
 
         @self.m_manager.on_packet(F1PacketType.LAP_DATA)
         async def processLapDataUpdate(packet: PacketLapData) -> None:
@@ -265,6 +265,9 @@ class F1TelemetryHandler:
             if self.m_final_classification_processed:
                 self.m_logger.debug('Session UID %d final classification already processed.', packet.m_header.m_sessionUID)
                 return
+            if not self.m_session_state_ref.m_session_info.is_valid:
+                self.m_logger.error('Final classification event. Session data not available. Not saving data.')
+                return
             self.m_logger.info('Received Final Classification Packet.')
             final_json = self.m_session_state_ref.processFinalClassificationUpdate(packet)
             self.m_final_classification_processed = True
@@ -345,17 +348,20 @@ class F1TelemetryHandler:
 
             self.m_session_state_ref.processMotionUpdate(packet)
 
-        @self.m_manager.on_packet(F1PacketType.CAR_SETUPS)
-        async def processCarSetupsUpdate(packet: PacketCarSetupData) -> None:
-            """Update the data structures with car setup information
+        # Register the car setup handler if and only if user has allowed this
+        if self.m_session_state_ref.m_process_car_setups:
+            self.m_logger.debug("Processing car setups")
+            @self.m_manager.on_packet(F1PacketType.CAR_SETUPS)
+            async def processCarSetupsUpdate(packet: PacketCarSetupData) -> None:
+                """Update the data structures with car setup information
 
-            Args:
-                packet (PacketCarSetupData): The car setup update packet
-            """
+                Args:
+                    packet (PacketCarSetupData): The car setup update packet
+                """
 
-            if not self.m_session_state_ref.m_process_car_setups:
-                return
-            self.m_session_state_ref.processCarSetupsUpdate(packet)
+                self.m_session_state_ref.processCarSetupsUpdate(packet)
+        else:
+            self.m_logger.debug("Not processing car setups")
 
         @self.m_manager.on_packet(F1PacketType.TIME_TRIAL)
         async def processTimeTrialUpdate(packet: PacketTimeTrialData) -> None:
@@ -388,7 +394,7 @@ class F1TelemetryHandler:
             """
 
             self.m_last_session_uid = packet.m_header.m_sessionUID
-            await self.clearAllDataStructures()
+            self.clearAllDataStructures("SESSION_START event")
 
         async def handleButtonStatus(packet: PacketEventData) -> None:
             """
@@ -437,7 +443,7 @@ class F1TelemetryHandler:
                     self.m_data_cleared_this_session = False
 
                 if not self.m_data_cleared_this_session:
-                    await self.clearAllDataStructures()
+                    self.clearAllDataStructures("Start lights event")
                 else:
                     self.m_logger.debug("Not clearing data structures in start lights event")
 
@@ -478,9 +484,13 @@ class F1TelemetryHandler:
             record: PacketEventData.Overtake = packet.mEventDetails
             self.m_session_state_ref.processOvertakeEvent(record)
 
-    async def clearAllDataStructures(self) -> None:
-        """Clear all the data structures"""
-        self.m_session_state_ref.processSessionStarted()
+    def clearAllDataStructures(self, reason: str) -> None:
+        """Clear all the data structures
+
+        Args:
+            reason (str): Reason for clearing
+        """
+        self.m_session_state_ref.processSessionStarted(reason)
         self.m_data_cleared_this_session = True
         self.m_final_classification_processed = False
 

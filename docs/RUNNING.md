@@ -9,12 +9,12 @@ This project uses Python 3.12 and is structured as a suite of apps under the `ap
 
 ## 📦 Install Dependencies
 
-Install only the production dependencies if you plan on running only the backend
+Install only the production dependencies if you plan on running only the app and none of the tests
 ```bash
 poetry install --without dev
 ```
 
-If you plan on running backend, dev utils and unit tests, install all dependencies
+If you plan on running app, dev utils and unit tests, install all dependencies
 ```bash
 poetry install
 ```

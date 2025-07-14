@@ -27,11 +27,8 @@ from typing import Optional
 
 from lib.f1_types import CarStatusData
 from lib.fuel_rate_recommender import FuelRateRecommender
-from apps.backend.common.png_logger import getLogger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
-
-png_logger = getLogger()
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
