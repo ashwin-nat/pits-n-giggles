@@ -26,12 +26,14 @@ import datetime
 import sys
 import tkinter as tk
 import webbrowser
+import threading
 from tkinter import ttk
 from typing import Dict
 
 from PIL import Image, ImageTk
 
 from lib.config import PngSettings, load_config_from_ini
+from lib.version import is_update_available
 
 from .app_managers import BackendAppMgr, PngAppMgrBase, SaveViewerAppMgr
 from .console_interface import ConsoleInterface
@@ -97,6 +99,10 @@ class PngLauncher(ConsoleInterface):
         self.stdout_original = sys.stdout
         sys.stdout = self
 
+        # Check for updates in parallel
+        if self.version:
+            threading.Thread(target=self.check_for_updates_background, daemon=True).start()
+
         # Initial log message
         self.log(f"Pits n' Giggles started. Version: {self.version}")
 
@@ -142,6 +148,14 @@ class PngLauncher(ConsoleInterface):
         style.configure("Running.TLabel", background=COLOUR_SCHEME["running"])
         style.configure("Stopped.TLabel", background=COLOUR_SCHEME["stopped"])
         style.configure("Warning.TLabel", background=COLOUR_SCHEME["warning"])
+
+        style.configure("UpdateAvailable.TButton",
+            background="#4592BB",
+            foreground=COLOUR_SCHEME["foreground"])
+
+        style.map("UpdateAvailable.TButton",
+            background=[("active", "#2E6A8A")],
+            foreground=[("active", COLOUR_SCHEME["background"])])
 
     def load_settings(self):
         """Load application settings"""
@@ -267,6 +281,11 @@ class PngLauncher(ConsoleInterface):
                                         style="Racing.TButton")
         self.discord_button.pack(side=tk.LEFT, padx=(0, 10))
 
+        self.update_button = ttk.Button(buttons_frame, text="Updates",
+                                        command=lambda: webbrowser.open("https://pitsngiggles.com/releases"),
+                                        style="Racing.TButton")
+        self.update_button.pack(side=tk.LEFT, padx=(0, 10))
+
     def setup_console(self):
         # Create a text widget for the console with racing theme
         self.console = tk.Text(self.console_frame, wrap=tk.WORD,
@@ -358,3 +377,16 @@ class PngLauncher(ConsoleInterface):
 
         sys.stdout = self.stdout_original
         self.root.destroy()
+
+    def check_for_updates_background(self) -> None:
+        """Background thread to check if an update is available"""
+        try:
+            if is_update_available(self.version):
+                self.root.after(0, self.mark_update_button_available)
+        except Exception as e:
+            self.log(f"[Update Check] Failed: {e}")
+
+    def mark_update_button_available(self) -> None:
+        """Highlight the update button to indicate an update is available"""
+        self.update_button.configure(style="UpdateAvailable.TButton")
+        self.update_button.configure(text="Update Available!")
