@@ -656,35 +656,6 @@ socketio.on('race-table-update', function (data) {
     weatherTable.update(data["weather-forecast-samples"]);
 });
 
-socketio.on('race-info-response', function (data) {
-    clearSocketIoRequestTimeout();
-    console.log("Received race-info-response", data);
-    // if (!('error' in data)) {
-    //     if ('__dummy' in data) {
-    //         // this request is meant for a synchronous listener, ignore
-    //         console.debug("Ignoring race-info-response in main listener");
-    //     } else {
-    //         window.modalManager.openRaceStatsModal(data);
-    //     }
-    // } else {
-    //     console.error("Received error for race-info request", data);
-    // }
-});
-
-socketio.on('frontend-update', function (data) {
-    console.log("frontend-update", data);
-    // switch (data['message-type']) {
-    //     case 'custom-marker':
-    //         processCustomMarkerMessage(data['message']);
-    //         break;
-    //     case 'tyre-delta':
-    //         processTyreDeltaMessage(data['message']);
-    //         break;
-    //     default:
-    //         console.error("received unsupported message type in frontend-update");
-    // }
-});
-
 // Generic function to handle any request-response via socket events
 async function sendSynchronousRequest(requestEvent, requestData, responseEvent) {
     return new Promise((resolve, reject) => {
