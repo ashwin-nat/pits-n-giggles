@@ -75,6 +75,4 @@ def is_update_available(curr_version_str: str,
         return False
 
     except requests.exceptions.RequestException as e:
-        # print(f"[Update Check] Error: {e}")
-        # TODO: Add logging
         return False
