@@ -42,8 +42,6 @@ class RaceTableRowPopulator {
                     return response.json(); // or .text() if you expect plain text
                 })
                 .then(data => {
-                    console.log("Driver info fetched:", data);
-                    // optionally do something with the response
                     window.modalManager.openDriverModal(data, this.iconCache);
                 })
                 .catch(err => {
