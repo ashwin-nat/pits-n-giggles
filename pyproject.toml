@@ -19,6 +19,7 @@ dependencies = [
     "psutil (>=7.0.0,<8.0.0)",
     "pydantic (>=2.11.5,<3.0.0)",
     "uvicorn (>=0.35.0,<0.36.0)",
+    "packaging (>=25.0,<26.0)",
 ]
 
 
