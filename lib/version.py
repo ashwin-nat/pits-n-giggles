@@ -74,5 +74,5 @@ def is_update_available(curr_version_str: str,
 
         return False
 
-    except (requests.exceptions.RequestException, json.JSONDecodeError, ValueError):
+    except (requests.exceptions.RequestException, json.JSONDecodeError, version.InvalidVersion):
         return False
