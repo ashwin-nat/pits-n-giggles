@@ -257,7 +257,7 @@ class PngLauncher(ConsoleInterface):
                                      command=self.clear_log, style="Racing.TButton")
         self.clear_button.pack(side=tk.LEFT, padx=(0, 10))
 
-        self.website_button = ttk.Button(buttons_frame, text="Tips & Tricks",
+        self.website_button = ttk.Button(buttons_frame, text="Tips n' Tricks",
                                         command=lambda: os.startfile("https://pitsngiggles.com/blog"),
                                         style="Racing.TButton")
         self.website_button.pack(side=tk.LEFT, padx=(0, 10))
