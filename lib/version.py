@@ -22,6 +22,11 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 import os
+import requests
+from packaging import version
+
+# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
+PNG_RELEASES_API = "https://api.github.com/repos/ashwin-nat/pits-n-giggles/releases"
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -33,3 +38,42 @@ def get_version() -> str:
     """
 
     return os.environ.get('PNG_VERSION', 'dev')
+
+def is_update_available(curr_version_str: str,
+                        timeout: float = 5.0,
+                        api_endpoint: str = PNG_RELEASES_API) -> bool:
+    """
+    Checks if a newer stable version is available on GitHub.
+
+    Args:
+        curr_version_str (str): Current version of the app (e.g. '1.2.3')
+        timeout (float): Timeout for the request in seconds
+        api_endpoint (str): GitHub releases API endpoint. Defaults to the official Pits n' Giggles releases API.
+
+    Returns:
+        bool: True if update is available, False otherwise or on error.
+
+    Caveat:
+        This function assumes that the releases are returned in reverse chronological
+        order and that the most recent stable (non-prerelease) release is listed first.
+        If older versions are published *after* newer ones, this may return incorrect results.
+    """
+    try:
+        response = requests.get(api_endpoint, timeout=timeout)
+        response.raise_for_status()
+        releases = response.json()
+        curr_version = version.parse(curr_version_str)
+
+        for release in releases:
+            if release.get("prerelease", False):
+                continue
+            tag = release.get("tag_name", "").lstrip("v")
+            if not tag:
+                continue
+            return version.parse(tag) > curr_version
+
+        return False
+
+    except requests.exceptions.RequestException as e:
+        print(f"[Update Check] Error: {e}")
+        return False
