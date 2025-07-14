@@ -655,21 +655,3 @@ socketio.on('race-table-update', function (data) {
     raceStatus.update(data);
     weatherTable.update(data["weather-forecast-samples"]);
 });
-
-// Generic function to handle any request-response via socket events
-async function sendSynchronousRequest(requestEvent, requestData, responseEvent) {
-    return new Promise((resolve, reject) => {
-        // Send the request event with data
-        socketio.emit(requestEvent, requestData);
-
-        // Listen for the response event
-        socketio.once(responseEvent, (response) => {
-            resolve(response);  // Resolve the promise with the response
-        });
-
-        // Optional: Timeout after 5 seconds (adjust as needed)
-        setTimeout(() => {
-            reject(new Error(`Timeout waiting for response event: ${responseEvent}`));
-        }, 5000);  // 5 seconds timeout
-    });
-}

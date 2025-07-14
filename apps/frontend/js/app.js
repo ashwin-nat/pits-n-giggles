@@ -70,24 +70,6 @@ socketio.on('frontend-update', function (data) {
     }
 });
 
-// Generic function to handle any request-response via socket events
-async function sendSynchronousRequest(requestEvent, requestData, responseEvent) {
-    return new Promise((resolve, reject) => {
-        // Send the request event with data
-        socketio.emit(requestEvent, requestData);
-
-        // Listen for the response event
-        socketio.once(responseEvent, (response) => {
-            resolve(response);  // Resolve the promise with the response
-        });
-
-        // Optional: Timeout after 5 seconds (adjust as needed)
-        setTimeout(() => {
-            reject(new Error(`Timeout waiting for response event: ${responseEvent}`));
-        }, 5000);  // 5 seconds timeout
-    });
-}
-
 document.getElementById("best-lap-th").addEventListener("click", function () {
     g_pref_bestLapAbsoluteFormat = !g_pref_bestLapAbsoluteFormat;
     showToast("Best Lap Format Changed to " + (g_pref_bestLapAbsoluteFormat ? "Absolute" : "Relative"));

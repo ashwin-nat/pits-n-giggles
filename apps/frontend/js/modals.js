@@ -120,13 +120,17 @@ class ModalManager {
         "refresh" : true
       }
     };
-    sendSynchronousRequest('driver-info', requestPayload, 'driver-info-response')
-      .then(driverInfo => {
-        console.log('Driver info sync response received:', driverInfo);
-        this.openDriverModal(driverInfo, this.iconCache); // Reload the modal with the current data
+    fetch(`/driver-info?index=${data["index"]}`)
+      .then(response => {
+          if (!response.ok) throw new Error("Network response was not ok");
+          return response.json(); // or .text() if you expect plain text
       })
-      .catch(error => {
-        console.error('Error fetching driver info:', error);
+      .then(data => {
+        console.log('Driver info sync response received:', data);
+        this.openDriverModal(data, this.iconCache); // Reload the modal with the current data
+      })
+      .catch(err => {
+          console.error("Fetch error:", err);
       });
   }
 
@@ -311,13 +315,17 @@ class ModalManager {
         "refresh" : true
       }
     };
-    sendSynchronousRequest('race-info', requestPayload, 'race-info-response')
-      .then(raceInfo => {
-        console.log('Race info sync response received:', raceInfo);
+    fetch(`/race-info`)
+      .then(response => {
+          if (!response.ok) throw new Error("Network response was not ok");
+          return response.json(); // or .text() if you expect plain text
+      })
+      .then(data => {
+        console.log('Race info sync response received:', data);
         this.openRaceStatsModal(data); // Reload the modal with the current data
       })
-      .catch(error => {
-        console.error('Error fetching race info:', error);
+      .catch(err => {
+          console.error("Fetch error:", err);
       });
   }
 }
