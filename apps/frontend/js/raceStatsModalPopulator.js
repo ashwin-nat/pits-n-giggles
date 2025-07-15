@@ -285,7 +285,7 @@ class RaceStatsModalPopulator {
         chart.render(chartData, {
             title: "Speed Trap Records",
             xLabel: "Driver",
-            yLabel: `Speed {${unit}}`,
+             yLabel: `Speed (${unit})`,
         });
 
         tabPane.appendChild(chartDiv);
