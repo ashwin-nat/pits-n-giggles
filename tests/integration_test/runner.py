@@ -11,6 +11,7 @@ import ssl
 import subprocess
 import sys
 import time
+import webbrowser
 from pathlib import Path
 
 from aiohttp import ClientSession, TCPConnector
@@ -111,6 +112,10 @@ def main(telemetry_port, http_port, proto):
 
     print("Waiting for app to start...")
     time.sleep(5)
+
+    print("Launching engineer view and overlay clients")
+    webbrowser.open(f'{proto}://localhost:{http_port}/eng-view', new=2)
+    webbrowser.open(f'{proto}://localhost:{http_port}/player-stream-overlay', new=2)
 
     results = []
     try:
