@@ -444,7 +444,35 @@
               <label for="tyreDeltaOsdDuration" class="form-label">Tyre Delta OSD Duration (seconds)</label>
               <input type="number" class="form-control" id="tyreDeltaOsdDuration" value="5" min="1" max="20">
             </div>
-          </div>
+            <!-- Speed format -->
+            <div class="mb-3">
+              <label class="form-label">Speed Format</label>
+              <div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="speedUnitMetric" name="speedUnit" value="metric" checked>
+                  <label class="form-check-label" for="speedUnitMetric">Metric (kmph)</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="speedUnitImperial" name="speedUnit" value="imperial">
+                  <label class="form-check-label" for="speedUnitImperial">Imperial (mph)</label>
+                </div>
+              </div>
+            </div>
+            <!-- Temperature format -->
+            <div class="mb-3">
+              <label class="form-label">Temperature Format</label>
+              <div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="tempUnitMetric" name="tempUnit" value="metric" checked>
+                  <label class="form-check-label" for="tempUnitMetric">°C (Celsius)</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="tempUnitImperial" name="tempUnit" value="imperial">
+                  <label class="form-check-label" for="tempUnitImperial">°F (Fahrenheit)</label>
+                </div>
+              </div>
+            </div>
+          </div> <!-- End of Modal Body -->
           <div class="modal-footer">
             <a href="https://www.pitsngiggles.com" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">Download latest</a>
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
