@@ -47,8 +47,12 @@ socketio.on('reconnect_attempt', attempt => {
 
 // Receive details from server
 socketio.on('race-table-update', function (binaryData) {
-    const data = window.msgpack.decode(new Uint8Array(binaryData));
-    telemetryRenderer.updateDashboard(data);
+    try {
+        const data = window.msgpack.decode(new Uint8Array(binaryData));
+        telemetryRenderer.updateDashboard(data);
+    } catch (err) {
+        console.error('Failed to decode race-table-update:', err);
+    }
 });
 
 socketio.on('frontend-update', function (binaryData) {

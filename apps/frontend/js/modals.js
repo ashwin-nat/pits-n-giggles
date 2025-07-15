@@ -48,6 +48,7 @@ class ModalManager {
           })
           .catch(err => {
               console.error("Fetch error:", err);
+              showToast("Failed to fetch race info");
           });
       });
     }

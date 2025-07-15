@@ -649,7 +649,13 @@ socketio.on('reconnect_attempt', attempt => {
 // Receive details from server
 socketio.on('race-table-update', function (binaryData) {
 
-    const data = window.msgpack.decode(new Uint8Array(binaryData));
+    let data;
+    try {
+        data = window.msgpack.decode(new Uint8Array(binaryData));
+    } catch (err) {
+        console.error('Failed to decode race-table-update:', err);
+        return;
+    }
 
     const tableEntries      = data["table-entries"];
     const isSpectating      = data["is-spectating"];
