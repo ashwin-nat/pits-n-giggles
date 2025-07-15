@@ -16,6 +16,7 @@ class TelemetryRenderer {
     this.indexByPosition = null;
     this.iconCache = iconCache;
     this.uiMode = 'Splash';
+    this.lastData = null;
   }
 
   renderTelemetryRow(data, packetFormat, isLiveDataMode, raceEnded, spectatorIndex) {
@@ -69,6 +70,7 @@ class TelemetryRenderer {
 
     // update the header section regardless of mode
     this.updateHeader(incomingData);
+    this.lastData = incomingData;
   }
 
   updateTimeTrialData(incomingData) {
@@ -143,29 +145,51 @@ class TelemetryRenderer {
   }
 
   updateHeader(incomingData) {
-    const weatherSamples = incomingData['weather-forecast-samples'].slice(0, g_pref_numWeatherPredictionSamples);
-    this.weatherWidget.update(weatherSamples);
 
-    this.fastestLapTimeSpan.textContent = formatLapTime(incomingData['fastest-lap-overall']);
-    this.fastestLapNameSpan.textContent = (incomingData['event-type'] === 'Time Trial') ?
-        ('') : (truncateName(incomingData['fastest-lap-overall-driver']).toUpperCase());
-
-    this.fastestLapTyreSpan.innerHTML = '';
-    const fastestLapTyre = incomingData['fastest-lap-overall-tyre'];
-    if (fastestLapTyre) {
-      const icon = this.iconCache.getIcon(fastestLapTyre);
-      if (icon) {
-        this.fastestLapTyreSpan.appendChild(icon);
-      }
+    if (this.hasFieldChanged(incomingData, 'weather-forecast-samples')) {
+      const weatherSamples = incomingData['weather-forecast-samples'].slice(0, g_pref_numWeatherPredictionSamples);
+      this.weatherWidget.update(weatherSamples);
     }
 
-    this.populateCircuitSpan(incomingData);
-    this.airTempSpan.textContent = incomingData['air-temperature'] + ' °C';
-    this.trackTempSpan.textContent = incomingData['track-temperature'] + ' °C';
+    if (this.hasFieldChanged(incomingData, 'fastest-lap-overall') ||
+      this.hasFieldChanged(incomingData, 'fastest-lap-overall-driver') ||
+      this.hasFieldChanged(incomingData, 'fastest-lap-overall-tyre')) {
+
+      this.fastestLapTimeSpan.textContent = formatLapTime(incomingData['fastest-lap-overall']);
+      this.fastestLapNameSpan.textContent = (incomingData['event-type'] === 'Time Trial') ?
+          ('') : (truncateName(incomingData['fastest-lap-overall-driver']).toUpperCase());
+
+          this.fastestLapTyreSpan.innerHTML = '';
+          const fastestLapTyre = incomingData['fastest-lap-overall-tyre'];
+          if (fastestLapTyre) {
+            const icon = this.iconCache.getIcon(fastestLapTyre);
+            if (icon) {
+              this.fastestLapTyreSpan.appendChild(icon);
+            }
+          }
+    }
+
+    // If the track name has changed, so has pit lane speed limit
+    if (this.hasFieldChanged(incomingData, 'track-name')) {
+      this.populateCircuitSpan(incomingData);
+    }
+    if (this.hasFieldChanged(incomingData, 'air-temperature')) {
+      this.airTempSpan.textContent = incomingData['air-temperature'] + ' °C';
+    }
+    if (this.hasFieldChanged(incomingData, 'track-temperature')) {
+      this.trackTempSpan.textContent = incomingData['track-temperature'] + ' °C';
+    }
   }
 
 
   // Utility methods:
+  hasFieldChanged(incomingData, fieldName) {
+    if (!this.lastData) {
+      return true;
+    }
+    return incomingData[fieldName] !== this.lastData[fieldName];
+  }
+
   populateCircuitSpan(incomingData) {
     this.populateTrackName(incomingData);
     const pitLaneSpeedLimit = incomingData['pit-speed-limit'];
