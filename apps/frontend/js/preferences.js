@@ -14,6 +14,8 @@ let g_pref_ttsVoice;
 let g_pref_ttsVolume;
 let g_pref_tyreDeltaNotificationTtsFormat;
 let g_pref_tyreDeltaNotificationOsdDurationSec;
+let g_pref_speedUnitMetric;
+let g_pref_tempUnitMetric;
 
 function loadPreferences() {
     let missingPreference = false;
@@ -128,6 +130,20 @@ function loadPreferences() {
         g_pref_tyreDeltaNotificationOsdDurationSec = parseInt(g_pref_tyreDeltaNotificationOsdDurationSec, 10); // localstorage saves everthing as string
     }
 
+    if (localStorage.getItem('speedUnitMetric') !== null) {
+        g_pref_speedUnitMetric = localStorage.getItem('speedUnitMetric') === 'true';
+    } else {
+        g_pref_speedUnitMetric = true;
+        missingPreference = true;
+    }
+
+    if (localStorage.getItem('tempUnitMetric') !== null) {
+        g_pref_tempUnitMetric = localStorage.getItem('tempUnitMetric') === 'true';
+    } else {
+        g_pref_tempUnitMetric = true;
+        missingPreference = true;
+    }
+
     // If any preference was missing, save all current preferences
     if (missingPreference) {
         savePreferences();
@@ -148,7 +164,9 @@ function loadPreferences() {
         g_pref_ttsVoice,
         g_pref_ttsVolume,
         g_pref_tyreDeltaNotificationTtsFormat,
-        g_pref_tyreDeltaNotificationOsdDurationSec
+        g_pref_tyreDeltaNotificationOsdDurationSec,
+        g_pref_speedUnitMetric,
+        g_pref_tempUnitMetric
     });
     updateAllTooltips();
 }
@@ -169,6 +187,8 @@ function savePreferences() {
     localStorage.setItem('ttsVolume', g_pref_ttsVolume);
     localStorage.setItem('tyreDeltaNotificationTtsFormat', g_pref_tyreDeltaNotificationTtsFormat);
     localStorage.setItem('tyreDeltaNotificationOsdDurationSec', g_pref_tyreDeltaNotificationOsdDurationSec);
+    localStorage.setItem('speedUnitMetric', g_pref_speedUnitMetric);
+    localStorage.setItem('tempUnitMetric', g_pref_tempUnitMetric);
 
     console.log("Saved Preferences:", {
         g_pref_myTeamName,
@@ -185,7 +205,9 @@ function savePreferences() {
         g_pref_ttsVoice,
         g_pref_ttsVolume,
         g_pref_tyreDeltaNotificationTtsFormat,
-        g_pref_tyreDeltaNotificationOsdDurationSec
+        g_pref_tyreDeltaNotificationOsdDurationSec,
+        g_pref_speedUnitMetric,
+        g_pref_tempUnitMetric
     });
 
     updateAllTooltips();
@@ -210,6 +232,8 @@ function updateAllTooltips() {
     } else {
         updateTooltip("fuel-info-th", `Target fuel rate is disabled. Enable it via the settings`);
     }
+    updateTooltip("tt-vmax-th", `Top Speed. Click to toggle between km/h and mph. Current format is ${
+                                                    (g_pref_speedUnitMetric) ? ("km/h") : ("mph")}`);
 }
 
 function updateTooltip(id, newText) {

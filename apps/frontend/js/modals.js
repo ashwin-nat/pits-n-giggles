@@ -224,6 +224,14 @@ class ModalManager {
     // set initial tyre delta mode
     this.handleTyreDeltaFormatChange(g_pref_tyreDeltaNotificationTtsFormat ? "tts" : "osd");
 
+    // Set the radio buttons for speed units
+    document.getElementById("speedUnitMetric").checked = g_pref_speedUnitMetric;
+    document.getElementById("speedUnitImperial").checked = !g_pref_speedUnitMetric;
+
+    // Set the radio buttons for temperature units
+    document.getElementById("tempUnitMetric").checked = g_pref_tempUnitMetric;
+    document.getElementById("tempUnitImperial").checked = !g_pref_tempUnitMetric;
+
     this.settingsModal.show();
   }
 
@@ -253,6 +261,9 @@ class ModalManager {
     g_pref_ttsVolume = parseInt(document.getElementById('volumeRange').value, 10);
     g_pref_tyreDeltaNotificationTtsFormat = (document.querySelector('input[name="tyreDeltaNotificationFormat"]:checked').value === "tts") ? (true) : (false);
     g_pref_tyreDeltaNotificationOsdDurationSec = osdDurationSec_temp;
+    g_pref_speedUnitMetric = (document.querySelector('input[name="speedUnit"]:checked').value === "metric") ? (true) : (false);
+    g_pref_tempUnitMetric = (document.querySelector('input[name="tempUnit"]:checked').value === "metric") ? (true) : (false);
+
     savePreferences();
 
     this.settingsModal.hide();

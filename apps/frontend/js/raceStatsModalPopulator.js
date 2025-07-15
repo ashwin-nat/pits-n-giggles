@@ -277,13 +277,15 @@ class RaceStatsModalPopulator {
         const chartDiv = document.createElement('div');
         const chart = new BarChart(chartDiv);
         let chartData = [];
+        const unit = g_pref_speedUnitMetric ? "km/h" : "mph";
         this.data["speed-trap-records"].forEach((record) => {
-            chartData.push({ label: record["name"], value: record["speed-trap-record-kmph"], color: this.getF1TeamColor(record["team"]) });
+            chartData.push({ label: record["name"], value: this.getSpeedInCustomUnit(record["speed-trap-record-kmph"]),
+                             color: this.getF1TeamColor(record["team"]) });
         });
         chart.render(chartData, {
             title: "Speed Trap Records",
             xLabel: "Driver",
-            yLabel: "Speed (km/h)",
+             yLabel: `Speed (${unit})`,
         });
 
         tabPane.appendChild(chartDiv);
@@ -573,5 +575,9 @@ class RaceStatsModalPopulator {
 
         // Add to the tab pane
         tabPane.appendChild(alertDiv);
+    }
+
+    getSpeedInCustomUnit(speedKmph) {
+        return g_pref_speedUnitMetric ? speedKmph : speedKmph * 0.621371;
     }
 }

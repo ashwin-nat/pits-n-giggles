@@ -160,8 +160,16 @@ class TelemetryRenderer {
     }
 
     this.populateCircuitSpan(incomingData);
-    this.airTempSpan.textContent = incomingData['air-temperature'] + ' °C';
-    this.trackTempSpan.textContent = incomingData['track-temperature'] + ' °C';
+    this.airTempSpan.textContent = formatTemperature(incomingData['air-temperature'], {
+      isMetric: g_pref_tempUnitMetric,
+      decimalPlaces: 0,
+      addUnitSuffix: true
+    });
+    this.trackTempSpan.textContent = formatTemperature(incomingData['track-temperature'], {
+      isMetric: g_pref_tempUnitMetric,
+      decimalPlaces: 0,
+      addUnitSuffix: true
+    });
   }
 
 
@@ -170,7 +178,11 @@ class TelemetryRenderer {
     this.populateTrackName(incomingData);
     const pitLaneSpeedLimit = incomingData['pit-speed-limit'];
     if (pitLaneSpeedLimit) {
-      this.pitLaneSpeedLimit.textContent = pitLaneSpeedLimit;
+      this.pitLaneSpeedLimit.textContent = formatSpeed(pitLaneSpeedLimit, {
+        isMetric: g_pref_speedUnitMetric,
+        decimalPlaces: 0,
+        addUnitSuffix: false
+      });
       this.pitLaneSpeedLimit.style.display = "inline-flex"; // Ensure it's visible if there's a value
     } else {
       this.pitLaneSpeedLimit.style.display = "none"; // Hide if the value is 0;
