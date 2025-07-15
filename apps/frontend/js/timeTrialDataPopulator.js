@@ -252,7 +252,9 @@ class TimeTrialDataPopulator {
             this.applyColourToCell(lapTimeCell, lapNum, bestLapTimeLapNum, isLapValid);
 
             const speedCell = document.createElement('td');
-            speedCell.textContent = lap['top-speed-kmph'] || '-';
+            speedCell.textContent = lap['top-speed-kmph']
+                ? formatSpeed(lap['top-speed-kmph'], {isMetric: true, decimalPlaces: 0, addUnitSuffix: false})
+                : '-';
 
             row.appendChild(lapCell);
             row.appendChild(s1Cell);

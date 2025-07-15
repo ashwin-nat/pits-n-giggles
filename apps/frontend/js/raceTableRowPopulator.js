@@ -105,7 +105,7 @@ class RaceTableRowPopulator {
         });
 
         const speedTrapValue = speedTrapRecord != null
-            ? formatFloatWithTwoDecimals(speedTrapRecord) + ' kmph'
+            ? formatSpeed(speedTrapRecord, { isMetric: g_pref_speedUnitMetric, decimalPlaces: 2, addUnitSuffix: true })
             : "---";
 
         // Game-specific layout:

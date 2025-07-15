@@ -376,3 +376,37 @@ function getFormattedLapTimeStr({
 function replaceRevSuffix(str) {
   return str.replace(/\(REV\)$/, '⇄');
 }
+
+function formatSpeed(speedKmph, { isMetric = true, decimalPlaces = 1, addUnitSuffix = true } = {}) {
+    if (typeof speedKmph !== 'number' || !isFinite(speedKmph)) {
+        throw new Error(`Invalid speed: expected a finite number, got ${speedKmph} (type: ${typeof speedKmph})`);
+    }
+
+    let speed = speedKmph;
+    let unit = 'km/h';
+
+    if (!isMetric) {
+        speed *= 0.621371; // Convert km/h to mph
+        unit = 'mph';
+    }
+
+    const rounded = speed.toFixed(decimalPlaces);
+    return addUnitSuffix ? `${rounded} ${unit}` : `${rounded}`;
+}
+
+function formatTemperature(tempCelsius, { isMetric = true, decimalPlaces = 1, addUnitSuffix = true } = {}) {
+    if (typeof tempCelsius !== 'number' || !isFinite(tempCelsius)) {
+        throw new Error(`Invalid temperature: expected a finite number, got ${tempCelsius} (type: ${typeof tempCelsius})`);
+    }
+
+    let temp = tempCelsius;
+    let unit = '°C';
+
+    if (!isMetric) {
+        temp = (temp * 9 / 5) + 32; // Convert to Fahrenheit
+        unit = '°F';
+    }
+
+    const rounded = temp.toFixed(decimalPlaces);
+    return addUnitSuffix ? `${rounded} ${unit}` : `${rounded}`;
+}

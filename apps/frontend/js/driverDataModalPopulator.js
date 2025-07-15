@@ -77,7 +77,8 @@ class DriverModalPopulator {
                 row.appendChild(wearCell);
 
                 const topSpeedCell = document.createElement('td');
-                const topSpeed = lap["top-speed-kmph"]
+                const topSpeed = formatSpeed(lap["top-speed-kmph"],
+                    { isMetric: g_pref_speedUnitMetric, decimalPlaces: 0, addUnitSuffix: false });
                 topSpeedCell.textContent = (topSpeed != null) ? (topSpeed) : ('---');
                 row.appendChild(topSpeedCell);
 

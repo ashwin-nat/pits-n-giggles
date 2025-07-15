@@ -277,6 +277,7 @@ class RaceStatsModalPopulator {
         const chartDiv = document.createElement('div');
         const chart = new BarChart(chartDiv);
         let chartData = [];
+        // TODO: support mph
         this.data["speed-trap-records"].forEach((record) => {
             chartData.push({ label: record["name"], value: record["speed-trap-record-kmph"], color: this.getF1TeamColor(record["team"]) });
         });
