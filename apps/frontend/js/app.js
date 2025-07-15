@@ -46,40 +46,17 @@ socketio.on('reconnect_attempt', attempt => {
 });
 
 // Receive details from server
-socketio.on('race-table-update', function (data) {
-    telemetryRenderer.updateDashboard(data);
-});
-
-socketio.on('race-info-response', function (data) {
-    clearSocketIoRequestTimeout();
-    if (!('error' in data)) {
-        if ('__dummy' in data) {
-            // this request is meant for a synchronous listener, ignore
-            console.debug("Ignoring race-info-response in main listener");
-        } else {
-            window.modalManager.openRaceStatsModal(data);
-        }
-    } else {
-        console.error("Received error for race-info request", data);
+socketio.on('race-table-update', function (binaryData) {
+    try {
+        const data = window.msgpack.decode(new Uint8Array(binaryData));
+        telemetryRenderer.updateDashboard(data);
+    } catch (err) {
+        console.error('Failed to decode race-table-update:', err);
     }
 });
 
-socketio.on('driver-info-response', function (data) {
-    clearSocketIoRequestTimeout();
-    if (!('error' in data)) {
-        if ('__dummy' in data) {
-            // this request is meant for a synchronous listener, ignore
-            console.debug("Ignoring driver-info-response in main listener");
-        } else {
-            window.modalManager.openDriverModal(data, iconCache);
-        }
-    } else {
-        console.error("Received error for driver-info request", data);
-        // showToast("Received error for driver info request");
-    }
-});
-
-socketio.on('frontend-update', function (data) {
+socketio.on('frontend-update', function (binaryData) {
+    const data = window.msgpack.decode(new Uint8Array(binaryData));
     console.log("frontend-update", data);
     switch (data['message-type']) {
         case 'custom-marker':
@@ -98,24 +75,6 @@ socketio.on('frontend-update', function (data) {
             console.error("received unsupported message type in frontend-update");
     }
 });
-
-// Generic function to handle any request-response via socket events
-async function sendSynchronousRequest(requestEvent, requestData, responseEvent) {
-    return new Promise((resolve, reject) => {
-        // Send the request event with data
-        socketio.emit(requestEvent, requestData);
-
-        // Listen for the response event
-        socketio.once(responseEvent, (response) => {
-            resolve(response);  // Resolve the promise with the response
-        });
-
-        // Optional: Timeout after 5 seconds (adjust as needed)
-        setTimeout(() => {
-            reject(new Error(`Timeout waiting for response event: ${responseEvent}`));
-        }, 5000);  // 5 seconds timeout
-    });
-}
 
 document.getElementById("best-lap-th").addEventListener("click", function () {
     g_pref_bestLapAbsoluteFormat = !g_pref_bestLapAbsoluteFormat;

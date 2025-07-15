@@ -95,20 +95,26 @@ class EngViewRaceTableRow {
     }
 
     createMultiLineCellOnClick(row1Content, row2Content, onClick) {
-        const container = document.createElement("div");
+        const container = document.createElement("a");
+        container.href = "#";
+        container.style.textDecoration = "none"; // Optional: remove underline
+        container.style.color = "inherit";       // Optional: preserve inherited text color
 
         const row1 = document.createElement("div");
         row1.className = "eng-view-tyre-row-1";
         row1.textContent = row1Content;
-        row1.addEventListener("click", onClick);
 
         const row2 = document.createElement("div");
         row2.className = "eng-view-tyre-row-2";
         row2.textContent = row2Content;
-        row2.addEventListener("click", onClick);
 
         container.appendChild(row1);
         container.appendChild(row2);
+
+        container.addEventListener("click", (e) => {
+            e.preventDefault(); // Prevent actual jump to "#"
+            onClick(e);
+        });
 
         return container;
     }
@@ -128,7 +134,19 @@ class EngViewRaceTableRow {
             {value: this.createPositionStatusCell(driverInfo["position"], driverInfo), border: true},
             {value: this.createMultiLineCellOnClick(driverInfo["name"], driverInfo["team"], () => {
                 console.log("Sending driver info request", driverInfo["name"], driverInfo["index"]);
-                socketio.emit('driver-info', { index: driverInfo["index"] });
+                fetch(`/driver-info?index=${driverInfo["index"]}`)
+                    .then(response => {
+                        if (!response.ok) throw new Error("Network response was not ok");
+                        return response.json(); // or .text() if you expect plain text
+                    })
+                    .then(data => {
+                        console.log("Driver info fetched:", data);
+                        // optionally do something with the response
+                        window.modalManager.openDriverModal(data, this.iconCache);
+                    })
+                    .catch(err => {
+                        console.error("Fetch error:", err);
+                    });
             }), border: true},
         ];
     }
@@ -629,7 +647,15 @@ socketio.on('reconnect_attempt', attempt => {
 });
 
 // Receive details from server
-socketio.on('race-table-update', function (data) {
+socketio.on('race-table-update', function (binaryData) {
+
+    let data;
+    try {
+        data = window.msgpack.decode(new Uint8Array(binaryData));
+    } catch (err) {
+        console.error('Failed to decode race-table-update:', err);
+        return;
+    }
 
     const tableEntries      = data["table-entries"];
     const isSpectating      = data["is-spectating"];
@@ -643,66 +669,3 @@ socketio.on('race-table-update', function (data) {
     raceStatus.update(data);
     weatherTable.update(data["weather-forecast-samples"]);
 });
-
-socketio.on('race-info-response', function (data) {
-    clearSocketIoRequestTimeout();
-    console.log("Received race-info-response", data);
-    // if (!('error' in data)) {
-    //     if ('__dummy' in data) {
-    //         // this request is meant for a synchronous listener, ignore
-    //         console.debug("Ignoring race-info-response in main listener");
-    //     } else {
-    //         window.modalManager.openRaceStatsModal(data);
-    //     }
-    // } else {
-    //     console.error("Received error for race-info request", data);
-    // }
-});
-
-socketio.on('driver-info-response', function (data) {
-    clearSocketIoRequestTimeout();
-    console.log("Received driver-info-response", data);
-    if (!('error' in data)) {
-        if ('__dummy' in data) {
-            // this request is meant for a synchronous listener, ignore
-            console.debug("Ignoring driver-info-response in main listener");
-        } else {
-            window.modalManager.openDriverModal(data, iconCache);
-        }
-    } else {
-        console.error("Received error for driver-info request", data);
-        // showToast("Received error for driver info request");
-    }
-});
-
-socketio.on('frontend-update', function (data) {
-    console.log("frontend-update", data);
-    // switch (data['message-type']) {
-    //     case 'custom-marker':
-    //         processCustomMarkerMessage(data['message']);
-    //         break;
-    //     case 'tyre-delta':
-    //         processTyreDeltaMessage(data['message']);
-    //         break;
-    //     default:
-    //         console.error("received unsupported message type in frontend-update");
-    // }
-});
-
-// Generic function to handle any request-response via socket events
-async function sendSynchronousRequest(requestEvent, requestData, responseEvent) {
-    return new Promise((resolve, reject) => {
-        // Send the request event with data
-        socketio.emit(requestEvent, requestData);
-
-        // Listen for the response event
-        socketio.once(responseEvent, (response) => {
-            resolve(response);  // Resolve the promise with the response
-        });
-
-        // Optional: Timeout after 5 seconds (adjust as needed)
-        setTimeout(() => {
-            reject(new Error(`Timeout waiting for response event: ${responseEvent}`));
-        }, 5000);  // 5 seconds timeout
-    });
-}

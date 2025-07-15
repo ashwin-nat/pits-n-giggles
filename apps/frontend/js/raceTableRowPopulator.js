@@ -36,7 +36,17 @@ class RaceTableRowPopulator {
             getTeamName(this.rowData["driver-info"]["team"]),
         ], (e) => {
             e.preventDefault();
-            socketio.emit('driver-info', { index: index });
+            fetch(`/driver-info?index=${index}`)
+                .then(response => {
+                    if (!response.ok) throw new Error("Network response was not ok");
+                    return response.json(); // or .text() if you expect plain text
+                })
+                .then(data => {
+                    window.modalManager.openDriverModal(data, this.iconCache);
+                })
+                .catch(err => {
+                    console.error("Fetch error:", err);
+                });
         });
         return this;
     }

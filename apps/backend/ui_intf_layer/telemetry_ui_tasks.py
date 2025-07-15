@@ -26,6 +26,7 @@ import asyncio
 import logging
 from typing import List, Optional
 
+import msgpack
 import socketio
 
 import apps.backend.state_mgmt_layer as TelWebAPI
@@ -93,7 +94,8 @@ async def raceTableClientUpdateTask(update_interval_ms: int, sio: socketio.Async
     sleep_duration = update_interval_ms / 1000
     while True:
         if not _isRoomEmpty(sio, "race-table"):
-            await sio.emit('race-table-update', TelWebAPI.RaceInfoUpdate().toJSON(), room="race-table")
+            packed = msgpack.packb(TelWebAPI.RaceInfoUpdate().toJSON(), use_bin_type=True)
+            await sio.emit('race-table-update', packed, room="race-table")
         await asyncio.sleep(sleep_duration)
 
 async def streamOverlayUpdateTask(
@@ -110,9 +112,11 @@ async def streamOverlayUpdateTask(
     sleep_duration = update_interval_ms / 1000
     while True:
         if not _isRoomEmpty(sio, "player-stream-overlay"):
+            packed = msgpack.packb(
+                TelWebAPI.PlayerTelemetryOverlayUpdate().toJSON(stream_overlay_start_sample_data), use_bin_type=True)
             await sio.emit(
                 'player-overlay-update',
-                TelWebAPI.PlayerTelemetryOverlayUpdate().toJSON(stream_overlay_start_sample_data),
+                packed,
                 room="player-stream-overlay"
             )
         await asyncio.sleep(sleep_duration)
@@ -126,7 +130,8 @@ async def frontEndMessageTask(sio: socketio.AsyncServer) -> None:
 
     while True:
         if message := await AsyncInterTaskCommunicator().receive("frontend-update"):
-            await sio.emit('frontend-update', message.toJSON(), room="race-table")
+            packed = msgpack.packb(message.toJSON(), use_bin_type=True)
+            await sio.emit('frontend-update', packed, room="race-table")
 
 def _isRoomEmpty(sio: socketio.AsyncServer, room_name: str, namespace: Optional[str] = '/') -> bool:
     """Check if a room is empty

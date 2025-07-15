@@ -275,10 +275,9 @@ class TelemetryWebServer:
 
     def define_socketio_handlers(self) -> None:
         """
-        Define Socket.IO event handlers for client management and data endpoints.
+        Define Socket.IO event handlers for client management endpoints.
         """
         self._defineClientManagementEndpoints()
-        self._defineDataEndpoints()
 
     def _defineClientManagementEndpoints(self) -> None:
         """
@@ -323,43 +322,6 @@ class TelemetryWebServer:
 
                     room = self.m_sio.manager.rooms.get('/', {}).get(client_type)
                     self.m_logger.debug(f'Current members of {client_type}: {room}')
-
-    def _defineDataEndpoints(self) -> None:
-        """
-        Set up Socket.IO event handlers for data-related events.
-        """
-        @self.m_sio.on('race-info')
-        async def raceInfoSIO(sid: str, data: Dict[str, Any]) -> None:
-            """
-            Handle race info request via Socket.IO.
-
-            Args:
-                sid (str): Session ID of the requesting client.
-                data (Dict[str, Any]): Request data, potentially including a dummy payload.
-            """
-            response = TelState.OverallRaceStatsRsp().toJSON()
-
-            # Re-attach the dummy payload if present
-            if "__dummy" in data:
-                response["__dummy"] = data
-            await self.m_sio.emit("race-info-response", response, to=sid)
-
-        @self.m_sio.on('driver-info')
-        async def driverInfoSIO(sid: str, data: Dict[str, Any]) -> None:
-            """
-            Handle driver info request via Socket.IO.
-
-            Args:
-                sid (str): Session ID of the requesting client.
-                data (Dict[str, Any]): Request data with driver index and optional dummy payload.
-            """
-            response, _ = self._processDriverInfoRequest(data.get("index"))
-
-            # Re-attach the dummy payload if present
-            dummy_payload = data.get("__dummy")
-            if dummy_payload:
-                response["__dummy"] = dummy_payload
-            await self.m_sio.emit("driver-info-response", response, to=sid)
 
     def _validateIntGetRequestParam(self, param: Any, param_name: str) -> Optional[Dict[str, Any]]:
         """
