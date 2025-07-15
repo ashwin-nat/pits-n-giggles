@@ -15,7 +15,7 @@ let g_pref_ttsVolume;
 let g_pref_tyreDeltaNotificationTtsFormat;
 let g_pref_tyreDeltaNotificationOsdDurationSec;
 let g_pref_speedUnitMetric;
-let g_pref_tempUnitCelsius;
+let g_pref_tempUnitMetric;
 
 function loadPreferences() {
     let missingPreference = false;
@@ -137,10 +137,10 @@ function loadPreferences() {
         missingPreference = true;
     }
 
-    if (localStorage.getItem('tempUnitCelsius') !== null) {
-        g_pref_tempUnitCelsius = localStorage.getItem('tempUnitCelsius') === 'true';
+    if (localStorage.getItem('tempUnitMetric') !== null) {
+        g_pref_tempUnitMetric = localStorage.getItem('tempUnitMetric') === 'true';
     } else {
-        g_pref_tempUnitCelsius = true;
+        g_pref_tempUnitMetric = true;
         missingPreference = true;
     }
 
@@ -166,7 +166,7 @@ function loadPreferences() {
         g_pref_tyreDeltaNotificationTtsFormat,
         g_pref_tyreDeltaNotificationOsdDurationSec,
         g_pref_speedUnitMetric,
-        g_pref_tempUnitCelsius
+        g_pref_tempUnitMetric
     });
     updateAllTooltips();
 }
@@ -188,7 +188,7 @@ function savePreferences() {
     localStorage.setItem('tyreDeltaNotificationTtsFormat', g_pref_tyreDeltaNotificationTtsFormat);
     localStorage.setItem('tyreDeltaNotificationOsdDurationSec', g_pref_tyreDeltaNotificationOsdDurationSec);
     localStorage.setItem('speedUnitMetric', g_pref_speedUnitMetric);
-    localStorage.setItem('tempUnitCelsius', g_pref_tempUnitCelsius);
+    localStorage.setItem('tempUnitMetric', g_pref_tempUnitMetric);
 
     console.log("Saved Preferences:", {
         g_pref_myTeamName,
@@ -207,7 +207,7 @@ function savePreferences() {
         g_pref_tyreDeltaNotificationTtsFormat,
         g_pref_tyreDeltaNotificationOsdDurationSec,
         g_pref_speedUnitMetric,
-        g_pref_tempUnitCelsius
+        g_pref_tempUnitMetric
     });
 
     updateAllTooltips();
