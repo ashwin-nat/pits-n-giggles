@@ -474,6 +474,11 @@
             </div>
           </div> <!-- End of Modal Body -->
           <div class="modal-footer">
+            {% if not live_data_mode %}
+              <div class="text-warning w-100 mb-2 text-center">
+                Refresh the page after saving to see the changes.
+              </div>
+            {% endif %}
             <a href="https://www.pitsngiggles.com" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">Download latest</a>
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             <button type="button" class="btn btn-primary" id="saveSettings">Save changes</button>
