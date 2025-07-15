@@ -112,3 +112,8 @@ document.getElementById('volumeRange').addEventListener('input', function (e) {
     document.getElementById('volumeLabel').textContent = e.target.value;
 });
 
+document.getElementById('tt-vmax-th').addEventListener('click', function (e) {
+    g_pref_speedUnitMetric = !g_pref_speedUnitMetric;
+    showToast("Speed Format Changed to " + (g_pref_speedUnitMetric ? ("km/h") : ("mph")));
+    savePreferences();
+});

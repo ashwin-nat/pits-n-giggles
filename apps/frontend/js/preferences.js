@@ -232,6 +232,8 @@ function updateAllTooltips() {
     } else {
         updateTooltip("fuel-info-th", `Target fuel rate is disabled. Enable it via the settings`);
     }
+    updateTooltip("tt-vmax-th", `Top Speed. Click to toggle between km/h and mph. Current format is ${
+                                                    (g_pref_speedUnitMetric) ? ("km/h") : ("mph")}`);
 }
 
 function updateTooltip(id, newText) {
