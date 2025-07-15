@@ -253,7 +253,8 @@ class TimeTrialDataPopulator {
 
             const speedCell = document.createElement('td');
             speedCell.textContent = lap['top-speed-kmph']
-                ? formatSpeed(lap['top-speed-kmph'], {isMetric: true, decimalPlaces: 0, addUnitSuffix: false})
+                ? formatSpeed(lap['top-speed-kmph'],
+                    {isMetric: g_pref_speedUnitMetric, decimalPlaces: 0, addUnitSuffix: false})
                 : '-';
 
             row.appendChild(lapCell);
