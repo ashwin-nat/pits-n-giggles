@@ -23,7 +23,6 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
-import json
 import logging
 from functools import partial
 from typing import List, Optional
@@ -33,9 +32,9 @@ import socketio
 
 import apps.backend.state_mgmt_layer as TelWebAPI
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
-from lib.ipc import IpcChildAsync
 
 from .telemetry_web_server import TelemetryWebServer
+from .ipc import registerIpcTask
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -87,12 +86,7 @@ def initUiIntfLayer(
     tasks.append(asyncio.create_task(frontEndMessageTask(web_server.m_sio),
                                      name="Front End Message Task"))
 
-    # Register the IPC task only if port is specified
-    if ipc_port:
-        logger.debug(f"Starting IPC server on port {ipc_port}")
-        server = IpcChildAsync(ipc_port, "Backend")
-        tasks.append(server.get_task(partial(handleIpcCommand, logger=logger)))
-
+    registerIpcTask(ipc_port, logger, tasks)
     return web_server
 
 async def raceTableClientUpdateTask(update_interval_ms: int, sio: socketio.AsyncServer) -> None:
@@ -144,19 +138,6 @@ async def frontEndMessageTask(sio: socketio.AsyncServer) -> None:
         if message := await AsyncInterTaskCommunicator().receive("frontend-update"):
             packed = msgpack.packb(message.toJSON(), use_bin_type=True)
             await sio.emit('frontend-update', packed, room="race-table")
-
-async def handleIpcCommand(msg: dict, logger: logging.Logger) -> dict:
-    """Handle IPC commands from the parent process (launcher)
-
-    Args:
-        msg (dict): IPC command
-        logger (logging.Logger): Logger
-
-    Returns:
-        dict: IPC response
-    """
-    logger.info(f"Received IPC command: {json.dumps(msg, indent=2)}")
-    return {"status": "success"}
 
 def _isRoomEmpty(sio: socketio.AsyncServer, room_name: str, namespace: Optional[str] = '/') -> bool:
     """Check if a room is empty
