@@ -62,7 +62,7 @@ class TestIPC(F1TelemetryUnitTestsBase):
         self.assertEqual(resp.get('reply'), 'pong')
 
         # stop child
-        parent.request('quit')
+        parent.terminate_child()
         parent.close()
         child_thread.join(timeout=2)
 
@@ -90,7 +90,7 @@ class TestIPC(F1TelemetryUnitTestsBase):
         self.assertEqual(resp.get('reply'), 'pong-async')
 
         # stop child
-        parent.request('quit')
+        parent.terminate_child()
         parent.close()
         thread.join(timeout=2)
 
@@ -107,7 +107,7 @@ class TestIPC(F1TelemetryUnitTestsBase):
         parent = IpcParent(self.port, timeout_ms=500)
         resp = parent.request('invalid_command')
         self.assertEqual(resp.get('error'), 'unknown')
-        parent.request('quit')
+        parent.terminate_child()
         parent.close()
         thread.join(timeout=2)
 

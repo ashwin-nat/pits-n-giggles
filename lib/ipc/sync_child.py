@@ -35,10 +35,12 @@ class IpcChildSync:
     Can be run in a dedicated thread.
     """
 
-    def __init__(self, port: int):
+    def __init__(self, port: int, name: str = "IpcChildSync"):
         """
         :param port: Port to bind to.
+        :param name: Name of the child process.
         """
+        self.name = name
         self.endpoint = f"tcp://127.0.0.1:{port}"
         self.ctx = zmq.Context()
         self.sock = self.ctx.socket(zmq.REP)
@@ -56,10 +58,17 @@ class IpcChildSync:
         while self._running:
             try:
                 msg = self.sock.recv_json()
+                cmd = msg.get("cmd")
+                if cmd == "__terminate__":
+                    self._running = False
+                    break
+                if cmd == "__ping__":
+                    response = {"reply": "__pong__", "source": self.name}
+                    self.sock.send_json(response)
+                    continue
+
                 response = handler_fn(msg)
                 self.sock.send_json(response)
-                if msg.get("cmd") == "quit":
-                    self._running = False
             except Exception as e:
                 self.sock.send_json({"error": str(e)})
 

@@ -36,10 +36,11 @@ class IpcChildAsync:
     Can be run as a background asyncio task.
     """
 
-    def __init__(self, port: int):
+    def __init__(self, port: int, name: str = "IpcChildAsync"):
         """
         :param port: Port to bind to.
         """
+        self.name = name
         self.endpoint = f"tcp://127.0.0.1:{port}"
         self.ctx = zmq.asyncio.Context()
         self.sock = self.ctx.socket(zmq.REP)
@@ -58,15 +59,22 @@ class IpcChildAsync:
         while self._running:
             try:
                 if timeout:
-                    msg = await asyncio.wait_for(self.sock.recv_json(), timeout)
+                    msg: dict = await asyncio.wait_for(self.sock.recv_json(), timeout)
                 else:
-                    msg = await self.sock.recv_json()
+                    msg: dict = await self.sock.recv_json()
+
+                cmd = msg.get("cmd")
+                if cmd == "__terminate__":
+                    self._running = False
+                    break
+                if cmd == "__ping__":
+                    response = {"reply": "__pong__", "source": self.name}
+                    self.sock.send_json(response)
+                    continue
 
                 response = await handler_fn(msg)
                 await self.sock.send_json(response)
 
-                if msg.get("cmd") == "quit":
-                    self._running = False
             except asyncio.TimeoutError:
                 print("[Async Child] Timeout waiting for request")
             except Exception as e:

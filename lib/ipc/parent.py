@@ -59,3 +59,9 @@ class IpcParent:
     def close(self) -> None:
         self.sock.close()
         self.ctx.term()
+
+    def ping(self) -> dict:
+        return self.request("__ping__")
+
+    def terminate_child(self) -> dict:
+        return self.request("__terminate__")
