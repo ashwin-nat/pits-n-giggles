@@ -36,9 +36,9 @@ from apps.backend.state_mgmt_layer import initStateManagementLayer
 from apps.backend.telemetry_layer import initTelemetryLayer
 from apps.backend.ui_intf_layer import TelemetryWebServer, initUiIntfLayer
 from lib.config import load_config_from_ini
+from lib.error_status import PngError
 from lib.pid_report import report_pid_from_child
 from lib.version import get_version
-from lib.error_status import PngError
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -46,7 +46,12 @@ from lib.error_status import PngError
 
 class PngRunner:
     """Pits n' Giggles Backend Runner"""
-    def __init__(self, logger: logging.Logger, config_file: str, replay_server: bool, debug_mode: bool):
+    def __init__(self,
+                 logger: logging.Logger,
+                 config_file: str,
+                 replay_server: bool,
+                 debug_mode: bool,
+                 ipc_port: Optional[int] = None):
         """Init the runner. Register necessary tasks
 
         Args:
@@ -54,6 +59,7 @@ class PngRunner:
             config_file (str): Path to the config file
             replay_server (bool): If true, runs in TCP debug mode, else UDP live mode
             debug_mode (bool): If true, runs in debug mode
+            ipc_port (Optional[int], optional): IPC port. Defaults to None.
         """
         self.m_logger: logging.Logger = logger
         self.m_config = load_config_from_ini(config_file, logger)
@@ -83,6 +89,7 @@ class PngRunner:
             stream_overlay_start_sample_data=self.m_config.StreamOverlay.show_sample_data_at_start,
             tasks=self.m_tasks,
             ver_str=self.m_version,
+            ipc_port=ipc_port,
             debug_mode=debug_mode
         )
 
@@ -108,6 +115,7 @@ class PngRunner:
         stream_overlay_start_sample_data: bool,
         tasks: List[asyncio.Task],
         ver_str: str,
+        ipc_port: Optional[int] = None,
         debug_mode: Optional[bool] = False) -> TelemetryWebServer:
         """Entry point to start the HTTP server.
 
@@ -119,6 +127,7 @@ class PngRunner:
             stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
             tasks (List[asyncio.Task]): List of tasks to be executed
             ver_str (str): Version string
+            ipc_port (Optional[int], optional): IPC port. Defaults to None.
             debug_mode (bool, optional): Debug mode. Defaults to False.
 
         Returns:
@@ -154,7 +163,8 @@ class PngRunner:
             tasks=tasks,
             ver_str=ver_str,
             cert_path=cert_path,
-            key_path=key_path
+            key_path=key_path,
+            ipc_port=ipc_port
         )
 
     def _getLocalIpAddresses(self) -> Set[str]:
@@ -209,6 +219,7 @@ def parseArgs() -> argparse.Namespace:
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
     parser.add_argument('--replay-server', action='store_true', help="Enable the TCP replay debug server")
     parser.add_argument('--log-file-name', type=str, default=None, help="Log file name")
+    parser.add_argument("--ipc-port", type=int, default=None, help="Port number for the IPC server.")
 
     # Parse the command-line arguments
     return parser.parse_args()
@@ -225,7 +236,8 @@ async def main(logger: logging.Logger, args: argparse.Namespace) -> None:
         logger=logger,
         config_file=args.config_file,
         replay_server=args.replay_server,
-        debug_mode=args.debug
+        debug_mode=args.debug,
+        ipc_port=args.ipc_port
     )
     try:
         await app.run()
@@ -238,7 +250,11 @@ async def main(logger: logging.Logger, args: argparse.Namespace) -> None:
 def entry_point():
     report_pid_from_child()
     args_obj = parseArgs()
-    png_logger = initLogger(file_name=args_obj.log_file_name, max_size=100000, debug_mode=args_obj.debug)
+    png_logger = initLogger(
+        file_name=args_obj.log_file_name,
+        max_size=100000,
+        debug_mode=args_obj.debug
+    )
     try:
         asyncio.run(main(png_logger, args_obj))
     except KeyboardInterrupt:

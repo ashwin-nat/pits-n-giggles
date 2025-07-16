@@ -51,6 +51,7 @@ import lib.race_analyzer as RaceAnalyzer
 from apps.save_viewer.logger import png_logger
 from lib.error_status import PNG_ERROR_CODE_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN
 from lib.f1_types import F1Utils, LapHistoryData, ResultStatus
+from lib.ipc import IpcChildSync
 from lib.pid_report import report_pid_from_child
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 from lib.version import get_version
@@ -1149,6 +1150,7 @@ def parseArgs() -> argparse.Namespace:
     # Add command-line arguments with default values
     parser.add_argument("--launcher", action="store_true", help="Enable launcher mode. Input is expeected via stdin")
     parser.add_argument("--port", type=int, default=None, help="Port number for the server.")
+    parser.add_argument("--ipc-port", type=int, default=None, help="Port number for the IPC server.")
 
     # Parse the command-line arguments
     parsed_args = parser.parse_args()
@@ -1169,6 +1171,10 @@ def start_thread(target):
     thread.daemon = True
     thread.start()
 
+def handle_ipc_message(msg: dict) -> dict:
+    png_logger.debug(f"Received IPC message: {msg}")
+    return {"status": "success"}
+
 def main():
 
     png_logger.debug(f"cwd={os.getcwd()}")
@@ -1179,6 +1185,9 @@ def main():
     if args.launcher:
         g_port_number = args.port
         start_thread(stdin_input_thread)
+
+        ipc_server = IpcChildSync(args.ipc_port, "Save Viewer")
+        ipc_server.serve_in_thread(handle_ipc_message)
     else:
         g_port_number = find_free_port()
         start_thread(start_ui)

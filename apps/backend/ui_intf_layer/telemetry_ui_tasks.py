@@ -23,7 +23,9 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
+import json
 import logging
+from functools import partial
 from typing import List, Optional
 
 import msgpack
@@ -31,6 +33,7 @@ import socketio
 
 import apps.backend.state_mgmt_layer as TelWebAPI
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
+from lib.ipc import IpcChildAsync
 
 from .telemetry_web_server import TelemetryWebServer
 
@@ -45,7 +48,8 @@ def initUiIntfLayer(
     tasks: List[asyncio.Task],
     ver_str: str,
     cert_path: Optional[str],
-    key_path: Optional[str]) -> TelemetryWebServer:
+    key_path: Optional[str],
+    ipc_port: Optional[int]) -> TelemetryWebServer:
     """Initialize the UI interface layer and return then server obj for proper cleanup
 
     Args:
@@ -58,6 +62,7 @@ def initUiIntfLayer(
         ver_str (str): Version string
         cert_path (Optional[str]): Path to the certificate file
         key_path (Optional[str]): Path to the key file
+        ipc_port (Optional[int]): IPC port
 
     Returns:
         TelemetryWebServer: The initialized web server
@@ -73,7 +78,7 @@ def initUiIntfLayer(
         debug_mode=debug_mode,
     )
 
-    # Register tasks associated with this server
+    # Register tasks associated with this web server
     tasks.append(asyncio.create_task(web_server.run(), name="Web Server Task"))
     tasks.append(asyncio.create_task(raceTableClientUpdateTask(client_update_interval_ms, web_server.m_sio),
                                      name="Race Table Update Task"))
@@ -81,6 +86,13 @@ def initUiIntfLayer(
                                      name="Stream Overlay Update Task"))
     tasks.append(asyncio.create_task(frontEndMessageTask(web_server.m_sio),
                                      name="Front End Message Task"))
+
+    # Register the IPC task only if port is specified
+    if ipc_port:
+        logger.debug(f"Starting IPC server on port {ipc_port}")
+        server = IpcChildAsync(ipc_port, "Backend")
+        tasks.append(server.get_task(partial(handleIpcCommand, logger=logger)))
+
     return web_server
 
 async def raceTableClientUpdateTask(update_interval_ms: int, sio: socketio.AsyncServer) -> None:
@@ -132,6 +144,19 @@ async def frontEndMessageTask(sio: socketio.AsyncServer) -> None:
         if message := await AsyncInterTaskCommunicator().receive("frontend-update"):
             packed = msgpack.packb(message.toJSON(), use_bin_type=True)
             await sio.emit('frontend-update', packed, room="race-table")
+
+async def handleIpcCommand(msg: dict, logger: logging.Logger) -> dict:
+    """Handle IPC commands from the parent process (launcher)
+
+    Args:
+        msg (dict): IPC command
+        logger (logging.Logger): Logger
+
+    Returns:
+        dict: IPC response
+    """
+    logger.info(f"Received IPC command: {json.dumps(msg, indent=2)}")
+    return {"status": "success"}
 
 def _isRoomEmpty(sio: socketio.AsyncServer, room_name: str, namespace: Optional[str] = '/') -> bool:
     """Check if a room is empty

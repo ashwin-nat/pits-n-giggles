@@ -34,6 +34,7 @@ import psutil
 
 from lib.config import PngSettings
 from lib.error_status import PNG_ERROR_CODE_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN
+from lib.ipc import IpcParent, get_free_tcp_port
 from lib.pid_report import extract_pid_from_line
 
 from ..console_interface import ConsoleInterface
@@ -104,6 +105,7 @@ class PngAppMgrBase(ABC):
         self.child_pid = None
         self._post_start_hook: Optional[Callable[[], None]] = None
         self._post_stop_hook: Optional[Callable[[], None]] = None
+        self.ipc_port = None
 
     @abstractmethod
     def get_buttons(self, frame: ttk.Frame) -> list[dict]:
@@ -152,6 +154,9 @@ class PngAppMgrBase(ABC):
             launch_command = self.get_launch_command(self.module_path, self.args)
             self.console_app.log(f"Starting {self.display_name}...")
 
+            self.ipc_port = get_free_tcp_port()
+            launch_command.extend(["--ipc-port", f"{self.ipc_port}"])
+
             # pylint: disable=consider-using-with
             self.process = subprocess.Popen(
                 launch_command,
@@ -168,6 +173,7 @@ class PngAppMgrBase(ABC):
         # Start output capture and monitor threads outside the lock to avoid deadlocks
         threading.Thread(target=self._capture_output, daemon=True).start()
         threading.Thread(target=self._monitor_process_exit, daemon=True).start()
+        threading.Thread(target=self._ipc_manager_thread, daemon=True).start()
 
         self.console_app.log(f"{self.display_name} started successfully. PID = {self.child_pid}")
 
@@ -300,6 +306,14 @@ class PngAppMgrBase(ABC):
         finally:
             if self.process is this_process:
                 self.process = None
+
+    def _ipc_manager_thread(self):
+
+        import time
+        time.sleep(5)
+        client = IpcParent(self.ipc_port)
+        self.console_app.log(f"{self.display_name} IPC port: {self.ipc_port} Ping {client.ping()}")
+
 
     def _is_restart_exit_expected(self, ret_code: int) -> bool:
         """
