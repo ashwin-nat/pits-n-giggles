@@ -43,6 +43,7 @@ class IpcParent:
         self.sock = self.ctx.socket(zmq.REQ)
         self.sock.connect(self.endpoint)
         self.sock.setsockopt(zmq.RCVTIMEO, timeout_ms)
+        self.sock.setsockopt(zmq.LINGER, 0)
 
     def request(self, command: str, args: Optional[dict] = None) -> dict:
         """

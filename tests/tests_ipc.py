@@ -34,6 +34,9 @@ from tests_base import F1TelemetryUnitTestsBase
 
 from lib.ipc import IpcParent, IpcChildSync, IpcChildAsync, get_free_tcp_port
 
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 class TestIPC(F1TelemetryUnitTestsBase):
@@ -54,7 +57,7 @@ class TestIPC(F1TelemetryUnitTestsBase):
         child_thread.start()
 
         time.sleep(0.1)
-        parent = IpcParent(self.port)
+        parent = IpcParent(self.port, timeout_ms=500)
         resp = parent.request('ping')
         self.assertEqual(resp.get('reply'), 'pong')
 
@@ -74,8 +77,6 @@ class TestIPC(F1TelemetryUnitTestsBase):
         child = IpcChildAsync(self.port)
 
         def run_async_child():
-            if sys.platform == 'win32':
-                asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             loop.run_until_complete(child.serve(handler))
@@ -84,7 +85,7 @@ class TestIPC(F1TelemetryUnitTestsBase):
         thread.start()
 
         time.sleep(0.1)
-        parent = IpcParent(self.port)
+        parent = IpcParent(self.port, timeout_ms=500)
         resp = parent.request('ping')
         self.assertEqual(resp.get('reply'), 'pong-async')
 
@@ -103,9 +104,63 @@ class TestIPC(F1TelemetryUnitTestsBase):
         thread.start()
 
         time.sleep(0.1)
-        parent = IpcParent(self.port)
+        parent = IpcParent(self.port, timeout_ms=500)
         resp = parent.request('invalid_command')
         self.assertEqual(resp.get('error'), 'unknown')
         parent.request('quit')
         parent.close()
         thread.join(timeout=2)
+
+    def test_child_crash(self):
+        """Test: Simulate child crashing during response"""
+        async def handler(msg):
+            raise RuntimeError("Simulated crash")
+
+        child = IpcChildAsync(self.port)
+
+        def run_async_child():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(child.serve(handler))
+
+        thread = threading.Thread(target=run_async_child, daemon=True)
+        thread.start()
+
+        time.sleep(0.1)
+        parent = IpcParent(self.port, timeout_ms=500)
+        resp = parent.request('ping')
+        self.assertIn('error', resp)
+        parent.close()
+        thread.join(timeout=2)
+
+    def test_child_freeze(self):
+        """Test: Simulate child freezing (non-responding)"""
+        def handler(msg):
+            time.sleep(10)  # long block to simulate freeze
+            return {'reply': 'late'}
+
+        child = IpcChildSync(self.port)
+        thread = threading.Thread(target=child.serve, args=(handler,), daemon=True)
+        thread.start()
+
+        time.sleep(0.1)
+        parent = IpcParent(self.port, timeout_ms=500)
+        resp = parent.request('ping')
+        self.assertIn('error', resp)  # Expect timeout error
+        parent.close()
+        thread.join(timeout=2)
+
+    def test_child_not_started(self):
+        """Test: Parent attempts to connect but child was never started"""
+        parent = IpcParent(get_free_tcp_port(), timeout_ms=500)
+        resp = parent.request('ping')
+        self.assertIn('error', resp)
+
+        error_msg = str(resp['error']).lower()
+        self.assertTrue(
+            any(msg in error_msg for msg in [
+                'timed out', 'resource temporarily unavailable', 'connection refused'
+            ]),
+            msg=f"Unexpected error message: {error_msg}"
+        )
+        parent.close()
