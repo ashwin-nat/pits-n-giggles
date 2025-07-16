@@ -23,9 +23,10 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import webbrowser
-from tkinter import filedialog, ttk
+from tkinter import filedialog, messagebox, ttk
 
 from lib.config import PngSettings
+from lib.ipc import IpcParent
 
 from ..console_interface import ConsoleInterface
 from .base_mgr import PngAppMgrBase
@@ -98,6 +99,14 @@ class SaveViewerAppMgr(PngAppMgrBase):
             if self.process:
                 self.process.stdin.write(file_path + '\n')
                 self.process.stdin.flush()
+
+                ipc_client = IpcParent(self.ipc_port)
+                rsp = ipc_client.request("open-file", {"file-path": file_path})
+                if rsp["status"] != "error":
+                    self.console_app.log("File path sent successfully.")
+                else:
+                    self.console_app.log(f"Error sending file path: {rsp['message']}")
+                    messagebox.showerror("File open error", "\n".join([rsp["message"]]))
             else:
                 self.console_app.log("No process running to send the file path to.")
 
