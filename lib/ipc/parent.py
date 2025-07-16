@@ -27,7 +27,7 @@ from typing import Optional
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class IPCParent:
+class IpcParent:
     """
     Synchronous ZeroMQ REQ socket client.
     Used by parent process to send command and receive response.
@@ -42,7 +42,6 @@ class IPCParent:
         self.ctx = zmq.Context()
         self.sock = self.ctx.socket(zmq.REQ)
         self.sock.connect(self.endpoint)
-        print(f"[Parent] Connecting to: {self.endpoint}")
         self.sock.setsockopt(zmq.RCVTIMEO, timeout_ms)
 
     def request(self, command: str, args: Optional[dict] = None) -> dict:

@@ -43,7 +43,6 @@ from f1_types import (TestPacketCarDamageData, TestPacketCarMotionData,
 # pylint: disable=unused-import wrong-import-position
 # sourcery skip: dont-import-test-modules
 from tests_base import CustomTestResult, F1TelemetryUnitTestsBase
-from tests_version import TestIsUpdateAvailable, TestGetVersion
 from tests_collision_analyzer import (TestCollisionAnalyzer,
                                       TestCollisionPairKey,
                                       TestCollisionRecord)
@@ -54,7 +53,6 @@ from tests_config import (TestCaptureSettings, TestConfigIO,
                           TestMissingSectionsAndKeys, TestNetworkSettings,
                           TestPngSettings, TestPrivacySettings,
                           TestSampleSettingsFixture)
-
 from tests_custom_markers import (TestCustomMarkerEntry,
                                   TestCustomMarkersHistory)
 from tests_data_per_driver import (TestTyreSetHistoryEntry,
@@ -63,6 +61,7 @@ from tests_debouncer import TestMultiButtonDebouncer
 from tests_fuel_recommender import (TestFuelRateRecommenderMisc,
                                     TestFuelRateRecommenderRemove,
                                     TestFuelRemainingPerLap)
+from tests_ipc import TestIPC
 from tests_itc import TestAsyncInterTaskCommunicator
 from tests_overtake_analyzer import (TestOvertakeAnalyzerEmptyInput,
                                      TestOvertakeAnalyzerFileCsv,
@@ -78,6 +77,7 @@ from tests_tyre_wear_extrapolator import (
     TestTyreWearExtrapolatorWithMissingLaps,
     TestTyreWearExtrapolatorWithNonRacingLaps)
 from tests_udp_forwarder import TestAsyncUDPForwarder, TestUDPForwarder
+from tests_version import TestGetVersion, TestIsUpdateAvailable
 
 # Initialize colorama
 init(autoreset=True)

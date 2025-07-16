@@ -29,7 +29,7 @@ from typing import Callable, Awaitable, Optional
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class IPCChildAsync:
+class IpcChildAsync:
     """
     Asynchronous ZeroMQ REP socket server.
     Used by child process to handle requests using asyncio.
@@ -44,7 +44,6 @@ class IPCChildAsync:
         self.ctx = zmq.asyncio.Context()
         self.sock = self.ctx.socket(zmq.REP)
         self.sock.bind(self.endpoint)
-        print(f"[Child] Binding to: {self.endpoint}")
         self._running = False
 
     async def serve(self, handler_fn: Callable[[dict], Awaitable[dict]], timeout: Optional[int] = None) -> None:
@@ -54,7 +53,6 @@ class IPCChildAsync:
         :param handler_fn: Coroutine function to handle commands
         :param timeout: Optional timeout for recv in seconds
         """
-        print(f"[Async Child] Listening on {self.endpoint}")
         self._running = True
 
         while self._running:

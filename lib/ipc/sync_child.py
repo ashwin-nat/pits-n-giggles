@@ -28,7 +28,7 @@ from typing import Callable, Awaitable, Optional
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class IPCChildSync:
+class IpcChildSync:
     """
     Synchronous ZeroMQ REP socket server.
     Used by child process to handle requests synchronously.
@@ -43,7 +43,6 @@ class IPCChildSync:
         self.ctx = zmq.Context()
         self.sock = self.ctx.socket(zmq.REP)
         self.sock.bind(self.endpoint)
-        print(f"[Child] Binding to: {self.endpoint}")
         self._thread: Optional[threading.Thread] = None
         self._running = False
 
@@ -53,7 +52,6 @@ class IPCChildSync:
         If handler_fn returns, the response is sent to parent.
         Stops if a 'quit' command is received.
         """
-        print(f"[Sync Child] Listening on {self.endpoint}")
         self._running = True
         while self._running:
             try:

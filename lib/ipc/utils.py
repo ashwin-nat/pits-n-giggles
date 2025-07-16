@@ -22,17 +22,11 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .async_child import IpcChildAsync
-from .sync_child import IpcChildSync
-from .parent import IpcParent
-from .utils import get_free_tcp_port
+import socket
 
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
+# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-__all__ = [
-    'IpcParent',
-    'IpcChildSync',
-    'IpcChildAsync',
-
-    'get_free_tcp_port',
-]
+def get_free_tcp_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('', 0))  # Bind to a free port assigned by OS
+        return s.getsockname()[1]
