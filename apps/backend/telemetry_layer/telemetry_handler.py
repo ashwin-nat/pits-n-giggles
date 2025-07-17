@@ -25,16 +25,11 @@ SOFTWARE.
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
-import json
 import logging
-import os
 from datetime import datetime
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
-import aiofiles
-
 import apps.backend.state_mgmt_layer.telemetry_state as TelState
-import lib.race_analyzer as RaceAnalyzer
 from lib.button_debouncer import ButtonDebouncer
 from lib.config import CaptureSettings
 from lib.f1_types import (F1PacketType, PacketCarDamageData,
@@ -47,6 +42,7 @@ from lib.f1_types import (F1PacketType, PacketCarDamageData,
 from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
                                          FinalClassificationNotification,
                                          ITCMessage)
+from lib.save_to_disk import save_json_to_file
 from lib.telemetry_manager import AsyncF1TelemetryManager
 
 # -------------------------------------- TYPE DEFINITIONS --------------------------------------------------------------
@@ -141,7 +137,6 @@ class F1TelemetryHandler:
 
         self.m_should_forward: bool = bool(forwarding_targets)
         self.m_version: str = ver_str
-        self.initDirectories()
         self.registerCallbacks()
 
     async def run(self):
@@ -494,18 +489,6 @@ class F1TelemetryHandler:
         self.m_data_cleared_this_session = True
         self.m_final_classification_processed = False
 
-    async def writeDictToJsonFile(self, data_dict: Dict, file_name: str) -> None:
-        """
-        Write a dictionary containing JSON data to a file.
-
-        Parameters:
-        - data_dict (Dict): Dictionary containing JSON data.
-        - file_name (str): File name to write the data to.
-        """
-        json_str = json.dumps(data_dict, separators=(",", ":"))
-        async with aiofiles.open(file_name, 'w', encoding='utf-8') as json_file:
-            await json_file.write(json_str)
-
     async def postGameDumpToFile(self, final_json: Dict[str, Any]) -> None:
         """
         Write the contents of final_json and player recorded events to a file.
@@ -523,34 +506,15 @@ class F1TelemetryHandler:
 
             # Get timestamp in the format - year_month_day_hour_minute_second
             timestamp_str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-            final_json_file_name = self.m_directory_mapping['race-info'] + 'race_info_' + \
-                    event_str + timestamp_str + '.json'
-            await self.writeDictToJsonFile(final_json, final_json_file_name)
-            self.m_logger.info("Wrote race info to %s", final_json_file_name)
+            final_json_file_name = event_str + timestamp_str + '.json'
+            try:
+                await save_json_to_file(final_json, final_json_file_name)
+                self.m_logger.info("Wrote race info to %s", final_json_file_name)
+            except Exception: # pylint: disable=broad-except
+                # No need to crash the app just because write failed
+                self.m_logger.exception("Failed to write race info to %s", final_json_file_name)
         else:
             self.m_logger.debug("Not saving post race data")
-
-    def initDirectories(self) -> None:
-        """
-        Initialize the necessary directories for storing race information
-        This function creates a directory structure based on the current date if it does not already exist.
-        """
-        def ensureDirectoryExists(directory: str) -> None:
-            """
-            Ensure that the specified directory exists. If it doesn't, create it along with any missing parent directories.
-
-            Parameters:
-            - directory (str): The path of the directory to be checked or created.
-            """
-            if not os.path.exists(directory):
-                os.makedirs(directory, exist_ok=True)
-                self.m_logger.info("Directory '%s' created.", directory)
-
-        ts_prefix = datetime.now().strftime("%Y_%m_%d")
-        self.m_directory_mapping['race-info'] = f"data/{ts_prefix}/race-info/"
-
-        for directory in self.m_directory_mapping.values():
-            ensureDirectoryExists(directory)
 
     def _shouldSaveData(self) -> bool:
         """
