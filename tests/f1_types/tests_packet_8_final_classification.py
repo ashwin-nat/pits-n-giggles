@@ -75,6 +75,7 @@ class TestPacketFinalClassificationData(F1TypesTest):
         self.assertEqual(len(generated_test_obj.m_classificationData), 0)
         self.assertEqual(generated_test_obj.m_numCars, 0)
         self.assertEqual(generated_test_obj.m_header, self.m_header_25)
+        self.jsonComparisionUtil(generated_test_obj.toJSON(), {'num-cars': 0, 'classification-data': []})
 
     def test_f1_25_empty_no_header(self):
         """
@@ -89,7 +90,7 @@ class TestPacketFinalClassificationData(F1TypesTest):
         self.assertEqual(len(generated_test_obj.m_classificationData), 0)
         self.assertEqual(generated_test_obj.m_numCars, 0)
         self.assertEqual(generated_test_obj.m_header, None)
-
+        self.jsonComparisionUtil(generated_test_obj.toJSON(), {'num-cars': 0, 'classification-data': []})
 
     def test_f1_24_random(self):
         """
@@ -123,6 +124,7 @@ class TestPacketFinalClassificationData(F1TypesTest):
         self.assertEqual(len(generated_test_obj.m_classificationData), 0)
         self.assertEqual(generated_test_obj.m_numCars, 0)
         self.assertEqual(generated_test_obj.m_header, self.m_header_24)
+        self.jsonComparisionUtil(generated_test_obj.toJSON(), {'num-cars': 0, 'classification-data': []})
 
     def test_f1_24_empty_no_header(self):
         """
@@ -137,6 +139,7 @@ class TestPacketFinalClassificationData(F1TypesTest):
         self.assertEqual(len(generated_test_obj.m_classificationData), 0)
         self.assertEqual(generated_test_obj.m_numCars, 0)
         self.assertEqual(generated_test_obj.m_header, None)
+        self.jsonComparisionUtil(generated_test_obj.toJSON(), {'num-cars': 0, 'classification-data': []})
 
     def test_f1_23_random(self):
         """
@@ -170,6 +173,7 @@ class TestPacketFinalClassificationData(F1TypesTest):
         self.assertEqual(len(generated_test_obj.m_classificationData), 0)
         self.assertEqual(generated_test_obj.m_numCars, 0)
         self.assertEqual(generated_test_obj.m_header, self.m_header_23)
+        self.jsonComparisionUtil(generated_test_obj.toJSON(), {'num-cars': 0, 'classification-data': []})
 
     def test_f1_23_empty_no_header(self):
         """
@@ -184,6 +188,7 @@ class TestPacketFinalClassificationData(F1TypesTest):
         self.assertEqual(len(generated_test_obj.m_classificationData), 0)
         self.assertEqual(generated_test_obj.m_numCars, 0)
         self.assertEqual(generated_test_obj.m_header, None)
+        self.jsonComparisionUtil(generated_test_obj.toJSON(), {'num-cars': 0, 'classification-data': []})
 
     def test_f1_23_actual(self):
         """
