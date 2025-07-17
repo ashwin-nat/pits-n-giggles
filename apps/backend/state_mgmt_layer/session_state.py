@@ -47,6 +47,8 @@ from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.tyre_wear_extrapolator import TyreWearPerLap
+from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
+
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -227,16 +229,19 @@ class SessionState:
         'm_process_car_setups',
         'm_custom_markers_history',
         'm_first_session_update_received',
+        'm_version'
     ]
 
     def __init__(self,
                  logger: logging.Logger,
-                 process_car_setups: bool) -> None:
+                 process_car_setups: bool,
+                 ver_str: str) -> None:
         """Init the DriverData object
 
         Args:
             logger (logging.Logger): Logger
             process_car_setups (bool): Whether to process car setups packets
+            ver_str (str): Version string
         """
 
         self.m_logger = logger
@@ -256,6 +261,7 @@ class SessionState:
         self.m_overtakes_history = OvertakesHistory()
         self.m_session_info: SessionInfo = SessionInfo()
         self.m_first_session_update_received: bool = False
+        self.m_version: str = ver_str
 
         # Config params
         self.m_process_car_setups: bool = process_car_setups
@@ -632,6 +638,20 @@ class SessionState:
         # --- Mark race as completed and add any final annotations
         self.setRaceCompleted()
         final_json["custom-markers"] = self.m_custom_markers_history.getJSONList()
+
+        # Add the overtakes as well
+        final_json['overtakes'] = {
+            'records': [record.toJSON() for record in self.m_overtakes_history.getRecords()]
+        }
+
+        # Next, fastest lap and sector records
+        final_json['records'] = {
+            'fastest' : getFastestTimesJson(final_json),
+            'tyre-stats' : getTyreStintRecordsDict(final_json)
+        }
+
+        # Finally, app version
+        final_json['version'] = self.m_version
         return final_json
 
     def processCarDamageUpdate(self, packet: PacketCarDamageData) -> None:

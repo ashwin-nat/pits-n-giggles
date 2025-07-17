@@ -518,20 +518,8 @@ class F1TelemetryHandler:
         if not event_str:
             return
 
-        final_json['version'] = self.m_version
-
         # Save the JSON data
         if self.m_post_race_data_autosave:
-            # Add the overtakes as well
-            final_json['overtakes'] = {
-                'records': [record.toJSON() for record in self.m_session_state_ref.m_overtakes_history.getRecords()]
-            }
-
-            # Next, fastest lap and sector records
-            final_json['records'] = {
-                'fastest' : RaceAnalyzer.getFastestTimesJson(final_json),
-                'tyre-stats' : RaceAnalyzer.getTyreStintRecordsDict(final_json)
-            }
 
             # Get timestamp in the format - year_month_day_hour_minute_second
             timestamp_str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
