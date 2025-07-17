@@ -72,6 +72,7 @@ from tests_pcap import (FullPCapTests, TestF1PacketCaptureCompression,
                         TestF1PacketCaptureHeader)
 from tests_pid_report import TestPidReport
 from tests_race_analyzer import TestGetFastestTimesJson
+from tests_save_to_disk import TestSaveRaceInfo
 from tests_tyre_wear_extrapolator import (
     TestSimpleLinearRegression, TestTyreWearExtrapolator,
     TestTyreWearExtrapolatorWithMissingLaps,
