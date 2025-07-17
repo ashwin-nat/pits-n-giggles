@@ -76,6 +76,20 @@ class TestPacketFinalClassificationData(F1TypesTest):
         self.assertEqual(generated_test_obj.m_numCars, 0)
         self.assertEqual(generated_test_obj.m_header, self.m_header_25)
 
+    def test_f1_25_empty_no_header(self):
+        """
+        Test for F1 2025 - construct an empty final classification object
+        """
+
+        generated_test_obj = PacketFinalClassificationData.from_values(
+            None,
+            0,
+            []
+        )
+        self.assertEqual(len(generated_test_obj.m_classificationData), 0)
+        self.assertEqual(generated_test_obj.m_numCars, 0)
+        self.assertEqual(generated_test_obj.m_header, None)
+
 
     def test_f1_24_random(self):
         """
@@ -110,6 +124,20 @@ class TestPacketFinalClassificationData(F1TypesTest):
         self.assertEqual(generated_test_obj.m_numCars, 0)
         self.assertEqual(generated_test_obj.m_header, self.m_header_24)
 
+    def test_f1_24_empty_no_header(self):
+        """
+        Test for F1 2024 - construct an empty final classification object
+        """
+
+        generated_test_obj = PacketFinalClassificationData.from_values(
+            None,
+            0,
+            []
+        )
+        self.assertEqual(len(generated_test_obj.m_classificationData), 0)
+        self.assertEqual(generated_test_obj.m_numCars, 0)
+        self.assertEqual(generated_test_obj.m_header, None)
+
     def test_f1_23_random(self):
         """
         Test for F1 2023 with an randomly generated packet
@@ -142,6 +170,20 @@ class TestPacketFinalClassificationData(F1TypesTest):
         self.assertEqual(len(generated_test_obj.m_classificationData), 0)
         self.assertEqual(generated_test_obj.m_numCars, 0)
         self.assertEqual(generated_test_obj.m_header, self.m_header_23)
+
+    def test_f1_23_empty_no_header(self):
+        """
+        Test for F1 2023 - construct an empty final classification object
+        """
+
+        generated_test_obj = PacketFinalClassificationData.from_values(
+            None,
+            0,
+            []
+        )
+        self.assertEqual(len(generated_test_obj.m_classificationData), 0)
+        self.assertEqual(generated_test_obj.m_numCars, 0)
+        self.assertEqual(generated_test_obj.m_header, None)
 
     def test_f1_23_actual(self):
         """

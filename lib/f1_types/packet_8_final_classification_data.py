@@ -587,6 +587,11 @@ class PacketFinalClassificationData:
         self.m_header: PacketHeader = header
         self.m_numCars: int = struct.unpack("<B", packet[:1])[0]
 
+        if not header:
+            # Support empty final classification object
+            self.m_classificationData: List[FinalClassificationData] = []
+            return
+
         if header.m_packetFormat <= 2024:
             packet_len = FinalClassificationData.PACKET_LEN
         else:
