@@ -62,6 +62,21 @@ class TestPacketFinalClassificationData(F1TypesTest):
         self.assertEqual(generated_test_obj, parsed_obj)
         self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
 
+    def test_f1_25_empty(self):
+        """
+        Test for F1 2025 - construct an empty final classification object
+        """
+
+        generated_test_obj = PacketFinalClassificationData.from_values(
+            self.m_header_25,
+            0,
+            []
+        )
+        self.assertEqual(len(generated_test_obj.m_classificationData), 0)
+        self.assertEqual(generated_test_obj.m_numCars, 0)
+        self.assertEqual(generated_test_obj.m_header, self.m_header_25)
+
+
     def test_f1_24_random(self):
         """
         Test for F1 2024 with an randomly generated packet
@@ -81,6 +96,20 @@ class TestPacketFinalClassificationData(F1TypesTest):
         self.assertEqual(generated_test_obj, parsed_obj)
         self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
 
+    def test_f1_24_empty(self):
+        """
+        Test for F1 2024 - construct an empty final classification object
+        """
+
+        generated_test_obj = PacketFinalClassificationData.from_values(
+            self.m_header_24,
+            0,
+            []
+        )
+        self.assertEqual(len(generated_test_obj.m_classificationData), 0)
+        self.assertEqual(generated_test_obj.m_numCars, 0)
+        self.assertEqual(generated_test_obj.m_header, self.m_header_24)
+
     def test_f1_23_random(self):
         """
         Test for F1 2023 with an randomly generated packet
@@ -99,6 +128,20 @@ class TestPacketFinalClassificationData(F1TypesTest):
         parsed_obj = PacketFinalClassificationData(parsed_header, payload_bytes)
         self.assertEqual(generated_test_obj, parsed_obj)
         self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
+
+    def test_f1_23_empty(self):
+        """
+        Test for F1 2023 - construct an empty final classification object
+        """
+
+        generated_test_obj = PacketFinalClassificationData.from_values(
+            self.m_header_23,
+            0,
+            []
+        )
+        self.assertEqual(len(generated_test_obj.m_classificationData), 0)
+        self.assertEqual(generated_test_obj.m_numCars, 0)
+        self.assertEqual(generated_test_obj.m_header, self.m_header_23)
 
     def test_f1_23_actual(self):
         """
