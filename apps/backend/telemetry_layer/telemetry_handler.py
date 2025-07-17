@@ -394,7 +394,7 @@ class F1TelemetryHandler:
             """
 
             self.m_last_session_uid = packet.m_header.m_sessionUID
-            self.clearAllDataStructures("SESSION_START event")
+            self.clearAllDataStructures(f"SESSION_START event - UID {packet.m_header.m_sessionUID}")
 
         async def handleButtonStatus(packet: PacketEventData) -> None:
             """
