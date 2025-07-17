@@ -522,73 +522,116 @@ class SessionState:
             obj_to_be_updated.m_car_info.m_drs_distance = car_status_data.m_drsActivationDistance
             obj_to_be_updated.m_packet_copies.m_packet_car_status = car_status_data
 
-    def processFinalClassificationUpdate(self, packet: PacketFinalClassificationData) -> Dict[str, Any]:
-        """Process the final classification update packet and update the necessary fields.
-                Returns a JSON dict of all driver info
+    def processFinalClassificationUpdate(self, packet: PacketFinalClassificationData) -> None:
+        """
+        Updates internal state with data from final classification packet.
 
         Args:
-            packet (PacketFinalClassificationData): The final classification update packet
-
-        Returns:
-            Dict[str, Any]: JSON dict of all driver info
+            packet (PacketFinalClassificationData): The incoming final classification packet.
         """
 
-        final_json = packet.toJSON()
-        speed_trap_records = []
-        is_position_history_supported = self.isPositionHistorySupported()
-        if is_position_history_supported:
-            final_json["position-history"] = []
-            # for f1 23, we use old style
-            if self.m_session_info.m_packet_format == 2023:
-                final_json["tyre-stint-history"] = []
+        self.finalClassificationEventUpdater(packet)
+        return self.buildFinalClassificationJSON()
 
-        for index, data in enumerate(packet.m_classificationData):
-            obj_to_be_updated = self._getObjectByIndex(index, create=False)
-            # Perform the final snapshot
-            obj_to_be_updated.onLapChange(
-                old_lap_number=data.m_numLaps, session_type=self.m_session_info.m_session_type)
+    def finalClassificationEventUpdater(self, packet: PacketFinalClassificationData) -> None:
+        """Updates internal state with data from final classification packet.
 
-            # Sometimes, lapInfo is unreliable. update the track position
-            # But, if someone finishes their quali, retires and disconnects,
-            # F1 game decides that their final classification position is 255 for some reason
-            # if so, disregard it
-            if data.m_position and data.m_position != 255:
-                obj_to_be_updated.m_driver_info.position = data.m_position
-                obj_to_be_updated.m_per_lap_snapshots[data.m_numLaps].m_track_position = data.m_position
-
-            obj_to_be_updated.m_packet_copies.m_packet_final_classification = data
-            obj_to_be_updated.m_lap_info.m_total_race_time = data.m_totalRaceTime
-            final_json["classification-data"][index] = obj_to_be_updated.toJSON(index)
-            speed_trap_records.append(obj_to_be_updated.getSpeedTrapRecordJSON())
-            if is_position_history_supported:
-                final_json["position-history"].append(
-                    obj_to_be_updated.getPositionHistoryJSON())
-                # for f1 23, we use old style
-                if self.m_session_info.m_packet_format == 2023:
-                    final_json["tyre-stint-history"].append(obj_to_be_updated.getTyreStintHistoryJSON())
-        final_json['classification-data'] = sorted(final_json['classification-data'], key=lambda x: x['track-position'])
-        if self.m_session_info.m_packet_format > 2023:
-            final_json['speed-trap-records'] = sorted(speed_trap_records,
-                                                  key=lambda x: x['speed-trap-record-kmph'], reverse=True)
-        else:
-            final_json['speed-trap-records'] = [] # Speed trap records are not supported before 2024
-        final_json['game-year'] = self.m_session_info.m_game_year
-        final_json['packet-format'] = self.m_session_info.m_packet_format
-
-        final_json["session-info"] = self.m_session_info.m_packet_session.toJSON() \
-            if self.m_session_info.m_packet_session else None
+        Args:
+            packet (PacketFinalClassificationData): The incoming final classification packet.
+        """
         self.m_session_info.m_packet_final_classification = packet
 
-        # for newer f1 games, use new style
-        if is_position_history_supported:
-            if self.m_session_info.m_packet_format > 2023:
-                final_json["tyre-stint-history-v2"] = self.getTyreStintHistoryJSONv2()
-            else:
-                # Old style position history is not sorted
-                final_json["tyre-stint-history"].sort(key=lambda x: x['position'])
+        for index, data in enumerate(packet.m_classificationData):
+            driver = self._getObjectByIndex(index, create=False)
+
+            driver.onLapChange(
+                old_lap_number=data.m_numLaps,
+                session_type=self.m_session_info.m_session_type
+            )
+
+            if data.m_position and data.m_position != 255:
+                driver.m_driver_info.position = data.m_position
+                driver.m_per_lap_snapshots[data.m_numLaps].m_track_position = data.m_position
+
+            driver.m_packet_copies.m_packet_final_classification = data
+            driver.m_lap_info.m_total_race_time = data.m_totalRaceTime
+
+            if data.m_position and data.m_position != 255:
+                driver.m_driver_info.grid_position = data.m_position
 
         self.setRaceCompleted()
-        final_json['custom-markers'] = self.m_custom_markers_history.getJSONList()
+
+    def buildFinalClassificationJSON(self) -> Dict[str, Any]:
+        """
+        Constructs the final classification JSON from internal state.
+        If no final classification packet is available, uses an empty skeleton object and fills it.
+
+        Returns:
+            Dict[str, Any]: JSON-compatible dict with full final classification info.
+        """
+        # --- Determine session info and packet format
+        session_info = self.m_session_info
+        packet = session_info.m_packet_final_classification
+        if not packet:
+            # Use dummy packet if none has been received yet
+            packet = PacketFinalClassificationData.from_values(None, 0, [])
+
+        is_position_history_supported = self.isPositionHistorySupported()
+        is_old_format = session_info.m_packet_format == 2023
+        is_new_format = session_info.m_packet_format > 2023
+        is_speed_trap_supported = is_new_format  # Only supported in F1 2024+
+
+        # --- Start constructing base JSON from packet
+        final_json = packet.toJSON()
+        speed_trap_records = []
+
+        # --- Initialize optional structures
+        if is_position_history_supported:
+            final_json["position-history"] = []
+            if is_old_format:
+                final_json["tyre-stint-history"] = []
+
+        # --- Loop through all drivers in the final classification
+        for index, _ in enumerate(packet.m_classificationData):
+            driver = self._getObjectByIndex(index, create=False)
+
+            # Add driver’s classification info
+            final_json["classification-data"].append(driver.toJSON(index))
+
+            # Collect speed trap info
+            speed_trap_records.append(driver.getSpeedTrapRecordJSON())
+
+            # Add position history if supported
+            if is_position_history_supported:
+                final_json["position-history"].append(driver.getPositionHistoryJSON())
+                if is_old_format:
+                    final_json["tyre-stint-history"].append(driver.getTyreStintHistoryJSON())
+
+        # --- Handle speed trap records
+        if is_speed_trap_supported:
+            final_json["speed-trap-records"] = sorted(
+                speed_trap_records, key=lambda x: x["speed-trap-record-kmph"], reverse=True
+            )
+        else:
+            final_json["speed-trap-records"] = []
+
+        # --- Add core metadata (game year, format, session info)
+        final_json["game-year"] = session_info.m_game_year
+        final_json["packet-format"] = session_info.m_packet_format
+        final_json["session-info"] = (
+            session_info.m_packet_session.toJSON() if session_info.m_packet_session else None
+        )
+
+        # --- Add tyre stint history (v2) if supported
+        if is_position_history_supported:
+            if is_new_format:
+                final_json["tyre-stint-history-v2"] = self.getTyreStintHistoryJSONv2()
+            else:
+                final_json["tyre-stint-history"].sort(key=lambda x: x["position"])
+
+        # --- Mark race as completed and add any final annotations
+        self.setRaceCompleted()
+        final_json["custom-markers"] = self.m_custom_markers_history.getJSONList()
         return final_json
 
     def processCarDamageUpdate(self, packet: PacketCarDamageData) -> None:
@@ -1110,6 +1153,10 @@ class SessionState:
         ]
         ret.sort(key=lambda x: x['position'])
         return ret
+
+    def getSaveDataJSON(self) -> Dict[str, Any]:
+        """Get the save data JSON."""
+        return self.buildFinalClassificationJSON()
 
     ##### Internal Helpers #####
 
