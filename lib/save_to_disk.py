@@ -30,7 +30,7 @@ from typing import Optional
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-async def save_race_info(data: dict, filename: str, date_str: str, base_dir: Optional[Path] = None) -> None:
+async def save_json_to_file(data: dict, filename: str, date_str: str, base_dir: Optional[Path] = None) -> None:
     """
     Saves the given dictionary as a JSON file in data/<date>/race-info/.
 
@@ -49,6 +49,6 @@ async def save_race_info(data: dict, filename: str, date_str: str, base_dir: Opt
     dir_path.mkdir(parents=True, exist_ok=True)
 
     file_path = dir_path / filename
-    async with aiofiles.open(file_path, mode='w', encoding='utf-8') as f:
-        json_str = json.dumps(data, ensure_ascii=False, indent=2)
-        await f.write(json_str)
+    json_str = json.dumps(data, separators=(",", ":"))
+    async with aiofiles.open(file_path, mode='w', encoding='utf-8') as json_file:
+        await json_file.write(json_str)

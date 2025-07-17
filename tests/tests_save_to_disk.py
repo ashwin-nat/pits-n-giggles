@@ -34,7 +34,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from tests_base import F1TelemetryUnitTestsBase
 import lib.save_to_disk
-from lib.save_to_disk import save_race_info
+from lib.save_to_disk import save_json_to_file
 
 
 class TestSaveRaceInfo(F1TelemetryUnitTestsBase):
@@ -61,7 +61,7 @@ class TestSaveRaceInfo(F1TelemetryUnitTestsBase):
                 lib.save_to_disk.Path = patched_path
 
                 # Call the async function using a fresh event loop
-                asyncio.run(save_race_info(test_data, test_filename, test_date))
+                asyncio.run(save_json_to_file(test_data, test_filename, test_date))
 
                 # Verify file exists
                 self.assertTrue(expected_file_path.exists(), "Expected JSON file was not created.")
