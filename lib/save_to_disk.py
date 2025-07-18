@@ -30,7 +30,12 @@ from typing import Optional
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-async def save_json_to_file(data: dict, filename: str, date_str: str, base_dir: Optional[Path] = None) -> None:
+async def save_json_to_file(
+    data: dict,
+    filename: str,
+    date_str: str,
+    base_dir: Optional[Path] = None
+) -> Path:
     """
     Saves the given dictionary as a JSON file in data/<date>/race-info/.
 
@@ -39,6 +44,9 @@ async def save_json_to_file(data: dict, filename: str, date_str: str, base_dir: 
         filename (str): Name of the file (e.g., "race.json").
         date_str (str): Date string for directory structure (e.g., "2025-07-17").
         base_dir (Path, optional): Custom base directory for saving. Defaults to current directory.
+
+    Returns:
+        Path: The full path to the saved JSON file.
     """
     if base_dir is None:
         base_dir = Path("data")
@@ -52,3 +60,5 @@ async def save_json_to_file(data: dict, filename: str, date_str: str, base_dir: 
     json_str = json.dumps(data, separators=(",", ":"))
     async with aiofiles.open(file_path, mode='w', encoding='utf-8') as json_file:
         await json_file.write(json_str)
+
+    return file_path
