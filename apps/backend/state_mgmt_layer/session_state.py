@@ -47,7 +47,6 @@ from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.tyre_wear_extrapolator import TyreWearPerLap
-from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------

@@ -22,17 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import asyncio
 import json
 import logging
-from functools import partial
-from typing import List, Optional, Callable, Awaitable, Dict
+from typing import Callable, Awaitable, Dict
 
-import msgpack
-import socketio
-
-import apps.backend.state_mgmt_layer as TelWebAPI
-from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from .command_handlers import handleManualSave
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
@@ -69,6 +62,6 @@ async def processIpcCommand(msg: dict, logger: logging.Logger) -> dict:
     try:
         args = msg.get("args", {})
         return await handler(args)
-    except Exception as e:
+    except Exception as e: # pylint: disable=broad-except
         logger.exception(f"Error handling command '{cmd}': {e}")
         return {"status": "error", "message": f"Exception during command handling: {str(e)}"}

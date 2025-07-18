@@ -23,9 +23,10 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
+from typing import Awaitable, Callable, Optional
+
 import zmq
 import zmq.asyncio
-from typing import Callable, Awaitable, Optional
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -77,7 +78,7 @@ class IpcChildAsync:
 
             except asyncio.TimeoutError:
                 print("[Async Child] Timeout waiting for request")
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 await self.sock.send_json({"error": str(e)})
 
         self.close()

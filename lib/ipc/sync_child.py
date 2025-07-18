@@ -23,8 +23,9 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import threading
+from typing import Callable, Optional
+
 import zmq
-from typing import Callable, Awaitable, Optional
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -69,7 +70,7 @@ class IpcChildSync:
 
                 response = handler_fn(msg)
                 self.sock.send_json(response)
-            except Exception as e:
+            except Exception as e: # pylint: disable=broad-except
                 self.sock.send_json({"error": str(e)})
 
         self.close()

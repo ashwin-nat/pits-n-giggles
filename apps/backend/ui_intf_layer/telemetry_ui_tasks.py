@@ -24,7 +24,6 @@
 
 import asyncio
 import logging
-from functools import partial
 from typing import List, Optional
 
 import msgpack
@@ -33,8 +32,8 @@ import socketio
 import apps.backend.state_mgmt_layer as TelWebAPI
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 
-from .telemetry_web_server import TelemetryWebServer
 from .ipc import registerIpcTask
+from .telemetry_web_server import TelemetryWebServer
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
