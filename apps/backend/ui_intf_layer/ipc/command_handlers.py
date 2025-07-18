@@ -39,5 +39,5 @@ from lib.ipc import IpcChildAsync
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 
-def handleManualSave(msg: dict) -> dict:
-    return {"status": "success"}
+async def handleManualSave(_msg: dict) -> dict:
+    return {"status": "success", "message": "C:\\Users\\ashwi\\OneDrive\\Desktop\\test.json"}

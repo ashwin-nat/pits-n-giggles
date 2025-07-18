@@ -137,10 +137,11 @@ class BackendAppMgr(PngAppMgrBase):
         self.console_app.log("Sending manual save command to backend...")
         ipc_client = IpcParent(self.ipc_port)
         rsp = ipc_client.request("manual-save", {})
-        if rsp["status"] != "error":
+        status = rsp["status"]
+        message = rsp["message"]
+        if status != "error":
             self.console_app.log("File path sent successfully.")
-            # TODO insert path
-            messagebox.showinfo("Manual save success", "The session has been saved successfully at ...")
+            messagebox.showinfo("Manual save success", f"The session has been saved successfully at {message}")
         else:
-            self.console_app.log(f"Error in manual save: {rsp['message']}")
-            messagebox.showerror("Manual save error", "\n".join([rsp["message"]]))
+            self.console_app.log(f"Error in manual save: {message}")
+            messagebox.showerror("Manual save error", "\n".join([message]))
