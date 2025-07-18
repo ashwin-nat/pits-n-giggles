@@ -22,22 +22,12 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import asyncio
-import json
-import logging
-from functools import partial
-from typing import List, Optional, Callable, Awaitable, Dict
-
-import msgpack
-import socketio
-
 import apps.backend.state_mgmt_layer as TelWebAPI
-from lib.inter_task_communicator import AsyncInterTaskCommunicator
-from lib.ipc import IpcChildAsync
 
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 
 async def handleManualSave(_msg: dict) -> dict:
-    return {"status": "success", "message": "C:\\Users\\ashwi\\OneDrive\\Desktop\\test.json"}
+    """Handle manual save command"""
+    return await TelWebAPI.ManualSaveRsp().saveToDisk()

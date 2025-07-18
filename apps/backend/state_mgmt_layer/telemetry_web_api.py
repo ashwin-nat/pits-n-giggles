@@ -22,6 +22,7 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
+from datetime import datetime
 import logging
 from typing import Any, Dict, List, Optional, Union
 
@@ -32,6 +33,7 @@ from lib.f1_types import (CarStatusData, F1Utils, LapHistoryData,
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 from apps.backend.state_mgmt_layer.data_per_driver import DataPerDriver, TyreSetInfo
 from apps.backend.state_mgmt_layer.overtakes import GetOvertakesStatus
+from lib.save_to_disk import save_json_to_file
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -528,6 +530,63 @@ class PlayerTelemetryOverlayUpdate:
             },
             "pace-comparison" : self.m_pace_comp_json,
         }
+
+class ManualSaveRsp:
+    """
+    Manual save response class.
+    """
+
+    def __init__(self):
+        """Get the drivers list and prepare the rsp fields
+        """
+
+        self.m_data_available = _session_state_ref.is_data_available
+        self.m_event_str = _session_state_ref.getEventInfoStr()
+        if self.m_data_available:
+            self.m_data = _session_state_ref.getSaveDataJSON()
+        else:
+            self.m_data = None
+
+    async def saveToDisk(self) -> Dict[str, Any]:
+        """Dump the session state into JSON
+
+        Returns:
+            Dict[str, Any]: The response JSON
+        """
+
+        # Sanity checks
+        if not self.m_data_available or not self.m_event_str:
+            return {
+                "status": "error",
+                "message": "No data available to save"
+            }
+
+        # Construct output filename using timestamp
+        timestamp_str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        final_json_file_name = f"{self.m_event_str}Manual_{timestamp_str}.json"
+
+        # Build final classification JSON
+        final_json = _session_state_ref.buildFinalClassificationJSON()
+        if not final_json:
+            return {
+                "status": "error",
+                "message": "No data available to save"
+            }
+
+        # Save to disk
+        try:
+            path = await save_json_to_file(final_json, final_json_file_name, timestamp_str)
+            _logger.info("Wrote session info to %s", final_json_file_name)
+            return {
+                "status": "success",
+                "message": f"Data saved to {path}"
+            }
+        except Exception as e:  # pylint: disable=broad-except
+            _logger.exception("Failed to write session info to %s", final_json_file_name)
+            return {
+                "status": "error",
+                "message": f"Failed to write session info: {e.__class__.__name__}: {e}"
+            }
 
 # ------------------------- HELPER - CLASSES ---------------------------------------------------------------------------
 

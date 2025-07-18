@@ -32,14 +32,14 @@ from apps.backend.state_mgmt_layer.overtakes import (GetOvertakesStatus,
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
 from lib.custom_marker_tracker import CustomMarkerEntry, CustomMarkersHistory
-from lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils,
+from lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils, FinalClassificationData,
                           PacketCarDamageData, PacketCarSetupData, LapData,
                           PacketCarStatusData, PacketCarTelemetryData,
                           PacketEventData, PacketFinalClassificationData,
-                          PacketLapData, PacketLapPositionsData,
+                          PacketLapData, PacketLapPositionsData, VisualTyreCompound,
                           PacketMotionData, PacketParticipantsData,
                           PacketSessionData, PacketSessionHistoryData,
-                          PacketTimeTrialData, PacketTyreSetsData,
+                          PacketTimeTrialData, PacketTyreSetsData, ResultReason,
                           ResultStatus, SafetyCarType, SessionType23,
                           SessionType24, TrackID, WeatherForecastSample)
 from lib.inter_task_communicator import TyreDeltaMessage
@@ -580,7 +580,7 @@ class SessionState:
         packet = session_info.m_packet_final_classification
         if not packet:
             # Use dummy packet if none has been received yet
-            packet = PacketFinalClassificationData.from_values(None, 0, [])
+            packet = self._getDummyFinalClassificationPacket()
 
         is_position_history_supported = self.isPositionHistorySupported()
         is_old_format = session_info.m_packet_format == 2023
@@ -1176,6 +1176,9 @@ class SessionState:
 
     def getSaveDataJSON(self) -> Dict[str, Any]:
         """Get the save data JSON."""
+        if not self.is_data_available:
+            return None
+
         return self.buildFinalClassificationJSON()
 
     ##### Internal Helpers #####
@@ -1388,4 +1391,62 @@ class SessionState:
             overtaken_driver_lap=being_overtaken_car_obj.m_lap_info.m_current_lap,
         )
 
+    def _getDummyFinalClassificationPacket(self) -> PacketFinalClassificationData:
+        """Returns a dummy final classification packet object
 
+        Returns:
+            PacketFinalClassificationData: A dummy final classification packet
+        """
+        packet = PacketFinalClassificationData.from_values(None, 0, [])
+        packet.m_numCars = self.m_num_active_cars
+        packet.m_classificationData = [self._getDummyFinalClassificationData()] * self.m_num_active_cars
+        return packet
+
+    def _getDummyFinalClassificationData(self) -> FinalClassificationData:
+        """Returns a dummy final classification data object
+
+        Returns:
+            FinalClassificationData: A dummy final classification data object
+        """
+        return FinalClassificationData.from_values(
+            packet_format=self.m_session_info.m_packet_format,
+            position=0,
+            num_laps=0,
+            grid_position=0,
+            points=0,
+            num_pit_stops=0,
+            result_status=ResultStatus.INVALID,
+            result_reason=ResultReason.INVALID,
+            best_lap_time_in_ms=0,
+            total_race_time=0,
+            penalties_time=0,
+            num_penalties=0,
+            num_tyre_stints=0,
+            # tyre_stints_actual,  # array of 8
+            tyre_stints_actual_0=ActualTyreCompound.UNKNOWN,
+            tyre_stints_actual_1=ActualTyreCompound.UNKNOWN,
+            tyre_stints_actual_2=ActualTyreCompound.UNKNOWN,
+            tyre_stints_actual_3=ActualTyreCompound.UNKNOWN,
+            tyre_stints_actual_4=ActualTyreCompound.UNKNOWN,
+            tyre_stints_actual_5=ActualTyreCompound.UNKNOWN,
+            tyre_stints_actual_6=ActualTyreCompound.UNKNOWN,
+            tyre_stints_actual_7=ActualTyreCompound.UNKNOWN,
+            # tyre_stints_visual,  # array of 8
+            tyre_stints_visual_0=VisualTyreCompound.UNKNOWN,
+            tyre_stints_visual_1=VisualTyreCompound.UNKNOWN,
+            tyre_stints_visual_2=VisualTyreCompound.UNKNOWN,
+            tyre_stints_visual_3=VisualTyreCompound.UNKNOWN,
+            tyre_stints_visual_4=VisualTyreCompound.UNKNOWN,
+            tyre_stints_visual_5=VisualTyreCompound.UNKNOWN,
+            tyre_stints_visual_6=VisualTyreCompound.UNKNOWN,
+            tyre_stints_visual_7=VisualTyreCompound.UNKNOWN,
+            # tyre_stints_end_laps,  # array of 8
+            tyre_stints_end_laps_0=0,
+            tyre_stints_end_laps_1=0,
+            tyre_stints_end_laps_2=0,
+            tyre_stints_end_laps_3=0,
+            tyre_stints_end_laps_4=0,
+            tyre_stints_end_laps_5=0,
+            tyre_stints_end_laps_6=0,
+            tyre_stints_end_laps_7=0
+        )
