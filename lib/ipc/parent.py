@@ -54,7 +54,7 @@ class IpcParent:
             self.sock.send_json({"cmd": command, "args": args or {}})
             return self.sock.recv_json()
         except zmq.ZMQError as e:
-            return {"error": str(e)}
+            return {"status" : "ipc-error", "error": str(e)}
 
     def close(self) -> None:
         self.sock.close()
