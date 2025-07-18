@@ -28,7 +28,6 @@ import logging
 import os
 import socket
 import sys
-import webbrowser
 from typing import List, Optional, Set
 
 from apps.backend.common.png_logger import initLogger
@@ -137,10 +136,6 @@ class PngRunner:
         Returns:
             TelemetryWebServer: The initialized web server object
         """
-        # Create a task to open the webpage
-        if not disable_browser_autoload:
-            proto = self.m_config.HTTPS.proto
-            tasks.append(asyncio.create_task(self._openWebPage(http_port, proto), name="Web page opener Task"))
 
         log_str = "Starting F1 telemetry server. Open one of the below addresses in your browser\n"
         ip_addresses = self._getLocalIpAddresses()
@@ -168,7 +163,8 @@ class PngRunner:
             ver_str=ver_str,
             cert_path=cert_path,
             key_path=key_path,
-            ipc_port=ipc_port
+            ipc_port=ipc_port,
+            disable_browser_autoload=disable_browser_autoload
         )
 
     def _getLocalIpAddresses(self) -> Set[str]:
@@ -185,17 +181,6 @@ class PngRunner:
             # Log the error or handle it as per your requirement
             self.m_logger.warning("Error occurred: %s. Using default IP addresses.", e)
         return ip_addresses
-
-    async def _openWebPage(self, http_port: int, proto: str) -> None:
-        """Open the webpage on a new browser tab.
-
-        Args:
-            http_port (int): Port number of the HTTP server.
-            proto (str): Protocol ('http' or 'https').
-        """
-        await asyncio.sleep(1)
-        webbrowser.open(f'{proto}://localhost:{http_port}', new=2)
-        self.m_logger.debug("Webpage opened. Task completed")
 
     def _getVersion(self) -> str:
         """Get the version string from env variable

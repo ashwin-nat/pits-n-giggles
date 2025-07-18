@@ -47,7 +47,8 @@ def initUiIntfLayer(
     ver_str: str,
     cert_path: Optional[str],
     key_path: Optional[str],
-    ipc_port: Optional[int]) -> TelemetryWebServer:
+    ipc_port: Optional[int],
+    disable_browser_autoload: bool) -> TelemetryWebServer:
     """Initialize the UI interface layer and return then server obj for proper cleanup
 
     Args:
@@ -61,6 +62,7 @@ def initUiIntfLayer(
         cert_path (Optional[str]): Path to the certificate file
         key_path (Optional[str]): Path to the key file
         ipc_port (Optional[int]): IPC port
+        disable_browser_autoload (bool): Whether to disable browser autoload
 
     Returns:
         TelemetryWebServer: The initialized web server
@@ -74,6 +76,7 @@ def initUiIntfLayer(
         cert_path=cert_path,
         key_path=key_path,
         debug_mode=debug_mode,
+        disable_browser_autoload=disable_browser_autoload
     )
 
     # Register tasks associated with this web server
