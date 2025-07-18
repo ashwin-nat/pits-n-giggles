@@ -152,6 +152,12 @@ body {
     height: 0.9rem;
 }
 
+.eng-view-restricted-cell {
+    font-style: italic;
+    color: #aaa;
+    background-color: #1a1a1a;
+}
+
 /* Race status section layout */
 .card-body .eng-view-global-stats-container {
     display: flex;

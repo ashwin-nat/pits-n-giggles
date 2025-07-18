@@ -282,6 +282,7 @@ class EngViewRaceTableRow {
         const isSpectating = this.spectatorIndex !== null;
         const isReferenceDriver = this.driver["driver-info"]['index'] === this.spectatorIndex;
         const isPlayerDriver = this.driver["driver-info"]['is-player'];
+        const isTelemetryPublic = this.driver["driver-info"]['telemetry-setting'] === "Public";
 
         // Determine if this row represents the reference driver —
         // either the selected driver while spectating, or the actual player while driving
@@ -295,29 +296,54 @@ class EngViewRaceTableRow {
 
         // Clear previous content
         this.element.innerHTML = "";
+        let cells;
 
-        const cells = [
-            ...this.getDriverInfoCells(),
-            ...this.getDeltaInfoCells(),
-            ...this.getPenaltyCells(),
-            ...this.getLapTimeCells(),
-            ...this.getTyreWearCells(),
-            ...this.getErsCells(),
-            ...this.getFuelCells(),
-            ...this.getDamageCells()
-        ];
+        if (isTelemetryPublic) {
+            cells = [
+                ...this.getDriverInfoCells(),
+                ...this.getDeltaInfoCells(),
+                ...this.getPenaltyCells(),
+                ...this.getLapTimeCells(),
+                ...this.getTyreWearCells(),
+                ...this.getErsCells(),
+                ...this.getFuelCells(),
+                ...this.getDamageCells()
+            ];
+        } else {
+            cells = [
+                ...this.getDriverInfoCells(),
+                ...this.getDeltaInfoCells(),
+                ...this.getPenaltyCells(),
+                ...this.getLapTimeCells(),
+            ]
+            // values for wear, ERS, fuel and damage are not available when Telemetry is Private,
+            cells.push({
+                value: "Driver has telemetry set to Restricted",
+                colspan: 15,
+                class: "eng-view-restricted-cell text-center"
+            });
+        }
 
         // Iterate through cells and append them correctly
         cells.forEach(cell => {
             const td = document.createElement("td");
-            if (cell.border) {
+
+            // Handle optional properties
+            if ("colspan" in cell) {
+                td.colSpan = cell.colspan;
+            }
+
+            if ("class" in cell) {
+                td.className = cell.class;
+            } else if (cell.border) {
                 td.classList.add("eng-view-col-border");
             }
 
+            // Render content
             if (cell.value instanceof HTMLElement) {
-                td.appendChild(cell.value);  // Append the element properly
+                td.appendChild(cell.value);
             } else {
-                td.innerHTML = cell.value;   // Use innerHTML for string values
+                td.innerHTML = cell.value;
             }
 
             this.element.appendChild(td);
