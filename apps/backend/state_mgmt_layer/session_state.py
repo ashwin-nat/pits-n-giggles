@@ -579,9 +579,10 @@ class SessionState:
         # Use dummy packet if final classification has not been received yet
         packet = session_info.m_packet_final_classification or self._getDummyFinalClassificationPacket()
 
+        packet_format = session_info.m_packet_format
+        is_old_format = packet_format == 2023
+        is_new_format = packet_format > 2023
         is_position_history_supported = self.isPositionHistorySupported()
-        is_old_format = session_info.m_packet_format == 2023
-        is_new_format = session_info.m_packet_format > 2023
         is_speed_trap_supported = is_new_format  # Only supported in F1 2024+
 
         # --- Start constructing base JSON from packet
