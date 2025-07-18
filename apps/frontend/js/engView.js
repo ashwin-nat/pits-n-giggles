@@ -415,6 +415,7 @@ class EngViewRaceStatus {
         this.iconCache = iconCache;
         this.sessionTimeElement = document.getElementById('sessionTime');
         this.raceStatusElement = document.getElementById('raceStatus');
+        this.raceStatusHeaderElement = document.getElementById('raceStatusHeader');
         this.currentLapElement = document.getElementById('currentLap');
         this.scCountElement = document.getElementById('scCount');
         this.vscCountElement = document.getElementById('vscCount');
@@ -478,6 +479,16 @@ class EngViewRaceStatus {
         }
     }
 
+    #getRaceStatusHeaderString(data) {
+        const track = data["circuit"]
+        if (track === "---") {
+            return "Race Status";
+        }
+
+        const event = data["event-type"];
+        return `${track} - ${event}`;
+    }
+
     #getSessionTimeString(data) {
         const sessionType = data["event-type"];
         const eventsWithTimeRemaining = ['Qualifying', 'Practice', 'Sprint Shootout'];
@@ -516,6 +527,7 @@ class EngViewRaceStatus {
         this.predictionLapInput.max = this.totalLaps;
         this.sessionTimeElement.textContent = this.#getSessionTimeString(data);
         this.raceStatusElement.textContent = this.#getSCStatusString(data["safety-car-status"]);
+        this.raceStatusHeaderElement.textContent = this.#getRaceStatusHeaderString(data);
 
         let lapText = "";
         if (data['current-lap']) {
