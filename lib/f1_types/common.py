@@ -459,6 +459,7 @@ class ActualTyreCompound(Enum):
     MEDIUM = 13
     HARD = 14
     WET_F2 = 15
+    UNKNOWN = 255
 
     def __str__(self) -> str:
         """
@@ -484,6 +485,7 @@ class ActualTyreCompound(Enum):
             ActualTyreCompound.MEDIUM: "Medium",
             ActualTyreCompound.HARD: "Hard",
             ActualTyreCompound.WET_F2: "Wet (F2)",
+            ActualTyreCompound.UNKNOWN: "Unknown",
         }[self]
 
     @staticmethod
@@ -533,6 +535,7 @@ class VisualTyreCompound(Enum):
     MEDIUM_F2 = 21
     HARD_F2 = 22
     WET_F2 = 15
+    UNKNOWN = 255
 
     def __str__(self) -> str:
         """
@@ -553,6 +556,7 @@ class VisualTyreCompound(Enum):
             VisualTyreCompound.MEDIUM_F2: "Medium",
             VisualTyreCompound.HARD_F2: "Hard",
             VisualTyreCompound.WET_F2: "Wet",
+            VisualTyreCompound.UNKNOWN: "Unknown",
         }[self]
 
     @staticmethod
