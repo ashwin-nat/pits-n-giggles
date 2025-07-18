@@ -22,6 +22,7 @@ dependencies = [
     "packaging (>=25.0,<26.0)",
     "msgpack (>=1.1.1,<2.0.0)",
     "pyzmq (>=27.0.0,<28.0.0)",
+    "requests (>=2.32.4,<3.0.0)",
 ]
 
 
@@ -34,7 +35,6 @@ package-mode = false
 [tool.poetry.group.dev.dependencies]
 tqdm = "^4.67.1"
 deepdiff = "^8.4.2"
-requests = "^2.32.3"
 yappi = "^1.6.10"
 snakeviz = "^2.2.2"
 gdown = "^5.2.0"
