@@ -134,6 +134,7 @@ class BackendAppMgr(PngAppMgrBase):
         self.manual_save_button.config(state="disabled")
 
     def manual_save(self):
+        """Send a manual save command to the backend."""
         self.console_app.log("Sending manual save command to backend...")
         ipc_client = IpcParent(self.ipc_port)
         rsp = ipc_client.request("manual-save", {})
@@ -143,6 +144,8 @@ class BackendAppMgr(PngAppMgrBase):
             self.console_app.log("File path sent successfully.")
             messagebox.showinfo("Manual save success", f"The session has been saved successfully at {message}")
         else:
-            error = rsp.get("error")
+            error = rsp.get("error", "Unknown error")
+            message = rsp.get("message", "")
             self.console_app.log(f"Error in manual save: error={error} message={message}")
-            messagebox.showerror("Manual save error", "\n".join([error]))
+            error_details = "\n".join(filter(None, [error, message]))
+            messagebox.showerror("Manual save error", error_details)

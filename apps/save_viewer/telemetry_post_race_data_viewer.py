@@ -1193,14 +1193,12 @@ def handle_ipc_message(msg: dict) -> dict:
 
     return {"status": "error", "message": f"Unknown command: {cmd}"}
 
-
 def _handle_open_file(args: dict) -> dict:
     """Handles the 'open-file' IPC command."""
-    file_path = args.get("file-path")
-    if not file_path:
+    if not (file_path := args.get("file-path")):
         return {"status": "error", "message": "Missing or invalid file path"}
-
-    return open_file_helper(file_path)
+    else:
+        return open_file_helper(file_path)
 
 def main():
 

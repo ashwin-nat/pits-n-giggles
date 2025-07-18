@@ -136,19 +136,17 @@ class TestIPC(F1TelemetryUnitTestsBase):
     def test_child_freeze(self):
         """Test: Simulate child freezing (non-responding)"""
         def handler(msg):
-            time.sleep(10)  # long block to simulate freeze
+            time.sleep(1)  # shorter block to simulate freeze
             return {'reply': 'late'}
-
         child = IpcChildSync(self.port)
         thread = threading.Thread(target=child.serve, args=(handler,), daemon=True)
         thread.start()
-
         time.sleep(0.1)
-        parent = IpcParent(self.port, timeout_ms=500)
+        parent = IpcParent(self.port, timeout_ms=100)
         resp = parent.request('ping')
         self.assertIn('error', resp)  # Expect timeout error
         parent.close()
-        thread.join(timeout=2)
+        thread.join(timeout=1)
 
     def test_child_not_started(self):
         """Test: Parent attempts to connect but child was never started"""

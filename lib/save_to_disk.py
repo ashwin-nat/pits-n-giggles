@@ -48,10 +48,7 @@ async def save_json_to_file(
     Returns:
         Path: The full path to the saved JSON file.
     """
-    if base_dir is None:
-        base_dir = Path("data")
-    else:
-        base_dir = Path(base_dir) / "data"
+    base_dir = Path("data") if base_dir is None else Path(base_dir) / "data"
 
     dir_path = base_dir / date_str / "race-info"
     dir_path.mkdir(parents=True, exist_ok=True)

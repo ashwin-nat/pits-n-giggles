@@ -527,7 +527,7 @@ class SessionState:
             obj_to_be_updated.m_car_info.m_drs_distance = car_status_data.m_drsActivationDistance
             obj_to_be_updated.m_packet_copies.m_packet_car_status = car_status_data
 
-    def processFinalClassificationUpdate(self, packet: PacketFinalClassificationData) -> None:
+    def processFinalClassificationUpdate(self, packet: PacketFinalClassificationData) -> Dict[str, Any]:
         """
         Updates internal state with data from final classification packet.
 
@@ -576,10 +576,8 @@ class SessionState:
         """
         # --- Determine session info and packet format
         session_info = self.m_session_info
-        packet = session_info.m_packet_final_classification
-        if not packet:
-            # Use dummy packet if none has been received yet
-            packet = self._getDummyFinalClassificationPacket()
+        # Use dummy packet if final classification has not been received yet
+        packet = session_info.m_packet_final_classification or self._getDummyFinalClassificationPacket()
 
         is_position_history_supported = self.isPositionHistorySupported()
         is_old_format = session_info.m_packet_format == 2023
@@ -1175,10 +1173,7 @@ class SessionState:
 
     def getSaveDataJSON(self) -> Dict[str, Any]:
         """Get the save data JSON."""
-        if not self.is_data_available:
-            return None
-
-        return self.buildFinalClassificationJSON()
+        return self.buildFinalClassificationJSON() if self.is_data_available else None
 
     ##### Internal Helpers #####
 
@@ -1398,7 +1393,7 @@ class SessionState:
         """
         packet = PacketFinalClassificationData.from_values(None, 0, [])
         packet.m_numCars = self.m_num_active_cars
-        packet.m_classificationData = [self._getDummyFinalClassificationData()] * self.m_num_active_cars
+        packet.m_classificationData = [self._getDummyFinalClassificationData() for _ in range(self.m_num_active_cars)]
         return packet
 
     def _getDummyFinalClassificationData(self) -> FinalClassificationData:
