@@ -34,6 +34,7 @@ import psutil
 
 from lib.config import PngSettings
 from lib.error_status import PNG_ERROR_CODE_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN
+from lib.ipc import get_free_tcp_port
 from lib.pid_report import extract_pid_from_line
 
 from ..console_interface import ConsoleInterface
@@ -104,6 +105,7 @@ class PngAppMgrBase(ABC):
         self.child_pid = None
         self._post_start_hook: Optional[Callable[[], None]] = None
         self._post_stop_hook: Optional[Callable[[], None]] = None
+        self.ipc_port = None
 
     @abstractmethod
     def get_buttons(self, frame: ttk.Frame) -> list[dict]:
@@ -151,6 +153,9 @@ class PngAppMgrBase(ABC):
             # so no other thread sees a partially updated state.
             launch_command = self.get_launch_command(self.module_path, self.args)
             self.console_app.log(f"Starting {self.display_name}...")
+
+            self.ipc_port = get_free_tcp_port()
+            launch_command.extend(["--ipc-port", f"{self.ipc_port}"])
 
             # pylint: disable=consider-using-with
             self.process = subprocess.Popen(

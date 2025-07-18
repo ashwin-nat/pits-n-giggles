@@ -51,6 +51,7 @@ import lib.race_analyzer as RaceAnalyzer
 from apps.save_viewer.logger import png_logger
 from lib.error_status import PNG_ERROR_CODE_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN
 from lib.f1_types import F1Utils, LapHistoryData, ResultStatus
+from lib.ipc import IpcChildSync
 from lib.pid_report import report_pid_from_child
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 from lib.version import get_version
@@ -1068,23 +1069,41 @@ def checkRecomputeJSON(json_data : Dict[str, Any]) -> bool:
     return should_write
 
 def open_file_helper(file_path, open_webpage=True):
-    with open(file_path, 'r+', encoding='utf-8') as f:
-        global g_json_lock
-        global g_json_data
-        global g_json_path
-        global g_should_open_ui
-        global g_port_number
-        with g_json_lock:
-            g_json_data = json.load(f)
-            g_json_path = file_path
+    try:
+        with open(file_path, 'r+', encoding='utf-8') as f:
+            global g_json_lock
+            global g_json_data
+            global g_json_path
+            global g_should_open_ui
+            global g_port_number
+            with g_json_lock:
+                g_json_data = json.load(f)
+                g_json_path = file_path
 
-            should_write = False
-            should_write |= checkRecomputeJSON(g_json_data)
-        sendRaceTable()
-        if g_should_open_ui and open_webpage:
-            g_should_open_ui = False
-            webbrowser.open(f'http://localhost:{g_port_number}', new=2)
-    png_logger.info(f"Opened file: {file_path}")
+                should_write = False
+                should_write |= checkRecomputeJSON(g_json_data)
+
+            sendRaceTable()
+
+            if g_should_open_ui and open_webpage:
+                g_should_open_ui = False
+                webbrowser.open(f'http://localhost:{g_port_number}', new=2)
+
+        png_logger.info(f"Opened file: {file_path}")
+        return {"status": "success"}
+
+    except (FileNotFoundError, PermissionError) as e:
+        png_logger.error(f"Failed to open file: {file_path}. Error: {e}")
+        return {"status": "error", "message": f"Failed to open file: {file_path}. Error: {e}"}
+    except json.JSONDecodeError as e:
+        png_logger.error(f"Invalid JSON in file: {file_path}. Error: {e}")
+        return {"status": "error", "message": f"Failed to open file: {file_path}. Error: {e}"}
+    except UnicodeDecodeError as e:
+        png_logger.error(f"Invalid UTF-8 in file: {file_path}. Error: {e}")
+        return {"status": "error", "message": f"Failed to open file: {file_path}. Error: {e}"}
+    except Exception as e:
+        png_logger.exception(f"Unexpected error opening file: {file_path}")
+        return {"status": "error", "message": f"Failed to open file: {file_path}. Error: {e}"}
 
 def open_file():
     file_path = filedialog.askopenfilename()
@@ -1128,14 +1147,6 @@ def on_closing():
     png_logger.info("UI done")
     os._exit(0)
 
-def stdin_input_thread():
-    """Thread to handle stdin input for the launcher mode
-    """
-    while True:
-        if file_path := sys.stdin.readline().strip():
-            png_logger.debug(f'Received line: {file_path}')
-            open_file_helper(file_path)
-
 def parseArgs() -> argparse.Namespace:
     """Parse the command line args and perform validation
 
@@ -1149,6 +1160,7 @@ def parseArgs() -> argparse.Namespace:
     # Add command-line arguments with default values
     parser.add_argument("--launcher", action="store_true", help="Enable launcher mode. Input is expeected via stdin")
     parser.add_argument("--port", type=int, default=None, help="Port number for the server.")
+    parser.add_argument("--ipc-port", type=int, default=None, help="Port number for the IPC server.")
 
     # Parse the command-line arguments
     parsed_args = parser.parse_args()
@@ -1169,6 +1181,25 @@ def start_thread(target):
     thread.daemon = True
     thread.start()
 
+def handle_ipc_message(msg: dict) -> dict:
+    """Handles incoming IPC messages and dispatches commands."""
+    png_logger.info(f"Received IPC message: {msg}")
+
+    cmd = msg.get("cmd")
+    args = msg.get("args", {})
+
+    if cmd == "open-file":
+        return _handle_open_file(args)
+
+    return {"status": "error", "message": f"Unknown command: {cmd}"}
+
+def _handle_open_file(args: dict) -> dict:
+    """Handles the 'open-file' IPC command."""
+    if not (file_path := args.get("file-path")):
+        return {"status": "error", "message": "Missing or invalid file path"}
+    else:
+        return open_file_helper(file_path)
+
 def main():
 
     png_logger.debug(f"cwd={os.getcwd()}")
@@ -1177,8 +1208,8 @@ def main():
     version = get_version()
 
     if args.launcher:
-        g_port_number = args.port
-        start_thread(stdin_input_thread)
+        ipc_server = IpcChildSync(args.ipc_port, "Save Viewer")
+        ipc_server.serve_in_thread(handle_ipc_message)
     else:
         g_port_number = find_free_port()
         start_thread(start_ui)

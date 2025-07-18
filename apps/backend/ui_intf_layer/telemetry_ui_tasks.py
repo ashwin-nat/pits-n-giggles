@@ -32,6 +32,7 @@ import socketio
 import apps.backend.state_mgmt_layer as TelWebAPI
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 
+from .ipc import registerIpcTask
 from .telemetry_web_server import TelemetryWebServer
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
@@ -45,7 +46,9 @@ def initUiIntfLayer(
     tasks: List[asyncio.Task],
     ver_str: str,
     cert_path: Optional[str],
-    key_path: Optional[str]) -> TelemetryWebServer:
+    key_path: Optional[str],
+    ipc_port: Optional[int],
+    disable_browser_autoload: bool) -> TelemetryWebServer:
     """Initialize the UI interface layer and return then server obj for proper cleanup
 
     Args:
@@ -58,6 +61,8 @@ def initUiIntfLayer(
         ver_str (str): Version string
         cert_path (Optional[str]): Path to the certificate file
         key_path (Optional[str]): Path to the key file
+        ipc_port (Optional[int]): IPC port
+        disable_browser_autoload (bool): Whether to disable browser autoload
 
     Returns:
         TelemetryWebServer: The initialized web server
@@ -71,9 +76,10 @@ def initUiIntfLayer(
         cert_path=cert_path,
         key_path=key_path,
         debug_mode=debug_mode,
+        disable_browser_autoload=disable_browser_autoload
     )
 
-    # Register tasks associated with this server
+    # Register tasks associated with this web server
     tasks.append(asyncio.create_task(web_server.run(), name="Web Server Task"))
     tasks.append(asyncio.create_task(raceTableClientUpdateTask(client_update_interval_ms, web_server.m_sio),
                                      name="Race Table Update Task"))
@@ -81,6 +87,8 @@ def initUiIntfLayer(
                                      name="Stream Overlay Update Task"))
     tasks.append(asyncio.create_task(frontEndMessageTask(web_server.m_sio),
                                      name="Front End Message Task"))
+
+    registerIpcTask(ipc_port, logger, tasks)
     return web_server
 
 async def raceTableClientUpdateTask(update_interval_ms: int, sio: socketio.AsyncServer) -> None:

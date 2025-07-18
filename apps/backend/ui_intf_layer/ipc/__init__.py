@@ -22,26 +22,40 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .state_layer_init import initStateManagementLayer
-from .telemetry_state import getSessionStateRef, isDriverIndexValid
-from .telemetry_web_api import (DriverInfoRsp, ManualSaveRsp,
-                                OverallRaceStatsRsp,
-                                PlayerTelemetryOverlayUpdate, RaceInfoUpdate)
+import asyncio
+import json
+import logging
+from functools import partial
+from typing import List, Optional, Callable, Awaitable, Dict
+
+import msgpack
+import socketio
+
+import apps.backend.state_mgmt_layer as TelWebAPI
+from lib.inter_task_communicator import AsyncInterTaskCommunicator
+from lib.ipc import IpcChildAsync
+from .command_dispatcher import processIpcCommand
+
+
+# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+
+def registerIpcTask(ipc_port: Optional[int], logger: logging.Logger, tasks: List[asyncio.Task]) -> None:
+    """Register the IPC task
+
+    Args:
+        ipc_port (Optional[int]): IPC port
+        logger (logging.Logger): Logger
+        tasks (List[asyncio.Task]): List of tasks
+    """
+
+    # Register the IPC task only if port is specified
+    if ipc_port:
+        logger.debug(f"Starting IPC server on port {ipc_port}")
+        server = IpcChildAsync(ipc_port, "Backend")
+        tasks.append(server.get_task(partial(processIpcCommand, logger=logger)))
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    # Readers
-    "RaceInfoUpdate",
-    "OverallRaceStatsRsp",
-    "DriverInfoRsp",
-    "PlayerTelemetryOverlayUpdate",
-    "isDriverIndexValid",
-    "getSessionStateRef",
-
-    # Writers
-    "ManualSaveRsp",
-
-    # Init
-    "initStateManagementLayer",
+    "registerIpcTask",
 ]

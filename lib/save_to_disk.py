@@ -19,29 +19,43 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+# pylint: skip-file
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .state_layer_init import initStateManagementLayer
-from .telemetry_state import getSessionStateRef, isDriverIndexValid
-from .telemetry_web_api import (DriverInfoRsp, ManualSaveRsp,
-                                OverallRaceStatsRsp,
-                                PlayerTelemetryOverlayUpdate, RaceInfoUpdate)
+import aiofiles
+import json
+from pathlib import Path
+from typing import Optional
 
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
+# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-__all__ = [
-    # Readers
-    "RaceInfoUpdate",
-    "OverallRaceStatsRsp",
-    "DriverInfoRsp",
-    "PlayerTelemetryOverlayUpdate",
-    "isDriverIndexValid",
-    "getSessionStateRef",
+async def save_json_to_file(
+    data: dict,
+    filename: str,
+    date_str: str,
+    base_dir: Optional[Path] = None
+) -> Path:
+    """
+    Saves the given dictionary as a JSON file in data/<date>/race-info/.
 
-    # Writers
-    "ManualSaveRsp",
+    Args:
+        data (dict): The data to save.
+        filename (str): Name of the file (e.g., "race.json").
+        date_str (str): Date string for directory structure (e.g., "2025-07-17").
+        base_dir (Path, optional): Custom base directory for saving. Defaults to current directory.
 
-    # Init
-    "initStateManagementLayer",
-]
+    Returns:
+        Path: The full path to the saved JSON file.
+    """
+    base_dir = Path("data") if base_dir is None else Path(base_dir) / "data"
+
+    dir_path = base_dir / date_str / "race-info"
+    dir_path.mkdir(parents=True, exist_ok=True)
+
+    file_path = dir_path / filename
+    json_str = json.dumps(data, separators=(",", ":"))
+    async with aiofiles.open(file_path, mode='w', encoding='utf-8') as json_file:
+        await json_file.write(json_str)
+
+    return file_path

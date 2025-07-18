@@ -23,9 +23,10 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import webbrowser
-from tkinter import ttk
+from tkinter import ttk, messagebox
 
 from lib.config import PngSettings
+from lib.ipc import IpcParent
 
 from ..console_interface import ConsoleInterface
 from .base_mgr import PngAppMgrBase
@@ -81,7 +82,19 @@ class BackendAppMgr(PngAppMgrBase):
             style="Racing.TButton",
             state="disabled"  # Initially disabled until the app is running
         )
-        return [self.start_stop_button, self.open_dashboard_button, self.open_obs_overlay_button]
+        self.manual_save_button = ttk.Button(
+            frame,
+            text="Manual Save",
+            command=self.manual_save,
+            style="Racing.TButton",
+            state="disabled"  # Initially disabled until the app is running
+        )
+        return [
+            self.start_stop_button,
+            self.open_dashboard_button,
+            self.open_obs_overlay_button,
+            self.manual_save_button,
+        ]
 
     def open_dashboard(self):
         """Open the dashboard viewer in a web browser."""
@@ -111,9 +124,28 @@ class BackendAppMgr(PngAppMgrBase):
         self.start_stop_button.config(text="Stop")
         self.open_dashboard_button.config(state="normal")
         self.open_obs_overlay_button.config(state="normal")
+        self.manual_save_button.config(state="normal")
 
     def post_stop(self):
         """Update buttons after app stop"""
         self.start_stop_button.config(text="Start")
         self.open_dashboard_button.config(state="disabled")
         self.open_obs_overlay_button.config(state="disabled")
+        self.manual_save_button.config(state="disabled")
+
+    def manual_save(self):
+        """Send a manual save command to the backend."""
+        self.console_app.log("Sending manual save command to backend...")
+        ipc_client = IpcParent(self.ipc_port)
+        rsp = ipc_client.request("manual-save", {})
+        status = rsp["status"]
+        message = rsp.get("message")
+        if status == "success":
+            self.console_app.log("File path sent successfully.")
+            messagebox.showinfo("Manual save success", f"The session has been saved successfully at {message}")
+        else:
+            error = rsp.get("error", "Unknown error")
+            message = rsp.get("message", "")
+            self.console_app.log(f"Error in manual save: error={error} message={message}")
+            error_details = "\n".join(filter(None, [error, message]))
+            messagebox.showerror("Manual save error", error_details)

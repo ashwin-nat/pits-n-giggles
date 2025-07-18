@@ -22,26 +22,12 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .state_layer_init import initStateManagementLayer
-from .telemetry_state import getSessionStateRef, isDriverIndexValid
-from .telemetry_web_api import (DriverInfoRsp, ManualSaveRsp,
-                                OverallRaceStatsRsp,
-                                PlayerTelemetryOverlayUpdate, RaceInfoUpdate)
+import apps.backend.state_mgmt_layer as TelWebAPI
 
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
-__all__ = [
-    # Readers
-    "RaceInfoUpdate",
-    "OverallRaceStatsRsp",
-    "DriverInfoRsp",
-    "PlayerTelemetryOverlayUpdate",
-    "isDriverIndexValid",
-    "getSessionStateRef",
+# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-    # Writers
-    "ManualSaveRsp",
 
-    # Init
-    "initStateManagementLayer",
-]
+async def handleManualSave(_msg: dict) -> dict:
+    """Handle manual save command"""
+    return await TelWebAPI.ManualSaveRsp().saveToDisk()
