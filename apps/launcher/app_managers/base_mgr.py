@@ -173,7 +173,6 @@ class PngAppMgrBase(ABC):
         # Start output capture and monitor threads outside the lock to avoid deadlocks
         threading.Thread(target=self._capture_output, daemon=True).start()
         threading.Thread(target=self._monitor_process_exit, daemon=True).start()
-        threading.Thread(target=self._ipc_manager_thread, daemon=True).start()
 
         self.console_app.log(f"{self.display_name} started successfully. PID = {self.child_pid}")
 
@@ -306,14 +305,6 @@ class PngAppMgrBase(ABC):
         finally:
             if self.process is this_process:
                 self.process = None
-
-    def _ipc_manager_thread(self):
-
-        import time
-        time.sleep(5)
-        client = IpcParent(self.ipc_port)
-        self.console_app.log(f"{self.display_name} IPC port: {self.ipc_port} Ping {client.ping()}")
-
 
     def _is_restart_exit_expected(self, ret_code: int) -> bool:
         """
