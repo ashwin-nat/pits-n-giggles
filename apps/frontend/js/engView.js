@@ -180,42 +180,7 @@ class EngViewRaceTableRow {
     getLapTimeCells() {
         const lastLapInfo = this.driver["lap-info"]["last-lap"];
         const bestLapInfo = this.driver["lap-info"]["best-lap"];
-        const isPlayer = this.driver["driver-info"]["is-player"];
         const yellowSector = 0;
-
-        // in spectator mode, there is no need for delta
-        if (this.isSpectating || isPlayer) {
-            return [
-                // Best Lap
-                {
-                    value: this.createLapInfoCellSingleRow(formatLapTime(bestLapInfo["lap-time-ms"]), yellowSector)
-                },
-                {
-                    value: this.createLapInfoCellSingleRow(formatSectorTime(bestLapInfo["s1-time-ms"]), bestLapInfo["sector-status"][0])
-                },
-                {
-                    value: this.createLapInfoCellSingleRow(formatSectorTime(bestLapInfo["s2-time-ms"]), bestLapInfo["sector-status"][1])
-                },
-                {
-                    value: this.createLapInfoCellSingleRow(formatSectorTime(bestLapInfo["s3-time-ms"]), bestLapInfo["sector-status"][2]),
-                    border: true
-                },
-                // Last Lap
-                {
-                    value: this.createLapInfoCellSingleRow(formatLapTime(lastLapInfo["lap-time-ms"]), yellowSector)
-                },
-                {
-                    value: this.createLapInfoCellSingleRow(formatSectorTime(lastLapInfo["s1-time-ms"]), lastLapInfo["sector-status"][0])
-                },
-                {
-                    value: this.createLapInfoCellSingleRow(formatSectorTime(lastLapInfo["s2-time-ms"]), lastLapInfo["sector-status"][1])
-                },
-                {
-                    value: this.createLapInfoCellSingleRow(formatSectorTime(lastLapInfo["s3-time-ms"]), lastLapInfo["sector-status"][2]),
-                    border: true
-                },
-            ];
-        }
 
         return [
             // Best Lap
