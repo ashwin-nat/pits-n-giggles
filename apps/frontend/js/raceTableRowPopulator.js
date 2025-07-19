@@ -10,6 +10,8 @@ class RaceTableRowPopulator {
     }
 
     populate() {
+        const isTelemetryPublic = this.rowData["driver-info"]["telemetry-setting"] === "Public";
+
         this.addPositionInfo()
             .addNameInfo()
             .addDeltaInfo()
@@ -17,10 +19,15 @@ class RaceTableRowPopulator {
             .addWarningsPensInfo()
             .addBestLapInfo()
             .addLastLapInfo()
-            .addCurrTyreInfo()
-            .addTyrePredictionInfo()
-            .addDamageInfo()
-            .addFuelInfo();
+            .addCurrTyreInfo();
+
+        if (isTelemetryPublic) {
+            this.addTyrePredictionInfo()
+                .addDamageInfo()
+                .addFuelInfo();
+        } else {
+            this.addTelemetryRestrictedColspan();
+        }
     }
 
     addPositionInfo() {
@@ -330,6 +337,20 @@ class RaceTableRowPopulator {
         }
         return this;
       }
+
+    addTelemetryRestrictedColspan() {
+        const cell = this.row.insertCell();
+        cell.colSpan = 3;
+        cell.style.textAlign = "center";
+        cell.style.verticalAlign = "middle";
+
+        const message = document.createElement("div");
+        message.textContent = "Driver has telemetry set to Restricted";
+        message.style.fontStyle = "italic"; // Make the text italic
+        cell.appendChild(message);
+
+        return this;
+    }
 
     createMultiLineCell(lines, onClick = null) {
         const cell = this.row.insertCell();

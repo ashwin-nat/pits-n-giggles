@@ -180,42 +180,7 @@ class EngViewRaceTableRow {
     getLapTimeCells() {
         const lastLapInfo = this.driver["lap-info"]["last-lap"];
         const bestLapInfo = this.driver["lap-info"]["best-lap"];
-        const isPlayer = this.driver["driver-info"]["is-player"];
         const yellowSector = 0;
-
-        // in spectator mode, there is no need for delta
-        if (this.isSpectating || isPlayer) {
-            return [
-                // Best Lap
-                {
-                    value: this.createLapInfoCellSingleRow(formatLapTime(bestLapInfo["lap-time-ms"]), yellowSector)
-                },
-                {
-                    value: this.createLapInfoCellSingleRow(formatSectorTime(bestLapInfo["s1-time-ms"]), bestLapInfo["sector-status"][0])
-                },
-                {
-                    value: this.createLapInfoCellSingleRow(formatSectorTime(bestLapInfo["s2-time-ms"]), bestLapInfo["sector-status"][1])
-                },
-                {
-                    value: this.createLapInfoCellSingleRow(formatSectorTime(bestLapInfo["s3-time-ms"]), bestLapInfo["sector-status"][2]),
-                    border: true
-                },
-                // Last Lap
-                {
-                    value: this.createLapInfoCellSingleRow(formatLapTime(lastLapInfo["lap-time-ms"]), yellowSector)
-                },
-                {
-                    value: this.createLapInfoCellSingleRow(formatSectorTime(lastLapInfo["s1-time-ms"]), lastLapInfo["sector-status"][0])
-                },
-                {
-                    value: this.createLapInfoCellSingleRow(formatSectorTime(lastLapInfo["s2-time-ms"]), lastLapInfo["sector-status"][1])
-                },
-                {
-                    value: this.createLapInfoCellSingleRow(formatSectorTime(lastLapInfo["s3-time-ms"]), lastLapInfo["sector-status"][2]),
-                    border: true
-                },
-            ];
-        }
 
         return [
             // Best Lap
@@ -317,6 +282,7 @@ class EngViewRaceTableRow {
         const isSpectating = this.spectatorIndex !== null;
         const isReferenceDriver = this.driver["driver-info"]['index'] === this.spectatorIndex;
         const isPlayerDriver = this.driver["driver-info"]['is-player'];
+        const isTelemetryPublic = this.driver["driver-info"]['telemetry-setting'] === "Public";
 
         // Determine if this row represents the reference driver —
         // either the selected driver while spectating, or the actual player while driving
@@ -330,29 +296,60 @@ class EngViewRaceTableRow {
 
         // Clear previous content
         this.element.innerHTML = "";
+        let cells;
 
-        const cells = [
-            ...this.getDriverInfoCells(),
-            ...this.getDeltaInfoCells(),
-            ...this.getPenaltyCells(),
-            ...this.getLapTimeCells(),
-            ...this.getTyreWearCells(),
-            ...this.getErsCells(),
-            ...this.getFuelCells(),
-            ...this.getDamageCells()
-        ];
+        if (isTelemetryPublic) {
+            cells = [
+                ...this.getDriverInfoCells(),
+                ...this.getDeltaInfoCells(),
+                ...this.getPenaltyCells(),
+                ...this.getLapTimeCells(),
+                ...this.getTyreWearCells(),
+                ...this.getErsCells(),
+                ...this.getFuelCells(),
+                ...this.getDamageCells()
+            ];
+        } else {
+            cells = [
+                ...this.getDriverInfoCells(),
+                ...this.getDeltaInfoCells(),
+                ...this.getPenaltyCells(),
+                ...this.getLapTimeCells(),
+            ]
+            // values for wear, ERS, fuel and damage are not available when Telemetry is Private,
+            // Dynamically compute the number of omitted columns for colspan
+            const omittedColumnsCount =
+                this.getTyreWearCells().length +
+                this.getErsCells().length +
+                this.getFuelCells().length +
+                this.getDamageCells().length;
+            cells.push({
+                value: "Driver has telemetry set to Restricted",
+                colspan: omittedColumnsCount,
+                class: "eng-view-restricted-cell text-center"
+            });
+        }
 
         // Iterate through cells and append them correctly
         cells.forEach(cell => {
             const td = document.createElement("td");
-            if (cell.border) {
+
+            // Handle optional properties
+            if ("colspan" in cell) {
+                td.colSpan = cell.colspan;
+            }
+
+            if ("class" in cell) {
+                td.className = cell.class;
+            } else if (cell.border) {
                 td.classList.add("eng-view-col-border");
             }
 
+            // Render content
             if (cell.value instanceof HTMLElement) {
-                td.appendChild(cell.value);  // Append the element properly
+                td.appendChild(cell.value);
             } else {
-                td.innerHTML = cell.value;   // Use innerHTML for string values
+                td.innerHTML = cell.value;
             }
 
             this.element.appendChild(td);
@@ -424,6 +421,7 @@ class EngViewRaceStatus {
         this.iconCache = iconCache;
         this.sessionTimeElement = document.getElementById('sessionTime');
         this.raceStatusElement = document.getElementById('raceStatus');
+        this.raceStatusHeaderElement = document.getElementById('raceStatusHeader');
         this.currentLapElement = document.getElementById('currentLap');
         this.scCountElement = document.getElementById('scCount');
         this.vscCountElement = document.getElementById('vscCount');
@@ -487,6 +485,16 @@ class EngViewRaceStatus {
         }
     }
 
+    #getRaceStatusHeaderString(data) {
+        const track = data["circuit"]
+        const event = data["event-type"];
+        if (track === "---" || event === "---") {
+            return "Race Status";
+        }
+
+        return `${track} - ${event}`;
+    }
+
     #getSessionTimeString(data) {
         const sessionType = data["event-type"];
         const eventsWithTimeRemaining = ['Qualifying', 'Practice', 'Sprint Shootout'];
@@ -525,6 +533,7 @@ class EngViewRaceStatus {
         this.predictionLapInput.max = this.totalLaps;
         this.sessionTimeElement.textContent = this.#getSessionTimeString(data);
         this.raceStatusElement.textContent = this.#getSCStatusString(data["safety-car-status"]);
+        this.raceStatusHeaderElement.textContent = this.#getRaceStatusHeaderString(data);
 
         let lapText = "";
         if (data['current-lap']) {
