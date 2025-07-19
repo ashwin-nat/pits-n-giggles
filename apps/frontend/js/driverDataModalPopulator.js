@@ -77,9 +77,9 @@ class DriverModalPopulator {
                 row.appendChild(wearCell);
 
                 const topSpeedCell = document.createElement('td');
-                const topSpeed = formatSpeed(lap["top-speed-kmph"],
-                    { isMetric: g_pref_speedUnitMetric, decimalPlaces: 0, addUnitSuffix: false });
-                topSpeedCell.textContent = (topSpeed != null) ? (topSpeed) : ('---');
+                const topSpeed = lap["top-speed-kmph"];
+                topSpeedCell.textContent = (topSpeed != null) ? (formatSpeed(topSpeed,
+                    { isMetric: g_pref_speedUnitMetric, decimalPlaces: 0, addUnitSuffix: false })) : ('---');
                 row.appendChild(topSpeedCell);
 
                 tbody.appendChild(row);
@@ -928,6 +928,67 @@ class DriverModalPopulator {
         this.showRawDataInTable(tabPane, this.data["car-setup"], "Car setup data not available");
     }
 
+    populatePlayerInfoTab(tabPane) {
+
+        // Left pane - Participant data
+        const leftPanePopulator = (leftDiv) => {
+            const table = document.createElement('table');
+            table.className = this.tableClassNames ;
+
+            // Create table body
+            const tbody = document.createElement('tbody');
+            const participantData = this.data["participant-data"];
+            if (participantData) {
+
+                this.populateTableRows(tbody, [
+                    ["AI controlled", participantData["ai-controlled"]],
+                    ["Driver ID (Not the driver's race number)", participantData["driver-id"]],
+                    ["Team", participantData["team-id"]],
+                    ["Name", participantData["name"]],
+                    ["Nationality", participantData["nationality"]],
+                    ["Network ID", participantData["network-id"]],
+                    ["Is Paused", this.data?.["car-status"]?.["network-paused"] ?? "Unknown"],
+                    ["Platform", participantData["platform"]],
+                    ["Race Number", participantData["race-number"]],
+                    ["Show Online Names", participantData["show-online-names"]],
+                    ["Tech Level", participantData["tech-level"]],
+                    ["Telemetry Setting", participantData["telemetry-setting"]],
+                ]);
+            } else {
+                const row = tbody.insertRow();
+                row.innerHTML = '<td colspan="2">No participant data</td>';
+            }
+
+            table.appendChild(tbody);
+            leftDiv.appendChild(table);
+        };
+
+        // Right pane - Assists info
+        const rightPanePopulator = (rightDiv) => {
+            const table = document.createElement('table');
+            table.className = this.tableClassNames ;
+
+            // Create table body
+            const tbody = document.createElement('tbody');
+            const carStatusData = this.data["car-status"];
+            if (carStatusData) {
+
+                this.populateTableRows(tbody, [
+                    ["Anti Lock Brakes", carStatusData["anti-lock-brakes"]],
+                    ["Traction Control", carStatusData["traction-control"]],
+                ]);
+            } else {
+                const row = tbody.insertRow();
+                row.innerHTML = '<td colspan="2">No assists data</td>';
+            }
+
+            table.appendChild(tbody);
+            rightDiv.appendChild(table);
+        };
+
+        this.createModalDivElelements(tabPane, leftPanePopulator, rightPanePopulator);
+    }
+
     // Method to create the navigation tabs
     createNavTabs() {
         const navTabs = document.createElement('ul');
@@ -945,6 +1006,7 @@ class DriverModalPopulator {
             { id: 'warns-pens-info', label: 'Warns/Pens' },
             { id: 'collisions-info', label: 'Collisions' },
             { id: 'tyre-sets', label: 'Tyre Sets' },
+            { id: 'player-info', label: 'Player Info' },
         ];
 
         if ('car-setup' in this.data) {
@@ -996,6 +1058,7 @@ class DriverModalPopulator {
             { id: 'warns-pens-info', method: this.populateWarnsPensInfoTab },
             { id: 'collisions-info', method: this.populateCollisionsInfoTab },
             { id: 'tyre-sets', method: this.populateTyreSetsInfoTab },
+            { id: 'player-info', method: this.populatePlayerInfoTab },
         ];
 
         if ('car-setup' in this.data) {
@@ -1036,6 +1099,13 @@ class DriverModalPopulator {
             }
 
             row.appendChild(cell);
+        });
+    }
+
+    populateTableRows(tbody, rowsData) {
+        rowsData.forEach((cellsData) => {
+            const row = tbody.insertRow();
+            this.populateTableRow(row, cellsData);
         });
     }
 
