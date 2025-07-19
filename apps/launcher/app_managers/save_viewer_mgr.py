@@ -66,13 +66,15 @@ class SaveViewerAppMgr(PngAppMgrBase):
             frame,
             text="Start",
             command=self.start_stop_callback,
-            style="Racing.TButton"
+            style="Racing.TButton",
+            state="disabled"  # Initially disabled until the app is running
         )
         self.open_file_button = ttk.Button(
             frame,
             text="Open File",
             command=self.open_file,
-            style="Racing.TButton"
+            style="Racing.TButton",
+            state="disabled"  # Initially disabled until the app is running
         )
         self.open_dashboard_button = ttk.Button(
             frame,
@@ -132,12 +134,14 @@ class SaveViewerAppMgr(PngAppMgrBase):
         """Update buttons after app start"""
         self.start_stop_button.config(text="Stop")
         self.start_stop_button.config(state="normal")
+        self.open_file_button.config(state="normal")
         self.open_dashboard_button.config(state="normal")
 
     def post_stop(self):
         """Update buttons after app stop"""
         self.start_stop_button.config(text="Start")
         self.start_stop_button.config(state="normal")
+        self.open_file_button.config(state="disabled")
         self.open_dashboard_button.config(state="disabled")
 
     def start_stop_callback(self):

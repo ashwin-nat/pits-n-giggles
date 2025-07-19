@@ -66,7 +66,8 @@ class BackendAppMgr(PngAppMgrBase):
             frame,
             text="Start", # Intially, app is stopped
             command=self.start_stop_callback,
-            style="Racing.TButton"
+            style="Racing.TButton",
+            state="disabled"  # Initially disabled until the app is running
         )
         self.open_dashboard_button = ttk.Button(
             frame,
