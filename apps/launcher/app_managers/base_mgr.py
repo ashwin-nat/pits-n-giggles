@@ -34,7 +34,7 @@ import psutil
 
 from lib.config import PngSettings
 from lib.error_status import PNG_ERROR_CODE_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN
-from lib.ipc import get_free_tcp_port
+from lib.ipc import get_free_tcp_port, IpcParent
 from lib.child_proc_mgmt import extract_pid_from_line, is_init_complete
 
 from ..console_interface import ConsoleInterface
@@ -101,6 +101,7 @@ class PngAppMgrBase(ABC):
         self.status_var = tk.StringVar(value="Stopped")
         self.is_running = False
         self._is_restarting = threading.Event()
+        self._is_stopping = threading.Event()
         self.start_by_default = start_by_default
         self.child_pid = None
         self._post_start_hook: Optional[Callable[[], None]] = None
@@ -183,41 +184,24 @@ class PngAppMgrBase(ABC):
                 return
 
             self.console_app.log(f"Stopping {self.display_name}...")
-
-            reported_pid = self.child_pid
-            popen_pid = self.process.pid if self.process else None
-            used_pid = reported_pid or popen_pid
-
-            # Terminate actual child process or subprocess as appropriate
-            # All state updates below are done while holding the lock to ensure
-            # consistent visibility across threads.
-            if reported_pid and reported_pid != popen_pid:
-                self.console_app.log(f"Terminating actual child PID {reported_pid} (launched by PyInstaller stub)")
+            self._is_stopping.set()
+            shutdown_sent = self._send_ipc_shutdown()
+            if not shutdown_sent:
+                self.console_app.log(f"Failed to send shutdown signal to {self.display_name}.")
+                self._terminate_process()
+            else:
                 try:
-                    psutil.Process(reported_pid).terminate()
-                    psutil.Process(reported_pid).wait(timeout=5)
-                except psutil.NoSuchProcess:
-                    self.console_app.log(f"Child PID {reported_pid} already exited.")
-                except psutil.TimeoutExpired:
-                    self.console_app.log(f"Child PID {reported_pid} did not exit in time. Killing it.")
-                    psutil.Process(reported_pid).kill()
-            elif self.process:
-                # Otherwise, just terminate the subprocess
-                self.console_app.log(f"Terminating subprocess PID {popen_pid}")
-                try:
-                    self.process.terminate()
                     self.process.wait(timeout=5)
                 except subprocess.TimeoutExpired:
-                    self.console_app.log(f"{self.display_name} did not exit in time. Killing it.")
-                    self.process.kill()
-                    self.process.wait()
+                    self.console_app.log(f"{self.display_name} did not exit in time after IPC shutdown. Killing it.")
+                    self._terminate_process()
 
             # Clear process-related state atomically to avoid race conditions
             self.process = None
             self.child_pid = None
             self.is_running = False
             self.status_var.set("Stopped")
-        self.console_app.log(f"{self.display_name} stopped successfully. Terminated PID = {used_pid}")
+            self._is_stopping.clear()
 
         if self._post_stop_hook:
             try:
@@ -297,10 +281,10 @@ class PngAppMgrBase(ABC):
             if self.process is not this_process:
                 return
 
-            # Skip expected exit during restart
+            # Skip expected exit during restart or if stopping
             # Exit code 15 occurs when the process is terminated during a restart (e.g., via .terminate()).
             # It's expected in this case, so we ignore it to avoid falsely showing a crash.
-            if self._is_restart_exit_expected(ret_code):
+            if self._is_restart_exit_expected(ret_code) or self._is_stopping.is_set():
                 return
 
             if self.is_running:
@@ -356,3 +340,47 @@ class PngAppMgrBase(ABC):
             self.console_app.log(
                 f"{self.display_name}: Error in post-stop hook after crash: {e}"
             )
+
+    def _send_ipc_shutdown(self) -> bool:
+        """Sends a shutdown command to the child process.
+
+        Returns:
+            True if the shutdown was successful, False otherwise.
+        """
+        try:
+            rsp = IpcParent(self.ipc_port).request("shutdown", {"reason": "Stop requested"})
+            return rsp.get("status") == "success"
+        except Exception as e:
+            self.console_app.log(f"IPC shutdown failed: {e}")
+            return False
+
+    def _terminate_process(self) -> None:
+        """Terminates the child process or subprocess. (Assumes the lock is held.)"""
+        reported_pid = self.child_pid
+        popen_pid = self.process.pid if self.process else None
+        used_pid = reported_pid or popen_pid
+
+        # Terminate actual child process or subprocess as appropriate
+        # All state updates below are done while holding the lock to ensure
+        # consistent visibility across threads.
+        if reported_pid and reported_pid != popen_pid:
+            self.console_app.log(f"Terminating actual child PID {reported_pid} (launched by PyInstaller stub)")
+            try:
+                psutil.Process(reported_pid).terminate()
+                psutil.Process(reported_pid).wait(timeout=5)
+            except psutil.NoSuchProcess:
+                self.console_app.log(f"Child PID {reported_pid} already exited.")
+            except psutil.TimeoutExpired:
+                self.console_app.log(f"Child PID {reported_pid} did not exit in time. Killing it.")
+                psutil.Process(reported_pid).kill()
+        elif self.process:
+            # Otherwise, just terminate the subprocess
+            self.console_app.log(f"Terminating subprocess PID {popen_pid}")
+            try:
+                self.process.terminate()
+                self.process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.console_app.log(f"{self.display_name} did not exit in time. Killing it.")
+                self.process.kill()
+                self.process.wait()
+        self.console_app.log(f"{self.display_name} stopped successfully. Terminated PID = {used_pid}")

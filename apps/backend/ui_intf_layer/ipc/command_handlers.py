@@ -22,12 +22,27 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import apps.backend.state_mgmt_layer as TelWebAPI
+import asyncio
+import logging
+import os
 
+import apps.backend.state_mgmt_layer as TelWebAPI
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-
-async def handleManualSave(_msg: dict) -> dict:
+async def handleManualSave(_msg: dict, _logger: logging.Logger) -> dict:
     """Handle manual save command"""
     return await TelWebAPI.ManualSaveRsp().saveToDisk()
+
+async def handleShutdown(msg: dict, logger: logging.Logger) -> dict:
+    """Handle shutdown command"""
+
+    logger.info(f"Received shutdown command. Reason: {msg.get('reason'), "N/A"}")
+    asyncio.create_task(_clean_exit())
+    return {'status': 'success'}
+
+async def _clean_exit():
+    """Clean exit"""
+    # TODO - Clean exit
+    await asyncio.sleep(1)
+    os._exit(0)
