@@ -350,7 +350,7 @@ class PngAppMgrBase(ABC):
         try:
             rsp = IpcParent(self.ipc_port).request("shutdown", {"reason": "Stop requested"})
             return rsp.get("status") == "success"
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-exception-caught
             self.console_app.log(f"IPC shutdown failed: {e}")
             return False
 
