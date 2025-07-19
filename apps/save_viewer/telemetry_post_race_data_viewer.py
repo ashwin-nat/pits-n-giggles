@@ -1210,6 +1210,7 @@ def main():
     if args.launcher:
         ipc_server = IpcChildSync(args.ipc_port, "Save Viewer")
         ipc_server.serve_in_thread(handle_ipc_message)
+        g_port_number = args.port
     else:
         g_port_number = find_free_port()
         start_thread(start_ui)
