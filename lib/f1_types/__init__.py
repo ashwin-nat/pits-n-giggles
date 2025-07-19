@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 
-from .common import (ActualTyreCompound, F1PacketType, F1Utils,
+from .common import (ActualTyreCompound, F1PacketType, F1Utils, GameMode,
                      GearboxAssistMode, InvalidPacketLengthError, Nationality,
                      PacketCountValidationError, PacketHeader,
                      PacketParsingError, Platform, ResultReason, ResultStatus,
@@ -78,6 +78,7 @@ __all__ = [
     "TractionControlAssistMode",
     "GearboxAssistMode",
     "SessionLength",
+    "GameMode",
 
     # Packet 0 - car motion
     "PacketMotionData",

@@ -33,7 +33,7 @@ from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
 from lib.custom_marker_tracker import CustomMarkerEntry, CustomMarkersHistory
 from lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils, FinalClassificationData,
-                          PacketCarDamageData, PacketCarSetupData, LapData,
+                          PacketCarDamageData, PacketCarSetupData, LapData, GameMode,
                           PacketCarStatusData, PacketCarTelemetryData,
                           PacketEventData, PacketFinalClassificationData,
                           PacketLapData, PacketLapPositionsData, VisualTyreCompound,
@@ -82,6 +82,7 @@ class SessionInfo:
         self.m_track : Optional[TrackID] = None
         self.m_track_len: Optional[int] = None
         self.m_session_type : Optional[Union[SessionType23, SessionType24]] = None
+        self.m_game_mode: Optional[GameMode] = None
         self.m_track_temp : Optional[int] = None
         self.m_air_temp : Optional[int] = None
         self.m_total_laps : Optional[int] = None
@@ -105,6 +106,7 @@ class SessionInfo:
             f"SessionInfo(m_track={str(self.m_track)}, "
             f"m_track_len={self.m_track_len}, "
             f"m_event_type={str(self.m_session_type)}, "
+            f"m_game_mode={str(self.m_game_mode)}, "
             f"m_track_temp={self.m_track_temp}, "
             f"m_air_temp={self.m_air_temp}, "
             f"m_total_laps={self.m_total_laps}, "
@@ -124,6 +126,7 @@ class SessionInfo:
         self.m_track = None
         self.m_track_len = None
         self.m_session_type = None
+        self.m_game_mode = None
         self.m_track_temp = None
         self.m_air_temp = None
         self.m_total_laps = None
@@ -147,6 +150,11 @@ class SessionInfo:
         """Checks if the session has ended"""
         return bool(self.m_packet_final_classification)
 
+    @property
+    def is_online_mode(self) -> bool:
+        """Checks if the mode is an online mode."""
+        return self.m_game_mode and self.m_game_mode.isOnlineMode()
+
     def processSessionUpdate(self, packet: PacketSessionData) -> bool:
         """Populates the fields from the session data packet
         Args:
@@ -168,6 +176,7 @@ class SessionInfo:
         self.m_track_temp = packet.m_trackTemperature
         self.m_air_temp = packet.m_airTemperature
         self.m_session_type = packet.m_sessionType
+        self.m_game_mode = packet.m_gameMode
         self.m_weather_forecast_samples = packet.m_weatherForecastSamples
         self.m_pit_speed_limit = packet.m_pitSpeedLimit
         self.m_total_laps = packet.m_totalLaps
@@ -391,7 +400,7 @@ class SessionState:
 
         # Check for lap change
         if current_lap != new_lap:
-            flashback_detected = current_lap > new_lap
+            flashback_detected = (not self.m_session_info.is_online_mode) and (current_lap > new_lap)
 
             if flashback_detected:
                 self.m_logger.debug(f'Driver {driver_obj}. Lap change due to Flashback detected')

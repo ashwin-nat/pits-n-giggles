@@ -1328,6 +1328,19 @@ class GameMode(Enum):
         max_value = max(member.value for member in GameMode)
         return min_value <= mode <= max_value
 
+    def isOnlineMode(self) -> bool:
+        """Check if the mode is an online mode."""
+        return self in {
+            GameMode.ONLINE_CUSTOM,
+            GameMode.ONLINE_LEAGUE,
+            GameMode.ONLINE_CHAMPIONSHIP,
+            GameMode.ONLINE_WEEKLY_EVENT,
+            GameMode.CAREER_22_ONLINE,
+            GameMode.CAREER_23_ONLINE,
+            GameMode.CAREER_24_ONLINE,
+            GameMode.CAREER_25_ONLINE,
+        }
+
 class RuleSet(Enum):
     """
     Enum representing various rulesets.
