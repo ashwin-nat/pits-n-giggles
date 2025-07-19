@@ -576,7 +576,7 @@ class ManualSaveRsp:
 
         # Save to disk
         try:
-            path = await save_json_to_file(final_json, final_json_file_name, timestamp_str)
+            path = await save_json_to_file(final_json, final_json_file_name)
             _logger.info("Wrote session info to %s", final_json_file_name)
             return {
                 "status": "success",

@@ -23,17 +23,18 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import aiofiles
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
+import aiofiles
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 async def save_json_to_file(
     data: dict,
     filename: str,
-    date_str: str,
     base_dir: Optional[Path] = None
 ) -> Path:
     """
@@ -42,15 +43,19 @@ async def save_json_to_file(
     Args:
         data (dict): The data to save.
         filename (str): Name of the file (e.g., "race.json").
-        date_str (str): Date string for directory structure (e.g., "2025-07-17").
-        base_dir (Path, optional): Custom base directory for saving. Defaults to current directory.
+        base_dir (Path, optional): Custom base directory for saving.
+                                   If not provided, uses current date (YYYY_MM_DD) under 'data'.
 
     Returns:
         Path: The full path to the saved JSON file.
     """
-    base_dir = Path("data") if base_dir is None else Path(base_dir) / "data"
+    if base_dir is None:
+        date_str = datetime.now().strftime("%Y_%m_%d")
+        base_dir = Path("data") / date_str
+    else:
+        base_dir = Path(base_dir) / "data"
 
-    dir_path = base_dir / date_str / "race-info"
+    dir_path = base_dir / "race-info"
     dir_path.mkdir(parents=True, exist_ok=True)
 
     file_path = dir_path / filename

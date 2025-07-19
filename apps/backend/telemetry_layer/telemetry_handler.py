@@ -508,7 +508,7 @@ class F1TelemetryHandler:
             timestamp_str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
             final_json_file_name = event_str + timestamp_str + '.json'
             try:
-                await save_json_to_file(final_json, final_json_file_name, timestamp_str)
+                await save_json_to_file(final_json, final_json_file_name)
                 self.m_logger.info("Wrote race info to %s", final_json_file_name)
             except Exception: # pylint: disable=broad-except
                 # No need to crash the app just because write failed
