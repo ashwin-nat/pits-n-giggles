@@ -317,9 +317,15 @@ class EngViewRaceTableRow {
                 ...this.getLapTimeCells(),
             ]
             // values for wear, ERS, fuel and damage are not available when Telemetry is Private,
+            // Dynamically compute the number of omitted columns for colspan
+            const omittedColumnsCount =
+                this.getTyreWearCells().length +
+                this.getErsCells().length +
+                this.getFuelCells().length +
+                this.getDamageCells().length;
             cells.push({
                 value: "Driver has telemetry set to Restricted",
-                colspan: 15,
+                colspan: omittedColumnsCount,
                 class: "eng-view-restricted-cell text-center"
             });
         }
@@ -481,11 +487,11 @@ class EngViewRaceStatus {
 
     #getRaceStatusHeaderString(data) {
         const track = data["circuit"]
-        if (track === "---") {
+        const event = data["event-type"];
+        if (track === "---" || event === "---") {
             return "Race Status";
         }
 
-        const event = data["event-type"];
         return `${track} - ${event}`;
     }
 
