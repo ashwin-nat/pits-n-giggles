@@ -52,7 +52,7 @@ from apps.save_viewer.logger import png_logger
 from lib.error_status import PNG_ERROR_CODE_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN
 from lib.f1_types import F1Utils, LapHistoryData, ResultStatus
 from lib.ipc import IpcChildSync
-from lib.pid_report import report_pid_from_child
+from lib.child_proc_mgmt import report_pid_from_child
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 from lib.version import get_version
 

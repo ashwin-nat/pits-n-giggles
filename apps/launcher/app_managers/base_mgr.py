@@ -35,7 +35,7 @@ import psutil
 from lib.config import PngSettings
 from lib.error_status import PNG_ERROR_CODE_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN
 from lib.ipc import get_free_tcp_port
-from lib.pid_report import extract_pid_from_line
+from lib.child_proc_mgmt import extract_pid_from_line
 
 from ..console_interface import ConsoleInterface
 

@@ -10,7 +10,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from tests_base import F1TelemetryUnitTestsBase
 
-from lib.pid_report import extract_pid_from_line, report_pid_from_child
+from lib.child_proc_mgmt import extract_pid_from_line, report_pid_from_child
 
 # ----------------------------------------------------------------------------------------------------------------------
 
