@@ -168,7 +168,7 @@ class PngAppMgrBase(ABC):
             )
             self.is_running = True
             self.child_pid = self.process.pid
-            self.status_var.set("Running")
+            self.status_var.set("Starting...")
 
         # Start output capture and monitor threads outside the lock to avoid deadlocks
         threading.Thread(target=self._capture_output, daemon=True).start()
@@ -274,6 +274,8 @@ class PngAppMgrBase(ABC):
                 self.console_app.log(f"{self.display_name} PID update: {pid} changed = {changed}")
             elif is_init_complete(line):
                 self.console_app.log(f"{self.display_name} initialization complete")
+                with self._process_lock:
+                    self.status_var.set("Running")
                 if self._post_start_hook:
                     try:
                         self._post_start_hook()
