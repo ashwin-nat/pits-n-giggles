@@ -35,7 +35,7 @@ import psutil
 from lib.config import PngSettings
 from lib.error_status import PNG_ERROR_CODE_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN
 from lib.ipc import get_free_tcp_port
-from lib.child_proc_mgmt import extract_pid_from_line
+from lib.child_proc_mgmt import extract_pid_from_line, is_init_complete
 
 from ..console_interface import ConsoleInterface
 
@@ -176,12 +176,6 @@ class PngAppMgrBase(ABC):
 
         self.console_app.log(f"{self.display_name} started successfully. PID = {self.child_pid}")
 
-        if self._post_start_hook:
-            try:
-                self._post_start_hook()
-            except Exception as e: # pylint: disable=broad-exception-caught
-                self.console_app.log(f"{self.display_name}: Error in post-start hook: {e}")
-
     def stop(self):
         with self._process_lock:
             if not self.is_running:
@@ -278,6 +272,14 @@ class PngAppMgrBase(ABC):
                     changed = current_pid is not None and current_pid != pid
                     self.child_pid = pid
                 self.console_app.log(f"{self.display_name} PID update: {pid} changed = {changed}")
+            elif is_init_complete(line):
+                self.console_app.log(f"{self.display_name} initialization complete")
+                if self._post_start_hook:
+                    try:
+                        self._post_start_hook()
+                    except Exception as e: # pylint: disable=broad-exception-caught
+                        self.console_app.log(f"{self.display_name}: Error in post-start hook: {e}")
+
             else:
                 self.console_app.log(line, is_child_message=True)
 
