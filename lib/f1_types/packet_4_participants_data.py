@@ -317,8 +317,8 @@ class ParticipantData:
             return self.m_name
 
         if self.m_teamId in self.GENERIC_TEAMS:
-            return f"Player #{self.m_driverId}"
-        return f"{self.m_teamId} #{self.m_driverId}"
+            return f"Player #{self.m_raceNumber}"
+        return f"{self.m_teamId} #{self.m_raceNumber}"
 
     def to_bytes(self) -> bytes:
         """
