@@ -178,6 +178,7 @@ class PngAppMgrBase(ABC):
         self.console_app.log(f"{self.display_name} started successfully. PID = {self.child_pid}")
 
     def stop(self):
+        """Stop the sub-application process"""
         with self._process_lock:
             if not self.is_running:
                 self.console_app.log(f"{self.display_name} is not running.")
@@ -185,16 +186,15 @@ class PngAppMgrBase(ABC):
 
             self.console_app.log(f"Stopping {self.display_name}...")
             self._is_stopping.set()
-            shutdown_sent = self._send_ipc_shutdown()
-            if not shutdown_sent:
-                self.console_app.log(f"Failed to send shutdown signal to {self.display_name}.")
-                self._terminate_process()
-            else:
+            if not self._send_ipc_shutdown():
                 try:
                     self.process.wait(timeout=5)
                 except subprocess.TimeoutExpired:
                     self.console_app.log(f"{self.display_name} did not exit in time after IPC shutdown. Killing it.")
                     self._terminate_process()
+            else:
+                self.console_app.log(f"Failed to send shutdown signal to {self.display_name}.")
+                self._terminate_process()
 
             # Clear process-related state atomically to avoid race conditions
             self.process = None

@@ -37,7 +37,7 @@ async def handleManualSave(_msg: dict, _logger: logging.Logger) -> dict:
 async def handleShutdown(msg: dict, logger: logging.Logger) -> dict:
     """Handle shutdown command"""
 
-    logger.info(f"Received shutdown command. Reason: {msg.get('reason'), "N/A"}")
+    logger.info(f"Received shutdown command. Reason: {msg.get('reason', 'N/A')}")
     asyncio.create_task(_clean_exit())
     return {'status': 'success'}
 
