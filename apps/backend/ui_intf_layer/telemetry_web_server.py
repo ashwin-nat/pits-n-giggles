@@ -37,6 +37,7 @@ from quart import Quart, jsonify, render_template, request, send_from_directory
 
 import apps.backend.state_mgmt_layer as TelState
 from lib.error_status import PngPortInUseError
+from lib.child_proc_mgmt import notify_parent_init_complete
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -127,6 +128,7 @@ class TelemetryWebServer:
             if not self.m_disable_browser_autoload:
                 proto = 'https' if self.m_cert_path else 'http'
                 webbrowser.open(f'{proto}://localhost:{self.m_port}', new=2)
+            notify_parent_init_complete()
 
         self._defineFileRoutes()
         self._defineDataRoutes()

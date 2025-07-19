@@ -32,7 +32,7 @@ import tkinter as tk
 import webbrowser
 from http import HTTPStatus
 from pathlib import Path
-from threading import Lock, Thread
+from threading import Lock, Thread, Timer
 from tkinter import filedialog
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -52,7 +52,7 @@ from apps.save_viewer.logger import png_logger
 from lib.error_status import PNG_ERROR_CODE_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN
 from lib.f1_types import F1Utils, LapHistoryData, ResultStatus
 from lib.ipc import IpcChildSync
-from lib.child_proc_mgmt import report_pid_from_child
+from lib.child_proc_mgmt import report_pid_from_child, notify_parent_init_complete
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 from lib.version import get_version
 
@@ -1200,6 +1200,9 @@ def _handle_open_file(args: dict) -> dict:
     else:
         return open_file_helper(file_path)
 
+def post_init() -> None:
+    notify_parent_init_complete()
+
 def main():
 
     png_logger.debug(f"cwd={os.getcwd()}")
@@ -1211,6 +1214,7 @@ def main():
         ipc_server = IpcChildSync(args.ipc_port, "Save Viewer")
         ipc_server.serve_in_thread(handle_ipc_message)
         g_port_number = args.port
+        Timer(2.0, post_init).start()
     else:
         g_port_number = find_free_port()
         start_thread(start_ui)
