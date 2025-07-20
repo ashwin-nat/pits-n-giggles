@@ -24,9 +24,14 @@ jobs:
           gh release view --json name,tagName,url,body > release.json
           echo "RELEASE_NAME=$(jq -r '.name // .tagName' release.json)" >> $GITHUB_ENV
           echo "RELEASE_URL=$(jq -r '.url' release.json)" >> $GITHUB_ENV
-          echo "RELEASE_BODY=$(jq -r '.body' release.json | head -c 4000 | sed 's/"/\\"/g' | sed 's/`/\\`/g')" >> $GITHUB_ENV
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+          # Escape Discord-unfriendly chars
+          RELEASE_BODY=$(jq -r '.body' release.json | head -c 4000 | sed 's/`/\\`/g')
+
+          # Multiline-safe export
+          echo "RELEASE_BODY<<EOF" >> $GITHUB_ENV
+          echo "$RELEASE_BODY" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: 🚀 Post to Discord
         env:
