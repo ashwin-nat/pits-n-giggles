@@ -144,7 +144,7 @@ class BackendAppMgr(PngAppMgrBase):
         status = rsp["status"]
         message = rsp.get("message")
         if status == "success":
-            self.console_app.log("File path sent successfully.")
+            self.console_app.log(f"Manual save success. Path {message}")
             messagebox.showinfo("Manual save success", f"The session has been saved successfully at {message}")
         else:
             error = rsp.get("error", "Unknown error")
