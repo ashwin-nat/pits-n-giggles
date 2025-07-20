@@ -10,10 +10,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Install GitHub CLI
-        run: sudo apt-get install gh -y
+      - name: ⬇️ Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Get latest release info
+      - name: 📦 Install GitHub CLI + jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh jq
+
+      - name: 🧠 Get latest release info
         id: release
         run: |
           gh release view --json name,tagName,url,body > release.json
@@ -23,7 +28,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Post to Discord
+      - name: 🚀 Post to Discord
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           RELEASE_NAME: ${{ env.RELEASE_NAME }}
