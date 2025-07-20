@@ -1,0 +1,37 @@
+name: Post Release to Discord
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:  # allows manual run
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Post release info to Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          RELEASE_NAME="${{ github.event.release.name }}"
+          RELEASE_BODY="${{ github.event.release.body }}"
+          RELEASE_URL="${{ github.event.release.html_url }}"
+
+          # fallback if release name/body is empty
+          [ -z "$RELEASE_NAME" ] && RELEASE_NAME="${{ github.event.release.tag_name }}"
+          [ -z "$RELEASE_BODY" ] && RELEASE_BODY="No release notes provided."
+
+          # escape double quotes and truncate to avoid Discord limits
+          ESCAPED_BODY=$(echo "$RELEASE_BODY" | head -c 4000 | sed 's/"/\\"/g' | sed 's/`/\\`/g')
+
+          curl -X POST -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"📦 New Release: $RELEASE_NAME\",
+                \"url\": \"$RELEASE_URL\",
+                \"description\": \"$ESCAPED_BODY\",
+                \"color\": 5814783
+              }]
+            }" \
+            "$DISCORD_WEBHOOK"
