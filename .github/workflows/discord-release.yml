@@ -13,22 +13,23 @@ jobs:
       - name: ⬇️ Checkout repository
         uses: actions/checkout@v4
 
-      - name: 📦 Install GitHub CLI + jq
+      - name: 📦 Install GitHub CLI and jq
         run: |
           sudo apt-get update
           sudo apt-get install -y gh jq
 
       - name: 🧠 Get latest release info
         id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # ✅ required by gh
         run: |
           gh release view --json name,tagName,url,body > release.json
+
           echo "RELEASE_NAME=$(jq -r '.name // .tagName' release.json)" >> $GITHUB_ENV
           echo "RELEASE_URL=$(jq -r '.url' release.json)" >> $GITHUB_ENV
 
-          # Escape Discord-unfriendly chars
           RELEASE_BODY=$(jq -r '.body' release.json | head -c 4000 | sed 's/`/\\`/g')
 
-          # Multiline-safe export
           echo "RELEASE_BODY<<EOF" >> $GITHUB_ENV
           echo "$RELEASE_BODY" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
