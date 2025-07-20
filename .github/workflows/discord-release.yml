@@ -1,53 +1,41 @@
-name: Post Release to Discord
+name: Post to Discord on Release
 
 on:
   release:
     types: [published]
-  workflow_dispatch:
 
 jobs:
-  notify:
+  discord-release:
     runs-on: ubuntu-latest
-
     steps:
-      - name: ⬇️ Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: 📦 Install GitHub CLI and jq
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gh jq
+      - name: Install jq
+        run: sudo apt-get install jq
 
-      - name: 🧠 Get latest release info
-        id: release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # ✅ required by gh
+      - name: Fetch release info
         run: |
           gh release view --json name,tagName,url,body > release.json
-
           echo "RELEASE_NAME=$(jq -r '.name // .tagName' release.json)" >> $GITHUB_ENV
           echo "RELEASE_URL=$(jq -r '.url' release.json)" >> $GITHUB_ENV
 
+          # Escape backticks for Discord formatting and limit body to 4000 chars
           RELEASE_BODY=$(jq -r '.body' release.json | head -c 4000 | sed 's/`/\\`/g')
 
-          echo "RELEASE_BODY<<EOF" >> $GITHUB_ENV
-          echo "$RELEASE_BODY" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-
-      - name: 🚀 Post to Discord
+          # Export multiline safely
+          {
+            echo "RELEASE_BODY<<EOF"
+            echo "$RELEASE_BODY"
+            echo "EOF"
+          } >> $GITHUB_ENV
         env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-          RELEASE_NAME: ${{ env.RELEASE_NAME }}
-          RELEASE_URL: ${{ env.RELEASE_URL }}
-          RELEASE_BODY: ${{ env.RELEASE_BODY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Post to Discord
         run: |
-          curl -X POST -H "Content-Type: application/json" \
+          curl -H "Content-Type: application/json" -X POST \
             -d "{
-              \"embeds\": [{
-                \"title\": \"📦 New Release: $RELEASE_NAME\",
-                \"url\": \"$RELEASE_URL\",
-                \"description\": \"$RELEASE_BODY\",
-                \"color\": 5814783
-              }]
+              \"content\": \"📦 **New Release: $RELEASE_NAME**\n$RELEASE_URL\n\n$RELEASE_BODY\"
             }" \
-            "$DISCORD_WEBHOOK"
+            ${{ secrets.DISCORD_WEBHOOK }}
