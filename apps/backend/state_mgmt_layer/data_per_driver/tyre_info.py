@@ -266,6 +266,17 @@ class TyreSetHistoryManager:
             self.m_logger.debug("Removed garbage tyre stint history record.\n %s",
                              json.dumps(garbage_obj.toJSON(include_tyre_wear_history=False), indent=4))
 
+        # In FP and quali (and sometimes in race), if the player changes the tyre selection in the menu,
+        # it will create a new tyre stint history record. These will have start lap > end lap, so remove them
+        new_list: List[TyreSetHistoryEntry] = []
+        for item in self.m_history:
+            if item.m_start_lap <= item.m_end_lap:
+                new_list.append(item)
+            else:
+                self.m_logger.debug("Removed garbage tyre stint history record.\n %s",
+                                 json.dumps(item.toJSON(include_tyre_wear_history=False), indent=4))
+        self.m_history = new_list
+
     def getEntries(self) -> List[TyreSetHistoryEntry]:
         """Get all entries in the tyre set history collection
 
