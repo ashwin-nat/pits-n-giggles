@@ -409,9 +409,6 @@ class TelemetryWebServer:
             raise PngPortInUseError()
             # sys.exit(PNG_ERROR_CODE_PORT_IN_USE)
 
-
-        self.m_logger.info(f"Running on {'https' if self.m_cert_path else 'http'}://0.0.0.0:{self.m_port}")
-
         config = uvicorn.Config(
             self.m_sio_app,
             host="0.0.0.0",

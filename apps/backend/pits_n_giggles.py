@@ -140,7 +140,7 @@ class PngRunner:
         log_str = "Starting F1 telemetry server. Open one of the below addresses in your browser\n"
         ip_addresses = self._getLocalIpAddresses()
         for ip_addr in ip_addresses:
-            log_str += f"    http://{ip_addr}:{http_port}\n"
+            log_str += f"    {self.m_config.HTTPS.proto}://{ip_addr}:{http_port}\n"
         log_str += "NOTE: The tables will be empty until the red lights appear on the screen before the race start\n"
         log_str += "That is when the game starts sending telemetry data"
         self.m_logger.info(log_str)
