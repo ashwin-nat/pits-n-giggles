@@ -163,6 +163,5 @@ class BackendAppMgr(PngAppMgrBase):
         except Exception as e: # pylint: disable=broad-exception-caught
             # Log the error or handle it as needed
             self.console_app.log(f"{self.display_name}:Error during start/stop: {e}")
-        finally:
-            # Re-enable the button regardless of whether an error occurred
+            # If no exception, it will be handled in post_start/post_stop
             self.start_stop_button.config(state="normal")

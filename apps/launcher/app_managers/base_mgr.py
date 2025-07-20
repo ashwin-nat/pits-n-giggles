@@ -186,6 +186,7 @@ class PngAppMgrBase(ABC):
 
             self.console_app.log(f"Stopping {self.display_name}...")
             self._is_stopping.set()
+            self.status_var.set("Stopping...")
             if self._send_ipc_shutdown():
                 try:
                     self.process.wait(timeout=5)
