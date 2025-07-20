@@ -141,7 +141,12 @@ def getTelemetryInfo():
         return session_history["lap-history-data"][fastest_lap_index]["lap-time-in-ms"]
 
     def getLastLapTimeMsFromSessionHistoryJSON(session_history: Dict[str, Any]) -> int:
-        return session_history["lap-history-data"][-1]["lap-time-in-ms"]
+        if last_lap := next(
+            (entry for entry in reversed(session_history["lap-history-data"]) if entry.get("lap-time-in-ms", 0) > 0),
+            None
+        ):
+            return last_lap["lap-time-in-ms"]
+        return 0
 
     def getSectorStatus(
         data_per_driver: Dict[str, Any],
@@ -184,8 +189,8 @@ def getTelemetryInfo():
             return default_val
 
         self_best_lap_num = packet_session_history["best-lap-time-lap-num"]
-        self_m_best_lap_ms = packet_session_history["lap-history-data"][self_best_lap_num-1]["lap-time-in-ms"]
-        self_m_last_lap_ms = packet_session_history["lap-history-data"][-1]["lap-time-in-ms"]
+        self_m_best_lap_ms = getFastestLapTimeMsFromSessionHistoryJSON(packet_session_history)
+        self_m_last_lap_ms = getLastLapTimeMsFromSessionHistoryJSON(packet_session_history)
         self_m_current_lap = data_per_driver["current-lap"]
 
         # Validate lap data
@@ -395,7 +400,7 @@ def getTelemetryInfo():
                     "lap-info": {
                         "current-lap": None,
                         "last-lap": {
-                            "lap-time-ms": getFastestLapTimeMsFromSessionHistoryJSON(
+                            "lap-time-ms": getLastLapTimeMsFromSessionHistoryJSON(
                                 data_per_driver["session-history"]
                             ),
                             "lap-time-ms-player": 0,
@@ -461,9 +466,11 @@ def getTelemetryInfo():
                         "visual-tyre-compound": data_per_driver["car-status"][
                             "visual-tyre-compound"
                         ],
-                        "num-pitstops": data_per_driver[
-                            "final-classification"
-                        ]["num-pit-stops"],
+                        "num-pitstops": (
+                            data_per_driver["final-classification"]["num-pit-stops"]
+                            if data_per_driver.get("final-classification") is not None
+                            else data_per_driver.get("lap-data", {}).get("num-pit-stops")
+                        ),
                     },
                     "damage-info": {
                         "fl-wing-damage": data_per_driver["car-damage"][
@@ -497,6 +504,7 @@ def getTelemetryInfo():
                 }
             )
 
+        json_response["table-entries"].sort(key=lambda x: x["driver-info"]["position"])
         return json_response
 
 def getDriverInfoJsonByIndex(index):
