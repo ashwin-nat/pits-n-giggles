@@ -3,34 +3,39 @@ name: Post Release to Discord
 on:
   release:
     types: [published]
-  workflow_dispatch:  # allows manual run
+  workflow_dispatch:
 
 jobs:
   notify:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Post release info to Discord
+      - name: Install GitHub CLI
+        run: sudo apt-get install gh -y
+
+      - name: Get latest release info
+        id: release
+        run: |
+          gh release view --json name,tagName,url,body > release.json
+          echo "RELEASE_NAME=$(jq -r '.name // .tagName' release.json)" >> $GITHUB_ENV
+          echo "RELEASE_URL=$(jq -r '.url' release.json)" >> $GITHUB_ENV
+          echo "RELEASE_BODY=$(jq -r '.body' release.json | head -c 4000 | sed 's/"/\\"/g' | sed 's/`/\\`/g')" >> $GITHUB_ENV
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Post to Discord
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          RELEASE_NAME: ${{ env.RELEASE_NAME }}
+          RELEASE_URL: ${{ env.RELEASE_URL }}
+          RELEASE_BODY: ${{ env.RELEASE_BODY }}
         run: |
-          RELEASE_NAME="${{ github.event.release.name }}"
-          RELEASE_BODY="${{ github.event.release.body }}"
-          RELEASE_URL="${{ github.event.release.html_url }}"
-
-          # fallback if release name/body is empty
-          [ -z "$RELEASE_NAME" ] && RELEASE_NAME="${{ github.event.release.tag_name }}"
-          [ -z "$RELEASE_BODY" ] && RELEASE_BODY="No release notes provided."
-
-          # escape double quotes and truncate to avoid Discord limits
-          ESCAPED_BODY=$(echo "$RELEASE_BODY" | head -c 4000 | sed 's/"/\\"/g' | sed 's/`/\\`/g')
-
           curl -X POST -H "Content-Type: application/json" \
             -d "{
               \"embeds\": [{
                 \"title\": \"📦 New Release: $RELEASE_NAME\",
                 \"url\": \"$RELEASE_URL\",
-                \"description\": \"$ESCAPED_BODY\",
+                \"description\": \"$RELEASE_BODY\",
                 \"color\": 5814783
               }]
             }" \
