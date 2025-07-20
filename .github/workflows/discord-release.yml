@@ -1,36 +1,39 @@
-name: Post to Discord on Release
+name: Test Discord Release Post
 
 on:
-  release:
-    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_name:
+        description: 'Release Name'
+        required: true
+        default: 'vTest'
+      release_url:
+        description: 'Release URL'
+        required: true
+        default: 'https://github.com/user/repo/releases/tag/vTest'
+      release_body:
+        description: 'Release Notes (first 4000 characters will be used)'
+        required: false
+        default: |
+          - Feature: Something cool 🚀
+          - Fix: Something annoying 🐞
+          - Note: This is a test of the Discord webhook integration.
 
 jobs:
-  discord-release:
+  post-to-discord:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Install jq
-        run: sudo apt-get install jq
-
-      - name: Fetch release info
+      - name: Set env variables from input
         run: |
-          gh release view --json name,tagName,url,body > release.json
-          echo "RELEASE_NAME=$(jq -r '.name // .tagName' release.json)" >> $GITHUB_ENV
-          echo "RELEASE_URL=$(jq -r '.url' release.json)" >> $GITHUB_ENV
+          echo "RELEASE_NAME=${{ github.event.inputs.release_name }}" >> $GITHUB_ENV
+          echo "RELEASE_URL=${{ github.event.inputs.release_url }}" >> $GITHUB_ENV
 
-          # Escape backticks for Discord formatting and limit body to 4000 chars
-          RELEASE_BODY=$(jq -r '.body' release.json | head -c 4000 | sed 's/`/\\`/g')
-
-          # Export multiline safely
+          # Properly export multiline body as env var
           {
             echo "RELEASE_BODY<<EOF"
-            echo "$RELEASE_BODY"
+            echo "${{ github.event.inputs.release_body }}" | head -c 4000 | sed 's/`/\\`/g'
             echo "EOF"
           } >> $GITHUB_ENV
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Post to Discord
         run: |
