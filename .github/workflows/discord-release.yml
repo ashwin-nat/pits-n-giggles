@@ -1,44 +1,59 @@
-name: Test Discord Release Post
+name: Notify Discord of New Release
 
 on:
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
-      release_name:
-        description: 'Release Name'
+      tag:
+        description: 'Release tag'
         required: true
-        default: 'vTest'
-      release_url:
-        description: 'Release URL'
+      release_notes:
+        description: 'Release notes (in Markdown)'
         required: true
-        default: 'https://github.com/user/repo/releases/tag/vTest'
-      release_body:
-        description: 'Release Notes (first 4000 characters will be used)'
-        required: false
-        default: |
-          - Feature: Something cool 🚀
-          - Fix: Something annoying 🐞
-          - Note: This is a test of the Discord webhook integration.
 
 jobs:
-  post-to-discord:
+  discord:
     runs-on: ubuntu-latest
-    steps:
-      - name: Set env variables from input
-        run: |
-          echo "RELEASE_NAME=${{ github.event.inputs.release_name }}" >> $GITHUB_ENV
-          echo "RELEASE_URL=${{ github.event.inputs.release_url }}" >> $GITHUB_ENV
 
-          # Properly export multiline body as env var
-          {
-            echo "RELEASE_BODY<<EOF"
-            echo "${{ github.event.inputs.release_body }}" | head -c 4000 | sed 's/`/\\`/g'
-            echo "EOF"
-          } >> $GITHUB_ENV
+    steps:
+      - name: Extract release data
+        id: extract
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "TAG_NAME=${{ github.event.inputs.tag }}" >> $GITHUB_ENV
+            echo "RAW_BODY<<EOF" >> $GITHUB_ENV
+            echo "${{ github.event.inputs.release_notes }}" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+          else
+            echo "TAG_NAME=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
+            echo "RAW_BODY<<EOF" >> $GITHUB_ENV
+            echo "${{ github.event.release.body }}" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+          fi
+
+      - name: Format release notes for Discord
+        id: format
+        run: |
+          FORMATTED=$(echo "$RAW_BODY" | sed -E '
+            s/^### (.*)$/**\1**/;
+            s/^## (.*)$/__\1__/;
+            s/\*\*(BREAKING CHANGE|NOTE|FIX|FEATURE)\*\*/🛑 \1:/Ig;
+            s/^- /* /;
+            s/`([^`]*)`/`\1`/g;
+            s/\[([^\]]+)\]\(([^)]+)\)/\1: \2/g;
+            s/!\[.*\]\(([^)]+)\)/\1/g;
+            s/```[^`]*```/(code block omitted)/g;
+          ' | head -c 4000)
+
+          echo "DISCORD_BODY<<EOF" >> $GITHUB_ENV
+          echo "$FORMATTED" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: Post to Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
-          curl -H "Content-Type: application/json" -X POST \
-            -d "{
-              \"content\": \"📦 **New Release: $RELEASE_NAME**\n$RELEASE_URL\n\n$RELEASE_BODY\"
-            }" \
-            ${{ secrets.DISCORD_WEBHOOK }}
+          curl -X POST -H "Content-Type: application/json" \
+          -d "$(jq -n --arg content "📦 New Release: $TAG_NAME\n\n$DISCORD_BODY" '{content: $content}')" \
+          "$DISCORD_WEBHOOK"
