@@ -29,6 +29,7 @@ from typing import Optional
 
 _PID_TAG_PREFIX = "<<PNG_LAUNCHER_CHILD_PID:"
 _PID_TAG_REGEX = re.compile(r"<<PNG_LAUNCHER_CHILD_PID:(\d+)>>")
+_INIT_COMPLETE_STR = "<<__PNG_SUBSYSTEM_INIT_COMPLETE__>>"
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -48,3 +49,11 @@ def extract_pid_from_line(line: str) ->  Optional[int]:
     """
     match = _PID_TAG_REGEX.search(line)
     return int(match.group(1)) if match else None
+
+def notify_parent_init_complete() -> None:
+    """Call this in the child process to notify the parent that initialization is complete."""
+    print(_INIT_COMPLETE_STR, flush=True)
+
+def is_init_complete(line: str) -> bool:
+    """Call this in the parent process to check if the child process has completed initialization."""
+    return _INIT_COMPLETE_STR in line

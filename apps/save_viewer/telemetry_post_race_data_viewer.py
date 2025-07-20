@@ -32,7 +32,7 @@ import tkinter as tk
 import webbrowser
 from http import HTTPStatus
 from pathlib import Path
-from threading import Lock, Thread
+from threading import Event, Lock, Thread, Timer
 from tkinter import filedialog
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -49,10 +49,11 @@ from flask_socketio import SocketIO, emit
 import lib.overtake_analyzer as OvertakeAnalyzer
 import lib.race_analyzer as RaceAnalyzer
 from apps.save_viewer.logger import png_logger
+from lib.child_proc_mgmt import (notify_parent_init_complete,
+                                 report_pid_from_child)
 from lib.error_status import PNG_ERROR_CODE_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN
 from lib.f1_types import F1Utils, LapHistoryData, ResultStatus
 from lib.ipc import IpcChildSync
-from lib.pid_report import report_pid_from_child
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 from lib.version import get_version
 
@@ -72,6 +73,7 @@ ui_initialized = False  # Flag to track if UI has been initialized
 _race_table_clients : Set[str] = set()
 _player_overlay_clients : Set[str] = set()
 _server: Optional["TelemetryWebServer"] = None
+g_shutdown_event = Event()
 
 def sendRaceTable() -> None:
     """Send race table to all connected clients
@@ -1186,10 +1188,13 @@ def handle_ipc_message(msg: dict) -> dict:
     png_logger.info(f"Received IPC message: {msg}")
 
     cmd = msg.get("cmd")
-    args = msg.get("args", {})
+    args: dict = msg.get("args", {})
 
     if cmd == "open-file":
         return _handle_open_file(args)
+    elif cmd == "shutdown":
+        Timer(1.0, shutdown_handler, [args.get("reason", "N/A")]).start()
+        return {"status": "success"}
 
     return {"status": "error", "message": f"Unknown command: {cmd}"}
 
@@ -1199,6 +1204,18 @@ def _handle_open_file(args: dict) -> dict:
         return {"status": "error", "message": "Missing or invalid file path"}
     else:
         return open_file_helper(file_path)
+
+def post_init() -> None:
+    notify_parent_init_complete()
+
+def shutdown_handler(reason: str) -> None:
+    """Shutdown handler function.
+
+    Args:
+        reason (str): The reason for the shutdown
+    """
+    png_logger.info(f"Shutting down. Reason: {reason}")
+    os._exit(0)
 
 def main():
 
@@ -1211,6 +1228,7 @@ def main():
         ipc_server = IpcChildSync(args.ipc_port, "Save Viewer")
         ipc_server.serve_in_thread(handle_ipc_message)
         g_port_number = args.port
+        Timer(2.0, post_init).start()
     else:
         g_port_number = find_free_port()
         start_thread(start_ui)

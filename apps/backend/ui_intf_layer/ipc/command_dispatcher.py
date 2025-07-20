@@ -26,17 +26,18 @@ import json
 import logging
 from typing import Callable, Awaitable, Dict
 
-from .command_handlers import handleManualSave
+from .command_handlers import handleManualSave, handleShutdown
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
 # Define a type for async handler functions
-CommandHandler = Callable[[dict], Awaitable[dict]]
+CommandHandler = Callable[[dict, logging.Logger], Awaitable[dict]]
 
 
 # Registry of command handlers
 COMMAND_HANDLERS: Dict[str, CommandHandler] = {
     "manual-save": handleManualSave,
+    "shutdown": handleShutdown
 }
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
@@ -61,7 +62,7 @@ async def processIpcCommand(msg: dict, logger: logging.Logger) -> dict:
 
     try:
         args = msg.get("args", {})
-        return await handler(args)
+        return await handler(args, logger)
     except Exception as e: # pylint: disable=broad-except
         logger.exception(f"Error handling command '{cmd}': {e}")
         return {"status": "error", "message": f"Exception during command handling: {str(e)}"}

@@ -10,11 +10,14 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from tests_base import F1TelemetryUnitTestsBase
 
-from lib.pid_report import extract_pid_from_line, report_pid_from_child
+from lib.child_proc_mgmt import extract_pid_from_line, report_pid_from_child, is_init_complete
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-class TestPidReport(F1TelemetryUnitTestsBase):
+class TestChildProcMgmt(F1TelemetryUnitTestsBase):
+    pass
+
+class TestPidReport(TestChildProcMgmt):
 
     def test_extract_pid_from_multiple_tags_in_line(self):
         """Test extracting PID when multiple PID tags are present in a line."""
@@ -102,3 +105,45 @@ class TestPidReport(F1TelemetryUnitTestsBase):
         for line in test_cases:
             self.assertEqual(extract_pid_from_line(line), 54321,
                              f"Failed for line: {line}")
+
+class TestIsInitComplete(TestChildProcMgmt):
+
+    def test_contains_init_complete(self):
+        # Test case where the line contains _INIT_COMPLETE_STR
+        line = "Some random text <<__PNG_SUBSYSTEM_INIT_COMPLETE__>> more text"
+        self.assertTrue(is_init_complete(line))
+
+    def test_does_not_contain_init_complete(self):
+        # Test case where the line does not contain _INIT_COMPLETE_STR
+        line = "Some random text without the init complete"
+        self.assertFalse(is_init_complete(line))
+
+    def test_empty_string(self):
+        # Test case where the line is empty
+        line = ""
+        self.assertFalse(is_init_complete(line))
+
+    def test_only_init_complete(self):
+        # Test case where the line is exactly _INIT_COMPLETE_STR
+        line = "<<__PNG_SUBSYSTEM_INIT_COMPLETE__>>"
+        self.assertTrue(is_init_complete(line))
+
+    def test_case_sensitivity(self):
+        # Test case where _INIT_COMPLETE_STR is in a different case (should fail)
+        line = "<<__png_subsystem_init_complete__>>"
+        self.assertFalse(is_init_complete(line))
+
+    def test_whitespace_before_init_complete(self):
+        # Test case where there is leading whitespace before _INIT_COMPLETE_STR
+        line = "    <<__PNG_SUBSYSTEM_INIT_COMPLETE__>>"
+        self.assertTrue(is_init_complete(line))
+
+    def test_whitespace_after_init_complete(self):
+        # Test case where there is trailing whitespace after _INIT_COMPLETE_STR
+        line = "<<__PNG_SUBSYSTEM_INIT_COMPLETE__>>    "
+        self.assertTrue(is_init_complete(line))
+
+    def test_partial_string(self):
+        # Test case where a substring of _INIT_COMPLETE_STR is present (should fail)
+        line = "<<__PNG_SUBSYSTEM_INIT_COMPL>>"
+        self.assertFalse(is_init_complete(line))

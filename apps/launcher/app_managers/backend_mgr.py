@@ -65,8 +65,9 @@ class BackendAppMgr(PngAppMgrBase):
         self.start_stop_button = ttk.Button(
             frame,
             text="Start", # Intially, app is stopped
-            command=self.start_stop,
-            style="Racing.TButton"
+            command=self.start_stop_callback,
+            style="Racing.TButton",
+            state="disabled"  # Initially disabled until the app is running
         )
         self.open_dashboard_button = ttk.Button(
             frame,
@@ -122,6 +123,7 @@ class BackendAppMgr(PngAppMgrBase):
     def post_start(self):
         """Update buttons after app start"""
         self.start_stop_button.config(text="Stop")
+        self.start_stop_button.config(state="normal")
         self.open_dashboard_button.config(state="normal")
         self.open_obs_overlay_button.config(state="normal")
         self.manual_save_button.config(state="normal")
@@ -129,6 +131,7 @@ class BackendAppMgr(PngAppMgrBase):
     def post_stop(self):
         """Update buttons after app stop"""
         self.start_stop_button.config(text="Start")
+        self.start_stop_button.config(state="normal")
         self.open_dashboard_button.config(state="disabled")
         self.open_obs_overlay_button.config(state="disabled")
         self.manual_save_button.config(state="disabled")
@@ -149,3 +152,16 @@ class BackendAppMgr(PngAppMgrBase):
             self.console_app.log(f"Error in manual save: error={error} message={message}")
             error_details = "\n".join(filter(None, [error, message]))
             messagebox.showerror("Manual save error", error_details)
+
+    def start_stop_callback(self):
+        """Start or stop the backend application."""
+        # disable the button. enable in post_start/post_stop
+        self.start_stop_button.config(state="disabled")
+        try:
+            # Call the start_stop method
+            self.start_stop()
+        except Exception as e: # pylint: disable=broad-exception-caught
+            # Log the error or handle it as needed
+            self.console_app.log(f"{self.display_name}:Error during start/stop: {e}")
+            # If no exception, it will be handled in post_start/post_stop
+            self.start_stop_button.config(state="normal")
