@@ -23,9 +23,9 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
-import os
 import sys
 from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -85,14 +85,21 @@ def get_rotating_logger(
     logger.setLevel(logging.INFO)
 
     if not logger.handlers:
-        if getattr(sys, 'frozen', False):
-            base_dir = os.path.dirname(sys.executable)
-        else:
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-
-        log_path = os.path.join(base_dir, log_file)
-        handler = RotatingFileHandler(log_path, maxBytes=max_bytes, backupCount=backup_count)
+        if log_file is None:
+            log_file = get_app_data_dir() / "png.log"
+        handler = RotatingFileHandler(log_file, maxBytes=max_bytes, backupCount=backup_count)
         handler.setFormatter(ConditionalTimestampFormatter())
         logger.addHandler(handler)
 
     return logger
+
+def get_app_data_dir() -> Path:
+    """Returns a platform-appropriate writable path for config/log files."""
+    if getattr(sys, 'frozen', False):
+        # Running from PyInstaller bundle
+        base = Path.home() / ".pitsngiggles"
+    else:
+        # Running from source
+        base = Path(__file__).resolve().parent
+    base.mkdir(parents=True, exist_ok=True)
+    return base
