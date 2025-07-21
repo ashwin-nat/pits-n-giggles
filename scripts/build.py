@@ -33,7 +33,7 @@ COLLECT_DIR_NAME = f"{APP_NAME}_build_tmp"
 def main():
     script_dir = os.path.dirname(__file__)
     spec_path = os.path.join(script_dir, "png.spec")
-    collect_dir = os.path.join(script_dir, "..", COLLECT_DIR_NAME)
+    collect_dir = os.path.join("dist", COLLECT_DIR_NAME)
 
     # 1. Run PyInstaller
     subprocess.run(
