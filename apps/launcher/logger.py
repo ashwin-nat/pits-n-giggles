@@ -23,9 +23,12 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
-import os
-import sys
+from lib.file_path import  resolve_user_file
 from logging.handlers import RotatingFileHandler
+
+# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
+
+DEFAULT_LOG_FILE = "png.log"
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -64,7 +67,7 @@ class ConditionalTimestampFormatter(logging.Formatter):
 
 def get_rotating_logger(
     name: str = "png_logger",
-    log_file: str = "png.log",
+    log_file: str = DEFAULT_LOG_FILE,
     max_bytes: int = 3 * 1024 * 1024,
     backup_count: int = 3
 ) -> logging.Logger:
@@ -80,19 +83,14 @@ def get_rotating_logger(
     Returns:
         logging.Logger: The logger with a rotating file handler.
     """
+    if log_file == DEFAULT_LOG_FILE:
+        log_file = resolve_user_file(DEFAULT_LOG_FILE)
+
     logger = logging.getLogger(name)
     logger.propagate = False
     logger.setLevel(logging.INFO)
 
     if not logger.handlers:
-        # Determine the directory of the current executable or script
-        if getattr(sys, 'frozen', False):
-            base_dir = os.path.dirname(sys.executable)
-        else:
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-
-        log_file = os.path.join(base_dir, log_file)
-
         handler = RotatingFileHandler(log_file, maxBytes=max_bytes, backupCount=backup_count)
         handler.setFormatter(ConditionalTimestampFormatter())
         logger.addHandler(handler)
