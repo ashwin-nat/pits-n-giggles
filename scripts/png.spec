@@ -43,6 +43,7 @@ from version import APP_VERSION
 
 APP_NAME = "pits_n_giggles"
 ICON_PATH = "../assets/favicon.ico"
+ICON_PATH_MAC = "../assets/logo.icns"
 
 APP_BASENAME = f"{APP_NAME}_{APP_VERSION}"
 COLLECT_DIR_NAME = f"{APP_NAME}_build_tmp"      # used for intermediate dist folder
@@ -142,8 +143,8 @@ if platform.system() == "Darwin":
 
     app = BUNDLE(
         exe,
-        name=f"{APP_NAME}.app",
-        icon=ICON_PATH if ICON_PATH.endswith(".icns") else None,
+        name=f"{APP_BASENAME}.app",
+        icon=ICON_PATH_MAC,
         bundle_identifier="com.pitsngiggles.app",
     )
     # app is built for .app bundle, but we still pass `exe` to COLLECT
