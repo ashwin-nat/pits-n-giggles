@@ -203,6 +203,7 @@ class DriverModalPopulator {
 
                 // Add checkbox cell
                 const checkboxCell = document.createElement('td');
+                checkboxCell.style.textAlign = 'center';
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
                 checkbox.className = 'fuel-calc-checkbox';
@@ -271,18 +272,32 @@ class DriverModalPopulator {
             tableContainer.appendChild(table);
             leftDiv.appendChild(tableContainer);
 
-            // Create fuel calculator title
+            // Create fuel calculator header
+            const calculatorHeader = document.createElement('div');
+            calculatorHeader.style.marginTop = '20px';
+            calculatorHeader.style.marginBottom = '15px';
+            calculatorHeader.style.padding = '10px 15px';
+            calculatorHeader.style.backgroundColor = '#495057';
+            calculatorHeader.style.borderLeft = '4px solid #17a2b8';
+            calculatorHeader.style.borderRadius = '4px';
+
             const calculatorTitle = document.createElement('h5');
             calculatorTitle.textContent = 'Fuel Strategy Calculator';
             calculatorTitle.style.color = '#ffffff';
-            calculatorTitle.style.marginTop = '20px';
-            calculatorTitle.style.marginBottom = '15px';
+            calculatorTitle.style.margin = '0';
             calculatorTitle.style.fontSize = '1.1em';
-            leftDiv.appendChild(calculatorTitle);
+            calculatorTitle.style.fontWeight = 'bold';
+
+            calculatorHeader.appendChild(calculatorTitle);
+            leftDiv.appendChild(calculatorHeader);
 
             // Create fuel calculator cards container
             const calculatorContainer = document.createElement('div');
             calculatorContainer.style.marginTop = '15px';
+            calculatorContainer.style.padding = '15px';
+            calculatorContainer.style.backgroundColor = '#343a40';
+            calculatorContainer.style.borderRadius = '6px';
+            calculatorContainer.style.border = '1px solid #495057';
             calculatorContainer.style.display = 'flex';
             calculatorContainer.style.flexDirection = 'column';
             calculatorContainer.style.gap = '10px';
@@ -424,6 +439,8 @@ class DriverModalPopulator {
             raceLapsInput.style.fontSize = '0.85em';
             raceLapsInput.min = '1';
             raceLapsInput.step = '1';
+            raceLapsInput.style.appearance = 'textfield';
+            raceLapsInput.style.MozAppearance = 'textfield';
 
             raceLapsGroup.appendChild(raceLabel);
             raceLapsGroup.appendChild(raceLapsInput);
@@ -435,7 +452,7 @@ class DriverModalPopulator {
             excessFuelGroup.style.gap = '5px';
 
             const excessLabel = document.createElement('label');
-            excessLabel.textContent = 'Excess Laps:';
+            excessLabel.textContent = 'Surplus Laps:';
             excessLabel.style.color = '#ffffff';
             excessLabel.style.fontSize = '0.85em';
             excessLabel.style.marginBottom = '0';
@@ -451,6 +468,8 @@ class DriverModalPopulator {
             excessFuelInput.value = '0.2';
             excessFuelInput.min = '0';
             excessFuelInput.step = '0.1';
+            excessFuelInput.style.appearance = 'textfield';
+            excessFuelInput.style.MozAppearance = 'textfield';
 
             excessFuelGroup.appendChild(excessLabel);
             excessFuelGroup.appendChild(excessFuelInput);
@@ -478,6 +497,8 @@ class DriverModalPopulator {
             safetyCarsInput.value = '0';
             safetyCarsInput.min = '0';
             safetyCarsInput.step = '1';
+            safetyCarsInput.style.appearance = 'textfield';
+            safetyCarsInput.style.MozAppearance = 'textfield';
 
             safetyCarsGroup.appendChild(safetyCarsLabel);
             safetyCarsGroup.appendChild(safetyCarsInput);
@@ -489,7 +510,7 @@ class DriverModalPopulator {
             lapsPerSCGroup.style.gap = '5px';
 
             const lapsPerSCLabel = document.createElement('label');
-            lapsPerSCLabel.textContent = 'Laps/SC:';
+            lapsPerSCLabel.textContent = 'Laps Per SC:';
             lapsPerSCLabel.style.color = '#ffffff';
             lapsPerSCLabel.style.fontSize = '0.85em';
             lapsPerSCLabel.style.marginBottom = '0';
@@ -505,6 +526,8 @@ class DriverModalPopulator {
             lapsPerSCInput.value = '2';
             lapsPerSCInput.min = '1';
             lapsPerSCInput.step = '1';
+            lapsPerSCInput.style.appearance = 'textfield';
+            lapsPerSCInput.style.MozAppearance = 'textfield';
 
             lapsPerSCGroup.appendChild(lapsPerSCLabel);
             lapsPerSCGroup.appendChild(lapsPerSCInput);
@@ -517,9 +540,11 @@ class DriverModalPopulator {
 
             const scBurnRateLabel = document.createElement('label');
             scBurnRateLabel.textContent = 'SC Burn %:';
+            scBurnRateLabel.title = 'Safety car fuel burn rate as percentage of normal racing fuel consumption';
             scBurnRateLabel.style.color = '#ffffff';
             scBurnRateLabel.style.fontSize = '0.85em';
             scBurnRateLabel.style.marginBottom = '0';
+            scBurnRateLabel.style.cursor = 'help';
 
             const scBurnRateInput = document.createElement('input');
             scBurnRateInput.type = 'number';
@@ -533,6 +558,8 @@ class DriverModalPopulator {
             scBurnRateInput.min = '0';
             scBurnRateInput.max = '100';
             scBurnRateInput.step = '5';
+            scBurnRateInput.style.appearance = 'textfield';
+            scBurnRateInput.style.MozAppearance = 'textfield';
 
             scBurnRateGroup.appendChild(scBurnRateLabel);
             scBurnRateGroup.appendChild(scBurnRateInput);
@@ -556,18 +583,21 @@ class DriverModalPopulator {
             conservativeCard.style.backgroundColor = '#495057';
             conservativeCard.style.borderColor = '#28a745';
             conservativeCard.style.borderWidth = '2px';
-            conservativeCard.style.flex = '1';
+            conservativeCard.style.width = '140px';
 
             const conservativeCardBody = document.createElement('div');
             conservativeCardBody.className = 'card-body';
             conservativeCardBody.style.padding = '8px 12px';
+            conservativeCardBody.style.textAlign = 'center';
 
             const conservativeTitle = document.createElement('h6');
             conservativeTitle.className = 'card-title';
             conservativeTitle.textContent = 'Conservative';
-            conservativeTitle.style.color = '#28a745';
+            conservativeTitle.title = 'Fuel load calculated using current average fuel consumption with safety margins';
+            conservativeTitle.style.color = '#ffffff';
             conservativeTitle.style.fontSize = '0.9em';
             conservativeTitle.style.marginBottom = '5px';
+            conservativeTitle.style.cursor = 'help';
 
             const conservativeFuelSpan = document.createElement('div');
             conservativeFuelSpan.style.color = '#ffffff';
@@ -585,18 +615,21 @@ class DriverModalPopulator {
             aggressiveCard.style.backgroundColor = '#495057';
             aggressiveCard.style.borderColor = '#dc3545';
             aggressiveCard.style.borderWidth = '2px';
-            aggressiveCard.style.flex = '1';
+            aggressiveCard.style.width = '140px';
 
             const aggressiveCardBody = document.createElement('div');
             aggressiveCardBody.className = 'card-body';
             aggressiveCardBody.style.padding = '8px 12px';
+            aggressiveCardBody.style.textAlign = 'center';
 
             const aggressiveTitle = document.createElement('h6');
             aggressiveTitle.className = 'card-title';
             aggressiveTitle.textContent = 'Aggressive';
-            aggressiveTitle.style.color = '#dc3545';
+            aggressiveTitle.title = 'Fuel load calculated assuming 5% more efficient driving than current average';
+            aggressiveTitle.style.color = '#ffffff';
             aggressiveTitle.style.fontSize = '0.9em';
             aggressiveTitle.style.marginBottom = '5px';
+            aggressiveTitle.style.cursor = 'help';
 
             const aggressiveFuelSpan = document.createElement('div');
             aggressiveFuelSpan.style.color = '#ffffff';
@@ -939,7 +972,6 @@ class DriverModalPopulator {
 
         this.createModalDivElelements(tabPane, leftPanePopulator, rightPanePopulator);
     }
-
 
     populateERSHistoryTab(tabPane) {
         if (!this.telemetryEnabled) {
