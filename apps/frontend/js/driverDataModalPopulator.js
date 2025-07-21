@@ -162,6 +162,9 @@ class DriverModalPopulator {
     }
 
     populateFuelUsageTab(tabPane) {
+        // Minimum fuel level to maintain as buffer
+        const MIN_FUEL_LEVEL = 0.2; // kg
+
         if (!this.telemetryEnabled) {
             this.populateTelemetryDisabledMessage(tabPane);
             return;
@@ -169,6 +172,120 @@ class DriverModalPopulator {
         const fuelUsagePerLap = [];
 
         const leftPanePopulator = (leftDiv) => {
+            // Helper function to create input groups
+            const createInputGroup = (labelText, inputConfig, tooltip = null) => {
+                const group = document.createElement('div');
+                group.style.display = 'flex';
+                group.style.alignItems = 'center';
+                group.style.gap = '5px';
+
+                const label = document.createElement('label');
+                label.textContent = labelText;
+                label.style.color = '#ffffff';
+                label.style.fontSize = '0.85em';
+                label.style.marginBottom = '0';
+                if (tooltip) {
+                    label.title = tooltip;
+                    label.style.cursor = 'help';
+                }
+
+                const input = document.createElement('input');
+                input.type = inputConfig.type || 'number';
+                input.className = 'form-control form-control-sm';
+                input.style.width = inputConfig.width || '70px';
+                input.style.backgroundColor = '#495057';
+                input.style.borderColor = '#6c757d';
+                input.style.color = '#ffffff';
+                input.style.fontSize = '0.85em';
+                input.style.appearance = 'textfield';
+                input.style.MozAppearance = 'textfield';
+
+                if (inputConfig.value !== undefined) input.value = inputConfig.value;
+                if (inputConfig.min !== undefined) input.min = inputConfig.min;
+                if (inputConfig.max !== undefined) input.max = inputConfig.max;
+                if (inputConfig.step !== undefined) input.step = inputConfig.step;
+
+                group.appendChild(label);
+                group.appendChild(input);
+                return { group, input };
+            };
+
+            // Helper function to create buttons
+            const createButton = (text, className = 'btn btn-secondary btn-sm') => {
+                const button = document.createElement('button');
+                button.textContent = text;
+                button.className = className;
+                button.style.fontSize = '0.8em';
+                return button;
+            };
+
+            // Helper function to create info spans
+            const createInfoSpan = (labelText, valueText = '0', unit = '') => {
+                const container = document.createElement('span');
+                container.style.marginLeft = '15px';
+
+                const label = document.createElement('span');
+                label.textContent = labelText;
+                label.style.color = '#ffffff';
+                label.style.fontSize = '0.85em';
+
+                const value = document.createElement('span');
+                value.textContent = valueText;
+                value.style.fontWeight = 'bold';
+                value.style.color = '#ffffff';
+                value.style.fontSize = '0.9em';
+
+                const unitSpan = document.createElement('span');
+                unitSpan.textContent = unit;
+                unitSpan.style.color = '#ffffff';
+                unitSpan.style.fontSize = '0.85em';
+
+                container.appendChild(label);
+                container.appendChild(value);
+                container.appendChild(unitSpan);
+
+                return { container, value };
+            };
+
+            // Helper function to create strategy cards
+            const createStrategyCard = (title, borderColor, tooltip) => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.style.backgroundColor = '#495057';
+                card.style.borderColor = borderColor;
+                card.style.borderWidth = '2px';
+                card.style.width = '140px';
+
+                const cardBody = document.createElement('div');
+                cardBody.className = 'card-body';
+                cardBody.style.padding = '8px 12px';
+                cardBody.style.textAlign = 'center';
+
+                const titleElement = document.createElement('h6');
+                titleElement.className = 'card-title';
+                titleElement.textContent = title;
+                titleElement.style.color = '#ffffff';
+                titleElement.style.fontSize = '0.9em';
+                titleElement.style.marginBottom = '5px';
+                if (tooltip) {
+                    titleElement.title = tooltip;
+                    titleElement.style.cursor = 'help';
+                }
+
+                const valueSpan = document.createElement('div');
+                valueSpan.style.color = '#ffffff';
+                valueSpan.style.fontWeight = 'bold';
+                valueSpan.style.fontSize = '1.1em';
+                valueSpan.textContent = '0.00 kg';
+
+                cardBody.appendChild(titleElement);
+                cardBody.appendChild(valueSpan);
+                card.appendChild(cardBody);
+
+                return { card, valueSpan };
+            };
+
+            // Create fuel usage table
             const table = document.createElement('table');
             table.className = this.tableClassNames;
 
@@ -176,7 +293,6 @@ class DriverModalPopulator {
             const thead = document.createElement('thead');
             const headerRow = document.createElement('tr');
 
-            // Add checkbox header
             const checkboxHeader = document.createElement('th');
             checkboxHeader.textContent = 'Select';
             headerRow.appendChild(checkboxHeader);
@@ -193,7 +309,6 @@ class DriverModalPopulator {
 
             // Create table body
             const tbody = document.createElement('tbody');
-
             let previousFuelLoad = null;
             let previousExcessLaps = null;
 
@@ -228,11 +343,10 @@ class DriverModalPopulator {
                         x: lapData["lap-number"],
                         y: usagePerLap
                     });
-                    // Store usage per lap in checkbox data for calculations
                     checkbox.dataset.fuelUsage = usagePerLap.toFixed(4);
                 } else {
                     usagePerLapCell.textContent = '-';
-                    checkbox.disabled = true; // Disable checkbox for first lap as no fuel usage data
+                    checkbox.disabled = true;
                 }
                 row.appendChild(usagePerLapCell);
 
@@ -264,7 +378,6 @@ class DriverModalPopulator {
             tableContainer.style.overflowY = 'auto';
             tableContainer.style.position = 'relative';
 
-            // Make header sticky
             thead.style.position = 'sticky';
             thead.style.top = '0';
             thead.style.zIndex = '10';
@@ -291,7 +404,7 @@ class DriverModalPopulator {
             calculatorHeader.appendChild(calculatorTitle);
             leftDiv.appendChild(calculatorHeader);
 
-            // Create fuel calculator cards container
+            // Create fuel calculator container
             const calculatorContainer = document.createElement('div');
             calculatorContainer.style.marginTop = '15px';
             calculatorContainer.style.padding = '15px';
@@ -318,85 +431,18 @@ class DriverModalPopulator {
             selectionRow.style.gap = '10px';
             selectionRow.style.flexWrap = 'wrap';
 
-            const selectAllBtn = document.createElement('button');
-            selectAllBtn.textContent = 'Select All';
-            selectAllBtn.className = 'btn btn-light btn-sm';
-            selectAllBtn.style.fontSize = '0.8em';
-            selectAllBtn.onclick = () => {
-                const checkboxes = leftDiv.querySelectorAll('.fuel-calc-checkbox:not(:disabled)');
-                checkboxes.forEach(cb => {
-                    cb.checked = true;
-                });
-                updateCalculations();
-            };
+            const selectAllBtn = createButton('Select All');
+            const selectNoneBtn = createButton('Clear');
 
-            const selectNoneBtn = document.createElement('button');
-            selectNoneBtn.textContent = 'Clear';
-            selectNoneBtn.className = 'btn btn-light btn-sm';
-            selectNoneBtn.style.fontSize = '0.8em';
-            selectNoneBtn.onclick = () => {
-                const checkboxes = leftDiv.querySelectorAll('.fuel-calc-checkbox');
-                checkboxes.forEach(cb => {
-                    cb.checked = false;
-                });
-                updateCalculations();
-            };
+            const selectedLapsInfo = createInfoSpan('Selected: ', '0');
+            const avgFuelInfo = createInfoSpan('Avg: ', '0.00', ' kg/lap');
+            const safetyCarBurnInfo = createInfoSpan('SC: ', '0.00', ' kg/lap');
 
-            const selectedLapsLabel = document.createElement('span');
-            selectedLapsLabel.textContent = 'Selected: ';
-            selectedLapsLabel.style.color = '#ffffff';
-            selectedLapsLabel.style.fontSize = '0.85em';
-            selectedLapsLabel.style.marginLeft = '10px';
-
-            const selectedLapsSpan = document.createElement('span');
-            selectedLapsSpan.textContent = '0';
-            selectedLapsSpan.style.fontWeight = 'bold';
-            selectedLapsSpan.style.color = '#ffffff';
-            selectedLapsSpan.style.fontSize = '0.9em';
-
-            const avgFuelLabel = document.createElement('span');
-            avgFuelLabel.textContent = 'Avg: ';
-            avgFuelLabel.style.color = '#ffffff';
-            avgFuelLabel.style.fontSize = '0.85em';
-            avgFuelLabel.style.marginLeft = '15px';
-
-            const avgFuelSpan = document.createElement('span');
-            avgFuelSpan.textContent = '0.00';
-            avgFuelSpan.style.fontWeight = 'bold';
-            avgFuelSpan.style.color = '#ffffff';
-            avgFuelSpan.style.fontSize = '0.9em';
-
-            const avgFuelUnit = document.createElement('span');
-            avgFuelUnit.textContent = ' kg/lap';
-            avgFuelUnit.style.color = '#ffffff';
-            avgFuelUnit.style.fontSize = '0.85em';
-
-            const safetyCarburnLabel = document.createElement('span');
-            safetyCarburnLabel.textContent = 'SC: ';
-            safetyCarburnLabel.style.color = '#ffffff';
-            safetyCarburnLabel.style.fontSize = '0.85em';
-            safetyCarburnLabel.style.marginLeft = '15px';
-
-            const safetyCarBurnSpan = document.createElement('span');
-            safetyCarBurnSpan.textContent = '0.00';
-            safetyCarBurnSpan.style.fontWeight = 'bold';
-            safetyCarBurnSpan.style.color = '#ffffff';
-            safetyCarBurnSpan.style.fontSize = '0.9em';
-
-            const safetyCarBurnUnit = document.createElement('span');
-            safetyCarBurnUnit.textContent = ' kg/lap';
-            safetyCarBurnUnit.style.color = '#ffffff';
-            safetyCarBurnUnit.style.fontSize = '0.85em';
             selectionRow.appendChild(selectAllBtn);
             selectionRow.appendChild(selectNoneBtn);
-            selectionRow.appendChild(selectedLapsLabel);
-            selectionRow.appendChild(selectedLapsSpan);
-            selectionRow.appendChild(avgFuelLabel);
-            selectionRow.appendChild(avgFuelSpan);
-            selectionRow.appendChild(avgFuelUnit);
-            selectionRow.appendChild(safetyCarburnLabel);
-            selectionRow.appendChild(safetyCarBurnSpan);
-            selectionRow.appendChild(safetyCarBurnUnit);
+            selectionRow.appendChild(selectedLapsInfo.container);
+            selectionRow.appendChild(avgFuelInfo.container);
+            selectionRow.appendChild(safetyCarBurnInfo.container);
 
             selectionCardBody.appendChild(selectionRow);
             selectionCard.appendChild(selectionCardBody);
@@ -417,158 +463,18 @@ class DriverModalPopulator {
             paramsRow.style.gap = '15px';
             paramsRow.style.flexWrap = 'wrap';
 
-            // Race laps input group
-            const raceLapsGroup = document.createElement('div');
-            raceLapsGroup.style.display = 'flex';
-            raceLapsGroup.style.alignItems = 'center';
-            raceLapsGroup.style.gap = '5px';
+            // Create input groups
+            const raceLapsGroup = createInputGroup('Race Laps:', { width: '80px', min: '1', step: '1' });
+            const surplusLapsGroup = createInputGroup('Surplus Laps:', { value: '0.2', width: '70px', min: '0', step: '0.1' });
+            const safetyCarsGroup = createInputGroup('Safety Cars:', { value: '0', width: '60px', min: '0', step: '1' });
+            const lapsPerSCGroup = createInputGroup('Laps Per SC:', { value: '2', width: '60px', min: '1', step: '1' });
+            const scBurnRateGroup = createInputGroup('SC Burn %:', { value: '70', width: '60px', min: '0', max: '100', step: '5' }, 'Safety car fuel burn rate as percentage of normal racing fuel consumption');
 
-            const raceLabel = document.createElement('label');
-            raceLabel.textContent = 'Race Laps:';
-            raceLabel.style.color = '#ffffff';
-            raceLabel.style.fontSize = '0.85em';
-            raceLabel.style.marginBottom = '0';
-
-            const raceLapsInput = document.createElement('input');
-            raceLapsInput.type = 'number';
-            raceLapsInput.className = 'form-control form-control-sm';
-            raceLapsInput.style.width = '70px';
-            raceLapsInput.style.backgroundColor = '#495057';
-            raceLapsInput.style.borderColor = '#6c757d';
-            raceLapsInput.style.color = '#ffffff';
-            raceLapsInput.style.fontSize = '0.85em';
-            raceLapsInput.min = '1';
-            raceLapsInput.step = '1';
-            raceLapsInput.style.appearance = 'textfield';
-            raceLapsInput.style.MozAppearance = 'textfield';
-
-            raceLapsGroup.appendChild(raceLabel);
-            raceLapsGroup.appendChild(raceLapsInput);
-
-            // Excess fuel input group
-            const excessFuelGroup = document.createElement('div');
-            excessFuelGroup.style.display = 'flex';
-            excessFuelGroup.style.alignItems = 'center';
-            excessFuelGroup.style.gap = '5px';
-
-            const excessLabel = document.createElement('label');
-            excessLabel.textContent = 'Surplus Laps:';
-            excessLabel.style.color = '#ffffff';
-            excessLabel.style.fontSize = '0.85em';
-            excessLabel.style.marginBottom = '0';
-
-            const excessFuelInput = document.createElement('input');
-            excessFuelInput.type = 'number';
-            excessFuelInput.className = 'form-control form-control-sm';
-            excessFuelInput.style.width = '70px';
-            excessFuelInput.style.backgroundColor = '#495057';
-            excessFuelInput.style.borderColor = '#6c757d';
-            excessFuelInput.style.color = '#ffffff';
-            excessFuelInput.style.fontSize = '0.85em';
-            excessFuelInput.value = '0.2';
-            excessFuelInput.min = '0';
-            excessFuelInput.step = '0.1';
-            excessFuelInput.style.appearance = 'textfield';
-            excessFuelInput.style.MozAppearance = 'textfield';
-
-            excessFuelGroup.appendChild(excessLabel);
-            excessFuelGroup.appendChild(excessFuelInput);
-
-            // Safety cars input group
-            const safetyCarsGroup = document.createElement('div');
-            safetyCarsGroup.style.display = 'flex';
-            safetyCarsGroup.style.alignItems = 'center';
-            safetyCarsGroup.style.gap = '5px';
-
-            const safetyCarsLabel = document.createElement('label');
-            safetyCarsLabel.textContent = 'Safety Cars:';
-            safetyCarsLabel.style.color = '#ffffff';
-            safetyCarsLabel.style.fontSize = '0.85em';
-            safetyCarsLabel.style.marginBottom = '0';
-
-            const safetyCarsInput = document.createElement('input');
-            safetyCarsInput.type = 'number';
-            safetyCarsInput.className = 'form-control form-control-sm';
-            safetyCarsInput.style.width = '60px';
-            safetyCarsInput.style.backgroundColor = '#495057';
-            safetyCarsInput.style.borderColor = '#6c757d';
-            safetyCarsInput.style.color = '#ffffff';
-            safetyCarsInput.style.fontSize = '0.85em';
-            safetyCarsInput.value = '0';
-            safetyCarsInput.min = '0';
-            safetyCarsInput.step = '1';
-            safetyCarsInput.style.appearance = 'textfield';
-            safetyCarsInput.style.MozAppearance = 'textfield';
-
-            safetyCarsGroup.appendChild(safetyCarsLabel);
-            safetyCarsGroup.appendChild(safetyCarsInput);
-
-            // Laps per safety car input group
-            const lapsPerSCGroup = document.createElement('div');
-            lapsPerSCGroup.style.display = 'flex';
-            lapsPerSCGroup.style.alignItems = 'center';
-            lapsPerSCGroup.style.gap = '5px';
-
-            const lapsPerSCLabel = document.createElement('label');
-            lapsPerSCLabel.textContent = 'Laps Per SC:';
-            lapsPerSCLabel.style.color = '#ffffff';
-            lapsPerSCLabel.style.fontSize = '0.85em';
-            lapsPerSCLabel.style.marginBottom = '0';
-
-            const lapsPerSCInput = document.createElement('input');
-            lapsPerSCInput.type = 'number';
-            lapsPerSCInput.className = 'form-control form-control-sm';
-            lapsPerSCInput.style.width = '60px';
-            lapsPerSCInput.style.backgroundColor = '#495057';
-            lapsPerSCInput.style.borderColor = '#6c757d';
-            lapsPerSCInput.style.color = '#ffffff';
-            lapsPerSCInput.style.fontSize = '0.85em';
-            lapsPerSCInput.value = '2';
-            lapsPerSCInput.min = '1';
-            lapsPerSCInput.step = '1';
-            lapsPerSCInput.style.appearance = 'textfield';
-            lapsPerSCInput.style.MozAppearance = 'textfield';
-
-            lapsPerSCGroup.appendChild(lapsPerSCLabel);
-            lapsPerSCGroup.appendChild(lapsPerSCInput);
-
-            // Safety car burn rate input group
-            const scBurnRateGroup = document.createElement('div');
-            scBurnRateGroup.style.display = 'flex';
-            scBurnRateGroup.style.alignItems = 'center';
-            scBurnRateGroup.style.gap = '5px';
-
-            const scBurnRateLabel = document.createElement('label');
-            scBurnRateLabel.textContent = 'SC Burn %:';
-            scBurnRateLabel.title = 'Safety car fuel burn rate as percentage of normal racing fuel consumption';
-            scBurnRateLabel.style.color = '#ffffff';
-            scBurnRateLabel.style.fontSize = '0.85em';
-            scBurnRateLabel.style.marginBottom = '0';
-            scBurnRateLabel.style.cursor = 'help';
-
-            const scBurnRateInput = document.createElement('input');
-            scBurnRateInput.type = 'number';
-            scBurnRateInput.className = 'form-control form-control-sm';
-            scBurnRateInput.style.width = '60px';
-            scBurnRateInput.style.backgroundColor = '#495057';
-            scBurnRateInput.style.borderColor = '#6c757d';
-            scBurnRateInput.style.color = '#ffffff';
-            scBurnRateInput.style.fontSize = '0.85em';
-            scBurnRateInput.value = '70';
-            scBurnRateInput.min = '0';
-            scBurnRateInput.max = '100';
-            scBurnRateInput.step = '5';
-            scBurnRateInput.style.appearance = 'textfield';
-            scBurnRateInput.style.MozAppearance = 'textfield';
-
-            scBurnRateGroup.appendChild(scBurnRateLabel);
-            scBurnRateGroup.appendChild(scBurnRateInput);
-
-            paramsRow.appendChild(raceLapsGroup);
-            paramsRow.appendChild(excessFuelGroup);
-            paramsRow.appendChild(safetyCarsGroup);
-            paramsRow.appendChild(lapsPerSCGroup);
-            paramsRow.appendChild(scBurnRateGroup);
+            paramsRow.appendChild(raceLapsGroup.group);
+            paramsRow.appendChild(surplusLapsGroup.group);
+            paramsRow.appendChild(safetyCarsGroup.group);
+            paramsRow.appendChild(lapsPerSCGroup.group);
+            paramsRow.appendChild(scBurnRateGroup.group);
             paramsCardBody.appendChild(paramsRow);
             paramsCard.appendChild(paramsCardBody);
 
@@ -577,82 +483,23 @@ class DriverModalPopulator {
             strategiesContainer.style.display = 'flex';
             strategiesContainer.style.gap = '10px';
 
-            // Conservative Strategy Card
-            const conservativeCard = document.createElement('div');
-            conservativeCard.className = 'card';
-            conservativeCard.style.backgroundColor = '#495057';
-            conservativeCard.style.borderColor = '#28a745';
-            conservativeCard.style.borderWidth = '2px';
-            conservativeCard.style.width = '140px';
+            const conservativeStrategy = createStrategyCard('Conservative', '#28a745', 'Fuel load calculated using current average fuel consumption with safety margins');
+            const aggressiveStrategy = createStrategyCard('Aggressive', '#dc3545', 'Fuel load calculated assuming 5% more efficient driving than current average');
 
-            const conservativeCardBody = document.createElement('div');
-            conservativeCardBody.className = 'card-body';
-            conservativeCardBody.style.padding = '8px 12px';
-            conservativeCardBody.style.textAlign = 'center';
-
-            const conservativeTitle = document.createElement('h6');
-            conservativeTitle.className = 'card-title';
-            conservativeTitle.textContent = 'Conservative';
-            conservativeTitle.title = 'Fuel load calculated using current average fuel consumption with safety margins';
-            conservativeTitle.style.color = '#ffffff';
-            conservativeTitle.style.fontSize = '0.9em';
-            conservativeTitle.style.marginBottom = '5px';
-            conservativeTitle.style.cursor = 'help';
-
-            const conservativeFuelSpan = document.createElement('div');
-            conservativeFuelSpan.style.color = '#ffffff';
-            conservativeFuelSpan.style.fontWeight = 'bold';
-            conservativeFuelSpan.style.fontSize = '1.1em';
-            conservativeFuelSpan.textContent = '0.00 kg';
-
-            conservativeCardBody.appendChild(conservativeTitle);
-            conservativeCardBody.appendChild(conservativeFuelSpan);
-            conservativeCard.appendChild(conservativeCardBody);
-
-            // Aggressive Strategy Card
-            const aggressiveCard = document.createElement('div');
-            aggressiveCard.className = 'card';
-            aggressiveCard.style.backgroundColor = '#495057';
-            aggressiveCard.style.borderColor = '#dc3545';
-            aggressiveCard.style.borderWidth = '2px';
-            aggressiveCard.style.width = '140px';
-
-            const aggressiveCardBody = document.createElement('div');
-            aggressiveCardBody.className = 'card-body';
-            aggressiveCardBody.style.padding = '8px 12px';
-            aggressiveCardBody.style.textAlign = 'center';
-
-            const aggressiveTitle = document.createElement('h6');
-            aggressiveTitle.className = 'card-title';
-            aggressiveTitle.textContent = 'Aggressive';
-            aggressiveTitle.title = 'Fuel load calculated assuming 5% more efficient driving than current average';
-            aggressiveTitle.style.color = '#ffffff';
-            aggressiveTitle.style.fontSize = '0.9em';
-            aggressiveTitle.style.marginBottom = '5px';
-            aggressiveTitle.style.cursor = 'help';
-
-            const aggressiveFuelSpan = document.createElement('div');
-            aggressiveFuelSpan.style.color = '#ffffff';
-            aggressiveFuelSpan.style.fontWeight = 'bold';
-            aggressiveFuelSpan.style.fontSize = '1.1em';
-            aggressiveFuelSpan.textContent = '0.00 kg';
-
-            aggressiveCardBody.appendChild(aggressiveTitle);
-            aggressiveCardBody.appendChild(aggressiveFuelSpan);
-            aggressiveCard.appendChild(aggressiveCardBody);
-
-            strategiesContainer.appendChild(conservativeCard);
-            strategiesContainer.appendChild(aggressiveCard);
+            strategiesContainer.appendChild(conservativeStrategy.card);
+            strategiesContainer.appendChild(aggressiveStrategy.card);
 
             // Update calculations function
             const updateCalculations = () => {
                 const checkedBoxes = leftDiv.querySelectorAll('.fuel-calc-checkbox:checked');
                 const selectedCount = checkedBoxes.length;
-                selectedLapsSpan.textContent = selectedCount;
+                selectedLapsInfo.value.textContent = selectedCount;
 
                 if (selectedCount === 0) {
-                    avgFuelSpan.textContent = '0.00';
-                    fuelLoadSpan.textContent = '0.00';
+                    avgFuelInfo.value.textContent = '0.00';
+                    safetyCarBurnInfo.value.textContent = '0.00';
+                    conservativeStrategy.valueSpan.textContent = '0.00 kg';
+                    aggressiveStrategy.valueSpan.textContent = '0.00 kg';
                     return;
                 }
 
@@ -665,56 +512,66 @@ class DriverModalPopulator {
                 });
 
                 const avgFuel = totalFuelUsage / selectedCount;
-                avgFuelSpan.textContent = avgFuel.toFixed(2);
+                avgFuelInfo.value.textContent = avgFuel.toFixed(2);
 
                 // Calculate safety car fuel burn
-                const scBurnRate = parseFloat(scBurnRateInput.value) / 100 || 0.7;
+                const scBurnRate = parseFloat(scBurnRateGroup.input.value) / 100 || 0.7;
                 const safetyCarBurn = avgFuel * scBurnRate;
-                safetyCarBurnSpan.textContent = safetyCarBurn.toFixed(2);
+                safetyCarBurnInfo.value.textContent = safetyCarBurn.toFixed(2);
 
                 // Calculate fuel strategies
-                const raceLaps = parseInt(raceLapsInput.value) || 0;
-                const excessLaps = parseFloat(excessFuelInput.value) || 0;
-                const numSafetyCars = parseInt(safetyCarsInput.value) || 0;
-                const lapsPerSC = parseInt(lapsPerSCInput.value) || 2;
+                const raceLaps = parseInt(raceLapsGroup.input.value) || 0;
+                const surplusLaps = parseFloat(surplusLapsGroup.input.value) || 0;
+                const numSafetyCars = parseInt(safetyCarsGroup.input.value) || 0;
+                const lapsPerSC = parseInt(lapsPerSCGroup.input.value) || 2;
 
                 if (raceLaps > 0) {
                     // Calculate safety car laps
                     const totalSCLaps = numSafetyCars * lapsPerSC;
                     const normalLaps = raceLaps - totalSCLaps;
 
-                    // Conservative strategy: use current average + excess + safety car adjustments
+                    // Conservative strategy
                     const conservativeNormalFuel = normalLaps * avgFuel;
                     const conservativeSCFuel = totalSCLaps * safetyCarBurn;
-                    const conservativeExcessFuel = excessLaps * avgFuel;
-                    const conservativeFuel = conservativeNormalFuel + conservativeSCFuel + conservativeExcessFuel;
-                    conservativeFuelSpan.textContent = conservativeFuel.toFixed(2) + ' kg';
+                    const conservativeSurplusFuel = surplusLaps * avgFuel;
+                    const conservativeFuel = conservativeNormalFuel + conservativeSCFuel + conservativeSurplusFuel + MIN_FUEL_LEVEL;
+                    conservativeStrategy.valueSpan.textContent = conservativeFuel.toFixed(2) + ' kg';
 
-                    // Aggressive strategy: 5% lower fuel burn + excess + safety car adjustments
+                    // Aggressive strategy
                     const aggressiveFuelPerLap = avgFuel * 0.95;
                     const aggressiveNormalFuel = normalLaps * aggressiveFuelPerLap;
                     const aggressiveSCFuel = totalSCLaps * (aggressiveFuelPerLap * scBurnRate);
-                    const aggressiveExcessFuel = excessLaps * aggressiveFuelPerLap;
-                    const aggressiveFuel = aggressiveNormalFuel + aggressiveSCFuel + aggressiveExcessFuel;
-                    aggressiveFuelSpan.textContent = aggressiveFuel.toFixed(2) + ' kg';
+                    const aggressiveSurplusFuel = surplusLaps * aggressiveFuelPerLap;
+                    const aggressiveFuel = aggressiveNormalFuel + aggressiveSCFuel + aggressiveSurplusFuel + MIN_FUEL_LEVEL;
+                    aggressiveStrategy.valueSpan.textContent = aggressiveFuel.toFixed(2) + ' kg';
                 } else {
-                    conservativeFuelSpan.textContent = '0.00 kg';
-                    aggressiveFuelSpan.textContent = '0.00 kg';
-                    safetyCarBurnSpan.textContent = '0.00';
+                    conservativeStrategy.valueSpan.textContent = '0.00 kg';
+                    aggressiveStrategy.valueSpan.textContent = '0.00 kg';
                 }
             };
 
             // Add event listeners
+            selectAllBtn.onclick = () => {
+                const checkboxes = leftDiv.querySelectorAll('.fuel-calc-checkbox:not(:disabled)');
+                checkboxes.forEach(cb => cb.checked = true);
+                updateCalculations();
+            };
+
+            selectNoneBtn.onclick = () => {
+                const checkboxes = leftDiv.querySelectorAll('.fuel-calc-checkbox');
+                checkboxes.forEach(cb => cb.checked = false);
+                updateCalculations();
+            };
+
             const checkboxes = leftDiv.querySelectorAll('.fuel-calc-checkbox');
             checkboxes.forEach(checkbox => {
                 checkbox.addEventListener('change', updateCalculations);
             });
 
-            raceLapsInput.addEventListener('input', updateCalculations);
-            excessFuelInput.addEventListener('input', updateCalculations);
-            safetyCarsInput.addEventListener('input', updateCalculations);
-            lapsPerSCInput.addEventListener('input', updateCalculations);
-            scBurnRateInput.addEventListener('input', updateCalculations);
+            // Add event listeners for all inputs
+            [raceLapsGroup, surplusLapsGroup, safetyCarsGroup, lapsPerSCGroup, scBurnRateGroup].forEach(group => {
+                group.input.addEventListener('input', updateCalculations);
+            });
 
             // Append all calculator components
             calculatorContainer.appendChild(selectionCard);
