@@ -25,13 +25,20 @@
 import subprocess
 import sys
 import os
+import shutil
+
+APP_NAME = "pits_n_giggles"  # or load from the spec file dynamically if needed
+COLLECT_DIR_NAME = f"{APP_NAME}_build_tmp"
 
 def main():
-    spec_path = os.path.join(os.path.dirname(__file__), "png.spec")
+    script_dir = os.path.dirname(__file__)
+    spec_path = os.path.join(script_dir, "png.spec")
+    collect_dir = os.path.join(script_dir, "..", COLLECT_DIR_NAME)
 
-    result = subprocess.run(
+    # 1. Run PyInstaller
+    subprocess.run(
         [
-            sys.executable,  # uses current Python interpreter (i.e. Poetry env)
+            sys.executable,
             "-m", "PyInstaller",
             "--clean",
             "--noconfirm",
@@ -39,6 +46,10 @@ def main():
         ],
         check=True,
     )
+
+    # 2. Cleanup the custom COLLECT dir
+    if os.path.isdir(collect_dir):
+        shutil.rmtree(collect_dir)
 
 if __name__ == "__main__":
     main()

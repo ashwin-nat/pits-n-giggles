@@ -44,6 +44,7 @@ APP_NAME = "pits_n_giggles"
 ICON_PATH = "../assets/favicon.ico"
 
 APP_BASENAME = f"{APP_NAME}_{APP_VERSION}"
+COLLECT_DIR_NAME = f"{APP_NAME}_build_tmp"      # used for intermediate dist folder
 PROJECT_ROOT = os.path.abspath(".")
 
 # --------------------------------------------------------------------------------------------------
@@ -141,5 +142,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name=APP_BASENAME,
+    name=COLLECT_DIR_NAME  # ✅ avoids circular reference to final exe
 )
