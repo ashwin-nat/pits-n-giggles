@@ -23,6 +23,8 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
+import os
+import sys
 from logging.handlers import RotatingFileHandler
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
@@ -67,24 +69,29 @@ def get_rotating_logger(
     backup_count: int = 3
 ) -> logging.Logger:
     """
-    Sets up and returns a thread-safe logger with a conditional timestamp formatter
-    and a rotating file handler.
+    Get a logger with a rotating file handler.
 
     Args:
-        name (str): Logger name.
-        log_file (str): Path to the log file.
-        max_bytes (int): Max file size before rotation.
-        backup_count (int): Number of backup log files to keep.
+        name (str, optional): The name of the logger. Defaults to "png_logger".
+        log_file (str, optional): The name of the log file. Defaults to "png.log".
+        max_bytes (int, optional): The maximum size of the log file in bytes. Defaults to 3MB.
+        backup_count (int, optional): The number of backup log files to keep. Defaults to 3.
 
     Returns:
-        logging.Logger: Configured logger instance.
+        logging.Logger: The logger with a rotating file handler.
     """
     logger = logging.getLogger(name)
     logger.propagate = False
     logger.setLevel(logging.INFO)
 
     if not logger.handlers:
-        handler = RotatingFileHandler(log_file, maxBytes=max_bytes, backupCount=backup_count)
+        if getattr(sys, 'frozen', False):
+            base_dir = os.path.dirname(sys.executable)
+        else:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+
+        log_path = os.path.join(base_dir, log_file)
+        handler = RotatingFileHandler(log_path, maxBytes=max_bytes, backupCount=backup_count)
         handler.setFormatter(ConditionalTimestampFormatter())
         logger.addHandler(handler)
 

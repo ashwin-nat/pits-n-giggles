@@ -34,7 +34,7 @@ import platform
 import shutil
 import tempfile
 from PyInstaller.utils.hooks import collect_submodules
-from PyInstaller.building.build_main import Analysis, PYZ, EXE, COLLECT
+from PyInstaller.building.build_main import Analysis, PYZ, EXE, COLLECT, BUNDLE
 from version import APP_VERSION
 
 # --------------------------------------------------------------------------------------------------
@@ -127,13 +127,26 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=False,  # ✅ Suppress empty CMD window
+    console=False,
     disable_windowed_traceback=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
     icon=ICON_PATH,
+    stdout=None,  # ✅ NEW
+    stderr=None,  # ✅ NEW
 )
+
+if platform.system() == "Darwin":
+    from PyInstaller.building.build_main import BUNDLE
+
+    app = BUNDLE(
+        exe,
+        name=f"{APP_NAME}.app",
+        icon=ICON_PATH if ICON_PATH.endswith(".icns") else None,
+        bundle_identifier="com.pitsngiggles.app",
+    )
+    # app is built for .app bundle, but we still pass `exe` to COLLECT
 
 coll = COLLECT(
     exe,
@@ -143,40 +156,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name=COLLECT_DIR_NAME  # ✅ avoids circular reference to final exe
+    name=COLLECT_DIR_NAME,
 )
-
-if platform.system() == "Darwin":
-    # On macOS: wrap the EXE into a .app bundle
-    from PyInstaller.building.build_main import BUNDLE
-
-    app = BUNDLE(
-        exe,
-        name=f"{APP_NAME}.app",  # macOS .app bundle
-        icon=ICON_PATH if ICON_PATH.endswith(".icns") else None,  # .icns only on macOS
-        bundle_identifier="com.pitsngiggles.app",
-    )
-
-    coll = COLLECT(
-        app,
-        a.binaries,
-        a.zipfiles,
-        a.datas,
-        strip=False,
-        upx=True,
-        upx_exclude=[],
-        name=COLLECT_DIR_NAME,
-    )
-
-else:
-    # On Windows and others: use regular EXE
-    coll = COLLECT(
-        exe,
-        a.binaries,
-        a.zipfiles,
-        a.datas,
-        strip=False,
-        upx=True,
-        upx_exclude=[],
-        name=COLLECT_DIR_NAME,
-    )
