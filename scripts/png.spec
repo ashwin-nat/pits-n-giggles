@@ -30,6 +30,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.dirname(sys.argv[0])))
 
 import os
+import platform
 import shutil
 import tempfile
 from PyInstaller.utils.hooks import collect_submodules
@@ -144,3 +145,38 @@ coll = COLLECT(
     upx_exclude=[],
     name=COLLECT_DIR_NAME  # ✅ avoids circular reference to final exe
 )
+
+if platform.system() == "Darwin":
+    # On macOS: wrap the EXE into a .app bundle
+    from PyInstaller.building.build_main import BUNDLE
+
+    app = BUNDLE(
+        exe,
+        name=f"{APP_NAME}.app",  # macOS .app bundle
+        icon=ICON_PATH if ICON_PATH.endswith(".icns") else None,  # .icns only on macOS
+        bundle_identifier="com.pitsngiggles.app",
+    )
+
+    coll = COLLECT(
+        app,
+        a.binaries,
+        a.zipfiles,
+        a.datas,
+        strip=False,
+        upx=True,
+        upx_exclude=[],
+        name=COLLECT_DIR_NAME,
+    )
+
+else:
+    # On Windows and others: use regular EXE
+    coll = COLLECT(
+        exe,
+        a.binaries,
+        a.zipfiles,
+        a.datas,
+        strip=False,
+        upx=True,
+        upx_exclude=[],
+        name=COLLECT_DIR_NAME,
+    )
