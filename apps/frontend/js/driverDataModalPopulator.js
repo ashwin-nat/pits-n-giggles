@@ -545,7 +545,8 @@ class DriverModalPopulator {
 
             // Create input groups
             const raceLapsGroup = createInputGroup('Race Laps:', { width: '80px', min: '1', step: '1' });
-            const surplusLapsGroup = createInputGroup('Surplus Laps:', { value: '0.2', width: '70px', min: '0', step: '0.1' });
+            const surplusLapsGroup = createInputGroup('Surplus Laps:', { value: '0.25', width: '70px', min: '0', step: '0.1' },
+                'Surplus laps of fuel to be accounted for. This is for a safe buffer, recommended 0.25 laps');
             const safetyCarsGroup = createInputGroup('Safety Cars:', { value: '0', width: '60px', min: '0', step: '1' });
             const lapsPerSCGroup = createInputGroup('Laps Per SC:', { value: '2', width: '60px', min: '1', step: '1' });
             const scBurnRateGroup = createInputGroup('SC Burn %:', { value: '70', width: '60px', min: '0', max: '100', step: '5' },
@@ -652,7 +653,7 @@ class DriverModalPopulator {
             resetBtn.onclick = () => {
                 // Reset all inputs to default values
                 raceLapsGroup.input.value = '';
-                surplusLapsGroup.input.value = `${MIN_FUEL_LEVEL.toFixed(1)}`;
+                surplusLapsGroup.input.value = '0.25';
                 safetyCarsGroup.input.value = '0';
                 lapsPerSCGroup.input.value = '2';
                 scBurnRateGroup.input.value = '70';
