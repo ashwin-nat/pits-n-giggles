@@ -181,7 +181,6 @@ class DriverModalPopulator {
             this.populateTelemetryDisabledMessage(tabPane);
             return;
         }
-        const fuelUsagePerLap = [];
 
         const leftPanePopulator = (leftDiv) => {
             // Helper function to create input groups
@@ -384,10 +383,6 @@ class DriverModalPopulator {
                 if (previousFuelLoad !== null) {
                     usagePerLap = previousFuelLoad - lapData["car-status-data"]["fuel-in-tank"];
                     usagePerLapCell.textContent = usagePerLap.toFixed(2);
-                    fuelUsagePerLap.push({
-                        x: lapData["lap-number"],
-                        y: usagePerLap
-                    });
                     checkbox.dataset.fuelUsage = usagePerLap.toFixed(4);
                 } else {
                     usagePerLapCell.textContent = '-';
@@ -708,10 +703,25 @@ class DriverModalPopulator {
         };
 
         const rightPanePopulator = (rightDiv) => {
+            const fuelUsagePerLapNew = [];
+            let previousFuelLoad = null;
+
+            const fuelUsageData = this.data["per-lap-info"];
+            fuelUsageData.forEach((lapData, index) => {
+                if (previousFuelLoad !== null) {
+                    const usagePerLap = previousFuelLoad - lapData["car-status-data"]["fuel-in-tank"];
+                    fuelUsagePerLapNew.push({
+                        x: lapData["lap-number"],
+                        y: usagePerLap
+                    });
+                }
+                previousFuelLoad = lapData["car-status-data"]["fuel-in-tank"];
+            });
+
             const datasets = [
                 {
                     label: "Fuel Usage",
-                    data: fuelUsagePerLap,
+                    data: fuelUsagePerLapNew,
                     borderColor: 'red',
                     backgroundColor: 'rgba(255, 99, 132, 0.2)',
                     fill: false
