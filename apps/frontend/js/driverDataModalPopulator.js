@@ -164,7 +164,18 @@ class DriverModalPopulator {
     populateFuelUsageTab(tabPane) {
         // Minimum fuel level to maintain as buffer
         const MIN_FUEL_LEVEL = 0.2; // kg
-        const AGGRESSIVE_LICO_SAVINGS_PERCENT = 3;
+        const FUEL_SAVING_PERCENT = 3; // %
+
+        // Initialize Bootstrap tooltips
+        const initializeTooltips = () => {
+            // Wait for elements to be added to DOM
+            setTimeout(() => {
+                const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                tooltipTriggerList.map(function (tooltipTriggerEl) {
+                    return new bootstrap.Tooltip(tooltipTriggerEl);
+                });
+            }, 100);
+        };
 
         if (!this.telemetryEnabled) {
             this.populateTelemetryDisabledMessage(tabPane);
@@ -186,7 +197,9 @@ class DriverModalPopulator {
                 label.style.fontSize = '0.85em';
                 label.style.marginBottom = '0';
                 if (tooltip) {
-                    label.title = tooltip;
+                    label.setAttribute('data-bs-toggle', 'tooltip');
+                    label.setAttribute('data-bs-placement', 'top');
+                    label.setAttribute('title', tooltip);
                     label.style.cursor = 'help';
                 }
 
@@ -206,6 +219,17 @@ class DriverModalPopulator {
                 if (inputConfig.max !== undefined) input.max = inputConfig.max;
                 if (inputConfig.step !== undefined) input.step = inputConfig.step;
 
+                // Add input validation
+                input.addEventListener('input', () => {
+                    const value = parseFloat(input.value);
+                    if (input.value !== '' && (isNaN(value) || value < 0)) {
+                        input.style.borderColor = '#dc3545';
+                        input.style.boxShadow = '0 0 0 0.2rem rgba(220, 53, 69, 0.25)';
+                    } else {
+                        input.style.borderColor = '#6c757d';
+                        input.style.boxShadow = 'none';
+                    }
+                });
                 group.appendChild(label);
                 group.appendChild(input);
                 return { group, input };
@@ -269,7 +293,9 @@ class DriverModalPopulator {
                 titleElement.style.fontSize = '0.9em';
                 titleElement.style.marginBottom = '5px';
                 if (tooltip) {
-                    titleElement.title = tooltip;
+                    titleElement.setAttribute('data-bs-toggle', 'tooltip');
+                    titleElement.setAttribute('data-bs-placement', 'top');
+                    titleElement.setAttribute('title', tooltip);
                     titleElement.style.cursor = 'help';
                 }
 
@@ -434,6 +460,7 @@ class DriverModalPopulator {
 
             const selectAllBtn = createButton('Select All');
             const selectNoneBtn = createButton('Clear');
+            const resetBtn = createButton('Reset', 'btn btn-warning btn-sm');
 
             const selectedLapsInfo = createInfoSpan('Selected: ', '0');
             const avgFuelInfo = createInfoSpan('Avg: ', '0.00', ' kg/lap');
@@ -441,6 +468,7 @@ class DriverModalPopulator {
 
             selectionRow.appendChild(selectAllBtn);
             selectionRow.appendChild(selectNoneBtn);
+            selectionRow.appendChild(resetBtn);
             selectionRow.appendChild(selectedLapsInfo.container);
             selectionRow.appendChild(avgFuelInfo.container);
             selectionRow.appendChild(safetyCarBurnInfo.container);
@@ -469,13 +497,18 @@ class DriverModalPopulator {
             const surplusLapsGroup = createInputGroup('Surplus Laps:', { value: '0.2', width: '70px', min: '0', step: '0.1' });
             const safetyCarsGroup = createInputGroup('Safety Cars:', { value: '0', width: '60px', min: '0', step: '1' });
             const lapsPerSCGroup = createInputGroup('Laps Per SC:', { value: '2', width: '60px', min: '1', step: '1' });
-            const scBurnRateGroup = createInputGroup('SC Burn %:', { value: '70', width: '60px', min: '0', max: '100', step: '5' }, 'Safety car fuel burn rate as percentage of normal racing fuel consumption');
+            const scBurnRateGroup = createInputGroup('SC Burn %:', { value: '70', width: '60px', min: '0', max: '100', step: '5' },
+                'Safety car fuel burn rate as percentage of normal racing fuel consumption');
+            const fuelSavingGroup = createInputGroup('Fuel Saving %:', { value: `${FUEL_SAVING_PERCENT}`, width: '60px', min: '0', max: '50', step: '1' },
+                'Percentage of fuel saving for aggressive strategy compared to average consumption. ' +
+                'Typical fuel saving when lifting/coasting in heavy braking zone in free laps results in ~3%');
 
             paramsRow.appendChild(raceLapsGroup.group);
             paramsRow.appendChild(surplusLapsGroup.group);
             paramsRow.appendChild(safetyCarsGroup.group);
             paramsRow.appendChild(lapsPerSCGroup.group);
             paramsRow.appendChild(scBurnRateGroup.group);
+            paramsRow.appendChild(fuelSavingGroup.group);
             paramsCardBody.appendChild(paramsRow);
             paramsCard.appendChild(paramsCardBody);
 
@@ -539,7 +572,8 @@ class DriverModalPopulator {
                     conservativeStrategy.valueSpan.textContent = conservativeFuel.toFixed(2) + ' kg';
 
                     // Aggressive strategy
-                    const aggressiveFuelPerLap = avgFuel * (100 - AGGRESSIVE_LICO_SAVINGS_PERCENT) / 100;
+                    const fuelSavingPercent = parseFloat(fuelSavingGroup.input.value) || FUEL_SAVING_PERCENT;
+                    const aggressiveFuelPerLap = avgFuel * (1 - fuelSavingPercent / 100);
                     const aggressiveNormalFuel = normalLaps * aggressiveFuelPerLap;
                     const aggressiveSCFuel = totalSCLaps * (aggressiveFuelPerLap * scBurnRate);
                     const aggressiveSurplusFuel = surplusLaps * aggressiveFuelPerLap;
@@ -564,13 +598,35 @@ class DriverModalPopulator {
                 updateCalculations();
             };
 
+            resetBtn.onclick = () => {
+                // Reset all inputs to default values
+                raceLapsGroup.input.value = '';
+                surplusLapsGroup.input.value = `${MIN_FUEL_LEVEL.toFixed(1)}`;
+                safetyCarsGroup.input.value = '0';
+                lapsPerSCGroup.input.value = '2';
+                scBurnRateGroup.input.value = '70';
+                fuelSavingGroup.input.value = `${FUEL_SAVING_PERCENT}`;
+
+                // Clear all checkboxes
+                const checkboxes = leftDiv.querySelectorAll('.fuel-calc-checkbox');
+                checkboxes.forEach(cb => cb.checked = false);
+
+                // Reset input validation styles
+                const inputs = leftDiv.querySelectorAll('input[type="number"]');
+                inputs.forEach(input => {
+                    input.style.borderColor = '#6c757d';
+                    input.style.boxShadow = 'none';
+                });
+
+                updateCalculations();
+            };
             const checkboxes = leftDiv.querySelectorAll('.fuel-calc-checkbox');
             checkboxes.forEach(checkbox => {
                 checkbox.addEventListener('change', updateCalculations);
             });
 
             // Add event listeners for all inputs
-            [raceLapsGroup, surplusLapsGroup, safetyCarsGroup, lapsPerSCGroup, scBurnRateGroup].forEach(group => {
+            [raceLapsGroup, surplusLapsGroup, safetyCarsGroup, lapsPerSCGroup, scBurnRateGroup, fuelSavingGroup].forEach(group => {
                 group.input.addEventListener('input', updateCalculations);
             });
 
@@ -579,6 +635,9 @@ class DriverModalPopulator {
             calculatorContainer.appendChild(paramsCard);
             calculatorContainer.appendChild(strategiesContainer);
             leftDiv.appendChild(calculatorContainer);
+
+            // Initialize Bootstrap tooltips after DOM elements are created
+            initializeTooltips();
         };
 
         const rightPanePopulator = (rightDiv) => {
