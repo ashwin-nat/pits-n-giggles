@@ -943,7 +943,7 @@ class DriverModalPopulator {
                 this.populateTableRows(tbody, [
                     ["AI controlled", participantData["ai-controlled"]],
                     ["Driver ID (Not the driver's race number)", participantData["driver-id"]],
-                    ["Team", participantData["team-id"]],
+                    ["Team", getTeamName(participantData["team-id"])],
                     ["Name", participantData["name"]],
                     ["Nationality", participantData["nationality"]],
                     ["Network ID", participantData["network-id"]],
