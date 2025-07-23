@@ -164,6 +164,7 @@ class DriverModalPopulator {
     populateFuelUsageTab(tabPane) {
         // Minimum fuel level to maintain as buffer
         const MIN_FUEL_LEVEL = 0.2; // kg
+        const AGGRESSIVE_LICO_SAVINGS_PERCENT = 3;
 
         if (!this.telemetryEnabled) {
             this.populateTelemetryDisabledMessage(tabPane);
@@ -538,7 +539,7 @@ class DriverModalPopulator {
                     conservativeStrategy.valueSpan.textContent = conservativeFuel.toFixed(2) + ' kg';
 
                     // Aggressive strategy
-                    const aggressiveFuelPerLap = avgFuel * 0.95;
+                    const aggressiveFuelPerLap = avgFuel * (100 - AGGRESSIVE_LICO_SAVINGS_PERCENT) / 100;
                     const aggressiveNormalFuel = normalLaps * aggressiveFuelPerLap;
                     const aggressiveSCFuel = totalSCLaps * (aggressiveFuelPerLap * scBurnRate);
                     const aggressiveSurplusFuel = surplusLaps * aggressiveFuelPerLap;
