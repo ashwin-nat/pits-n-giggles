@@ -550,7 +550,7 @@ class DriverModalPopulator {
             const lapsPerSCGroup = createInputGroup('Laps Per SC:', { value: '2', width: '60px', min: '1', step: '1' });
             const scBurnRateGroup = createInputGroup('SC Burn %:', { value: '70', width: '60px', min: '0', max: '100', step: '5' },
                 'Safety car fuel burn rate as percentage of normal racing fuel consumption');
-            const fuelSavingGroup = createInputGroup('Fuel Saving %:', { value: `${FUEL_SAVING_PERCENT}`, width: '60px', min: '0', max: '50', step: '1' },
+            const fuelSavingGroup = createInputGroup('Aggressive Fuel Saving %:', { value: `${FUEL_SAVING_PERCENT}`, width: '60px', min: '0', max: '50', step: '1' },
                 'Percentage of fuel saving for aggressive strategy compared to average consumption. ' +
                 'Typical fuel saving when lifting/coasting in heavy braking zone in free laps results in ~3%');
 
