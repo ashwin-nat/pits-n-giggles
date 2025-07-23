@@ -204,7 +204,7 @@ class DriverModalPopulator {
                 }
 
                 const input = document.createElement('input');
-                input.type = inputConfig.type || 'number';
+                input.type = inputConfig.type || 'text'; // Default to 'text' so that we can perform custom validations
                 input.className = 'form-control form-control-sm';
                 input.style.width = inputConfig.width || '70px';
                 input.style.backgroundColor = '#495057';
@@ -222,14 +222,35 @@ class DriverModalPopulator {
                 // Add input validation
                 input.addEventListener('input', () => {
                     const value = parseFloat(input.value);
-                    if (input.value !== '' && (isNaN(value) || value < 0)) {
+                    const isValidNumber = input.value === '' || (!isNaN(value) && isFinite(value) && input.value.trim() === value.toString());
+                    if (input.value !== '' && (!isValidNumber || value < 0)) {
+                        // invalid
                         input.style.borderColor = '#dc3545';
                         input.style.boxShadow = '0 0 0 0.2rem rgba(220, 53, 69, 0.25)';
                     } else {
+                        // valid
                         input.style.borderColor = '#6c757d';
                         input.style.boxShadow = 'none';
                     }
                 });
+
+                // Remove red highlight when field is focused
+                input.addEventListener('focus', () => {
+                    input.style.borderColor = '#6c757d';
+                    input.style.boxShadow = 'none';
+                });
+
+                // Re-validate when field loses focus
+                input.addEventListener('blur', () => {
+                    const value = parseFloat(input.value);
+                    const isValidNumber = input.value === '' || (!isNaN(value) && isFinite(value) && input.value.trim() === value.toString());
+                    // TEST FOR VALIDITY AGAIN ON BLUR
+                    if (input.value !== '' && (!isValidNumber || value < 0)) {
+                        input.style.borderColor = '#dc3545';
+                        input.style.boxShadow = '0 0 0 0.2rem rgba(220, 53, 69, 0.25)';
+                    }
+                });
+
                 group.appendChild(label);
                 group.appendChild(input);
                 return { group, input };
@@ -404,6 +425,8 @@ class DriverModalPopulator {
             tableContainer.style.maxHeight = '400px';
             tableContainer.style.overflowY = 'auto';
             tableContainer.style.position = 'relative';
+            tableContainer.style.flex = '1';
+            tableContainer.style.minHeight = '0';
 
             thead.style.position = 'sticky';
             thead.style.top = '0';
@@ -412,28 +435,55 @@ class DriverModalPopulator {
             tableContainer.appendChild(table);
             leftDiv.appendChild(tableContainer);
 
+            // Make leftDiv a flex container
+            leftDiv.style.display = 'flex';
+            leftDiv.style.flexDirection = 'column';
+            leftDiv.style.height = '100%';
+            leftDiv.style.overflow = 'hidden';
+
             // Create fuel calculator header
             const calculatorHeader = document.createElement('div');
             calculatorHeader.style.marginTop = '20px';
-            calculatorHeader.style.marginBottom = '15px';
+            calculatorHeader.style.marginBottom = '0px';
             calculatorHeader.style.padding = '10px 15px';
             calculatorHeader.style.backgroundColor = '#495057';
             calculatorHeader.style.borderLeft = '4px solid #17a2b8';
             calculatorHeader.style.borderRadius = '4px';
+            calculatorHeader.style.cursor = 'pointer';
+            calculatorHeader.style.userSelect = 'none';
+            calculatorHeader.style.transition = 'background-color 0.2s ease';
+            calculatorHeader.style.flexShrink = '0';
 
             const calculatorTitle = document.createElement('h5');
-            calculatorTitle.textContent = 'Fuel Strategy Calculator';
+            calculatorTitle.innerHTML = 'Fuel Strategy Calculator <i class="bi bi-chevron-double-up" style="float: right; font-size: 0.8em; color: #adb5bd;"></i>';
             calculatorTitle.style.color = '#ffffff';
             calculatorTitle.style.margin = '0';
             calculatorTitle.style.fontSize = '1.1em';
             calculatorTitle.style.fontWeight = 'bold';
 
+            // Add hover effect
+            calculatorHeader.addEventListener('mouseenter', () => {
+                calculatorHeader.style.backgroundColor = '#5a6268';
+            });
+            calculatorHeader.addEventListener('mouseleave', () => {
+                calculatorHeader.style.backgroundColor = '#495057';
+            });
             calculatorHeader.appendChild(calculatorTitle);
             leftDiv.appendChild(calculatorHeader);
 
+            // Create collapsible wrapper for fuel calculator
+            const calculatorWrapper = document.createElement('div');
+            calculatorWrapper.style.transition = 'max-height 0.3s ease-out';
+            calculatorWrapper.style.overflow = 'hidden';
+            calculatorWrapper.style.maxHeight = '1000px'; // Start expanded
+            calculatorWrapper.style.margin = '0';
+            calculatorWrapper.style.padding = '0';
+
             // Create fuel calculator container
             const calculatorContainer = document.createElement('div');
-            calculatorContainer.style.marginTop = '15px';
+            calculatorContainer.style.maxHeight = '50vh';
+            calculatorContainer.style.overflowY = 'auto';
+            calculatorContainer.style.overflowX = 'hidden';
             calculatorContainer.style.padding = '15px';
             calculatorContainer.style.backgroundColor = '#343a40';
             calculatorContainer.style.borderRadius = '6px';
@@ -441,6 +491,7 @@ class DriverModalPopulator {
             calculatorContainer.style.display = 'flex';
             calculatorContainer.style.flexDirection = 'column';
             calculatorContainer.style.gap = '10px';
+            calculatorContainer.id = 'fuelCalculatorContent';
 
             // Selection Controls Card
             const selectionCard = document.createElement('div');
@@ -518,7 +569,7 @@ class DriverModalPopulator {
             strategiesContainer.style.gap = '10px';
 
             const conservativeStrategy = createStrategyCard('Conservative', '#28a745', 'Fuel load calculated using current average fuel consumption with safety margins');
-            const aggressiveStrategy = createStrategyCard('Aggressive', '#dc3545', 'Fuel load calculated assuming 5% more efficient driving than current average');
+            const aggressiveStrategy = createStrategyCard('Aggressive', '#dc3545', 'Fuel load calculated assuming more efficient driving than current average');
 
             strategiesContainer.appendChild(conservativeStrategy.card);
             strategiesContainer.appendChild(aggressiveStrategy.card);
@@ -620,6 +671,7 @@ class DriverModalPopulator {
 
                 updateCalculations();
             };
+
             const checkboxes = leftDiv.querySelectorAll('.fuel-calc-checkbox');
             checkboxes.forEach(checkbox => {
                 checkbox.addEventListener('change', updateCalculations);
@@ -634,7 +686,24 @@ class DriverModalPopulator {
             calculatorContainer.appendChild(selectionCard);
             calculatorContainer.appendChild(paramsCard);
             calculatorContainer.appendChild(strategiesContainer);
-            leftDiv.appendChild(calculatorContainer);
+
+            calculatorWrapper.appendChild(calculatorContainer);
+            leftDiv.appendChild(calculatorWrapper);
+
+            // Add collapse/expand functionality
+            let isCollapsed = false;
+            calculatorHeader.addEventListener('click', () => {
+                isCollapsed = !isCollapsed;
+                const chevron = calculatorTitle.querySelector('i');
+
+                if (isCollapsed) {
+                    calculatorWrapper.style.maxHeight = '0px';
+                    chevron.className = 'bi bi-chevron-double-right';
+                } else {
+                    calculatorWrapper.style.maxHeight = '1000px';
+                    chevron.className = 'bi bi-chevron-double-up';
+                }
+            });
 
             // Initialize Bootstrap tooltips after DOM elements are created
             initializeTooltips();
