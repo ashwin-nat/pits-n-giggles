@@ -215,9 +215,6 @@ class DriverModalPopulator {
                 input.style.MozAppearance = 'textfield';
 
                 if (inputConfig.value !== undefined) input.value = inputConfig.value;
-                if (inputConfig.min !== undefined) input.min = inputConfig.min;
-                if (inputConfig.max !== undefined) input.max = inputConfig.max;
-                if (inputConfig.step !== undefined) input.step = inputConfig.step;
 
                 // Add input validation
                 input.addEventListener('input', () => {
