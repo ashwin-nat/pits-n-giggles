@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) [2024] [Ashwin Natarajan]
+# Copyright (c) [2025] [Ashwin Natarajan]
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -20,46 +20,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# -------------------------------------- IMPORTS -----------------------------------------------------------------------
+
 import asyncio
 import socket
 import struct
 
-class AsyncUDPListener():
-    """This class represents an async-friendly UDP client.
-    Attributes:
-    - m_buffer_size - The buffer size being used
-    - m_port - The UDP port that this client is bound to
-    - m_bind_ip - The IP address this UDP client is bound to
-    - m_socket - The socket object handle associated with this client
-    Methods:
-    - getNextMessage()
-    """
-    def __init__(self, port: int, bind_ip: str, buffer_size: int = 16384) -> None:
-        """Construct a UDPListener object
-        Args:
-            port (int): The port number to initialise this client to
-            bind_ip (str): The IP address this client must be bound to (default is '127.0.0.1')
-            buffer_size (int, optional): The buffer size to be specified. Defaults to 16 kb.
-        """
-        self.m_buffer_size = buffer_size
-        self.m_port = port
-        self.m_bind_ip = bind_ip
-        self.m_socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-        self.m_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.m_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        self.m_socket.setblocking(False)
-        self.m_socket.bind((self.m_bind_ip, self.m_port))
-        self._loop = asyncio.get_event_loop()
+from .base_receiver import TelemetryReceiver
 
-    async def getNextMessage(self) -> bytes:
-        """Asynchronously waits until the next message arrives, then returns it.
-        Returns:
-            bytes: The raw bytes that were received
-        """
-        message, _ = await self._loop.sock_recvfrom(self.m_socket, self.m_buffer_size)
-        return message
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class AsyncTCPListener:
+class TcpReceiver(TelemetryReceiver):
     """This class represents a TCP server that handles one connection at a time.
     Attributes:
     - m_buffer_size - The buffer size being used
@@ -131,3 +102,18 @@ class AsyncTCPListener:
 
             # Try again with a new connection
             return await self.getNextMessage()
+
+    async def close(self) -> None:
+        """Closes the socket receiver and any active connection."""
+        if self._writer is not None:
+            self._writer.close()
+            await self._writer.wait_closed()
+
+        if self.m_socket:
+            self.m_socket.close()
+
+        self.m_connection = None
+        self._reader = None
+        self._writer = None
+
+        self.m_socket = None

@@ -562,7 +562,6 @@ check-str-concat-over-line-jumps=no
 # Add the modules to the ignored list
 ignored-modules=
     lib.f1_types,
-    lib.socket_receiver,
     lib.packet_cap,
     lib.overtake_analyzer,
     lib.race_analyzer,
