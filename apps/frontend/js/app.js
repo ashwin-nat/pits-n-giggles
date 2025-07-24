@@ -2,7 +2,7 @@ loadPreferences();
 // Initialize renderer
 const iconCache = new IconCache();
 const telemetryRenderer = new TelemetryRenderer(iconCache);
-telemetryRenderer.updateConnectedStatus(false, null);
+telemetryRenderer.updateConnectedStatus(false);
 window.modalManager = new ModalManager();
 
 let awaitingResponse = false;

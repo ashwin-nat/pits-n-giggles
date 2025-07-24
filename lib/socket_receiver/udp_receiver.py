@@ -24,6 +24,7 @@
 
 import asyncio
 import socket
+from typing import Optional
 
 from .base_receiver import TelemetryReceiver
 
@@ -56,7 +57,7 @@ class UdpReceiver(TelemetryReceiver):
         self.m_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         self.m_socket.setblocking(False)
         self.m_socket.bind((self.m_bind_ip, self.m_port))
-        self._loop = asyncio.get_event_loop()
+        self._loop: Optional[asyncio.AbstractEventLoop] = None  # Lazy init
 
     async def getNextMessage(self) -> bytes:
         """
@@ -65,6 +66,8 @@ class UdpReceiver(TelemetryReceiver):
         Returns:
             bytes: The raw message bytes.
         """
+        if self._loop is None:
+            self._loop = asyncio.get_running_loop()
         message, _ = await self._loop.sock_recvfrom(self.m_socket, self.m_buffer_size)
         return message
 

@@ -27,6 +27,7 @@ import tempfile
 import sys
 import os
 from pathlib import Path
+from unittest.mock import patch, MagicMock
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -52,3 +53,18 @@ class TestSaveRaceInfo(F1TelemetryUnitTestsBase):
                 content = json.load(f)
 
             self.assertEqual(content, test_data, "File contents do not match input data.")
+
+    def test_save_race_info_handles_permission_error(self):
+        test_data = {"driver": "Verstappen", "position": 1}
+        test_filename = "race-info.json"
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            base_path = Path(tmpdir)
+
+            # Patch aiofiles.open to raise PermissionError on context enter
+            mock_open = MagicMock()
+            mock_open.__aenter__.side_effect = PermissionError("Mocked permission denied")
+
+            with patch("aiofiles.open", return_value=mock_open):
+                with self.assertRaises(PermissionError):
+                    asyncio.run(save_json_to_file(test_data, test_filename, base_path))

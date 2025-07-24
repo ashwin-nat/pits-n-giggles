@@ -146,3 +146,28 @@ class TestAsyncUDPForwarder(F1TelemetryUnitTestsBase):
                 self.assertEqual(mock_send.call_count, len(self.forward_addresses) * 3)
 
         asyncio.run(async_test())
+
+    def test_partial_forward_failure(self):
+        async def async_test():
+            with patch("lib.packet_forwarder.AsyncUDPTransport.send", new_callable=AsyncMock) as mock_send:
+                # Simulate failure for the second address only
+                def side_effect(data, addr):
+                    if addr == self.forward_addresses[1]:
+                        raise OSError("Simulated error for one address")
+                    return asyncio.Future()  # default mock async response
+
+                mock_send.side_effect = side_effect
+
+                forwarder = AsyncUDPForwarder(self.forward_addresses)
+
+                try:
+                    await forwarder.forward(self.test_data)
+                    await asyncio.sleep(0.01)
+                except Exception as e:
+                    self.fail(f"Unexpected exception: {e}")
+
+                self.assertEqual(mock_send.call_count, len(self.forward_addresses))
+                mock_send.assert_any_call(self.test_data, self.forward_addresses[0])
+                mock_send.assert_any_call(self.test_data, self.forward_addresses[1])
+
+        asyncio.run(async_test())

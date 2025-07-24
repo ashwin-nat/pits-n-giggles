@@ -16,7 +16,14 @@ class TelemetryRenderer {
     this.indexByPosition = null;
     this.iconCache = iconCache;
     this.uiMode = 'Splash';
+
     this.connected = null;
+    this.statusContainer   = document.getElementById('status-wrapper')
+    this.blinkingDot       = document.createElement('span')
+    this.statusText        = document.createElement('p')
+
+    this.blinkingDot.classList.add('blinking-dot')
+    this.statusContainer.append(this.blinkingDot, this.statusText)
   }
 
   renderTelemetryRow(data, packetFormat, isLiveDataMode, raceEnded, spectatorIndex) {
@@ -375,38 +382,19 @@ class TelemetryRenderer {
   }
 
   updateConnectedStatus(connected) {
-    if (this.uiMode !== 'Splash') {
-      return;
+    if (this.uiMode !== 'Splash' || this.connected === connected) {
+      return
     }
+    this.connected = connected
 
-    if (connected === this.connected) {
-      return;
-    }
+    // toggle color class
+    this.blinkingDot.classList.toggle('green', connected)
+    this.blinkingDot.classList.toggle('red', !connected)
 
-    this.connected = connected;
-    console.log(`Connected status changed to ${connected}`);
-
-    const container = document.getElementById('status-wrapper');
-    if (!container) return;
-
-    // Clear previous content
-    container.innerHTML = '';
-
-    // Create new status
-    const statusWrapper = document.createElement('div');
-    statusWrapper.className = 'status-wrapper';
-
-    const blinkingDot = document.createElement('span');
-    blinkingDot.className = `blinking-dot ${connected ? 'green' : 'red'}`;
-
-    const statusText = document.createElement('p');
-    statusText.textContent = connected
+    // update text
+    this.statusText.textContent = connected
       ? 'Connected to F1 game. Waiting for session start ...'
-      : 'Waiting for F1 game UDP telemetry data ...';
-
-    statusWrapper.appendChild(blinkingDot);
-    statusWrapper.appendChild(statusText);
-    container.appendChild(statusWrapper);
+      : 'Waiting for F1 game UDP telemetry data ...'
   }
 
 }
