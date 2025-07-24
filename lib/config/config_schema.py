@@ -38,6 +38,7 @@ class NetworkSettings(BaseModel):
     save_viewer_port: int = Field(4769, ge=0, le=65535, description="Pits n' Giggles Save Data Viewer Port")
     udp_tyre_delta_action_code: int = Field(11, ge=1, le=12, description="Tyre Delta Marker: UDP Action Code")
     udp_custom_action_code: int = Field(12, ge=1, le=12, description="Custom Marker: UDP Action Code")
+    wdt_interval_sec: int = Field(30, ge=1, le=120, description="UDP Telemetry Timeout (sec)")
 
     @model_validator(mode="after")
     def check_ports_and_action_codes(self) -> "NetworkSettings":
