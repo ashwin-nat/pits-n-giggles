@@ -72,21 +72,19 @@ def isDriverIndexValid(index: int) -> bool:
     return  (0 <= index < len(_session_state.m_driver_data)) and \
             (_session_state.m_driver_data[index] and _session_state.m_driver_data[index].is_valid)
 
-def initSessionState(logger: logging.Logger, process_car_setups: bool, ver_str: str, port_number: int) -> None:
+def initSessionState(logger: logging.Logger, process_car_setups: bool, ver_str: str) -> None:
     """Init the DriverData object
 
     Args:
         logger (logging.Logger): Logger
         process_car_setups (bool): Whether to process car setups packets
         ver_str (str): Version string
-        port_number (int): Port number
     """
     global _session_state
     _session_state = SessionState(
         logger,
         process_car_setups,
-        ver_str,
-        port_number
+        ver_str
     )
 
 def getSessionStateRef() -> SessionState:

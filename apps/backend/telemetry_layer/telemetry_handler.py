@@ -141,7 +141,7 @@ class F1TelemetryHandler:
         self.m_version: str = ver_str
         self.m_wdt: WatchDogTimer = WatchDogTimer(
             status_callback=self.m_session_state_ref.setConnectedToSim,
-            timeout=3.0 # TODO - Make this configurable
+            timeout=30.0 # TODO - Make this configurable
         )
         self.registerCallbacks()
 

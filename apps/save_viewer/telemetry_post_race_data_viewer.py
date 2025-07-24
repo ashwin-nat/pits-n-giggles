@@ -297,7 +297,6 @@ def getTelemetryInfo():
                 "is-spectating" : False,
                 "spectator-car-index" : None,
                 "wdt-status" : False,
-                "port-number" : 0,
             }
         if "records" in g_json_data:
             if "fastest" in g_json_data["records"]:
@@ -331,7 +330,6 @@ def getTelemetryInfo():
             "is-spectating" : False,
             "spectator-car-index" : None,
             "wdt-status" : False,
-            "port-number" : 0,
         }
         for sample in g_json_data["session-info"]["weather-forecast-samples"]:
             json_response["weather-forecast-samples"].append(
