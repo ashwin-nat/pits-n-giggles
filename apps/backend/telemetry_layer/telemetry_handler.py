@@ -59,6 +59,7 @@ def setupTelemetryTask(
         udp_tyre_delta_action_code: Optional[int],
         forwarding_targets: List[Tuple[str, int]],
         ver_str: str,
+        wdt_interval: float,
         tasks: List[asyncio.Task]) -> None:
     """Entry point to start the F1 telemetry server.
 
@@ -71,6 +72,7 @@ def setupTelemetryTask(
         udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code.
         forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
         ver_str (str): Version string
+        wdt_interval (float): Watchdog interval
         tasks (List[asyncio.Task]): List of tasks to be executed
     """
 
@@ -79,10 +81,11 @@ def setupTelemetryTask(
         forwarding_targets=forwarding_targets,
         logger=logger,
         capture_settings=capture_settings,
+        wdt_interval=wdt_interval,
         udp_custom_action_code=udp_custom_action_code,
         udp_tyre_delta_action_code=udp_tyre_delta_action_code,
         replay_server=replay_server,
-        ver_str=ver_str
+        ver_str=ver_str,
     )
     tasks.append(asyncio.create_task(telemetry_server.run(), name="Game Telemetry Listener Task"))
     tasks.append(asyncio.create_task(telemetry_server.getWatchdogTask(), name="Watchdog Timer Task"))
@@ -102,6 +105,7 @@ class F1TelemetryHandler:
         forwarding_targets: List[Tuple[str, int]],
         logger: logging.Logger,
         capture_settings: CaptureSettings,
+        wdt_interval: float,
         udp_custom_action_code: Optional[int] = None,
         udp_tyre_delta_action_code: Optional[int] = None,
         replay_server: bool = False,
@@ -114,6 +118,7 @@ class F1TelemetryHandler:
             - forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
             - logger (logging.Logger): Logger
             - capture_settings (CaptureSettings): Capture settings
+            - wdt_interval (float): Watchdog interval
             - udp_custom_action_code (Optional[int]): UDP custom action code.
             - udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code
             - replay_server: bool: If true, init in replay mode (TCP). Else init in live mode (UDP)
@@ -141,7 +146,7 @@ class F1TelemetryHandler:
         self.m_version: str = ver_str
         self.m_wdt: WatchDogTimer = WatchDogTimer(
             status_callback=self.m_session_state_ref.setConnectedToSim,
-            timeout=30.0 # TODO - Make this configurable
+            timeout=wdt_interval
         )
         self.registerCallbacks()
 
