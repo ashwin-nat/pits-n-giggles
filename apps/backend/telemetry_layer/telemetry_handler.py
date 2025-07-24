@@ -27,7 +27,7 @@ SOFTWARE.
 import asyncio
 import logging
 from datetime import datetime
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Coroutine
 
 import apps.backend.state_mgmt_layer.telemetry_state as TelState
 from lib.button_debouncer import ButtonDebouncer
@@ -44,6 +44,7 @@ from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
                                          ITCMessage)
 from lib.save_to_disk import save_json_to_file
 from lib.telemetry_manager import AsyncF1TelemetryManager
+from lib.wdt import WatchDogTimer
 
 # -------------------------------------- TYPE DEFINITIONS --------------------------------------------------------------
 
@@ -84,6 +85,7 @@ def setupTelemetryTask(
         ver_str=ver_str
     )
     tasks.append(asyncio.create_task(telemetry_server.run(), name="Game Telemetry Listener Task"))
+    tasks.append(asyncio.create_task(telemetry_server.getWatchdogTask(), name="Watchdog Timer Task"))
 
 # -------------------------------------- TELEMETRY PACKET HANDLERS -----------------------------------------------------
 
@@ -137,6 +139,10 @@ class F1TelemetryHandler:
 
         self.m_should_forward: bool = bool(forwarding_targets)
         self.m_version: str = ver_str
+        self.m_wdt: WatchDogTimer = WatchDogTimer(
+            status_callback=self.m_session_state_ref.setConnectedToSim,
+            timeout=3.0 # TODO - Make this configurable
+        )
         self.registerCallbacks()
 
     async def run(self):
@@ -148,19 +154,29 @@ class F1TelemetryHandler:
         """
         await self.m_manager.run()
 
+    def getWatchdogTask(self) -> Coroutine:
+        """
+        Get the watchdog task.
+
+        Returns:
+        Coroutine: The watchdog task.
+        """
+        return self.m_wdt.run()
+
     def registerCallbacks(self) -> None:
         """
         Register callback functions for different types of telemetry packets.
         """
 
-        if self.m_should_forward:
-            @self.m_manager.on_raw_packet()
-            async def handleRawPacket(packet: List[bytes]) -> None:
-                """
-                Handle raw telemetry packet.
-                Parameters:
-                    packet (List[bytes]): The raw telemetry packet.
-                """
+        @self.m_manager.on_raw_packet()
+        async def handleRawPacket(packet: List[bytes]) -> None:
+            """
+            Handle raw telemetry packet.
+            Parameters:
+                packet (List[bytes]): The raw telemetry packet.
+            """
+            self.m_wdt.on_packet_received()
+            if self.m_should_forward:
                 await AsyncInterTaskCommunicator().send("packet-forward", packet)
 
         @self.m_manager.on_packet(F1PacketType.SESSION)

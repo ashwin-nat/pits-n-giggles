@@ -216,6 +216,10 @@ class SessionState:
         m_udp_custom_marker_action_code (Optional[int]): The UDP action code for custom marker
         m_udp_tyre_delta_action_code (Optional[int]): The UDP action code for tyre delta notification
         m_process_car_setups (bool): Flag indicating whether to process car setups packets.
+        m_custom_markers_history (CustomMarkersHistory): An instance tracking custom markers history.
+        m_first_session_update_received (bool): Flag indicating whether the first session update packet has been received.
+        m_version (str): Version string
+        m_connected_to_sim (bool): Flag indicating whether the client is connected to the simulator
     """
 
     MAX_DRIVERS: int = 22
@@ -240,7 +244,8 @@ class SessionState:
         'm_process_car_setups',
         'm_custom_markers_history',
         'm_first_session_update_received',
-        'm_version'
+        'm_version',
+        'm_connected_to_sim'
     ]
 
     def __init__(self,
@@ -278,6 +283,7 @@ class SessionState:
         self.m_process_car_setups: bool = process_car_setups
 
         self.m_custom_markers_history = CustomMarkersHistory()
+        self.m_connected_to_sim: bool = False
 
     ####### Control Methods ########
 
@@ -329,6 +335,15 @@ class SessionState:
         Set the race as completed.
         """
         self.m_race_completed = True
+
+    def setConnectedToSim(self, connected: bool) -> None:
+        """Set whether the client is connected to the simulator. Based on WDT
+
+        Args:
+            connected (bool): Whether the client is connected to the simulator
+        """
+        self.m_logger.debug("WDT: Connected to sim: [%s]->[%s]", self.m_connected_to_sim, connected)
+        self.m_connected_to_sim = connected
 
     ##### Packet event entry points #####
 
