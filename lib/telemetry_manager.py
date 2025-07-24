@@ -255,6 +255,5 @@ def telemetry_receiver_factory(port_number: int, replay_server: bool, logger: Lo
     if replay_server:
         logger.info("REPLAY RECEIVER MODE. PORT = %s", port_number)
         return TcpReceiver(port_number, "localhost")
-    else:
-        logger.info("LIVE RECEIVER MODE. PORT = %s", port_number)
-        return UdpReceiver(port_number, "0.0.0.0", buffer_size=4096)
+    logger.info("LIVE RECEIVER MODE. PORT = %s", port_number)
+    return UdpReceiver(port_number, "0.0.0.0", buffer_size=4096)

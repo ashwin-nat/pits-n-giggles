@@ -29,7 +29,7 @@ from abc import ABC, abstractmethod
 class TelemetryReceiver(ABC):
     """Base class for socket receiver"""
     @abstractmethod
-    async def getNextMessage(self, data) -> bytes:
+    async def getNextMessage(self) -> bytes:
         """Asynchronously waits until the next message arrives, then returns it."""
         pass
 
