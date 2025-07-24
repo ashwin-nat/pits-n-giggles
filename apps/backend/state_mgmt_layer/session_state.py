@@ -220,6 +220,7 @@ class SessionState:
         m_first_session_update_received (bool): Flag indicating whether the first session update packet has been received.
         m_version (str): Version string
         m_connected_to_sim (bool): Flag indicating whether the client is connected to the simulator
+        m_port_number (int): Port number that Pits n' Giggles is listening on
     """
 
     MAX_DRIVERS: int = 22
@@ -245,19 +246,22 @@ class SessionState:
         'm_custom_markers_history',
         'm_first_session_update_received',
         'm_version',
-        'm_connected_to_sim'
+        'm_connected_to_sim',
+        'm_port_number'
     ]
 
     def __init__(self,
                  logger: logging.Logger,
                  process_car_setups: bool,
-                 ver_str: str) -> None:
+                 ver_str: str,
+                 port_number: int) -> None:
         """Init the DriverData object
 
         Args:
             logger (logging.Logger): Logger
             process_car_setups (bool): Whether to process car setups packets
             ver_str (str): Version string
+            port_number (int): Port number
         """
 
         self.m_logger = logger
@@ -284,6 +288,7 @@ class SessionState:
 
         self.m_custom_markers_history = CustomMarkersHistory()
         self.m_connected_to_sim: bool = False
+        self.m_port_number: int = port_number
 
     ####### Control Methods ########
 

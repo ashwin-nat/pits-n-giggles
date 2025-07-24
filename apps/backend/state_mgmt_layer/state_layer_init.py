@@ -29,13 +29,14 @@ from .telemetry_web_api import initApiLayer
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def initStateManagementLayer(logger: logging.Logger, process_car_setups: bool, ver_str: str) -> None:
+def initStateManagementLayer(logger: logging.Logger, process_car_setups: bool, ver_str: str, port_number: int) -> None:
     """Initialise the state management layer
 
     Args:
         logger (logging.Logger): Logger
         process_car_setups (bool): Whether to process car setups
         ver_str (str): Version string
+        port_number (int): Port number
     """
-    initSessionState(logger=logger, process_car_setups=process_car_setups, ver_str=ver_str)
+    initSessionState(logger=logger, process_car_setups=process_car_setups, ver_str=ver_str, port_number=port_number)
     initApiLayer(logger=logger)
