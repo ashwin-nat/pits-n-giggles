@@ -40,57 +40,57 @@ if sys.platform == 'win32':
 
 class TestWatchDogTimer(F1TelemetryUnitTestsBase):
     async def asyncSetUp(self):
-        self.status_changes: List[bool] = []
-        self.monitor = WatchDogTimer(
-            status_callback=self.status_changes.append,
-            timeout=0.5  # Use short timeout for faster tests
+        self.state_changes: List[bool] = []
+        self.wdt = WatchDogTimer(
+            status_callback=self.state_changes.append,
+            timeout=0.5  # Short timeout for test speed
         )
-        self.task = asyncio.create_task(self.monitor.run(), name="UT Monitor Task")
+        self.task = asyncio.create_task(self.wdt.run(), name="UT Watchdog Task")
 
     async def asyncTearDown(self):
-        self.monitor.stop()
+        self.wdt.stop()
         self.task.cancel()
         try:
             await self.task
         except asyncio.CancelledError:
             pass
 
-    async def test_starts_disconnected(self):
-        """Monitor should start in disconnected state with no callback fired."""
+    async def test_initial_state_idle(self):
+        """Watchdog should start idle with no state change callback triggered."""
         await asyncio.sleep(0.1)
-        self.assertEqual(self.status_changes, [])
+        self.assertEqual(self.state_changes, [])
 
-    async def test_transitions_to_connected_on_packet(self):
-        """Receiving a packet should trigger a connected callback."""
-        self.monitor.on_packet_received()
+    async def test_transitions_to_active(self):
+        """Kicking the watchdog should trigger an active state."""
+        self.wdt.kick()
         await asyncio.sleep(0.1)
-        self.assertEqual(self.status_changes, [True])
+        self.assertEqual(self.state_changes, [True])
 
-    async def test_does_not_fire_duplicate_connected(self):
-        """Receiving repeated packets should not fire redundant connected events."""
+    async def test_ignores_duplicate_active_kicks(self):
+        """Repeated kicks should not cause duplicate active callbacks."""
         for _ in range(3):
-            self.monitor.on_packet_received()
+            self.wdt.kick()
             await asyncio.sleep(0.1)
-        self.assertEqual(self.status_changes, [True])
+        self.assertEqual(self.state_changes, [True])
 
-    async def test_transitions_to_disconnected_on_timeout(self):
-        """No packet for timeout duration should trigger disconnected callback."""
-        self.monitor.on_packet_received()
+    async def test_times_out_to_inactive(self):
+        """No kick for timeout period should mark it inactive."""
+        self.wdt.kick()
         await asyncio.sleep(0.1)
-        self.assertEqual(self.status_changes, [True])
-
-        await asyncio.sleep(0.6)  # Wait beyond the timeout
-        self.assertEqual(self.status_changes, [True, False])
-
-    async def test_reconnect_after_disconnection(self):
-        """Monitor should detect disconnection and reconnect if packets resume."""
-        self.monitor.on_packet_received()
-        await asyncio.sleep(0.1)
-        self.assertEqual(self.status_changes, [True])
+        self.assertEqual(self.state_changes, [True])
 
         await asyncio.sleep(0.6)
-        self.assertEqual(self.status_changes, [True, False])
+        self.assertEqual(self.state_changes, [True, False])
 
-        self.monitor.on_packet_received()
+    async def test_recovers_after_timeout(self):
+        """Watchdog should become active again after a timeout if kicked again."""
+        self.wdt.kick()
         await asyncio.sleep(0.1)
-        self.assertEqual(self.status_changes, [True, False, True])
+        self.assertEqual(self.state_changes, [True])
+
+        await asyncio.sleep(0.6)
+        self.assertEqual(self.state_changes, [True, False])
+
+        self.wdt.kick()
+        await asyncio.sleep(0.1)
+        self.assertEqual(self.state_changes, [True, False, True])

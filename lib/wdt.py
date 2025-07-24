@@ -30,50 +30,54 @@ from typing import Callable
 
 class WatchDogTimer:
     """
-    Monitors incoming telemetry over UDP and infers connection status using a watchdog timer.
+    Generic watchdog timer that monitors activity and triggers a status callback
+    when input becomes inactive for a configured timeout.
 
     Args:
-        status_callback (Callable[[bool], None]): Called when connection state changes.
-        timeout (float): Time in seconds after which connection is considered lost.
+        status_callback (Callable[[bool], None]): Called when activity status changes.
+            True indicates active, False indicates inactive.
+        timeout (float): Time in seconds after which inactivity is assumed.
     """
 
     def __init__(self, status_callback: Callable[[bool], None], timeout: float = 2.0) -> None:
         self._status_callback: Callable[[bool], None] = status_callback
         self._timeout: float = timeout
-        self._last_received_time: float = time.time()
-        self.connected: bool = False
+        self._last_kick_time: float = time.time()
+        self.active: bool = False
         self._stopped: bool = False  # Used to break the run() loop gracefully
 
-    def on_packet_received(self) -> None:
+    def kick(self) -> None:
         """
-        Call this whenever a UDP telemetry packet is received.
+        Kick the watchdog timer
 
-        Updates the watchdog timer and triggers `status_callback(True)` if transitioning to connected.
+        Updates the internal timer and triggers `status_callback(True)`
+        if transitioning to active state.
         """
-        self._last_received_time = time.time()
-        if not self.connected:
-            self.connected = True
+        self._last_kick_time = time.time()
+        if not self.active:
+            self.active = True
             self._status_callback(True)
 
     async def run(self) -> None:
         """
-        Coroutine that should be scheduled using `asyncio.create_task(...)`.
+        Coroutine that runs the watchdog monitoring loop.
 
-        It checks for telemetry silence and triggers `status_callback(False)` when disconnected.
+        Should be scheduled as a background task using `asyncio.create_task(...)`.
+        Checks for prolonged inactivity and triggers `status_callback(False)` when detected.
         """
         try:
             while not self._stopped:
                 await asyncio.sleep(0.5)
-                time_since_last = time.time() - self._last_received_time
-                if self.connected and time_since_last > self._timeout:
-                    self.connected = False
+                elapsed = time.time() - self._last_kick_time
+                if self.active and elapsed > self._timeout:
+                    self.active = False
                     self._status_callback(False)
         except asyncio.CancelledError:
-            # Graceful shutdown on task cancellation
+            # Graceful exit on task cancellation
             pass
 
     def stop(self) -> None:
         """
-        Stop the watchdog loop gracefully. Should be called before shutdown.
+        Request the watchdog loop to stop on the next cycle.
         """
         self._stopped = True
