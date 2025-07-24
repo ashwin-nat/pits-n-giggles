@@ -39,7 +39,7 @@ from lib.f1_types import (F1PacketType, InvalidPacketLengthError,
                           PacketParticipantsData, PacketSessionData,
                           PacketSessionHistoryData, PacketTimeTrialData,
                           PacketTyreSetsData)
-from lib.socket_receiver import AsyncTCPListener, AsyncUDPListener
+from lib.socket_receiver import TcpReceiver, UdpReceiver, TelemetryReceiver
 
 # ------------------------- GLOBALS ------------------------------------------------------------------------------------
 F1TelemetryCallback = Optional[Callable[[object], Awaitable[None]]]
@@ -116,10 +116,7 @@ class AsyncF1TelemetryManager:
         self.m_replay_server = replay_server
         self.m_port_number = port_number
         self.m_logger = logger
-        if self.m_replay_server:
-            self.m_server = AsyncTCPListener(port_number, "localhost")
-        else:
-            self.m_server = AsyncUDPListener(port_number, "0.0.0.0", buffer_size=4096)
+        self.m_receiver = telemetry_receiver_factory(port_number, replay_server, logger)
         self.m_callbacks: Dict[F1PacketType, F1TelemetryCallback] = {ptype: None for ptype in self.packet_type_map}
 
         self.m_raw_packet_callback: Optional[Callable[[object], Awaitable[None]]] = None
@@ -166,8 +163,8 @@ class AsyncF1TelemetryManager:
         # Run the client indefinitely
         while True:
 
-            # Get next UDP message (TCP in the case of replay server)
-            raw_packet = await self.m_server.getNextMessage()
+            # Get next telemetry message
+            raw_packet = await self.m_receiver.getNextMessage()
             try:
                 await self._processPacket(should_parse_packet, raw_packet)
             except UnsupportedPacketFormat as e:
@@ -250,3 +247,13 @@ class AsyncF1TelemetryManager:
             return filepath
         except Exception as e: # pylint: disable=broad-except
             return f"<Failed to write packet to file: {e}>"
+
+# ------------------------- FUNCTIONS ----------------------------------------------------------------------------------
+
+def telemetry_receiver_factory(port_number: int, replay_server: bool, logger: Logger) -> TelemetryReceiver:
+    """Creates a telemetry receiver based on the given port number and replay server mode."""
+    if replay_server:
+        logger.info("REPLAY RECEIVER MODE. PORT = %s", port_number)
+        return TcpReceiver(port_number, "localhost")
+    logger.info("LIVE RECEIVER MODE. PORT = %s", port_number)
+    return UdpReceiver(port_number, "0.0.0.0", buffer_size=4096)

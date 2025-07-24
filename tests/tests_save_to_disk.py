@@ -27,6 +27,7 @@ import tempfile
 import sys
 import os
 from pathlib import Path
+from unittest.mock import patch, MagicMock
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -36,20 +37,34 @@ from lib.save_to_disk import save_json_to_file
 
 
 class TestSaveRaceInfo(F1TelemetryUnitTestsBase):
-
-    def test_save_race_info_creates_file_with_correct_content(self):
+    async def test_save_race_info_creates_file_with_correct_content(self):
         test_data = {"driver": "Hamilton", "position": 2}
         test_filename = "race-info.json"
 
         with tempfile.TemporaryDirectory() as tmpdir:
             base_path = Path(tmpdir)
-            # Call the async function using the temp dir as base_dir
-            file_path = asyncio.run(save_json_to_file(test_data, test_filename, base_path))
 
-            # Verify file exists
+            # Await the async file-saving function directly
+            file_path = await save_json_to_file(test_data, test_filename, base_path)
+
             self.assertTrue(file_path.exists(), "Expected JSON file was not created.")
 
-            # Verify file contents
             with file_path.open("r", encoding="utf-8") as f:
                 content = json.load(f)
+
             self.assertEqual(content, test_data, "File contents do not match input data.")
+
+    def test_save_race_info_handles_permission_error(self):
+        test_data = {"driver": "Verstappen", "position": 1}
+        test_filename = "race-info.json"
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            base_path = Path(tmpdir)
+
+            # Patch aiofiles.open to raise PermissionError on context enter
+            mock_open = MagicMock()
+            mock_open.__aenter__.side_effect = PermissionError("Mocked permission denied")
+
+            with patch("aiofiles.open", return_value=mock_open):
+                with self.assertRaises(PermissionError):
+                    asyncio.run(save_json_to_file(test_data, test_filename, base_path))

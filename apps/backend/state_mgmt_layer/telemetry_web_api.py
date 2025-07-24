@@ -77,6 +77,7 @@ class RaceInfoUpdate:
         """
 
         self.m_session_info = _session_state_ref.m_session_info
+        self.m_wdt_status = _session_state_ref.m_connected_to_sim
         track_length = self.m_session_info.m_packet_session.m_trackLength if self.m_session_info.m_packet_session else None
         self.m_driver_list_rsp = DriversListRsp(self.m_session_info.m_is_spectating, track_length,
                                                 (str(self.m_session_info.m_session_type) == "Time Trial"))
@@ -128,6 +129,7 @@ class RaceInfoUpdate:
                                                           if self.m_session_info.m_packet_session else None, 0),
             "player-pit-window" : _getValueOrDefaultValue(self.m_driver_list_rsp.m_next_pit_stop_window, None),
             "spectator-car-index" : _getValueOrDefaultValue(self.m_session_info.m_spectator_car_index, None),
+            "wdt-status" : self.m_wdt_status,
         }
 
         if str(self.m_session_info.m_session_type) == "Time Trial":

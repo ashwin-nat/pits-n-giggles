@@ -16,6 +16,14 @@ class TelemetryRenderer {
     this.indexByPosition = null;
     this.iconCache = iconCache;
     this.uiMode = 'Splash';
+
+    this.connected = null;
+    this.statusContainer   = document.getElementById('status-wrapper')
+    this.blinkingDot       = document.createElement('span')
+    this.statusText        = document.createElement('p')
+
+    this.blinkingDot.classList.add('blinking-dot')
+    this.statusContainer.append(this.blinkingDot, this.statusText)
   }
 
   renderTelemetryRow(data, packetFormat, isLiveDataMode, raceEnded, spectatorIndex) {
@@ -60,6 +68,7 @@ class TelemetryRenderer {
         break;
       case "Unknown":
       case "---":
+        this.updateConnectedStatus(incomingData["wdt-status"]);
         this.setUIMode('Splash');
         break;
       default:
@@ -371,4 +380,21 @@ class TelemetryRenderer {
         break;
     }
   }
+
+  updateConnectedStatus(connected) {
+    if (this.uiMode !== 'Splash' || this.connected === connected) {
+      return
+    }
+    this.connected = connected
+
+    // toggle color class
+    this.blinkingDot.classList.toggle('green', connected)
+    this.blinkingDot.classList.toggle('red', !connected)
+
+    // update text
+    this.statusText.textContent = connected
+      ? 'Connected to F1 game. Waiting for session start ...'
+      : 'Waiting for F1 game UDP telemetry data ...'
+  }
+
 }
