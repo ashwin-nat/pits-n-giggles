@@ -70,7 +70,8 @@ class PngRunner:
         initStateManagementLayer(
             logger=self.m_logger,
             process_car_setups=self.m_config.Privacy.process_car_setup,
-            ver_str=self.m_version
+            ver_str=self.m_version,
+            port_number=self.m_config.Network.telemetry_port
         )
 
         initTelemetryLayer(
