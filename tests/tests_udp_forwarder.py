@@ -84,83 +84,65 @@ class TestUDPForwarder(F1TelemetryUnitTestsBase):
 
 class TestAsyncUDPForwarder(F1TelemetryUnitTestsBase):
     def setUp(self):
-        """Set up test cases with mock data."""
-        self.forward_addresses = [('localhost', 21212), ('192.168.1.1', 8080)]
-        self.forwarder = AsyncUDPForwarder(self.forward_addresses)
-        self.test_data = self._generateRandomData(1200)  # Generate random data of 1200 bytes
+        self.forward_addresses = [('127.0.0.1', 21212), ('192.168.1.1', 8080)]
+        self.test_data = self._generateRandomData(1200)
 
     def _generateRandomData(self, length: int) -> bytes:
-        """Generate random data of a given length."""
-        if not isinstance(length, int) or length <= 0:
-            raise ValueError("Length must be a positive integer")
         return bytes(random.randint(0, 255) for _ in range(length))
 
     def test_forwarding_data(self):
-        """Test that data is forwarded to all configured destinations."""
-        async def async_test_forwarding():
-            # Mock the send method of the transport
-            with patch.object(self.forwarder.m_transport, 'send', new_callable=AsyncMock) as mock_send:
-                # Call the forward method
-                await self.forwarder.forward(self.test_data)
+        async def async_test():
+            with patch("lib.packet_forwarder.AsyncUDPTransport.send", new_callable=AsyncMock) as mock_send:
+                forwarder = AsyncUDPForwarder(self.forward_addresses)
+                await forwarder.forward(self.test_data)
 
-                # Check that send was called for each destination
+                # Allow scheduled tasks to run
+                await asyncio.sleep(0.01)
+
                 self.assertEqual(mock_send.call_count, len(self.forward_addresses))
+                for addr in self.forward_addresses:
+                    mock_send.assert_any_call(self.test_data, addr)
 
-                # Verify the calls were made with correct arguments
-                for destination in self.forward_addresses:
-                    mock_send.assert_any_call(self.test_data, destination)
-
-        # Run the async test synchronously
-        asyncio.run(async_test_forwarding())
+        asyncio.run(async_test())
 
     def test_no_forwarding_on_empty_list(self):
-        """Test that no forwarding occurs when the list of addresses is empty."""
-        async def async_test_no_forwarding():
-            # Create an empty forwarding list
-            empty_forwarder = AsyncUDPForwarder([])
+        async def async_test():
+            with patch("lib.packet_forwarder.AsyncUDPTransport.send", new_callable=AsyncMock) as mock_send:
+                forwarder = AsyncUDPForwarder([])
+                await forwarder.forward(self.test_data)
 
-            # Mock the send method of the transport
-            with patch.object(empty_forwarder.m_transport, 'send', new_callable=AsyncMock) as mock_send:
-                # Call the forward method
-                await empty_forwarder.forward(self.test_data)
-
-                # Ensure that send was not called
+                await asyncio.sleep(0.01)
                 mock_send.assert_not_called()
 
-        # Run the async test synchronously
-        asyncio.run(async_test_no_forwarding())
+        asyncio.run(async_test())
 
     def test_transport_error_handling(self):
-        """Test error handling during packet forwarding."""
-        async def async_test_error_handling():
-            # Mock the send method to raise an exception
-            with patch.object(self.forwarder.m_transport, 'send', new_callable=AsyncMock) as mock_send:
-                # Configure the mock to raise an OSError
-                mock_send.side_effect = OSError("Simulated network error")
+        async def async_test():
+            with patch("lib.packet_forwarder.AsyncUDPTransport.send", new_callable=AsyncMock) as mock_send:
+                mock_send.side_effect = OSError("Simulated error")
+                forwarder = AsyncUDPForwarder(self.forward_addresses)
 
-                # Call forward method and ensure it doesn't raise an unhandled exception
+                # Should not raise despite exception
                 try:
-                    await self.forwarder.forward(self.test_data)
+                    await forwarder.forward(self.test_data)
+                    await asyncio.sleep(0.01)
                 except Exception as e:
-                    self.fail(f"Forward method raised an unexpected exception: {e}")
+                    self.fail(f"Unexpected exception: {e}")
 
-                # Verify send was called for each destination
                 self.assertEqual(mock_send.call_count, len(self.forward_addresses))
 
-        # Run the async test synchronously
-        asyncio.run(async_test_error_handling())
+        asyncio.run(async_test())
 
     def test_multiple_forward_calls(self):
-        """Test multiple consecutive forward calls."""
-        async def async_test_multiple_forwards():
-            # Mock the send method of the transport
-            with patch.object(self.forwarder.m_transport, 'send', new_callable=AsyncMock) as mock_send:
-                # Make multiple forward calls
-                for _ in range(3):
-                    await self.forwarder.forward(self.test_data)
+        async def async_test():
+            with patch("lib.packet_forwarder.AsyncUDPTransport.send", new_callable=AsyncMock) as mock_send:
+                forwarder = AsyncUDPForwarder(self.forward_addresses)
 
-                # Check that send was called correct number of times
+                for _ in range(3):
+                    await forwarder.forward(self.test_data)
+
+                await asyncio.sleep(0.05)  # Give time for all tasks
+
                 self.assertEqual(mock_send.call_count, len(self.forward_addresses) * 3)
 
-        # Run the async test synchronously
-        asyncio.run(async_test_multiple_forwards())
+        asyncio.run(async_test())
