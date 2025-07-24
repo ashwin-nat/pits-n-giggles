@@ -570,7 +570,7 @@ class PacketParticipantsData:
             offset=1,
             item_cls=ParticipantData,
             item_len=packet_len,
-            count=self.m_numActiveCars,
+            count=self.MAX_PARTICIPANTS,
             max_count=self.MAX_PARTICIPANTS,
             packet_format=header.m_packetFormat
         )
@@ -583,7 +583,7 @@ class PacketParticipantsData:
             str: String representation of the object.
         """
 
-        participants_str = ", ".join(str(participant) for participant in self.m_participants[self.m_numActiveCars:])
+        participants_str = ", ".join(str(participant) for participant in self.m_participants)
         return (
             f"PacketParticipantsData("
             f"Header: {str(self.m_header)}, "
