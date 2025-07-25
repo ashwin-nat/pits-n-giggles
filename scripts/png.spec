@@ -138,17 +138,42 @@ exe = EXE(
     stderr=None,
 )
 
-if platform.system() == "Darwin":
+is_mac = platform.system() == "Darwin"
+
+from PyInstaller.building.build_main import Analysis, PYZ, EXE, COLLECT
+if is_mac:
     from PyInstaller.building.build_main import BUNDLE
 
-    app = BUNDLE(
+# choose icons & names up front
+icon = ICON_PATH_MAC if is_mac else ICON_PATH
+exe_name = f"{APP_BASENAME}.app" if is_mac else APP_BASENAME
+collect_name = f"{APP_NAME}_build_tmp" if is_mac else APP_BASENAME
+
+# common EXE
+exe = EXE(
+    a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    [],
+    name=APP_BASENAME,
+    console=False,
+    disable_windowed_traceback=False,
+    icon=icon,
+    stdout=None,
+    stderr=None,
+)
+
+# wrap in BUNDLE only on macOS
+if is_mac:
+    exe = BUNDLE(
         exe,
-        name=f"{APP_BASENAME}.app",
+        name=exe_name,
         icon=ICON_PATH_MAC,
         bundle_identifier="com.pitsngiggles.app",
     )
-    # app is built for .app bundle, but we still pass `exe` to COLLECT
 
+# single COLLECT
 coll = COLLECT(
     exe,
     a.binaries,
@@ -157,5 +182,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name=COLLECT_DIR_NAME,
+    name=collect_name,
 )
