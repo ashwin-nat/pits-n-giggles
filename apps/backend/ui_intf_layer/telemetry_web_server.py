@@ -23,8 +23,8 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
-import errno
 import logging
+import platform
 import socket
 import webbrowser
 from http import HTTPStatus
@@ -36,8 +36,9 @@ import uvicorn
 from quart import Quart, jsonify, render_template, request, send_from_directory
 
 import apps.backend.state_mgmt_layer as TelState
-from lib.error_status import PngPortInUseError
 from lib.child_proc_mgmt import notify_parent_init_complete
+from lib.error_status import PngPortInUseError
+from lib.port_check import is_port_available
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -404,14 +405,15 @@ class TelemetryWebServer:
         Sets up the server configuration and starts serving the application.
         """
 
-        if not _is_port_available(self.m_port):
+        if not is_port_available(self.m_port):
             self.m_logger.error(f"Port {self.m_port} is already in use")
             raise PngPortInUseError()
 
         # Create a socket manually to set SO_REUSEADDR
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        if platform.system() != "Windows":
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
         sock.bind(("0.0.0.0", self.m_port))
         sock.listen(1024)
         sock.setblocking(False)
@@ -430,11 +432,3 @@ class TelemetryWebServer:
         """Stop the web server."""
         self._shutdown_event.set()
 
-# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
-
-def _is_port_available(port: int) -> bool:
-    """Check if a TCP port is available by trying to connect to it."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.settimeout(0.5)
-        result = sock.connect_ex(('127.0.0.1', port))
-        return result != 0  # returns True if port is not in use

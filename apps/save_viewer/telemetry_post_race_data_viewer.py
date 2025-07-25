@@ -58,7 +58,7 @@ from lib.f1_types import F1Utils, LapHistoryData, ResultStatus
 from lib.ipc import IpcChildSync
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 from lib.version import get_version
-
+from lib.port_check import is_port_available
 
 def find_free_port():
     """Find an available port."""
@@ -1249,6 +1249,9 @@ def main():
         ipc_server = IpcChildSync(args.ipc_port, "Save Viewer")
         ipc_server.serve_in_thread(handle_ipc_message)
         g_port_number = args.port
+        if not is_port_available(g_port_number):
+            png_logger.error(f"Port {g_port_number} is not available")
+            sys.exit(PNG_ERROR_CODE_PORT_IN_USE)
         Timer(2.0, post_init).start()
     else:
         g_port_number = find_free_port()
