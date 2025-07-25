@@ -42,8 +42,8 @@ def resolve_user_file(filename: str) -> str:
     Returns:
         str: Full path to the resolved file location.
     """
-    if sys.platform == "darwin":
-        base_dir = Path.home() / "Library" / "Application Support" / APP_NAME_LOWER
-        base_dir.mkdir(parents=True, exist_ok=True)
-        return str(base_dir / filename)
-    return filename
+    if sys.platform != "darwin":
+        return filename
+    base_dir = Path.home() / "Library" / "Application Support" / APP_NAME_LOWER
+    base_dir.mkdir(parents=True, exist_ok=True)
+    return str(base_dir / filename)
