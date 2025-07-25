@@ -1,0 +1,37 @@
+# .github/workflows/mac-build.yml
+name: Build macOS App
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-mac:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python (Poetry will override this)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'  # fallback, Poetry will set exact version
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          poetry install --no-root
+
+      - name: Build with PyInstaller
+        run: |
+          poetry run python build.py
+
+      - name: Upload .app bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: macOS-App
+          path: dist/*.app
