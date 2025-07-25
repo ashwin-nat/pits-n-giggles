@@ -951,32 +951,17 @@ class TelemetryWebServer:
         return should_write
 
     def run(self):
-        # Disable noisy logs
-        logging.getLogger('werkzeug').setLevel(logging.ERROR)
-        logging.getLogger('socketio').setLevel(logging.ERROR)
-        logging.getLogger('engineio').setLevel(logging.ERROR)
-        logging.getLogger('gevent').setLevel(logging.ERROR)
-        logging.getLogger('websocket').setLevel(logging.ERROR)
+        # silence noisy loggers…
+        for name in ['werkzeug', 'socketio', 'engineio', 'gevent', 'websocket']:
+            logging.getLogger(name).setLevel(logging.ERROR)
 
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-        # Always set SO_REUSEADDR
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-        # Set SO_REUSEPORT only if platform supports and not Windows
-        if platform.system() != "Windows":
-            try:
-                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-            except (AttributeError, OSError):
-                # SO_REUSEPORT not available on this platform
-                pass
-
-        sock.bind(("0.0.0.0", self.m_port))
-        sock.listen(128)
-        sock.setblocking(False)
-
-        server = WSGIServer(sock, self.m_socketio.server)
-        server.serve_forever()
+        self.m_socketio.run(
+            app=self.m_app,
+            host="0.0.0.0",
+            port=self.m_port,
+            use_reloader=False,
+            reuse_port=True,        # <-- drops in SO_REUSEADDR+REUSEPORT
+        )
 
 def checkRecomputeJSON(json_data : Dict[str, Any]) -> bool:
 
