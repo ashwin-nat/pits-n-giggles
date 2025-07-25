@@ -29,14 +29,15 @@ This document outlines how to build the `Pits n' Giggles` app into a standalone 
 To build the app:
 
 ```bash
-poetry run pyinstaller --clean --noconfirm scripts/png.spec
+poetry run python scripts/build.py
 ```
 
 - This must be run from the **root of the project**.
 - The resulting executable will appear in the `dist/` folder with a name like:
 
   ```
-  dist/pits_n_giggles_2.8.0.exe
+  dist/pits_n_giggles_<ver>.exe
+  dist/pits_n_giggles_<ver>.app
   ```
 
 ---
@@ -47,7 +48,6 @@ Pits n' Giggles uses a modular launcher architecture to simplify distribution an
 
 - ✅ The **main launcher** is built as a single executable.
 - ✅ **Subsystems** (e.g., backend, save viewer) are launched as Python modules using the **main binary’s interpreter**.
-- ❌ No separate `.exe` files are bundled for subsystems.
 
 ### 📦 Version Management
 
@@ -133,7 +133,7 @@ rm -rf build/ dist/
 Or just rebuild from scratch:
 
 ```bash
-poetry run pyinstaller --clean --noconfirm scripts/png.spec
+poetry run python scripts/build.py
 ```
 
 ---
