@@ -22,23 +22,6 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import os
-import sys
-import traceback
-
-# TEMP fallback log file for early crash diagnostics
-# TODO: remove
-LOG_PATH = os.path.expanduser("~/pitsngiggles_crashlog.txt")
-
-# Only write to this file if uncaught exception occurs
-def log_uncaught_exceptions(exctype, value, tb):
-    with open(LOG_PATH, "w") as f:
-        f.write("Uncaught exception:\n")
-        traceback.print_exception(exctype, value, tb, file=f)
-
-# Register global exception handler (before GUI starts!)
-sys.excepthook = log_uncaught_exceptions
-
 import atexit
 import os
 import shutil
