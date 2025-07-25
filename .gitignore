@@ -19,3 +19,4 @@ png-venv/
 *.part
 .invalid
 *.pem
+.DS_Store

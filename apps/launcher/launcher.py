@@ -98,4 +98,5 @@ def entry_point():
         debug_mode=debug_mode
     )
     root.protocol("WM_DELETE_WINDOW", app.on_closing)
+    root.createcommand("::tk::mac::Quit", app.on_closing)
     root.mainloop()

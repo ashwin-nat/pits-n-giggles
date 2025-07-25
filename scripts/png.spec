@@ -1,20 +1,52 @@
+# MIT License
+#
+# Copyright (c) [2025] [Ashwin Natarajan]
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# --------------------------------------------------------------------------------------------------
+
 # PyInstaller Spec File for Pits n' Giggles
 # Onefile build with embedded dispatcher (via --module)
+
+# Add 'scripts/' to sys.path so 'version.py' can be imported
+import sys
+sys.path.insert(0, os.path.abspath(os.path.dirname(sys.argv[0])))
+
 import os
+import platform
 import shutil
 import tempfile
 from PyInstaller.utils.hooks import collect_submodules
-from PyInstaller.building.build_main import Analysis, PYZ, EXE, COLLECT
+from PyInstaller.building.build_main import Analysis, PYZ, EXE, COLLECT, BUNDLE
+from version import APP_VERSION
 
 # --------------------------------------------------------------------------------------------------
 # Core application info
 # --------------------------------------------------------------------------------------------------
 
 APP_NAME = "pits_n_giggles"
-APP_VERSION = "2.10.0"
 ICON_PATH = "../assets/favicon.ico"
+ICON_PATH_MAC = "../assets/logo.icns"
 
 APP_BASENAME = f"{APP_NAME}_{APP_VERSION}"
+COLLECT_DIR_NAME = f"{APP_NAME}_build_tmp"      # used for intermediate dist folder
 PROJECT_ROOT = os.path.abspath(".")
 
 # --------------------------------------------------------------------------------------------------
@@ -96,13 +128,26 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=False,  # ✅ Suppress empty CMD window
+    console=False,
     disable_windowed_traceback=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
     icon=ICON_PATH,
+    stdout=None,
+    stderr=None,
 )
+
+if platform.system() == "Darwin":
+    from PyInstaller.building.build_main import BUNDLE
+
+    app = BUNDLE(
+        exe,
+        name=f"{APP_BASENAME}.app",
+        icon=ICON_PATH_MAC,
+        bundle_identifier="com.pitsngiggles.app",
+    )
+    # app is built for .app bundle, but we still pass `exe` to COLLECT
 
 coll = COLLECT(
     exe,
@@ -112,13 +157,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name=APP_BASENAME,
+    name=COLLECT_DIR_NAME,
 )
-
-# --------------------------------------------------------------------------------------------------
-# Optional cleanup: remove dist/APP_BASENAME dir (created by COLLECT)
-# --------------------------------------------------------------------------------------------------
-
-collect_dir = os.path.join("dist", APP_BASENAME)
-if os.path.isdir(collect_dir):
-    shutil.rmtree(collect_dir)

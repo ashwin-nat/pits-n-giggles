@@ -30,13 +30,15 @@ import socket
 import sys
 from typing import List, Optional, Set
 
+import psutil
+
 from apps.backend.common.png_logger import initLogger
 from apps.backend.state_mgmt_layer import initStateManagementLayer
 from apps.backend.telemetry_layer import initTelemetryLayer
 from apps.backend.ui_intf_layer import TelemetryWebServer, initUiIntfLayer
+from lib.child_proc_mgmt import report_pid_from_child
 from lib.config import load_config_from_ini
 from lib.error_status import PngError
-from lib.child_proc_mgmt import report_pid_from_child
 from lib.version import get_version
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
@@ -175,12 +177,14 @@ class PngRunner:
             Set[str]: Set of local IP addresses.
         """
         ip_addresses = {'127.0.0.1', 'localhost'}
-        try:
-            for host_name in socket.gethostbyname_ex(socket.gethostname())[2]:
-                ip_addresses.add(host_name)
-        except socket.gaierror as e:
-            # Log the error or handle it as per your requirement
-            self.m_logger.warning("Error occurred: %s. Using default IP addresses.", e)
+        for _, snics in psutil.net_if_addrs().items():
+            for snic in snics:
+                if snic.family == socket.AF_INET:
+                    ip = snic.address
+                    # Filter out loopback and CGNAT (100.64.0.0/10)
+                    if ip.startswith('127.') or ip.startswith('169.254.') or ip.startswith('100.'):
+                        continue
+                    ip_addresses.add(ip)
         return ip_addresses
 
     def _getVersion(self) -> str:

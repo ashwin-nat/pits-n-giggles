@@ -34,6 +34,9 @@ from PIL import Image, ImageTk
 
 from lib.config import PngSettings, load_config_from_ini
 from lib.version import is_update_available
+from lib.file_path import resolve_user_file
+
+from meta.meta import APP_NAME
 
 from .app_managers import BackendAppMgr, PngAppMgrBase, SaveViewerAppMgr
 from .console_interface import ConsoleInterface
@@ -57,8 +60,8 @@ class PngLauncher(ConsoleInterface):
 
         self.root = root
         self.version = ver_str if ver_str != 'dev' else ''
-        self.app_name = "Pits n' Giggles"
-        self.config_file = "png_config.ini"
+        self.app_name = APP_NAME
+        self.config_file = resolve_user_file("png_config.ini")
         self.logo_path = logo_path
         self.settings_icon_path = settings_icon_path
         self.debug_mode = debug_mode
@@ -353,6 +356,7 @@ class PngLauncher(ConsoleInterface):
 
     def on_closing(self):
         """Stop all running sub-apps and restore stdout before closing"""
+        self.log("Closing %s", self.app_name)
         for _, subapp in self.subapps.items():
             if subapp.is_running:
                 self.log(f"Stopping {subapp.display_name}...")

@@ -23,8 +23,8 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
-import errno
 import logging
+import platform
 import socket
 import webbrowser
 from http import HTTPStatus
@@ -36,8 +36,9 @@ import uvicorn
 from quart import Quart, jsonify, render_template, request, send_from_directory
 
 import apps.backend.state_mgmt_layer as TelState
-from lib.error_status import PngPortInUseError
 from lib.child_proc_mgmt import notify_parent_init_complete
+from lib.error_status import PngPortInUseError
+from lib.port_check import is_port_available
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -404,37 +405,35 @@ class TelemetryWebServer:
         Sets up the server configuration and starts serving the application.
         """
 
-        if not _is_port_available(self.m_port):
+        if not is_port_available(self.m_port):
             self.m_logger.error(f"Port {self.m_port} is already in use")
             raise PngPortInUseError()
-            # sys.exit(PNG_ERROR_CODE_PORT_IN_USE)
+
+        # Create a socket manually to set SO_REUSEADDR
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        if platform.system() != "Windows":
+            try:
+                # pylint: disable=useless-suppression
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1) # pylint: disable=no-member
+            except (AttributeError, OSError):
+                # SO_REUSEPORT not available on this platform
+                pass
+        sock.bind(("0.0.0.0", self.m_port))
+        sock.listen(1024)
+        sock.setblocking(False)
 
         config = uvicorn.Config(
             self.m_sio_app,
-            host="0.0.0.0",
-            port=self.m_port,
             log_level="warning",
             ssl_certfile=self.m_cert_path,
-            ssl_keyfile=self.m_key_path
+            ssl_keyfile=self.m_key_path,
         )
 
         server = uvicorn.Server(config)
-        await server.serve()
-
+        await server.serve(sockets=[sock])
 
     async def stop(self) -> None:
         """Stop the web server."""
         self._shutdown_event.set()
 
-# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
-
-def _is_port_available(port: int) -> bool:
-    """Check if a TCP port is available on localhost."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        try:
-            s.bind(('0.0.0.0', port))
-            return True
-        except OSError as e:
-            if e.errno == errno.EADDRINUSE:
-                return False
-            raise  # unexpected error
