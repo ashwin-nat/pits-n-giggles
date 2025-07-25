@@ -23,8 +23,9 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
-from lib.file_path import  resolve_user_file
 from logging.handlers import RotatingFileHandler
+
+from lib.file_path import resolve_user_file
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 

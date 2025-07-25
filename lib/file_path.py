@@ -46,5 +46,4 @@ def resolve_user_file(filename: str) -> str:
         base_dir = Path.home() / "Library" / "Application Support" / APP_NAME_LOWER
         base_dir.mkdir(parents=True, exist_ok=True)
         return str(base_dir / filename)
-    else:
-        return filename
+    return filename

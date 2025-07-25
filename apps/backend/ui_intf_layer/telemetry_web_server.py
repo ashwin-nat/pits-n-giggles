@@ -413,7 +413,7 @@ class TelemetryWebServer:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         if platform.system() != "Windows":
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1) # pylint: disable=no-member
         sock.bind(("0.0.0.0", self.m_port))
         sock.listen(1024)
         sock.setblocking(False)
