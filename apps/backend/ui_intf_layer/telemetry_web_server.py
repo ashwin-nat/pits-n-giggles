@@ -407,20 +407,24 @@ class TelemetryWebServer:
         if not _is_port_available(self.m_port):
             self.m_logger.error(f"Port {self.m_port} is already in use")
             raise PngPortInUseError()
-            # sys.exit(PNG_ERROR_CODE_PORT_IN_USE)
+
+        # Create a socket manually to set SO_REUSEADDR
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        sock.bind(("0.0.0.0", self.m_port))
+        sock.listen(1024)
+        sock.setblocking(False)
 
         config = uvicorn.Config(
             self.m_sio_app,
-            host="0.0.0.0",
-            port=self.m_port,
             log_level="warning",
             ssl_certfile=self.m_cert_path,
-            ssl_keyfile=self.m_key_path
+            ssl_keyfile=self.m_key_path,
         )
 
         server = uvicorn.Server(config)
-        await server.serve()
-
+        await server.serve(sockets=[sock])
 
     async def stop(self) -> None:
         """Stop the web server."""
@@ -429,12 +433,8 @@ class TelemetryWebServer:
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def _is_port_available(port: int) -> bool:
-    """Check if a TCP port is available on localhost."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        try:
-            s.bind(('0.0.0.0', port))
-            return True
-        except OSError as e:
-            if e.errno == errno.EADDRINUSE:
-                return False
-            raise  # unexpected error
+    """Check if a TCP port is available by trying to connect to it."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(0.5)
+        result = sock.connect_ex(('127.0.0.1', port))
+        return result != 0  # returns True if port is not in use

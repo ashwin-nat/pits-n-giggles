@@ -356,6 +356,7 @@ class PngLauncher(ConsoleInterface):
 
     def on_closing(self):
         """Stop all running sub-apps and restore stdout before closing"""
+        self.log("Closing Pits n' Giggles")
         for _, subapp in self.subapps.items():
             if subapp.is_running:
                 self.log(f"Stopping {subapp.display_name}...")
