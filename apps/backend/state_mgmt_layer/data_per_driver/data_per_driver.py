@@ -699,11 +699,16 @@ class DataPerDriver:
         """
 
         curr_is_pitting = lap_data.m_pitStatus in {LapData.PitStatus.PITTING, LapData.PitStatus.IN_PIT_AREA}
-        if not self.m_lap_info.m_is_pitting and curr_is_pitting and F1Utils.isFinishLineAfterPitGarage(track):
+        if not self.m_lap_info.m_is_pitting and curr_is_pitting:
             # entering pits
-            # note down curr tyre wear for delayed tyre set change handling
-            # take a deepcopy since this obj is volatile
-            self.m_pending_events_mgr.data = deepcopy(self.m_tyre_info.tyre_wear)
+            self.m_logger.debug("Driver %s - entering pits.", str(self))
+            if F1Utils.isFinishLineAfterPitGarage(track):
+                # note down curr tyre wear for delayed tyre set change handling
+                # take a deepcopy since this obj is volatile
+                self.m_pending_events_mgr.data = deepcopy(self.m_tyre_info.tyre_wear)
+        elif self.m_lap_info.m_is_pitting and not curr_is_pitting:
+            # leaving pits
+            self.m_logger.debug("Driver %s - leaving pits.", str(self))
 
         self.m_lap_info.m_is_pitting = lap_data.m_pitStatus in \
                 [LapData.PitStatus.PITTING, LapData.PitStatus.IN_PIT_AREA]

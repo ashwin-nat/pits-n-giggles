@@ -82,6 +82,7 @@ class PngRunner:
             udp_tyre_delta_action_code=self.m_config.Network.udp_tyre_delta_action_code,
             forwarding_targets=self.m_config.Forwarding.forwarding_targets,
             ver_str=self.m_version,
+            wdt_interval=float(self.m_config.Network.wdt_interval_sec),
             tasks=self.m_tasks
         )
         self.m_web_server = self._setupUiIntfLayer(

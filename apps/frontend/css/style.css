@@ -107,10 +107,17 @@ body {
 .blinking-dot {
   width: 10px;
   height: 10px;
-  background-color: red;
   border-radius: 50%;
   animation: blink 1.5s infinite alternate;
   flex-shrink: 0; /* Prevents shrinking */
+}
+
+.blinking-dot.red {
+  background-color: red;
+}
+
+.blinking-dot.green {
+  background-color: green;
 }
 
 @keyframes blink {

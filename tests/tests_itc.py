@@ -39,63 +39,39 @@ from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
 # ----------------------------------------------------------------------------------------------------------------------
 
 class TestAsyncInterTaskCommunicator(F1TelemetryUnitTestsBase):
-    def setUp(self):
-        """Create a fresh communicator for each test"""
+    async def asyncSetUp(self):
+        """Create a fresh communicator for each test (async version)"""
         self.communicator = AsyncInterTaskCommunicator()
 
-    async def async_test_timeout_none(self):
+    async def test_timeout_none(self):
         """Test receive with timeout=None (indefinite wait)"""
-        # This test will timeout if the receive doesn't work correctly
         async def wait_and_send():
             await asyncio.sleep(0.1)
             await self.communicator.send('wait_queue', "Delayed Message")
 
-        # Start a task to send a message after a short delay
         send_task = asyncio.create_task(wait_and_send())
 
-        # Receive should wait indefinitely
         message = await self.communicator.receive('wait_queue', timeout=None)
-
-        # Verify message
         self.assertEqual(message, "Delayed Message")
-
-        # Ensure send task completed
         await send_task
 
-    def test_timeout_none(self):
-        """Wrapper to run async test synchronously"""
-        asyncio.run(self.async_test_timeout_none())
-
-    async def async_test_timeout_zero(self):
+    async def test_timeout_zero(self):
         """Test receive with timeout=0 (non-blocking)"""
         result = await self.communicator.receive('empty_queue', timeout=0)
         self.assertIsNone(result)
 
-    def test_timeout_zero(self):
-        """Wrapper to run async test synchronously"""
-        asyncio.run(self.async_test_timeout_zero())
-
-    async def async_test_timeout_positive(self):
-        """Test receive with a positive timeout"""
+    async def test_timeout_positive(self):
+        """Test receive with a positive timeout and delayed message"""
         # No message initially
         result = await self.communicator.receive('timeout_queue', timeout=0.1)
         self.assertIsNone(result)
 
-        # Send a message after a delay
         async def delayed_send():
             await asyncio.sleep(0.05)
             await self.communicator.send('timeout_queue', "Timely Message")
 
-        # Start delayed send
         send_task = asyncio.create_task(delayed_send())
 
-        # Receive with longer timeout should get the message
         message = await self.communicator.receive('timeout_queue', timeout=0.2)
         self.assertEqual(message, "Timely Message")
-
-        # Ensure send task completed
         await send_task
-
-    def test_timeout_positive(self):
-        """Wrapper to run async test synchronously"""
-        asyncio.run(self.async_test_timeout_positive())

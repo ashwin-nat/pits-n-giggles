@@ -74,7 +74,7 @@ class CustomTestResult(unittest.TextTestResult):
         super().addError(test, err)
         print(f" {Fore.RED}[ERROR]{Style.RESET_ALL}")
 
-class F1TelemetryUnitTestsBase(unittest.TestCase):
+class F1TelemetryUnitTestsBase(unittest.IsolatedAsyncioTestCase):
     """
     Base class for all unit tests.
     """
@@ -85,9 +85,9 @@ class F1TelemetryUnitTestsBase(unittest.TestCase):
         test_class = self.__class__
         test_hierarchy = [test_class.__name__]
 
-        while issubclass(test_class, unittest.TestCase):
+        while issubclass(test_class, unittest.IsolatedAsyncioTestCase):
             parent_class = test_class.__bases__[0]
-            if issubclass(parent_class, unittest.TestCase):
+            if issubclass(parent_class, unittest.IsolatedAsyncioTestCase):
                 if parent_class.__name__ == 'F1TelemetryUnitTestsBase':
                     break
                 test_hierarchy.insert(0, parent_class.__name__)

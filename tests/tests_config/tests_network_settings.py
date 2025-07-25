@@ -46,6 +46,7 @@ class TestNetworkSettings(TestF1ConfigBase):
         self.assertEqual(settings.save_viewer_port, 4769)
         self.assertEqual(settings.udp_tyre_delta_action_code, 11)
         self.assertEqual(settings.udp_custom_action_code, 12)
+        self.assertEqual(settings.wdt_interval_sec, 30)
 
     def test_invalid_port_ranges(self):
         """Test that invalid port numbers raise ValidationError"""
@@ -79,12 +80,14 @@ class TestNetworkSettings(TestF1ConfigBase):
             save_viewer_port=12345,
             udp_tyre_delta_action_code=1,
             udp_custom_action_code=12,
+            wdt_interval_sec=45
         )
         self.assertEqual(net.telemetry_port, 0)
         self.assertEqual(net.server_port, 65535)
         self.assertEqual(net.save_viewer_port, 12345)
         self.assertEqual(net.udp_tyre_delta_action_code, 1)
         self.assertEqual(net.udp_custom_action_code, 12)
+        self.assertEqual(net.wdt_interval_sec, 45)
 
     def test_invalid_telemetry_port(self):
         with self.assertRaises(ValidationError):
@@ -127,3 +130,13 @@ class TestNetworkSettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError) as ctx:
             NetworkSettings(udp_tyre_delta_action_code=5, udp_custom_action_code=5)
         self.assertIn("must not be the same", str(ctx.exception))
+
+    def test_wdt_interval_sec_invalid_type(self):
+        with self.assertRaises(ValidationError):
+            NetworkSettings(wdt_interval_sec="cat")
+
+    def test_wdt_interval_sec_invalid_range(self):
+        with self.assertRaises(ValidationError):
+            NetworkSettings(wdt_interval_sec=0)
+        with self.assertRaises(ValidationError):
+            NetworkSettings(wdt_interval_sec=121)

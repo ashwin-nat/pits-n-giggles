@@ -166,98 +166,44 @@ class DriverModalPopulator {
             this.populateTelemetryDisabledMessage(tabPane);
             return;
         }
-        const fuelUsagePerLap = [];
+
+        const rawLaps = this.data["per-lap-info"];
 
         const leftPanePopulator = (leftDiv) => {
-            const table = document.createElement('table');
-            table.className = this.tableClassNames ;
-
-            // Create table header
-            const thead = document.createElement('thead');
-            const headerRow = document.createElement('tr');
-            const headers = ['Lap', 'Fuel Load (kg)', 'Usage Per Lap (kg)', 'Excess Laps', 'Excess Laps Delta'];
-
-            headers.forEach(headerText => {
-                const th = document.createElement('th');
-                th.textContent = headerText;
-                headerRow.appendChild(th);
-            });
-
-            thead.appendChild(headerRow);
-            table.appendChild(thead);
-
-            // Create table body
-            const tbody = document.createElement('tbody');
-
-            let previousFuelLoad = null;
-            let previousExcessLaps = null;
-
-            const fuelUsageData = this.data["per-lap-info"];
-            fuelUsageData.forEach((lapData, index) => {
-                const row = document.createElement('tr');
-
-                const lapCell = document.createElement('td');
-                lapCell.textContent = lapData["lap-number"]; // Lap number
-                row.appendChild(lapCell);
-
-                const fuelLoadCell = document.createElement('td');
-                fuelLoadCell.textContent = lapData["car-status-data"]["fuel-in-tank"].toFixed(2); // Fuel load (kg)
-                row.appendChild(fuelLoadCell);
-
-                const usagePerLapCell = document.createElement('td');
-                if (previousFuelLoad !== null) {
-                    const usagePerLap = previousFuelLoad - lapData["car-status-data"]["fuel-in-tank"];
-                    usagePerLapCell.textContent = usagePerLap.toFixed(2); // Usage per lap (kg)
-                    fuelUsagePerLap.push({
-                        x: lapData["lap-number"],
-                        y: usagePerLap
-                    });
-                } else {
-                    usagePerLapCell.textContent = '-'; // First lap, no previous value to calculate
-                }
-                row.appendChild(usagePerLapCell);
-
-                const excessLapsCell = document.createElement('td');
-                const excessLaps = lapData["car-status-data"]["fuel-remaining-laps"];
-                excessLapsCell.textContent = excessLaps.toFixed(2); // Excess laps
-                row.appendChild(excessLapsCell);
-
-                const excessLapsDeltaCell = document.createElement('td');
-                if (previousExcessLaps !== null) {
-                    const excessLapsDelta = excessLaps - previousExcessLaps;
-                    excessLapsDeltaCell.textContent = excessLapsDelta.toFixed(2); // Excess laps delta
-                } else {
-                    excessLapsDeltaCell.textContent = '-'; // First lap, no previous value to calculate
-                }
-                row.appendChild(excessLapsDeltaCell);
-
-                tbody.appendChild(row);
-
-                // Update previous values for next iteration
-                previousFuelLoad = lapData["car-status-data"]["fuel-in-tank"];
-                previousExcessLaps = excessLaps;
-            });
-
-            table.appendChild(tbody);
-            leftDiv.appendChild(table);
+            new FuelCalculator(leftDiv, rawLaps, {
+                MIN_FUEL_LEVEL: 0.2,
+                FUEL_SAVING_PERCENT: 3
+            }).init();
         };
 
         const rightPanePopulator = (rightDiv) => {
+            const graphPoints = [];
+
+            // Prepare graph data
+            let previousFuelLoad = null;
+            rawLaps.forEach((lapData, index) => {
+                if (previousFuelLoad !== null) {
+                    const usage = previousFuelLoad - lapData["car-status-data"]["fuel-in-tank"];
+                    graphPoints.push({
+                        x: lapData["lap-number"],
+                        y: usage
+                    });
+                }
+                previousFuelLoad = lapData["car-status-data"]["fuel-in-tank"];
+            });
             const datasets = [
                 {
                     label: "Fuel Usage",
-                    data: fuelUsagePerLap,
+                    data: graphPoints,
                     borderColor: 'red',
                     backgroundColor: 'rgba(255, 99, 132, 0.2)',
                     fill: false
                 }
             ];
 
-            // Pass the graph data to plotGraph function
             const canvas = document.createElement('canvas');
-
-            rightDiv.appendChild(canvas);
             rightDiv.classList.add('chart-container');
+            rightDiv.appendChild(canvas);
             plotGraph(canvas, datasets, 'Lap', 'Fuel used (kg)');
         };
 
@@ -493,7 +439,6 @@ class DriverModalPopulator {
 
         this.createModalDivElelements(tabPane, leftPanePopulator, rightPanePopulator);
     }
-
 
     populateERSHistoryTab(tabPane) {
         if (!this.telemetryEnabled) {
@@ -943,7 +888,7 @@ class DriverModalPopulator {
                 this.populateTableRows(tbody, [
                     ["AI controlled", participantData["ai-controlled"]],
                     ["Driver ID (Not the driver's race number)", participantData["driver-id"]],
-                    ["Team", participantData["team-id"]],
+                    ["Team", getTeamName(participantData["team-id"])],
                     ["Name", participantData["name"]],
                     ["Nationality", participantData["nationality"]],
                     ["Network ID", participantData["network-id"]],

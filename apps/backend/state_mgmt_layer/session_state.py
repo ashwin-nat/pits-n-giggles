@@ -24,30 +24,33 @@
 
 import json
 import logging
+from copy import deepcopy
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from apps.backend.state_mgmt_layer.data_per_driver import DataPerDriver, DriverPendingEvents
+from apps.backend.state_mgmt_layer.data_per_driver import (DataPerDriver,
+                                                           DriverPendingEvents)
 from apps.backend.state_mgmt_layer.overtakes import (GetOvertakesStatus,
                                                      OvertakesHistory)
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
 from lib.custom_marker_tracker import CustomMarkerEntry, CustomMarkersHistory
-from lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils, FinalClassificationData,
-                          PacketCarDamageData, PacketCarSetupData, LapData, GameMode,
+from lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils,
+                          FinalClassificationData, GameMode, LapData,
+                          PacketCarDamageData, PacketCarSetupData,
                           PacketCarStatusData, PacketCarTelemetryData,
                           PacketEventData, PacketFinalClassificationData,
-                          PacketLapData, PacketLapPositionsData, VisualTyreCompound,
+                          PacketLapData, PacketLapPositionsData,
                           PacketMotionData, PacketParticipantsData,
                           PacketSessionData, PacketSessionHistoryData,
-                          PacketTimeTrialData, PacketTyreSetsData, ResultReason,
-                          ResultStatus, SafetyCarType, SessionType23,
-                          SessionType24, TrackID, WeatherForecastSample)
+                          PacketTimeTrialData, PacketTyreSetsData,
+                          ResultReason, ResultStatus, SafetyCarType,
+                          SessionType23, SessionType24, TrackID,
+                          VisualTyreCompound, WeatherForecastSample)
 from lib.inter_task_communicator import TyreDeltaMessage
 from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.tyre_wear_extrapolator import TyreWearPerLap
-
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -213,6 +216,10 @@ class SessionState:
         m_udp_custom_marker_action_code (Optional[int]): The UDP action code for custom marker
         m_udp_tyre_delta_action_code (Optional[int]): The UDP action code for tyre delta notification
         m_process_car_setups (bool): Flag indicating whether to process car setups packets.
+        m_custom_markers_history (CustomMarkersHistory): An instance tracking custom markers history.
+        m_first_session_update_received (bool): Flag indicating whether the first session update packet has been received.
+        m_version (str): Version string
+        m_connected_to_sim (bool): Flag indicating whether the client is connected to the simulator
     """
 
     MAX_DRIVERS: int = 22
@@ -237,7 +244,8 @@ class SessionState:
         'm_process_car_setups',
         'm_custom_markers_history',
         'm_first_session_update_received',
-        'm_version'
+        'm_version',
+        'm_connected_to_sim'
     ]
 
     def __init__(self,
@@ -275,6 +283,7 @@ class SessionState:
         self.m_process_car_setups: bool = process_car_setups
 
         self.m_custom_markers_history = CustomMarkersHistory()
+        self.m_connected_to_sim: bool = False
 
     ####### Control Methods ########
 
@@ -326,6 +335,15 @@ class SessionState:
         Set the race as completed.
         """
         self.m_race_completed = True
+
+    def setConnectedToSim(self, connected: bool) -> None:
+        """Set whether the client is connected to the simulator. Based on WDT
+
+        Args:
+            connected (bool): Whether the client is connected to the simulator
+        """
+        self.m_logger.debug("WDT: Connected to sim: [%s]->[%s]", self.m_connected_to_sim, connected)
+        self.m_connected_to_sim = connected
 
     ##### Packet event entry points #####
 
@@ -680,7 +698,9 @@ class SessionState:
             obj_to_be_updated.m_car_info.m_fl_wing_damage = car_damage.m_frontLeftWingDamage
             obj_to_be_updated.m_car_info.m_fr_wing_damage = car_damage.m_frontRightWingDamage
             obj_to_be_updated.m_car_info.m_rear_wing_damage = car_damage.m_rearWingDamage
-            obj_to_be_updated.m_pending_events_mgr.onEvent(DriverPendingEvents.CAR_DMG_PKT_EVENT)
+            if obj_to_be_updated.m_pending_events_mgr.areEventsPending():
+                obj_to_be_updated.m_pending_events_mgr.data = deepcopy(obj_to_be_updated.m_tyre_info.tyre_wear)
+                obj_to_be_updated.m_pending_events_mgr.onEvent(DriverPendingEvents.CAR_DMG_PKT_EVENT)
 
     def processSessionHistoryUpdate(self, packet: PacketSessionHistoryData) -> None:
         """Process the session history update packet and update the necessary fields

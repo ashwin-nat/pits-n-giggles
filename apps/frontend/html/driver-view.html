@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/conditions.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/speedLimit.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tyreStintHistoryModal.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/fuelCalculator.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tyreSetsCards.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/lapSectorRecords.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tyreRecords.css') }}">
@@ -78,9 +79,8 @@
       <!-- Main Container -->
       <main class="dashboard-main">
         <div class="telemetry-splash-wrapper" id="splash-div">
-          <div class="status-wrapper">
-            <span class="blinking-dot"></span>
-            <p>Waiting for session start ...</p>
+          <div class="status-wrapper" id="status-wrapper">
+            <!-- Populated by JavaScript -->
           </div>
         </div>
         <div class="telemetry-table-wrapper" id="race-table-div" style="display: none;">
@@ -582,6 +582,7 @@
     <script src="{{ url_for('static', filename='js/iconCache.js') }}"></script>
     <script src="{{ url_for('static', filename='js/weatherUI.js') }}"></script>
     <script src="{{ url_for('static', filename='js/graph.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/fuelCalculator.js') }}"></script>
     <script src="{{ url_for('static', filename='js/driverDataModalPopulator.js') }}"></script>
     <script src="{{ url_for('static', filename='js/raceStatsModalPopulator.js') }}"></script>
     <script src="{{ url_for('static', filename='js/tyreSetsCards.js') }}"></script>
