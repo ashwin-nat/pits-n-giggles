@@ -414,6 +414,7 @@ class TelemetryWebServer:
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         if platform.system() != "Windows":
             try:
+                # pylint: disable=useless-suppression
                 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1) # pylint: disable=no-member
             except (AttributeError, OSError):
                 # SO_REUSEPORT not available on this platform

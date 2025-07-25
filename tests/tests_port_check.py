@@ -3,6 +3,7 @@ from contextlib import closing
 import socket
 import os
 import sys
+import platform
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -29,9 +30,11 @@ class TestPortAvailability(F1TelemetryUnitTestsBase):
         """Test that a port currently bound is reported as unavailable."""
         bound_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
+            if platform.system() == "Windows":
+                bound_sock.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
             bound_sock.bind(('127.0.0.1', 0))
             used_port = bound_sock.getsockname()[1]
-            bound_sock.listen(1)  # Start listening to ensure the port is in use
+            bound_sock.listen(1)
 
             self.assertFalse(is_port_available(used_port), f"Expected port {used_port} to be unavailable")
         finally:
