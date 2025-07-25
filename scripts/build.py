@@ -26,16 +26,26 @@ import subprocess
 import sys
 import os
 import shutil
+import time
 
 APP_NAME = "pits_n_giggles"  # or load from the spec file dynamically if needed
 COLLECT_DIR_NAME = f"{APP_NAME}_build_tmp"
+
+def remove_dir_if_exists(path: str):
+    if os.path.isdir(path):
+        shutil.rmtree(path)
 
 def main():
     script_dir = os.path.dirname(__file__)
     spec_path = os.path.join(script_dir, "png.spec")
     collect_dir = os.path.join("dist", COLLECT_DIR_NAME)
 
+    # 0. Cleanup previous files
+    remove_dir_if_exists("build")
+    remove_dir_if_exists("dist")
+
     # 1. Run PyInstaller
+    start_time = time.time()
     subprocess.run(
         [
             sys.executable,
@@ -48,8 +58,11 @@ def main():
     )
 
     # 2. Cleanup the custom COLLECT dir
-    if os.path.isdir(collect_dir):
-        shutil.rmtree(collect_dir)
+    remove_dir_if_exists(collect_dir)
+
+    end_time = time.time()
+    elapsed = end_time - start_time
+    print(f"\n Build completed in {elapsed:.2f} seconds.")
 
 if __name__ == "__main__":
     main()

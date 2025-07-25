@@ -134,8 +134,8 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=ICON_PATH,
-    stdout=None,  # ✅ NEW
-    stderr=None,  # ✅ NEW
+    stdout=None,
+    stderr=None,
 )
 
 if platform.system() == "Darwin":
