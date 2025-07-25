@@ -28,7 +28,7 @@ jobs:
 
       - name: Build with PyInstaller
         run: |
-          poetry run python build.py
+          poetry run python scripts/build.py
 
       - name: Upload .app bundle
         uses: actions/upload-artifact@v4
