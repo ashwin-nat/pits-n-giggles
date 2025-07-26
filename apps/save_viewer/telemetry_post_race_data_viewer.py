@@ -66,6 +66,12 @@ def find_free_port():
         s.bind(('localhost', 0))
         return s.getsockname()[1]
 
+class SilentLog:
+    def write(self, msg):
+        pass
+    def flush(self):
+        pass
+
 g_json_data = {}
 g_json_path = ''
 g_json_lock = Lock()
@@ -955,13 +961,21 @@ class TelemetryWebServer:
         for name in ['werkzeug', 'socketio', 'engineio', 'gevent', 'websocket']:
             logging.getLogger(name).setLevel(logging.ERROR)
 
-        self.m_socketio.run(
-            app=self.m_app,
-            host="0.0.0.0",
-            port=self.m_port,
-            use_reloader=False,
-            reuse_port=True,        # <-- drops in SO_REUSEADDR+REUSEPORT
-        )
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+        if platform.system() != "Windows":
+            try:
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+            except (AttributeError, OSError):
+                pass
+
+        sock.bind(("0.0.0.0", self.m_port))
+        sock.listen(128)
+        sock.setblocking(False)
+
+        server = WSGIServer(sock, self.m_app, log=SilentLog(), error_log=logging.getLogger("gevent.error"))
+        server.serve_forever()
 
 def checkRecomputeJSON(json_data : Dict[str, Any]) -> bool:
 
