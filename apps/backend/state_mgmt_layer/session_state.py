@@ -357,12 +357,13 @@ class SessionState:
         num_active_cars = 0
         should_recompute_fastest_lap = False
         for index, lap_data in enumerate(packet.m_lapData):
-            if lap_data.m_resultStatus == ResultStatus.INVALID:
+
+            driver_obj = self._getObjectByIndex(index, reason="Lap data update")
+            driver_obj.m_lap_info.m_result_status = lap_data.m_resultStatus
+            if lap_data.m_resultStatus in {ResultStatus.INVALID, ResultStatus.INACTIVE}:
                 continue
 
             num_active_cars += 1
-            driver_obj = self._getObjectByIndex(index, reason="Lap data update")
-
             # Update driver position and timing data
             self._updateDriverPositionData(driver_obj, lap_data)
 
@@ -629,14 +630,15 @@ class SessionState:
             # Add driver’s classification info
             final_json["classification-data"][index] = driver.toJSON(index)
 
-            # Collect speed trap info
-            speed_trap_records.append(driver.getSpeedTrapRecordJSON())
+            if driver.is_valid:
+                # Collect speed trap info
+                speed_trap_records.append(driver.getSpeedTrapRecordJSON())
 
-            # Add position history if supported
-            if is_position_history_supported:
-                final_json["position-history"].append(driver.getPositionHistoryJSON())
-                if is_old_format:
-                    final_json["tyre-stint-history"].append(driver.getTyreStintHistoryJSON())
+                # Add position history if supported
+                if is_position_history_supported:
+                    final_json["position-history"].append(driver.getPositionHistoryJSON())
+                    if is_old_format:
+                        final_json["tyre-stint-history"].append(driver.getTyreStintHistoryJSON())
 
         # --- Handle speed trap records
         if is_speed_trap_supported:

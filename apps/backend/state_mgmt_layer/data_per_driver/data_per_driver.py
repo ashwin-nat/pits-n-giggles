@@ -28,7 +28,7 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
-from lib.f1_types import (F1Utils, LapData, PacketLapPositionsData,
+from lib.f1_types import (F1Utils, LapData, PacketLapPositionsData, ResultStatus,
                           SafetyCarType, SessionType23, SessionType24, TrackID)
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 
@@ -145,6 +145,10 @@ class DataPerDriver:
         Returns:
             bool: True if valid
         """
+
+        # AI cars that have not been added to the race will have invalid/inactive result status
+        if self.m_lap_info.m_result_status in {ResultStatus.INVALID, ResultStatus.INACTIVE}:
+            return False
 
         has_valid_position = (
             self.m_driver_info.position is not None and

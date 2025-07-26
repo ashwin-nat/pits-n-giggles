@@ -25,7 +25,7 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from lib.f1_types import LapHistoryData, VisualTyreCompound
+from lib.f1_types import LapHistoryData, VisualTyreCompound, ResultStatus
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -52,6 +52,7 @@ class LapInfo:
         m_speed_trap_record (Optional[float]): The speed trap record for the driver in km/h.
         m_is_pitting (Optional[bool]): Indicates whether the driver is currently in the pit lane.
         m_total_race_time (Optional[float]): Total race time in seconds.
+        m_result_status  (Optional[ResultStatus]): The result status of the driver.
     """
     m_best_lap_ms: Optional[int] = None
     m_best_lap_obj: Optional[LapHistoryData] = None
@@ -68,3 +69,4 @@ class LapInfo:
     m_speed_trap_record: Optional[float] = None
     m_is_pitting: Optional[bool] = None
     m_total_race_time: Optional[float] = None
+    m_result_status: Optional[ResultStatus] = None
