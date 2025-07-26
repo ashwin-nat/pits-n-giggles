@@ -950,9 +950,9 @@ class DriverModalPopulator {
         // Array of tabs with ID and label
         const tabs = [
             { id: 'lap-times', label: 'Lap Times' },
-            { id: 'fuel-usage', label: 'Fuel Usage History' },
+            { id: 'fuel-usage', label: 'Fuel Usage' },
             { id: 'tyre-stint-history', label: 'Tyre Stint History' },
-            { id: 'ers-history', label: 'ERS Usage History' },
+            { id: 'ers-history', label: 'ERS Usage' },
             { id: 'car-damage', label: 'Car Damage' },
             { id: 'warns-pens-info', label: 'Warns/Pens' },
             { id: 'collisions-info', label: 'Collisions' },
