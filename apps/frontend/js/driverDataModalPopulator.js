@@ -71,8 +71,14 @@ class DriverModalPopulator {
                 row.appendChild(tyreCell);
 
                 const wearCell = document.createElement('td');
+                // Set tyre wear text: show average or max wear (with key), or '---' if no data
                 wearCell.textContent = tyreSetInfo
-                    ? tyreSetInfo["tyre-wear"]["average"].toFixed(2) + '%'
+                    ? g_pref_tyreWearAverageFormat
+                        ? tyreSetInfo["tyre-wear"]["average"].toFixed(2) + '%'
+                        : (() => {
+                            const { ["max-key"]: key, ["max-wear"]: wear } = getMaxTyreWear(tyreSetInfo["tyre-wear"]);
+                            return `${key}: ${wear.toFixed(2)}%`;
+                        })()
                     : '---';
                 row.appendChild(wearCell);
 
