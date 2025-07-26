@@ -159,8 +159,8 @@ class ModalManager {
     document.getElementById("bestLapRelative").checked = !g_pref_bestLapAbsoluteFormat;
 
     // Set the radio buttons for tyre wear format
-    document.getElementById("tyreWearAbsolute").checked = !g_pref_tyreWearAverageFormat;
-    document.getElementById("tyreWearRelative").checked = g_pref_tyreWearAverageFormat;
+    document.getElementById("tyreWearAverage").checked = !g_pref_tyreWearAverageFormat;
+    document.getElementById("tyreWearMax").checked = g_pref_tyreWearAverageFormat;
 
     // Set the radio buttons for tyre wear format
     document.getElementById("deltaLeader").checked = !g_pref_relativeDelta;
