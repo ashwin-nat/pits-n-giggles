@@ -23,5 +23,5 @@
 # ----------------------------------------------------------------------------------------------------------------------
 
 APP_VERSION = "2.11.0"
-APP_NAME_LOWER = "pits_n_giggles"
+APP_NAME_SNAKE = "pits_n_giggles"
 APP_NAME = "Pits n' Giggles"

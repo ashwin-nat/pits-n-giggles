@@ -25,7 +25,7 @@
 import sys
 from pathlib import Path
 
-from meta.meta import APP_NAME_LOWER
+from meta.meta import APP_NAME_SNAKE
 
 # -------------------------------------- FUNCTIONS --------------------------------------------------------------------
 
@@ -44,6 +44,6 @@ def resolve_user_file(filename: str) -> str:
     """
     if sys.platform != "darwin":
         return filename
-    base_dir = Path.home() / "Library" / "Application Support" / APP_NAME_LOWER
+    base_dir = Path.home() / "Library" / "Application Support" / APP_NAME_SNAKE
     base_dir.mkdir(parents=True, exist_ok=True)
     return str(base_dir / filename)

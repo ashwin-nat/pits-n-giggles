@@ -35,18 +35,17 @@ import shutil
 import tempfile
 from PyInstaller.utils.hooks import collect_submodules
 from PyInstaller.building.build_main import Analysis, PYZ, EXE, COLLECT, BUNDLE
-from version import APP_VERSION
+from meta.meta import APP_VERSION, APP_NAME_SNAKE
 
 # --------------------------------------------------------------------------------------------------
 # Core application info
 # --------------------------------------------------------------------------------------------------
 
-APP_NAME = "pits_n_giggles"
 ICON_PATH = "../assets/favicon.ico"
 ICON_PATH_MAC = "../assets/logo.icns"
 
-APP_BASENAME = f"{APP_NAME}_{APP_VERSION}"
-COLLECT_DIR_NAME = f"{APP_NAME}_build_tmp"      # used for intermediate dist folder
+APP_BASENAME = f"{APP_NAME_SNAKE}_{APP_VERSION}"
+COLLECT_DIR_NAME = f"{APP_NAME_SNAKE}_build_tmp"      # used for intermediate dist folder
 PROJECT_ROOT = os.path.abspath(".")
 
 # --------------------------------------------------------------------------------------------------
