@@ -162,6 +162,7 @@ class PngRunner:
             client_update_interval_ms=client_update_interval_ms,
             debug_mode=debug_mode,
             stream_overlay_start_sample_data=stream_overlay_start_sample_data,
+            stream_overlay_update_interval_ms=self.m_config.StreamOverlay.stream_overlay_update_interval_ms,
             tasks=tasks,
             ver_str=ver_str,
             cert_path=cert_path,
