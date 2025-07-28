@@ -228,11 +228,17 @@ class EngViewRaceTableRow {
         ];
     }
 
-    getTyreWearCells() {
+    getTyreInfoCells(isTelemetryPublic) {
         const tyreInfoData = this.driver["tyre-info"];
-        const currTyreWearInfo = tyreInfoData["current-wear"];
         const tyreIcon = this.iconCache.getIcon(tyreInfoData["visual-tyre-compound"]);
         const agePitInfoStr = `${tyreInfoData["tyre-age"]} L (${tyreInfoData["num-pitstops"]} pit)`;
+        if (!isTelemetryPublic) {
+            return [
+                { value: this.createIconTextCell(tyreIcon, agePitInfoStr), border: true }
+            ];
+        }
+
+        const currTyreWearInfo = tyreInfoData["current-wear"];
         const predictionLap = g_engView_pitLapNum;
         const predictedTyreWearInfo = tyreInfoData["wear-prediction"]["predictions"].find(
             p => p["lap-number"] === predictionLap);
@@ -304,10 +310,10 @@ class EngViewRaceTableRow {
                 ...this.getDeltaInfoCells(),
                 ...this.getPenaltyCells(),
                 ...this.getLapTimeCells(),
-                ...this.getTyreWearCells(),
+                ...this.getTyreInfoCells(true),
                 ...this.getErsCells(),
                 ...this.getFuelCells(),
-                ...this.getDamageCells()
+                ...this.getDamageCells(),
             ];
         } else {
             cells = [
@@ -315,11 +321,13 @@ class EngViewRaceTableRow {
                 ...this.getDeltaInfoCells(),
                 ...this.getPenaltyCells(),
                 ...this.getLapTimeCells(),
+                ...this.getTyreInfoCells(false),
             ]
-            // values for wear, ERS, fuel and damage are not available when Telemetry is Private,
+            // values for tyre info*, ERS, fuel and damage are not available when Telemetry is Private,
             // Dynamically compute the number of omitted columns for colspan
             const omittedColumnsCount =
-                this.getTyreWearCells().length +
+                // For tyre info, we partially show the data. Compound, age and num pit stop data will always be avlb
+                (this.getTyreInfoCells(true).length - this.getTyreInfoCells(false).length) +
                 this.getErsCells().length +
                 this.getFuelCells().length +
                 this.getDamageCells().length;
@@ -328,6 +336,7 @@ class EngViewRaceTableRow {
                 colspan: omittedColumnsCount,
                 class: "eng-view-restricted-cell text-center"
             });
+            console.log("Driver has telemetry set to Restricted", omittedColumnsCount);
         }
 
         // Iterate through cells and append them correctly
