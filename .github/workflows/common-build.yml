@@ -10,7 +10,7 @@ jobs:
       matrix:
         os: [windows-latest, macos-latest]
     env:
-      POETRY_VERSION: 1.8.2  # Pin for reproducibility
+      POETRY_VERSION: 2.1.2  # Pin for reproducibility
 
     steps:
       - name: Checkout repository
