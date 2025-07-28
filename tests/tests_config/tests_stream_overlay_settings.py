@@ -29,38 +29,49 @@ from pydantic import ValidationError
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-import os
-import sys
 
-from pydantic import ValidationError
-
-from lib.config import PrivacySettings
+from lib.config import StreamOverlaySettings
 
 from .tests_config_base import TestF1ConfigBase
 
 # ----------------------------------------------------------------------------------------------------------------------
 
 
-class TestPrivacySettings(TestF1ConfigBase):
-    """Test PrivacySettings model"""
+class TestStreamOverlaySettings(TestF1ConfigBase):
+    """Test StreamOverlaySettings model"""
 
     def test_default_values(self):
         """Test default values"""
-        settings = PrivacySettings()
-        self.assertFalse(settings.process_car_setup)
+        settings = StreamOverlaySettings()
+        self.assertFalse(settings.show_sample_data_at_start)
+        self.assertEqual(settings.stream_overlay_update_interval_ms, 100)
 
-    def test_process_car_setup_boolean_validation(self):
+    def test_sample_data_at_start_validation(self):
         # Accept explicit True
-        privacy_settings = PrivacySettings(process_car_setup=True)
-        self.assertTrue(privacy_settings.process_car_setup)
+        settings = StreamOverlaySettings(show_sample_data_at_start=True)
+        self.assertTrue(settings.show_sample_data_at_start)
 
         # Accept explicit False
-        privacy_settings = PrivacySettings(process_car_setup=False)
-        self.assertFalse(privacy_settings.process_car_setup)
+        settings = StreamOverlaySettings(show_sample_data_at_start=False)
+        self.assertFalse(settings.show_sample_data_at_start)
 
         # Invalid types should raise validation errors
         with self.assertRaises(ValidationError):
-            PrivacySettings(process_car_setup="notabool")
+            StreamOverlaySettings(show_sample_data_at_start="notabool")
 
         with self.assertRaises(ValidationError):
-            PrivacySettings(process_car_setup=123)
+            StreamOverlaySettings(show_sample_data_at_start=123)
+
+    def test_update_interval_validation(self):
+        """Test update interval must be positive and greater than 50ms"""
+        settings = StreamOverlaySettings(stream_overlay_update_interval_ms=100)
+        self.assertEqual(settings.stream_overlay_update_interval_ms, 100)
+
+        with self.assertRaises(ValidationError):
+            StreamOverlaySettings(stream_overlay_update_interval_ms=0)
+
+        with self.assertRaises(ValidationError):
+            StreamOverlaySettings(stream_overlay_update_interval_ms=49)
+
+        with self.assertRaises(ValidationError):
+            StreamOverlaySettings(stream_overlay_update_interval_ms="notanumber")

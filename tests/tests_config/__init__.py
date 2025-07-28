@@ -35,6 +35,7 @@ from .tests_png_settings import TestPngSettings
 from .tests_privacy_settings import TestPrivacySettings
 from .tests_https_settings import TestHttpsSettings
 from .tests_file_path_str_config import TestFilePathStr
+from .tests_stream_overlay_settings import TestStreamOverlaySettings
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -52,6 +53,7 @@ __all__ = [
     "TestPngSettings",
     "TestPrivacySettings",
     "TestHttpsSettings",
+    "TestStreamOverlaySettings",
 
     "TestFilePathStr",
 ]
