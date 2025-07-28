@@ -1,0 +1,59 @@
+name: Build App for macOS and Windows
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+    env:
+      POETRY_VERSION: 1.8.2  # Pin for reproducibility
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+        shell: bash
+
+      - name: Install dependencies
+        run: |
+          poetry install --no-root --without dev
+        shell: bash
+
+      - name: Build with PyInstaller
+        run: |
+          poetry run python scripts/build.py
+        shell: bash
+
+      - name: Set artifact name
+        id: get-artifact-name
+        run: |
+          if [[ "${{ runner.os }}" == "macOS" ]]; then
+            FILE=$(find dist -name "*.app" | head -n 1)
+          else
+            FILE=$(find dist -name "*.exe" | head -n 1)
+          fi
+          NAME=$(basename "$FILE")
+          NAME_NO_EXT="${NAME%.*}"
+          echo "artifact_name=$NAME_NO_EXT" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.get-artifact-name.outputs.artifact_name }}-${{ matrix.os }}
+          path: |
+            dist/*.app
+            dist/*.exe
