@@ -22,8 +22,9 @@
 # pylint: skip-file
 
 import asyncio
-import sys
 import os
+import sys
+import time
 from typing import List
 
 # Add the parent directory to the Python path
@@ -55,6 +56,15 @@ class TestWatchDogTimer(F1TelemetryUnitTestsBase):
         except asyncio.CancelledError:
             pass
 
+    async def wait_for_state(self, expected: bool, timeout: float = 1.0):
+        """Wait for a specific state in state_changes list."""
+        start = time.time()
+        while time.time() - start < timeout:
+            if self.state_changes and self.state_changes[-1] == expected:
+                return
+            await asyncio.sleep(0.01)
+        self.fail(f"Expected state {expected} not received in {timeout:.1f} seconds")
+
     async def test_initial_state_idle(self):
         """Watchdog should start idle with no state change callback triggered."""
         await asyncio.sleep(0.1)
@@ -63,34 +73,35 @@ class TestWatchDogTimer(F1TelemetryUnitTestsBase):
     async def test_transitions_to_active(self):
         """Kicking the watchdog should trigger an active state."""
         self.wdt.kick()
-        await asyncio.sleep(0.1)
+        await self.wait_for_state(True)
         self.assertEqual(self.state_changes, [True])
 
     async def test_ignores_duplicate_active_kicks(self):
         """Repeated kicks should not cause duplicate active callbacks."""
-        for _ in range(3):
-            self.wdt.kick()
+        self.wdt.kick()
+        await self.wait_for_state(True)
+
+        for _ in range(2):  # already kicked once above
             await asyncio.sleep(0.1)
+            self.wdt.kick()
+
         self.assertEqual(self.state_changes, [True])
 
     async def test_times_out_to_inactive(self):
         """No kick for timeout period should mark it inactive."""
         self.wdt.kick()
-        await asyncio.sleep(0.1)
-        self.assertEqual(self.state_changes, [True])
+        await self.wait_for_state(True)
 
-        await asyncio.sleep(0.6)
+        await self.wait_for_state(False)
         self.assertEqual(self.state_changes, [True, False])
 
     async def test_recovers_after_timeout(self):
         """Watchdog should become active again after a timeout if kicked again."""
         self.wdt.kick()
-        await asyncio.sleep(0.1)
-        self.assertEqual(self.state_changes, [True])
+        await self.wait_for_state(True)
 
-        await asyncio.sleep(0.6)
-        self.assertEqual(self.state_changes, [True, False])
-
+        await self.wait_for_state(False)
         self.wdt.kick()
-        await asyncio.sleep(0.1)
+        await self.wait_for_state(True)
+
         self.assertEqual(self.state_changes, [True, False, True])
