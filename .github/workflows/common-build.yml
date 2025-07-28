@@ -23,9 +23,15 @@ jobs:
 
       - name: Install Poetry
         run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+            python -m pip install --upgrade pip
+            curl -sSL https://install.python-poetry.org | python -
+            if [ "$RUNNER_OS" = "Windows" ]; then
+            echo "$APPDATA\Python\Scripts" >> $GITHUB_PATH
+            else
+            echo "$HOME/.local/bin" >> $GITHUB_PATH
+            fi
         shell: bash
+
 
       - name: Install dependencies
         run: |
