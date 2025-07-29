@@ -43,6 +43,7 @@ def initUiIntfLayer(
     client_update_interval_ms: int,
     debug_mode: bool,
     stream_overlay_start_sample_data: bool,
+    stream_overlay_update_interval_ms: int,
     tasks: List[asyncio.Task],
     ver_str: str,
     cert_path: Optional[str],
@@ -57,6 +58,7 @@ def initUiIntfLayer(
         client_update_interval_ms (int): How often the client will be updated with new info
         debug_mode (bool): Debug enabled if true
         stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
+        stream_overlay_update_interval_ms (int): How often the stream overlay will be updated
         tasks (List[asyncio.Task]): List of tasks to be executed
         ver_str (str): Version string
         cert_path (Optional[str]): Path to the certificate file
@@ -83,7 +85,8 @@ def initUiIntfLayer(
     tasks.append(asyncio.create_task(web_server.run(), name="Web Server Task"))
     tasks.append(asyncio.create_task(raceTableClientUpdateTask(client_update_interval_ms, web_server.m_sio),
                                      name="Race Table Update Task"))
-    tasks.append(asyncio.create_task(streamOverlayUpdateTask(60, stream_overlay_start_sample_data, web_server.m_sio),
+    tasks.append(asyncio.create_task(streamOverlayUpdateTask(stream_overlay_update_interval_ms,
+                                                             stream_overlay_start_sample_data, web_server.m_sio),
                                      name="Stream Overlay Update Task"))
     tasks.append(asyncio.create_task(frontEndMessageTask(web_server.m_sio),
                                      name="Front End Message Task"))

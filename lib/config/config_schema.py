@@ -90,6 +90,8 @@ class PrivacySettings(BaseModel):
 
 class StreamOverlaySettings(BaseModel):
     show_sample_data_at_start: bool = Field(False, description="Show sample data until first real data arrives")
+    stream_overlay_update_interval_ms: int = Field(100, ge=50,
+                                                   description="Interval between data updates to the stream overlay (ms)")
 
 class ForwardingSettings(BaseModel):
     target_1: Optional[str] = ""

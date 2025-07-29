@@ -52,7 +52,7 @@ from tests_config import (TestCaptureSettings, TestConfigIO,
                           TestLoadConfigFromIni, TestLoggingSettings,
                           TestMissingSectionsAndKeys, TestNetworkSettings,
                           TestPngSettings, TestPrivacySettings,
-                          TestSampleSettingsFixture)
+                          TestSampleSettingsFixture, TestStreamOverlaySettings)
 from tests_custom_markers import (TestCustomMarkerEntry,
                                   TestCustomMarkersHistory)
 from tests_data_per_driver import (TestTyreSetHistoryEntry,
