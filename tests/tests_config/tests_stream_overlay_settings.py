@@ -62,6 +62,9 @@ class TestStreamOverlaySettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             StreamOverlaySettings(show_sample_data_at_start=123)
 
+        # Default values for the other fields
+        self.assertEqual(settings.stream_overlay_update_interval_ms, 100)
+
     def test_update_interval_validation(self):
         """Test update interval must be positive and greater than 50ms"""
         settings = StreamOverlaySettings(stream_overlay_update_interval_ms=100)
@@ -75,3 +78,6 @@ class TestStreamOverlaySettings(TestF1ConfigBase):
 
         with self.assertRaises(ValidationError):
             StreamOverlaySettings(stream_overlay_update_interval_ms="notanumber")
+
+        # Default values for the other fields
+        self.assertFalse(settings.show_sample_data_at_start)
