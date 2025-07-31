@@ -276,3 +276,31 @@ class BaseWebServer:
 
             route_handler = make_static_route_handler(route, config['file'], config['mimetype'])
             self.m_app.route(route)(route_handler)
+
+    def validate_int_get_request_param(self, param: Any, param_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Validate integer get request parameter.
+
+        Args:
+            param (Any): The parameter to check.
+            param_name (str) : The name of the parameter (used in response)
+
+        Returns:
+            Optional[Dict[str, Any]]: Error response if the parameter is invalid, else None.
+        """
+
+        # Check if only one parameter is provided
+        if param is None:
+            return {
+                'error': 'Invalid parameters',
+                'message': f'Provide "{param_name}" parameter'
+            }
+
+        # Check if the provided value for index is numeric
+        if not isinstance(param, int) and not str(param).isdigit():
+            return {
+                'error': 'Invalid parameter value',
+                'message': f'"{param_name}" parameter must be numeric'
+            }
+
+        return None

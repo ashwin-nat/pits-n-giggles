@@ -22,29 +22,22 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import asyncio
 import logging
-import platform
-import socket
 import webbrowser
 from http import HTTPStatus
-from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
-import socketio
-import uvicorn
-from quart import Quart, jsonify, render_template, request, send_from_directory
+from quart import jsonify, render_template, request
 
 import apps.backend.state_mgmt_layer as TelState
 from lib.child_proc_mgmt import notify_parent_init_complete
-from lib.error_status import PngPortInUseError
-from lib.port_check import is_port_available
+from lib.web_server import BaseWebServer
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
-class TelemetryWebServer:
+class TelemetryWebServer(BaseWebServer):
     """
     A web server class for handling telemetry-related web services and socket communications.
 
@@ -81,39 +74,8 @@ class TelemetryWebServer:
             disable_browser_autoload (bool, optional): Whether to disable browser autoload. Defaults to False.
             debug_mode (bool, optional): Enable or disable debug mode. Defaults to False.
         """
-        self.m_logger: logging.Logger = logger
-        self.m_port: int = port
-        self.m_ver_str = ver_str
-        self.m_cert_path: Optional[str] = cert_path
-        self.m_key_path: Optional[str] = key_path
-        self.m_disable_browser_autoload: bool = disable_browser_autoload
-        self.m_debug_mode: bool = debug_mode
-        self._shutdown_event = asyncio.Event()
-
-        # Create a Quart app and Socket.IO server instance
-
-        self.m_base_dir = Path(__file__).resolve().parent.parent.parent.parent
-        template_dir = self.m_base_dir / "apps" / "frontend" / "html"
-        static_dir = self.m_base_dir / "apps" / "frontend"
-        self.m_app: Quart = Quart(
-            __name__,
-            template_folder=template_dir,
-            static_folder=static_dir,
-            static_url_path='/static'
-        )
-        self.m_app.config['PROPAGATE_EXCEPTIONS'] = False
-
-        self.m_sio = socketio.AsyncServer(
-            async_mode='asgi',
-            cors_allowed_origins="*",
-            logger=False,
-            engineio_logger=False
-        )
-        self.m_sio_app: socketio.ASGIApp = socketio.ASGIApp(self.m_sio, self.m_app)
-
-        # Define routes and socket handlers
+        super().__init__(port, ver_str, logger, cert_path, key_path, disable_browser_autoload, debug_mode)
         self.define_routes()
-        self.define_socketio_handlers()
 
     def define_routes(self) -> None:
         """
@@ -122,6 +84,7 @@ class TelemetryWebServer:
         This method calls sub-methods to set up file and data routes.
         """
 
+        # TODO: abstract away
         @self.m_app.before_serving
         async def before_serving() -> None:
             """Function to be called before the server starts serving."""
@@ -131,82 +94,8 @@ class TelemetryWebServer:
                 webbrowser.open(f'{proto}://localhost:{self.m_port}', new=2)
             notify_parent_init_complete()
 
-        self._defineFileRoutes()
-        self._defineDataRoutes()
-
-    def _defineFileRoutes(self) -> None:
-        """
-        Define routes for serving static and template files.
-
-        Calls methods to set up static file and template routes.
-        """
-        self._defineStaticFileRoutes()
         self._defineTemplateFileRoutes()
-
-    def _defineStaticFileRoutes(self) -> None:
-        """
-        Define routes for serving static files like icons and favicon.
-
-        Uses a centralized dictionary to manage static file routes with
-        their corresponding file paths and MIME types.
-        """
-        # Static routes dictionary remains the same as in the original code
-        static_routes = {
-            '/favicon.ico': {
-                'file': 'favicon.ico',
-                'mimetype': 'image/vnd.microsoft.icon'
-            },
-            '/tyre-icons/soft.svg': {
-                'file': 'tyre-icons/soft_tyre.svg',
-                'mimetype': 'image/svg+xml'
-            },
-            '/tyre-icons/super-soft.svg': {
-                'file': 'tyre-icons/super_soft_tyre.svg',
-                'mimetype': 'image/svg+xml'
-            },
-            '/tyre-icons/medium.svg': {
-                'file': 'tyre-icons/medium_tyre.svg',
-                'mimetype': 'image/svg+xml'
-            },
-            '/tyre-icons/hard.svg': {
-                'file': 'tyre-icons/hard_tyre.svg',
-                'mimetype': 'image/svg+xml'
-            },
-            '/tyre-icons/intermediate.svg': {
-                'file': 'tyre-icons/intermediate_tyre.svg',
-                'mimetype': 'image/svg+xml'
-            },
-            '/tyre-icons/wet.svg': {
-                'file': 'tyre-icons/wet_tyre.svg',
-                'mimetype': 'image/svg+xml'
-            }
-        }
-
-        # Determine the absolute path to the static directory
-        assets_dir = self.m_base_dir / "assets"
-
-        # Dynamically create route handlers for each static file
-        for route, config in static_routes.items():
-            def make_static_route_handler(route_path: str, file_path: str, mime_type: str):
-                """
-                Create a route handler for a specific static file.
-
-                Args:
-                    route_path (str): The URL route for the file.
-                    file_path (str): The path to the file within the static directory.
-                    mime_type (str): The MIME type of the file.
-
-                Returns:
-                    Callable: An async function to serve the static file.
-                """
-                async def _static_route():
-                    return await send_from_directory(assets_dir, file_path, mimetype=mime_type)
-
-                _static_route.__name__ = f'serve_static_{route_path.replace("/", "_")}'
-                return _static_route
-
-            route_handler = make_static_route_handler(route, config['file'], config['mimetype'])
-            self.m_app.route(route)(route_handler)
+        self._defineDataRoutes()
 
     def _defineTemplateFileRoutes(self) -> None:
         """
@@ -214,7 +103,7 @@ class TelemetryWebServer:
 
         Sets up routes for the main index page and stream overlay page.
         """
-        @self.m_app.route('/')
+        @self.http_route('/')
         async def index() -> str:
             """
             Render the main index page.
@@ -224,7 +113,7 @@ class TelemetryWebServer:
             """
             return await render_template('driver-view.html', live_data_mode=True, version=self.m_ver_str)
 
-        @self.m_app.route('/eng-view')
+        @self.http_route('/eng-view')
         async def engineerView() -> str:
             """
             Render the player stream overlay page.
@@ -234,7 +123,7 @@ class TelemetryWebServer:
             """
             return await render_template('eng-view.html')
 
-        @self.m_app.route('/player-stream-overlay')
+        @self.http_route('/player-stream-overlay')
         async def playerStreamOverlay() -> str:
             """
             Render the player stream overlay page.
@@ -251,7 +140,7 @@ class TelemetryWebServer:
         Sets up endpoints for fetching race info, telemetry info,
         driver info, and stream overlay info.
         """
-        @self.m_app.route('/telemetry-info')
+        @self.http_route('/telemetry-info')
         async def telemetryInfoHTTP() -> Tuple[str, int]:
             """
             Provide telemetry information via HTTP.
@@ -261,7 +150,7 @@ class TelemetryWebServer:
             """
             return TelState.RaceInfoUpdate().toJSON(), HTTPStatus.OK
 
-        @self.m_app.route('/race-info')
+        @self.http_route('/race-info')
         async def raceInfoHTTP() -> Tuple[str, int]:
             """
             Provide overall race statistics via HTTP.
@@ -271,7 +160,7 @@ class TelemetryWebServer:
             """
             return TelState.OverallRaceStatsRsp().toJSON(), HTTPStatus.OK
 
-        @self.m_app.route('/driver-info')
+        @self.http_route('/driver-info')
         async def driverInfoHTTP() -> Tuple[str, int]:
             """
             Provide driver information based on the index parameter.
@@ -281,7 +170,7 @@ class TelemetryWebServer:
             """
             return self._processDriverInfoRequest(request.args.get('index'))
 
-        @self.m_app.route('/stream-overlay-info')
+        @self.http_route('/stream-overlay-info')
         async def streamOverlayInfoHTTP() -> Tuple[str, int]:
             """
             Provide stream overlay telemetry information via HTTP.
@@ -290,84 +179,6 @@ class TelemetryWebServer:
                 Tuple[str, int]: JSON response and HTTP status code.
             """
             return TelState.PlayerTelemetryOverlayUpdate().toJSON(), HTTPStatus.OK
-
-    def define_socketio_handlers(self) -> None:
-        """
-        Define Socket.IO event handlers for client management endpoints.
-        """
-        self._defineClientManagementEndpoints()
-
-    def _defineClientManagementEndpoints(self) -> None:
-        """
-        Set up Socket.IO event handlers for client connection and registration.
-        """
-        # pylint: disable=unused-argument
-        @self.m_sio.event
-        async def connect(sid: str, environ: Dict[str, Any]) -> None:
-            """
-            Handle client connection event.
-
-            Args:
-                sid (str): Session ID of the connected client.
-                environ (Dict[str, Any]): Environment information for the connection.
-            """
-            self.m_logger.debug("Client connected: %s", sid)
-
-        @self.m_sio.event
-        async def disconnect(sid: str) -> None:
-            """
-            Handle client disconnection event.
-
-            Args:
-                sid (str): Session ID of the disconnected client.
-            """
-            self.m_logger.debug("Client disconnected: %s", sid)
-
-        @self.m_sio.on('register-client')
-        async def handleClientRegistration(sid: str, data: Dict[str, str]) -> None:
-            """
-            Handle client registration for specific client types.
-
-            Args:
-                sid (str): Session ID of the registering client.
-                data (Dict[str, str]): Registration data containing client type.
-            """
-            self.m_logger.debug('Client registered. SID = %s Type = %s', sid, data['type'])
-            if (client_type := data['type']) in {'player-stream-overlay', 'race-table'}:
-                await self.m_sio.enter_room(sid, client_type)
-                if self.m_debug_mode:
-                    self.m_logger.debug('Client %s joined room %s', sid, client_type)
-
-                    room = self.m_sio.manager.rooms.get('/', {}).get(client_type)
-                    self.m_logger.debug(f'Current members of {client_type}: {room}')
-
-    def _validateIntGetRequestParam(self, param: Any, param_name: str) -> Optional[Dict[str, Any]]:
-        """
-        Validate integer get request parameter.
-
-        Args:
-            param (Any): The parameter to check.
-            param_name (str) : The name of the parameter (used in response)
-
-        Returns:
-            Optional[Dict[str, Any]]: Error response if the parameter is invalid, else None.
-        """
-
-        # Check if only one parameter is provided
-        if param is None:
-            return {
-                'error': 'Invalid parameters',
-                'message': f'Provide "{param_name}" parameter'
-            }
-
-        # Check if the provided value for index is numeric
-        if not isinstance(param, int) and not str(param).isdigit():
-            return {
-                'error': 'Invalid parameter value',
-                'message': f'"{param_name}" parameter must be numeric'
-            }
-
-        return None
 
     def _processDriverInfoRequest(self, index_arg: Any) -> Tuple[Dict[str, Any], HTTPStatus]:
         """
@@ -381,7 +192,7 @@ class TelemetryWebServer:
         """
 
         # Validate the input
-        if error_response := self._validateIntGetRequestParam(index_arg, 'index'):
+        if error_response := self.validate_int_get_request_param(index_arg, 'index'):
             return error_response, HTTPStatus.BAD_REQUEST
 
         # Check if the given index is valid
@@ -396,44 +207,3 @@ class TelemetryWebServer:
 
         # Process parameters and generate response
         return TelState.DriverInfoRsp(index_int).toJSON(), HTTPStatus.OK
-
-
-    async def run(self) -> None:
-        """
-        Run the web server asynchronously using Uvicorn.
-
-        Sets up the server configuration and starts serving the application.
-        """
-
-        if not is_port_available(self.m_port):
-            self.m_logger.error(f"Port {self.m_port} is already in use")
-            raise PngPortInUseError()
-
-        # Create a socket manually to set SO_REUSEADDR
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        if platform.system() != "Windows":
-            try:
-                # pylint: disable=useless-suppression
-                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1) # pylint: disable=no-member
-            except (AttributeError, OSError):
-                # SO_REUSEPORT not available on this platform
-                pass
-        sock.bind(("0.0.0.0", self.m_port))
-        sock.listen(1024)
-        sock.setblocking(False)
-
-        config = uvicorn.Config(
-            self.m_sio_app,
-            log_level="warning",
-            ssl_certfile=self.m_cert_path,
-            ssl_keyfile=self.m_key_path,
-        )
-
-        server = uvicorn.Server(config)
-        await server.serve(sockets=[sock])
-
-    async def stop(self) -> None:
-        """Stop the web server."""
-        self._shutdown_event.set()
-
