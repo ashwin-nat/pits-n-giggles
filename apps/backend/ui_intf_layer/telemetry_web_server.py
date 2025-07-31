@@ -76,6 +76,7 @@ class TelemetryWebServer(BaseWebServer):
         """
         super().__init__(port, ver_str, logger, cert_path, key_path, disable_browser_autoload, debug_mode)
         self.define_routes()
+        self.register_post_start_callback(self._post_start)
 
     def define_routes(self) -> None:
         """
@@ -83,16 +84,6 @@ class TelemetryWebServer(BaseWebServer):
 
         This method calls sub-methods to set up file and data routes.
         """
-
-        # TODO: abstract away
-        @self.m_app.before_serving
-        async def before_serving() -> None:
-            """Function to be called before the server starts serving."""
-            self.m_logger.debug("In post init ...")
-            if not self.m_disable_browser_autoload:
-                proto = 'https' if self.m_cert_path else 'http'
-                webbrowser.open(f'{proto}://localhost:{self.m_port}', new=2)
-            notify_parent_init_complete()
 
         self._defineTemplateFileRoutes()
         self._defineDataRoutes()
@@ -207,3 +198,9 @@ class TelemetryWebServer(BaseWebServer):
 
         # Process parameters and generate response
         return TelState.DriverInfoRsp(index_int).toJSON(), HTTPStatus.OK
+
+    async def _post_start(self) -> None:
+        """Function to be called after the server starts serving."""
+        proto = 'https' if self.m_cert_path else 'http'
+        webbrowser.open(f'{proto}://localhost:{self.m_port}', new=2)
+        notify_parent_init_complete()

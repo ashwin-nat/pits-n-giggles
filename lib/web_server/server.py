@@ -27,14 +27,14 @@ import logging
 import platform
 import socket
 from pathlib import Path
-from typing import Any, Callable, Coroutine, Dict, Optional
+from typing import Any, Callable, Coroutine, Dict, Optional, Awaitable
 
 import msgpack
 import socketio
 import uvicorn
 from quart import Quart, send_from_directory
 
-from lib.error_status import PngPortInUseError  # Adjust as per your structure
+from lib.error_status import PngPortInUseError
 from lib.port_check import is_port_available
 
 from .client_types import ClientType
@@ -58,6 +58,7 @@ class BaseWebServer:
         self.m_disable_browser_autoload: bool = disable_browser_autoload
         self.m_debug_mode: bool = debug_mode
         self._shutdown_event = asyncio.Event()
+        self._post_start_callback: Optional[Callable[[], Awaitable[None]]] = None
 
         self.m_base_dir = Path(__file__).resolve().parent.parent.parent
         template_dir = self.m_base_dir / "apps" / "frontend" / "html"
@@ -184,6 +185,13 @@ class BaseWebServer:
             self.m_logger.error(f"Port {self.m_port} is already in use")
             raise PngPortInUseError()
 
+        # Register post start callback before running
+        @self.m_app.before_serving
+        async def before_serving() -> None:
+            self.m_logger.debug("In post init ...")
+            if self._post_start_callback:
+                await self._post_start_callback()
+
         # Create a socket manually to set SO_REUSEADDR
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -210,6 +218,17 @@ class BaseWebServer:
 
     async def stop(self) -> None:
         self._shutdown_event.set()
+
+    def register_post_start_callback(self, callback: Callable[[], Awaitable[None]]) -> None:
+        """
+        Register a coroutine to run after the server starts but before serving requests.
+
+        Only one callback can be registered. A second call will overwrite the first.
+
+        Args:
+            callback (Callable[[], Awaitable[None]]): An async function to be run at startup.
+        """
+        self._post_start_callback = callback
 
     def _define_static_file_routes(self) -> None:
         """
