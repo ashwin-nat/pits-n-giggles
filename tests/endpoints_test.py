@@ -69,7 +69,7 @@ endpoints_config = {
     "/player-stream-overlay": [200],
     "/telemetry-info": [200],
     "/race-info": [200],
-    "/driver-info?index=0": [200],
+    "/driver-info?index=0": [200, 404],
     "/stream-overlay-info": [200],
     "/static/css/style.css": [200],
     "/static/css/modals.css": [200],
