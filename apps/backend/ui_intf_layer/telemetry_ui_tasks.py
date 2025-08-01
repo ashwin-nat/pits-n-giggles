@@ -27,13 +27,13 @@ import logging
 from typing import List, Optional
 
 import msgpack
-import socketio
 
 import apps.backend.state_mgmt_layer as TelWebAPI
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 
 from .ipc import registerIpcTask
 from .telemetry_web_server import TelemetryWebServer
+from lib.web_server import ClientType
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -83,77 +83,66 @@ def initUiIntfLayer(
 
     # Register tasks associated with this web server
     tasks.append(asyncio.create_task(web_server.run(), name="Web Server Task"))
-    tasks.append(asyncio.create_task(raceTableClientUpdateTask(client_update_interval_ms, web_server.m_sio),
+    tasks.append(asyncio.create_task(raceTableClientUpdateTask(client_update_interval_ms, web_server),
                                      name="Race Table Update Task"))
     tasks.append(asyncio.create_task(streamOverlayUpdateTask(stream_overlay_update_interval_ms,
-                                                             stream_overlay_start_sample_data, web_server.m_sio),
+                                                             stream_overlay_start_sample_data, web_server),
                                      name="Stream Overlay Update Task"))
-    tasks.append(asyncio.create_task(frontEndMessageTask(web_server.m_sio),
+    tasks.append(asyncio.create_task(frontEndMessageTask(web_server),
                                      name="Front End Message Task"))
 
     registerIpcTask(ipc_port, logger, tasks)
     return web_server
 
-async def raceTableClientUpdateTask(update_interval_ms: int, sio: socketio.AsyncServer) -> None:
+async def raceTableClientUpdateTask(update_interval_ms: int, server: TelemetryWebServer) -> None:
     """Task to update clients with telemetry data
 
     Args:
         update_interval_ms (int): Update interval in milliseconds
-        sio (socketio.AsyncServer): The socketio server instance
+        server (TelemetryWebServer): The telemetry web server
     """
 
     sleep_duration = update_interval_ms / 1000
     while True:
-        if not _isRoomEmpty(sio, "race-table"):
-            packed = msgpack.packb(TelWebAPI.RaceInfoUpdate().toJSON(), use_bin_type=True)
-            await sio.emit('race-table-update', packed, room="race-table")
+        if not server.is_client_of_type_connected(ClientType.RACE_TABLE):
+            await server.send_to_clients_of_type(
+                event='race-table-update',
+                data=TelWebAPI.RaceInfoUpdate().toJSON(),
+                client_type=ClientType.RACE_TABLE)
         await asyncio.sleep(sleep_duration)
 
 async def streamOverlayUpdateTask(
     update_interval_ms: int,
     stream_overlay_start_sample_data: bool,
-    sio: socketio.AsyncServer) -> None:
+    server: TelemetryWebServer) -> None:
     """Task to update clients with player telemetry overlay data
     Args:
         update_interval_ms (int): Update interval in milliseconds
         stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
-        sio (socketio.AsyncServer): The socketio server instance
+        server (TelemetryWebServer): The telemetry web server
     """
 
     sleep_duration = update_interval_ms / 1000
     while True:
-        if not _isRoomEmpty(sio, "player-stream-overlay"):
+        if not server.is_client_of_type_connected(ClientType.PLAYER_STREAM_OVERLAY):
             packed = msgpack.packb(
                 TelWebAPI.PlayerTelemetryOverlayUpdate().toJSON(stream_overlay_start_sample_data), use_bin_type=True)
-            await sio.emit(
-                'player-overlay-update',
-                packed,
-                room="player-stream-overlay"
-            )
+            await server.send_to_clients_of_type(
+                event='player-overlay-update',
+                data=TelWebAPI.PlayerTelemetryOverlayUpdate().toJSON(stream_overlay_start_sample_data),
+                client_type=ClientType.PLAYER_STREAM_OVERLAY)
         await asyncio.sleep(sleep_duration)
 
-async def frontEndMessageTask(sio: socketio.AsyncServer) -> None:
+async def frontEndMessageTask(server: TelemetryWebServer) -> None:
     """Task to update clients with telemetry data
 
     Args:
-        sio (socketio.AsyncServer): The socketio server instance
+        server (TelemetryWebServer): The telemetry web server
     """
 
     while True:
         if message := await AsyncInterTaskCommunicator().receive("frontend-update"):
-            packed = msgpack.packb(message.toJSON(), use_bin_type=True)
-            await sio.emit('frontend-update', packed, room="race-table")
-
-def _isRoomEmpty(sio: socketio.AsyncServer, room_name: str, namespace: Optional[str] = '/') -> bool:
-    """Check if a room is empty
-
-    Args:
-        sio (socketio.AsyncServer): The socketio server instance
-        room_name (str): The room name
-        namespace (Optional[str], optional): The namespace. Defaults to '/'
-
-    Returns:
-        bool: True if the room is empty, False otherwise
-    """
-    participants = list(sio.manager.get_participants(namespace, room_name))
-    return not participants
+            await server.send_to_clients_of_type(
+                event='frontend-update',
+                data=message.toJSON(),
+                client_type=ClientType.RACE_TABLE)

@@ -666,15 +666,6 @@ class TelemetryWebServer(BaseWebServer):
 
     This class sets up HTTP and WebSocket routes for serving telemetry data,
     static files, and managing client connections.
-
-    Attributes:
-        m_port (int): The port number on which the server will run.
-        m_debug_mode (bool): Flag to enable/disable debug mode.
-        m_app (Quart): The Quart web application instance.
-        m_sio (socketio.AsyncServer): The Socket.IO server instance.
-        m_sio_app (socketio.ASGIApp): The combined Quart and Socket.IO ASGI application.
-        m_ver_str (str): The version string.
-        m_logger (logging.Logger): The logger instance.
     """
 
     def __init__(self,
