@@ -87,7 +87,7 @@ class IpcChildAsync:
         """
         Returns a background asyncio task that runs the serve loop.
         """
-        return asyncio.create_task(self.serve(handler_fn, timeout))
+        return asyncio.create_task(self.serve(handler_fn, timeout), name=f"{self.name} IPC Task")
 
     def close(self) -> None:
         self.sock.close()
