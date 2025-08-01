@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
+import contextlib
 import logging
 import platform
 import socket
@@ -59,6 +60,7 @@ class BaseWebServer:
         self.m_debug_mode: bool = debug_mode
         self._shutdown_event = asyncio.Event()
         self._post_start_callback: Optional[Callable[[], Awaitable[None]]] = None
+        self._on_client_connect_callback: Optional[Callable[[ClientType], Awaitable[None]]] = None
 
         self.m_base_dir = Path(__file__).resolve().parent.parent.parent
         template_dir = self.m_base_dir / "apps" / "frontend" / "html"
@@ -103,6 +105,8 @@ class BaseWebServer:
             self.m_logger.debug('Client registered. SID = %s Type = %s', sid, data.get('type'))
             if (client_type := data.get('type')) in {'player-stream-overlay', 'race-table'}:
                 await self.m_sio.enter_room(sid, client_type)
+                if self._on_client_connect_callback:
+                    await self._on_client_connect_callback(client_type)
                 if self.m_debug_mode:
                     self.m_logger.debug('Client %s joined room %s', sid, client_type)
                     room = self.m_sio.manager.rooms.get('/', {}).get(client_type)
@@ -140,6 +144,8 @@ class BaseWebServer:
             self.m_logger.debug('Client registered. SID = %s Type = %s', sid, data['type'])
             if (client_type := data['type']) in {'player-stream-overlay', 'race-table'}:
                 await self.m_sio.enter_room(sid, client_type)
+                if self._on_client_connect_callback:
+                    await self._on_client_connect_callback(ClientType(client_type))
                 if self.m_debug_mode:
                     self.m_logger.debug('Client %s joined room %s', sid, client_type)
 
@@ -173,7 +179,6 @@ class BaseWebServer:
         """Check if a room is empty"""
         participants = list(self.m_sio.manager.get_participants(namespace, room_name))
         return not participants
-
     async def run(self) -> None:
         """
         Run the web server asynchronously using Uvicorn.
@@ -196,12 +201,9 @@ class BaseWebServer:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         if platform.system() != "Windows":
-            try:
+            with contextlib.suppress(AttributeError, OSError):
                 # pylint: disable=useless-suppression
                 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1) # pylint: disable=no-member
-            except (AttributeError, OSError):
-                # SO_REUSEPORT not available on this platform
-                pass
         sock.bind(("0.0.0.0", self.m_port))
         sock.listen(1024)
         sock.setblocking(False)
@@ -216,9 +218,6 @@ class BaseWebServer:
         server = uvicorn.Server(config)
         await server.serve(sockets=[sock])
 
-    async def stop(self) -> None:
-        self._shutdown_event.set()
-
     def register_post_start_callback(self, callback: Callable[[], Awaitable[None]]) -> None:
         """
         Register a coroutine to run after the server starts but before serving requests.
@@ -229,6 +228,15 @@ class BaseWebServer:
             callback (Callable[[], Awaitable[None]]): An async function to be run at startup.
         """
         self._post_start_callback = callback
+
+    def register_on_client_connect_callback(self, callback: Callable[[ClientType], Awaitable[None]]) -> None:
+        """
+        Register a coroutine to run when a client connects.
+
+        Args:
+            callback (Callable[[ClientType], Awaitable[None]]): An async function to be run when a client connects.
+        """
+        self._on_client_connect_callback = callback
 
     def _define_static_file_routes(self) -> None:
         """
