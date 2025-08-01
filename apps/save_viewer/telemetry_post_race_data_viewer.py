@@ -53,7 +53,6 @@ from lib.tyre_wear_extrapolator import TyreWearPerLap
 from lib.version import get_version
 from lib.port_check import is_port_available
 from lib.web_server import BaseWebServer, ClientType
-from quart import jsonify, render_template, request # TODO abstract away quart
 
 g_json_data = {}
 g_json_path = ''
@@ -727,7 +726,7 @@ class TelemetryWebServer(BaseWebServer):
             Returns:
                 str: Rendered HTML content for the index page.
             """
-            return await render_template('driver-view.html', live_data_mode=False, version=self.m_ver_str)
+            return await self.render_template('driver-view.html', live_data_mode=False, version=self.m_ver_str)
 
     def _defineDataRoutes(self) -> None:
         """
@@ -764,7 +763,7 @@ class TelemetryWebServer(BaseWebServer):
             Returns:
                 Tuple[str, int]: JSON response and HTTP status code.
             """
-            return handleDriverInfoRequest(request.args.get('index'))
+            return handleDriverInfoRequest(self.request.args.get('index'))
 
     def _checkUpdateRecords(self, json_data: Dict[str, Any]) -> bool:
 

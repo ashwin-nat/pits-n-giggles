@@ -25,15 +25,20 @@
 import asyncio
 import contextlib
 import logging
+import os
 import platform
 import socket
 from pathlib import Path
-from typing import Any, Callable, Coroutine, Dict, Optional, Awaitable
+from typing import Any, Awaitable, Callable, Coroutine, Dict, Optional, Union
 
 import msgpack
 import socketio
 import uvicorn
-from quart import Quart, send_from_directory
+from quart import Quart
+from quart import jsonify as quart_jsonify
+from quart import render_template as quart_render_template
+from quart import request as quart_request
+from quart import send_from_directory as quart_send_from_directory
 
 from lib.error_status import PngPortInUseError
 from lib.port_check import is_port_available
@@ -296,7 +301,7 @@ class BaseWebServer:
                     Callable: An async function to serve the static file.
                 """
                 async def _static_route():
-                    return await send_from_directory(assets_dir, file_path, mimetype=mime_type)
+                    return await self.send_from_directory(assets_dir, file_path, mimetype=mime_type)
 
                 _static_route.__name__ = f'serve_static_{route_path.replace("/", "_")}'
                 return _static_route
@@ -331,3 +336,56 @@ class BaseWebServer:
             }
 
         return None
+
+    async def render_template(self, template_name: str, **context: Any) -> str:
+        """
+        Render an HTML template with context.
+
+        Args:
+            template_name (str): Name of the template file.
+            **context: Key-value pairs passed to the template.
+
+        Returns:
+            str: Rendered HTML string.
+        """
+        return await quart_render_template(template_name, **context)
+
+    def jsonify(self, *args: Any, **kwargs: Any) -> Any:
+        """
+        Create a JSON response.
+
+        Args:
+            *args: Positional arguments to serialize.
+            **kwargs: Keyword arguments to serialize.
+
+        Returns:
+            Response: A Quart JSON response.
+        """
+        return quart_jsonify(*args, **kwargs)
+
+    @property
+    def request(self) -> Any:
+        """
+        Get the current request context.
+
+        Returns:
+            Request: The current Quart request object.
+        """
+        return quart_request
+
+    async def send_from_directory(self,
+                                  directory: Union[str, os.PathLike],
+                                  filename: str,
+                                  **kwargs: Any) -> Any:
+        """
+        Send a file from a given directory.
+
+        Args:
+            directory (str | PathLike): The directory to serve from.
+            filename (str): The name of the file to serve.
+            **kwargs: Additional arguments passed to Quart's send_from_directory.
+
+        Returns:
+            Response: A Quart file response.
+        """
+        return await quart_send_from_directory(directory, filename, **kwargs)

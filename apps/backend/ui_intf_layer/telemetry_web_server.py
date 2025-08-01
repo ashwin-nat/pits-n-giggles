@@ -27,8 +27,6 @@ import webbrowser
 from http import HTTPStatus
 from typing import Any, Dict, Optional, Tuple
 
-from quart import jsonify, render_template, request # TODO abstract away quart
-
 import apps.backend.state_mgmt_layer as TelState
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.web_server import BaseWebServer
@@ -102,7 +100,7 @@ class TelemetryWebServer(BaseWebServer):
             Returns:
                 str: Rendered HTML content for the index page.
             """
-            return await render_template('driver-view.html', live_data_mode=True, version=self.m_ver_str)
+            return await self.render_template('driver-view.html', live_data_mode=True, version=self.m_ver_str)
 
         @self.http_route('/eng-view')
         async def engineerView() -> str:
@@ -112,7 +110,7 @@ class TelemetryWebServer(BaseWebServer):
             Returns:
                 str: Rendered HTML content for the stream overlay page.
             """
-            return await render_template('eng-view.html')
+            return await self.render_template('eng-view.html')
 
         @self.http_route('/player-stream-overlay')
         async def playerStreamOverlay() -> str:
@@ -122,7 +120,7 @@ class TelemetryWebServer(BaseWebServer):
             Returns:
                 str: Rendered HTML content for the stream overlay page.
             """
-            return await render_template('player-stream-overlay.html')
+            return await self.render_template('player-stream-overlay.html')
 
     def _defineDataRoutes(self) -> None:
         """
@@ -159,7 +157,7 @@ class TelemetryWebServer(BaseWebServer):
             Returns:
                 Tuple[str, int]: JSON response and HTTP status code.
             """
-            return self._processDriverInfoRequest(request.args.get('index'))
+            return self._processDriverInfoRequest(self.request.args.get('index'))
 
         @self.http_route('/stream-overlay-info')
         async def streamOverlayInfoHTTP() -> Tuple[str, int]:
@@ -194,7 +192,7 @@ class TelemetryWebServer(BaseWebServer):
                 'message' : 'Invalid index',
                 'index' : index_arg
             }
-            return jsonify(error_response), HTTPStatus.NOT_FOUND
+            return self.jsonify(error_response), HTTPStatus.NOT_FOUND
 
         # Process parameters and generate response
         return TelState.DriverInfoRsp(index_int).toJSON(), HTTPStatus.OK
