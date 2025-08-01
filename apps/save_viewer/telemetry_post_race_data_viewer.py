@@ -21,32 +21,25 @@
 # SOFTWARE.
 # pylint: skip-file
 
+import asyncio
 import argparse
 import errno
 import json
 import logging
 import os
-import platform
 import socket
 import sys
-import tkinter as tk
 import webbrowser
 from http import HTTPStatus
-from pathlib import Path
 from threading import Event, Lock, Thread, Timer
-from tkinter import filedialog
 from typing import Any, Dict, List, Optional, Set, Tuple
+from functools import partial
 
-from gevent.pywsgi import WSGIServer
 import msgpack
 # pylint: disable=unused-import
-from engineio.async_drivers import gevent
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from flask import Flask, render_template, request, send_from_directory
-from flask_socketio import SocketIO, emit
 
 import lib.overtake_analyzer as OvertakeAnalyzer
 import lib.race_analyzer as RaceAnalyzer
@@ -55,10 +48,12 @@ from lib.child_proc_mgmt import (notify_parent_init_complete,
                                  report_pid_from_child)
 from lib.error_status import PNG_ERROR_CODE_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN
 from lib.f1_types import F1Utils, LapHistoryData, ResultStatus
-from lib.ipc import IpcChildSync
+from lib.ipc import IpcChildAsync
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 from lib.version import get_version
 from lib.port_check import is_port_available
+from lib.web_server import BaseWebServer, ClientType
+from quart import jsonify, render_template, request # TODO abstract away quart
 
 def find_free_port():
     """Find an available port."""
@@ -83,13 +78,11 @@ _player_overlay_clients : Set[str] = set()
 _server: Optional["TelemetryWebServer"] = None
 g_shutdown_event = Event()
 
-def sendRaceTable() -> None:
+async def sendRaceTable() -> None:
     """Send race table to all connected clients
     """
-    if len(_race_table_clients) > 0:
-        packed = msgpack.packb(getTelemetryInfo(), use_bin_type=True)
-        _server.m_socketio.emit('race-table-update', packed)
-        png_logger.debug("Sending race table update")
+    await _server.send_to_clients_of_type('race-table-update', getTelemetryInfo(), ClientType.RACE_TABLE)
+    png_logger.debug("Sending race table update")
 
 def getDeltaPlusPenaltiesPlusPit(
         delta: str,
@@ -613,7 +606,7 @@ def handleDriverInfoRequest(index: str, is_str_input: bool=True) -> Tuple[Dict[s
         'error' : 'Invalid parameter value',
         'message' : 'Invalid index'
     }
-    return error_response, HTTPStatus.BAD_REQUEST
+    return error_response, HTTPStatus.NOT_FOUND
 
 def getDriverByNameTeam(name, team, classification_data: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Get driver by name. (assumes lock is already acquired)
@@ -683,195 +676,110 @@ def handleRaceInfoRequest() -> Tuple[Dict[str, Any], HTTPStatus]:
 
         return ret, HTTPStatus.OK
 
-class TelemetryWebServer:
-    def __init__(self, port: int, ver_str: str):
+class TelemetryWebServer(BaseWebServer):
+    """
+    A web server class for handling telemetry-related web services and socket communications.
+
+    This class sets up HTTP and WebSocket routes for serving telemetry data,
+    static files, and managing client connections.
+
+    Attributes:
+        m_port (int): The port number on which the server will run.
+        m_debug_mode (bool): Flag to enable/disable debug mode.
+        m_app (Quart): The Quart web application instance.
+        m_sio (socketio.AsyncServer): The Socket.IO server instance.
+        m_sio_app (socketio.ASGIApp): The combined Quart and Socket.IO ASGI application.
+        m_ver_str (str): The version string.
+        m_logger (logging.Logger): The logger instance.
+    """
+
+    def __init__(self,
+                 port: int,
+                 ver_str: str,
+                 logger: logging.Logger,
+                 cert_path: Optional[str] = None,
+                 key_path: Optional[str] = None,
+                 disable_browser_autoload: bool = False,
+                 debug_mode: bool = False):
         """
-        Initialize TelemetryServer.
+        Initialize the TelemetryWebServer.
 
         Args:
-            port (int): Port number for the server.
-            ver_str (str): Version string
+            port (int): The port number to run the server on.
+            ver_str (str): The version string.
+            logger (logging.Logger): The logger instance.
+            cert_path (Optional[str], optional): Path to the certificate file. Defaults to None.
+            key_path (Optional[str], optional): Path to the key file. Defaults to None.
+            disable_browser_autoload (bool, optional): Whether to disable browser autoload. Defaults to False.
+            debug_mode (bool, optional): Enable or disable debug mode. Defaults to False.
         """
-        self.m_ver_str = ver_str
+        super().__init__(port, ver_str, logger, cert_path, key_path, disable_browser_autoload, debug_mode)
+        self.define_routes()
+        self.register_post_start_callback(self._post_start)
+        self.register_on_client_connect_callback(self._on_client_connect)
 
-        # Get the absolute path to the application root
-        if hasattr(sys, '_MEIPASS'):
-            # PyInstaller bundle mode
-            base_dir = Path(sys._MEIPASS)
-        else:
-            # Development mode - find project root regardless of CWD
-            current_file = Path(__file__).resolve()
-            # Assuming the frontend folder is inside 'apps' as per your structure
-            base_dir = current_file.parents[2]  # This assumes 'frontend' is inside 'apps'
+    def define_routes(self) -> None:
+        """
+        Define all HTTP routes for the web server.
 
-            # Verify the paths exist
-            if not (base_dir / 'apps' / 'frontend' / 'html').exists() \
-                    or not (base_dir / 'apps' / 'frontend' / 'css').exists() \
-                        or not (base_dir / 'apps' / 'frontend' / 'js').exists():
-                raise FileNotFoundError(
-                    f"Could not find required directories. Tried:\n"
-                    f"1. {base_dir}/apps/frontend/html\n"
-                    f"2. {base_dir}/apps/frontend/js\n"
-                    f"3. {base_dir}/apps/frontend/css\n"
-                    f"Please check your project structure or run from the correct directory."
-                )
+        This method calls sub-methods to set up file and data routes.
+        """
 
-        png_logger.debug(f"Using base directory: {base_dir}")
-        png_logger.debug(f"Templates directory: {base_dir / 'apps' / 'frontend' / 'html'}")
+        self._defineTemplateFileRoutes()
+        self._defineDataRoutes()
 
-        # Initialize Flask app
-        self.m_app = Flask(
-            __name__,
-            template_folder=str(base_dir / 'apps' / 'frontend' / 'html'),
-            static_folder=str(base_dir / 'apps' / 'frontend' ),
-            static_url_path='/static'
-        )
-        self.m_assets_dir = base_dir / 'assets'
-        self.m_app.config['PROPAGATE_EXCEPTIONS'] = True
-        self.m_app.config["EXPLAIN_TEMPLATE_LOADING"] = True
-        self.m_port = port
-        self.m_socketio = SocketIO(
-            app=self.m_app,
-            async_mode="gevent",
-        )
+    def _defineTemplateFileRoutes(self) -> None:
+        """
+        Define routes for rendering HTML templates.
 
-        @self.m_app.route('/favicon.ico')
-        def favicon():
-            """Return the favicon file
+        Sets up routes for the main index page and stream overlay page.
+        """
+        @self.http_route('/')
+        async def index() -> str:
+            """
+            Render the main index page.
 
             Returns:
-                file: Favicon file
+                str: Rendered HTML content for the index page.
             """
-            return send_from_directory(self.m_assets_dir, 'favicon.ico', mimetype='image/vnd.microsoft.icon')
+            return await render_template('driver-view.html', live_data_mode=False, version=self.m_ver_str)
 
-        # Render the HTML page
-        @self.m_app.route('/')
-        def index():
-            """
-            Endpoint for the index page.
+    def _defineDataRoutes(self) -> None:
+        """
+        Define HTTP routes for retrieving telemetry and race-related data.
 
-            Returns:
-                str: HTML page content.
+        Sets up endpoints for fetching race info, telemetry info,
+        driver info, and stream overlay info.
+        """
+        @self.http_route('/telemetry-info')
+        async def telemetryInfoHTTP() -> Tuple[str, int]:
             """
-            return render_template('driver-view.html', live_data_mode=False, version=self.m_ver_str)
-
-        # Define your endpoint
-        @self.m_app.route('/telemetry-info')
-        def telemetryInfo() -> Dict[str, Any]:
-            """
-            Endpoint for telemetry information.
+            Provide telemetry information via HTTP.
 
             Returns:
-                str: Telemetry data in JSON format.
+                Tuple[str, int]: JSON response and HTTP status code.
             """
             return getTelemetryInfo()
 
-        @self.m_app.route('/driver-info', methods=['GET'])
-        def driverInfo() -> Dict[str, Any]:
+        @self.http_route('/race-info')
+        async def raceInfoHTTP() -> Tuple[str, int]:
             """
-            Endpoint for saving telemetry packet capture.
+            Provide overall race statistics via HTTP.
 
             Returns:
-                str: JSON response indicating success or failure.
+                Tuple[str, int]: JSON response and HTTP status code.
             """
-            # Access parameters using request.args
-            return handleDriverInfoRequest(request.args.get('index'))
-
-        @self.m_app.route('/race-info', methods=['GET'])
-        def raceInfo() -> Dict[str, Any]:
             return handleRaceInfoRequest()
 
-        @self.m_app.route('/tyre-icons/soft.svg')
-        def softTyreIcon():
+        @self.http_route('/driver-info')
+        async def driverInfoHTTP() -> Tuple[str, int]:
             """
-            Endpoint for the soft tyre icon.
+            Provide driver information based on the index parameter.
 
             Returns:
-                str: HTML page content.
+                Tuple[str, int]: JSON response and HTTP status code.
             """
-
-            return send_from_directory(self.m_assets_dir, 'tyre-icons/soft_tyre.svg', mimetype='image/svg+xml')
-
-        @self.m_app.route('/tyre-icons/super-soft.svg')
-        def superSoftTyreIcon():
-            """
-            Endpoint for the super soft tyre icon.
-
-            Returns:
-                str: HTML page content.
-            """
-
-            return send_from_directory(self.m_assets_dir, 'tyre-icons/super_soft_tyre.svg', mimetype='image/svg+xml')
-
-        @self.m_app.route('/tyre-icons/medium.svg')
-        def mediumTyreIcon():
-            """
-            Endpoint for the medium tyre icon.
-
-            Returns:
-                str: HTML page content.
-            """
-
-            return send_from_directory(self.m_assets_dir, 'tyre-icons/medium_tyre.svg', mimetype='image/svg+xml')
-
-        @self.m_app.route('/tyre-icons/hard.svg')
-        def hardTyreIcon():
-            """
-            Endpoint for the hard tyre icon.
-
-            Returns:
-                str: HTML page content.
-            """
-
-            return send_from_directory(self.m_assets_dir, 'tyre-icons/hard_tyre.svg', mimetype='image/svg+xml')
-
-        @self.m_app.route('/tyre-icons/intermediate.svg')
-        def interTyreIcon():
-            """
-            Endpoint for the intermediate tyre icon.
-
-            Returns:
-                str: HTML page content.
-            """
-
-            return send_from_directory(self.m_assets_dir, 'tyre-icons/intermediate_tyre.svg', mimetype='image/svg+xml')
-
-        @self.m_app.route('/tyre-icons/wet.svg')
-        def wetTyreIcon():
-            """
-            Endpoint for the wet tyre icon.
-
-            Returns:
-                str: HTML page content.
-            """
-
-            return send_from_directory(self.m_assets_dir, 'tyre-icons/wet_tyre.svg', mimetype='image/svg+xml')
-
-        # Socketio endpoints
-        @self.m_socketio.on('connect')
-        def handleConnect():
-            """SocketIO endpoint for handling client connection
-            """
-            png_logger.info(f"Client connected SID = {request.sid}")
-
-        @self.m_socketio.on('disconnect')
-        def handleDisconnect():
-            """SocketIO endpoint for handling client disconnection
-            """
-            png_logger.info(f"Client disconnected SID = {request.sid}")
-            _player_overlay_clients.discard(request.sid)
-            _race_table_clients.discard(request.sid)
-
-        @self.m_socketio.on('register-client')
-        def handleClientRegistration(data):
-            """SocketIO endpoint to handle client registration
-            """
-            png_logger.info('Client registered. SID = %s Type = %s', request.sid, data['type'])
-            if data['type'] == 'player-stream-overlay':
-                _player_overlay_clients.add(request.sid)
-            elif data['type'] == 'race-table':
-                _race_table_clients.add(request.sid)
-                sendRaceTable()
+            return handleDriverInfoRequest(request.args.get('index'))
 
     def _checkUpdateRecords(self, json_data: Dict[str, Any]) -> bool:
 
@@ -956,26 +864,12 @@ class TelemetryWebServer:
 
         return should_write
 
-    def run(self):
-        # silence noisy loggers…
-        for name in ['werkzeug', 'socketio', 'engineio', 'gevent', 'websocket']:
-            logging.getLogger(name).setLevel(logging.ERROR)
+    async def _post_start(self) -> None:
+        notify_parent_init_complete()
 
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-        if platform.system() != "Windows":
-            try:
-                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-            except (AttributeError, OSError):
-                pass
-
-        sock.bind(("0.0.0.0", self.m_port))
-        sock.listen(128)
-        sock.setblocking(False)
-
-        server = WSGIServer(sock, self.m_app, log=SilentLog(), error_log=logging.getLogger("gevent.error"))
-        server.serve_forever()
+    async def _on_client_connect(self, client_type: ClientType) -> None:
+        if client_type == ClientType.RACE_TABLE:
+            await sendRaceTable()
 
 def checkRecomputeJSON(json_data : Dict[str, Any]) -> bool:
 
@@ -1090,7 +984,7 @@ def checkRecomputeJSON(json_data : Dict[str, Any]) -> bool:
 
     return should_write
 
-def open_file_helper(file_path, open_webpage=True):
+async def open_file_helper(file_path, open_webpage=True):
     try:
         with open(file_path, 'r+', encoding='utf-8') as f:
             global g_json_lock
@@ -1105,7 +999,7 @@ def open_file_helper(file_path, open_webpage=True):
                 should_write = False
                 should_write |= checkRecomputeJSON(g_json_data)
 
-            sendRaceTable()
+            await sendRaceTable()
 
             if g_should_open_ui and open_webpage:
                 g_should_open_ui = False
@@ -1127,47 +1021,11 @@ def open_file_helper(file_path, open_webpage=True):
         png_logger.exception(f"Unexpected error opening file: {file_path}")
         return {"status": "error", "message": f"Failed to open file: {file_path}. Error: {e}"}
 
-def open_file():
-    file_path = filedialog.askopenfilename()
-    if file_path:
-        status_label.config(text=f"Selected file: {file_path}")
-        open_file_helper(file_path)
-    else:
-        status_label.config(text="No file selected")
-
 def open_webpage():
     global g_should_open_ui
     global g_port_number
     g_should_open_ui = False
     webbrowser.open(f'http://localhost:{g_port_number}', new=2)
-
-def start_ui():
-    global ui_initialized
-    if not ui_initialized:
-        ui_initialized = True  # Set flag to True
-        root = tk.Tk()
-        root.title("F1 Post Race Analyzer")
-
-        frame = tk.Frame(root)
-        frame.pack(padx=10, pady=10)
-
-        global status_label
-        status_label = tk.Label(frame, text="No file selected")
-        status_label.grid(row=0, column=0, columnspan=2, pady=(0, 10))  # Spanning two columns
-
-        open_file_button = tk.Button(frame, text="Open File", command=open_file)
-        open_file_button.grid(row=1, column=0, padx=(0, 10))  # Position in column 0
-
-        open_webpage_button = tk.Button(frame, text="Open UI",
-                                        command=open_webpage)
-        open_webpage_button.grid(row=1, column=1)  # Position in column 1 (to the right of the open_button)
-
-        root.protocol("WM_DELETE_WINDOW", on_closing)
-        root.mainloop()
-
-def on_closing():
-    png_logger.info("UI done")
-    os._exit(0)
 
 def parseArgs() -> argparse.Namespace:
     """Parse the command line args and perform validation
@@ -1203,7 +1061,7 @@ def start_thread(target):
     thread.daemon = True
     thread.start()
 
-def handle_ipc_message(msg: dict) -> dict:
+async def handle_ipc_message(msg: dict, logger: logging.Logger) -> dict:
     """Handles incoming IPC messages and dispatches commands."""
     png_logger.info(f"Received IPC message: {msg}")
 
@@ -1211,22 +1069,19 @@ def handle_ipc_message(msg: dict) -> dict:
     args: dict = msg.get("args", {})
 
     if cmd == "open-file":
-        return _handle_open_file(args)
+        return await _handle_open_file(args)
     elif cmd == "shutdown":
         Timer(1.0, shutdown_handler, [args.get("reason", "N/A")]).start()
         return {"status": "success"}
 
     return {"status": "error", "message": f"Unknown command: {cmd}"}
 
-def _handle_open_file(args: dict) -> dict:
+async def _handle_open_file(args: dict) -> dict:
     """Handles the 'open-file' IPC command."""
     if not (file_path := args.get("file-path")):
         return {"status": "error", "message": "Missing or invalid file path"}
     else:
-        return open_file_helper(file_path)
-
-def post_init() -> None:
-    notify_parent_init_complete()
+        return await open_file_helper(file_path)
 
 def shutdown_handler(reason: str) -> None:
     """Shutdown handler function.
@@ -1237,24 +1092,23 @@ def shutdown_handler(reason: str) -> None:
     png_logger.info(f"Shutting down. Reason: {reason}")
     os._exit(0)
 
-def main():
+
+async def main():
 
     png_logger.debug(f"cwd={os.getcwd()}")
     global g_port_number
     args = parseArgs()
     version = get_version()
 
-    if args.launcher:
-        ipc_server = IpcChildSync(args.ipc_port, "Save Viewer")
-        ipc_server.serve_in_thread(handle_ipc_message)
-        g_port_number = args.port
-        if not is_port_available(g_port_number):
-            png_logger.error(f"Port {g_port_number} is not available")
-            sys.exit(PNG_ERROR_CODE_PORT_IN_USE)
-        Timer(2.0, post_init).start()
-    else:
-        g_port_number = find_free_port()
-        start_thread(start_ui)
+    tasks: List[asyncio.Task] = []
+
+
+    ipc_server = IpcChildAsync(args.ipc_port, "Save Viewer")
+    tasks.append(ipc_server.get_task(partial(handle_ipc_message, logger=png_logger)))
+    g_port_number = args.port
+    if not is_port_available(g_port_number):
+        png_logger.error(f"Port {g_port_number} is not available")
+        sys.exit(PNG_ERROR_CODE_PORT_IN_USE)
 
     # Start Flask server after Tkinter UI is initialized
     png_logger.info(f"Starting server. It can be accessed at http://localhost:{str(g_port_number)} "
@@ -1262,7 +1116,17 @@ def main():
     global _server
     _server = TelemetryWebServer(
         port=g_port_number,
-        ver_str=version)
+        ver_str=version,
+        logger=png_logger)
+    tasks.append(asyncio.create_task(_server.run(), name="Web Server Task"))
+    try:
+        await asyncio.gather(*tasks)
+    except asyncio.CancelledError:
+        png_logger.debug("Main task was cancelled.")
+        await _server.stop()
+        for task in tasks:
+            task.cancel()
+        raise  # Ensure proper cancellation behavior
     try:
         _server.run()
     except OSError as e:
@@ -1274,4 +1138,11 @@ def main():
 
 def entry_point():
     report_pid_from_child()
-    main()
+    if sys.platform == 'win32':
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        png_logger.info("Program interrupted by user.")
+    except asyncio.CancelledError:
+        png_logger.info("Program shutdown gracefully.")

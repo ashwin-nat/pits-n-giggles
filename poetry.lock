@@ -527,25 +527,6 @@ async = ["asgiref (>=3.2)"]
 dotenv = ["python-dotenv"]
 
 [[package]]
-name = "flask-socketio"
-version = "5.5.1"
-description = "Socket.IO integration for Flask applications"
-optional = false
-python-versions = ">=3.6"
-groups = ["main"]
-files = [
-    {file = "Flask_SocketIO-5.5.1-py3-none-any.whl", hash = "sha256:35a50166db44d055f68021d6ec32cb96f1f925cd82de4504314be79139ea846f"},
-    {file = "flask_socketio-5.5.1.tar.gz", hash = "sha256:d946c944a1074ccad8e99485a6f5c79bc5789e3ea4df0bb9c864939586c51ec4"},
-]
-
-[package.dependencies]
-Flask = ">=0.9"
-python-socketio = ">=5.12.0"
-
-[package.extras]
-docs = ["sphinx"]
-
-[[package]]
 name = "frozenlist"
 version = "1.7.0"
 description = "A list-like structure which implements collections.abc.MutableSequence"
@@ -2427,4 +2408,4 @@ testing = ["coverage[toml]", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.14"
-content-hash = "3ec21c34bd0fd8e5baac1acba3a29e803e065601a6dae9f7ee6b27437d57842f"
+content-hash = "43bc9e0e11b3a4bcd76c52069815f6ad3807b7ff76030db98290eac89043f7f4"
