@@ -55,28 +55,13 @@ from lib.port_check import is_port_available
 from lib.web_server import BaseWebServer, ClientType
 from quart import jsonify, render_template, request # TODO abstract away quart
 
-def find_free_port():
-    """Find an available port."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(('localhost', 0))
-        return s.getsockname()[1]
-
-class SilentLog:
-    def write(self, msg):
-        pass
-    def flush(self):
-        pass
-
 g_json_data = {}
 g_json_path = ''
 g_json_lock = Lock()
 g_should_open_ui = True
 g_port_number = None
 ui_initialized = False  # Flag to track if UI has been initialized
-_race_table_clients : Set[str] = set()
-_player_overlay_clients : Set[str] = set()
 _server: Optional["TelemetryWebServer"] = None
-g_shutdown_event = Event()
 
 async def sendRaceTable() -> None:
     """Send race table to all connected clients
@@ -1050,16 +1035,6 @@ def parseArgs() -> argparse.Namespace:
         sys.exit(1)
 
     return parsed_args
-
-def start_thread(target):
-    """Start a thread for the given target function
-
-    Args:
-        target (function): The target function to run in the thread
-    """
-    thread = Thread(target=target)
-    thread.daemon = True
-    thread.start()
 
 async def handle_ipc_message(msg: dict, logger: logging.Logger) -> dict:
     """Handles incoming IPC messages and dispatches commands."""
