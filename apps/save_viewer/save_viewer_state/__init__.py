@@ -22,7 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .save_viewer_state import open_file_helper, getTelemetryInfo, getRaceInfo, getDriverInfo
+from .save_viewer_state import open_file_helper, getTelemetryInfo, getRaceInfo, getDriverInfo, init_state
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -30,5 +30,6 @@ __all__ = [
     'open_file_helper',
     'getTelemetryInfo',
     'getRaceInfo',
-    'getDriverInfo'
+    'getDriverInfo',
+    'init_state',
 ]

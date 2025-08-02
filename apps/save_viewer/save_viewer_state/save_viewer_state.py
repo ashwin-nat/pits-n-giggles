@@ -79,16 +79,7 @@ async def open_file_helper(file_path, open_webpage=True):
             global _should_open_ui
             global _port_number
             _json_data = json.load(f)
-
-            should_write = False
-            should_write |= _check_recompute_json(_json_data)
-
-            # await sendRaceTable() # TODO: move to IPC layer
-
-            # TODO - move to IPC layer
-            if _should_open_ui and open_webpage:
-                _should_open_ui = False
-                webbrowser.open(f'http://localhost:{_port_number}', new=2)
+            _check_recompute_json(_json_data)
 
         _logger.info(f"Opened file: {file_path}")
         return {"status": "success"}
