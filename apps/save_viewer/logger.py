@@ -27,7 +27,12 @@ import logging
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def get_logger(name: str = "save_viewer"):
+def get_logger(name: str = "save_viewer") -> logging.Logger:
+    """Get a logger with a console handler.
+
+    Returns:
+        logging.Logger: The logger
+    """
     png_logger = logging.getLogger(name)
     png_logger.setLevel(logging.INFO)
 

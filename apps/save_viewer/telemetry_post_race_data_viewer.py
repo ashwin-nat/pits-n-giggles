@@ -19,7 +19,8 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-# pylint: skip-file
+
+# -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
 import logging
@@ -34,6 +35,8 @@ from apps.save_viewer.save_viewer_state import init_state
 from lib.version import get_version
 
 from lib.child_proc_mgmt import report_pid_from_child
+
+# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def parseArgs(logger: logging.Logger) -> argparse.Namespace:
     """Parse the command line args and perform validation
@@ -63,57 +66,20 @@ def parseArgs(logger: logging.Logger) -> argparse.Namespace:
     return parsed_args
 
 async def main(logger: logging.Logger, server_port: int, ipc_port: int, version: str) -> None:
+    """Main function
 
+    Args:
+        logger (logging.Logger): Logger
+        server_port (int): Server port
+        ipc_port (int): IPC port
+    """
     tasks: List[asyncio.Task] = []
     init_state(logger=logger, port=server_port)
     init_server_task(port=server_port, ver_str=version, logger=logger, tasks=tasks)
     init_ipc_task(logger=logger, ipc_port=ipc_port, server_port=server_port, tasks=tasks)
 
-    await asyncio.gather(*tasks)
-
-
-    # png_logger.debug(f"cwd={os.getcwd()}")
-    # global g_port_number
-    # args = parseArgs()
-    # version = get_version()
-
-    # tasks: List[asyncio.Task] = []
-
-
-    # ipc_server = IpcChildAsync(args.ipc_port, "Save Viewer")
-    # tasks.append(ipc_server.get_task(partial(handle_ipc_message, logger=png_logger)))
-    # g_port_number = args.port
-    # if not is_port_available(g_port_number):
-    #     png_logger.error(f"Port {g_port_number} is not available")
-    #     sys.exit(PNG_ERROR_CODE_PORT_IN_USE)
-
-    # # Start Flask server after Tkinter UI is initialized
-    # png_logger.info(f"Starting server. It can be accessed at http://localhost:{str(g_port_number)} "
-    #                 f"PID = {os.getpid()} Version = {version}")
-    # global _server
-    # _server = TelemetryWebServer(
-    #     port=g_port_number,
-    #     ver_str=version,
-    #     logger=png_logger)
-    # tasks.append(asyncio.create_task(_server.run(), name="Web Server Task"))
-    # try:
-    #     await asyncio.gather(*tasks)
-    # except asyncio.CancelledError:
-    #     png_logger.debug("Main task was cancelled.")
-    #     await _server.stop()
-    #     for task in tasks:
-    #         task.cancel()
-    #     raise  # Ensure proper cancellation behavior
-    # try:
-    #     _server.run()
-    # except OSError as e:
-    #     png_logger.error(e)
-    #     if e.errno == errno.EADDRINUSE:
-    #         sys.exit(PNG_ERROR_CODE_PORT_IN_USE)
-    #     else:
-    #         sys.exit(PNG_ERROR_CODE_UNKNOWN)
-
 def entry_point():
+    """Entry point"""
     report_pid_from_child()
     png_logger = get_logger()
     args = parseArgs(png_logger)
