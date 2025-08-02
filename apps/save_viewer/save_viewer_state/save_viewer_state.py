@@ -63,11 +63,11 @@ def getTelemetryInfo() -> Dict[str, Any]:
     global _json_data
     return _getTelemetryInfo(_json_data)
 
-def handleRaceInfoRequest() -> Dict[str, Any]:
+def getRaceInfo() -> Dict[str, Any]:
     global _json_data
     return _getRaceInfo(_json_data)
 
-def handleDriverInfoRequest(index: int) -> Dict[str, Any]:
+def getDriverInfo(index: int) -> Dict[str, Any]:
     # TODO: validation in caller side
     global _json_data
     return _getDriverInfo(_json_data, index)
