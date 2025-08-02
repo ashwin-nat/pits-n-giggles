@@ -36,6 +36,9 @@ import lib.race_analyzer as RaceAnalyzer
 import lib.overtake_analyzer as OvertakeAnalyzer
 
 from .get_telemetry_info import _getTelemetryInfo
+from .get_race_info import _getRaceInfo
+from .get_driver_info import _getDriverInfo
+
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
 _json_data: Dict[str, Any] = {}
@@ -61,10 +64,13 @@ def getTelemetryInfo() -> Dict[str, Any]:
     return _getTelemetryInfo(_json_data)
 
 def handleRaceInfoRequest() -> Dict[str, Any]:
-    return {}
+    global _json_data
+    return _getRaceInfo(_json_data)
 
-def handleDriverInfoRequest(index: str) -> Dict[str, Any]:
-    return {}
+def handleDriverInfoRequest(index: int) -> Dict[str, Any]:
+    # TODO: validation in caller side
+    global _json_data
+    return _getDriverInfo(_json_data, index)
 
 async def open_file_helper(file_path, open_webpage=True):
     try:
