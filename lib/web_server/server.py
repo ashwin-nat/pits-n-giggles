@@ -389,3 +389,7 @@ class BaseWebServer:
             Response: A Quart file response.
         """
         return await quart_send_from_directory(directory, filename, **kwargs)
+
+    async def stop(self) -> None:
+        """Stop the web server."""
+        self._shutdown_event.set()
