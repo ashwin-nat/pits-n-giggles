@@ -26,9 +26,10 @@ from lib.web_server import ClientType, BaseWebServer
 import logging
 import asyncio
 from typing import Optional, Tuple, List
+from http import HTTPStatus
 
 from lib.child_proc_mgmt import notify_parent_init_complete
-from apps.save_viewer.save_viewer_state import getTelemetryInfo, handleRaceInfoRequest, handleDriverInfoRequest
+import apps.save_viewer.save_viewer_state as SaveViewerState
 
 # -------------------------------------- CLASSES ----------------------------------------------------------------
 
@@ -106,7 +107,7 @@ class SaveViewerWebServer(BaseWebServer):
             Returns:
                 Tuple[str, int]: JSON response and HTTP status code.
             """
-            return getTelemetryInfo()
+            return SaveViewerState.getTelemetryInfo()
 
         @self.http_route('/race-info')
         async def raceInfoHTTP() -> Tuple[str, int]:
@@ -116,7 +117,7 @@ class SaveViewerWebServer(BaseWebServer):
             Returns:
                 Tuple[str, int]: JSON response and HTTP status code.
             """
-            return handleRaceInfoRequest()
+            return SaveViewerState.getRaceInfo()
 
         @self.http_route('/driver-info')
         async def driverInfoHTTP() -> Tuple[str, int]:
@@ -126,22 +127,69 @@ class SaveViewerWebServer(BaseWebServer):
             Returns:
                 Tuple[str, int]: JSON response and HTTP status code.
             """
-            return handleDriverInfoRequest(self.request.args.get('index'))
+
+            index: str = self.request.args.get('index')
+
+            # Check if only one parameter is provided
+            if not index:
+                error_response = {
+                    'error': 'Invalid parameters',
+                    'message': 'Provide "index" parameter'
+                }
+                return error_response, HTTPStatus.BAD_REQUEST
+
+            # Check if the provided value for index is numeric
+            if not index.isdigit():
+                error_response = {
+                    'error': 'Invalid parameter value',
+                    'message': '"index" parameter must be numeric'
+                }
+                return error_response, HTTPStatus.BAD_REQUEST
+
+            # Process parameters and generate response
+            index_int = int(index)
+
+
+            if driver_info := SaveViewerState.getDriverInfo(index_int):
+                return driver_info, HTTPStatus.OK
+            error_response = {
+                'error' : 'Invalid parameter value',
+                'message' : 'Invalid index'
+            }
+            return error_response, HTTPStatus.NOT_FOUND
 
     async def _post_start(self) -> None:
+        """
+        Notify the parent process that the web server is initialized.
+        """
         notify_parent_init_complete()
 
     async def _on_client_connect(self, client_type: ClientType) -> None:
+        """Send race table to the newly connected client"""
         if client_type == ClientType.RACE_TABLE:
             await self._send_race_table()
 
     async def _send_race_table(self) -> None:
-        await self.send_to_clients_of_type('race-table-update', getTelemetryInfo(), ClientType.RACE_TABLE)
+        """Send race table to all connected clients"""
+        await self.send_to_clients_of_type('race-table-update',
+                                           SaveViewerState.getTelemetryInfo(),
+                                           ClientType.RACE_TABLE)
         self.m_logger.debug("Sending race table update")
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def init_server_task(port: int, ver_str: str, logger: logging.Logger, tasks: List[asyncio.Task]) -> SaveViewerWebServer:
+    """Initialize the web server and return the server object for proper cleanup
+
+    Args:
+        port (int): Port number
+        ver_str (str): Version string
+        logger (logging.Logger): Logger
+        tasks (List[asyncio.Task]): List of tasks to be executed
+
+    Returns:
+        SaveViewerWebServer: Web server
+    """
     _server = SaveViewerWebServer(port, ver_str, logger)
     tasks.append(asyncio.create_task(_server.run(), name="Web Server Task"))
     return _server
