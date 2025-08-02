@@ -26,14 +26,12 @@ import asyncio
 import logging
 from typing import List, Optional
 
-import msgpack
-
 import apps.backend.state_mgmt_layer as TelWebAPI
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
+from lib.web_server import ClientType
 
 from .ipc import registerIpcTask
 from .telemetry_web_server import TelemetryWebServer
-from lib.web_server import ClientType
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -125,8 +123,6 @@ async def streamOverlayUpdateTask(
     sleep_duration = update_interval_ms / 1000
     while True:
         if not server.is_client_of_type_connected(ClientType.PLAYER_STREAM_OVERLAY):
-            packed = msgpack.packb(
-                TelWebAPI.PlayerTelemetryOverlayUpdate().toJSON(stream_overlay_start_sample_data), use_bin_type=True)
             await server.send_to_clients_of_type(
                 event='player-overlay-update',
                 data=TelWebAPI.PlayerTelemetryOverlayUpdate().toJSON(stream_overlay_start_sample_data),

@@ -24,33 +24,26 @@
 
 import json
 import logging
-from lib.ipc import IpcChildAsync
-from typing import List
-from functools import partial
-import webbrowser
-from typing import Dict, Any, Optional
+from typing import Any, Dict, List
 
-from lib.f1_types import F1Utils, ResultStatus, LapHistoryData
-from lib.tyre_wear_extrapolator import TyreWearPerLap
-import lib.race_analyzer as RaceAnalyzer
 import lib.overtake_analyzer as OvertakeAnalyzer
+import lib.race_analyzer as RaceAnalyzer
+from lib.f1_types import F1Utils
 
-from .get_telemetry_info import _getTelemetryInfo
-from .get_race_info import _getRaceInfo
 from .get_driver_info import _getDriverInfo
+from .get_race_info import _getRaceInfo
+from .get_telemetry_info import _getTelemetryInfo
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
 _json_data: Dict[str, Any] = {}
 _logger: logging.Logger = None
-_port_number: int = None
-_should_open_ui: bool = True
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def init_state(logger: logging.Logger, port: int) -> None:
+def init_state(logger: logging.Logger) -> None:
+    """Initialize the state of the application. Init the module level logger"""
     global _logger
-    global _port_number
     _logger = logger
 
 def getTelemetryInfo() -> Dict[str, Any]:
@@ -64,20 +57,27 @@ def getTelemetryInfo() -> Dict[str, Any]:
     return _getTelemetryInfo(_json_data)
 
 def getRaceInfo() -> Dict[str, Any]:
+    """Get the race info."""
     global _json_data
     return _getRaceInfo(_json_data)
 
 def getDriverInfo(index: int) -> Dict[str, Any]:
-    # TODO: validation in caller side
+    """Get the driver info for the given index. Assumes the index is an int. Type checking is caller's responsibility
+
+    Args:
+        index (int): Index of the driver.
+
+    Returns:
+        Dict[str, Any]: Driver info.
+    """
     global _json_data
     return _getDriverInfo(_json_data, index)
 
-async def open_file_helper(file_path, open_webpage=True):
+async def open_file_helper(file_path):
+    """Load the JSON file and parse it and update the module global."""
     try:
         with open(file_path, 'r+', encoding='utf-8') as f:
             global _json_data
-            global _should_open_ui
-            global _port_number
             _json_data = json.load(f)
             _check_recompute_json(_json_data)
 
@@ -93,7 +93,7 @@ async def open_file_helper(file_path, open_webpage=True):
     except UnicodeDecodeError as e:
         _logger.error(f"Invalid UTF-8 in file: {file_path}. Error: {e}")
         return {"status": "error", "message": f"Failed to open file: {file_path}. Error: {e}"}
-    except Exception as e:
+    except Exception as e: # pylint: disable=broad-except
         _logger.exception(f"Unexpected error opening file: {file_path}")
         return {"status": "error", "message": f"Failed to open file: {file_path}. Error: {e}"}
 

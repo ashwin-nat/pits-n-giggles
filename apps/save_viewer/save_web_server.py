@@ -22,14 +22,14 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from lib.web_server import ClientType, BaseWebServer
-import logging
 import asyncio
-from typing import Optional, Tuple, List
+import logging
 from http import HTTPStatus
+from typing import List, Optional, Tuple
 
-from lib.child_proc_mgmt import notify_parent_init_complete
 import apps.save_viewer.save_viewer_state as SaveViewerState
+from lib.child_proc_mgmt import notify_parent_init_complete
+from lib.web_server import BaseWebServer, ClientType
 
 # -------------------------------------- CLASSES ----------------------------------------------------------------
 
@@ -148,7 +148,6 @@ class SaveViewerWebServer(BaseWebServer):
 
             # Process parameters and generate response
             index_int = int(index)
-
 
             if driver_info := SaveViewerState.getDriverInfo(index_int):
                 return driver_info, HTTPStatus.OK

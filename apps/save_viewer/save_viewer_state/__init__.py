@@ -22,7 +22,8 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .save_viewer_state import open_file_helper, getTelemetryInfo, getRaceInfo, getDriverInfo, init_state
+from .save_viewer_state import (getDriverInfo, getRaceInfo, getTelemetryInfo,
+                                init_state, open_file_helper)
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 

@@ -22,19 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import json
-import logging
-from lib.ipc import IpcChildAsync
-from typing import List
-from functools import partial
-import webbrowser
-from typing import Dict, Any, Optional
-
-from lib.f1_types import F1Utils, ResultStatus, LapHistoryData
-from lib.tyre_wear_extrapolator import TyreWearPerLap
-
-
-# -------------------------------------- GLOBALS -----------------------------------------------------------------------
+from typing import Any, Dict, List
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -90,6 +78,7 @@ def _getDriverByNameTeam(name: str, team: str, classification_data: List[Dict[st
     Args:
         name (str): Name of the driver
         classification_data (List[Dict[str, Any]]): Classification data
+        team (str): Team name
 
     Returns:
         Dict[str, Any]: Driver data

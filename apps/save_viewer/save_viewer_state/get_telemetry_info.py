@@ -22,19 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import json
-import logging
-from lib.ipc import IpcChildAsync
-from typing import List
-from functools import partial
-import webbrowser
-from typing import Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
-from lib.f1_types import F1Utils, ResultStatus, LapHistoryData
+from lib.f1_types import F1Utils, LapHistoryData, ResultStatus
 from lib.tyre_wear_extrapolator import TyreWearPerLap
-
-
-# -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -44,7 +35,7 @@ def _getTelemetryInfo(json_data: Dict[str, Any]) -> Dict[str, Any]:
     Main function to retrieve and format complete telemetry information.
 
     Args:
-        _json_data: Global telemetry data
+        json_data: Global telemetry data
 
     Returns:
         Complete telemetry data structure with session info and driver entries
@@ -285,12 +276,11 @@ def _get_single_sector_status(
     """
     if sector_time == sector_best_ms:
         return F1Utils.SECTOR_STATUS_PURPLE
-    elif is_best_sector_lap:
+    if is_best_sector_lap:
         return F1Utils.SECTOR_STATUS_GREEN
-    elif not sector_valid_flag:
+    if not sector_valid_flag:
         return F1Utils.SECTOR_STATUS_INVALID
-    else:
-        return F1Utils.SECTOR_STATUS_YELLOW
+    return F1Utils.SECTOR_STATUS_YELLOW
 
 def _get_sector_status(
     data_per_driver: Dict[str, Any],
@@ -337,7 +327,7 @@ def _get_sector_status(
     # Validate lap data exists
     if for_best_lap and not best_lap_ms:
         return default_val
-    elif (not for_best_lap) and not last_lap_ms:
+    if (not for_best_lap) and not last_lap_ms:
         return default_val
 
     # Determine which lap to analyze

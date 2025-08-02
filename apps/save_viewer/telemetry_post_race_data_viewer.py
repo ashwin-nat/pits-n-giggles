@@ -72,9 +72,10 @@ async def main(logger: logging.Logger, server_port: int, ipc_port: int, version:
         logger (logging.Logger): Logger
         server_port (int): Server port
         ipc_port (int): IPC port
+        version (str): Version
     """
     tasks: List[asyncio.Task] = []
-    init_state(logger=logger, port=server_port)
+    init_state(logger=logger)
     init_server_task(port=server_port, ver_str=version, logger=logger, tasks=tasks)
     init_ipc_task(logger=logger, ipc_port=ipc_port, server_port=server_port, tasks=tasks)
 

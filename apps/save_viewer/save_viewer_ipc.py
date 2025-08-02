@@ -24,12 +24,12 @@
 
 import asyncio
 import logging
-from lib.ipc import IpcChildAsync
-from typing import List
 import os
 import webbrowser
+from typing import List
 
 import apps.save_viewer.save_viewer_state as SaveViewerState
+from lib.ipc import IpcChildAsync
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -53,7 +53,7 @@ class SaveViewerIpc:
 
         if cmd == "open-file":
             return await self._handle_open_file(args)
-        elif cmd == "shutdown":
+        if cmd == "shutdown":
             asyncio.create_task(self._shutdown_handler(args.get("reason", "N/A")))
             return {"status": "success"}
 
@@ -65,25 +65,24 @@ class SaveViewerIpc:
         """
         if not (file_path := args.get("file-path")):
             return {"status": "error", "message": "Missing or invalid file path"}
-        else:
-            try:
-                await SaveViewerState.open_file_helper(file_path)
-            except Exception as e: # pylint: disable=broad-except
-                return {"status": "error", "message": f"Failed to open file: {file_path}. Error: {e}"}
 
-            # Open the webpage once
-            if self.m_should_open_ui:
-                self.m_should_open_ui = False
-                webbrowser.open(f'http://localhost:{self.m_server_port}', new=2)
+        try:
+            await SaveViewerState.open_file_helper(file_path)
+        except Exception as e: # pylint: disable=broad-except
+            return {"status": "error", "message": f"Failed to open file: {file_path}. Error: {e}"}
 
-            return {"status": "success"}
+        # Open the webpage once
+        if self.m_should_open_ui:
+            self.m_should_open_ui = False
+            webbrowser.open(f'http://localhost:{self.m_server_port}', new=2)
+
+        return {"status": "success"}
 
     async def _shutdown_handler(self, reason: str) -> None:
         """Shutdown handler function.
 
         Args:
             reason (str): The reason for the shutdown
-            logger (logging.Logger): Logger
         """
         await asyncio.sleep(2.0)
         self.m_logger.info(f"Shutting down. Reason: {reason}")
