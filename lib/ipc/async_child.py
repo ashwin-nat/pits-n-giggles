@@ -48,7 +48,7 @@ class IpcChildAsync:
         self.sock.bind(self.endpoint)
         self._running = False
 
-    async def serve(self, handler_fn: Callable[[dict], Awaitable[dict]], timeout: Optional[int] = None) -> None:
+    async def run(self, handler_fn: Callable[[dict], Awaitable[dict]], timeout: Optional[int] = None) -> None:
         """
         Starts the async request loop. Calls await handler_fn(msg) on each request.
         Stops if a 'quit' command is received.
@@ -87,7 +87,7 @@ class IpcChildAsync:
         """
         Returns a background asyncio task that runs the serve loop.
         """
-        return asyncio.create_task(self.serve(handler_fn, timeout), name=f"{self.name} IPC Task")
+        return asyncio.create_task(self.run(handler_fn, timeout), name=f"{self.name} IPC Task")
 
     def close(self) -> None:
         self.sock.close()

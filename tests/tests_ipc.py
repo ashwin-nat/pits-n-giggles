@@ -79,7 +79,7 @@ class TestIPC(F1TelemetryUnitTestsBase):
         def run_async_child():
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            loop.run_until_complete(child.serve(handler))
+            loop.run_until_complete(child.run(handler))
 
         thread = threading.Thread(target=run_async_child, daemon=True)
         thread.start()
@@ -121,7 +121,7 @@ class TestIPC(F1TelemetryUnitTestsBase):
         def run_async_child():
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            loop.run_until_complete(child.serve(handler))
+            loop.run_until_complete(child.run(handler))
 
         thread = threading.Thread(target=run_async_child, daemon=True)
         thread.start()
