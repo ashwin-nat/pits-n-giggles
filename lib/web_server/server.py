@@ -48,6 +48,7 @@ from .client_types import ClientType
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class BaseWebServer:
+    """Base class for a web server. Derived classes must implement their routes of interest"""
     def __init__(self,
                  port: int,
                  ver_str: str,
@@ -56,6 +57,18 @@ class BaseWebServer:
                  key_path: Optional[str] = None,
                  disable_browser_autoload: bool = False,
                  debug_mode: bool = False):
+        """
+        Initialize the BaseWebServer.
+
+        Args:
+            port (int): The port number to run the server on.
+            ver_str (str): The version string.
+            logger (logging.Logger): The logger instance.
+            cert_path (Optional[str], optional): Path to the certificate file. Defaults to None.
+            key_path (Optional[str], optional): Path to the key file. Defaults to None.
+            disable_browser_autoload (bool, optional): Whether to disable browser autoload. Defaults to False.
+            debug_mode (bool, optional): Enable or disable debug mode. Defaults to False.
+        """
         self.m_logger: logging.Logger = logger
         self.m_port: int = port
         self.m_ver_str = ver_str
@@ -93,29 +106,21 @@ class BaseWebServer:
         self._define_static_file_routes()
 
     def http_route(self, path: str, **kwargs) -> Callable:
+        """Register a HTTP route."""
         def decorator(func: Callable[..., Coroutine]) -> Callable:
             self.m_app.route(path, **kwargs)(func)
             return func
         return decorator
 
     def socketio_event(self, event: str) -> Callable:
+        """Register a SocketIO event."""
         def decorator(func: Callable[..., Coroutine]) -> Callable:
             self.m_sio.on(event)(func)
             return func
         return decorator
 
     def _register_base_socketio_events(self) -> None:
-        @self.m_sio.on('register-client')
-        async def handle_client_registration(sid: str, data: Dict[str, str]) -> None:
-            self.m_logger.debug('Client registered. SID = %s Type = %s', sid, data.get('type'))
-            if (client_type := data.get('type')) in {'player-stream-overlay', 'race-table'}:
-                await self.m_sio.enter_room(sid, client_type)
-                if self._on_client_connect_callback:
-                    await self._on_client_connect_callback(client_type)
-                if self.m_debug_mode:
-                    self.m_logger.debug('Client %s joined room %s', sid, client_type)
-                    room = self.m_sio.manager.rooms.get('/', {}).get(client_type)
-                    self.m_logger.debug(f'Current members of {client_type}: {room}')
+        """Register base SocketIO events."""
 
         @self.m_sio.event
         async def connect(sid: str, _environ: Dict[str, Any]) -> None:
