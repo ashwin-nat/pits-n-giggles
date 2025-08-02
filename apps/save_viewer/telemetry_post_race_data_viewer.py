@@ -68,33 +68,6 @@ async def sendRaceTable() -> None:
     await _server.send_to_clients_of_type('race-table-update', getTelemetryInfo(), ClientType.RACE_TABLE)
     png_logger.debug("Sending race table update")
 
-def getDeltaPlusPenaltiesPlusPit(
-        delta: str,
-        penalties: str,
-        is_pitting: bool,
-        dnf_status_code: str):
-    """
-    Get delta plus penalties plus pit information.
-
-    Args:
-        delta (str): Delta information.
-        penalties (str): Penalties information.
-        is_pitting (bool): Whether the driver is pitting.
-        dnf_status_code (str): The code indicating DNF status. Empty string if driver is still racing
-
-    Returns:
-        str: Delta plus penalties plus pit information.
-    """
-
-    if dnf_status_code != "":
-        return dnf_status_code
-    elif is_pitting:
-        return f"PIT {penalties}"
-    elif delta is not None:
-        return f"{delta} {penalties}"
-    else:
-        return "---"
-
 def getTelemetryInfo():
 
     def getTyreWearJSON(data_per_driver: Dict[str, Any]):
@@ -1058,7 +1031,7 @@ def shutdown_handler(reason: str) -> None:
     os._exit(0)
 
 
-async def main():
+async def main(logger: logging.Logger, ipc_port: int, version: str) -> None:
 
     png_logger.debug(f"cwd={os.getcwd()}")
     global g_port_number
@@ -1106,7 +1079,7 @@ def entry_point():
     if sys.platform == 'win32':
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     try:
-        asyncio.run(main())
+        asyncio.run(main(None, None, None))
     except KeyboardInterrupt:
         png_logger.info("Program interrupted by user.")
     except asyncio.CancelledError:
