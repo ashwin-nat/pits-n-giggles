@@ -83,12 +83,6 @@ class IpcChildAsync:
 
         self.close()
 
-    def get_task(self, handler_fn: Callable[[dict], Awaitable[dict]], timeout: Optional[int] = None) -> asyncio.Task:
-        """
-        Returns a background asyncio task that runs the serve loop.
-        """
-        return asyncio.create_task(self.run(handler_fn, timeout), name=f"{self.name} IPC Task")
-
     def close(self) -> None:
         self.sock.close()
         self.ctx.term()

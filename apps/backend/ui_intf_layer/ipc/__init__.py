@@ -52,7 +52,7 @@ def registerIpcTask(ipc_port: Optional[int], logger: logging.Logger, tasks: List
     if ipc_port:
         logger.debug(f"Starting IPC server on port {ipc_port}")
         server = IpcChildAsync(ipc_port, "Backend")
-        tasks.append(server.get_task(partial(processIpcCommand, logger=logger)))
+        tasks.append(asyncio.create_task(server.run(partial(processIpcCommand, logger=logger)), name="IPC Task"))
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
