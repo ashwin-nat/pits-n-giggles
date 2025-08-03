@@ -171,7 +171,7 @@ class BaseWebServer:
             data (Dict[str, Any]): The data to send with the event.
             client_type (ClientType): The client type to send the event to.
         """
-        packed = msgpack.packb(data)
+        packed = msgpack.packb(data, use_bin_type=True)
         await self.m_sio.emit(event, packed, room=str(client_type))
 
     async def send_to_client(self, event: str, data: Dict[str, Any], client_id: str) -> None:
@@ -184,7 +184,7 @@ class BaseWebServer:
             client_type (ClientType): The client type to send the event to.
             client_id (str): The client ID to send the event to.
         """
-        packed = msgpack.packb(data)
+        packed = msgpack.packb(data, use_bin_type=True)
         await self.m_sio.emit(event, packed, to=client_id)
 
     def is_client_of_type_connected(self, client_type: ClientType) -> bool:

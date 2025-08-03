@@ -390,14 +390,14 @@ def _create_weather_forecast_data(session_info: Dict[str, Any]) -> List[Dict[str
     Returns:
         List of weather forecast dictionaries
     """
-    weather_samples = []
-    for sample in session_info["weather-forecast-samples"]:
-        weather_samples.append({
+    return [
+        {
             "time-offset": str(sample["time-offset"]),
             "weather": str(sample["weather"]),
             "rain-probability": str(sample["rain-percentage"])
-        })
-    return weather_samples
+        }
+        for sample in session_info["weather-forecast-samples"]
+    ]
 
 
 def _create_driver_entry(

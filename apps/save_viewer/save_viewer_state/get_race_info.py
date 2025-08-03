@@ -33,8 +33,8 @@ def _getRaceInfo(json_data: Dict[str, Any]) -> Dict[str, Any]:
 
     ret = {
         "session-info" : json_data["session-info"],
-        "records" : json_data.get("records", None),
-        "overtakes" : json_data.get("overtakes", None),
+        "records" : json_data.get("records"),
+        "overtakes" : json_data.get("overtakes"),
         "custom-markers" : json_data.get("custom-markers", []),
         "position-history" : json_data.get("position-history", []),
         "speed-trap-records" : json_data.get("speed-trap-records", []),

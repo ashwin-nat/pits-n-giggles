@@ -45,8 +45,15 @@ class SaveViewerIpc:
         """Starts the IPC server."""
         await self.m_ipc_server.run(self._handle_ipc_message)
 
-    async def _handle_ipc_message(self, msg: dict) -> None:
-        """Handles incoming IPC messages and dispatches commands."""
+    async def _handle_ipc_message(self, msg: dict) -> dict:
+        """Handles incoming IPC messages and dispatches commands.
+
+        Args:
+            msg (dict): IPC message
+
+        Returns:
+            dict: IPC response
+        """
         self.m_logger.debug(f"Received IPC message: {msg}")
         cmd = msg.get("cmd")
         args: dict = msg.get("args", {})
@@ -56,6 +63,8 @@ class SaveViewerIpc:
         if cmd == "shutdown":
             asyncio.create_task(self._shutdown_handler(args.get("reason", "N/A")))
             return {"status": "success"}
+
+        return {"status": "error", "message": f"Unknown command: {cmd}"}
 
     async def _handle_open_file(self, args: dict) -> dict:
         """Handles the 'open-file' IPC command.

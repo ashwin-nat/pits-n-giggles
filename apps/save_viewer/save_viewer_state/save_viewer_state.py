@@ -165,8 +165,15 @@ def _fill_missing_tyre_wear(json_data: Dict[str, Any]) -> bool:
 
 
 def _ensure_fastest_records(json_data: Dict[str, Any]) -> bool:
-    """Ensure fastest lap records are complete and valid."""
-    updated = False
+    """Ensure fastest lap records are complete and valid.
+
+    Args:
+        json_data (Dict[str, Any]): Parsed race JSON data.
+
+    Returns:
+        bool: True if any part of the JSON was updated, else False.
+    """
+
     if "fastest" not in json_data["records"]:
         json_data["records"]["fastest"] = RaceAnalyzer.getFastestTimesJson(json_data)
         return True
@@ -176,11 +183,18 @@ def _ensure_fastest_records(json_data: Dict[str, Any]) -> bool:
         if any(key not in record for key in expected_keys):
             json_data["records"]["fastest"] = RaceAnalyzer.getFastestTimesJson(json_data)
             return True
-    return updated
+    return False
 
 def _ensure_tyre_stats(json_data: Dict[str, Any]) -> bool:
-    """Ensure tyre stats exist and are complete."""
-    updated = False
+    """Ensure tyre stats exist and are complete.
+
+    Args:
+        json_data (Dict[str, Any]): Parsed race JSON data.
+
+    Returns:
+        bool: True if any part of the JSON was updated, else False.
+    """
+
     if "tyre-stats" not in json_data["records"]:
         json_data["records"]["tyre-stats"] = RaceAnalyzer.getTyreStintRecordsDict(json_data)
         return True
@@ -190,35 +204,44 @@ def _ensure_tyre_stats(json_data: Dict[str, Any]) -> bool:
         if any(key not in compound_stats for key in required_keys):
             json_data["records"]["tyre-stats"] = RaceAnalyzer.getTyreStintRecordsDict(json_data)
             return True
-    return updated
+    return False
 
 def _ensure_overtake_records(json_data: Dict[str, Any]) -> bool:
-    """Ensure overtake data is valid and enriched."""
-    updated = False
+    """Ensure overtake data is valid.
 
+    Args:
+        json_data (Dict[str, Any]): Parsed race JSON data.
+
+    Returns:
+        bool: True if any part of the JSON was updated, else False.
+    """
     if "overtakes" not in json_data:
         json_data["overtakes"] = {"records": []}
         return True
 
     required_keys = ["number-of-overtakes", "most-heated-rivalries"]
-    if any(key not in json_data["overtakes"] for key in required_keys):
-        updated = True
+    missing_keys = any(key not in json_data["overtakes"] for key in required_keys)
+
+    if not missing_keys:
+        return False
 
     records = json_data["overtakes"].get("records", [])
-    if updated and len(records) > 0:
-        mode = (
-            OvertakeAnalyzer.OvertakeAnalyzerMode.INPUT_MODE_LIST_OVERTAKE_RECORDS_JSON
-            if _is_valid_json(records[0])
-            else OvertakeAnalyzer.OvertakeAnalyzerMode.INPUT_MODE_LIST_CSV
-        )
-        enriched = OvertakeAnalyzer.OvertakeAnalyzer(
-            input_mode=mode,
-            input_data=records
-        ).toJSON()
-        json_data["overtakes"] = json_data["overtakes"] | enriched
-        return True
+    if not records:
+        return True  # Still consider updated because keys were missing
 
-    return updated
+    mode = (
+        OvertakeAnalyzer.OvertakeAnalyzerMode.INPUT_MODE_LIST_OVERTAKE_RECORDS_JSON
+        if _is_valid_json(records[0])
+        else OvertakeAnalyzer.OvertakeAnalyzerMode.INPUT_MODE_LIST_CSV
+    )
+
+    enriched = OvertakeAnalyzer.OvertakeAnalyzer(
+        input_mode=mode,
+        input_data=records
+    ).toJSON()
+
+    json_data["overtakes"] = {**json_data["overtakes"], **enriched}
+    return True
 
 def _ensure_records_container(json_data: Dict[str, Any]) -> bool:
     """Ensure the 'records' dictionary exists in the data."""
