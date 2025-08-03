@@ -181,7 +181,6 @@ class BaseWebServer:
         Args:
             event (str): The event name to send.
             data (Dict[str, Any]): The data to send with the event.
-            client_type (ClientType): The client type to send the event to.
             client_id (str): The client ID to send the event to.
         """
         packed = msgpack.packb(data, use_bin_type=True)
