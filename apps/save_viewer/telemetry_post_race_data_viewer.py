@@ -76,8 +76,17 @@ async def main(logger: logging.Logger, server_port: int, ipc_port: int, version:
     """
     tasks: List[asyncio.Task] = []
     init_state(logger=logger)
-    init_server_task(port=server_port, ver_str=version, logger=logger, tasks=tasks)
+    web_server = init_server_task(port=server_port, ver_str=version, logger=logger, tasks=tasks)
     init_ipc_task(logger=logger, ipc_port=ipc_port, server_port=server_port, tasks=tasks)
+
+    try:
+        await asyncio.gather(*tasks)
+    except asyncio.CancelledError:
+        logger.debug("Main task was cancelled.")
+        await web_server.stop()
+        for task in tasks:
+            task.cancel()
+        raise  # Ensure proper cancellation behavior
 
 def entry_point():
     """Entry point"""
