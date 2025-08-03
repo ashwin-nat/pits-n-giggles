@@ -29,15 +29,24 @@ import webbrowser
 from typing import List
 
 import apps.save_viewer.save_viewer_state as SaveViewerState
+from apps.save_viewer.save_web_server import SaveViewerWebServer
 from lib.ipc import IpcChildAsync
+from lib.web_server import ClientType
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class SaveViewerIpc:
-    def __init__(self, logger: logging.Logger, ipc_port: int, server_port: int) -> None:
+    def __init__(self, logger: logging.Logger, ipc_port: int, server: SaveViewerWebServer) -> None:
+        """Initialize the IPC server.
+
+        Args:
+            logger (logging.Logger): Logger
+            ipc_port (int): IPC port
+            server (SaveViewerWebServer): Web server
+        """
         self.m_logger = logger
         self.m_ipc_port = ipc_port
-        self.m_server_port = server_port
+        self.m_server = server
         self.m_should_open_ui = True
         self.m_ipc_server = IpcChildAsync(ipc_port, "Save Viewer")
 
@@ -83,7 +92,14 @@ class SaveViewerIpc:
         # Open the webpage once
         if self.m_should_open_ui:
             self.m_should_open_ui = False
-            webbrowser.open(f'http://localhost:{self.m_server_port}', new=2)
+            webbrowser.open(f'http://localhost:{self.m_server.m_port}', new=2)
+
+        # Update all clients
+        await self.m_server.send_to_clients_of_type(
+            event='race-table-update',
+            data=SaveViewerState.getTelemetryInfo(),
+            client_type=ClientType.RACE_TABLE,
+        )
 
         return {"status": "success"}
 
@@ -99,14 +115,14 @@ class SaveViewerIpc:
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def init_ipc_task(logger: logging.Logger, ipc_port: int, server_port: int, tasks: List[asyncio.Task]) -> None:
+def init_ipc_task(logger: logging.Logger, ipc_port: int, server: SaveViewerWebServer, tasks: List[asyncio.Task]) -> None:
     """Initialize the IPC task.
 
     Args:
         logger (logging.Logger): Logger
         ipc_port (int): IPC port
-        server_port (int): Server port
+        server (SaveViewerWebServer): Web server
         tasks (List[asyncio.Task]): List of tasks
     """
-    ipc_server = SaveViewerIpc(logger, ipc_port, server_port)
+    ipc_server = SaveViewerIpc(logger, ipc_port, server)
     tasks.append(asyncio.create_task(ipc_server.run(), name="IPC Server Task"))
