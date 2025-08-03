@@ -22,40 +22,16 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import asyncio
-import json
-import logging
-from functools import partial
-from typing import List, Optional, Callable, Awaitable, Dict
+from enum import Enum
 
-import msgpack
-import socketio
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-import apps.backend.state_mgmt_layer as TelWebAPI
-from lib.inter_task_communicator import AsyncInterTaskCommunicator
-from lib.ipc import IpcChildAsync
-from .command_dispatcher import processIpcCommand
+class ClientType(Enum):
+    PLAYER_STREAM_OVERLAY = 'player-stream-overlay'
+    RACE_TABLE = 'race-table'
 
+    def __str__(self) -> str:
+        return self.value
 
-# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
-
-def registerIpcTask(ipc_port: Optional[int], logger: logging.Logger, tasks: List[asyncio.Task]) -> None:
-    """Register the IPC task
-
-    Args:
-        ipc_port (Optional[int]): IPC port
-        logger (logging.Logger): Logger
-        tasks (List[asyncio.Task]): List of tasks
-    """
-
-    # Register the IPC task only if port is specified
-    if ipc_port:
-        logger.debug(f"Starting IPC server on port {ipc_port}")
-        server = IpcChildAsync(ipc_port, "Backend")
-        tasks.append(asyncio.create_task(server.run(partial(processIpcCommand, logger=logger)), name="IPC Task"))
-
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
-
-__all__ = [
-    "registerIpcTask",
-]
+    def __repr__(self) -> str:
+        return self.value

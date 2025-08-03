@@ -21,17 +21,30 @@
 # SOFTWARE.
 # pylint: skip-file
 
+# -------------------------------------- IMPORTS -----------------------------------------------------------------------
+
 import logging
 
-png_logger = logging.getLogger("save_viewer")
-png_logger.setLevel(logging.INFO)
+# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-handler = logging.StreamHandler()
-formatter = logging.Formatter(
-    fmt="%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
-)
-handler.setFormatter(formatter)
+def get_logger(name: str = "save_viewer") -> logging.Logger:
+    """Get a logger with a console handler.
 
-if not png_logger.hasHandlers():
-    png_logger.addHandler(handler)
+    Returns:
+        logging.Logger: The logger
+    """
+    png_logger = logging.getLogger(name)
+    png_logger.setLevel(logging.INFO)
+
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter(
+        fmt="%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"
+    )
+    handler.setFormatter(formatter)
+
+    if not png_logger.hasHandlers():
+        png_logger.addHandler(handler)
+
+    return png_logger
+

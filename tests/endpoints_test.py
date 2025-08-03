@@ -1,65 +1,101 @@
 import requests
+from tabulate import tabulate
+from colorama import Fore, Style, init
 
-def test_endpoints_with_session(hostname, port, endpoints):
+# Initialize colorama (autoreset ensures clean output)
+init(autoreset=True)
+
+def test_endpoints_with_session(hostname, port, endpoints_config):
     base_url = f'http://{hostname}:{port}'
     session = requests.Session()
+    failed_results = []
+
     passed = 0
     failed = 0
 
-# sourcery skip: no-loop-in-tests
-    for endpoint in endpoints:
-        url = f'{base_url}/{endpoint}'
-        response = session.get(url)
-        # sourcery skip: no-conditionals-in-tests
-        if response.status_code in {200, 400, 404}:
-            print(f"Success: {url} returned {response.status_code}")
-            passed += 1
-        else:
-            print(f"Failed: {url} returned {response.status_code}")
+    for endpoint, allowed_statuses in endpoints_config.items():
+        url = f'{base_url}{endpoint}'
+        try:
+            response = session.get(url)
+            status = response.status_code
+            if status in allowed_statuses:
+                passed += 1
+            else:
+                failed_results.append((
+                    f"{Fore.RED}FAIL{Style.RESET_ALL}",
+                    endpoint,
+                    f"{Fore.RED}{status}{Style.RESET_ALL}",
+                    f"{Fore.GREEN}{allowed_statuses}{Style.RESET_ALL}"
+                ))
+                failed += 1
+        except Exception as e:
+            print(f"{Fore.YELLOW}ERROR{Style.RESET_ALL}: {endpoint} raised exception {e}")
+            failed_results.append((
+                f"{Fore.YELLOW}ERROR{Style.RESET_ALL}",
+                endpoint,
+                f"{Fore.YELLOW}{str(e)}{Style.RESET_ALL}",
+                f"{Fore.GREEN}{allowed_statuses}{Style.RESET_ALL}"
+            ))
             failed += 1
 
-    print(f"Tested {len(endpoints)} endpoints. {passed} passed, {failed} failed.")
+    print("\n" + "=" * 60)
+    print(f"{Style.BRIGHT}Test Summary:{Style.RESET_ALL}")
+    print(f"{Fore.GREEN}Passed:{Style.RESET_ALL} {passed}")
+    print(f"{Fore.RED}Failed:{Style.RESET_ALL} {failed}")
+    print("=" * 60)
 
-endpoints = [
-    "/favicon.ico",
-    "/tyre-icons/soft.svg",
-    "/tyre-icons/super-soft.svg",
-    "/tyre-icons/medium.svg",
-    "/tyre-icons/hard.svg",
-    "/tyre-icons/intermediate.svg",
-    "/tyre-icons/wet.svg",
-    "/",
-    "/eng-view",
-    "/player-stream-overlay",
-    "/telemetry-info",
-    "/race-info",
-    "/driver-info?index=0",
-    "/stream-overlay-info",
-    "/static/css/style.css",
-    "/static/css/modals.css",
-    "/static/css/weather.css",
-    "/static/css/conditions.css",
-    "/static/css/speedLimit.css",
-    "/static/css/tyreStintHistoryModal.css",
-    "/static/js/preferences.js",
-    "/static/js/utils.js",
-    "/static/js/iconCache.js",
-    "/static/js/weatherUI.js",
-    "/static/js/graph.js",
-    "/static/js/driverDataModalPopulator.js",
-    "/static/js/raceStatsModalPopulator.js",
-    "/static/js/tyreStintHistoryModal.js",
-    "/static/js/modals.js",
-    "/static/js/raceTableRowPopulator.js",
-    "/static/js/timeTrialDataPopulator.js",
-    "/static/js/telemetryRenderer.js",
-    "/static/js/frontendUpdate.js",
-    "/static/js/app.js",
-    "/static/js/updater.js",
-]
+    if failed_results:
+        print(f"{Style.BRIGHT}Failures & Errors:{Style.RESET_ALL}")
+        print(tabulate(
+            failed_results,
+            headers=["Result", "Endpoint", "Status", "Expected"],
+            tablefmt="grid"
+        ))
+    else:
+        print(f"{Fore.GREEN}All endpoints returned expected status codes.{Style.RESET_ALL}")
+
+
+# Define endpoint config: endpoint -> list of acceptable status codes
+endpoints_config = {
+    "/favicon.ico": [200],
+    "/tyre-icons/soft.svg": [200],
+    "/tyre-icons/super-soft.svg": [200],
+    "/tyre-icons/medium.svg": [200],
+    "/tyre-icons/hard.svg": [200],
+    "/tyre-icons/intermediate.svg": [200],
+    "/tyre-icons/wet.svg": [200],
+    "/": [200],
+    "/eng-view": [200],
+    "/player-stream-overlay": [200],
+    "/telemetry-info": [200],
+    "/race-info": [200],
+    "/driver-info?index=0": [200, 404],
+    "/stream-overlay-info": [200],
+    "/static/css/style.css": [200],
+    "/static/css/modals.css": [200],
+    "/static/css/weather.css": [200],
+    "/static/css/conditions.css": [200],
+    "/static/css/speedLimit.css": [200],
+    "/static/css/tyreStintHistoryModal.css": [200],
+    "/static/js/preferences.js": [200],
+    "/static/js/utils.js": [200],
+    "/static/js/iconCache.js": [200],
+    "/static/js/weatherUI.js": [200],
+    "/static/js/graph.js": [200],
+    "/static/js/driverDataModalPopulator.js": [200],
+    "/static/js/raceStatsModalPopulator.js": [200],
+    "/static/js/tyreStintHistoryModal.js": [200],
+    "/static/js/modals.js": [200],
+    "/static/js/raceTableRowPopulator.js": [200],
+    "/static/js/timeTrialDataPopulator.js": [200],
+    "/static/js/telemetryRenderer.js": [200],
+    "/static/js/frontendUpdate.js": [200],
+    "/static/js/app.js": [200],
+    "/static/js/updater.js": [200],
+}
 
 # Example hostname and port
 hostname = "localhost"
 port = 4768
 
-test_endpoints_with_session(hostname, port, endpoints)
+test_endpoints_with_session(hostname, port, endpoints_config)
