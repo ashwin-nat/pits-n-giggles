@@ -163,16 +163,25 @@ class SaveViewerWebServer(BaseWebServer):
         """
         notify_parent_init_complete()
 
-    async def _on_client_connect(self, client_type: ClientType) -> None:
-        """Send race table to the newly connected client"""
-        if client_type == ClientType.RACE_TABLE:
-            await self._send_race_table()
+    async def _on_client_connect(self, client_type: ClientType, client_id: str) -> None:
+        """Send race table to the newly connected client
 
-    async def _send_race_table(self) -> None:
-        """Send race table to all connected clients"""
-        await self.send_to_clients_of_type('race-table-update',
-                                           SaveViewerState.getTelemetryInfo(),
-                                           ClientType.RACE_TABLE)
+        Args:
+            client_type (ClientType): Client type
+            client_id (str): Client ID
+        """
+        if client_type == ClientType.RACE_TABLE:
+            await self._send_race_table(client_id)
+
+    async def _send_race_table(self, client_id: str) -> None:
+        """Send race table to all connected clients
+
+        Args:
+            client_id (str): Client ID
+        """
+        await self.send_to_client('race-table-update',
+                                    SaveViewerState.getTelemetryInfo(),
+                                    client_id)
         self.m_logger.debug("Sending race table update")
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------

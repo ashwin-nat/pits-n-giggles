@@ -78,7 +78,7 @@ class BaseWebServer:
         self.m_debug_mode: bool = debug_mode
         self._shutdown_event = asyncio.Event()
         self._post_start_callback: Optional[Callable[[], Awaitable[None]]] = None
-        self._on_client_connect_callback: Optional[Callable[[ClientType], Awaitable[None]]] = None
+        self._on_client_connect_callback: Optional[Callable[[ClientType, str], Awaitable[None]]] = None
 
         self.m_base_dir = Path(__file__).resolve().parent.parent.parent
         template_dir = self.m_base_dir / "apps" / "frontend" / "html"
@@ -155,7 +155,7 @@ class BaseWebServer:
             if (client_type := data['type']) in {'player-stream-overlay', 'race-table'}:
                 await self.m_sio.enter_room(sid, client_type)
                 if self._on_client_connect_callback:
-                    await self._on_client_connect_callback(ClientType(client_type))
+                    await self._on_client_connect_callback(ClientType(client_type), sid)
                 if self.m_debug_mode:
                     self.m_logger.debug('Client %s joined room %s', sid, client_type)
 
@@ -173,6 +173,19 @@ class BaseWebServer:
         """
         packed = msgpack.packb(data)
         await self.m_sio.emit(event, packed, room=str(client_type))
+
+    async def send_to_client(self, event: str, data: Dict[str, Any], client_id: str) -> None:
+        """
+        Send data to clients in a specific room.
+
+        Args:
+            event (str): The event name to send.
+            data (Dict[str, Any]): The data to send with the event.
+            client_type (ClientType): The client type to send the event to.
+            client_id (str): The client ID to send the event to.
+        """
+        packed = msgpack.packb(data)
+        await self.m_sio.emit(event, packed, to=client_id)
 
     def is_client_of_type_connected(self, client_type: ClientType) -> bool:
         """Check if a client of a specific type is connected
@@ -239,12 +252,13 @@ class BaseWebServer:
         """
         self._post_start_callback = callback
 
-    def register_on_client_connect_callback(self, callback: Callable[[ClientType], Awaitable[None]]) -> None:
+    def register_on_client_connect_callback(self, callback: Callable[[ClientType, str], Awaitable[None]]) -> None:
         """
         Register a coroutine to run when a client connects.
 
         Args:
-            callback (Callable[[ClientType], Awaitable[None]]): An async function to be run when a client connects.
+            callback (Callable[[ClientType, str], Awaitable[None]]): An async function to be run when a client connects.
+                Should support two arguments: the client type and the session ID.
         """
         self._on_client_connect_callback = callback
 
