@@ -590,7 +590,7 @@ class SessionState:
             driver.m_lap_info.m_total_race_time = data.m_totalRaceTime
 
             if data.m_position and data.m_position != 255:
-                driver.m_driver_info.grid_position = data.m_position
+                driver.m_driver_info.position = data.m_position
 
         self.setRaceCompleted()
 
