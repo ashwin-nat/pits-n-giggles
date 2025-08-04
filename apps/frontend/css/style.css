@@ -169,7 +169,8 @@ body {
 }
 
 .telemetry-table-wrapper {
-  overflow-x: auto;
+  overflow-y: auto;
+  max-height: calc(100vh - 200px);
   background-color: var(--f1-dark);
   border-radius: 8px;
   border: 1px solid var(--f1-light-gray);
@@ -199,7 +200,7 @@ body {
   color: var(--f1-text-secondary);
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 10;
 }
 
 .telemetry-table .best-lap,
