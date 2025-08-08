@@ -11,6 +11,10 @@ jobs:
       matrix:
         os: [windows-latest, macos-latest]
 
+    defaults:
+      run:
+        shell: bash  # Force bash shell on all OSes, including Windows
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -18,16 +22,15 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'  # Adjust as needed
+          python-version: '3.11'
 
       - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          virtualenvs-create: true
-          virtualenvs-in-project: true  # Creates .venv in the project root
+        run: |
+          curl -sSL https://install.python-poetry.org | python -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Install dependencies
-        run: poetry install --no-interaction --no-root  # Or remove --no-root if you want the current package installed
+        run: poetry install --no-interaction --no-root
 
       - name: Run unit tests
         run: poetry run python tests/unit_tests.py
