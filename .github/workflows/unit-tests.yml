@@ -39,7 +39,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          poetry install --no-root --without dev
+          poetry install --no-root
         shell: bash
 
       - name: Run unit tests
