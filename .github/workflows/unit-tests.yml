@@ -10,13 +10,15 @@ jobs:
     strategy:
       matrix:
         os: [windows-latest, macos-latest]
+    env:
+      POETRY_VERSION: 2.1.2  # Pin for reproducibility
 
     defaults:
       run:
         shell: bash  # Force bash shell on all OSes, including Windows
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -26,11 +28,19 @@ jobs:
 
       - name: Install Poetry
         run: |
-          curl -sSL https://install.python-poetry.org | python -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+            python -m pip install --upgrade pip
+            curl -sSL https://install.python-poetry.org | python -
+            if [ "$RUNNER_OS" = "Windows" ]; then
+            echo "$APPDATA\Python\Scripts" >> $GITHUB_PATH
+            else
+            echo "$HOME/.local/bin" >> $GITHUB_PATH
+            fi
+        shell: bash
 
       - name: Install dependencies
-        run: poetry install --no-interaction --no-root
+        run: |
+          poetry install --no-root --without dev
+        shell: bash
 
       - name: Run unit tests
         run: poetry run python tests/unit_tests.py
