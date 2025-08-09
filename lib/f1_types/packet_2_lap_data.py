@@ -26,7 +26,7 @@ from enum import Enum
 from typing import Any, Dict, List
 
 from .common import (F1Utils, InvalidPacketLengthError, PacketHeader,
-                     ResultStatus)
+                     ResultStatus, _validate_parse_fixed_segments)
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -67,7 +67,7 @@ class LapData:
         m_speedTrapFastestLap (uint8): Fastest speed trap lap number.
     """
 
-    PACKET_FORMAT_23 = ("<"
+    COMPILED_PACKET_STRUCT_23 = struct.Struct("<"
         "I" # uint32 - Last lap time in milliseconds
         "I" # uint32 - Current time around the lap in milliseconds
         "H" # uint16 - Sector 1 time in milliseconds
@@ -99,9 +99,9 @@ class LapData:
         "H" # uint16 - Time of the actual pit stop in ms
         "B" # uint8  - Whether the car should serve a penalty at this stop
     )
-    PACKET_LEN_23:int = struct.calcsize(PACKET_FORMAT_23)
+    PACKET_LEN_23 = COMPILED_PACKET_STRUCT_23.size
 
-    PACKET_FORMAT_24:str = ("<"
+    COMPILED_PACKET_STRUCT_24 = struct.Struct("<"
         "I" # uint32   m_lastLapTimeInMS;                // Last lap time in milliseconds
         "I" # uint32   m_currentLapTimeInMS;      // Current time around the lap in milliseconds
         "H" # uint16   m_sector1TimeMSPart;         // Sector 1 time milliseconds part
@@ -141,7 +141,7 @@ class LapData:
         "f" # float    m_speedTrapFastestSpeed;     // Fastest speed through speed trap for this car in kmph
         "B" # uint8   # m_speedTrapFastestLap;       // Lap no the fastest speed was achieved, 255 = not set
     )
-    PACKET_LEN_24:int = struct.calcsize(PACKET_FORMAT_24)
+    PACKET_LEN_24 = COMPILED_PACKET_STRUCT_24.size
 
     # Type hints declaration for fields
     m_packetFormat: int
@@ -341,7 +341,7 @@ class LapData:
                 self.m_pitLaneTimeInLaneInMS,
                 self.m_pitStopTimerInMS,
                 self.m_pitStopShouldServePen,
-            ) = struct.unpack(self.PACKET_FORMAT_23, raw_data)
+            ) = self.COMPILED_PACKET_STRUCT_23.unpack(raw_data)
             self.m_deltaToCarInFrontMinutes: int = 0
             self.m_deltaToRaceLeaderMinutes: int = 0
             self.m_speedTrapFastestSpeed: float = 0
@@ -382,7 +382,7 @@ class LapData:
                 self.m_pitStopShouldServePen,
                 self.m_speedTrapFastestSpeed,
                 self.m_speedTrapFastestLap
-            ) = struct.unpack(self.PACKET_FORMAT_24, raw_data)
+            ) = self.COMPILED_PACKET_STRUCT_24.unpack(raw_data)
 
         if LapData.DriverStatus.isValid(self.m_driverStatus):
             self.m_driverStatus = LapData.DriverStatus(self.m_driverStatus)
