@@ -23,12 +23,12 @@
 
 import struct
 from typing import Dict, List, Any
-from enum import Enum
 from .common import PacketHeader, ActualTyreCompound, VisualTyreCompound, TractionControlAssistMode, _validate_parse_fixed_segments
+from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
-class CarStatusData:
+class CarStatusData(F1SubPacketBase):
     """
     Class representing car status data.
 
@@ -133,7 +133,7 @@ class CarStatusData:
     m_ersDeployedThisLap: float
     m_networkPaused: bool
 
-    class VehicleFIAFlags(Enum):
+    class VehicleFIAFlags(F1BaseEnum):
         """
         Enumeration representing different FIA flags related to vehicles.
 
@@ -169,22 +169,7 @@ class CarStatusData:
                 CarStatusData.VehicleFIAFlags.YELLOW: "Yellow",
             }[self]
 
-        @staticmethod
-        def isValid(fia_flag_code: int) -> bool:
-            """
-            Check if the input flag code maps to a valid enum value.
-
-            Args:
-                fia_flag_code (int): The actual FIA flag status code
-
-            Returns:
-                bool: True if the event type is valid, False otherwise.
-            """
-            if isinstance(fia_flag_code, CarStatusData.VehicleFIAFlags):
-                return True  # It's already an instance of CarStatusData.VehicleFIAFlags
-            return any(fia_flag_code == member.value for member in CarStatusData.VehicleFIAFlags)
-
-    class ERSDeployMode(Enum):
+    class ERSDeployMode(F1BaseEnum):
         """
         Enumeration representing different ERS deployment modes.
 
@@ -210,29 +195,9 @@ class CarStatusData:
             Returns:
                 str: String representation of the ERS deployment mode.
             """
-            return {
-                CarStatusData.ERSDeployMode.NONE: "None",
-                CarStatusData.ERSDeployMode.MEDIUM: "Medium",
-                CarStatusData.ERSDeployMode.HOPLAP: "Hotlap",
-                CarStatusData.ERSDeployMode.OVERTAKE: "Overtake",
-            }[self]
+            return self.name.title()
 
-        @staticmethod
-        def isValid(ers_deploy_mode_code: int) -> bool:
-            """
-            Check if the ERS deploy mode code maps to a valid enum value.
-
-            Args:
-                ers_deploy_mode_code (int): The ERS deploy mode code
-
-            Returns:
-                bool: True if the event type is valid, False otherwise.
-            """
-            if isinstance(ers_deploy_mode_code, CarStatusData.ERSDeployMode):
-                return True  # It's already an instance of CarStatusData.ERSDeployMode
-            return any(ers_deploy_mode_code == member.value for member in CarStatusData.ERSDeployMode)
-
-    class FuelMix(Enum):
+    class FuelMix(F1BaseEnum):
         """
         Enumeration representing different ERS deployment modes.
 
@@ -252,28 +217,12 @@ class CarStatusData:
         MAX = 3
 
         def __str__(self) -> str:
-            """
-            Returns a human-readable string representation of the ERS deployment mode.
+            """Return the string representation of this object
 
             Returns:
-                str: String representation of the ERS deployment mode.
+                str: string representation
             """
             return self.name.title()
-
-        @staticmethod
-        def isValid(fuel_mix_code: int) -> bool:
-            """
-            Check if the fuel mix code maps to a valid enum value.
-
-            Args:
-                fuel_mix_code (int): The ERS deploy mode code
-
-            Returns:
-                bool: True if the event type is valid, False otherwise.
-            """
-            if isinstance(fuel_mix_code, CarStatusData.FuelMix):
-                return True  # It's already an instance of CarStatusData.FuelMix
-            return any(fuel_mix_code == member.value for member in CarStatusData.FuelMix)
 
     def __init__(self, data) -> None:
         """
@@ -545,7 +494,7 @@ class CarStatusData:
             network_paused)
         )
 
-class PacketCarStatusData:
+class PacketCarStatusData(F1PacketBase):
     """
     Class containing details on car statuses for all the cars in the race.
 
@@ -563,7 +512,7 @@ class PacketCarStatusData:
             header (PacketHeader): Object containing header info.
             packet (bytes): Bytes representing the packet payload.
         """
-        self.m_header: PacketHeader = header
+        super().__init__(header)
         self.m_carStatusData: List[CarStatusData]
 
         self.m_carStatusData, _ = _validate_parse_fixed_segments(

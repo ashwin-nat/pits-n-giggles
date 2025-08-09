@@ -30,7 +30,7 @@ from .header import PacketHeader
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class BaseEnum(Enum):
+class F1BaseEnum(Enum):
     @classmethod
     def isValid(cls, value: int) -> bool:
         """
