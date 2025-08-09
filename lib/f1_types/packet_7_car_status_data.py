@@ -24,7 +24,7 @@
 import struct
 from typing import Dict, List, Any
 from enum import Enum
-from .common import PacketHeader, ActualTyreCompound, VisualTyreCompound, TractionControlAssistMode
+from .common import PacketHeader, ActualTyreCompound, VisualTyreCompound, TractionControlAssistMode, _validate_parse_fixed_segments
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -66,7 +66,7 @@ class CarStatusData:
 
     MIN_FUEL_KG = 0.2 # Source: Trust me bro
     MAX_ERS_STORE_ENERGY = 4000000.0 # Source: https://www.mercedes-amg-hpp.com/formula-1-engine-facts/#
-    PACKET_FORMAT = ("<"
+    COMPILED_PACKET_STRUCT = struct.Struct("<"
         "B" # uint8       m_tractionControl;          // Traction control - 0 = off, 1 = medium, 2 = full
         "B" # uint8       m_antiLockBrakes;           // 0 (off) - 1 (on)
         "B" # uint8       m_fuelMix;                  // Fuel mix - 0 = lean, 1 = standard, 2 = rich, 3 = max
@@ -104,10 +104,10 @@ class CarStatusData:
         "f" # float       m_ersDeployedThisLap;       // ERS energy deployed this lap
         "B" # uint8       m_networkPaused;            // Whether the car is paused in a network game
     )
-    PACKET_LEN = struct.calcsize(PACKET_FORMAT)
+    PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
     # Type hint declarations
-    m_tractionControl: "TractionControlAssistMode | int"
+    m_tractionControl: TractionControlAssistMode | int
     m_antiLockBrakes: bool
     m_fuelMix: "CarStatusData.FuelMix | int"
     m_frontBrakeBias: int
@@ -120,8 +120,8 @@ class CarStatusData:
     m_maxGears: int
     m_drsAllowed: int
     m_drsActivationDistance: int
-    m_actualTyreCompound: "ActualTyreCompound | int"
-    m_visualTyreCompound: "VisualTyreCompound | int"
+    m_actualTyreCompound: ActualTyreCompound | int
+    m_visualTyreCompound: VisualTyreCompound | int
     m_tyresAgeLaps: int
     m_vehicleFiaFlags: "CarStatusData.VehicleFIAFlags | int"
     m_enginePowerICE: float
@@ -284,7 +284,7 @@ class CarStatusData:
         """
 
         # Unpack data in a single step
-        unpacked = struct.unpack(self.PACKET_FORMAT, data)
+        unpacked = self.COMPILED_PACKET_STRUCT.unpack(data)
 
         # Set attributes using __dict__.update() to reduce overhead
         self.__dict__.update(zip([
@@ -452,7 +452,7 @@ class CarStatusData:
             bytes: The serialized bytes.
         """
 
-        return struct.pack(self.PACKET_FORMAT,
+        return self.COMPILED_PACKET_STRUCT.pack(
             self.m_tractionControl.value,
             self.m_antiLockBrakes,
             self.m_fuelMix.value,
@@ -517,7 +517,7 @@ class CarStatusData:
             CarStatusData: The created CarStatusData object.
         """
 
-        return cls(struct.pack(cls.PACKET_FORMAT,
+        return cls(cls.COMPILED_PACKET_STRUCT.pack(
             traction_control.value,
             anti_lock_brakes,
             fuel_mix.value,
@@ -554,6 +554,8 @@ class PacketCarStatusData:
         - m_carStatusData(List[CarStatusData]) - List of statuses of every car
     """
 
+    MAX_CARS = 22
+
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
         """Initialize the object from raw bytes.
 
@@ -562,12 +564,16 @@ class PacketCarStatusData:
             packet (bytes): Bytes representing the packet payload.
         """
         self.m_header: PacketHeader = header
+        self.m_carStatusData: List[CarStatusData]
 
-        car_status_len = CarStatusData.PACKET_LEN
-        self.m_carStatusData = [
-            CarStatusData(packet[i : i + car_status_len])
-            for i in range(0, len(packet), car_status_len)
-        ]
+        self.m_carStatusData, _ = _validate_parse_fixed_segments(
+            data=packet,
+            offset=0,
+            item_cls=CarStatusData,
+            item_len=CarStatusData.PACKET_LEN,
+            count=self.MAX_CARS,
+            max_count=self.MAX_CARS
+        )
 
     def __str__(self) -> str:
         """Generate a human readable string of this object's contents
