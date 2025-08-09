@@ -24,10 +24,11 @@
 import struct
 from typing import Dict, Any
 from .common import PacketHeader
+from .base_pkt import F1PacketBase
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
-class PacketMotionExData:
+class PacketMotionExData(F1PacketBase):
     """
     Represents extended motion data for a player's car.
 
@@ -114,7 +115,7 @@ class PacketMotionExData:
             data (bytes): Raw data representing extended motion information for a player's car.
         """
 
-        self.m_header = header
+        super().__init__(header)
 
         self.m_suspensionPosition = [0.0] * 4
         self.m_suspensionVelocity = [0.0] * 4

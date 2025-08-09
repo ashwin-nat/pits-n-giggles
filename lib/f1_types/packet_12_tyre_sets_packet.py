@@ -26,10 +26,11 @@ from typing import Any, Dict, List, Optional, Union
 
 from .common import (ActualTyreCompound, PacketHeader, SessionType23, _validate_parse_fixed_segments,
                      SessionType24, VisualTyreCompound)
+from .base_pkt import F1PacketBase, F1SubPacketBase
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
-class TyreSetData:
+class TyreSetData(F1SubPacketBase):
     """
     Represents information about a specific tyre set, including its compound, wear, availability, and other details.
 
@@ -229,7 +230,7 @@ class TyreSetData:
             lap_delta_time,
             fitted), packet_format)
 
-class PacketTyreSetsData:
+class PacketTyreSetsData(F1PacketBase):
     """
     Represents information about tyre sets for a specific car in a race.
 
@@ -257,7 +258,7 @@ class PacketTyreSetsData:
             data (bytes): Raw data representing information about tyre sets for a car in a race.
         """
 
-        self.m_header: PacketHeader = header
+        super().__init__(header)
         self.m_carIdx: int = self.COMPILED_PACKET_STRUCT_CAR_IDX.unpack(data[:self.PACKET_LEN_CAR_IDX])[0]
 
         self.m_tyreSetData: List[TyreSetData]

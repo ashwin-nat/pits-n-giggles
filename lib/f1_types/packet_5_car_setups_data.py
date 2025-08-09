@@ -25,9 +25,11 @@ import struct
 from typing import Dict, Any, List, Optional
 from .common import PacketHeader, _validate_parse_fixed_segments
 
+from .base_pkt import F1SubPacketBase, F1PacketBase
+
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
-class CarSetupData:
+class CarSetupData(F1SubPacketBase):
     """
     A class representing the setup data for a car in a racing simulation.
 
@@ -483,7 +485,7 @@ class CarSetupData:
             return cls(raw_packet, packet_format)
         raise NotImplementedError(f"Invalid packet format: {packet_format}")
 
-class PacketCarSetupData:
+class PacketCarSetupData(F1PacketBase):
     """
     A class representing the setup data for all cars in a racing simulation.
 
@@ -511,7 +513,7 @@ class PacketCarSetupData:
             struct.error: If the binary data does not match the expected format.
         """
 
-        self.m_header: PacketHeader = header
+        super().__init__(header)
         self.m_carSetups: List[CarSetupData]
 
         packet_len = CarSetupData.PACKET_LEN_23 if (header.m_packetFormat == 2023) else CarSetupData.PACKET_LEN_24

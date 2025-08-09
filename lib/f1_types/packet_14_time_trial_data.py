@@ -25,10 +25,11 @@ import struct
 from typing import Any, Dict, Union
 
 from .common import F1Utils, PacketHeader, TeamID24, TeamID25
+from .base_pkt import F1SubPacketBase, F1PacketBase
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
-class TimeTrialDataSet:
+class TimeTrialDataSet(F1SubPacketBase):
     """The class representing the time trial data for a single car.
 
     Attributes:
@@ -251,7 +252,7 @@ class TimeTrialDataSet:
             ), game_year
         )
 
-class PacketTimeTrialData:
+class PacketTimeTrialData(F1PacketBase):
     """Class representing the Time Trial Data Packet.
 
     Attributes:
@@ -274,7 +275,7 @@ class PacketTimeTrialData:
             struct.error: If the binary data does not match the expected format.
         """
 
-        self.m_header = header
+        super().__init__(header)
 
         # First, the Player session best data set
         bytes_so_far = 0

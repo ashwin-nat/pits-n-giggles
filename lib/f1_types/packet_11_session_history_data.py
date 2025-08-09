@@ -28,10 +28,11 @@ from typing import Any, Dict, List, Optional
 
 from .common import (ActualTyreCompound, F1Utils, PacketHeader,
                      VisualTyreCompound, _validate_parse_fixed_segments)
+from .base_pkt import F1PacketBase, F1SubPacketBase
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
-class LapHistoryData:
+class LapHistoryData(F1SubPacketBase):
     """
     Class representing lap history data for a session.
 
@@ -253,7 +254,7 @@ class LapHistoryData:
 
         return not self.__eq__(other)
 
-class TyreStintHistoryData:
+class TyreStintHistoryData(F1SubPacketBase):
     """
     Class representing tyre stint history data for a session.
 
@@ -346,7 +347,7 @@ class TyreStintHistoryData:
 
         return not self.__eq__(other)
 
-class PacketSessionHistoryData:
+class PacketSessionHistoryData(F1PacketBase):
     """
     Represents the packet containing session history data for a specific car.
 
@@ -387,6 +388,7 @@ class PacketSessionHistoryData:
             data (bytes): Raw data representing session history for a car in a race.
         """
 
+        super().__init__(header)
         self.m_carIdx : int
         self.m_numLaps : int
         self.m_numTyreStints : int
@@ -395,7 +397,6 @@ class PacketSessionHistoryData:
         self.m_bestSector2LapNum : int
         self.m_bestSector3LapNum : int
 
-        self.m_header: PacketHeader = header
         (
             self.m_carIdx,
             self.m_numLaps,

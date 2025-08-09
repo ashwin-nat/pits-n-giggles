@@ -25,6 +25,7 @@ import struct
 from typing import Any, Dict, List
 
 from .common import PacketHeader, _validate_parse_fixed_segments
+from .base_pkt import F1PacketBase, F1SubPacketBase,  PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 

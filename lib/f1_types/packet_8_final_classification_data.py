@@ -27,10 +27,11 @@ from typing import Any, Dict, List
 from .common import (ActualTyreCompound, F1Utils, PacketHeader, ResultReason,
                      ResultStatus, VisualTyreCompound,
                      _validate_parse_fixed_segments)
+from .base_pkt import F1SubPacketBase, F1PacketBase
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
-class FinalClassificationData:
+class FinalClassificationData(F1SubPacketBase):
     """
     Class representing final classification data for a car in a race.
 
@@ -560,7 +561,7 @@ class FinalClassificationData:
             tyre_stints_end_laps_7
         ), packet_format=packet_format)
 
-class PacketFinalClassificationData:
+class PacketFinalClassificationData(F1PacketBase):
     """
     Class representing the packet for final classification data.
 
@@ -584,7 +585,7 @@ class PacketFinalClassificationData:
             packet (bytes): Raw data representing the packet for final classification data.
         """
 
-        self.m_header: PacketHeader = header
+        super().__init__(header)
         self.m_numCars: int = struct.unpack("<B", packet[:1])[0]
 
         if not header:

@@ -25,10 +25,11 @@ import struct
 from typing import Any, Dict, List
 
 from .common import PacketHeader
+from .base_pkt import F1PacketBase
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
-class PacketLapPositionsData:
+class PacketLapPositionsData(F1PacketBase):
     """
     Class representing lap positions data for a player.
 
@@ -51,7 +52,7 @@ class PacketLapPositionsData:
     PACKET_LEN_ARRAY = COMPILED_PACKET_STRUCT_ARRAY.size
 
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
-        self.m_header: PacketHeader = header
+        super().__init__(header)
         self.m_numLaps: int
         self.m_lapStart: int
         self.m_lapPositions: List[int]

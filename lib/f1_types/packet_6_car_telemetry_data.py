@@ -25,9 +25,11 @@ import struct
 from typing import Dict, Any, List
 from .common import PacketHeader, _validate_parse_fixed_segments
 
+from .base_pkt import F1PacketBase, F1SubPacketBase
+
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
-class CarTelemetryData:
+class CarTelemetryData(F1SubPacketBase):
     """
     A class representing telemetry data for a single car in a racing simulation.
 
@@ -337,7 +339,7 @@ class CarTelemetryData:
             surface_type_3
         ))
 
-class PacketCarTelemetryData:
+class PacketCarTelemetryData(F1PacketBase):
     """
     A class representing telemetry data for multiple cars in a racing simulation.
 
@@ -372,7 +374,7 @@ class PacketCarTelemetryData:
             struct.error: If the binary data does not match the expected format.
         """
 
-        self.m_header: PacketHeader = header
+        super().__init__(header)
         self.m_carTelemetryData: List[CarTelemetryData]
 
         self.m_carTelemetryData, offset_so_far = _validate_parse_fixed_segments(
