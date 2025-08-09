@@ -1731,7 +1731,7 @@ class PacketHeader:
         - m_secondaryPlayerCarIndex (int): Index of the secondary player's car in the array (255 if no second player).
     """
 
-    PACKET_FORMAT = ("<"
+    COMPILED_PACKET_STRUCT = struct.Struct("<"
         "H" # packet format
         "B" # year
         "B" # major
@@ -1745,7 +1745,7 @@ class PacketHeader:
         "B" # carIndex
         "B" # sec car index
     )
-    PACKET_LEN: int = struct.calcsize(PACKET_FORMAT)
+    PACKET_LEN: int = COMPILED_PACKET_STRUCT.size
 
     def __init__(self, data: bytes) -> None:
         """
@@ -1770,13 +1770,10 @@ class PacketHeader:
         self.m_secondaryPlayerCarIndex: int
 
         # Unpack the data
-        unpacked_data = struct.unpack(self.PACKET_FORMAT, data)
-
-        # Assign values to individual variables
         self.m_packetFormat, self.m_gameYear, self.m_gameMajorVersion, self.m_gameMinorVersion, \
-        self.m_packetVersion, self.m_packetId, self.m_sessionUID, self.m_sessionTime, \
-        self.m_frameIdentifier, self.m_overallFrameIdentifier, self.m_playerCarIndex, \
-        self.m_secondaryPlayerCarIndex = unpacked_data
+            self.m_packetVersion, self.m_packetId, self.m_sessionUID, self.m_sessionTime, \
+            self.m_frameIdentifier, self.m_overallFrameIdentifier, self.m_playerCarIndex, \
+            self.m_secondaryPlayerCarIndex = self.COMPILED_PACKET_STRUCT.unpack(data)
 
         # Set packet ID as enum type
         if F1PacketType.isValid(self.m_packetId):
@@ -1885,7 +1882,7 @@ class PacketHeader:
         Returns:
             PacketHeader: A PacketHeader object initialized with the given values.
         """
-        return cls(struct.pack(cls.PACKET_FORMAT, packet_format, game_year, game_major_version,
+        return cls(cls.COMPILED_PACKET_STRUCT.pack(packet_format, game_year, game_major_version,
                                game_minor_version, packet_version, packet_type.value, session_uid,
                                session_time, frame_identifier, overall_frame_identifier,
                                player_car_index, secondary_player_car_index))
@@ -1896,7 +1893,7 @@ class PacketHeader:
         Returns:
             bytes: The raw binary data representing the packet header.
         """
-        return struct.pack(self.PACKET_FORMAT, self.m_packetFormat, self.m_gameYear,
+        return self.COMPILED_PACKET_STRUCT.pack(self.m_packetFormat, self.m_gameYear,
                            self.m_gameMajorVersion, self.m_gameMinorVersion,
                            self.m_packetVersion, self.m_packetId.value, self.m_sessionUID,
                            self.m_sessionTime, self.m_frameIdentifier,
