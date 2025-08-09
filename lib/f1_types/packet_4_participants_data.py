@@ -39,12 +39,12 @@ class LiveryColour:
         m_blue (int): Blue component (0-255).
     """
 
-    PACKET_FORMAT = ("<"
+    COMPILED_PACKET_STRUCT = struct.Struct("<"
         "B" # uint8      red
         "B" # uint8      green
         "B" # uint8      blue
     )
-    PACKET_LEN = struct.calcsize(PACKET_FORMAT)
+    PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
     def __init__(self, data: bytes) -> None:
         """Initializes a LiveryColour object with the given raw data."""
@@ -52,7 +52,7 @@ class LiveryColour:
         self.m_green: int
         self.m_blue: int
 
-        self.m_red, self.m_green, self.m_blue = struct.unpack(self.PACKET_FORMAT, data)
+        self.m_red, self.m_green, self.m_blue = self.COMPILED_PACKET_STRUCT.unpack(data)
 
     def toJSON(self) -> Dict[str, Any]:
         """Returns a dictionary representation of the LiveryColour object."""
@@ -80,10 +80,10 @@ class LiveryColour:
 
     @classmethod
     def from_values(cls, red: int, green: int, blue: int) -> "LiveryColour":
-        return LiveryColour(struct.pack(LiveryColour.PACKET_FORMAT, red, green, blue))
+        return LiveryColour(LiveryColour.COMPILED_PACKET_STRUCT.pack(red, green, blue))
 
     def to_bytes(self) -> bytes:
-        return struct.pack(LiveryColour.PACKET_FORMAT, self.m_red, self.m_green, self.m_blue)
+        return LiveryColour.COMPILED_PACKET_STRUCT.pack(self.m_red, self.m_green, self.m_blue)
 
 class ParticipantData:
     """
@@ -115,7 +115,7 @@ class ParticipantData:
         TeamID25.F1_GENERIC,
     }
 
-    PACKET_FORMAT_23 = ("<"
+    COMPILED_PACKET_STRUCT_23 = struct.Struct("<"
         "B" # uint8      m_aiControlled;      // Whether the vehicle is AI (1) or Human (0) controlled
         "B" # uint8      m_driverId;       // Driver id - see appendix, 255 if network human
         "B" # uint8      m_networkId;       // Network id – unique identifier for network players
@@ -129,9 +129,9 @@ class ParticipantData:
         "B" # uint8      m_showOnlineNames;   // The player's show online names setting, 0 = off, 1 = on
         "B" # uint8      m_platform;          // 1 = Steam, 3 = PlayStation, 4 = Xbox, 6 = Origin, 255 = unknown
     )
-    PACKET_LEN_23 = struct.calcsize(PACKET_FORMAT_23)
+    PACKET_LEN_23 = COMPILED_PACKET_STRUCT_23.size
 
-    PACKET_FORMAT_24 = ("<"
+    COMPILED_PACKET_STRUCT_24 = struct.Struct("<"
         "B" # uint8      m_aiControlled;      // Whether the vehicle is AI (1) or Human (0) controlled
         "B" # uint8      m_driverId;       // Driver id - see appendix, 255 if network human
         "B" # uint8      m_networkId;       // Network id – unique identifier for network players
@@ -146,10 +146,10 @@ class ParticipantData:
         "H" # uint16     m_techLevel          // F1 World tech level
         "B" # uint8      m_platform;          // 1 = Steam, 3 = PlayStation, 4 = Xbox, 6 = Origin, 255 = unknown
     )
-    PACKET_LEN_24 = struct.calcsize(PACKET_FORMAT_24)
+    PACKET_LEN_24 = COMPILED_PACKET_STRUCT_24.size
 
     MAX_LIVERY_COLOURS = 4
-    PACKET_FORMAT_25_BASE = ("<"
+    COMPILED_PACKET_STRUCT_25_BASE = struct.Struct("<"
         "B" # uint8      m_aiControlled;      // Whether the vehicle is AI (1) or Human (0) controlled
         "B" # uint8      m_driverId;       // Driver id - see appendix, 255 if network human
         "B" # uint8      m_networkId;       // Network id – unique identifier for network players
@@ -165,8 +165,8 @@ class ParticipantData:
         "B" # uint8      m_platform;          // 1 = Steam, 3 = PlayStation, 4 = Xbox, 6 = Origin, 255 = unknown
         "B" # uint8      m_numColours          // Number of colors in the livery
     )
-    PACKET_LEN_25_BASE = struct.calcsize(PACKET_FORMAT_25_BASE)
-    PACKET_LEN_25 = PACKET_LEN_25_BASE + LiveryColour.PACKET_LEN * MAX_LIVERY_COLOURS
+    PACKET_LEN_25_BASE = COMPILED_PACKET_STRUCT_25_BASE.size
+    PACKET_LEN_25 = PACKET_LEN_25_BASE + (LiveryColour.PACKET_LEN * MAX_LIVERY_COLOURS)
 
     def __init__(self, data: bytes, packet_format: int) -> None:
         """
@@ -183,7 +183,7 @@ class ParticipantData:
         self.m_numColours: int = 0
         self.m_liveryColours: List[LiveryColour]
         if packet_format == 2023:
-            unpacked_data = struct.unpack(self.PACKET_FORMAT_23, data)
+            unpacked_data = self.COMPILED_PACKET_STRUCT_23.unpack(data)
             (
                 self.m_aiControlled,
                 self.m_driverId,
@@ -199,7 +199,7 @@ class ParticipantData:
             ) = unpacked_data
             self.m_techLevel = 0
         elif packet_format == 2024:
-            unpacked_data = struct.unpack(self.PACKET_FORMAT_24, data)
+            unpacked_data = self.COMPILED_PACKET_STRUCT_24.unpack(data)
             (
                 self.m_aiControlled,
                 self.m_driverId,
@@ -216,7 +216,7 @@ class ParticipantData:
             ) = unpacked_data
         else:
 
-            unpacked_data = struct.unpack(self.PACKET_FORMAT_25_BASE, data[: self.PACKET_LEN_25_BASE])
+            unpacked_data = self.COMPILED_PACKET_STRUCT_25_BASE.unpack(data[:self.PACKET_LEN_25_BASE])
             (
                 self.m_aiControlled,
                 self.m_driverId,
@@ -328,7 +328,7 @@ class ParticipantData:
             bytes: Bytes representation of the ParticipantData instance.
         """
         if self.m_packetFormat == 2023:
-            return struct.pack(self.PACKET_FORMAT_23,
+            return self.COMPILED_PACKET_STRUCT_23.pack(
                 self.m_aiControlled,
                 self.m_driverId,
                 self.networkId,
@@ -342,7 +342,7 @@ class ParticipantData:
                 self.m_platform.value
             )
         if self.m_packetFormat == 2024:
-            return struct.pack(self.PACKET_FORMAT_24,
+            return self.COMPILED_PACKET_STRUCT_24.pack(
                 self.m_aiControlled,
                 self.m_driverId,
                 self.networkId,
@@ -356,7 +356,7 @@ class ParticipantData:
                 self.m_techLevel,
                 self.m_platform.value
             )
-        return struct.pack(self.PACKET_FORMAT_25_BASE + "BBB" * self.MAX_LIVERY_COLOURS,
+        return struct.pack(self.COMPILED_PACKET_STRUCT_25_BASE.format + "BBB" * self.MAX_LIVERY_COLOURS,
             self.m_aiControlled,
             self.m_driverId,
             self.networkId,
@@ -465,7 +465,7 @@ class ParticipantData:
         """
 
         if header.m_packetFormat == 2023:
-            data = struct.pack(ParticipantData.PACKET_FORMAT_23,
+            data = ParticipantData.COMPILED_PACKET_STRUCT_23.pack(
                 ai_controlled,
                 driver_id,
                 network_id,
@@ -479,7 +479,7 @@ class ParticipantData:
                 platform.value
             )
         elif header.m_packetFormat == 2024:
-            data = struct.pack(ParticipantData.PACKET_FORMAT_24,
+            data = ParticipantData.COMPILED_PACKET_STRUCT_24.pack(
                 ai_controlled,
                 driver_id,
                 network_id,
@@ -495,7 +495,7 @@ class ParticipantData:
             )
         elif header.m_packetFormat == 2025:
             # one byte for num colours, 3*4 bytes for liveries
-            data = struct.pack(ParticipantData.PACKET_FORMAT_25_BASE + "BBB" * 4,
+            data = struct.pack(ParticipantData.COMPILED_PACKET_STRUCT_25_BASE.format + "BBB" * 4,
                 ai_controlled,
                 driver_id,
                 network_id,
