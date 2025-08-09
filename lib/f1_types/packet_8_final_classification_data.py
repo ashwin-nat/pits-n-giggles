@@ -54,7 +54,7 @@ class FinalClassificationData:
         The class is designed to parse and represent the final classification data for a car in a race.
     """
 
-    PACKET_FORMAT = ("<"
+    COMPILED_PACKET_STRUCT = struct.Struct("<"
         "B" # uint8     m_position;              // Finishing position
         "B" # uint8     m_numLaps;               // Number of laps completed
         "B" # uint8     m_gridPosition;          // Grid position of the car
@@ -72,9 +72,9 @@ class FinalClassificationData:
         "8B" # uint8     m_tyreStintsVisual[8];   // Visual tyres used by this driver
         "8B" # uint8     m_tyreStintsEndLaps[8];  // The lap number stints end on
     )
-    PACKET_LEN = struct.calcsize(PACKET_FORMAT)
+    PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
-    PACKET_FORMAT_25 = ("<"
+    COMPILED_PACKET_STRUCT_25 = struct.Struct("<"
         "B" # uint8     m_position;              // Finishing position
         "B" # uint8     m_numLaps;               // Number of laps completed
         "B" # uint8     m_gridPosition;          // Grid position of the car
@@ -96,7 +96,7 @@ class FinalClassificationData:
         "8B" # uint8     m_tyreStintsVisual[8];   // Visual tyres used by this driver
         "8B" # uint8     m_tyreStintsEndLaps[8];  // The lap number stints end on
     )
-    PACKET_LEN_25 = struct.calcsize(PACKET_FORMAT_25)
+    PACKET_LEN_25 = COMPILED_PACKET_STRUCT_25.size
 
     def __init__(self, data: bytes, packet_format: int) -> None:
         """
@@ -152,7 +152,7 @@ class FinalClassificationData:
                 self.m_tyreStintsEndLaps[5],
                 self.m_tyreStintsEndLaps[6],
                 self.m_tyreStintsEndLaps[7]
-            ) = struct.unpack(self.PACKET_FORMAT, data)
+            ) = self.COMPILED_PACKET_STRUCT.unpack(data)
         else: # F1 25+
             (
                 self.m_position,
@@ -194,7 +194,7 @@ class FinalClassificationData:
                 self.m_tyreStintsEndLaps[5],
                 self.m_tyreStintsEndLaps[6],
                 self.m_tyreStintsEndLaps[7]
-            ) = struct.unpack(self.PACKET_FORMAT_25, data)
+            ) = self.COMPILED_PACKET_STRUCT_25.unpack(data)
 
         if ResultStatus.isValid(self.m_resultStatus):
             self.m_resultStatus = ResultStatus(self.m_resultStatus)
@@ -347,7 +347,7 @@ class FinalClassificationData:
         tyre_stints_end_laps = pad_array(self.m_tyreStintsEndLaps)
 
         if self.m_packetFormat < 2025:
-            return struct.pack(self.PACKET_FORMAT,
+            return self.COMPILED_PACKET_STRUCT.pack(
                 self.m_position,
                 self.m_numLaps,
                 self.m_gridPosition,
@@ -385,7 +385,7 @@ class FinalClassificationData:
                 tyre_stints_end_laps[7]
             )
 
-        return struct.pack(self.PACKET_FORMAT_25,
+        return self.COMPILED_PACKET_STRUCT_25.pack(
             self.m_position,
             self.m_numLaps,
             self.m_gridPosition,
@@ -477,7 +477,7 @@ class FinalClassificationData:
         """
 
         if packet_format < 2025:
-            return cls(struct.pack(cls.PACKET_FORMAT,
+            return cls(cls.COMPILED_PACKET_STRUCT.pack(
                 position,
                 num_laps,
                 grid_position,
@@ -518,7 +518,7 @@ class FinalClassificationData:
                 tyre_stints_end_laps_7
             ), packet_format=packet_format)
 
-        return cls(struct.pack(cls.PACKET_FORMAT_25,
+        return cls(cls.COMPILED_PACKET_STRUCT_25.pack(
             position,
             num_laps,
             grid_position,
