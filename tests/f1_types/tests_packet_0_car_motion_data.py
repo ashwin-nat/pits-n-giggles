@@ -799,7 +799,10 @@ class TestPacketCarMotionData(F1TypesTest):
         """
 
         # First, generate the random PacketMotionData object and serialise it
-        car_motion_objects = [self._generateRandomCarMotionData() for _ in range(self.m_num_players)]
+        car_motion_objects = (
+            [self._generateRandomCarMotionData() for _ in range(self.m_num_players)] +
+            [self._generateEmptyCarMotionData() for _ in range(self.m_num_players, PacketMotionData.MAX_CARS)]
+        )
         generated_test_obj = PacketMotionData.from_values(self.m_header_23, car_motion_objects)
         serialised_test_obj = generated_test_obj.to_bytes()
 
@@ -819,7 +822,10 @@ class TestPacketCarMotionData(F1TypesTest):
         """
 
         # First, generate the random PacketMotionData object and serialise it
-        car_motion_objects = [self._generateRandomCarMotionData() for _ in range(self.m_num_players)]
+        car_motion_objects = (
+            [self._generateRandomCarMotionData() for _ in range(self.m_num_players)] +
+            [self._generateEmptyCarMotionData() for _ in range(self.m_num_players, PacketMotionData.MAX_CARS)]
+        )
         generated_test_obj = PacketMotionData.from_values(self.m_header_24, car_motion_objects)
         serialised_test_obj = generated_test_obj.to_bytes()
 
@@ -839,7 +845,10 @@ class TestPacketCarMotionData(F1TypesTest):
         """
 
         # First, generate the random PacketMotionData object and serialise it
-        car_motion_objects = [self._generateRandomCarMotionData() for _ in range(self.m_num_players)]
+        car_motion_objects = (
+            [self._generateRandomCarMotionData() for _ in range(self.m_num_players)] +
+            [self._generateEmptyCarMotionData() for _ in range(self.m_num_players, PacketMotionData.MAX_CARS)]
+        )
         generated_test_obj = PacketMotionData.from_values(self.m_header_25, car_motion_objects)
         serialised_test_obj = generated_test_obj.to_bytes()
 
@@ -905,4 +914,31 @@ class TestPacketCarMotionData(F1TypesTest):
             yaw=random.uniform(-3.14, 3.14),
             pitch=random.uniform(-3.14, 3.14),
             roll=random.uniform(-3.14, 3.14)
+        )
+
+    def _generateEmptyCarMotionData(self) -> CarMotionData:
+        """Generate a car motion data object with all zeroes
+
+        Returns:
+            CarMotionData: Generated object
+        """
+        return CarMotionData.from_values(
+            world_position_x=0.0,
+            world_position_y=0.0,
+            world_position_z=0.0,
+            world_velocity_x=0.0,
+            world_velocity_y=0.0,
+            world_velocity_z=0.0,
+            world_forward_dir_x=0,
+            world_forward_dir_y=0,
+            world_forward_dir_z=0,
+            world_right_dir_x=0,
+            world_right_dir_y=0,
+            world_right_dir_z=0,
+            g_force_lateral=0.0,
+            g_force_longitudinal=0.0,
+            g_force_vertical=0.0,
+            yaw=0.0,
+            pitch=0.0,
+            roll=0.0
         )
