@@ -60,7 +60,7 @@ class PacketMotionExData:
         m_chassisYaw (float): Yaw angle of the chassis relative to the direction of motion - radians
     """
 
-    PACKET_FORMAT_23 = ("<"
+    COMPILED_PACKET_STRUCT_23 = struct.Struct("<"
         # // Extra player car ONLY data
         "4f" # float         m_suspensionPosition[4];       // Note: All wheel arrays have the following order:
         "4f" # float         m_suspensionVelocity[4];       // RL, RR, FL, FR
@@ -83,9 +83,9 @@ class PacketMotionExData:
         "f" # float         m_frontWheelsAngle;            // Current front wheels angle in radians
         "4f" # float        m_wheelVertForce[4];           // Vertical forces for each wheel
     )
-    PACKET_LEN_23 = struct.calcsize(PACKET_FORMAT_23)
+    PACKET_LEN_23 = COMPILED_PACKET_STRUCT_23.size
 
-    PACKET_FORMAT_24_EXTRA = ("<"
+    COMPILED_PACKET_STRUCT_24_EXTRA = struct.Struct("<"
         "f" # float         m_frontAeroHeight;             // Front plank edge height above road surface
         "f" # float         m_rearAeroHeight;              // Rear plank edge height above road surface
         "f" # float         m_frontRollAngle;              // Roll angle of the front suspension
@@ -93,16 +93,16 @@ class PacketMotionExData:
         "f" # float         m_chassisYaw;                  // Yaw angle of the chassis relative to the direction
                                                         #  // of motion - radians)
     )
-    PACKET_LEN_EXTRA_24 = struct.calcsize(PACKET_FORMAT_24_EXTRA)
+    PACKET_LEN_EXTRA_24 = COMPILED_PACKET_STRUCT_24_EXTRA.size
     PACKET_LEN_24 = PACKET_LEN_23 + PACKET_LEN_EXTRA_24
 
-    PACKET_FORMAT_25_EXTRA = ("<"
+    COMPILED_PACKET_STRUCT_25_EXTRA = struct.Struct("<"
         "f" # float         m_chassisPitch                 // Chassis pitch relative to the dir of motion in radians
         "4f" # float        m_wheelCamber[4]               // Camber angle for each wheel in radians
         "4f" # float        m_wheelCamberGain[4];          // Camber gain for each wheel in radians, difference
                                                         #  // between active camber and dynamic camber
     )
-    PACKET_LEN_EXTRA_25 = struct.calcsize(PACKET_FORMAT_25_EXTRA)
+    PACKET_LEN_EXTRA_25 = COMPILED_PACKET_STRUCT_25_EXTRA.size
     PACKET_LEN_25 = PACKET_LEN_23 + PACKET_LEN_EXTRA_24 + PACKET_LEN_EXTRA_25
 
     def __init__(self, header: PacketHeader, data: bytes) -> None:
@@ -184,7 +184,7 @@ class PacketMotionExData:
             self.m_wheelVertForce[2],               # array of floats
             self.m_wheelVertForce[3],               # array of floats
 
-        ) = struct.unpack(self.PACKET_FORMAT_23, data[0:self.PACKET_LEN_23])
+        ) = self.COMPILED_PACKET_STRUCT_23.unpack(data[:self.PACKET_LEN_23])
 
         if header.m_packetFormat > 2023:
             curr_offset = self.PACKET_LEN_23
@@ -195,7 +195,7 @@ class PacketMotionExData:
                     self.m_frontRollAngle,              # float
                     self.m_rearRollAngle,               # float
                     self.m_chassisYaw,                  # float
-                ) = struct.unpack(self.PACKET_FORMAT_24_EXTRA,
+                ) = self.COMPILED_PACKET_STRUCT_24_EXTRA.unpack(
                                     data[curr_offset:curr_offset + self.PACKET_LEN_EXTRA_24])
                 curr_offset += self.PACKET_LEN_EXTRA_24
             if header.m_packetFormat >= 2025:
@@ -209,7 +209,7 @@ class PacketMotionExData:
                     self.m_wheelCamberGain[1],         # array of floats
                     self.m_wheelCamberGain[2],         # array of floats
                     self.m_wheelCamberGain[3],         # array of floats
-                ) = struct.unpack(self.PACKET_FORMAT_25_EXTRA,
+                ) = self.COMPILED_PACKET_STRUCT_25_EXTRA.unpack(
                                     data[curr_offset:curr_offset + self.PACKET_LEN_EXTRA_25])
                 curr_offset += self.PACKET_LEN_EXTRA_25
 
