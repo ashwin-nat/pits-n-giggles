@@ -24,7 +24,7 @@
 import struct
 from typing import Any, Dict, List
 
-from .common import PacketHeader
+from .header import PacketHeader
 from .base_pkt import F1PacketBase
 
 # --------------------- CLASS DEFINITIONS --------------------------------------

@@ -24,9 +24,9 @@
 import struct
 from typing import Any, Dict, List
 
-from .common import (F1Utils, PacketHeader,
+from .common import (F1Utils,
                      ResultStatus, _validate_parse_fixed_segments)
-
+from .header import PacketHeader
 from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
 
 # --------------------- CLASS DEFINITIONS --------------------------------------

@@ -28,10 +28,8 @@
 ## F1 25 - https://forums.ea.com/blog/f1-games-game-info-hub-en/ea-sports%E2%84%A2-f1%C2%AE25-udp-specification/12187347
 
 
-import struct
-from typing import Any, Dict, List, Optional, Set, Union
-from .header import F1PacketType, PacketHeader
-from .base_pkt import F1BaseEnum
+from typing import Any, List, Optional, Set, Union
+from .base_pkt import F1BaseEnum, F1CompareableEnum
 from abc import abstractmethod
 
 # ------------------------- ERROR CLASSES --------------------------------------
@@ -450,7 +448,7 @@ class VisualTyreCompound(F1BaseEnum):
             VisualTyreCompound.UNKNOWN: "Unknown",
         }[self]
 
-class SafetyCarType(F1BaseEnum):
+class SafetyCarType(F1CompareableEnum):
     """
     Enumeration representing different safety car statuses.
 

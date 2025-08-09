@@ -24,9 +24,10 @@
 import struct
 from typing import Any, Dict, List
 
-from .common import (ActualTyreCompound, F1Utils, PacketHeader, ResultReason,
+from .common import (ActualTyreCompound, F1Utils, ResultReason,
                      ResultStatus, VisualTyreCompound,
                      _validate_parse_fixed_segments)
+from .header import PacketHeader
 from .base_pkt import F1SubPacketBase, F1PacketBase
 
 # --------------------- CLASS DEFINITIONS --------------------------------------

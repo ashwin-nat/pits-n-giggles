@@ -26,9 +26,10 @@ from __future__ import annotations
 import struct
 from typing import Any, Dict, List, Optional
 
-from .common import (ActualTyreCompound, F1Utils, PacketHeader,
+from .common import (ActualTyreCompound, F1Utils,
                      VisualTyreCompound, _validate_parse_fixed_segments)
 from .base_pkt import F1PacketBase, F1SubPacketBase
+from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 

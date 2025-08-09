@@ -23,8 +23,8 @@
 
 import struct
 from typing import Dict, Any, List, Optional
-from .common import PacketHeader, _validate_parse_fixed_segments
-
+from .common import _validate_parse_fixed_segments
+from .header import PacketHeader
 from .base_pkt import F1SubPacketBase, F1PacketBase
 
 # --------------------- CLASS DEFINITIONS --------------------------------------

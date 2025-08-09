@@ -24,8 +24,9 @@
 import struct
 from typing import Any, Dict, Union
 
-from .common import F1Utils, PacketHeader, TeamID24, TeamID25
+from .common import F1Utils, TeamID24, TeamID25
 from .base_pkt import F1SubPacketBase, F1PacketBase
+from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 

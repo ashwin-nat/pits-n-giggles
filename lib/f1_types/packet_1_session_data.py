@@ -25,9 +25,10 @@ import struct
 from enum import Enum
 from typing import Any, Dict, List, Union
 
-from .common import (GameMode, GearboxAssistMode, PacketHeader,
+from .common import (GameMode, GearboxAssistMode,
                      RuleSet, SafetyCarType, SessionLength,
                      SessionType23, SessionType24, TrackID, _validate_parse_fixed_segments)
+from .header import PacketHeader
 
 from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
 

@@ -23,7 +23,8 @@
 
 import struct
 from typing import Dict, List, Any
-from .common import PacketHeader, ActualTyreCompound, VisualTyreCompound, TractionControlAssistMode, _validate_parse_fixed_segments
+from .common import ActualTyreCompound, VisualTyreCompound, TractionControlAssistMode, _validate_parse_fixed_segments
+from .header import PacketHeader
 from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
 
 # --------------------- CLASS DEFINITIONS --------------------------------------

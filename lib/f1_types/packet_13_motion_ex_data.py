@@ -23,7 +23,7 @@
 
 import struct
 from typing import Dict, Any
-from .common import PacketHeader
+from .header import PacketHeader
 from .base_pkt import F1PacketBase
 
 # --------------------- CLASS DEFINITIONS --------------------------------------

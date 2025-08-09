@@ -24,7 +24,8 @@
 import struct
 from enum import Enum
 from typing import Dict, Any, Optional, Type, Union
-from .common import PacketHeader, SafetyCarEventType, SafetyCarType
+from .common import SafetyCarEventType, SafetyCarType
+from .header import PacketHeader
 
 from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
 

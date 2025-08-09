@@ -24,7 +24,8 @@
 
 from typing import Dict, Any
 from enum import Enum
-from abc import ABC, abstractmethod
+from abc import abstractmethod
+from functools import total_ordering
 
 from .header import PacketHeader
 
@@ -54,6 +55,46 @@ class F1BaseEnum(Enum):
         """
 
         return self.name
+
+@total_ordering
+class F1CompareableEnum(F1BaseEnum):
+    """
+    Base class for Enums that require comparison support.
+
+    Inherits from F1BaseEnum and adds ordering operators
+    based on the underlying integer values.
+
+    Note:
+        Only use this class for Enums where ordering of values makes sense.
+    """
+
+    def __eq__(self, other: Any) -> bool:
+        """
+        Check equality with another enum of the same type.
+
+        Args:
+            other (Any): The object to compare.
+
+        Returns:
+            bool: True if values are equal.
+        """
+        if isinstance(other, self.__class__):
+            return self.value == other.value
+        return NotImplemented
+
+    def __lt__(self, other: Any) -> bool:
+        """
+        Check if this enum's value is less than another's.
+
+        Args:
+            other (Any): The object to compare.
+
+        Returns:
+            bool: True if this value is less than the other.
+        """
+        if isinstance(other, self.__class__):
+            return self.value < other.value
+        return NotImplemented
 
 class F1PacketBase:
     """

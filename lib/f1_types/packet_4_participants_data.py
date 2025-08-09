@@ -24,9 +24,9 @@
 import struct
 from typing import Any, Dict, List, Optional, Union
 
-from .common import (Nationality, PacketHeader, _validate_parse_fixed_segments, Platform,
+from .common import (Nationality, _validate_parse_fixed_segments, Platform,
                      TeamID23, TeamID24, TeamID25, TelemetrySetting)
-
+from .header import PacketHeader
 from .base_pkt import F1PacketBase, F1SubPacketBase
 
 # --------------------- CLASS DEFINITIONS --------------------------------------

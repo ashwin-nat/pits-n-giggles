@@ -24,10 +24,10 @@
 import struct
 from typing import Any, Dict, List, Optional, Union
 
-from .common import (Nationality, PacketHeader, Platform,
+from .common import (Nationality, Platform,
                      TeamID23, TeamID24, TeamID25, TelemetrySetting,
                      _validate_parse_fixed_segments)
-
+from .header import PacketHeader
 from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
