@@ -32,6 +32,7 @@ import struct
 from typing import Any, Dict, List, Optional, Set, Union
 from .header import F1PacketType, PacketHeader
 from .base_pkt import F1BaseEnum
+from abc import abstractmethod
 
 # ------------------------- ERROR CLASSES --------------------------------------
 
@@ -95,7 +96,49 @@ class ResultReason(F1BaseEnum):
         """
         return self.name.lower()
 
-class SessionType23(F1BaseEnum):
+class SessionType(F1BaseEnum):
+
+    @abstractmethod
+    def isFpTypeSession(self) -> bool:
+        """
+        Check if the session type is a free practice session.
+
+        Returns:
+            bool: True if the session type is a free practice session, False otherwise.
+        """
+        pass
+
+    @abstractmethod
+    def isQualiTypeSession(self) -> bool:
+        """
+        Check if the session type is a qualifying session.
+
+        Returns:
+            bool: True if the session type is a qualifying session, False otherwise.
+        """
+        pass
+
+    @abstractmethod
+    def isRaceTypeSession(self) -> bool:
+        """
+        Check if the session type is a race session.
+
+        Returns:
+            bool: True if the session type is a race session, False otherwise.
+        """
+        pass
+
+    @abstractmethod
+    def isTimeTrialTypeSession(self) -> bool:
+        """
+        Check if the session type is a time trial session.
+
+        Returns:
+            bool: True if the session type is a time trial session, False otherwise.
+        """
+        pass
+
+class SessionType23(SessionType):
     """
     Enum class representing F1 session types.
     """
@@ -173,7 +216,7 @@ class SessionType23(F1BaseEnum):
         """
         return self == SessionType23.TIME_TRIAL
 
-class SessionType24(F1BaseEnum):
+class SessionType24(SessionType):
     UNKNOWN = 0
     PRACTICE_1 = 1
     PRACTICE_2 = 2
