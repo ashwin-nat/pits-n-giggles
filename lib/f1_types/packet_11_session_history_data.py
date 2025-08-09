@@ -58,7 +58,7 @@ class LapHistoryData:
     SECTOR_2_VALID_BIT_MASK = 0x04
     SECTOR_3_VALID_BIT_MASK = 0x08
 
-    PACKET_FORMAT = ("<"
+    COMPILED_PACKET_STRUCT = struct.Struct("<"
         "I" # uint32    m_lapTimeInMS;           // Lap time in milliseconds
         "H" # uint16    m_sector1TimeInMS;       // Sector 1 time in milliseconds
         "B" # uint8     m_sector1TimeMinutes;    // Sector 1 whole minute part
@@ -69,7 +69,7 @@ class LapHistoryData:
         "B" # uint8     m_lapValidBitFlags;      // 0x01 bit set-lap valid,      0x02 bit set-sector 1 valid
                                         #    // 0x04 bit set-sector 2 valid, 0x08 bit set-sector 3 valid
     )
-    PACKET_LEN = struct.calcsize(PACKET_FORMAT)
+    PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
     def __init__(self, data: bytes) -> None:
         """
@@ -97,7 +97,7 @@ class LapHistoryData:
             self.m_sector3TimeInMS,
             self.m_sector3TimeMinutes,
             self.m_lapValidBitFlags,
-        ) = struct.unpack(self.PACKET_FORMAT, data)
+        ) = self.COMPILED_PACKET_STRUCT.unpack(data)
 
     def __str__(self) -> str:
         """
@@ -263,12 +263,12 @@ class TyreStintHistoryData:
         m_tyreVisualCompound (VisualTyreCompound): Visual tyres used by this driver.
     """
 
-    PACKET_FORMAT = ("<"
+    COMPILED_PACKET_STRUCT = struct.Struct("<"
         "B" # uint8     m_endLap;                // Lap the tyre usage ends on (255 of current tyre)
         "B" # uint8     m_tyreActualCompound;    // Actual tyres used by this driver
         "B" # uint8     m_tyreVisualCompound;    // Visual tyres used by this driver
     )
-    PACKET_LEN = struct.calcsize(PACKET_FORMAT)
+    PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
     def __init__(self, data: bytes) -> None:
         """
@@ -282,7 +282,7 @@ class TyreStintHistoryData:
             self.m_endLap,
             self.m_tyreActualCompound,
             self.m_tyreVisualCompound,
-        ) = struct.unpack(self.PACKET_FORMAT, data)
+        ) = self.COMPILED_PACKET_STRUCT.unpack(data)
 
         if ActualTyreCompound.isValid(self.m_tyreActualCompound):
             self.m_tyreActualCompound = ActualTyreCompound(self.m_tyreActualCompound)
@@ -366,7 +366,7 @@ class PacketSessionHistoryData:
     MAX_LAPS = 100
     MAX_TYRE_STINT_COUNT = 8
 
-    PACKET_FORMAT = ("<"
+    COMPILED_PACKET_STRUCT = struct.Struct("<"
         "B" # uint8         m_carIdx;                   // Index of the car this lap data relates to
         "B" # uint8         m_numLaps;                  // Num laps in the data (including current partial lap)
         "B" # uint8         m_numTyreStints;            // Number of tyre stints in the data
@@ -376,7 +376,7 @@ class PacketSessionHistoryData:
         "B" # uint8         m_bestSector2LapNum;        // Lap the best Sector 2 time was achieved on
         "B" # uint8         m_bestSector3LapNum;        // Lap the best Sector 3 time was achieved on
     )
-    PACKET_LEN = struct.calcsize(PACKET_FORMAT)
+    PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
     def __init__(self, header, data) -> None:
         """
@@ -404,7 +404,7 @@ class PacketSessionHistoryData:
             self.m_bestSector1LapNum,
             self.m_bestSector2LapNum,
             self.m_bestSector3LapNum,
-        ) = struct.unpack(self.PACKET_FORMAT, data[:self.PACKET_LEN])
+        ) = self.COMPILED_PACKET_STRUCT.unpack(data[:self.PACKET_LEN])
         bytes_index_so_far = self.PACKET_LEN
 
         self.m_lapHistoryData: List[LapHistoryData] = []
