@@ -48,7 +48,7 @@ class LobbyInfoData:
         The class is designed to parse and represent lobby information data for a player.
     """
 
-    PACKET_FORMAT_23 = ("<"
+    COMPILED_PACKET_STRUCT_23 = struct.Struct("<"
         "B" # uint8     m_aiControlled;      // Whether the vehicle is AI (1) or Human (0) controlled
         "B" # uint8     m_teamId;            // Team id - see appendix (255 if no team currently selected)
         "B" # uint8     m_nationality;       // Nationality of the driver
@@ -58,9 +58,9 @@ class LobbyInfoData:
         "B" # uint8     m_carNumber;         // Car number of the player
         "B" # uint8     m_readyStatus;       // 0 = not ready, 1 = ready, 2 = spectating
     )
-    PACKET_LEN_23 = struct.calcsize(PACKET_FORMAT_23)
+    PACKET_LEN_23 = COMPILED_PACKET_STRUCT_23.size
 
-    PACKET_FORMAT_24 = ("<"
+    COMPILED_PACKET_STRUCT_24 = struct.Struct("<"
         "B" # uint8     m_aiControlled;      // Whether the vehicle is AI (1) or Human (0) controlled
         "B" # uint8     m_teamId;            // Team id - see appendix (255 if no team currently selected)
         "B" # uint8     m_nationality;       // Nationality of the driver
@@ -73,9 +73,9 @@ class LobbyInfoData:
         "H" # uint16    m_techLevel;         // F1 World tech level
         "B" # uint8     m_readyStatus;       // 0 = not ready, 1 = ready, 2 = spectating
     )
-    PACKET_LEN_24 = struct.calcsize(PACKET_FORMAT_24)
+    PACKET_LEN_24 = COMPILED_PACKET_STRUCT_24.size
 
-    PACKET_FORMAT_25 = ("<"
+    COMPILED_PACKET_STRUCT_25 = struct.Struct("<"
         "B" # uint8     m_aiControlled;      // Whether the vehicle is AI (1) or Human (0) controlled
         "B" # uint8     m_teamId;            // Team id - see appendix (255 if no team currently selected)
         "B" # uint8     m_nationality;       // Nationality of the driver
@@ -88,7 +88,7 @@ class LobbyInfoData:
         "H" # uint16    m_techLevel;         // F1 World tech level
         "B" # uint8     m_readyStatus;       // 0 = not ready, 1 = ready, 2 = spectating
     )
-    PACKET_LEN_25 = struct.calcsize(PACKET_FORMAT_25)
+    PACKET_LEN_25 = COMPILED_PACKET_STRUCT_25.size
 
     class ReadyStatus(Enum):
         """
@@ -138,15 +138,15 @@ class LobbyInfoData:
                 self.m_name,
                 self.m_carNumber,
                 self.m_readyStatus,
-            ) = struct.unpack(self.PACKET_FORMAT_23, data)
+            ) = self.COMPILED_PACKET_STRUCT_23.unpack(data)
             self.m_yourTelemetry = TelemetrySetting.PUBLIC
             self.m_showOnlineNames = True
             self.m_techLevel = 0
         else:
             if packet_format == 2024:
-                packet_format = self.PACKET_FORMAT_24
+                _struct = self.COMPILED_PACKET_STRUCT_24
             else:
-                packet_format = self.PACKET_FORMAT_25
+                _struct = self.COMPILED_PACKET_STRUCT_25
 
             (
                 self.m_aiControlled,
@@ -159,7 +159,7 @@ class LobbyInfoData:
                 self.m_showOnlineNames,
                 self.m_techLevel,
                 self.m_readyStatus,
-            ) = struct.unpack(packet_format, data)
+            ) = _struct.unpack(data)
             if TelemetrySetting.isValid(self.m_yourTelemetry):
                 self.m_yourTelemetry = TelemetrySetting(self.m_yourTelemetry)
 
@@ -246,7 +246,7 @@ class LobbyInfoData:
         """
 
         if self.packet_format == 2023:
-            return struct.pack(self.PACKET_FORMAT_23,
+            return self.COMPILED_PACKET_STRUCT_23.pack(
                 self.m_aiControlled,
                 self.m_teamId.value,
                 self.m_nationality.value,
@@ -256,7 +256,7 @@ class LobbyInfoData:
                 self.m_readyStatus.value,
             )
         if self.packet_format == 2024:
-            return struct.pack(self.PACKET_FORMAT_24,
+            return self.COMPILED_PACKET_STRUCT_24.pack(
                 self.m_aiControlled,
                 self.m_teamId.value,
                 self.m_nationality.value,
@@ -269,7 +269,7 @@ class LobbyInfoData:
                 self.m_readyStatus.value,
             )
         if self.packet_format == 2025:
-            return struct.pack(self.PACKET_FORMAT_25,
+            return self.COMPILED_PACKET_STRUCT_25.pack(
                 self.m_aiControlled,
                 self.m_teamId.value,
                 self.m_nationality.value,
@@ -318,7 +318,7 @@ class LobbyInfoData:
         """
 
         if header.m_packetFormat == 2023:
-            return cls(struct.pack(cls.PACKET_FORMAT_23,
+            return cls(cls.COMPILED_PACKET_STRUCT_23.pack(
                 ai_controlled,
                 team_id.value,
                 nationality.value,
@@ -328,7 +328,7 @@ class LobbyInfoData:
                 ready_status.value,
             ), header.m_packetFormat)
         if header.m_packetFormat == 2024:
-            return cls(struct.pack(cls.PACKET_FORMAT_24,
+            return cls(cls.COMPILED_PACKET_STRUCT_24.pack(
                 ai_controlled,
                 team_id.value,
                 nationality.value,
@@ -341,7 +341,7 @@ class LobbyInfoData:
                 ready_status.value,
             ), header.m_packetFormat)
         if header.m_packetFormat == 2025:
-            return cls(struct.pack(cls.PACKET_FORMAT_25,
+            return cls(cls.COMPILED_PACKET_STRUCT_25.pack(
                 ai_controlled,
                 team_id.value,
                 nationality.value,
