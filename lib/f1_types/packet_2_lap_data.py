@@ -22,15 +22,16 @@
 
 
 import struct
-from enum import Enum
 from typing import Any, Dict, List
 
 from .common import (F1Utils, PacketHeader,
                      ResultStatus, _validate_parse_fixed_segments)
 
+from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
+
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
-class LapData:
+class LapData(F1SubPacketBase):
     """
     Class representing lap data.
     Attributes:
@@ -177,7 +178,7 @@ class LapData:
     m_speedTrapFastestSpeed: float
     m_speedTrapFastestLap: int
 
-    class DriverStatus(Enum):
+    class DriverStatus(F1BaseEnum):
         """
         Enumeration representing the status of a driver during a racing session.
 
@@ -191,36 +192,7 @@ class LapData:
         OUT_LAP = 3
         ON_TRACK = 4
 
-        @staticmethod
-        def isValid(driver_status: int) -> bool:
-            """Check if the given driver status is valid.
-
-            Args:
-                driver_status (int): The driver status to be validated.
-
-            Returns:
-                bool: True if valid.
-            """
-            if isinstance(driver_status, LapData.DriverStatus):
-                return True  # It's already an instance of DriverStatus
-            return any(driver_status == member.value for member in  LapData.DriverStatus)
-
-        def __str__(self) -> str:
-            """
-            Returns a human-readable string representation of the driver status.
-
-            Returns:
-                str: String representation of the driver status.
-            """
-            status_mapping = {
-                0: "IN_GARAGE",
-                1: "FLYING_LAP",
-                2: "IN_LAP",
-                3: "OUT_LAP",
-                4: "ON_TRACK",
-            }
-            return status_mapping.get(self.value, "---")
-    class PitStatus(Enum):
+    class PitStatus(F1BaseEnum):
         """
         Enumeration representing the pit status of a driver during a racing session.
         """
@@ -229,35 +201,7 @@ class LapData:
         PITTING = 1
         IN_PIT_AREA = 2
 
-        @staticmethod
-        def isValid(pit_status: int) -> bool:
-            """Check if the given pit status is valid.
-
-            Args:
-                pit_status (int): The pit status to be validated.
-
-            Returns:
-                bool: True if valid.
-            """
-            if isinstance(pit_status, LapData.PitStatus):
-                return True  # It's already an instance of PitStatus
-            return any(pit_status == member.value for member in  LapData.PitStatus)
-
-        def __str__(self) -> str:
-            """
-            Returns a human-readable string representation of the pit status.
-
-            Returns:
-                str: String representation of the pit status.
-            """
-            status_mapping = {
-                0: "NONE",
-                1: "PITTING",
-                2: "IN_PIT_AREA",
-            }
-            return status_mapping.get(self.value, "---")
-
-    class Sector(Enum):
+    class Sector(F1BaseEnum):
         """
         Enumeration representing the sector of a racing track.
         """
@@ -265,35 +209,6 @@ class LapData:
         SECTOR1 = 0
         SECTOR2 = 1
         SECTOR3 = 2
-
-        @staticmethod
-        def isValid(sector: int) -> bool:
-            """Check if the given sector is valid.
-
-            Args:
-                sector (int): The sector to be validated.
-
-            Returns:
-                bool: True if valid.
-            """
-            if isinstance(sector, LapData.Sector):
-                return True  # It's already an instance of Sector
-            return any(sector == member.value for member in  LapData.Sector)
-
-
-        def __str__(self) -> str:
-            """
-            Returns a human-readable string representation of the sector.
-
-            Returns:
-                str: String representation of the sector.
-            """
-            sector_mapping = {
-                0: "SECTOR1",
-                1: "SECTOR2",
-                2: "SECTOR3",
-            }
-            return sector_mapping.get(self.value, "---")
 
     def __init__(self, data: bytes, packet_format: int) -> None:
         """
@@ -541,7 +456,7 @@ class LapData:
         """
         return not self.__eq__(other)
 
-class PacketLapData:
+class PacketLapData(F1PacketBase):
     """Class representing the incoming PacketLapData.
 
     Attributes:
@@ -562,8 +477,7 @@ class PacketLapData:
         Raises:
             - InvalidPacketLengthError: If the received packet length is not as expected.
         """
-        # Store the header reference
-        self.m_header = header
+        super().__init__(header)
 
         # Determine LapData size based on game year
         lap_data_obj_size = LapData.PACKET_LEN_24  # Default to 2024 format
