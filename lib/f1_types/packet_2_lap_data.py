@@ -25,7 +25,7 @@ import struct
 from enum import Enum
 from typing import Any, Dict, List
 
-from .common import (F1Utils, InvalidPacketLengthError, PacketHeader,
+from .common import (F1Utils, PacketHeader,
                      ResultStatus, _validate_parse_fixed_segments)
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -550,6 +550,9 @@ class PacketLapData:
         - m_timeTrialPBCarIdx (int) - Index of Personal Best car in time trial (255 if invalid)
         - m_timeTrialRivalCarIdx (int) - Index of Rival car in time trial (255 if invalid)
     """
+
+    MAX_CARS = 22
+
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
         """
         Initialize PacketLapData instance by unpacking binary data.
@@ -562,43 +565,26 @@ class PacketLapData:
         # Store the header reference
         self.m_header = header
 
-        # Set the fixed number of lap data entries (22 cars)
-        self.m_lapDataCount = 22
-
         # Determine LapData size based on game year
-        # F1 game data structures can vary between game versions
         lap_data_obj_size = LapData.PACKET_LEN_24  # Default to 2024 format
         if header.m_packetFormat == 2023:
             lap_data_obj_size = LapData.PACKET_LEN_23  # Use 2023 format if needed
 
-        # Calculate expected packet length:
-        # - Total lap data size (22 cars × bytes per car)
-        # - Plus 2 bytes for the time trial indices at the end
-        len_of_lap_data_array = self.m_lapDataCount * lap_data_obj_size
-        expected_len = len_of_lap_data_array + 2
-
-        # Validate that the packet is the correct length
-        # This helps catch corrupted or incorrect data early
-        if len(packet) != expected_len:
-            raise InvalidPacketLengthError(
-                f"Received LapDataPacket length {len(packet)} is not of expected length {expected_len}"
-            )
-
         # Process each car's lap data individually
         # Extract chunks of the correct size and create LapData objects
-        self.m_lapData: List[LapData] = []
-        for i in range(self.m_lapDataCount):
-            # Calculate start and end indices for this car's data
-            start_idx = i * lap_data_obj_size
-            end_idx = start_idx + lap_data_obj_size
-
-            # Extract this car's binary data and create a LapData object
-            car_data = packet[start_idx:end_idx]
-            self.m_lapData.append(LapData(car_data, header.m_packetFormat))
+        self.m_lapData: List[LapData]
+        self.m_lapData, offset_so_far = _validate_parse_fixed_segments(
+            data=packet,
+            offset=0,
+            item_cls=LapData,
+            item_len=lap_data_obj_size,
+            count=self.MAX_CARS,
+            max_count=self.MAX_CARS,
+            packet_format=header.m_packetFormat
+        )
 
         # Extract time trial indices from the last 2 bytes
-        # These identify personal best and rival cars in time trial mode
-        time_trial_data = packet[len_of_lap_data_array:]
+        time_trial_data = packet[offset_so_far:]
         self.m_timeTrialPBCarIdx, self.m_timeTrialRivalCarIdx = struct.unpack('<bb', time_trial_data)
 
     def __str__(self) -> str:
@@ -624,7 +610,7 @@ class PacketLapData:
 
         json_data = {
             "lap-data": [lap_data.toJSON() for lap_data in self.m_lapData],
-            "lap-data-count": self.m_lapDataCount,
+            "lap-data-count": self.MAX_CARS,
             "time-trial-pb-car-idx": int(self.m_timeTrialPBCarIdx),
             "time-trial-rival-car-idx": int(self.m_timeTrialRivalCarIdx),
         }
