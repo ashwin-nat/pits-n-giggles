@@ -31,6 +31,7 @@
 import struct
 from enum import Enum, IntEnum
 from typing import Any, Dict, List, Optional, Set, Union
+from .header import F1PacketType, PacketHeader
 
 # ------------------------- ERROR CLASSES --------------------------------------
 
@@ -54,50 +55,6 @@ class PacketCountValidationError(Exception):
         super().__init__(f"Packet count validation error. {message}")
 
 # -------------------- COMMON CLASSES ------------------------------------------
-class F1PacketType(Enum):
-    """Class of enum representing the different packet types emitted by the game
-    """
-    MOTION = 0
-    SESSION = 1
-    LAP_DATA = 2
-    EVENT = 3
-    PARTICIPANTS = 4
-    CAR_SETUPS = 5
-    CAR_TELEMETRY = 6
-    CAR_STATUS = 7
-    FINAL_CLASSIFICATION = 8
-    LOBBY_INFO = 9
-    CAR_DAMAGE = 10
-    SESSION_HISTORY = 11
-    TYRE_SETS = 12
-    MOTION_EX = 13
-    TIME_TRIAL = 14
-    LAP_POSITIONS = 15
-
-    @staticmethod
-    def isValid(packet_type) -> bool:
-        """Check if the given packet type ID is valid
-
-        Args:
-            packet_type (int or F1PacketType): The packet type to be validated
-
-        Returns:
-            bool: True if valid, else False
-        """
-
-        if isinstance(packet_type, F1PacketType):
-            return True  # It's already an instance of F1PacketType
-        return any(packet_type == member.value for member in F1PacketType)
-
-    def __str__(self) -> str:
-        """to_string method
-
-        Returns:
-            str: string representation of this enum
-        """
-        if F1PacketType.isValid(self.value):
-            return self.name
-        return f'packet type {str(self.value)}'
 
 class ResultStatus(Enum):
     """

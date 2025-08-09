@@ -20,10 +20,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .common import (ActualTyreCompound, F1PacketType, F1Utils, GameMode,
+from .common import (ActualTyreCompound, F1Utils, GameMode,
                      GearboxAssistMode, InvalidPacketLengthError, Nationality,
-                     PacketCountValidationError, PacketHeader,
+                     PacketCountValidationError,
                      PacketParsingError, Platform, ResultReason, ResultStatus,
                      SafetyCarType, SessionLength, SessionType23,
                      SessionType24, TeamID23, TeamID24, TeamID25,
@@ -51,14 +52,20 @@ from .packet_12_tyre_sets_packet import PacketTyreSetsData, TyreSetData
 from .packet_13_motion_ex_data import PacketMotionExData
 from .packet_14_time_trial_data import PacketTimeTrialData, TimeTrialDataSet
 from .packet_15_lap_positions_data import PacketLapPositionsData
+from .header import F1PacketType, PacketHeader
+
+# -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 # Import other packet classes here
 __all__ = [
+    # Header
+    "F1PacketType",
+    "PacketHeader",
+
     # Common Stuff
     "InvalidPacketLengthError",
     "PacketParsingError",
     "PacketCountValidationError",
-    "F1PacketType",
     "ResultStatus",
     "ResultReason",
     "SessionType23",
@@ -73,7 +80,6 @@ __all__ = [
     "TeamID24",
     "TeamID25",
     "F1Utils",
-    "PacketHeader",
     "TrackID",
     "TractionControlAssistMode",
     "GearboxAssistMode",
