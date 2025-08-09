@@ -46,6 +46,15 @@ class BaseEnum(Enum):
             return True
         return any(value == member.value for member in cls)
 
+    def __str__(self):
+        """Return the string representation of this object
+
+        Returns:
+            str: string representation
+        """
+
+        return self.name
+
 class F1PacketBase:
     """
     Base class for parsed F1 telemetry packets.
