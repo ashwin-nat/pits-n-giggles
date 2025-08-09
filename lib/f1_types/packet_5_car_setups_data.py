@@ -23,7 +23,7 @@
 
 import struct
 from typing import Dict, Any, List, Optional
-from .common import PacketHeader
+from .common import PacketHeader, _validate_parse_fixed_segments
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -56,7 +56,7 @@ class CarSetupData:
         m_fuelLoad (float): Fuel load.
     """
 
-    PACKET_FORMAT_23 = ("<"
+    COMPILED_PACKET_STRUCT_23 = struct.Struct("<"
         "B" # uint8     m_frontWing;                // Front wing aero
         "B" # uint8     m_rearWing;                 // Rear wing aero
         "B" # uint8     m_onThrottle;               // Differential adjustment on throttle (percentage)
@@ -80,9 +80,9 @@ class CarSetupData:
         "B" # uint8     m_ballast;                  // Ballast
         "f" # float     m_fuelLoad;                 // Fuel load
     )
-    PACKET_LEN_23 = struct.calcsize(PACKET_FORMAT_23)
+    PACKET_LEN_23 = COMPILED_PACKET_STRUCT_23.size
 
-    PACKET_FORMAT_24 = ("<"
+    COMPILED_PACKET_STRUCT_24 = struct.Struct("<"
         "B" # uint8     m_frontWing;                // Front wing aero
         "B" # uint8     m_rearWing;                 // Rear wing aero
         "B" # uint8     m_onThrottle;               // Differential adjustment on throttle (percentage)
@@ -107,7 +107,7 @@ class CarSetupData:
         "B" # uint8     m_ballast;                  // Ballast
         "f" # float     m_fuelLoad;                 // Fuel load
     )
-    PACKET_LEN_24 = struct.calcsize(PACKET_FORMAT_24)
+    PACKET_LEN_24 = COMPILED_PACKET_STRUCT_24.size
 
     def __init__(self, data: bytes, packet_format: int) -> None:
         """
@@ -123,7 +123,7 @@ class CarSetupData:
 
         self.m_packetFormat = packet_format
         if packet_format == 2023:
-            unpacked_data = struct.unpack(self.PACKET_FORMAT_23, data)
+            unpacked_data = self.COMPILED_PACKET_STRUCT_23.unpack(data)
             (
                 self.m_frontWing,
                 self.m_rearWing,
@@ -150,7 +150,7 @@ class CarSetupData:
             ) = unpacked_data
             self.m_engineBraking = 0
         else:
-            unpacked_data = struct.unpack(self.PACKET_FORMAT_24, data)
+            unpacked_data = self.COMPILED_PACKET_STRUCT_24.unpack(data)
             (
                 self.m_frontWing,
                 self.m_rearWing,
@@ -339,7 +339,7 @@ class CarSetupData:
         """
 
         if self.m_packetFormat == 2023:
-            return struct.pack(self.PACKET_FORMAT_23,
+            return self.COMPILED_PACKET_STRUCT_23.pack(
                 self.m_frontWing,
                 self.m_rearWing,
                 self.m_onThrottle,
@@ -364,7 +364,7 @@ class CarSetupData:
                 self.m_fuelLoad
             )
         if self.m_packetFormat == 2024:
-            return struct.pack(self.PACKET_FORMAT_24,
+            return self.COMPILED_PACKET_STRUCT_24.pack(
                 self.m_frontWing,
                 self.m_rearWing,
                 self.m_onThrottle,
@@ -428,7 +428,7 @@ class CarSetupData:
         """
 
         if packet_format == 2023:
-            raw_packet = struct.pack(cls.PACKET_FORMAT_23,
+            raw_packet = cls.COMPILED_PACKET_STRUCT_23.pack(
                 front_wing,
                 rear_wing,
                 on_throttle,
@@ -455,7 +455,7 @@ class CarSetupData:
             return cls(raw_packet, packet_format)
 
         if packet_format == 2024:
-            raw_packet = struct.pack(cls.PACKET_FORMAT_24,
+            raw_packet = cls.COMPILED_PACKET_STRUCT_24.pack(
                 front_wing,
                 rear_wing,
                 on_throttle,
@@ -496,6 +496,9 @@ class PacketCarSetupData:
                 The length of m_carSetups should not exceed the maximum number of participants.
     """
 
+    MAX_CARS = 22
+    COMPILED_PACKET_STRUCT_EXTRA = struct.Struct("<f")
+
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
         """
         Initializes a PacketCarSetupData object by unpacking the provided binary data.
@@ -509,30 +512,23 @@ class PacketCarSetupData:
         """
 
         self.m_header: PacketHeader = header
-        self.m_carSetups: List[CarSetupData] = []
+        self.m_carSetups: List[CarSetupData]
 
         packet_len = CarSetupData.PACKET_LEN_23 if (header.m_packetFormat == 2023) else CarSetupData.PACKET_LEN_24
+        self.m_carSetups, offset_so_far = _validate_parse_fixed_segments(
+            data=packet,
+            offset=0,
+            item_cls=CarSetupData,
+            item_len=packet_len,
+            count=self.MAX_CARS,
+            max_count=self.MAX_CARS,
+            packet_format=header.m_packetFormat
+        )
+
         if header.m_packetFormat == 2023:
-            packet_len = CarSetupData.PACKET_LEN_23
-            # Iterate over car_setups_raw_data in steps of packet_len,
-            # splitting it into chunks of packet_len.
-            car_setups_raw_data = [
-                packet[i:i + packet_len]
-                for i in range(0, len(packet), packet_len)
-            ]
             self.m_nextFrontWingValue: float = 0.0
-        else: # 24
-            packet_len = CarSetupData.PACKET_LEN_24
-            car_setups_raw_data = packet[:packet_len * 22]
-            # Iterate over car_setups_raw_data in steps of packet_len,
-            # splitting it into chunks of packet_len.
-            car_setups_raw_data = [
-                car_setups_raw_data[i:i + packet_len]
-                for i in range(0, len(car_setups_raw_data), packet_len)
-            ]
-            self.m_nextFrontWingValue: float = struct.unpack("<f", packet[packet_len*22:])[0]
-        for setup_per_car_raw_data in car_setups_raw_data:
-            self.m_carSetups.append(CarSetupData(setup_per_car_raw_data, header.m_packetFormat))
+        else:
+            self.m_nextFrontWingValue: float = self.COMPILED_PACKET_STRUCT_EXTRA.unpack(packet[offset_so_far:])[0]
 
     def __str__(self) -> str:
         """
