@@ -26,9 +26,14 @@ from enum import Enum
 from typing import Dict, Any, Optional, Type, Union
 from .common import PacketHeader, SafetyCarEventType, SafetyCarType
 
+from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
+
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
-class PacketEventData:
+class EventType(F1SubPacketBase):
+    pass
+
+class PacketEventData(F1PacketBase):
     """Class representing the incoming PacketEventData message
 
     Raises:
@@ -42,7 +47,7 @@ class PacketEventData:
                                                             Refer PacketEventData.event_type_map
 
     """
-    class EventPacketType(Enum):
+    class EventPacketType(F1BaseEnum):
         """
         Enum class representing different event types.
         """
@@ -113,26 +118,26 @@ class PacketEventData:
         # Collion: Inter-car collision event
         COLLISION = "COLL"
 
-        @staticmethod
-        def isValid(event_type: str) -> bool:
-            """
-            Check if the input event type string maps to a valid enum value.
+        # @staticmethod
+        # def isValid(event_type: str) -> bool:
+        #     """
+        #     Check if the input event type string maps to a valid enum value.
 
-            Args:
-                event_type (str): The event type string to check.
+        #     Args:
+        #         event_type (str): The event type string to check.
 
-            Returns:
-                bool: True if the event type is valid, False otherwise.
-            """
-            if isinstance(event_type, PacketEventData.EventPacketType):
-                return True
-            try:
-                PacketEventData.EventPacketType(event_type)
-                return True
-            except ValueError:
-                return False
+        #     Returns:
+        #         bool: True if the event type is valid, False otherwise.
+        #     """
+        #     if isinstance(event_type, PacketEventData.EventPacketType):
+        #         return True
+        #     try:
+        #         PacketEventData.EventPacketType(event_type)
+        #         return True
+        #     except ValueError:
+        #         return False
 
-    class FastestLap:
+    class FastestLap(EventType):
         """
         A class representing the data structure for the fastest lap information.
 
@@ -206,7 +211,7 @@ class PacketEventData:
             """
             return not self.__eq__(other)
 
-    class Retirement:
+    class Retirement(EventType):
         """
         The class representing the RETIREMENT event. This is sent when any driver retires or DNF's
         Attributes:
@@ -219,7 +224,7 @@ class PacketEventData:
         COMPILED_PACKET_STRUCT_23_24 = struct.Struct("<B")
         PACKET_LEN_23_24 = COMPILED_PACKET_STRUCT_23_24.size
 
-        class Reason(Enum):
+        class Reason(F1BaseEnum):
             INVALID = 0
             RETIRED = 1
             FINISHED = 2
@@ -232,16 +237,8 @@ class PacketEventData:
             SESSION_SKIPPED = 9
             SESSION_SIMULATED = 10
 
-            def __str__(self):
+            def __str__(self) -> str:
                 return self.name.replace("_", " ").title()
-
-            @staticmethod
-            def isValid(value: int) -> bool:
-                """Check if the given integer is a valid Reason code."""
-                if isinstance(value, PacketEventData.Retirement.Reason):
-                    return True
-                return PacketEventData.Retirement.Reason.INVALID.value <= value <= \
-                            PacketEventData.Retirement.Reason.SESSION_SIMULATED.value
 
         def __init__(self, data: bytes, packet_format: int):
             """
@@ -303,7 +300,7 @@ class PacketEventData:
             """
             return not self.__eq__(other)
 
-    class DrsDisabled:
+    class DrsDisabled(EventType):
         """
         The class representing the DRSEVENT disabled event. This is sent when DRS is disabled
         Attributes:
@@ -313,7 +310,7 @@ class PacketEventData:
         COMPILED_PACKET_STRUCT_25 = struct.Struct("<B")
         PACKET_LEN_25 = COMPILED_PACKET_STRUCT_25.size
 
-        class Reason(Enum):
+        class Reason(F1BaseEnum):
             WET_TRACK = 0
             SAFETY_CAR_DEPLOYED = 1
             RED_FLAG = 2
@@ -321,14 +318,6 @@ class PacketEventData:
 
             def __str__(self):
                 return self.name.replace("_", " ").title()
-
-            @staticmethod
-            def isValid(value: int) -> bool:
-                """Check if the given integer is a valid Reason code."""
-                if isinstance(value, PacketEventData.DrsDisabled.Reason):
-                    return True
-                return PacketEventData.DrsDisabled.Reason.WET_TRACK.value <= value <= \
-                            PacketEventData.DrsDisabled.Reason.MIN_LAP_NOT_REACHED.value
 
         def __init__(self, data: bytes, packet_format: int):
             """
@@ -357,7 +346,7 @@ class PacketEventData:
         def __ne__(self, other: "PacketEventData.DrsDisabled") -> bool:
             return not self.__eq__(other)
 
-    class TeamMateInPits:
+    class TeamMateInPits(EventType):
         """
         The class representing the TEAMMATE IN PITS event. This is sent when the player's teammate pits.
         This is not sent in spectator mode
@@ -417,7 +406,7 @@ class PacketEventData:
             """
             return not self.__eq__(other)
 
-    class RaceWinner:
+    class RaceWinner(EventType):
         """
         The class representing the RACE WINNER event. This is sent when the race winner crosses the finish line
         Attributes:
@@ -476,7 +465,7 @@ class PacketEventData:
             """
             return not self.__eq__(other)
 
-    class Penalty:
+    class Penalty(EventType):
         """
         The class representing the PENALTY event. This is sent when any driver receives a penalty
         Attributes:
@@ -492,7 +481,7 @@ class PacketEventData:
         COMPILED_PACKET_STRUCT = struct.Struct("<BBBBBBB")
         PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
-        class PenaltyType(Enum):
+        class PenaltyType(F1BaseEnum):
             """Enum class representing different penalties in motorsports."""
 
             DRIVE_THROUGH = 0
@@ -518,22 +507,7 @@ class PacketEventData:
                 """Return a human-readable string representation of the penalty."""
                 return self.name.replace("_", " ").title()
 
-            @staticmethod
-            def isValid(penalty_type: int):
-                """Check if the given PenaltyType code is valid.
-
-                Args:
-                    penalty_type (int): The PenaltyType code to be validated.
-                        Also supports type PenaltyType. Returns true in this case
-
-                Returns:
-                    bool: true if valid
-                """
-                if isinstance(penalty_type, PacketEventData.Penalty.PenaltyType):
-                    return True  # It's already an instance of SafetyCarStatus
-                return any(penalty_type == member.value for member in  PacketEventData.Penalty.PenaltyType)
-
-        class InfringementType(Enum):
+        class InfringementType(F1BaseEnum):
             """Enum class representing different infringements in motorsports."""
 
             BLOCKING_BY_SLOW_DRIVING = 0
@@ -595,21 +569,6 @@ class PacketEventData:
             def __str__(self) -> str:
                 """Return a human-readable string representation of the infringement."""
                 return self.name.replace("_", " ").title()
-
-            @staticmethod
-            def isValid(infringement_type: int):
-                """Check if the given InfringementType code is valid.
-
-                Args:
-                    infringement_type (int): The InfringementType code to be validated.
-                        Also supports type InfringementType. Returns true in this case
-
-                Returns:
-                    bool: true if valid
-                """
-                if isinstance(infringement_type, PacketEventData.Penalty.InfringementType):
-                    return True  # It's already an instance of SafetyCarStatus
-                return any(infringement_type == member.value for member in  PacketEventData.Penalty.InfringementType)
 
         def __init__(self, data: bytes, _packet_format: int):
             """Parse the penalty event packet into this object
@@ -689,7 +648,7 @@ class PacketEventData:
             """
             return not self.__eq__(other)
 
-    class SpeedTrap:
+    class SpeedTrap(EventType):
         """
         The class representing the SPEED TRAP event. This is sent when a car is caught speeding by the speed trap.
         Attributes:
@@ -793,7 +752,7 @@ class PacketEventData:
 
             return not self.__eq__(other)
 
-    class StartLights:
+    class StartLights(EventType):
         """
         The class representing the START LIGHTS event. This is sent when the start lights sequence begins.
         Attributes:
@@ -850,7 +809,7 @@ class PacketEventData:
 
             return self.numLights == other.numLights
 
-    class DriveThroughPenaltyServed:
+    class DriveThroughPenaltyServed(EventType):
         """
         The class representing the DRIVE THROUGH PENALTY SERVED event.
         This is sent when a driver serves a drive-through penalty.
@@ -922,7 +881,7 @@ class PacketEventData:
             """
             return not self.__eq__(other)
 
-    class StopGoPenaltyServed:
+    class StopGoPenaltyServed(EventType):
         """
         The class representing the STOP-GO PENALTY SERVED event.
         This is sent when a driver serves a stop-go penalty.
@@ -1002,7 +961,7 @@ class PacketEventData:
             """
             return not self.__eq__(other)
 
-    class Flashback:
+    class Flashback(EventType):
         """
         The class representing the FLASHBACK event. This is sent when the player initiates a flashback.
 
@@ -1078,7 +1037,7 @@ class PacketEventData:
             """
             return not self.__eq__(other)
 
-    class Buttons:
+    class Buttons(EventType):
         """
         Represents a packet containing button press information.
         """
@@ -1223,7 +1182,7 @@ class PacketEventData:
 
             return self.buttonStatus != other.buttonStatus
 
-    class Overtake:
+    class Overtake(EventType):
         """
         The class representing the OVERTAKE event. This is sent when one vehicle overtakes another.
 
@@ -1299,7 +1258,7 @@ class PacketEventData:
             return self.overtakingVehicleIdx != other.overtakingVehicleIdx or \
                 self.beingOvertakenVehicleIdx != other.beingOvertakenVehicleIdx
 
-    class SafetyCarEvent:
+    class SafetyCarEvent(EventType):
         """
         The class representing the safety car event. Refer to the various safety car event types.
 
@@ -1378,7 +1337,7 @@ class PacketEventData:
             return self.m_safety_car_type != other.m_safety_car_type or \
                 self.m_event_type != other.m_event_type
 
-    class Collision:
+    class Collision(EventType):
         """
         The class representing the COLLISION event. This is sent when one vehicle overtakes another.
 
@@ -1453,10 +1412,7 @@ class PacketEventData:
             return not self.__eq__(other)
 
     # Mappings between the event type and the type of object to parse into
-    event_type_map: Dict[EventPacketType, Optional[Type[Union[FastestLap, Retirement, DrsDisabled, TeamMateInPits,
-                                                              RaceWinner, Penalty, SpeedTrap, StartLights,
-                                                              DriveThroughPenaltyServed, StopGoPenaltyServed, Flashback,
-                                                              Buttons, Overtake, SafetyCarEvent, Collision]]]] = {
+    event_type_map: Dict[EventPacketType, Optional[EventType]] = {
         EventPacketType.SESSION_STARTED: None,
         EventPacketType.SESSION_ENDED: None,
         EventPacketType.FASTEST_LAP: FastestLap,
@@ -1494,8 +1450,7 @@ class PacketEventData:
             TypeError: Unsupported event type
         """
 
-        self.m_header: PacketHeader = header       # PacketHeader
-        self.m_eventStringCode: str = ""           # char[4]
+        super().__init__(header)
 
         # Parse the event string and prep the enum
         self.m_eventStringCode = self.COMPILED_PACKET_STRUCT.unpack(packet[:self.PACKET_LEN])[0].decode('ascii')
