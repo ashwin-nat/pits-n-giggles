@@ -81,3 +81,38 @@ class F1PacketBase:
             Dict[str, Any]: A dictionary representing the JSON-compatible data.
         """
         pass
+
+class F1SubPacketBase:
+    """
+    Base class for parsed nested F1 telemetry packets.
+    """
+
+    def __init__(self) -> None:
+        """
+        Initializes the PacketHeaderParser with the raw packet data.
+
+        Args:
+            data (bytes): Raw binary data representing the packet header.
+        """
+        return
+
+    @abstractmethod
+    def __str__(self) -> str:
+        """String representation
+
+        Returns:
+            str: String representation
+        """
+        pass
+
+    @abstractmethod
+    def toJSON(self, include_header: bool) -> Dict[str, Any]:
+        """Converts the object to a dictionary suitable for JSON serialization.
+
+        Arguments:
+            include_header(bool): Whether header should be included in the dict
+
+        Returns:
+            Dict[str, Any]: A dictionary representing the JSON-compatible data.
+        """
+        pass

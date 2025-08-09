@@ -25,10 +25,11 @@ import struct
 from typing import Any, Dict, List
 
 from .common import InvalidPacketLengthError, PacketHeader, _validate_parse_fixed_segments
+from .base_pkt import F1PacketBase, F1SubPacketBase
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
-class CarMotionData:
+class CarMotionData(F1SubPacketBase):
     """
     A class for parsing the Car Motion Data of a telemetry packet in a racing game.
     The car motion data structure is as follows:
@@ -268,7 +269,7 @@ class CarMotionData:
             yaw, pitch, roll)
         return cls(data)
 
-class PacketMotionData:
+class PacketMotionData(F1PacketBase):
     """A class for parsing the Motion Data Packet of a telemetry packet in a racing game.
 
     Args:
@@ -296,7 +297,7 @@ class PacketMotionData:
             InvalidPacketLengthError: If number of bytes is not as per expectation
         """
 
-        self.m_header: PacketHeader = header       # PacketHeader
+        super().__init__(header)
 
         if ((len(packet) % CarMotionData.PACKET_LEN) != 0):
             raise InvalidPacketLengthError(
