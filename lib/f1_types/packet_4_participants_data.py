@@ -27,9 +27,11 @@ from typing import Any, Dict, List, Optional, Union
 from .common import (Nationality, PacketHeader, _validate_parse_fixed_segments, Platform,
                      TeamID23, TeamID24, TeamID25, TelemetrySetting)
 
+from .base_pkt import F1PacketBase, F1SubPacketBase
+
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
-class LiveryColour:
+class LiveryColour(F1SubPacketBase):
     """
     A class representing a livery colour in a racing simulation.
 
@@ -85,7 +87,7 @@ class LiveryColour:
     def to_bytes(self) -> bytes:
         return LiveryColour.COMPILED_PACKET_STRUCT.pack(self.m_red, self.m_green, self.m_blue)
 
-class ParticipantData:
+class ParticipantData(F1SubPacketBase):
     """
     A class representing participant data in a racing simulation.
 
@@ -526,7 +528,7 @@ class ParticipantData:
             raise NotImplementedError(f"Unsupported packet format: {header.m_packetFormat}")
         return cls(data, header.m_packetFormat)
 
-class PacketParticipantsData:
+class PacketParticipantsData(F1PacketBase):
     """
     A class representing participant data in a racing simulation.
 
@@ -554,7 +556,7 @@ class PacketParticipantsData:
             struct.error: If the binary data does not match the expected format.
         """
 
-        self.m_header: PacketHeader = header         # PacketHeader
+        super().__init__(header)
         self.m_numActiveCars: int = struct.unpack("<B", packet[:1])[0]
         match header.m_packetFormat:
             case 2023:
