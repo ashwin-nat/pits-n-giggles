@@ -44,14 +44,20 @@ class PacketLapPositionsData:
     MAX_LAPS = 50
     TOTAL_BYTES = MAX_CARS * MAX_LAPS # its uint8, so no need to multiply by size of each item
 
+    COMPILED_PACKET_STRUCT_BASE = struct.Struct("<BB")
+    PACKET_LEN_BASE = COMPILED_PACKET_STRUCT_BASE.size
+
+    COMPILED_PACKET_STRUCT_ARRAY = struct.Struct(f"<{MAX_CARS * MAX_LAPS}B")
+    PACKET_LEN_ARRAY = COMPILED_PACKET_STRUCT_ARRAY.size
+
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
         self.m_header: PacketHeader = header
         self.m_numLaps: int
         self.m_lapStart: int
         self.m_lapPositions: List[int]
 
-        self.m_numLaps, self.m_lapStart = struct.unpack("<BB", packet[:2])
-        flat_array = struct.unpack(f"<{self.TOTAL_BYTES}B", packet[2:])
+        self.m_numLaps, self.m_lapStart = self.COMPILED_PACKET_STRUCT_BASE.unpack(packet[:self.PACKET_LEN_BASE])
+        flat_array = self.COMPILED_PACKET_STRUCT_ARRAY.unpack(packet[self.PACKET_LEN_BASE:])
 
         # Convert the flat list into a 2D list: m_numLaps rows (laps), each with 22 cars
         self.m_lapPositions = [list(flat_array[i * self.MAX_CARS:(i + 1) * self.MAX_CARS]) for i in range(self.m_numLaps)]
