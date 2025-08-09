@@ -29,9 +29,11 @@ from .common import (F1PacketType, Nationality, PacketHeader, Platform,
                      TeamID23, TeamID24, TeamID25, TelemetrySetting,
                      _validate_parse_fixed_segments)
 
+from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
+
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
-class LobbyInfoData:
+class LobbyInfoData(F1SubPacketBase):
     """
     Class representing lobby information data for a player.
 
@@ -90,7 +92,7 @@ class LobbyInfoData:
     )
     PACKET_LEN_25 = COMPILED_PACKET_STRUCT_25.size
 
-    class ReadyStatus(Enum):
+    class ReadyStatus(F1BaseEnum):
         """
         ENUM class for the marshal zone flag status
         """
@@ -98,26 +100,6 @@ class LobbyInfoData:
         NOT_READY = 0
         READY = 1
         SPECTATING = 2
-
-        @staticmethod
-        def isValid(ready_status_code: int):
-            """Check if the given packet type is valid.
-
-            Args:
-                ready_status_code (int): The ready status code to be validated.
-                    Also supports type ReadyStatus. Returns true in this case
-
-            Returns:
-                bool: true if valid
-            """
-            if isinstance(ready_status_code, LobbyInfoData.ReadyStatus):
-                return True  # It's already an instance of LobbyInfoData.ReadyStatus
-            return any(ready_status_code == member.value for member in LobbyInfoData.ReadyStatus)
-
-        def __str__(self):
-            if F1PacketType.isValid(self.value):
-                return self.name
-            return f'Marshal Zone Flag type {str(self.value)}'
 
     def __init__(self, data: bytes, packet_format: int) -> None:
         """
@@ -356,7 +338,7 @@ class LobbyInfoData:
 
         raise NotImplementedError(f"Unsupported packet format: {header.m_packetFormat}")
 
-class PacketLobbyInfoData:
+class PacketLobbyInfoData(F1PacketBase):
     """
     Class representing the packet for lobby information data.
 
@@ -379,7 +361,7 @@ class PacketLobbyInfoData:
             packet (bytes): Raw data representing the packet for lobby information data.
         """
 
-        self.m_header: PacketHeader = header
+        super().__init__(header)
         self.m_numPlayers: int = struct.unpack("<B", packet[:1])[0]
         if header.m_packetFormat == 2023:
             packet_len = LobbyInfoData.PACKET_LEN_23
