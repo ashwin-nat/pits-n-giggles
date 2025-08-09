@@ -42,11 +42,11 @@ class MarshalZone:
         - m_zone_flag (MarshalZone.MarshalZoneFlagType): Refer to the enum type for various options
     """
 
-    PACKET_FORMAT = ("<"
+    COMPILED_PACKET_STRUCT = struct.Struct("<"
         "f" # float - Fraction (0..1) of way through the lap the marshal zone starts
         "b" # int8  - -1 = invalid/unknown, 0 = none, 1 = green, 2 = blue, 3 = yellow
     )
-    PACKET_LEN = struct.calcsize(PACKET_FORMAT)
+    PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
     class MarshalZoneFlagType(Enum):
         """
@@ -98,7 +98,7 @@ class MarshalZone:
         (
             self.m_zoneStart,   # float - Fraction (0..1) of way through the lap the marshal zone starts
             self.m_zoneFlag     # int8 - -1 = invalid/unknown, 0 = none, 1 = green, 2 = blue, 3 = yellow
-        ) = struct.unpack(self.PACKET_FORMAT, data)
+        ) = self.COMPILED_PACKET_STRUCT.unpack(data)
 
         if MarshalZone.MarshalZoneFlagType.isValid(self.m_zoneFlag):
             self.m_zoneFlag = MarshalZone.MarshalZoneFlagType(self.m_zoneFlag)
@@ -154,7 +154,7 @@ class MarshalZone:
             bytes: A list of bytes representing the raw data.
         """
 
-        return struct.pack(self.PACKET_FORMAT, self.m_zoneStart, self.m_zoneFlag)
+        return self.COMPILED_PACKET_STRUCT.pack(self.m_zoneStart, self.m_zoneFlag)
 
     @classmethod
     def from_values(cls, zone_start: float, zone_flag: MarshalZoneFlagType) -> "MarshalZone":
@@ -168,7 +168,7 @@ class MarshalZone:
             MarshalZone: A new MarshalZone object
         """
 
-        return cls(struct.pack(cls.PACKET_FORMAT, zone_start, zone_flag))
+        return cls(cls.COMPILED_PACKET_STRUCT.pack(zone_start, zone_flag))
 
 class WeatherForecastSample:
     """
@@ -187,7 +187,7 @@ class WeatherForecastSample:
         - m_rain_percentage (int): Rain percentage (0-100).
     """
 
-    PACKET_FORMAT = ("<"
+    COMPILED_PACKET_STRUCT = struct.Struct("<"
         "B" # uint8  -    0 = unknown, 1 = P1, 2 = P2, 3 = P3, 4 = Short P, 5 = Q1
                         # 6 = Q2, 7 = Q3, 8 = Short Q, 9 = OSQ, 10 = R, 11 = R2
                         # 12 = R3, 13 = Time Trial
@@ -200,7 +200,7 @@ class WeatherForecastSample:
         "b" # int8   - Air temp. change - 0 = up, 1 = down, 2 = no change
         "B" # uint8  - Rain percentage (0-100)
     )
-    PACKET_LEN = struct.calcsize(PACKET_FORMAT)
+    PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
     class WeatherCondition(Enum):
         """
@@ -373,7 +373,7 @@ class WeatherForecastSample:
             self.m_airTemperature,                # int8
             self.m_airTemperatureChange,          # int8
             self.m_rainPercentage                 # uint8
-        ) = struct.unpack(self.PACKET_FORMAT, data)
+        ) = self.COMPILED_PACKET_STRUCT.unpack(data)
 
         # Convert to typed enums wherever applicable
         if WeatherForecastSample.WeatherCondition.isValid(self.m_weather):
@@ -466,7 +466,7 @@ class WeatherForecastSample:
             bytes: A list of bytes representing the raw data.
         """
 
-        return struct.pack(self.PACKET_FORMAT,
+        return self.COMPILED_PACKET_STRUCT.pack(
             self.m_sessionType,
             self.m_timeOffset,
             self.m_weather.value,
@@ -507,7 +507,7 @@ class WeatherForecastSample:
         """
 
         return cls(
-            struct.pack(WeatherForecastSample.PACKET_FORMAT,
+            WeatherForecastSample.COMPILED_PACKET_STRUCT.pack(
                 session_type.value,
                 time_offset,
                 weather.value,
@@ -584,7 +584,7 @@ class PacketSessionData:
     F1_24_MAX_NUM_WEATHER_FORECAST_SAMPLES = 64
     F1_24_MAX_NUM_MARSHAL_ZONES = 21
 
-    PACKET_FORMAT_SECTION_0 = ("<"
+    COMPILED_PACKET_STRUCT_SECTION_0 = struct.Struct("<"
         "B" # uint8           m_weather;                  // Weather - 0 = clear, 1 = light cloud, 2 = overcast
             #                                         // 3 = light rain, 4 = heavy rain, 5 = storm
         "b" # int8                m_trackTemperature;        // Track temp. in degrees celsius
@@ -606,16 +606,16 @@ class PacketSessionData:
         "B" # uint8           m_sliProNativeSupport;    // SLI Pro support, 0 = inactive, 1 = active
         "B" # uint8           m_numMarshalZones;             // Number of marshal zones to follow
     )
-    PACKET_LEN_SECTION_0 = struct.calcsize(PACKET_FORMAT_SECTION_0)
+    PACKET_LEN_SECTION_0 = COMPILED_PACKET_STRUCT_SECTION_0.size
 
-    PACKET_FORMAT_SECTION_2 = ("<"
+    COMPILED_PACKET_STRUCT_SECTION_2 = struct.Struct("<"
         "B" # uint8           m_safetyCarStatus; // 0 = no safety car, 1 = full // 2 = virtual, 3 = formation lap
         "B" # uint8           m_networkGame;               // 0 = offline, 1 = online
         "B" # uint8           m_numWeatherForecastSamples; // Number of weather samples to follow
     )
-    PACKET_LEN_SECTION_2 = struct.calcsize(PACKET_FORMAT_SECTION_2)
+    PACKET_LEN_SECTION_2 = COMPILED_PACKET_STRUCT_SECTION_2.size
 
-    PACKET_FORMAT_SECTION_4 = ("<"
+    COMPILED_PACKET_STRUCT_SECTION_4 = struct.Struct("<"
         "B" # uint8   - Weather prediction type. 0 = Perfect, 1 = Approximate
         "B" # uint8   - AI Difficulty rating - 0-110
         "I" # uint32  - Identifier for season - persists across saves
@@ -646,10 +646,10 @@ class PacketSessionData:
         "B" # uint8    -       m_numVirtualSafetyCarPeriods;       // Number of virtual safety cars called
         "B" # uint8    -       m_numRedFlagPeriods;                // Number of red flags called during session
     )
-    PACKET_LEN_SECTION_4 = struct.calcsize(PACKET_FORMAT_SECTION_4)
+    PACKET_LEN_SECTION_4 = COMPILED_PACKET_STRUCT_SECTION_4.size
 
     # This is only for F1 24
-    PACKET_FORMAT_SECTION_5 = ("<"
+    COMPILED_PACKET_STRUCT_SECTION_5 = struct.Struct("<"
         "B" # uint8   - car equal performance. 0 = off, 1 = on
         "B" # uint8    m_recoveryMode;              	// 0 = None, 1 = Flashbacks, 2 = Auto-recovery
         "B" # uint8    m_flashbackLimit;            	// 0 = Low, 1 = Medium, 2 = High, 3 = Unlimited
@@ -680,7 +680,7 @@ class PacketSessionData:
         "f" # float    m_sector2LapDistanceStart;          // Distance in m around track where sector 2 starts
         "f" # float    m_sector3LapDistanceStart;          // Distance in m around track where sector 3 starts
     )
-    PACKET_LEN_SECTION_5 = struct.calcsize(PACKET_FORMAT_SECTION_5)
+    PACKET_LEN_SECTION_5 = COMPILED_PACKET_STRUCT_SECTION_5.size
 
     class FormulaType(Enum):
         """An enumeration of formula types."""
@@ -1305,7 +1305,7 @@ class PacketSessionData:
         # First, section 0
         section_0_raw_data = data[:self.PACKET_LEN_SECTION_0]
         byte_index_so_far = self.PACKET_LEN_SECTION_0
-        unpacked_data = struct.unpack(self.PACKET_FORMAT_SECTION_0, section_0_raw_data)
+        unpacked_data = self.COMPILED_PACKET_STRUCT_SECTION_0.unpack(section_0_raw_data)
         (
             self.m_weather,
             self.m_trackTemperature,
@@ -1351,7 +1351,7 @@ class PacketSessionData:
         # Section 2, till numWeatherForecastSamples
         section_2_raw_data = data[byte_index_so_far:byte_index_so_far + self.PACKET_LEN_SECTION_2]
         byte_index_so_far += self.PACKET_LEN_SECTION_2
-        unpacked_data = struct.unpack(self.PACKET_FORMAT_SECTION_2, section_2_raw_data)
+        unpacked_data = self.COMPILED_PACKET_STRUCT_SECTION_2.unpack(section_2_raw_data)
         (
             self.m_safetyCarStatus, #           // 0 = no safety car, 1 = full 2 = virtual, 3 = formation lap
             self.m_networkGame, #               // 0 = offline, 1 = online
@@ -1372,11 +1372,10 @@ class PacketSessionData:
             packet_format=header.m_packetFormat
         )
 
-
         # Section 4 - rest of the packet
         section_4_raw_data = data[byte_index_so_far:byte_index_so_far + self.PACKET_LEN_SECTION_4]
         byte_index_so_far += self.PACKET_LEN_SECTION_4
-        unpacked_data = struct.unpack(self.PACKET_FORMAT_SECTION_4, section_4_raw_data)
+        unpacked_data = self.COMPILED_PACKET_STRUCT_SECTION_4.unpack(section_4_raw_data)
         (
             self.m_forecastAccuracy,                   # uint8
             self.m_aiDifficulty,                       # uint8
@@ -1421,7 +1420,7 @@ class PacketSessionData:
         # Section 5 - F1 24 specific stuff
         if header.m_packetFormat == 2024:
             section_5_raw_data = data[byte_index_so_far:byte_index_so_far + self.PACKET_LEN_SECTION_5]
-            unpacked_data = struct.unpack(self.PACKET_FORMAT_SECTION_5, section_5_raw_data)
+            unpacked_data = self.COMPILED_PACKET_STRUCT_SECTION_5.unpack(section_5_raw_data)
             (
                 self.m_equalCarPerformance,
                 self.m_recoveryMode,
