@@ -34,7 +34,7 @@ from typing import Any, Awaitable, Callable, Coroutine, Dict, Optional, Union
 import msgpack
 import socketio
 import uvicorn
-from quart import Quart
+from quart import Quart, url_for, Response
 from quart import jsonify as quart_jsonify
 from quart import render_template as quart_render_template
 from quart import request as quart_request
@@ -104,6 +104,28 @@ class BaseWebServer:
 
         self._register_base_socketio_events()
         self._define_static_file_routes()
+
+        # Automatically append version string to all static URL's
+        # We're doing this because when version changes, we don't want the browser to load cached code
+        #    as the code may have changed in the update. When the browser sees a new version appended as arg,
+        #    it will actually request from the server, since the request is now different than what it has seen before
+        @self.m_app.context_processor
+        def override_url_for():
+            def dated_url_for(endpoint, **values):
+                if endpoint == 'static':
+                    values['v'] = self.m_ver_str
+                return url_for(endpoint, **values)
+            return dict(url_for=dated_url_for)
+
+        # Disable caching for template paths, always.
+        @self.m_app.after_request
+        async def no_html_cache(response: Response) -> Response:
+            # Only apply to HTML responses
+            if response.content_type and response.content_type.startswith("text/html"):
+                response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+                response.headers["Pragma"] = "no-cache"
+                response.headers["Expires"] = "0"
+            return response
 
     def http_route(self, path: str, **kwargs) -> Callable:
         """Register a HTTP route."""
