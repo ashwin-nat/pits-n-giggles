@@ -27,7 +27,7 @@ from .common import (ActualTyreCompound, F1Utils, GameMode,
                      PacketCountValidationError,
                      PacketParsingError, Platform, ResultReason, ResultStatus,
                      SafetyCarType, SessionLength, SessionType, SessionType23,
-                     SessionType24, TeamID23, TeamID24, TeamID25,
+                     SessionType24, TeamID, TeamID23, TeamID24, TeamID25,
                      TelemetrySetting, TrackID, TractionControlAssistMode,
                      VisualTyreCompound)
 from .packet_0_car_motion_data import CarMotionData, PacketMotionData
@@ -77,6 +77,7 @@ __all__ = [
     "TelemetrySetting",
     "Nationality",
     "Platform",
+    "TeamID",
     "TeamID23",
     "TeamID24",
     "TeamID25",

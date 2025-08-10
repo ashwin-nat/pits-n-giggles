@@ -22,10 +22,10 @@
 
 
 import struct
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from .common import (Nationality, _validate_parse_fixed_segments, Platform,
-                     TeamID23, TeamID24, TeamID25, TelemetrySetting)
+                     TeamID, TeamID23, TeamID24, TeamID25, TelemetrySetting)
 from .header import PacketHeader
 from .base_pkt import F1PacketBase, F1SubPacketBase
 
@@ -430,7 +430,7 @@ class ParticipantData(F1SubPacketBase):
                     ai_controlled: bool,
                     driver_id: int,
                     network_id: int,
-                    team_id: Union[TeamID23, TeamID24, TeamID25],
+                    team_id: TeamID,
                     my_team: bool,
                     race_number: int,
                     nationality: Nationality,

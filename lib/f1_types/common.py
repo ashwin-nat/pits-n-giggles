@@ -682,7 +682,10 @@ class GearboxAssistMode(F1BaseEnum):
         """
         return self.name.replace('_', ' ').title()
 
-class TeamID23(F1BaseEnum):
+class TeamID(F1BaseEnum):
+    """Base Enum class for Team ID's"""
+    pass
+class TeamID23(TeamID):
     """
     Enumeration representing the TeamID setting for the player (F1 2023)
     """
@@ -787,7 +790,7 @@ class TeamID23(F1BaseEnum):
         }
         return teams_mapping.get(self.value, "---")
 
-class TeamID24(F1BaseEnum):
+class TeamID24(TeamID):
     """
     Enumeration representing the TeamID setting for the player (F1 2023)
     """
@@ -831,7 +834,7 @@ class TeamID24(F1BaseEnum):
         return teams_mapping.get(self.value,
                                  ' '.join(word.capitalize() for word in self.name.split('_')))
 
-class TeamID25(F1BaseEnum):
+class TeamID25(TeamID):
     MERCEDES = 0
     FERRARI = 1
     RED_BULL_RACING = 2

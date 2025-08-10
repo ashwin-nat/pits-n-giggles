@@ -22,9 +22,9 @@
 
 
 import struct
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
-from .common import (Nationality, Platform,
+from .common import (Nationality, Platform, TeamID,
                      TeamID23, TeamID24, TeamID25, TelemetrySetting,
                      _validate_parse_fixed_segments)
 from .header import PacketHeader
@@ -269,7 +269,7 @@ class LobbyInfoData(F1SubPacketBase):
     def from_values(cls,
                     header: PacketHeader,
                     ai_controlled: bool,
-                    team_id: Union[TeamID23, TeamID24, TeamID25],
+                    team_id: TeamID,
                     nationality: Nationality,
                     platform: Platform,
                     name: str,
