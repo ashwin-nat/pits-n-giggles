@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+from .base_pkt import F1PacketBase
 from .common import (ActualTyreCompound, F1Utils, GameMode,
                      GearboxAssistMode, InvalidPacketLengthError, Nationality,
                      PacketCountValidationError,
@@ -58,6 +59,9 @@ from .header import F1PacketType, PacketHeader
 
 # Import other packet classes here
 __all__ = [
+    # Base
+    "F1PacketBase",
+
     # Header
     "F1PacketType",
     "PacketHeader",
