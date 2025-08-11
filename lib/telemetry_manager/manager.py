@@ -28,7 +28,7 @@ from datetime import datetime
 from logging import Logger
 from typing import Awaitable, Callable, Dict, Optional
 
-from lib.f1_types import (F1PacketType, InvalidPacketLengthError,
+from lib.f1_types import (F1PacketBase, F1PacketType, InvalidPacketLengthError,
                           PacketCarDamageData, PacketCarSetupData,
                           PacketCarStatusData, PacketCarTelemetryData,
                           PacketCountValidationError, PacketEventData,
@@ -39,47 +39,23 @@ from lib.f1_types import (F1PacketType, InvalidPacketLengthError,
                           PacketParticipantsData, PacketSessionData,
                           PacketSessionHistoryData, PacketTimeTrialData,
                           PacketTyreSetsData)
-from lib.socket_receiver import TcpReceiver, UdpReceiver, TelemetryReceiver
 
-# ------------------------- GLOBALS ------------------------------------------------------------------------------------
-F1TelemetryCallback = Optional[Callable[[object], Awaitable[None]]]
+from .exceptions import UnsupportedPacketFormat, UnsupportedPacketType
+from .factory import PacketParserFactory, telemetry_receiver_factory
+
+# -------------------------------------- TYPES -------------------------------------------------------------------------
+
+F1TelemetryCallback = Optional[Callable[[F1PacketBase], Awaitable[None]]]
 
 # ------------------------- CLASSES ------------------------------------------------------------------------------------
 
-class UnsupportedPacketFormat(Exception):
-    """Raised when packet data is malformed or insufficient"""
-    def __init__(self, packet_format):
-        super().__init__(f"Unsupported packet format. {packet_format}")
-
 class AsyncF1TelemetryManager:
     """
-    This class is used to act as the interface between the raw parsers and the user application layer.
+    This class is used to act as the interface between the raw parsers and the state management layer.
     This class handles the following tasks
         1 - manage the socket and receive the data
-        2 - identify the packet type and parse the packet accordingly
-        3 - identify the callback function that the user has registered and invoke it for the incoming packet type
-
-    Following is the mapping between Packet ID and the packet type
-        +-------------------------------------+-------------------------------------------+
-        | F1PacketType                        | Corresponding Packet Class                |
-        +-------------------------------------+-------------------------------------------+
-        | F1PacketType.MOTION                 | PacketMotionData                          |
-        | F1PacketType.SESSION                | PacketSessionData                         |
-        | F1PacketType.LAP_DATA               | PacketLapData                             |
-        | F1PacketType.EVENT                  | PacketEventData                           |
-        | F1PacketType.PARTICIPANTS           | PacketParticipantsData                    |
-        | F1PacketType.CAR_SETUPS             | PacketCarSetupData                        |
-        | F1PacketType.CAR_TELEMETRY          | PacketCarTelemetryData                    |
-        | F1PacketType.CAR_STATUS             | PacketCarStatusData                       |
-        | F1PacketType.FINAL_CLASSIFICATION   | PacketFinalClassificationData             |
-        | F1PacketType.LOBBY_INFO             | PacketLobbyInfoData                       |
-        | F1PacketType.CAR_DAMAGE             | PacketCarDamageData                       |
-        | F1PacketType.SESSION_HISTORY        | PacketSessionHistoryData                  |
-        | F1PacketType.TYRE_SETS              | PacketTyreSetsData                        |
-        | F1PacketType.MOTION_EX              | PacketMotionExData                        |
-        | F1PacketType.TIME_TRIAL             | PacketTimeTrialData                       |
-        | F1PacketType.LAP_POSITIONS          | PacketLapPositionsData                    |
-        +-------------------------------------+-------------------------------------------+
+        2 - parse the packet into its appropriate type
+        3 - call the appropriate state management layer callback
     """
 
     packet_type_map = {
@@ -117,7 +93,8 @@ class AsyncF1TelemetryManager:
         self.m_port_number = port_number
         self.m_logger = logger
         self.m_receiver = telemetry_receiver_factory(port_number, replay_server, logger)
-        self.m_callbacks: Dict[F1PacketType, F1TelemetryCallback] = {ptype: None for ptype in self.packet_type_map}
+        self.m_callbacks: Dict[F1PacketType, F1TelemetryCallback] = {}
+        # self.m_callbacks: Dict[F1PacketType, F1TelemetryCallback] = {ptype: None for ptype in self.packet_type_map}
 
         self.m_raw_packet_callback: Optional[Callable[[object], Awaitable[None]]] = None
 
@@ -159,6 +136,7 @@ class AsyncF1TelemetryManager:
             self.m_logger.info("REPLAY SERVER MODE. PORT = %s", self.m_port_number)
 
         should_parse_packet = (sum(callback is not None for callback in self.m_callbacks.values()) > 0)
+        pkt_factory = PacketParserFactory(set(self.m_callbacks.keys()))
 
         # Run the client indefinitely
         while True:
@@ -166,63 +144,47 @@ class AsyncF1TelemetryManager:
             # Get next telemetry message
             raw_packet = await self.m_receiver.getNextMessage()
             try:
-                await self._processPacket(should_parse_packet, raw_packet)
+                await self._processPacket(should_parse_packet, pkt_factory, raw_packet)
             except UnsupportedPacketFormat as e:
+                self.m_logger.error(e, exc_info=True)
+            except UnsupportedPacketType as e:
                 self.m_logger.error(e, exc_info=True)
             except Exception as e:
                 self.m_logger.error("Error processing packet: %s", e, exc_info=True)
                 raise  # Re-raises the caught exception
 
-    async def _processPacket(self, should_parse_packet: bool, raw_packet: bytes) -> None:
+    async def _processPacket(self,
+                             should_parse_packet: bool,
+                             pkt_factory: PacketParserFactory,
+                             raw_packet: bytes) -> None:
         """Processes the packet received from the UDP socket
 
         Args:
             should_parse_packet (bool): Whether to parse the packet or not
+            pkt_factory (PacketParserFactory): The packet parser factory
             raw_packet (bytes): The raw packet received from the UDP socket
         """
-        if len(raw_packet) < PacketHeader.PACKET_LEN:
-            # skip incomplete packet
+
+        parsed_obj = pkt_factory.parse(raw_packet)
+        if not parsed_obj:
             return
 
-        if self.m_raw_packet_callback:
-            await self.m_raw_packet_callback(raw_packet)
-
-        if not should_parse_packet:
-            return
-
-        # Parse the header
-        header_raw = raw_packet[:PacketHeader.PACKET_LEN]
-        header = PacketHeader(header_raw)
-        if not header.is_supported_packet_type:
-            # Unsupported packet type, skip
-            return
-
-        if header.m_packetFormat < self.MIN_PACKET_FORMAT:
-            raise UnsupportedPacketFormat(header.m_packetFormat)
-
-        # Parse the payload and call the registered callback
-        payload_raw = raw_packet[PacketHeader.PACKET_LEN:]
+        # Perform the registered callback
         try:
-            packet = AsyncF1TelemetryManager.packet_type_map[header.m_packetId](header, payload_raw)
-        except (InvalidPacketLengthError, PacketParsingError, PacketCountValidationError) as e:
-            self.m_logger.error("Cannot parse packet of type %s. Error = %s", str(header.m_packetId), str(e))
-            return
-        if callback := self.m_callbacks.get(header.m_packetId, None):
-            try:
-                await callback(packet)
-            except Exception as e:
-                packet_file = self._dumpPacketToFile(packet)
-                self.m_logger.exception(
-                    "Exception while handling packet callback.\n"
-                    "Packet type: %s\nException type: %s\nMessage: %s\n"
-                    "Header: %s\nPacket dumped to: %s",
-                    str(header.m_packetId),
-                    type(e).__name__,
-                    str(e),
-                    json.dumps(header.toJSON(), indent=2),
-                    packet_file,
-                )
-                raise
+            await self.m_callbacks[parsed_obj.m_header.m_packetId](parsed_obj)
+        except Exception as e:
+            packet_file = self._dumpPacketToFile(parsed_obj)
+            self.m_logger.exception(
+                "Exception while handling packet callback.\n"
+                "Packet type: %s\nException type: %s\nMessage: %s\n"
+                "Header: %s\nPacket dumped to: %s",
+                str(parsed_obj.m_header.m_packetId),
+                type(e).__name__,
+                str(e),
+                json.dumps(parsed_obj.m_header.toJSON(), indent=2),
+                packet_file,
+            )
+            raise
 
     def _dumpPacketToFile(self, packet_obj: object, directory: str = "crash_packet_dumps") -> str:
         """Dump packet JSON to a timestamped file and return the file path.
@@ -247,13 +209,3 @@ class AsyncF1TelemetryManager:
             return filepath
         except Exception as e: # pylint: disable=broad-except
             return f"<Failed to write packet to file: {e}>"
-
-# ------------------------- FUNCTIONS ----------------------------------------------------------------------------------
-
-def telemetry_receiver_factory(port_number: int, replay_server: bool, logger: Logger) -> TelemetryReceiver:
-    """Creates a telemetry receiver based on the given port number and replay server mode."""
-    if replay_server:
-        logger.info("REPLAY RECEIVER MODE. PORT = %s", port_number)
-        return TcpReceiver(port_number, "localhost")
-    logger.info("LIVE RECEIVER MODE. PORT = %s", port_number)
-    return UdpReceiver(port_number, "0.0.0.0", buffer_size=4096)
