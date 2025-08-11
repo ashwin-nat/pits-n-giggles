@@ -26,15 +26,17 @@
 from logging import Logger
 from typing import Awaitable, Callable, Optional, Set, Type
 
-from lib.f1_types import (F1PacketBase, F1PacketType, PacketCarDamageData,
-                          PacketCarSetupData, PacketCarStatusData,
-                          PacketCarTelemetryData, PacketEventData,
+from lib.f1_types import (F1PacketBase, F1PacketType, InvalidPacketLengthError,
+                          PacketCarDamageData, PacketCarSetupData,
+                          PacketCarStatusData, PacketCarTelemetryData,
+                          PacketCountValidationError, PacketEventData,
                           PacketFinalClassificationData, PacketHeader,
                           PacketLapData, PacketLapPositionsData,
                           PacketLobbyInfoData, PacketMotionData,
-                          PacketMotionExData, PacketParticipantsData,
-                          PacketSessionData, PacketSessionHistoryData,
-                          PacketTimeTrialData, PacketTyreSetsData)
+                          PacketMotionExData, PacketParsingError,
+                          PacketParticipantsData, PacketSessionData,
+                          PacketSessionHistoryData, PacketTimeTrialData,
+                          PacketTyreSetsData)
 from lib.socket_receiver import TcpReceiver, TelemetryReceiver, UdpReceiver
 
 from .exceptions import UnsupportedPacketFormat, UnsupportedPacketType
@@ -70,9 +72,16 @@ class PacketParserFactory:
 
     def __init__(
         self,
-        interested_packets: Set[F1PacketType]):
-        """Initialize the packet parser factory."""
+        interested_packets: Set[F1PacketType],
+        logger: Logger):
+        """Initialize the packet parser factory.
+
+        Args:
+            interested_packets (Set[F1PacketType]): The set of packet types to be interested in
+            logger (Logger): The logger to use
+        """
         self._interested_packets = interested_packets
+        self._logger = logger
 
     def parse(self, raw_packet: bytes) -> F1PacketBase:
         """
@@ -102,7 +111,12 @@ class PacketParserFactory:
             raise UnsupportedPacketType(header.m_packetId)
 
         payload_raw = raw_packet[PacketHeader.PACKET_LEN:]
-        packet = parser_cls(header, payload_raw)
+        try:
+            packet = parser_cls(header, payload_raw)
+        except (InvalidPacketLengthError, PacketParsingError, PacketCountValidationError) as e:
+            self._logger.error("Cannot parse packet of type %s. Error = %s",
+                                str(header.m_packetId), str(e))
+            return None
 
         return packet
 

@@ -103,7 +103,7 @@ class AsyncF1TelemetryManager:
         if self.m_replay_server:
             self.m_logger.info("REPLAY SERVER MODE. PORT = %s", self.m_port_number)
 
-        pkt_factory = PacketParserFactory(set(self.m_callbacks.keys()))
+        pkt_factory = PacketParserFactory(set(self.m_callbacks.keys()), self.m_logger)
 
         # Run the client indefinitely
         while True:
