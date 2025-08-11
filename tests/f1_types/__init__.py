@@ -38,6 +38,7 @@ from .tests_packet_12_tyre_sets_data import TestPacketTyreSetsData
 from .tests_packet_13_motion_ex_data import TestPacketMotionExData
 from .tests_packet_14_time_trial_data import TestPacketTimeTrialData
 from .tests_packet_15_lap_positions_data import TestPacketLapPositionsData
+from .tests_base import TestF1BaseEnum, TestF1PacketBase, TestF1SubPacketBase
 
 __all__ = [
     'TestSessionType23',
@@ -58,4 +59,7 @@ __all__ = [
     'TestPacketMotionExData',
     'TestPacketTimeTrialData',
     'TestPacketLapPositionsData',
+    'TestF1BaseEnum',
+    'TestF1PacketBase',
+    'TestF1SubPacketBase',
 ]

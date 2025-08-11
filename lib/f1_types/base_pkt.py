@@ -22,10 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Dict, Any
-from enum import Enum
 from abc import abstractmethod
+from enum import Enum
 from functools import total_ordering
+from typing import Any, Dict, Optional
 
 from .header import PacketHeader
 
@@ -112,16 +112,16 @@ class F1PacketBase:
         self.m_header: PacketHeader = header
 
     @abstractmethod
-    def toJSON(self, include_header: bool) -> Dict[str, Any]:
+    def toJSON(self, include_header: Optional[bool] = False) -> Dict[str, Any]:
         """Converts the object to a dictionary suitable for JSON serialization.
 
         Arguments:
-            include_header(bool): Whether header should be included in the dict
+            include_header(bool): Whether header should be included in the dict. Default: False
 
         Returns:
             Dict[str, Any]: A dictionary representing the JSON-compatible data.
         """
-        pass
+        raise NotImplementedError(f"{self.__class__.__name__} must implement toJSON()")
 
 class F1SubPacketBase:
     """
@@ -135,4 +135,4 @@ class F1SubPacketBase:
         Returns:
             Dict[str, Any]: A dictionary representing the JSON-compatible data.
         """
-        pass
+        raise NotImplementedError(f"{self.__class__.__name__} must implement toJSON()")
