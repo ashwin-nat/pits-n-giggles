@@ -58,27 +58,6 @@ class AsyncF1TelemetryManager:
         3 - call the appropriate state management layer callback
     """
 
-    packet_type_map = {
-        F1PacketType.MOTION: PacketMotionData,
-        F1PacketType.SESSION: PacketSessionData,
-        F1PacketType.LAP_DATA: PacketLapData,
-        F1PacketType.EVENT: PacketEventData,
-        F1PacketType.PARTICIPANTS: PacketParticipantsData,
-        F1PacketType.CAR_SETUPS: PacketCarSetupData,
-        F1PacketType.CAR_TELEMETRY: PacketCarTelemetryData,
-        F1PacketType.CAR_STATUS: PacketCarStatusData,
-        F1PacketType.FINAL_CLASSIFICATION: PacketFinalClassificationData,
-        F1PacketType.LOBBY_INFO: PacketLobbyInfoData,
-        F1PacketType.CAR_DAMAGE: PacketCarDamageData,
-        F1PacketType.SESSION_HISTORY: PacketSessionHistoryData,
-        F1PacketType.TYRE_SETS: PacketTyreSetsData,
-        F1PacketType.MOTION_EX: PacketMotionExData,
-        F1PacketType.TIME_TRIAL: PacketTimeTrialData,
-        F1PacketType.LAP_POSITIONS: PacketLapPositionsData,
-    }
-
-    MIN_PACKET_FORMAT = 2023
-
     def __init__(self, port_number: int, logger: Logger = None, replay_server: bool = False):
         """Init the telemetry manager app and all its sub components
 
