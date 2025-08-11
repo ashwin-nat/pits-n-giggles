@@ -25,7 +25,7 @@
 import json
 import logging
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 from apps.backend.state_mgmt_layer.data_per_driver import (DataPerDriver,
                                                            DriverPendingEvents)

@@ -103,7 +103,6 @@ class AsyncF1TelemetryManager:
         if self.m_replay_server:
             self.m_logger.info("REPLAY SERVER MODE. PORT = %s", self.m_port_number)
 
-        should_parse_packet = (sum(callback is not None for callback in self.m_callbacks.values()) > 0)
         pkt_factory = PacketParserFactory(set(self.m_callbacks.keys()))
 
         # Run the client indefinitely
@@ -112,7 +111,7 @@ class AsyncF1TelemetryManager:
             # Get next telemetry message
             raw_packet = await self.m_receiver.getNextMessage()
             try:
-                await self._processPacket(should_parse_packet, pkt_factory, raw_packet)
+                await self._processPacket(pkt_factory, raw_packet)
             except UnsupportedPacketFormat as e:
                 self.m_logger.error(e, exc_info=True)
             except UnsupportedPacketType as e:
@@ -122,13 +121,11 @@ class AsyncF1TelemetryManager:
                 raise  # Re-raises the caught exception
 
     async def _processPacket(self,
-                             should_parse_packet: bool,
                              pkt_factory: PacketParserFactory,
                              raw_packet: bytes) -> None:
         """Processes the packet received from the UDP socket
 
         Args:
-            should_parse_packet (bool): Whether to parse the packet or not
             pkt_factory (PacketParserFactory): The packet parser factory
             raw_packet (bytes): The raw packet received from the UDP socket
         """

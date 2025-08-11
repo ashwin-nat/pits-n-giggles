@@ -22,16 +22,16 @@
 
 
 import struct
-from enum import Enum
-from typing import Dict, Any, Optional, Type, Union
+from abc import ABC
+from typing import Any, Dict, Optional
+
+from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
 from .common import SafetyCarEventType, SafetyCarType
 from .header import PacketHeader
 
-from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
-
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
-class EventType(F1SubPacketBase):
+class EventType(F1SubPacketBase, ABC):
     pass
 
 class PacketEventData(F1PacketBase):
@@ -118,25 +118,6 @@ class PacketEventData(F1PacketBase):
 
         # Collion: Inter-car collision event
         COLLISION = "COLL"
-
-        # @staticmethod
-        # def isValid(event_type: str) -> bool:
-        #     """
-        #     Check if the input event type string maps to a valid enum value.
-
-        #     Args:
-        #         event_type (str): The event type string to check.
-
-        #     Returns:
-        #         bool: True if the event type is valid, False otherwise.
-        #     """
-        #     if isinstance(event_type, PacketEventData.EventPacketType):
-        #         return True
-        #     try:
-        #         PacketEventData.EventPacketType(event_type)
-        #         return True
-        #     except ValueError:
-        #         return False
 
     class FastestLap(EventType):
         """

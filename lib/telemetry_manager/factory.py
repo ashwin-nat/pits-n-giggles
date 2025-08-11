@@ -26,17 +26,15 @@
 from logging import Logger
 from typing import Awaitable, Callable, Optional, Set, Type
 
-from lib.f1_types import (F1PacketBase, F1PacketType, InvalidPacketLengthError,
-                          PacketCarDamageData, PacketCarSetupData,
-                          PacketCarStatusData, PacketCarTelemetryData,
-                          PacketCountValidationError, PacketEventData,
+from lib.f1_types import (F1PacketBase, F1PacketType, PacketCarDamageData,
+                          PacketCarSetupData, PacketCarStatusData,
+                          PacketCarTelemetryData, PacketEventData,
                           PacketFinalClassificationData, PacketHeader,
                           PacketLapData, PacketLapPositionsData,
                           PacketLobbyInfoData, PacketMotionData,
-                          PacketMotionExData, PacketParsingError,
-                          PacketParticipantsData, PacketSessionData,
-                          PacketSessionHistoryData, PacketTimeTrialData,
-                          PacketTyreSetsData)
+                          PacketMotionExData, PacketParticipantsData,
+                          PacketSessionData, PacketSessionHistoryData,
+                          PacketTimeTrialData, PacketTyreSetsData)
 from lib.socket_receiver import TcpReceiver, TelemetryReceiver, UdpReceiver
 
 from .exceptions import UnsupportedPacketFormat, UnsupportedPacketType
@@ -103,11 +101,8 @@ class PacketParserFactory:
         if not parser_cls:
             raise UnsupportedPacketType(header.m_packetId)
 
-        try:
-            payload_raw = raw_packet[PacketHeader.PACKET_LEN:]
-            packet = parser_cls(header, payload_raw)
-        except (InvalidPacketLengthError, PacketParsingError, PacketCountValidationError):
-            raise
+        payload_raw = raw_packet[PacketHeader.PACKET_LEN:]
+        packet = parser_cls(header, payload_raw)
 
         return packet
 

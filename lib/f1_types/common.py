@@ -27,12 +27,14 @@
 ## F1 24 - https://answers.ea.com/t5/General-Discussion/F1-24-UDP-Specification/td-p/13745220
 ## F1 25 - https://forums.ea.com/blog/f1-games-game-info-hub-en/ea-sports%E2%84%A2-f1%C2%AE25-udp-specification/12187347
 
+# ------------------------- IMPORTS -------------------------------------------------------------------------------------
 
-from typing import Any, List, Optional, Set, Union
-from .base_pkt import F1BaseEnum, F1CompareableEnum
 from abc import abstractmethod
+from typing import Any, List, Optional, Set, Union
 
-# ------------------------- ERROR CLASSES --------------------------------------
+from .base_pkt import F1BaseEnum, F1CompareableEnum
+
+# ------------------------- ERROR CLASSES ------------------------------------------------------------------------------
 
 class InvalidPacketLengthError(Exception):
     """
@@ -998,22 +1000,6 @@ class GameMode(F1BaseEnum):
     def __str__(self) -> str:
         """Return a user-friendly string representation of the mode."""
         return self.name.replace("_", " ").title()
-
-    @staticmethod
-    def isValid(mode: int):
-        """Check if the given mode is valid.
-
-        Args:
-            mode (int): The mode to be validated.
-
-        Returns:
-            bool: true if valid
-        """
-        if isinstance(mode, GameMode):
-            return True  # It's already an instance of GameMode
-        min_value = min(member.value for member in GameMode)
-        max_value = max(member.value for member in GameMode)
-        return min_value <= mode <= max_value
 
     def isOnlineMode(self) -> bool:
         """Check if the mode is an online mode."""

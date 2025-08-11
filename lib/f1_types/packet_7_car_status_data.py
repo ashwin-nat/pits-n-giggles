@@ -22,10 +22,12 @@
 
 
 import struct
-from typing import Dict, List, Any
-from .common import ActualTyreCompound, VisualTyreCompound, TractionControlAssistMode, _validate_parse_fixed_segments
-from .header import PacketHeader
+from typing import Any, Dict, List, Union
+
 from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
+from .common import (ActualTyreCompound, TractionControlAssistMode,
+                     VisualTyreCompound, _validate_parse_fixed_segments)
+from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -108,9 +110,9 @@ class CarStatusData(F1SubPacketBase):
     PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
     # Type hint declarations
-    m_tractionControl: TractionControlAssistMode | int
+    m_tractionControl: Union[TractionControlAssistMode, int]
     m_antiLockBrakes: bool
-    m_fuelMix: "CarStatusData.FuelMix | int"
+    m_fuelMix: Union["CarStatusData.FuelMix", int]
     m_frontBrakeBias: int
     m_pitLimiterStatus: bool
     m_fuelInTank: float
@@ -121,14 +123,14 @@ class CarStatusData(F1SubPacketBase):
     m_maxGears: int
     m_drsAllowed: int
     m_drsActivationDistance: int
-    m_actualTyreCompound: ActualTyreCompound | int
-    m_visualTyreCompound: VisualTyreCompound | int
+    m_actualTyreCompound: Union[ActualTyreCompound, int]
+    m_visualTyreCompound: Union[VisualTyreCompound, int]
     m_tyresAgeLaps: int
-    m_vehicleFiaFlags: "CarStatusData.VehicleFIAFlags | int"
+    m_vehicleFiaFlags: Union["CarStatusData.VehicleFIAFlags", int]
     m_enginePowerICE: float
     m_enginePowerMGUK: float
     m_ersStoreEnergy: float
-    m_ersDeployMode: "CarStatusData.ERSDeployMode | int"
+    m_ersDeployMode: Union["CarStatusData.ERSDeployMode", int]
     m_ersHarvestedThisLapMGUK: float
     m_ersHarvestedThisLapMGUH: float
     m_ersDeployedThisLap: float
