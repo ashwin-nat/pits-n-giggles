@@ -28,17 +28,7 @@ from datetime import datetime
 from logging import Logger
 from typing import Awaitable, Callable, Dict, Optional
 
-from lib.f1_types import (F1PacketBase, F1PacketType, InvalidPacketLengthError,
-                          PacketCarDamageData, PacketCarSetupData,
-                          PacketCarStatusData, PacketCarTelemetryData,
-                          PacketCountValidationError, PacketEventData,
-                          PacketFinalClassificationData, PacketHeader,
-                          PacketLapData, PacketLapPositionsData,
-                          PacketLobbyInfoData, PacketMotionData,
-                          PacketMotionExData, PacketParsingError,
-                          PacketParticipantsData, PacketSessionData,
-                          PacketSessionHistoryData, PacketTimeTrialData,
-                          PacketTyreSetsData)
+from lib.f1_types import (F1PacketBase, F1PacketType)
 
 from .exceptions import UnsupportedPacketFormat, UnsupportedPacketType
 from .factory import PacketParserFactory, telemetry_receiver_factory
