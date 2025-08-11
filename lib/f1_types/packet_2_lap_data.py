@@ -22,15 +22,16 @@
 
 
 import struct
-from enum import Enum
 from typing import Any, Dict, List
 
-from .common import (F1Utils, InvalidPacketLengthError, PacketHeader,
-                     ResultStatus)
+from .common import (F1Utils,
+                     ResultStatus, _validate_parse_fixed_segments)
+from .header import PacketHeader
+from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
-class LapData:
+class LapData(F1SubPacketBase):
     """
     Class representing lap data.
     Attributes:
@@ -67,7 +68,7 @@ class LapData:
         m_speedTrapFastestLap (uint8): Fastest speed trap lap number.
     """
 
-    PACKET_FORMAT_23 = ("<"
+    COMPILED_PACKET_STRUCT_23 = struct.Struct("<"
         "I" # uint32 - Last lap time in milliseconds
         "I" # uint32 - Current time around the lap in milliseconds
         "H" # uint16 - Sector 1 time in milliseconds
@@ -99,9 +100,9 @@ class LapData:
         "H" # uint16 - Time of the actual pit stop in ms
         "B" # uint8  - Whether the car should serve a penalty at this stop
     )
-    PACKET_LEN_23:int = struct.calcsize(PACKET_FORMAT_23)
+    PACKET_LEN_23 = COMPILED_PACKET_STRUCT_23.size
 
-    PACKET_FORMAT_24:str = ("<"
+    COMPILED_PACKET_STRUCT_24 = struct.Struct("<"
         "I" # uint32   m_lastLapTimeInMS;                // Last lap time in milliseconds
         "I" # uint32   m_currentLapTimeInMS;      // Current time around the lap in milliseconds
         "H" # uint16   m_sector1TimeMSPart;         // Sector 1 time milliseconds part
@@ -141,7 +142,7 @@ class LapData:
         "f" # float    m_speedTrapFastestSpeed;     // Fastest speed through speed trap for this car in kmph
         "B" # uint8   # m_speedTrapFastestLap;       // Lap no the fastest speed was achieved, 255 = not set
     )
-    PACKET_LEN_24:int = struct.calcsize(PACKET_FORMAT_24)
+    PACKET_LEN_24 = COMPILED_PACKET_STRUCT_24.size
 
     # Type hints declaration for fields
     m_packetFormat: int
@@ -177,7 +178,7 @@ class LapData:
     m_speedTrapFastestSpeed: float
     m_speedTrapFastestLap: int
 
-    class DriverStatus(Enum):
+    class DriverStatus(F1BaseEnum):
         """
         Enumeration representing the status of a driver during a racing session.
 
@@ -191,36 +192,7 @@ class LapData:
         OUT_LAP = 3
         ON_TRACK = 4
 
-        @staticmethod
-        def isValid(driver_status: int) -> bool:
-            """Check if the given driver status is valid.
-
-            Args:
-                driver_status (int): The driver status to be validated.
-
-            Returns:
-                bool: True if valid.
-            """
-            if isinstance(driver_status, LapData.DriverStatus):
-                return True  # It's already an instance of DriverStatus
-            return any(driver_status == member.value for member in  LapData.DriverStatus)
-
-        def __str__(self) -> str:
-            """
-            Returns a human-readable string representation of the driver status.
-
-            Returns:
-                str: String representation of the driver status.
-            """
-            status_mapping = {
-                0: "IN_GARAGE",
-                1: "FLYING_LAP",
-                2: "IN_LAP",
-                3: "OUT_LAP",
-                4: "ON_TRACK",
-            }
-            return status_mapping.get(self.value, "---")
-    class PitStatus(Enum):
+    class PitStatus(F1BaseEnum):
         """
         Enumeration representing the pit status of a driver during a racing session.
         """
@@ -229,35 +201,7 @@ class LapData:
         PITTING = 1
         IN_PIT_AREA = 2
 
-        @staticmethod
-        def isValid(pit_status: int) -> bool:
-            """Check if the given pit status is valid.
-
-            Args:
-                pit_status (int): The pit status to be validated.
-
-            Returns:
-                bool: True if valid.
-            """
-            if isinstance(pit_status, LapData.PitStatus):
-                return True  # It's already an instance of PitStatus
-            return any(pit_status == member.value for member in  LapData.PitStatus)
-
-        def __str__(self) -> str:
-            """
-            Returns a human-readable string representation of the pit status.
-
-            Returns:
-                str: String representation of the pit status.
-            """
-            status_mapping = {
-                0: "NONE",
-                1: "PITTING",
-                2: "IN_PIT_AREA",
-            }
-            return status_mapping.get(self.value, "---")
-
-    class Sector(Enum):
+    class Sector(F1BaseEnum):
         """
         Enumeration representing the sector of a racing track.
         """
@@ -265,35 +209,6 @@ class LapData:
         SECTOR1 = 0
         SECTOR2 = 1
         SECTOR3 = 2
-
-        @staticmethod
-        def isValid(sector: int) -> bool:
-            """Check if the given sector is valid.
-
-            Args:
-                sector (int): The sector to be validated.
-
-            Returns:
-                bool: True if valid.
-            """
-            if isinstance(sector, LapData.Sector):
-                return True  # It's already an instance of Sector
-            return any(sector == member.value for member in  LapData.Sector)
-
-
-        def __str__(self) -> str:
-            """
-            Returns a human-readable string representation of the sector.
-
-            Returns:
-                str: String representation of the sector.
-            """
-            sector_mapping = {
-                0: "SECTOR1",
-                1: "SECTOR2",
-                2: "SECTOR3",
-            }
-            return sector_mapping.get(self.value, "---")
 
     def __init__(self, data: bytes, packet_format: int) -> None:
         """
@@ -341,7 +256,7 @@ class LapData:
                 self.m_pitLaneTimeInLaneInMS,
                 self.m_pitStopTimerInMS,
                 self.m_pitStopShouldServePen,
-            ) = struct.unpack(self.PACKET_FORMAT_23, raw_data)
+            ) = self.COMPILED_PACKET_STRUCT_23.unpack(raw_data)
             self.m_deltaToCarInFrontMinutes: int = 0
             self.m_deltaToRaceLeaderMinutes: int = 0
             self.m_speedTrapFastestSpeed: float = 0
@@ -382,7 +297,7 @@ class LapData:
                 self.m_pitStopShouldServePen,
                 self.m_speedTrapFastestSpeed,
                 self.m_speedTrapFastestLap
-            ) = struct.unpack(self.PACKET_FORMAT_24, raw_data)
+            ) = self.COMPILED_PACKET_STRUCT_24.unpack(raw_data)
 
         if LapData.DriverStatus.isValid(self.m_driverStatus):
             self.m_driverStatus = LapData.DriverStatus(self.m_driverStatus)
@@ -541,7 +456,7 @@ class LapData:
         """
         return not self.__eq__(other)
 
-class PacketLapData:
+class PacketLapData(F1PacketBase):
     """Class representing the incoming PacketLapData.
 
     Attributes:
@@ -550,6 +465,9 @@ class PacketLapData:
         - m_timeTrialPBCarIdx (int) - Index of Personal Best car in time trial (255 if invalid)
         - m_timeTrialRivalCarIdx (int) - Index of Rival car in time trial (255 if invalid)
     """
+
+    MAX_CARS = 22
+
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
         """
         Initialize PacketLapData instance by unpacking binary data.
@@ -559,46 +477,28 @@ class PacketLapData:
         Raises:
             - InvalidPacketLengthError: If the received packet length is not as expected.
         """
-        # Store the header reference
-        self.m_header = header
-
-        # Set the fixed number of lap data entries (22 cars)
-        self.m_lapDataCount = 22
+        super().__init__(header)
 
         # Determine LapData size based on game year
-        # F1 game data structures can vary between game versions
         lap_data_obj_size = LapData.PACKET_LEN_24  # Default to 2024 format
         if header.m_packetFormat == 2023:
             lap_data_obj_size = LapData.PACKET_LEN_23  # Use 2023 format if needed
 
-        # Calculate expected packet length:
-        # - Total lap data size (22 cars × bytes per car)
-        # - Plus 2 bytes for the time trial indices at the end
-        len_of_lap_data_array = self.m_lapDataCount * lap_data_obj_size
-        expected_len = len_of_lap_data_array + 2
-
-        # Validate that the packet is the correct length
-        # This helps catch corrupted or incorrect data early
-        if len(packet) != expected_len:
-            raise InvalidPacketLengthError(
-                f"Received LapDataPacket length {len(packet)} is not of expected length {expected_len}"
-            )
-
         # Process each car's lap data individually
         # Extract chunks of the correct size and create LapData objects
-        self.m_lapData: List[LapData] = []
-        for i in range(self.m_lapDataCount):
-            # Calculate start and end indices for this car's data
-            start_idx = i * lap_data_obj_size
-            end_idx = start_idx + lap_data_obj_size
-
-            # Extract this car's binary data and create a LapData object
-            car_data = packet[start_idx:end_idx]
-            self.m_lapData.append(LapData(car_data, header.m_packetFormat))
+        self.m_lapData: List[LapData]
+        self.m_lapData, offset_so_far = _validate_parse_fixed_segments(
+            data=packet,
+            offset=0,
+            item_cls=LapData,
+            item_len=lap_data_obj_size,
+            count=self.MAX_CARS,
+            max_count=self.MAX_CARS,
+            packet_format=header.m_packetFormat
+        )
 
         # Extract time trial indices from the last 2 bytes
-        # These identify personal best and rival cars in time trial mode
-        time_trial_data = packet[len_of_lap_data_array:]
+        time_trial_data = packet[offset_so_far:]
         self.m_timeTrialPBCarIdx, self.m_timeTrialRivalCarIdx = struct.unpack('<bb', time_trial_data)
 
     def __str__(self) -> str:
@@ -624,7 +524,7 @@ class PacketLapData:
 
         json_data = {
             "lap-data": [lap_data.toJSON() for lap_data in self.m_lapData],
-            "lap-data-count": self.m_lapDataCount,
+            "lap-data-count": self.MAX_CARS,
             "time-trial-pb-car-idx": int(self.m_timeTrialPBCarIdx),
             "time-trial-rival-car-idx": int(self.m_timeTrialRivalCarIdx),
         }

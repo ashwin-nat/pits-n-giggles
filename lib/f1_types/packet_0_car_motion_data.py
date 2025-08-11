@@ -24,11 +24,13 @@
 import struct
 from typing import Any, Dict, List
 
-from .common import InvalidPacketLengthError, PacketHeader
+from .common import InvalidPacketLengthError, _validate_parse_fixed_segments
+from .header import PacketHeader
+from .base_pkt import F1PacketBase, F1SubPacketBase
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
-class CarMotionData:
+class CarMotionData(F1SubPacketBase):
     """
     A class for parsing the Car Motion Data of a telemetry packet in a racing game.
     The car motion data structure is as follows:
@@ -54,7 +56,7 @@ class CarMotionData:
         - m_roll (float): Roll angle in radians
     """
 
-    PACKET_FORMAT = ("<"
+    COMPILED_PACKET_STRUCT = struct.Struct("<"
         "f" # float - World space X position - metres
         "f" # float - World space Y position
         "f" # float - World space Z position
@@ -74,7 +76,7 @@ class CarMotionData:
         "f" # float - Pitch angle in radians
         "f" # float - Roll angle in radians
     )
-    PACKET_LEN: int = struct.calcsize(PACKET_FORMAT)
+    PACKET_LEN: int = COMPILED_PACKET_STRUCT.size
 
     def __init__(self, data: bytes) -> None:
         """A class for parsing the data related to the motion of the F1 car
@@ -105,11 +107,11 @@ class CarMotionData:
 
         # Now, unpack the data and populate the members
         self.m_worldPositionX, self.m_worldPositionY, self.m_worldPositionZ, \
-        self.m_worldVelocityX, self.m_worldVelocityY, self.m_worldVelocityZ, \
-        self.m_worldForwardDirX, self.m_worldForwardDirY, self.m_worldForwardDirZ, \
-        self.m_worldRightDirX, self.m_worldRightDirY, self.m_worldRightDirZ, \
-        self.m_gForceLateral, self.m_gForceLongitudinal, self.m_gForceVertical, \
-        self.m_yaw, self.m_pitch, self.m_roll = struct.unpack(self.PACKET_FORMAT, data)
+            self.m_worldVelocityX, self.m_worldVelocityY, self.m_worldVelocityZ, \
+            self.m_worldForwardDirX, self.m_worldForwardDirY, self.m_worldForwardDirZ, \
+            self.m_worldRightDirX, self.m_worldRightDirY, self.m_worldRightDirZ, \
+            self.m_gForceLateral, self.m_gForceLongitudinal, self.m_gForceVertical, \
+            self.m_yaw, self.m_pitch, self.m_roll = self.COMPILED_PACKET_STRUCT.unpack(data)
 
     def __str__(self) -> str:
         """Return a formatted string representing the CarMotionData object
@@ -219,13 +221,13 @@ class CarMotionData:
         Returns:
             bytes: The serialized bytes.
         """
-        return struct.pack(self.PACKET_FORMAT,
-                           self.m_worldPositionX, self.m_worldPositionY, self.m_worldPositionZ,
-                           self.m_worldVelocityX, self.m_worldVelocityY, self.m_worldVelocityZ,
-                           self.m_worldForwardDirX, self.m_worldForwardDirY, self.m_worldForwardDirZ,
-                           self.m_worldRightDirX, self.m_worldRightDirY, self.m_worldRightDirZ,
-                           self.m_gForceLateral, self.m_gForceLongitudinal, self.m_gForceVertical,
-                           self.m_yaw, self.m_pitch, self.m_roll)
+        return self.COMPILED_PACKET_STRUCT.pack(
+            self.m_worldPositionX, self.m_worldPositionY, self.m_worldPositionZ,
+            self.m_worldVelocityX, self.m_worldVelocityY, self.m_worldVelocityZ,
+            self.m_worldForwardDirX, self.m_worldForwardDirY, self.m_worldForwardDirZ,
+            self.m_worldRightDirX, self.m_worldRightDirY, self.m_worldRightDirZ,
+            self.m_gForceLateral, self.m_gForceLongitudinal, self.m_gForceVertical,
+            self.m_yaw, self.m_pitch, self.m_roll)
 
     @classmethod
     def from_values(cls, world_position_x: float, world_position_y: float, world_position_z: float,
@@ -259,16 +261,16 @@ class CarMotionData:
         Returns:
             CarMotionData: A CarMotionData object initialized with the provided values.
         """
-        data = struct.pack(CarMotionData.PACKET_FORMAT,
-                           world_position_x, world_position_y, world_position_z,
-                           world_velocity_x, world_velocity_y, world_velocity_z,
-                           world_forward_dir_x, world_forward_dir_y, world_forward_dir_z,
-                           world_right_dir_x, world_right_dir_y, world_right_dir_z,
-                           g_force_lateral, g_force_longitudinal, g_force_vertical,
-                           yaw, pitch, roll)
+        data = cls.COMPILED_PACKET_STRUCT.pack(
+            world_position_x, world_position_y, world_position_z,
+            world_velocity_x, world_velocity_y, world_velocity_z,
+            world_forward_dir_x, world_forward_dir_y, world_forward_dir_z,
+            world_right_dir_x, world_right_dir_y, world_right_dir_z,
+            g_force_lateral, g_force_longitudinal, g_force_vertical,
+            yaw, pitch, roll)
         return cls(data)
 
-class PacketMotionData:
+class PacketMotionData(F1PacketBase):
     """A class for parsing the Motion Data Packet of a telemetry packet in a racing game.
 
     Args:
@@ -283,6 +285,8 @@ class PacketMotionData:
         InvalidPacketLengthError: If received length is not as per expectation
     """
 
+    MAX_CARS = 22
+
     def __init__(self, header:PacketHeader, packet: bytes) -> None:
         """Construct the PacketMotionData object from the given packet payload
 
@@ -294,7 +298,7 @@ class PacketMotionData:
             InvalidPacketLengthError: If number of bytes is not as per expectation
         """
 
-        self.m_header: PacketHeader = header       # PacketHeader
+        super().__init__(header)
 
         if ((len(packet) % CarMotionData.PACKET_LEN) != 0):
             raise InvalidPacketLengthError(
@@ -302,10 +306,15 @@ class PacketMotionData:
             )
 
         # Slice the packet bytes in steps of CarMotionData.PACKET_LEN to create CarMotionData objects.
-        self.m_carMotionData = [
-            CarMotionData(packet[i:i + CarMotionData.PACKET_LEN])
-            for i in range(0, len(packet), CarMotionData.PACKET_LEN)
-        ]
+        self.m_carMotionData: List[CarMotionData]
+        self.m_carMotionData, _ = _validate_parse_fixed_segments(
+            data=packet,
+            offset=0,
+            item_cls=CarMotionData,
+            item_len=CarMotionData.PACKET_LEN,
+            count=self.MAX_CARS,
+            max_count=self.MAX_CARS
+        )
 
     def __str__(self) -> str:
         """

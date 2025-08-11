@@ -24,11 +24,13 @@
 import struct
 from typing import Any, Dict, Union
 
-from .common import F1Utils, PacketHeader, TeamID24, TeamID25
+from .common import F1Utils, TeamID24, TeamID25
+from .base_pkt import F1SubPacketBase, F1PacketBase
+from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
-class TimeTrialDataSet:
+class TimeTrialDataSet(F1SubPacketBase):
     """The class representing the time trial data for a single car.
 
     Attributes:
@@ -45,7 +47,7 @@ class TimeTrialDataSet:
         m_customSetup (bool): 0 = No, 1 = Yes
         m_valid (bool): 0 = invalid, 1 = valid
     """
-    PACKET_FORMAT = ("<"
+    COMPILED_PACKET_STRUCT = struct.Struct("<"
         "B" # uint8     m_carIdx;                   // Index of the car this data relates to
         "B" # uint8     m_teamId;                   // Team id - see appendix
         "I" # uint32    m_lapTimeInMS;              // Lap time in milliseconds
@@ -59,7 +61,7 @@ class TimeTrialDataSet:
         "B" # uint8     m_customSetup;              // 0 = No, 1 = Yes
         "B" # uint8     m_valid;                    // 0 = invalid, 1 = valid
     )
-    PACKET_LEN = struct.calcsize(PACKET_FORMAT)
+    PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
     m_carIdx: int
     m_teamId: Union[TeamID24, TeamID25]
@@ -86,7 +88,6 @@ class TimeTrialDataSet:
             struct.error: If the binary data does not match the expected format.
         """
 
-        unpacked_data = struct.unpack(self.PACKET_FORMAT, data)
         (
             self.m_carIdx,
             self.m_teamId,
@@ -100,7 +101,7 @@ class TimeTrialDataSet:
             self.m_equalCarPerformance,
             self.m_customSetup,
             self.m_isValid,
-        ) = unpacked_data
+        ) = self.COMPILED_PACKET_STRUCT.unpack(data)
 
         # No ned to check game year, since this packet type is not available in F1 23
         if packet_format < 2025 and TeamID24.isValid(self.m_teamId):
@@ -184,7 +185,7 @@ class TimeTrialDataSet:
             bytes: The serialized TimeTrialDataSet object
         """
 
-        return struct.pack(self.PACKET_FORMAT,
+        return self.COMPILED_PACKET_STRUCT.pack(
             self.m_carIdx,
             self.m_teamId.value,
             self.m_lapTimeInMS,
@@ -236,7 +237,7 @@ class TimeTrialDataSet:
         """
 
         return cls(
-            struct.pack(cls.PACKET_FORMAT,
+            cls.COMPILED_PACKET_STRUCT.pack(
                 car_index,
                 team_id.value,
                 lap_time_in_ms,
@@ -252,7 +253,7 @@ class TimeTrialDataSet:
             ), game_year
         )
 
-class PacketTimeTrialData:
+class PacketTimeTrialData(F1PacketBase):
     """Class representing the Time Trial Data Packet.
 
     Attributes:
@@ -275,7 +276,7 @@ class PacketTimeTrialData:
             struct.error: If the binary data does not match the expected format.
         """
 
-        self.m_header = header
+        super().__init__(header)
 
         # First, the Player session best data set
         bytes_so_far = 0

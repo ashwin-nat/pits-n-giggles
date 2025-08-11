@@ -22,16 +22,17 @@
 
 
 import struct
-from enum import Enum
 from typing import Any, Dict, List, Union
 
-from .common import (GameMode, GearboxAssistMode, PacketHeader,
-                     RuleSet, SafetyCarType, SessionLength,
-                     SessionType23, SessionType24, TrackID, _validate_parse_fixed_segments)
+from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
+from .common import (GameMode, GearboxAssistMode, RuleSet, SafetyCarType,
+                     SessionLength, SessionType23, SessionType24, TrackID,
+                     _validate_parse_fixed_segments)
+from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
-class MarshalZone:
+class MarshalZone(F1SubPacketBase):
     """
     A class for parsing the Marshal Zone data within a telemetry packet in a racing game.
 
@@ -42,13 +43,13 @@ class MarshalZone:
         - m_zone_flag (MarshalZone.MarshalZoneFlagType): Refer to the enum type for various options
     """
 
-    PACKET_FORMAT = ("<"
+    COMPILED_PACKET_STRUCT = struct.Struct("<"
         "f" # float - Fraction (0..1) of way through the lap the marshal zone starts
         "b" # int8  - -1 = invalid/unknown, 0 = none, 1 = green, 2 = blue, 3 = yellow
     )
-    PACKET_LEN = struct.calcsize(PACKET_FORMAT)
+    PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
-    class MarshalZoneFlagType(Enum):
+    class MarshalZoneFlagType(F1BaseEnum):
         """
         ENUM class for the marshal zone flag status
         """
@@ -58,30 +59,6 @@ class MarshalZone:
         GREEN_FLAG = 1
         BLUE_FLAG = 2
         YELLOW_FLAG = 3
-
-        @staticmethod
-        def isValid(flag_type: int):
-            """Check if the given packet type is valid.
-
-            Args:
-                flag_type (int): The flag code to be validated. Also supports type MarshalZoneFlagType.
-                    Returns true in this case
-
-            Returns:
-                bool: true if valid
-            """
-            if isinstance(flag_type, MarshalZone.MarshalZoneFlagType):
-                return True  # It's already an instance of MarshalZone.MarshalZoneFlagType
-            return any(flag_type == member.value for member in MarshalZone.MarshalZoneFlagType)
-
-        def __str__(self):
-            """Return the string representation of this object
-
-            Returns:
-                str: string representation
-            """
-
-            return self.name
 
     def __init__(self, data: bytes) -> None:
         """Unpack the given raw bytes into this object
@@ -98,7 +75,7 @@ class MarshalZone:
         (
             self.m_zoneStart,   # float - Fraction (0..1) of way through the lap the marshal zone starts
             self.m_zoneFlag     # int8 - -1 = invalid/unknown, 0 = none, 1 = green, 2 = blue, 3 = yellow
-        ) = struct.unpack(self.PACKET_FORMAT, data)
+        ) = self.COMPILED_PACKET_STRUCT.unpack(data)
 
         if MarshalZone.MarshalZoneFlagType.isValid(self.m_zoneFlag):
             self.m_zoneFlag = MarshalZone.MarshalZoneFlagType(self.m_zoneFlag)
@@ -154,7 +131,7 @@ class MarshalZone:
             bytes: A list of bytes representing the raw data.
         """
 
-        return struct.pack(self.PACKET_FORMAT, self.m_zoneStart, self.m_zoneFlag)
+        return self.COMPILED_PACKET_STRUCT.pack(self.m_zoneStart, self.m_zoneFlag)
 
     @classmethod
     def from_values(cls, zone_start: float, zone_flag: MarshalZoneFlagType) -> "MarshalZone":
@@ -168,9 +145,9 @@ class MarshalZone:
             MarshalZone: A new MarshalZone object
         """
 
-        return cls(struct.pack(cls.PACKET_FORMAT, zone_start, zone_flag))
+        return cls(cls.COMPILED_PACKET_STRUCT.pack(zone_start, zone_flag))
 
-class WeatherForecastSample:
+class WeatherForecastSample(F1SubPacketBase):
     """
     Represents a weather forecast sample for a specific session type.
 
@@ -187,7 +164,7 @@ class WeatherForecastSample:
         - m_rain_percentage (int): Rain percentage (0-100).
     """
 
-    PACKET_FORMAT = ("<"
+    COMPILED_PACKET_STRUCT = struct.Struct("<"
         "B" # uint8  -    0 = unknown, 1 = P1, 2 = P2, 3 = P3, 4 = Short P, 5 = Q1
                         # 6 = Q2, 7 = Q3, 8 = Short Q, 9 = OSQ, 10 = R, 11 = R2
                         # 12 = R3, 13 = Time Trial
@@ -200,9 +177,9 @@ class WeatherForecastSample:
         "b" # int8   - Air temp. change - 0 = up, 1 = down, 2 = no change
         "B" # uint8  - Rain percentage (0-100)
     )
-    PACKET_LEN = struct.calcsize(PACKET_FORMAT)
+    PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
-    class WeatherCondition(Enum):
+    class WeatherCondition(F1BaseEnum):
         """
         Enumeration representing different weather conditions.
 
@@ -234,32 +211,9 @@ class WeatherForecastSample:
             Returns:
                 str: String representation of the weather condition.
             """
-            return {
-                WeatherForecastSample.WeatherCondition.CLEAR: "Clear",
-                WeatherForecastSample.WeatherCondition.LIGHT_CLOUD: "Light Cloud",
-                WeatherForecastSample.WeatherCondition.OVERCAST: "Overcast",
-                WeatherForecastSample.WeatherCondition.LIGHT_RAIN: "Light Rain",
-                WeatherForecastSample.WeatherCondition.HEAVY_RAIN: "Heavy Rain",
-                WeatherForecastSample.WeatherCondition.STORM: "Storm",
-                WeatherForecastSample.WeatherCondition.THUNDERSTORM: "Thunderstorm",
-            }[self]
+            return self.name.replace('_', ' ').title()
 
-        @staticmethod
-        def isValid(weather_type_code: int):
-            """Check if the given weather type code is valid.
-
-            Args:
-                weather_type_code (int): The weather type code to be validated.
-                    Also supports type WeatherCondition. Returns true in this case
-
-            Returns:
-                bool: true if valid
-            """
-            if isinstance(weather_type_code, WeatherForecastSample.WeatherCondition):
-                return True  # It's already an instance of WeatherForecastSample.WeatherCondition
-            return any(weather_type_code == member.value for member in  WeatherForecastSample.WeatherCondition)
-
-    class TrackTemperatureChange(Enum):
+    class TrackTemperatureChange(F1BaseEnum):
         """
         Enumeration representing changes in track temperature.
 
@@ -288,24 +242,7 @@ class WeatherForecastSample:
                 WeatherForecastSample.TrackTemperatureChange.NO_CHANGE: "No Temperature Change",
             }[self]
 
-        @staticmethod
-        def isValid(temp_change_code: int):
-            """Check if the given temperature change code is valid.
-
-            Args:
-                temp_change_code (int): The temperature change code to be validated.
-                    Also supports type TrackTemperatureChange. Returns true in this case
-
-            Returns:
-                bool: true if valid
-            """
-            if isinstance(temp_change_code, WeatherForecastSample.TrackTemperatureChange):
-                return True  # It's already an instance of WeatherForecastSample.TrackTemperatureChange
-            min_value = min(member.value for member in WeatherForecastSample.TrackTemperatureChange)
-            max_value = max(member.value for member in WeatherForecastSample.TrackTemperatureChange)
-            return min_value <= temp_change_code <= max_value
-
-    class AirTemperatureChange(Enum):
+    class AirTemperatureChange(F1BaseEnum):
         """
         Enumeration representing changes in air temperature.
 
@@ -321,24 +258,7 @@ class WeatherForecastSample:
         DOWN = 1
         NO_CHANGE = 2
 
-        @staticmethod
-        def isValid(air_temp_change_code: int):
-            """Check if the given air temperature change code is valid.
-
-            Args:
-                air_temp_change_code (int): The air temperature change to be validated.
-                    Also supports type AirTemperatureChange. Returns true in this case
-
-            Returns:
-                bool: true if valid
-            """
-            if isinstance(air_temp_change_code, WeatherForecastSample.AirTemperatureChange):
-                return True  # It's already an instance of WeatherForecastSample.AirTemperatureChange
-            min_value = min(member.value for member in WeatherForecastSample.AirTemperatureChange)
-            max_value = max(member.value for member in WeatherForecastSample.AirTemperatureChange)
-            return min_value <= air_temp_change_code <= max_value
-
-        def __str__(self):
+        def __str__(self) -> str:
             return {
                 WeatherForecastSample.AirTemperatureChange.UP: "Temperature Up",
                 WeatherForecastSample.AirTemperatureChange.DOWN: "Temperature Down",
@@ -373,7 +293,7 @@ class WeatherForecastSample:
             self.m_airTemperature,                # int8
             self.m_airTemperatureChange,          # int8
             self.m_rainPercentage                 # uint8
-        ) = struct.unpack(self.PACKET_FORMAT, data)
+        ) = self.COMPILED_PACKET_STRUCT.unpack(data)
 
         # Convert to typed enums wherever applicable
         if WeatherForecastSample.WeatherCondition.isValid(self.m_weather):
@@ -466,7 +386,7 @@ class WeatherForecastSample:
             bytes: A list of bytes representing the raw data.
         """
 
-        return struct.pack(self.PACKET_FORMAT,
+        return self.COMPILED_PACKET_STRUCT.pack(
             self.m_sessionType,
             self.m_timeOffset,
             self.m_weather.value,
@@ -507,7 +427,7 @@ class WeatherForecastSample:
         """
 
         return cls(
-            struct.pack(WeatherForecastSample.PACKET_FORMAT,
+            WeatherForecastSample.COMPILED_PACKET_STRUCT.pack(
                 session_type.value,
                 time_offset,
                 weather.value,
@@ -520,7 +440,7 @@ class WeatherForecastSample:
             game_year
         )
 
-class PacketSessionData:
+class PacketSessionData(F1PacketBase):
     """
     Represents an incoming packet containing session data.
 
@@ -584,7 +504,7 @@ class PacketSessionData:
     F1_24_MAX_NUM_WEATHER_FORECAST_SAMPLES = 64
     F1_24_MAX_NUM_MARSHAL_ZONES = 21
 
-    PACKET_FORMAT_SECTION_0 = ("<"
+    COMPILED_PACKET_STRUCT_SECTION_0 = struct.Struct("<"
         "B" # uint8           m_weather;                  // Weather - 0 = clear, 1 = light cloud, 2 = overcast
             #                                         // 3 = light rain, 4 = heavy rain, 5 = storm
         "b" # int8                m_trackTemperature;        // Track temp. in degrees celsius
@@ -606,16 +526,16 @@ class PacketSessionData:
         "B" # uint8           m_sliProNativeSupport;    // SLI Pro support, 0 = inactive, 1 = active
         "B" # uint8           m_numMarshalZones;             // Number of marshal zones to follow
     )
-    PACKET_LEN_SECTION_0 = struct.calcsize(PACKET_FORMAT_SECTION_0)
+    PACKET_LEN_SECTION_0 = COMPILED_PACKET_STRUCT_SECTION_0.size
 
-    PACKET_FORMAT_SECTION_2 = ("<"
+    COMPILED_PACKET_STRUCT_SECTION_2 = struct.Struct("<"
         "B" # uint8           m_safetyCarStatus; // 0 = no safety car, 1 = full // 2 = virtual, 3 = formation lap
         "B" # uint8           m_networkGame;               // 0 = offline, 1 = online
         "B" # uint8           m_numWeatherForecastSamples; // Number of weather samples to follow
     )
-    PACKET_LEN_SECTION_2 = struct.calcsize(PACKET_FORMAT_SECTION_2)
+    PACKET_LEN_SECTION_2 = COMPILED_PACKET_STRUCT_SECTION_2.size
 
-    PACKET_FORMAT_SECTION_4 = ("<"
+    COMPILED_PACKET_STRUCT_SECTION_4 = struct.Struct("<"
         "B" # uint8   - Weather prediction type. 0 = Perfect, 1 = Approximate
         "B" # uint8   - AI Difficulty rating - 0-110
         "I" # uint32  - Identifier for season - persists across saves
@@ -646,10 +566,10 @@ class PacketSessionData:
         "B" # uint8    -       m_numVirtualSafetyCarPeriods;       // Number of virtual safety cars called
         "B" # uint8    -       m_numRedFlagPeriods;                // Number of red flags called during session
     )
-    PACKET_LEN_SECTION_4 = struct.calcsize(PACKET_FORMAT_SECTION_4)
+    PACKET_LEN_SECTION_4 = COMPILED_PACKET_STRUCT_SECTION_4.size
 
     # This is only for F1 24
-    PACKET_FORMAT_SECTION_5 = ("<"
+    COMPILED_PACKET_STRUCT_SECTION_5 = struct.Struct("<"
         "B" # uint8   - car equal performance. 0 = off, 1 = on
         "B" # uint8    m_recoveryMode;              	// 0 = None, 1 = Flashbacks, 2 = Auto-recovery
         "B" # uint8    m_flashbackLimit;            	// 0 = Low, 1 = Medium, 2 = High, 3 = Unlimited
@@ -680,9 +600,9 @@ class PacketSessionData:
         "f" # float    m_sector2LapDistanceStart;          // Distance in m around track where sector 2 starts
         "f" # float    m_sector3LapDistanceStart;          // Distance in m around track where sector 3 starts
     )
-    PACKET_LEN_SECTION_5 = struct.calcsize(PACKET_FORMAT_SECTION_5)
+    PACKET_LEN_SECTION_5 = COMPILED_PACKET_STRUCT_SECTION_5.size
 
-    class FormulaType(Enum):
+    class FormulaType(F1BaseEnum):
         """An enumeration of formula types."""
 
         F1_MODERN: int = 0
@@ -707,23 +627,7 @@ class PacketSessionData:
                 PacketSessionData.FormulaType.F2_2021: "F2 2021"
             }[self]
 
-        @staticmethod
-        def isValid(formula_type_code: int):
-            """Check if the given formula type is valid.
-
-            Args:
-                formula_type_code (int): The safety car status to be validated.
-                    Also supports type FormulaType. Returns true in this case
-
-            Returns:
-                bool: true if valid
-            """
-            if isinstance(formula_type_code, PacketSessionData.FormulaType):
-                return True  # It's already an instance of FormulaType
-            return any(formula_type_code == member.value for member in \
-                PacketSessionData.FormulaType)
-
-    class RecoveryMode(Enum):
+    class RecoveryMode(F1BaseEnum):
         """
         ENUM class for the recovery type modes
         """
@@ -731,31 +635,7 @@ class PacketSessionData:
         FLASHBACKS = 1
         AUTO_RECOVERY = 2
 
-        @staticmethod
-        def isValid(flag_type: int):
-            """Check if the given recovery mode is valid.
-
-            Args:
-                flag_type (int): The flag code to be validated. Also supports type RecoveryMode.
-                    Returns true in this case
-
-            Returns:
-                bool: true if valid
-            """
-            if isinstance(flag_type, PacketSessionData.RecoveryMode):
-                return True  # It's already an instance of PacketSessionData.RecoveryMode
-            return any(flag_type == member.value for member in PacketSessionData.RecoveryMode)
-
-        def __str__(self):
-            """Return the string representation of this object
-
-            Returns:
-                str: string representation
-            """
-
-            return self.name
-
-    class FlashbackLimit(Enum):
+    class FlashbackLimit(F1BaseEnum):
         """
         ENUM class for the flashback limit types
         """
@@ -764,155 +644,35 @@ class PacketSessionData:
         HIGH = 2
         UNLIMITED = 3
 
-        @staticmethod
-        def isValid(flag_type: int):
-            """Check if the given flashback limit type is valid.
-
-            Args:
-                flag_type (int): The flag code to be validated. Also supports type FlashbackLimit.
-                    Returns true in this case
-
-            Returns:
-                bool: true if valid
-            """
-            if isinstance(flag_type, PacketSessionData.FlashbackLimit):
-                return True  # It's already an instance of PacketSessionData.FlashbackLimit
-            return any(flag_type == member.value for member in PacketSessionData.FlashbackLimit)
-
-        def __str__(self):
-            """Return the string representation of this object
-
-            Returns:
-                str: string representation
-            """
-
-            return self.name
-
-    class SurfaceType(Enum):
+    class SurfaceType(F1BaseEnum):
         """
         ENUM class for the surface types
         """
         SIMPLIFIED = 0
         REALISTIC = 1
 
-        @staticmethod
-        def isValid(flag_type: int):
-            """Check if the given surface type is valid.
-
-            Args:
-                flag_type (int): The flag code to be validated. Also supports type SurfaceType.
-                    Returns true in this case
-
-            Returns:
-                bool: true if valid
-            """
-            if isinstance(flag_type, PacketSessionData.SurfaceType):
-                return True  # It's already an instance of PacketSessionData.SurfaceType
-            return any(flag_type == member.value for member in PacketSessionData.SurfaceType)
-
-        def __str__(self):
-            """Return the string representation of this object
-
-            Returns:
-                str: string representation
-            """
-
-            return self.name
-
-    class LowFuelMode(Enum):
+    class LowFuelMode(F1BaseEnum):
         """
         ENUM class for the low fuel mode types
         """
         EASY = 0
         HARD = 1
 
-        @staticmethod
-        def isValid(flag_type: int):
-            """Check if the given low fuel mode is valid.
-
-            Args:
-                flag_type (int): The low fuel mode to be validated. Also supports type LowFuelMode.
-                    Returns true in this case
-
-            Returns:
-                bool: true if valid
-            """
-            if isinstance(flag_type, PacketSessionData.LowFuelMode):
-                return True  # It's already an instance of PacketSessionData.LowFuelMode
-            return any(flag_type == member.value for member in PacketSessionData.LowFuelMode)
-
-        def __str__(self):
-            """Return the string representation of this object
-
-            Returns:
-                str: string representation
-            """
-
-            return self.name
-
-    class RaceStartsMode(Enum):
+    class RaceStartsMode(F1BaseEnum):
         """
         ENUM class for the race starts mode types
         """
         MANUAL = 0
         ASSISTED = 1
 
-        @staticmethod
-        def isValid(flag_type: int):
-            """Check if the given race starts mode is valid.
-
-            Args:
-                flag_type (int): The race starts mode to be validated. Also supports type
-                    RaceStartsMode. Returns true in this case
-
-            Returns:
-                bool: true if valid
-            """
-            if isinstance(flag_type, PacketSessionData.RaceStartsMode):
-                return True  # It's already an instance of PacketSessionData.RaceStartsMode
-            return any(flag_type == member.value for member in PacketSessionData.RaceStartsMode)
-
-        def __str__(self):
-            """Return the string representation of this object
-
-            Returns:
-                str: string representation
-            """
-
-            return self.name
-
-    class TyreTemperatureMode(Enum):
+    class TyreTemperatureMode(F1BaseEnum):
         """
         ENUM class for the tyre temperature mode types
         """
         SURFACE_ONLY = 0
         SURFACE_AND_CARCASS = 1
 
-        @staticmethod
-        def isValid(flag_type: int):
-            """Check if the given tyre temperature mode is valid.
-
-            Args:
-                flag_type (int): The tyre temperature mode to be validated. Also supports type
-                    TyreTemperatureMode. Returns true in this case
-
-            Returns:
-                bool: true if valid
-            """
-            if isinstance(flag_type, PacketSessionData.TyreTemperatureMode):
-                return True  # It's already an instance of PacketSessionData.TyreTemperatureMode
-            return any(flag_type == member.value for member in PacketSessionData.TyreTemperatureMode)
-
-        def __str__(self):
-            """Return the string representation of this object
-
-            Returns:
-                str: string representation
-            """
-
-            return self.name
-
-    class CarDamageMode(Enum):
+    class CarDamageMode(F1BaseEnum):
         """
         ENUM class for the car damage mode types
         """
@@ -921,31 +681,7 @@ class PacketSessionData:
         STANDARD = 2
         SIMULATION = 3
 
-        @staticmethod
-        def isValid(flag_type: int):
-            """Check if the given car damage mode is valid.
-
-            Args:
-                flag_type (int): The car damage mode to be validated. Also supports type
-                    CarDamageMode. Returns true in this case
-
-            Returns:
-                bool: true if valid
-            """
-            if isinstance(flag_type, PacketSessionData.CarDamageMode):
-                return True  # It's already an instance of PacketSessionData.CarDamageMode
-            return any(flag_type == member.value for member in PacketSessionData.CarDamageMode)
-
-        def __str__(self):
-            """Return the string representation of this object
-
-            Returns:
-                str: string representation
-            """
-
-            return self.name
-
-    class CarDamageRate(Enum):
+    class CarDamageRate(F1BaseEnum):
         """
         ENUM class for the car damage rate types
         """
@@ -953,31 +689,7 @@ class PacketSessionData:
         STANDARD = 1
         SIMULATION = 2
 
-        @staticmethod
-        def isValid(flag_type: int):
-            """Check if the given car damage rate is valid.
-
-            Args:
-                flag_type (int): The car damage rate to be validated. Also supports type
-                    CarDamageRate. Returns true in this case
-
-            Returns:
-                bool: true if valid
-            """
-            if isinstance(flag_type, PacketSessionData.CarDamageRate):
-                return True  # It's already an instance of PacketSessionData.CarDamageRate
-            return any(flag_type == member.value for member in PacketSessionData.CarDamageRate)
-
-        def __str__(self):
-            """Return the string representation of this object
-
-            Returns:
-                str: string representation
-            """
-
-            return self.name
-
-    class CollisionsMode(Enum):
+    class CollisionsMode(F1BaseEnum):
         """
         ENUM class for the collisions mode types
         """
@@ -985,63 +697,14 @@ class PacketSessionData:
         PLAYER_TO_PLAYER_OFF = 1
         ON = 2
 
-        @staticmethod
-        def isValid(flag_type: int):
-            """Check if the given collisions mode is valid.
-
-            Args:
-                flag_type (int): The collisions mode to be validated. Also supports type
-                    CollisionsMode. Returns true in this case
-
-            Returns:
-                bool: true if valid
-            """
-            if isinstance(flag_type, PacketSessionData.CollisionsMode):
-                return True  # It's already an instance of PacketSessionData.CollisionsMode
-            return any(flag_type == member.value for member in PacketSessionData.CollisionsMode)
-
-        def __str__(self):
-            """Return the string representation of this object
-
-            Returns:
-                str: string representation
-            """
-
-            return self.name
-
-    class CornerCuttingStringency(Enum):
+    class CornerCuttingStringency(F1BaseEnum):
         """
         ENUM class for the corner cutting stringency types
         """
         REGULAR = 0
         STRICT = 1
 
-        @staticmethod
-        def isValid(flag_type: int):
-            """Check if the given corner cutting stringency is valid.
-
-            Args:
-                flag_type (int): The corner cutting stringency to be validated. Also supports type
-                    CornerCuttingStringency. Returns true in this case
-
-            Returns:
-                bool: true if valid
-            """
-            if isinstance(flag_type, PacketSessionData.CornerCuttingStringency):
-                return True  # It's already an instance of PacketSessionData.CornerCuttingStringency
-            return any(flag_type == member.value for member in
-                       PacketSessionData.CornerCuttingStringency)
-
-        def __str__(self):
-            """Return the string representation of this object
-
-            Returns:
-                str: string representation
-            """
-
-            return self.name
-
-    class PitStopExperience(Enum):
+    class PitStopExperience(F1BaseEnum):
         """
         ENUM class for the pit stop experience types
         """
@@ -1049,32 +712,7 @@ class PacketSessionData:
         BROADCAST = 1
         IMMERSIVE = 2
 
-        @staticmethod
-        def isValid(flag_type: int):
-            """Check if the given pit stop experience is valid.
-
-            Args:
-                flag_type (int): The pit stop experience to be validated. Also supports type
-                    PitStopExperience. Returns true in this case
-
-            Returns:
-                bool: true if valid
-            """
-            if isinstance(flag_type, PacketSessionData.PitStopExperience):
-                return True  # It's already an instance of PacketSessionData.PitStopExperience
-            return any(flag_type == member.value for member in
-                       PacketSessionData.PitStopExperience)
-
-        def __str__(self):
-            """Return the string representation of this object
-
-            Returns:
-                str: string representation
-            """
-
-            return self.name
-
-    class SafetyCarSetting(Enum):
+    class SafetyCarSetting(F1BaseEnum):
         """
         ENUM class for the safety car setting types
         """
@@ -1083,96 +721,21 @@ class PacketSessionData:
         STANDARD = 2
         INCREASED = 3
 
-        @staticmethod
-        def isValid(flag_type: int):
-            """Check if the given safety car setting is valid.
-
-            Args:
-                flag_type (int): The safety car setting to be validated. Also supports type
-                    SafetyCarSetting. Returns true in this case
-
-            Returns:
-                bool: true if valid
-            """
-            if isinstance(flag_type, PacketSessionData.SafetyCarSetting):
-                return True  # It's already an instance of PacketSessionData.SafetyCarSetting
-            return any(flag_type == member.value for member in
-                       PacketSessionData.SafetyCarSetting)
-
-        def __str__(self):
-            """Return the string representation of this object
-
-            Returns:
-                str: string representation
-            """
-
-            return self.name
-
-    class SafetyCarExperience(Enum):
+    class SafetyCarExperience(F1BaseEnum):
         """
         ENUM class for the safety car experience types
         """
         BROADCAST = 0
         IMMERSIVE = 1
 
-        @staticmethod
-        def isValid(flag_type: int):
-            """Check if the given safety car experience is valid.
-
-            Args:
-                flag_type (int): The safety car experience to be validated. Also supports type
-                    SafetyCarExperience. Returns true in this case
-
-            Returns:
-                bool: true if valid
-            """
-            if isinstance(flag_type, PacketSessionData.SafetyCarExperience):
-                return True  # It's already an instance of PacketSessionData.SafetyCarExperience
-            return any(flag_type == member.value for member in
-                       PacketSessionData.SafetyCarExperience)
-
-        def __str__(self):
-            """Return the string representation of this object
-
-            Returns:
-                str: string representation
-            """
-
-            return self.name
-
-    class FormationLapExperience(Enum):
+    class FormationLapExperience(F1BaseEnum):
         """
         ENUM class for the formation lap experience types
         """
         BROADCAST = 0
         IMMERSIVE = 1
 
-        @staticmethod
-        def isValid(flag_type: int):
-            """Check if the given formation lap experience is valid.
-
-            Args:
-                flag_type (int): The formation lap experience to be validated. Also supports type
-                    FormationLapExperience. Returns true in this case
-
-            Returns:
-                bool: true if valid
-            """
-            if isinstance(flag_type, PacketSessionData.FormationLapExperience):
-                return True  # It's already an instance of PacketSessionData.FormationLapExperience
-            return any(flag_type == member.value for member in
-                       PacketSessionData.FormationLapExperience)
-
-        def __str__(self):
-            """Return the string representation of this object
-
-            Returns:
-                str: string representation
-            """
-
-            return self.name
-
-    class RedFlagsSetting(Enum):
+    class RedFlagsSetting(F1BaseEnum):
         """
         ENUM class for the red flags setting types
         """
@@ -1180,31 +743,6 @@ class PacketSessionData:
         REDUCED = 1
         STANDARD = 2
         INCREASED = 3
-
-        @staticmethod
-        def isValid(flag_type: int):
-            """Check if the given red flags setting is valid.
-
-            Args:
-                flag_type (int): The red flags setting to be validated. Also supports type
-                    RedFlagsSetting. Returns true in this case
-
-            Returns:
-                bool: true if valid
-            """
-            if isinstance(flag_type, PacketSessionData.RedFlagsSetting):
-                return True  # It's already an instance of PacketSessionData.RedFlagsSetting
-            return any(flag_type == member.value for member in
-                       PacketSessionData.RedFlagsSetting)
-
-        def __str__(self):
-            """Return the string representation of this object
-
-            Returns:
-                str: string representation
-            """
-
-            return self.name
 
     def __init__(self, header: PacketHeader, data: bytes) -> None:
         # sourcery skip: low-code-quality
@@ -1214,7 +752,7 @@ class PacketSessionData:
             header (PacketHeader): The parsed header object
             data (bytes): The list of raw bytes representing this packet
         """
-        self.m_header: PacketHeader = header          # Header
+        super().__init__(header)
 
         # Declare the type hints
         self.m_weather: WeatherForecastSample.WeatherCondition
@@ -1305,7 +843,7 @@ class PacketSessionData:
         # First, section 0
         section_0_raw_data = data[:self.PACKET_LEN_SECTION_0]
         byte_index_so_far = self.PACKET_LEN_SECTION_0
-        unpacked_data = struct.unpack(self.PACKET_FORMAT_SECTION_0, section_0_raw_data)
+        unpacked_data = self.COMPILED_PACKET_STRUCT_SECTION_0.unpack(section_0_raw_data)
         (
             self.m_weather,
             self.m_trackTemperature,
@@ -1351,7 +889,7 @@ class PacketSessionData:
         # Section 2, till numWeatherForecastSamples
         section_2_raw_data = data[byte_index_so_far:byte_index_so_far + self.PACKET_LEN_SECTION_2]
         byte_index_so_far += self.PACKET_LEN_SECTION_2
-        unpacked_data = struct.unpack(self.PACKET_FORMAT_SECTION_2, section_2_raw_data)
+        unpacked_data = self.COMPILED_PACKET_STRUCT_SECTION_2.unpack(section_2_raw_data)
         (
             self.m_safetyCarStatus, #           // 0 = no safety car, 1 = full 2 = virtual, 3 = formation lap
             self.m_networkGame, #               // 0 = offline, 1 = online
@@ -1372,11 +910,10 @@ class PacketSessionData:
             packet_format=header.m_packetFormat
         )
 
-
         # Section 4 - rest of the packet
         section_4_raw_data = data[byte_index_so_far:byte_index_so_far + self.PACKET_LEN_SECTION_4]
         byte_index_so_far += self.PACKET_LEN_SECTION_4
-        unpacked_data = struct.unpack(self.PACKET_FORMAT_SECTION_4, section_4_raw_data)
+        unpacked_data = self.COMPILED_PACKET_STRUCT_SECTION_4.unpack(section_4_raw_data)
         (
             self.m_forecastAccuracy,                   # uint8
             self.m_aiDifficulty,                       # uint8
@@ -1421,7 +958,7 @@ class PacketSessionData:
         # Section 5 - F1 24 specific stuff
         if header.m_packetFormat == 2024:
             section_5_raw_data = data[byte_index_so_far:byte_index_so_far + self.PACKET_LEN_SECTION_5]
-            unpacked_data = struct.unpack(self.PACKET_FORMAT_SECTION_5, section_5_raw_data)
+            unpacked_data = self.COMPILED_PACKET_STRUCT_SECTION_5.unpack(section_5_raw_data)
             (
                 self.m_equalCarPerformance,
                 self.m_recoveryMode,

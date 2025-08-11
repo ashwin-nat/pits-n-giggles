@@ -24,7 +24,8 @@
 import struct
 from typing import Any, Dict, List
 
-from .common import PacketHeader, _validate_parse_fixed_segments
+from .common import _validate_parse_fixed_segments
+from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -60,7 +61,7 @@ class CarDamageData:
         The class is designed to parse and represent the car damage data packet.
     """
 
-    PACKET_FORMAT = ("<"
+    COMPILED_PACKET_STRUCT = struct.Struct("<"
         "4f" # float     m_tyresWear[4];                     // Tyre wear (percentage)
         "4B" # uint8     m_tyresDamage[4];                   // Tyre damage (percentage)
         "4B" # uint8     m_brakesDamage[4];                  // Brakes damage (percentage)
@@ -83,7 +84,7 @@ class CarDamageData:
         "B" # uint8     m_engineBlown;                      // Engine blown, 0 = OK, 1 = fault
         "B" # uint8     m_engineSeized;                     // Engine seized, 0 = OK, 1 = fault
     )
-    PACKET_LEN = struct.calcsize(PACKET_FORMAT)
+    PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
     PACKET_FORMAT_25 = ("<"
         "4f" # float     m_tyresWear[4];                     // Tyre wear (percentage)
@@ -193,7 +194,7 @@ class CarDamageData:
                 self.m_engineTCWear,
                 self.m_engineBlown,
                 self.m_engineSeized,
-            ) = struct.unpack(self.PACKET_FORMAT, data)
+            ) = self.COMPILED_PACKET_STRUCT.unpack(data)
 
         self.m_drsFault = bool(self.m_drsFault)
         self.m_ersFault = bool(self.m_ersFault)
@@ -309,7 +310,7 @@ class CarDamageData:
         """
 
         if self.m_packetFormat < 2025:
-            return struct.pack(self.PACKET_FORMAT,
+            return self.COMPILED_PACKET_STRUCT.pack(
                 self.m_tyresWear[0],
                 self.m_tyresWear[1],
                 self.m_tyresWear[2],
@@ -415,7 +416,7 @@ class CarDamageData:
         """
 
         if packet_format < 2025:
-            return cls(struct.pack(cls.PACKET_FORMAT,
+            return cls(cls.COMPILED_PACKET_STRUCT.pack(
                 tyres_wear[0],
                 tyres_wear[1],
                 tyres_wear[2],

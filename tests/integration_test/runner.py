@@ -21,6 +21,7 @@ import gdown
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 from lib.config import load_config_from_ini
+from lib.ipc import IpcParent, get_free_tcp_port
 
 # Google Drive folder URL
 DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/13tIadKMvi3kuItkovT6GUTTHOL3YM6n_?usp=drive_link"
@@ -33,6 +34,34 @@ def get_cached_files() -> list[str]:
 def check_endpoints_blocking(urls):
     return asyncio.run(_check_endpoints_async(urls))
 
+def send_ipc_shutdown(ipc_port) -> bool:
+    """Sends a shutdown command to the child process.
+
+    Returns:
+        True if the shutdown was successful, False otherwise.
+    """
+    try:
+        rsp = IpcParent(ipc_port).request("shutdown", {"reason": "Integration test complete"})
+        return rsp.get("status") == "success"
+    except Exception as e: # pylint: disable=broad-exception-caught
+        print(f"IPC shutdown failed: {e}")
+        return False
+
+def kill_app(is_windows: bool, app_process: subprocess.Popen):
+
+    if is_windows:
+        if app_process.poll() is None:
+            try:
+                subprocess.call(["taskkill", "/F", "/T", "/PID", str(app_process.pid)])
+            except Exception as e:
+                print(f"[WARN] Could not terminate app: {e}")
+        else:
+            print(f"App already exited (PID={app_process.pid})")
+    else:
+        try:
+            os.killpg(app_process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            print("[WARN] App already exited")
 
 async def _check_endpoints_async(urls):
     results = []
@@ -102,8 +131,11 @@ def main(telemetry_port, http_port, proto):
         ]
     ]
 
+    ipc_port = get_free_tcp_port()
+
     print("\nStarting app in replay server mode...")
-    app_cmd = ["poetry", "run", "python", "-m", "apps.backend", "--replay-server", "--debug"]
+    app_cmd = ["poetry", "run", "python", "-m", "apps.backend", "--replay-server", "--debug",
+               "--ipc-port", str(ipc_port)]
 
     if is_windows:
         app_process = subprocess.Popen(app_cmd, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
@@ -169,19 +201,8 @@ def main(telemetry_port, http_port, proto):
 
     finally:
         print(f"\nStopping app... PID={app_process.pid}")
-        if is_windows:
-            if app_process.poll() is None:
-                try:
-                    subprocess.call(["taskkill", "/F", "/T", "/PID", str(app_process.pid)])
-                except Exception as e:
-                    print(f"[WARN] Could not terminate app: {e}")
-            else:
-                print(f"App already exited (PID={app_process.pid})")
-        else:
-            try:
-                os.killpg(app_process.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                print("[WARN] App already exited")
+        if not send_ipc_shutdown(ipc_port):
+            kill_app(is_windows, app_process)
 
     print("\n===== TEST RESULTS =====")
     success_count = sum(overall for _, overall, _, _ in results)

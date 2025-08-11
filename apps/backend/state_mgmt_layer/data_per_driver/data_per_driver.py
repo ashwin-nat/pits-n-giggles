@@ -24,12 +24,12 @@
 
 import logging
 from copy import deepcopy
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
 from lib.f1_types import (F1Utils, LapData, PacketLapPositionsData, ResultStatus,
-                          SafetyCarType, SessionType23, SessionType24, TrackID)
+                          SafetyCarType, SessionType, TrackID)
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 
 from .car_info import CarInfo
@@ -455,7 +455,7 @@ class DataPerDriver:
 
     def onLapChange(self,
         old_lap_number: int,
-        session_type: Union[SessionType23, SessionType24],
+        session_type: SessionType,
         is_flashback: Optional[bool] = False) -> None:
         """
         Perform snapshot and projection updates for the given lap change.
@@ -465,7 +465,7 @@ class DataPerDriver:
 
         Args:
             old_lap_number (int): The completed lap number.
-            session_type (Union[SessionType23, SessionType24]): The current session type.
+            session_type (SessionType): The current session type.
             is_flashback (Optional[bool], optional): Whether the lap change is due to a flashback. Defaults to False.
 
         Behavior:

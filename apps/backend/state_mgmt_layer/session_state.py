@@ -25,7 +25,7 @@
 import json
 import logging
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 from apps.backend.state_mgmt_layer.data_per_driver import (DataPerDriver,
                                                            DriverPendingEvents)
@@ -44,7 +44,7 @@ from lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils,
                           PacketSessionData, PacketSessionHistoryData,
                           PacketTimeTrialData, PacketTyreSetsData,
                           ResultReason, ResultStatus, SafetyCarType,
-                          SessionType23, SessionType24, TrackID,
+                          SessionType, TrackID,
                           VisualTyreCompound, WeatherForecastSample)
 from lib.inter_task_communicator import TyreDeltaMessage
 from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
@@ -61,8 +61,7 @@ class SessionInfo:
     Attributes:
          - m_track (Optional[TrackID]): The current track
          - m_track_len (Optional[int]): The length of the track in meters
-         - m_session_type (Optional[Union[SessionType23, SessionType24]]): The type of the session,
-                which can be either SessionType23 or SessionType24
+         - m_session_type (Optional[SessionType): The type of the session, will be an enum specific to game year
          - m_track_temp (Optional[int]): The current track temperature in degrees Celsius
          - m_air_temp (Optional[int]): The current air temperature in degrees Celsius
          - m_total_laps (Optional[int]): The total number of laps in the current event
@@ -84,7 +83,7 @@ class SessionInfo:
 
         self.m_track : Optional[TrackID] = None
         self.m_track_len: Optional[int] = None
-        self.m_session_type : Optional[Union[SessionType23, SessionType24]] = None
+        self.m_session_type : Optional[SessionType] = None
         self.m_game_mode: Optional[GameMode] = None
         self.m_track_temp : Optional[int] = None
         self.m_air_temp : Optional[int] = None

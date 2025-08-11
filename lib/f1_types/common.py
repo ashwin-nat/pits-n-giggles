@@ -27,12 +27,14 @@
 ## F1 24 - https://answers.ea.com/t5/General-Discussion/F1-24-UDP-Specification/td-p/13745220
 ## F1 25 - https://forums.ea.com/blog/f1-games-game-info-hub-en/ea-sports%E2%84%A2-f1%C2%AE25-udp-specification/12187347
 
+# ------------------------- IMPORTS -------------------------------------------------------------------------------------
 
-import struct
-from enum import Enum, IntEnum
-from typing import Any, Dict, List, Optional, Set, Union
+from abc import abstractmethod
+from typing import Any, List, Optional, Set, Union
 
-# ------------------------- ERROR CLASSES --------------------------------------
+from .base_pkt import F1BaseEnum, F1CompareableEnum
+
+# ------------------------- ERROR CLASSES ------------------------------------------------------------------------------
 
 class InvalidPacketLengthError(Exception):
     """
@@ -54,52 +56,8 @@ class PacketCountValidationError(Exception):
         super().__init__(f"Packet count validation error. {message}")
 
 # -------------------- COMMON CLASSES ------------------------------------------
-class F1PacketType(Enum):
-    """Class of enum representing the different packet types emitted by the game
-    """
-    MOTION = 0
-    SESSION = 1
-    LAP_DATA = 2
-    EVENT = 3
-    PARTICIPANTS = 4
-    CAR_SETUPS = 5
-    CAR_TELEMETRY = 6
-    CAR_STATUS = 7
-    FINAL_CLASSIFICATION = 8
-    LOBBY_INFO = 9
-    CAR_DAMAGE = 10
-    SESSION_HISTORY = 11
-    TYRE_SETS = 12
-    MOTION_EX = 13
-    TIME_TRIAL = 14
-    LAP_POSITIONS = 15
 
-    @staticmethod
-    def isValid(packet_type) -> bool:
-        """Check if the given packet type ID is valid
-
-        Args:
-            packet_type (int or F1PacketType): The packet type to be validated
-
-        Returns:
-            bool: True if valid, else False
-        """
-
-        if isinstance(packet_type, F1PacketType):
-            return True  # It's already an instance of F1PacketType
-        return any(packet_type == member.value for member in F1PacketType)
-
-    def __str__(self) -> str:
-        """to_string method
-
-        Returns:
-            str: string representation of this enum
-        """
-        if F1PacketType.isValid(self.value):
-            return self.name
-        return f'packet type {str(self.value)}'
-
-class ResultStatus(Enum):
+class ResultStatus(F1BaseEnum):
     """
     Enumeration representing the result status of a driver after a racing session.
     """
@@ -113,40 +71,7 @@ class ResultStatus(Enum):
     NOT_CLASSIFIED = 6
     RETIRED = 7
 
-    @staticmethod
-    def isValid(result_status: int) -> bool:
-        """Check if the given result status is valid.
-
-        Args:
-            result_status (int): The result status to be validated.
-
-        Returns:
-            bool: True if valid.
-        """
-        if isinstance(result_status, ResultStatus):
-            return True  # It's already an instance of ResultStatus
-        return any(result_status == member.value for member in ResultStatus)
-
-    def __str__(self) -> str:
-        """
-        Returns a human-readable string representation of the result status.
-
-        Returns:
-            str: String representation of the result status.
-        """
-        status_mapping = {
-            0: "INVALID",
-            1: "INACTIVE",
-            2: "ACTIVE",
-            3: "FINISHED",
-            4: "DID_NOT_FINISH",
-            5: "DISQUALIFIED",
-            6: "NOT_CLASSIFIED",
-            7: "RETIRED",
-        }
-        return status_mapping.get(self.value, "---")
-
-class ResultReason(Enum):
+class ResultReason(F1BaseEnum):
     """
     Enumeration representing the result reason of a driver after a racing session.
     """
@@ -163,30 +88,57 @@ class ResultReason(Enum):
     SESSION_SKIPPED = 9
     SESSION_SIMULATED = 10
 
-    @staticmethod
-    def isValid(result_reason: int) -> bool:
-        """Check if the given result reason is valid.
-
-        Args:
-            result_reason (int): The result status to be validated.
-
-        Returns:
-            bool: True if valid.
-        """
-        if isinstance(result_reason, ResultReason):
-            return True  # It's already an instance of ResultReason
-        return any(result_reason == member.value for member in ResultReason)
-
     def __str__(self) -> str:
-        """
-        Returns a human-readable string representation of the result status.
+        """String representation
 
         Returns:
-            str: String representation of the result status.
+            str: String representation
         """
         return self.name.lower()
 
-class SessionType23(Enum):
+class SessionType(F1BaseEnum):
+
+    @abstractmethod
+    def isFpTypeSession(self) -> bool:
+        """
+        Check if the session type is a free practice session.
+
+        Returns:
+            bool: True if the session type is a free practice session, False otherwise.
+        """
+        pass
+
+    @abstractmethod
+    def isQualiTypeSession(self) -> bool:
+        """
+        Check if the session type is a qualifying session.
+
+        Returns:
+            bool: True if the session type is a qualifying session, False otherwise.
+        """
+        pass
+
+    @abstractmethod
+    def isRaceTypeSession(self) -> bool:
+        """
+        Check if the session type is a race session.
+
+        Returns:
+            bool: True if the session type is a race session, False otherwise.
+        """
+        pass
+
+    @abstractmethod
+    def isTimeTrialTypeSession(self) -> bool:
+        """
+        Check if the session type is a time trial session.
+
+        Returns:
+            bool: True if the session type is a time trial session, False otherwise.
+        """
+        pass
+
+class SessionType23(SessionType):
     """
     Enum class representing F1 session types.
     """
@@ -205,29 +157,13 @@ class SessionType23(Enum):
     RACE_3 = 12
     TIME_TRIAL = 13
 
-    @staticmethod
-    def isValid(session_type: int):
-        """
-        Check if the given session type is valid.
-
-        Args:
-            session_type (int): The session type to be validated.
+    def __str__(self) -> str:
+        """String representation
 
         Returns:
-            bool: True if valid
+            str: String representation
         """
-        if isinstance(session_type, SessionType23):
-            return True  # It's already an instance of SessionType23
-        return any(session_type == member.value for member in SessionType23)
-
-    def __str__(self):
-        """
-        Return a string representation of the SessionType23 with spaces.
-
-        Returns:
-            str: String representation of the SessionType23.
-        """
-        return self.name.replace('_', ' ').title()
+        return self.name.title()
 
     def isFpTypeSession(self) -> bool:
         """
@@ -280,7 +216,7 @@ class SessionType23(Enum):
         """
         return self == SessionType23.TIME_TRIAL
 
-class SessionType24(Enum):
+class SessionType24(SessionType):
     UNKNOWN = 0
     PRACTICE_1 = 1
     PRACTICE_2 = 2
@@ -300,21 +236,6 @@ class SessionType24(Enum):
     RACE_2 = 16
     RACE_3 = 17
     TIME_TRIAL = 18
-
-    @staticmethod
-    def isValid(session_type: int):
-        """
-        Check if the given session type is valid.
-
-        Args:
-            session_type (int): The session type to be validated.
-
-        Returns:
-            bool: True if valid
-        """
-        if isinstance(session_type, SessionType24):
-            return True  # It's already an instance of SessionType24
-        return any(session_type == member.value for member in SessionType24)
 
     def __str__(self):
         """
@@ -381,7 +302,7 @@ class SessionType24(Enum):
         """
         return self == SessionType24.TIME_TRIAL
 
-class SessionLength(Enum):
+class SessionLength(F1BaseEnum):
     """
     Enum class representing F1 session lengths.
     """
@@ -393,21 +314,6 @@ class SessionLength(Enum):
     LONG = 6
     FULL = 7
 
-    @staticmethod
-    def isValid(session_type: int):
-        """
-        Check if the given session type is valid.
-
-        Args:
-            session_type (int): The session type to be validated.
-
-        Returns:
-            bool: True if valid
-        """
-        if isinstance(session_type, SessionType23):
-            return True  # It's already an instance of SessionType23
-        return any(session_type == member.value for member in SessionType23)
-
     def __str__(self):
         """
         Return a string representation of the SessionType23 with spaces.
@@ -417,7 +323,7 @@ class SessionLength(Enum):
         """
         return self.name.replace('_', ' ').title()
 
-class ActualTyreCompound(Enum):
+class ActualTyreCompound(F1BaseEnum):
     """
     Enumeration representing different tyre compounds used in Formula 1 and Formula 2.
 
@@ -488,22 +394,7 @@ class ActualTyreCompound(Enum):
             ActualTyreCompound.UNKNOWN: "Unknown",
         }[self]
 
-    @staticmethod
-    def isValid(actual_tyre_compound: int) -> bool:
-        """
-        Check if the input event type string maps to a valid enum value.
-
-        Args:
-            actual_tyre_compound (int): The actual tyre compound code
-
-        Returns:
-            bool: True if the event type is valid, False otherwise.
-        """
-        if isinstance(actual_tyre_compound, ActualTyreCompound):
-            return True  # It's already an instance of ActualTyreCompound
-        return any(actual_tyre_compound == member.value for member in ActualTyreCompound)
-
-class VisualTyreCompound(Enum):
+class VisualTyreCompound(F1BaseEnum):
     """
     Enumeration representing different visual tyre compounds used in Formula 1 and Formula 2.
 
@@ -559,22 +450,7 @@ class VisualTyreCompound(Enum):
             VisualTyreCompound.UNKNOWN: "Unknown",
         }[self]
 
-    @staticmethod
-    def isValid(visual_tyre_compound: int) -> bool:
-        """
-        Check if the input event type string maps to a valid enum value.
-
-        Args:
-            visual_tyre_compound (int): The visual tyre compound code
-
-        Returns:
-            bool: True if the event type is valid, False otherwise.
-        """
-        if isinstance(visual_tyre_compound, VisualTyreCompound):
-            return True  # It's already an instance of VisualTyreCompound
-        return any(visual_tyre_compound == member.value for member in VisualTyreCompound)
-
-class SafetyCarType(IntEnum):
+class SafetyCarType(F1CompareableEnum):
     """
     Enumeration representing different safety car statuses.
 
@@ -593,34 +469,7 @@ class SafetyCarType(IntEnum):
     VIRTUAL_SAFETY_CAR = 2
     FORMATION_LAP = 3
 
-    @staticmethod
-    def isValid(safety_car_status_code: int):
-        """Check if the given safety car status is valid.
-
-        Args:
-            safety_car_status_code (int): The safety car status to be validated.
-                Also supports type SafetyCarStatus. Returns true in this case
-
-        Returns:
-            bool: true if valid
-        """
-        if isinstance(safety_car_status_code, SafetyCarType):
-            return True  # It's already an instance of SafetyCarType
-        min_value = min(member.value for member in SafetyCarType)
-        max_value = max(member.value for member in SafetyCarType)
-        return min_value <= safety_car_status_code <= max_value
-
-    def __str__(self):
-        """
-        Returns a human-readable string representation of the safety car status.
-
-        Returns:
-            str: String representation of the safety car status.
-        """
-
-        return self.name
-
-class SafetyCarEventType(Enum):
+class SafetyCarEventType(F1BaseEnum):
     """
     Enumeration representing different safety car statuses.
 
@@ -639,34 +488,7 @@ class SafetyCarEventType(Enum):
     RETURNED = 2
     RESUME_RACE = 3
 
-    @staticmethod
-    def isValid(safety_car_status_code: int):
-        """Check if the given safety car status is valid.
-
-        Args:
-            safety_car_status_code (int): The safety car status to be validated.
-                Also supports type SafetyCarEventType. Returns true in this case
-
-        Returns:
-            bool: true if valid
-        """
-        if isinstance(safety_car_status_code, SafetyCarEventType):
-            return True  # It's already an instance of SafetyCarEventType
-        min_value = min(member.value for member in SafetyCarEventType)
-        max_value = max(member.value for member in SafetyCarEventType)
-        return min_value <= safety_car_status_code <= max_value
-
-    def __str__(self):
-        """
-        Returns a human-readable string representation of the safety car status.
-
-        Returns:
-            str: String representation of the safety car status.
-        """
-
-        return self.name
-
-class Nationality(Enum):
+class Nationality(F1BaseEnum):
     """
     Enum representing nationalities with corresponding IDs.
     """
@@ -765,21 +587,7 @@ class Nationality(Enum):
         """
         return f"{self.name.replace('_', ' ')}"
 
-    @staticmethod
-    def isValid(nationality_code: int) -> bool:
-        """Check if the given nationality code is valid.
-
-        Args:
-            nationality_code (int): The nationality code to be validated.
-
-        Returns:
-            bool: True if valid.
-        """
-        if isinstance(nationality_code, Nationality):
-            return True  # It's already an instance of Nationality
-        return any(nationality_code == member.value for member in Nationality)
-
-class Platform(Enum):
+class Platform(F1BaseEnum):
     """
     Enumeration representing different gaming platforms.
     """
@@ -806,22 +614,7 @@ class Platform(Enum):
             Platform.UNKNOWN: "Unknown",
         }[self]
 
-    @staticmethod
-    def isValid(platform_type_code: int):
-        """Check if the given session type code is valid.
-
-        Args:
-            platform_type_code (int): The platform type code to be validated.
-                Also supports type Platform. Returns true in this case
-
-        Returns:
-            bool: true if valid
-        """
-        if isinstance(platform_type_code, Platform):
-            return True  # It's already an instance of Platform
-        return any(platform_type_code == member.value for member in Platform)
-
-class TelemetrySetting(Enum):
+class TelemetrySetting(F1BaseEnum):
     """
     Enumeration representing the telemetry setting for the player.
     """
@@ -836,10 +629,7 @@ class TelemetrySetting(Enum):
         Returns:
             str: String representation of the telemetry setting.
         """
-        return {
-            TelemetrySetting.RESTRICTED: "Restricted",
-            TelemetrySetting.PUBLIC: "Public",
-        }.get(self)
+        return self.name.title()
 
     def __bool__(self) -> bool:
         """
@@ -850,21 +640,7 @@ class TelemetrySetting(Enum):
         """
         return self == TelemetrySetting.PUBLIC
 
-    @staticmethod
-    def isValid(telemetry_setting_code: int) -> bool:
-        """Check if the given telemetry setting code is valid.
-
-        Args:
-            telemetry_setting_code (int): The telemetry setting code to be validated.
-
-        Returns:
-            bool: True if valid.
-        """
-        if isinstance(telemetry_setting_code, TelemetrySetting):
-            return True  # It's already an instance of TelemetrySetting
-        return any(telemetry_setting_code == member.value for member in  TelemetrySetting)
-
-class TractionControlAssistMode(Enum):
+class TractionControlAssistMode(F1BaseEnum):
     """
     Enumeration representing different Traction Control Assist modes.
 
@@ -881,31 +657,7 @@ class TractionControlAssistMode(Enum):
     MEDIUM = 1
     FULL = 2
 
-    def __str__(self) -> str:
-        """
-        Returns a human-readable string representation of the Traction Control Assist mode.
-
-        Returns:
-            str: String representation of the Traction Control Assist mode.
-        """
-        return self.name
-
-    @staticmethod
-    def isValid(traction_control_assist_mode: int) -> bool:
-        """
-        Check if the Traction Control Assist code maps to a valid enum value.
-
-        Args:
-            traction_control_assist_mode (int): The Traction Control Assist code
-
-        Returns:
-            bool: True if the event type is valid, False otherwise.
-        """
-        if isinstance(traction_control_assist_mode, TractionControlAssistMode):
-            return True  # It's already an instance of TractionControlAssistMode
-        return any(traction_control_assist_mode == member.value for member in TractionControlAssistMode)
-
-class GearboxAssistMode(Enum):
+class GearboxAssistMode(F1BaseEnum):
     """
     Enumeration representing different Gearbox Control Assist modes.
 
@@ -932,22 +684,10 @@ class GearboxAssistMode(Enum):
         """
         return self.name.replace('_', ' ').title()
 
-    @staticmethod
-    def isValid(gearbox_assist_code: int) -> bool:
-        """
-        Check if the Gearbox Control Assist code maps to a valid enum value.
-
-        Args:
-            gearbox_assist_code (int): The Gearbox Assist code
-
-        Returns:
-            bool: True if the event type is valid, False otherwise.
-        """
-        if isinstance(gearbox_assist_code, GearboxAssistMode):
-            return True  # It's already an instance of GearboxAssistMode
-        return any(gearbox_assist_code == member.value for member in GearboxAssistMode)
-
-class TeamID23(Enum):
+class TeamID(F1BaseEnum):
+    """Base Enum class for Team ID's"""
+    pass
+class TeamID23(TeamID):
     """
     Enumeration representing the TeamID setting for the player (F1 2023)
     """
@@ -1019,20 +759,6 @@ class TeamID23(Enum):
     ART_GP_22 = 140
     MY_TEAM = 255
 
-    @staticmethod
-    def isValid(team_id: int) -> bool:
-        """Check if the given team ID is valid.
-
-        Args:
-            team_id (int): The team ID to be validated.
-
-        Returns:
-            bool: True if valid.
-        """
-        if isinstance(team_id, TeamID23):
-            return True  # It's already an instance of TeamID23
-        return any(team_id == member.value for member in TeamID23)
-
     def __str__(self) -> str:
         """Return the string representation of the driver.
 
@@ -1066,7 +792,7 @@ class TeamID23(Enum):
         }
         return teams_mapping.get(self.value, "---")
 
-class TeamID24(Enum):
+class TeamID24(TeamID):
     """
     Enumeration representing the TeamID setting for the player (F1 2023)
     """
@@ -1109,21 +835,8 @@ class TeamID24(Enum):
         }
         return teams_mapping.get(self.value,
                                  ' '.join(word.capitalize() for word in self.name.split('_')))
-    @staticmethod
-    def isValid(team_id: int) -> bool:
-        """Check if the given team ID is valid.
 
-        Args:
-            team_id (int): The team ID to be validated.
-
-        Returns:
-            bool: True if valid.
-        """
-        if isinstance(team_id, TeamID24):
-            return True  # It's already an instance of TeamID24
-        return any(team_id == member.value for member in TeamID24)
-
-class TeamID25(Enum):
+class TeamID25(TeamID):
     MERCEDES = 0
     FERRARI = 1
     RED_BULL_RACING = 2
@@ -1171,14 +884,7 @@ class TeamID25(Enum):
             return "RB"
         return self.name.replace("_", " ").title().replace("Gp", "GP").replace("24", "'24").replace("25", "'25")
 
-    @staticmethod
-    def isValid(value: int) -> bool:
-        if isinstance(value, TeamID25):
-            return True  # It's already an instance of TeamID25
-        return any(value == member.value for member in TeamID25)
-
-
-class TrackID(Enum):
+class TrackID(F1BaseEnum):
     """
     Enum class representing F1 track IDs and their corresponding names.
     """
@@ -1234,24 +940,7 @@ class TrackID(Enum):
             "Zandvoort_Reverse": "Zandvoort (Rev)",
         }.get(self.name, self.name.replace("_", " "))
 
-    @staticmethod
-    def isValid(track: int):
-        """Check if the given circuit code is valid.
-
-        Args:
-            track (int): The circuit code to be validated.
-                Also supports type TrackID. Returns true in this case
-
-        Returns:
-            bool: true if valid
-        """
-        if isinstance(track, TrackID):
-            return True  # It's already an instance of TrackID
-        min_value = min(member.value for member in TrackID)
-        max_value = max(member.value for member in TrackID)
-        return min_value <= track <= max_value
-
-class GameMode(Enum):
+class GameMode(F1BaseEnum):
     """
     Enum representing various game modes.
 
@@ -1312,22 +1001,6 @@ class GameMode(Enum):
         """Return a user-friendly string representation of the mode."""
         return self.name.replace("_", " ").title()
 
-    @staticmethod
-    def isValid(mode: int):
-        """Check if the given mode is valid.
-
-        Args:
-            mode (int): The mode to be validated.
-
-        Returns:
-            bool: true if valid
-        """
-        if isinstance(mode, GameMode):
-            return True  # It's already an instance of GameMode
-        min_value = min(member.value for member in GameMode)
-        max_value = max(member.value for member in GameMode)
-        return min_value <= mode <= max_value
-
     def isOnlineMode(self) -> bool:
         """Check if the mode is an online mode."""
         return self in {
@@ -1341,7 +1014,7 @@ class GameMode(Enum):
             GameMode.CAREER_25_ONLINE,
         }
 
-class RuleSet(Enum):
+class RuleSet(F1BaseEnum):
     """
     Enum representing various rulesets.
 
@@ -1370,22 +1043,6 @@ class RuleSet(Enum):
     def __str__(self) -> str:
         """Return a user-friendly string representation of the ruleset."""
         return self.name.replace("_", " & ").title()
-
-    @staticmethod
-    def isValid(rule_set: int):
-        """Check if the given mode is valid.
-
-        Args:
-            rule_set (int): The rule_set to be validated.
-
-        Returns:
-            bool: true if valid
-        """
-        if isinstance(rule_set, RuleSet):
-            return True  # It's already an instance of RuleSet
-        min_value = min(member.value for member in RuleSet)
-        max_value = max(member.value for member in RuleSet)
-        return min_value <= rule_set <= max_value
 
 class F1Utils:
     """
@@ -1707,201 +1364,6 @@ class F1Utils:
         """
         # Transpose using zip and map. zip(*lap_major) groups values per car index.
         return [list(car_lap_positions) for car_lap_positions in zip(*lap_major)]
-
-# -------------------- HEADER PARSING ------------------------------------------
-
-class PacketHeader:
-    """
-    A class for parsing the Packet Header of a telemetry packet in a racing game.
-
-    The packet header structure is as follows:
-
-    Attributes:
-        - m_packetFormat (int): The format of the telemetry packet (2023).
-        - m_gameYear (int): The game year, represented by the last two digits (e.g., 23).
-        - m_gameMajorVersion (int): The game's major version (X.00).
-        - m_gameMinorVersion (int): The game's minor version (1.XX).
-        - m_packetVersion (int): The version of this packet type, starting from 1.
-        - m_packetId (F1PacketType): Identifier for the packet type. Refer to the F1PacketType enumeration.
-        - m_sessionUID (int): Unique identifier for the session.
-        - m_sessionTime (float): Timestamp of the session.
-        - m_frameIdentifier (int): Identifier for the frame the data was retrieved on.
-        - m_overallFrameIdentifier (int): Overall identifier for the frame, not going back after flashbacks.
-        - m_playerCarIndex (int): Index of the player's car in the array.
-        - m_secondaryPlayerCarIndex (int): Index of the secondary player's car in the array (255 if no second player).
-    """
-
-    PACKET_FORMAT = ("<"
-        "H" # packet format
-        "B" # year
-        "B" # major
-        "B" # minor
-        "B" # ver
-        "B" # pktID
-        "Q" # sessionID
-        "f" # session time
-        "I" # uint32
-        "I" # uint32
-        "B" # carIndex
-        "B" # sec car index
-    )
-    PACKET_LEN: int = struct.calcsize(PACKET_FORMAT)
-
-    def __init__(self, data: bytes) -> None:
-        """
-        Initializes the PacketHeaderParser with the raw packet data.
-
-        Args:
-            data (bytes): Raw binary data representing the packet header.
-        """
-
-        # Declare all variables with types
-        self.m_packetFormat: int
-        self.m_gameYear: int
-        self.m_gameMajorVersion: int
-        self.m_gameMinorVersion: int
-        self.m_packetVersion: int
-        self.m_packetId: F1PacketType
-        self.m_sessionUID: int
-        self.m_sessionTime: float
-        self.m_frameIdentifier: int
-        self.m_overallFrameIdentifier: int
-        self.m_playerCarIndex: int
-        self.m_secondaryPlayerCarIndex: int
-
-        # Unpack the data
-        unpacked_data = struct.unpack(self.PACKET_FORMAT, data)
-
-        # Assign values to individual variables
-        self.m_packetFormat, self.m_gameYear, self.m_gameMajorVersion, self.m_gameMinorVersion, \
-        self.m_packetVersion, self.m_packetId, self.m_sessionUID, self.m_sessionTime, \
-        self.m_frameIdentifier, self.m_overallFrameIdentifier, self.m_playerCarIndex, \
-        self.m_secondaryPlayerCarIndex = unpacked_data
-
-        # Set packet ID as enum type
-        if F1PacketType.isValid(self.m_packetId):
-            self.m_packetId = F1PacketType(self.m_packetId)
-            self.is_supported_packet_type = True
-        else:
-            self.is_supported_packet_type = False
-
-    def __str__(self) -> str:
-        return (
-            f"PacketHeader("
-            f"Format: {self.m_packetFormat}, "
-            f"Year: {self.m_gameYear}, "
-            f"Major Version: {self.m_gameMajorVersion}, "
-            f"Minor Version: {self.m_gameMinorVersion}, "
-            f"Packet Version: {self.m_packetVersion}, "
-            f"Packet ID: {self.m_packetId}, "
-            f"Session UID: {self.m_sessionUID}, "
-            f"Session Time: {self.m_sessionTime}, "
-            f"Frame Identifier: {self.m_frameIdentifier}, "
-            f"Overall Frame Identifier: {self.m_overallFrameIdentifier}, "
-            f"Player Car Index: {self.m_playerCarIndex}, "
-            f"Secondary Player Car Index: {self.m_secondaryPlayerCarIndex})"
-        )
-
-    def toJSON(self) -> Dict[str, Any]:
-        """Converts the PacketHeader object to a dictionary suitable for JSON serialization.
-
-        Returns:
-            Dict[str, Any]: A dictionary representing the JSON-compatible data.
-        """
-
-        return {
-            "packet-format": self.m_packetFormat,
-            "game-year": self.m_gameYear,
-            "game-major-version": self.m_gameMajorVersion,
-            "game-minor-version": self.m_gameMinorVersion,
-            "packet-version": self.m_packetVersion,
-            "packet-id": str(self.m_packetId),
-            "session-uid": self.m_sessionUID,
-            "session-time": self.m_sessionTime,
-            "frame-identifier": self.m_frameIdentifier,
-            "overall-frame-identifier": self.m_overallFrameIdentifier,
-            "player-car-index": self.m_playerCarIndex,
-            "secondary-player-car-index": self.m_secondaryPlayerCarIndex
-        }
-
-    def __eq__(self, other: Any) -> bool:
-        """Check if this PacketHeader is equal to another.
-
-        Args:
-            other (Any): The object to compare against.
-
-        Returns:
-            bool: True if equal, False otherwise.
-        """
-        if not isinstance(other, PacketHeader):
-            return NotImplemented
-
-        return (self.m_packetFormat == other.m_packetFormat and
-                self.m_gameYear == other.m_gameYear and
-                self.m_gameMajorVersion == other.m_gameMajorVersion and
-                self.m_gameMinorVersion == other.m_gameMinorVersion and
-                self.m_packetVersion == other.m_packetVersion and
-                self.m_packetId == other.m_packetId and
-                self.m_sessionUID == other.m_sessionUID and
-                self.m_sessionTime == other.m_sessionTime and
-                self.m_frameIdentifier == other.m_frameIdentifier and
-                self.m_overallFrameIdentifier == other.m_overallFrameIdentifier and
-                self.m_playerCarIndex == other.m_playerCarIndex and
-                self.m_secondaryPlayerCarIndex == other.m_secondaryPlayerCarIndex)
-
-    def __ne__(self, other: Any) -> bool:
-        """Check if this PacketHeader is not equal to another.
-
-        Args:
-            other (Any): The object to compare against.
-
-        Returns:
-            bool: True if not equal, False otherwise.
-        """
-        return not self.__eq__(other)
-
-    @classmethod
-    def from_values(cls, packet_format: int, game_year: int, game_major_version: int,
-                    game_minor_version: int, packet_version: int, packet_type: F1PacketType,
-                    session_uid: int, session_time: float, frame_identifier: int,
-                    overall_frame_identifier: int, player_car_index: int,
-                    secondary_player_car_index: int) -> 'PacketHeader':
-        """Create a PacketHeader object from individual values.
-
-        Args:
-            packet_format (int): The format of the telemetry packet.
-            game_year (int): The game year.
-            game_major_version (int): The game's major version.
-            game_minor_version (int): The game's minor version.
-            packet_version (int): The version of this packet type.
-            packet_type (F1PacketType): Identifier for the packet type.
-            session_uid (int): Unique identifier for the session.
-            session_time (float): Timestamp of the session.
-            frame_identifier (int): Identifier for the frame.
-            overall_frame_identifier (int): Overall identifier for the frame.
-            player_car_index (int): Index of the player's car.
-            secondary_player_car_index (int): Index of the secondary player's car.
-
-        Returns:
-            PacketHeader: A PacketHeader object initialized with the given values.
-        """
-        return cls(struct.pack(cls.PACKET_FORMAT, packet_format, game_year, game_major_version,
-                               game_minor_version, packet_version, packet_type.value, session_uid,
-                               session_time, frame_identifier, overall_frame_identifier,
-                               player_car_index, secondary_player_car_index))
-
-    def to_bytes(self) -> bytes:
-        """Converts the PacketHeader object to bytes.
-
-        Returns:
-            bytes: The raw binary data representing the packet header.
-        """
-        return struct.pack(self.PACKET_FORMAT, self.m_packetFormat, self.m_gameYear,
-                           self.m_gameMajorVersion, self.m_gameMinorVersion,
-                           self.m_packetVersion, self.m_packetId.value, self.m_sessionUID,
-                           self.m_sessionTime, self.m_frameIdentifier,
-                           self.m_overallFrameIdentifier, self.m_playerCarIndex,
-                           self.m_secondaryPlayerCarIndex)
 
 # --------------------- HELPER FUNCTIONS ---------------------------------------
 

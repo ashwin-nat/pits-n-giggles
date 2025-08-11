@@ -23,11 +23,13 @@
 
 import struct
 from typing import Dict, Any, List
-from .common import PacketHeader
+from .common import _validate_parse_fixed_segments
+from .header import PacketHeader
+from .base_pkt import F1PacketBase, F1SubPacketBase
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
-class CarTelemetryData:
+class CarTelemetryData(F1SubPacketBase):
     """
     A class representing telemetry data for a single car in a racing simulation.
 
@@ -53,7 +55,7 @@ class CarTelemetryData:
                 The length of each list attribute should be 4, corresponding to the four wheels of the car.
     """
 
-    PACKET_FORMAT = ("<"
+    COMPILED_PACKET_STRUCT = struct.Struct("<"
         "H" # uint16    m_speed;                    // Speed of car in kilometres per hour
         "f" # float     m_throttle;                 // Amount of throttle applied (0.0 to 1.0)
         "f" # float     m_steer;                    // Steering (-1.0 (full lock left) to 1.0 (full lock right))
@@ -71,7 +73,7 @@ class CarTelemetryData:
         "4f" # float     m_tyresPressure[4];         // Tyres pressure (PSI)
         "4B" # uint8     m_surfaceType[4];           // Driving surface, see appendices
     )
-    PACKET_LEN = struct.calcsize(PACKET_FORMAT)
+    PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
     def __init__(self, data) -> None:
         """
@@ -83,7 +85,6 @@ class CarTelemetryData:
         Raises:
             struct.error: If the binary data does not match the expected format.
         """
-        unpacked_data = struct.unpack(self.PACKET_FORMAT, data)
         self.m_brakesTemperature = [0] * 4
         self.m_tyresSurfaceTemperature = [0] * 4
         self.m_tyresInnerTemperature = [0] * 4
@@ -122,7 +123,7 @@ class CarTelemetryData:
             self.m_surfaceType[1],
             self.m_surfaceType[2],
             self.m_surfaceType[3],
-        ) = unpacked_data
+        ) = self.COMPILED_PACKET_STRUCT.unpack(data)
 
         self.m_drs = bool(self.m_drs)
 
@@ -228,7 +229,7 @@ class CarTelemetryData:
         Returns:
             bytes: Bytes representation of the CarTelemetryData object.
         """
-        return struct.pack(self.PACKET_FORMAT,
+        return self.COMPILED_PACKET_STRUCT.pack(
             self.m_speed,
             self.m_throttle,
             self.m_steer,
@@ -304,7 +305,7 @@ class CarTelemetryData:
         Returns:
             CarTelemetryData: A new CarTelemetryData object with the provided values.
         """
-        return cls(struct.pack(cls.PACKET_FORMAT,
+        return cls(cls.COMPILED_PACKET_STRUCT.pack(
             speed,
             throttle,
             steer,
@@ -338,7 +339,7 @@ class CarTelemetryData:
             surface_type_3
         ))
 
-class PacketCarTelemetryData:
+class PacketCarTelemetryData(F1PacketBase):
     """
     A class representing telemetry data for multiple cars in a racing simulation.
 
@@ -357,7 +358,9 @@ class PacketCarTelemetryData:
         m_suggestedGear (int): Suggested gear for the player (1-8), 0 if no gear is suggested.
     """
 
-    max_telemetry_entries = 22
+    MAX_CARS = 22
+    COMPILED_PACKET_FORMAT_EXTRA = struct.Struct("<BBb")
+    PACKET_LEN_EXTRA = COMPILED_PACKET_FORMAT_EXTRA.size
 
     def __init__(self, header:PacketHeader, packet: bytes) -> None:
         """
@@ -371,17 +374,20 @@ class PacketCarTelemetryData:
             struct.error: If the binary data does not match the expected format.
         """
 
-        self.m_header: PacketHeader = header
-        len_all_car_telemetry = PacketCarTelemetryData.max_telemetry_entries * CarTelemetryData.PACKET_LEN
+        super().__init__(header)
+        self.m_carTelemetryData: List[CarTelemetryData]
 
-        # Iterate over the first len_all_car_telemetry bytes of packet in steps of CarTelemetryData.PACKET_LEN,
-        # creating CarTelemetryData objects for each segment.
-        self.m_carTelemetryData: List[CarTelemetryData] = [
-            CarTelemetryData(packet[i:i + CarTelemetryData.PACKET_LEN])
-            for i in range(0, len_all_car_telemetry, CarTelemetryData.PACKET_LEN)
-        ]
+        self.m_carTelemetryData, offset_so_far = _validate_parse_fixed_segments(
+            data=packet,
+            offset=0,
+            item_cls=CarTelemetryData,
+            item_len=CarTelemetryData.PACKET_LEN,
+            count=self.MAX_CARS,
+            max_count=self.MAX_CARS
+        )
+
         self.m_mfdPanelIndex, self.m_mfdPanelIndexSecondaryPlayer, self.m_suggestedGear = \
-                struct.unpack("<BBb", packet[len_all_car_telemetry:])
+                self.COMPILED_PACKET_FORMAT_EXTRA.unpack(packet[offset_so_far:])
 
     def __str__(self) -> str:
         """

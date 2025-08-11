@@ -24,12 +24,14 @@
 import struct
 from typing import Any, Dict, List, Optional, Union
 
-from .common import (ActualTyreCompound, PacketHeader, SessionType23,
+from .common import (ActualTyreCompound, SessionType23, _validate_parse_fixed_segments,
                      SessionType24, VisualTyreCompound)
+from .base_pkt import F1PacketBase, F1SubPacketBase
+from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
-class TyreSetData:
+class TyreSetData(F1SubPacketBase):
     """
     Represents information about a specific tyre set, including its compound, wear, availability, and other details.
 
@@ -52,7 +54,7 @@ class TyreSetData:
             Returns a string representation of TyreSetData.
     """
 
-    PACKET_FORMAT = ("<"
+    COMPILED_PACKET_STRUCT = struct.Struct("<"
         "B" # uint8     m_actualTyreCompound;    // Actual tyre compound used
         "B" # uint8     m_visualTyreCompound;    // Visual tyre compound used
         "B" # uint8     m_wear;                  // Tyre wear (percentage)
@@ -63,7 +65,7 @@ class TyreSetData:
         "h" # int16     m_lapDeltaTime;          // Lap delta time in milliseconds compared to fitted set
         "B" # uint8     m_fitted;                // Whether the set is fitted or not
     )
-    PACKET_LEN = struct.calcsize(PACKET_FORMAT)
+    PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
     def __init__(self, data: bytes, packet_format: int) -> None:
         """
@@ -85,7 +87,7 @@ class TyreSetData:
             self.m_usableLife,
             self.m_lapDeltaTime,
             self.m_fitted,
-        ) = struct.unpack(self.PACKET_FORMAT, data)
+        ) = self.COMPILED_PACKET_STRUCT.unpack(data)
 
         if ActualTyreCompound.isValid(self.m_actualTyreCompound):
             self.m_actualTyreCompound = ActualTyreCompound(self.m_actualTyreCompound)
@@ -176,7 +178,7 @@ class TyreSetData:
             bytes: Serialized bytes representation of the TyreSetData object
         """
 
-        return struct.pack(self.PACKET_FORMAT,
+        return self.COMPILED_PACKET_STRUCT.pack(
             self.m_actualTyreCompound.value,
             self.m_visualTyreCompound.value,
             self.m_wear,
@@ -218,7 +220,7 @@ class TyreSetData:
         Returns:
             TyreSetData: New TyreSetData object
         """
-        return cls(struct.pack(cls.PACKET_FORMAT,
+        return cls(cls.COMPILED_PACKET_STRUCT.pack(
             actual_tyre_compound.value,
             visual_tyre_compound.value,
             wear,
@@ -229,7 +231,7 @@ class TyreSetData:
             lap_delta_time,
             fitted), packet_format)
 
-class PacketTyreSetsData:
+class PacketTyreSetsData(F1PacketBase):
     """
     Represents information about tyre sets for a specific car in a race.
 
@@ -242,6 +244,12 @@ class PacketTyreSetsData:
     """
     MAX_TYRE_SETS = 20
 
+    COMPILED_PACKET_STRUCT_CAR_IDX = struct.Struct("<B")
+    PACKET_LEN_CAR_IDX = COMPILED_PACKET_STRUCT_CAR_IDX.size
+
+    COMPILED_PACKET_STRUCT_FITTED_IDX = struct.Struct("<B")
+    PACKET_LEN_FITTED_IDX = COMPILED_PACKET_STRUCT_FITTED_IDX.size
+
     def __init__(self, header: PacketHeader, data: bytes) -> None:
         """
         Initializes PacketTyreSetsData with raw data.
@@ -251,20 +259,21 @@ class PacketTyreSetsData:
             data (bytes): Raw data representing information about tyre sets for a car in a race.
         """
 
-        self.m_header: PacketHeader = header
-        self.m_carIdx: int = struct.unpack("<B", data[:1])[0]
-        self.m_tyreSetData: List[TyreSetData] = []
+        super().__init__(header)
+        self.m_carIdx: int = self.COMPILED_PACKET_STRUCT_CAR_IDX.unpack(data[:self.PACKET_LEN_CAR_IDX])[0]
 
-        # Extract the full tyre set data slice from the packet, based on the expected length.
-        # Then, iterate over it in steps of TyreSetData.PACKET_LEN, creating TyreSetData objects.
-        tyre_set_data_full_len = PacketTyreSetsData.MAX_TYRE_SETS * TyreSetData.PACKET_LEN
-        full_tyre_set_data_raw = data[1:1 + tyre_set_data_full_len]
+        self.m_tyreSetData: List[TyreSetData]
+        self.m_tyreSetData, offset_so_far = _validate_parse_fixed_segments(
+            data=data,
+            offset=self.PACKET_LEN_CAR_IDX,
+            item_cls=TyreSetData,
+            item_len=TyreSetData.PACKET_LEN,
+            count=self.MAX_TYRE_SETS,
+            max_count=self.MAX_TYRE_SETS,
+            packet_format=header.m_packetFormat
+        )
 
-        self.m_tyreSetData = [
-            TyreSetData(full_tyre_set_data_raw[i:i + TyreSetData.PACKET_LEN], header.m_packetFormat)
-            for i in range(0, tyre_set_data_full_len, TyreSetData.PACKET_LEN)
-        ]
-        self.m_fittedIdx: int = struct.unpack("<B", data[(1 + tyre_set_data_full_len):])[0]
+        self.m_fittedIdx: int = self.COMPILED_PACKET_STRUCT_FITTED_IDX.unpack(data[offset_so_far:])[0]
 
     def __str__(self) -> str:
         """

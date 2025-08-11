@@ -31,7 +31,8 @@ from colorama import init
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from f1_types import (TestPacketCarDamageData, TestPacketCarMotionData,
+from f1_types import (TestF1BaseEnum, TestF1PacketBase, TestF1SubPacketBase,
+                      TestPacketCarDamageData, TestPacketCarMotionData,
                       TestPacketCarSetupData, TestPacketCarStatusData,
                       TestPacketCarTelemetryData, TestPacketEventData,
                       TestPacketFinalClassificationData, TestPacketLapData,
