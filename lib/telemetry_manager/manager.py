@@ -63,7 +63,6 @@ class AsyncF1TelemetryManager:
         self.m_logger = logger
         self.m_receiver = telemetry_receiver_factory(port_number, replay_server, logger)
         self.m_callbacks: Dict[F1PacketType, F1TelemetryCallback] = {}
-        # self.m_callbacks: Dict[F1PacketType, F1TelemetryCallback] = {ptype: None for ptype in self.packet_type_map}
 
         self.m_raw_packet_callback: Optional[Callable[[object], Awaitable[None]]] = None
 
