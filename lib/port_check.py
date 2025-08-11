@@ -30,14 +30,13 @@ import socket
 def is_port_available(port: int) -> bool:
     """Check if a TCP port is available to bind (e.g., for a Flask/Quart server)."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        # Disable socket options that allow re-binding on macOS/Linux
         if platform.system() == "Windows":
-            # Prevent others from binding to the same port
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
-        else:
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
         try:
             sock.bind(('0.0.0.0', port))
             return True
         except OSError:
             return False
+
