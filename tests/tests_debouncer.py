@@ -22,7 +22,7 @@
 # pylint: skip-file
 
 import os
-import time
+from unittest.mock import patch
 import sys
 
 # Add the parent directory to the Python path
@@ -37,29 +37,32 @@ class TestMultiButtonDebouncer(F1TelemetryUnitTestsBase):
     def setUp(self):
         self.debouncer = ButtonDebouncer(debounce_time=0.3)
 
-    def test_single_button_press(self):
+    @patch("time.time", side_effect=[1.0])
+    def test_single_button_press(self, mock_time):
         result = self.debouncer.onButtonPress("Button1")
-        self.assertTrue(result, "The first button press should be processed.")
+        self.assertTrue(result)
 
-    def test_debounce_same_button(self):
-        self.debouncer.onButtonPress("Button1")
-        result = self.debouncer.onButtonPress("Button1")  # Within debounce time
-        self.assertFalse(result, "A button press within debounce time should not be processed.")
+    @patch("time.time", side_effect=[1.0, 1.001])
+    def test_different_buttons(self, mock_time):
+        result1 = self.debouncer.onButtonPress("Button1")  # time=1.0
+        result2 = self.debouncer.onButtonPress("Button2")  # time=1.001
+        self.assertTrue(result1)
+        self.assertTrue(result2)
 
-    def test_different_buttons(self):
-        result1 = self.debouncer.onButtonPress("Button1")
-        result2 = self.debouncer.onButtonPress("Button2")
-        self.assertTrue(result1, "The first button press should be processed.")
-        self.assertTrue(result2, "A different button's press should be processed.")
+    @patch("time.time", side_effect=[1.0, 1.1])
+    def test_debounce_same_button(self, mock_time):
+        self.debouncer.onButtonPress("Button1")  # time=1.0
+        result = self.debouncer.onButtonPress("Button1")  # time=1.1
+        self.assertFalse(result)
 
-    def test_debounce_respects_time(self):
-        self.debouncer.onButtonPress("Button1")
-        time.sleep(0.4)  # Wait longer than debounce time
-        result = self.debouncer.onButtonPress("Button1")  # After debounce time
-        self.assertTrue(result, "A button press after debounce time should be processed.")
+    @patch("time.time", side_effect=[1.0, 1.4])
+    def test_debounce_respects_time(self, mock_time):
+        self.debouncer.onButtonPress("Button1")  # time=1.0
+        result = self.debouncer.onButtonPress("Button1")  # time=1.4
+        self.assertTrue(result)
 
-    def test_no_event_after_close_press(self):
-        self.debouncer.onButtonPress("Button1")
-        time.sleep(0.2)  # Less than debounce time
-        result = self.debouncer.onButtonPress("Button1")  # Within debounce time
-        self.assertFalse(result, "A button press within debounce time should not be processed.")
+    @patch("time.time", side_effect=[1.0, 1.2])
+    def test_no_event_after_close_press(self, mock_time):
+        self.debouncer.onButtonPress("Button1")  # time=1.0
+        result = self.debouncer.onButtonPress("Button1")  # time=1.2
+        self.assertFalse(result)
