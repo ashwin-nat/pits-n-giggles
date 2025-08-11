@@ -115,7 +115,7 @@ class BaseWebServer:
                 if endpoint == 'static':
                     values['v'] = self.m_ver_str
                 return url_for(endpoint, **values)
-            return dict(url_for=dated_url_for)
+            return {"url_for": dated_url_for}
 
         # Disable caching for template paths, always.
         @self.m_app.after_request
