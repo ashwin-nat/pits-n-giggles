@@ -41,10 +41,6 @@ from lib.socket_receiver import TcpReceiver, TelemetryReceiver, UdpReceiver
 
 from .exceptions import UnsupportedPacketFormat, UnsupportedPacketType
 
-# -------------------------------------- TYPES -------------------------------------------------------------------------
-
-F1TelemetryCallback = Optional[Callable[[F1PacketBase], Awaitable[None]]]
-
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class PacketParserFactory:
