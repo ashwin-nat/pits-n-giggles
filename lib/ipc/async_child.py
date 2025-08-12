@@ -80,14 +80,14 @@ class IpcChildAsync:
                     await self.sock.send_json({"reply": "__pong__", "source": self.name})
                     continue
                 if cmd == "__shutdown__":
-                    response = {"status": "ok", "message": "shutdown complete"}
+                    response = {"status": "success", "message": "shutdown complete"}
                     if self._shutdown_callback:
                         try:
                             response = await self._shutdown_callback()
                         except Exception as e:
                             response = {"status": "error", "message": str(e)}
                     else:
-                        response = {"status": "ok", "message": "default shutdown complete response"}
+                        response = {"status": "success", "message": "default shutdown complete response"}
                     await self.sock.send_json(response)
                     self._running = False
                     break

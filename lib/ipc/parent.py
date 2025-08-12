@@ -73,7 +73,6 @@ class IpcParent:
         """
         return self.request("__terminate__")
 
-
     def shutdown_child(self) -> dict:
         """
         Sends a graceful shutdown command to the child.
