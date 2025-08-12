@@ -32,7 +32,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from tests_base import F1TelemetryUnitTestsBase
 
-from lib.ipc import IpcParent, IpcChildSync, IpcChildAsync, get_free_tcp_port
+from lib.ipc import IpcParent, IpcChildAsync, get_free_tcp_port
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -109,21 +109,6 @@ class TestIPC(F1TelemetryUnitTestsBase):
             msg=f"Unexpected error message: {error_msg}"
         )
         parent.close()
-
-    def test_child_freeze(self):
-        """Test: Simulate child freezing (non-responding)"""
-        def handler(msg):
-            time.sleep(1)  # shorter block to simulate freeze
-            return {'reply': 'late'}
-        child = IpcChildSync(self.port)
-        thread = threading.Thread(target=child.serve, args=(handler,), daemon=True)
-        thread.start()
-        time.sleep(0.1)
-        parent = IpcParent(self.port, timeout_ms=100)
-        resp = parent.request('ping')
-        self.assertIn('error', resp)  # Expect timeout error
-        parent.close()
-        thread.join(timeout=1)
 
     def test_async_child_freeze(self):
         """Test: Simulate async child freezing (non-responding)"""

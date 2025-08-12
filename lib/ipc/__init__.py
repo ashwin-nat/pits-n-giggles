@@ -23,7 +23,6 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .async_child import IpcChildAsync
-from .sync_child import IpcChildSync
 from .parent import IpcParent
 from .utils import get_free_tcp_port
 
@@ -31,7 +30,6 @@ from .utils import get_free_tcp_port
 
 __all__ = [
     'IpcParent',
-    'IpcChildSync',
     'IpcChildAsync',
 
     'get_free_tcp_port',
