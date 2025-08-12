@@ -73,9 +73,12 @@ class IpcParent:
         """
         return self.request("__terminate__")
 
-    def shutdown_child(self) -> dict:
+    def shutdown_child(self, reason: Optional[str] = "N/A") -> dict:
         """
         Sends a graceful shutdown command to the child.
         Expects a dict with 'status' and 'message'.
+
+        :param reason: Optional reason for the shutdown.
+        :return: A dict with 'status' and 'message'.
         """
-        return self.request("__shutdown__")
+        return self.request("__shutdown__", {"reason": reason})
