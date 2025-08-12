@@ -22,7 +22,6 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import asyncio
 import contextlib
 import logging
 import os
@@ -34,11 +33,12 @@ from typing import Any, Awaitable, Callable, Coroutine, Dict, Optional, Union
 import msgpack
 import socketio
 import uvicorn
-from quart import Quart, url_for, Response
+from quart import Quart, Response
 from quart import jsonify as quart_jsonify
 from quart import render_template as quart_render_template
 from quart import request as quart_request
 from quart import send_from_directory as quart_send_from_directory
+from quart import url_for
 
 from lib.error_status import PngPortInUseError
 from lib.port_check import is_port_available
@@ -76,7 +76,6 @@ class BaseWebServer:
         self.m_key_path: Optional[str] = key_path
         self.m_disable_browser_autoload: bool = disable_browser_autoload
         self.m_debug_mode: bool = debug_mode
-        self._shutdown_event = asyncio.Event()
         self._post_start_callback: Optional[Callable[[], Awaitable[None]]] = None
         self._on_client_connect_callback: Optional[Callable[[ClientType, str], Awaitable[None]]] = None
 
@@ -101,6 +100,7 @@ class BaseWebServer:
             engineio_logger=False
         )
         self.m_sio_app: socketio.ASGIApp = socketio.ASGIApp(self.m_sio, self.m_app)
+        self._server: Optional[uvicorn.Server] = None
 
         self._register_base_socketio_events()
         self._define_static_file_routes()
@@ -254,13 +254,13 @@ class BaseWebServer:
 
         config = uvicorn.Config(
             self.m_sio_app,
-            log_level="warning",
+            log_level="debug",
             ssl_certfile=self.m_cert_path,
             ssl_keyfile=self.m_key_path,
         )
 
-        server = uvicorn.Server(config)
-        await server.serve(sockets=[sock])
+        self._server = uvicorn.Server(config)
+        await self._server.serve(sockets=[sock])
 
     def register_post_start_callback(self, callback: Callable[[], Awaitable[None]]) -> None:
         """
@@ -432,4 +432,9 @@ class BaseWebServer:
 
     async def stop(self) -> None:
         """Stop the web server."""
-        self._shutdown_event.set()
+        if not self._server:
+            return  # Already stopped or never started
+
+        self._server.should_exit = True
+        await self._server.shutdown()
+        self._server = None
