@@ -195,7 +195,7 @@ class TestIPC(F1TelemetryUnitTestsBase):
     def test_shutdown_child(self):
         """Test: Parent -> Child shutdown command with callback"""
 
-        async def shutdown_callback():
+        async def shutdown_callback(_msg):
             await asyncio.sleep(0.05)  # simulate cleanup delay
             return {"status": "ok", "message": "cleanup done"}
 

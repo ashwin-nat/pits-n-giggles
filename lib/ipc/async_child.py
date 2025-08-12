@@ -83,7 +83,7 @@ class IpcChildAsync:
                     response = {"status": "success", "message": "shutdown complete"}
                     if self._shutdown_callback:
                         try:
-                            response = await self._shutdown_callback()
+                            response = await self._shutdown_callback(msg)
                         except Exception as e:
                             response = {"status": "error", "message": str(e)}
                     else:
