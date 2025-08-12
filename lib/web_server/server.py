@@ -223,6 +223,7 @@ class BaseWebServer:
         """Check if a room is empty"""
         participants = list(self.m_sio.manager.get_participants(namespace, room_name))
         return not participants
+
     async def run(self) -> None:
         """
         Run the web server asynchronously using Uvicorn.
@@ -254,7 +255,7 @@ class BaseWebServer:
 
         config = uvicorn.Config(
             self.m_sio_app,
-            log_level="debug",
+            log_level="warning",
             ssl_certfile=self.m_cert_path,
             ssl_keyfile=self.m_key_path,
         )
