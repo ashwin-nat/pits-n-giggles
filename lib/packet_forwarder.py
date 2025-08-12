@@ -109,7 +109,7 @@ class AsyncUDPTransport:
         """
         Safely close all sockets.
         """
-        for destination, sock in list(getattr(self, '_sockets', {}).items()):
+        for destination, sock in self.m_sockets.items():
             try:
                 sock.close()
             except Exception as e:
@@ -153,20 +153,25 @@ class AsyncUDPForwarder:
         if not self.m_forward_addresses:
             return
 
-        # Schedule all sends concurrently using create_task (avoiding asyncio.gather overhead)
+        tasks: List[asyncio.Task] = []
         for destination in self.m_forward_addresses:
-            asyncio.ensure_future(self.m_transport.send(data, destination))
+            tasks.append(self._send_to_destination(data, destination))
 
-    async def _forwardPacket(self, data: bytes, destination: Tuple[str, int]) -> None:
+        await asyncio.gather(*tasks)
+
+    async def _send_to_destination(self, data: bytes, destination: Tuple[str, int]) -> None:
         """
-        Forwards the received UDP packet to the specified destination.
+        Send data to a single destination and handle potential OS-level errors.
 
-        :param data: The data (bytes) to forward
-        :param destination: A tuple (IP, Port) specifying where the packet should be forwarded
+        :param data: The data to send
+        :param destination: The destination (IP, Port)
         """
         try:
             await self.m_transport.send(data, destination)
-        except Exception as e:
+        except OSError as e:
             if self.m_logger:
                 self.m_logger.error(f"Error forwarding packet to {destination}: {e}")
-            raise
+
+    def close(self) -> None:
+        """Safely close the transport."""
+        self.m_transport.close()

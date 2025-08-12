@@ -151,10 +151,10 @@ class TestAsyncUDPForwarder(F1TelemetryUnitTestsBase):
         async def async_test():
             with patch("lib.packet_forwarder.AsyncUDPTransport.send", new_callable=AsyncMock) as mock_send:
                 # Simulate failure for the second address only
-                def side_effect(data, addr):
+                async def side_effect(data, addr):
                     if addr == self.forward_addresses[1]:
                         raise OSError("Simulated error for one address")
-                    return asyncio.Future()  # default mock async response
+                    await asyncio.sleep(0)
 
                 mock_send.side_effect = side_effect
 
