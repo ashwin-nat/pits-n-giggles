@@ -23,19 +23,12 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
-import json
 import logging
 from functools import partial
-from typing import List, Optional, Callable, Awaitable, Dict
+from typing import List, Optional
 
-import msgpack
-import socketio
-
-import apps.backend.state_mgmt_layer as TelWebAPI
-from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.ipc import IpcChildAsync
-from .command_dispatcher import processIpcCommand
-
+from .command_dispatcher import processIpcCommand, handleShutdown
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -52,6 +45,7 @@ def registerIpcTask(ipc_port: Optional[int], logger: logging.Logger, tasks: List
     if ipc_port:
         logger.debug(f"Starting IPC server on port {ipc_port}")
         server = IpcChildAsync(ipc_port, "Backend")
+        server.register_shutdown_callback(partial(handleShutdown, logger=logger))
         tasks.append(asyncio.create_task(server.run(partial(processIpcCommand, logger=logger)), name="IPC Task"))
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
