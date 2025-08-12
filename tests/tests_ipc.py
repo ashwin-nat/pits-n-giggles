@@ -206,3 +206,34 @@ class TestIPC(F1TelemetryUnitTestsBase):
 
         parent.close()
         thread.join(timeout=2)
+
+    def test_shutdown_child(self):
+        """Test: Parent -> Child shutdown command with callback"""
+
+        async def shutdown_callback():
+            await asyncio.sleep(0.05)  # simulate cleanup delay
+            return {"status": "ok", "message": "cleanup done"}
+
+        async def handler(_msg):
+            return {"unexpected": True}
+
+        child = IpcChildAsync(self.port, name="ShutdownChild")
+        child.register_shutdown_callback(shutdown_callback)
+
+        def run_async_child():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(child.run(handler))
+
+        thread = threading.Thread(target=run_async_child, daemon=True)
+        thread.start()
+
+        time.sleep(0.1)  # allow bind
+        parent = IpcParent(self.port, timeout_ms=500)
+        resp = parent.shutdown_child()
+
+        self.assertEqual(resp.get("status"), "ok")
+        self.assertEqual(resp.get("message"), "cleanup done")
+
+        parent.close()
+        thread.join(timeout=2)

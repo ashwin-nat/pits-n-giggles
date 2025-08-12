@@ -47,6 +47,14 @@ class IpcChildAsync:
         self.sock = self.ctx.socket(zmq.REP)
         self.sock.bind(self.endpoint)
         self._running = False
+        self._shutdown_callback = None  # NEW
+
+    def register_shutdown_callback(self, callback: Callable[[], Awaitable[dict]]):
+        """
+        Registers an async callback to be called before shutdown.
+        Callback must return a dict with 'status' and 'message' keys.
+        """
+        self._shutdown_callback = callback
 
     async def run(self, handler_fn: Callable[[dict], Awaitable[dict]], timeout: Optional[int] = None) -> None:
         """
@@ -69,20 +77,32 @@ class IpcChildAsync:
                     self._running = False
                     break
                 if cmd == "__ping__":
-                    response = {"reply": "__pong__", "source": self.name}
-                    self.sock.send_json(response)
+                    await self.sock.send_json({"reply": "__pong__", "source": self.name})
                     continue
+                if cmd == "__shutdown__":
+                    response = {"status": "ok", "message": "shutdown complete"}
+                    if self._shutdown_callback:
+                        try:
+                            response = await self._shutdown_callback()
+                        except Exception as e:
+                            response = {"status": "error", "message": str(e)}
+                    else:
+                        response = {"status": "ok", "message": "default shutdown complete response"}
+                    await self.sock.send_json(response)
+                    self._running = False
+                    break
 
                 response = await handler_fn(msg)
                 await self.sock.send_json(response)
 
             except asyncio.TimeoutError:
                 print("[Async Child] Timeout waiting for request")
-            except Exception as e:  # pylint: disable=broad-exception-caught
+            except Exception as e: # pylint: disable=broad-exception-caught
                 await self.sock.send_json({"error": str(e)})
 
         self.close()
 
     def close(self) -> None:
+        """Closes the socket."""
         self.sock.close()
         self.ctx.term()

@@ -58,11 +58,25 @@ class IpcParent:
             return {"status" : "ipc-error", "error": str(e)}
 
     def close(self) -> None:
+        """Closes the socket."""
         self.sock.close()
         self.ctx.term()
 
     def ping(self) -> dict:
+        """Sends a ping command to the child."""
         return self.request("__ping__")
 
     def terminate_child(self) -> dict:
+        """
+        Sends a terminate command to the child. This is a brute force shutdown and the app will not be able to
+        handle this with custom logic.
+        """
         return self.request("__terminate__")
+
+
+    def shutdown_child(self) -> dict:
+        """
+        Sends a graceful shutdown command to the child.
+        Expects a dict with 'status' and 'message'.
+        """
+        return self.request("__shutdown__")
