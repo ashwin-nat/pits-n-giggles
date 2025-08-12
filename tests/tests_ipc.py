@@ -125,6 +125,34 @@ class TestIPC(F1TelemetryUnitTestsBase):
         parent.close()
         thread.join(timeout=1)
 
+    def test_async_child_freeze(self):
+        """Test: Simulate async child freezing (non-responding)"""
+
+        async def handler(_msg):
+            # Simulate freeze by not responding quickly
+            await asyncio.sleep(1)
+            return {"reply": "late"}
+
+        child = IpcChildAsync(self.port)
+
+        def run_async_child():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(child.run(handler))
+
+        thread = threading.Thread(target=run_async_child, daemon=True)
+        thread.start()
+
+        time.sleep(0.1)  # allow bind
+        parent = IpcParent(self.port, timeout_ms=100)
+        resp = parent.request("ping")
+
+        # Expect timeout error
+        self.assertIn("error", resp)
+
+        parent.close()
+        thread.join(timeout=1)
+
     def test_ping(self):
         """Test: Parent -> Child ping command"""
 
