@@ -22,23 +22,20 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import asyncio
-import logging
-import os
-
-import apps.backend.state_mgmt_layer as TelWebAPI
+from logging import Logger
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
+import asyncio
+import os
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-async def handleManualSave(_msg: dict, _logger: logging.Logger) -> dict:
-    """Handle manual save command"""
-    return await TelWebAPI.ManualSaveRsp().saveToDisk()
+async def shutdown_tasks(logger: Logger) -> None:
+    """Shutdown all the tasks and stop the event loop"""
 
-async def handleShutdown(msg: dict, logger: logging.Logger) -> dict:
-    """Handle shutdown command"""
+    logger.debug("Starting shutdown task. Awaiting shutdown command...")
+    await AsyncInterTaskCommunicator().receive("shutdown")
+    logger.debug("Received shutdown command. Stopping tasks...")
 
-    reason = msg.get('reason', 'N/A')
-    logger.info(f"Received shutdown command. Reason: {reason}")
-    await AsyncInterTaskCommunicator().send('shutdown', {"reason" : reason})
-    return {'status': 'success'}
+    # TODO - Clean exit
+    await asyncio.sleep(1)
+    os._exit(0)

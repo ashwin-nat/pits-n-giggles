@@ -33,6 +33,7 @@ from typing import List, Optional, Set
 import psutil
 
 from apps.backend.common.png_logger import initLogger
+from apps.backend.common.shutdown import shutdown_tasks
 from apps.backend.state_mgmt_layer import initStateManagementLayer
 from apps.backend.telemetry_layer import initTelemetryLayer
 from apps.backend.ui_intf_layer import TelemetryWebServer, initUiIntfLayer
@@ -98,6 +99,7 @@ class PngRunner:
             ipc_port=ipc_port,
             debug_mode=debug_mode
         )
+        self._setupShutdownTask()
 
         # Run all tasks concurrently
         self.m_logger.debug("Registered %d Tasks: %s", len(self.m_tasks), [task.get_name() for task in self.m_tasks])
@@ -170,6 +172,9 @@ class PngRunner:
             ipc_port=ipc_port,
             disable_browser_autoload=disable_browser_autoload
         )
+
+    def _setupShutdownTask(self) -> None:
+        self.m_tasks.append(asyncio.create_task(shutdown_tasks(self.m_logger), name="Shutdown Task"))
 
     def _getLocalIpAddresses(self) -> Set[str]:
         """Get local IP addresses including '127.0.0.1' and 'localhost'.
