@@ -24,12 +24,13 @@
 
 from logging import Logger
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
+from lib.web_server import BaseWebServer
 import asyncio
 import os
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-async def shutdown_tasks(logger: Logger) -> None:
+async def shutdown_tasks(logger: Logger, server: BaseWebServer, shutdown_event: asyncio.Event) -> None:
     """Shutdown all the tasks and stop the event loop"""
 
     logger.debug("Starting shutdown task. Awaiting shutdown command...")
@@ -37,5 +38,8 @@ async def shutdown_tasks(logger: Logger) -> None:
     logger.debug("Received shutdown command. Stopping tasks...")
 
     # TODO - Clean exit
+    shutdown_event.set()
+    await AsyncInterTaskCommunicator().unblock_receivers()
+    await server.stop()
     await asyncio.sleep(1)
     os._exit(0)

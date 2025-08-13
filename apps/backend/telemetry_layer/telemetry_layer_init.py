@@ -43,6 +43,7 @@ def initTelemetryLayer(
         forwarding_targets: List[Tuple[str, int]],
         ver_str: str,
         wdt_interval: float,
+        shutdown_event: asyncio.Event,
         tasks: List[asyncio.Task]) -> None:
     """Initialize the telemetry layer
 
@@ -56,6 +57,7 @@ def initTelemetryLayer(
         forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
         ver_str (str): Version string
         wdt_interval (float): Watchdog interval
+        shutdown_event (asyncio.Event): Shutdown event
         tasks (List[asyncio.Task]): List of tasks to be executed
     """
 
@@ -74,5 +76,6 @@ def initTelemetryLayer(
     setupForwarder(
         forwarding_targets=forwarding_targets,
         tasks=tasks,
+        shutdown_event=shutdown_event,
         logger=logger
     )

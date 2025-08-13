@@ -69,6 +69,7 @@ class PngRunner:
         self.m_version: str = get_version()
 
         self.m_logger.debug(self.m_config)
+        self.m_shutdown_event: asyncio.Event = asyncio.Event()
 
         initStateManagementLayer(
             logger=self.m_logger,
@@ -86,6 +87,7 @@ class PngRunner:
             forwarding_targets=self.m_config.Forwarding.forwarding_targets,
             ver_str=self.m_version,
             wdt_interval=float(self.m_config.Network.wdt_interval_sec),
+            shutdown_event=self.m_shutdown_event,
             tasks=self.m_tasks
         )
         self.m_web_server = self._setupUiIntfLayer(
@@ -110,6 +112,7 @@ class PngRunner:
             await asyncio.gather(*self.m_tasks)
         except asyncio.CancelledError:
             self.m_logger.debug("Main task was cancelled.")
+            # TODO - stop all tasks properly
             await self.m_web_server.stop()
             for task in self.m_tasks:
                 task.cancel()
@@ -170,11 +173,14 @@ class PngRunner:
             cert_path=cert_path,
             key_path=key_path,
             ipc_port=ipc_port,
+            shutdown_event=self.m_shutdown_event,
             disable_browser_autoload=disable_browser_autoload
         )
 
     def _setupShutdownTask(self) -> None:
-        self.m_tasks.append(asyncio.create_task(shutdown_tasks(self.m_logger), name="Shutdown Task"))
+
+        self.m_tasks.append(asyncio.create_task(shutdown_tasks(
+            self.m_logger, self.m_web_server, self.m_shutdown_event), name="Shutdown Task"))
 
     def _getLocalIpAddresses(self) -> Set[str]:
         """Get local IP addresses including '127.0.0.1' and 'localhost'.

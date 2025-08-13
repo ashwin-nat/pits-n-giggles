@@ -439,3 +439,5 @@ class BaseWebServer:
         self._server.should_exit = True
         await self._server.shutdown()
         self._server = None
+
+        self.m_logger.debug("Web server stopped")
