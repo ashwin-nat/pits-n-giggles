@@ -153,11 +153,10 @@ class AsyncUDPForwarder:
         if not self.m_forward_addresses:
             return
 
-        tasks: List[asyncio.Task] = []
-        for destination in self.m_forward_addresses:
-            tasks.append(self._send_to_destination(data, destination))
-
-        await asyncio.gather(*tasks)
+        await asyncio.gather(*(
+            self._send_to_destination(data, dest)
+            for dest in self.m_forward_addresses
+        ))
 
     async def _send_to_destination(self, data: bytes, destination: Tuple[str, int]) -> None:
         """
