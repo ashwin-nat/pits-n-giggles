@@ -22,35 +22,36 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import asyncio
 from logging import Logger
+
+from apps.backend.telemetry_layer import F1TelemetryHandler
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.web_server import BaseWebServer
-import asyncio
-import os
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-async def shutdown_tasks(logger: Logger, server: BaseWebServer, shutdown_event: asyncio.Event) -> None:
-    """Shutdown all the tasks and stop the event loop"""
+async def shutdown_tasks(logger: Logger,
+                         server: BaseWebServer,
+                         shutdown_event: asyncio.Event,
+                         telemetry_handler: F1TelemetryHandler) -> None:
+    """Shutdown all the tasks and stop the event loop
+
+    Args:
+        logger (Logger): Logger
+        server (BaseWebServer): Web server handle
+        shutdown_event (asyncio.Event): Event to signal shutdown
+        telemetry_handler (F1TelemetryHandler): Telemetry handler handle
+    """
 
     logger.debug("Starting shutdown task. Awaiting shutdown command...")
     await AsyncInterTaskCommunicator().receive("shutdown")
     logger.debug("Received shutdown command. Stopping tasks...")
 
-    # TODO - Clean exit
     shutdown_event.set()
-    await AsyncInterTaskCommunicator().unblock_receivers()
+    await AsyncInterTaskCommunicator().unblock_receivers(),
     await server.stop()
+    await telemetry_handler.stop()
     await asyncio.sleep(1)
 
-    # TODO - remove
-    current_task = asyncio.current_task()
-    tasks = asyncio.all_tasks()
-    logger.debug("=== Running asyncio tasks ===")
-    for task in tasks:
-        status = "CURRENT" if task == current_task else ""
-        logger.debug(f"- {task.get_name()} (done={task.done()}) {status}")
-    logger.debug("=============================")
-
-    # TODO - remove
-    os._exit(0)
+    logger.debug("Tasks stopped. Exiting...")

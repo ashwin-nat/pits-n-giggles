@@ -29,7 +29,7 @@ from typing import List, Optional, Tuple
 from lib.config import CaptureSettings
 
 from .telemetry_forwarder import setupForwarder
-from .telemetry_handler import setupTelemetryTask
+from .telemetry_handler import setupTelemetryTask, F1TelemetryHandler
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -44,7 +44,7 @@ def initTelemetryLayer(
         ver_str: str,
         wdt_interval: float,
         shutdown_event: asyncio.Event,
-        tasks: List[asyncio.Task]) -> None:
+        tasks: List[asyncio.Task]) -> F1TelemetryHandler:
     """Initialize the telemetry layer
 
     Args:
@@ -59,9 +59,12 @@ def initTelemetryLayer(
         wdt_interval (float): Watchdog interval
         shutdown_event (asyncio.Event): Shutdown event
         tasks (List[asyncio.Task]): List of tasks to be executed
+
+    Returns:
+        F1TelemetryHandler: Telemetry handler
     """
 
-    setupTelemetryTask(
+    handler = setupTelemetryTask(
         port_number=port_number,
         replay_server=replay_server,
         logger=logger,
@@ -79,3 +82,4 @@ def initTelemetryLayer(
         shutdown_event=shutdown_event,
         logger=logger
     )
+    return handler

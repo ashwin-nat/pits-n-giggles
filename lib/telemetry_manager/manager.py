@@ -22,6 +22,7 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
+import asyncio
 import json
 import os
 from datetime import datetime
@@ -97,28 +98,41 @@ class AsyncF1TelemetryManager:
         return decorator
 
     async def run(self) -> None:
-        """Run the telemetry client asynchronously
-        """
-
+        """Run the telemetry client asynchronously."""
         if self.m_replay_server:
             self.m_logger.info("REPLAY SERVER MODE. PORT = %s", self.m_port_number)
 
         pkt_factory = PacketParserFactory(set(self.m_callbacks.keys()), self.m_logger)
 
-        # Run the client indefinitely
-        while True:
+        try:
+            while True:
+                try:
+                    raw_packet = await self.m_receiver.getNextMessage()
+                except asyncio.CancelledError:
+                    self.m_logger.debug("Receiver task cancelled - shutting down connection.")
+                    await self.m_receiver.close()
+                    return  # exit cleanly, no propagation
 
-            # Get next telemetry message
-            raw_packet = await self.m_receiver.getNextMessage()
-            try:
-                await self._processPacket(pkt_factory, raw_packet)
-            except UnsupportedPacketFormat as e:
-                self.m_logger.error(e, exc_info=True)
-            except UnsupportedPacketType as e:
-                self.m_logger.error(e, exc_info=True)
-            except Exception as e:
-                self.m_logger.error("Error processing packet: %s", e, exc_info=True)
-                raise  # Re-raises the caught exception
+                try:
+                    await self._processPacket(pkt_factory, raw_packet)
+                except UnsupportedPacketFormat as e:
+                    self.m_logger.error(e, exc_info=True)
+                except UnsupportedPacketType as e:
+                    self.m_logger.error(e, exc_info=True)
+
+        except asyncio.CancelledError:
+            # Catch any other cancellation point inside this method
+            self.m_logger.debug("Receiver task cancelled outside packet receive - shutting down.")
+            await self.m_receiver.close()
+            return  # no raise
+
+
+    async def stop(self) -> None:
+        """Stops the telemetry manager and its internals
+        """
+        self.m_logger.debug("Stopping telemetry manager...")
+        await self.m_receiver.close()
+        self.m_logger.debug("Telemetry manager stopped.")
 
     async def _processPacket(self,
                              pkt_factory: PacketParserFactory,

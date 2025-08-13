@@ -22,8 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from .telemetry_layer_init import initTelemetryLayer
+from .telemetry_layer_init import initTelemetryLayer, F1TelemetryHandler
 
 __all__ = [
     "initTelemetryLayer",
+    "F1TelemetryHandler",
 ]

@@ -37,7 +37,6 @@ CommandHandler = Callable[[dict, logging.Logger], Awaitable[dict]]
 # Registry of command handlers
 COMMAND_HANDLERS: Dict[str, CommandHandler] = {
     "manual-save": handleManualSave,
-    "shutdown": handleShutdown
 }
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
