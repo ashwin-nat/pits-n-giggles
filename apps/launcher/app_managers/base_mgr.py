@@ -349,7 +349,7 @@ class PngAppMgrBase(ABC):
             True if the shutdown was successful, False otherwise.
         """
         try:
-            rsp = IpcParent(self.ipc_port).request("shutdown", {"reason": "Stop requested"})
+            rsp = IpcParent(self.ipc_port).shutdown_child("Stop requested")
             return rsp.get("status") == "success"
         except Exception as e: # pylint: disable=broad-exception-caught
             self.console_app.log(f"IPC shutdown failed: {e}")
