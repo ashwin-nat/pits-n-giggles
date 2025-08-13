@@ -32,43 +32,6 @@ from typing import Dict, List, Tuple
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
-class UDPForwarder:
-    def __init__(self, forward_addresses: List[Tuple[str, int]], logger: Logger = None):
-        """
-        Initializes the UDPForwarder instance with forwarding destinations.
-
-        :param forward_addresses: A list of tuples, where each tuple consists of an IP address
-                                  (str) and a port number (int) to forward packets to.
-        :param logger: Logger instance for logging errors (optional).
-        """
-        self.m_forward_addresses = forward_addresses
-        self.m_logger = logger
-
-    def forward(self, data: bytes) -> None:
-        """
-        Forwards the given data to all the configured destinations.
-
-        :param data: The data (bytes) to forward, which is the received UDP packet.
-        """
-        for destination in self.m_forward_addresses:
-            self._forwardPacket(data, destination)
-
-    def _forwardPacket(self, data: bytes, destination: Tuple[str, int]) -> None:
-        """
-        Forwards the received UDP packet to the specified destination.
-
-        :param data: The data (bytes) to forward, which is the received UDP packet.
-        :param destination: A tuple (IP, Port) specifying where the packet should be forwarded.
-        """
-        forward_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        try:
-            forward_socket.sendto(data, destination)
-        except OSError as e:
-            if self.m_logger:
-                self.m_logger.error(f"Error forwarding packet to {destination}: {e}")
-        finally:
-            forward_socket.close()
-
 class AsyncUDPTransport:
     """Abstraction layer for UDP transport management."""
     def __init__(self, forward_addresses: List[Tuple[str, int]], logger: Logger = None):
