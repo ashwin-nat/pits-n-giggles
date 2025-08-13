@@ -2,6 +2,9 @@ name: Manual Unit Tests
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
   test-windows:
