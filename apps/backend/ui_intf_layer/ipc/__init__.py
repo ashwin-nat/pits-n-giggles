@@ -28,7 +28,9 @@ from functools import partial
 from typing import List, Optional
 
 from lib.ipc import IpcChildAsync
-from .command_dispatcher import processIpcCommand, handleShutdown
+
+from .command_dispatcher import processIpcCommand
+from .command_handlers import handleShutdown
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 

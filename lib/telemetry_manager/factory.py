@@ -24,7 +24,7 @@
 
 
 from logging import Logger
-from typing import Awaitable, Callable, Optional, Set, Type
+from typing import Set, Type
 
 from lib.f1_types import (F1PacketBase, F1PacketType, InvalidPacketLengthError,
                           PacketCarDamageData, PacketCarSetupData,

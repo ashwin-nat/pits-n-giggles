@@ -63,6 +63,7 @@ def initUiIntfLayer(
         cert_path (Optional[str]): Path to the certificate file
         key_path (Optional[str]): Path to the key file
         ipc_port (Optional[int]): IPC port
+        shutdown_event (asyncio.Event): Event to signal shutdown
         disable_browser_autoload (bool): Whether to disable browser autoload
 
     Returns:

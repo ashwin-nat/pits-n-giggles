@@ -66,7 +66,7 @@ class IpcChildAsync:
         self._running = True
 
         while self._running:
-            try:
+            try: # pylint: disable=too-many-try-statements
                 if timeout:
                     msg: dict = await asyncio.wait_for(self.sock.recv_json(), timeout)
                 else:
@@ -84,7 +84,7 @@ class IpcChildAsync:
                     if self._shutdown_callback:
                         try:
                             response = await self._shutdown_callback(msg['args'])
-                        except Exception as e:
+                        except Exception as e: # pylint: disable=broad-exception-caught
                             response = {"status": "error", "message": str(e)}
                     else:
                         response = {"status": "success", "message": "default shutdown complete response"}

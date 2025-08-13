@@ -82,9 +82,6 @@ class TcpReceiver(TelemetryReceiver):
             except (OSError) as e:
                 print(f"Connection error: {e}")
                 return await self.getNextMessage()  # Try again
-            except asyncio.CancelledError:
-                # Propagate the cancellation
-                raise
 
         try:
             # Read length prefix (4 bytes)
@@ -105,10 +102,6 @@ class TcpReceiver(TelemetryReceiver):
 
             # Try again with a new connection
             return await self.getNextMessage()
-
-        except asyncio.CancelledError:
-            # Propagate the cancellation
-            raise
 
     async def close(self) -> None:
         """Closes the socket receiver and any active connection."""

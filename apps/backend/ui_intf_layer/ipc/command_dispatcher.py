@@ -26,7 +26,7 @@ import json
 import logging
 from typing import Callable, Awaitable, Dict
 
-from .command_handlers import handleManualSave, handleShutdown
+from .command_handlers import handleManualSave
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
