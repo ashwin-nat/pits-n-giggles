@@ -192,6 +192,7 @@ class AsyncInterTaskCommunicator:
     """Singleton Class for asynchronous inter-task communication"""
     _instance: Optional["AsyncInterTaskCommunicator"] = None
     _last_used_queue = contextvars.ContextVar("last_used_queue", default=None)
+    _unblock_receivers_obj = object()
 
     def __new__(cls, *args: Any, **kwargs: Any) -> "AsyncInterTaskCommunicator":
         """
@@ -230,6 +231,8 @@ class AsyncInterTaskCommunicator:
           - If `timeout` > 0, waits up to `timeout` seconds for an item.
           - If `timeout` == 0, attempts to retrieve immediately; returns `None` if the queue is empty.
 
+        NOTE: If any task calls shutdown
+
         Args:
             queue_name (str): The name of the queue to retrieve the item from.
             timeout (Optional[float]): Maximum time in seconds to wait for an item.
@@ -239,11 +242,18 @@ class AsyncInterTaskCommunicator:
         """
         q = await self._get_queue(queue_name)
         try:
-            if timeout is not None:
-                return await asyncio.wait_for(q.get(), timeout=timeout)
-            return await q.get()
+            item = await (asyncio.wait_for(q.get(), timeout) if timeout is not None else q.get())
+            if item is self._unblock_receivers_obj:
+                return None  # indicates manually triggered wakeup
+            return item
         except asyncio.TimeoutError:
             return None
+
+    async def unblock_receivers(self) -> None:
+        """Unblocks any tasks waiting for messages on all queues."""
+        async with self._lock:
+            for q in self.queues.values():
+                await q.put(self._unblock_receivers_obj)
 
     async def _get_queue(self, queue_name: str) -> asyncio.Queue:
         """

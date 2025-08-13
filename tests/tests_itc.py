@@ -75,3 +75,30 @@ class TestAsyncInterTaskCommunicator(F1TelemetryUnitTestsBase):
         message = await self.communicator.receive('timeout_queue', timeout=0.2)
         self.assertEqual(message, "Timely Message")
         await send_task
+
+    async def test_unblock_receivers(self):
+        """Test unblock_receivers()"""
+        results = []
+
+        async def listener():
+            msg = await self.communicator.receive('unblock_receivers_queue', timeout=None)
+            results.append(msg)
+
+        # Start a listener that will block
+        listener_task = asyncio.create_task(listener())
+
+        # Give the listener a moment to start waiting
+        await asyncio.sleep(0.05)
+
+        # Trigger shutdown
+        await self.communicator.unblock_receivers()
+
+        # Wait for the listener to exit
+        await listener_task
+
+        # The listener should have received None (shutdown signal)
+        self.assertEqual(results, [None])
+
+        # After shutdown, further receives should return None immediately
+        msg_after = await self.communicator.receive('unblock_receivers_queue', timeout=0)
+        self.assertIsNone(msg_after)
