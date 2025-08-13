@@ -130,6 +130,10 @@ class AsyncF1TelemetryManager:
             raw_packet (bytes): The raw packet received from the UDP socket
         """
 
+        # First, perform the raw packet callback
+        if self.m_raw_packet_callback:
+            await self.m_raw_packet_callback(raw_packet)
+
         parsed_obj = pkt_factory.parse(raw_packet)
         if not parsed_obj:
             return
