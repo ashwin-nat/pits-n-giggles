@@ -69,5 +69,5 @@ async def udpForwardingTask(forwarding_targets: List[Tuple[str, int]],
         if packet := await AsyncInterTaskCommunicator().receive("packet-forward"):
             await udp_forwarder.forward(packet)
 
-    # TODO - Clean exit
+    udp_forwarder.close()
     logger.debug("Shutting down UDP Forwarder task...")

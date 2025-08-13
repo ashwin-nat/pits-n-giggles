@@ -42,4 +42,15 @@ async def shutdown_tasks(logger: Logger, server: BaseWebServer, shutdown_event: 
     await AsyncInterTaskCommunicator().unblock_receivers()
     await server.stop()
     await asyncio.sleep(1)
+
+    # TODO - remove
+    current_task = asyncio.current_task()
+    tasks = asyncio.all_tasks()
+    logger.debug("=== Running asyncio tasks ===")
+    for task in tasks:
+        status = "CURRENT" if task == current_task else ""
+        logger.debug(f"- {task.get_name()} (done={task.done()}) {status}")
+    logger.debug("=============================")
+
+    # TODO - remove
     os._exit(0)
