@@ -153,7 +153,7 @@ class PngAppMgrBase(ABC):
             # Start the subprocess and update all related state variables atomically
             # so no other thread sees a partially updated state.
             launch_command = self.get_launch_command(self.module_path, self.args)
-            self.console_app.debug_log(f"Starting {self.display_name}...")
+            self.console_app.info_log(f"Starting {self.display_name}...")
 
             self.ipc_port = get_free_tcp_port()
             launch_command.extend(["--ipc-port", f"{self.ipc_port}"])
@@ -184,7 +184,7 @@ class PngAppMgrBase(ABC):
                 self.console_app.debug_log(f"{self.display_name} is not running.")
                 return
 
-            self.console_app.debug_log(f"Stopping {self.display_name}...")
+            self.console_app.info_log(f"Stopping {self.display_name}...")
             self._is_stopping.set()
             self.status_var.set("Stopping...")
             if self._send_ipc_shutdown():
@@ -279,7 +279,7 @@ class PngAppMgrBase(ABC):
                         self.console_app.debug_log(f"{self.display_name}: Error in post-start hook: {e}")
 
             else:
-                self.console_app.debug_log(line, is_child_message=True)
+                self.console_app.info_log(line, is_child_message=True)
 
     def _monitor_process_exit(self):
         """subprocess monitoring thread to handle unexpected exits"""
@@ -320,7 +320,7 @@ class PngAppMgrBase(ABC):
 
         :param ret_code: Exit code of the process
         """
-        self.console_app.debug_log(f"{self.display_name} exited unexpectedly with code {ret_code}")
+        self.console_app.info_log(f"{self.display_name} exited unexpectedly with code {ret_code}")
         self.is_running = False
         self.child_pid = None
         self.process = None
@@ -330,7 +330,7 @@ class PngAppMgrBase(ABC):
 
         if info["status"] == "Port Conflict":
             err_msg += f". Please fix the following field in the settings: {self.port_conflict_settings_field}"
-        self.console_app.debug_log(err_msg)
+        self.console_app.info_log(err_msg)
         messagebox.showerror(
             title=f"{self.display_name} - {info['title']}",
             message=err_msg,

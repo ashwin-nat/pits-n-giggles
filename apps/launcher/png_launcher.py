@@ -350,7 +350,7 @@ class PngLauncher(ConsoleInterface):
     def settings_change_callback(self, new_settings: PngSettings) -> None:
         """Callback function to save settings from the settings window"""
 
-        self.debug_log("Settings changed, restarting apps...")
+        self.info_log("Settings changed, restarting apps...")
 
         # Save the new settings
         self.settings = new_settings
@@ -360,11 +360,6 @@ class PngLauncher(ConsoleInterface):
             # Check if the subapp needs to be restarted
             if subapp.on_settings_change(new_settings):
                 subapp.restart()
-
-    def write(self, text):
-        """Handle print statements by redirecting to our log"""
-        if text.strip():  # Only process non-empty strings
-            self.debug_log(text.rstrip())
 
     def flush(self):
         """Required for stdout redirection"""
