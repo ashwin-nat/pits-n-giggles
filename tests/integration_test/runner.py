@@ -203,6 +203,7 @@ def main(telemetry_port, http_port, proto):
         print(f"\nStopping app... PID={app_process.pid}")
         if not send_ipc_shutdown(ipc_port):
             kill_app(is_windows, app_process)
+        time.sleep(5)
 
     print("\n===== TEST RESULTS =====")
     success_count = sum(overall for _, overall, _, _ in results)
