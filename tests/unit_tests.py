@@ -77,7 +77,7 @@ from tests_tyre_wear_extrapolator import (
     TestSimpleLinearRegression, TestTyreWearExtrapolator,
     TestTyreWearExtrapolatorWithMissingLaps,
     TestTyreWearExtrapolatorWithNonRacingLaps)
-from tests_udp_forwarder import TestAsyncUDPForwarder, TestUDPForwarder
+from tests_udp_forwarder import TestAsyncUDPForwarder
 from tests_version import TestGetVersion, TestIsUpdateAvailable
 
 from tests.tests_child_proc_mgmt import TestIsInitComplete, TestPidReport

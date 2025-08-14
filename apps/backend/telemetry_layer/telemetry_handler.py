@@ -60,7 +60,7 @@ def setupTelemetryTask(
         forwarding_targets: List[Tuple[str, int]],
         ver_str: str,
         wdt_interval: float,
-        tasks: List[asyncio.Task]) -> None:
+        tasks: List[asyncio.Task]) -> "F1TelemetryHandler":
     """Entry point to start the F1 telemetry server.
 
     Args:
@@ -74,6 +74,9 @@ def setupTelemetryTask(
         ver_str (str): Version string
         wdt_interval (float): Watchdog interval
         tasks (List[asyncio.Task]): List of tasks to be executed
+
+    Returns:
+        F1TelemetryHandler: Telemetry handler server
     """
 
     telemetry_server = F1TelemetryHandler(
@@ -87,8 +90,10 @@ def setupTelemetryTask(
         replay_server=replay_server,
         ver_str=ver_str,
     )
-    tasks.append(asyncio.create_task(telemetry_server.run(), name="Game Telemetry Listener Task"))
+    tasks.append(telemetry_server.getTask())
     tasks.append(asyncio.create_task(telemetry_server.getWatchdogTask(), name="Watchdog Timer Task"))
+
+    return telemetry_server
 
 # -------------------------------------- TELEMETRY PACKET HANDLERS -----------------------------------------------------
 
@@ -148,7 +153,21 @@ class F1TelemetryHandler:
             status_callback=self.m_session_state_ref.setConnectedToSim,
             timeout=wdt_interval
         )
+        self.m_manager_task: Optional[asyncio.Task] = None
         self.registerCallbacks()
+
+    def getTask(self, name: Optional[str] = "Game Telemetry Listener Task") -> asyncio.Task:
+        """
+        Get the telemetry manager task.
+
+        Args:
+            name (Optional[str], optional): Name of the task. Defaults to "Game Telemetry Listener Task".
+
+        Returns:
+        asyncio.Task: The telemetry manager task.
+        """
+        self.m_manager_task = asyncio.create_task(self.run(), name=name)
+        return self.m_manager_task
 
     async def run(self):
         """
@@ -158,6 +177,15 @@ class F1TelemetryHandler:
         None
         """
         await self.m_manager.run()
+
+    async def stop(self) -> None:
+        """
+        Stop the telemetry manager and watchdog timer.
+        """
+        if self.m_manager_task:
+            self.m_manager_task.cancel()
+        self.m_wdt.stop()
+        self.m_logger.debug("Telemetry handler stopped. manager and wdt stopped.")
 
     def getWatchdogTask(self) -> Coroutine:
         """

@@ -41,7 +41,7 @@ def send_ipc_shutdown(ipc_port) -> bool:
         True if the shutdown was successful, False otherwise.
     """
     try:
-        rsp = IpcParent(ipc_port).request("shutdown", {"reason": "Integration test complete"})
+        rsp = IpcParent(ipc_port).shutdown_child("Integration test complete")
         return rsp.get("status") == "success"
     except Exception as e: # pylint: disable=broad-exception-caught
         print(f"IPC shutdown failed: {e}")
@@ -222,9 +222,14 @@ def main(telemetry_port, http_port, proto):
 
 if __name__ == "__main__":
     settings = load_config_from_ini("png_config.ini")
+
+    start_time = time.perf_counter()
     success = main(
         telemetry_port=settings.Network.telemetry_port,
         http_port=settings.Network.server_port,
         proto=settings.HTTPS.proto
     )
+    end_time = time.perf_counter()
+    print(f"Total time: {end_time - start_time:.3f} seconds")
+
     sys.exit(0 if success else 1)

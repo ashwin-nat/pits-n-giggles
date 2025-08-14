@@ -212,7 +212,18 @@ class PngAppMgrBase(ABC):
                 self.console_app.log(f"{self.display_name}: Error in post-stop hook: {e}")
 
     def start_stop(self):
-        """Start or stop the sub-application process based on its current state"""
+        """Start or stop the sub-application process (non-blocking for GUI)."""
+        def worker():
+            # Call the original start_stop logic
+            try:
+                self._start_stop_blocking()
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                self.console_app.log(f"{self.display_name}: Error during start/stop: {e}")
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _start_stop_blocking(self):
+        """Actual start/stop logic that may block (called in worker thread)."""
         if self.is_running:
             self.stop()
         else:
@@ -349,7 +360,7 @@ class PngAppMgrBase(ABC):
             True if the shutdown was successful, False otherwise.
         """
         try:
-            rsp = IpcParent(self.ipc_port).request("shutdown", {"reason": "Stop requested"})
+            rsp = IpcParent(self.ipc_port).shutdown_child("Stop requested")
             return rsp.get("status") == "success"
         except Exception as e: # pylint: disable=broad-exception-caught
             self.console_app.log(f"IPC shutdown failed: {e}")

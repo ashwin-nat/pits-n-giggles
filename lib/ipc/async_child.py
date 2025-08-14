@@ -47,6 +47,14 @@ class IpcChildAsync:
         self.sock = self.ctx.socket(zmq.REP)
         self.sock.bind(self.endpoint)
         self._running = False
+        self._shutdown_callback = None  # NEW
+
+    def register_shutdown_callback(self, callback: Callable[[dict], Awaitable[dict]]):
+        """
+        Registers an async callback to be called before shutdown.
+        Callback must return a dict with 'status' and 'message' keys.
+        """
+        self._shutdown_callback = callback
 
     async def run(self, handler_fn: Callable[[dict], Awaitable[dict]], timeout: Optional[int] = None) -> None:
         """
@@ -58,31 +66,48 @@ class IpcChildAsync:
         self._running = True
 
         while self._running:
+            # 1) receive with optional timeout
             try:
                 if timeout:
-                    msg: dict = await asyncio.wait_for(self.sock.recv_json(), timeout)
+                    msg = await asyncio.wait_for(self.sock.recv_json(), timeout)
                 else:
-                    msg: dict = await self.sock.recv_json()
-
-                cmd = msg.get("cmd")
-                if cmd == "__terminate__":
-                    self._running = False
-                    break
-                if cmd == "__ping__":
-                    response = {"reply": "__pong__", "source": self.name}
-                    self.sock.send_json(response)
-                    continue
-
-                response = await handler_fn(msg)
-                await self.sock.send_json(response)
-
+                    msg = await self.sock.recv_json()
             except asyncio.TimeoutError:
                 print("[Async Child] Timeout waiting for request")
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                await self.sock.send_json({"error": str(e)})
+                continue  # go back and recv again
+
+            cmd = msg.get("cmd")
+
+            # 2) dispatch + error‐handling
+            try:
+                if cmd == "__terminate__":
+                    break
+
+                if cmd == "__ping__":
+                    response = {"reply": "__pong__", "source": self.name}
+
+                elif cmd == "__shutdown__":
+                    if self._shutdown_callback:
+                        response = await self._shutdown_callback(msg.get("args", {}))
+                    else:
+                        response = {
+                            "status": "success",
+                            "message": "default shutdown complete",
+                        }
+                    self._running = False
+
+                else:
+                    response = await handler_fn(msg)
+
+            except Exception as e: # pylint: disable=broad-except
+                response = {"error": str(e)}
+
+            # 3) always send back one JSON
+            await self.sock.send_json(response)
 
         self.close()
 
     def close(self) -> None:
+        """Closes the socket."""
         self.sock.close()
         self.ctx.term()

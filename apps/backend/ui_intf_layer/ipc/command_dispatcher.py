@@ -26,7 +26,7 @@ import json
 import logging
 from typing import Callable, Awaitable, Dict
 
-from .command_handlers import handleManualSave, handleShutdown
+from .command_handlers import handleManualSave
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
@@ -37,7 +37,6 @@ CommandHandler = Callable[[dict, logging.Logger], Awaitable[dict]]
 # Registry of command handlers
 COMMAND_HANDLERS: Dict[str, CommandHandler] = {
     "manual-save": handleManualSave,
-    "shutdown": handleShutdown
 }
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------

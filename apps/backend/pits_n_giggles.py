@@ -33,6 +33,7 @@ from typing import List, Optional, Set
 import psutil
 
 from apps.backend.common.png_logger import initLogger
+from apps.backend.common.shutdown import shutdown_tasks
 from apps.backend.state_mgmt_layer import initStateManagementLayer
 from apps.backend.telemetry_layer import initTelemetryLayer
 from apps.backend.ui_intf_layer import TelemetryWebServer, initUiIntfLayer
@@ -68,6 +69,7 @@ class PngRunner:
         self.m_version: str = get_version()
 
         self.m_logger.debug(self.m_config)
+        self.m_shutdown_event: asyncio.Event = asyncio.Event()
 
         initStateManagementLayer(
             logger=self.m_logger,
@@ -75,7 +77,7 @@ class PngRunner:
             ver_str=self.m_version
         )
 
-        initTelemetryLayer(
+        self.m_telemetry_handler = initTelemetryLayer(
             port_number=self.m_config.Network.telemetry_port,
             replay_server=replay_server,
             logger=self.m_logger,
@@ -85,6 +87,7 @@ class PngRunner:
             forwarding_targets=self.m_config.Forwarding.forwarding_targets,
             ver_str=self.m_version,
             wdt_interval=float(self.m_config.Network.wdt_interval_sec),
+            shutdown_event=self.m_shutdown_event,
             tasks=self.m_tasks
         )
         self.m_web_server = self._setupUiIntfLayer(
@@ -98,6 +101,8 @@ class PngRunner:
             ipc_port=ipc_port,
             debug_mode=debug_mode
         )
+        self.m_tasks.append(asyncio.create_task(shutdown_tasks(
+            self.m_logger, self.m_web_server, self.m_shutdown_event, self.m_telemetry_handler), name="Shutdown Task"))
 
         # Run all tasks concurrently
         self.m_logger.debug("Registered %d Tasks: %s", len(self.m_tasks), [task.get_name() for task in self.m_tasks])
@@ -108,6 +113,7 @@ class PngRunner:
             await asyncio.gather(*self.m_tasks)
         except asyncio.CancelledError:
             self.m_logger.debug("Main task was cancelled.")
+            # TODO - stop all tasks properly
             await self.m_web_server.stop()
             for task in self.m_tasks:
                 task.cancel()
@@ -168,6 +174,7 @@ class PngRunner:
             cert_path=cert_path,
             key_path=key_path,
             ipc_port=ipc_port,
+            shutdown_event=self.m_shutdown_event,
             disable_browser_autoload=disable_browser_autoload
         )
 

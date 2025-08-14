@@ -22,21 +22,39 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
+import asyncio
+from logging import Logger
 
-import apps.backend.state_mgmt_layer as TelWebAPI
+from apps.backend.telemetry_layer import F1TelemetryHandler
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
+from lib.web_server import BaseWebServer
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-async def handleManualSave(_msg: dict, _logger: logging.Logger) -> dict:
-    """Handle manual save command"""
-    return await TelWebAPI.ManualSaveRsp().saveToDisk()
+async def shutdown_tasks(logger: Logger,
+                         server: BaseWebServer,
+                         shutdown_event: asyncio.Event,
+                         telemetry_handler: F1TelemetryHandler) -> None:
+    """Shutdown all the tasks and stop the event loop
 
-async def handleShutdown(msg: dict, logger: logging.Logger) -> dict:
-    """Handle shutdown command"""
+    Args:
+        logger (Logger): Logger
+        server (BaseWebServer): Web server handle
+        shutdown_event (asyncio.Event): Event to signal shutdown
+        telemetry_handler (F1TelemetryHandler): Telemetry handler handle
+    """
 
-    reason = msg.get('reason', 'N/A')
-    logger.info(f"Received shutdown command. Reason: {reason}")
-    await AsyncInterTaskCommunicator().send('shutdown', {"reason" : reason})
-    return {'status': 'success'}
+    logger.debug("Starting shutdown task. Awaiting shutdown command...")
+    await AsyncInterTaskCommunicator().receive("shutdown")
+    logger.debug("Received shutdown command. Stopping tasks...")
+
+    # Periodic UI update tasks and packet forwarder are listening to shutdown event
+    shutdown_event.set()
+    await AsyncInterTaskCommunicator().unblock_receivers()
+
+    # Explicitly stop the
+    await server.stop()
+    await telemetry_handler.stop()
+    await asyncio.sleep(1)
+
+    logger.debug("Tasks stopped. Exiting...")

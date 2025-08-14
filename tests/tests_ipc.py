@@ -32,7 +32,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from tests_base import F1TelemetryUnitTestsBase
 
-from lib.ipc import IpcParent, IpcChildSync, IpcChildAsync, get_free_tcp_port
+from lib.ipc import IpcParent, IpcChildAsync, get_free_tcp_port
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -44,27 +44,6 @@ class TestIPC(F1TelemetryUnitTestsBase):
     def setUp(self):
         self.port = get_free_tcp_port()
         time.sleep(0.1)  # slight pause to avoid port reuse race
-
-    def test_sync_to_sync(self):
-        """Test: Parent (sync) -> Child (sync) communication"""
-        def handler(msg):
-            if msg['cmd'] == 'ping':
-                return {'reply': 'pong'}
-            return {'error': 'unknown'}
-
-        child = IpcChildSync(self.port)
-        child_thread = threading.Thread(target=child.serve, args=(handler,), daemon=True)
-        child_thread.start()
-
-        time.sleep(0.1)
-        parent = IpcParent(self.port, timeout_ms=500)
-        resp = parent.request('ping')
-        self.assertEqual(resp.get('reply'), 'pong')
-
-        # stop child
-        parent.terminate_child()
-        parent.close()
-        child_thread.join(timeout=2)
 
     def test_sync_to_async(self):
         """Test: Parent (sync) -> Child (async) communication"""
@@ -94,23 +73,6 @@ class TestIPC(F1TelemetryUnitTestsBase):
         parent.close()
         thread.join(timeout=2)
 
-    def test_unknown_command(self):
-        """Test: Child returns error for unknown command"""
-        def handler(msg):
-            return {'error': 'unknown'}
-
-        child = IpcChildSync(self.port)
-        thread = threading.Thread(target=child.serve, args=(handler,), daemon=True)
-        thread.start()
-
-        time.sleep(0.1)
-        parent = IpcParent(self.port, timeout_ms=500)
-        resp = parent.request('invalid_command')
-        self.assertEqual(resp.get('error'), 'unknown')
-        parent.terminate_child()
-        parent.close()
-        thread.join(timeout=2)
-
     def test_child_crash(self):
         """Test: Simulate child crashing during response"""
         async def handler(msg):
@@ -133,21 +95,6 @@ class TestIPC(F1TelemetryUnitTestsBase):
         parent.close()
         thread.join(timeout=2)
 
-    def test_child_freeze(self):
-        """Test: Simulate child freezing (non-responding)"""
-        def handler(msg):
-            time.sleep(1)  # shorter block to simulate freeze
-            return {'reply': 'late'}
-        child = IpcChildSync(self.port)
-        thread = threading.Thread(target=child.serve, args=(handler,), daemon=True)
-        thread.start()
-        time.sleep(0.1)
-        parent = IpcParent(self.port, timeout_ms=100)
-        resp = parent.request('ping')
-        self.assertIn('error', resp)  # Expect timeout error
-        parent.close()
-        thread.join(timeout=1)
-
     def test_child_not_started(self):
         """Test: Parent attempts to connect but child was never started"""
         parent = IpcParent(get_free_tcp_port(), timeout_ms=500)
@@ -162,3 +109,116 @@ class TestIPC(F1TelemetryUnitTestsBase):
             msg=f"Unexpected error message: {error_msg}"
         )
         parent.close()
+
+    def test_async_child_freeze(self):
+        """Test: Simulate async child freezing (non-responding)"""
+
+        async def handler(_msg):
+            # Simulate freeze by not responding quickly
+            await asyncio.sleep(1)
+            return {"reply": "late"}
+
+        child = IpcChildAsync(self.port)
+
+        def run_async_child():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(child.run(handler))
+
+        thread = threading.Thread(target=run_async_child, daemon=True)
+        thread.start()
+
+        time.sleep(0.1)  # allow bind
+        parent = IpcParent(self.port, timeout_ms=100)
+        resp = parent.request("ping")
+
+        # Expect timeout error
+        self.assertIn("error", resp)
+
+        parent.close()
+        thread.join(timeout=1)
+
+    def test_ping(self):
+        """Test: Parent -> Child ping command"""
+
+        async def handler(_msg):
+            # Should not be called for ping
+            return {"unexpected": True}
+
+        child = IpcChildAsync(self.port, name="PingChild")
+
+        def run_async_child():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(child.run(handler))
+
+        thread = threading.Thread(target=run_async_child, daemon=True)
+        thread.start()
+
+        time.sleep(0.1)
+        parent = IpcParent(self.port, timeout_ms=500)
+        resp = parent.ping()
+
+        self.assertEqual(resp.get("reply"), "__pong__")
+        self.assertEqual(resp.get("source"), "PingChild")
+
+        parent.terminate_child()
+        parent.close()
+        thread.join(timeout=2)
+
+    def test_terminate_child(self):
+        """Test: Parent -> Child terminate command"""
+
+        async def handler(_msg):
+            return {"unexpected": True}
+
+        child = IpcChildAsync(self.port, name="TerminateChild")
+
+        def run_async_child():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(child.run(handler))
+
+        thread = threading.Thread(target=run_async_child, daemon=True)
+        thread.start()
+
+        time.sleep(0.1)
+        parent = IpcParent(self.port, timeout_ms=500)
+        resp = parent.terminate_child()
+
+        # No strict expected format — just ensure it's a dict
+        self.assertIsInstance(resp, dict)
+
+        parent.close()
+        thread.join(timeout=2)
+
+    def test_shutdown_child(self):
+        """Test: Parent -> Child shutdown command with callback"""
+
+        async def shutdown_callback(_msg):
+            await asyncio.sleep(0.05)  # simulate cleanup delay
+            return {"status": "ok", "message": "cleanup done"}
+
+        async def handler(_msg):
+            return {"unexpected": True}
+
+        child = IpcChildAsync(self.port, name="ShutdownChild")
+        child.register_shutdown_callback(shutdown_callback)
+
+        def run_async_child():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(child.run(handler))
+
+        thread = threading.Thread(target=run_async_child, daemon=True)
+        thread.start()
+
+        time.sleep(0.1)  # allow bind
+        parent = IpcParent(self.port, timeout_ms=500)
+        resp = parent.shutdown_child()
+
+        self.assertEqual(resp.get("status"), "ok")
+        self.assertEqual(resp.get("message"), "cleanup done")
+
+        parent.close()
+        thread.join(timeout=2)

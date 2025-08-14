@@ -24,9 +24,8 @@
 
 import asyncio
 import logging
-import os
 import webbrowser
-from typing import List
+from typing import List, Dict, Any
 
 import apps.save_viewer.save_viewer_state as SaveViewerState
 from apps.save_viewer.save_web_server import SaveViewerWebServer
@@ -49,6 +48,7 @@ class SaveViewerIpc:
         self.m_server = server
         self.m_should_open_ui = True
         self.m_ipc_server = IpcChildAsync(ipc_port, "Save Viewer")
+        self.m_ipc_server.register_shutdown_callback(self._shutdown_handler)
 
     async def run(self) -> None:
         """Starts the IPC server."""
@@ -69,9 +69,6 @@ class SaveViewerIpc:
 
         if cmd == "open-file":
             return await self._handle_open_file(args)
-        if cmd == "shutdown":
-            asyncio.create_task(self._shutdown_handler(args.get("reason", "N/A")))
-            return {"status": "success"}
 
         return {"status": "error", "message": f"Unknown command: {cmd}"}
 
@@ -103,15 +100,19 @@ class SaveViewerIpc:
 
         return {"status": "success"}
 
-    async def _shutdown_handler(self, reason: str) -> None:
+    async def _shutdown_handler(self, args: dict) -> Dict[str, Any]:
         """Shutdown handler function.
 
         Args:
-            reason (str): The reason for the shutdown
+            args (dict): IPC command arguments
+
+        Returns:
+            Dict[str, Any]: Shutdown response
         """
-        await asyncio.sleep(2.0)
+        reason = args["reason"]
         self.m_logger.info(f"Shutting down. Reason: {reason}")
-        os._exit(0)
+        await self.m_server.stop()
+        return {"status": "success"}
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 

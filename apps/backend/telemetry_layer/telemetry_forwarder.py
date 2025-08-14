@@ -32,34 +32,42 @@ from lib.packet_forwarder import AsyncUDPForwarder
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def setupForwarder(forwarding_targets: List[Tuple[str, int]], tasks: List[asyncio.Task], logger: logging.Logger) -> None:
+def setupForwarder(forwarding_targets: List[Tuple[str, int]],
+                   tasks: List[asyncio.Task],
+                   shutdown_event: asyncio.Event,
+                   logger: logging.Logger) -> None:
     """Init the forwarding thread, if targets are defined
 
     Args:
         forwarding_targets (List[Tuple[str, int]]): Forwarding Targets list
         tasks (List[asyncio.Task]): List of tasks
+        shutdown_event (asyncio.Event): Shutdown event
         logger (logging.Logger): Logger
     """
 
     # Register the task only if targets are defined
     if forwarding_targets:
-        tasks.append(asyncio.create_task(udpForwardingTask(forwarding_targets, logger), name="UDP Forwarder Task"))
+        tasks.append(asyncio.create_task(udpForwardingTask(forwarding_targets, shutdown_event, logger),
+                                         name="UDP Forwarder Task"))
     else:
         logger.debug("No forwarding targets defined. Not registering task.")
 
-async def udpForwardingTask(forwarding_targets: List[Tuple[str, int]], logger: logging.Logger) -> None:
+async def udpForwardingTask(forwarding_targets: List[Tuple[str, int]],
+                            shutdown_event: asyncio.Event,
+                            logger: logging.Logger) -> None:
     """UDP Forwarding Task
 
     Args:
         forwarding_targets (List[Tuple[str, int]]): Forwarding Targets list
+        shutdown_event (asyncio.Event): Shutdown event
         logger (logging.Logger): Logger
     """
 
     udp_forwarder = AsyncUDPForwarder(forwarding_targets, logger)
     logger.info(f"Initialised forwarder. Targets={forwarding_targets}")
-    while True:
-        packet = await AsyncInterTaskCommunicator().receive("packet-forward")
-        if packet is None:
-            logger.error("Received None packet. ")
-        else:
+    while not shutdown_event.is_set():
+        if packet := await AsyncInterTaskCommunicator().receive("packet-forward"):
             await udp_forwarder.forward(packet)
+
+    udp_forwarder.close()
+    logger.debug("Shutting down UDP Forwarder task...")
