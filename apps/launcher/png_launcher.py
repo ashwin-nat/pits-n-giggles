@@ -107,7 +107,7 @@ class PngLauncher(ConsoleInterface):
             threading.Thread(target=self.check_for_updates_background, daemon=True).start()
 
         # Initial log message
-        self.log(f"Pits n' Giggles started. Version: {self.version}")
+        self.debug_log(f"Pits n' Giggles started. Version: {self.version}")
 
     def create_custom_style(self):
         """Create custom styles for the application"""
@@ -293,35 +293,51 @@ class PngLauncher(ConsoleInterface):
         """Set up the logger for the application"""
         self.m_logger = get_rotating_logger()
 
-    def log(self, message: str, is_child_message: bool=False):
-        """Add a message to the console with timestamp. Also write to file
-        Args:
-            message (str): The message to log
-            is_child_message (bool): Whether the message is from a child process
+    def _write_log(self, logger_func, message: str, is_child_message: bool = False, check_debug: bool = False):
         """
-        if is_child_message:
-            formatted_message = message
-            self.m_logger.info(message.rstrip(), extra={"with_timestamp": False}, stacklevel=2)
-        else:
+        Internal helper to write a message to the logger and console.
+
+        Args:
+            logger_func (Callable): Logging function (e.g., self.m_logger.info).
+            message (str): The message to log.
+            is_child_message (bool): Whether the message is from a child process.
+            check_debug (bool): Whether to skip logging if debug mode is off.
+        """
+        if check_debug and not self.debug_mode:
+            return
+
+        with_timestamp = not is_child_message
+        if with_timestamp:
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             formatted_message = f"[{timestamp}] {message}\n"
-            self.m_logger.info(message.rstrip(), extra={"with_timestamp": True}, stacklevel=2)
+        else:
+            formatted_message = message
+
+        logger_func(message.rstrip(), extra={"with_timestamp": with_timestamp}, stacklevel=2)
 
         self.console.configure(state=tk.NORMAL)
         self.console.insert(tk.END, formatted_message)
-        self.console.see(tk.END)  # Auto-scroll to the end
+        self.console.see(tk.END)
         self.console.configure(state=tk.DISABLED)
+
+    def debug_log(self, message: str, is_child_message: bool = False):
+        """Log a debug message to console and file."""
+        self._write_log(self.m_logger.log, message, is_child_message, check_debug=True)
+
+    def info_log(self, message: str, is_child_message: bool = False):
+        """Log an info message to console and file."""
+        self._write_log(self.m_logger.info, message, is_child_message)
 
     def clear_log(self):
         """Clear the console log"""
         self.console.configure(state=tk.NORMAL)
         self.console.delete(1.0, tk.END)
         self.console.configure(state=tk.DISABLED)
-        self.log("Log cleared")
+        self.debug_log("Log cleared")
 
     def open_settings(self):
         """Open the settings window"""
-        self.log("Opening settings window")
+        self.debug_log("Opening settings window")
         SettingsWindow(
             parent=self.root,
             app=self,
@@ -334,7 +350,7 @@ class PngLauncher(ConsoleInterface):
     def settings_change_callback(self, new_settings: PngSettings) -> None:
         """Callback function to save settings from the settings window"""
 
-        self.log("Settings changed, restarting apps...")
+        self.debug_log("Settings changed, restarting apps...")
 
         # Save the new settings
         self.settings = new_settings
@@ -348,7 +364,7 @@ class PngLauncher(ConsoleInterface):
     def write(self, text):
         """Handle print statements by redirecting to our log"""
         if text.strip():  # Only process non-empty strings
-            self.log(text.rstrip())
+            self.debug_log(text.rstrip())
 
     def flush(self):
         """Required for stdout redirection"""
@@ -356,10 +372,10 @@ class PngLauncher(ConsoleInterface):
 
     def on_closing(self):
         """Stop all running sub-apps and restore stdout before closing"""
-        self.log("Closing %s", self.app_name)
+        self.debug_log("Closing %s", self.app_name)
         for _, subapp in self.subapps.items():
             if subapp.is_running:
-                self.log(f"Stopping {subapp.display_name}...")
+                self.debug_log(f"Stopping {subapp.display_name}...")
                 subapp.stop()
 
         sys.stdout = self.stdout_original
@@ -371,7 +387,7 @@ class PngLauncher(ConsoleInterface):
             if is_update_available(self.version):
                 self.root.after(0, self.mark_update_button_available)
         except Exception as e: # pylint: disable=broad-exception-caught
-            self.log(f"[Update Check] Failed: {e}")
+            self.debug_log(f"[Update Check] Failed: {e}")
 
     def mark_update_button_available(self) -> None:
         """Highlight the update button to indicate an update is available"""

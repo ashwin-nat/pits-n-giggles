@@ -228,7 +228,7 @@ class SettingsWindow:
 
         # Save new settings to config file
         save_config_to_ini(new_model, self.config_file)
-        self.app.log(f"Settings saved to {self.config_file}")
+        self.app.debug_log(f"Settings saved to {self.config_file}")
 
         # Run any registered save callback
         if self.save_callback:

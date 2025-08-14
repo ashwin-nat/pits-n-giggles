@@ -97,7 +97,7 @@ class SaveViewerAppMgr(PngAppMgrBase):
     def open_file(self):
         file_path = filedialog.askopenfilename()
         if file_path:
-            self.console_app.log(f"Selected file: {file_path}")
+            self.console_app.debug_log(f"Selected file: {file_path}")
             if self.process:
                 self.process.stdin.write(file_path + '\n')
                 self.process.stdin.flush()
@@ -105,12 +105,12 @@ class SaveViewerAppMgr(PngAppMgrBase):
                 ipc_client = IpcParent(self.ipc_port)
                 rsp = ipc_client.request("open-file", {"file-path": file_path})
                 if rsp["status"] != "error":
-                    self.console_app.log("File path sent successfully.")
+                    self.console_app.debug_log("File path sent successfully.")
                 else:
-                    self.console_app.log(f"Error sending file path: {rsp['message']}")
+                    self.console_app.debug_log(f"Error sending file path: {rsp['message']}")
                     messagebox.showerror("File open error", "\n".join([rsp["message"]]))
             else:
-                self.console_app.log("No process running to send the file path to.")
+                self.console_app.debug_log("No process running to send the file path to.")
 
     def on_settings_change(self, new_settings: PngSettings) -> bool:
         """Handle changes in settings for the sub-application
@@ -120,13 +120,13 @@ class SaveViewerAppMgr(PngAppMgrBase):
         :return: True if the app needs to be restarted
         """
         # Implementation of handling settings changes
-        self.console_app.log(f"Settings changed for {self.display_name}")
+        self.console_app.debug_log(f"Settings changed for {self.display_name}")
         should_restart = self.port_str != str(new_settings.Network.save_viewer_port)
 
         # Update the args with the new port
         self.port_str = str(new_settings.Network.save_viewer_port)
         self.args = ["--launcher", "--port", self.port_str] + self.extra_args
-        self.console_app.log(f"Updated args: {self.args}")
+        self.console_app.debug_log(f"Updated args: {self.args}")
 
         return should_restart
 
@@ -153,6 +153,6 @@ class SaveViewerAppMgr(PngAppMgrBase):
             self.start_stop()
         except Exception as e: # pylint: disable=broad-exception-caught
             # Log the error or handle it as needed
-            self.console_app.log(f"{self.display_name}:Error during start/stop: {e}")
+            self.console_app.debug_log(f"{self.display_name}:Error during start/stop: {e}")
             # If no exception, it will be handled in post_start/post_stop
             self.start_stop_button.config(state="normal")

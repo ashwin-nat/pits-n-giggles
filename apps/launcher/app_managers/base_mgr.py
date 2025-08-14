@@ -147,13 +147,13 @@ class PngAppMgrBase(ABC):
         """Start the sub-application process"""
         with self._process_lock:
             if self.is_running:
-                self.console_app.log(f"{self.display_name} is already running.")
+                self.console_app.debug_log(f"{self.display_name} is already running.")
                 return
 
             # Start the subprocess and update all related state variables atomically
             # so no other thread sees a partially updated state.
             launch_command = self.get_launch_command(self.module_path, self.args)
-            self.console_app.log(f"Starting {self.display_name}...")
+            self.console_app.debug_log(f"Starting {self.display_name}...")
 
             self.ipc_port = get_free_tcp_port()
             launch_command.extend(["--ipc-port", f"{self.ipc_port}"])
@@ -175,26 +175,26 @@ class PngAppMgrBase(ABC):
         threading.Thread(target=self._capture_output, daemon=True).start()
         threading.Thread(target=self._monitor_process_exit, daemon=True).start()
 
-        self.console_app.log(f"{self.display_name} started successfully. PID = {self.child_pid}")
+        self.console_app.debug_log(f"{self.display_name} started successfully. PID = {self.child_pid}")
 
     def stop(self):
         """Stop the sub-application process"""
         with self._process_lock:
             if not self.is_running:
-                self.console_app.log(f"{self.display_name} is not running.")
+                self.console_app.debug_log(f"{self.display_name} is not running.")
                 return
 
-            self.console_app.log(f"Stopping {self.display_name}...")
+            self.console_app.debug_log(f"Stopping {self.display_name}...")
             self._is_stopping.set()
             self.status_var.set("Stopping...")
             if self._send_ipc_shutdown():
                 try:
                     self.process.wait(timeout=5)
                 except subprocess.TimeoutExpired:
-                    self.console_app.log(f"{self.display_name} did not exit in time after IPC shutdown. Killing it.")
+                    self.console_app.debug_log(f"{self.display_name} did not exit in time after IPC shutdown. Killing it.")
                     self._terminate_process()
             else:
-                self.console_app.log(f"Failed to send shutdown signal to {self.display_name}.")
+                self.console_app.debug_log(f"Failed to send shutdown signal to {self.display_name}.")
                 self._terminate_process()
 
             # Clear process-related state atomically to avoid race conditions
@@ -209,7 +209,7 @@ class PngAppMgrBase(ABC):
                 self._post_stop_hook()
             # pylint: disable=broad-exception-caught
             except Exception as e:
-                self.console_app.log(f"{self.display_name}: Error in post-stop hook: {e}")
+                self.console_app.debug_log(f"{self.display_name}: Error in post-stop hook: {e}")
 
     def start_stop(self):
         """Start or stop the sub-application process (non-blocking for GUI)."""
@@ -218,7 +218,7 @@ class PngAppMgrBase(ABC):
             try:
                 self._start_stop_blocking()
             except Exception as e:  # pylint: disable=broad-exception-caught
-                self.console_app.log(f"{self.display_name}: Error during start/stop: {e}")
+                self.console_app.debug_log(f"{self.display_name}: Error during start/stop: {e}")
 
         threading.Thread(target=worker, daemon=True).start()
 
@@ -267,19 +267,19 @@ class PngAppMgrBase(ABC):
                     current_pid = self.process.pid if self.process else None
                     changed = current_pid is not None and current_pid != pid
                     self.child_pid = pid
-                self.console_app.log(f"{self.display_name} PID update: {pid} changed = {changed}")
+                self.console_app.debug_log(f"{self.display_name} PID update: {pid} changed = {changed}")
             elif is_init_complete(line):
-                self.console_app.log(f"{self.display_name} initialization complete")
+                self.console_app.debug_log(f"{self.display_name} initialization complete")
                 with self._process_lock:
                     self.status_var.set("Running")
                 if self._post_start_hook:
                     try:
                         self._post_start_hook()
                     except Exception as e: # pylint: disable=broad-exception-caught
-                        self.console_app.log(f"{self.display_name}: Error in post-start hook: {e}")
+                        self.console_app.debug_log(f"{self.display_name}: Error in post-start hook: {e}")
 
             else:
-                self.console_app.log(line, is_child_message=True)
+                self.console_app.debug_log(line, is_child_message=True)
 
     def _monitor_process_exit(self):
         """subprocess monitoring thread to handle unexpected exits"""
@@ -320,7 +320,7 @@ class PngAppMgrBase(ABC):
 
         :param ret_code: Exit code of the process
         """
-        self.console_app.log(f"{self.display_name} exited unexpectedly with code {ret_code}")
+        self.console_app.debug_log(f"{self.display_name} exited unexpectedly with code {ret_code}")
         self.is_running = False
         self.child_pid = None
         self.process = None
@@ -330,7 +330,7 @@ class PngAppMgrBase(ABC):
 
         if info["status"] == "Port Conflict":
             err_msg += f". Please fix the following field in the settings: {self.port_conflict_settings_field}"
-        self.console_app.log(err_msg)
+        self.console_app.debug_log(err_msg)
         messagebox.showerror(
             title=f"{self.display_name} - {info['title']}",
             message=err_msg,
@@ -349,7 +349,7 @@ class PngAppMgrBase(ABC):
         except Exception as e:  # pylint: disable=broad-exception-caught
             # suppressing linter warning here since this is dependent on the child process
             # out of scope of the launcher code.
-            self.console_app.log(
+            self.console_app.debug_log(
                 f"{self.display_name}: Error in post-stop hook after crash: {e}"
             )
 
@@ -363,7 +363,7 @@ class PngAppMgrBase(ABC):
             rsp = IpcParent(self.ipc_port).shutdown_child("Stop requested")
             return rsp.get("status") == "success"
         except Exception as e: # pylint: disable=broad-exception-caught
-            self.console_app.log(f"IPC shutdown failed: {e}")
+            self.console_app.debug_log(f"IPC shutdown failed: {e}")
             return False
 
     def _terminate_process(self) -> None:
@@ -376,23 +376,23 @@ class PngAppMgrBase(ABC):
         # All state updates below are done while holding the lock to ensure
         # consistent visibility across threads.
         if reported_pid and reported_pid != popen_pid:
-            self.console_app.log(f"Terminating actual child PID {reported_pid} (launched by PyInstaller stub)")
+            self.console_app.debug_log(f"Terminating actual child PID {reported_pid} (launched by PyInstaller stub)")
             try:
                 psutil.Process(reported_pid).terminate()
                 psutil.Process(reported_pid).wait(timeout=5)
             except psutil.NoSuchProcess:
-                self.console_app.log(f"Child PID {reported_pid} already exited.")
+                self.console_app.debug_log(f"Child PID {reported_pid} already exited.")
             except psutil.TimeoutExpired:
-                self.console_app.log(f"Child PID {reported_pid} did not exit in time. Killing it.")
+                self.console_app.debug_log(f"Child PID {reported_pid} did not exit in time. Killing it.")
                 psutil.Process(reported_pid).kill()
         elif self.process:
             # Otherwise, just terminate the subprocess
-            self.console_app.log(f"Terminating subprocess PID {popen_pid}")
+            self.console_app.debug_log(f"Terminating subprocess PID {popen_pid}")
             try:
                 self.process.terminate()
                 self.process.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                self.console_app.log(f"{self.display_name} did not exit in time. Killing it.")
+                self.console_app.debug_log(f"{self.display_name} did not exit in time. Killing it.")
                 self.process.kill()
                 self.process.wait()
-        self.console_app.log(f"{self.display_name} stopped successfully. Terminated PID = {used_pid}")
+        self.console_app.debug_log(f"{self.display_name} stopped successfully. Terminated PID = {used_pid}")
