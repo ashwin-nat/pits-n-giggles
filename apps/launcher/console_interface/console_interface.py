@@ -32,3 +32,8 @@ class ConsoleInterface(ABC):
     def debug_log(self, message: str, is_child_message: bool = False) -> None:
         """Log a message to the console"""
         pass
+
+    @abstractmethod
+    def info_log(self, message: str, is_child_message: bool = False) -> None:
+        """Log a message to the console"""
+        pass
