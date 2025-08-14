@@ -81,6 +81,7 @@ def get_rotating_logger(
         log_file (str, optional): The name of the log file. Defaults to "png.log".
         max_bytes (int, optional): The maximum size of the log file in bytes. Defaults to 3MB.
         backup_count (int, optional): The number of backup log files to keep. Defaults to 3.
+        debug_mode (bool, optional): Whether to enable debug mode. Defaults to False.
 
     Returns:
         logging.Logger: The logger with a rotating file handler.
