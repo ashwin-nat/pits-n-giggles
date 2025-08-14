@@ -322,7 +322,7 @@ class PngLauncher(ConsoleInterface):
 
     def debug_log(self, message: str, is_child_message: bool = False):
         """Log a debug message to console and file."""
-        self._write_log(self.m_logger.log, message, is_child_message, check_debug=True)
+        self._write_log(self.m_logger.debug, message, is_child_message, check_debug=True)
 
     def info_log(self, message: str, is_child_message: bool = False):
         """Log an info message to console and file."""
