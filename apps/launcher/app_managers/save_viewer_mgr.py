@@ -145,6 +145,8 @@ class SaveViewerAppMgr(PngAppMgrBase):
         """Start or stop the backend application."""
         # disable the button. enable in post_start/post_stop
         self.start_stop_button.config(state="disabled")
+        self.open_dashboard_button.config(state="disabled")
+        self.open_file_button.config(state="disabled")
         try:
             # Call the start_stop method
             self.start_stop()
