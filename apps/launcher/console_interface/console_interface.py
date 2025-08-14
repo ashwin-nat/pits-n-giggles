@@ -29,6 +29,11 @@ from abc import ABC, abstractmethod
 class ConsoleInterface(ABC):
     """Abstract base class for console logger interface"""
     @abstractmethod
-    def log(self, message: str, is_child_message: bool = False) -> None:
+    def debug_log(self, message: str, is_child_message: bool = False) -> None:
+        """Log a message to the console"""
+        pass
+
+    @abstractmethod
+    def info_log(self, message: str, is_child_message: bool = False) -> None:
         """Log a message to the console"""
         pass

@@ -70,7 +70,8 @@ def get_rotating_logger(
     name: str = "png_logger",
     log_file: str = DEFAULT_LOG_FILE,
     max_bytes: int = 3 * 1024 * 1024,
-    backup_count: int = 3
+    backup_count: int = 3,
+    debug_mode: bool = False
 ) -> logging.Logger:
     """
     Get a logger with a rotating file handler.
@@ -80,6 +81,7 @@ def get_rotating_logger(
         log_file (str, optional): The name of the log file. Defaults to "png.log".
         max_bytes (int, optional): The maximum size of the log file in bytes. Defaults to 3MB.
         backup_count (int, optional): The number of backup log files to keep. Defaults to 3.
+        debug_mode (bool, optional): Whether to enable debug mode. Defaults to False.
 
     Returns:
         logging.Logger: The logger with a rotating file handler.
@@ -89,7 +91,7 @@ def get_rotating_logger(
 
     logger = logging.getLogger(name)
     logger.propagate = False
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG if debug_mode else logging.INFO)
 
     if not logger.handlers:
         handler = RotatingFileHandler(log_file, maxBytes=max_bytes, backupCount=backup_count)
