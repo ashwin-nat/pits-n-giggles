@@ -106,26 +106,14 @@ class AsyncF1TelemetryManager:
 
         try:
             while True:
-                try:
-                    raw_packet = await self.m_receiver.getNextMessage()
-                except asyncio.CancelledError:
-                    self.m_logger.debug("Receiver task cancelled - shutting down connection.")
-                    await self.m_receiver.close()
-                    return  # exit cleanly, no propagation
-
+                raw_packet = await self.m_receiver.getNextMessage()
                 try:
                     await self._processPacket(pkt_factory, raw_packet)
-                except UnsupportedPacketFormat as e:
+                except (UnsupportedPacketFormat, UnsupportedPacketType) as e:
                     self.m_logger.error(e, exc_info=True)
-                except UnsupportedPacketType as e:
-                    self.m_logger.error(e, exc_info=True)
-
         except asyncio.CancelledError:
-            # Catch any other cancellation point inside this method
-            self.m_logger.debug("Receiver task cancelled outside packet receive - shutting down.")
+            self.m_logger.debug("Receiver task cancelled - shutting down.")
             await self.m_receiver.close()
-            return  # no raise
-
 
     async def stop(self) -> None:
         """Stops the telemetry manager and its internals

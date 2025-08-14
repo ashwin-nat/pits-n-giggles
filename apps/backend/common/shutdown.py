@@ -48,8 +48,11 @@ async def shutdown_tasks(logger: Logger,
     await AsyncInterTaskCommunicator().receive("shutdown")
     logger.debug("Received shutdown command. Stopping tasks...")
 
+    # Periodic UI update tasks and packet forwarder are listening to shutdown event
     shutdown_event.set()
     await AsyncInterTaskCommunicator().unblock_receivers()
+
+    # Explicitly stop the
     await server.stop()
     await telemetry_handler.stop()
     await asyncio.sleep(1)

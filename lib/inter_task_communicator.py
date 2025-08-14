@@ -243,9 +243,7 @@ class AsyncInterTaskCommunicator:
         q = await self._get_queue(queue_name)
         try:
             item = await (asyncio.wait_for(q.get(), timeout) if timeout is not None else q.get())
-            if item is self._unblock_receivers_obj:
-                return None  # indicates manually triggered wakeup
-            return item
+            return None if item is self._unblock_receivers_obj else item
         except asyncio.TimeoutError:
             return None
 
