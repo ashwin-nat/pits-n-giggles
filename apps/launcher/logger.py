@@ -70,7 +70,8 @@ def get_rotating_logger(
     name: str = "png_logger",
     log_file: str = DEFAULT_LOG_FILE,
     max_bytes: int = 3 * 1024 * 1024,
-    backup_count: int = 3
+    backup_count: int = 3,
+    debug_mode: bool = False
 ) -> logging.Logger:
     """
     Get a logger with a rotating file handler.
@@ -89,7 +90,7 @@ def get_rotating_logger(
 
     logger = logging.getLogger(name)
     logger.propagate = False
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG if debug_mode else logging.INFO)
 
     if not logger.handlers:
         handler = RotatingFileHandler(log_file, maxBytes=max_bytes, backupCount=backup_count)

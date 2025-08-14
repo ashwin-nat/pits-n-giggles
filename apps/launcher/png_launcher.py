@@ -291,7 +291,7 @@ class PngLauncher(ConsoleInterface):
 
     def setup_logger(self):
         """Set up the logger for the application"""
-        self.m_logger = get_rotating_logger()
+        self.m_logger = get_rotating_logger(debug_mode=self.debug_mode)
 
     def _write_log(self, logger_func, message: str, is_child_message: bool = False, check_debug: bool = False):
         """
