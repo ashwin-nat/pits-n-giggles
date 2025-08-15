@@ -78,7 +78,8 @@ def initUiIntfLayer(
         cert_path=cert_path,
         key_path=key_path,
         debug_mode=debug_mode,
-        disable_browser_autoload=disable_browser_autoload
+        disable_browser_autoload=disable_browser_autoload,
+        stream_overlay_start_sample_data=stream_overlay_start_sample_data,
     )
 
     # Register tasks associated with this web server

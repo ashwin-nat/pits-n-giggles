@@ -59,6 +59,7 @@ class TelemetryWebServer(BaseWebServer):
                  cert_path: Optional[str] = None,
                  key_path: Optional[str] = None,
                  disable_browser_autoload: bool = False,
+                 stream_overlay_start_sample_data: bool = False,
                  debug_mode: bool = False):
         """
         Initialize the TelemetryWebServer.
@@ -70,11 +71,14 @@ class TelemetryWebServer(BaseWebServer):
             cert_path (Optional[str], optional): Path to the certificate file. Defaults to None.
             key_path (Optional[str], optional): Path to the key file. Defaults to None.
             disable_browser_autoload (bool, optional): Whether to disable browser autoload. Defaults to False.
+            stream_overlay_start_sample_data (bool, optional): Whether to show sample data in overlay until
+                                    real data arrives. Defaults to False.
             debug_mode (bool, optional): Enable or disable debug mode. Defaults to False.
         """
         super().__init__(port, ver_str, logger, cert_path, key_path, disable_browser_autoload, debug_mode)
         self.define_routes()
         self.register_post_start_callback(self._post_start)
+        self.m_show_start_sample_data = stream_overlay_start_sample_data
 
     def define_routes(self) -> None:
         """
@@ -167,7 +171,7 @@ class TelemetryWebServer(BaseWebServer):
             Returns:
                 Tuple[str, int]: JSON response and HTTP status code.
             """
-            return TelState.PlayerTelemetryOverlayUpdate().toJSON(), HTTPStatus.OK
+            return TelState.PlayerTelemetryOverlayUpdate().toJSON(self.m_show_start_sample_data), HTTPStatus.OK
 
     def _processDriverInfoRequest(self, index_arg: Any) -> Tuple[Dict[str, Any], HTTPStatus]:
         """
