@@ -182,8 +182,13 @@ class FuelCalculator {
             let usagePerLap = 0;
             if (previousFuelLoad !== null) {
                 usagePerLap = previousFuelLoad - lapData["car-status-data"]["fuel-in-tank"];
-                usagePerLapCell.textContent = usagePerLap.toFixed(2);
-                checkbox.dataset.fuelUsage = usagePerLap.toFixed(4);
+                if (usagePerLap > 0) {
+                    usagePerLapCell.textContent = usagePerLap.toFixed(2);
+                    checkbox.dataset.fuelUsage = usagePerLap.toFixed(4);
+                } else {
+                    usagePerLapCell.textContent = '---';
+                    checkbox.disabled = true;
+                }
             } else {
                 usagePerLapCell.textContent = '-';
                 checkbox.disabled = true;
