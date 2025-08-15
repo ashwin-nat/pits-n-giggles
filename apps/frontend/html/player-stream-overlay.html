@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/conditions.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/speedLimit.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/paceComparisonOverlay.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/weatherOverlay.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,100..900;1,100..900&display=swap"
         rel="stylesheet">
     <!-- Include Bootstrap CSS -->
@@ -320,6 +321,7 @@
     <script src="{{ url_for('static', filename='js/carTelemetryOverlay.js') }}"></script>
     <script src="{{ url_for('static', filename='js/paceComparisonOverlay.js') }}"></script>
     <script src="{{ url_for('static', filename='js/constants.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/weatherOverlay.js') }}"></script>
     <script>
         const sampleStreamOverlayJSON = getDefaultOverlayData();
         let firstDataReceived = false;
@@ -340,7 +342,7 @@
         const iconCache = new IconCache();
         const carTelemetryWidget = new CarTelemetryWidget();
         const gForceDisplayWidget = new GForceDisplay('gforce-display');
-        const weatherWidget = new WeatherWidget(document.getElementById('weatherDiv'));
+        const weatherWidget = new WeatherOverlay(document.getElementById('weatherDiv'));
         const pensStatsWidget = new PenaltiesStatsWidget();
         const lapTimesWidget = new LapTimeTableWidget(iconCache);
         const paceComparisonWidget = new PaceComparison();
