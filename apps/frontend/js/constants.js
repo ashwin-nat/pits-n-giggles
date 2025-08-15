@@ -212,7 +212,17 @@ function getDefaultOverlayData() {
             {
                 "rain-probability": 18,
                 "time-offset": 10,
-                "weather": "Overcast"
+                "weather": "Light Rain"
+            },
+            {
+                "rain-probability": 18,
+                "time-offset": 15,
+                "weather": "Heavy Rain"
+            },
+            {
+                "rain-probability": 18,
+                "time-offset": 30,
+                "weather": "Storm"
             }
         ]
     };
