@@ -188,7 +188,7 @@ class CarStatusData(F1SubPacketBase):
 
         NONE = 0
         MEDIUM = 1
-        HOPLAP = 2
+        HOTLAP = 2
         OVERTAKE = 3
 
         def __str__(self) -> str:
