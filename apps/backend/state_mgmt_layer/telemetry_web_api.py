@@ -491,7 +491,7 @@ class PlayerTelemetryOverlayUpdate:
         """
 
         return {
-            "f1-game-year" : self.m_game_year,
+            "f1-packet-format" : self.m_packet_format,
             "event-type" : str(self.m_session_type),
             "show-sample-data-at-start": stream_overlay_start_sample_data,
             "weather-forecast-samples": [
