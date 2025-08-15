@@ -13,10 +13,9 @@
     background-color: #3e3e3e;
     border-radius: 5px;
     padding: 10px;
-    margin: 5px;
     text-align: center;
     color: #ffffff;
-    width: 120px;
+    width: 100px;
 }
 
 .weather-overlay-time {
