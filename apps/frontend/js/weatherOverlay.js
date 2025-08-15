@@ -1,14 +1,8 @@
 class WeatherOverlay {
     constructor(element) {
         this.container = element;
-    }
-
-    update(data) {
-        this.container.innerHTML = ''; // Clear previous content
-
-        const weatherData = Object.values(data).slice(0, 5);
-
-        const weatherIcons = {
+        this.lastProcessedData = null;
+        this.weatherIcons = {
             "Clear": "☀️",
             "Light Cloud": "☁️",
             "Overcast": "☁️",
@@ -17,6 +11,15 @@ class WeatherOverlay {
             "Storm": "⛈️",
             "Thunderstorm": "⛈️"
         };
+    }
+
+    update(weatherData) {
+        this.container.innerHTML = ''; // Clear previous content
+        if (_.isEqual(data, this.lastData)) {
+            return;
+        }
+
+        this.lastProcessedData = weatherData;
 
         weatherData.forEach(sample => {
             const card = document.createElement('div');
@@ -29,7 +32,7 @@ class WeatherOverlay {
 
             const icon = document.createElement('div');
             icon.classList.add('weather-overlay-icon');
-            icon.textContent = weatherIcons[sample.weather] || "❓";
+            icon.textContent = this.weatherIcons[sample.weather] || "❓";
             card.appendChild(icon);
 
             const rainProbability = document.createElement('div');
