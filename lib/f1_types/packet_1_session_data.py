@@ -49,6 +49,11 @@ class MarshalZone(F1SubPacketBase):
     )
     PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
+    __slots__ = (
+        "m_zoneStart",
+        "m_zoneFlag",
+    )
+
     class MarshalZoneFlagType(F1BaseEnum):
         """
         ENUM class for the marshal zone flag status
@@ -178,6 +183,17 @@ class WeatherForecastSample(F1SubPacketBase):
         "B" # uint8  - Rain percentage (0-100)
     )
     PACKET_LEN = COMPILED_PACKET_STRUCT.size
+
+    __slots__ = (
+        "m_session_type",
+        "m_time_offset",
+        "m_weather",
+        "m_track_temperature",
+        "m_track_temperature_change",
+        "m_air_temperature",
+        "m_air_temperature_change",
+        "m_rain_percentage",
+    )
 
     class WeatherCondition(F1BaseEnum):
         """
@@ -602,6 +618,86 @@ class PacketSessionData(F1PacketBase):
     )
     PACKET_LEN_SECTION_5 = COMPILED_PACKET_STRUCT_SECTION_5.size
 
+    __slots__ = (
+        "m_weather",
+        "m_trackTemperature",
+        "m_airTemperature",
+        "m_totalLaps",
+        "m_trackLength",
+        "m_sessionType",
+        "m_trackId",
+        "m_formula",
+        "m_sessionTimeLeft",
+        "m_sessionDuration",
+        "m_pitSpeedLimit",
+        "m_gamePaused",
+        "m_isSpectating",
+        "m_spectatorCarIndex",
+        "m_sliProNativeSupport",
+        "m_numMarshalZones",
+        "m_marshalZones",
+        "m_safetyCarStatus",
+        "m_networkGame",
+        "m_numWeatherForecastSamples",
+        "m_weatherForecastSamples",
+        "m_forecastAccuracy",
+        "m_aiDifficulty",
+        "m_seasonLinkIdentifier",
+        "m_weekendLinkIdentifier",
+        "m_sessionLinkIdentifier",
+        "m_pitStopWindowIdealLap",
+        "m_pitStopWindowLatestLap",
+        "m_pitStopRejoinPosition",
+        "m_steeringAssist",
+        "m_brakingAssist",
+        "m_gearboxAssist",
+        "m_pitAssist",
+        "m_pitReleaseAssist",
+        "m_ERSAssist",
+        "m_DRSAssist",
+        "m_dynamicRacingLine",
+        "m_dynamicRacingLineType",
+        "m_gameMode",
+        "m_ruleSet",
+        "m_timeOfDay",
+        "m_sessionLength",
+        "m_speedUnitsLeadPlayer",
+        "m_temperatureUnitsLeadPlayer",
+        "m_speedUnitsSecondaryPlayer",
+        "m_temperatureUnitsSecondaryPlayer",
+        "m_numSafetyCarPeriods",
+        "m_numVirtualSafetyCarPeriods",
+        "m_numRedFlagPeriods",
+        "m_equalCarPerformance",
+        "m_recoveryMode",
+        "m_flashbackLimit",
+        "m_surfaceType",
+        "m_lowFuelMode",
+        "m_raceStarts",
+        "m_tyreTemperatureMode",
+        "m_pitLaneTyreSim",
+        "m_carDamage",
+        "m_carDamageRate",
+        "m_collisions",
+        "m_collisionsOffForFirstLapOnly",
+        "m_mpUnsafePitRelease",
+        "m_mpOffForGriefing",
+        "m_cornerCuttingStringency",
+        "m_parcFermeRules",
+        "m_pitStopExperience",
+        "m_safetyCar",
+        "m_safetyCarExperience",
+        "m_formationLap",
+        "m_formationLapExperience",
+        "m_redFlags",
+        "m_affectsLicenceLevelSolo",
+        "m_affectsLicenceLevelMP",
+        "m_numSessionsInWeekend",
+        "m_weekendStructure",
+        "m_sector2LapDistanceStart",
+        "m_sector3LapDistanceStart",
+    )
+
     class FormulaType(F1BaseEnum):
         """An enumeration of formula types."""
 
@@ -835,11 +931,10 @@ class PacketSessionData(F1PacketBase):
         self.m_sector2LapDistanceStart: float    # // Distance in m around track where sector 2 starts
         self.m_sector3LapDistanceStart: float    # // Distance in m around track where sector 3
 
-        self.m_maxMarshalZones = self.F1_23_MAX_NUM_MARSHAL_ZONES
         if header.m_packetFormat == 2023:
-            self.m_maxWeatherForecastSamples = self.F1_23_MAX_NUM_WEATHER_FORECAST_SAMPLES
+            max_weather_forecast_samples = self.F1_23_MAX_NUM_WEATHER_FORECAST_SAMPLES
         else:
-            self.m_maxWeatherForecastSamples = self.F1_24_MAX_NUM_WEATHER_FORECAST_SAMPLES
+            max_weather_forecast_samples = self.F1_24_MAX_NUM_WEATHER_FORECAST_SAMPLES
         # First, section 0
         section_0_raw_data = data[:self.PACKET_LEN_SECTION_0]
         byte_index_so_far = self.PACKET_LEN_SECTION_0
@@ -883,7 +978,7 @@ class PacketSessionData(F1PacketBase):
             item_cls=MarshalZone,
             item_len=MarshalZone.PACKET_LEN,
             count=self.m_numMarshalZones,
-            max_count=self.m_maxMarshalZones,
+            max_count=self.F1_23_MAX_NUM_MARSHAL_ZONES,
         )
 
         # Section 2, till numWeatherForecastSamples
@@ -906,7 +1001,7 @@ class PacketSessionData(F1PacketBase):
             item_cls=WeatherForecastSample,
             item_len=WeatherForecastSample.PACKET_LEN,
             count=self.m_numWeatherForecastSamples,
-            max_count=self.m_maxWeatherForecastSamples,
+            max_count=max_weather_forecast_samples,
             packet_format=header.m_packetFormat
         )
 
