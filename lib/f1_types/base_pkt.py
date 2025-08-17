@@ -101,6 +101,8 @@ class F1PacketBase:
     Base class for parsed F1 telemetry packets.
     """
 
+    __slots__ = ("m_header",)
+
     def __init__(self, header: PacketHeader) -> None:
         """
         Initializes the PacketHeaderParser with the raw packet data.
