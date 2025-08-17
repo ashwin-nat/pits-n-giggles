@@ -78,6 +78,27 @@ class CarMotionData(F1SubPacketBase):
     )
     PACKET_LEN: int = COMPILED_PACKET_STRUCT.size
 
+    __slots__ = (
+        "m_worldPositionX",
+        "m_worldPositionY",
+        "m_worldPositionZ",
+        "m_worldVelocityX",
+        "m_worldVelocityY",
+        "m_worldVelocityZ",
+        "m_worldForwardDirX",
+        "m_worldForwardDirY",
+        "m_worldForwardDirZ",
+        "m_worldRightDirX",
+        "m_worldRightDirY",
+        "m_worldRightDirZ",
+        "m_gForceLateral",
+        "m_gForceLongitudinal",
+        "m_gForceVertical",
+        "m_yaw",
+        "m_pitch",
+        "m_roll",
+    )
+
     def __init__(self, data: bytes) -> None:
         """A class for parsing the data related to the motion of the F1 car
 
@@ -286,6 +307,10 @@ class PacketMotionData(F1PacketBase):
     """
 
     MAX_CARS = 22
+
+    __slots__ = (
+        "m_carMotionData",
+    )
 
     def __init__(self, header:PacketHeader, packet: bytes) -> None:
         """Construct the PacketMotionData object from the given packet payload
