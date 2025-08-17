@@ -22,6 +22,7 @@
 # pylint: skip-file
 
 import asyncio
+import logging
 import sys
 import os
 import time
@@ -181,7 +182,9 @@ async def async_telemetry_main():
     port = await loop.run_in_executor(None, wait_for_port)
 
     print(f"[async telemetry] Starting server on port {port}")
-    telemetry_manager = AsyncF1TelemetryManager(port_number=port)
+    null_logger = logging.getLogger("null")
+    null_logger.addHandler(logging.NullHandler())
+    telemetry_manager = AsyncF1TelemetryManager(port_number=port, logger=null_logger)
     @telemetry_manager.on_raw_packet()
     async def handleRawPacket(packet: List[bytes]) -> None:
         """
