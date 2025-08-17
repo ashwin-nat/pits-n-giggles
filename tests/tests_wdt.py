@@ -69,7 +69,8 @@ class TestWatchDogTimer(F1TelemetryUnitTestsBase):
         the watchdog run loop can process.
         """
         self.fake_time += seconds
-        await asyncio.sleep(0)  # let watchdog task run
+        # Use a tiny non-zero sleep to guarantee scheduling across platforms
+        await asyncio.sleep(0.001)
 
     async def wait_for_state(self, expected: bool, timeout: float = 1.0):
         """Wait until the last observed state matches `expected` using fake_time as deadline."""
