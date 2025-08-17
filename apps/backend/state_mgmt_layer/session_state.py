@@ -223,7 +223,7 @@ class SessionState:
 
     MAX_DRIVERS: int = 22
 
-    __slots__ = [
+    __slots__ = (
         'm_logger',
         'm_driver_data',
         'm_player_index',
@@ -244,8 +244,8 @@ class SessionState:
         'm_custom_markers_history',
         'm_first_session_update_received',
         'm_version',
-        'm_connected_to_sim'
-    ]
+        'm_connected_to_sim',
+    )
 
     def __init__(self,
                  logger: logging.Logger,
