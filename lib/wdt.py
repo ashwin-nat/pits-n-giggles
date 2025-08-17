@@ -37,12 +37,34 @@ class WatchDogTimer:
         status_callback (Callable[[bool], None]): Called when activity status changes.
             True indicates active, False indicates inactive.
         timeout (float): Time in seconds after which inactivity is assumed.
+        clock (Callable[[], float]): Function returning the current time in seconds.
+            Defaults to time.time for real-world usage, can be overridden in tests.
     """
 
-    def __init__(self, status_callback: Callable[[bool], None], timeout: float = 2.0) -> None:
+    def __init__(
+        self,
+        status_callback: Callable[[bool], None],
+        timeout: float = 2.0,
+        clock: Callable[[], float] = time.time,
+        check_interval: float = 0.5) -> None:
+        """
+        Initialize the watchdog timer.
+
+        Args:
+            status_callback (Callable[[bool], None]): Called when activity status changes.
+                True indicates active, False indicates inactive.
+            timeout (float): Time in seconds after which inactivity is assumed.
+            clock (Callable[[], float]): Function returning the current time in seconds.
+                Defaults to time.time for real-world usage, can be overridden in tests.
+            check_interval (float): Time in seconds between watchdog checks.
+                Defaults to 0.5 seconds.
+        """
+
+        self._check_interval = check_interval
         self._status_callback: Callable[[bool], None] = status_callback
         self._timeout: float = timeout
-        self._last_kick_time: float = time.time()
+        self._clock: Callable[[], float] = clock
+        self._last_kick_time: float = self._clock()
         self.active: bool = False
         self._stopped: bool = False  # Used to break the run() loop gracefully
 
@@ -53,7 +75,7 @@ class WatchDogTimer:
         Updates the internal timer and triggers `status_callback(True)`
         if transitioning to active state.
         """
-        self._last_kick_time = time.time()
+        self._last_kick_time = self._clock()
         if not self.active:
             self.active = True
             self._status_callback(True)
@@ -67,8 +89,8 @@ class WatchDogTimer:
         """
         try:
             while not self._stopped:
-                await asyncio.sleep(0.5)
-                elapsed = time.time() - self._last_kick_time
+                await asyncio.sleep(self._check_interval)
+                elapsed = self._clock() - self._last_kick_time
                 if self.active and elapsed > self._timeout:
                     self.active = False
                     self._status_callback(False)

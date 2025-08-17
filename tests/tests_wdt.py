@@ -42,9 +42,16 @@ if sys.platform == 'win32':
 class TestWatchDogTimer(F1TelemetryUnitTestsBase):
     async def asyncSetUp(self):
         self.state_changes: List[bool] = []
+        self.fake_time: float = 0.0
+
+        def fake_clock() -> float:
+            return self.fake_time
+
         self.wdt = WatchDogTimer(
             status_callback=self.state_changes.append,
-            timeout=0.5  # Short timeout for test speed
+            timeout=0.5,
+            clock=fake_clock,
+            check_interval=0.01
         )
         self.task = asyncio.create_task(self.wdt.run(), name="UT Watchdog Task")
 
@@ -56,18 +63,26 @@ class TestWatchDogTimer(F1TelemetryUnitTestsBase):
         except asyncio.CancelledError:
             pass
 
+    async def tick_time(self, seconds: float = 0.1):
+        """
+        Advance fake time and yield to the event loop once so
+        the watchdog run loop can process.
+        """
+        self.fake_time += seconds
+        await asyncio.sleep(0)  # let watchdog task run
+
     async def wait_for_state(self, expected: bool, timeout: float = 1.0):
-        """Wait for a specific state in state_changes list."""
-        start = time.time()
-        while time.time() - start < timeout:
+        """Wait until the last observed state matches `expected` using fake_time as deadline."""
+        deadline = self.fake_time + timeout
+        while self.fake_time < deadline:
             if self.state_changes and self.state_changes[-1] == expected:
                 return
-            await asyncio.sleep(0.01)
-        self.fail(f"Expected state {expected} not received in {timeout:.1f} seconds")
+            await self.tick_time(0.01)
+        self.fail(f"Expected state {expected} not received within {timeout:.1f} seconds")
 
     async def test_initial_state_idle(self):
         """Watchdog should start idle with no state change callback triggered."""
-        await asyncio.sleep(0.1)
+        await self.tick_time(0.1)
         self.assertEqual(self.state_changes, [])
 
     async def test_transitions_to_active(self):
@@ -81,8 +96,8 @@ class TestWatchDogTimer(F1TelemetryUnitTestsBase):
         self.wdt.kick()
         await self.wait_for_state(True)
 
-        for _ in range(2):  # already kicked once above
-            await asyncio.sleep(0.1)
+        for _ in range(2):
+            await self.tick_time(0.1)
             self.wdt.kick()
 
         self.assertEqual(self.state_changes, [True])
@@ -92,6 +107,7 @@ class TestWatchDogTimer(F1TelemetryUnitTestsBase):
         self.wdt.kick()
         await self.wait_for_state(True)
 
+        await self.tick_time(1.0)  # advance beyond timeout
         await self.wait_for_state(False)
         self.assertEqual(self.state_changes, [True, False])
 
@@ -100,6 +116,7 @@ class TestWatchDogTimer(F1TelemetryUnitTestsBase):
         self.wdt.kick()
         await self.wait_for_state(True)
 
+        await self.tick_time(1.0)  # advance beyond timeout
         await self.wait_for_state(False)
         self.wdt.kick()
         await self.wait_for_state(True)
