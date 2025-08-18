@@ -106,6 +106,37 @@ class PacketMotionExData(F1PacketBase):
     PACKET_LEN_EXTRA_25 = COMPILED_PACKET_STRUCT_25_EXTRA.size
     PACKET_LEN_25 = PACKET_LEN_23 + PACKET_LEN_EXTRA_24 + PACKET_LEN_EXTRA_25
 
+    __slots__ = (
+        "m_suspensionPosition",
+        "m_suspensionVelocity",
+        "m_suspensionAcceleration",
+        "m_wheelSpeed",
+        "m_wheelSlipRatio",
+        "m_wheelSlipAngle",
+        "m_wheelLatForce",
+        "m_wheelLongForce",
+        "m_wheelVertForce",
+        "m_frontAeroHeight",
+        "m_rearAeroHeight",
+        "m_frontRollAngle",
+        "m_rearRollAngle",
+        "m_chassisYaw",
+        "m_chassisPitch",
+        "m_wheelCamber",
+        "m_wheelCamberGain",
+        "m_heightOfCOGAboveGround",
+        "m_localVelocityX",
+        "m_localVelocityY",
+        "m_localVelocityZ",
+        "m_angularVelocityX",
+        "m_angularVelocityY",
+        "m_angularVelocityZ",
+        "m_angularAccelerationX",
+        "m_angularAccelerationY",
+        "m_angularAccelerationZ",
+        "m_frontWheelsAngle",
+    )
+
     def __init__(self, header: PacketHeader, data: bytes) -> None:
         """
         Initializes PacketMotionExData with raw data.
