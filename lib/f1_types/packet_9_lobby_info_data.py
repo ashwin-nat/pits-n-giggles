@@ -91,6 +91,18 @@ class LobbyInfoData(F1SubPacketBase):
     )
     PACKET_LEN_25 = COMPILED_PACKET_STRUCT_25.size
 
+    __slots__ = (
+        "m_aiControlled",
+        "m_teamId",
+        "m_nationality",
+        "m_platform",
+        "m_name",
+        "m_carNumber",
+        "m_yourTelemetry",
+        "m_showOnlineNames",
+        "m_techLevel",
+        "m_readyStatus",
+    )
     class ReadyStatus(F1BaseEnum):
         """
         ENUM class for the marshal zone flag status
@@ -351,6 +363,12 @@ class PacketLobbyInfoData(F1PacketBase):
     """
 
     MAX_PLAYERS: int = 22
+
+    __slots__ = (
+        "m_numPlayers",
+        "m_lobbyPlayers",
+    )
+
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
         """
         Initializes PacketLobbyInfoData with raw data.
