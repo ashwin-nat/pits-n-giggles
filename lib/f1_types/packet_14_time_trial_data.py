@@ -119,10 +119,10 @@ class TimeTrialDataSet(F1SubPacketBase):
         ) = self.COMPILED_PACKET_STRUCT.unpack(data)
 
         # No ned to check game year, since this packet type is not available in F1 23
-        if packet_format < 2025 and TeamID24.isValid(self.m_teamId):
-                self.m_teamId = TeamID24(self.m_teamId)
-        elif TeamID25.isValid(self.m_teamId):
-            self.m_teamId = TeamID25(self.m_teamId)
+        if packet_format < 2025:
+            self.m_teamId = TeamID24.safeCast(self.m_teamId)
+        else:
+            self.m_teamId = TeamID25.safeCast(self.m_teamId)
         self.m_tractionControl = bool(self.m_tractionControl)
         self.m_gearboxAssist = bool(self.m_gearboxAssist)
         self.m_antiLockBrakes = bool(self.m_antiLockBrakes)
