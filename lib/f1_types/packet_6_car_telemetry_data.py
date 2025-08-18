@@ -75,6 +75,26 @@ class CarTelemetryData(F1SubPacketBase):
     )
     PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
+    __slots__ = (
+        "m_speed",
+        "m_throttle",
+        "m_steer",
+        "m_brake",
+        "m_clutch",
+        "m_gear",
+        "m_engineRPM",
+        "m_drs",
+        "m_revLightsPercent",
+        "m_revLightsBitValue",
+        "m_brakesTemperature",
+        "m_tyresSurfaceTemperature",
+        "m_tyresInnerTemperature",
+        "m_engineTemperature",
+        "m_tyresPressure",
+        "m_surfaceType",
+        "m_drs",
+    )
+
     def __init__(self, data) -> None:
         """
         Initializes a CarTelemetryData object by unpacking the provided binary data.
@@ -361,6 +381,13 @@ class PacketCarTelemetryData(F1PacketBase):
     MAX_CARS = 22
     COMPILED_PACKET_FORMAT_EXTRA = struct.Struct("<BBb")
     PACKET_LEN_EXTRA = COMPILED_PACKET_FORMAT_EXTRA.size
+
+    __slots__ = (
+        "m_carTelemetryData",
+        "m_mfdPanelIndex",
+        "m_mfdPanelIndexSecondaryPlayer",
+        "m_suggestedGear"
+    )
 
     def __init__(self, header:PacketHeader, packet: bytes) -> None:
         """
