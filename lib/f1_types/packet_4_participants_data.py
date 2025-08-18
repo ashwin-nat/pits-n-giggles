@@ -48,6 +48,12 @@ class LiveryColour(F1SubPacketBase):
     )
     PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
+    __slots__ = (
+        "m_red",
+        "m_green",
+        "m_blue",
+    )
+
     def __init__(self, data: bytes) -> None:
         """Initializes a LiveryColour object with the given raw data."""
         self.m_red: int
@@ -170,6 +176,24 @@ class ParticipantData(F1SubPacketBase):
     PACKET_LEN_25_BASE = COMPILED_PACKET_STRUCT_25_BASE.size
     PACKET_LEN_25 = PACKET_LEN_25_BASE + (LiveryColour.PACKET_LEN * MAX_LIVERY_COLOURS)
 
+    __slots__ = (
+        "m_packetFormat",
+        "m_aiControlled",
+        "m_driverId",
+        "networkId",
+        "m_teamId",
+        "m_myTeam",
+        "m_raceNumber",
+        "m_nationality",
+        "m_name",
+        "m_yourTelemetry",
+        "m_showOnlineNames",
+        "m_platform",
+        "m_techLevel",
+        "m_numColours",
+        "m_liveryColours",
+    )
+
     def __init__(self, data: bytes, packet_format: int) -> None:
         """
         Initializes a ParticipantData object by unpacking the provided binary data.
@@ -185,7 +209,6 @@ class ParticipantData(F1SubPacketBase):
         self.m_numColours: int = 0
         self.m_liveryColours: List[LiveryColour]
         if packet_format == 2023:
-            unpacked_data = self.COMPILED_PACKET_STRUCT_23.unpack(data)
             (
                 self.m_aiControlled,
                 self.m_driverId,
@@ -198,10 +221,9 @@ class ParticipantData(F1SubPacketBase):
                 self.m_yourTelemetry,
                 self.m_showOnlineNames,
                 self.m_platform
-            ) = unpacked_data
+            ) = self.COMPILED_PACKET_STRUCT_23.unpack(data)
             self.m_techLevel = 0
         elif packet_format == 2024:
-            unpacked_data = self.COMPILED_PACKET_STRUCT_24.unpack(data)
             (
                 self.m_aiControlled,
                 self.m_driverId,
@@ -215,10 +237,9 @@ class ParticipantData(F1SubPacketBase):
                 self.m_showOnlineNames,
                 self.m_techLevel,
                 self.m_platform
-            ) = unpacked_data
+            ) = self.COMPILED_PACKET_STRUCT_24.unpack(data)
         else:
 
-            unpacked_data = self.COMPILED_PACKET_STRUCT_25_BASE.unpack(data[:self.PACKET_LEN_25_BASE])
             (
                 self.m_aiControlled,
                 self.m_driverId,
@@ -233,7 +254,7 @@ class ParticipantData(F1SubPacketBase):
                 self.m_techLevel,
                 self.m_platform,
                 self.m_numColours
-            ) = unpacked_data
+            ) = self.COMPILED_PACKET_STRUCT_25_BASE.unpack(data[:self.PACKET_LEN_25_BASE])
 
             self.m_liveryColours, _ = _validate_parse_fixed_segments(
                 data=data,
@@ -544,6 +565,12 @@ class PacketParticipantsData(F1PacketBase):
     """
 
     MAX_PARTICIPANTS = 22
+
+    __slots__ = (
+        "m_numActiveCars",
+        "m_participants",
+    )
+
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
         """
         Initializes a PacketParticipantsData object by unpacking the provided binary data.
