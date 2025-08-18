@@ -72,6 +72,17 @@ class LapHistoryData(F1SubPacketBase):
     )
     PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
+    __slots__ = (
+        "m_lapTimeInMS",
+        "m_sector1TimeInMS",
+        "m_sector1TimeMinutes",
+        "m_sector2TimeInMS",
+        "m_sector2TimeMinutes",
+        "m_sector3TimeInMS",
+        "m_sector3TimeMinutes",
+        "m_lapValidBitFlags",
+    )
+
     def __init__(self, data: bytes) -> None:
         """
         Initializes LapHistoryData with raw data.
@@ -271,6 +282,12 @@ class TyreStintHistoryData(F1SubPacketBase):
     )
     PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
+    __slots__ = (
+        "m_endLap",
+        "m_tyreActualCompound",
+        "m_tyreVisualCompound",
+    )
+
     def __init__(self, data: bytes) -> None:
         """
         Initializes TyreStintHistoryData with raw data.
@@ -378,6 +395,18 @@ class PacketSessionHistoryData(F1PacketBase):
         "B" # uint8         m_bestSector3LapNum;        // Lap the best Sector 3 time was achieved on
     )
     PACKET_LEN = COMPILED_PACKET_STRUCT.size
+
+    __slots__ = (
+        "m_carIdx",
+        "m_numLaps",
+        "m_numTyreStints",
+        "m_bestLapTimeLapNum",
+        "m_bestSector1LapNum",
+        "m_bestSector2LapNum",
+        "m_bestSector3LapNum",
+        "m_lapHistoryData",
+        "m_tyreStintsHistoryData",
+    )
 
     def __init__(self, header, data) -> None:
         """
