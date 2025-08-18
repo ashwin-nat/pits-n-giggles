@@ -296,19 +296,12 @@ class CarStatusData(F1SubPacketBase):
         self.m_pitLimiterStatus = bool(self.m_pitLimiterStatus)
         self.m_networkPaused = bool(self.m_networkPaused)
 
-        if ActualTyreCompound.isValid(self.m_actualTyreCompound):
-            self.m_actualTyreCompound = ActualTyreCompound(self.m_actualTyreCompound)
-        if VisualTyreCompound.isValid(self.m_visualTyreCompound):
-            self.m_visualTyreCompound = VisualTyreCompound(self.m_visualTyreCompound)
-        if CarStatusData.VehicleFIAFlags.isValid(self.m_vehicleFiaFlags):
-            self.m_vehicleFiaFlags = CarStatusData.VehicleFIAFlags(self.m_vehicleFiaFlags)
-        if CarStatusData.ERSDeployMode.isValid(self.m_ersDeployMode):
-            self.m_ersDeployMode = CarStatusData.ERSDeployMode(self.m_ersDeployMode)
-        if TractionControlAssistMode.isValid(self.m_tractionControl):
-            self.m_tractionControl = TractionControlAssistMode(self.m_tractionControl)
-        if CarStatusData.FuelMix.isValid(self.m_fuelMix):
-            self.m_fuelMix = CarStatusData.FuelMix(self.m_fuelMix)
-
+        self.m_actualTyreCompound = ActualTyreCompound.safeCast(self.m_actualTyreCompound)
+        self.m_visualTyreCompound = VisualTyreCompound.safeCast(self.m_visualTyreCompound)
+        self.m_vehicleFiaFlags = CarStatusData.VehicleFIAFlags.safeCast(self.m_vehicleFiaFlags)
+        self.m_ersDeployMode = CarStatusData.ERSDeployMode.safeCast(self.m_ersDeployMode)
+        self.m_tractionControl = TractionControlAssistMode.safeCast(self.m_tractionControl)
+        self.m_fuelMix = CarStatusData.FuelMix.safeCast(self.m_fuelMix)
 
     def __str__(self):
         """
