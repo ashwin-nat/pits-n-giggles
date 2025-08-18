@@ -76,6 +76,21 @@ class TimeTrialDataSet(F1SubPacketBase):
     m_customSetup: bool
     m_isValid: bool
 
+    __slots__ = (
+        "m_carIdx",
+        "m_teamId",
+        "m_lapTimeInMS",
+        "m_sector1TimeInMS",
+        "m_sector2TimeInMS",
+        "m_sector3TimeInMS",
+        "m_tractionControl",
+        "m_gearboxAssist",
+        "m_antiLockBrakes",
+        "m_equalCarPerformance",
+        "m_customSetup",
+        "m_isValid",
+    )
+
     def __init__(self, data: bytes, packet_format: int) -> None:
         """
         Initializes a TimeTrialDataSet object by unpacking the provided binary data.
@@ -260,9 +275,15 @@ class PacketTimeTrialData(F1PacketBase):
         - m_header (PacketHeader): The packet header
         - m_playerSessionBestDataSet (TimeTrialDataSet): The player session best data set
         - m_personalBestDataSet (TimeTrialDataSet): The personal best data set
-        - m_rivalDataSet (TimeTrialDataSet): The rival data set
+        - m_rivalSessionBestDataSet (TimeTrialDataSet): The rival data set
 
     """
+
+    __slots__ = (
+        "m_playerSessionBestDataSet",
+        "m_personalBestDataSet",
+        "m_rivalSessionBestDataSet",
+    )
 
     def __init__(self, header: PacketHeader, data: bytes) -> None:
         """
