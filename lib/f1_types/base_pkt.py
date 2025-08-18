@@ -25,9 +25,13 @@
 from abc import abstractmethod
 from enum import Enum
 from functools import total_ordering
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Type, TypeVar
 
 from .header import PacketHeader
+
+# -------------------------------------- TYPES -------------------------------------------------------------------------
+
+T = TypeVar("T", bound="F1BaseEnum")
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -46,6 +50,21 @@ class F1BaseEnum(Enum):
         if isinstance(value, cls):
             return True
         return any(value == member.value for member in cls)
+
+    @classmethod
+    def safeCast(cls: Type[T], value: int | T) -> Optional[T]:
+        """
+        Safely cast a value to the enum type.
+
+        Args:
+            value (int): The value to cast.
+
+        Returns:
+            Optional[F1BaseEnum]: The cast enum value.
+        """
+        if cls.isValid(value):
+            return cls(value)
+        return value
 
     def __str__(self):
         """Return the string representation of this object
