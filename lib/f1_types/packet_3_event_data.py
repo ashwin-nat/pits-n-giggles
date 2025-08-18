@@ -329,8 +329,7 @@ class PacketEventData(F1PacketBase):
                 self.m_reason = None
                 return
             self.m_reason = self.COMPILED_PACKET_STRUCT_25.unpack(data[:self.PACKET_LEN_25])[0]
-            if PacketEventData.DrsDisabled.Reason.isValid(self.m_reason):
-                self.m_reason = PacketEventData.DrsDisabled.Reason(self.m_reason)
+            self.m_reason = PacketEventData.DrsDisabled.Reason.safeCast(self.m_reason)
 
         def __str__(self):
             return f"DrsDisabled(reason={self.m_reason})"
@@ -603,10 +602,8 @@ class PacketEventData(F1PacketBase):
                 self.placesGained
             ) = self.COMPILED_PACKET_STRUCT.unpack(data[:self.PACKET_LEN])
 
-            if PacketEventData.Penalty.PenaltyType.isValid(self.penaltyType):
-                self.penaltyType = PacketEventData.Penalty.PenaltyType(self.penaltyType)
-            if PacketEventData.Penalty.InfringementType.isValid(self.infringementType):
-                self.infringementType = PacketEventData.Penalty.InfringementType(self.infringementType)
+            self.penaltyType = PacketEventData.Penalty.PenaltyType.safeCast(self.penaltyType)
+            self.infringementType = PacketEventData.Penalty.InfringementType.safeCast(self.infringementType)
 
         def __str__(self):
             return f"Penalty(penaltyType={self.penaltyType}, infringementType={self.infringementType}, " \
@@ -1336,10 +1333,8 @@ class PacketEventData(F1PacketBase):
                 struct.error: If the binary data does not match the expected format.
             """
             self.m_safety_car_type, self.m_event_type = self.COMPILED_PACKET_STRUCT.unpack(data[:self.PACKET_LEN])
-            if SafetyCarType.isValid(self.m_safety_car_type):
-                self.m_safety_car_type = SafetyCarType(self.m_safety_car_type)
-            if SafetyCarEventType.isValid(self.m_event_type):
-                self.m_event_type = SafetyCarEventType(self.m_event_type)
+            self.m_safety_car_type = SafetyCarType.safeCast(self.m_safety_car_type)
+            self.m_event_type = SafetyCarEventType.safeCast(self.m_event_type)
 
         def __str__(self) -> str:
             """
