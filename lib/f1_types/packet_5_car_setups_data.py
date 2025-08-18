@@ -111,6 +111,32 @@ class CarSetupData(F1SubPacketBase):
     )
     PACKET_LEN_24 = COMPILED_PACKET_STRUCT_24.size
 
+    __slots__ = (
+        "m_frontWing",
+        "m_rearWing",
+        "m_onThrottle",
+        "m_offThrottle",
+        "m_frontCamber",
+        "m_rearCamber",
+        "m_frontToe",
+        "m_rearToe",
+        "m_frontSuspension",
+        "m_rearSuspension",
+        "m_frontAntiRollBar",
+        "m_rearAntiRollBar",
+        "m_frontSuspensionHeight",
+        "m_rearSuspensionHeight",
+        "m_brakePressure",
+        "m_brakeBias",
+        "m_engineBraking",
+        "m_rearLeftTyrePressure",
+        "m_rearRightTyrePressure",
+        "m_frontLeftTyrePressure",
+        "m_frontRightTyrePressure",
+        "m_ballast",
+        "m_fuelLoad",
+    )
+
     def __init__(self, data: bytes, packet_format: int) -> None:
         """
         Initializes a CarSetupData object by unpacking the provided binary data.
@@ -125,7 +151,6 @@ class CarSetupData(F1SubPacketBase):
 
         self.m_packetFormat = packet_format
         if packet_format == 2023:
-            unpacked_data = self.COMPILED_PACKET_STRUCT_23.unpack(data)
             (
                 self.m_frontWing,
                 self.m_rearWing,
@@ -149,10 +174,9 @@ class CarSetupData(F1SubPacketBase):
                 self.m_frontRightTyrePressure,
                 self.m_ballast,
                 self.m_fuelLoad,
-            ) = unpacked_data
+            ) = self.COMPILED_PACKET_STRUCT_23.unpack(data)
             self.m_engineBraking = 0
         else:
-            unpacked_data = self.COMPILED_PACKET_STRUCT_24.unpack(data)
             (
                 self.m_frontWing,
                 self.m_rearWing,
@@ -177,7 +201,7 @@ class CarSetupData(F1SubPacketBase):
                 self.m_frontRightTyrePressure,
                 self.m_ballast,
                 self.m_fuelLoad,
-            ) = unpacked_data
+            ) = self.COMPILED_PACKET_STRUCT_24.unpack(data)
 
     def isValid(self) -> bool:
         """
@@ -500,6 +524,11 @@ class PacketCarSetupData(F1PacketBase):
 
     MAX_CARS = 22
     COMPILED_PACKET_STRUCT_EXTRA = struct.Struct("<f")
+
+    __slots__ = (
+        "m_carSetups",
+        "m_nextFrontWingValue",
+    )
 
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
         """
