@@ -67,6 +67,18 @@ class TyreSetData(F1SubPacketBase):
     )
     PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
+    __slots__ = (
+        "m_actualTyreCompound",
+        "m_visualTyreCompound",
+        "m_wear",
+        "m_available",
+        "m_recommendedSession",
+        "m_lifeSpan",
+        "m_usableLife",
+        "m_lapDeltaTime",
+        "m_fitted",
+    )
+
     def __init__(self, data: bytes, packet_format: int) -> None:
         """
         Initializes TyreSetData with raw data.
@@ -249,6 +261,12 @@ class PacketTyreSetsData(F1PacketBase):
 
     COMPILED_PACKET_STRUCT_FITTED_IDX = struct.Struct("<B")
     PACKET_LEN_FITTED_IDX = COMPILED_PACKET_STRUCT_FITTED_IDX.size
+
+    __slots__ = (
+        "m_carIdx",
+        "m_tyreSetData",
+        "m_fittedIdx",
+    )
 
     def __init__(self, header: PacketHeader, data: bytes) -> None:
         """
