@@ -216,10 +216,8 @@ class FinalClassificationData(F1SubPacketBase):
                 self.m_tyreStintsEndLaps[7]
             ) = self.COMPILED_PACKET_STRUCT_25.unpack(data)
 
-        if ResultStatus.isValid(self.m_resultStatus):
-            self.m_resultStatus = ResultStatus(self.m_resultStatus)
-        if ResultReason.isValid(self.m_resultReason):
-            self.m_resultReason = ResultReason(self.m_resultReason)
+        self.m_resultStatus = ResultStatus.safeCast(self.m_resultStatus)
+        self.m_resultReason = ResultReason.safeCast(self.m_resultReason)
 
         # Trim the tyre stints info
         self.m_tyreStintsActual     = self.m_tyreStintsActual[:self.m_numTyreStints]
@@ -227,13 +225,8 @@ class FinalClassificationData(F1SubPacketBase):
         self.m_tyreStintsEndLaps    = self.m_tyreStintsEndLaps[:self.m_numTyreStints]
 
         # Make tyre stint values as enum
-        self.m_tyreStintsActual = [ActualTyreCompound(compound) \
-                                    if ActualTyreCompound.isValid(compound) \
-                                        else compound for compound in self.m_tyreStintsActual]
-
-        self.m_tyreStintsVisual = [VisualTyreCompound(compound) \
-                                    if VisualTyreCompound.isValid(compound) \
-                                        else compound for compound in self.m_tyreStintsVisual]
+        self.m_tyreStintsActual = [ActualTyreCompound.safeCast(compound) for compound in self.m_tyreStintsActual]
+        self.m_tyreStintsVisual = [VisualTyreCompound.safeCast(compound) for compound in self.m_tyreStintsVisual]
 
     def __str__(self):
         """
