@@ -178,6 +178,41 @@ class LapData(F1SubPacketBase):
     m_speedTrapFastestSpeed: float
     m_speedTrapFastestLap: int
 
+    __slots__ = (
+        "m_packetFormat",
+        "m_lastLapTimeInMS",
+        "m_currentLapTimeInMS",
+        "m_sector1TimeInMS",
+        "m_sector1TimeMinutes",
+        "m_sector2TimeInMS",
+        "m_sector2TimeMinutes",
+        "m_deltaToCarInFrontInMS",
+        "m_deltaToRaceLeaderInMS",
+        "m_lapDistance",
+        "m_totalDistance",
+        "m_safetyCarDelta",
+        "m_carPosition",
+        "m_currentLapNum",
+        "m_pitStatus",
+        "m_numPitStops",
+        "m_sector",
+        "m_currentLapInvalid",
+        "m_penalties",
+        "m_totalWarnings",
+        "m_cornerCuttingWarnings",
+        "m_numUnservedDriveThroughPens",
+        "m_numUnservedStopGoPens",
+        "m_gridPosition",
+        "m_driverStatus",
+        "m_resultStatus",
+        "m_pitLaneTimerActive",
+        "m_pitLaneTimeInLaneInMS",
+        "m_pitStopTimerInMS",
+        "m_pitStopShouldServePen",
+        "m_speedTrapFastestSpeed",
+        "m_speedTrapFastestLap",
+    )
+
     class DriverStatus(F1BaseEnum):
         """
         Enumeration representing the status of a driver during a racing session.
@@ -467,6 +502,12 @@ class PacketLapData(F1PacketBase):
     """
 
     MAX_CARS = 22
+
+    __slots__ = (
+        "m_lapData",
+        "m_timeTrialPBCarIdx",
+        "m_timeTrialRivalCarIdx",
+    )
 
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
         """
