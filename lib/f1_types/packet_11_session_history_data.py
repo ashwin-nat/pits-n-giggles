@@ -302,10 +302,8 @@ class TyreStintHistoryData(F1SubPacketBase):
             self.m_tyreVisualCompound,
         ) = self.COMPILED_PACKET_STRUCT.unpack(data)
 
-        if ActualTyreCompound.isValid(self.m_tyreActualCompound):
-            self.m_tyreActualCompound = ActualTyreCompound(self.m_tyreActualCompound)
-        if VisualTyreCompound.isValid(self.m_tyreVisualCompound):
-            self.m_tyreVisualCompound = VisualTyreCompound(self.m_tyreVisualCompound)
+        self.m_tyreActualCompound = ActualTyreCompound.safeCast(self.m_tyreActualCompound)
+        self.m_tyreVisualCompound = VisualTyreCompound.safeCast(self.m_tyreVisualCompound)
 
     def __str__(self) -> str:
         """
