@@ -51,6 +51,12 @@ class PacketLapPositionsData(F1PacketBase):
     COMPILED_PACKET_STRUCT_ARRAY = struct.Struct(f"<{MAX_CARS * MAX_LAPS}B")
     PACKET_LEN_ARRAY = COMPILED_PACKET_STRUCT_ARRAY.size
 
+    __slots__ = (
+        "m_numLaps",
+        "m_lapStart",
+        "m_lapPositions",
+    )
+
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
         super().__init__(header)
         self.m_numLaps: int
