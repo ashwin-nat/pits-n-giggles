@@ -112,6 +112,32 @@ class CarDamageData:
     )
     PACKET_LEN_25 = struct.calcsize(PACKET_FORMAT_25)
 
+    __slots__ = (
+        "m_packetFormat",
+        "m_tyresWear",
+        "m_tyresDamage",
+        "m_brakesDamage",
+        "m_tyreBlisters",
+        "m_frontLeftWingDamage",
+        "m_frontRightWingDamage",
+        "m_rearWingDamage",
+        "m_floorDamage",
+        "m_diffuserDamage",
+        "m_sidepodDamage",
+        "m_drsFault",
+        "m_ersFault",
+        "m_gearBoxDamage",
+        "m_engineDamage",
+        "m_engineMGUHWear",
+        "m_engineESWear",
+        "m_engineCEWear",
+        "m_engineICEWear",
+        "m_engineMGUKWear",
+        "m_engineTCWear",
+        "m_engineBlown",
+        "m_engineSeized",
+    )
+
     def __init__(self, data, packet_format) -> None:
         """
         Initializes CarDamageData with raw data.
