@@ -100,6 +100,24 @@ class FinalClassificationData(F1SubPacketBase):
     )
     PACKET_LEN_25 = COMPILED_PACKET_STRUCT_25.size
 
+    __slots__ = (
+        "m_position",
+        "m_numLaps",
+        "m_gridPosition",
+        "m_points",
+        "m_numPitStops",
+        "m_resultStatus",
+        "m_resultReason",
+        "m_bestLapTimeInMS",
+        "m_totalRaceTime",
+        "m_penaltiesTime",
+        "m_numPenalties",
+        "m_numTyreStints",
+        "m_tyreStintsActual",
+        "m_tyreStintsVisual",
+        "m_tyreStintsEndLaps",
+    )
+
     def __init__(self, data: bytes, packet_format: int) -> None:
         """
         Initializes FinalClassificationData with raw data.
@@ -576,6 +594,11 @@ class PacketFinalClassificationData(F1PacketBase):
     """
 
     MAX_CARS = 22
+
+    __slots__ = (
+        "m_numCars",
+        "m_classificationData",
+    )
 
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
         """
