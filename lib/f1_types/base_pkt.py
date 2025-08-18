@@ -25,7 +25,7 @@
 from abc import abstractmethod
 from enum import Enum
 from functools import total_ordering
-from typing import Any, Dict, Optional, Type, TypeVar
+from typing import Any, Dict, Optional, Type, TypeVar, Union
 
 from .header import PacketHeader
 
@@ -52,7 +52,7 @@ class F1BaseEnum(Enum):
         return any(value == member.value for member in cls)
 
     @classmethod
-    def safeCast(cls: Type[T], value: int | T) -> Optional[T]:
+    def safeCast(cls: Type[T], value: Union[int, T]) -> Optional[T]:
         """
         Safely cast a value to the enum type.
 
