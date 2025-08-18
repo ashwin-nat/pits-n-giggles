@@ -101,14 +101,12 @@ class TyreSetData(F1SubPacketBase):
             self.m_fitted,
         ) = self.COMPILED_PACKET_STRUCT.unpack(data)
 
-        if ActualTyreCompound.isValid(self.m_actualTyreCompound):
-            self.m_actualTyreCompound = ActualTyreCompound(self.m_actualTyreCompound)
-        if VisualTyreCompound.isValid(self.m_visualTyreCompound):
-            self.m_visualTyreCompound = VisualTyreCompound(self.m_visualTyreCompound)
-        if self.m_packetFormat == 2023 and SessionType23.isValid(self.m_recommendedSession):
-            self.m_recommendedSession = SessionType23(self.m_recommendedSession)
-        elif self.m_packetFormat in {2024, 2025} and SessionType24.isValid(self.m_recommendedSession):
-            self.m_recommendedSession = SessionType24(self.m_recommendedSession)
+        self.m_actualTyreCompound = ActualTyreCompound.safeCast(self.m_actualTyreCompound)
+        self.m_visualTyreCompound = VisualTyreCompound.safeCast(self.m_visualTyreCompound)
+        if self.m_packetFormat == 2023:
+            self.m_recommendedSession = SessionType23.safeCast(self.m_recommendedSession)
+        elif self.m_packetFormat in {2024, 2025}:
+            self.m_recommendedSession = SessionType24.safeCast(self.m_recommendedSession)
         self.m_fitted = bool(self.m_fitted)
 
     def __str__(self) -> str:
