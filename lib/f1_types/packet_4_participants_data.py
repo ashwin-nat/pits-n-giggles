@@ -266,18 +266,15 @@ class ParticipantData(F1SubPacketBase):
             )
 
         self.m_name = self.m_name.decode('utf-8', errors='replace').rstrip('\x00')
-        if Platform.isValid(self.m_platform):
-            self.m_platform = Platform(self.m_platform)
-        if packet_format == 2023 and TeamID23.isValid(self.m_teamId):
-            self.m_teamId = TeamID23(self.m_teamId)
-        elif packet_format == 2024 and TeamID24.isValid(self.m_teamId):
-            self.m_teamId = TeamID24(self.m_teamId)
-        elif packet_format == 2025 and TeamID25.isValid(self.m_teamId):
-            self.m_teamId = TeamID25(self.m_teamId)
-        if TelemetrySetting.isValid(self.m_yourTelemetry):
-            self.m_yourTelemetry = TelemetrySetting(self.m_yourTelemetry)
-        if Nationality.isValid(self.m_nationality):
-            self.m_nationality = Nationality(self.m_nationality)
+        self.m_platform = Platform.safeCast(self.m_platform)
+        if packet_format == 2023:
+            self.m_teamId = TeamID23.safeCast(self.m_teamId)
+        elif packet_format == 2024:
+            self.m_teamId = TeamID24.safeCast(self.m_teamId)
+        elif packet_format == 2025:
+            self.m_teamId = TeamID25.safeCast(self.m_teamId)
+        self.m_yourTelemetry = TelemetrySetting.safeCast(self.m_yourTelemetry)
+        self.m_nationality = Nationality.safeCast(self.m_nationality)
         self.m_showOnlineNames = bool(self.m_showOnlineNames)
         self.m_myTeam = bool(self.m_myTeam)
         self.m_aiControlled = bool(self.m_aiControlled)
