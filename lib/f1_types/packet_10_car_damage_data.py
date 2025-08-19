@@ -27,9 +27,11 @@ from typing import Any, Dict, List
 from .common import _validate_parse_fixed_segments
 from .header import PacketHeader
 
+from .base_pkt import F1PacketBase, F1SubPacketBase
+
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
-class CarDamageData:
+class CarDamageData(F1SubPacketBase):
     """
     Class representing the packet for car damage data.
 
@@ -511,8 +513,7 @@ class CarDamageData:
             engine_seized,
         ), packet_format)
 
-
-class PacketCarDamageData:
+class PacketCarDamageData(F1PacketBase):
     """
     Class representing the packet for car damage data.
 
@@ -526,6 +527,10 @@ class PacketCarDamageData:
 
     MAX_CARS = 22
 
+    __slots__ = (
+        "m_carDamageData",
+    )
+
     def __init__(self, header: PacketHeader, data: bytes) -> None:
         """
         Initializes PacketCarDamageData with raw data.
@@ -534,6 +539,8 @@ class PacketCarDamageData:
             header (PacketHeader): The header of the packet.
             data (bytes): Raw data representing the packet for car damage data.
         """
+
+        super().__init__(header)
 
         self.m_header: PacketHeader = header
         if header.m_packetFormat >= 2025:
