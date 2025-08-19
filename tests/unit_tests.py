@@ -44,45 +44,45 @@ from f1_types import (TestF1BaseEnum, TestF1PacketBase, TestF1SubPacketBase,
 # pylint: disable=unused-import wrong-import-position
 # sourcery skip: dont-import-test-modules
 from tests_base import CustomTestResult, F1TelemetryUnitTestsBase
-# from tests_collision_analyzer import (TestCollisionAnalyzer,
-#                                       TestCollisionPairKey,
-#                                       TestCollisionRecord)
-# from tests_config import (TestCaptureSettings, TestConfigIO,
-#                           TestDisplaySettings, TestEdgeCases, TestFilePathStr,
-#                           TestForwardingSettings, TestHttpsSettings,
-#                           TestLoadConfigFromIni, TestLoggingSettings,
-#                           TestMissingSectionsAndKeys, TestNetworkSettings,
-#                           TestPngSettings, TestPrivacySettings,
-#                           TestSampleSettingsFixture, TestStreamOverlaySettings)
-# from tests_custom_markers import (TestCustomMarkerEntry,
-#                                   TestCustomMarkersHistory)
-# from tests_data_per_driver import (TestTyreSetHistoryEntry,
-#                                    TestTyreSetHistoryManager, TestTyreSetInfo)
-# from tests_debouncer import TestMultiButtonDebouncer
-# from tests_fuel_recommender import (TestFuelRateRecommenderMisc,
-#                                     TestFuelRateRecommenderRemove,
-#                                     TestFuelRemainingPerLap)
-# from tests_ipc import TestIPC
-# from tests_itc import TestAsyncInterTaskCommunicator
-# from tests_overtake_analyzer import (TestOvertakeAnalyzerEmptyInput,
-#                                      TestOvertakeAnalyzerFileCsv,
-#                                      TestOvertakeAnalyzerInvalidData,
-#                                      TestOvertakeAnalyzerListCsv,
-#                                      TestOvertakeAnalyzerListObj)
-# from tests_pcap import (FullPCapTests, TestF1PacketCaptureCompression,
-#                         TestF1PacketCaptureHeader)
-# from tests_race_analyzer import TestGetFastestTimesJson
-# from tests_save_to_disk import TestSaveRaceInfo
-# from tests_tyre_wear_extrapolator import (
-#     TestSimpleLinearRegression, TestTyreWearExtrapolator,
-#     TestTyreWearExtrapolatorWithMissingLaps,
-#     TestTyreWearExtrapolatorWithNonRacingLaps)
-# from tests_udp_forwarder import TestAsyncUDPForwarder
-# from tests_version import TestGetVersion, TestIsUpdateAvailable
+from tests_collision_analyzer import (TestCollisionAnalyzer,
+                                      TestCollisionPairKey,
+                                      TestCollisionRecord)
+from tests_config import (TestCaptureSettings, TestConfigIO,
+                          TestDisplaySettings, TestEdgeCases, TestFilePathStr,
+                          TestForwardingSettings, TestHttpsSettings,
+                          TestLoadConfigFromIni, TestLoggingSettings,
+                          TestMissingSectionsAndKeys, TestNetworkSettings,
+                          TestPngSettings, TestPrivacySettings,
+                          TestSampleSettingsFixture, TestStreamOverlaySettings)
+from tests_custom_markers import (TestCustomMarkerEntry,
+                                  TestCustomMarkersHistory)
+from tests_data_per_driver import (TestTyreSetHistoryEntry,
+                                   TestTyreSetHistoryManager, TestTyreSetInfo)
+from tests_debouncer import TestMultiButtonDebouncer
+from tests_fuel_recommender import (TestFuelRateRecommenderMisc,
+                                    TestFuelRateRecommenderRemove,
+                                    TestFuelRemainingPerLap)
+from tests_ipc import TestIPC
+from tests_itc import TestAsyncInterTaskCommunicator
+from tests_overtake_analyzer import (TestOvertakeAnalyzerEmptyInput,
+                                     TestOvertakeAnalyzerFileCsv,
+                                     TestOvertakeAnalyzerInvalidData,
+                                     TestOvertakeAnalyzerListCsv,
+                                     TestOvertakeAnalyzerListObj)
+from tests_pcap import (FullPCapTests, TestF1PacketCaptureCompression,
+                        TestF1PacketCaptureHeader)
+from tests_race_analyzer import TestGetFastestTimesJson
+from tests_save_to_disk import TestSaveRaceInfo
+from tests_tyre_wear_extrapolator import (
+    TestSimpleLinearRegression, TestTyreWearExtrapolator,
+    TestTyreWearExtrapolatorWithMissingLaps,
+    TestTyreWearExtrapolatorWithNonRacingLaps)
+from tests_udp_forwarder import TestAsyncUDPForwarder
+from tests_version import TestGetVersion, TestIsUpdateAvailable
 
-# from tests.tests_child_proc_mgmt import TestIsInitComplete, TestPidReport
-# from tests.tests_port_check import TestPortAvailability
-# from tests.tests_wdt import TestWatchDogTimer
+from tests.tests_child_proc_mgmt import TestIsInitComplete, TestPidReport
+from tests.tests_port_check import TestPortAvailability
+from tests.tests_wdt import TestWatchDogTimer
 
 # Initialize colorama
 init(autoreset=True)
