@@ -815,6 +815,7 @@ class TestPacketCarMotionData(F1TypesTest):
         parsed_obj = PacketMotionData(parsed_header, payload_bytes)
         self.assertEqual(generated_test_obj, parsed_obj)
         self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.assertFalse(hasattr(parsed_obj, '__dict__'))
 
     def test_f1_24_random(self):
         """
@@ -838,6 +839,7 @@ class TestPacketCarMotionData(F1TypesTest):
         parsed_obj = PacketMotionData(parsed_header, payload_bytes)
         self.assertEqual(generated_test_obj, parsed_obj)
         self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.assertFalse(hasattr(parsed_obj, '__dict__'))
 
     def test_f1_25_random(self):
         """
@@ -861,6 +863,7 @@ class TestPacketCarMotionData(F1TypesTest):
         parsed_obj = PacketMotionData(parsed_header, payload_bytes)
         self.assertEqual(generated_test_obj, parsed_obj)
         self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.assertFalse(hasattr(parsed_obj, '__dict__'))
 
     def test_f1_23_actual(self):
         """
@@ -870,6 +873,7 @@ class TestPacketCarMotionData(F1TypesTest):
         parsed_packet = PacketMotionData(self.m_header_23, self.m_packet_23_24_25)
         parsed_json = parsed_packet.toJSON()
         self.jsonComparisionUtil(self.m_expected_json_23_24_25, parsed_json)
+        self.assertFalse(hasattr(parsed_packet, '__dict__'))
 
     def test_f1_24_actual(self):
         """
@@ -879,6 +883,7 @@ class TestPacketCarMotionData(F1TypesTest):
         parsed_packet = PacketMotionData(self.m_header_24, self.m_packet_23_24_25)
         parsed_json = parsed_packet.toJSON()
         self.jsonComparisionUtil(self.m_expected_json_23_24_25, parsed_json)
+        self.assertFalse(hasattr(parsed_packet, '__dict__'))
 
     def test_f1_25_actual(self):
         """
@@ -888,6 +893,7 @@ class TestPacketCarMotionData(F1TypesTest):
         parsed_packet = PacketMotionData(self.m_header_25, self.m_packet_23_24_25)
         parsed_json = parsed_packet.toJSON()
         self.jsonComparisionUtil(self.m_expected_json_23_24_25, parsed_json)
+        self.assertFalse(hasattr(parsed_packet, '__dict__'))
 
     def _generateRandomCarMotionData(self) -> CarMotionData:
         """Generate a random CarMotionData object
