@@ -78,6 +78,7 @@ class TestPacketSessionHistoryData(F1TypesTest):
         parsed_packet = PacketSessionHistoryData(self.m_header_23, raw_packet)
         parsed_json = parsed_packet.toJSON()
         self.jsonComparisionUtil(expected_json, parsed_json)
+        self.assertFalse(hasattr(parsed_packet, '__dict__'))
 
     def test_f1_24_actual(self):
         """
@@ -121,6 +122,7 @@ class TestPacketSessionHistoryData(F1TypesTest):
         parsed_packet = PacketSessionHistoryData(self.m_header_24, raw_packet)
         parsed_json = parsed_packet.toJSON()
         self.jsonComparisionUtil(expected_json, parsed_json)
+        self.assertFalse(hasattr(parsed_packet, '__dict__'))
 
     def test_f1_25_actual(self):
 
@@ -130,6 +132,7 @@ class TestPacketSessionHistoryData(F1TypesTest):
         parsed_packet = PacketSessionHistoryData(self.m_header_25, raw_packet)
         parsed_json = parsed_packet.toJSON()
         self.jsonComparisionUtil(expected_json, parsed_json)
+        self.assertFalse(hasattr(parsed_packet, '__dict__'))
 
     def test_f1_25_actual_invalid_count(self):
 

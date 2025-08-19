@@ -131,6 +131,11 @@ class PacketEventData(F1PacketBase):
         COMPILED_PACKET_STRUCT = struct.Struct("<Bf")
         PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
+        __slots__ = (
+            "vehicleIdx",
+            "lapTime",
+        )
+
         def __init__(self, data: bytes, _packet_format: int) -> None:
             """
             Initializes a FastestLap object by unpacking the provided binary data.
@@ -142,11 +147,10 @@ class PacketEventData(F1PacketBase):
             Raises:
                 struct.error: If the binary data does not match the expected format.
             """
-            unpacked_data = self.COMPILED_PACKET_STRUCT.unpack(data[:self.PACKET_LEN])
             (
                 self.vehicleIdx,
                 self.lapTime
-            ) = unpacked_data
+            ) = self.COMPILED_PACKET_STRUCT.unpack(data[:self.PACKET_LEN])
 
         def __str__(self) -> str:
             """
@@ -205,6 +209,11 @@ class PacketEventData(F1PacketBase):
 
         COMPILED_PACKET_STRUCT_23_24 = struct.Struct("<B")
         PACKET_LEN_23_24 = COMPILED_PACKET_STRUCT_23_24.size
+
+        __slots__ = (
+            "vehicleIdx",
+            "m_reason",
+        )
 
         class Reason(F1BaseEnum):
             INVALID = 0
@@ -292,6 +301,10 @@ class PacketEventData(F1PacketBase):
         COMPILED_PACKET_STRUCT_25 = struct.Struct("<B")
         PACKET_LEN_25 = COMPILED_PACKET_STRUCT_25.size
 
+        __slots__ = (
+            "m_reason",
+        )
+
         class Reason(F1BaseEnum):
             WET_TRACK = 0
             SAFETY_CAR_DEPLOYED = 1
@@ -316,8 +329,7 @@ class PacketEventData(F1PacketBase):
                 self.m_reason = None
                 return
             self.m_reason = self.COMPILED_PACKET_STRUCT_25.unpack(data[:self.PACKET_LEN_25])[0]
-            if PacketEventData.DrsDisabled.Reason.isValid(self.m_reason):
-                self.m_reason = PacketEventData.DrsDisabled.Reason(self.m_reason)
+            self.m_reason = PacketEventData.DrsDisabled.Reason.safeCast(self.m_reason)
 
         def __str__(self):
             return f"DrsDisabled(reason={self.m_reason})"
@@ -337,6 +349,11 @@ class PacketEventData(F1PacketBase):
         """
         COMPILED_PACKET_STRUCT = struct.Struct("<B")
         PACKET_LEN = COMPILED_PACKET_STRUCT.size
+
+        __slots__ = (
+            "vehicleIdx",
+        )
+
         def __init__(self, data: bytes, _packet_format: int):
             """
             Initializes a TeamMateInPits object by unpacking the provided binary data.
@@ -396,6 +413,11 @@ class PacketEventData(F1PacketBase):
         """
         COMPILED_PACKET_STRUCT = struct.Struct("<B")
         PACKET_LEN = COMPILED_PACKET_STRUCT.size
+
+        __slots__ = (
+            "vehicleIdx",
+        )
+
         def __init__(self, data: bytes, _packet_format: int):
             """
             Initializes a RaceWinner object by unpacking the provided binary data.
@@ -462,6 +484,16 @@ class PacketEventData(F1PacketBase):
 
         COMPILED_PACKET_STRUCT = struct.Struct("<BBBBBBB")
         PACKET_LEN = COMPILED_PACKET_STRUCT.size
+
+        __slots__ = (
+            "penaltyType",
+            "infringementType",
+            "vehicleIdx",
+            "otherVehicleIndex",
+            "time",
+            "lapNum",
+            "placesGained",
+        )
 
         class PenaltyType(F1BaseEnum):
             """Enum class representing different penalties in motorsports."""
@@ -560,7 +592,6 @@ class PacketEventData(F1PacketBase):
                 _packet_format (int): The packet format
             """
 
-            unpacked_data = self.COMPILED_PACKET_STRUCT.unpack(data[:self.PACKET_LEN])
             (
                 self.penaltyType,
                 self.infringementType,
@@ -569,12 +600,10 @@ class PacketEventData(F1PacketBase):
                 self.time,
                 self.lapNum,
                 self.placesGained
-            ) = unpacked_data
+            ) = self.COMPILED_PACKET_STRUCT.unpack(data[:self.PACKET_LEN])
 
-            if PacketEventData.Penalty.PenaltyType.isValid(self.penaltyType):
-                self.penaltyType = PacketEventData.Penalty.PenaltyType(self.penaltyType)
-            if PacketEventData.Penalty.InfringementType.isValid(self.infringementType):
-                self.infringementType = PacketEventData.Penalty.InfringementType(self.infringementType)
+            self.penaltyType = PacketEventData.Penalty.PenaltyType.safeCast(self.penaltyType)
+            self.infringementType = PacketEventData.Penalty.InfringementType.safeCast(self.infringementType)
 
         def __str__(self):
             return f"Penalty(penaltyType={self.penaltyType}, infringementType={self.infringementType}, " \
@@ -645,6 +674,15 @@ class PacketEventData(F1PacketBase):
         COMPILED_PACKET_STRUCT = struct.Struct("<BfBBBf")
         PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
+        __slots__ = (
+            "vehicleIdx",
+            "speed",
+            "isOverallFastestInSession",
+            "isDriverFastestInSession",
+            "fastestVehicleIdxInSession",
+            "fastestSpeedInSession"
+        )
+
         def __init__(self, data: bytes, _packet_format: int) -> None:
             """
             Initializes a SpeedTrap object by unpacking the provided binary data.
@@ -656,7 +694,6 @@ class PacketEventData(F1PacketBase):
             Raises:
                 struct.error: If the binary data does not match the expected format.
             """
-            unpacked_data = self.COMPILED_PACKET_STRUCT.unpack(data[:self.PACKET_LEN])
             (
                 self.vehicleIdx,
                 self.speed,
@@ -664,7 +701,7 @@ class PacketEventData(F1PacketBase):
                 self.isDriverFastestInSession,
                 self.fastestVehicleIdxInSession,
                 self.fastestSpeedInSession
-            ) = unpacked_data
+            ) = self.COMPILED_PACKET_STRUCT.unpack(data[:self.PACKET_LEN])
             self.isOverallFastestInSession = bool(self.isOverallFastestInSession)
             self.isDriverFastestInSession = bool(self.isDriverFastestInSession)
 
@@ -744,6 +781,10 @@ class PacketEventData(F1PacketBase):
         COMPILED_PACKET_STRUCT = struct.Struct("<B")
         PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
+        __slots__ = (
+            "numLights",
+        )
+
         def __init__(self, data: bytes, _packet_format: int) -> None:
             """
             Initializes a StartLights object by unpacking the provided binary data.
@@ -802,6 +843,10 @@ class PacketEventData(F1PacketBase):
 
         COMPILED_PACKET_STRUCT = struct.Struct("<B")
         PACKET_LEN = COMPILED_PACKET_STRUCT.size
+
+        __slots__ = (
+            "vehicleIdx",
+        )
 
         def __init__(self, data: bytes, _packet_format: int) -> None:
             """
@@ -877,6 +922,11 @@ class PacketEventData(F1PacketBase):
 
         COMPILED_PACKET_STRUCT_25 = struct.Struct("<Bf")
         PACKET_LEN_25 = COMPILED_PACKET_STRUCT_25.size
+
+        __slots__ = (
+            "vehicleIdx",
+            "stopTime",
+        )
 
         def __init__(self, data: bytes, packet_format: int) -> None:
             """
@@ -954,6 +1004,11 @@ class PacketEventData(F1PacketBase):
 
         COMPILED_PACKET_STRUCT = struct.Struct("<If")
         PACKET_LEN = COMPILED_PACKET_STRUCT.size
+
+        __slots__ = (
+            "flashbackFrameIdentifier",
+            "flashbackSessionTime",
+        )
 
         def __init__(self, data: bytes, _packet_format: int) -> None:
             """
@@ -1060,6 +1115,10 @@ class PacketEventData(F1PacketBase):
         UDP_ACTION_10 = 0x20000000
         UDP_ACTION_11 = 0x40000000
         UDP_ACTION_12 = 0x80000000
+
+        __slots__ = (
+            "buttonStatus",
+        )
 
         def __init__(self, data: bytes, _packet_format: int) -> None:
             """
@@ -1176,6 +1235,11 @@ class PacketEventData(F1PacketBase):
         COMPILED_PACKET_STRUCT = struct.Struct("<BB")
         PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
+        __slots__ = (
+            "overtakingVehicleIdx",
+            "beingOvertakenVehicleIdx",
+        )
+
         def __init__(self, data: bytes, _packet_format: int) -> None:
             """
             Initializes an Overtake object by unpacking the provided binary data.
@@ -1252,6 +1316,11 @@ class PacketEventData(F1PacketBase):
         COMPILED_PACKET_STRUCT = struct.Struct("<BB")
         PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
+        __slots__ = (
+            "m_safety_car_type",
+            "m_event_type",
+        )
+
         def __init__(self, data: bytes, _packet_format: int) -> None:
             """
             Initializes an Overtake object by unpacking the provided binary data.
@@ -1264,10 +1333,8 @@ class PacketEventData(F1PacketBase):
                 struct.error: If the binary data does not match the expected format.
             """
             self.m_safety_car_type, self.m_event_type = self.COMPILED_PACKET_STRUCT.unpack(data[:self.PACKET_LEN])
-            if SafetyCarType.isValid(self.m_safety_car_type):
-                self.m_safety_car_type = SafetyCarType(self.m_safety_car_type)
-            if SafetyCarEventType.isValid(self.m_event_type):
-                self.m_event_type = SafetyCarEventType(self.m_event_type)
+            self.m_safety_car_type = SafetyCarType.safeCast(self.m_safety_car_type)
+            self.m_event_type = SafetyCarEventType.safeCast(self.m_event_type)
 
         def __str__(self) -> str:
             """
@@ -1330,6 +1397,11 @@ class PacketEventData(F1PacketBase):
 
         COMPILED_PACKET_STRUCT = struct.Struct("<BB")
         PACKET_LEN = COMPILED_PACKET_STRUCT.size
+
+        __slots__ = (
+            "m_vehicle_1_index",
+            "m_vehicle_2_index",
+        )
 
         def __init__(self, data: bytes, _packet_format: int) -> None:
             """
@@ -1420,6 +1492,12 @@ class PacketEventData(F1PacketBase):
 
     COMPILED_PACKET_STRUCT = struct.Struct("4s")
     PACKET_LEN = COMPILED_PACKET_STRUCT.size
+
+    __slots__ = (
+        'm_eventStringCode',
+        'm_eventCode',
+        'mEventDetails',
+    )
 
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
         """Construct the PacketEventData object from the incoming raw packet

@@ -61,6 +61,7 @@ class TestPacketLobbyInfoData(F1TypesTest):
         parsed_obj = PacketLobbyInfoData(parsed_header, payload_bytes)
         self.assertEqual(generated_test_obj, parsed_obj)
         self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.assertFalse(hasattr(generated_test_obj, '__dict__'))
 
     def test_f1_24_random(self):
         """
@@ -81,6 +82,7 @@ class TestPacketLobbyInfoData(F1TypesTest):
         parsed_obj = PacketLobbyInfoData(parsed_header, payload_bytes)
         self.assertEqual(generated_test_obj, parsed_obj)
         self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.assertFalse(hasattr(generated_test_obj, '__dict__'))
 
     def test_f1_23_random(self):
         """
@@ -100,6 +102,7 @@ class TestPacketLobbyInfoData(F1TypesTest):
         parsed_obj = PacketLobbyInfoData(parsed_header, payload_bytes)
         self.assertEqual(generated_test_obj, parsed_obj)
         self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.assertFalse(hasattr(generated_test_obj, '__dict__'))
 
     def test_f1_23_actual(self):
         """
@@ -356,6 +359,7 @@ class TestPacketLobbyInfoData(F1TypesTest):
         parsed_packet = PacketLobbyInfoData(self.m_header_23, raw_packet)
         parsed_json = parsed_packet.toJSON()
         self.jsonComparisionUtil(expected_json, parsed_json)
+        self.assertFalse(hasattr(parsed_packet, '__dict__'))
 
 
     def test_f1_24_actual(self):
@@ -481,6 +485,7 @@ class TestPacketLobbyInfoData(F1TypesTest):
         parsed_packet = PacketLobbyInfoData(self.m_header_24, raw_packet)
         parsed_json = parsed_packet.toJSON()
         self.jsonComparisionUtil(expected_json, parsed_json)
+        self.assertFalse(hasattr(parsed_packet, '__dict__'))
 
     def _generateRandomLobbyInfoData(self, header: PacketHeader) -> LobbyInfoData:
         """

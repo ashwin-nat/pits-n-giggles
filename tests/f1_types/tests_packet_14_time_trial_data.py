@@ -107,6 +107,7 @@ class TestPacketTimeTrialData(F1TypesTest):
         parsed_packet = PacketTimeTrialData(self.m_header_24, raw_packet)
         parsed_json = parsed_packet.toJSON()
         self.jsonComparisionUtil(expected_json, parsed_json)
+        self.assertFalse(hasattr(parsed_packet, '__dict__'))
 
     def test_f1_25_actual(self):
 
@@ -116,6 +117,7 @@ class TestPacketTimeTrialData(F1TypesTest):
         parsed_packet = PacketTimeTrialData(self.m_header_25, raw_packet)
         parsed_json = parsed_packet.toJSON()
         self.jsonComparisionUtil(expected_json, parsed_json)
+        self.assertFalse(hasattr(parsed_packet, '__dict__'))
 
     def test_f1_24_random(self):
         """
@@ -131,6 +133,7 @@ class TestPacketTimeTrialData(F1TypesTest):
         parsed_obj = PacketTimeTrialData(parsed_header, payload_bytes)
         self.assertEqual(generated_test_obj, parsed_obj)
         self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.assertFalse(hasattr(generated_test_obj, '__dict__'))
 
     def test_f1_25_random(self):
         """
@@ -146,6 +149,7 @@ class TestPacketTimeTrialData(F1TypesTest):
         parsed_obj = PacketTimeTrialData(parsed_header, payload_bytes)
         self.assertEqual(generated_test_obj, parsed_obj)
         self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.assertFalse(hasattr(generated_test_obj, '__dict__'))
 
     def _generateRandomTimeTrialDataSet(self, index: int, packet_format: int) -> TimeTrialDataSet:
         """

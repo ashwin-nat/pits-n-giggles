@@ -25,9 +25,13 @@
 from abc import abstractmethod
 from enum import Enum
 from functools import total_ordering
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Type, TypeVar, Union
 
 from .header import PacketHeader
+
+# -------------------------------------- TYPES -------------------------------------------------------------------------
+
+T = TypeVar("T", bound="F1BaseEnum")
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -46,6 +50,19 @@ class F1BaseEnum(Enum):
         if isinstance(value, cls):
             return True
         return any(value == member.value for member in cls)
+
+    @classmethod
+    def safeCast(cls: Type[T], value: Union[int, T]) -> Optional[T]:
+        """
+        Safely cast a value to the enum type.
+
+        Args:
+            value (int): The value to cast.
+
+        Returns:
+            Optional[F1BaseEnum]: The cast enum value.
+        """
+        return cls(value) if cls.isValid(value) else value
 
     def __str__(self):
         """Return the string representation of this object
@@ -100,6 +117,8 @@ class F1PacketBase:
     """
     Base class for parsed F1 telemetry packets.
     """
+
+    __slots__ = ("m_header",)
 
     def __init__(self, header: PacketHeader) -> None:
         """

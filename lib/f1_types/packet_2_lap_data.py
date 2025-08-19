@@ -178,6 +178,41 @@ class LapData(F1SubPacketBase):
     m_speedTrapFastestSpeed: float
     m_speedTrapFastestLap: int
 
+    __slots__ = (
+        "m_packetFormat",
+        "m_lastLapTimeInMS",
+        "m_currentLapTimeInMS",
+        "m_sector1TimeInMS",
+        "m_sector1TimeMinutes",
+        "m_sector2TimeInMS",
+        "m_sector2TimeMinutes",
+        "m_deltaToCarInFrontInMS",
+        "m_deltaToRaceLeaderInMS",
+        "m_lapDistance",
+        "m_totalDistance",
+        "m_safetyCarDelta",
+        "m_carPosition",
+        "m_currentLapNum",
+        "m_pitStatus",
+        "m_numPitStops",
+        "m_sector",
+        "m_currentLapInvalid",
+        "m_penalties",
+        "m_totalWarnings",
+        "m_cornerCuttingWarnings",
+        "m_numUnservedDriveThroughPens",
+        "m_numUnservedStopGoPens",
+        "m_gridPosition",
+        "m_driverStatus",
+        "m_resultStatus",
+        "m_pitLaneTimerActive",
+        "m_pitLaneTimeInLaneInMS",
+        "m_pitStopTimerInMS",
+        "m_pitStopShouldServePen",
+        "m_speedTrapFastestSpeed",
+        "m_speedTrapFastestLap",
+    )
+
     class DriverStatus(F1BaseEnum):
         """
         Enumeration representing the status of a driver during a racing session.
@@ -299,14 +334,10 @@ class LapData(F1SubPacketBase):
                 self.m_speedTrapFastestLap
             ) = self.COMPILED_PACKET_STRUCT_24.unpack(raw_data)
 
-        if LapData.DriverStatus.isValid(self.m_driverStatus):
-            self.m_driverStatus = LapData.DriverStatus(self.m_driverStatus)
-        if ResultStatus.isValid(self.m_resultStatus):
-            self.m_resultStatus = ResultStatus(self.m_resultStatus)
-        if LapData.PitStatus.isValid(self.m_pitStatus):
-            self.m_pitStatus = LapData.PitStatus(self.m_pitStatus)
-        if LapData.Sector.isValid(self.m_sector):
-            self.m_sector = LapData.Sector(self.m_sector)
+        self.m_driverStatus = LapData.DriverStatus.safeCast(self.m_driverStatus)
+        self.m_resultStatus = ResultStatus.safeCast(self.m_resultStatus)
+        self.m_pitStatus = LapData.PitStatus.safeCast(self.m_pitStatus)
+        self.m_sector = LapData.Sector.safeCast(self.m_sector)
         self.m_currentLapInvalid = bool(self.m_currentLapInvalid)
         self.m_pitLaneTimerActive = bool(self.m_pitLaneTimerActive)
 
@@ -376,9 +407,9 @@ class LapData(F1SubPacketBase):
             "safety-car-delta": self.m_safetyCarDelta,
             "car-position": self.m_carPosition,
             "current-lap-num": self.m_currentLapNum,
-            "pit-status": str(self.m_pitStatus) if LapData.PitStatus.isValid(self.m_pitStatus) else self.m_pitStatus,
+            "pit-status": str(self.m_pitStatus),
             "num-pit-stops": self.m_numPitStops,
-            "sector": str(self.m_sector.value) if LapData.Sector.isValid(self.m_sector) else self.m_sector,
+            "sector": str(self.m_sector.value),
             "current-lap-invalid": self.m_currentLapInvalid,
             "penalties": self.m_penalties,
             "total-warnings": self.m_totalWarnings,
@@ -467,6 +498,12 @@ class PacketLapData(F1PacketBase):
     """
 
     MAX_CARS = 22
+
+    __slots__ = (
+        "m_lapData",
+        "m_timeTrialPBCarIdx",
+        "m_timeTrialRivalCarIdx",
+    )
 
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
         """

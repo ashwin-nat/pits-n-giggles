@@ -76,6 +76,21 @@ class TimeTrialDataSet(F1SubPacketBase):
     m_customSetup: bool
     m_isValid: bool
 
+    __slots__ = (
+        "m_carIdx",
+        "m_teamId",
+        "m_lapTimeInMS",
+        "m_sector1TimeInMS",
+        "m_sector2TimeInMS",
+        "m_sector3TimeInMS",
+        "m_tractionControl",
+        "m_gearboxAssist",
+        "m_antiLockBrakes",
+        "m_equalCarPerformance",
+        "m_customSetup",
+        "m_isValid",
+    )
+
     def __init__(self, data: bytes, packet_format: int) -> None:
         """
         Initializes a TimeTrialDataSet object by unpacking the provided binary data.
@@ -104,10 +119,10 @@ class TimeTrialDataSet(F1SubPacketBase):
         ) = self.COMPILED_PACKET_STRUCT.unpack(data)
 
         # No ned to check game year, since this packet type is not available in F1 23
-        if packet_format < 2025 and TeamID24.isValid(self.m_teamId):
-                self.m_teamId = TeamID24(self.m_teamId)
-        elif TeamID25.isValid(self.m_teamId):
-            self.m_teamId = TeamID25(self.m_teamId)
+        if packet_format < 2025:
+            self.m_teamId = TeamID24.safeCast(self.m_teamId)
+        else:
+            self.m_teamId = TeamID25.safeCast(self.m_teamId)
         self.m_tractionControl = bool(self.m_tractionControl)
         self.m_gearboxAssist = bool(self.m_gearboxAssist)
         self.m_antiLockBrakes = bool(self.m_antiLockBrakes)
@@ -260,9 +275,15 @@ class PacketTimeTrialData(F1PacketBase):
         - m_header (PacketHeader): The packet header
         - m_playerSessionBestDataSet (TimeTrialDataSet): The player session best data set
         - m_personalBestDataSet (TimeTrialDataSet): The personal best data set
-        - m_rivalDataSet (TimeTrialDataSet): The rival data set
+        - m_rivalSessionBestDataSet (TimeTrialDataSet): The rival data set
 
     """
+
+    __slots__ = (
+        "m_playerSessionBestDataSet",
+        "m_personalBestDataSet",
+        "m_rivalSessionBestDataSet",
+    )
 
     def __init__(self, header: PacketHeader, data: bytes) -> None:
         """

@@ -61,6 +61,8 @@ class TestPacketFinalClassificationData(F1TypesTest):
         parsed_obj = PacketFinalClassificationData(parsed_header, payload_bytes)
         self.assertEqual(generated_test_obj, parsed_obj)
         self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.assertFalse(hasattr(generated_test_obj, '__dict__'))
+
 
     def test_f1_25_empty(self):
         """
@@ -76,6 +78,7 @@ class TestPacketFinalClassificationData(F1TypesTest):
         self.assertEqual(generated_test_obj.m_numCars, 0)
         self.assertEqual(generated_test_obj.m_header, self.m_header_25)
         self.jsonComparisionUtil(generated_test_obj.toJSON(), {'num-cars': 0, 'classification-data': []})
+        self.assertFalse(hasattr(generated_test_obj, '__dict__'))
 
     def test_f1_25_empty_no_header(self):
         """
@@ -91,6 +94,7 @@ class TestPacketFinalClassificationData(F1TypesTest):
         self.assertEqual(generated_test_obj.m_numCars, 0)
         self.assertEqual(generated_test_obj.m_header, None)
         self.jsonComparisionUtil(generated_test_obj.toJSON(), {'num-cars': 0, 'classification-data': []})
+        self.assertFalse(hasattr(generated_test_obj, '__dict__'))
 
     def test_f1_24_random(self):
         """
@@ -110,6 +114,7 @@ class TestPacketFinalClassificationData(F1TypesTest):
         parsed_obj = PacketFinalClassificationData(parsed_header, payload_bytes)
         self.assertEqual(generated_test_obj, parsed_obj)
         self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.assertFalse(hasattr(parsed_obj, '__dict__'))
 
     def test_f1_24_empty(self):
         """
@@ -125,6 +130,7 @@ class TestPacketFinalClassificationData(F1TypesTest):
         self.assertEqual(generated_test_obj.m_numCars, 0)
         self.assertEqual(generated_test_obj.m_header, self.m_header_24)
         self.jsonComparisionUtil(generated_test_obj.toJSON(), {'num-cars': 0, 'classification-data': []})
+        self.assertFalse(hasattr(generated_test_obj, '__dict__'))
 
     def test_f1_24_empty_no_header(self):
         """
@@ -140,6 +146,7 @@ class TestPacketFinalClassificationData(F1TypesTest):
         self.assertEqual(generated_test_obj.m_numCars, 0)
         self.assertEqual(generated_test_obj.m_header, None)
         self.jsonComparisionUtil(generated_test_obj.toJSON(), {'num-cars': 0, 'classification-data': []})
+        self.assertFalse(hasattr(generated_test_obj, '__dict__'))
 
     def test_f1_23_random(self):
         """
@@ -159,6 +166,7 @@ class TestPacketFinalClassificationData(F1TypesTest):
         parsed_obj = PacketFinalClassificationData(parsed_header, payload_bytes)
         self.assertEqual(generated_test_obj, parsed_obj)
         self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.assertFalse(hasattr(parsed_obj, '__dict__'))
 
     def test_f1_23_empty(self):
         """
@@ -174,6 +182,7 @@ class TestPacketFinalClassificationData(F1TypesTest):
         self.assertEqual(generated_test_obj.m_numCars, 0)
         self.assertEqual(generated_test_obj.m_header, self.m_header_23)
         self.jsonComparisionUtil(generated_test_obj.toJSON(), {'num-cars': 0, 'classification-data': []})
+        self.assertFalse(hasattr(generated_test_obj, '__dict__'))
 
     def test_f1_23_empty_no_header(self):
         """
@@ -189,6 +198,7 @@ class TestPacketFinalClassificationData(F1TypesTest):
         self.assertEqual(generated_test_obj.m_numCars, 0)
         self.assertEqual(generated_test_obj.m_header, None)
         self.jsonComparisionUtil(generated_test_obj.toJSON(), {'num-cars': 0, 'classification-data': []})
+        self.assertFalse(hasattr(generated_test_obj, '__dict__'))
 
     def test_f1_23_actual(self):
         """
@@ -685,6 +695,7 @@ class TestPacketFinalClassificationData(F1TypesTest):
         parsed_packet = PacketFinalClassificationData(self.m_header_23, raw_packet)
         parsed_json = parsed_packet.toJSON()
         self.jsonComparisionUtil(expected_json, parsed_json)
+        self.assertFalse(hasattr(parsed_packet, '__dict__'))
 
     def test_f1_25_actual(self):
         """
@@ -697,6 +708,7 @@ class TestPacketFinalClassificationData(F1TypesTest):
         parsed_packet = PacketFinalClassificationData(self.m_header_25, raw_packet)
         parsed_json = parsed_packet.toJSON()
         self.jsonComparisionUtil(expected_json, parsed_json)
+        self.assertFalse(hasattr(parsed_packet, '__dict__'))
 
     def _generateRandomFinalClassificationData(self, packet_format: int) -> FinalClassificationData:
         """

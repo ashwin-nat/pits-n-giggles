@@ -100,6 +100,24 @@ class FinalClassificationData(F1SubPacketBase):
     )
     PACKET_LEN_25 = COMPILED_PACKET_STRUCT_25.size
 
+    __slots__ = (
+        "m_position",
+        "m_numLaps",
+        "m_gridPosition",
+        "m_points",
+        "m_numPitStops",
+        "m_resultStatus",
+        "m_resultReason",
+        "m_bestLapTimeInMS",
+        "m_totalRaceTime",
+        "m_penaltiesTime",
+        "m_numPenalties",
+        "m_numTyreStints",
+        "m_tyreStintsActual",
+        "m_tyreStintsVisual",
+        "m_tyreStintsEndLaps",
+    )
+
     def __init__(self, data: bytes, packet_format: int) -> None:
         """
         Initializes FinalClassificationData with raw data.
@@ -198,10 +216,8 @@ class FinalClassificationData(F1SubPacketBase):
                 self.m_tyreStintsEndLaps[7]
             ) = self.COMPILED_PACKET_STRUCT_25.unpack(data)
 
-        if ResultStatus.isValid(self.m_resultStatus):
-            self.m_resultStatus = ResultStatus(self.m_resultStatus)
-        if ResultReason.isValid(self.m_resultReason):
-            self.m_resultReason = ResultReason(self.m_resultReason)
+        self.m_resultStatus = ResultStatus.safeCast(self.m_resultStatus)
+        self.m_resultReason = ResultReason.safeCast(self.m_resultReason)
 
         # Trim the tyre stints info
         self.m_tyreStintsActual     = self.m_tyreStintsActual[:self.m_numTyreStints]
@@ -209,13 +225,8 @@ class FinalClassificationData(F1SubPacketBase):
         self.m_tyreStintsEndLaps    = self.m_tyreStintsEndLaps[:self.m_numTyreStints]
 
         # Make tyre stint values as enum
-        self.m_tyreStintsActual = [ActualTyreCompound(compound) \
-                                    if ActualTyreCompound.isValid(compound) \
-                                        else compound for compound in self.m_tyreStintsActual]
-
-        self.m_tyreStintsVisual = [VisualTyreCompound(compound) \
-                                    if VisualTyreCompound.isValid(compound) \
-                                        else compound for compound in self.m_tyreStintsVisual]
+        self.m_tyreStintsActual = [ActualTyreCompound.safeCast(compound) for compound in self.m_tyreStintsActual]
+        self.m_tyreStintsVisual = [VisualTyreCompound.safeCast(compound) for compound in self.m_tyreStintsVisual]
 
     def __str__(self):
         """
@@ -576,6 +587,11 @@ class PacketFinalClassificationData(F1PacketBase):
     """
 
     MAX_CARS = 22
+
+    __slots__ = (
+        "m_numCars",
+        "m_classificationData",
+    )
 
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
         """

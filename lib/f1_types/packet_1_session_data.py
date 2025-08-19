@@ -49,6 +49,11 @@ class MarshalZone(F1SubPacketBase):
     )
     PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
+    __slots__ = (
+        "m_zoneStart",
+        "m_zoneFlag",
+    )
+
     class MarshalZoneFlagType(F1BaseEnum):
         """
         ENUM class for the marshal zone flag status
@@ -77,8 +82,7 @@ class MarshalZone(F1SubPacketBase):
             self.m_zoneFlag     # int8 - -1 = invalid/unknown, 0 = none, 1 = green, 2 = blue, 3 = yellow
         ) = self.COMPILED_PACKET_STRUCT.unpack(data)
 
-        if MarshalZone.MarshalZoneFlagType.isValid(self.m_zoneFlag):
-            self.m_zoneFlag = MarshalZone.MarshalZoneFlagType(self.m_zoneFlag)
+        self.m_zoneFlag = MarshalZone.MarshalZoneFlagType.safeCast(self.m_zoneFlag)
 
     def __str__(self) -> str:
         """Return the string representation of this object
@@ -178,6 +182,17 @@ class WeatherForecastSample(F1SubPacketBase):
         "B" # uint8  - Rain percentage (0-100)
     )
     PACKET_LEN = COMPILED_PACKET_STRUCT.size
+
+    __slots__ = (
+        "m_session_type",
+        "m_time_offset",
+        "m_weather",
+        "m_track_temperature",
+        "m_track_temperature_change",
+        "m_air_temperature",
+        "m_air_temperature_change",
+        "m_rain_percentage",
+    )
 
     class WeatherCondition(F1BaseEnum):
         """
@@ -296,16 +311,14 @@ class WeatherForecastSample(F1SubPacketBase):
         ) = self.COMPILED_PACKET_STRUCT.unpack(data)
 
         # Convert to typed enums wherever applicable
-        if WeatherForecastSample.WeatherCondition.isValid(self.m_weather):
-            self.m_weather = WeatherForecastSample.WeatherCondition(self.m_weather)
-        if WeatherForecastSample.AirTemperatureChange.isValid(self.m_airTemperatureChange):
-            self.m_airTemperatureChange = WeatherForecastSample.AirTemperatureChange(self.m_airTemperatureChange)
-        if WeatherForecastSample.TrackTemperatureChange.isValid(self.m_trackTemperatureChange):
-            self.m_trackTemperatureChange = WeatherForecastSample.TrackTemperatureChange(self.m_trackTemperatureChange)
-        if packet_format == 2023 and SessionType23.isValid(self.m_sessionType):
-            self.m_sessionType = SessionType23(self.m_sessionType)
-        elif SessionType24.isValid(self.m_sessionType):
-            self.m_sessionType = SessionType24(self.m_sessionType)
+        self.m_weather = WeatherForecastSample.WeatherCondition.safeCast(self.m_weather)
+        self.m_airTemperatureChange = WeatherForecastSample.AirTemperatureChange.safeCast(self.m_airTemperatureChange)
+        self.m_trackTemperatureChange = WeatherForecastSample.TrackTemperatureChange.safeCast(
+                                        self.m_trackTemperatureChange)
+        if packet_format == 2023:
+            self.m_sessionType = SessionType23.safeCast(self.m_sessionType)
+        else:
+            self.m_sessionType = SessionType24.safeCast(self.m_sessionType)
 
     def __str__(self) -> str:
         """A description of the entire function, its parameters, and its return types.
@@ -602,6 +615,86 @@ class PacketSessionData(F1PacketBase):
     )
     PACKET_LEN_SECTION_5 = COMPILED_PACKET_STRUCT_SECTION_5.size
 
+    __slots__ = (
+        "m_weather",
+        "m_trackTemperature",
+        "m_airTemperature",
+        "m_totalLaps",
+        "m_trackLength",
+        "m_sessionType",
+        "m_trackId",
+        "m_formula",
+        "m_sessionTimeLeft",
+        "m_sessionDuration",
+        "m_pitSpeedLimit",
+        "m_gamePaused",
+        "m_isSpectating",
+        "m_spectatorCarIndex",
+        "m_sliProNativeSupport",
+        "m_numMarshalZones",
+        "m_marshalZones",
+        "m_safetyCarStatus",
+        "m_networkGame",
+        "m_numWeatherForecastSamples",
+        "m_weatherForecastSamples",
+        "m_forecastAccuracy",
+        "m_aiDifficulty",
+        "m_seasonLinkIdentifier",
+        "m_weekendLinkIdentifier",
+        "m_sessionLinkIdentifier",
+        "m_pitStopWindowIdealLap",
+        "m_pitStopWindowLatestLap",
+        "m_pitStopRejoinPosition",
+        "m_steeringAssist",
+        "m_brakingAssist",
+        "m_gearboxAssist",
+        "m_pitAssist",
+        "m_pitReleaseAssist",
+        "m_ERSAssist",
+        "m_DRSAssist",
+        "m_dynamicRacingLine",
+        "m_dynamicRacingLineType",
+        "m_gameMode",
+        "m_ruleSet",
+        "m_timeOfDay",
+        "m_sessionLength",
+        "m_speedUnitsLeadPlayer",
+        "m_temperatureUnitsLeadPlayer",
+        "m_speedUnitsSecondaryPlayer",
+        "m_temperatureUnitsSecondaryPlayer",
+        "m_numSafetyCarPeriods",
+        "m_numVirtualSafetyCarPeriods",
+        "m_numRedFlagPeriods",
+        "m_equalCarPerformance",
+        "m_recoveryMode",
+        "m_flashbackLimit",
+        "m_surfaceType",
+        "m_lowFuelMode",
+        "m_raceStarts",
+        "m_tyreTemperatureMode",
+        "m_pitLaneTyreSim",
+        "m_carDamage",
+        "m_carDamageRate",
+        "m_collisions",
+        "m_collisionsOffForFirstLapOnly",
+        "m_mpUnsafePitRelease",
+        "m_mpOffForGriefing",
+        "m_cornerCuttingStringency",
+        "m_parcFermeRules",
+        "m_pitStopExperience",
+        "m_safetyCar",
+        "m_safetyCarExperience",
+        "m_formationLap",
+        "m_formationLapExperience",
+        "m_redFlags",
+        "m_affectsLicenceLevelSolo",
+        "m_affectsLicenceLevelMP",
+        "m_numSessionsInWeekend",
+        "m_weekendStructure",
+        "m_sector2LapDistanceStart",
+        "m_sector3LapDistanceStart",
+    )
+
     class FormulaType(F1BaseEnum):
         """An enumeration of formula types."""
 
@@ -835,11 +928,10 @@ class PacketSessionData(F1PacketBase):
         self.m_sector2LapDistanceStart: float    # // Distance in m around track where sector 2 starts
         self.m_sector3LapDistanceStart: float    # // Distance in m around track where sector 3
 
-        self.m_maxMarshalZones = self.F1_23_MAX_NUM_MARSHAL_ZONES
         if header.m_packetFormat == 2023:
-            self.m_maxWeatherForecastSamples = self.F1_23_MAX_NUM_WEATHER_FORECAST_SAMPLES
+            max_weather_forecast_samples = self.F1_23_MAX_NUM_WEATHER_FORECAST_SAMPLES
         else:
-            self.m_maxWeatherForecastSamples = self.F1_24_MAX_NUM_WEATHER_FORECAST_SAMPLES
+            max_weather_forecast_samples = self.F1_24_MAX_NUM_WEATHER_FORECAST_SAMPLES
         # First, section 0
         section_0_raw_data = data[:self.PACKET_LEN_SECTION_0]
         byte_index_so_far = self.PACKET_LEN_SECTION_0
@@ -863,18 +955,15 @@ class PacketSessionData(F1PacketBase):
             self.m_numMarshalZones,
         ) = unpacked_data
         self.m_isSpectating = bool(self.m_isSpectating)
-        if WeatherForecastSample.WeatherCondition.isValid(self.m_weather):
-            self.m_weather = WeatherForecastSample.WeatherCondition(self.m_weather)
-        if TrackID.isValid(self.m_trackId):
-            self.m_trackId = TrackID(self.m_trackId)
+        self.m_weather = WeatherForecastSample.WeatherCondition.safeCast(self.m_weather)
+        self.m_trackId = TrackID.safeCast(self.m_trackId)
 
-        if header.m_packetFormat == 2023 and SessionType23.isValid(self.m_sessionType):
-            self.m_sessionType = SessionType23(self.m_sessionType)
-        elif SessionType24.isValid(self.m_sessionType):
-            self.m_sessionType = SessionType24(self.m_sessionType)
+        if header.m_packetFormat == 2023:
+            self.m_sessionType = SessionType23.safeCast(self.m_sessionType)
+        else:
+            self.m_sessionType = SessionType24.safeCast(self.m_sessionType)
 
-        if PacketSessionData.FormulaType.isValid(self.m_formula):
-            self.m_formula = PacketSessionData.FormulaType(self.m_formula)
+        self.m_formula = PacketSessionData.FormulaType.safeCast(self.m_formula)
 
         # Next section 1, marshalZones
         self.m_marshalZones, byte_index_so_far = _validate_parse_fixed_segments(
@@ -883,7 +972,7 @@ class PacketSessionData(F1PacketBase):
             item_cls=MarshalZone,
             item_len=MarshalZone.PACKET_LEN,
             count=self.m_numMarshalZones,
-            max_count=self.m_maxMarshalZones,
+            max_count=self.F1_23_MAX_NUM_MARSHAL_ZONES,
         )
 
         # Section 2, till numWeatherForecastSamples
@@ -895,8 +984,7 @@ class PacketSessionData(F1PacketBase):
             self.m_networkGame, #               // 0 = offline, 1 = online
             self.m_numWeatherForecastSamples # // Number of weather samples to follow
         ) = unpacked_data
-        if SafetyCarType.isValid(self.m_safetyCarStatus):
-            self.m_safetyCarStatus = SafetyCarType(self.m_safetyCarStatus)
+        self.m_safetyCarStatus = SafetyCarType.safeCast(self.m_safetyCarStatus)
         section_2_raw_data = None
 
         # Section 3 - weather forecast samples
@@ -906,7 +994,7 @@ class PacketSessionData(F1PacketBase):
             item_cls=WeatherForecastSample,
             item_len=WeatherForecastSample.PACKET_LEN,
             count=self.m_numWeatherForecastSamples,
-            max_count=self.m_maxWeatherForecastSamples,
+            max_count=max_weather_forecast_samples,
             packet_format=header.m_packetFormat
         )
 
@@ -945,14 +1033,10 @@ class PacketSessionData(F1PacketBase):
             self.m_numRedFlagPeriods,                # uint8
         ) = unpacked_data
         section_4_raw_data = None
-        if GearboxAssistMode.isValid(self.m_gearboxAssist):
-            self.m_gearboxAssist = GearboxAssistMode(self.m_gearboxAssist)
-        if SessionLength.isValid(self.m_sessionLength):
-            self.m_sessionLength = SessionLength(self.m_sessionLength)
-        if GameMode.isValid(self.m_gameMode):
-            self.m_gameMode = GameMode(self.m_gameMode)
-        if RuleSet.isValid(self.m_ruleSet):
-            self.m_ruleSet = RuleSet(self.m_ruleSet)
+        self.m_gearboxAssist = GearboxAssistMode.safeCast(self.m_gearboxAssist)
+        self.m_sessionLength = SessionLength.safeCast(self.m_sessionLength)
+        self.m_gameMode = GameMode.safeCast(self.m_gameMode)
+        self.m_ruleSet = RuleSet.safeCast(self.m_ruleSet)
 
         self.m_weekendStructure = [0] * 12
         # Section 5 - F1 24 specific stuff
@@ -1034,40 +1118,22 @@ class PacketSessionData(F1PacketBase):
             self.m_sector3LapDistanceStart = 0.0
 
         # Convert into enum types if supported
-        if PacketSessionData.RecoveryMode.isValid(self.m_recoveryMode):
-            self.m_recoveryMode = PacketSessionData.RecoveryMode(self.m_recoveryMode)
-        if PacketSessionData.FlashbackLimit.isValid(self.m_flashbackLimit):
-            self.m_flashbackLimit = PacketSessionData.FlashbackLimit(self.m_flashbackLimit)
-        if PacketSessionData.SurfaceType.isValid(self.m_surfaceType):
-            self.m_surfaceType = PacketSessionData.SurfaceType(self.m_surfaceType)
-        if PacketSessionData.LowFuelMode.isValid(self.m_lowFuelMode):
-            self.m_lowFuelMode = PacketSessionData.LowFuelMode(self.m_lowFuelMode)
-        if PacketSessionData.RaceStartsMode.isValid(self.m_raceStarts):
-            self.m_raceStarts = PacketSessionData.RaceStartsMode(self.m_raceStarts)
-        if PacketSessionData.TyreTemperatureMode(self.m_tyreTemperatureMode):
-            self.m_tyreTemperatureMode = PacketSessionData.TyreTemperatureMode(
-                self.m_tyreTemperatureMode)
-        if PacketSessionData.CarDamageMode.isValid(self.m_carDamage):
-            self.m_carDamage = PacketSessionData.CarDamageMode(self.m_carDamage)
-        if PacketSessionData.CarDamageRate.isValid(self.m_carDamageRate):
-            self.m_carDamageRate = PacketSessionData.CarDamageRate(self.m_carDamageRate)
-        if PacketSessionData.CollisionsMode.isValid(self.m_collisions):
-            self.m_collisions = PacketSessionData.CollisionsMode(self.m_collisions)
-        if PacketSessionData.CornerCuttingStringency.isValid(self.m_cornerCuttingStringency):
-            self.m_cornerCuttingStringency = PacketSessionData.CornerCuttingStringency(
+        self.m_recoveryMode = PacketSessionData.RecoveryMode.safeCast(self.m_recoveryMode)
+        self.m_flashbackLimit = PacketSessionData.FlashbackLimit.safeCast(self.m_flashbackLimit)
+        self.m_surfaceType = PacketSessionData.SurfaceType.safeCast(self.m_surfaceType)
+        self.m_lowFuelMode = PacketSessionData.LowFuelMode.safeCast(self.m_lowFuelMode)
+        self.m_raceStarts = PacketSessionData.RaceStartsMode.safeCast(self.m_raceStarts)
+        self.m_tyreTemperatureMode = PacketSessionData.TyreTemperatureMode.safeCast(self.m_tyreTemperatureMode)
+        self.m_carDamage = PacketSessionData.CarDamageMode.safeCast(self.m_carDamage)
+        self.m_carDamageRate = PacketSessionData.CarDamageRate.safeCast(self.m_carDamageRate)
+        self.m_collisions = PacketSessionData.CollisionsMode.safeCast(self.m_collisions)
+        self.m_cornerCuttingStringency = PacketSessionData.CornerCuttingStringency.safeCast(
                 self.m_cornerCuttingStringency)
-        if PacketSessionData.PitStopExperience.isValid(self.m_pitStopExperience):
-            self.m_pitStopExperience = PacketSessionData.PitStopExperience(self.m_pitStopExperience)
-        if PacketSessionData.SafetyCarSetting.isValid(self.m_safetyCar):
-            self.m_safetyCar = PacketSessionData.SafetyCarSetting(self.m_safetyCar)
-        if PacketSessionData.SafetyCarExperience.isValid(self.m_safetyCarExperience):
-            self.m_safetyCarExperience = PacketSessionData.SafetyCarExperience(
-                self.m_safetyCarExperience)
-        if PacketSessionData.FormationLapExperience.isValid(self.m_formationLapExperience):
-            self.m_formationLapExperience = PacketSessionData.FormationLapExperience(
-                self.m_formationLapExperience)
-        if PacketSessionData.RedFlagsSetting.isValid(self.m_redFlags):
-            self.m_redFlags = PacketSessionData.RedFlagsSetting(self.m_redFlags)
+        self.m_pitStopExperience = PacketSessionData.PitStopExperience.safeCast(self.m_pitStopExperience)
+        self.m_safetyCar = PacketSessionData.SafetyCarSetting.safeCast(self.m_safetyCar)
+        self.m_safetyCarExperience = PacketSessionData.SafetyCarExperience.safeCast(self.m_safetyCarExperience)
+        self.m_formationLapExperience = PacketSessionData.FormationLapExperience.safeCast(self.m_formationLapExperience)
+        self.m_redFlags = PacketSessionData.RedFlagsSetting.safeCast(self.m_redFlags)
 
     def __str__(self) -> str:
         """

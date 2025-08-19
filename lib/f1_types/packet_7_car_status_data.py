@@ -136,6 +136,34 @@ class CarStatusData(F1SubPacketBase):
     m_ersDeployedThisLap: float
     m_networkPaused: bool
 
+    __slots__ = (
+        "m_tractionControl",
+        "m_antiLockBrakes",
+        "m_fuelMix",
+        "m_frontBrakeBias",
+        "m_pitLimiterStatus",
+        "m_fuelInTank",
+        "m_fuelCapacity",
+        "m_fuelRemainingLaps",
+        "m_maxRPM",
+        "m_idleRPM",
+        "m_maxGears",
+        "m_drsAllowed",
+        "m_drsActivationDistance",
+        "m_actualTyreCompound",
+        "m_visualTyreCompound",
+        "m_tyresAgeLaps",
+        "m_vehicleFiaFlags",
+        "m_enginePowerICE",
+        "m_enginePowerMGUK",
+        "m_ersStoreEnergy",
+        "m_ersDeployMode",
+        "m_ersHarvestedThisLapMGUK",
+        "m_ersHarvestedThisLapMGUH",
+        "m_ersDeployedThisLap",
+        "m_networkPaused",
+    )
+
     class VehicleFIAFlags(F1BaseEnum):
         """
         Enumeration representing different FIA flags related to vehicles.
@@ -235,42 +263,45 @@ class CarStatusData(F1SubPacketBase):
             data (bytes): Raw data representing car status.
         """
 
-        # Unpack data in a single step
-        unpacked = self.COMPILED_PACKET_STRUCT.unpack(data)
-
-        # Set attributes using __dict__.update() to reduce overhead
-        self.__dict__.update(zip([
-            "m_tractionControl", "m_antiLockBrakes", "m_fuelMix", "m_frontBrakeBias",
-            "m_pitLimiterStatus", "m_fuelInTank", "m_fuelCapacity", "m_fuelRemainingLaps",
-            "m_maxRPM", "m_idleRPM", "m_maxGears", "m_drsAllowed", "m_drsActivationDistance",
-            "m_actualTyreCompound", "m_visualTyreCompound", "m_tyresAgeLaps", "m_vehicleFiaFlags",
-            "m_enginePowerICE", "m_enginePowerMGUK", "m_ersStoreEnergy", "m_ersDeployMode",
-            "m_ersHarvestedThisLapMGUK", "m_ersHarvestedThisLapMGUH", "m_ersDeployedThisLap",
-            "m_networkPaused"
-        ], unpacked))
+        (
+            self.m_tractionControl,
+            self.m_antiLockBrakes,
+            self.m_fuelMix,
+            self.m_frontBrakeBias,
+            self.m_pitLimiterStatus,
+            self.m_fuelInTank,
+            self.m_fuelCapacity,
+            self.m_fuelRemainingLaps,
+            self.m_maxRPM,
+            self.m_idleRPM,
+            self.m_maxGears,
+            self.m_drsAllowed,
+            self.m_drsActivationDistance,
+            self.m_actualTyreCompound,
+            self.m_visualTyreCompound,
+            self.m_tyresAgeLaps,
+            self.m_vehicleFiaFlags,
+            self.m_enginePowerICE,
+            self.m_enginePowerMGUK,
+            self.m_ersStoreEnergy,
+            self.m_ersDeployMode,
+            self.m_ersHarvestedThisLapMGUK,
+            self.m_ersHarvestedThisLapMGUH,
+            self.m_ersDeployedThisLap,
+            self.m_networkPaused
+        ) = self.COMPILED_PACKET_STRUCT.unpack(data)
 
         # Convert boolean fields using bitwise AND
-        self.m_antiLockBrakes = unpacked[1] & 1
-        self.m_pitLimiterStatus = unpacked[4] & 1
-        self.m_networkPaused = unpacked[24] & 1
-
-        # Convert Enums with error handling
-        def try_enum(enum_class, value):
-            try:
-                return enum_class(value)
-            except ValueError:
-                return value  # Store raw value if conversion fails
-
-        self.m_actualTyreCompound = try_enum(ActualTyreCompound, unpacked[13])
-        self.m_visualTyreCompound = try_enum(VisualTyreCompound, unpacked[14])
-        self.m_vehicleFiaFlags = try_enum(CarStatusData.VehicleFIAFlags, unpacked[16])
-        self.m_ersDeployMode = try_enum(CarStatusData.ERSDeployMode, unpacked[20])
-        self.m_tractionControl = try_enum(TractionControlAssistMode, unpacked[0])
-        self.m_fuelMix = try_enum(CarStatusData.FuelMix, unpacked[2])
-
         self.m_antiLockBrakes = bool(self.m_antiLockBrakes)
         self.m_pitLimiterStatus = bool(self.m_pitLimiterStatus)
         self.m_networkPaused = bool(self.m_networkPaused)
+
+        self.m_actualTyreCompound = ActualTyreCompound.safeCast(self.m_actualTyreCompound)
+        self.m_visualTyreCompound = VisualTyreCompound.safeCast(self.m_visualTyreCompound)
+        self.m_vehicleFiaFlags = CarStatusData.VehicleFIAFlags.safeCast(self.m_vehicleFiaFlags)
+        self.m_ersDeployMode = CarStatusData.ERSDeployMode.safeCast(self.m_ersDeployMode)
+        self.m_tractionControl = TractionControlAssistMode.safeCast(self.m_tractionControl)
+        self.m_fuelMix = CarStatusData.FuelMix.safeCast(self.m_fuelMix)
 
     def __str__(self):
         """
@@ -507,6 +538,10 @@ class PacketCarStatusData(F1PacketBase):
     """
 
     MAX_CARS = 22
+
+    __slots__ = (
+        "m_carStatusData",
+    )
 
     def __init__(self, header: PacketHeader, packet: bytes) -> None:
         """Initialize the object from raw bytes.
