@@ -46,6 +46,7 @@ class TestPacketLapPositionsData(F1TypesTest):
         parsed_packet = PacketLapPositionsData(self.m_header_25, raw_packet)
         parsed_json = parsed_packet.toJSON()
         self.jsonComparisionUtil(expected_json, parsed_json)
+        self.assertFalse(hasattr(parsed_packet, '__dict__'))
 
     def test_f1_25_actual_segmented(self):
         """
@@ -59,3 +60,4 @@ class TestPacketLapPositionsData(F1TypesTest):
         parsed_packet = PacketLapPositionsData(self.m_header_25, raw_packet)
         parsed_json = parsed_packet.toJSON()
         self.jsonComparisionUtil(expected_json, parsed_json)
+        self.assertFalse(hasattr(parsed_packet, '__dict__'))
