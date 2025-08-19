@@ -40,6 +40,7 @@ from apps.backend.ui_intf_layer import TelemetryWebServer, initUiIntfLayer
 from lib.child_proc_mgmt import report_pid_from_child
 from lib.config import load_config_from_ini
 from lib.error_status import PngError
+from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.version import get_version
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
@@ -113,10 +114,7 @@ class PngRunner:
             await asyncio.gather(*self.m_tasks)
         except asyncio.CancelledError:
             self.m_logger.debug("Main task was cancelled.")
-            # TODO - stop all tasks properly
-            await self.m_web_server.stop()
-            for task in self.m_tasks:
-                task.cancel()
+            await AsyncInterTaskCommunicator().send('shutdown', {"reason" : "Main task was cancelled."})
             raise  # Ensure proper cancellation behavior
 
     def _setupUiIntfLayer(self,
