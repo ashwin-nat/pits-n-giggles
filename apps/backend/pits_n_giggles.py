@@ -265,6 +265,9 @@ def entry_point():
         png_logger.info("Program interrupted by user.")
     except asyncio.CancelledError:
         png_logger.info("Program shutdown gracefully.")
+    except Exception as e: # pylint: disable=broad-exception-caught
+        png_logger.exception(f"Error in main: {e}")
+        sys.exit(1)
 
 # ---------------------------------------- PROFILER MODE ---------------------------------------------------------------
 
