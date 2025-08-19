@@ -33,7 +33,6 @@ from typing import List, Optional, Set
 import psutil
 
 from apps.backend.common.png_logger import initLogger
-from apps.backend.common.shutdown import shutdown_tasks
 from apps.backend.state_mgmt_layer import initStateManagementLayer
 from apps.backend.telemetry_layer import initTelemetryLayer
 from apps.backend.ui_intf_layer import TelemetryWebServer, initUiIntfLayer
@@ -102,8 +101,7 @@ class PngRunner:
             ipc_port=ipc_port,
             debug_mode=debug_mode
         )
-        self.m_tasks.append(asyncio.create_task(shutdown_tasks(
-            self.m_logger, self.m_web_server, self.m_shutdown_event, self.m_telemetry_handler), name="Shutdown Task"))
+        self.m_tasks.append(asyncio.create_task(self._shutdown_tasks(), name="Shutdown Task"))
 
         # Run all tasks concurrently
         self.m_logger.debug("Registered %d Tasks: %s", len(self.m_tasks), [task.get_name() for task in self.m_tasks])
@@ -201,6 +199,25 @@ class PngRunner:
         """
 
         return os.environ.get('PNG_VERSION', 'dev')
+
+    async def _shutdown_tasks(self) -> None:
+        """Shutdown all the tasks and finish so that the event loop can terminate naturally
+        """
+
+        self.m_logger.debug("Starting shutdown task. Awaiting shutdown command...")
+        await AsyncInterTaskCommunicator().receive("shutdown")
+        self.m_logger.debug("Received shutdown command. Stopping tasks...")
+
+        # Periodic UI update tasks and packet forwarder are listening to shutdown event
+        self.m_shutdown_event.set()
+        await AsyncInterTaskCommunicator().unblock_receivers()
+
+        # Explicitly stop the
+        await self.m_web_server.stop()
+        await self.m_telemetry_handler.stop()
+        await asyncio.sleep(1)
+
+        self.m_logger.debug("Tasks stopped. Exiting...")
 
 # -------------------------------------- FUNCTION DEFINITIONS ----------------------------------------------------------
 
