@@ -62,9 +62,7 @@ class F1BaseEnum(Enum):
         Returns:
             Optional[F1BaseEnum]: The cast enum value.
         """
-        if cls.isValid(value):
-            return cls(value)
-        return value
+        return cls(value) if cls.isValid(value) else value
 
     def __str__(self):
         """Return the string representation of this object

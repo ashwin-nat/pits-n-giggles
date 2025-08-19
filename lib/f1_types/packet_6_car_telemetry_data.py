@@ -92,7 +92,6 @@ class CarTelemetryData(F1SubPacketBase):
         "m_engineTemperature",
         "m_tyresPressure",
         "m_surfaceType",
-        "m_drs",
     )
 
     def __init__(self, data) -> None:
