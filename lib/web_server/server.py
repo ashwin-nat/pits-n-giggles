@@ -33,6 +33,7 @@ from typing import Any, Awaitable, Callable, Coroutine, Dict, Optional, Union
 import msgpack
 import socketio
 import uvicorn
+import wsproto
 from quart import Quart, Response
 from quart import jsonify as quart_jsonify
 from quart import render_template as quart_render_template
@@ -437,7 +438,10 @@ class BaseWebServer:
             return  # Already stopped or never started
 
         self._server.should_exit = True
-        await self._server.shutdown()
-        self._server = None
-
-        self.m_logger.debug("Web server stopped")
+        try:
+            await self._server.shutdown()
+        except wsproto.utilities.LocalProtocolError:
+            self.m_logger.debug("Websocket was already closing, ignoring double-close")
+        finally:
+            self._server = None
+            self.m_logger.debug("Web server stopped")
