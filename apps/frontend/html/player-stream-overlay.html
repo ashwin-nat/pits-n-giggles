@@ -380,7 +380,7 @@
             carTelemetryWidget.update(data["car-telemetry"]);
             pensStatsWidget.update(data["penalties-and-stats"], data["f1-packet-format"]);
             lapTimesWidget.update(data["lap-time-history"]);
-            weatherWidget.update(data["weather-forecast-samples"].slice(0, maxWeatherSamples + 1));
+            weatherWidget.update(data["weather-forecast-samples"].slice(0, maxWeatherSamples));
             gForceDisplayWidget.update(data["g-force"]);
             paceComparisonWidget.update(data["pace-comparison"], data["event-type"]);
         });
