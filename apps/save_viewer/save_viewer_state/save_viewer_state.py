@@ -32,7 +32,7 @@ from lib.f1_types import F1Utils
 
 from .get_driver_info import _getDriverInfo
 from .get_race_info import _getRaceInfo
-from .get_telemetry_info import _getTelemetryInfo
+from .get_telemetry_info_other import _getTelemetryInfoOther
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -54,7 +54,7 @@ def getTelemetryInfo() -> Dict[str, Any]:
         Complete telemetry data structure with session info and driver entries
     """
     global _json_data
-    return _getTelemetryInfo(_json_data)
+    return _getTelemetryInfoOther(_json_data)
 
 def getRaceInfo() -> Dict[str, Any]:
     """Get the race info."""
