@@ -109,7 +109,7 @@ class TelemetryWebServer(BaseWebServer):
         @self.http_route('/eng-view')
         async def engineerView() -> str:
             """
-            Render the player stream overlay page.
+            Render the engineer view page.
 
             Returns:
                 str: Rendered HTML content for the stream overlay page.
