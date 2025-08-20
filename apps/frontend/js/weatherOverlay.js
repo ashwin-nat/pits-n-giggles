@@ -14,12 +14,12 @@ class WeatherOverlay {
     }
 
     update(weatherData) {
-        this.container.innerHTML = ''; // Clear previous content
-        if (_.isEqual(data, this.lastData)) {
+        if (_.isEqual(weatherData, this.lastProcessedData)) {
             return;
         }
 
         this.lastProcessedData = weatherData;
+        this.container.innerHTML = '';
 
         weatherData.forEach(sample => {
             const card = document.createElement('div');
