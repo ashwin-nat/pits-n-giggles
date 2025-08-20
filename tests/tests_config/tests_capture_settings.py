@@ -44,6 +44,7 @@ class TestCaptureSettings(TestF1ConfigBase):
         self.assertTrue(settings.post_race_data_autosave)
         self.assertTrue(settings.post_quali_data_autosave)
         self.assertFalse(settings.post_fp_data_autosave)
+        self.assertFalse(settings.post_tt_data_autosave)
 
     def test_boolean_validation_post_race_data_autosave(self):
         capture_true = CaptureSettings(post_race_data_autosave=True)
@@ -72,6 +73,20 @@ class TestCaptureSettings(TestF1ConfigBase):
 
         capture_str_false = CaptureSettings(post_quali_data_autosave="False")
         self.assertFalse(capture_str_false.post_quali_data_autosave)
+
+    def test_boolean_validation_post_fp_data_autosave(self):
+        capture_true = CaptureSettings(post_fp_data_autosave=True)
+        self.assertTrue(capture_true.post_fp_data_autosave)
+
+        capture_false = CaptureSettings(post_fp_data_autosave=False)
+        self.assertFalse(capture_false.post_fp_data_autosave)
+
+        # Also test coercion from strings if you want
+        capture_str_true = CaptureSettings(post_fp_data_autosave="True")
+        self.assertTrue(capture_str_true.post_fp_data_autosave)
+
+        capture_str_false = CaptureSettings(post_fp_data_autosave="False")
+        self.assertFalse(capture_str_false.post_fp_data_autosave)
 
     def test_boolean_validation_post_fp_data_autosave(self):
         capture_true = CaptureSettings(post_fp_data_autosave=True)
