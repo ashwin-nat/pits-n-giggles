@@ -44,33 +44,17 @@ def _getTelemetryInfo(json_data: Dict[str, Any]) -> Dict[str, Any]:
     if not json_data:
         return _get_empty_telemetry_info()
 
+    session_type = json_data["session-info"]["session-type"]
+    if session_type == "Time Trial":
+        return _get_time_trial_telemetry_info(json_data)
+
     # Extract session-level information
     fastest_lap, fastest_lap_driver = _extract_fastest_lap_info(json_data)
 
     # Build base response structure
-    json_response = {
-        "live-data": False,
-        "circuit": json_data["session-info"]["track-id"],
-        "track-temperature": json_data["session-info"]["track-temperature"],
-        "air-temperature": json_data["session-info"]["air-temperature"],
-        "event-type": json_data["session-info"]["session-type"],
-        "session-time-left": 0,
-        "total-laps": json_data["session-info"]["total-laps"],
-        "current-lap": json_data["classification-data"][0]["lap-data"]["current-lap-num"],
-        "safety-car-status": json_data["session-info"]["safety-car-status"],
-        "fastest-lap-overall": fastest_lap,
-        "fastest-lap-overall-driver": fastest_lap_driver,
-        "fastest-lap-overall-tyre": None,
-        "pit-speed-limit": json_data["session-info"]["pit-speed-limit"],
-        "weather-forecast-samples": _create_weather_forecast_data(json_data["session-info"]),
-        "race-ended": True,
-        "f1-game-year": json_data["game-year"],
-        "f1-packet-format": json_data.get("packet-format"),
-        "packet-format": json_data.get("packet-format"),
-        "is-spectating": False,
-        "spectator-car-index": None,
-        "wdt-status": False,
-    }
+    json_response = _get_base_rsp_dict(json_data)
+    json_response["fastest-lap-overall"] = fastest_lap
+    json_response["fastest-lap-overall-driver"] = fastest_lap_driver
 
     # Prepare driver processing data
     result_str_map = {
@@ -106,6 +90,42 @@ def _getTelemetryInfo(json_data: Dict[str, Any]) -> Dict[str, Any]:
 
     return json_response
 
+def _get_time_trial_telemetry_info(json_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Build the time trial telemetry response from raw JSON data."""
+
+    player_data = json_data["classification-data"][0]
+    session_history = player_data["session-history"]
+    per_lap_info = player_data["per-lap-info"]
+
+    json_response = _get_base_rsp_dict(json_data)
+    json_response.update({
+        "current-lap": player_data["current-lap"],
+        "fastest-lap-overall-tyre": "Soft",  # TT tyres are always Soft
+        "fastest-lap-driver": player_data["driver-name"],
+        "fastest-lap-overall": 0,
+    })
+
+    # Add fastest lap info if available
+    if best_lap_num := session_history.get("best-lap-time-lap-num"):
+        best_lap_idx = best_lap_num - 1
+        lap_history = session_history["lap-history-data"]
+        if 0 <= best_lap_idx < len(lap_history):
+            json_response["fastest-lap-overall"] = lap_history[best_lap_idx]["lap-time-in-ms"]
+
+    # Insert top speed into session history
+    for index, lap_data in enumerate(session_history["lap-history-data"], start=1):
+        lap_info = next((info for info in per_lap_info if info["lap-number"] == index), None)
+        if lap_info:
+            lap_data["top-speed-kmph"] = lap_info["top-speed-kmph"]
+
+    # Wrap up time trial-specific data
+    json_response["tt-data"] = {
+        "session-history": session_history,
+        "tt-data": None,
+        "tt-setups": None,
+    }
+
+    return json_response
 
 def _get_empty_telemetry_info() -> Dict[str, Any]:
     """
@@ -118,7 +138,8 @@ def _get_empty_telemetry_info() -> Dict[str, Any]:
         "live-data": False,
         "circuit": "---",
         "current-lap": "---",
-        "event-type": "---",
+        "event-type": "---", # for backward compatibility
+        "session-type": "---",
         "fastest-lap-overall": 0,
         "fastest-lap-overall-driver": "---",
         "pit-speed-limit": 0,
@@ -135,6 +156,33 @@ def _get_empty_telemetry_info() -> Dict[str, Any]:
         "spectator-car-index": None,
         "wdt-status": False,
     }
+
+def _get_base_rsp_dict(json_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Get the base response dictionary from the JSON data."""
+
+    return {
+        "live-data": False,
+        "circuit": json_data["session-info"]["track-id"],
+        "track-temperature": json_data["session-info"]["track-temperature"],
+        "air-temperature": json_data["session-info"]["air-temperature"],
+        "event-type": json_data["session-info"]["session-type"],
+        "session-type": json_data["session-info"]["session-type"],
+        "session-time-left": 0,
+        "total-laps": json_data["session-info"]["total-laps"],
+        "current-lap": json_data["classification-data"][0]["lap-data"]["current-lap-num"],
+        "safety-car-status": json_data["session-info"]["safety-car-status"],
+        "fastest-lap-overall-tyre": None,
+        "pit-speed-limit": json_data["session-info"]["pit-speed-limit"],
+        "weather-forecast-samples": _create_weather_forecast_data(json_data["session-info"]),
+        "race-ended": True,
+        "f1-game-year": json_data["game-year"],
+        "f1-packet-format": json_data.get("packet-format"),
+        "packet-format": json_data.get("packet-format"),
+        "is-spectating": False,
+        "spectator-car-index": None,
+        "wdt-status": False,
+    }
+
 
 def _get_tyre_wear_json(data_per_driver: Dict[str, Any]) -> Dict[str, Any]:
     """
