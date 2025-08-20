@@ -29,7 +29,8 @@ from lib.tyre_wear_extrapolator import TyreWearPerLap
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def _getTelemetryInfoOther(json_data: Dict[str, Any]) -> Dict[str, Any]:
+
+def _getTelemetryInfo(json_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Main function to retrieve and format complete telemetry information.
 
@@ -105,6 +106,7 @@ def _getTelemetryInfoOther(json_data: Dict[str, Any]) -> Dict[str, Any]:
 
     return json_response
 
+
 def _get_empty_telemetry_info() -> Dict[str, Any]:
     """
     Return a default telemetry information dictionary when no data is available.
@@ -161,6 +163,7 @@ def _get_tyre_wear_json(data_per_driver: Dict[str, Any]) -> Dict[str, Any]:
         rr_tyre_wear=tyres_wear[F1Utils.INDEX_REAR_RIGHT],
         desc="curr tyre wear"
     ).toJSON()
+
 
 def _get_fastest_lap_time_ms(session_history: Dict[str, Any]) -> int:
     """
