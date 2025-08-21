@@ -113,9 +113,9 @@ def _get_time_trial_telemetry_info(json_data: Dict[str, Any]) -> Dict[str, Any]:
             json_response["fastest-lap-overall"] = lap_history[best_lap_idx]["lap-time-in-ms"]
 
     # Insert top speed into session history
-    for index, lap_data in enumerate(session_history["lap-history-data"], start=1):
-        lap_info = next((info for info in per_lap_info if info["lap-number"] == index), None)
-        if lap_info:
+    lap_info_by_number = {info["lap-number"]: info for info in per_lap_info}
+    for index, lap_data in enumerate(session_history["lap-history-data"]):
+        if lap_info := lap_info_by_number.get(index + 1): # Lap numbers start at 1
             lap_data["top-speed-kmph"] = lap_info["top-speed-kmph"]
 
     # Wrap up time trial-specific data
