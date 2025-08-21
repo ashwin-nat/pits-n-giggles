@@ -773,7 +773,6 @@ class DriversListRsp:
             self.m_json_rsp.append(self._getDriverJSON(index,driver_data))
         self.m_json_rsp.sort(key=lambda obj: obj["driver-info"]["position"])
 
-
     def __initTTDict(self) -> None:
         """Initialise the fields
         """
