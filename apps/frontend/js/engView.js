@@ -519,10 +519,11 @@ class EngViewRaceTable {
         } else {
             statusClass = 'drs-not-available';
         }
-        return `
-            <div class="eng-view-tyre-row-1">${position}</div>
-            <div class="${statusClass}">${statusText}</div>
-        `;
+        return this.createMultiLineCell({
+            row1: position,
+            row2: statusText,
+            row2Class: statusClass
+        })
     }
 
     createMultiLineCell({
