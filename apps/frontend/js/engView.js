@@ -18,6 +18,11 @@ class EngViewRaceTable {
         this.table = null;
         this.spectatorIndex = null;
         this.isSpectating = false;
+        this.INVALID_SECTOR = -2;
+        this.RED_SECTOR = -1;
+        this.YELLOW_SECTOR = 0;
+        this.GREEN_SECTOR = 1;
+        this.PURPLE_SECTOR = 2;
         this.COLUMN_WIDTHS_KEY = 'eng-view-table-column-widths'; // Storage key
         this.COLUMN_VISIBILITY_KEY = 'eng-view-table-column-visibility'; // Storage key for visibility
         this.COLUMN_ORDER_KEY = 'eng-view-table-column-order'; // Storage key for column order
@@ -209,14 +214,26 @@ class EngViewRaceTable {
             const lapInfo = cell.getValue();
             const driverInfo = cell.getRow().getData();
             const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+            const sectorStatus = lapInfo["sector-status"];
 
             const formattedTime = sectorKey === 'lap'
                 ? formatLapTime(lapInfo[timeKey])
                 : formatSectorTime(lapInfo[timeKey]);
 
             let timeClass = '';
-            if (lapInfo[fastestKey]) timeClass = 'green-time';
-            if (lapInfo[sessionFastestKey]) timeClass = 'purple-time';
+            if (sectorKey !== 'lap' && sectorStatus) {
+                const sectorIndex = parseInt(sectorKey.slice(1)) - 1;
+                if (sectorStatus[sectorIndex] === this.GREEN_SECTOR) {
+                    timeClass = 'green-time';
+                } else if (sectorStatus[sectorIndex] === this.PURPLE_SECTOR) {
+                    timeClass = 'purple-time';
+                } else if (sectorStatus[sectorIndex] === this.RED_SECTOR) {
+                    timeClass = 'red-time';
+                }
+            } else {
+                if (lapInfo[fastestKey]) timeClass = 'green-time';
+                if (lapInfo[sessionFastestKey]) timeClass = 'purple-time';
+            }
 
             const timeElement = `<div class="${timeClass}">${formattedTime}</div>`;
 
