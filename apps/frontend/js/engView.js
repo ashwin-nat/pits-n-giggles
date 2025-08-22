@@ -573,7 +573,7 @@ class EngViewRaceTable {
                             if (telemetryPublic) {
                                 return `${cell.getValue()}%`;
                             } else {
-                                return `<div class="telemetry-restricted" style="background-color:${this.TELEMETRY_DISABLED_COLOUR}; color: white;" title="${this.TELEMETRY_DISABLED_TEXT}">---</div>`;
+                                return `<div class="single-line-cell" style="background-color:${this.TELEMETRY_DISABLED_COLOUR}; color: white;" title="${this.TELEMETRY_DISABLED_TEXT}">---</div>`;
                             }
                         }, ...disableSorting },
                     { title: "FR", field: "damage-info.fr-wing-damage",
@@ -669,7 +669,8 @@ class EngViewRaceTable {
     }
 
     getTelemetryRestrictedContent() {
-        return `<div class="telemetry-restricted" style="background-color:${this.TELEMETRY_DISABLED_COLOUR}; color: white;" data-bs-toggle="tooltip" data-bs-title="${this.TELEMETRY_DISABLED_TEXT}">---</div>`;
+        return `<div class="single-line-cell" style="background-color:${this.TELEMETRY_DISABLED_COLOUR};
+                color: white;">N/A</div>`;
     }
 
     clear() {
