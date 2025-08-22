@@ -179,9 +179,11 @@ class EngViewRaceTable {
         }));
 
         if (tableData && tableData.length > 0) {
-            const scrollPos = this.table.rowManager.element.scrollTop;
+            const scrollPosTop = this.table.rowManager.element.scrollTop;
+            const scrollPosLeft = this.table.rowManager.element.scrollLeft;
             this.table.setData(tableData).then(() => {
-                this.table.rowManager.element.scrollTop = scrollPos;
+                this.table.rowManager.element.scrollTop = scrollPosTop;
+                this.table.rowManager.element.scrollLeft = scrollPosLeft;
             });
         }
     }

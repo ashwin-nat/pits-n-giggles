@@ -19,6 +19,7 @@ body {
     display: flex;
     flex-direction: column;
     padding: 0;
+    overflow: hidden;
 }
 
 .eng-view-global-data-section {
@@ -28,11 +29,11 @@ body {
 }
 
 .eng-view-race-table-section {
-    flex: 1;
-    overflow-y: scroll;
-    padding-bottom: 6rem;
-    padding-left: 1rem;
-    padding-right: 1rem;
+    flex: 1 1 auto;
+    overflow: hidden;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
 }
 
 .eng-view-table {
