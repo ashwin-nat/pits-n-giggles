@@ -134,6 +134,7 @@ body {
 
 .eng-view-tyre-row-2 {
     color: var(--f1-text-secondary);
+    font-size: 0.7rem;
 }
 
 /* Icon and text row styling */

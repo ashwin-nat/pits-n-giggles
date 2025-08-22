@@ -329,8 +329,25 @@ class EngViewRaceTable {
                 title: 'Tyre Wear',
                 headerSort: false,
                 columns: [
-                    { title: "Comp", field: "tyre-info.visual-tyre-compound", formatter: (cell) => this.iconCache.getIcon(cell.getValue()).outerHTML, ...disableSorting },
-                    { title: "Lap", field: "tyre-info.tyre-age", ...disableSorting },
+                    {
+                        title: "Comp",
+                        field: "tyre-info.visual-tyre-compound",
+                        formatter: (cell) => {
+                            const tyreInfo = cell.getRow().getData()["tyre-info"];
+                            const tyreIcon = this.iconCache.getIcon(tyreInfo["visual-tyre-compound"]).outerHTML;
+                            const agePitInfoStr = `${tyreInfo["tyre-age"]} L (${tyreInfo["num-pitstops"]} pit)`;
+                            return `<div class='eng-view-tyre-row-1'>${tyreIcon}</div><div class='eng-view-tyre-row-2'>${agePitInfoStr}</div>`;
+                        },
+                        ...disableSorting
+                    },
+                    {
+                        title: "Lap",
+                        field: "tyre-info.tyre-age",
+                        formatter: (cell) => {
+                            return `<div class='eng-view-tyre-row-1'>---</div><div class='eng-view-tyre-row-2'>---</div>`;
+                        },
+                        ...disableSorting
+                    },
                     { title: "FL", field: "tyre-info.current-wear.front-left-wear", formatter: (cell) => `${formatFloatWithTwoDecimals(cell.getValue())}%`, ...disableSorting },
                     { title: "FR", field: "tyre-info.current-wear.front-right-wear", formatter: (cell) => `${formatFloatWithTwoDecimals(cell.getValue())}%`, ...disableSorting },
                     { title: "RL", field: "tyre-info.current-wear.rear-left-wear", formatter: (cell) => `${formatFloatWithTwoDecimals(cell.getValue())}%`, ...disableSorting },
