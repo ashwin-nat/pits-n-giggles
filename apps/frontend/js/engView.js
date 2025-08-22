@@ -328,14 +328,63 @@ class EngViewRaceTable {
                         title: "Lap",
                         field: "tyre-info.tyre-age",
                         formatter: (cell) => {
-                            return `<div class='eng-view-tyre-row-1'>---</div><div class='eng-view-tyre-row-2'>---</div>`;
+                            const predictionLap = g_engView_predLapNum;
+                            return this.createMultiLineCell("cur", (predictionLap) ? (predictionLap) : ("---"));
                         },
                         ...disableSorting
                     },
-                    { title: "FL", field: "tyre-info.current-wear.front-left-wear", formatter: (cell) => `${formatFloatWithTwoDecimals(cell.getValue())}%`, ...disableSorting },
-                    { title: "FR", field: "tyre-info.current-wear.front-right-wear", formatter: (cell) => `${formatFloatWithTwoDecimals(cell.getValue())}%`, ...disableSorting },
-                    { title: "RL", field: "tyre-info.current-wear.rear-left-wear", formatter: (cell) => `${formatFloatWithTwoDecimals(cell.getValue())}%`, ...disableSorting },
-                    { title: "RR", field: "tyre-info.current-wear.rear-right-wear", formatter: (cell) => `${formatFloatWithTwoDecimals(cell.getValue())}%`, ...disableSorting },
+                    {
+                        title: "FL",
+                        field: "tyre-info.current-wear.front-left-wear",
+                        formatter: (cell) => {
+                            const tyreInfo = cell.getRow().getData()["tyre-info"];
+                            const predictionLap = g_engView_predLapNum;
+                            const predictedTyreWearInfo = (predictionLap) ? (tyreInfo["wear-prediction"]["predictions"].find(p => p["lap-number"] === predictionLap)) : (null);
+                            const currTyreWearInfo = tyreInfo["current-wear"];
+                            return this.createMultiLineCell(formatFloatWithTwoDecimals(currTyreWearInfo["front-left-wear"]) + '%',
+                                (predictedTyreWearInfo) ? (formatFloatWithTwoDecimals(predictedTyreWearInfo["front-left-wear"]) + '%') : ('---'))
+                        },
+                        ...disableSorting
+                    },
+                    {
+                        title: "FR",
+                        field: "tyre-info.current-wear.front-right-wear",
+                        formatter: (cell) => {
+                            const tyreInfo = cell.getRow().getData()["tyre-info"];
+                            const predictionLap = g_engView_predLapNum;
+                            const predictedTyreWearInfo = (predictionLap) ? (tyreInfo["wear-prediction"]["predictions"].find(p => p["lap-number"] === predictionLap)) : (null);
+                            const currTyreWearInfo = tyreInfo["current-wear"];
+                            return this.createMultiLineCell(formatFloatWithTwoDecimals(currTyreWearInfo["front-right-wear"]) + '%',
+                                (predictedTyreWearInfo) ? (formatFloatWithTwoDecimals(predictedTyreWearInfo["front-right-wear"]) + '%') : ('---'))
+                        },
+                        ...disableSorting
+                    },
+                    {
+                        title: "RL",
+                        field: "tyre-info.current-wear.rear-left-wear",
+                        formatter: (cell) => {
+                            const tyreInfo = cell.getRow().getData()["tyre-info"];
+                            const predictionLap = g_engView_predLapNum;
+                            const predictedTyreWearInfo = (predictionLap) ? (tyreInfo["wear-prediction"]["predictions"].find(p => p["lap-number"] === predictionLap)) : (null);
+                            const currTyreWearInfo = tyreInfo["current-wear"];
+                            return this.createMultiLineCell(formatFloatWithTwoDecimals(currTyreWearInfo["rear-left-wear"]) + '%',
+                                (predictedTyreWearInfo) ? (formatFloatWithTwoDecimals(predictedTyreWearInfo["rear-left-wear"]) + '%') : ('---'))
+                        },
+                        ...disableSorting
+                    },
+                    {
+                        title: "RR",
+                        field: "tyre-info.current-wear.rear-right-wear",
+                        formatter: (cell) => {
+                            const tyreInfo = cell.getRow().getData()["tyre-info"];
+                            const predictionLap = g_engView_predLapNum;
+                            const predictedTyreWearInfo = (predictionLap) ? (tyreInfo["wear-prediction"]["predictions"].find(p => p["lap-number"] === predictionLap)) : (null);
+                            const currTyreWearInfo = tyreInfo["current-wear"];
+                            return this.createMultiLineCell(formatFloatWithTwoDecimals(currTyreWearInfo["rear-right-wear"]) + '%',
+                                (predictedTyreWearInfo) ? (formatFloatWithTwoDecimals(predictedTyreWearInfo["rear-right-wear"]) + '%') : ('---'))
+                        },
+                        ...disableSorting
+                    },
                 ],
             },
             {
@@ -366,6 +415,10 @@ class EngViewRaceTable {
                 ],
             },
         ];
+    }
+
+    createMultiLineCell(row1, row2) {
+        return `<div class='eng-view-tyre-row-1'>${row1}</div><div class='eng-view-tyre-row-2'>${row2}</div>`;
     }
 
     update(drivers, isSpectating, eventType, spectatorCarIndex) {
