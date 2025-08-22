@@ -70,6 +70,7 @@ body {
 
 .tabulator-col.eng-view-table-main-header .tabulator-col-content {
     color: var(--f1-text);
+    text-align: center;
     font-weight: 500;
 }
 
