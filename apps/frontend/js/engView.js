@@ -19,6 +19,7 @@ class EngViewRaceTable {
         this.spectatorIndex = null;
         this.isSpectating = false;
         this.COLUMN_WIDTHS_KEY = 'eng-view-table-column-widths'; // Storage key
+        this.COLUMN_VISIBILITY_KEY = 'eng-view-table-column-visibility'; // Storage key for visibility
         this.initTable();
     }
 
@@ -131,6 +132,28 @@ class EngViewRaceTable {
             // this.initTable();
         } catch (error) {
             console.warn('Failed to reset column widths:', error);
+        }
+    }
+
+    // Load column visibility from localStorage
+    loadColumnVisibility() {
+        try {
+            const saved = localStorage.getItem(this.COLUMN_VISIBILITY_KEY);
+            if (saved) {
+                return JSON.parse(saved);
+            }
+        } catch (error) {
+            console.warn('Failed to load column visibility:', error);
+        }
+        return {}; // Return default if nothing is saved or an error occurs
+    }
+
+    // Save column visibility to localStorage
+    saveColumnVisibility(visibility) {
+        try {
+            localStorage.setItem(this.COLUMN_VISIBILITY_KEY, JSON.stringify(visibility));
+        } catch (error) {
+            console.warn('Failed to save column visibility:', error);
         }
     }
 
@@ -852,8 +875,7 @@ function initDashboard() {
 
     const driverModal = true;
     const raceStatsModal = false;
-    const settingsModal = false;
-    window.modalManager = new ModalManager(driverModal, raceStatsModal, settingsModal);
+    window.modalManager = new ModalManager(driverModal, raceStatsModal, false);
 
     const connectStart = Date.now();
     const socketio = io(`${location.protocol}//${location.hostname}:${location.port}`, {
@@ -902,6 +924,113 @@ function initDashboard() {
 
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+
+    // Settings Modal Logic
+    const settingsModal = document.getElementById('settings-modal');
+    const settingsBtn = document.getElementById('settings-btn');
+    const closeBtn = settingsModal.querySelector('.close-btn');
+    const columnVisibilityContainer = document.getElementById('column-visibility-container');
+    const resetVisibilityBtn = document.getElementById('reset-visibility-btn');
+
+    settingsBtn.onclick = function() {
+        settingsModal.style.display = 'block';
+        populateColumnVisibility();
+    }
+
+    closeBtn.onclick = function() {
+        settingsModal.style.display = 'none';
+    }
+
+    window.onclick = function(event) {
+        if (event.target == settingsModal) {
+            settingsModal.style.display = 'none';
+        }
+    }
+
+    resetVisibilityBtn.onclick = function() {
+        // Clear the visibility from local storage so it resets to default
+        localStorage.removeItem(raceTable.COLUMN_VISIBILITY_KEY);
+
+        // Re-populate the checkboxes which will now be all checked
+        populateColumnVisibility();
+
+        // Apply the default visibility to the table
+        applyColumnVisibility();
+    };
+
+    function populateColumnVisibility() {
+        columnVisibilityContainer.innerHTML = '';
+        const columns = raceTable.table.getColumns(true);
+        const visibility = raceTable.loadColumnVisibility();
+
+        columns.forEach(column => {
+            if (column.getDefinition().title) {
+                createCheckbox(column, columnVisibilityContainer, visibility);
+            }
+        });
+    }
+
+    function createCheckbox(column, container, visibility, isSub = false) {
+        const columnDef = column.getDefinition();
+        const field = column.getField() || columnDef.title;
+        const label = document.createElement('label');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = visibility[field] !== false; // Default to visible
+        checkbox.onchange = () => {
+            const newVisibility = raceTable.loadColumnVisibility();
+            newVisibility[field] = checkbox.checked;
+
+            // Handle parent/child visibility
+            const subColumns = column.getDefinition().columns;
+            if (subColumns && subColumns.length > 0) {
+                subColumns.forEach(subColumnDef => {
+                    const subField = subColumnDef.field || subColumnDef.title;
+                    newVisibility[subField] = checkbox.checked;
+                    const subCheckbox = columnVisibilityContainer.querySelector(`[data-field="${subField}"]`);
+                    if (subCheckbox) {
+                        subCheckbox.checked = checkbox.checked;
+                        subCheckbox.disabled = !checkbox.checked;
+                    }
+                });
+            }
+
+            raceTable.saveColumnVisibility(newVisibility);
+            applyColumnVisibility();
+        };
+
+        checkbox.dataset.field = field;
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(` ${columnDef.title}`));
+        if (isSub) {
+            label.classList.add('sub-column');
+        }
+        container.appendChild(label);
+
+        const subColumns = column.getDefinition().columns;
+        if (subColumns && subColumns.length > 0) {
+            // Find the component for the sub-column to pass it to createCheckbox
+            const columnComponents = column.getSubColumns();
+            columnComponents.forEach(subColumnComponent => {
+                createCheckbox(subColumnComponent, container, visibility, true);
+            });
+        }
+    }
+
+    function applyColumnVisibility() {
+        const visibility = raceTable.loadColumnVisibility();
+        raceTable.table.getColumns().forEach(column => {
+            const field = column.getField() || column.getDefinition().title;
+            if (visibility[field] === false) {
+                column.hide();
+            } else {
+                column.show();
+            }
+        });
+    }
+
+    // Apply visibility on initial load
+    applyColumnVisibility();
 }
 
 // Start the dashboard when the page loads

@@ -396,3 +396,53 @@ input[type="number"]::-webkit-outer-spin-button {
     border: 2px solid currentColor; /* Sets the border color to match the text */
     border-radius: 4px; /* Optional: rounds the corners of the border */
 }
+
+/* Settings Modal */
+#settings-modal {
+    display: none;
+    position: fixed;
+    z-index: 1050;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+}
+
+#settings-modal .modal-content {
+    background-color: var(--f1-dark);
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid var(--f1-light-gray);
+    width: 80%;
+    max-width: 500px;
+    color: var(--f1-text);
+}
+
+#settings-modal .close-btn {
+    color: var(--f1-text-secondary);
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+#settings-modal .close-btn:hover,
+#settings-modal .close-btn:focus {
+    color: var(--f1-text);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+#column-visibility-container {
+    display: flex;
+    flex-direction: column;
+}
+
+#column-visibility-container label {
+    margin-bottom: 0.5rem;
+}
+
+#column-visibility-container .sub-column {
+    margin-left: 20px;
+}
