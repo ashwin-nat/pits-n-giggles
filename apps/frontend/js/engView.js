@@ -22,13 +22,26 @@ class EngViewRaceTable {
     }
 
     initTable() {
+        const columnDefinitions = this.getColumnDefinitions();
+
+        function applyHeaderClass(columns) {
+            columns.forEach(col => {
+                col.cssClass = "eng-view-table-main-header";
+                if (col.columns) {
+                    applyHeaderClass(col.columns);
+                }
+            });
+        }
+
+        applyHeaderClass(columnDefinitions);
+
         this.table = new Tabulator("#eng-view-table", {
             layout: "fitColumns",
             placeholder: "No Data Available",
             columnHeaderSortMulti: false,
             virtualDom: false,
             index: "id",
-            columns: this.getColumnDefinitions(),
+            columns: columnDefinitions,
             rowFormatter: (row) => {
                 const data = row.getData();
                 const isReferenceDriver = data.isPlayer || data.index === this.spectatorIndex;

@@ -64,8 +64,13 @@ body {
     border-right: 2px solid #333 !important;
 }
 
-.eng-view-table-main-header th {
+.tabulator-col.eng-view-table-main-header {
+    background-color: var(--f1-dark) !important;
+}
+
+.tabulator-col.eng-view-table-main-header .tabulator-col-content {
     color: var(--f1-text);
+    font-weight: 500;
 }
 
 .eng-view-sub-header th {
