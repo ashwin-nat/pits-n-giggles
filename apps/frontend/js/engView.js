@@ -204,8 +204,117 @@ class EngViewRaceTable {
         }
     }
 
+    createSectorFormatter(sectorKey, timeKey, fastestKey, sessionFastestKey, playerTimeKey) {
+        return (cell) => {
+            const lapInfo = cell.getValue();
+            const driverInfo = cell.getRow().getData();
+            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+
+            const formattedTime = sectorKey === 'lap'
+                ? formatLapTime(lapInfo[timeKey])
+                : formatSectorTime(lapInfo[timeKey]);
+
+            let timeClass = '';
+            if (lapInfo[fastestKey]) timeClass = 'green-time';
+            if (lapInfo[sessionFastestKey]) timeClass = 'purple-time';
+
+            const timeElement = `<div class="${timeClass}">${formattedTime}</div>`;
+
+            if (isReferenceDriver) {
+                return timeElement;
+            }
+
+            const delta = lapInfo[timeKey] - lapInfo[playerTimeKey];
+            return this.createMultiLineCell({
+                row1: timeElement,
+                row2: formatDelta(delta)
+            });
+        };
+    }
+
+    createLastLapFormatter(sectorKey, timeKey, fastestKey, sessionFastestKey, playerTimeKey) {
+        return (cell) => {
+            const lapInfo = cell.getValue();
+            const driverInfo = cell.getRow().getData();
+            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+
+            if (sectorKey === 'lap') {
+                const formattedTime = formatLapTime(lapInfo[timeKey]);
+                const isValid = lapInfo["is-valid"];
+                const timeElement = `<div class="${!isValid ? 'red-time' : ''}">${formattedTime}</div>`;
+
+                if (isReferenceDriver) {
+                    return timeElement;
+                }
+
+                const delta = lapInfo[timeKey] - lapInfo[playerTimeKey];
+                return this.createMultiLineCell({
+                    row1: timeElement,
+                    row2: formatDelta(delta)
+                });
+            } else {
+                // For sectors, use the same logic as best lap
+                return this.createSectorFormatter(sectorKey, timeKey, fastestKey, sessionFastestKey, playerTimeKey)(cell);
+            }
+        };
+    }
+
+    createTyreWearFormatter(wearField) {
+        return (cell) => {
+            const tyreInfo = cell.getRow().getData()["tyre-info"];
+            const predictionLap = g_engView_predLapNum;
+            const predictedTyreWearInfo = predictionLap
+                ? tyreInfo["wear-prediction"]["predictions"].find(p => p["lap-number"] === predictionLap)
+                : null;
+            const currTyreWearInfo = tyreInfo["current-wear"];
+
+            return this.createMultiLineCell({
+                row1: formatFloatWithTwoDecimals(currTyreWearInfo[wearField]) + '%',
+                row2: predictedTyreWearInfo
+                    ? formatFloatWithTwoDecimals(predictedTyreWearInfo[wearField]) + '%'
+                    : '---'
+            });
+        };
+    }
+
+    createSectorColumns(lapType) {
+        const isLastLap = lapType === 'last';
+        const formatterMethod = isLastLap ? 'createLastLapFormatter' : 'createSectorFormatter';
+
+        return [
+            {
+                title: "Lap",
+                field: `lap-info.${lapType}-lap`,
+                formatter: this[formatterMethod]('lap', 'lap-time-ms', 'fastest-lap', 'session-fastest-lap', 'lap-time-ms-player'),
+                ...this.getDisableSorting()
+            },
+            {
+                title: "S1",
+                field: `lap-info.${lapType}-lap`,
+                formatter: this[formatterMethod]('s1', 's1-time-ms', 'fastest-s1', 'session-fastest-s1', 's1-time-ms-player'),
+                ...this.getDisableSorting()
+            },
+            {
+                title: "S2",
+                field: `lap-info.${lapType}-lap`,
+                formatter: this[formatterMethod]('s2', 's2-time-ms', 'fastest-s2', 'session-fastest-s2', 's2-time-ms-player'),
+                ...this.getDisableSorting()
+            },
+            {
+                title: "S3",
+                field: `lap-info.${lapType}-lap`,
+                formatter: this[formatterMethod]('s3', 's3-time-ms', 'fastest-s3', 'session-fastest-s3', 's3-time-ms-player'),
+                ...this.getDisableSorting()
+            }
+        ];
+    }
+
+    getDisableSorting() {
+        return { headerSort: false };
+    }
+
     getColumnDefinitions() {
-        const disableSorting = { headerSort: false };
+        const disableSorting = this.getDisableSorting();
         return [
             {
                 title: "Pos",
@@ -274,232 +383,12 @@ class EngViewRaceTable {
             {
                 title: 'Best Lap',
                 headerSort: false,
-                columns: [
-                    {
-                        title: "Lap",
-                        field: "lap-info.best-lap",
-                        formatter: (cell) => {
-                            const lapInfo = cell.getValue();
-                            const driverInfo = cell.getRow().getData();
-                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
-                            const formattedTime = formatLapTime(lapInfo["lap-time-ms"]);
-                            const fastestLap = lapInfo["fastest-lap"];
-                            const sessionFastestLap = lapInfo["session-fastest-lap"];
-
-                            let timeClass = '';
-                            if (fastestLap) timeClass = 'green-time';
-                            if (sessionFastestLap) timeClass = 'purple-time';
-
-                            const timeElement = `<div class="${timeClass}">${formattedTime}</div>`;
-
-                            if (isReferenceDriver) {
-                                return timeElement;
-                            }
-                            const delta = lapInfo["lap-time-ms"] - lapInfo["lap-time-ms-player"];
-                            return this.createMultiLineCell({
-                                row1: timeElement,
-                                row2: formatDelta(delta)
-                            });
-                        },
-                        ...disableSorting
-                    },
-                    {
-                        title: "S1",
-                        field: "lap-info.best-lap",
-                        formatter: (cell) => {
-                            const lapInfo = cell.getValue();
-                            const driverInfo = cell.getRow().getData();
-                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
-                            const formattedTime = formatSectorTime(lapInfo["s1-time-ms"]);
-                            const fastestS1 = lapInfo["fastest-s1"];
-                            const sessionFastestS1 = lapInfo["session-fastest-s1"];
-
-                            let timeClass = '';
-                            if (fastestS1) timeClass = 'green-time';
-                            if (sessionFastestS1) timeClass = 'purple-time';
-
-                            const timeElement = `<div class="${timeClass}">${formattedTime}</div>`;
-
-                            if (isReferenceDriver) {
-                                return timeElement;
-                            }
-                            const delta = lapInfo["s1-time-ms"] - lapInfo["s1-time-ms-player"];
-                            return this.createMultiLineCell({
-                                row1: timeElement,
-                                row2: formatDelta(delta)
-                            });
-                        },
-                        ...disableSorting
-                    },
-                    {
-                        title: "S2",
-                        field: "lap-info.best-lap",
-                        formatter: (cell) => {
-                            const lapInfo = cell.getValue();
-                            const driverInfo = cell.getRow().getData();
-                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
-                            const formattedTime = formatSectorTime(lapInfo["s2-time-ms"]);
-                            const fastestS2 = lapInfo["fastest-s2"];
-                            const sessionFastestS2 = lapInfo["session-fastest-s2"];
-
-                            let timeClass = '';
-                            if (fastestS2) timeClass = 'green-time';
-                            if (sessionFastestS2) timeClass = 'purple-time';
-
-                            const timeElement = `<div class="${timeClass}">${formattedTime}</div>`;
-
-                            if (isReferenceDriver) {
-                                return timeElement;
-                            }
-                            const delta = lapInfo["s2-time-ms"] - lapInfo["s2-time-ms-player"];
-                            return this.createMultiLineCell({
-                                row1: timeElement,
-                                row2: formatDelta(delta)
-                            });
-                        },
-                        ...disableSorting
-                    },
-                    {
-                        title: "S3",
-                        field: "lap-info.best-lap",
-                        formatter: (cell) => {
-                            const lapInfo = cell.getValue();
-                            const driverInfo = cell.getRow().getData();
-                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
-                            const formattedTime = formatSectorTime(lapInfo["s3-time-ms"]);
-                            const fastestS3 = lapInfo["fastest-s3"];
-                            const sessionFastestS3 = lapInfo["session-fastest-s3"];
-
-                            let timeClass = '';
-                            if (fastestS3) timeClass = 'green-time';
-                            if (sessionFastestS3) timeClass = 'purple-time';
-
-                            const timeElement = `<div class="${timeClass}">${formattedTime}</div>`;
-
-                            if (isReferenceDriver) {
-                                return timeElement;
-                            }
-                            const delta = lapInfo["s3-time-ms"] - lapInfo["s3-time-ms-player"];
-                            return this.createMultiLineCell({
-                                row1: timeElement,
-                                row2: formatDelta(delta)
-                            });
-                        },
-                        ...disableSorting
-                    },
-                ],
+                columns: this.createSectorColumns('best')
             },
             {
                 title: 'Last Lap',
                 headerSort: false,
-                columns: [
-                    {
-                        title: "Lap",
-                        field: "lap-info.last-lap",
-                        formatter: (cell) => {
-                            const lapInfo = cell.getValue();
-                            const driverInfo = cell.getRow().getData();
-                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
-                            const formattedTime = formatLapTime(lapInfo["lap-time-ms"]);
-                            const isValid = lapInfo["is-valid"];
-                            const timeElement = `<div class="${!isValid ? 'red-time' : ''}">${formattedTime}</div>`;
-
-                            if (isReferenceDriver) {
-                                return timeElement;
-                            }
-                            const delta = lapInfo["lap-time-ms"] - lapInfo["lap-time-ms-player"];
-                            return this.createMultiLineCell({
-                                row1: timeElement,
-                                row2: formatDelta(delta)
-                            });
-                        },
-                        ...disableSorting
-                    },
-                    {
-                        title: "S1",
-                        field: "lap-info.last-lap",
-                        formatter: (cell) => {
-                            const lapInfo = cell.getValue();
-                            const driverInfo = cell.getRow().getData();
-                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
-                            const formattedTime = formatSectorTime(lapInfo["s1-time-ms"]);
-                            const fastestS1 = lapInfo["fastest-s1"];
-                            const sessionFastestS1 = lapInfo["session-fastest-s1"];
-
-                            let timeClass = '';
-                            if (fastestS1) timeClass = 'green-time';
-                            if (sessionFastestS1) timeClass = 'purple-time';
-
-                            const timeElement = `<div class="${timeClass}">${formattedTime}</div>`;
-
-                            if (isReferenceDriver) {
-                                return timeElement;
-                            }
-                            const delta = lapInfo["s1-time-ms"] - lapInfo["s1-time-ms-player"];
-                            return this.createMultiLineCell({
-                                row1: timeElement,
-                                row2: formatDelta(delta)
-                            });
-                        },
-                        ...disableSorting
-                    },
-                    {
-                        title: "S2",
-                        field: "lap-info.last-lap",
-                        formatter: (cell) => {
-                            const lapInfo = cell.getValue();
-                            const driverInfo = cell.getRow().getData();
-                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
-                            const formattedTime = formatSectorTime(lapInfo["s2-time-ms"]);
-                            const fastestS2 = lapInfo["fastest-s2"];
-                            const sessionFastestS2 = lapInfo["session-fastest-s2"];
-
-                            let timeClass = '';
-                            if (fastestS2) timeClass = 'green-time';
-                            if (sessionFastestS2) timeClass = 'purple-time';
-
-                            const timeElement = `<div class="${timeClass}">${formattedTime}</div>`;
-
-                            if (isReferenceDriver) {
-                                return timeElement;
-                            }
-                            const delta = lapInfo["s2-time-ms"] - lapInfo["s2-time-ms-player"];
-                            return this.createMultiLineCell({
-                                row1: timeElement,
-                                row2: formatDelta(delta)
-                            });
-                        },
-                        ...disableSorting
-                    },
-                    {
-                        title: "S3",
-                        field: "lap-info.last-lap",
-                        formatter: (cell) => {
-                            const lapInfo = cell.getValue();
-                            const driverInfo = cell.getRow().getData();
-                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
-                            const formattedTime = formatSectorTime(lapInfo["s3-time-ms"]);
-                            const fastestS3 = lapInfo["fastest-s3"];
-                            const sessionFastestS3 = lapInfo["session-fastest-s3"];
-
-                            let timeClass = '';
-                            if (fastestS3) timeClass = 'green-time';
-                            if (sessionFastestS3) timeClass = 'purple-time';
-
-                            const timeElement = `<div class="${timeClass}">${formattedTime}</div>`;
-
-                            if (isReferenceDriver) {
-                                return timeElement;
-                            }
-                            const delta = lapInfo["s3-time-ms"] - lapInfo["s3-time-ms-player"];
-                            return this.createMultiLineCell({
-                                row1: timeElement,
-                                row2: formatDelta(delta)
-                            });
-                        },
-                        ...disableSorting
-                    },
-                ],
+                columns: this.createSectorColumns('last')
             },
             {
                 title: 'Tyre Wear',
@@ -526,7 +415,7 @@ class EngViewRaceTable {
                             const predictionLap = g_engView_predLapNum;
                             return this.createMultiLineCell({
                                 row1: "cur",
-                                row2: ((predictionLap) ? (predictionLap) : ("---"))
+                                row2: predictionLap ? predictionLap : "---"
                             });
                         },
                         ...disableSorting
@@ -534,81 +423,25 @@ class EngViewRaceTable {
                     {
                         title: "FL",
                         field: "tyre-info.current-wear.front-left-wear",
-                        formatter: (cell) => {
-                            const tyreInfo = cell.getRow().getData()["tyre-info"];
-                            const predictionLap = g_engView_predLapNum;
-                            const predictedTyreWearInfo = (predictionLap)
-                                                            ? (tyreInfo["wear-prediction"]["predictions"].find(
-                                                                p => p["lap-number"] === predictionLap))
-                                                            : (null);
-                            const currTyreWearInfo = tyreInfo["current-wear"];
-                            return this.createMultiLineCell({
-                                row1: (formatFloatWithTwoDecimals(currTyreWearInfo["front-left-wear"]) + '%'),
-                                row2: ((predictedTyreWearInfo) ?
-                                        (formatFloatWithTwoDecimals(predictedTyreWearInfo["front-left-wear"]) + '%') :
-                                        ('---'))
-                            });
-                        },
+                        formatter: this.createTyreWearFormatter("front-left-wear"),
                         ...disableSorting
                     },
                     {
                         title: "FR",
                         field: "tyre-info.current-wear.front-right-wear",
-                        formatter: (cell) => {
-                            const tyreInfo = cell.getRow().getData()["tyre-info"];
-                            const predictionLap = g_engView_predLapNum;
-                            const predictedTyreWearInfo = (predictionLap)
-                                                            ? (tyreInfo["wear-prediction"]["predictions"].find(
-                                                                p => p["lap-number"] === predictionLap))
-                                                            : (null);
-                            const currTyreWearInfo = tyreInfo["current-wear"];
-                            return this.createMultiLineCell({
-                                row1: (formatFloatWithTwoDecimals(currTyreWearInfo["front-left-wear"]) + '%'),
-                                row2: ((predictedTyreWearInfo) ?
-                                        (formatFloatWithTwoDecimals(predictedTyreWearInfo["front-left-wear"]) + '%') :
-                                        ('---'))
-                            });
-                        },
+                        formatter: this.createTyreWearFormatter("front-right-wear"),
                         ...disableSorting
                     },
                     {
                         title: "RL",
                         field: "tyre-info.current-wear.rear-left-wear",
-                        formatter: (cell) => {
-                            const tyreInfo = cell.getRow().getData()["tyre-info"];
-                            const predictionLap = g_engView_predLapNum;
-                            const predictedTyreWearInfo = (predictionLap)
-                                                            ? (tyreInfo["wear-prediction"]["predictions"].find(
-                                                                p => p["lap-number"] === predictionLap))
-                                                            : (null);
-                            const currTyreWearInfo = tyreInfo["current-wear"];
-                            return this.createMultiLineCell({
-                                row1: (formatFloatWithTwoDecimals(currTyreWearInfo["front-left-wear"]) + '%'),
-                                row2: ((predictedTyreWearInfo) ?
-                                        (formatFloatWithTwoDecimals(predictedTyreWearInfo["front-left-wear"]) + '%') :
-                                        ('---'))
-                            });
-                        },
+                        formatter: this.createTyreWearFormatter("rear-left-wear"),
                         ...disableSorting
                     },
                     {
                         title: "RR",
                         field: "tyre-info.current-wear.rear-right-wear",
-                        formatter: (cell) => {
-                            const tyreInfo = cell.getRow().getData()["tyre-info"];
-                            const predictionLap = g_engView_predLapNum;
-                            const predictedTyreWearInfo = (predictionLap)
-                                                            ? (tyreInfo["wear-prediction"]["predictions"].find(
-                                                                p => p["lap-number"] === predictionLap))
-                                                            : (null);
-                            const currTyreWearInfo = tyreInfo["current-wear"];
-                            return this.createMultiLineCell({
-                                row1: (formatFloatWithTwoDecimals(currTyreWearInfo["front-left-wear"]) + '%'),
-                                row2: ((predictedTyreWearInfo) ?
-                                        (formatFloatWithTwoDecimals(predictedTyreWearInfo["front-left-wear"]) + '%') :
-                                        ('---'))
-                            });
-                        },
+                        formatter: this.createTyreWearFormatter("rear-right-wear"),
                         ...disableSorting
                     },
                 ],
