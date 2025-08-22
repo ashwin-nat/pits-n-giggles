@@ -20,6 +20,7 @@ class EngViewRaceTable {
         this.isSpectating = false;
         this.COLUMN_WIDTHS_KEY = 'eng-view-table-column-widths'; // Storage key
         this.COLUMN_VISIBILITY_KEY = 'eng-view-table-column-visibility'; // Storage key for visibility
+        this.COLUMN_ORDER_KEY = 'eng-view-table-column-order'; // Storage key for column order
         this.initTable();
     }
 
@@ -73,6 +74,32 @@ class EngViewRaceTable {
         applyWidthsRecursively(columnDefinitions);
     }
 
+    // Save column order to localStorage
+    saveColumnOrder() {
+        const columns = this.table.getColumns();
+        const order = columns.map(column => column.getField());
+
+        try {
+            localStorage.setItem(this.COLUMN_ORDER_KEY, JSON.stringify(order));
+            console.log('Column order saved:', order);
+        } catch (error) {
+            console.warn('Failed to save column order:', error);
+        }
+    }
+
+    // Load column order from localStorage
+    loadColumnOrder() {
+        try {
+            const saved = localStorage.getItem(this.COLUMN_ORDER_KEY);
+            if (saved) {
+                return JSON.parse(saved);
+            }
+        } catch (error) {
+            console.warn('Failed to load column order:', error);
+        }
+        return null; // Return null if no order is saved
+    }
+
     initTable() {
         const columnDefinitions = this.getColumnDefinitions();
 
@@ -80,6 +107,17 @@ class EngViewRaceTable {
         const savedWidths = this.loadColumnWidths();
         console.log('Saved column widths:', savedWidths);
         this.applyColumnWidths(columnDefinitions, savedWidths);
+
+        // Load and apply column order
+        const savedOrder = this.loadColumnOrder();
+        if (savedOrder) {
+            columnDefinitions.sort((a, b) => {
+                const indexA = savedOrder.indexOf(a.field);
+                const indexB = savedOrder.indexOf(b.field);
+                if (indexA === -1 || indexB === -1) return 0;
+                return indexA - indexB;
+            });
+        }
 
         function applyHeaderClass(columns) {
             columns.forEach(col => {
@@ -96,6 +134,7 @@ class EngViewRaceTable {
             layout: "fitColumns",
             placeholder: "No Data Available",
             columnHeaderSortMulti: false,
+            movableColumns: true,
             virtualDom: false,
             index: "id",
             columns: columnDefinitions,
@@ -120,6 +159,17 @@ class EngViewRaceTable {
                 this.saveColumnWidths();
             }, 500); // Save 500ms after the last resize
         });
+
+        // Add event listener for column resize
+        this.table.on("columnMoved", (column, columns) => {
+            // Debounce the save operation to avoid too frequent saves
+            console.log("Column moved:", column);
+            clearTimeout(this.saveTimeout);
+            this.saveTimeout = setTimeout(() => {
+                this.saveColumnOrder();
+            }, 500); // Save 500ms after the last resize
+        });
+        this.saveColumnOrder();
     }
 
     // Optional: Method to reset column widths to default
