@@ -58,7 +58,17 @@ class EngViewRaceTable {
     getColumnDefinitions() {
         const disableSorting = { headerSort: false };
         return [
-            { title: "Pos", field: "position", width: 40, ...disableSorting },
+            {
+                title: "Pos",
+                field: "position",
+                width: 40,
+                formatter: (cell) => {
+                    const driverInfo = cell.getRow().getData();
+                    const position = driverInfo.position;
+                    return this.createPositionStatusCell(position, driverInfo["driver-info"]);
+                },
+                ...disableSorting
+            },
             {
                 title: "Name",
                 field: "name",
@@ -417,8 +427,28 @@ class EngViewRaceTable {
         ];
     }
 
-    createMultiLineCell(row1, row2) {
-        return `<div class='eng-view-tyre-row-1'>${row1}</div><div class='eng-view-tyre-row-2'>${row2}</div>`;
+    createPositionStatusCell(position, driverInfo) {
+        let statusClass = '';
+        let statusText = 'DRS';
+        if (driverInfo["is-pitting"]) {
+            statusText = 'PIT';
+            statusClass = 'driver-pitting';
+        }
+        else if (driverInfo["drs-activated"]) {
+            statusClass = 'drs-active';
+        } else if (driverInfo["drs-allowed"] || driverInfo["drs-distance"]) {
+            statusClass = 'drs-available';
+        } else {
+            statusClass = 'drs-not-available';
+        }
+        return `
+            <div class="eng-view-tyre-row-1">${position}</div>
+            <div class="${statusClass}">${statusText}</div>
+        `;
+    }
+
+    createMultiLineCell(row1, row2, row1Class='eng-view-tyre-row-1', row2Class='eng-view-tyre-row-2') {
+        return `<div class='${row1Class}'>${row1}</div><div class='${row2Class}'>${row2}</div>`;
     }
 
     update(drivers, isSpectating, eventType, spectatorCarIndex) {
