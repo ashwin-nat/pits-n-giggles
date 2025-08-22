@@ -39,7 +39,7 @@ class EngViewRaceTable {
 
         try {
             localStorage.setItem(this.COLUMN_WIDTHS_KEY, JSON.stringify(widths));
-            console.log('Column widths saved:', widths);
+            console.debug('Column widths saved:', widths);
         } catch (error) {
             console.warn('Failed to save column widths:', error);
         }
@@ -81,7 +81,7 @@ class EngViewRaceTable {
 
         try {
             localStorage.setItem(this.COLUMN_ORDER_KEY, JSON.stringify(order));
-            console.log('Column order saved:', order);
+            console.debug('Column order saved:', order);
         } catch (error) {
             console.warn('Failed to save column order:', error);
         }
@@ -105,7 +105,7 @@ class EngViewRaceTable {
 
         // Load and apply saved column widths
         const savedWidths = this.loadColumnWidths();
-        console.log('Saved column widths:', savedWidths);
+        console.debug('Saved column widths:', savedWidths);
         this.applyColumnWidths(columnDefinitions, savedWidths);
 
         // Load and apply column order
@@ -153,7 +153,7 @@ class EngViewRaceTable {
         // Add event listener for column resize
         this.table.on("columnResized", (column) => {
             // Debounce the save operation to avoid too frequent saves
-            console.log("Column resized:", column);
+            console.debug("Column resized:", column);
             clearTimeout(this.saveTimeout);
             this.saveTimeout = setTimeout(() => {
                 this.saveColumnWidths();
@@ -163,7 +163,7 @@ class EngViewRaceTable {
         // Add event listener for column resize
         this.table.on("columnMoved", (column, columns) => {
             // Debounce the save operation to avoid too frequent saves
-            console.log("Column moved:", column);
+            console.debug("Column moved:", column);
             clearTimeout(this.saveTimeout);
             this.saveTimeout = setTimeout(() => {
                 this.saveColumnOrder();
@@ -176,10 +176,7 @@ class EngViewRaceTable {
     resetColumnWidths() {
         try {
             localStorage.removeItem(this.COLUMN_WIDTHS_KEY);
-            console.log('Column widths reset to default');
-            // Optionally reload the table
-            // this.table.destroy();
-            // this.initTable();
+            console.debug('Column widths reset to default');
         } catch (error) {
             console.warn('Failed to reset column widths:', error);
         }
@@ -758,7 +755,7 @@ class EngViewRaceStatus {
             let value = parseInt(e.target.value);
             if (!isNaN(value) && value >= e.target.min && value <= e.target.max) {
                 g_engView_predLapNum = value;
-                console.log('Prediction lap changed to:', g_engView_predLapNum);
+                console.debug('Prediction lap changed to:', g_engView_predLapNum);
             } else {
                 console.warn('Invalid input: Out of range');
             }
@@ -786,7 +783,7 @@ class EngViewRaceStatus {
 
     #updatePredLapInputBox() {
         this.predictionLapInput.value = g_engView_predLapNum;
-        console.log("Updated prediction element value", g_engView_predLapNum);
+        console.debug("Updated prediction element value", g_engView_predLapNum);
     }
 
     #getSCStatusString(scStatus) {

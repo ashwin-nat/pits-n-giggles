@@ -22,7 +22,7 @@ class IconCache {
                 }
                 const svgText = await response.text();
                 this.cache[key] = svgText;
-                console.log("Successfully fetched icon", key);
+                console.debug("Successfully fetched icon", key);
             } catch (error) {
                 console.error(`Failed to load icon for ${key}:`, error);
             }
