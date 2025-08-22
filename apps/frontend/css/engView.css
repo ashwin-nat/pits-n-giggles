@@ -272,3 +272,56 @@ input[type="number"]::-webkit-outer-spin-button {
     border: 2px solid currentColor; /* Sets the border color to match the text */
     border-radius: 4px; /* Optional: rounds the corners of the border */
 }
+
+/* Tabulator custom styling */
+#eng-view-table {
+    font-size: 0.85rem;
+    background-color: var(--f1-dark);
+    border: 1px solid #333;
+}
+
+.tabulator-header {
+    background-color: var(--f1-darker) !important;
+    color: var(--f1-text) !important;
+    border-bottom: 1px solid #333;
+}
+
+.tabulator-col {
+    background-color: var(--f1-gray);
+    border-right: 1px solid #333;
+}
+
+.tabulator-col-content {
+    padding: 0.3rem;
+}
+
+.tabulator-row {
+    background-color: var(--f1-dark);
+    color: var(--f1-text);
+}
+
+.tabulator-row:nth-child(even) {
+    background-color: var(--f1-gray);
+}
+
+.tabulator-row:hover {
+    background-color: var(--f1-light-gray);
+}
+
+.tabulator-cell {
+    padding: 0.3rem;
+    border-right: 1px solid #333;
+}
+
+.tabulator-row.player-row .tabulator-cell {
+    border-top: 2px solid #ffd700;
+    border-bottom: 2px solid #ffd700;
+}
+
+.tabulator-row.player-row .tabulator-cell:first-child {
+    border-left: 2px solid #ffd700;
+}
+
+.tabulator-row.player-row .tabulator-cell:last-child {
+    border-right: 2px solid #ffd700;
+}

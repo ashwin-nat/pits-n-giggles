@@ -11,428 +11,179 @@ function getShortERSMode(mode) {
     return 'N/A';
 }
 
-// Class to handle table row creation and updates
-class EngViewRaceTableRow {
-    constructor(driver, isSpectating, iconCache, eventType, spectatorIndex) {
-        this.driver = driver;
-        this.isSpectating = isSpectating;
-        this.iconCache = iconCache;
-        this.spectatorIndex = spectatorIndex;
-        this.element = document.createElement('tr');
-        if (eventType === "Time Trial") {
-            this.renderTT();
-        } else {
-            this.render();
-        }
-    }
-
-    createMultiLineCell(row1, row2) {
-        return `
-            <div class="eng-view-tyre-row-1">${row1}</div>
-            <div class="eng-view-tyre-row-2">${row2}</div>
-        `;
-    }
-
-    createLapInfoCellTwoRow(row1, row2, sectorStatus) {
-        const redSector     = -1;
-        const greenSector   = 1;
-        const purpleSector  = 2;
-
-        let sectorClass = '';
-        if (sectorStatus === greenSector) {
-            sectorClass = 'green-time';
-        } else if (sectorStatus === purpleSector) {
-            sectorClass = 'purple-time';
-        } else if (sectorStatus === redSector) {
-            sectorClass = 'red-time';
-        }
-
-        // Apply 'eng-view-tyre-row-1' and conditionally add sectorClass to row1
-        return `
-            <div class="eng-view-tyre-row-1 ${sectorClass}">${row1}</div>
-            <div class="eng-view-tyre-row-2">${row2}</div>
-        `;
-    }
-
-    createLapInfoCellSingleRow(row1, sectorStatus) {
-        const redSector     = -1;
-        const greenSector   = 1;
-        const purpleSector  = 2;
-
-        let sectorClass = '';
-        if (sectorStatus === greenSector) {
-            sectorClass = 'green-time';
-        } else if (sectorStatus === purpleSector) {
-            sectorClass = 'purple-time';
-        } else if (sectorStatus === redSector) {
-            sectorClass = 'red-time';
-        }
-
-        // Apply 'eng-view-tyre-row-1' and conditionally add sectorClass to row1
-        return `
-            <div class="eng-view-tyre-row-1 ${sectorClass}">${row1}</div>
-        `;
-    }
-
-    createPositionStatusCell(position, driverInfo) {
-        let statusClass = '';
-        let statusText = 'DRS';
-        if (driverInfo["is-pitting"]) {
-            statusText = 'PIT';
-            statusClass = 'driver-pitting';
-        }
-        else if (driverInfo["drs-activated"]) {
-            statusClass = 'drs-active';
-        } else if (driverInfo["drs-allowed"] || driverInfo["drs-distance"]) {
-            statusClass = 'drs-available';
-        } else {
-            statusClass = 'drs-not-available';
-        }
-        return `
-            <div class="eng-view-tyre-row-1">${position}</div>
-            <div class="${statusClass}">${statusText}</div>
-        `;
-    }
-
-    createMultiLineCellOnClick(row1Content, row2Content, onClick) {
-        const container = document.createElement("a");
-        container.href = "#";
-        container.style.textDecoration = "none"; // Optional: remove underline
-        container.style.color = "inherit";       // Optional: preserve inherited text color
-
-        const row1 = document.createElement("div");
-        row1.className = "eng-view-tyre-row-1";
-        row1.textContent = row1Content;
-
-        const row2 = document.createElement("div");
-        row2.className = "eng-view-tyre-row-2";
-        row2.textContent = row2Content;
-
-        container.appendChild(row1);
-        container.appendChild(row2);
-
-        container.addEventListener("click", (e) => {
-            e.preventDefault(); // Prevent actual jump to "#"
-            onClick(e);
-        });
-
-        return container;
-    }
-
-    createIconTextCell(iconSvg, text) {
-        return `
-            <div class="eng-view-icon-row">
-                <div class="eng-view-icon">${iconSvg.outerHTML}</div>
-                <div class="eng-view-tyre-row-2">${text}</div>
-            </div>
-        `;
-    }
-
-    getDriverInfoCells() {
-        const driverInfo = this.driver["driver-info"];
-        return [
-            {value: this.createPositionStatusCell(driverInfo["position"], driverInfo), border: true},
-            {value: this.createMultiLineCellOnClick(driverInfo["name"], driverInfo["team"], () => {
-                console.log("Sending driver info request", driverInfo["name"], driverInfo["index"]);
-                fetch(`/driver-info?index=${driverInfo["index"]}`)
-                    .then(response => {
-                        if (!response.ok) throw new Error("Network response was not ok");
-                        return response.json(); // or .text() if you expect plain text
-                    })
-                    .then(data => {
-                        console.log("Driver info fetched:", data);
-                        // optionally do something with the response
-                        window.modalManager.openDriverModal(data, this.iconCache);
-                    })
-                    .catch(err => {
-                        console.error("Fetch error:", err);
-                    });
-            }), border: true},
-        ];
-    }
-
-    getDeltaInfoCells() {
-
-        const deltaInfo  = this.driver["delta-info"];
-        const position   = this.driver["driver-info"]["position"]
-        return [
-            {
-                value: this.createMultiLineCell(
-                    (position == 1) ? ("Interval") :
-                        (formatFloatWithThreeDecimalsSigned(deltaInfo["delta-to-car-in-front"]/1000)),
-                    (position == 1) ? ("Leader") :
-                        (formatFloatWithThreeDecimalsSigned(deltaInfo["delta-to-leader"]/1000))),
-                border: true
-            },
-        ]
-    }
-
-    getPenaltyCells() {
-        const warnsPensInfo = this.driver["warns-pens-info"];
-        return [
-            { value: warnsPensInfo["corner-cutting-warnings"] },
-            { value: warnsPensInfo["time-penalties"] },
-            { value: warnsPensInfo["num-dt"] },
-            { value: warnsPensInfo["num-sg"], border: true }
-        ];
-    }
-
-    getLapTimeCells() {
-        const lastLapInfo = this.driver["lap-info"]["last-lap"];
-        const bestLapInfo = this.driver["lap-info"]["best-lap"];
-        const defaultYellowSector = 0;
-
-        const driverInfo = this.driver["driver-info"];
-        const isReferenceDriver =
-            driverInfo["is-player"] ||
-            driverInfo["index"] === this.spectatorIndex;
-
-        const createCells = (lapInfo, isBestLap) => {
-            // Inner helper to generate one cell object
-            const createCell = (time, delta, status, isLast) => {
-                // Format the time for display (lap time or sector time)
-                const formattedTime = isBestLap
-                    ? formatLapTime(time)
-                    : formatSectorTime(time);
-
-                // Single row cell for reference driver, else two row cell
-                const value = isReferenceDriver
-                    ? this.createLapInfoCellSingleRow(formattedTime, status)
-                    : this.createLapInfoCellTwoRow(
-                        formattedTime,
-                        formatDelta(delta),
-                        status
-                    );
-
-                return {
-                    value: value,
-                    border: isLast
-                };
-            };
-
-            // Return 4 cells: full lap time + 3 sector times
-            return [
-                createCell(
-                    lapInfo["lap-time-ms"],
-                    lapInfo["lap-time-ms-player"] - lapInfo["lap-time-ms"],
-                    defaultYellowSector,
-                    false
-                ),
-                createCell(
-                    lapInfo["s1-time-ms"],
-                    lapInfo["s1-time-ms-player"] - lapInfo["s1-time-ms"],
-                    lapInfo["sector-status"][0],
-                    false
-                ),
-                createCell(
-                    lapInfo["s2-time-ms"],
-                    lapInfo["s2-time-ms-player"] - lapInfo["s2-time-ms"],
-                    lapInfo["sector-status"][1],
-                    false
-                ),
-                createCell(
-                    lapInfo["s3-time-ms"],
-                    lapInfo["s3-time-ms-player"] - lapInfo["s3-time-ms"],
-                    lapInfo["sector-status"][2],
-                    true // Only the last cell gets a border
-                ),
-            ];
-        };
-
-        // Return all 8 cells: 4 from best lap, 4 from last lap
-        return [
-            ...createCells(bestLapInfo, true),
-            ...createCells(lastLapInfo, false)
-        ];
-    }
-
-    getTyreInfoCells(isTelemetryPublic) {
-        const tyreInfoData = this.driver["tyre-info"];
-        const tyreIcon = this.iconCache.getIcon(tyreInfoData["visual-tyre-compound"]);
-        const agePitInfoStr = `${tyreInfoData["tyre-age"]} L (${tyreInfoData["num-pitstops"]} pit)`;
-        if (!isTelemetryPublic) {
-            return [
-                { value: this.createIconTextCell(tyreIcon, agePitInfoStr), border: true }
-            ];
-        }
-
-        const currTyreWearInfo = tyreInfoData["current-wear"];
-        const predictionLap = g_engView_pitLapNum;
-        const predictedTyreWearInfo = tyreInfoData["wear-prediction"]["predictions"].find(
-            p => p["lap-number"] === predictionLap);
-        return [
-            { value: this.createIconTextCell(tyreIcon, agePitInfoStr)},
-            { value: this.createMultiLineCell("cur", predictionLap) },
-            { value: this.createMultiLineCell(formatFloatWithTwoDecimals(currTyreWearInfo["front-left-wear"]) + '%',
-                (predictedTyreWearInfo) ? (formatFloatWithTwoDecimals(predictedTyreWearInfo["front-left-wear"]) + '%') : ('---')) },
-            { value: this.createMultiLineCell(formatFloatWithTwoDecimals(currTyreWearInfo["front-right-wear"]) + '%',
-                (predictedTyreWearInfo) ? (formatFloatWithTwoDecimals(predictedTyreWearInfo["front-right-wear"]) + '%') : ('---')) },
-            { value: this.createMultiLineCell(formatFloatWithTwoDecimals(currTyreWearInfo["rear-left-wear"]) + '%',
-                (predictedTyreWearInfo) ? (formatFloatWithTwoDecimals(predictedTyreWearInfo["rear-left-wear"]) + '%') : ('---')) },
-            { value: this.createMultiLineCell(formatFloatWithTwoDecimals(currTyreWearInfo["rear-right-wear"]) + '%',
-                (predictedTyreWearInfo) ? (formatFloatWithTwoDecimals(predictedTyreWearInfo["rear-right-wear"]) + '%') : ('---')),
-                border: true },
-        ];
-    }
-
-    getErsCells() {
-        const ersInfo = this.driver["ers-info"];
-        return [
-            { value: ersInfo["ers-percent"] }, // this is already a string
-            { value: formatFloatWithTwoDecimals(ersInfo["ers-deployed-this-lap"]) + '%' },
-            { value: getShortERSMode(ersInfo["ers-mode"]), border: true }
-        ];
-    }
-
-    getFuelCells() {
-        const fuelInfo = this.driver["fuel-info"];
-        return [
-            { value: fuelInfo["fuel-in-tank"] == null ? "N/A" : formatFloatWithTwoDecimals(fuelInfo["fuel-in-tank"]) },
-            { value: fuelInfo["curr-fuel-rate"] == null ? "N/A" : formatFloatWithTwoDecimals(fuelInfo["curr-fuel-rate"]) },
-            { value: fuelInfo["surplus-laps-png"] == null ? "N/A" : formatFloatWithTwoDecimalsSigned(fuelInfo["surplus-laps-png"]), border: true }
-        ];
-    }
-
-    getDamageCells() {
-        const damageInfo = this.driver["damage-info"];
-        return [
-            { value: damageInfo["fl-wing-damage"] + '%' },
-            { value: damageInfo["fr-wing-damage"] + '%' },
-            { value: damageInfo["rear-wing-damage"] + '%', border: true }
-        ];
-    }
-
-    render() {
-        const isSpectating = this.spectatorIndex !== null;
-        const isReferenceDriver = this.driver["driver-info"]['index'] === this.spectatorIndex;
-        const isPlayerDriver = this.driver["driver-info"]['is-player'];
-        const isTelemetryPublic = this.driver["driver-info"]['telemetry-setting'] === "Public";
-
-        // Determine if this row represents the reference driver —
-        // either the selected driver while spectating, or the actual player while driving
-        const isPlayerRow = (isSpectating && isReferenceDriver) || (!isSpectating && isPlayerDriver);
-
-        if (isPlayerRow) {
-            this.element.classList.add('player-row');
-        } else {
-            this.element.classList.remove('player-row');
-        }
-
-        // Clear previous content
-        this.element.innerHTML = "";
-        let cells;
-
-        if (isTelemetryPublic) {
-            cells = [
-                ...this.getDriverInfoCells(),
-                ...this.getDeltaInfoCells(),
-                ...this.getPenaltyCells(),
-                ...this.getLapTimeCells(),
-                ...this.getTyreInfoCells(true),
-                ...this.getErsCells(),
-                ...this.getFuelCells(),
-                ...this.getDamageCells(),
-            ];
-        } else {
-            cells = [
-                ...this.getDriverInfoCells(),
-                ...this.getDeltaInfoCells(),
-                ...this.getPenaltyCells(),
-                ...this.getLapTimeCells(),
-                ...this.getTyreInfoCells(false),
-            ]
-            // values for tyre info*, ERS, fuel and damage are not available when Telemetry is Private,
-            // Dynamically compute the number of omitted columns for colspan
-            const omittedColumnsCount =
-                // For tyre info, we partially show the data. Compound, age and num pit stop data will always be avlb
-                (this.getTyreInfoCells(true).length - this.getTyreInfoCells(false).length) +
-                this.getErsCells().length +
-                this.getFuelCells().length +
-                this.getDamageCells().length;
-            cells.push({
-                value: "Driver has telemetry set to Restricted",
-                colspan: omittedColumnsCount,
-                class: "eng-view-restricted-cell text-center"
-            });
-            console.log("Driver has telemetry set to Restricted", omittedColumnsCount);
-        }
-
-        // Iterate through cells and append them correctly
-        cells.forEach(cell => {
-            const td = document.createElement("td");
-
-            // Handle optional properties
-            if ("colspan" in cell) {
-                td.colSpan = cell.colspan;
-            }
-
-            if ("class" in cell) {
-                td.className = cell.class;
-            } else if (cell.border) {
-                td.classList.add("eng-view-col-border");
-            }
-
-            // Render content
-            if (cell.value instanceof HTMLElement) {
-                td.appendChild(cell.value);
-            } else {
-                td.innerHTML = cell.value;
-            }
-
-            this.element.appendChild(td);
-        });
-    }
-
-    renderTT() {
-        // Clear existing content and display a message spanning all columns
-        this.element.innerHTML = `
-            <td colspan="100%" class="text-center">
-                Time Trial not supported in Engineer View
-            </td>
-        `;
-    }
-
-    update(driver) {
-        this.driver = driver;
-        this.render();
-    }
-}
-
 // Class to manage the race table
 class EngViewRaceTable {
     constructor(iconCache) {
-        this.tableBody = document.getElementById('engViewRaceTableBody');
-        this.rows = new Map();
         this.iconCache = iconCache;
+        this.table = null;
+        this.spectatorIndex = null;
+        this.isSpectating = false;
+        this.initTable();
     }
 
-    clear() {
-        this.tableBody.innerHTML = '';
-        this.rows.clear();
+    initTable() {
+        this.table = new Tabulator("#eng-view-table", {
+            layout: "fitColumns",
+            placeholder: "No Data Available",
+            columnHeaderSortMulti: false,
+            index: "id",
+            columns: this.getColumnDefinitions(),
+            rowFormatter: (row) => {
+                const data = row.getData();
+                const isReferenceDriver = data.isPlayer || data.index === this.spectatorIndex;
+
+                if (isReferenceDriver) {
+                    row.getElement().classList.add('player-row');
+                } else {
+                    row.getElement().classList.remove('player-row');
+                }
+            },
+        });
+    }
+
+    getColumnDefinitions() {
+        const disableSorting = { headerSort: false };
+        return [
+            { title: "Pos", field: "position", width: 40, ...disableSorting },
+            {
+                title: "Name",
+                field: "name",
+                formatter: (cell, formatterParams, onRendered) => {
+                    const data = cell.getRow().getData();
+                    return `${data.name}<br><span class="text-muted">${data.team}</span>`;
+                },
+                cellClick: (e, cell) => {
+                    const data = cell.getRow().getData();
+                    fetch(`/driver-info?index=${data.index}`)
+                        .then(response => response.json())
+                        .then(driverData => {
+                            window.modalManager.openDriverModal(driverData, this.iconCache);
+                        })
+                        .catch(err => console.error("Fetch error:", err));
+                },
+                ...disableSorting
+            },
+            {
+                title: "Delta",
+                field: "delta",
+                formatter: (cell) => {
+                    const data = cell.getRow().getData();
+                    const position = data.position;
+                    const deltaInfo = data["delta-info"];
+                    const deltaToCarInFront = deltaInfo["delta-to-car-in-front"] / 1000;
+                    const deltaToLeader = deltaInfo["delta-to-leader"] / 1000;
+                    if (position == 1) {
+                        return `Interval<br>Leader`;
+                    }
+                    return `${formatFloatWithThreeDecimalsSigned(deltaToCarInFront)}<br>${formatFloatWithThreeDecimalsSigned(deltaToLeader)}`;
+                },
+                ...disableSorting
+            },
+            {
+                title: 'Penalties',
+                headerSort: false,
+                columns: [
+                    { title: "Track", field: "warns-pens-info.corner-cutting-warnings", ...disableSorting },
+                    { title: 'Time', field: 'warns-pens-info.time-penalties', ...disableSorting },
+                    { title: 'DT', field: 'warns-pens-info.num-dt', ...disableSorting },
+                    { title: 'Serv', field: 'warns-pens-info.num-sg', ...disableSorting },
+                ],
+            },
+            {
+                title: 'Best Lap',
+                headerSort: false,
+                columns: [
+                    { title: "Lap", field: "lap-info.best-lap.lap-time-ms", formatter: (cell) => formatLapTime(cell.getValue()), ...disableSorting },
+                    { title: "S1", field: "lap-info.best-lap.s1-time-ms", formatter: (cell) => formatSectorTime(cell.getValue()), ...disableSorting },
+                    { title: "S2", field: "lap-info.best-lap.s2-time-ms", formatter: (cell) => formatSectorTime(cell.getValue()), ...disableSorting },
+                    { title: "S3", field: "lap-info.best-lap.s3-time-ms", formatter: (cell) => formatSectorTime(cell.getValue()), ...disableSorting },
+                ],
+            },
+            {
+                title: 'Last Lap',
+                headerSort: false,
+                columns: [
+                    { title: "Lap", field: "lap-info.last-lap.lap-time-ms", formatter: (cell) => formatLapTime(cell.getValue()), ...disableSorting },
+                    { title: "S1", field: "lap-info.last-lap.s1-time-ms", formatter: (cell) => formatSectorTime(cell.getValue()), ...disableSorting },
+                    { title: "S2", field: "lap-info.last-lap.s2-time-ms", formatter: (cell) => formatSectorTime(cell.getValue()), ...disableSorting },
+                    { title: "S3", field: "lap-info.last-lap.s3-time-ms", formatter: (cell) => formatSectorTime(cell.getValue()), ...disableSorting },
+                ],
+            },
+            {
+                title: 'Tyre Wear',
+                headerSort: false,
+                columns: [
+                    { title: "Comp", field: "tyre-info.visual-tyre-compound", formatter: (cell) => this.iconCache.getIcon(cell.getValue()).outerHTML, ...disableSorting },
+                    { title: "Lap", field: "tyre-info.tyre-age", ...disableSorting },
+                    { title: "FL", field: "tyre-info.current-wear.front-left-wear", formatter: (cell) => `${formatFloatWithTwoDecimals(cell.getValue())}%`, ...disableSorting },
+                    { title: "FR", field: "tyre-info.current-wear.front-right-wear", formatter: (cell) => `${formatFloatWithTwoDecimals(cell.getValue())}%`, ...disableSorting },
+                    { title: "RL", field: "tyre-info.current-wear.rear-left-wear", formatter: (cell) => `${formatFloatWithTwoDecimals(cell.getValue())}%`, ...disableSorting },
+                    { title: "RR", field: "tyre-info.current-wear.rear-right-wear", formatter: (cell) => `${formatFloatWithTwoDecimals(cell.getValue())}%`, ...disableSorting },
+                ],
+            },
+            {
+                title: 'ERS',
+                headerSort: false,
+                columns: [
+                    { title: "Avail", field: "ers-info.ers-percent", ...disableSorting },
+                    { title: "Deploy", field: "ers-info.ers-deployed-this-lap", formatter: (cell) => `${formatFloatWithTwoDecimals(cell.getValue())}%`, ...disableSorting },
+                    { title: "Mode", field: "ers-info.ers-mode", formatter: (cell) => getShortERSMode(cell.getValue()), ...disableSorting },
+                ],
+            },
+            {
+                title: 'Fuel',
+                headerSort: false,
+                columns: [
+                    { title: "Total", field: "fuel-info.fuel-in-tank", formatter: (cell) => cell.getValue() == null ? "N/A" : formatFloatWithTwoDecimals(cell.getValue()), ...disableSorting },
+                    { title: "Per Lap", field: "fuel-info.curr-fuel-rate", formatter: (cell) => cell.getValue() == null ? "N/A" : formatFloatWithTwoDecimals(cell.getValue()), ...disableSorting },
+                    { title: "Est", field: "fuel-info.surplus-laps-png", formatter: (cell) => cell.getValue() == null ? "N/A" : formatFloatWithTwoDecimalsSigned(cell.getValue()), ...disableSorting },
+                ],
+            },
+            {
+                title: 'Damage',
+                headerSort: false,
+                columns: [
+                    { title: "FL", field: "damage-info.fl-wing-damage", formatter: (cell) => `${cell.getValue()}%`, ...disableSorting },
+                    { title: "FR", field: "damage-info.fr-wing-damage", formatter: (cell) => `${cell.getValue()}%`, ...disableSorting },
+                    { title: "RW", field: "damage-info.rear-wing-damage", formatter: (cell) => `${cell.getValue()}%`, ...disableSorting },
+                ],
+            },
+        ];
     }
 
     update(drivers, isSpectating, eventType, spectatorCarIndex) {
-        // Clear the existing table body
-        this.clear();
+        this.spectatorIndex = spectatorCarIndex;
+        this.isSpectating = isSpectating;
 
-        // Time trial not supported
         if (eventType === "Time Trial") {
-            const row = new EngViewRaceTableRow(null, isSpectating, this.iconCache, eventType, spectatorCarIndex);
-            this.rows.set(1, row);
-            this.tableBody.appendChild(row.element);
-        } else {
-            // Repopulate the table with the new driver data
-            updateReferenceLapTimes(drivers,
-                (isSpectating) ?
-                ((entry) => entry["driver-info"]?.["index"] == spectatorCarIndex) :
-                ((entry) => entry["driver-info"]?.["is-player"])
-                );
-            drivers.forEach(driver => {
-                const row = new EngViewRaceTableRow(driver, isSpectating, this.iconCache, eventType, spectatorCarIndex);
-                this.rows.set(driver.position, row);
-                this.tableBody.appendChild(row.element);
-            });
+            this.table.clearData();
+            this.table.placeholder = "Time Trial not supported in Engineer View";
+            return;
         }
+
+        updateReferenceLapTimes(drivers, (entry) =>
+            this.isSpectating ?
+            entry["driver-info"]?.["index"] == this.spectatorIndex :
+            entry["driver-info"]?.["is-player"]
+        );
+
+        const tableData = drivers.map(driver => ({
+            ...driver,
+            id: driver['driver-info']['index'],
+            position: driver['driver-info']['position'],
+            name: driver['driver-info']['name'],
+            team: driver['driver-info']['team'],
+            isPlayer: driver['driver-info']['is-player'],
+            index: driver['driver-info']['index'],
+        }));
+
+        if (tableData && tableData.length > 0) {
+            this.table.setData(tableData);
+        }
+    }
+
+    clear() {
+        this.table.clearData();
     }
 }
 
