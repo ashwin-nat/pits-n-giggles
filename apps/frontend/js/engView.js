@@ -18,6 +18,7 @@ class EngViewRaceTable {
         this.table = null;
         this.spectatorIndex = null;
         this.isSpectating = false;
+        this.fastestLapMs = 0;
         this.INVALID_SECTOR = -2;
         this.RED_SECTOR = -1;
         this.YELLOW_SECTOR = 0;
@@ -213,26 +214,33 @@ class EngViewRaceTable {
         return (cell) => {
             const lapInfo = cell.getValue();
             const driverInfo = cell.getRow().getData();
+            const bestLapInfo = driverInfo["lap-info"]["best-lap"];
             const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
             const sectorStatus = lapInfo["sector-status"];
 
+            const timeMs = lapInfo[timeKey];
             const formattedTime = sectorKey === 'lap'
-                ? formatLapTime(lapInfo[timeKey])
-                : formatSectorTime(lapInfo[timeKey]);
+                ? formatLapTime(timeMs)
+                : formatSectorTime(timeMs);
 
             let timeClass = '';
-            if (sectorKey !== 'lap' && sectorStatus) {
-                const sectorIndex = parseInt(sectorKey.slice(1)) - 1;
-                if (sectorStatus[sectorIndex] === this.GREEN_SECTOR) {
-                    timeClass = 'green-time';
-                } else if (sectorStatus[sectorIndex] === this.PURPLE_SECTOR) {
-                    timeClass = 'purple-time';
-                } else if (sectorStatus[sectorIndex] === this.RED_SECTOR) {
-                    timeClass = 'red-time';
+            if (sectorStatus) {
+                if (sectorKey !== 'lap') {
+                    const sectorIndex = parseInt(sectorKey.slice(1)) - 1;
+                    if (sectorStatus[sectorIndex] === this.GREEN_SECTOR) {
+                        timeClass = 'green-time';
+                    } else if (sectorStatus[sectorIndex] === this.PURPLE_SECTOR) {
+                        timeClass = 'purple-time';
+                    } else if (sectorStatus[sectorIndex] === this.RED_SECTOR) {
+                        timeClass = 'red-time';
+                    }
+                } else if (timeMs) {
+                    if (timeMs === this.fastestLapMs) {
+                        timeClass = 'purple-time';
+                    } else if (timeMs === bestLapInfo[timeKey]) {
+                        timeClass = 'green-time';
+                    }
                 }
-            } else {
-                if (lapInfo[fastestKey]) timeClass = 'green-time';
-                if (lapInfo[sessionFastestKey]) timeClass = 'purple-time';
             }
 
             const timeElement = `<div class="${timeClass}">${formattedTime}</div>`;
@@ -241,7 +249,7 @@ class EngViewRaceTable {
                 return timeElement;
             }
 
-            const delta = lapInfo[timeKey] - lapInfo[playerTimeKey];
+            const delta = timeMs - lapInfo[playerTimeKey];
             return this.createMultiLineCell({
                 row1: timeElement,
                 row2: formatDelta(delta)
@@ -258,7 +266,14 @@ class EngViewRaceTable {
             if (sectorKey === 'lap') {
                 const formattedTime = formatLapTime(lapInfo[timeKey]);
                 const isValid = lapInfo["is-valid"];
-                const timeElement = `<div class="${!isValid ? 'red-time' : ''}">${formattedTime}</div>`;
+                const bestLapInfo = driverInfo["lap-info"]["best-lap"];
+                let timeClass = '';
+                if (lapInfo[timeKey] === this.fastestLapMs) {
+                    timeClass = 'purple-time';
+                } else if (lapInfo[timeKey] === bestLapInfo[timeKey]) {
+                    timeClass = 'green-time';
+                }
+                const timeElement = `<div class="${timeClass}">${formattedTime}</div>`;
 
                 if (isReferenceDriver) {
                     return timeElement;
@@ -534,9 +549,10 @@ class EngViewRaceTable {
         return `<div class='${row1Class}'>${row1}</div><div class='${row2Class}'>${row2}</div>`;
     }
 
-    update(drivers, isSpectating, eventType, spectatorCarIndex) {
+    update(drivers, isSpectating, eventType, spectatorCarIndex, fastestLapMs) {
         this.spectatorIndex = spectatorCarIndex;
         this.isSpectating = isSpectating;
+        this.fastestLapMs = fastestLapMs
 
         if (eventType === "Time Trial") {
             this.table.clearData();
@@ -810,10 +826,16 @@ function initDashboard() {
             return;
         }
 
-        const { "table-entries": tableEntries, "is-spectating": isSpectating, "event-type": eventType, "spectator-car-index": spectatorCarIndex } = data;
+        const {
+            "table-entries": tableEntries,
+            "is-spectating": isSpectating,
+            "event-type": eventType,
+            "spectator-car-index": spectatorCarIndex,
+            "fastest-lap-overall" : fastestLapMs
+        } = data;
 
         if (tableEntries || eventType === "Time Trial") {
-            raceTable.update(tableEntries, isSpectating, eventType, spectatorCarIndex);
+            raceTable.update(tableEntries, isSpectating, eventType, spectatorCarIndex, fastestLapMs);
         }
         raceStatus.update(data);
         weatherTable.update(data["weather-forecast-samples"]);
