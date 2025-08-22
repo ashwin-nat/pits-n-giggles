@@ -27,6 +27,8 @@ class EngViewRaceTable {
         this.COLUMN_WIDTHS_KEY = 'eng-view-table-column-widths'; // Storage key
         this.COLUMN_VISIBILITY_KEY = 'eng-view-table-column-visibility'; // Storage key for visibility
         this.COLUMN_ORDER_KEY = 'eng-view-table-column-order'; // Storage key for column order
+        this.TELEMETRY_DISABLED_TEXT = "Driver has set telemetry to restricted";
+        this.TELEMETRY_DISABLED_COLOUR = "#ff0000";
         this.initTable();
     }
 
@@ -296,16 +298,22 @@ class EngViewRaceTable {
             const tyreInfo = cell.getRow().getData()["tyre-info"];
             const predictionLap = g_engView_predLapNum;
             const predictedTyreWearInfo = predictionLap
-                ? tyreInfo["wear-prediction"]["predictions"].find(p => p["lap-number"] === predictionLap)
-                : null;
+            ? tyreInfo["wear-prediction"]["predictions"].find(p => p["lap-number"] === predictionLap)
+            : null;
             const currTyreWearInfo = tyreInfo["current-wear"];
 
-            return this.createMultiLineCell({
-                row1: formatFloatWithTwoDecimals(currTyreWearInfo[wearField]) + '%',
-                row2: predictedTyreWearInfo
-                    ? formatFloatWithTwoDecimals(predictedTyreWearInfo[wearField]) + '%'
-                    : '---'
-            });
+            const driverInfo = cell.getRow().getData();
+            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+            if (telemetryPublic) {
+                return this.createMultiLineCell({
+                    row1: formatFloatWithTwoDecimals(currTyreWearInfo[wearField]) + '%',
+                    row2: predictedTyreWearInfo
+                        ? formatFloatWithTwoDecimals(predictedTyreWearInfo[wearField]) + '%'
+                        : '---'
+                });
+            } else {
+                return this.getTelemetryRestrictedContent();
+            }
         };
     }
 
@@ -482,11 +490,37 @@ class EngViewRaceTable {
                 title: 'ERS',
                 headerSort: false,
                 columns: [
-                    { title: "Avail", field: "ers-info.ers-percent", ...disableSorting },
+                    { title: "Avail", field: "ers-info.ers-percent",
+                        formatter: (cell) => {
+                            const driverInfo = cell.getRow().getData();
+                            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+                            if (telemetryPublic) {
+                                return cell.getValue();
+                            } else {
+                                return this.getTelemetryRestrictedContent();
+                            }
+                        },
+                        ...disableSorting },
                     { title: "Deploy", field: "ers-info.ers-deployed-this-lap",
-                        formatter: (cell) => `${formatFloatWithTwoDecimals(cell.getValue())}%`, ...disableSorting },
+                        formatter: (cell) => {
+                            const driverInfo = cell.getRow().getData();
+                            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+                            if (telemetryPublic) {
+                                return `${formatFloatWithTwoDecimals(cell.getValue())}%`;
+                            } else {
+                                return this.getTelemetryRestrictedContent();
+                            }
+                        }, ...disableSorting },
                     { title: "Mode", field: "ers-info.ers-mode",
-                        formatter: (cell) => getShortERSMode(cell.getValue()), ...disableSorting },
+                        formatter: (cell) => {
+                            const driverInfo = cell.getRow().getData();
+                            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+                            if (telemetryPublic) {
+                                return getShortERSMode(cell.getValue());
+                            } else {
+                                return this.getTelemetryRestrictedContent();
+                            }
+                        }, ...disableSorting },
                 ],
             },
             {
@@ -494,29 +528,77 @@ class EngViewRaceTable {
                 headerSort: false,
                 columns: [
                     { title: "Total", field: "fuel-info.fuel-in-tank",
-                        formatter: (cell) => cell.getValue() == null ? "N/A"
-                            : formatFloatWithTwoDecimals(cell.getValue()), ...disableSorting },
-                    { title: "Per Lap", field: "fuel-info.curr-fuel-rate",
-                        formatter: (cell) => cell.getValue() == null
-                            ? "N/A" : formatFloatWithTwoDecimals(cell.getValue()), ...disableSorting },
-                    { title: "Est", field: "fuel-info.surplus-laps-png",
-                        formatter: (cell) => cell.getValue() == null ? "N/A"
-                            : formatFloatWithTwoDecimalsSigned(cell.getValue()), ...disableSorting },
-                ],
-            },
-            {
+                        formatter: (cell) => {
+                            const driverInfo = cell.getRow().getData();
+                            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+                            if (telemetryPublic) {
+                                return cell.getValue() == null ? "N/A"
+                                    : formatFloatWithTwoDecimals(cell.getValue());
+                          } else {
+                               return this.getTelemetryRestrictedContent();
+                          }
+                      }, ...disableSorting },
+                  { title: "Per Lap", field: "fuel-info.curr-fuel-rate",
+                      formatter: (cell) => {
+                            const driverInfo = cell.getRow().getData();
+                            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+                            if (telemetryPublic) {
+                                return cell.getValue() == null
+                                    ? "N/A" : formatFloatWithTwoDecimals(cell.getValue());
+                          } else {
+                               return this.getTelemetryRestrictedContent();
+                          }
+                      }, ...disableSorting },
+                  { title: "Est", field: "fuel-info.surplus-laps-png",
+                      formatter: (cell) => {
+                            const driverInfo = cell.getRow().getData();
+                            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+                            if (telemetryPublic) {
+                                return cell.getValue() == null ? "N/A"
+                                    : formatFloatWithTwoDecimalsSigned(cell.getValue());
+                           } else {
+                               return this.getTelemetryRestrictedContent();
+                           }
+                       }, ...disableSorting },
+               ],
+           },
+           {
                 title: 'Damage',
                 headerSort: false,
                 columns: [
                     { title: "FL", field: "damage-info.fl-wing-damage",
-                        formatter: (cell) => `${cell.getValue()}%`, ...disableSorting },
+                        formatter: (cell) =>  {
+                            const driverInfo = cell.getRow().getData();
+                            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+                            if (telemetryPublic) {
+                                return `${cell.getValue()}%`;
+                            } else {
+                                return `<div class="telemetry-restricted" style="background-color:${this.TELEMETRY_DISABLED_COLOUR}; color: white;" title="${this.TELEMETRY_DISABLED_TEXT}">---</div>`;
+                            }
+                        }, ...disableSorting },
                     { title: "FR", field: "damage-info.fr-wing-damage",
-                        formatter: (cell) => `${cell.getValue()}%`, ...disableSorting },
-                    { title: "RW", field: "damage-info.rear-wing-damage",
-                        formatter: (cell) => `${cell.getValue()}%`, ...disableSorting },
-                ],
-            },
-        ];
+                        formatter: (cell) =>  {
+                            const driverInfo = cell.getRow().getData();
+                            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+                            if (telemetryPublic) {
+                                return `${cell.getValue()}%`;
+                           } else {
+                               return this.getTelemetryRestrictedContent();
+                           }
+                       }, ...disableSorting },
+                   { title: "RW", field: "damage-info.rear-wing-damage",
+                       formatter: (cell) =>  {
+                            const driverInfo = cell.getRow().getData();
+                            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+                            if (telemetryPublic) {
+                                return `${cell.getValue()}%`;
+                           } else {
+                               return this.getTelemetryRestrictedContent();
+                           }
+                       }, ...disableSorting },
+               ],
+           },
+       ];
     }
 
     createPositionStatusCell(position, driverInfo) {
@@ -584,6 +666,10 @@ class EngViewRaceTable {
                 this.table.rowManager.element.scrollLeft = scrollPosLeft;
             });
         }
+    }
+
+    getTelemetryRestrictedContent() {
+        return `<div class="telemetry-restricted" style="background-color:${this.TELEMETRY_DISABLED_COLOUR}; color: white;" data-bs-toggle="tooltip" data-bs-title="${this.TELEMETRY_DISABLED_TEXT}">---</div>`;
     }
 
     clear() {
