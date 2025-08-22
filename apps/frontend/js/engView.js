@@ -27,8 +27,7 @@ class EngViewRaceTable {
         this.COLUMN_WIDTHS_KEY = 'eng-view-table-column-widths'; // Storage key
         this.COLUMN_VISIBILITY_KEY = 'eng-view-table-column-visibility'; // Storage key for visibility
         this.COLUMN_ORDER_KEY = 'eng-view-table-column-order'; // Storage key for column order
-        this.TELEMETRY_DISABLED_TEXT = "Driver has set telemetry to restricted";
-        this.TELEMETRY_DISABLED_COLOUR = "#ff0000";
+        this.TELEMETRY_DISABLED_TEXT = "⌀";
         this.initTable();
     }
 
@@ -671,8 +670,7 @@ class EngViewRaceTable {
     }
 
     getTelemetryRestrictedContent() {
-        return `<div class="single-line-cell" style="background-color:${this.TELEMETRY_DISABLED_COLOUR};
-                color: white;">N/A</div>`;
+        return this.getSingleLineCell(this.TELEMETRY_DISABLED_TEXT);
     }
 
     getSingleLineCell(value) {
