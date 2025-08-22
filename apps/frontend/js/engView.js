@@ -64,7 +64,7 @@ class EngViewRaceTable {
                 field: "name",
                 formatter: (cell, formatterParams, onRendered) => {
                     const data = cell.getRow().getData();
-                    return `<div class='eng-view-tyre-row-1'>${data.name}</div><div class='eng-view-tyre-row-2'>${data.team}</div>`;
+                    return this.createMultiLineCell(data.name, data.team);
                 },
                 cellClick: (e, cell) => {
                     const data = cell.getRow().getData();
@@ -87,9 +87,9 @@ class EngViewRaceTable {
                     const deltaToCarInFront = deltaInfo["delta-to-car-in-front"] / 1000;
                     const deltaToLeader = deltaInfo["delta-to-leader"] / 1000;
                     if (position == 1) {
-                        return `<div class='eng-view-tyre-row-1'>Interval</div><div class='eng-view-tyre-row-2'>Leader</div>`;
+                        return this.createMultiLineCell('Interval', 'Leader');
                     }
-                    return `<div class='eng-view-tyre-row-1'>${formatFloatWithThreeDecimalsSigned(deltaToCarInFront)}</div><div class='eng-view-tyre-row-2'>${formatFloatWithThreeDecimalsSigned(deltaToLeader)}</div>`;
+                    return this.createMultiLineCell(formatFloatWithThreeDecimalsSigned(deltaToCarInFront), formatFloatWithThreeDecimalsSigned(deltaToLeader));
                 },
                 ...disableSorting
             },
@@ -128,7 +128,7 @@ class EngViewRaceTable {
                                 return timeElement;
                             }
                             const delta = lapInfo["lap-time-ms"] - lapInfo["lap-time-ms-player"];
-                            return `<div class='eng-view-tyre-row-1'>${timeElement}</div><div class='eng-view-tyre-row-2'>${formatDelta(delta)}</div>`;
+                            return this.createMultiLineCell(timeElement, formatDelta(delta));
                         },
                         ...disableSorting
                     },
@@ -153,7 +153,7 @@ class EngViewRaceTable {
                                 return timeElement;
                             }
                             const delta = lapInfo["s1-time-ms"] - lapInfo["s1-time-ms-player"];
-                            return `<div class='eng-view-tyre-row-1'>${timeElement}</div><div class='eng-view-tyre-row-2'>${formatDelta(delta)}</div>`;
+                            return this.createMultiLineCell(timeElement, formatDelta(delta));
                         },
                         ...disableSorting
                     },
@@ -178,7 +178,7 @@ class EngViewRaceTable {
                                 return timeElement;
                             }
                             const delta = lapInfo["s2-time-ms"] - lapInfo["s2-time-ms-player"];
-                            return `<div class='eng-view-tyre-row-1'>${timeElement}</div><div class='eng-view-tyre-row-2'>${formatDelta(delta)}</div>`;
+                            return this.createMultiLineCell(timeElement, formatDelta(delta));
                         },
                         ...disableSorting
                     },
@@ -203,7 +203,7 @@ class EngViewRaceTable {
                                 return timeElement;
                             }
                             const delta = lapInfo["s3-time-ms"] - lapInfo["s3-time-ms-player"];
-                            return `<div class='eng-view-tyre-row-1'>${timeElement}</div><div class='eng-view-tyre-row-2'>${formatDelta(delta)}</div>`;
+                            return this.createMultiLineCell(timeElement, formatDelta(delta));
                         },
                         ...disableSorting
                     },
@@ -228,7 +228,7 @@ class EngViewRaceTable {
                                 return timeElement;
                             }
                             const delta = lapInfo["lap-time-ms"] - lapInfo["lap-time-ms-player"];
-                            return `<div class='eng-view-tyre-row-1'>${timeElement}</div><div class='eng-view-tyre-row-2'>${formatDelta(delta)}</div>`;
+                            return this.createMultiLineCell(timeElement, formatDelta(delta));
                         },
                         ...disableSorting
                     },
@@ -253,7 +253,7 @@ class EngViewRaceTable {
                                 return timeElement;
                             }
                             const delta = lapInfo["s1-time-ms"] - lapInfo["s1-time-ms-player"];
-                            return `<div class='eng-view-tyre-row-1'>${timeElement}</div><div class='eng-view-tyre-row-2'>${formatDelta(delta)}</div>`;
+                            return this.createMultiLineCell(timeElement, formatDelta(delta));
                         },
                         ...disableSorting
                     },
@@ -278,7 +278,7 @@ class EngViewRaceTable {
                                 return timeElement;
                             }
                             const delta = lapInfo["s2-time-ms"] - lapInfo["s2-time-ms-player"];
-                            return `<div class='eng-view-tyre-row-1'>${timeElement}</div><div class='eng-view-tyre-row-2'>${formatDelta(delta)}</div>`;
+                            return this.createMultiLineCell(timeElement, formatDelta(delta));
                         },
                         ...disableSorting
                     },
@@ -303,7 +303,7 @@ class EngViewRaceTable {
                                 return timeElement;
                             }
                             const delta = lapInfo["s3-time-ms"] - lapInfo["s3-time-ms-player"];
-                            return `<div class='eng-view-tyre-row-1'>${timeElement}</div><div class='eng-view-tyre-row-2'>${formatDelta(delta)}</div>`;
+                            return this.createMultiLineCell(timeElement, formatDelta(delta));
                         },
                         ...disableSorting
                     },
@@ -320,7 +320,7 @@ class EngViewRaceTable {
                             const tyreInfo = cell.getRow().getData()["tyre-info"];
                             const tyreIcon = this.iconCache.getIcon(tyreInfo["visual-tyre-compound"]).outerHTML;
                             const agePitInfoStr = `${tyreInfo["tyre-age"]} L (${tyreInfo["num-pitstops"]} pit)`;
-                            return `<div class='eng-view-tyre-row-1'>${tyreIcon}</div><div class='eng-view-tyre-row-2'>${agePitInfoStr}</div>`;
+                            return this.createMultiLineCell(tyreIcon, agePitInfoStr);
                         },
                         ...disableSorting
                     },
