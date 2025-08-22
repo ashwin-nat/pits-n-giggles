@@ -104,35 +104,6 @@ class EngViewRaceTable {
                 ],
             },
             {
-                title: 'Status',
-                headerSort: false,
-                columns: [
-                    {
-                        title: "DRS",
-                        field: "drs-status",
-                        formatter: cell => {
-                            const drsStatus = cell.getValue();
-                            if (drsStatus === 'NOT_ALLOWED') return `<span class="drs-not-available">DRS</span>`;
-                            if (drsStatus === 'ALLOWED') return `<span class="drs-available">DRS</span>`;
-                            if (drsStatus === 'ACTIVE') return `<span class="drs-active">DRS</span>`;
-                            return '---';
-                        },
-                        ...disableSorting
-                    },
-                    {
-                        title: "Pit",
-                        field: "pit-status",
-                        formatter: cell => {
-                            const pitStatus = cell.getValue();
-                            if (pitStatus === 'PITTING') return `<span class="driver-pitting">PIT</span>`;
-                            if (pitStatus === 'IN_GARAGE') return `<span class="driver-pitting">GARAGE</span>`;
-                            return '---';
-                        },
-                        ...disableSorting
-                    },
-                ],
-            },
-            {
                 title: 'Best Lap',
                 headerSort: false,
                 columns: [
