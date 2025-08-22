@@ -95,7 +95,6 @@ class RaceInfoUpdate:
         final_json = {
             # First, global fields
             "live-data" : True,
-            "session-uid" : _getValueOrDefaultValue(self.m_session_info.m_session_uid, None),
             "f1-game-year" : _getValueOrDefaultValue(self.m_session_info.m_game_year, None),
             "packet-format" : _getValueOrDefaultValue(self.m_session_info.m_packet_format, None),
             "circuit": str(self.m_session_info.m_track) if self.m_session_info.m_track is not None else "---",

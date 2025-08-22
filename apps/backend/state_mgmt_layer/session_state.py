@@ -62,8 +62,6 @@ class SessionInfo:
          - m_track (Optional[TrackID]): The current track
          - m_track_len (Optional[int]): The length of the track in meters
          - m_session_type (Optional[SessionType): The type of the session, will be an enum specific to game year
-         - m_session_uid (Optional[int]): The unique identifier of the session
-         - m_game_mode (Optional[GameMode]): The current game mode
          - m_track_temp (Optional[int]): The current track temperature in degrees Celsius
          - m_air_temp (Optional[int]): The current air temperature in degrees Celsius
          - m_total_laps (Optional[int]): The total number of laps in the current event
@@ -86,7 +84,6 @@ class SessionInfo:
         self.m_track : Optional[TrackID] = None
         self.m_track_len: Optional[int] = None
         self.m_session_type : Optional[SessionType] = None
-        self.m_session_uid : Optional[int] = None
         self.m_game_mode: Optional[GameMode] = None
         self.m_track_temp : Optional[int] = None
         self.m_air_temp : Optional[int] = None
@@ -131,7 +128,6 @@ class SessionInfo:
         self.m_track = None
         self.m_track_len = None
         self.m_session_type = None
-        self.m_session_uid = None
         self.m_game_mode = None
         self.m_track_temp = None
         self.m_air_temp = None
@@ -182,7 +178,6 @@ class SessionInfo:
         self.m_track_temp = packet.m_trackTemperature
         self.m_air_temp = packet.m_airTemperature
         self.m_session_type = packet.m_sessionType
-        self.m_session_uid = packet.m_header.m_sessionUID
         self.m_game_mode = packet.m_gameMode
         self.m_weather_forecast_samples = packet.m_weatherForecastSamples
         self.m_pit_speed_limit = packet.m_pitSpeedLimit
