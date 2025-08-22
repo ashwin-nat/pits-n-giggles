@@ -52,7 +52,7 @@ poetry run python -m apps.backend
 ### 🛠 Dev Tools (e.g., telemetry replayer)
 
 ```bash
-poetry run python -m apps.dev.telemetry_replayer --file-name example.f1pcap
+poetry run python -m apps.dev_tools.telemetry_replayer --file-name example.f1pcap
 ```
 
 ---
