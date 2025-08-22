@@ -28,8 +28,8 @@ body {
 }
 
 .eng-view-race-table-section {
-    flex: 0 0 85%;
-    overflow-y: auto;
+    flex: 1;
+    overflow-y: scroll;
     padding-bottom: 6rem;
     padding-left: 1rem;
     padding-right: 1rem;
@@ -278,12 +278,16 @@ input[type="number"]::-webkit-outer-spin-button {
     font-size: 0.85rem;
     background-color: var(--f1-dark);
     border: 1px solid #333;
+    height: 100% !important;
 }
 
 .tabulator-header {
     background-color: var(--f1-darker) !important;
     color: var(--f1-text) !important;
     border-bottom: 1px solid #333;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 1 !important;
 }
 
 .tabulator-col {

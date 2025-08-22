@@ -26,6 +26,7 @@ class EngViewRaceTable {
             layout: "fitColumns",
             placeholder: "No Data Available",
             columnHeaderSortMulti: false,
+            virtualDom: false,
             index: "id",
             columns: this.getColumnDefinitions(),
             rowFormatter: (row) => {
@@ -178,7 +179,10 @@ class EngViewRaceTable {
         }));
 
         if (tableData && tableData.length > 0) {
-            this.table.setData(tableData);
+            const scrollPos = this.table.rowManager.element.scrollTop;
+            this.table.setData(tableData).then(() => {
+                this.table.rowManager.element.scrollTop = scrollPos;
+            });
         }
     }
 
