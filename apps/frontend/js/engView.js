@@ -1,4 +1,4 @@
-let g_engView_pitLapNum = null;
+let g_engView_predLapNum = null;
 
 function getShortERSMode(mode) {
     switch (mode) {
@@ -438,25 +438,25 @@ class EngViewRaceStatus {
         this.predictionLapInput.addEventListener('input', (e) => {
             let value = parseInt(e.target.value);
             if (!isNaN(value) && value >= e.target.min && value <= e.target.max) {
-                g_engView_pitLapNum = value;
-                console.log('Prediction lap changed to:', g_engView_pitLapNum);
+                g_engView_predLapNum = value;
+                console.log('Prediction lap changed to:', g_engView_predLapNum);
             } else {
                 console.warn('Invalid input: Out of range');
             }
         });
 
         this.predictionPitBtn.addEventListener('click', () => {
-            g_engView_pitLapNum = this.pitLap;
+            g_engView_predLapNum = this.pitLap;
             this.#updatePredLapInputBox();
         });
 
         this.predictionMidBtn.addEventListener('click', () => {
-            g_engView_pitLapNum = this.midLap;
+            g_engView_predLapNum = this.midLap;
             this.#updatePredLapInputBox();
         });
 
         this.predictionLastBtn.addEventListener('click', () => {
-            g_engView_pitLapNum = this.totalLaps;
+            g_engView_predLapNum = this.totalLaps;
             this.#updatePredLapInputBox();
         });
 
@@ -466,8 +466,8 @@ class EngViewRaceStatus {
     }
 
     #updatePredLapInputBox() {
-        this.predictionLapInput.value = g_engView_pitLapNum;
-        console.log("Updated prediction element value", g_engView_pitLapNum);
+        this.predictionLapInput.value = g_engView_predLapNum;
+        console.log("Updated prediction element value", g_engView_predLapNum);
     }
 
     #getSCStatusString(scStatus) {
@@ -511,14 +511,14 @@ class EngViewRaceStatus {
         let shouldUpdatePred = false;
         if (data["total-laps"] != "---" && this.totalLaps != data["total-laps"]) {
             // Set the initial prediction value
-            g_engView_pitLapNum = data["total-laps"];
+            g_engView_predLapNum = data["total-laps"];
             shouldUpdatePred = true;
             this.predictionLastBtn.disabled = false;
         }
 
         if (this.pitLap == null && data["player-pit-window"]) {
             // If the pit window becomes available
-            g_engView_pitLapNum = data["player-pit-window"];
+            g_engView_predLapNum = data["player-pit-window"];
             shouldUpdatePred = true;
             this.predictionPitBtn.disabled = false;
         }
