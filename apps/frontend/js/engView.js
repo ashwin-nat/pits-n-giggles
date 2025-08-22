@@ -74,7 +74,10 @@ class EngViewRaceTable {
                 field: "name",
                 formatter: (cell, formatterParams, onRendered) => {
                     const data = cell.getRow().getData();
-                    return this.createMultiLineCell(data.name, data.team);
+                    return this.createMultiLineCell({
+                        row1: data.name,
+                        row2: data.team
+                    });
                 },
                 cellClick: (e, cell) => {
                     const data = cell.getRow().getData();
@@ -97,9 +100,15 @@ class EngViewRaceTable {
                     const deltaToCarInFront = deltaInfo["delta-to-car-in-front"] / 1000;
                     const deltaToLeader = deltaInfo["delta-to-leader"] / 1000;
                     if (position == 1) {
-                        return this.createMultiLineCell('Interval', 'Leader');
+                        return this.createMultiLineCell({
+                            row1: 'Interval',
+                            row2: 'Leader'
+                        });
                     }
-                    return this.createMultiLineCell(formatFloatWithThreeDecimalsSigned(deltaToCarInFront), formatFloatWithThreeDecimalsSigned(deltaToLeader));
+                    return this.createMultiLineCell({
+                        row1: formatFloatWithThreeDecimalsSigned(deltaToCarInFront),
+                        row2: formatFloatWithThreeDecimalsSigned(deltaToLeader)
+                    });
                 },
                 ...disableSorting
             },
@@ -138,7 +147,10 @@ class EngViewRaceTable {
                                 return timeElement;
                             }
                             const delta = lapInfo["lap-time-ms"] - lapInfo["lap-time-ms-player"];
-                            return this.createMultiLineCell(timeElement, formatDelta(delta));
+                            return this.createMultiLineCell({
+                                row1: timeElement,
+                                row2: formatDelta(delta)
+                            });
                         },
                         ...disableSorting
                     },
@@ -163,7 +175,10 @@ class EngViewRaceTable {
                                 return timeElement;
                             }
                             const delta = lapInfo["s1-time-ms"] - lapInfo["s1-time-ms-player"];
-                            return this.createMultiLineCell(timeElement, formatDelta(delta));
+                            return this.createMultiLineCell({
+                                row1: timeElement,
+                                row2: formatDelta(delta)
+                            });
                         },
                         ...disableSorting
                     },
@@ -188,7 +203,10 @@ class EngViewRaceTable {
                                 return timeElement;
                             }
                             const delta = lapInfo["s2-time-ms"] - lapInfo["s2-time-ms-player"];
-                            return this.createMultiLineCell(timeElement, formatDelta(delta));
+                            return this.createMultiLineCell({
+                                row1: timeElement,
+                                row2: formatDelta(delta)
+                            });
                         },
                         ...disableSorting
                     },
@@ -213,7 +231,10 @@ class EngViewRaceTable {
                                 return timeElement;
                             }
                             const delta = lapInfo["s3-time-ms"] - lapInfo["s3-time-ms-player"];
-                            return this.createMultiLineCell(timeElement, formatDelta(delta));
+                            return this.createMultiLineCell({
+                                row1: timeElement,
+                                row2: formatDelta(delta)
+                            });
                         },
                         ...disableSorting
                     },
@@ -238,7 +259,10 @@ class EngViewRaceTable {
                                 return timeElement;
                             }
                             const delta = lapInfo["lap-time-ms"] - lapInfo["lap-time-ms-player"];
-                            return this.createMultiLineCell(timeElement, formatDelta(delta));
+                            return this.createMultiLineCell({
+                                row1: timeElement,
+                                row2: formatDelta(delta)
+                            });
                         },
                         ...disableSorting
                     },
@@ -263,7 +287,10 @@ class EngViewRaceTable {
                                 return timeElement;
                             }
                             const delta = lapInfo["s1-time-ms"] - lapInfo["s1-time-ms-player"];
-                            return this.createMultiLineCell(timeElement, formatDelta(delta));
+                            return this.createMultiLineCell({
+                                row1: timeElement,
+                                row2: formatDelta(delta)
+                            });
                         },
                         ...disableSorting
                     },
@@ -288,7 +315,10 @@ class EngViewRaceTable {
                                 return timeElement;
                             }
                             const delta = lapInfo["s2-time-ms"] - lapInfo["s2-time-ms-player"];
-                            return this.createMultiLineCell(timeElement, formatDelta(delta));
+                            return this.createMultiLineCell({
+                                row1: timeElement,
+                                row2: formatDelta(delta)
+                            });
                         },
                         ...disableSorting
                     },
@@ -313,7 +343,10 @@ class EngViewRaceTable {
                                 return timeElement;
                             }
                             const delta = lapInfo["s3-time-ms"] - lapInfo["s3-time-ms-player"];
-                            return this.createMultiLineCell(timeElement, formatDelta(delta));
+                            return this.createMultiLineCell({
+                                row1: timeElement,
+                                row2: formatDelta(delta)
+                            });
                         },
                         ...disableSorting
                     },
@@ -330,7 +363,10 @@ class EngViewRaceTable {
                             const tyreInfo = cell.getRow().getData()["tyre-info"];
                             const tyreIcon = this.iconCache.getIcon(tyreInfo["visual-tyre-compound"]).outerHTML;
                             const agePitInfoStr = `${tyreInfo["tyre-age"]} L (${tyreInfo["num-pitstops"]} pit)`;
-                            return this.createMultiLineCell(tyreIcon, agePitInfoStr);
+                            return this.createMultiLineCell({
+                                row1: tyreIcon,
+                                row2: agePitInfoStr
+                            });
                         },
                         ...disableSorting
                     },
@@ -339,7 +375,10 @@ class EngViewRaceTable {
                         field: "tyre-info.tyre-age",
                         formatter: (cell) => {
                             const predictionLap = g_engView_predLapNum;
-                            return this.createMultiLineCell("cur", (predictionLap) ? (predictionLap) : ("---"));
+                            return this.createMultiLineCell({
+                                row1: "cur",
+                                row2: ((predictionLap) ? (predictionLap) : ("---"))
+                            });
                         },
                         ...disableSorting
                     },
@@ -351,8 +390,12 @@ class EngViewRaceTable {
                             const predictionLap = g_engView_predLapNum;
                             const predictedTyreWearInfo = (predictionLap) ? (tyreInfo["wear-prediction"]["predictions"].find(p => p["lap-number"] === predictionLap)) : (null);
                             const currTyreWearInfo = tyreInfo["current-wear"];
-                            return this.createMultiLineCell(formatFloatWithTwoDecimals(currTyreWearInfo["front-left-wear"]) + '%',
-                                (predictedTyreWearInfo) ? (formatFloatWithTwoDecimals(predictedTyreWearInfo["front-left-wear"]) + '%') : ('---'))
+                            return this.createMultiLineCell({
+                                row1: (formatFloatWithTwoDecimals(currTyreWearInfo["front-left-wear"]) + '%'),
+                                row2: ((predictedTyreWearInfo) ?
+                                        (formatFloatWithTwoDecimals(predictedTyreWearInfo["front-left-wear"]) + '%') :
+                                        ('---'))
+                            });
                         },
                         ...disableSorting
                     },
@@ -364,8 +407,12 @@ class EngViewRaceTable {
                             const predictionLap = g_engView_predLapNum;
                             const predictedTyreWearInfo = (predictionLap) ? (tyreInfo["wear-prediction"]["predictions"].find(p => p["lap-number"] === predictionLap)) : (null);
                             const currTyreWearInfo = tyreInfo["current-wear"];
-                            return this.createMultiLineCell(formatFloatWithTwoDecimals(currTyreWearInfo["front-right-wear"]) + '%',
-                                (predictedTyreWearInfo) ? (formatFloatWithTwoDecimals(predictedTyreWearInfo["front-right-wear"]) + '%') : ('---'))
+                            return this.createMultiLineCell({
+                                row1: (formatFloatWithTwoDecimals(currTyreWearInfo["front-left-wear"]) + '%'),
+                                row2: ((predictedTyreWearInfo) ?
+                                        (formatFloatWithTwoDecimals(predictedTyreWearInfo["front-left-wear"]) + '%') :
+                                        ('---'))
+                            });
                         },
                         ...disableSorting
                     },
@@ -377,8 +424,12 @@ class EngViewRaceTable {
                             const predictionLap = g_engView_predLapNum;
                             const predictedTyreWearInfo = (predictionLap) ? (tyreInfo["wear-prediction"]["predictions"].find(p => p["lap-number"] === predictionLap)) : (null);
                             const currTyreWearInfo = tyreInfo["current-wear"];
-                            return this.createMultiLineCell(formatFloatWithTwoDecimals(currTyreWearInfo["rear-left-wear"]) + '%',
-                                (predictedTyreWearInfo) ? (formatFloatWithTwoDecimals(predictedTyreWearInfo["rear-left-wear"]) + '%') : ('---'))
+                            return this.createMultiLineCell({
+                                row1: (formatFloatWithTwoDecimals(currTyreWearInfo["front-left-wear"]) + '%'),
+                                row2: ((predictedTyreWearInfo) ?
+                                        (formatFloatWithTwoDecimals(predictedTyreWearInfo["front-left-wear"]) + '%') :
+                                        ('---'))
+                            });
                         },
                         ...disableSorting
                     },
@@ -390,8 +441,12 @@ class EngViewRaceTable {
                             const predictionLap = g_engView_predLapNum;
                             const predictedTyreWearInfo = (predictionLap) ? (tyreInfo["wear-prediction"]["predictions"].find(p => p["lap-number"] === predictionLap)) : (null);
                             const currTyreWearInfo = tyreInfo["current-wear"];
-                            return this.createMultiLineCell(formatFloatWithTwoDecimals(currTyreWearInfo["rear-right-wear"]) + '%',
-                                (predictedTyreWearInfo) ? (formatFloatWithTwoDecimals(predictedTyreWearInfo["rear-right-wear"]) + '%') : ('---'))
+                            return this.createMultiLineCell({
+                                row1: (formatFloatWithTwoDecimals(currTyreWearInfo["front-left-wear"]) + '%'),
+                                row2: ((predictedTyreWearInfo) ?
+                                        (formatFloatWithTwoDecimals(predictedTyreWearInfo["front-left-wear"]) + '%') :
+                                        ('---'))
+                            });
                         },
                         ...disableSorting
                     },
@@ -447,7 +502,12 @@ class EngViewRaceTable {
         `;
     }
 
-    createMultiLineCell(row1, row2, row1Class='eng-view-tyre-row-1', row2Class='eng-view-tyre-row-2') {
+    createMultiLineCell({
+        row1,
+        row2,
+        row1Class = 'eng-view-tyre-row-1',
+        row2Class = 'eng-view-tyre-row-2'
+    }) {
         return `<div class='${row1Class}'>${row1}</div><div class='${row2Class}'>${row2}</div>`;
     }
 
