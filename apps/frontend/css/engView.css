@@ -293,7 +293,7 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .tabulator-col {
     background-color: var(--f1-gray);
-    border-right: 1px solid #333;
+    border-right: 1px solid #222;
 }
 
 .tabulator-col-content {
@@ -310,12 +310,16 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .tabulator-row:hover {
-    background-color: var(--f1-light-gray);
+    background-color: var(--f1-dark) !important;
+}
+
+.tabulator-row:nth-child(even):hover {
+    background-color: var(--f1-gray) !important;
 }
 
 .tabulator-cell {
     padding: 0.3rem;
-    border-right: 1px solid #333;
+    border-right: 1px solid #222;
 }
 
 .tabulator-row.player-row .tabulator-cell {
