@@ -210,7 +210,7 @@ class EngViewRaceTable {
         }
     }
 
-    createSectorFormatter(sectorKey, timeKey, fastestKey, sessionFastestKey, playerTimeKey) {
+    createSectorFormatter(sectorKey, timeKey, playerTimeKey) {
         return (cell) => {
             const lapInfo = cell.getValue();
             const driverInfo = cell.getRow().getData();
@@ -257,7 +257,7 @@ class EngViewRaceTable {
         };
     }
 
-    createLastLapFormatter(sectorKey, timeKey, fastestKey, sessionFastestKey, playerTimeKey) {
+    createLastLapFormatter(sectorKey, timeKey, playerTimeKey) {
         return (cell) => {
             const lapInfo = cell.getValue();
             const driverInfo = cell.getRow().getData();
@@ -286,7 +286,7 @@ class EngViewRaceTable {
                 });
             } else {
                 // For sectors, use the same logic as best lap
-                return this.createSectorFormatter(sectorKey, timeKey, fastestKey, sessionFastestKey, playerTimeKey)(cell);
+                return this.createSectorFormatter(sectorKey, timeKey, playerTimeKey)(cell);
             }
         };
     }
@@ -317,25 +317,25 @@ class EngViewRaceTable {
             {
                 title: "Lap",
                 field: `lap-info.${lapType}-lap`,
-                formatter: this[formatterMethod]('lap', 'lap-time-ms', 'fastest-lap', 'session-fastest-lap', 'lap-time-ms-player'),
+                formatter: this[formatterMethod]('lap', 'lap-time-ms', 'lap-time-ms-player'),
                 ...this.getDisableSorting()
             },
             {
                 title: "S1",
                 field: `lap-info.${lapType}-lap`,
-                formatter: this[formatterMethod]('s1', 's1-time-ms', 'fastest-s1', 'session-fastest-s1', 's1-time-ms-player'),
+                formatter: this[formatterMethod]('s1', 's1-time-ms', 's1-time-ms-player'),
                 ...this.getDisableSorting()
             },
             {
                 title: "S2",
                 field: `lap-info.${lapType}-lap`,
-                formatter: this[formatterMethod]('s2', 's2-time-ms', 'fastest-s2', 'session-fastest-s2', 's2-time-ms-player'),
+                formatter: this[formatterMethod]('s2', 's2-time-ms', 's2-time-ms-player'),
                 ...this.getDisableSorting()
             },
             {
                 title: "S3",
                 field: `lap-info.${lapType}-lap`,
-                formatter: this[formatterMethod]('s3', 's3-time-ms', 'fastest-s3', 'session-fastest-s3', 's3-time-ms-player'),
+                formatter: this[formatterMethod]('s3', 's3-time-ms', 's3-time-ms-player'),
                 ...this.getDisableSorting()
             }
         ];
