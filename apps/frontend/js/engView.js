@@ -245,7 +245,7 @@ class EngViewRaceTable {
                 }
             }
 
-            const timeElement = `<div class="${timeClass}">${formattedTime}</div>`;
+            const timeElement = `<div class="single-line-cell ${timeClass}">${formattedTime}</div>`;
 
             if (isReferenceDriver) {
                 return timeElement;
@@ -267,7 +267,6 @@ class EngViewRaceTable {
 
             if (sectorKey === 'lap') {
                 const formattedTime = formatLapTime(lapInfo[timeKey]);
-                const isValid = lapInfo["is-valid"];
                 const bestLapInfo = driverInfo["lap-info"]["best-lap"];
                 let timeClass = '';
                 if (lapInfo[timeKey] === this.fastestLapMs) {
@@ -275,7 +274,7 @@ class EngViewRaceTable {
                 } else if (lapInfo[timeKey] === bestLapInfo[timeKey]) {
                     timeClass = 'green-time';
                 }
-                const timeElement = `<div class="${timeClass}">${formattedTime}</div>`;
+                const timeElement = `<div class="single-line-cell ${timeClass}">${formattedTime}</div>`;
 
                 if (isReferenceDriver) {
                     return timeElement;
@@ -495,7 +494,7 @@ class EngViewRaceTable {
                             const driverInfo = cell.getRow().getData();
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return cell.getValue();
+                                return this.getSingleLineCell(cell.getValue());
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
@@ -506,7 +505,7 @@ class EngViewRaceTable {
                             const driverInfo = cell.getRow().getData();
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return `${formatFloatWithTwoDecimals(cell.getValue())}%`;
+                                return this.getSingleLineCell(`${formatFloatWithTwoDecimals(cell.getValue())}%`);
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
@@ -516,7 +515,7 @@ class EngViewRaceTable {
                             const driverInfo = cell.getRow().getData();
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return getShortERSMode(cell.getValue());
+                                return this.getSingleLineCell(getShortERSMode(cell.getValue()));
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
@@ -532,8 +531,9 @@ class EngViewRaceTable {
                             const driverInfo = cell.getRow().getData();
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return cell.getValue() == null ? "N/A"
+                                const cellContent = cell.getValue() == null ? "N/A"
                                     : formatFloatWithTwoDecimals(cell.getValue());
+                                return this.getSingleLineCell(cellContent);
                           } else {
                                return this.getTelemetryRestrictedContent();
                           }
@@ -543,8 +543,9 @@ class EngViewRaceTable {
                             const driverInfo = cell.getRow().getData();
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return cell.getValue() == null
+                                const cellContent = cell.getValue() == null
                                     ? "N/A" : formatFloatWithTwoDecimals(cell.getValue());
+                                this.getSingleLineCell(cellContent);
                           } else {
                                return this.getTelemetryRestrictedContent();
                           }
@@ -554,8 +555,9 @@ class EngViewRaceTable {
                             const driverInfo = cell.getRow().getData();
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return cell.getValue() == null ? "N/A"
+                                const cellContent = cell.getValue() == null ? "N/A"
                                     : formatFloatWithTwoDecimalsSigned(cell.getValue());
+                                return this.getSingleLineCell(cellContent);
                            } else {
                                return this.getTelemetryRestrictedContent();
                            }
@@ -571,7 +573,7 @@ class EngViewRaceTable {
                             const driverInfo = cell.getRow().getData();
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return `${cell.getValue()}%`;
+                                return this.getSingleLineCell(`${cell.getValue()}%`);
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
@@ -581,7 +583,7 @@ class EngViewRaceTable {
                             const driverInfo = cell.getRow().getData();
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return `${cell.getValue()}%`;
+                                return this.getSingleLineCell(`${cell.getValue()}%`);
                            } else {
                                return this.getTelemetryRestrictedContent();
                            }
@@ -591,7 +593,7 @@ class EngViewRaceTable {
                             const driverInfo = cell.getRow().getData();
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return `${cell.getValue()}%`;
+                                return this.getSingleLineCell(`${cell.getValue()}%`);
                            } else {
                                return this.getTelemetryRestrictedContent();
                            }
@@ -671,6 +673,10 @@ class EngViewRaceTable {
     getTelemetryRestrictedContent() {
         return `<div class="single-line-cell" style="background-color:${this.TELEMETRY_DISABLED_COLOUR};
                 color: white;">N/A</div>`;
+    }
+
+    getSingleLineCell(value) {
+        return `<div class="single-line-cell">${value}</div>`;
     }
 
     clear() {
