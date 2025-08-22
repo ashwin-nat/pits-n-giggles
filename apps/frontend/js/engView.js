@@ -388,7 +388,10 @@ class EngViewRaceTable {
                         formatter: (cell) => {
                             const tyreInfo = cell.getRow().getData()["tyre-info"];
                             const predictionLap = g_engView_predLapNum;
-                            const predictedTyreWearInfo = (predictionLap) ? (tyreInfo["wear-prediction"]["predictions"].find(p => p["lap-number"] === predictionLap)) : (null);
+                            const predictedTyreWearInfo = (predictionLap)
+                                                            ? (tyreInfo["wear-prediction"]["predictions"].find(
+                                                                p => p["lap-number"] === predictionLap))
+                                                            : (null);
                             const currTyreWearInfo = tyreInfo["current-wear"];
                             return this.createMultiLineCell({
                                 row1: (formatFloatWithTwoDecimals(currTyreWearInfo["front-left-wear"]) + '%'),
@@ -405,7 +408,10 @@ class EngViewRaceTable {
                         formatter: (cell) => {
                             const tyreInfo = cell.getRow().getData()["tyre-info"];
                             const predictionLap = g_engView_predLapNum;
-                            const predictedTyreWearInfo = (predictionLap) ? (tyreInfo["wear-prediction"]["predictions"].find(p => p["lap-number"] === predictionLap)) : (null);
+                            const predictedTyreWearInfo = (predictionLap)
+                                                            ? (tyreInfo["wear-prediction"]["predictions"].find(
+                                                                p => p["lap-number"] === predictionLap))
+                                                            : (null);
                             const currTyreWearInfo = tyreInfo["current-wear"];
                             return this.createMultiLineCell({
                                 row1: (formatFloatWithTwoDecimals(currTyreWearInfo["front-left-wear"]) + '%'),
@@ -422,7 +428,10 @@ class EngViewRaceTable {
                         formatter: (cell) => {
                             const tyreInfo = cell.getRow().getData()["tyre-info"];
                             const predictionLap = g_engView_predLapNum;
-                            const predictedTyreWearInfo = (predictionLap) ? (tyreInfo["wear-prediction"]["predictions"].find(p => p["lap-number"] === predictionLap)) : (null);
+                            const predictedTyreWearInfo = (predictionLap)
+                                                            ? (tyreInfo["wear-prediction"]["predictions"].find(
+                                                                p => p["lap-number"] === predictionLap))
+                                                            : (null);
                             const currTyreWearInfo = tyreInfo["current-wear"];
                             return this.createMultiLineCell({
                                 row1: (formatFloatWithTwoDecimals(currTyreWearInfo["front-left-wear"]) + '%'),
@@ -439,7 +448,10 @@ class EngViewRaceTable {
                         formatter: (cell) => {
                             const tyreInfo = cell.getRow().getData()["tyre-info"];
                             const predictionLap = g_engView_predLapNum;
-                            const predictedTyreWearInfo = (predictionLap) ? (tyreInfo["wear-prediction"]["predictions"].find(p => p["lap-number"] === predictionLap)) : (null);
+                            const predictedTyreWearInfo = (predictionLap)
+                                                            ? (tyreInfo["wear-prediction"]["predictions"].find(
+                                                                p => p["lap-number"] === predictionLap))
+                                                            : (null);
                             const currTyreWearInfo = tyreInfo["current-wear"];
                             return this.createMultiLineCell({
                                 row1: (formatFloatWithTwoDecimals(currTyreWearInfo["front-left-wear"]) + '%'),
@@ -457,26 +469,37 @@ class EngViewRaceTable {
                 headerSort: false,
                 columns: [
                     { title: "Avail", field: "ers-info.ers-percent", ...disableSorting },
-                    { title: "Deploy", field: "ers-info.ers-deployed-this-lap", formatter: (cell) => `${formatFloatWithTwoDecimals(cell.getValue())}%`, ...disableSorting },
-                    { title: "Mode", field: "ers-info.ers-mode", formatter: (cell) => getShortERSMode(cell.getValue()), ...disableSorting },
+                    { title: "Deploy", field: "ers-info.ers-deployed-this-lap",
+                        formatter: (cell) => `${formatFloatWithTwoDecimals(cell.getValue())}%`, ...disableSorting },
+                    { title: "Mode", field: "ers-info.ers-mode",
+                        formatter: (cell) => getShortERSMode(cell.getValue()), ...disableSorting },
                 ],
             },
             {
                 title: 'Fuel',
                 headerSort: false,
                 columns: [
-                    { title: "Total", field: "fuel-info.fuel-in-tank", formatter: (cell) => cell.getValue() == null ? "N/A" : formatFloatWithTwoDecimals(cell.getValue()), ...disableSorting },
-                    { title: "Per Lap", field: "fuel-info.curr-fuel-rate", formatter: (cell) => cell.getValue() == null ? "N/A" : formatFloatWithTwoDecimals(cell.getValue()), ...disableSorting },
-                    { title: "Est", field: "fuel-info.surplus-laps-png", formatter: (cell) => cell.getValue() == null ? "N/A" : formatFloatWithTwoDecimalsSigned(cell.getValue()), ...disableSorting },
+                    { title: "Total", field: "fuel-info.fuel-in-tank",
+                        formatter: (cell) => cell.getValue() == null ? "N/A"
+                            : formatFloatWithTwoDecimals(cell.getValue()), ...disableSorting },
+                    { title: "Per Lap", field: "fuel-info.curr-fuel-rate",
+                        formatter: (cell) => cell.getValue() == null
+                            ? "N/A" : formatFloatWithTwoDecimals(cell.getValue()), ...disableSorting },
+                    { title: "Est", field: "fuel-info.surplus-laps-png",
+                        formatter: (cell) => cell.getValue() == null ? "N/A"
+                            : formatFloatWithTwoDecimalsSigned(cell.getValue()), ...disableSorting },
                 ],
             },
             {
                 title: 'Damage',
                 headerSort: false,
                 columns: [
-                    { title: "FL", field: "damage-info.fl-wing-damage", formatter: (cell) => `${cell.getValue()}%`, ...disableSorting },
-                    { title: "FR", field: "damage-info.fr-wing-damage", formatter: (cell) => `${cell.getValue()}%`, ...disableSorting },
-                    { title: "RW", field: "damage-info.rear-wing-damage", formatter: (cell) => `${cell.getValue()}%`, ...disableSorting },
+                    { title: "FL", field: "damage-info.fl-wing-damage",
+                        formatter: (cell) => `${cell.getValue()}%`, ...disableSorting },
+                    { title: "FR", field: "damage-info.fr-wing-damage",
+                        formatter: (cell) => `${cell.getValue()}%`, ...disableSorting },
+                    { title: "RW", field: "damage-info.rear-wing-damage",
+                        formatter: (cell) => `${cell.getValue()}%`, ...disableSorting },
                 ],
             },
         ];
@@ -506,8 +529,8 @@ class EngViewRaceTable {
         row1,
         row2,
         row1Class = 'eng-view-tyre-row-1',
-        row2Class = 'eng-view-tyre-row-2'
-    }) {
+        row2Class = 'eng-view-tyre-row-2'}) {
+
         return `<div class='${row1Class}'>${row1}</div><div class='${row2Class}'>${row2}</div>`;
     }
 
