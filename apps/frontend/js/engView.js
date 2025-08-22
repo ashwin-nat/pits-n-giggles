@@ -94,20 +94,148 @@ class EngViewRaceTable {
                 title: 'Best Lap',
                 headerSort: false,
                 columns: [
-                    { title: "Lap", field: "lap-info.best-lap.lap-time-ms", formatter: (cell) => formatLapTime(cell.getValue()), ...disableSorting },
-                    { title: "S1", field: "lap-info.best-lap.s1-time-ms", formatter: (cell) => formatSectorTime(cell.getValue()), ...disableSorting },
-                    { title: "S2", field: "lap-info.best-lap.s2-time-ms", formatter: (cell) => formatSectorTime(cell.getValue()), ...disableSorting },
-                    { title: "S3", field: "lap-info.best-lap.s3-time-ms", formatter: (cell) => formatSectorTime(cell.getValue()), ...disableSorting },
+                    {
+                        title: "Lap",
+                        field: "lap-info.best-lap",
+                        formatter: (cell) => {
+                            const lapInfo = cell.getValue();
+                            const driverInfo = cell.getRow().getData();
+                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            const formattedTime = formatLapTime(lapInfo["lap-time-ms"]);
+
+                            if (isReferenceDriver) {
+                                return `<div>${formattedTime}</div>`;
+                            }
+                            const delta = lapInfo["lap-time-ms"] - lapInfo["lap-time-ms-player"];
+                            return `<div>${formattedTime}</div><div>${formatDelta(delta)}</div>`;
+                        },
+                        ...disableSorting
+                    },
+                    {
+                        title: "S1",
+                        field: "lap-info.best-lap",
+                        formatter: (cell) => {
+                            const lapInfo = cell.getValue();
+                            const driverInfo = cell.getRow().getData();
+                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            const formattedTime = formatSectorTime(lapInfo["s1-time-ms"]);
+
+                            if (isReferenceDriver) {
+                                return `<div>${formattedTime}</div>`;
+                            }
+                            const delta = lapInfo["s1-time-ms"] - lapInfo["s1-time-ms-player"];
+                            return `<div>${formattedTime}</div><div>${formatDelta(delta)}</div>`;
+                        },
+                        ...disableSorting
+                    },
+                    {
+                        title: "S2",
+                        field: "lap-info.best-lap",
+                        formatter: (cell) => {
+                            const lapInfo = cell.getValue();
+                            const driverInfo = cell.getRow().getData();
+                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            const formattedTime = formatSectorTime(lapInfo["s2-time-ms"]);
+
+                            if (isReferenceDriver) {
+                                return `<div>${formattedTime}</div>`;
+                            }
+                            const delta = lapInfo["s2-time-ms"] - lapInfo["s2-time-ms-player"];
+                            return `<div>${formattedTime}</div><div>${formatDelta(delta)}</div>`;
+                        },
+                        ...disableSorting
+                    },
+                    {
+                        title: "S3",
+                        field: "lap-info.best-lap",
+                        formatter: (cell) => {
+                            const lapInfo = cell.getValue();
+                            const driverInfo = cell.getRow().getData();
+                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            const formattedTime = formatSectorTime(lapInfo["s3-time-ms"]);
+
+                            if (isReferenceDriver) {
+                                return `<div>${formattedTime}</div>`;
+                            }
+                            const delta = lapInfo["s3-time-ms"] - lapInfo["s3-time-ms-player"];
+                            return `<div>${formattedTime}</div><div>${formatDelta(delta)}</div>`;
+                        },
+                        ...disableSorting
+                    },
                 ],
             },
             {
                 title: 'Last Lap',
                 headerSort: false,
                 columns: [
-                    { title: "Lap", field: "lap-info.last-lap.lap-time-ms", formatter: (cell) => formatLapTime(cell.getValue()), ...disableSorting },
-                    { title: "S1", field: "lap-info.last-lap.s1-time-ms", formatter: (cell) => formatSectorTime(cell.getValue()), ...disableSorting },
-                    { title: "S2", field: "lap-info.last-lap.s2-time-ms", formatter: (cell) => formatSectorTime(cell.getValue()), ...disableSorting },
-                    { title: "S3", field: "lap-info.last-lap.s3-time-ms", formatter: (cell) => formatSectorTime(cell.getValue()), ...disableSorting },
+                    {
+                        title: "Lap",
+                        field: "lap-info.last-lap",
+                        formatter: (cell) => {
+                            const lapInfo = cell.getValue();
+                            const driverInfo = cell.getRow().getData();
+                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            const formattedTime = formatLapTime(lapInfo["lap-time-ms"]);
+
+                            if (isReferenceDriver) {
+                                return `<div>${formattedTime}</div>`;
+                            }
+                            const delta = lapInfo["lap-time-ms"] - lapInfo["lap-time-ms-player"];
+                            return `<div>${formattedTime}</div><div>${formatDelta(delta)}</div>`;
+                        },
+                        ...disableSorting
+                    },
+                    {
+                        title: "S1",
+                        field: "lap-info.last-lap",
+                        formatter: (cell) => {
+                            const lapInfo = cell.getValue();
+                            const driverInfo = cell.getRow().getData();
+                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            const formattedTime = formatSectorTime(lapInfo["s1-time-ms"]);
+
+                            if (isReferenceDriver) {
+                                return `<div>${formattedTime}</div>`;
+                            }
+                            const delta = lapInfo["s1-time-ms"] - lapInfo["s1-time-ms-player"];
+                            return `<div>${formattedTime}</div><div>${formatDelta(delta)}</div>`;
+                        },
+                        ...disableSorting
+                    },
+                    {
+                        title: "S2",
+                        field: "lap-info.last-lap",
+                        formatter: (cell) => {
+                            const lapInfo = cell.getValue();
+                            const driverInfo = cell.getRow().getData();
+                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            const formattedTime = formatSectorTime(lapInfo["s2-time-ms"]);
+
+                            if (isReferenceDriver) {
+                                return `<div>${formattedTime}</div>`;
+                            }
+                            const delta = lapInfo["s2-time-ms"] - lapInfo["s2-time-ms-player"];
+                            return `<div>${formattedTime}</div><div>${formatDelta(delta)}</div>`;
+                        },
+                        ...disableSorting
+                    },
+                    {
+                        title: "S3",
+                        field: "lap-info.last-lap",
+                        formatter: (cell) => {
+                            const lapInfo = cell.getValue();
+                            const driverInfo = cell.getRow().getData();
+                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            const formattedTime = formatSectorTime(lapInfo["s3-time-ms"]);
+
+                            if (isReferenceDriver) {
+                                return `<div>${formattedTime}</div>`;
+                            }
+                            const delta = lapInfo["s3-time-ms"] - lapInfo["s3-time-ms-player"];
+                            return `<div>${formattedTime}</div><div>${formatDelta(delta)}</div>`;
+                        },
+                        ...disableSorting
+                    },
                 ],
             },
             {
@@ -392,73 +520,55 @@ function initDashboard() {
     const raceStatsModal = false;
     const settingsModal = false;
     window.modalManager = new ModalManager(driverModal, raceStatsModal, settingsModal);
+
+    const connectStart = Date.now();
+    const socketio = io(`${location.protocol}//${location.hostname}:${location.port}`, {
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 500,
+        reconnectionDelayMax: 3000,
+        randomizationFactor: 0.3,
+        timeout: 7000,
+        transports: ['websocket', 'polling'],
+        upgrade: true,
+        rememberUpgrade: true,
+        secure: location.protocol === 'https:',
+    });
+
+    socketio.on('connect', () => {
+        socketio.emit('register-client', { type: 'race-table' });
+        console.log(`⏱️ Socket connected in ${Date.now() - connectStart}ms`);
+    });
+
+    socketio.on('connect_error', (err) => {
+        console.warn('❌ Socket connection error:', err.message);
+    });
+
+    socketio.on('reconnect_attempt', attempt => {
+        console.log(`🔁 Reconnection attempt ${attempt}`);
+    });
+
+    socketio.on('race-table-update', (binaryData) => {
+        let data;
+        try {
+            data = window.msgpack.decode(new Uint8Array(binaryData));
+        } catch (err) {
+            console.error('Failed to decode race-table-update:', err);
+            return;
+        }
+
+        const { "table-entries": tableEntries, "is-spectating": isSpectating, "event-type": eventType, "spectator-car-index": spectatorCarIndex } = data;
+
+        if (tableEntries || eventType === "Time Trial") {
+            raceTable.update(tableEntries, isSpectating, eventType, spectatorCarIndex);
+        }
+        raceStatus.update(data);
+        weatherTable.update(data["weather-forecast-samples"]);
+    });
+
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 }
 
 // Start the dashboard when the page loads
 document.addEventListener('DOMContentLoaded', initDashboard);
-
-let awaitingResponse = false;
-let timeoutIntervalId;
-let timeoutIntervalMs = 3000;
-let socketio;
-
-const connectStart = Date.now();
-socketio = io(`${location.protocol}//${location.hostname}:${location.port}`, {
-    reconnection: true,
-    reconnectionAttempts: 5,         // increased for flakier networks
-    reconnectionDelay: 500,          // base delay
-    reconnectionDelayMax: 3000,      // allow more time for retries
-    randomizationFactor: 0.3,        // more jitter helps on bad links
-    timeout: 7000,                   // wait a bit longer before timing out
-    transports: ['websocket', 'polling'], // try WS, fallback to polling
-    upgrade: true,
-    rememberUpgrade: true,
-    secure: location.protocol === 'https:', // optional: makes intent explicit
-});
-console.log("SocketIO initialized");
-
-// Init tooltips
-const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
-
-function clearSocketIoRequestTimeout() {
-    awaitingResponse = false;
-    clearInterval(timeoutIntervalId);
-}
-
-socketio.on('connect', function () {
-    socketio.emit('register-client', { type: 'race-table' });
-    console.log(`⏱️ Socket connected in ${Date.now() - connectStart}ms`);
-});
-
-socketio.on('connect_error', (err) => {
-    console.warn('❌ Socket connection error:', err.message);
-});
-
-socketio.on('reconnect_attempt', attempt => {
-    console.log(`🔁 Reconnection attempt ${attempt}`);
-});
-
-// Receive details from server
-socketio.on('race-table-update', function (binaryData) {
-
-    let data;
-    try {
-        data = window.msgpack.decode(new Uint8Array(binaryData));
-    } catch (err) {
-        console.error('Failed to decode race-table-update:', err);
-        return;
-    }
-
-    const tableEntries      = data["table-entries"];
-    const isSpectating      = data["is-spectating"];
-    const eventType         = data["event-type"];
-    const spectatorCarIndex = data["spectator-car-index"];
-    if (tableEntries) {
-        raceTable.update(tableEntries, isSpectating, eventType, spectatorCarIndex);
-    } else if (eventType === "Time Trial") {
-        raceTable.update(tableEntries, isSpectating, eventType, spectatorCarIndex);
-    }
-    raceStatus.update(data);
-    weatherTable.update(data["weather-forecast-samples"]);
-});
