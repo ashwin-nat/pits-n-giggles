@@ -18,11 +18,67 @@ class EngViewRaceTable {
         this.table = null;
         this.spectatorIndex = null;
         this.isSpectating = false;
+        this.COLUMN_WIDTHS_KEY = 'eng-view-table-column-widths'; // Storage key
         this.initTable();
+    }
+
+    // Save column widths to localStorage
+    saveColumnWidths() {
+        const columns = this.table.getColumns();
+        const widths = {};
+
+        columns.forEach(column => {
+            const field = column.getField();
+            const width = column.getWidth();
+            if (field && width) {
+                widths[field] = width;
+            }
+        });
+
+        try {
+            localStorage.setItem(this.COLUMN_WIDTHS_KEY, JSON.stringify(widths));
+            console.log('Column widths saved:', widths);
+        } catch (error) {
+            console.warn('Failed to save column widths:', error);
+        }
+    }
+
+    // Load column widths from localStorage
+    loadColumnWidths() {
+        try {
+            const saved = localStorage.getItem(this.COLUMN_WIDTHS_KEY);
+            if (saved) {
+                return JSON.parse(saved);
+            }
+        } catch (error) {
+            console.warn('Failed to load column widths:', error);
+        }
+        return {};
+    }
+
+    // Apply saved widths to column definitions
+    applyColumnWidths(columnDefinitions, savedWidths) {
+        const applyWidthsRecursively = (columns) => {
+            columns.forEach(col => {
+                if (col.field && savedWidths[col.field]) {
+                    col.width = savedWidths[col.field];
+                }
+                if (col.columns) {
+                    applyWidthsRecursively(col.columns);
+                }
+            });
+        };
+
+        applyWidthsRecursively(columnDefinitions);
     }
 
     initTable() {
         const columnDefinitions = this.getColumnDefinitions();
+
+        // Load and apply saved column widths
+        const savedWidths = this.loadColumnWidths();
+        console.log('Saved column widths:', savedWidths);
+        this.applyColumnWidths(columnDefinitions, savedWidths);
 
         function applyHeaderClass(columns) {
             columns.forEach(col => {
@@ -53,6 +109,29 @@ class EngViewRaceTable {
                 }
             },
         });
+
+        // Add event listener for column resize
+        this.table.on("columnResized", (column) => {
+            // Debounce the save operation to avoid too frequent saves
+            console.log("Column resized:", column);
+            clearTimeout(this.saveTimeout);
+            this.saveTimeout = setTimeout(() => {
+                this.saveColumnWidths();
+            }, 500); // Save 500ms after the last resize
+        });
+    }
+
+    // Optional: Method to reset column widths to default
+    resetColumnWidths() {
+        try {
+            localStorage.removeItem(this.COLUMN_WIDTHS_KEY);
+            console.log('Column widths reset to default');
+            // Optionally reload the table
+            // this.table.destroy();
+            // this.initTable();
+        } catch (error) {
+            console.warn('Failed to reset column widths:', error);
+        }
     }
 
     getColumnDefinitions() {
