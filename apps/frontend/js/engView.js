@@ -51,7 +51,7 @@ class EngViewRaceTable {
                 field: "name",
                 formatter: (cell, formatterParams, onRendered) => {
                     const data = cell.getRow().getData();
-                    return `${data.name}<br><span class="text-muted">${data.team}</span>`;
+                    return `<div class='eng-view-tyre-row-1'>${data.name}</div><div class='eng-view-tyre-row-2'>${data.team}</div>`;
                 },
                 cellClick: (e, cell) => {
                     const data = cell.getRow().getData();
@@ -74,9 +74,9 @@ class EngViewRaceTable {
                     const deltaToCarInFront = deltaInfo["delta-to-car-in-front"] / 1000;
                     const deltaToLeader = deltaInfo["delta-to-leader"] / 1000;
                     if (position == 1) {
-                        return `Interval<br>Leader`;
+                        return `<div class='eng-view-tyre-row-1'>Interval</div><div class='eng-view-tyre-row-2'>Leader</div>`;
                     }
-                    return `${formatFloatWithThreeDecimalsSigned(deltaToCarInFront)}<br>${formatFloatWithThreeDecimalsSigned(deltaToLeader)}`;
+                    return `<div class='eng-view-tyre-row-1'>${formatFloatWithThreeDecimalsSigned(deltaToCarInFront)}</div><div class='eng-view-tyre-row-2'>${formatFloatWithThreeDecimalsSigned(deltaToLeader)}</div>`;
                 },
                 ...disableSorting
             },
@@ -91,6 +91,35 @@ class EngViewRaceTable {
                 ],
             },
             {
+                title: 'Status',
+                headerSort: false,
+                columns: [
+                    {
+                        title: "DRS",
+                        field: "drs-status",
+                        formatter: cell => {
+                            const drsStatus = cell.getValue();
+                            if (drsStatus === 'NOT_ALLOWED') return `<span class="drs-not-available">DRS</span>`;
+                            if (drsStatus === 'ALLOWED') return `<span class="drs-available">DRS</span>`;
+                            if (drsStatus === 'ACTIVE') return `<span class="drs-active">DRS</span>`;
+                            return '---';
+                        },
+                        ...disableSorting
+                    },
+                    {
+                        title: "Pit",
+                        field: "pit-status",
+                        formatter: cell => {
+                            const pitStatus = cell.getValue();
+                            if (pitStatus === 'PITTING') return `<span class="driver-pitting">PIT</span>`;
+                            if (pitStatus === 'IN_GARAGE') return `<span class="driver-pitting">GARAGE</span>`;
+                            return '---';
+                        },
+                        ...disableSorting
+                    },
+                ],
+            },
+            {
                 title: 'Best Lap',
                 headerSort: false,
                 columns: [
@@ -102,12 +131,20 @@ class EngViewRaceTable {
                             const driverInfo = cell.getRow().getData();
                             const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
                             const formattedTime = formatLapTime(lapInfo["lap-time-ms"]);
+                            const fastestLap = lapInfo["fastest-lap"];
+                            const sessionFastestLap = lapInfo["session-fastest-lap"];
+
+                            let timeClass = '';
+                            if (fastestLap) timeClass = 'green-time';
+                            if (sessionFastestLap) timeClass = 'purple-time';
+
+                            const timeElement = `<div class="${timeClass}">${formattedTime}</div>`;
 
                             if (isReferenceDriver) {
-                                return `<div>${formattedTime}</div>`;
+                                return timeElement;
                             }
                             const delta = lapInfo["lap-time-ms"] - lapInfo["lap-time-ms-player"];
-                            return `<div>${formattedTime}</div><div>${formatDelta(delta)}</div>`;
+                            return `<div class='eng-view-tyre-row-1'>${timeElement}</div><div class='eng-view-tyre-row-2'>${formatDelta(delta)}</div>`;
                         },
                         ...disableSorting
                     },
@@ -119,12 +156,20 @@ class EngViewRaceTable {
                             const driverInfo = cell.getRow().getData();
                             const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
                             const formattedTime = formatSectorTime(lapInfo["s1-time-ms"]);
+                            const fastestS1 = lapInfo["fastest-s1"];
+                            const sessionFastestS1 = lapInfo["session-fastest-s1"];
+
+                            let timeClass = '';
+                            if (fastestS1) timeClass = 'green-time';
+                            if (sessionFastestS1) timeClass = 'purple-time';
+
+                            const timeElement = `<div class="${timeClass}">${formattedTime}</div>`;
 
                             if (isReferenceDriver) {
-                                return `<div>${formattedTime}</div>`;
+                                return timeElement;
                             }
                             const delta = lapInfo["s1-time-ms"] - lapInfo["s1-time-ms-player"];
-                            return `<div>${formattedTime}</div><div>${formatDelta(delta)}</div>`;
+                            return `<div class='eng-view-tyre-row-1'>${timeElement}</div><div class='eng-view-tyre-row-2'>${formatDelta(delta)}</div>`;
                         },
                         ...disableSorting
                     },
@@ -136,12 +181,20 @@ class EngViewRaceTable {
                             const driverInfo = cell.getRow().getData();
                             const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
                             const formattedTime = formatSectorTime(lapInfo["s2-time-ms"]);
+                            const fastestS2 = lapInfo["fastest-s2"];
+                            const sessionFastestS2 = lapInfo["session-fastest-s2"];
+
+                            let timeClass = '';
+                            if (fastestS2) timeClass = 'green-time';
+                            if (sessionFastestS2) timeClass = 'purple-time';
+
+                            const timeElement = `<div class="${timeClass}">${formattedTime}</div>`;
 
                             if (isReferenceDriver) {
-                                return `<div>${formattedTime}</div>`;
+                                return timeElement;
                             }
                             const delta = lapInfo["s2-time-ms"] - lapInfo["s2-time-ms-player"];
-                            return `<div>${formattedTime}</div><div>${formatDelta(delta)}</div>`;
+                            return `<div class='eng-view-tyre-row-1'>${timeElement}</div><div class='eng-view-tyre-row-2'>${formatDelta(delta)}</div>`;
                         },
                         ...disableSorting
                     },
@@ -153,12 +206,20 @@ class EngViewRaceTable {
                             const driverInfo = cell.getRow().getData();
                             const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
                             const formattedTime = formatSectorTime(lapInfo["s3-time-ms"]);
+                            const fastestS3 = lapInfo["fastest-s3"];
+                            const sessionFastestS3 = lapInfo["session-fastest-s3"];
+
+                            let timeClass = '';
+                            if (fastestS3) timeClass = 'green-time';
+                            if (sessionFastestS3) timeClass = 'purple-time';
+
+                            const timeElement = `<div class="${timeClass}">${formattedTime}</div>`;
 
                             if (isReferenceDriver) {
-                                return `<div>${formattedTime}</div>`;
+                                return timeElement;
                             }
                             const delta = lapInfo["s3-time-ms"] - lapInfo["s3-time-ms-player"];
-                            return `<div>${formattedTime}</div><div>${formatDelta(delta)}</div>`;
+                            return `<div class='eng-view-tyre-row-1'>${timeElement}</div><div class='eng-view-tyre-row-2'>${formatDelta(delta)}</div>`;
                         },
                         ...disableSorting
                     },
@@ -176,12 +237,14 @@ class EngViewRaceTable {
                             const driverInfo = cell.getRow().getData();
                             const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
                             const formattedTime = formatLapTime(lapInfo["lap-time-ms"]);
+                            const isValid = lapInfo["is-valid"];
+                            const timeElement = `<div class="${!isValid ? 'red-time' : ''}">${formattedTime}</div>`;
 
                             if (isReferenceDriver) {
-                                return `<div>${formattedTime}</div>`;
+                                return timeElement;
                             }
                             const delta = lapInfo["lap-time-ms"] - lapInfo["lap-time-ms-player"];
-                            return `<div>${formattedTime}</div><div>${formatDelta(delta)}</div>`;
+                            return `<div class='eng-view-tyre-row-1'>${timeElement}</div><div class='eng-view-tyre-row-2'>${formatDelta(delta)}</div>`;
                         },
                         ...disableSorting
                     },
@@ -193,12 +256,20 @@ class EngViewRaceTable {
                             const driverInfo = cell.getRow().getData();
                             const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
                             const formattedTime = formatSectorTime(lapInfo["s1-time-ms"]);
+                            const fastestS1 = lapInfo["fastest-s1"];
+                            const sessionFastestS1 = lapInfo["session-fastest-s1"];
+
+                            let timeClass = '';
+                            if (fastestS1) timeClass = 'green-time';
+                            if (sessionFastestS1) timeClass = 'purple-time';
+
+                            const timeElement = `<div class="${timeClass}">${formattedTime}</div>`;
 
                             if (isReferenceDriver) {
-                                return `<div>${formattedTime}</div>`;
+                                return timeElement;
                             }
                             const delta = lapInfo["s1-time-ms"] - lapInfo["s1-time-ms-player"];
-                            return `<div>${formattedTime}</div><div>${formatDelta(delta)}</div>`;
+                            return `<div class='eng-view-tyre-row-1'>${timeElement}</div><div class='eng-view-tyre-row-2'>${formatDelta(delta)}</div>`;
                         },
                         ...disableSorting
                     },
@@ -210,12 +281,20 @@ class EngViewRaceTable {
                             const driverInfo = cell.getRow().getData();
                             const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
                             const formattedTime = formatSectorTime(lapInfo["s2-time-ms"]);
+                            const fastestS2 = lapInfo["fastest-s2"];
+                            const sessionFastestS2 = lapInfo["session-fastest-s2"];
+
+                            let timeClass = '';
+                            if (fastestS2) timeClass = 'green-time';
+                            if (sessionFastestS2) timeClass = 'purple-time';
+
+                            const timeElement = `<div class="${timeClass}">${formattedTime}</div>`;
 
                             if (isReferenceDriver) {
-                                return `<div>${formattedTime}</div>`;
+                                return timeElement;
                             }
                             const delta = lapInfo["s2-time-ms"] - lapInfo["s2-time-ms-player"];
-                            return `<div>${formattedTime}</div><div>${formatDelta(delta)}</div>`;
+                            return `<div class='eng-view-tyre-row-1'>${timeElement}</div><div class='eng-view-tyre-row-2'>${formatDelta(delta)}</div>`;
                         },
                         ...disableSorting
                     },
@@ -227,12 +306,20 @@ class EngViewRaceTable {
                             const driverInfo = cell.getRow().getData();
                             const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
                             const formattedTime = formatSectorTime(lapInfo["s3-time-ms"]);
+                            const fastestS3 = lapInfo["fastest-s3"];
+                            const sessionFastestS3 = lapInfo["session-fastest-s3"];
+
+                            let timeClass = '';
+                            if (fastestS3) timeClass = 'green-time';
+                            if (sessionFastestS3) timeClass = 'purple-time';
+
+                            const timeElement = `<div class="${timeClass}">${formattedTime}</div>`;
 
                             if (isReferenceDriver) {
-                                return `<div>${formattedTime}</div>`;
+                                return timeElement;
                             }
                             const delta = lapInfo["s3-time-ms"] - lapInfo["s3-time-ms-player"];
-                            return `<div>${formattedTime}</div><div>${formatDelta(delta)}</div>`;
+                            return `<div class='eng-view-tyre-row-1'>${timeElement}</div><div class='eng-view-tyre-row-2'>${formatDelta(delta)}</div>`;
                         },
                         ...disableSorting
                     },
