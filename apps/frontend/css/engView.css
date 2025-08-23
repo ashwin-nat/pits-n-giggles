@@ -211,6 +211,20 @@ input[type="number"]::-webkit-outer-spin-button {
     background: #222;
 }
 
+.settings-button {
+  background: none;
+  border: none;
+  color: var(--f1-text);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  transition: color 0.2s;
+}
+
+.settings-button:hover {
+  color: var(--f1-red);
+}
+
 /* Player row highlight */
 .eng-view-table tbody tr.player-row td {
     border-top: 2px solid #ffd700 !important;
