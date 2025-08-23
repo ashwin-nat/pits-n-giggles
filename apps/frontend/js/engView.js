@@ -645,7 +645,7 @@ class EngViewRaceTable {
 
         if (eventType === "Time Trial") {
             this.table.clearData();
-            this.table.placeholder = "Time Trial not supported in Engineer View";
+            this.table.options.placeholder = "Time Trial not supported in Engineer View";
             return;
         }
 
