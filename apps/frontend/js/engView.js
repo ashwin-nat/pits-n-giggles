@@ -25,14 +25,13 @@ class EngViewRaceTable {
         this.YELLOW_SECTOR = 0;
         this.GREEN_SECTOR = 1;
         this.PURPLE_SECTOR = 2;
-        this.COLUMN_WIDTHS_KEY = 'eng-view-table-column-widths'; // Storage key
-        this.COLUMN_VISIBILITY_KEY = 'eng-view-table-column-visibility'; // Storage key for visibility
-        this.COLUMN_ORDER_KEY = 'eng-view-table-column-order'; // Storage key for column order
+        this.COLUMN_WIDTHS_LS_KEY = 'eng-view-table-column-widths';
+        this.COLUMN_VISIBILITY_LS_KEY = 'eng-view-table-column-visibility';
+        this.COLUMN_ORDER_LS_KEY = 'eng-view-table-column-order';
         this.TELEMETRY_DISABLED_TEXT = "⌀";
         this.initTable();
     }
 
-    // Save column widths to localStorage
     saveColumnWidths() {
         const columns = this.table.getColumns();
         const widths = {};
@@ -46,27 +45,26 @@ class EngViewRaceTable {
         });
 
         try {
-            localStorage.setItem(this.COLUMN_WIDTHS_KEY, JSON.stringify(widths));
+            localStorage.setItem(this.COLUMN_WIDTHS_LS_KEY, JSON.stringify(widths));
             console.debug('Column widths saved:', widths);
         } catch (error) {
             console.warn('Failed to save column widths:', error);
         }
     }
 
-    // Load column widths from localStorage
     loadColumnWidths() {
         try {
-            const saved = localStorage.getItem(this.COLUMN_WIDTHS_KEY);
+            const saved = localStorage.getItem(this.COLUMN_WIDTHS_LS_KEY);
             if (saved) {
                 return JSON.parse(saved);
             }
         } catch (error) {
             console.warn('Failed to load column widths:', error);
         }
+        // saved data not found
         return {};
     }
 
-    // Apply saved widths to column definitions
     applyColumnWidths(columnDefinitions, savedWidths) {
         const applyWidthsRecursively = (columns) => {
             columns.forEach(col => {
@@ -82,30 +80,29 @@ class EngViewRaceTable {
         applyWidthsRecursively(columnDefinitions);
     }
 
-    // Save column order to localStorage
     saveColumnOrder() {
         const columns = this.table.getColumns();
         const order = columns.map(column => column.getField());
 
         try {
-            localStorage.setItem(this.COLUMN_ORDER_KEY, JSON.stringify(order));
+            localStorage.setItem(this.COLUMN_ORDER_LS_KEY, JSON.stringify(order));
             console.debug('Column order saved:', order);
         } catch (error) {
             console.warn('Failed to save column order:', error);
         }
     }
 
-    // Load column order from localStorage
     loadColumnOrder() {
         try {
-            const saved = localStorage.getItem(this.COLUMN_ORDER_KEY);
+            const saved = localStorage.getItem(this.COLUMN_ORDER_LS_KEY);
             if (saved) {
                 return JSON.parse(saved);
             }
         } catch (error) {
             console.warn('Failed to load column order:', error);
         }
-        return null; // Return null if no order is saved
+        // saved data not found
+        return null;
     }
 
     initTable() {
@@ -161,7 +158,7 @@ class EngViewRaceTable {
             },
         });
 
-        // Add event listener for column resize
+        // Event listeners
         this.table.on("columnResized", (column) => {
             // Debounce the save operation to avoid too frequent saves
             console.debug("Column resized:", column);
@@ -171,45 +168,41 @@ class EngViewRaceTable {
             }, 500); // Save 500ms after the last resize
         });
 
-        // Add event listener for column resize
         this.table.on("columnMoved", (column, columns) => {
             // Debounce the save operation to avoid too frequent saves
             console.debug("Column moved:", column);
             clearTimeout(this.saveTimeout);
             this.saveTimeout = setTimeout(() => {
                 this.saveColumnOrder();
-            }, 500); // Save 500ms after the last resize
+            }, 500); // Save 500ms after the last reorder
         });
         this.saveColumnOrder();
     }
 
-    // Optional: Method to reset column widths to default
     resetColumnWidths() {
         try {
-            localStorage.removeItem(this.COLUMN_WIDTHS_KEY);
+            localStorage.removeItem(this.COLUMN_WIDTHS_LS_KEY);
             console.debug('Column widths reset to default');
         } catch (error) {
             console.warn('Failed to reset column widths:', error);
         }
     }
 
-    // Load column visibility from localStorage
     loadColumnVisibility() {
         try {
-            const saved = localStorage.getItem(this.COLUMN_VISIBILITY_KEY);
+            const saved = localStorage.getItem(this.COLUMN_VISIBILITY_LS_KEY);
             if (saved) {
                 return JSON.parse(saved);
             }
         } catch (error) {
             console.warn('Failed to load column visibility:', error);
         }
-        return {}; // Return default if nothing is saved or an error occurs
+        return {}; // Saved data not found
     }
 
-    // Save column visibility to localStorage
     saveColumnVisibility(visibility) {
         try {
-            localStorage.setItem(this.COLUMN_VISIBILITY_KEY, JSON.stringify(visibility));
+            localStorage.setItem(this.COLUMN_VISIBILITY_LS_KEY, JSON.stringify(visibility));
         } catch (error) {
             console.warn('Failed to save column visibility:', error);
         }
@@ -369,7 +362,6 @@ class EngViewRaceTable {
                     const position = driverInfo.position;
                     return this.createPositionStatusCell(position, driverInfo["driver-info"]);
                 },
-                // ...disableSorting
             },
             {
                 title: "Name",
@@ -674,10 +666,7 @@ class EngViewRaceTable {
             const currentData = this.table.getData();
             const currentDataMap = new Map(currentData.map(row => [row.id, row]));
 
-            // Check if we need to force a full update
-            const needsFullUpdate = this.needsFullUpdate(currentData, newTableData, currentDataMap, sessionUID);
-
-            if (needsFullUpdate) {
+            if (this.needsFullUpdate(currentData, newTableData, currentDataMap, sessionUID)) {
                 // If reference driver changed or new drivers, do full update
                 this.table.setData(newTableData).then(() => {
                     // Force sort by position after full update
@@ -768,9 +757,9 @@ class EngViewRaceTable {
         return false;
     }
 
-    // Add this method to detect changes in data
     hasDataChanged(oldData, newData) {
         // Compare key fields that would affect display
+        // Add more fields as needed
         const fieldsToCompare = [
             'position',
             'name',
