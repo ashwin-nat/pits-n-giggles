@@ -144,6 +144,9 @@ class EngViewRaceTable {
             movableColumns: true,
             virtualDom: false,
             index: "id",
+            initialSort: [
+                {column: "position", dir: "asc"}
+            ],
             columns: columnDefinitions,
             rowFormatter: (row) => {
                 const data = row.getData();
@@ -358,12 +361,14 @@ class EngViewRaceTable {
                 title: "Pos",
                 field: "position",
                 width: 40,
+                sorter: "number",
+                headerSort: false,
                 formatter: (cell) => {
                     const driverInfo = cell.getRow().getData();
                     const position = driverInfo.position;
                     return this.createPositionStatusCell(position, driverInfo["driver-info"]);
                 },
-                ...disableSorting
+                // ...disableSorting
             },
             {
                 title: "Name",
@@ -544,7 +549,7 @@ class EngViewRaceTable {
                             if (telemetryPublic) {
                                 const cellContent = cell.getValue() == null
                                     ? "N/A" : formatFloatWithTwoDecimals(cell.getValue());
-                                this.getSingleLineCell(cellContent);
+                                return this.getSingleLineCell(cellContent);
                           } else {
                                return this.getTelemetryRestrictedContent();
                           }
@@ -635,7 +640,7 @@ class EngViewRaceTable {
     update(drivers, isSpectating, eventType, spectatorCarIndex, fastestLapMs) {
         this.spectatorIndex = spectatorCarIndex;
         this.isSpectating = isSpectating;
-        this.fastestLapMs = fastestLapMs
+        this.fastestLapMs = fastestLapMs;
 
         if (eventType === "Time Trial") {
             this.table.clearData();
@@ -649,7 +654,7 @@ class EngViewRaceTable {
             entry["driver-info"]?.["is-player"]
         );
 
-        const tableData = drivers.map(driver => ({
+        const newTableData = drivers.map(driver => ({
             ...driver,
             id: driver['driver-info']['index'],
             position: driver['driver-info']['position'],
@@ -659,15 +664,136 @@ class EngViewRaceTable {
             index: driver['driver-info']['index'],
         }));
 
-        if (tableData && tableData.length > 0) {
+        if (newTableData && newTableData.length > 0) {
+            // Store current scroll position
             const scrollPosTop = this.table.rowManager.element.scrollTop;
             const scrollPosLeft = this.table.rowManager.element.scrollLeft;
-            this.table.setData(tableData).then(() => {
-                this.table.rowManager.element.scrollTop = scrollPosTop;
-                this.table.rowManager.element.scrollLeft = scrollPosLeft;
-            });
+
+            // Get current data to compare
+            const currentData = this.table.getData();
+            const currentDataMap = new Map(currentData.map(row => [row.id, row]));
+
+            // Check if we need to force a full update
+            const needsFullUpdate = this.needsFullUpdate(currentData, newTableData, currentDataMap);
+
+            if (needsFullUpdate) {
+                // If reference driver changed or new drivers, do full update
+                this.table.setData(newTableData).then(() => {
+                    // Force sort by position after full update
+                    this.table.setSort("position", "asc");
+
+                    setTimeout(() => {
+                        this.table.rowManager.element.scrollTop = scrollPosTop;
+                        this.table.rowManager.element.scrollLeft = scrollPosLeft;
+                    }, 10);
+                });
+            } else {
+                // Find rows that need updates
+                const rowsToUpdate = [];
+                const newDriverIds = new Set(newTableData.map(d => d.id));
+
+                newTableData.forEach(newRow => {
+                    const existingRow = currentDataMap.get(newRow.id);
+                    if (!existingRow || this.hasDataChanged(existingRow, newRow)) {
+                        rowsToUpdate.push(newRow);
+                    }
+                });
+
+                // Remove drivers that are no longer in the race
+                const rowsToDelete = currentData
+                    .filter(row => !newDriverIds.has(row.id))
+                    .map(row => row.id);
+
+                // Delete removed rows first
+                if (rowsToDelete.length > 0) {
+                    this.table.deleteRow(rowsToDelete);
+                }
+
+                // Update or add rows that have changed
+                if (rowsToUpdate.length > 0) {
+                    this.table.updateOrAddData(rowsToUpdate).then(() => {
+                        // Force sort by position after update
+                        this.table.setSort("position", "asc");
+
+                        // Restore scroll position after a short delay to ensure sorting is complete
+                        setTimeout(() => {
+                            this.table.rowManager.element.scrollTop = scrollPosTop;
+                            this.table.rowManager.element.scrollLeft = scrollPosLeft;
+                        }, 10);
+                    });
+                }
+            }
         }
     }
+
+    needsFullUpdate(currentData, newData, currentDataMap) {
+        // If different number of drivers, need full update
+        if (currentData.length !== newData.length) {
+            return true;
+        }
+
+        // Check if spectator or player reference changed (affects all formatters)
+        for (const newRow of newData) {
+            const existingRow = currentDataMap.get(newRow.id);
+            if (existingRow) {
+                // If isPlayer status changed, need full update
+                if (existingRow.isPlayer !== newRow.isPlayer) {
+                    return true;
+                }
+            }
+        }
+
+        // Check if spectator index changed (affects reference driver calculations)
+        const currentReferenceDrivers = currentData.filter(d => d.isPlayer || d.index === this.spectatorIndex);
+        const newReferenceDrivers = newData.filter(d => d.isPlayer || d.index === this.spectatorIndex);
+
+        if (currentReferenceDrivers.length !== newReferenceDrivers.length) {
+            return true;
+        }
+
+        if (currentReferenceDrivers.length > 0 && newReferenceDrivers.length > 0) {
+            if (currentReferenceDrivers[0].id !== newReferenceDrivers[0].id) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // Add this method to detect changes in data
+    hasDataChanged(oldData, newData) {
+        // Compare key fields that would affect display
+        const fieldsToCompare = [
+            'position',
+            'name',
+            'team',
+            'delta-info',
+            'warns-pens-info',
+            'lap-info',
+            'tyre-info',
+            'ers-info',
+            'fuel-info',
+            'damage-info',
+            'driver-info',
+            'isPlayer'
+        ];
+
+        for (const field of fieldsToCompare) {
+            if (JSON.stringify(oldData[field]) !== JSON.stringify(newData[field])) {
+                return true;
+            }
+        }
+
+        // Also check if reference driver status changed (affects formatting)
+        const oldIsReference = oldData.isPlayer || oldData.index === this.spectatorIndex;
+        const newIsReference = newData.isPlayer || newData.index === this.spectatorIndex;
+        if (oldIsReference !== newIsReference) {
+            return true;
+        }
+
+        return false;
+    }
+
 
     getTelemetryRestrictedContent() {
         return this.getSingleLineCell(this.TELEMETRY_DISABLED_TEXT);
