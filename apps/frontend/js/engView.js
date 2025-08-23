@@ -19,6 +19,7 @@ class EngViewRaceTable {
         this.spectatorIndex = null;
         this.isSpectating = false;
         this.fastestLapMs = 0;
+        this.sessionUID = null;
         this.INVALID_SECTOR = -2;
         this.RED_SECTOR = -1;
         this.YELLOW_SECTOR = 0;
@@ -637,7 +638,7 @@ class EngViewRaceTable {
         return `<div class='${row1Class}'>${row1}</div><div class='${row2Class}'>${row2}</div>`;
     }
 
-    update(drivers, isSpectating, eventType, spectatorCarIndex, fastestLapMs) {
+    update(drivers, isSpectating, eventType, spectatorCarIndex, fastestLapMs, sessionUID) {
         this.spectatorIndex = spectatorCarIndex;
         this.isSpectating = isSpectating;
         this.fastestLapMs = fastestLapMs;
@@ -674,7 +675,7 @@ class EngViewRaceTable {
             const currentDataMap = new Map(currentData.map(row => [row.id, row]));
 
             // Check if we need to force a full update
-            const needsFullUpdate = this.needsFullUpdate(currentData, newTableData, currentDataMap);
+            const needsFullUpdate = this.needsFullUpdate(currentData, newTableData, currentDataMap, sessionUID);
 
             if (needsFullUpdate) {
                 // If reference driver changed or new drivers, do full update
@@ -726,9 +727,16 @@ class EngViewRaceTable {
         }
     }
 
-    needsFullUpdate(currentData, newData, currentDataMap) {
+    needsFullUpdate(currentData, newData, currentDataMap, sessionUID) {
         // If different number of drivers, need full update
         if (currentData.length !== newData.length) {
+            return true;
+        }
+
+        // If session ID has changed, need update
+        if (this.sessionUID !== sessionUID) {
+            this.sessionUID = sessionUID;
+            console.debug("Session UID changed, forcing full update", sessionUID);
             return true;
         }
 
@@ -1048,11 +1056,12 @@ function initDashboard() {
             "is-spectating": isSpectating,
             "event-type": eventType,
             "spectator-car-index": spectatorCarIndex,
-            "fastest-lap-overall" : fastestLapMs
+            "fastest-lap-overall" : fastestLapMs,
+            "session-uid" : sessionUID
         } = data;
 
         if (tableEntries || eventType === "Time Trial") {
-            raceTable.update(tableEntries, isSpectating, eventType, spectatorCarIndex, fastestLapMs);
+            raceTable.update(tableEntries, isSpectating, eventType, spectatorCarIndex, fastestLapMs, sessionUID);
         }
         raceStatus.update(data);
         weatherTable.update(data["weather-forecast-samples"]);
