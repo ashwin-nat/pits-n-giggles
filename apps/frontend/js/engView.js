@@ -214,10 +214,10 @@ class EngViewRaceTable {
         }
     }
 
-    createSectorFormatter(sectorKey, timeKey, playerTimeKey) {
+    createSectorFormatter(sectorKey, timeKey, playerTimeKey, isLastLap) {
         return (cell) => {
-            const lapInfo = cell.getValue();
             const driverInfo = cell.getRow().getData();
+            const lapInfo = (isLastLap) ? driverInfo["lap-info"]["last-lap"] : driverInfo["lap-info"]["best-lap"];
             const bestLapInfo = driverInfo["lap-info"]["best-lap"];
             const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
             const sectorStatus = lapInfo["sector-status"];
@@ -261,10 +261,10 @@ class EngViewRaceTable {
         };
     }
 
-    createLastLapFormatter(sectorKey, timeKey, playerTimeKey) {
+    createLastLapFormatter(sectorKey, timeKey, playerTimeKey, isLastLap) {
         return (cell) => {
-            const lapInfo = cell.getValue();
             const driverInfo = cell.getRow().getData();
+            const lapInfo = driverInfo["lap-info"]["last-lap"];
             const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
 
             if (sectorKey === 'lap') {
@@ -289,7 +289,7 @@ class EngViewRaceTable {
                 });
             } else {
                 // For sectors, use the same logic as best lap
-                return this.createSectorFormatter(sectorKey, timeKey, playerTimeKey)(cell);
+                return this.createSectorFormatter(sectorKey, timeKey, playerTimeKey, isLastLap)(cell);
             }
         };
     }
@@ -325,26 +325,26 @@ class EngViewRaceTable {
         return [
             {
                 title: "Lap",
-                field: `lap-info.${lapType}-lap`,
-                formatter: this[formatterMethod]('lap', 'lap-time-ms', 'lap-time-ms-player'),
+                field: `lap-info.${lapType}-lap.lap-time-ms`,
+                formatter: this[formatterMethod]('lap', 'lap-time-ms', 'lap-time-ms-player', isLastLap),
                 ...this.getDisableSorting()
             },
             {
                 title: "S1",
-                field: `lap-info.${lapType}-lap`,
-                formatter: this[formatterMethod]('s1', 's1-time-ms', 's1-time-ms-player'),
+                field: `lap-info.${lapType}-lap.s1-time-ms`,
+                formatter: this[formatterMethod]('s1', 's1-time-ms', 's1-time-ms-player', isLastLap),
                 ...this.getDisableSorting()
             },
             {
                 title: "S2",
-                field: `lap-info.${lapType}-lap`,
-                formatter: this[formatterMethod]('s2', 's2-time-ms', 's2-time-ms-player'),
+                field: `lap-info.${lapType}-lap.s2-time-ms`,
+                formatter: this[formatterMethod]('s2', 's2-time-ms', 's2-time-ms-player', isLastLap),
                 ...this.getDisableSorting()
             },
             {
                 title: "S3",
-                field: `lap-info.${lapType}-lap`,
-                formatter: this[formatterMethod]('s3', 's3-time-ms', 's3-time-ms-player'),
+                field: `lap-info.${lapType}-lap.s3-time-ms`,
+                formatter: this[formatterMethod]('s3', 's3-time-ms', 's3-time-ms-player', isLastLap),
                 ...this.getDisableSorting()
             }
         ];
