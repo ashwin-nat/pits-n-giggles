@@ -240,59 +240,52 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .green-time {
-    display: inline-block; /* Ensures the element wraps tightly around the text */
-    /* padding: 2px 4px; Adjusts the space between the text and the border */
-    color: var(--bs-success); /* Sets the text color */
-    border: 2px solid currentColor; /* Sets the border color to match the text */
-    border-radius: 4px; /* Optional: rounds the corners of the border */
+    display: inline-block;
+    color: var(--bs-success);
+    border: 2px solid currentColor;
+    border-radius: 4px;
 }
 
 .purple-time {
-    display: inline-block; /* Ensures the element wraps tightly around the text */
-    /* padding: 2px 4px; Adjusts the space between the text and the border */
-    color: #d825d8; /* Sets the text color */
-    border: 2px solid currentColor; /* Sets the border color to match the text */
-    border-radius: 4px; /* Optional: rounds the corners of the border */
+    display: inline-block;
+    color: #d825d8;
+    border: 2px solid currentColor;
+    border-radius: 4px;
 }
 
 .red-time {
-    display: inline-block; /* Ensures the element wraps tightly around the text */
-    /* padding: 2px 4px; Adjusts the space between the text and the border */
-    color: var(--bs-danger); /* Sets the text color */
-    border: 2px solid currentColor; /* Sets the border color to match the text */
-    border-radius: 4px; /* Optional: rounds the corners of the border */
+    display: inline-block;
+    color: var(--bs-danger);
+    border: 2px solid currentColor;
+    border-radius: 4px;
 }
 
 .drs-not-available {
-    display: inline-block; /* Ensures the element wraps tightly around the text */
-    /* padding: 2px 4px; Adjusts the space between the text and the border */
-    color: #2D2D33; /* Sets the text color */
-    border: 2px solid currentColor; /* Sets the border color to match the text */
-    border-radius: 4px; /* Optional: rounds the corners of the border */
+    display: inline-block;
+    color: #2D2D33;
+    border: 2px solid currentColor;
+    border-radius: 4px;
 }
 
 .drs-available {
-    display: inline-block; /* Ensures the element wraps tightly around the text */
-    /* padding: 2px 4px; Adjusts the space between the text and the border */
-    color: #A1A1AA; /* Sets the text color */
-    border: 2px solid currentColor; /* Sets the border color to match the text */
-    border-radius: 4px; /* Optional: rounds the corners of the border */
+    display: inline-block;
+    color: #A1A1AA;
+    border: 2px solid currentColor;
+    border-radius: 4px;
 }
 
 .drs-active {
-    display: inline-block; /* Ensures the element wraps tightly around the text */
-    /* padding: 2px 4px; Adjusts the space between the text and the border */
-    color: #10B981; /* Sets the text color */
-    border: 2px solid currentColor; /* Sets the border color to match the text */
-    border-radius: 4px; /* Optional: rounds the corners of the border */
+    display: inline-block;
+    color: #10B981;
+    border: 2px solid currentColor;
+    border-radius: 4px;
 }
 
 .driver-pitting {
-    display: inline-block; /* Ensures the element wraps tightly around the text */
-    /* padding: 2px 4px; Adjusts the space between the text and the border */
-    color: #06B6D4; /* Sets the text color */
-    border: 2px solid currentColor; /* Sets the border color to match the text */
-    border-radius: 4px; /* Optional: rounds the corners of the border */
+    display: inline-block;
+    color: #06B6D4;
+    border: 2px solid currentColor;
+    border-radius: 4px;
 }
 
 /* Tabulator custom styling */
@@ -354,62 +347,6 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .tabulator-row.player-row .tabulator-cell:last-child {
     border-right: 2px solid #ffd700;
-}
-
-.green-time {
-    display: inline-block; /* Ensures the element wraps tightly around the text */
-    /* padding: 2px 4px; Adjusts the space between the text and the border */
-    color: var(--bs-success); /* Sets the text color */
-    border: 2px solid currentColor; /* Sets the border color to match the text */
-    border-radius: 4px; /* Optional: rounds the corners of the border */
-}
-
-.purple-time {
-    display: inline-block; /* Ensures the element wraps tightly around the text */
-    /* padding: 2px 4px; Adjusts the space between the text and the border */
-    color: #d825d8; /* Sets the text color */
-    border: 2px solid currentColor; /* Sets the border color to match the text */
-    border-radius: 4px; /* Optional: rounds the corners of the border */
-}
-
-.red-time {
-    display: inline-block; /* Ensures the element wraps tightly around the text */
-    /* padding: 2px 4px; Adjusts the space between the text and the border */
-    color: var(--bs-danger); /* Sets the text color */
-    border: 2px solid currentColor; /* Sets the border color to match the text */
-    border-radius: 4px; /* Optional: rounds the corners of the border */
-}
-
-.drs-not-available {
-    display: inline-block; /* Ensures the element wraps tightly around the text */
-    /* padding: 2px 4px; Adjusts the space between the text and the border */
-    color: #2D2D33; /* Sets the text color */
-    border: 2px solid currentColor; /* Sets the border color to match the text */
-    border-radius: 4px; /* Optional: rounds the corners of the border */
-}
-
-.drs-available {
-    display: inline-block; /* Ensures the element wraps tightly around the text */
-    /* padding: 2px 4px; Adjusts the space between the text and the border */
-    color: #A1A1AA; /* Sets the text color */
-    border: 2px solid currentColor; /* Sets the border color to match the text */
-    border-radius: 4px; /* Optional: rounds the corners of the border */
-}
-
-.drs-active {
-    display: inline-block; /* Ensures the element wraps tightly around the text */
-    /* padding: 2px 4px; Adjusts the space between the text and the border */
-    color: #10B981; /* Sets the text color */
-    border: 2px solid currentColor; /* Sets the border color to match the text */
-    border-radius: 4px; /* Optional: rounds the corners of the border */
-}
-
-.driver-pitting {
-    display: inline-block; /* Ensures the element wraps tightly around the text */
-    /* padding: 2px 4px; Adjusts the space between the text and the border */
-    color: #06B6D4; /* Sets the text color */
-    border: 2px solid currentColor; /* Sets the border color to match the text */
-    border-radius: 4px; /* Optional: rounds the corners of the border */
 }
 
 /* Settings Modal */
