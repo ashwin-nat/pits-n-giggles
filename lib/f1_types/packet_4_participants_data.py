@@ -328,12 +328,12 @@ class ParticipantData(F1SubPacketBase):
     @property
     def name(self) -> str:
         """
-        Get the name of the participant. If yourTelemetry is disabled, return the team name and driver number
+        Get the name of the participant. If showOnlineNames is disabled, return the team name and driver number
 
         Returns:
             str: The name of the participant.
         """
-        if self.m_aiControlled or (self.m_yourTelemetry and self.m_showOnlineNames):
+        if self.m_aiControlled or self.m_showOnlineNames:
             return self.m_name
 
         if self.m_teamId in self.GENERIC_TEAMS:
