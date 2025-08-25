@@ -52,7 +52,7 @@ class F1BaseEnum(Enum):
         return any(value == member.value for member in cls)
 
     @classmethod
-    def safeCast(cls: Type[T], value: Union[int, T]) -> Optional[T]:
+    def safeCast(cls: Type[T], value: Union[int, T]) -> Union[T, int]:
         """
         Safely cast a value to the enum type.
 
