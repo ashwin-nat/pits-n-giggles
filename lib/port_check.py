@@ -32,6 +32,7 @@ def is_port_available(port: int) -> bool:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         # Disable socket options that allow re-binding on macOS/Linux
         if platform.system() == "Windows":
+            # pylint: disable=no-member
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
 
         try:
