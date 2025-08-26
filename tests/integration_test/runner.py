@@ -231,6 +231,8 @@ if __name__ == "__main__":
         proto=settings.HTTPS.proto
     )
     end_time = time.perf_counter()
-    print(f"Total time: {end_time - start_time:.3f} seconds")
+    mm, ss = divmod(int(end_time - start_time), 60)
+    ms = int((end_time - start_time - mm * 60 - ss) * 1000)
+    print(f"Total time: {mm:02d}:{ss:02d}.{ms:03d}")
 
     sys.exit(0 if success else 1)
