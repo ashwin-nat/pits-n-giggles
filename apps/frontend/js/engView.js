@@ -1,4 +1,15 @@
-let g_engView_pitLapNum = null;
+let g_engView_predLapNum = null;
+function escapeHtml(unsafe) {
+    if (typeof unsafe !== "string") {
+        return unsafe;
+    }
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
 
 function getShortERSMode(mode) {
     switch (mode) {
@@ -11,67 +22,608 @@ function getShortERSMode(mode) {
     return 'N/A';
 }
 
-// Class to handle table row creation and updates
-class EngViewRaceTableRow {
-    constructor(driver, isSpectating, iconCache, eventType, spectatorIndex) {
-        this.driver = driver;
-        this.isSpectating = isSpectating;
+// Class to manage the race table
+class EngViewRaceTable {
+    constructor(iconCache) {
         this.iconCache = iconCache;
-        this.spectatorIndex = spectatorIndex;
-        this.element = document.createElement('tr');
-        if (eventType === "Time Trial") {
-            this.renderTT();
-        } else {
-            this.render();
+        this.table = null;
+        this.spectatorIndex = null;
+        this.isSpectating = false;
+        this.fastestLapMs = 0;
+        this.sessionUID = null;
+        this.INVALID_SECTOR = -2;
+        this.RED_SECTOR = -1;
+        this.YELLOW_SECTOR = 0;
+        this.GREEN_SECTOR = 1;
+        this.PURPLE_SECTOR = 2;
+        this.COLUMN_WIDTHS_LS_KEY = 'eng-view-table-column-widths';
+        this.COLUMN_VISIBILITY_LS_KEY = 'eng-view-table-column-visibility';
+        this.COLUMN_ORDER_LS_KEY = 'eng-view-table-column-order';
+        this.TELEMETRY_DISABLED_TEXT = "⌀";
+        this.initTable();
+    }
+
+    saveColumnWidths() {
+        const columns = this.table.getColumns();
+        const widths = {};
+
+        columns.forEach(column => {
+            const field = column.getField();
+            const width = column.getWidth();
+            if (field && width) {
+                widths[field] = width;
+            }
+        });
+
+        try {
+            localStorage.setItem(this.COLUMN_WIDTHS_LS_KEY, JSON.stringify(widths));
+            console.debug('Column widths saved:', widths);
+        } catch (error) {
+            console.warn('Failed to save column widths:', error);
         }
     }
 
-    createMultiLineCell(row1, row2) {
-        return `
-            <div class="eng-view-tyre-row-1">${row1}</div>
-            <div class="eng-view-tyre-row-2">${row2}</div>
-        `;
+    loadColumnWidths() {
+        try {
+            const saved = localStorage.getItem(this.COLUMN_WIDTHS_LS_KEY);
+            if (saved) {
+                return JSON.parse(saved);
+            }
+        } catch (error) {
+            console.warn('Failed to load column widths:', error);
+        }
+        // saved data not found
+        return {};
     }
 
-    createLapInfoCellTwoRow(row1, row2, sectorStatus) {
-        const redSector     = -1;
-        const greenSector   = 1;
-        const purpleSector  = 2;
+    applyColumnWidths(columnDefinitions, savedWidths) {
+        const applyWidthsRecursively = (columns) => {
+            columns.forEach(col => {
+                if (col.field && savedWidths[col.field]) {
+                    col.width = savedWidths[col.field];
+                }
+                if (col.columns) {
+                    applyWidthsRecursively(col.columns);
+                }
+            });
+        };
 
-        let sectorClass = '';
-        if (sectorStatus === greenSector) {
-            sectorClass = 'green-time';
-        } else if (sectorStatus === purpleSector) {
-            sectorClass = 'purple-time';
-        } else if (sectorStatus === redSector) {
-            sectorClass = 'red-time';
-        }
-
-        // Apply 'eng-view-tyre-row-1' and conditionally add sectorClass to row1
-        return `
-            <div class="eng-view-tyre-row-1 ${sectorClass}">${row1}</div>
-            <div class="eng-view-tyre-row-2">${row2}</div>
-        `;
+        applyWidthsRecursively(columnDefinitions);
     }
 
-    createLapInfoCellSingleRow(row1, sectorStatus) {
-        const redSector     = -1;
-        const greenSector   = 1;
-        const purpleSector  = 2;
+    saveColumnOrder() {
+        const columns = this.table.getColumns();
+        const order = columns.map(column => column.getField());
 
-        let sectorClass = '';
-        if (sectorStatus === greenSector) {
-            sectorClass = 'green-time';
-        } else if (sectorStatus === purpleSector) {
-            sectorClass = 'purple-time';
-        } else if (sectorStatus === redSector) {
-            sectorClass = 'red-time';
+        try {
+            localStorage.setItem(this.COLUMN_ORDER_LS_KEY, JSON.stringify(order));
+            console.debug('Column order saved:', order);
+        } catch (error) {
+            console.warn('Failed to save column order:', error);
+        }
+    }
+
+    loadColumnOrder() {
+        try {
+            const saved = localStorage.getItem(this.COLUMN_ORDER_LS_KEY);
+            if (saved) {
+                return JSON.parse(saved);
+            }
+        } catch (error) {
+            console.warn('Failed to load column order:', error);
+        }
+        // saved data not found
+        return null;
+    }
+
+    initTable() {
+        const columnDefinitions = this.getColumnDefinitions();
+
+        // Load and apply saved column widths
+        const savedWidths = this.loadColumnWidths();
+        console.debug('Saved column widths:', savedWidths);
+        this.applyColumnWidths(columnDefinitions, savedWidths);
+
+        // Load and apply column order
+        const savedOrder = this.loadColumnOrder();
+        if (savedOrder) {
+            columnDefinitions.sort((a, b) => {
+                const indexA = savedOrder.indexOf(a.field);
+                const indexB = savedOrder.indexOf(b.field);
+                if (indexA === -1 || indexB === -1) return 0;
+                return indexA - indexB;
+            });
         }
 
-        // Apply 'eng-view-tyre-row-1' and conditionally add sectorClass to row1
-        return `
-            <div class="eng-view-tyre-row-1 ${sectorClass}">${row1}</div>
-        `;
+        this.applyHeaderClass(columnDefinitions);
+
+        this.table = new Tabulator("#eng-view-table", {
+            layout: "fitColumns",
+            placeholder: "No Data Available",
+            columnHeaderSortMulti: false,
+            movableColumns: true,
+            virtualDom: false,
+            index: "id",
+            initialSort: [
+                {column: "position", dir: "asc"}
+            ],
+            columns: columnDefinitions,
+            rowFormatter: (row) => {
+                const data = row.getData();
+                const isReferenceDriver = data.isPlayer || data.index === this.spectatorIndex;
+
+                if (isReferenceDriver) {
+                    row.getElement().classList.add('player-row');
+                } else {
+                    row.getElement().classList.remove('player-row');
+                }
+            },
+        });
+
+        // Event listeners
+        // Distinct debounce timeouts for each event
+        this.columnResizedTimeout = null;
+        this.table.on("columnResized", (column) => {
+            // Debounce the save operation to avoid too frequent saves
+            console.debug("Column resized:", column);
+            clearTimeout(this.columnResizedTimeout);
+            this.columnResizedTimeout = setTimeout(() => {
+                this.saveColumnWidths();
+            }, 500); // Save 500ms after the last resize
+        });
+
+        this.columnOrderChangedTimeout = null;
+        this.table.on("columnOrderChanged", (columns) => {
+            // Debounce the save operation for column order
+            console.debug("Column order changed:", columns);
+            clearTimeout(this.columnOrderChangedTimeout);
+            this.columnOrderChangedTimeout = setTimeout(() => {
+                this.saveColumnOrder();
+            }, 500); // Save 500ms after the last order change
+        });
+        this.saveColumnOrder();
+    }
+
+    applyHeaderClass(columns) {
+        columns.forEach(col => {
+            col.cssClass = "eng-view-table-main-header";
+            if (col.columns) {
+                this.applyHeaderClass(col.columns);
+            }
+        });
+    }
+
+    resetColumnWidths() {
+        try {
+            localStorage.removeItem(this.COLUMN_WIDTHS_LS_KEY);
+            console.debug('Column widths reset to default');
+        } catch (error) {
+            console.warn('Failed to reset column widths:', error);
+        }
+    }
+
+    loadColumnVisibility() {
+        try {
+            const saved = localStorage.getItem(this.COLUMN_VISIBILITY_LS_KEY);
+            if (saved) {
+                return JSON.parse(saved);
+            }
+        } catch (error) {
+            console.warn('Failed to load column visibility:', error);
+        }
+        return {}; // Saved data not found
+    }
+
+    saveColumnVisibility(visibility) {
+        try {
+            localStorage.setItem(this.COLUMN_VISIBILITY_LS_KEY, JSON.stringify(visibility));
+        } catch (error) {
+            console.warn('Failed to save column visibility:', error);
+        }
+    }
+
+    createSectorFormatter(sectorKey, timeKey, playerTimeKey, isLastLap) {
+        return (cell) => {
+            const driverInfo = cell.getRow().getData();
+            const lapInfo = (isLastLap) ? driverInfo["lap-info"]["last-lap"] : driverInfo["lap-info"]["best-lap"];
+            const bestLapInfo = driverInfo["lap-info"]["best-lap"];
+            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+            const sectorStatus = lapInfo["sector-status"];
+
+            const timeMs = lapInfo[timeKey];
+            const formattedTime = sectorKey === 'lap'
+                ? formatLapTime(timeMs)
+                : formatSectorTime(timeMs);
+
+            let timeClass = '';
+            if (sectorStatus) {
+                if (sectorKey !== 'lap') {
+                    const sectorIndex = parseInt(sectorKey.slice(1)) - 1;
+                    if (sectorStatus[sectorIndex] === this.GREEN_SECTOR) {
+                        timeClass = 'green-time';
+                    } else if (sectorStatus[sectorIndex] === this.PURPLE_SECTOR) {
+                        timeClass = 'purple-time';
+                    } else if (sectorStatus[sectorIndex] === this.RED_SECTOR) {
+                        timeClass = 'red-time';
+                    }
+                } else if (timeMs) {
+                    if (timeMs === this.fastestLapMs) {
+                        timeClass = 'purple-time';
+                    } else if (timeMs === bestLapInfo[timeKey]) {
+                        timeClass = 'green-time';
+                    }
+                }
+            }
+
+            const timeElement = `<div class="single-line-cell ${timeClass}">${formattedTime}</div>`;
+
+            if (isReferenceDriver) {
+                return timeElement;
+            }
+
+            const delta = timeMs - lapInfo[playerTimeKey];
+            return this.createMultiLineCell({
+                row1: timeElement,
+                row2: formatDelta(delta),
+                escapeRow1: false
+            });
+        };
+    }
+
+    createLastLapFormatter(sectorKey, timeKey, playerTimeKey, isLastLap) {
+        return (cell) => {
+            const driverInfo = cell.getRow().getData();
+            const lapInfo = driverInfo["lap-info"]["last-lap"];
+            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+
+            if (sectorKey === 'lap') {
+                const formattedTime = formatLapTime(lapInfo[timeKey]);
+                const bestLapInfo = driverInfo["lap-info"]["best-lap"];
+                let timeClass = '';
+                if (lapInfo[timeKey] === this.fastestLapMs) {
+                    timeClass = 'purple-time';
+                } else if (lapInfo[timeKey] === bestLapInfo[timeKey]) {
+                    timeClass = 'green-time';
+                }
+                const timeElement = `<div class="single-line-cell ${timeClass}">${formattedTime}</div>`;
+
+                if (isReferenceDriver) {
+                    return timeElement;
+                }
+
+                const delta = lapInfo[timeKey] - lapInfo[playerTimeKey];
+                return this.createMultiLineCell({
+                    row1: timeElement,
+                    row2: formatDelta(delta),
+                    escapeRow1: false
+                });
+            } else {
+                // For sectors, use the same logic as best lap
+                return this.createSectorFormatter(sectorKey, timeKey, playerTimeKey, isLastLap)(cell);
+            }
+        };
+    }
+
+    createTyreWearFormatter(wearField) {
+        return (cell) => {
+            const tyreInfo = cell.getRow().getData()["tyre-info"];
+            const predictionLap = g_engView_predLapNum;
+            const predictedTyreWearInfo = predictionLap
+            ? tyreInfo["wear-prediction"]["predictions"].find(p => p["lap-number"] === predictionLap)
+            : null;
+            const currTyreWearInfo = tyreInfo["current-wear"];
+
+            const driverInfo = cell.getRow().getData();
+            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+            if (telemetryPublic) {
+                return this.createMultiLineCell({
+                    row1: formatFloatWithTwoDecimals(currTyreWearInfo[wearField]) + '%',
+                    row2: predictedTyreWearInfo
+                        ? formatFloatWithTwoDecimals(predictedTyreWearInfo[wearField]) + '%'
+                        : '---'
+                });
+            } else {
+                return this.getTelemetryRestrictedContent();
+            }
+        };
+    }
+
+    createSectorColumns(lapType) {
+        const isLastLap = lapType === 'last';
+        const formatterMethod = isLastLap ? 'createLastLapFormatter' : 'createSectorFormatter';
+
+        return [
+            {
+                title: "Lap",
+                field: `lap-info.${lapType}-lap.lap-time-ms`,
+                formatter: this[formatterMethod]('lap', 'lap-time-ms', 'lap-time-ms-player', isLastLap),
+                ...this.getDisableSorting()
+            },
+            {
+                title: "S1",
+                field: `lap-info.${lapType}-lap.s1-time-ms`,
+                formatter: this[formatterMethod]('s1', 's1-time-ms', 's1-time-ms-player', isLastLap),
+                ...this.getDisableSorting()
+            },
+            {
+                title: "S2",
+                field: `lap-info.${lapType}-lap.s2-time-ms`,
+                formatter: this[formatterMethod]('s2', 's2-time-ms', 's2-time-ms-player', isLastLap),
+                ...this.getDisableSorting()
+            },
+            {
+                title: "S3",
+                field: `lap-info.${lapType}-lap.s3-time-ms`,
+                formatter: this[formatterMethod]('s3', 's3-time-ms', 's3-time-ms-player', isLastLap),
+                ...this.getDisableSorting()
+            }
+        ];
+    }
+
+    getDisableSorting() {
+        return { headerSort: false };
+    }
+
+    getColumnDefinitions() {
+        const disableSorting = this.getDisableSorting();
+        return [
+            {
+                title: "Pos",
+                field: "position",
+                width: 40,
+                sorter: "number",
+                headerSort: false,
+                formatter: (cell) => {
+                    const driverInfo = cell.getRow().getData();
+                    const position = driverInfo.position;
+                    return this.createPositionStatusCell(position, driverInfo["driver-info"]);
+                },
+            },
+            {
+                title: "Name",
+                field: "name",
+                formatter: (cell, formatterParams, onRendered) => {
+                    const data = cell.getRow().getData();
+                    return this.createMultiLineCell({
+                        row1: data.name,
+                        row2: data.team
+                    });
+                },
+                cellClick: (e, cell) => {
+                    const data = cell.getRow().getData();
+                    fetch(`/driver-info?index=${data.index}`)
+                        .then(response => response.json())
+                        .then(driverData => {
+                            window.modalManager.openDriverModal(driverData, this.iconCache);
+                        })
+                        .catch(err => console.error("Fetch error:", err));
+                },
+                ...disableSorting
+            },
+            {
+                title: "Delta",
+                field: "delta",
+                formatter: (cell) => {
+                    const data = cell.getRow().getData();
+                    const position = data.position;
+                    const deltaInfo = data["delta-info"];
+                    const deltaToCarInFront = deltaInfo["delta-to-car-in-front"] / 1000;
+                    const deltaToLeader = deltaInfo["delta-to-leader"] / 1000;
+                    if (position == 1) {
+                        return this.createMultiLineCell({
+                            row1: 'Interval',
+                            row2: 'Leader'
+                        });
+                    }
+                    return this.createMultiLineCell({
+                        row1: formatFloatWithThreeDecimalsSigned(deltaToCarInFront),
+                        row2: formatFloatWithThreeDecimalsSigned(deltaToLeader)
+                    });
+                },
+                ...disableSorting
+            },
+            {
+                title: 'Penalties',
+                headerSort: false,
+                columns: [
+                    { title: "Track", field: "warns-pens-info.corner-cutting-warnings", ...disableSorting },
+                    { title: 'Time', field: 'warns-pens-info.time-penalties', ...disableSorting },
+                    { title: 'DT', field: 'warns-pens-info.num-dt', ...disableSorting },
+                    { title: 'Serv', field: 'warns-pens-info.num-sg', ...disableSorting },
+                ],
+            },
+            {
+                title: 'Best Lap',
+                headerSort: false,
+                columns: this.createSectorColumns('best')
+            },
+            {
+                title: 'Last Lap',
+                headerSort: false,
+                columns: this.createSectorColumns('last')
+            },
+            {
+                title: 'Tyre Wear',
+                headerSort: false,
+                columns: [
+                    {
+                        title: "Comp",
+                        field: "tyre-info.visual-tyre-compound",
+                        formatter: (cell) => {
+                            const tyreInfo = cell.getRow().getData()["tyre-info"];
+                            const tyreIcon = this.iconCache.getIcon(tyreInfo["visual-tyre-compound"]).outerHTML;
+                            const agePitInfoStr = `${tyreInfo["tyre-age"]} L (${tyreInfo["num-pitstops"]} pit)`;
+                            return this.createMultiLineCell({
+                                row1: tyreIcon,
+                                row2: agePitInfoStr,
+                                escapeRow1: false
+                            });
+                        },
+                        ...disableSorting
+                    },
+                    {
+                        title: "Lap",
+                        field: "tyre-info.tyre-age",
+                        formatter: (cell) => {
+                            const predictionLap = g_engView_predLapNum;
+                            return this.createMultiLineCell({
+                                row1: "cur",
+                                row2: predictionLap ? predictionLap : "---"
+                            });
+                        },
+                        ...disableSorting
+                    },
+                    {
+                        title: "FL",
+                        field: "tyre-info.current-wear.front-left-wear",
+                        formatter: this.createTyreWearFormatter("front-left-wear"),
+                        ...disableSorting
+                    },
+                    {
+                        title: "FR",
+                        field: "tyre-info.current-wear.front-right-wear",
+                        formatter: this.createTyreWearFormatter("front-right-wear"),
+                        ...disableSorting
+                    },
+                    {
+                        title: "RL",
+                        field: "tyre-info.current-wear.rear-left-wear",
+                        formatter: this.createTyreWearFormatter("rear-left-wear"),
+                        ...disableSorting
+                    },
+                    {
+                        title: "RR",
+                        field: "tyre-info.current-wear.rear-right-wear",
+                        formatter: this.createTyreWearFormatter("rear-right-wear"),
+                        ...disableSorting
+                    },
+                ],
+            },
+            {
+                title: 'ERS',
+                headerSort: false,
+                columns: [
+                    { title: "Avail", field: "ers-info.ers-percent",
+                        formatter: (cell) => {
+                            const driverInfo = cell.getRow().getData();
+                            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+                            if (telemetryPublic) {
+                                return this.getSingleLineCell(cell.getValue());
+                            } else {
+                                return this.getTelemetryRestrictedContent();
+                            }
+                        },
+                        ...disableSorting
+                    },
+                    { title: "Deploy", field: "ers-info.ers-deployed-this-lap",
+                        formatter: (cell) => {
+                            const driverInfo = cell.getRow().getData();
+                            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+                            if (telemetryPublic) {
+                                return this.getSingleLineCell(`${formatFloatWithTwoDecimals(cell.getValue())}%`);
+                            } else {
+                                return this.getTelemetryRestrictedContent();
+                            }
+                        }, ...disableSorting
+                    },
+                    { title: "Mode", field: "ers-info.ers-mode",
+                        formatter: (cell) => {
+                            const driverInfo = cell.getRow().getData();
+                            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+                            if (telemetryPublic) {
+                                return this.getSingleLineCell(getShortERSMode(cell.getValue()));
+                            } else {
+                                return this.getTelemetryRestrictedContent();
+                            }
+                        }, ...disableSorting
+                    },
+                ],
+            },
+            {
+                title: 'Fuel',
+                headerSort: false,
+                columns: [
+                    { title: "Total", field: "fuel-info.fuel-in-tank",
+                        formatter: (cell) => {
+                            const driverInfo = cell.getRow().getData();
+                            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+                            if (telemetryPublic) {
+                                const cellContent = cell.getValue() == null ? "N/A"
+                                    : formatFloatWithTwoDecimals(cell.getValue());
+                                return this.getSingleLineCell(cellContent);
+                            } else {
+                                return this.getTelemetryRestrictedContent();
+                            }
+                        }, ...disableSorting
+                    },
+                    { title: "Per Lap", field: "fuel-info.curr-fuel-rate",
+                        formatter: (cell) => {
+                            const driverInfo = cell.getRow().getData();
+                            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+                            if (telemetryPublic) {
+                                const cellContent = cell.getValue() == null
+                                    ? "N/A" : formatFloatWithTwoDecimals(cell.getValue());
+                                return this.getSingleLineCell(cellContent);
+                            } else {
+                                return this.getTelemetryRestrictedContent();
+                            }
+                        }, ...disableSorting
+                    },
+                    { title: "Est", field: "fuel-info.surplus-laps-png",
+                        formatter: (cell) => {
+                            const driverInfo = cell.getRow().getData();
+                            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+                            if (telemetryPublic) {
+                                const cellContent = cell.getValue() == null ? "N/A"
+                                    : formatFloatWithTwoDecimalsSigned(cell.getValue());
+                                return this.getSingleLineCell(cellContent);
+                            } else {
+                                return this.getTelemetryRestrictedContent();
+                            }
+                        }, ...disableSorting
+                    },
+                ],
+            },
+            {
+                title: 'Damage',
+                headerSort: false,
+                columns: [
+                    { title: "FL", field: "damage-info.fl-wing-damage",
+                        formatter: (cell) =>  {
+                            const driverInfo = cell.getRow().getData();
+                            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+                            if (telemetryPublic) {
+                                return this.getSingleLineCell(`${cell.getValue()}%`);
+                            } else {
+                                return this.getTelemetryRestrictedContent();
+                            }
+                        }, ...disableSorting
+                    },
+                    { title: "FR", field: "damage-info.fr-wing-damage",
+                        formatter: (cell) =>  {
+                            const driverInfo = cell.getRow().getData();
+                            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+                            if (telemetryPublic) {
+                                return this.getSingleLineCell(`${cell.getValue()}%`);
+                            } else {
+                                return this.getTelemetryRestrictedContent();
+                            }
+                        }, ...disableSorting
+                    },
+                    { title: "RW", field: "damage-info.rear-wing-damage",
+                        formatter: (cell) =>  {
+                            const driverInfo = cell.getRow().getData();
+                            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+                            if (telemetryPublic) {
+                                return this.getSingleLineCell(`${cell.getValue()}%`);
+                            } else {
+                                return this.getTelemetryRestrictedContent();
+                            }
+                        }, ...disableSorting
+                    },
+                ],
+            },
+        ];
     }
 
     createPositionStatusCell(position, driverInfo) {
@@ -88,351 +640,204 @@ class EngViewRaceTableRow {
         } else {
             statusClass = 'drs-not-available';
         }
-        return `
-            <div class="eng-view-tyre-row-1">${position}</div>
-            <div class="${statusClass}">${statusText}</div>
-        `;
+        return this.createMultiLineCell({
+            row1: position,
+            row2: statusText,
+            row2Class: statusClass
+        })
     }
 
-    createMultiLineCellOnClick(row1Content, row2Content, onClick) {
-        const container = document.createElement("a");
-        container.href = "#";
-        container.style.textDecoration = "none"; // Optional: remove underline
-        container.style.color = "inherit";       // Optional: preserve inherited text color
+    createMultiLineCell({
+        row1,
+        row2,
+        row1Class = 'eng-view-tyre-row-1',
+        row2Class = 'eng-view-tyre-row-2',
+        escapeRow1 = true,
+        escapeRow2 = true}) {
 
-        const row1 = document.createElement("div");
-        row1.className = "eng-view-tyre-row-1";
-        row1.textContent = row1Content;
-
-        const row2 = document.createElement("div");
-        row2.className = "eng-view-tyre-row-2";
-        row2.textContent = row2Content;
-
-        container.appendChild(row1);
-        container.appendChild(row2);
-
-        container.addEventListener("click", (e) => {
-            e.preventDefault(); // Prevent actual jump to "#"
-            onClick(e);
-        });
-
-        return container;
+        const processedRow1 = escapeRow1 ? escapeHtml(row1) : row1;
+        const processedRow2 = escapeRow2 ? escapeHtml(row2) : row2;
+        return `<div class='${row1Class}'>${processedRow1}</div><div class='${row2Class}'>${processedRow2}</div>`;
     }
 
-    createIconTextCell(iconSvg, text) {
-        return `
-            <div class="eng-view-icon-row">
-                <div class="eng-view-icon">${iconSvg.outerHTML}</div>
-                <div class="eng-view-tyre-row-2">${text}</div>
-            </div>
-        `;
-    }
+    update(drivers, isSpectating, eventType, spectatorCarIndex, fastestLapMs, sessionUID) {
+        this.spectatorIndex = spectatorCarIndex;
+        this.isSpectating = isSpectating;
+        this.fastestLapMs = fastestLapMs;
 
-    getDriverInfoCells() {
-        const driverInfo = this.driver["driver-info"];
-        return [
-            {value: this.createPositionStatusCell(driverInfo["position"], driverInfo), border: true},
-            {value: this.createMultiLineCellOnClick(driverInfo["name"], driverInfo["team"], () => {
-                console.log("Sending driver info request", driverInfo["name"], driverInfo["index"]);
-                fetch(`/driver-info?index=${driverInfo["index"]}`)
-                    .then(response => {
-                        if (!response.ok) throw new Error("Network response was not ok");
-                        return response.json(); // or .text() if you expect plain text
-                    })
-                    .then(data => {
-                        console.log("Driver info fetched:", data);
-                        // optionally do something with the response
-                        window.modalManager.openDriverModal(data, this.iconCache);
-                    })
-                    .catch(err => {
-                        console.error("Fetch error:", err);
-                    });
-            }), border: true},
-        ];
-    }
-
-    getDeltaInfoCells() {
-
-        const deltaInfo  = this.driver["delta-info"];
-        const position   = this.driver["driver-info"]["position"]
-        return [
-            {
-                value: this.createMultiLineCell(
-                    (position == 1) ? ("Interval") :
-                        (formatFloatWithThreeDecimalsSigned(deltaInfo["delta-to-car-in-front"]/1000)),
-                    (position == 1) ? ("Leader") :
-                        (formatFloatWithThreeDecimalsSigned(deltaInfo["delta-to-leader"]/1000))),
-                border: true
-            },
-        ]
-    }
-
-    getPenaltyCells() {
-        const warnsPensInfo = this.driver["warns-pens-info"];
-        return [
-            { value: warnsPensInfo["corner-cutting-warnings"] },
-            { value: warnsPensInfo["time-penalties"] },
-            { value: warnsPensInfo["num-dt"] },
-            { value: warnsPensInfo["num-sg"], border: true }
-        ];
-    }
-
-    getLapTimeCells() {
-        const lastLapInfo = this.driver["lap-info"]["last-lap"];
-        const bestLapInfo = this.driver["lap-info"]["best-lap"];
-        const defaultYellowSector = 0;
-
-        const driverInfo = this.driver["driver-info"];
-        const isReferenceDriver =
-            driverInfo["is-player"] ||
-            driverInfo["index"] === this.spectatorIndex;
-
-        const createCells = (lapInfo, isBestLap) => {
-            // Inner helper to generate one cell object
-            const createCell = (time, delta, status, isLast) => {
-                // Format the time for display (lap time or sector time)
-                const formattedTime = isBestLap
-                    ? formatLapTime(time)
-                    : formatSectorTime(time);
-
-                // Single row cell for reference driver, else two row cell
-                const value = isReferenceDriver
-                    ? this.createLapInfoCellSingleRow(formattedTime, status)
-                    : this.createLapInfoCellTwoRow(
-                        formattedTime,
-                        formatDelta(delta),
-                        status
-                    );
-
-                return {
-                    value: value,
-                    border: isLast
-                };
-            };
-
-            // Return 4 cells: full lap time + 3 sector times
-            return [
-                createCell(
-                    lapInfo["lap-time-ms"],
-                    lapInfo["lap-time-ms-player"] - lapInfo["lap-time-ms"],
-                    defaultYellowSector,
-                    false
-                ),
-                createCell(
-                    lapInfo["s1-time-ms"],
-                    lapInfo["s1-time-ms-player"] - lapInfo["s1-time-ms"],
-                    lapInfo["sector-status"][0],
-                    false
-                ),
-                createCell(
-                    lapInfo["s2-time-ms"],
-                    lapInfo["s2-time-ms-player"] - lapInfo["s2-time-ms"],
-                    lapInfo["sector-status"][1],
-                    false
-                ),
-                createCell(
-                    lapInfo["s3-time-ms"],
-                    lapInfo["s3-time-ms-player"] - lapInfo["s3-time-ms"],
-                    lapInfo["sector-status"][2],
-                    true // Only the last cell gets a border
-                ),
-            ];
-        };
-
-        // Return all 8 cells: 4 from best lap, 4 from last lap
-        return [
-            ...createCells(bestLapInfo, true),
-            ...createCells(lastLapInfo, false)
-        ];
-    }
-
-    getTyreInfoCells(isTelemetryPublic) {
-        const tyreInfoData = this.driver["tyre-info"];
-        const tyreIcon = this.iconCache.getIcon(tyreInfoData["visual-tyre-compound"]);
-        const agePitInfoStr = `${tyreInfoData["tyre-age"]} L (${tyreInfoData["num-pitstops"]} pit)`;
-        if (!isTelemetryPublic) {
-            return [
-                { value: this.createIconTextCell(tyreIcon, agePitInfoStr), border: true }
-            ];
+        if (eventType === "Time Trial") {
+            this.table.clearData();
+            this.table.options.placeholder = "Time Trial not supported in Engineer View";
+            return;
         }
 
-        const currTyreWearInfo = tyreInfoData["current-wear"];
-        const predictionLap = g_engView_pitLapNum;
-        const predictedTyreWearInfo = tyreInfoData["wear-prediction"]["predictions"].find(
-            p => p["lap-number"] === predictionLap);
-        return [
-            { value: this.createIconTextCell(tyreIcon, agePitInfoStr)},
-            { value: this.createMultiLineCell("cur", predictionLap) },
-            { value: this.createMultiLineCell(formatFloatWithTwoDecimals(currTyreWearInfo["front-left-wear"]) + '%',
-                (predictedTyreWearInfo) ? (formatFloatWithTwoDecimals(predictedTyreWearInfo["front-left-wear"]) + '%') : ('---')) },
-            { value: this.createMultiLineCell(formatFloatWithTwoDecimals(currTyreWearInfo["front-right-wear"]) + '%',
-                (predictedTyreWearInfo) ? (formatFloatWithTwoDecimals(predictedTyreWearInfo["front-right-wear"]) + '%') : ('---')) },
-            { value: this.createMultiLineCell(formatFloatWithTwoDecimals(currTyreWearInfo["rear-left-wear"]) + '%',
-                (predictedTyreWearInfo) ? (formatFloatWithTwoDecimals(predictedTyreWearInfo["rear-left-wear"]) + '%') : ('---')) },
-            { value: this.createMultiLineCell(formatFloatWithTwoDecimals(currTyreWearInfo["rear-right-wear"]) + '%',
-                (predictedTyreWearInfo) ? (formatFloatWithTwoDecimals(predictedTyreWearInfo["rear-right-wear"]) + '%') : ('---')),
-                border: true },
-        ];
-    }
+        updateReferenceLapTimes(drivers, (entry) =>
+            this.isSpectating ?
+            entry["driver-info"]?.["index"] == this.spectatorIndex :
+            entry["driver-info"]?.["is-player"]
+        );
 
-    getErsCells() {
-        const ersInfo = this.driver["ers-info"];
-        return [
-            { value: ersInfo["ers-percent"] }, // this is already a string
-            { value: formatFloatWithTwoDecimals(ersInfo["ers-deployed-this-lap"]) + '%' },
-            { value: getShortERSMode(ersInfo["ers-mode"]), border: true }
-        ];
-    }
+        const newTableData = drivers.map(driver => ({
+            ...driver,
+            id: driver['driver-info']['index'],
+            position: driver['driver-info']['position'],
+            name: driver['driver-info']['name'],
+            team: driver['driver-info']['team'],
+            isPlayer: driver['driver-info']['is-player'],
+            index: driver['driver-info']['index'],
+        }));
 
-    getFuelCells() {
-        const fuelInfo = this.driver["fuel-info"];
-        return [
-            { value: fuelInfo["fuel-in-tank"] == null ? "N/A" : formatFloatWithTwoDecimals(fuelInfo["fuel-in-tank"]) },
-            { value: fuelInfo["curr-fuel-rate"] == null ? "N/A" : formatFloatWithTwoDecimals(fuelInfo["curr-fuel-rate"]) },
-            { value: fuelInfo["surplus-laps-png"] == null ? "N/A" : formatFloatWithTwoDecimalsSigned(fuelInfo["surplus-laps-png"]), border: true }
-        ];
-    }
+        if (newTableData && newTableData.length > 0) {
+            // Store current scroll position
+            const scrollPosTop = this.table.rowManager.element.scrollTop;
+            const scrollPosLeft = this.table.rowManager.element.scrollLeft;
 
-    getDamageCells() {
-        const damageInfo = this.driver["damage-info"];
-        return [
-            { value: damageInfo["fl-wing-damage"] + '%' },
-            { value: damageInfo["fr-wing-damage"] + '%' },
-            { value: damageInfo["rear-wing-damage"] + '%', border: true }
-        ];
-    }
+            // Get current data to compare
+            const currentData = this.table.getData();
+            const currentDataMap = new Map(currentData.map(row => [row.id, row]));
 
-    render() {
-        const isSpectating = this.spectatorIndex !== null;
-        const isReferenceDriver = this.driver["driver-info"]['index'] === this.spectatorIndex;
-        const isPlayerDriver = this.driver["driver-info"]['is-player'];
-        const isTelemetryPublic = this.driver["driver-info"]['telemetry-setting'] === "Public";
+            if (this.needsFullUpdate(currentData, newTableData, currentDataMap, sessionUID)) {
+                // If reference driver changed or new drivers, do full update
+                this.table.setData(newTableData).then(() => {
+                    // Force sort by position after full update
+                    if (this.table && typeof this.table.setSort === 'function') {
+                        this.table.setSort("position", "asc");
+                    } else {
+                        console.warn("Tabulator table or setSort function not available for sorting.");
+                    }
 
-        // Determine if this row represents the reference driver —
-        // either the selected driver while spectating, or the actual player while driving
-        const isPlayerRow = (isSpectating && isReferenceDriver) || (!isSpectating && isPlayerDriver);
-
-        if (isPlayerRow) {
-            this.element.classList.add('player-row');
-        } else {
-            this.element.classList.remove('player-row');
-        }
-
-        // Clear previous content
-        this.element.innerHTML = "";
-        let cells;
-
-        if (isTelemetryPublic) {
-            cells = [
-                ...this.getDriverInfoCells(),
-                ...this.getDeltaInfoCells(),
-                ...this.getPenaltyCells(),
-                ...this.getLapTimeCells(),
-                ...this.getTyreInfoCells(true),
-                ...this.getErsCells(),
-                ...this.getFuelCells(),
-                ...this.getDamageCells(),
-            ];
-        } else {
-            cells = [
-                ...this.getDriverInfoCells(),
-                ...this.getDeltaInfoCells(),
-                ...this.getPenaltyCells(),
-                ...this.getLapTimeCells(),
-                ...this.getTyreInfoCells(false),
-            ]
-            // values for tyre info*, ERS, fuel and damage are not available when Telemetry is Private,
-            // Dynamically compute the number of omitted columns for colspan
-            const omittedColumnsCount =
-                // For tyre info, we partially show the data. Compound, age and num pit stop data will always be avlb
-                (this.getTyreInfoCells(true).length - this.getTyreInfoCells(false).length) +
-                this.getErsCells().length +
-                this.getFuelCells().length +
-                this.getDamageCells().length;
-            cells.push({
-                value: "Driver has telemetry set to Restricted",
-                colspan: omittedColumnsCount,
-                class: "eng-view-restricted-cell text-center"
-            });
-            console.log("Driver has telemetry set to Restricted", omittedColumnsCount);
-        }
-
-        // Iterate through cells and append them correctly
-        cells.forEach(cell => {
-            const td = document.createElement("td");
-
-            // Handle optional properties
-            if ("colspan" in cell) {
-                td.colSpan = cell.colspan;
-            }
-
-            if ("class" in cell) {
-                td.className = cell.class;
-            } else if (cell.border) {
-                td.classList.add("eng-view-col-border");
-            }
-
-            // Render content
-            if (cell.value instanceof HTMLElement) {
-                td.appendChild(cell.value);
+                    setTimeout(() => {
+                        this.table.rowManager.element.scrollTop = scrollPosTop;
+                        this.table.rowManager.element.scrollLeft = scrollPosLeft;
+                    }, 10);
+                });
             } else {
-                td.innerHTML = cell.value;
+                // Find rows that need updates
+                const rowsToUpdate = [];
+                const newDriverIds = new Set(newTableData.map(d => d.id));
+
+                newTableData.forEach(newRow => {
+                    const existingRow = currentDataMap.get(newRow.id);
+                    if (!existingRow || this.hasDataChanged(existingRow, newRow)) {
+                        rowsToUpdate.push(newRow);
+                    }
+                });
+
+                // Remove drivers that are no longer in the race
+                const rowsToDelete = currentData
+                    .filter(row => !newDriverIds.has(row.id))
+                    .map(row => row.id);
+
+                // Delete removed rows first
+                if (rowsToDelete.length > 0) {
+                    this.table.deleteRow(rowsToDelete);
+                }
+
+                // Update or add rows that have changed
+                if (rowsToUpdate.length > 0) {
+                    this.table.updateOrAddData(rowsToUpdate).then(() => {
+                        // Force sort by position after update
+                        if (this.table && typeof this.table.setSort === 'function') {
+                            this.table.setSort("position", "asc");
+                        } else {
+                            console.warn("Tabulator table or setSort function not available for sorting after update.");
+                        }
+
+                        // Restore scroll position after a short delay to ensure sorting is complete
+                        setTimeout(() => {
+                            this.table.rowManager.element.scrollTop = scrollPosTop;
+                            this.table.rowManager.element.scrollLeft = scrollPosLeft;
+                        }, 10);
+                    });
+                }
             }
-
-            this.element.appendChild(td);
-        });
+        }
     }
 
-    renderTT() {
-        // Clear existing content and display a message spanning all columns
-        this.element.innerHTML = `
-            <td colspan="100%" class="text-center">
-                Time Trial not supported in Engineer View
-            </td>
-        `;
+    needsFullUpdate(currentData, newData, currentDataMap, sessionUID) {
+        // If different number of drivers, need full update
+        if (currentData.length !== newData.length) {
+            return true;
+        }
+
+        // If session ID has changed, need update
+        if (this.sessionUID !== sessionUID) {
+            this.sessionUID = sessionUID;
+            console.debug("Session UID changed, forcing full update", sessionUID);
+            return true;
+        }
+
+        // Check if spectator or player reference changed (affects all formatters)
+        for (const newRow of newData) {
+            const existingRow = currentDataMap.get(newRow.id);
+            if (existingRow && existingRow.isPlayer !== newRow.isPlayer) {
+                  return true;
+            }
+        }
+
+        // Check if spectator index changed (affects reference driver calculations)
+        const currentReferenceDrivers = currentData.filter(d => d.isPlayer || d.index === this.spectatorIndex);
+        const newReferenceDrivers = newData.filter(d => d.isPlayer || d.index === this.spectatorIndex);
+
+        if (currentReferenceDrivers.length !== newReferenceDrivers.length) {
+            return true;
+        }
+
+        if (currentReferenceDrivers.length > 0 && newReferenceDrivers.length > 0) {
+            if (currentReferenceDrivers[0].id !== newReferenceDrivers[0].id) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
-    update(driver) {
-        this.driver = driver;
-        this.render();
-    }
-}
+    hasDataChanged(oldData, newData) {
+        // Compare key fields that would affect display
+        // Add more fields as needed
+        const fieldsToCompare = [
+            'position',
+            'name',
+            'team',
+            'delta-info',
+            'warns-pens-info',
+            'lap-info',
+            'tyre-info',
+            'ers-info',
+            'fuel-info',
+            'damage-info',
+            'driver-info',
+            'isPlayer'
+        ];
 
-// Class to manage the race table
-class EngViewRaceTable {
-    constructor(iconCache) {
-        this.tableBody = document.getElementById('engViewRaceTableBody');
-        this.rows = new Map();
-        this.iconCache = iconCache;
+        for (const field of fieldsToCompare) {
+            if (!_.isEqual(oldData[field], newData[field])) {
+                return true;
+            }
+        }
+
+        // Also check if reference driver status changed (affects formatting)
+        const oldIsReference = oldData.isPlayer || oldData.index === this.spectatorIndex;
+        const newIsReference = newData.isPlayer || newData.index === this.spectatorIndex;
+        if (oldIsReference !== newIsReference) {
+            return true;
+        }
+
+        return false;
+    }
+
+
+    getTelemetryRestrictedContent() {
+        return this.getSingleLineCell(this.TELEMETRY_DISABLED_TEXT);
+    }
+
+    getSingleLineCell(value, escape = true) {
+        const processedValue = escape ? escapeHtml(value) : value;
+        return `<div class="single-line-cell">${processedValue}</div>`;
     }
 
     clear() {
-        this.tableBody.innerHTML = '';
-        this.rows.clear();
-    }
-
-    update(drivers, isSpectating, eventType, spectatorCarIndex) {
-        // Clear the existing table body
-        this.clear();
-
-        // Time trial not supported
-        if (eventType === "Time Trial") {
-            const row = new EngViewRaceTableRow(null, isSpectating, this.iconCache, eventType, spectatorCarIndex);
-            this.rows.set(1, row);
-            this.tableBody.appendChild(row.element);
-        } else {
-            // Repopulate the table with the new driver data
-            updateReferenceLapTimes(drivers,
-                (isSpectating) ?
-                ((entry) => entry["driver-info"]?.["index"] == spectatorCarIndex) :
-                ((entry) => entry["driver-info"]?.["is-player"])
-                );
-            drivers.forEach(driver => {
-                const row = new EngViewRaceTableRow(driver, isSpectating, this.iconCache, eventType, spectatorCarIndex);
-                this.rows.set(driver.position, row);
-                this.tableBody.appendChild(row.element);
-            });
-        }
+        this.table.clearData();
     }
 }
 
@@ -465,25 +870,25 @@ class EngViewRaceStatus {
         this.predictionLapInput.addEventListener('input', (e) => {
             let value = parseInt(e.target.value);
             if (!isNaN(value) && value >= e.target.min && value <= e.target.max) {
-                g_engView_pitLapNum = value;
-                console.log('Prediction lap changed to:', g_engView_pitLapNum);
+                g_engView_predLapNum = value;
+                console.debug('Prediction lap changed to:', g_engView_predLapNum);
             } else {
                 console.warn('Invalid input: Out of range');
             }
         });
 
         this.predictionPitBtn.addEventListener('click', () => {
-            g_engView_pitLapNum = this.pitLap;
+            g_engView_predLapNum = this.pitLap;
             this.#updatePredLapInputBox();
         });
 
         this.predictionMidBtn.addEventListener('click', () => {
-            g_engView_pitLapNum = this.midLap;
+            g_engView_predLapNum = this.midLap;
             this.#updatePredLapInputBox();
         });
 
         this.predictionLastBtn.addEventListener('click', () => {
-            g_engView_pitLapNum = this.totalLaps;
+            g_engView_predLapNum = this.totalLaps;
             this.#updatePredLapInputBox();
         });
 
@@ -493,8 +898,8 @@ class EngViewRaceStatus {
     }
 
     #updatePredLapInputBox() {
-        this.predictionLapInput.value = g_engView_pitLapNum;
-        console.log("Updated prediction element value", g_engView_pitLapNum);
+        this.predictionLapInput.value = g_engView_predLapNum;
+        console.debug("Updated prediction element value", g_engView_predLapNum);
     }
 
     #getSCStatusString(scStatus) {
@@ -538,14 +943,14 @@ class EngViewRaceStatus {
         let shouldUpdatePred = false;
         if (data["total-laps"] != "---" && this.totalLaps != data["total-laps"]) {
             // Set the initial prediction value
-            g_engView_pitLapNum = data["total-laps"];
+            g_engView_predLapNum = data["total-laps"];
             shouldUpdatePred = true;
             this.predictionLastBtn.disabled = false;
         }
 
         if (this.pitLap == null && data["player-pit-window"]) {
             // If the pit window becomes available
-            g_engView_pitLapNum = data["player-pit-window"];
+            g_engView_predLapNum = data["player-pit-window"];
             shouldUpdatePred = true;
             this.predictionPitBtn.disabled = false;
         }
@@ -633,75 +1038,195 @@ function initDashboard() {
 
     const driverModal = true;
     const raceStatsModal = false;
-    const settingsModal = false;
-    window.modalManager = new ModalManager(driverModal, raceStatsModal, settingsModal);
+    window.modalManager = new ModalManager(driverModal, raceStatsModal, false);
+
+    const connectStart = Date.now();
+    const socketio = io(`${location.protocol}//${location.hostname}:${location.port}`, {
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 500,
+        reconnectionDelayMax: 3000,
+        randomizationFactor: 0.3,
+        timeout: 7000,
+        transports: ['websocket', 'polling'],
+        upgrade: true,
+        rememberUpgrade: true,
+        secure: location.protocol === 'https:',
+    });
+
+    socketio.on('connect', () => {
+        socketio.emit('register-client', { type: 'race-table' });
+        console.log(`⏱️ Socket connected in ${Date.now() - connectStart}ms`);
+    });
+
+    socketio.on('connect_error', (err) => {
+        console.warn('❌ Socket connection error:', err.message);
+    });
+
+    socketio.on('reconnect_attempt', attempt => {
+        console.log(`🔁 Reconnection attempt ${attempt}`);
+    });
+
+    socketio.on('race-table-update', (binaryData) => {
+        let data;
+        try {
+            data = window.msgpack.decode(new Uint8Array(binaryData));
+        } catch (err) {
+            console.error('Failed to decode race-table-update:', err);
+            return;
+        }
+
+        const {
+            "table-entries": tableEntries,
+            "is-spectating": isSpectating,
+            "event-type": eventType,
+            "spectator-car-index": spectatorCarIndex,
+            "fastest-lap-overall" : fastestLapMs,
+            "session-uid" : sessionUID
+        } = data;
+
+        if (tableEntries || eventType === "Time Trial") {
+            raceTable.update(tableEntries, isSpectating, eventType, spectatorCarIndex, fastestLapMs, sessionUID);
+        }
+        raceStatus.update(data);
+        weatherTable.update(data["weather-forecast-samples"]);
+    });
+
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+
+    // Column Visibility Pane Logic
+    const columnVisibilityPane = document.getElementById('column-visibility-pane');
+    const settingsBtn = document.getElementById('settings-btn');
+    const closePaneBtn = document.getElementById('close-pane-btn');
+    const columnVisibilityContainer = document.getElementById('column-visibility-container');
+    const resetVisibilityBtn = document.getElementById('reset-visibility-btn');
+
+    settingsBtn.onclick = function() {
+        columnVisibilityPane.classList.add('open');
+        populateColumnVisibility();
+    }
+
+    closePaneBtn.onclick = function() {
+        columnVisibilityPane.classList.remove('open');
+    }
+
+    resetVisibilityBtn.onclick = function() {
+        // Clear the visibility from local storage so it resets to default
+        localStorage.removeItem(raceTable.COLUMN_VISIBILITY_LS_KEY);
+
+        // Re-populate the checkboxes which will now be all checked
+        populateColumnVisibility();
+
+        // Apply the default visibility to the table
+        applyColumnVisibility();
+    };
+
+    // Close the pane if clicked outside
+    window.addEventListener('click', function(event) {
+        if (!columnVisibilityPane.contains(event.target) && !settingsBtn.contains(event.target) && columnVisibilityPane.classList.contains('open')) {
+            columnVisibilityPane.classList.remove('open');
+        }
+    });
+
+    function populateColumnVisibility() {
+        columnVisibilityContainer.innerHTML = '';
+        const columns = raceTable.table.getColumns(true);
+        const visibility = raceTable.loadColumnVisibility();
+
+        columns.forEach(column => {
+            if (column.getDefinition().title) {
+                createCheckbox(column, columnVisibilityContainer, visibility);
+            }
+        });
+    }
+
+    function createColumnToggle(column, container, visibility, isSub = false) {
+        const columnDef = column.getDefinition();
+        const field = column.getField() || columnDef.title;
+        const isVisible = visibility[field] !== false; // Default to visible
+
+        const formCheckDiv = document.createElement('div');
+        formCheckDiv.classList.add('form-check', 'form-switch');
+        if (isSub) {
+            formCheckDiv.classList.add('sub-column');
+        }
+
+        const input = document.createElement('input');
+        input.classList.add('form-check-input');
+        input.type = 'checkbox';
+        input.role = 'switch';
+        input.id = `toggle-${field}`;
+        input.checked = isVisible;
+        input.dataset.field = field; // Store field name for easy lookup
+
+        const label = document.createElement('label');
+        label.classList.add('form-check-label');
+        label.htmlFor = `toggle-${field}`;
+        label.textContent = columnDef.title;
+
+        input.onchange = () => {
+            const newVisibility = raceTable.loadColumnVisibility();
+            newVisibility[field] = input.checked;
+
+            // Handle parent/child visibility
+            const subColumns = column.getDefinition().columns;
+            if (subColumns && subColumns.length > 0) {
+                subColumns.forEach(subColumnDef => {
+                    const subField = subColumnDef.field || subColumnDef.title;
+                    newVisibility[subField] = input.checked;
+                    const subInput = columnVisibilityContainer.querySelector(`input[data-field="${subField}"]`);
+                    if (subInput) {
+                        subInput.checked = input.checked;
+                        subInput.disabled = !input.checked;
+                    }
+                });
+            }
+
+            raceTable.saveColumnVisibility(newVisibility);
+            applyColumnVisibility();
+        };
+
+        formCheckDiv.appendChild(input);
+        formCheckDiv.appendChild(label);
+        container.appendChild(formCheckDiv);
+
+        const subColumns = column.getDefinition().columns;
+        if (subColumns && subColumns.length > 0) {
+            const columnComponents = column.getSubColumns();
+            columnComponents.forEach(subColumnComponent => {
+                createColumnToggle(subColumnComponent, container, visibility, true);
+            });
+        }
+    }
+
+    function populateColumnVisibility() {
+        columnVisibilityContainer.innerHTML = '';
+        const columns = raceTable.table.getColumns(true);
+        const visibility = raceTable.loadColumnVisibility();
+
+        columns.forEach(column => {
+            if (column.getDefinition().title) {
+                createColumnToggle(column, columnVisibilityContainer, visibility);
+            }
+        });
+    }
+
+    function applyColumnVisibility() {
+        const visibility = raceTable.loadColumnVisibility();
+        raceTable.table.getColumns().forEach(column => {
+            const field = column.getField() || column.getDefinition().title;
+            if (visibility[field] === false) {
+                column.hide();
+            } else {
+                column.show();
+            }
+        });
+    }
+
+    // Apply visibility on initial load
+    applyColumnVisibility();
 }
 
 // Start the dashboard when the page loads
 document.addEventListener('DOMContentLoaded', initDashboard);
-
-let awaitingResponse = false;
-let timeoutIntervalId;
-let timeoutIntervalMs = 3000;
-let socketio;
-
-const connectStart = Date.now();
-socketio = io(`${location.protocol}//${location.hostname}:${location.port}`, {
-    reconnection: true,
-    reconnectionAttempts: 5,         // increased for flakier networks
-    reconnectionDelay: 500,          // base delay
-    reconnectionDelayMax: 3000,      // allow more time for retries
-    randomizationFactor: 0.3,        // more jitter helps on bad links
-    timeout: 7000,                   // wait a bit longer before timing out
-    transports: ['websocket', 'polling'], // try WS, fallback to polling
-    upgrade: true,
-    rememberUpgrade: true,
-    secure: location.protocol === 'https:', // optional: makes intent explicit
-});
-console.log("SocketIO initialized");
-
-// Init tooltips
-const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
-
-function clearSocketIoRequestTimeout() {
-    awaitingResponse = false;
-    clearInterval(timeoutIntervalId);
-}
-
-socketio.on('connect', function () {
-    socketio.emit('register-client', { type: 'race-table' });
-    console.log(`⏱️ Socket connected in ${Date.now() - connectStart}ms`);
-});
-
-socketio.on('connect_error', (err) => {
-    console.warn('❌ Socket connection error:', err.message);
-});
-
-socketio.on('reconnect_attempt', attempt => {
-    console.log(`🔁 Reconnection attempt ${attempt}`);
-});
-
-// Receive details from server
-socketio.on('race-table-update', function (binaryData) {
-
-    let data;
-    try {
-        data = window.msgpack.decode(new Uint8Array(binaryData));
-    } catch (err) {
-        console.error('Failed to decode race-table-update:', err);
-        return;
-    }
-
-    const tableEntries      = data["table-entries"];
-    const isSpectating      = data["is-spectating"];
-    const eventType         = data["event-type"];
-    const spectatorCarIndex = data["spectator-car-index"];
-    if (tableEntries) {
-        raceTable.update(tableEntries, isSpectating, eventType, spectatorCarIndex);
-    } else if (eventType === "Time Trial") {
-        raceTable.update(tableEntries, isSpectating, eventType, spectatorCarIndex);
-    }
-    raceStatus.update(data);
-    weatherTable.update(data["weather-forecast-samples"]);
-});

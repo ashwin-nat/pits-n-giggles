@@ -101,6 +101,7 @@ class RaceInfoUpdate:
             "track-temperature": _getValueOrDefaultValue(self.m_session_info.m_track_temp, default_value=0),
             "air-temperature": _getValueOrDefaultValue(self.m_session_info.m_air_temp, default_value=0),
             "event-type": _getValueOrDefaultValue(str(self.m_session_info.m_session_type)),
+            "session-uid" : _getValueOrDefaultValue(self.m_session_info.m_session_uid, None),
             "session-time-left" : _getValueOrDefaultValue(self.m_session_info.m_packet_session.m_sessionTimeLeft \
                                                           if self.m_session_info.m_packet_session else None, 0),
             "total-laps": _getValueOrDefaultValue(self.m_session_info.m_total_laps, default_value=None),

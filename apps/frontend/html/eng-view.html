@@ -7,6 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/tabulator-tables@5.5.0/dist/css/tabulator.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/engView.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/modals.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tyreSetsCards.css') }}">
@@ -20,6 +21,8 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tinycolor/1.4.2/tinycolor.min.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
 </head>
 <body>
     <div class="container-fluid">
@@ -30,9 +33,13 @@
                     <div class="card border-secondary global-stats-section">
                         <div class="card-header border-secondary d-flex justify-content-between align-items-center global-stats-section-header">
                             <h5 class="mb-0" id="raceStatusHeader">Race Status</h5>
-                            <a href="/">
-                                <span style="font-size: 1.5rem;" data-bs-toggle="tooltip" data-bs-title="Switch to driver view">🏎️</span>
-                            </a>
+                            <div class="d-flex">
+                                <span style="font-size: 1.5rem;" data-bs-toggle="tooltip" data-bs-title="This symbol shows up when a driver has set their telemetry to restricted">⌀</span>
+                                <a id="driver-view-btn" class="btn settings-button" href="/" data-bs-toggle="tooltip" data-bs-title="Switch to driver view">
+                                    <i class="bi bi-car-front-fill"></i>
+                                </a>
+                                <button id="settings-btn" class="btn settings-button" data-bs-toggle="tooltip" data-bs-title="Table columns settings"><i class="bi bi-gear-fill"></i></button>
+                            </div>
                         </div>
                         <div class="card-body">
                             <div class="eng-view-global-stat">
@@ -104,65 +111,22 @@
 
         <!-- Race Table Section -->
         <div class="eng-view-race-table-section">
-            <div class="table-responsive">
-                <table class="table table-hover table-sm table-striped eng-view-table">
-                    <thead>
-                        <tr class="text-center eng-view-table-main-header">
-                            <th class="eng-view-col-border">Pos</th>
-                            <th class="eng-view-col-border">Name</th>
-                            <th class="eng-view-col-border">Delta</th>
-                            <th colspan="4" class="eng-view-col-border">Penalties</th>
-                            <th colspan="4" class="eng-view-col-border">Best Lap</th>
-                            <th colspan="4" class="eng-view-col-border">Last Lap</th>
-                            <th colspan="6" class="eng-view-col-border">Tyre Wear</th>
-                            <th colspan="3" class="eng-view-col-border">ERS</th>
-                            <th colspan="3" class="eng-view-col-border">Fuel</th>
-                            <th colspan="3">Damage</th>
-                        </tr>
-                        <tr class="eng-view-sub-header">
-                            <th class="eng-view-col-border"></th>
-                            <th class="eng-view-col-border"></th>
-                            <th class="eng-view-col-border"></th>
-                            <!-- Penalties -->
-                            <th>Track</th>
-                            <th>Time</th>
-                            <th>DT</th>
-                            <th class="eng-view-col-border">Serv</th>
-                            <!-- Last Lap -->
-                            <th>Lap</th>
-                            <th>S1</th>
-                            <th>S2</th>
-                            <th class="eng-view-col-border">S3</th>
-                            <!-- Best Lap -->
-                            <th>Lap</th>
-                            <th>S1</th>
-                            <th>S2</th>
-                            <th class="eng-view-col-border">S3</th>
-                            <!-- Tyre Wear -->
-                            <th>Comp</th>
-                            <th>Lap</th>
-                            <th>FL</th>
-                            <th>FR</th>
-                            <th>RL</th>
-                            <th class="eng-view-col-border">RR</th>
-                            <!-- ERS -->
-                            <th>Avail</th>
-                            <th>Deploy</th>
-                            <th class="eng-view-col-border">Mode</th>
-                            <!-- Fuel -->
-                            <th>Total</th>
-                            <th>Per Lap</th>
-                            <th class="eng-view-col-border">Est</th>
-                            <!-- Damage -->
-                            <th>FL</th>
-                            <th>FR</th>
-                            <th>RW</th>
-                        </tr>
-                    </thead>
-                    <tbody id="engViewRaceTableBody">
-                        <!-- Rows will be populated by JavaScript -->
-                    </tbody>
-                </table>
+            <div id="eng-view-table"></div>
+        </div>
+
+        <!-- Column Visibility Pane -->
+        <div id="column-visibility-pane" class="column-visibility-pane">
+            <div class="pane-header">
+                <h2>Column Visibility</h2>
+                <div>
+                    <button id="reset-visibility-btn" class="btn btn-sm btn-secondary me-2">Reset All</button>
+                    <button id="close-pane-btn" class="btn-close btn-close-white" aria-label="Close"></button>
+                </div>
+            </div>
+            <div class="pane-body">
+                <div id="column-visibility-container">
+                    <!-- Toggle switches will be populated here -->
+                </div>
             </div>
         </div>
 
@@ -194,9 +158,6 @@
                 </div>
             </div>
         </div>
-
-
-
     </div>
 
     <script src="{{ url_for('static', filename='js/preferences.js') }}"></script>

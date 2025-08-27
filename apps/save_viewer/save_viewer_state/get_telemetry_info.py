@@ -140,6 +140,7 @@ def _get_empty_telemetry_info() -> Dict[str, Any]:
         "current-lap": "---",
         "event-type": "---", # for backward compatibility
         "session-type": "---",
+        "session-uid": None,
         "fastest-lap-overall": 0,
         "fastest-lap-overall-driver": "---",
         "pit-speed-limit": 0,
@@ -167,6 +168,7 @@ def _get_base_rsp_dict(json_data: Dict[str, Any]) -> Dict[str, Any]:
         "air-temperature": json_data["session-info"]["air-temperature"],
         "event-type": json_data["session-info"]["session-type"],
         "session-type": json_data["session-info"]["session-type"],
+        "session-uid": 0, # not important
         "session-time-left": 0,
         "total-laps": json_data["session-info"]["total-laps"],
         "current-lap": json_data["classification-data"][0]["lap-data"]["current-lap-num"],
