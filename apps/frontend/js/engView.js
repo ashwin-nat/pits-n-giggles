@@ -1,4 +1,12 @@
 let g_engView_predLapNum = null;
+function escapeHtml(unsafe) {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
 
 function getShortERSMode(mode) {
     switch (mode) {
@@ -124,16 +132,7 @@ class EngViewRaceTable {
             });
         }
 
-        function applyHeaderClass(columns) {
-            columns.forEach(col => {
-                col.cssClass = "eng-view-table-main-header";
-                if (col.columns) {
-                    applyHeaderClass(col.columns);
-                }
-            });
-        }
-
-        applyHeaderClass(columnDefinitions);
+        this.applyHeaderClass(columnDefinitions);
 
         this.table = new Tabulator("#eng-view-table", {
             layout: "fitColumns",
@@ -159,24 +158,36 @@ class EngViewRaceTable {
         });
 
         // Event listeners
+        // Distinct debounce timeouts for each event
+        this.columnResizedTimeout = null;
         this.table.on("columnResized", (column) => {
             // Debounce the save operation to avoid too frequent saves
             console.debug("Column resized:", column);
-            clearTimeout(this.saveTimeout);
-            this.saveTimeout = setTimeout(() => {
+            clearTimeout(this.columnResizedTimeout);
+            this.columnResizedTimeout = setTimeout(() => {
                 this.saveColumnWidths();
             }, 500); // Save 500ms after the last resize
         });
 
-        this.table.on("columnMoved", (column, columns) => {
-            // Debounce the save operation to avoid too frequent saves
-            console.debug("Column moved:", column);
-            clearTimeout(this.saveTimeout);
-            this.saveTimeout = setTimeout(() => {
+        this.columnOrderChangedTimeout = null;
+        this.table.on("columnOrderChanged", (columns) => {
+            // Debounce the save operation for column order
+            console.debug("Column order changed:", columns);
+            clearTimeout(this.columnOrderChangedTimeout);
+            this.columnOrderChangedTimeout = setTimeout(() => {
                 this.saveColumnOrder();
-            }, 500); // Save 500ms after the last reorder
+            }, 500); // Save 500ms after the last order change
         });
         this.saveColumnOrder();
+    }
+
+    applyHeaderClass(columns) {
+        columns.forEach(col => {
+            col.cssClass = "eng-view-table-main-header";
+            if (col.columns) {
+                this.applyHeaderClass(col.columns);
+            }
+        });
     }
 
     resetColumnWidths() {
@@ -627,7 +638,7 @@ class EngViewRaceTable {
         row1Class = 'eng-view-tyre-row-1',
         row2Class = 'eng-view-tyre-row-2'}) {
 
-        return `<div class='${row1Class}'>${row1}</div><div class='${row2Class}'>${row2}</div>`;
+        return `<div class='${row1Class}'>${escapeHtml(row1)}</div><div class='${row2Class}'>${escapeHtml(row2)}</div>`;
     }
 
     update(drivers, isSpectating, eventType, spectatorCarIndex, fastestLapMs, sessionUID) {
@@ -732,11 +743,8 @@ class EngViewRaceTable {
         // Check if spectator or player reference changed (affects all formatters)
         for (const newRow of newData) {
             const existingRow = currentDataMap.get(newRow.id);
-            if (existingRow) {
-                // If isPlayer status changed, need full update
-                if (existingRow.isPlayer !== newRow.isPlayer) {
-                    return true;
-                }
+            if (existingRow && existingRow.isPlayer !== newRow.isPlayer) {
+                  return true;
             }
         }
 
@@ -776,7 +784,7 @@ class EngViewRaceTable {
         ];
 
         for (const field of fieldsToCompare) {
-            if (JSON.stringify(oldData[field]) !== JSON.stringify(newData[field])) {
+            if (!_.isEqual(oldData[field], newData[field])) {
                 return true;
             }
         }
@@ -797,7 +805,7 @@ class EngViewRaceTable {
     }
 
     getSingleLineCell(value) {
-        return `<div class="single-line-cell">${value}</div>`;
+        return `<div class="single-line-cell">${escapeHtml(value)}</div>`;
     }
 
     clear() {
