@@ -1059,31 +1059,25 @@ function initDashboard() {
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 
-    // Settings Modal Logic
-    const settingsModal = document.getElementById('settings-modal');
+    // Column Visibility Pane Logic
+    const columnVisibilityPane = document.getElementById('column-visibility-pane');
     const settingsBtn = document.getElementById('settings-btn');
-    const closeBtn = settingsModal.querySelector('.close-btn');
+    const closePaneBtn = document.getElementById('close-pane-btn');
     const columnVisibilityContainer = document.getElementById('column-visibility-container');
     const resetVisibilityBtn = document.getElementById('reset-visibility-btn');
 
     settingsBtn.onclick = function() {
-        settingsModal.style.display = 'block';
+        columnVisibilityPane.classList.add('open');
         populateColumnVisibility();
     }
 
-    closeBtn.onclick = function() {
-        settingsModal.style.display = 'none';
-    }
-
-    window.onclick = function(event) {
-        if (event.target == settingsModal) {
-            settingsModal.style.display = 'none';
-        }
+    closePaneBtn.onclick = function() {
+        columnVisibilityPane.classList.remove('open');
     }
 
     resetVisibilityBtn.onclick = function() {
         // Clear the visibility from local storage so it resets to default
-        localStorage.removeItem(raceTable.COLUMN_VISIBILITY_KEY);
+        localStorage.removeItem(raceTable.COLUMN_VISIBILITY_LS_KEY);
 
         // Re-populate the checkboxes which will now be all checked
         populateColumnVisibility();
@@ -1091,6 +1085,13 @@ function initDashboard() {
         // Apply the default visibility to the table
         applyColumnVisibility();
     };
+
+    // Close the pane if clicked outside
+    window.addEventListener('click', function(event) {
+        if (!columnVisibilityPane.contains(event.target) && !settingsBtn.contains(event.target) && columnVisibilityPane.classList.contains('open')) {
+            columnVisibilityPane.classList.remove('open');
+        }
+    });
 
     function populateColumnVisibility() {
         columnVisibilityContainer.innerHTML = '';
@@ -1104,27 +1105,44 @@ function initDashboard() {
         });
     }
 
-    function createCheckbox(column, container, visibility, isSub = false) {
+    function createColumnToggle(column, container, visibility, isSub = false) {
         const columnDef = column.getDefinition();
         const field = column.getField() || columnDef.title;
+        const isVisible = visibility[field] !== false; // Default to visible
+
+        const formCheckDiv = document.createElement('div');
+        formCheckDiv.classList.add('form-check', 'form-switch');
+        if (isSub) {
+            formCheckDiv.classList.add('sub-column');
+        }
+
+        const input = document.createElement('input');
+        input.classList.add('form-check-input');
+        input.type = 'checkbox';
+        input.role = 'switch';
+        input.id = `toggle-${field}`;
+        input.checked = isVisible;
+        input.dataset.field = field; // Store field name for easy lookup
+
         const label = document.createElement('label');
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.checked = visibility[field] !== false; // Default to visible
-        checkbox.onchange = () => {
+        label.classList.add('form-check-label');
+        label.htmlFor = `toggle-${field}`;
+        label.textContent = columnDef.title;
+
+        input.onchange = () => {
             const newVisibility = raceTable.loadColumnVisibility();
-            newVisibility[field] = checkbox.checked;
+            newVisibility[field] = input.checked;
 
             // Handle parent/child visibility
             const subColumns = column.getDefinition().columns;
             if (subColumns && subColumns.length > 0) {
                 subColumns.forEach(subColumnDef => {
                     const subField = subColumnDef.field || subColumnDef.title;
-                    newVisibility[subField] = checkbox.checked;
-                    const subCheckbox = columnVisibilityContainer.querySelector(`[data-field="${subField}"]`);
-                    if (subCheckbox) {
-                        subCheckbox.checked = checkbox.checked;
-                        subCheckbox.disabled = !checkbox.checked;
+                    newVisibility[subField] = input.checked;
+                    const subInput = columnVisibilityContainer.querySelector(`input[data-field="${subField}"]`);
+                    if (subInput) {
+                        subInput.checked = input.checked;
+                        subInput.disabled = !input.checked;
                     }
                 });
             }
@@ -1133,22 +1151,29 @@ function initDashboard() {
             applyColumnVisibility();
         };
 
-        checkbox.dataset.field = field;
-        label.appendChild(checkbox);
-        label.appendChild(document.createTextNode(` ${columnDef.title}`));
-        if (isSub) {
-            label.classList.add('sub-column');
-        }
-        container.appendChild(label);
+        formCheckDiv.appendChild(input);
+        formCheckDiv.appendChild(label);
+        container.appendChild(formCheckDiv);
 
         const subColumns = column.getDefinition().columns;
         if (subColumns && subColumns.length > 0) {
-            // Find the component for the sub-column to pass it to createCheckbox
             const columnComponents = column.getSubColumns();
             columnComponents.forEach(subColumnComponent => {
-                createCheckbox(subColumnComponent, container, visibility, true);
+                createColumnToggle(subColumnComponent, container, visibility, true);
             });
         }
+    }
+
+    function populateColumnVisibility() {
+        columnVisibilityContainer.innerHTML = '';
+        const columns = raceTable.table.getColumns(true);
+        const visibility = raceTable.loadColumnVisibility();
+
+        columns.forEach(column => {
+            if (column.getDefinition().title) {
+                createColumnToggle(column, columnVisibilityContainer, visibility);
+            }
+        });
     }
 
     function applyColumnVisibility() {

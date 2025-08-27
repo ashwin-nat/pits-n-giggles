@@ -113,16 +113,18 @@
             <div id="eng-view-table"></div>
         </div>
 
-        <!-- Settings Modal -->
-        <div id="settings-modal" class="modal">
-            <div class="modal-content">
-                <span class="close-btn">&times;</span>
-                <div class="d-flex justify-content-between align-items-center">
-                    <h2>Column Visibility</h2>
-                    <button id="reset-visibility-btn" class="btn btn-sm btn-secondary">Reset</button>
+        <!-- Column Visibility Pane -->
+        <div id="column-visibility-pane" class="column-visibility-pane">
+            <div class="pane-header">
+                <h2>Column Visibility</h2>
+                <div>
+                    <button id="reset-visibility-btn" class="btn btn-sm btn-secondary me-2">Reset All</button>
+                    <button id="close-pane-btn" class="btn-close btn-close-white" aria-label="Close"></button>
                 </div>
-                <div id="column-visibility-container" class="mt-2">
-                    <!-- Checkboxes will be populated here -->
+            </div>
+            <div class="pane-body">
+                <div id="column-visibility-container">
+                    <!-- Toggle switches will be populated here -->
                 </div>
             </div>
         </div>
