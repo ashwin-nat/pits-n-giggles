@@ -1,5 +1,8 @@
 let g_engView_predLapNum = null;
 function escapeHtml(unsafe) {
+    if (typeof unsafe !== "string") {
+        return unsafe;
+    }
     return unsafe
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
@@ -261,7 +264,8 @@ class EngViewRaceTable {
             const delta = timeMs - lapInfo[playerTimeKey];
             return this.createMultiLineCell({
                 row1: timeElement,
-                row2: formatDelta(delta)
+                row2: formatDelta(delta),
+                escapeRow1: false
             });
         };
     }
@@ -290,7 +294,8 @@ class EngViewRaceTable {
                 const delta = lapInfo[timeKey] - lapInfo[playerTimeKey];
                 return this.createMultiLineCell({
                     row1: timeElement,
-                    row2: formatDelta(delta)
+                    row2: formatDelta(delta),
+                    escapeRow1: false
                 });
             } else {
                 // For sectors, use the same logic as best lap
@@ -450,7 +455,8 @@ class EngViewRaceTable {
                             const agePitInfoStr = `${tyreInfo["tyre-age"]} L (${tyreInfo["num-pitstops"]} pit)`;
                             return this.createMultiLineCell({
                                 row1: tyreIcon,
-                                row2: agePitInfoStr
+                                row2: agePitInfoStr,
+                                escapeRow1: false
                             });
                         },
                         ...disableSorting
@@ -507,7 +513,8 @@ class EngViewRaceTable {
                                 return this.getTelemetryRestrictedContent();
                             }
                         },
-                        ...disableSorting },
+                        ...disableSorting
+                    },
                     { title: "Deploy", field: "ers-info.ers-deployed-this-lap",
                         formatter: (cell) => {
                             const driverInfo = cell.getRow().getData();
@@ -517,7 +524,8 @@ class EngViewRaceTable {
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
-                        }, ...disableSorting },
+                        }, ...disableSorting
+                    },
                     { title: "Mode", field: "ers-info.ers-mode",
                         formatter: (cell) => {
                             const driverInfo = cell.getRow().getData();
@@ -527,7 +535,8 @@ class EngViewRaceTable {
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
-                        }, ...disableSorting },
+                        }, ...disableSorting
+                    },
                 ],
             },
             {
@@ -542,37 +551,40 @@ class EngViewRaceTable {
                                 const cellContent = cell.getValue() == null ? "N/A"
                                     : formatFloatWithTwoDecimals(cell.getValue());
                                 return this.getSingleLineCell(cellContent);
-                          } else {
-                               return this.getTelemetryRestrictedContent();
-                          }
-                      }, ...disableSorting },
-                  { title: "Per Lap", field: "fuel-info.curr-fuel-rate",
-                      formatter: (cell) => {
+                            } else {
+                                return this.getTelemetryRestrictedContent();
+                            }
+                        }, ...disableSorting
+                    },
+                    { title: "Per Lap", field: "fuel-info.curr-fuel-rate",
+                        formatter: (cell) => {
                             const driverInfo = cell.getRow().getData();
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
                                 const cellContent = cell.getValue() == null
                                     ? "N/A" : formatFloatWithTwoDecimals(cell.getValue());
                                 return this.getSingleLineCell(cellContent);
-                          } else {
-                               return this.getTelemetryRestrictedContent();
-                          }
-                      }, ...disableSorting },
-                  { title: "Est", field: "fuel-info.surplus-laps-png",
-                      formatter: (cell) => {
+                            } else {
+                                return this.getTelemetryRestrictedContent();
+                            }
+                        }, ...disableSorting
+                    },
+                    { title: "Est", field: "fuel-info.surplus-laps-png",
+                        formatter: (cell) => {
                             const driverInfo = cell.getRow().getData();
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
                                 const cellContent = cell.getValue() == null ? "N/A"
                                     : formatFloatWithTwoDecimalsSigned(cell.getValue());
                                 return this.getSingleLineCell(cellContent);
-                           } else {
-                               return this.getTelemetryRestrictedContent();
-                           }
-                       }, ...disableSorting },
-               ],
-           },
-           {
+                            } else {
+                                return this.getTelemetryRestrictedContent();
+                            }
+                        }, ...disableSorting
+                    },
+                ],
+            },
+            {
                 title: 'Damage',
                 headerSort: false,
                 columns: [
@@ -585,30 +597,33 @@ class EngViewRaceTable {
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
-                        }, ...disableSorting },
+                        }, ...disableSorting
+                    },
                     { title: "FR", field: "damage-info.fr-wing-damage",
                         formatter: (cell) =>  {
                             const driverInfo = cell.getRow().getData();
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
                                 return this.getSingleLineCell(`${cell.getValue()}%`);
-                           } else {
-                               return this.getTelemetryRestrictedContent();
-                           }
-                       }, ...disableSorting },
-                   { title: "RW", field: "damage-info.rear-wing-damage",
-                       formatter: (cell) =>  {
+                            } else {
+                                return this.getTelemetryRestrictedContent();
+                            }
+                        }, ...disableSorting
+                    },
+                    { title: "RW", field: "damage-info.rear-wing-damage",
+                        formatter: (cell) =>  {
                             const driverInfo = cell.getRow().getData();
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
                                 return this.getSingleLineCell(`${cell.getValue()}%`);
-                           } else {
-                               return this.getTelemetryRestrictedContent();
-                           }
-                       }, ...disableSorting },
-               ],
-           },
-       ];
+                            } else {
+                                return this.getTelemetryRestrictedContent();
+                            }
+                        }, ...disableSorting
+                    },
+                ],
+            },
+        ];
     }
 
     createPositionStatusCell(position, driverInfo) {
@@ -636,9 +651,13 @@ class EngViewRaceTable {
         row1,
         row2,
         row1Class = 'eng-view-tyre-row-1',
-        row2Class = 'eng-view-tyre-row-2'}) {
+        row2Class = 'eng-view-tyre-row-2',
+        escapeRow1 = true,
+        escapeRow2 = true}) {
 
-        return `<div class='${row1Class}'>${escapeHtml(row1)}</div><div class='${row2Class}'>${escapeHtml(row2)}</div>`;
+        const processedRow1 = escapeRow1 ? escapeHtml(row1) : row1;
+        const processedRow2 = escapeRow2 ? escapeHtml(row2) : row2;
+        return `<div class='${row1Class}'>${processedRow1}</div><div class='${row2Class}'>${processedRow2}</div>`;
     }
 
     update(drivers, isSpectating, eventType, spectatorCarIndex, fastestLapMs, sessionUID) {
@@ -681,7 +700,11 @@ class EngViewRaceTable {
                 // If reference driver changed or new drivers, do full update
                 this.table.setData(newTableData).then(() => {
                     // Force sort by position after full update
-                    this.table.setSort("position", "asc");
+                    if (this.table && typeof this.table.setSort === 'function') {
+                        this.table.setSort("position", "asc");
+                    } else {
+                        console.warn("Tabulator table or setSort function not available for sorting.");
+                    }
 
                     setTimeout(() => {
                         this.table.rowManager.element.scrollTop = scrollPosTop;
@@ -714,7 +737,11 @@ class EngViewRaceTable {
                 if (rowsToUpdate.length > 0) {
                     this.table.updateOrAddData(rowsToUpdate).then(() => {
                         // Force sort by position after update
-                        this.table.setSort("position", "asc");
+                        if (this.table && typeof this.table.setSort === 'function') {
+                            this.table.setSort("position", "asc");
+                        } else {
+                            console.warn("Tabulator table or setSort function not available for sorting after update.");
+                        }
 
                         // Restore scroll position after a short delay to ensure sorting is complete
                         setTimeout(() => {
@@ -804,8 +831,9 @@ class EngViewRaceTable {
         return this.getSingleLineCell(this.TELEMETRY_DISABLED_TEXT);
     }
 
-    getSingleLineCell(value) {
-        return `<div class="single-line-cell">${escapeHtml(value)}</div>`;
+    getSingleLineCell(value, escape = true) {
+        const processedValue = escape ? escapeHtml(value) : value;
+        return `<div class="single-line-cell">${processedValue}</div>`;
     }
 
     clear() {
