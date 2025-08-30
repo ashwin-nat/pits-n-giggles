@@ -523,7 +523,7 @@ def _create_driver_entry(
             "ers-mode": data_per_driver["car-status"].get("ers-deploy-mode", "None"),
         },
         "lap-info": {
-            "current-lap-num": None,
+            "current-lap": None,
             "last-lap": {
                 "lap-time-ms": _get_last_lap_time_ms(data_per_driver["session-history"]),
                 "sector-status": _get_sector_status(
