@@ -949,7 +949,7 @@ class DriversListRsp:
         lap_progress = self._calculateLapProgress(driver_data)
 
         return {
-            "current-lap": driver_data.m_lap_info.m_current_lap,
+            "current-lap-num": driver_data.m_lap_info.m_current_lap,
             "last-lap": self._getLapDetailsSubsection(driver_data, for_best_lap=False),
             "best-lap": self._getLapDetailsSubsection(driver_data, for_best_lap=True),
             "lap-progress": lap_progress,

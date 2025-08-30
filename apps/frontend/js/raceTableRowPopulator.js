@@ -239,7 +239,7 @@ class RaceTableRowPopulator {
         return midPointPrediction ? [midPointPrediction, lastPrediction] : [lastPrediction];
     }
     addTyrePredictionInfo() {
-        const currentLap = this.rowData["lap-info"]["current-lap"];
+        const currentLap = this.rowData["lap-info"]["current-lap-num"];
         const predictionData = this.#getWearPredictions(this.rowData["tyre-info"]["wear-prediction"], currentLap);
 
         const shouldHidePredictionColumn = false;
