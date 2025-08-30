@@ -526,7 +526,6 @@ def _create_driver_entry(
             "current-lap-num": None,
             "last-lap": {
                 "lap-time-ms": _get_last_lap_time_ms(data_per_driver["session-history"]),
-                "lap-time-ms-player": 0,
                 "sector-status": _get_sector_status(
                     data_per_driver,
                     best_s1_time,
@@ -538,7 +537,6 @@ def _create_driver_entry(
             },
             "best-lap": {
                 "lap-time-ms": _get_fastest_lap_time_ms(data_per_driver["session-history"]),
-                "lap-time-ms-player": 0,
                 "sector-status": _get_sector_status(
                     data_per_driver,
                     best_s1_time,

@@ -991,10 +991,6 @@ class DriversListRsp:
 
         return {
             "lap-time-ms": lap_time_ms,
-            "lap-time-ms-player": 0,
-            "s1-time-ms-player": 0,
-            "s2-time-ms-player": 0,
-            "s3-time-ms-player": 0,
             "sector-status": sector_status,
             "s1-time-ms": s1_time,
             "s2-time-ms": s2_time,
