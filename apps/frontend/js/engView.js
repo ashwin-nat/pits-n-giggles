@@ -317,9 +317,9 @@ class EngViewRaceTable {
             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
             if (telemetryPublic) {
                 return this.createMultiLineCell({
-                    row1: formatFloatWithTwoDecimals(currTyreWearInfo[wearField]) + '%',
+                    row1: formatFloat(currTyreWearInfo[wearField]) + '%',
                     row2: predictedTyreWearInfo
-                        ? formatFloatWithTwoDecimals(predictedTyreWearInfo[wearField]) + '%'
+                        ? formatFloat(predictedTyreWearInfo[wearField]) + '%'
                         : '---'
                 });
             } else {
@@ -416,8 +416,8 @@ class EngViewRaceTable {
                         });
                     }
                     return this.createMultiLineCell({
-                        row1: formatFloatWithThreeDecimalsSigned(deltaToCarInFront),
-                        row2: formatFloatWithThreeDecimalsSigned(deltaToLeader)
+                        row1: formatFloat(deltaToCarInFront, { precision: 3, signed: true }),
+                        row2: formatFloat(deltaToLeader, { precision: 3, signed: true })
                     });
                 },
                 ...disableSorting
@@ -520,7 +520,7 @@ class EngViewRaceTable {
                             const driverInfo = cell.getRow().getData();
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return this.getSingleLineCell(`${formatFloatWithTwoDecimals(cell.getValue())}%`);
+                                return this.getSingleLineCell(`${formatFloat(cell.getValue())}%`);
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
@@ -549,7 +549,7 @@ class EngViewRaceTable {
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
                                 const cellContent = cell.getValue() == null ? "N/A"
-                                    : formatFloatWithTwoDecimals(cell.getValue());
+                                    : formatFloat(cell.getValue());
                                 return this.getSingleLineCell(cellContent);
                             } else {
                                 return this.getTelemetryRestrictedContent();
@@ -562,7 +562,7 @@ class EngViewRaceTable {
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
                                 const cellContent = cell.getValue() == null
-                                    ? "N/A" : formatFloatWithTwoDecimals(cell.getValue());
+                                    ? "N/A" : formatFloat(cell.getValue());
                                 return this.getSingleLineCell(cellContent);
                             } else {
                                 return this.getTelemetryRestrictedContent();
@@ -575,7 +575,7 @@ class EngViewRaceTable {
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
                                 const cellContent = cell.getValue() == null ? "N/A"
-                                    : formatFloatWithTwoDecimalsSigned(cell.getValue());
+                                    : formatFloat(cell.getValue(), { signed: true });
                                 return this.getSingleLineCell(cellContent);
                             } else {
                                 return this.getTelemetryRestrictedContent();
@@ -981,7 +981,7 @@ class EngViewRaceStatus {
         this.vscCountElement.textContent = data["num-vsc"];
         this.trackTempElement.textContent = data["track-temperature"] + ' °C';
         this.airTempElement.textContent = data["air-temperature"] + ' °C';
-        this.pitTimeLossElement.textContent = formatFloatWithThreeDecimals(data["pit-time-loss"]);
+        this.pitTimeLossElement.textContent = formatFloat(data["pit-time-loss"], { precision: 3 });
 
         if (shouldUpdatePred) {
             this.#updatePredLapInputBox();

@@ -352,12 +352,12 @@ class RaceStatsModalPopulator {
         const row2 = tyreStintRecordsTableBody.insertRow();
         row2.insertCell().textContent = 'Least Tyre Wear Per Lap';
         row2.insertCell().textContent = lowestTyreWearPerLapDriverName;
-        row2.insertCell().textContent = formatFloatWithTwoDecimals(lowestTyreWearPerLap) + "%";
+        row2.insertCell().textContent = formatFloat(lowestTyreWearPerLap) + "%";
 
         const row3 = tyreStintRecordsTableBody.insertRow();
         row3.insertCell().textContent = 'Highest Tyre Wear';
         row3.insertCell().textContent = highestTyreWearDriverName;
-        row3.insertCell().textContent = formatFloatWithTwoDecimals(highestTyreWear) + "%";
+        row3.insertCell().textContent = formatFloat(highestTyreWear) + "%";
     }
 
     isObjectEmpty(obj) {
