@@ -71,6 +71,7 @@ def save_config_to_ini(settings: PngSettings, path: str) -> None:
         path (str): Path to the INI file.
     """
     cp = ConfigParser()
+    cp.optionxform = str
     stringified = _stringify_dict(settings.model_dump(by_alias=True))
     cp.read_dict(stringified)
     with open(path, 'w', encoding='utf-8') as f:
