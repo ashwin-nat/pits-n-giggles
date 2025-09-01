@@ -859,6 +859,7 @@ class EngViewRaceStatus {
         this.vscCountElement = document.getElementById('vscCount');
         this.trackTempElement = document.getElementById('trackTemp');
         this.airTempElement = document.getElementById('airTemp');
+        this.pitTimeLossElement = document.getElementById('pitTimeLoss');
         this.predictionLapInput = document.getElementById('predictionLap');
         this.predictionPitBtn = document.getElementById('predictionPitBtn');
         this.predictionMidBtn = document.getElementById('predictionMidBtn');
@@ -980,6 +981,7 @@ class EngViewRaceStatus {
         this.vscCountElement.textContent = data["num-vsc"];
         this.trackTempElement.textContent = data["track-temperature"] + ' °C';
         this.airTempElement.textContent = data["air-temperature"] + ' °C';
+        this.pitTimeLossElement.textContent = formatFloatWithThreeDecimals(data["pit-time-loss"]);
 
         if (shouldUpdatePred) {
             this.#updatePredLapInputBox();

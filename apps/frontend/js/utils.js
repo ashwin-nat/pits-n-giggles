@@ -112,6 +112,17 @@ function formatFloatWithTwoDecimalsSigned(floatNumber) {
     }
 }
 
+function formatFloatWithThreeDecimals(floatNumber) {
+    if (typeof floatNumber !== 'number' || isNaN(floatNumber)) {
+        console.error('Invalid input. Please provide a valid number.', floatNumber);
+        console.trace(); // Log the call stack
+        return null;
+    }
+
+    // Use toFixed to round to three decimal places and convert to string
+    return floatNumber.toFixed(3);
+}
+
 function formatFloatWithThreeDecimalsSigned(floatNumber) {
     if (typeof floatNumber !== 'number' || isNaN(floatNumber)) {
         console.error('Invalid input. Please provide a valid number.');
