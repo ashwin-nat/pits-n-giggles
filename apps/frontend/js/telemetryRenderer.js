@@ -209,7 +209,7 @@ class TelemetryRenderer {
     } else {
       // Create the first div for the track name
       const trackNameDiv = document.createElement("div");
-      trackNameDiv.textContent = replaceRevSuffix(trackName.toUpperCase());
+      trackNameDiv.textContent = replaceRevSuffix(trackName).toUpperCase();
       trackNameDiv.style.textAlign = "center";
       trackNameDiv.style.margin = "0 auto";
       trackNameContainer.appendChild(trackNameDiv);
