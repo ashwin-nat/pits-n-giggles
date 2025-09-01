@@ -262,16 +262,20 @@ class TelemetryRenderer {
     if (data["table-entries"].length == 0) {
       return [];
     }
+    // Sort the list by position before computing relevant positions
+    const sortedTableEntries = data["table-entries"].sort((a, b) => a["driver-info"]["position"] - b["driver-info"]["position"]);
+
     if (data["is-spectating"] || data["race-ended"]) {
-      return data["table-entries"];
+      return sortedTableEntries;
     }
-    const totalCars = data["table-entries"].length;
+
+    const totalCars = sortedTableEntries.length;
     const playerPosition = this.getPlayerPosition(data);
     const relevantPositions = this.getAdjacentPositions(playerPosition, totalCars, g_pref_numAdjacentCars);
 
     const lowerIndex = relevantPositions[0] - 1;
     const upperIndex = relevantPositions[relevantPositions.length - 1];
-    return data["table-entries"].slice(lowerIndex, upperIndex);
+    return sortedTableEntries.slice(lowerIndex, upperIndex);
   }
 
   getAdjacentPositions(position, total_cars, num_adjacent_cars) {
