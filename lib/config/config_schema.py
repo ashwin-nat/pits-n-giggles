@@ -166,7 +166,7 @@ class HttpsSettings(BaseModel):
     def proto(self) -> str:
         return "https" if self.enabled else "http"
 
-class PitTimeLoss(BaseModel):
+class PitTimeLossF1(BaseModel):
     Melbourne: float = Field(18.0)
     Shanghai: float = Field(22.0)
     Suzuka: float = Field(22.0)
@@ -195,6 +195,35 @@ class PitTimeLoss(BaseModel):
     Losail: float = Field(25.0)
     Abu_Dhabi: float = Field(19.0)
 
+class PitTimeLossF2(BaseModel):
+    Melbourne: float = Field(None)
+    Shanghai: float = Field(None)
+    Suzuka: float = Field(None)
+    Sakhir: float = Field(None)
+    Jeddah: float = Field(None)
+    Miami: float = Field(None)
+    Imola: float = Field(None)
+    Monaco: float = Field(None)
+    Catalunya: float = Field(None)
+    Montreal: float = Field(None)
+    Austria: float = Field(None)
+    Austria_Reverse: float = Field(None)
+    Silverstone: float = Field(None)
+    Silverstone_Reverse: float = Field(None)
+    Hungaroring: float = Field(None)
+    Zandvoort: float = Field(None)
+    Spa: float = Field(None)
+    Zandvoort_Reverse: float = Field(None)
+    Monza: float = Field(None)
+    Baku: float = Field(None)
+    Singapore: float = Field(None)
+    Texas: float = Field(None)
+    Mexico: float = Field(None)
+    Brazil: float = Field(None)
+    Las_Vegas: float = Field(None)
+    Losail: float = Field(None)
+    Abu_Dhabi: float = Field(None)
+
 class PngSettings(BaseModel):
     Network: NetworkSettings = Field(default_factory=NetworkSettings)
     Capture: CaptureSettings = Field(default_factory=CaptureSettings)
@@ -204,8 +233,8 @@ class PngSettings(BaseModel):
     Forwarding: ForwardingSettings = Field(default_factory=ForwardingSettings)
     StreamOverlay: StreamOverlaySettings = Field(default_factory=StreamOverlaySettings)
     HTTPS: HttpsSettings = Field(default_factory=HttpsSettings)
-    TimeLossInPits: PitTimeLoss = Field(default_factory=PitTimeLoss)
-
+    TimeLossInPitsF1: PitTimeLossF1 = Field(default_factory=PitTimeLossF1)
+    TimeLossInPitsF2: PitTimeLossF2 = Field(default_factory=PitTimeLossF2)
     class Config:
         str_strip_whitespace = True
 
