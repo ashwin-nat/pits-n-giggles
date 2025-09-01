@@ -193,9 +193,15 @@ class RaceTableRowPopulator {
 
         const secondRow = document.createElement("div");
         secondRow.textContent = `${tyreInfoData["tyre-age"]} lap(s) (${tyreInfoData["num-pitstops"]} pit)`;
-
         cell.appendChild(firstRow);
         cell.appendChild(secondRow);
+
+        if (!this.raceEnded) {
+            const thirdRow = document.createElement("div");
+            const rejoin = tyreInfoData["pit-rejoin-position"];
+            thirdRow.textContent = `Pit rejoin: ${rejoin ? "P" + rejoin : "N/A"}`;
+            cell.appendChild(thirdRow);
+        }
 
         return this;
     }

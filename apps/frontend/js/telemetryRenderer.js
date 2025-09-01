@@ -259,11 +259,13 @@ class TelemetryRenderer {
   }
 
   getRelevantRaceTableRows(data) {
-    if (data["table-entries"].length == 0) {
+    const tableEntries = data["table-entries"];
+    if (tableEntries.length == 0) {
       return [];
     }
-    // Sort the list by position before computing relevant positions
-    const sortedTableEntries = data["table-entries"].sort((a, b) => a["driver-info"]["position"] - b["driver-info"]["position"]);
+    // Sort the list by position before computing relevant positions and update rejoin positions
+    const sortedTableEntries = tableEntries.sort((a, b) => a["driver-info"]["position"] - b["driver-info"]["position"]);
+    insertRejoinPositions(sortedTableEntries, data["pit-loss-time"]);
 
     if (data["is-spectating"] || data["race-ended"]) {
       return sortedTableEntries;

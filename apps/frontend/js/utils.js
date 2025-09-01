@@ -386,3 +386,29 @@ function formatTemperature(tempCelsius, { isMetric = true, decimalPlaces = 1, ad
     const rounded = temp.toFixed(decimalPlaces);
     return addUnitSuffix ? `${rounded} ${unit}` : `${rounded}`;
 }
+
+/**
+ * Insert pit rejoin position into each driver's JSON (mutates input).
+ * @param {Object[]} drivers - full grid of driver data JSON objects sorted by position
+ * @param {number} pitLoss - estimated pit stop loss (s)
+ */
+function insertRejoinPositions(drivers, pitLoss) {
+    if (pitLoss === null) {
+        return;
+    }
+    const gaps = drivers.map(d => d["delta-info"]["delta-to-leader"]);
+    const n = gaps.length;
+
+    for (let i = 0; i < n; i++) {
+        const driver = drivers[i];
+        const rejoinGap = gaps[i] + pitLoss;
+
+        // Find first car whose gap is greater than rejoinGap
+        let pos = gaps.findIndex(g => g > rejoinGap);
+        if (pos === -1) {
+            pos = n; // behind the whole field
+        }
+
+        driver["tyre-info"]["pit-rejoin-position"] = pos;
+    }
+}
