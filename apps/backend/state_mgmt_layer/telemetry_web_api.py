@@ -774,7 +774,6 @@ class DriversListRsp:
             if not 1 <= driver_data.m_driver_info.position <= _session_state_ref.m_num_active_cars:
                 continue
             self.m_json_rsp.append(self._getDriverJSON(index,driver_data))
-        # self.m_json_rsp.sort(key=lambda obj: obj["driver-info"]["position"])
 
     def __initTTDict(self) -> None:
         """Initialise the fields
