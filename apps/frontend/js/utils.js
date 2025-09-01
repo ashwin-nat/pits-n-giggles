@@ -374,7 +374,10 @@ function getFormattedLapTimeStr({
 }
 
 function replaceRevSuffix(str) {
-  return str.replace(/\(REV\)$/, '⇄');
+    if (str.endsWith("_Reverse")) {
+        return str.replace("_Reverse", " ⇄");
+    }
+    return str;
 }
 
 function formatSpeed(speedKmph, { isMetric = true, decimalPlaces = 1, addUnitSuffix = true } = {}) {
