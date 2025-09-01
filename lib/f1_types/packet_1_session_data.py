@@ -720,6 +720,19 @@ class PacketSessionData(F1PacketBase):
                 PacketSessionData.FormulaType.F2_2021: "F2 2021"
             }[self]
 
+        def is_f1(self) -> bool:
+            return self in [
+                PacketSessionData.FormulaType.F1_MODERN,
+                PacketSessionData.FormulaType.F1_CLASSIC,
+                PacketSessionData.FormulaType.F1_GENERIC,
+            ]
+
+        def is_f2(self) -> bool:
+            return self in [
+                PacketSessionData.FormulaType.F2,
+                PacketSessionData.FormulaType.F2_2021
+            ]
+
     class RecoveryMode(F1BaseEnum):
         """
         ENUM class for the recovery type modes
