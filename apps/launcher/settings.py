@@ -101,6 +101,9 @@ class SettingsWindow:
         self.entry_vars = {}
 
         for section_name, field in type(self.settings).model_fields.items():
+            # Only for this particular section, the user is expected to configure by editing the ini file
+            if section_name == "TimeLossInPits":
+                continue
             section_model = getattr(self.settings, section_name)
             section_name_formatted = self._pascal_to_title(section_name)
             tab = ttk.Frame(self.notebook)

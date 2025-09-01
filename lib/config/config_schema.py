@@ -166,6 +166,35 @@ class HttpsSettings(BaseModel):
     def proto(self) -> str:
         return "https" if self.enabled else "http"
 
+class PitTimeLoss(BaseModel):
+    Melbourne: float = Field(18.0)
+    Shanghai: float = Field(22.0)
+    Suzuka: float = Field(22.0)
+    Sakhir: float = Field(23.0)
+    Jeddah: float = Field(18.0)
+    Miami: float = Field(19.0)
+    Imola: float = Field(27.0)
+    Monaco: float = Field(19.0)
+    Catalunya: float = Field(21.0)
+    Montreal: float = Field(16.0)
+    Austria: float = Field(19.0)
+    Austria_Reverse: float = Field(19.0)
+    Silverstone: float = Field(28.0)
+    Silverstone_Reverse: float = Field(28.0)
+    Hungaroring: float = Field(20.0)
+    Zandvoort: float = Field(18.0)
+    Spa: float = Field(18.0)
+    Zandvoort_Reverse: float = Field(18.0)
+    Monza: float = Field(24.0)
+    Baku: float = Field(18.0)
+    Singapore: float = Field(26.0)
+    Texas: float = Field(20.0)
+    Mexico: float = Field(22.0)
+    Brazil: float = Field(20.0)
+    Las_Vegas: float = Field(20.0)
+    Losail: float = Field(25.0)
+    Abu_Dhabi: float = Field(19.0)
+
 class PngSettings(BaseModel):
     Network: NetworkSettings = Field(default_factory=NetworkSettings)
     Capture: CaptureSettings = Field(default_factory=CaptureSettings)
@@ -175,6 +204,7 @@ class PngSettings(BaseModel):
     Forwarding: ForwardingSettings = Field(default_factory=ForwardingSettings)
     StreamOverlay: StreamOverlaySettings = Field(default_factory=StreamOverlaySettings)
     HTTPS: HttpsSettings = Field(default_factory=HttpsSettings)
+    TimeLossInPits: PitTimeLoss = Field(default_factory=PitTimeLoss)
 
     class Config:
         str_strip_whitespace = True
