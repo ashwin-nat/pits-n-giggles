@@ -26,6 +26,7 @@ import logging
 from typing import Optional
 
 from lib.inter_task_communicator import AsyncInterTaskCommunicator, ITCMessage, TyreDeltaNotificationMessageCollection
+from lib.config import PngSettings
 
 from .session_state import SessionState
 
@@ -72,18 +73,18 @@ def isDriverIndexValid(index: int) -> bool:
     return  (0 <= index < len(_session_state.m_driver_data)) and \
             (_session_state.m_driver_data[index] and _session_state.m_driver_data[index].is_valid)
 
-def initSessionState(logger: logging.Logger, process_car_setups: bool, ver_str: str) -> None:
+def initSessionState(logger: logging.Logger, settings: PngSettings, ver_str: str) -> None:
     """Init the DriverData object
 
     Args:
         logger (logging.Logger): Logger
-        process_car_setups (bool): Whether to process car setups packets
+        settings (PngSettings): Settings
         ver_str (str): Version string
     """
     global _session_state
     _session_state = SessionState(
         logger,
-        process_car_setups,
+        settings,
         ver_str
     )
 

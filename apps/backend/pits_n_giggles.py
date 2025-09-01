@@ -73,7 +73,7 @@ class PngRunner:
 
         initStateManagementLayer(
             logger=self.m_logger,
-            process_car_setups=self.m_config.Privacy.process_car_setup,
+            settings=self.m_config,
             ver_str=self.m_version
         )
 
