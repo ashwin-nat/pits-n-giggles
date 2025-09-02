@@ -934,7 +934,6 @@ class TrackID(F1BaseEnum):
             "Sakhir_Bahrain": "Sakhir",
             "Abu_Dhabi": "Abu Dhabi",
             "Baku_Azerbaijan": "Baku",
-            "Portimao": "Portimão",
             "Silverstone_Reverse": "Silverstone_Reverse",
             "Austria_Reverse": "Austria_Reverse",
             "Zandvoort_Reverse": "Zandvoort_Reverse",

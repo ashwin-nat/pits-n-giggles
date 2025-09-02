@@ -194,6 +194,8 @@ class PitTimeLossF1(BaseModel):
     Las_Vegas: float = Field(20.0)
     Losail: float = Field(25.0)
     Abu_Dhabi: float = Field(19.0)
+    Paul_Ricard: float = Field(None)
+    Portimao: float = Field(None)
 
 class PitTimeLossF2(BaseModel):
     Melbourne: float = Field(None)
@@ -223,6 +225,8 @@ class PitTimeLossF2(BaseModel):
     Las_Vegas: float = Field(None)
     Losail: float = Field(None)
     Abu_Dhabi: float = Field(None)
+    Paul_Ricard: float = Field(None)
+    Portimao: float = Field(None)
 
 class PngSettings(BaseModel):
     Network: NetworkSettings = Field(default_factory=NetworkSettings)
