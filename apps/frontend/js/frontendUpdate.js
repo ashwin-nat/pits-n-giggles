@@ -29,10 +29,10 @@ function processTyreDeltaMessage(data) {
         messageText += "the same as " + data['other-tyre-type'] + " tyres"; // No "by ..."
     } else if (data['tyre-delta'] > 0) {
         messageText += "faster than ";
-        messageText += data['other-tyre-type'] + " tyres by " + formatFloatWithTwoDecimals(Math.abs(data['tyre-delta'])) + " seconds";
+        messageText += data['other-tyre-type'] + " tyres by " + formatFloat(Math.abs(data['tyre-delta'])) + " seconds";
     } else {
         messageText += "slower than ";
-        messageText += data['other-tyre-type'] + " tyres by " + formatFloatWithTwoDecimals(Math.abs(data['tyre-delta'])) + " seconds";
+        messageText += data['other-tyre-type'] + " tyres by " + formatFloat(Math.abs(data['tyre-delta'])) + " seconds";
     }
 
     console.log("received tyre delta update", data, "TTS text", messageText);

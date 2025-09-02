@@ -317,9 +317,9 @@ class EngViewRaceTable {
             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
             if (telemetryPublic) {
                 return this.createMultiLineCell({
-                    row1: formatFloatWithTwoDecimals(currTyreWearInfo[wearField]) + '%',
+                    row1: formatFloat(currTyreWearInfo[wearField]) + '%',
                     row2: predictedTyreWearInfo
-                        ? formatFloatWithTwoDecimals(predictedTyreWearInfo[wearField]) + '%'
+                        ? formatFloat(predictedTyreWearInfo[wearField]) + '%'
                         : '---'
                 });
             } else {
@@ -416,8 +416,8 @@ class EngViewRaceTable {
                         });
                     }
                     return this.createMultiLineCell({
-                        row1: formatFloatWithThreeDecimalsSigned(deltaToCarInFront),
-                        row2: formatFloatWithThreeDecimalsSigned(deltaToLeader)
+                        row1: formatFloat(deltaToCarInFront, { precision: 3, signed: true }),
+                        row2: formatFloat(deltaToLeader, { precision: 3, signed: true })
                     });
                 },
                 ...disableSorting
@@ -458,6 +458,19 @@ class EngViewRaceTable {
                                 row2: agePitInfoStr,
                                 escapeRow1: false
                             });
+                        },
+                        ...disableSorting
+                    },
+                    {
+                        title: "Rejoin",
+                        field: "tyre-info.pit-rejoin-position",
+                        formatter: (cell) => {
+                            const tyreInfo = cell.getRow().getData()["tyre-info"];
+                            const rejoinPosition = tyreInfo["pit-rejoin-position"] ?? null;
+                            const rejoinPositionStr = (rejoinPosition != null)
+                                ? `P${tyreInfo["pit-rejoin-position"]}`
+                                : "N/A";
+                            return this.getSingleLineCell(rejoinPositionStr);
                         },
                         ...disableSorting
                     },
@@ -520,7 +533,7 @@ class EngViewRaceTable {
                             const driverInfo = cell.getRow().getData();
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return this.getSingleLineCell(`${formatFloatWithTwoDecimals(cell.getValue())}%`);
+                                return this.getSingleLineCell(`${formatFloat(cell.getValue())}%`);
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
@@ -549,7 +562,7 @@ class EngViewRaceTable {
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
                                 const cellContent = cell.getValue() == null ? "N/A"
-                                    : formatFloatWithTwoDecimals(cell.getValue());
+                                    : formatFloat(cell.getValue());
                                 return this.getSingleLineCell(cellContent);
                             } else {
                                 return this.getTelemetryRestrictedContent();
@@ -562,7 +575,7 @@ class EngViewRaceTable {
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
                                 const cellContent = cell.getValue() == null
-                                    ? "N/A" : formatFloatWithTwoDecimals(cell.getValue());
+                                    ? "N/A" : formatFloat(cell.getValue());
                                 return this.getSingleLineCell(cellContent);
                             } else {
                                 return this.getTelemetryRestrictedContent();
@@ -575,7 +588,7 @@ class EngViewRaceTable {
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
                                 const cellContent = cell.getValue() == null ? "N/A"
-                                    : formatFloatWithTwoDecimalsSigned(cell.getValue());
+                                    : formatFloat(cell.getValue(), { signed: true });
                                 return this.getSingleLineCell(cellContent);
                             } else {
                                 return this.getTelemetryRestrictedContent();
@@ -660,7 +673,7 @@ class EngViewRaceTable {
         return `<div class='${row1Class}'>${processedRow1}</div><div class='${row2Class}'>${processedRow2}</div>`;
     }
 
-    update(drivers, isSpectating, eventType, spectatorCarIndex, fastestLapMs, sessionUID) {
+    update(drivers, isSpectating, eventType, spectatorCarIndex, fastestLapMs, sessionUID, pitTimeLoss) {
         this.spectatorIndex = spectatorCarIndex;
         this.isSpectating = isSpectating;
         this.fastestLapMs = fastestLapMs;
@@ -677,6 +690,9 @@ class EngViewRaceTable {
             entry["driver-info"]?.["is-player"]
         );
 
+        // Sort, compute and insert rejoin positions
+        drivers.sort((a, b) => a["driver-info"]["position"] - b["driver-info"]["position"]);
+        insertRejoinPositions(drivers, pitTimeLoss);
         const newTableData = drivers.map(driver => ({
             ...driver,
             id: driver['driver-info']['index'],
@@ -695,6 +711,7 @@ class EngViewRaceTable {
             // Get current data to compare
             const currentData = this.table.getData();
             const currentDataMap = new Map(currentData.map(row => [row.id, row]));
+
 
             if (this.needsFullUpdate(currentData, newTableData, currentDataMap, sessionUID)) {
                 // If reference driver changed or new drivers, do full update
@@ -859,6 +876,7 @@ class EngViewRaceStatus {
         this.vscCountElement = document.getElementById('vscCount');
         this.trackTempElement = document.getElementById('trackTemp');
         this.airTempElement = document.getElementById('airTemp');
+        this.pitTimeLossElement = document.getElementById('pitTimeLoss');
         this.predictionLapInput = document.getElementById('predictionLap');
         this.predictionPitBtn = document.getElementById('predictionPitBtn');
         this.predictionMidBtn = document.getElementById('predictionMidBtn');
@@ -980,6 +998,10 @@ class EngViewRaceStatus {
         this.vscCountElement.textContent = data["num-vsc"];
         this.trackTempElement.textContent = data["track-temperature"] + ' °C';
         this.airTempElement.textContent = data["air-temperature"] + ' °C';
+        const pitTimeLoss = data["pit-time-loss"] ?? null;
+        this.pitTimeLossElement.textContent = (pitTimeLoss != null)
+            ? formatFloat(data["pit-time-loss"], { precision: 3 })
+            : "N/A";
 
         if (shouldUpdatePred) {
             this.#updatePredLapInputBox();
@@ -1082,11 +1104,12 @@ function initDashboard() {
             "event-type": eventType,
             "spectator-car-index": spectatorCarIndex,
             "fastest-lap-overall" : fastestLapMs,
-            "session-uid" : sessionUID
+            "session-uid" : sessionUID,
+            "pit-time-loss": pitTimeLoss = null // Default to null
         } = data;
 
         if (tableEntries || eventType === "Time Trial") {
-            raceTable.update(tableEntries, isSpectating, eventType, spectatorCarIndex, fastestLapMs, sessionUID);
+            raceTable.update(tableEntries, isSpectating, eventType, spectatorCarIndex, fastestLapMs, sessionUID, pitTimeLoss);
         }
         raceStatus.update(data);
         weatherTable.update(data["weather-forecast-samples"]);

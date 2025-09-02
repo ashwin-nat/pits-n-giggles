@@ -52,6 +52,7 @@ from tests_config import (TestCaptureSettings, TestConfigIO,
                           TestForwardingSettings, TestHttpsSettings,
                           TestLoadConfigFromIni, TestLoggingSettings,
                           TestMissingSectionsAndKeys, TestNetworkSettings,
+                          TestPitTimeLossF1, TestPitTimeLossF2,
                           TestPngSettings, TestPrivacySettings,
                           TestSampleSettingsFixture, TestStreamOverlaySettings)
 from tests_custom_markers import (TestCustomMarkerEntry,

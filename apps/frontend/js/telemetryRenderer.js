@@ -209,7 +209,7 @@ class TelemetryRenderer {
     } else {
       // Create the first div for the track name
       const trackNameDiv = document.createElement("div");
-      trackNameDiv.textContent = replaceRevSuffix(trackName.toUpperCase());
+      trackNameDiv.textContent = replaceRevSuffix(trackName).toUpperCase();
       trackNameDiv.style.textAlign = "center";
       trackNameDiv.style.margin = "0 auto";
       trackNameContainer.appendChild(trackNameDiv);
@@ -259,19 +259,25 @@ class TelemetryRenderer {
   }
 
   getRelevantRaceTableRows(data) {
-    if (data["table-entries"].length == 0) {
+    const tableEntries = data["table-entries"];
+    if (tableEntries.length == 0) {
       return [];
     }
+    // Sort the list by position before computing relevant positions and update rejoin positions
+    const sortedTableEntries = tableEntries.sort((a, b) => a["driver-info"]["position"] - b["driver-info"]["position"]);
+    insertRejoinPositions(sortedTableEntries, data["pit-time-loss"] ?? null);
+
     if (data["is-spectating"] || data["race-ended"]) {
-      return data["table-entries"];
+      return sortedTableEntries;
     }
-    const totalCars = data["table-entries"].length;
+
+    const totalCars = sortedTableEntries.length;
     const playerPosition = this.getPlayerPosition(data);
     const relevantPositions = this.getAdjacentPositions(playerPosition, totalCars, g_pref_numAdjacentCars);
 
     const lowerIndex = relevantPositions[0] - 1;
     const upperIndex = relevantPositions[relevantPositions.length - 1];
-    return data["table-entries"].slice(lowerIndex, upperIndex);
+    return sortedTableEntries.slice(lowerIndex, upperIndex);
   }
 
   getAdjacentPositions(position, total_cars, num_adjacent_cars) {

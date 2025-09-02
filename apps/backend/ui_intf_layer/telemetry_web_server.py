@@ -114,7 +114,7 @@ class TelemetryWebServer(BaseWebServer):
             Returns:
                 str: Rendered HTML content for the stream overlay page.
             """
-            return await self.render_template('eng-view.html')
+            return await self.render_template('eng-view.html', live_data_mode=True, version=self.m_ver_str)
 
         @self.http_route('/player-stream-overlay')
         async def playerStreamOverlay() -> str:

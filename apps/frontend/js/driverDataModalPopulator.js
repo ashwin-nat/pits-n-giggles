@@ -286,11 +286,11 @@ class DriverModalPopulator {
                         const tyreSetId = `${actualCompound} - ${tyreSetIndex}`;
                         icon = this.iconCache.getIcon(tyreSetData["visual-tyre-compound"]);
                         compound = tyreSetData["visual-tyre-compound"] + " (" + tyreSetId + ")";
-                        tyreWear = `${formatFloatWithTwoDecimals(tyreSetData["wear"])}%`;
+                        tyreWear = `${formatFloat(tyreSetData["wear"])}%`;
 
                         // Use parseFloat to ensure numerical calculation
                         const wearPerLap = parseFloat(tyreSetData["wear"]) / parseFloat(stintData["stint-length"]);
-                        tyreWearPerLap = formatFloatWithTwoDecimals(wearPerLap) + "%";
+                        tyreWearPerLap = formatFloat(wearPerLap) + "%";
                     }
 
                     // Make row clickable and add Bootstrap collapse attributes
@@ -356,19 +356,19 @@ class DriverModalPopulator {
                             lapCell.style.padding = '0.5rem';
 
                             const flCell = subRow.insertCell();
-                            flCell.textContent = formatFloatWithTwoDecimals(wearData["front-left-wear"]) + '%';
+                            flCell.textContent = formatFloat(wearData["front-left-wear"]) + '%';
                             flCell.style.padding = '0.5rem';
 
                             const frCell = subRow.insertCell();
-                            frCell.textContent = formatFloatWithTwoDecimals(wearData["front-right-wear"]) + '%';
+                            frCell.textContent = formatFloat(wearData["front-right-wear"]) + '%';
                             frCell.style.padding = '0.5rem';
 
                             const rlCell = subRow.insertCell();
-                            rlCell.textContent = formatFloatWithTwoDecimals(wearData["rear-left-wear"]) + '%';
+                            rlCell.textContent = formatFloat(wearData["rear-left-wear"]) + '%';
                             rlCell.style.padding = '0.5rem';
 
                             const rrCell = subRow.insertCell();
-                            rrCell.textContent = formatFloatWithTwoDecimals(wearData["rear-right-wear"]) + '%';
+                            rrCell.textContent = formatFloat(wearData["rear-right-wear"]) + '%';
                             rrCell.style.padding = '0.5rem';
                         });
 
@@ -383,22 +383,22 @@ class DriverModalPopulator {
                         wearHistory.forEach(wearData => {
                             graphDataFL.push({
                                 x: wearData["lap-number"],
-                                y: formatFloatWithTwoDecimals(wearData["front-left-wear"]),
+                                y: formatFloat(wearData["front-left-wear"]),
                                 desc: wearData["desc"],
                             });
                             graphDataFR.push({
                                 x: wearData["lap-number"],
-                                y: formatFloatWithTwoDecimals(wearData["front-right-wear"]),
+                                y: formatFloat(wearData["front-right-wear"]),
                                 desc: wearData["desc"],
                             });
                             graphDataRL.push({
                                 x: wearData["lap-number"],
-                                y: formatFloatWithTwoDecimals(wearData["rear-left-wear"]),
+                                y: formatFloat(wearData["rear-left-wear"]),
                                 desc: wearData["desc"],
                             });
                             graphDataRR.push({
                                 x: wearData["lap-number"],
-                                y: formatFloatWithTwoDecimals(wearData["rear-right-wear"]),
+                                y: formatFloat(wearData["rear-right-wear"]),
                                 desc: wearData["desc"],
                             });
                         });
@@ -508,15 +508,15 @@ class DriverModalPopulator {
                         const ersHarvestedThisLapMguHVal = lapInfo["car-status-data"]["ers-harvested-this-lap-mguh"];
                         const ersHarvestedThisLapMguKVal = lapInfo["car-status-data"]["ers-harvested-this-lap-mguk"];
 
-                        ersRemainingPerc = formatFloatWithTwoDecimals(
+                        ersRemainingPerc = formatFloat(
                             (ersRemainingVal / maxErsCapacity) * 100) + "%";
-                        ersDeployedPerc = formatFloatWithTwoDecimals(
+                        ersDeployedPerc = formatFloat(
                             (ersDeployedThisLapVal / maxErsCapacity) * 100) + "%";
-                        ersHarvestedMguHPerc = formatFloatWithTwoDecimals(
+                        ersHarvestedMguHPerc = formatFloat(
                             (ersHarvestedThisLapMguHVal / maxErsCapacity) * 100) + "%";
-                        ersHarvestedMguKPerc = formatFloatWithTwoDecimals(
+                        ersHarvestedMguKPerc = formatFloat(
                             (ersHarvestedThisLapMguKVal / maxErsCapacity) * 100) + "%";
-                        ersHarvestedTotalPerc = formatFloatWithTwoDecimals(
+                        ersHarvestedTotalPerc = formatFloat(
                             ((ersHarvestedThisLapMguHVal + ersHarvestedThisLapMguKVal) / maxErsCapacity)
                             * 100) + "%";
 
@@ -627,11 +627,11 @@ class DriverModalPopulator {
             if (predictions.length > 0) {
                 predictions.forEach((predictionData) => {
                     const currentLapNum = predictionData["lap-number"];
-                    const flWear = formatFloatWithTwoDecimals(predictionData["front-left-wear"]) + "%";
-                    const frWear = formatFloatWithTwoDecimals(predictionData["front-right-wear"]) + "%";
-                    const rlWear = formatFloatWithTwoDecimals(predictionData["rear-left-wear"]) + "%";
-                    const rrWear = formatFloatWithTwoDecimals(predictionData["rear-right-wear"]) + "%";
-                    const average = formatFloatWithTwoDecimals(predictionData["average"]) + "%";
+                    const flWear = formatFloat(predictionData["front-left-wear"]) + "%";
+                    const frWear = formatFloat(predictionData["front-right-wear"]) + "%";
+                    const rlWear = formatFloat(predictionData["rear-left-wear"]) + "%";
+                    const rrWear = formatFloat(predictionData["rear-right-wear"]) + "%";
+                    const average = formatFloat(predictionData["average"]) + "%";
                     const row = tbody.insertRow();
                     this.populateTableRow(row, [
                         currentLapNum,
@@ -786,7 +786,7 @@ class DriverModalPopulator {
                     this.populateTableRow(row, [
                         lapNumber,
                         sectorNumber,
-                        formatFloatWithTwoDecimals(lapProgressPercent) + "%",
+                        formatFloat(lapProgressPercent) + "%",
                         entryType,
                         oldValue,
                         newValue
@@ -1152,7 +1152,7 @@ class DriverModalPopulator {
                     const row = tbody.insertRow();
                     this.populateTableRow(row, [kebabToTitleCase(key),
                         typeof value === 'number' && !Number.isInteger(value) ?
-                            formatFloatWithTwoDecimals(value) : value]);
+                            formatFloat(value) : value]);
                 }
             } else {
                 const row = tbody.insertRow();

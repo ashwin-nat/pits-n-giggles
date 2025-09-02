@@ -167,13 +167,13 @@ class RaceTableRowPopulator {
         let tyreWearText = "";
         if (g_pref_tyreWearAverageFormat) {
             tyreWearText = currTyreWearData
-                ? formatFloatWithTwoDecimals(currTyreWearData["average"]) + "%"
+                ? formatFloat(currTyreWearData["average"]) + "%"
                 : "N/A";
         } else {
             tyreWearText = currTyreWearData
                 ? (() => {
                     const maxTyreWearData = getMaxTyreWear(currTyreWearData);
-                    return `${maxTyreWearData["max-key"]}: ${formatFloatWithTwoDecimals(maxTyreWearData["max-wear"])}%`;
+                    return `${maxTyreWearData["max-key"]}: ${formatFloat(maxTyreWearData["max-wear"])}%`;
                 })()
                 : "N/A";
         }
@@ -193,9 +193,15 @@ class RaceTableRowPopulator {
 
         const secondRow = document.createElement("div");
         secondRow.textContent = `${tyreInfoData["tyre-age"]} lap(s) (${tyreInfoData["num-pitstops"]} pit)`;
-
         cell.appendChild(firstRow);
         cell.appendChild(secondRow);
+
+        if (!this.raceEnded && this.isLiveDataMode) {
+            const thirdRow = document.createElement("div");
+            const rejoin = tyreInfoData["pit-rejoin-position"];
+            thirdRow.textContent = `Pit rejoin: ${(rejoin !== null && rejoin !== undefined) ? "P" + rejoin : "N/A"}`;
+            cell.appendChild(thirdRow);
+        }
 
         return this;
     }
@@ -251,10 +257,10 @@ class RaceTableRowPopulator {
                 predictionData.forEach((prediction, index) => {
                     const lapNum = prediction["lap-number"];
                     if (g_pref_tyreWearAverageFormat) {
-                        predictionContent.push("L" + lapNum + ": " + formatFloatWithTwoDecimals(prediction["average"]) + "%");
+                        predictionContent.push("L" + lapNum + ": " + formatFloat(prediction["average"]) + "%");
                     } else {
                         const maxWearInfo = getMaxTyreWear(prediction);
-                        const maxWear = formatFloatWithTwoDecimals(maxWearInfo["max-wear"]);
+                        const maxWear = formatFloat(maxWearInfo["max-wear"]);
                         const maxKey = maxWearInfo["max-key"];
                         predictionContent.push("L" + lapNum + ": " + maxKey + " - " + maxWear + "%");
                     }
@@ -269,11 +275,11 @@ class RaceTableRowPopulator {
         const damageInfo = this.rowData["damage-info"];
         // Wing damage key will always be present
         const flWingDamage = damageInfo["fl-wing-damage"] == null ? "N/A" :
-            formatFloatWithTwoDecimals(damageInfo["fl-wing-damage"]) + "%";
+            formatFloat(damageInfo["fl-wing-damage"]) + "%";
         const frWingDamage = damageInfo["fr-wing-damage"] == null ? "N/A" :
-            formatFloatWithTwoDecimals(damageInfo["fr-wing-damage"]) + "%";
+            formatFloat(damageInfo["fr-wing-damage"]) + "%";
         const rearWingDamage = damageInfo["rear-wing-damage"] == null ? "N/A" :
-            formatFloatWithTwoDecimals(damageInfo["rear-wing-damage"]) + "%";
+            formatFloat(damageInfo["rear-wing-damage"]) + "%";
         this.createMultiLineCell([
             "FL: " + flWingDamage,
             "FR: " + frWingDamage,
@@ -285,13 +291,13 @@ class RaceTableRowPopulator {
     #computeFuelMetrics(fuelInfo, raceEnded) {
         if (raceEnded) {
           const currFuelRate = fuelInfo["curr-fuel-rate"] !== null
-            ? formatFloatWithTwoDecimals(fuelInfo["curr-fuel-rate"])
+            ? formatFloat(fuelInfo["curr-fuel-rate"])
             : "N/A";
           const lastLapFuelUsed = fuelInfo["last-lap-fuel-used"] !== null
-            ? formatFloatWithTwoDecimals(fuelInfo["last-lap-fuel-used"])
+            ? formatFloat(fuelInfo["last-lap-fuel-used"])
             : "N/A";
           const remainingFuel = fuelInfo["remaining-fuel"] !== null
-            ? formatFloatWithTwoDecimals(fuelInfo["fuel-in-tank"])
+            ? formatFloat(fuelInfo["fuel-in-tank"])
             : "N/A";
           return [
             `Last: ${lastLapFuelUsed}`,
@@ -300,19 +306,19 @@ class RaceTableRowPopulator {
           ];
         } else {
           const targetFuelRateAverage = fuelInfo["target-fuel-rate-average"] !== null
-            ? formatFloatWithTwoDecimals(fuelInfo["target-fuel-rate-average"])
+            ? formatFloat(fuelInfo["target-fuel-rate-average"])
             : "N/A";
           const targetFuelRateNextLap = fuelInfo["target-fuel-rate-next-lap"] !== null
-            ? formatFloatWithTwoDecimals(fuelInfo["target-fuel-rate-next-lap"])
+            ? formatFloat(fuelInfo["target-fuel-rate-next-lap"])
             : "N/A";
           const lastLapFuelUsed = fuelInfo["last-lap-fuel-used"] !== null
-            ? formatFloatWithTwoDecimals(fuelInfo["last-lap-fuel-used"])
+            ? formatFloat(fuelInfo["last-lap-fuel-used"])
             : "N/A";
           const surplusLapsPng = fuelInfo["surplus-laps-png"] !== null
-            ? formatFloatWithTwoDecimalsSigned(fuelInfo["surplus-laps-png"])
+            ? formatFloat(fuelInfo["surplus-laps-png"], { signed: true })
             : "N/A";
           const surplusLapsGame = fuelInfo["surplus-laps-game"] !== null
-            ? formatFloatWithTwoDecimalsSigned(fuelInfo["surplus-laps-game"])
+            ? formatFloat(fuelInfo["surplus-laps-game"], { signed: true })
             : "N/A";
 
           const laps = g_pref_fuelSurplusLapsPng ? surplusLapsPng : surplusLapsGame;

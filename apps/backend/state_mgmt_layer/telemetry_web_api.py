@@ -98,6 +98,8 @@ class RaceInfoUpdate:
             "f1-game-year" : _getValueOrDefaultValue(self.m_session_info.m_game_year, None),
             "packet-format" : _getValueOrDefaultValue(self.m_session_info.m_packet_format, None),
             "circuit": str(self.m_session_info.m_track) if self.m_session_info.m_track is not None else "---",
+            "formula": str(self.m_session_info.m_formula) if self.m_session_info.m_formula is not None else None,
+            "pit-time-loss": self.m_session_info.m_pit_time_loss,
             "track-temperature": _getValueOrDefaultValue(self.m_session_info.m_track_temp, default_value=0),
             "air-temperature": _getValueOrDefaultValue(self.m_session_info.m_air_temp, default_value=0),
             "event-type": _getValueOrDefaultValue(str(self.m_session_info.m_session_type)),
@@ -772,7 +774,6 @@ class DriversListRsp:
             if not 1 <= driver_data.m_driver_info.position <= _session_state_ref.m_num_active_cars:
                 continue
             self.m_json_rsp.append(self._getDriverJSON(index,driver_data))
-        self.m_json_rsp.sort(key=lambda obj: obj["driver-info"]["position"])
 
     def __initTTDict(self) -> None:
         """Initialise the fields

@@ -38,7 +38,7 @@ class PenaltiesStatsWidget {
     if (packetFormat >= 2024) {
       this.speedTrapDiv.style.display = "";
       if (speedTrap !== null && speedTrap !== undefined && speedTrap !== 0.0) {
-        this.speedTrapSpan.textContent = formatFloatWithTwoDecimals(speedTrap);
+        this.speedTrapSpan.textContent = formatFloat(speedTrap);
       } else {
         this.speedTrapSpan.textContent = "---";
       }

@@ -36,6 +36,7 @@ from .tests_privacy_settings import TestPrivacySettings
 from .tests_https_settings import TestHttpsSettings
 from .tests_file_path_str_config import TestFilePathStr
 from .tests_stream_overlay_settings import TestStreamOverlaySettings
+from .tests_pit_time_loss import TestPitTimeLossF1, TestPitTimeLossF2
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -54,6 +55,8 @@ __all__ = [
     "TestPrivacySettings",
     "TestHttpsSettings",
     "TestStreamOverlaySettings",
+    "TestPitTimeLossF1",
+    "TestPitTimeLossF2",
 
     "TestFilePathStr",
 ]

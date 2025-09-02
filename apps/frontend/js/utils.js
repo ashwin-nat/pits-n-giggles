@@ -85,47 +85,20 @@ function showToast(message, timeout = 3000) {
     toast.show();
 }
 
-function formatFloatWithTwoDecimals(floatNumber) {
+function formatFloat(floatNumber, { precision = 2, signed = false } = {}) {
     if (typeof floatNumber !== 'number' || isNaN(floatNumber)) {
         console.error('Invalid input. Please provide a valid number.', floatNumber);
-        console.trace(); // Log the call stack
+        console.trace();
         return null;
     }
 
-    // Use toFixed to round to two decimal places and convert to string
-    return floatNumber.toFixed(2);
-}
+    const floatStr = floatNumber.toFixed(precision);
 
-function formatFloatWithTwoDecimalsSigned(floatNumber) {
-    if (typeof floatNumber !== 'number' || isNaN(floatNumber)) {
-        console.error('Invalid input. Please provide a valid number.');
-        console.trace(); // Log the call stack
-        return null;
-    }
-
-    // Use toFixed to round to two decimal places and convert to string
-    const floatStr = floatNumber.toFixed(2);
-    if (floatNumber >= 0.0) {
+    if (signed && floatNumber >= 0) {
         return '+' + floatStr;
-    } else {
-        return floatStr;
-    }
-}
-
-function formatFloatWithThreeDecimalsSigned(floatNumber) {
-    if (typeof floatNumber !== 'number' || isNaN(floatNumber)) {
-        console.error('Invalid input. Please provide a valid number.');
-        console.trace(); // Log the call stack
-        return null;
     }
 
-    // Use toFixed to round to two decimal places and convert to string
-    const floatStr = floatNumber.toFixed(3);
-    if (floatNumber >= 0.0) {
-        return '+' + floatStr;
-    } else {
-        return floatStr;
-    }
+    return floatStr;
 }
 
 function getTyreCompoundStr(visualTyreCompound, actualTyreCompound) {
@@ -374,7 +347,10 @@ function getFormattedLapTimeStr({
 }
 
 function replaceRevSuffix(str) {
-  return str.replace(/\(REV\)$/, '⇄');
+    if (str.endsWith("_Reverse")) {
+        return str.replace("_Reverse", " ⇄");
+    }
+    return str;
 }
 
 function formatSpeed(speedKmph, { isMetric = true, decimalPlaces = 1, addUnitSuffix = true } = {}) {
@@ -409,4 +385,31 @@ function formatTemperature(tempCelsius, { isMetric = true, decimalPlaces = 1, ad
 
     const rounded = temp.toFixed(decimalPlaces);
     return addUnitSuffix ? `${rounded} ${unit}` : `${rounded}`;
+}
+
+/**
+ * Insert pit rejoin position into each driver's JSON (mutates input).
+ * @param {Object[]} drivers - full grid of driver data JSON objects sorted by position
+ * @param {number} pitLoss - estimated pit stop loss (s)
+ */
+function insertRejoinPositions(drivers, pitLoss) {
+    if (pitLoss === null) {
+        return;
+    }
+    const gaps = drivers.map(d => d["delta-info"]["delta-to-leader"]);
+    const n = gaps.length;
+    const pitLossMs = pitLoss * 1000;
+
+    for (let i = 0; i < n; i++) {
+        const driver = drivers[i];
+        const rejoinGap = gaps[i] + pitLossMs;
+
+        // Find first car whose gap is greater than rejoinGap
+        let pos = gaps.findIndex(g => g > rejoinGap);
+        if (pos === -1) {
+            pos = n; // behind the whole field
+        }
+
+        driver["tyre-info"]["pit-rejoin-position"] = pos;
+    }
 }

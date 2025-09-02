@@ -51,6 +51,7 @@ from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.tyre_wear_extrapolator import TyreWearPerLap
+from lib.config import PngSettings
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -59,8 +60,10 @@ class SessionInfo:
     Class that stores global race data.
 
     Attributes:
+         - m_session_time_left (Optional[int]): The time left in the session in seconds
          - m_track (Optional[TrackID]): The current track
          - m_track_len (Optional[int]): The length of the track in meters
+         - m_pit_time_loss (Optional[float]): The pit time loss in seconds
          - m_session_type (Optional[SessionType): The type of the session, will be an enum specific to game year
          - m_session_uid (Optional[int]): The unique identifier of the session
          - m_game_mode (Optional[GameMode]): The current game mode
@@ -79,8 +82,13 @@ class SessionInfo:
     """
 
     __slots__ = (
+        "m_logger",
+        "m_formula",
         "m_track",
         "m_track_len",
+        "m_pit_time_loss_f1_dict",
+        "m_pit_time_loss_f2_dict",
+        "m_pit_time_loss",
         "m_session_type",
         "m_session_uid",
         "m_game_mode",
@@ -98,13 +106,20 @@ class SessionInfo:
         "m_packet_format",
     )
 
-    def __init__(self):
+    def __init__(self, settings: PngSettings, logger: logging.Logger) -> None:
         """
         Init the SessionInfo object fields to None
+
+        Args:
+            settings (PngSettings): App Settings
+            logger (logging.Logger): Logger
         """
 
+        self.m_logger: logging.Logger = logger
+        self.m_formula: Optional[PacketSessionData.FormulaType] = None
         self.m_track : Optional[TrackID] = None
         self.m_track_len: Optional[int] = None
+        self.m_pit_time_loss: Optional[float] = None
         self.m_session_type : Optional[SessionType] = None
         self.m_session_uid: Optional[int] = None
         self.m_game_mode: Optional[GameMode] = None
@@ -121,6 +136,17 @@ class SessionInfo:
         self.m_game_year : Optional[int] = None
         self.m_packet_format : Optional[int] = None
 
+        # Initialize the pit time loss dicts
+        track_name_to_enum = {str(member): member for member in TrackID}
+        self.m_pit_time_loss_f1_dict: Dict[TrackID, Optional[float]] = {
+            track_name_to_enum[field if field.endswith("_Reverse") else field.replace("_", " ")]: value
+            for field, value in settings.TimeLossInPitsF1.model_dump().items()
+        }
+        self.m_pit_time_loss_f2_dict: Dict[TrackID, Optional[float]] = {
+            track_name_to_enum[field if field.endswith("_Reverse") else field.replace("_", " ")]: value
+            for field, value in settings.TimeLossInPitsF2.model_dump().items()
+        }
+
     def __str__(self) -> str:
         """Dump the SessionInfo object to a readable string
 
@@ -129,6 +155,7 @@ class SessionInfo:
         """
         return (
             f"SessionInfo(m_track={str(self.m_track)}, "
+            f"m_formula={str(self.m_formula)}, "
             f"m_track_len={self.m_track_len}, "
             f"m_event_type={str(self.m_session_type)}, "
             f"m_session_uid={self.m_session_uid}, "
@@ -149,6 +176,7 @@ class SessionInfo:
         Clear the objects contents.
         """
 
+        self.m_formula = None
         self.m_track = None
         self.m_track_len = None
         self.m_session_type = None
@@ -166,6 +194,9 @@ class SessionInfo:
         self.m_packet_session = None
         self.m_game_year = None
         self.m_packet_format = None
+        self.m_pit_time_loss = None
+
+        # Dont clear the pit loss dicts. they are static
 
     @property
     def is_valid(self) -> bool:
@@ -192,12 +223,10 @@ class SessionInfo:
         """
 
         ret_status = bool(
-            self.m_packet_session
-            and (
-                packet.m_header.m_sessionUID
-                != self.m_packet_session.m_header.m_sessionUID
-            )
+            self.m_packet_session and
+            (packet.m_header.m_sessionUID != self.m_packet_session.m_header.m_sessionUID)
         )
+        self.m_formula = packet.m_formula
         self.m_track = packet.m_trackId
         self.m_track_len = packet.m_trackLength
         self.m_track_temp = packet.m_trackTemperature
@@ -214,6 +243,16 @@ class SessionInfo:
         self.m_game_year = packet.m_header.m_gameYear
         self.m_packet_format = packet.m_header.m_packetFormat
         self.m_safety_car_status = packet.m_safetyCarStatus
+
+        if ret_status or self.m_pit_time_loss is None:
+            if self.m_formula.is_f1:
+                self.m_pit_time_loss = self.m_pit_time_loss_f1_dict.get(self.m_track)
+            elif self.m_formula.is_f2:
+                self.m_pit_time_loss = self.m_pit_time_loss_f2_dict.get(self.m_track)
+            else:
+                self.m_pit_time_loss = None
+                self.m_logger.debug("Unknown formula: %s Clearing pit time loss", str(self.m_formula))
+
         return ret_status
 
 class SessionState:
@@ -275,13 +314,13 @@ class SessionState:
 
     def __init__(self,
                  logger: logging.Logger,
-                 process_car_setups: bool,
+                 settings: PngSettings,
                  ver_str: str) -> None:
         """Init the DriverData object
 
         Args:
             logger (logging.Logger): Logger
-            process_car_setups (bool): Whether to process car setups packets
+            settings (PngSettings): Settings
             ver_str (str): Version string
         """
 
@@ -300,12 +339,12 @@ class SessionState:
         self.m_fastest_s3_ms: Optional[int] = None
         self.m_time_trial_packet : Optional[PacketTimeTrialData] = None
         self.m_overtakes_history = OvertakesHistory()
-        self.m_session_info: SessionInfo = SessionInfo()
+        self.m_session_info: SessionInfo = SessionInfo(settings, logger)
         self.m_first_session_update_received: bool = False
         self.m_version: str = ver_str
 
         # Config params
-        self.m_process_car_setups: bool = process_car_setups
+        self.m_process_car_setups: bool = settings.Privacy.process_car_setup
 
         self.m_custom_markers_history = CustomMarkersHistory()
         self.m_connected_to_sim: bool = False

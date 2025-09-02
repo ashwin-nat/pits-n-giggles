@@ -934,10 +934,9 @@ class TrackID(F1BaseEnum):
             "Sakhir_Bahrain": "Sakhir",
             "Abu_Dhabi": "Abu Dhabi",
             "Baku_Azerbaijan": "Baku",
-            "Portimao": "Portimão",
-            "Silverstone_Reverse": "Silverstone (Rev)",
-            "Austria_Reverse": "Austria (Rev)",
-            "Zandvoort_Reverse": "Zandvoort (Rev)",
+            "Silverstone_Reverse": "Silverstone_Reverse",
+            "Austria_Reverse": "Austria_Reverse",
+            "Zandvoort_Reverse": "Zandvoort_Reverse",
         }.get(self.name, self.name.replace("_", " "))
 
 class GameMode(F1BaseEnum):
