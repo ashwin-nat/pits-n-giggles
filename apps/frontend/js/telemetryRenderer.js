@@ -265,7 +265,7 @@ class TelemetryRenderer {
     }
     // Sort the list by position before computing relevant positions and update rejoin positions
     const sortedTableEntries = tableEntries.sort((a, b) => a["driver-info"]["position"] - b["driver-info"]["position"]);
-    insertRejoinPositions(sortedTableEntries, data["pit-loss-time"]);
+    insertRejoinPositions(sortedTableEntries, data["pit-time-loss"] ?? null);
 
     if (data["is-spectating"] || data["race-ended"]) {
       return sortedTableEntries;

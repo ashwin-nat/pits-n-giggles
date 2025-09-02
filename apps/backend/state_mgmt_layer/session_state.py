@@ -111,8 +111,6 @@ class SessionInfo:
         self.m_formula: Optional[PacketSessionData.FormulaType] = None
         self.m_track : Optional[TrackID] = None
         self.m_track_len: Optional[int] = None
-        self.m_pit_time_loss_f1_dict: Dict[TrackID, Optional[float]] = {}
-        self.m_pit_time_loss_f2_dict: Dict[TrackID, Optional[float]] = {}
         self.m_pit_time_loss: Optional[float] = None
         self.m_session_type : Optional[SessionType] = None
         self.m_session_uid: Optional[int] = None
@@ -130,23 +128,16 @@ class SessionInfo:
         self.m_game_year : Optional[int] = None
         self.m_packet_format : Optional[int] = None
 
-        # TODO - cache the pit time loss value for current session
-
         # Initialize the pit time loss dicts
         track_name_to_enum = {str(member): member for member in TrackID}
-        for field, value in settings.TimeLossInPitsF1.model_dump().items():
-            if field.endswith("_Reverse"):
-                cleaned_field = field
-            else:
-                cleaned_field = field.replace("_", " ")
-            self.m_pit_time_loss_f1_dict[track_name_to_enum[cleaned_field]] = value
-
-        for field, value in settings.TimeLossInPitsF2.model_dump().items():
-            if field.endswith("_Reverse"):
-                cleaned_field = field
-            else:
-                cleaned_field = field.replace("_", " ")
-            self.m_pit_time_loss_f2_dict[track_name_to_enum[cleaned_field]] = value
+        self.m_pit_time_loss_f1_dict: Dict[TrackID, Optional[float]] = {
+            track_name_to_enum[field if field.endswith("_Reverse") else field.replace("_", " ")]: value
+            for field, value in settings.TimeLossInPitsF1.model_dump().items()
+        }
+        self.m_pit_time_loss_f2_dict: Dict[TrackID, Optional[float]] = {
+            track_name_to_enum[field if field.endswith("_Reverse") else field.replace("_", " ")]: value
+            for field, value in settings.TimeLossInPitsF2.model_dump().items()
+        }
 
     def __str__(self) -> str:
         """Dump the SessionInfo object to a readable string

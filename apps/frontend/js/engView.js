@@ -1101,7 +1101,7 @@ function initDashboard() {
             "spectator-car-index": spectatorCarIndex,
             "fastest-lap-overall" : fastestLapMs,
             "session-uid" : sessionUID,
-            "pit-time-loss": pitTimeLoss
+            "pit-time-loss": pitTimeLoss = null // Default to null
         } = data;
 
         if (tableEntries || eventType === "Time Trial") {
