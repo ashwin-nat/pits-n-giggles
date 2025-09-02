@@ -402,7 +402,7 @@ class EngViewRaceTable {
             },
             {
                 title: "Delta",
-                field: "delta",
+                field: "delta-info",
                 formatter: (cell) => {
                     const data = cell.getRow().getData();
                     const position = data.position;
