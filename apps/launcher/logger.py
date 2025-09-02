@@ -24,6 +24,7 @@
 
 import logging
 from logging.handlers import RotatingFileHandler
+from typing import Tuple
 
 from lib.file_path import resolve_user_file
 
@@ -68,34 +69,35 @@ class ConditionalTimestampFormatter(logging.Formatter):
 
 def get_rotating_logger(
     name: str = "png_logger",
-    log_file: str = DEFAULT_LOG_FILE,
+    log_file_path: str = DEFAULT_LOG_FILE,
     max_bytes: int = 3 * 1024 * 1024,
     backup_count: int = 3,
     debug_mode: bool = False
-) -> logging.Logger:
+) -> Tuple[logging.Logger, str]:
     """
     Get a logger with a rotating file handler.
 
     Args:
         name (str, optional): The name of the logger. Defaults to "png_logger".
-        log_file (str, optional): The name of the log file. Defaults to "png.log".
+        log_file_path (str, optional): The name of the log file. Defaults to "png.log".
         max_bytes (int, optional): The maximum size of the log file in bytes. Defaults to 3MB.
         backup_count (int, optional): The number of backup log files to keep. Defaults to 3.
         debug_mode (bool, optional): Whether to enable debug mode. Defaults to False.
 
     Returns:
         logging.Logger: The logger with a rotating file handler.
+        log_file_path (str): The path to the log file.
     """
-    if log_file == DEFAULT_LOG_FILE:
-        log_file = resolve_user_file(DEFAULT_LOG_FILE)
+    if log_file_path == DEFAULT_LOG_FILE:
+        log_file_path = resolve_user_file(DEFAULT_LOG_FILE)
 
     logger = logging.getLogger(name)
     logger.propagate = False
     logger.setLevel(logging.DEBUG if debug_mode else logging.INFO)
 
     if not logger.handlers:
-        handler = RotatingFileHandler(log_file, maxBytes=max_bytes, backupCount=backup_count)
+        handler = RotatingFileHandler(log_file_path, maxBytes=max_bytes, backupCount=backup_count)
         handler.setFormatter(ConditionalTimestampFormatter())
         logger.addHandler(handler)
 
-    return logger
+    return logger, log_file_path

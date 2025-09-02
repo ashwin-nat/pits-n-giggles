@@ -107,7 +107,7 @@ class PngLauncher(ConsoleInterface):
             threading.Thread(target=self.check_for_updates_background, daemon=True).start()
 
         # Initial log message
-        self.debug_log(f"Pits n' Giggles started. Version: {self.version}")
+        self.info_log(f"Pits n' Giggles started. Version: {self.version}. Log file: {self.log_file_path}")
 
     def create_custom_style(self):
         """Create custom styles for the application"""
@@ -291,7 +291,7 @@ class PngLauncher(ConsoleInterface):
 
     def setup_logger(self):
         """Set up the logger for the application"""
-        self.m_logger = get_rotating_logger(debug_mode=self.debug_mode)
+        self.m_logger, self.log_file_path = get_rotating_logger(debug_mode=self.debug_mode)
 
     def _write_log(self, logger_func, message: str, is_child_message: bool = False, check_debug: bool = False):
         """
