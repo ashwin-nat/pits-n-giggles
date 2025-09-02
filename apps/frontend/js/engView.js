@@ -91,6 +91,24 @@ class EngViewRaceTable {
         applyWidthsRecursively(columnDefinitions);
     }
 
+    applyColumnVisibilityToDefinitions(columnDefinitions, savedVisibility) {
+        const applyVisibilityRecursively = (columns) => {
+            columns.forEach(col => {
+                const field = col.field || col.title;
+                if (field && savedVisibility[field] === false) {
+                    col.visible = false;
+                } else {
+                    col.visible = true; // Default to visible if not explicitly hidden
+                }
+
+                if (col.columns) {
+                    applyVisibilityRecursively(col.columns);
+                }
+            });
+        };
+        applyVisibilityRecursively(columnDefinitions);
+    }
+
     saveColumnOrder() {
         const columns = this.table.getColumns();
         const order = columns.map(column => column.getField());
@@ -123,6 +141,11 @@ class EngViewRaceTable {
         const savedWidths = this.loadColumnWidths();
         console.debug('Saved column widths:', savedWidths);
         this.applyColumnWidths(columnDefinitions, savedWidths);
+
+        // Load and apply saved column visibility
+        const savedVisibility = this.loadColumnVisibility();
+        console.debug('Saved column visibility:', savedVisibility);
+        this.applyColumnVisibilityToDefinitions(columnDefinitions, savedVisibility);
 
         // Load and apply column order
         const savedOrder = this.loadColumnOrder();
@@ -1248,7 +1271,8 @@ function initDashboard() {
     }
 
     // Apply visibility on initial load
-    applyColumnVisibility();
+    // This is no longer needed as visibility is applied during table initialization
+    // applyColumnVisibility();
 }
 
 // Start the dashboard when the page loads
