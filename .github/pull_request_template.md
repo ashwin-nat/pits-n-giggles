@@ -26,20 +26,6 @@ Fixes #<issue_number> <!-- optional -->
 
 > ⚠️ If your PR includes backend Python changes, please fill out the sections below.
 
-### ✅ Unit Tests
-
-- [ ] All unit tests pass
-- Attach test command/output:
-
-```
-<paste result here>
-```
-
-To run the unit test suite
-```bash
-poetry run python tests/unit_tests.py
-```
-
 ### ✅ Integration Tests
 
 * [ ] All integration tests pass
@@ -52,20 +38,6 @@ poetry run python tests/unit_tests.py
 To run the integration test
 ```bash
 poetry run python tests/integration_test/runner.py
-```
-
-### ✅ Pylint
-
-* [ ] Code passes `pylint`
-* Paste summary report:
-
-```
-<e.g., Your code has been rated at 10/10>
-```
-
-To run pylint
-```bash
-pylint --rcfile scripts/.pylintrc lib apps
 ```
 
 ---
