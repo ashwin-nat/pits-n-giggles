@@ -62,6 +62,7 @@ def sendBytesUDP(data: bytes, udp_ip: str, udp_port: int) -> int:
         int: Number of bytes sent
     """
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp_socket:
+        udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         return udp_socket.sendto(data, (udp_ip, udp_port))
 
 def formatFileSize(num_bytes:int) -> str:
