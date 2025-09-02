@@ -60,8 +60,10 @@ class SessionInfo:
     Class that stores global race data.
 
     Attributes:
+         - m_session_time_left (Optional[int]): The time left in the session in seconds
          - m_track (Optional[TrackID]): The current track
          - m_track_len (Optional[int]): The length of the track in meters
+         - m_pit_time_loss (Optional[float]): The pit time loss in seconds
          - m_session_type (Optional[SessionType): The type of the session, will be an enum specific to game year
          - m_session_uid (Optional[int]): The unique identifier of the session
          - m_game_mode (Optional[GameMode]): The current game mode
@@ -80,6 +82,7 @@ class SessionInfo:
     """
 
     __slots__ = (
+        "m_logger",
         "m_formula",
         "m_track",
         "m_track_len",
@@ -103,11 +106,16 @@ class SessionInfo:
         "m_packet_format",
     )
 
-    def __init__(self, settings: PngSettings):
+    def __init__(self, settings: PngSettings, logger: logging.Logger) -> None:
         """
         Init the SessionInfo object fields to None
+
+        Args:
+            settings (PngSettings): App Settings
+            logger (logging.Logger): Logger
         """
 
+        self.m_logger: logging.Logger = logger
         self.m_formula: Optional[PacketSessionData.FormulaType] = None
         self.m_track : Optional[TrackID] = None
         self.m_track_len: Optional[int] = None
@@ -241,6 +249,9 @@ class SessionInfo:
                 self.m_pit_time_loss = self.m_pit_time_loss_f1_dict.get(self.m_track)
             elif self.m_formula.is_f2:
                 self.m_pit_time_loss = self.m_pit_time_loss_f2_dict.get(self.m_track)
+            else:
+                self.m_pit_time_loss = None
+                self.m_logger.debug("Unknown formula: %s Clearing pit time loss", str(self.m_formula))
 
         return ret_status
 
@@ -328,7 +339,7 @@ class SessionState:
         self.m_fastest_s3_ms: Optional[int] = None
         self.m_time_trial_packet : Optional[PacketTimeTrialData] = None
         self.m_overtakes_history = OvertakesHistory()
-        self.m_session_info: SessionInfo = SessionInfo(settings)
+        self.m_session_info: SessionInfo = SessionInfo(settings, logger)
         self.m_first_session_update_received: bool = False
         self.m_version: str = ver_str
 

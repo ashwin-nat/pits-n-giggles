@@ -199,7 +199,7 @@ class RaceTableRowPopulator {
         if (!this.raceEnded && this.isLiveDataMode) {
             const thirdRow = document.createElement("div");
             const rejoin = tyreInfoData["pit-rejoin-position"];
-            thirdRow.textContent = `Pit rejoin: ${rejoin ? "P" + rejoin : "N/A"}`;
+            thirdRow.textContent = `Pit rejoin: ${(rejoin !== null && rejoin !== undefined) ? "P" + rejoin : "N/A"}`;
             cell.appendChild(thirdRow);
         }
 
