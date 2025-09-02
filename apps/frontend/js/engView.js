@@ -462,6 +462,18 @@ class EngViewRaceTable {
                         ...disableSorting
                     },
                     {
+                        title: "Rejoin",
+                        field: "tyre-info.pit-rejoin-position",
+                        formatter: (cell) => {
+                            const tyreInfo = cell.getRow().getData()["tyre-info"];
+                            const rejoinPosition = "pit-rejoin-position" in tyreInfo
+                                ? `P${tyreInfo["pit-rejoin-position"]}`
+                                : "N/A";
+                            return this.getSingleLineCell(rejoinPosition);
+                        },
+                        ...disableSorting
+                    },
+                    {
                         title: "Lap",
                         field: "tyre-info.tyre-age",
                         formatter: (cell) => {
@@ -660,7 +672,7 @@ class EngViewRaceTable {
         return `<div class='${row1Class}'>${processedRow1}</div><div class='${row2Class}'>${processedRow2}</div>`;
     }
 
-    update(drivers, isSpectating, eventType, spectatorCarIndex, fastestLapMs, sessionUID) {
+    update(drivers, isSpectating, eventType, spectatorCarIndex, fastestLapMs, sessionUID, pitTimeLoss) {
         this.spectatorIndex = spectatorCarIndex;
         this.isSpectating = isSpectating;
         this.fastestLapMs = fastestLapMs;
@@ -677,6 +689,9 @@ class EngViewRaceTable {
             entry["driver-info"]?.["is-player"]
         );
 
+        // Sort, compute and insert rejoin positions
+        drivers.sort((a, b) => a["driver-info"]["position"] - b["driver-info"]["position"]);
+        insertRejoinPositions(drivers, pitTimeLoss);
         const newTableData = drivers.map(driver => ({
             ...driver,
             id: driver['driver-info']['index'],
@@ -695,6 +710,7 @@ class EngViewRaceTable {
             // Get current data to compare
             const currentData = this.table.getData();
             const currentDataMap = new Map(currentData.map(row => [row.id, row]));
+
 
             if (this.needsFullUpdate(currentData, newTableData, currentDataMap, sessionUID)) {
                 // If reference driver changed or new drivers, do full update
@@ -1084,11 +1100,12 @@ function initDashboard() {
             "event-type": eventType,
             "spectator-car-index": spectatorCarIndex,
             "fastest-lap-overall" : fastestLapMs,
-            "session-uid" : sessionUID
+            "session-uid" : sessionUID,
+            "pit-time-loss": pitTimeLoss
         } = data;
 
         if (tableEntries || eventType === "Time Trial") {
-            raceTable.update(tableEntries, isSpectating, eventType, spectatorCarIndex, fastestLapMs, sessionUID);
+            raceTable.update(tableEntries, isSpectating, eventType, spectatorCarIndex, fastestLapMs, sessionUID, pitTimeLoss);
         }
         raceStatus.update(data);
         weatherTable.update(data["weather-forecast-samples"]);

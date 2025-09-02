@@ -398,10 +398,11 @@ function insertRejoinPositions(drivers, pitLoss) {
     }
     const gaps = drivers.map(d => d["delta-info"]["delta-to-leader"]);
     const n = gaps.length;
+    const pitLossMs = pitLoss * 1000;
 
     for (let i = 0; i < n; i++) {
         const driver = drivers[i];
-        const rejoinGap = gaps[i] + pitLoss;
+        const rejoinGap = gaps[i] + pitLossMs;
 
         // Find first car whose gap is greater than rejoinGap
         let pos = gaps.findIndex(g => g > rejoinGap);
