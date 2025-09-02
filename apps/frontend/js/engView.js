@@ -466,10 +466,11 @@ class EngViewRaceTable {
                         field: "tyre-info.pit-rejoin-position",
                         formatter: (cell) => {
                             const tyreInfo = cell.getRow().getData()["tyre-info"];
-                            const rejoinPosition = "pit-rejoin-position" in tyreInfo
+                            const rejoinPosition = tyreInfo["pit-rejoin-position"] ?? null;
+                            const rejoinPositionStr = (rejoinPosition != null)
                                 ? `P${tyreInfo["pit-rejoin-position"]}`
                                 : "N/A";
-                            return this.getSingleLineCell(rejoinPosition);
+                            return this.getSingleLineCell(rejoinPositionStr);
                         },
                         ...disableSorting
                     },
@@ -997,7 +998,10 @@ class EngViewRaceStatus {
         this.vscCountElement.textContent = data["num-vsc"];
         this.trackTempElement.textContent = data["track-temperature"] + ' °C';
         this.airTempElement.textContent = data["air-temperature"] + ' °C';
-        this.pitTimeLossElement.textContent = formatFloat(data["pit-time-loss"], { precision: 3 });
+        const pitTimeLoss = data["pit-time-loss"] ?? null;
+        this.pitTimeLossElement.textContent = (pitTimeLoss != null)
+            ? formatFloat(data["pit-time-loss"], { precision: 3 })
+            : "N/A";
 
         if (shouldUpdatePred) {
             this.#updatePredLapInputBox();
