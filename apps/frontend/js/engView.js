@@ -965,7 +965,7 @@ class EngViewRaceStatus {
             return "Race Status";
         }
 
-        return `${track} - ${event}`;
+        return `${replaceRevSuffix(track)} - ${event}`;
     }
 
     #getSessionTimeString(data) {
