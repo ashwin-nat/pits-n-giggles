@@ -44,8 +44,8 @@ class EngViewRaceTable {
     }
 
     saveColumnState() {
-        if (this.columnApi) {
-            const columnState = this.columnApi.getColumnState();
+        if (this.gridApi) {
+            const columnState = this.gridApi.getColumnState();
             try {
                 localStorage.setItem(this.COLUMN_STATE_LS_KEY, JSON.stringify(columnState));
                 console.debug('Column state saved:', columnState);
@@ -83,13 +83,13 @@ class EngViewRaceTable {
             },
             onGridReady: (params) => {
                 this.gridApi = params.api;
-                this.columnApi = params.columnApi;
+                this.columnApi = params.columnApi; // Note: columnApi is deprecated in newer versions
                 console.debug("AG Grid ready.");
 
                 // Apply saved column state
                 const savedColumnState = this.loadColumnState();
                 if (savedColumnState) {
-                    this.columnApi.applyColumnState({ state: savedColumnState, applyOrder: true });
+                    this.gridApi.applyColumnState({ state: savedColumnState, applyOrder: true });
                     console.debug('Applied saved column state:', savedColumnState);
                 }
 
@@ -109,10 +109,8 @@ class EngViewRaceTable {
 
         const gridDiv = document.querySelector("#eng-view-table");
         if (!this.gridInitialized) {
-            this.gridApi = agGrid.createGrid(gridDiv, gridOptions);
+            this.grid = agGrid.createGrid(gridDiv, gridOptions);
             this.gridInitialized = true;
-            // Set initial row data here, after the grid is fully initialized
-            this.gridApi.setRowData([]);
         }
     }
 
@@ -127,8 +125,8 @@ class EngViewRaceTable {
         try {
             localStorage.removeItem(this.COLUMN_STATE_LS_KEY);
             console.debug('Column state reset to default');
-            if (this.columnApi) {
-                this.columnApi.resetColumnState();
+            if (this.gridApi) {
+                this.gridApi.resetColumnState();
             }
         } catch (error) {
             console.warn('Failed to reset column state:', error);
@@ -544,11 +542,9 @@ class EngViewRaceTable {
         this.fastestLapMs = fastestLapMs;
 
         if (eventType === "Time Trial") {
-            // AG Grid doesn't have a direct "placeholder" option like Tabulator.
-            // You might need to display a message in a separate div or handle it in a custom overlay.
             console.warn("Time Trial not supported in Engineer View for AG Grid.");
             if (this.gridApi) {
-                this.gridApi.setRowData([]); // Clear data for Time Trial
+                this.gridApi.setGridOption('rowData', []); // Clear data for Time Trial
             }
             return;
         }
@@ -572,18 +568,16 @@ class EngViewRaceTable {
             index: driver['driver-info']['index'],
         }));
 
-        if (newTableData && newTableData.length > 0) {
-            // AG Grid handles updates efficiently with `applyTransaction`
-            this.gridApi.applyTransaction({ update: newTableData });
-            this.gridApi.onFilterChanged(); // Re-apply filters if any
-            this.gridApi.onSortChanged(); // Re-apply sort if any
-        } else {
-            if (this.gridApi) {
-                this.gridApi.setRowData([]); // Clear data if no new data
+        if (this.gridApi) {
+            if (newTableData && newTableData.length > 0) {
+                // Set all row data - AG Grid will handle efficient updates internally
+                this.gridApi.setGridOption('rowData', newTableData);
+            } else {
+                // Clear data if no new data
+                this.gridApi.setGridOption('rowData', []);
             }
         }
     }
-
 
     getTelemetryRestrictedContent() {
         return this.getSingleLineCell(this.TELEMETRY_DISABLED_TEXT);
@@ -596,7 +590,7 @@ class EngViewRaceTable {
 
     clear() {
         if (this.gridApi) {
-            this.gridApi.setRowData([]);
+            this.gridApi.setGridOption('rowData', []);
         }
     }
 }
