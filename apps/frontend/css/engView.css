@@ -314,21 +314,27 @@ input[type="number"]::-webkit-outer-spin-button {
     padding: 0.3rem;
 }
 
-.tabulator-row {
-    background-color: var(--f1-dark);
-    color: var(--f1-text);
-}
-
-.tabulator-row:nth-child(even) {
-    background-color: var(--f1-gray);
-}
-
-.tabulator-row:hover {
+/* Override Tabulator's built-in alternating row classes */
+#eng-view-table .tabulator-row.tabulator-row-even,
+#eng-view-table .tabulator-row.tabulator-row-odd,
+#eng-view-table .tabulator-row {
     background-color: var(--f1-dark) !important;
 }
 
-.tabulator-row:nth-child(even):hover {
+/* Apply your custom alternating pattern using nth-child instead */
+#eng-view-table .tabulator-row:nth-child(even) {
     background-color: var(--f1-gray) !important;
+}
+
+#eng-view-table .tabulator-row:nth-child(odd) {
+    background-color: var(--f1-dark) !important;
+}
+
+/* Disable all hover effects on the built-in classes */
+#eng-view-table .tabulator-row.tabulator-row-even:hover,
+#eng-view-table .tabulator-row.tabulator-row-odd:hover,
+#eng-view-table .tabulator-row:hover {
+    background-color: inherit !important;
 }
 
 .tabulator-cell {
