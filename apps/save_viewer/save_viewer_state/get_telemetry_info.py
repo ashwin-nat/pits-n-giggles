@@ -75,6 +75,11 @@ def _getTelemetryInfo(json_data: Dict[str, Any]) -> Dict[str, Any]:
         if data_per_driver["driver-name"] is None or data_per_driver["team"] is None:
             continue
 
+        # There was a breakage in v2.11.0, where save data would contain erroneous driver objects,
+        # with none lap data. filter those out
+        if data_per_driver.get("lap-data") is None:
+            continue
+
         driver_entry = _create_driver_entry(
             data_per_driver,
             best_s1_time,
@@ -448,7 +453,6 @@ def _create_weather_forecast_data(session_info: Dict[str, Any]) -> List[Dict[str
         }
         for sample in session_info["weather-forecast-samples"]
     ]
-
 
 def _create_driver_entry(
     data_per_driver: Dict[str, Any],
