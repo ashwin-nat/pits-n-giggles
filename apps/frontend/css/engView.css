@@ -36,49 +36,6 @@ body {
     flex-direction: column;
 }
 
-.eng-view-table {
-    font-size: 0.85rem;
-    background-color: var(--f1-dark) !important;
-}
-
-.eng-view-table th,
-.eng-view-table td {
-    padding: 0.3rem;
-    white-space: nowrap;
-    background-color: var(--f1-gray) !important;
-    border-color: #333 !important;
-    vertical-align: middle;
-    color: var(--f1-text);
-}
-
-.eng-view-table tbody tr:hover td {
-    background-color: var(--f1-light-gray) !important;
-}
-
-/* Column borders for both header and body cells */
-.eng-view-col-border {
-    border-right: 2px solid #333 !important;
-}
-
-.eng-view-table td.eng-view-col-border {
-    border-right: 2px solid #333 !important;
-}
-
-.tabulator-col.eng-view-table-main-header {
-    background-color: var(--f1-dark) !important;
-}
-
-.tabulator-col.eng-view-table-main-header .tabulator-col-content {
-    color: var(--f1-text);
-    text-align: center;
-    font-weight: 500;
-}
-
-.eng-view-sub-header th {
-    font-size: 0.8rem;
-    font-weight: normal;
-    color: var(--f1-text-secondary);
-}
 
 .eng-view-global-stat {
     display: inline-block;
@@ -288,71 +245,51 @@ input[type="number"]::-webkit-outer-spin-button {
     border-radius: 4px;
 }
 
-/* Tabulator custom styling */
-#eng-view-table {
-    font-size: 0.85rem;
-    background-color: var(--f1-dark);
-    border: 1px solid #333;
-    height: 100% !important;
+/* AG Grid custom styling */
+.ag-theme-alpine-dark {
+    --ag-background-color: var(--f1-dark);
+    --ag-header-background-color: var(--f1-darker);
+    --ag-header-foreground-color: var(--f1-text);
+    --ag-row-background-color: var(--f1-dark);
+    --ag-odd-row-background-color: var(--f1-gray);
+    --ag-border-color: #333;
+    --ag-row-hover-color: var(--f1-light-gray);
+    --ag-selected-row-background-color: var(--f1-light-gray);
+    --ag-font-size: 0.85rem;
+    color: var(--f1-text);
 }
 
-.tabulator-header {
-    background-color: var(--f1-darker) !important;
-    color: var(--f1-text) !important;
-    border-bottom: 1px solid #333;
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 1 !important;
+.ag-header-cell-text {
+    font-weight: 500;
+    text-align: center;
 }
 
-.tabulator-col {
-    background-color: var(--f1-gray);
-    border-right: 1px solid #222;
+.ag-header-group-cell-label .ag-header-cell-text {
+    color: var(--f1-text-secondary);
+    font-size: 0.8rem;
+    font-weight: normal;
 }
 
-.tabulator-col-content {
+.ag-cell {
     padding: 0.3rem;
+    border-right: 1px solid #222;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-/* Override Tabulator's built-in alternating row classes */
-#eng-view-table .tabulator-row.tabulator-row-even,
-#eng-view-table .tabulator-row.tabulator-row-odd,
-#eng-view-table .tabulator-row {
-    background-color: var(--f1-dark) !important;
-}
-
-/* Apply your custom alternating pattern using nth-child instead */
-#eng-view-table .tabulator-row:nth-child(even) {
-    background-color: var(--f1-gray) !important;
-}
-
-#eng-view-table .tabulator-row:nth-child(odd) {
-    background-color: var(--f1-dark) !important;
-}
-
-/* Disable all hover effects on the built-in classes */
-#eng-view-table .tabulator-row.tabulator-row-even:hover,
-#eng-view-table .tabulator-row.tabulator-row-odd:hover,
-#eng-view-table .tabulator-row:hover {
+.ag-row-hover {
     font-weight: bold;
 }
 
-.tabulator-cell {
-    padding: 0.3rem;
-    border-right: 1px solid #222;
+.player-row {
+    border-top: 2px solid #ffd700 !important;
+    border-bottom: 2px solid #ffd700 !important;
 }
 
-.tabulator-row.player-row .tabulator-cell {
-    border-top: 2px solid #ffd700;
-    border-bottom: 2px solid #ffd700;
-}
-
-.tabulator-row.player-row .tabulator-cell:first-child {
-    border-left: 2px solid #ffd700;
-}
-
-.tabulator-row.player-row .tabulator-cell:last-child {
-    border-right: 2px solid #ffd700;
+.player-row .ag-cell {
+    border-left: 2px solid #ffd700 !important;
+    border-right: 2px solid #ffd700 !important;
 }
 
 /* Column Visibility Pane */
