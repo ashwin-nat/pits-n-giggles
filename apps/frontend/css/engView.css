@@ -334,7 +334,7 @@ input[type="number"]::-webkit-outer-spin-button {
 #eng-view-table .tabulator-row.tabulator-row-even:hover,
 #eng-view-table .tabulator-row.tabulator-row-odd:hover,
 #eng-view-table .tabulator-row:hover {
-    background-color: inherit !important;
+    font-weight: bold;
 }
 
 .tabulator-cell {
