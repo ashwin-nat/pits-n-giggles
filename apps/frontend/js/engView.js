@@ -451,7 +451,7 @@ class EngViewRaceTable {
                             const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return this.getSingleLineCell(params.value);
+                                return this.getSingleLineCell(`${(driverInfo["ers-info"]["ers-percent"])}`);
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
@@ -462,7 +462,7 @@ class EngViewRaceTable {
                             const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return this.getSingleLineCell(`${formatFloat(params.value)}%`);
+                                return this.getSingleLineCell(`${(driverInfo["ers-info"]["ers-deployed-this-lap"])}`);
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
@@ -489,8 +489,9 @@ class EngViewRaceTable {
                             const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                const cellContent = params.value == null ? "N/A"
-                                    : formatFloat(params.value);
+                                const fuelInTank = driverInfo["fuel-info"]["fuel-in-tank"];
+                                const cellContent = fuelInTank == null ? "N/A"
+                                    : formatFloat(fuelInTank);
                                 return this.getSingleLineCell(cellContent);
                             } else {
                                 return this.getTelemetryRestrictedContent();
@@ -502,8 +503,9 @@ class EngViewRaceTable {
                             const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                const cellContent = params.value == null
-                                    ? "N/A" : formatFloat(params.value);
+                                const currFuelRate = driverInfo["fuel-info"]["curr-fuel-rate"];
+                                const cellContent = currFuelRate == null
+                                    ? "N/A" : formatFloat(currFuelRate);
                                 return this.getSingleLineCell(cellContent);
                             } else {
                                 return this.getTelemetryRestrictedContent();
@@ -515,8 +517,9 @@ class EngViewRaceTable {
                             const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                const cellContent = params.value == null ? "N/A"
-                                    : formatFloat(params.value, { signed: true });
+                                const surplusLapsPng = driverInfo["fuel-info"]["surplus-laps-png"];
+                                const cellContent = surplusLapsPng == null ? "N/A"
+                                    : formatFloat(surplusLapsPng, { signed: true });
                                 return this.getSingleLineCell(cellContent);
                             } else {
                                 return this.getTelemetryRestrictedContent();
@@ -533,7 +536,8 @@ class EngViewRaceTable {
                             const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return this.getSingleLineCell(`${params.value}%`);
+                                const flWingDamage = driverInfo["damage-info"]["fl-wing-damage"];
+                                return this.getSingleLineCell(`${formatFloat(flWingDamage)}%`);
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
@@ -544,7 +548,8 @@ class EngViewRaceTable {
                             const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return this.getSingleLineCell(`${params.value}%`);
+                                const frWingDamage = driverInfo["damage-info"]["fr-wing-damage"];
+                                return this.getSingleLineCell(`${formatFloat(frWingDamage)}%`);
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
@@ -555,7 +560,8 @@ class EngViewRaceTable {
                             const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return this.getSingleLineCell(`${params.value}%`);
+                                const rearWingDamage = driverInfo["damage-info"]["rear-wing-damage"];
+                                return this.getSingleLineCell(`${formatFloat(rearWingDamage)}%`);
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
