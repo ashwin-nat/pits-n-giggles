@@ -451,7 +451,7 @@ class EngViewRaceTable {
                             const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return this.getSingleLineCell(`${(driverInfo["ers-info"]["ers-percent"])}`);
+                                return this.getSingleLineCell(`${(driverInfo["ers-info"]["ers-percent"])}%`);
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
@@ -462,7 +462,7 @@ class EngViewRaceTable {
                             const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return this.getSingleLineCell(`${(driverInfo["ers-info"]["ers-deployed-this-lap"])}`);
+                                return this.getSingleLineCell(`${formatFloat(driverInfo["ers-info"]["ers-deployed-this-lap"])}%`);
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }

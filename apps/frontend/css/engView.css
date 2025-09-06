@@ -91,13 +91,13 @@ body {
 
 /* Tyre wear rows */
 .eng-view-tyre-row-1 {
-    font-size: 0.8rem;
+    font-size: 0.9rem;
     color: var(--f1-text);
 }
 
 .eng-view-tyre-row-2 {
     color: var(--f1-text-secondary);
-    font-size: 0.7rem;
+    font-size: 0.8rem;
 }
 
 /* Icon and text row styling */
@@ -366,4 +366,5 @@ input[type="number"]::-webkit-outer-spin-button {
     justify-content: center;
     align-items: center;
     color: var(--f1-text);
+    font-size: 0.9rem;
 }
