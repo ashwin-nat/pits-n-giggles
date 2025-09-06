@@ -106,6 +106,15 @@ class EngViewRaceTable {
                 const isReferenceDriver = data.isPlayer || data.index === this.spectatorIndex;
                 return isReferenceDriver ? 'player-row' : '';
             },
+            onRowClicked: (params) => {
+                const data = params.data;
+                fetch(`/driver-info?index=${data.index}`)
+                    .then(response => response.json())
+                    .then(driverData => {
+                        window.modalManager.openDriverModal(driverData, this.iconCache);
+                    })
+                    .catch(err => console.error("Fetch error:", err));
+            },
         };
 
         const gridDiv = document.querySelector("#eng-view-table");
@@ -257,15 +266,6 @@ class EngViewRaceTable {
                         row1: data.name,
                         row2: data.team
                     });
-                },
-                onCellClicked: (params) => {
-                    const data = params.data;
-                    fetch(`/driver-info?index=${data.index}`)
-                        .then(response => response.json())
-                        .then(driverData => {
-                            window.modalManager.openDriverModal(driverData, this.iconCache);
-                        })
-                        .catch(err => console.error("Fetch error:", err));
                 },
                 sortable: false,
                 cellClass: 'ag-cell-multiline',
