@@ -74,7 +74,7 @@ class EngViewRaceTable {
             domLayout: 'normal', // or 'normal' if you want scrolling
             rowHeight: 60, // Add this line - adjust height as needed
             suppressColumnMoveAnimation: true,
-            suppressFieldDotNotation: true, // Allow dots in field names
+            suppressFieldDotNotation: false, // Allow dots in field names
             defaultColDef: {
                 resizable: true,
                 sortable: true,
