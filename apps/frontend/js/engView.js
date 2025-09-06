@@ -722,7 +722,7 @@ class EngViewRaceTable {
     }
 
     getTelemetryRestrictedContent() {
-        return this.getSingleLineCell(this.TELEMETRY_DISABLED_TEXT);
+        return `<div class="telemetry-restricted-text">${this.TELEMETRY_DISABLED_TEXT}</div>`;
     }
 
     getSingleLineCell(value, escape = true) {

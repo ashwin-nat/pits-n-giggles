@@ -123,6 +123,14 @@ body {
     background-color: #1a1a1a;
 }
 
+.telemetry-restricted-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+}
+
 /* Race status section layout */
 .card-body .eng-view-global-stats-container {
     display: flex;
@@ -282,6 +290,8 @@ input[type="number"]::-webkit-outer-spin-button {
     text-overflow: ellipsis; /* Add ellipsis for truncated text */
     color: var(--f1-text);
     text-align: left;
+    display: flex; /* Add flex display */
+    align-items: center; /* Vertically center content */
 }
 
 .ag-cell-multiline {
