@@ -671,6 +671,9 @@ class EngViewRaceTable {
     }
 
     update(drivers, isSpectating, eventType, spectatorCarIndex, fastestLapMs, sessionUID, pitTimeLoss) {
+        const prevSpectatorIndex = this.spectatorIndex;
+        const prevIsSpectating = this.isSpectating;
+
         this.spectatorIndex = spectatorCarIndex;
         this.isSpectating = isSpectating;
         this.fastestLapMs = fastestLapMs;
@@ -709,6 +712,11 @@ class EngViewRaceTable {
             } else {
                 // Clear data if no new data
                 this.gridApi.setGridOption('rowData', []);
+            }
+
+            // If spectator index or spectating status changed, redraw rows to update 'player-row' class
+            if (prevSpectatorIndex !== this.spectatorIndex || prevIsSpectating !== this.isSpectating) {
+                this.gridApi.redrawRows();
             }
         }
     }
