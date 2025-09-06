@@ -71,7 +71,8 @@ class EngViewRaceTable {
         const gridOptions = {
             columnDefs: this.getColumnDefinitions(),
             rowData: [], // Initial empty data
-            domLayout: 'autoHeight', // or 'normal' if you want scrolling
+            domLayout: 'normal', // or 'normal' if you want scrolling
+            rowHeight: 60, // Add this line - adjust height as needed
             suppressColumnMoveAnimation: true,
             suppressFieldDotNotation: true, // Allow dots in field names
             defaultColDef: {
@@ -405,7 +406,7 @@ class EngViewRaceTable {
                             const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return this.getSingleLineCell(getShortERSMode(params.value));
+                                return this.getSingleLineCell(getShortERSMode(driverInfo["ers-info"]["ers-mode"]));
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }

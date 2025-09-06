@@ -255,7 +255,8 @@ input[type="number"]::-webkit-outer-spin-button {
     --ag-border-color: #333;
     --ag-row-hover-color: var(--f1-light-gray);
     --ag-selected-row-background-color: var(--f1-light-gray);
-    --ag-font-size: 0.85rem;
+    --ag-font-size: 1rem; /* Increased font size */
+    --ag-row-height: 38px; /* Increased row height */
     color: var(--f1-text);
 }
 
