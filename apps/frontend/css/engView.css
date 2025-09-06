@@ -283,6 +283,24 @@ input[type="number"]::-webkit-outer-spin-button {
     display: flex;
     align-items: center;
     justify-content: center;
+    line-height: 1.2; /* Adjust line height for better multiline appearance */
+}
+
+.ag-cell-single-line {
+    white-space: nowrap; /* Prevent text from wrapping */
+    overflow: hidden; /* Hide overflow text */
+    text-overflow: ellipsis; /* Add ellipsis for truncated text */
+    color: var(--f1-text);
+}
+
+.ag-cell-multiline {
+    white-space: normal; /* Allow text to wrap */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%; /* Ensure the cell takes full height */
+    color: var(--f1-text);
 }
 
 .ag-row-hover {
@@ -360,12 +378,3 @@ input[type="number"]::-webkit-outer-spin-button {
     margin-left: 20px;
 }
 
-.single-line-cell {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    justify-content: center;
-    align-items: center;
-    color: var(--f1-text);
-    font-size: 0.9rem;
-}

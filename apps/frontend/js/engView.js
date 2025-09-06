@@ -167,17 +167,16 @@ class EngViewRaceTable {
                 }
             }
 
-            const timeElement = `<div class="single-line-cell ${timeClass}">${formattedTime}</div>`;
-
             if (isReferenceDriver) {
-                return timeElement;
+                return formattedTime; // Return just the formatted time
             }
 
             const delta = timeMs - lapInfo[playerTimeKey];
             return this.createMultiLineCell({
-                row1: timeElement,
+                row1: formattedTime,
                 row2: formatDelta(delta),
-                escapeRow1: false
+                escapeRow1: false,
+                row1Class: timeClass // Apply the timeClass to the first row of multiline cell
             });
         };
     }
@@ -246,6 +245,7 @@ class EngViewRaceTable {
                 flex: 4,
                 sortable: true,
                 cellRenderer: this.createPositionStatusCellRenderer(),
+                cellClass: 'ag-cell-multiline',
             },
             {
                 headerName: "Name",
@@ -268,6 +268,7 @@ class EngViewRaceTable {
                         .catch(err => console.error("Fetch error:", err));
                 },
                 sortable: false,
+                cellClass: 'ag-cell-multiline',
             },
             {
                 headerName: "Delta",
@@ -291,14 +292,15 @@ class EngViewRaceTable {
                     });
                 },
                 sortable: false,
+                cellClass: 'ag-cell-multiline',
             },
             {
                 headerName: 'Penalties',
                 children: [
-                    { headerName: "Track", field: "warns-pens-info.corner-cutting-warnings", flex: 1.5, sortable: false, cellRenderer: this.createPenaltyCellRenderer("corner-cutting-warnings") },
-                    { headerName: 'Time', field: 'warns-pens-info.time-penalties', flex: 1.5, sortable: false, cellRenderer: this.createPenaltyCellRenderer("time-penalties") },
-                    { headerName: 'DT', field: 'warns-pens-info.num-dt', flex: 1.5, sortable: false, cellRenderer: this.createPenaltyCellRenderer("num-dt") },
-                    { headerName: 'Serv', field: 'warns-pens-info.num-sg', flex: 1.5, sortable: false, cellRenderer: this.createPenaltyCellRenderer("num-sg") },
+                    { headerName: "Track", field: "warns-pens-info.corner-cutting-warnings", flex: 1.5, sortable: false, cellRenderer: this.createPenaltyCellRenderer("corner-cutting-warnings"), cellClass: 'ag-cell-single-line' },
+                    { headerName: 'Time', field: 'warns-pens-info.time-penalties', flex: 1.5, sortable: false, cellRenderer: this.createPenaltyCellRenderer("time-penalties"), cellClass: 'ag-cell-single-line' },
+                    { headerName: 'DT', field: 'warns-pens-info.num-dt', flex: 1.5, sortable: false, cellRenderer: this.createPenaltyCellRenderer("num-dt"), cellClass: 'ag-cell-single-line' },
+                    { headerName: 'Serv', field: 'warns-pens-info.num-sg', flex: 1.5, sortable: false, cellRenderer: this.createPenaltyCellRenderer("num-sg"), cellClass: 'ag-cell-single-line' },
                 ],
             },
             {
@@ -310,6 +312,11 @@ class EngViewRaceTable {
                         cellRenderer: this.createSectorCellRenderer('lap', 'lap-time-ms', 'lap-time-ms-player', false),
                         sortable: false,
                         flex: 2.5,
+                        cellClass: (params) => {
+                            const driverInfo = params.data;
+                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
+                        },
                     },
                     {
                         headerName: "S1",
@@ -317,6 +324,11 @@ class EngViewRaceTable {
                         cellRenderer: this.createSectorCellRenderer('s1', 's1-time-ms', 's1-time-ms-player', false),
                         sortable: false,
                         flex: 2.5,
+                        cellClass: (params) => {
+                            const driverInfo = params.data;
+                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
+                        },
                     },
                     {
                         headerName: "S2",
@@ -324,6 +336,11 @@ class EngViewRaceTable {
                         cellRenderer: this.createSectorCellRenderer('s2', 's2-time-ms', 's2-time-ms-player', false),
                         sortable: false,
                         flex: 2.5,
+                        cellClass: (params) => {
+                            const driverInfo = params.data;
+                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
+                        },
                     },
                     {
                         headerName: "S3",
@@ -331,6 +348,11 @@ class EngViewRaceTable {
                         cellRenderer: this.createSectorCellRenderer('s3', 's3-time-ms', 's3-time-ms-player', false),
                         sortable: false,
                         flex: 2.5,
+                        cellClass: (params) => {
+                            const driverInfo = params.data;
+                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
+                        },
                     }
                 ]
             },
@@ -343,6 +365,11 @@ class EngViewRaceTable {
                         cellRenderer: this.createSectorCellRenderer('lap', 'lap-time-ms', 'lap-time-ms-player', true),
                         sortable: false,
                         flex: 2.5,
+                        cellClass: (params) => {
+                            const driverInfo = params.data;
+                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
+                        },
                     },
                     {
                         headerName: "S1",
@@ -350,6 +377,11 @@ class EngViewRaceTable {
                         cellRenderer: this.createSectorCellRenderer('s1', 's1-time-ms', 's1-time-ms-player', true),
                         sortable: false,
                         flex: 2.5,
+                        cellClass: (params) => {
+                            const driverInfo = params.data;
+                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
+                        },
                     },
                     {
                         headerName: "S2",
@@ -357,6 +389,11 @@ class EngViewRaceTable {
                         cellRenderer: this.createSectorCellRenderer('s2', 's2-time-ms', 's2-time-ms-player', true),
                         sortable: false,
                         flex: 2.5,
+                        cellClass: (params) => {
+                            const driverInfo = params.data;
+                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
+                        },
                     },
                     {
                         headerName: "S3",
@@ -364,6 +401,11 @@ class EngViewRaceTable {
                         cellRenderer: this.createSectorCellRenderer('s3', 's3-time-ms', 's3-time-ms-player', true),
                         sortable: false,
                         flex: 2.5,
+                        cellClass: (params) => {
+                            const driverInfo = params.data;
+                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
+                        },
                     }
                 ]
             },
@@ -385,6 +427,7 @@ class EngViewRaceTable {
                             });
                         },
                         sortable: false,
+                        cellClass: 'ag-cell-multiline',
                     },
                     {
                         headerName: "Rejoin",
@@ -399,6 +442,7 @@ class EngViewRaceTable {
                             return this.getSingleLineCell(rejoinPositionStr);
                         },
                         sortable: false,
+                        cellClass: 'ag-cell-single-line',
                     },
                     {
                         headerName: "Lap",
@@ -412,6 +456,7 @@ class EngViewRaceTable {
                             });
                         },
                         sortable: false,
+                        cellClass: 'ag-cell-multiline',
                     },
                     {
                         headerName: "FL",
@@ -419,6 +464,7 @@ class EngViewRaceTable {
                         flex: 2,
                         cellRenderer: this.createTyreWearCellRenderer("front-left-wear"),
                         sortable: false,
+                        cellClass: 'ag-cell-multiline',
                     },
                     {
                         headerName: "FR",
@@ -426,6 +472,7 @@ class EngViewRaceTable {
                         flex: 2,
                         cellRenderer: this.createTyreWearCellRenderer("front-right-wear"),
                         sortable: false,
+                        cellClass: 'ag-cell-multiline',
                     },
                     {
                         headerName: "RL",
@@ -433,6 +480,7 @@ class EngViewRaceTable {
                         flex: 2,
                         cellRenderer: this.createTyreWearCellRenderer("rear-left-wear"),
                         sortable: false,
+                        cellClass: 'ag-cell-multiline',
                     },
                     {
                         headerName: "RR",
@@ -440,6 +488,7 @@ class EngViewRaceTable {
                         flex: 2,
                         cellRenderer: this.createTyreWearCellRenderer("rear-right-wear"),
                         sortable: false,
+                        cellClass: 'ag-cell-multiline',
                     },
                 ],
             },
@@ -455,7 +504,7 @@ class EngViewRaceTable {
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
-                        }, sortable: false,
+                        }, sortable: false, cellClass: 'ag-cell-single-line',
                     },
                     { headerName: "Deploy", field: "ers-info.ers-deployed-this-lap", flex: 3.33,
                         cellRenderer: (params) => {
@@ -466,7 +515,7 @@ class EngViewRaceTable {
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
-                        }, sortable: false,
+                        }, sortable: false, cellClass: 'ag-cell-single-line',
                     },
                     { headerName: "Mode", field: "ers-info.ers-mode", flex: 3.33,
                         cellRenderer: (params) => {
@@ -477,7 +526,7 @@ class EngViewRaceTable {
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
-                        }, sortable: false,
+                        }, sortable: false, cellClass: 'ag-cell-single-line',
                     },
                 ],
             },
@@ -496,7 +545,7 @@ class EngViewRaceTable {
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
-                        }, sortable: false,
+                        }, sortable: false, cellClass: 'ag-cell-single-line',
                     },
                     { headerName: "Per Lap", field: "fuel-info.curr-fuel-rate", flex: 3.33,
                         cellRenderer: (params) => {
@@ -510,7 +559,7 @@ class EngViewRaceTable {
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
-                        }, sortable: false,
+                        }, sortable: false, cellClass: 'ag-cell-single-line',
                     },
                     { headerName: "Est", field: "fuel-info.surplus-laps-png", flex: 3.33,
                         cellRenderer: (params) => {
@@ -524,7 +573,7 @@ class EngViewRaceTable {
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
-                        }, sortable: false,
+                        }, sortable: false, cellClass: 'ag-cell-single-line',
                     },
                 ],
             },
@@ -541,7 +590,7 @@ class EngViewRaceTable {
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
-                        }, sortable: false,
+                        }, sortable: false, cellClass: 'ag-cell-single-line',
                     },
                     { headerName: "FR", field: "damage-info.fr-wing-damage", flex: 3.33,
                         cellRenderer: (params) =>  {
@@ -553,7 +602,7 @@ class EngViewRaceTable {
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
-                        }, sortable: false,
+                        }, sortable: false, cellClass: 'ag-cell-single-line',
                     },
                     { headerName: "RW", field: "damage-info.rear-wing-damage", flex: 3.33,
                         cellRenderer: (params) =>  {
@@ -565,7 +614,7 @@ class EngViewRaceTable {
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
-                        }, sortable: false,
+                        }, sortable: false, cellClass: 'ag-cell-single-line',
                     },
                 ],
             },
@@ -670,7 +719,7 @@ class EngViewRaceTable {
 
     getSingleLineCell(value, escape = true) {
         const processedValue = escape ? escapeHtml(value) : value;
-        return `<div class="single-line-cell">${processedValue}</div>`;
+        return processedValue;
     }
 
     clear() {
