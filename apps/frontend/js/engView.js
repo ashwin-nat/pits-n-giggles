@@ -72,7 +72,7 @@ class EngViewRaceTable {
             columnDefs: this.getColumnDefinitions(),
             rowData: [], // Initial empty data
             domLayout: 'normal', // or 'normal' if you want scrolling
-            rowHeight: 60, // Add this line - adjust height as needed
+            rowHeight: 70, // Add this line - adjust height as needed
             suppressColumnMoveAnimation: true,
             suppressFieldDotNotation: false, // Allow dots in field names
             defaultColDef: {
