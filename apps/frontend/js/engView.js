@@ -243,13 +243,14 @@ class EngViewRaceTable {
             {
                 headerName: "Pos",
                 field: "position",
-                width: 70,
+                flex: 4,
                 sortable: true,
                 cellRenderer: this.createPositionStatusCellRenderer(),
             },
             {
                 headerName: "Name",
                 field: "name",
+                flex: 12,
                 cellRenderer: (params) => {
                     const data = params.data;
                     return this.createMultiLineCell({
@@ -271,6 +272,7 @@ class EngViewRaceTable {
             {
                 headerName: "Delta",
                 field: "delta-info",
+                flex: 8,
                 cellRenderer: (params) => {
                     const data = params.data;
                     const position = data.position;
@@ -293,19 +295,77 @@ class EngViewRaceTable {
             {
                 headerName: 'Penalties',
                 children: [
-                    { headerName: "Track", field: "warns-pens-info.corner-cutting-warnings", sortable: false },
-                    { headerName: 'Time', field: 'warns-pens-info.time-penalties', sortable: false },
-                    { headerName: 'DT', field: 'warns-pens-info.num-dt', sortable: false },
-                    { headerName: 'Serv', field: 'warns-pens-info.num-sg', sortable: false },
+                    { headerName: "Track", field: "warns-pens-info.corner-cutting-warnings", flex: 1.5, sortable: false },
+                    { headerName: 'Time', field: 'warns-pens-info.time-penalties', flex: 1.5, sortable: false },
+                    { headerName: 'DT', field: 'warns-pens-info.num-dt', flex: 1.5, sortable: false },
+                    { headerName: 'Serv', field: 'warns-pens-info.num-sg', flex: 1.5, sortable: false },
                 ],
             },
             {
                 headerName: 'Best Lap',
-                children: this.createSectorColumns('best')
+                children: [
+                    {
+                        headerName: "Lap",
+                        field: `lap-info.best-lap.lap-time-ms`,
+                        cellRenderer: this.createSectorCellRenderer('lap', 'lap-time-ms', 'lap-time-ms-player', false),
+                        sortable: false,
+                        flex: 2.5,
+                    },
+                    {
+                        headerName: "S1",
+                        field: `lap-info.best-lap.s1-time-ms`,
+                        cellRenderer: this.createSectorCellRenderer('s1', 's1-time-ms', 's1-time-ms-player', false),
+                        sortable: false,
+                        flex: 2.5,
+                    },
+                    {
+                        headerName: "S2",
+                        field: `lap-info.best-lap.s2-time-ms`,
+                        cellRenderer: this.createSectorCellRenderer('s2', 's2-time-ms', 's2-time-ms-player', false),
+                        sortable: false,
+                        flex: 2.5,
+                    },
+                    {
+                        headerName: "S3",
+                        field: `lap-info.best-lap.s3-time-ms`,
+                        cellRenderer: this.createSectorCellRenderer('s3', 's3-time-ms', 's3-time-ms-player', false),
+                        sortable: false,
+                        flex: 2.5,
+                    }
+                ]
             },
             {
                 headerName: 'Last Lap',
-                children: this.createSectorColumns('last')
+                children: [
+                    {
+                        headerName: "Lap",
+                        field: `lap-info.last-lap.lap-time-ms`,
+                        cellRenderer: this.createSectorCellRenderer('lap', 'lap-time-ms', 'lap-time-ms-player', true),
+                        sortable: false,
+                        flex: 2.5,
+                    },
+                    {
+                        headerName: "S1",
+                        field: `lap-info.last-lap.s1-time-ms`,
+                        cellRenderer: this.createSectorCellRenderer('s1', 's1-time-ms', 's1-time-ms-player', true),
+                        sortable: false,
+                        flex: 2.5,
+                    },
+                    {
+                        headerName: "S2",
+                        field: `lap-info.last-lap.s2-time-ms`,
+                        cellRenderer: this.createSectorCellRenderer('s2', 's2-time-ms', 's2-time-ms-player', true),
+                        sortable: false,
+                        flex: 2.5,
+                    },
+                    {
+                        headerName: "S3",
+                        field: `lap-info.last-lap.s3-time-ms`,
+                        cellRenderer: this.createSectorCellRenderer('s3', 's3-time-ms', 's3-time-ms-player', true),
+                        sortable: false,
+                        flex: 2.5,
+                    }
+                ]
             },
             {
                 headerName: 'Tyre Wear',
@@ -313,6 +373,7 @@ class EngViewRaceTable {
                     {
                         headerName: "Comp",
                         field: "tyre-info.visual-tyre-compound",
+                        flex: 4,
                         cellRenderer: (params) => {
                             const tyreInfo = params.data["tyre-info"];
                             const tyreIcon = this.iconCache.getIcon(tyreInfo["visual-tyre-compound"]).outerHTML;
@@ -328,6 +389,7 @@ class EngViewRaceTable {
                     {
                         headerName: "Rejoin",
                         field: "tyre-info.pit-rejoin-position",
+                        flex: 4,
                         cellRenderer: (params) => {
                             const tyreInfo = params.data["tyre-info"];
                             const rejoinPosition = tyreInfo["pit-rejoin-position"] ?? null;
@@ -341,6 +403,7 @@ class EngViewRaceTable {
                     {
                         headerName: "Lap",
                         field: "tyre-info.tyre-age",
+                        flex: 4,
                         cellRenderer: (params) => {
                             const predictionLap = g_engView_predLapNum;
                             return this.createMultiLineCell({
@@ -353,24 +416,28 @@ class EngViewRaceTable {
                     {
                         headerName: "FL",
                         field: "tyre-info.current-wear.front-left-wear",
+                        flex: 2,
                         cellRenderer: this.createTyreWearCellRenderer("front-left-wear"),
                         sortable: false,
                     },
                     {
                         headerName: "FR",
                         field: "tyre-info.current-wear.front-right-wear",
+                        flex: 2,
                         cellRenderer: this.createTyreWearCellRenderer("front-right-wear"),
                         sortable: false,
                     },
                     {
                         headerName: "RL",
                         field: "tyre-info.current-wear.rear-left-wear",
+                        flex: 2,
                         cellRenderer: this.createTyreWearCellRenderer("rear-left-wear"),
                         sortable: false,
                     },
                     {
                         headerName: "RR",
                         field: "tyre-info.current-wear.rear-right-wear",
+                        flex: 2,
                         cellRenderer: this.createTyreWearCellRenderer("rear-right-wear"),
                         sortable: false,
                     },
@@ -379,7 +446,7 @@ class EngViewRaceTable {
             {
                 headerName: 'ERS',
                 children: [
-                    { headerName: "Avail", field: "ers-info.ers-percent",
+                    { headerName: "Avail", field: "ers-info.ers-percent", flex: 3.33,
                         cellRenderer: (params) => {
                             const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
@@ -390,7 +457,7 @@ class EngViewRaceTable {
                             }
                         }, sortable: false,
                     },
-                    { headerName: "Deploy", field: "ers-info.ers-deployed-this-lap",
+                    { headerName: "Deploy", field: "ers-info.ers-deployed-this-lap", flex: 3.33,
                         cellRenderer: (params) => {
                             const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
@@ -401,7 +468,7 @@ class EngViewRaceTable {
                             }
                         }, sortable: false,
                     },
-                    { headerName: "Mode", field: "ers-info.ers-mode",
+                    { headerName: "Mode", field: "ers-info.ers-mode", flex: 3.33,
                         cellRenderer: (params) => {
                             const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
@@ -417,7 +484,7 @@ class EngViewRaceTable {
             {
                 headerName: 'Fuel',
                 children: [
-                    { headerName: "Total", field: "fuel-info.fuel-in-tank",
+                    { headerName: "Total", field: "fuel-info.fuel-in-tank", flex: 3.33,
                         cellRenderer: (params) => {
                             const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
@@ -430,7 +497,7 @@ class EngViewRaceTable {
                             }
                         }, sortable: false,
                     },
-                    { headerName: "Per Lap", field: "fuel-info.curr-fuel-rate",
+                    { headerName: "Per Lap", field: "fuel-info.curr-fuel-rate", flex: 3.33,
                         cellRenderer: (params) => {
                             const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
@@ -443,7 +510,7 @@ class EngViewRaceTable {
                             }
                         }, sortable: false,
                     },
-                    { headerName: "Est", field: "fuel-info.surplus-laps-png",
+                    { headerName: "Est", field: "fuel-info.surplus-laps-png", flex: 3.33,
                         cellRenderer: (params) => {
                             const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
@@ -461,7 +528,7 @@ class EngViewRaceTable {
             {
                 headerName: 'Damage',
                 children: [
-                    { headerName: "FL", field: "damage-info.fl-wing-damage",
+                    { headerName: "FL", field: "damage-info.fl-wing-damage", flex: 3.33,
                         cellRenderer: (params) =>  {
                             const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
@@ -472,7 +539,7 @@ class EngViewRaceTable {
                             }
                         }, sortable: false,
                     },
-                    { headerName: "FR", field: "damage-info.fr-wing-damage",
+                    { headerName: "FR", field: "damage-info.fr-wing-damage", flex: 3.33,
                         cellRenderer: (params) =>  {
                             const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
@@ -483,7 +550,7 @@ class EngViewRaceTable {
                             }
                         }, sortable: false,
                     },
-                    { headerName: "RW", field: "damage-info.rear-wing-damage",
+                    { headerName: "RW", field: "damage-info.rear-wing-damage", flex: 3.33,
                         cellRenderer: (params) =>  {
                             const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
