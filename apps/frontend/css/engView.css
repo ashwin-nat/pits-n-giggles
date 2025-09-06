@@ -198,23 +198,23 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .green-time {
     display: inline-block;
-    color: var(--bs-success);
-    border: 2px solid currentColor;
-    border-radius: 4px;
+    color: var(--bs-success) !important;
+    border: 2px solid currentColor !important;
+    border-radius: 4px !important;
 }
 
 .purple-time {
     display: inline-block;
-    color: #d825d8;
-    border: 2px solid currentColor;
-    border-radius: 4px;
+    color: #d825d8 !important;
+    border: 2px solid currentColor !important;
+    border-radius: 4px !important;
 }
 
 .red-time {
     display: inline-block;
-    color: var(--bs-danger);
-    border: 2px solid currentColor;
-    border-radius: 4px;
+    color: var(--bs-danger) !important;
+    border: 2px solid currentColor !important;
+    border-radius: 4px !important;
 }
 
 .drs-not-available {
