@@ -250,7 +250,7 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .ag-header-cell-text {
     font-weight: 500;
-    text-align: left;
+    text-align: center;
     color: var(--f1-text);
     overflow: auto;
 }
@@ -259,6 +259,7 @@ input[type="number"]::-webkit-outer-spin-button {
     color: var(--f1-text);
     font-size: 0.8rem;
     font-weight: normal;
+    text-align: center;
 }
 
 .ag-header-group-text {
@@ -269,9 +270,10 @@ input[type="number"]::-webkit-outer-spin-button {
     padding: 0.3rem;
     border-right: 1px solid #222;
     display: flex;
-    align-items: center;
-    justify-content: center;
+    align-items: flex-start; /* Changed to flex-start for left alignment */
+    justify-content: flex-start; /* Changed to flex-start for left alignment */
     line-height: 1.2; /* Adjust line height for better multiline appearance */
+    text-align: left;
 }
 
 .ag-cell-single-line {
@@ -279,6 +281,7 @@ input[type="number"]::-webkit-outer-spin-button {
     overflow: hidden; /* Hide overflow text */
     text-overflow: ellipsis; /* Add ellipsis for truncated text */
     color: var(--f1-text);
+    text-align: left;
 }
 
 .ag-cell-multiline {
@@ -286,9 +289,10 @@ input[type="number"]::-webkit-outer-spin-button {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start; /* Changed to flex-start for left alignment */
     height: 100%; /* Ensure the cell takes full height */
     color: var(--f1-text);
+    text-align: left;
 }
 
 .ag-row-hover {
