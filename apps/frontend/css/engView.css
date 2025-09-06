@@ -183,18 +183,6 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 /* Player row highlight */
-.eng-view-table tbody tr.player-row td {
-    border-top: 2px solid #ffd700 !important;
-    border-bottom: 2px solid #ffd700 !important;
-}
-
-.eng-view-table tbody tr.player-row td:first-child {
-    border-left: 2px solid #ffd700 !important;
-}
-
-.eng-view-table tbody tr.player-row td:last-child {
-    border-right: 2px solid #ffd700 !important;
-}
 
 .green-time {
     display: inline-block;
@@ -308,13 +296,11 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .player-row {
-    border-top: 2px solid #ffd700 !important;
-    border-bottom: 2px solid #ffd700 !important;
+    border: 2px solid #ffd700 !important;
 }
 
 .player-row .ag-cell {
-    border-left: 2px solid #ffd700 !important;
-    border-right: 2px solid #ffd700 !important;
+    border: none !important;
 }
 
 /* Column Visibility Pane */
