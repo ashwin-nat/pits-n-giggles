@@ -207,7 +207,7 @@ class EngViewRaceTable {
 
     createSectorColumns(lapType) {
         const isLastLap = lapType === 'last';
-        const cellRenderer = this.createSectorCellRenderer;
+        const cellRenderer = this.createSectorCellRenderer.bind(this);
 
         return [
             {
