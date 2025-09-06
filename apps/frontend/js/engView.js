@@ -295,10 +295,10 @@ class EngViewRaceTable {
             {
                 headerName: 'Penalties',
                 children: [
-                    { headerName: "Track", field: "warns-pens-info.corner-cutting-warnings", flex: 1.5, sortable: false },
-                    { headerName: 'Time', field: 'warns-pens-info.time-penalties', flex: 1.5, sortable: false },
-                    { headerName: 'DT', field: 'warns-pens-info.num-dt', flex: 1.5, sortable: false },
-                    { headerName: 'Serv', field: 'warns-pens-info.num-sg', flex: 1.5, sortable: false },
+                    { headerName: "Track", field: "warns-pens-info.corner-cutting-warnings", flex: 1.5, sortable: false, cellRenderer: this.createPenaltyCellRenderer("corner-cutting-warnings") },
+                    { headerName: 'Time', field: 'warns-pens-info.time-penalties', flex: 1.5, sortable: false, cellRenderer: this.createPenaltyCellRenderer("time-penalties") },
+                    { headerName: 'DT', field: 'warns-pens-info.num-dt', flex: 1.5, sortable: false, cellRenderer: this.createPenaltyCellRenderer("num-dt") },
+                    { headerName: 'Serv', field: 'warns-pens-info.num-sg', flex: 1.5, sortable: false, cellRenderer: this.createPenaltyCellRenderer("num-sg") },
                 ],
             },
             {
@@ -570,6 +570,17 @@ class EngViewRaceTable {
                 ],
             },
         ];
+    }
+
+    createPenaltyCellRenderer(penaltyField) {
+        return (params) => {
+            const driverInfo = params.data;
+            const penaltyCount = driverInfo["warns-pens-info"][penaltyField];
+            const cellContent = (penaltyCount == null || penaltyCount === 0)
+                ? "0"
+                : penaltyCount.toString();
+            return this.getSingleLineCell(cellContent);
+        };
     }
 
     createPositionStatusCellRenderer() {
