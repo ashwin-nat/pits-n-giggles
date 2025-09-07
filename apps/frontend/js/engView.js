@@ -84,7 +84,6 @@ class EngViewRaceTable {
             },
             onGridReady: (params) => {
                 this.gridApi = params.api;
-                this.columnApi = params.columnApi; // Note: columnApi is deprecated in newer versions
                 console.debug("AG Grid ready.");
 
                 // Apply saved column state
@@ -98,6 +97,8 @@ class EngViewRaceTable {
                 this.gridApi.addEventListener('columnResized', this.debounceSaveColumnState.bind(this));
                 this.gridApi.addEventListener('columnMoved', this.debounceSaveColumnState.bind(this));
                 this.gridApi.addEventListener('columnVisible', this.debounceSaveColumnState.bind(this));
+
+                const columns = this.fetchGridColumns();
             },
             getRowId: (params) => params.data.id,
             getRowClass: (params) => {
@@ -735,6 +736,17 @@ class EngViewRaceTable {
             this.gridApi.setGridOption('rowData', []);
         }
     }
+
+    fetchGridColumns() {
+        if (this.gridApi) {
+            const allColumns = this.gridApi.getColumns();
+            const columnNames = allColumns.map(column => column.getColDef().headerName || column.getColDef().field);
+            console.log("AG Grid Columns:", columnNames);
+            return columnNames;
+        }
+        console.warn("AG Grid gridApi not available.");
+        return [];
+    }
 }
 
 function formatSessionTime(seconds) {
@@ -1033,8 +1045,8 @@ function initDashboard() {
 
     function populateColumnVisibility() {
         columnVisibilityContainer.innerHTML = '';
-        // AG Grid: Get all columns from columnApi
-        const allColumns = raceTable.columnApi.getColumns();
+        // AG Grid: Get all columns from gridApi
+        const allColumns = raceTable.gridApi.getColumns();
         const columnState = raceTable.loadColumnState(); // Load saved state
 
         allColumns.forEach(column => {
@@ -1077,7 +1089,7 @@ function initDashboard() {
 
         input.onchange = () => {
             const colId = input.dataset.colId;
-            raceTable.columnApi.setColumnVisible(colId, input.checked);
+            raceTable.gridApi.setColumnVisible(colId, input.checked);
             raceTable.saveColumnState(); // Save state after change
 
             // Handle parent/child visibility for column groups
@@ -1112,7 +1124,7 @@ function initDashboard() {
         // but can be kept for consistency or if there's a need to re-apply all visibility.
         const savedColumnState = raceTable.loadColumnState();
         if (savedColumnState) {
-            raceTable.columnApi.applyColumnState({ state: savedColumnState, applyOrder: true });
+            raceTable.gridApi.applyColumnState({ state: savedColumnState, applyOrder: true });
         }
     }
 
