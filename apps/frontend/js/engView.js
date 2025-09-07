@@ -28,6 +28,7 @@ class EngViewRaceTable {
         this.iconCache = iconCache;
         this.gridApi = null;
         this.columnApi = null;
+        this.columnDefs = null;
         this.gridInitialized = false; // Add a flag to track grid initialization
         this.spectatorIndex = null;
         this.isSpectating = false;
@@ -68,8 +69,9 @@ class EngViewRaceTable {
     }
 
     initGrid() {
+        this.columnDefs = this.getColumnDefinitions();
         const gridOptions = {
-            columnDefs: this.getColumnDefinitions(),
+            columnDefs: this.columnDefs,
             rowData: [], // Initial empty data
             domLayout: 'normal', // or 'normal' if you want scrolling
             rowHeight: 60, // Add this line - adjust height as needed
