@@ -41,7 +41,16 @@ class EngViewRaceTable {
         this.PURPLE_SECTOR = 2;
         this.COLUMN_STATE_LS_KEY = 'eng-view-table-column-state'; // AG Grid combines width, visibility, and order
         this.TELEMETRY_DISABLED_TEXT = "⌀";
+
+        // Column visibility pane elements
+        this.settingsButton = document.getElementById('settings-btn');
+        this.columnVisibilityPane = document.getElementById('column-visibility-pane');
+        this.resetVisibilityButton = document.getElementById('reset-visibility-btn');
+        this.closePaneButton = document.getElementById('close-pane-btn');
+        this.columnVisibilityContainer = document.getElementById('column-visibility-container');
+
         this.initGrid();
+        this.setupSettingsEventListeners();
     }
 
     saveColumnState() {
@@ -749,6 +758,69 @@ class EngViewRaceTable {
         console.warn("AG Grid gridApi not available.");
         return [];
     }
+    setupSettingsEventListeners() {
+        this.settingsButton.addEventListener('click', () => this.toggleColumnVisibilityPane());
+        this.closePaneButton.addEventListener('click', () => this.toggleColumnVisibilityPane());
+        this.resetVisibilityButton.addEventListener('click', () => this.resetColumnVisibility());
+    }
+
+    toggleColumnVisibilityPane() {
+        this.columnVisibilityPane.classList.toggle('open');
+        if (this.columnVisibilityPane.classList.contains('open')) {
+            this.populateColumnVisibilityToggles();
+        }
+    }
+
+    resetColumnVisibility() {
+        this.resetColumnState(); // Call the existing method to reset AG Grid state
+        this.populateColumnVisibilityToggles(); // Re-populate toggles to reflect default state
+    }
+
+    populateColumnVisibilityToggles() {
+        if (!this.gridApi) {
+            console.warn("AG Grid API not available for populating column toggles.");
+            return;
+        }
+
+        this.columnVisibilityContainer.innerHTML = ''; // Clear existing toggles
+
+        const allColumns = this.gridApi.getAllGridColumns();
+        allColumns.forEach(column => {
+            const colId = column.getColId();
+            const colDef = column.getColDef();
+            const headerName = colDef.headerName || colDef.field;
+
+            // Skip columns without a header name or field, or if it's a group header
+            if (!headerName || colDef.children) {
+                return;
+            }
+
+            const isVisible = column.isVisible();
+
+            const toggleDiv = document.createElement('div');
+            toggleDiv.classList.add('form-check', 'form-switch');
+
+            const input = document.createElement('input');
+            input.classList.add('form-check-input');
+            input.type = 'checkbox';
+            input.id = `toggle-${colId}`;
+            input.checked = isVisible;
+
+            const label = document.createElement('label');
+            label.classList.add('form-check-label');
+            label.htmlFor = `toggle-${colId}`;
+            label.textContent = headerName;
+
+            input.addEventListener('change', (event) => {
+                this.gridApi.setColumnVisible(colId, event.target.checked);
+                this.saveColumnState(); // Save state after visibility change
+            });
+
+            toggleDiv.appendChild(input);
+            toggleDiv.appendChild(label);
+            this.columnVisibilityContainer.appendChild(toggleDiv);
+        });
+    }
 }
 
 function formatSessionTime(seconds) {
@@ -1010,129 +1082,6 @@ function initDashboard() {
 
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
-
-    // Column Visibility Pane Logic
-    const columnVisibilityPane = document.getElementById('column-visibility-pane');
-    const settingsBtn = document.getElementById('settings-btn');
-    const closePaneBtn = document.getElementById('close-pane-btn');
-    const columnVisibilityContainer = document.getElementById('column-visibility-container');
-    const resetVisibilityBtn = document.getElementById('reset-visibility-btn');
-
-    settingsBtn.onclick = function() {
-        columnVisibilityPane.classList.add('open');
-        populateColumnVisibility();
-    }
-
-    closePaneBtn.onclick = function() {
-        columnVisibilityPane.classList.remove('open');
-    }
-
-    resetVisibilityBtn.onclick = function() {
-        // Clear the visibility from local storage so it resets to default
-        localStorage.removeItem(raceTable.COLUMN_STATE_LS_KEY); // Changed to COLUMN_STATE_LS_KEY
-
-        // Re-populate the checkboxes which will now be all checked
-        populateColumnVisibility();
-
-        // Apply the default visibility to the table
-        applyColumnVisibility();
-    };
-
-    // Close the pane if clicked outside
-    window.addEventListener('click', function(event) {
-        if (!columnVisibilityPane.contains(event.target) && !settingsBtn.contains(event.target) && columnVisibilityPane.classList.contains('open')) {
-            columnVisibilityPane.classList.remove('open');
-        }
-    });
-
-    function populateColumnVisibility() {
-        columnVisibilityContainer.innerHTML = '';
-        // AG Grid: Get all columns from gridApi
-        const allColumns = raceTable.gridApi.getColumns();
-        const columnState = raceTable.loadColumnState(); // Load saved state
-
-        allColumns.forEach(column => {
-            const colDef = column.getColDef();
-            const field = colDef.field || colDef.headerName; // Use field or headerName as identifier
-
-            // Check if column is a group
-            if (column.isColumnGroup()) {
-                createColumnToggle(column, columnVisibilityContainer, columnState, false);
-            } else if (field) {
-                // Only create toggle for non-group columns with a field/headerName
-                createColumnToggle(column, columnVisibilityContainer, columnState, false);
-            }
-        });
-    }
-
-    function createColumnToggle(column, container, columnState, isSub = false) {
-        const colDef = column.getColDef();
-        const field = colDef.field || colDef.headerName;
-        const isVisible = columnState ? columnState.find(s => s.colId === column.getColId())?.hide !== true : true; // Default to visible
-
-        const formCheckDiv = document.createElement('div');
-        formCheckDiv.classList.add('form-check', 'form-switch');
-        if (isSub) {
-            formCheckDiv.classList.add('sub-column');
-        }
-
-        const input = document.createElement('input');
-        input.classList.add('form-check-input');
-        input.type = 'checkbox';
-        input.role = 'switch';
-        input.id = `toggle-${field}`;
-        input.checked = isVisible;
-        input.dataset.colId = column.getColId(); // Store colId for AG Grid
-
-        const label = document.createElement('label');
-        label.classList.add('form-check-label');
-        label.htmlFor = `toggle-${field}`;
-        label.textContent = colDef.headerName;
-
-        input.onchange = () => {
-            const colId = input.dataset.colId;
-            raceTable.gridApi.setColumnVisible(colId, input.checked);
-            raceTable.saveColumnState(); // Save state after change
-
-            // Handle parent/child visibility for column groups
-            if (column.isColumnGroup()) {
-                const children = column.getChildren();
-                children.forEach(childCol => {
-                    const childInput = columnVisibilityContainer.querySelector(`input[data-col-id="${childCol.getColId()}"]`);
-                    if (childInput) {
-                        childInput.checked = input.checked;
-                        childInput.disabled = !input.checked;
-                        raceTable.columnApi.setColumnVisible(childCol.getColId(), input.checked);
-                    }
-                });
-            }
-        };
-
-        formCheckDiv.appendChild(input);
-        formCheckDiv.appendChild(label);
-        container.appendChild(formCheckDiv);
-
-        // Recursively create toggles for children of column groups
-        if (column.isColumnGroup()) {
-            column.getChildren().forEach(childCol => {
-                createColumnToggle(childCol, container, columnState, true);
-            });
-        }
-    }
-
-    function applyColumnVisibility() {
-        // Visibility is applied directly by setColumnVisible in onchange handler,
-        // and on grid init by applyColumnState. This function might not be strictly needed
-        // but can be kept for consistency or if there's a need to re-apply all visibility.
-        const savedColumnState = raceTable.loadColumnState();
-        if (savedColumnState) {
-            raceTable.gridApi.applyColumnState({ state: savedColumnState, applyOrder: true });
-        }
-    }
-
-    // Apply visibility on initial load
-    // This is no longer needed as visibility is applied during table initialization
-    // applyColumnVisibility();
 }
 
 // Start the dashboard when the page loads
