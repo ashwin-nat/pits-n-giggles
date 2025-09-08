@@ -280,8 +280,8 @@ class BarChart {
         const buffer = range * (bufferPercent / 100);
 
         // Calculate suggested min and max with buffer
-        const suggestedMin = minValue - buffer;
-        const suggestedMax = maxValue + buffer;
+        let suggestedMin = minValue - buffer;
+        let suggestedMax = maxValue + buffer;
 
         // Ensure min doesn't go below 0 if all values are positive
         if (minValue >= 0 && suggestedMin < 0) {
