@@ -59,6 +59,18 @@ class CustomHeader {
     }
 }
 
+class CustomNoRowsOverlay {
+    init(params) {
+        this.eGui = document.createElement('div');
+        this.eGui.classList.add('ag-overlay-no-rows-center');
+        this.eGui.innerHTML = params.noRowsMessageFunc();
+    }
+
+    getGui() {
+        return this.eGui;
+    }
+}
+
 class EngViewRaceTable {
     constructor(iconCache) {
         this.iconCache = iconCache;
@@ -66,6 +78,7 @@ class EngViewRaceTable {
         this.columnDefs = null;
         this.gridInitialized = false; // Add a flag to track grid initialization
         this.spectatorIndex = null;
+        this.currEventType = null;
         this.isSpectating = false;
         this.fastestLapMs = 0;
         this.sessionUID = null;
@@ -129,6 +142,10 @@ class EngViewRaceTable {
                 filter: false,
                 headerClass: "eng-view-table-main-header",
                 headerComponent: CustomHeader, // Use our custom header component
+            },
+            noRowsOverlayComponent: CustomNoRowsOverlay,
+            noRowsOverlayComponentParams: {
+                noRowsMessageFunc: () => "Waiting for data... NOTE: Time Trial is not supported in Engineer View.",
             },
             onGridReady: (params) => {
                 this.gridApi = params.api;
@@ -753,13 +770,15 @@ class EngViewRaceTable {
         this.fastestLapMs = fastestLapMs;
 
         if (eventType === "Time Trial") {
-            if (this.gridApi && !this.gridApi.getDisplayedRowCount()) { // Only show overlay if no rows are displayed
-                this.gridApi.showNoRowsOverlay();
-                this.gridApi.setGridOption('rowData', []); // Clear data for Time Trial
+            if (this.currEventType !== "Time Trial") { // Only update if event type is changing to Time Trial
+                if (this.gridApi) {
+                    this.gridApi.setGridOption('rowData', []); // Clear data for Time Trial
+                    this.gridApi.showNoRowsOverlay();
+                }
             }
             return;
         } else {
-            if (this.gridApi && this.gridApi.getOverlayDisplayed() === 'noRows') { // Only hide if noRows overlay is displayed
+            if (this.gridApi) { // Only hide if gridApi exists
                 this.gridApi.hideOverlay();
             }
         }
@@ -797,6 +816,7 @@ class EngViewRaceTable {
                 this.gridApi.redrawRows();
             }
         }
+        this.currEventType = eventType;
     }
 
     getTelemetryRestrictedContent() {
