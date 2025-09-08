@@ -94,6 +94,7 @@ class EngViewRaceTable {
         this.settingsButton = document.getElementById('settings-btn');
         this.columnVisibilityPane = document.getElementById('column-visibility-pane');
         this.resetVisibilityButton = document.getElementById('reset-visibility-btn');
+        this.resetLayoutButton = document.getElementById('reset-layout-btn'); // New button
         this.closePaneButton = document.getElementById('close-pane-btn');
         this.columnVisibilityContainer = document.getElementById('column-visibility-container');
 
@@ -162,6 +163,7 @@ class EngViewRaceTable {
                 this.gridApi.addEventListener('columnResized', this.debounceSaveColumnState.bind(this));
                 this.gridApi.addEventListener('columnMoved', this.debounceSaveColumnState.bind(this));
                 this.gridApi.addEventListener('columnVisible', this.debounceSaveColumnState.bind(this));
+                this.gridApi.addEventListener('columnPinned', this.debounceSaveColumnState.bind(this)); // Add this for pinned columns
 
                 const columns = this.fetchGridColumns();
             },
@@ -848,6 +850,11 @@ class EngViewRaceTable {
         this.settingsButton.addEventListener('click', () => this.toggleColumnVisibilityPane());
         this.closePaneButton.addEventListener('click', () => this.toggleColumnVisibilityPane());
         this.resetVisibilityButton.addEventListener('click', () => this.resetColumnVisibility());
+        this.resetLayoutButton.addEventListener('click', () => this.resetColumnLayout()); // New event listener
+        this.resetLayoutButton.addEventListener('click', () => this.resetColumnLayout()); // New event listener
+        this.resetLayoutButton.addEventListener('click', () => this.resetColumnLayout()); // New event listener
+        this.resetLayoutButton.addEventListener('click', () => this.resetColumnLayout()); // New event listener
+        this.resetLayoutButton.addEventListener('click', () => this.resetColumnLayout()); // New event listener
     }
 
     toggleColumnVisibilityPane() {
@@ -983,8 +990,92 @@ class EngViewRaceTable {
         });
     }
 
-}
+    resetColumnLayout() {
+        if (this.gridApi) {
+            // Get the initial column definitions to restore default widths and order
+            const initialColumnDefs = this.getColumnDefinitions();
+            const initialColumnState = [];
 
+            // Recursively process column definitions to build the initial state
+            const processColDefs = (colDefs) => {
+                colDefs.forEach(colDef => {
+                    if (colDef.children) {
+                        processColDefs(colDef.children);
+                    } else {
+                        initialColumnState.push({
+                            colId: colDef.colId || colDef.field,
+                            width: colDef.width || colDef.flex ? undefined : 100, // Default width if not flex
+                            flex: colDef.flex,
+                            hide: false, // Ensure visibility is not reset here
+                            pinned: colDef.pinned || null,
+                        });
+                    }
+                });
+            };
+            processColDefs(initialColumnDefs);
+
+            // Get the current column visibility state
+            const currentColumnState = this.gridApi.getColumnState();
+            const visibilityState = currentColumnState.reduce((acc, col) => {
+                acc[col.colId] = col.hide;
+                return acc;
+            }, {});
+
+            // Merge initial layout with current visibility
+            const newState = initialColumnState.map(col => ({
+                ...col,
+                hide: visibilityState[col.colId] !== undefined ? visibilityState[col.colId] : col.hide,
+            }));
+
+            this.gridApi.applyColumnState({ state: newState, applyOrder: true });
+            localStorage.removeItem(this.COLUMN_STATE_LS_KEY); // Clear saved state to ensure defaults are used
+            console.debug('Column layout (positions and widths) reset to default, visibility preserved.');
+        }
+    }
+
+    resetColumnLayout() {
+        if (this.gridApi) {
+            // Get the initial column definitions to restore default widths and order
+            const initialColumnDefs = this.getColumnDefinitions();
+            const initialColumnState = [];
+
+            // Recursively process column definitions to build the initial state
+            const processColDefs = (colDefs) => {
+                colDefs.forEach(colDef => {
+                    if (colDef.children) {
+                        processColDefs(colDef.children);
+                    } else {
+                        initialColumnState.push({
+                            colId: colDef.colId || colDef.field,
+                            width: colDef.width || colDef.flex ? undefined : 100, // Default width if not flex
+                            flex: colDef.flex,
+                            hide: false, // Ensure visibility is not reset here
+                            pinned: colDef.pinned || null,
+                        });
+                    }
+                });
+            };
+            processColDefs(initialColumnDefs);
+
+            // Get the current column visibility state
+            const currentColumnState = this.gridApi.getColumnState();
+            const visibilityState = currentColumnState.reduce((acc, col) => {
+                acc[col.colId] = col.hide;
+                return acc;
+            }, {});
+
+            // Merge initial layout with current visibility
+            const newState = initialColumnState.map(col => ({
+                ...col,
+                hide: visibilityState[col.colId] !== undefined ? visibilityState[col.colId] : col.hide,
+            }));
+
+            this.gridApi.applyColumnState({ state: newState, applyOrder: true });
+            localStorage.removeItem(this.COLUMN_STATE_LS_KEY); // Clear saved state to ensure defaults are used
+            console.debug('Column layout (positions and widths) reset to default, visibility preserved.');
+        }
+    }
+}
 function formatSessionTime(seconds) {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
