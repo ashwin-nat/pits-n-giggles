@@ -27,12 +27,14 @@ class CustomHeader {
     init(agGridParams) {
         this.agGridParams = agGridParams;
         this.eGui = document.createElement('div');
-        const headerName = agGridParams.column.getColDef().headerName || agGridParams.column.getColDef().context?.displayName;
+        const colDef = agGridParams.column.getColDef();
+        const tooltipName = colDef.context.displayName;
+        const headerName = colDef.headerName;
 
         const headerLabelDiv = document.createElement('div');
         headerLabelDiv.classList.add('ag-header-cell-label');
         headerLabelDiv.setAttribute('data-bs-toggle', 'tooltip');
-        headerLabelDiv.setAttribute('title', escapeHtml(headerName));
+        headerLabelDiv.setAttribute('title', escapeHtml(tooltipName));
 
         const headerTextSpan = document.createElement('span');
         headerTextSpan.classList.add('ag-header-cell-text');
