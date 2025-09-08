@@ -245,7 +245,8 @@ class EngViewRaceTable {
             }
 
             if (isReferenceDriver) {
-                return formattedTime; // Return just the formatted time
+                // TODO: apply appropriate class
+                return this.getSingleLineCell(formattedTime);
             }
 
             const delta = timeMs - lapInfo[playerTimeKey];
@@ -280,38 +281,6 @@ class EngViewRaceTable {
                 return this.getTelemetryRestrictedContent();
             }
         };
-    }
-
-    createSectorColumns(lapType) {
-        const isLastLap = lapType === 'last';
-        const cellRenderer = this.createSectorCellRenderer.bind(this);
-
-        return [
-            {
-                headerName: "Lap",
-                field: `lap-info.${lapType}-lap.lap-time-ms`,
-                cellRenderer: cellRenderer('lap', 'lap-time-ms', 'lap-time-ms-player', isLastLap),
-                sortable: false,
-            },
-            {
-                headerName: "S1",
-                field: `lap-info.${lapType}-lap.s1-time-ms`,
-                cellRenderer: cellRenderer('s1', 's1-time-ms', 's1-time-ms-player', isLastLap),
-                sortable: false,
-            },
-            {
-                headerName: "S2",
-                field: `lap-info.${lapType}-lap.s2-time-ms`,
-                cellRenderer: cellRenderer('s2', 's2-time-ms', 's2-time-ms-player', isLastLap),
-                sortable: false,
-            },
-            {
-                headerName: "S3",
-                field: `lap-info.${lapType}-lap.s3-time-ms`,
-                cellRenderer: cellRenderer('s3', 's3-time-ms', 's3-time-ms-player', isLastLap),
-                sortable: false,
-            }
-        ];
     }
 
     getColumnDefinitions() {
@@ -772,17 +741,15 @@ class EngViewRaceTable {
         this.fastestLapMs = fastestLapMs;
 
         if (eventType === "Time Trial") {
-            if (this.currEventType !== "Time Trial") { // Only update if event type is changing to Time Trial
-                if (this.gridApi) {
-                    this.gridApi.setGridOption('rowData', []); // Clear data for Time Trial
-                    this.gridApi.showNoRowsOverlay();
-                }
+            if (this.currEventType !== "Time Trial" && this.gridApi) {
+                this.gridApi.setGridOption("rowData", []); // Clear data for Time Trial
+                this.gridApi.showNoRowsOverlay();
             }
             return;
-        } else {
-            if (this.gridApi) { // Only hide if gridApi exists
-                this.gridApi.hideOverlay();
-            }
+        }
+
+        if (this.gridApi) {
+            this.gridApi.hideOverlay();
         }
 
         updateReferenceLapTimes(drivers, (entry) =>
@@ -825,9 +792,10 @@ class EngViewRaceTable {
         return `<div class="telemetry-restricted-text">${this.TELEMETRY_DISABLED_TEXT}</div>`;
     }
 
-    getSingleLineCell(value, escape = true) {
+    getSingleLineCell(value, escape = true, className = '') {
         const processedValue = escape ? escapeHtml(value) : value;
-        return processedValue;
+        const classes = `ag-cell-single-line-content ${className}`.trim();
+        return `<div class="${classes}">${processedValue}</div>`;
     }
 
     clear() {
@@ -850,10 +818,6 @@ class EngViewRaceTable {
         this.settingsButton.addEventListener('click', () => this.toggleColumnVisibilityPane());
         this.closePaneButton.addEventListener('click', () => this.toggleColumnVisibilityPane());
         this.resetVisibilityButton.addEventListener('click', () => this.resetColumnVisibility());
-        this.resetLayoutButton.addEventListener('click', () => this.resetColumnLayout()); // New event listener
-        this.resetLayoutButton.addEventListener('click', () => this.resetColumnLayout()); // New event listener
-        this.resetLayoutButton.addEventListener('click', () => this.resetColumnLayout()); // New event listener
-        this.resetLayoutButton.addEventListener('click', () => this.resetColumnLayout()); // New event listener
         this.resetLayoutButton.addEventListener('click', () => this.resetColumnLayout()); // New event listener
     }
 
@@ -988,49 +952,6 @@ class EngViewRaceTable {
                 }
             }
         });
-    }
-
-    resetColumnLayout() {
-        if (this.gridApi) {
-            // Get the initial column definitions to restore default widths and order
-            const initialColumnDefs = this.getColumnDefinitions();
-            const initialColumnState = [];
-
-            // Recursively process column definitions to build the initial state
-            const processColDefs = (colDefs) => {
-                colDefs.forEach(colDef => {
-                    if (colDef.children) {
-                        processColDefs(colDef.children);
-                    } else {
-                        initialColumnState.push({
-                            colId: colDef.colId || colDef.field,
-                            width: colDef.width || colDef.flex ? undefined : 100, // Default width if not flex
-                            flex: colDef.flex,
-                            hide: false, // Ensure visibility is not reset here
-                            pinned: colDef.pinned || null,
-                        });
-                    }
-                });
-            };
-            processColDefs(initialColumnDefs);
-
-            // Get the current column visibility state
-            const currentColumnState = this.gridApi.getColumnState();
-            const visibilityState = currentColumnState.reduce((acc, col) => {
-                acc[col.colId] = col.hide;
-                return acc;
-            }, {});
-
-            // Merge initial layout with current visibility
-            const newState = initialColumnState.map(col => ({
-                ...col,
-                hide: visibilityState[col.colId] !== undefined ? visibilityState[col.colId] : col.hide,
-            }));
-
-            this.gridApi.applyColumnState({ state: newState, applyOrder: true });
-            localStorage.removeItem(this.COLUMN_STATE_LS_KEY); // Clear saved state to ensure defaults are used
-            console.debug('Column layout (positions and widths) reset to default, visibility preserved.');
-        }
     }
 
     resetColumnLayout() {
