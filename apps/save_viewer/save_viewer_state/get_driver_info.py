@@ -55,7 +55,7 @@ def _getDriverInfo(json_data: Dict[str, Any], index: int) -> Dict[str, Any]:
     final_json["is-player"] = driver_data["is-player"]
     final_json["driver-name"] = driver_data["driver-name"]
     final_json["team"] = driver_data["team"]
-    final_json["track-position"] = driver_data["final-classification"]["position"]
+    final_json["track-position"] = driver_data["track-position"]
     final_json["telemetry-settings"] = driver_data["participant-data"]["telemetry-setting"]
     final_json["car-damage"] = driver_data["car-damage"]
     final_json["car-status"] = driver_data["car-status"]
