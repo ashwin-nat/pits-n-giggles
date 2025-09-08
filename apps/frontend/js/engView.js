@@ -39,7 +39,7 @@ class EngViewRaceTable {
         this.YELLOW_SECTOR = 0;
         this.GREEN_SECTOR = 1;
         this.PURPLE_SECTOR = 2;
-        this.COLUMN_STATE_LS_KEY = 'eng-view-table-column-state'; // AG Grid combines width, visibility, and order
+        this.COLUMN_STATE_LS_KEY = 'eng-view-table-column-state-ag';
         this.TELEMETRY_DISABLED_TEXT = "⌀";
 
         // Column visibility pane elements
@@ -844,23 +844,31 @@ class EngViewRaceTable {
 
             input.addEventListener('change', (event) => {
                 const checked = event.target.checked;
+                let hasChanged = false;
 
                 if (column) {
-                    this.gridApi.setColumnVisible(colId, checked);
+                    column.setVisible(checked);
+                    hasChanged = true;
                 }
-                this.saveColumnState();
 
                 if (colDef.children) {
                     colDef.children.forEach(childColDef => {
                         const childColId = childColDef.colId || childColDef.field;
                         if (childColId) {
-                            this.gridApi.setColumnVisible(childColId, checked);
+                            const childColumn = this.gridApi.getColumn(childColId);
+                            if (childColumn) {
+                                childColumn.setVisible(checked);
+                                hasChanged = true;
+                            }
                             const childInput = document.getElementById(`toggle-${childColId}`);
                             if (childInput) {
                                 childInput.checked = checked;
                             }
                         }
                     });
+                }
+                if (hasChanged) {
+                    this.saveColumnState();
                 }
             });
 
