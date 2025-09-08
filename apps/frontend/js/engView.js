@@ -94,8 +94,10 @@ class EngViewRaceTable {
             try {
                 localStorage.setItem(this.COLUMN_STATE_LS_KEY, JSON.stringify(columnState));
                 console.debug('Column state saved:', columnState);
+                return columnState;
             } catch (error) {
                 console.warn('Failed to save column state:', error);
+                return null;
             }
         }
     }
@@ -904,7 +906,10 @@ class EngViewRaceTable {
                     });
                 }
                 if (hasChanged) {
-                    this.saveColumnState();
+                    const savedColumnState = this.saveColumnState();
+                    if (savedColumnState) {
+                        this.gridApi.applyColumnState({ state: savedColumnState, applyOrder: true });
+                    }
                 }
             });
 
