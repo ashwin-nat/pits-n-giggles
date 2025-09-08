@@ -808,16 +808,22 @@ class EngViewRaceTable {
         }
 
         this.columnVisibilityContainer.innerHTML = ''; // Clear existing toggles
+        let groupCounter = 0; // synthetic IDs for groups without colId/field
 
-        const createToggle = (colDef, parentColId = null) => {
-            const colId = colDef.colId || colDef.field; // Use colId if available, otherwise field
-            if (!colId) return; // Skip if no identifiable ID
+        const createToggle = (colDef, parentColId = null, isGroup = false) => {
+            let colId = colDef.colId || colDef.field;
+
+            // For groups with no id/field, generate synthetic one
+            if (!colId && isGroup) {
+                colId = `__group_${groupCounter++}`;
+            }
+            if (!colId) return;
 
             const column = this.gridApi.getColumn(colId);
-            if (!column) return; // Column might not be rendered yet or is not a direct grid column
+            // groups without backing columns won't exist in gridApi
+            const isVisible = column ? column.isVisible() : true;
 
-            const displayName = colDef.displayName || colDef.headerName || colDef.field;
-            const isVisible = column.isVisible();
+            const displayName = colDef.displayName || colDef.headerName || colDef.field || 'Group';
 
             const toggleDiv = document.createElement('div');
             toggleDiv.classList.add('form-check', 'form-switch', 'column-toggle');
@@ -838,10 +844,12 @@ class EngViewRaceTable {
 
             input.addEventListener('change', (event) => {
                 const checked = event.target.checked;
-                this.gridApi.setColumnVisible(colId, checked);
+
+                if (column) {
+                    this.gridApi.setColumnVisible(colId, checked);
+                }
                 this.saveColumnState();
 
-                // If this is a parent, toggle all children
                 if (colDef.children) {
                     colDef.children.forEach(childColDef => {
                         const childColId = childColDef.colId || childColDef.field;
@@ -863,11 +871,11 @@ class EngViewRaceTable {
 
         this.columnDefs.forEach(colDef => {
             if (colDef.children) {
-                // This is a column group (parent)
+                // column group
                 const groupDiv = document.createElement('div');
                 groupDiv.classList.add('column-group');
 
-                const parentToggle = createToggle(colDef);
+                const parentToggle = createToggle(colDef, null, true);
                 if (parentToggle) {
                     groupDiv.appendChild(parentToggle);
                 }
@@ -876,9 +884,6 @@ class EngViewRaceTable {
                 childrenContainer.classList.add('column-group-children');
 
                 colDef.children.forEach(childColDef => {
-                    // AG Grid automatically assigns colId for children if not explicitly set
-                    // We need to ensure childColDef has a colId for the toggle to work
-                    // For simplicity, we'll use field as colId if not present
                     if (!childColDef.colId && childColDef.field) {
                         childColDef.colId = childColDef.field;
                     }
@@ -890,7 +895,7 @@ class EngViewRaceTable {
                 groupDiv.appendChild(childrenContainer);
                 this.columnVisibilityContainer.appendChild(groupDiv);
             } else {
-                // This is a regular column
+                // regular column
                 const toggle = createToggle(colDef);
                 if (toggle) {
                     this.columnVisibilityContainer.appendChild(toggle);
@@ -898,6 +903,7 @@ class EngViewRaceTable {
             }
         });
     }
+
 }
 
 function formatSessionTime(seconds) {
