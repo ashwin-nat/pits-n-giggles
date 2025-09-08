@@ -63,7 +63,6 @@ class EngViewRaceTable {
     constructor(iconCache) {
         this.iconCache = iconCache;
         this.gridApi = null;
-        this.columnApi = null;
         this.columnDefs = null;
         this.gridInitialized = false; // Add a flag to track grid initialization
         this.spectatorIndex = null;
