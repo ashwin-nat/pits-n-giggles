@@ -148,7 +148,7 @@ class EngViewRaceTable {
 
                 const columns = this.fetchGridColumns();
             },
-            getRowId: (params) => params.data.id,
+            getRowId: (params) => params.data.id.toString(),
             getRowClass: (params) => {
                 const data = params.data;
                 if (!data) return;
