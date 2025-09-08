@@ -572,7 +572,7 @@ class EngViewRaceTable {
                             const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return this.getSingleLineCell(`${(driverInfo["ers-info"]["ers-percent"])}%`);
+                                return this.getSingleLineCell(`${formatFloat(driverInfo["ers-info"]["ers-percent-float"])}%`);
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
@@ -753,11 +753,15 @@ class EngViewRaceTable {
         this.fastestLapMs = fastestLapMs;
 
         if (eventType === "Time Trial") {
-            console.warn("Time Trial not supported in Engineer View for AG Grid.");
-            if (this.gridApi) {
+            if (this.gridApi && !this.gridApi.getDisplayedRowCount()) { // Only show overlay if no rows are displayed
+                this.gridApi.showNoRowsOverlay();
                 this.gridApi.setGridOption('rowData', []); // Clear data for Time Trial
             }
             return;
+        } else {
+            if (this.gridApi && this.gridApi.getOverlayDisplayed() === 'noRows') { // Only hide if noRows overlay is displayed
+                this.gridApi.hideOverlay();
+            }
         }
 
         updateReferenceLapTimes(drivers, (entry) =>

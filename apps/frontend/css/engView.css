@@ -383,3 +383,25 @@ input[type="number"]::-webkit-outer-spin-button {
 .column-toggle {
     margin-bottom: 0.5rem;
 }
+
+.ag-overlay-no-rows-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    font-size: 1.2rem;
+    color: var(--f1-text);
+    text-align: center;
+    flex-direction: column;
+}
+
+.driver-view-link {
+    color: var(--f1-red);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.driver-view-link:hover {
+    color: #ff4d4d; /* Lighter red on hover */
+}
