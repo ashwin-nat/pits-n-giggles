@@ -23,6 +23,40 @@ function getShortERSMode(mode) {
 }
 
 // Class to manage the race table
+class CustomHeader {
+    init(agGridParams) {
+        this.agGridParams = agGridParams;
+        this.eGui = document.createElement('div');
+        const headerName = agGridParams.displayName || agGridParams.column.getColDef().headerName;
+
+        const headerLabelDiv = document.createElement('div');
+        headerLabelDiv.classList.add('ag-header-cell-label');
+        headerLabelDiv.setAttribute('data-bs-toggle', 'tooltip');
+        headerLabelDiv.setAttribute('title', escapeHtml(headerName));
+
+        const headerTextSpan = document.createElement('span');
+        headerTextSpan.classList.add('ag-header-cell-text');
+        headerTextSpan.textContent = escapeHtml(headerName);
+
+        headerLabelDiv.appendChild(headerTextSpan);
+        this.eGui.appendChild(headerLabelDiv);
+
+        // Initialize Bootstrap tooltip for this specific header
+        this.tooltipInstance = new bootstrap.Tooltip(headerLabelDiv);
+    }
+
+    getGui() {
+        return this.eGui;
+    }
+
+    destroy() {
+        // Dispose the tooltip when the header component is destroyed
+        if (this.tooltipInstance) {
+            this.tooltipInstance.dispose();
+        }
+    }
+}
+
 class EngViewRaceTable {
     constructor(iconCache) {
         this.iconCache = iconCache;
@@ -92,6 +126,7 @@ class EngViewRaceTable {
                 filter: false,
                 menuTabs: ['generalMenuTab'],
                 headerClass: "eng-view-table-main-header",
+                headerComponent: CustomHeader, // Use our custom header component
             },
             onGridReady: (params) => {
                 this.gridApi = params.api;
