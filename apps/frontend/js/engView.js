@@ -245,8 +245,7 @@ class EngViewRaceTable {
             }
 
             if (isReferenceDriver) {
-                // TODO: apply appropriate class
-                return this.getSingleLineCell(formattedTime);
+                return this.createSingleLineCell(formattedTime, {className: timeClass});
             }
 
             const delta = timeMs - lapInfo[playerTimeKey];
@@ -493,7 +492,7 @@ class EngViewRaceTable {
                             const rejoinPositionStr = (rejoinPosition != null)
                                 ? `P${tyreInfo["pit-rejoin-position"]}`
                                 : "N/A";
-                            return this.getSingleLineCell(rejoinPositionStr);
+                            return this.createSingleLineCell(rejoinPositionStr);
                         },
                         sortable: false,
                         cellClass: 'ag-cell-single-line',
@@ -560,7 +559,7 @@ class EngViewRaceTable {
                             const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return this.getSingleLineCell(`${formatFloat(driverInfo["ers-info"]["ers-percent-float"])}%`);
+                                return this.createSingleLineCell(`${formatFloat(driverInfo["ers-info"]["ers-percent-float"])}%`);
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
@@ -571,7 +570,7 @@ class EngViewRaceTable {
                             const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return this.getSingleLineCell(`${formatFloat(driverInfo["ers-info"]["ers-deployed-this-lap"])}%`);
+                                return this.createSingleLineCell(`${formatFloat(driverInfo["ers-info"]["ers-deployed-this-lap"])}%`);
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
@@ -582,7 +581,7 @@ class EngViewRaceTable {
                             const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return this.getSingleLineCell(getShortERSMode(driverInfo["ers-info"]["ers-mode"]));
+                                return this.createSingleLineCell(getShortERSMode(driverInfo["ers-info"]["ers-mode"]));
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
@@ -602,7 +601,7 @@ class EngViewRaceTable {
                                 const fuelInTank = driverInfo["fuel-info"]["fuel-in-tank"];
                                 const cellContent = fuelInTank == null ? "N/A"
                                     : formatFloat(fuelInTank);
-                                return this.getSingleLineCell(cellContent);
+                                return this.createSingleLineCell(cellContent);
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
@@ -616,7 +615,7 @@ class EngViewRaceTable {
                                 const currFuelRate = driverInfo["fuel-info"]["curr-fuel-rate"];
                                 const cellContent = currFuelRate == null
                                     ? "N/A" : formatFloat(currFuelRate);
-                                return this.getSingleLineCell(cellContent);
+                                return this.createSingleLineCell(cellContent);
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
@@ -630,7 +629,7 @@ class EngViewRaceTable {
                                 const surplusLapsPng = driverInfo["fuel-info"]["surplus-laps-png"];
                                 const cellContent = surplusLapsPng == null ? "N/A"
                                     : formatFloat(surplusLapsPng, { signed: true });
-                                return this.getSingleLineCell(cellContent);
+                                return this.createSingleLineCell(cellContent);
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
@@ -648,7 +647,7 @@ class EngViewRaceTable {
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
                                 const flWingDamage = driverInfo["damage-info"]["fl-wing-damage"];
-                                return this.getSingleLineCell(`${formatFloat(flWingDamage)}%`);
+                                return this.createSingleLineCell(`${formatFloat(flWingDamage)}%`);
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
@@ -660,7 +659,7 @@ class EngViewRaceTable {
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
                                 const frWingDamage = driverInfo["damage-info"]["fr-wing-damage"];
-                                return this.getSingleLineCell(`${formatFloat(frWingDamage)}%`);
+                                return this.createSingleLineCell(`${formatFloat(frWingDamage)}%`);
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
@@ -672,7 +671,7 @@ class EngViewRaceTable {
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
                                 const rearWingDamage = driverInfo["damage-info"]["rear-wing-damage"];
-                                return this.getSingleLineCell(`${formatFloat(rearWingDamage)}%`);
+                                return this.createSingleLineCell(`${formatFloat(rearWingDamage)}%`);
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
@@ -690,7 +689,7 @@ class EngViewRaceTable {
             const cellContent = (penaltyCount == null || penaltyCount === 0)
                 ? "0"
                 : penaltyCount.toString();
-            return this.getSingleLineCell(cellContent);
+            return this.createSingleLineCell(cellContent);
         };
     }
 
@@ -717,6 +716,12 @@ class EngViewRaceTable {
                 row2Class: statusClass
             });
         };
+    }
+
+    createSingleLineCell(value, { escape = true, className = '' } = {}) {
+        const processedValue = escape ? escapeHtml(value) : value;
+        const classes = `ag-cell-single-line-content ${className}`.trim();
+        return `<div class="${classes}">${processedValue}</div>`;
     }
 
     createMultiLineCell({
@@ -790,12 +795,6 @@ class EngViewRaceTable {
 
     getTelemetryRestrictedContent() {
         return `<div class="telemetry-restricted-text">${this.TELEMETRY_DISABLED_TEXT}</div>`;
-    }
-
-    getSingleLineCell(value, escape = true, className = '') {
-        const processedValue = escape ? escapeHtml(value) : value;
-        const classes = `ag-cell-single-line-content ${className}`.trim();
-        return `<div class="${classes}">${processedValue}</div>`;
     }
 
     clear() {
