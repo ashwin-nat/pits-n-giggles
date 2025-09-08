@@ -127,7 +127,6 @@ class EngViewRaceTable {
                 resizable: true,
                 sortable: true,
                 filter: false,
-                menuTabs: ['generalMenuTab'],
                 headerClass: "eng-view-table-main-header",
                 headerComponent: CustomHeader, // Use our custom header component
             },
