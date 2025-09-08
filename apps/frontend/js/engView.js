@@ -846,7 +846,7 @@ class EngViewRaceTable {
         this.columnVisibilityContainer.innerHTML = ''; // Clear existing toggles
         let groupCounter = 0; // synthetic IDs for groups without colId/field
 
-        const createToggle = (colDef, parentColId = null, isGroup = false) => {
+        const createToggle = (colDef, parentColId = null, isGroup = false, initialIsVisible = null) => {
             let colId = colDef.colId || colDef.field;
 
             // For groups with no id/field, generate synthetic one
@@ -857,7 +857,7 @@ class EngViewRaceTable {
 
             const column = this.gridApi.getColumn(colId);
             // groups without backing columns won't exist in gridApi
-            const isVisible = column ? column.isVisible() : true;
+            const isVisible = initialIsVisible !== null ? initialIsVisible : (column ? column.isVisible() : true);
 
             const displayName = colDef.context?.displayName || colDef.headerName || colDef.field || 'Group';
 
@@ -919,7 +919,14 @@ class EngViewRaceTable {
                 const groupDiv = document.createElement('div');
                 groupDiv.classList.add('column-group');
 
-                const parentToggle = createToggle(colDef, null, true);
+                // Determine initial visibility for the parent group
+                const anyChildVisible = colDef.children.some(childColDef => {
+                    const childColId = childColDef.colId || childColDef.field;
+                    const childColumn = childColId ? this.gridApi.getColumn(childColId) : null;
+                    return childColumn ? childColumn.isVisible() : false;
+                });
+
+                const parentToggle = createToggle(colDef, null, true, anyChildVisible);
                 if (parentToggle) {
                     groupDiv.appendChild(parentToggle);
                 }
