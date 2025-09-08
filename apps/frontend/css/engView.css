@@ -405,3 +405,7 @@ input[type="number"]::-webkit-outer-spin-button {
 .driver-view-link:hover {
     color: #ff4d4d; /* Lighter red on hover */
 }
+
+.inactive .nav-link {
+  color: var(--f1-text-secondary);
+}
