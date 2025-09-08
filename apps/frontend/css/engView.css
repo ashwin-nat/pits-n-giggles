@@ -36,49 +36,6 @@ body {
     flex-direction: column;
 }
 
-.eng-view-table {
-    font-size: 0.85rem;
-    background-color: var(--f1-dark) !important;
-}
-
-.eng-view-table th,
-.eng-view-table td {
-    padding: 0.3rem;
-    white-space: nowrap;
-    background-color: var(--f1-gray) !important;
-    border-color: #333 !important;
-    vertical-align: middle;
-    color: var(--f1-text);
-}
-
-.eng-view-table tbody tr:hover td {
-    background-color: var(--f1-light-gray) !important;
-}
-
-/* Column borders for both header and body cells */
-.eng-view-col-border {
-    border-right: 2px solid #333 !important;
-}
-
-.eng-view-table td.eng-view-col-border {
-    border-right: 2px solid #333 !important;
-}
-
-.tabulator-col.eng-view-table-main-header {
-    background-color: var(--f1-dark) !important;
-}
-
-.tabulator-col.eng-view-table-main-header .tabulator-col-content {
-    color: var(--f1-text);
-    text-align: center;
-    font-weight: 500;
-}
-
-.eng-view-sub-header th {
-    font-size: 0.8rem;
-    font-weight: normal;
-    color: var(--f1-text-secondary);
-}
 
 .eng-view-global-stat {
     display: inline-block;
@@ -89,13 +46,13 @@ body {
 .eng-view-global-stat label {
     display: block;
     font-size: 0.9rem;
-    color: #888;
+    color: var(--f1-text-secondary);
 }
 
 .eng-view-global-stat span {
     font-size: 1.2rem;
     font-weight: bold;
-    color: #fff;
+    color: var(--f1-text);
 }
 
 /* Weather table styles */
@@ -133,14 +90,14 @@ body {
 }
 
 /* Tyre wear rows */
-.eng-view-tyre-row-1,
-.eng-view-tyre-row-2 {
-    font-size: 0.8rem;
+.eng-view-tyre-row-1 {
+    font-size: 0.9rem;
+    color: var(--f1-text);
 }
 
 .eng-view-tyre-row-2 {
     color: var(--f1-text-secondary);
-    font-size: 0.7rem;
+    font-size: 0.8rem;
 }
 
 /* Icon and text row styling */
@@ -162,8 +119,16 @@ body {
 
 .eng-view-restricted-cell {
     font-style: italic;
-    color: #aaa;
+    color: var(--f1-text-secondary);
     background-color: #1a1a1a;
+}
+
+.telemetry-restricted-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
 }
 
 /* Race status section layout */
@@ -193,13 +158,13 @@ body {
 /* Dark theme for number input */
 input[type="number"] {
     background-color: #111 !important;
-    color: #fff !important;
+    color: var(--f1-text) !important;
     border-color: #333 !important;
 }
 
 input[type="number"]:focus {
     background-color: #222 !important;
-    color: #fff !important;
+    color: var(--f1-text) !important;
     border-color: #444 !important;
     box-shadow: 0 0 0 0.2rem rgba(66, 70, 73, 0.5) !important;
 }
@@ -226,38 +191,26 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 /* Player row highlight */
-.eng-view-table tbody tr.player-row td {
-    border-top: 2px solid #ffd700 !important;
-    border-bottom: 2px solid #ffd700 !important;
-}
-
-.eng-view-table tbody tr.player-row td:first-child {
-    border-left: 2px solid #ffd700 !important;
-}
-
-.eng-view-table tbody tr.player-row td:last-child {
-    border-right: 2px solid #ffd700 !important;
-}
 
 .green-time {
     display: inline-block;
-    color: var(--bs-success);
-    border: 2px solid currentColor;
-    border-radius: 4px;
+    color: var(--bs-success) !important;
+    border: 2px solid currentColor !important;
+    border-radius: 4px !important;
 }
 
 .purple-time {
     display: inline-block;
-    color: #d825d8;
-    border: 2px solid currentColor;
-    border-radius: 4px;
+    color: #d825d8 !important;
+    border: 2px solid currentColor !important;
+    border-radius: 4px !important;
 }
 
 .red-time {
     display: inline-block;
-    color: var(--bs-danger);
-    border: 2px solid currentColor;
-    border-radius: 4px;
+    color: var(--bs-danger) !important;
+    border: 2px solid currentColor !important;
+    border-radius: 4px !important;
 }
 
 .drs-not-available {
@@ -288,65 +241,80 @@ input[type="number"]::-webkit-outer-spin-button {
     border-radius: 4px;
 }
 
-/* Tabulator custom styling */
-#eng-view-table {
-    font-size: 0.85rem;
-    background-color: var(--f1-dark);
-    border: 1px solid #333;
-    height: 100% !important;
-}
-
-.tabulator-header {
-    background-color: var(--f1-darker) !important;
-    color: var(--f1-text) !important;
-    border-bottom: 1px solid #333;
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 1 !important;
-}
-
-.tabulator-col {
-    background-color: var(--f1-gray);
-    border-right: 1px solid #222;
-}
-
-.tabulator-col-content {
-    padding: 0.3rem;
-}
-
-.tabulator-row {
-    background-color: var(--f1-dark);
+/* AG Grid custom styling */
+.ag-theme-alpine-dark {
+    --ag-background-color: var(--f1-dark);
+    --ag-header-background-color: var(--f1-darker);
+    --ag-header-foreground-color: var(--f1-text);
+    --ag-row-background-color: var(--f1-dark);
+    --ag-odd-row-background-color: var(--f1-gray);
+    --ag-border-color: #333;
+    --ag-row-hover-color: var(--f1-light-gray);
+    --ag-selected-row-background-color: var(--f1-light-gray);
+    --ag-font-size: 1rem; /* Increased font size */
+    --ag-row-height: 38px; /* Increased row height */
     color: var(--f1-text);
 }
 
-.tabulator-row:nth-child(even) {
-    background-color: var(--f1-gray);
+.ag-header-cell-text {
+    font-weight: 500;
+    text-align: center;
+    color: var(--f1-text);
+    overflow: auto;
 }
 
-.tabulator-row:hover {
-    background-color: var(--f1-dark) !important;
+.ag-header-group-cell-label .ag-header-cell-text {
+    color: var(--f1-text);
+    font-size: 0.8rem;
+    font-weight: normal;
+    text-align: center;
 }
 
-.tabulator-row:nth-child(even):hover {
-    background-color: var(--f1-gray) !important;
+.ag-header-group-text {
+    color: var(--f1-text);
 }
 
-.tabulator-cell {
+.ag-cell {
     padding: 0.3rem;
     border-right: 1px solid #222;
+    display: flex;
+    align-items: flex-start; /* Changed to flex-start for left alignment */
+    justify-content: flex-start; /* Changed to flex-start for left alignment */
+    line-height: 1.2; /* Adjust line height for better multiline appearance */
+    text-align: left;
 }
 
-.tabulator-row.player-row .tabulator-cell {
-    border-top: 2px solid #ffd700;
-    border-bottom: 2px solid #ffd700;
+.ag-cell-single-line {
+    white-space: nowrap; /* Prevent text from wrapping */
+    overflow: hidden; /* Hide overflow text */
+    text-overflow: ellipsis; /* Add ellipsis for truncated text */
+    color: var(--f1-text);
+    text-align: left;
+    display: flex; /* Add flex display */
+    align-items: center; /* Vertically center content */
 }
 
-.tabulator-row.player-row .tabulator-cell:first-child {
-    border-left: 2px solid #ffd700;
+.ag-cell-multiline {
+    white-space: normal; /* Allow text to wrap */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start; /* Changed to flex-start for left alignment */
+    height: 100%; /* Ensure the cell takes full height */
+    color: var(--f1-text);
+    text-align: left;
 }
 
-.tabulator-row.player-row .tabulator-cell:last-child {
-    border-right: 2px solid #ffd700;
+.ag-row-hover {
+    font-weight: bold;
+}
+
+.player-row {
+    border: 2px solid #ffd700 !important;
+}
+
+.player-row .ag-cell {
+    border: none !important;
 }
 
 /* Column Visibility Pane */
@@ -382,6 +350,7 @@ input[type="number"]::-webkit-outer-spin-button {
 .column-visibility-pane .pane-header h2 {
     margin: 0;
     font-size: 1.2rem;
+    color: var(--f1-text);
 }
 
 .column-visibility-pane .pane-body {
@@ -405,14 +374,38 @@ input[type="number"]::-webkit-outer-spin-button {
     margin-right: 0.5rem;
 }
 
-#column-visibility-container .sub-column {
-    margin-left: 20px;
+.column-group-children {
+    margin-left: 20px; /* Indent the container for children */
+    border-left: 1px solid var(--f1-light-gray); /* Optional: visual indicator for children */
+    padding-left: 10px;
 }
 
-.single-line-cell {
+.column-toggle {
+    margin-bottom: 0.5rem;
+}
+
+.ag-overlay-no-rows-center {
     display: flex;
-    flex-direction: column;
-    height: 100%;
-    justify-content: center;
     align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    font-size: 1.2rem;
+    color: var(--f1-text);
+    text-align: center;
+    flex-direction: column;
+}
+
+.driver-view-link {
+    color: var(--f1-red);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.driver-view-link:hover {
+    color: #ff4d4d; /* Lighter red on hover */
+}
+
+.inactive .nav-link {
+  color: var(--f1-text-secondary);
 }
