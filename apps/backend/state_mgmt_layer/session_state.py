@@ -678,7 +678,9 @@ class SessionState:
         is_speed_trap_supported = is_new_format  # Only supported in F1 2024+
 
         # --- Start constructing base JSON from packet
-        final_json = packet.toJSON()
+        final_json = {
+            "classification-data" : []
+        }
         speed_trap_records = []
 
         # --- Initialize optional structures
@@ -690,11 +692,10 @@ class SessionState:
         # --- Loop through all drivers in the final classification
         for index, _ in enumerate(packet.m_classificationData):
             driver = self._getObjectByIndex(index, create=False)
-
-            # Add driver’s classification info
-            final_json["classification-data"][index] = driver.toJSON(index)
-
-            if driver.is_valid:
+            if driver and driver.is_valid:
+                # Add driver’s classification info
+                final_json["classification-data"].append(driver.toJSON(index))
+                # final_json["classification-data"][index] = driver.toJSON(index)
                 # Collect speed trap info
                 speed_trap_records.append(driver.getSpeedTrapRecordJSON())
 

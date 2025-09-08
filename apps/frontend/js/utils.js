@@ -330,20 +330,24 @@ function getFormattedLapTimeStr({
     isPlayer,
     index,
     spectatorIndex,
-    showAbsoluteFormat}) {
+    showAbsoluteFormat
+}) {
+    const isSaveViewerMode = spectatorIndex == null; // no spectator index -> save data viewer
+    const isReferenceCar = (!isSaveViewerMode) && spectatorIndex === index;
+    const missingPlayerLap = lapTimeMsPlayer == null;
 
-    const isReferenceCar = spectatorIndex === index;
+    const shouldShowAbsolute =
+        showAbsoluteFormat ||
+        isPlayer ||
+        isReferenceCar ||
+        isSaveViewerMode ||
+        missingPlayerLap;
 
-    if (showAbsoluteFormat || isPlayer || isReferenceCar) {
-        // Show absolute time if:
-        // - preference is absolute format
-        // - current car is player (hence not spectator mode)
-        // - spectator mode and current car is reference car
+    if (shouldShowAbsolute) {
         return formatLapTime(lapTimeMs);
-    } else {
-        // Show delta for other cars while spectating
-        return formatLapDelta(lapTimeMs, lapTimeMsPlayer, isPlayer, index);
     }
+
+    return formatLapDelta(lapTimeMs, lapTimeMsPlayer, isPlayer, index);
 }
 
 function replaceRevSuffix(str) {

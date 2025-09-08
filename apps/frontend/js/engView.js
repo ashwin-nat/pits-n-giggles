@@ -23,11 +23,62 @@ function getShortERSMode(mode) {
 }
 
 // Class to manage the race table
+class CustomHeader {
+    init(agGridParams) {
+        this.agGridParams = agGridParams;
+        this.eGui = document.createElement('div');
+        const colDef = agGridParams.column.getColDef();
+        const tooltipName = colDef.context.displayName;
+        const headerName = colDef.headerName;
+
+        const headerLabelDiv = document.createElement('div');
+        headerLabelDiv.classList.add('ag-header-cell-label');
+        headerLabelDiv.setAttribute('data-bs-toggle', 'tooltip');
+        headerLabelDiv.setAttribute('title', escapeHtml(tooltipName));
+
+        const headerTextSpan = document.createElement('span');
+        headerTextSpan.classList.add('ag-header-cell-text');
+        headerTextSpan.textContent = escapeHtml(headerName);
+
+        headerLabelDiv.appendChild(headerTextSpan);
+        this.eGui.appendChild(headerLabelDiv);
+
+        // Initialize Bootstrap tooltip for this specific header
+        this.tooltipInstance = new bootstrap.Tooltip(headerLabelDiv);
+    }
+
+    getGui() {
+        return this.eGui;
+    }
+
+    destroy() {
+        // Dispose the tooltip when the header component is destroyed
+        if (this.tooltipInstance) {
+            this.tooltipInstance.dispose();
+        }
+    }
+}
+
+class CustomNoRowsOverlay {
+    init(params) {
+        this.eGui = document.createElement('div');
+        this.eGui.classList.add('ag-overlay-no-rows-center');
+        this.eGui.innerHTML = params.noRowsMessageFunc();
+    }
+
+    getGui() {
+        return this.eGui;
+    }
+}
+
 class EngViewRaceTable {
     constructor(iconCache) {
         this.iconCache = iconCache;
-        this.table = null;
+        this.gridApi = null;
+        this.columnDefs = null;
+        this.gridInitialized = false; // Add a flag to track grid initialization
         this.spectatorIndex = null;
+        this.currEventType = null;
         this.isSpectating = false;
         this.fastestLapMs = 0;
         this.sessionUID = null;
@@ -36,218 +87,133 @@ class EngViewRaceTable {
         this.YELLOW_SECTOR = 0;
         this.GREEN_SECTOR = 1;
         this.PURPLE_SECTOR = 2;
-        this.COLUMN_WIDTHS_LS_KEY = 'eng-view-table-column-widths';
-        this.COLUMN_VISIBILITY_LS_KEY = 'eng-view-table-column-visibility';
-        this.COLUMN_ORDER_LS_KEY = 'eng-view-table-column-order';
+        this.COLUMN_STATE_LS_KEY = 'eng-view-table-column-state-ag';
         this.TELEMETRY_DISABLED_TEXT = "⌀";
-        this.initTable();
+
+        // Column visibility pane elements
+        this.settingsButton = document.getElementById('settings-btn');
+        this.columnVisibilityPane = document.getElementById('column-visibility-pane');
+        this.resetVisibilityButton = document.getElementById('reset-visibility-btn');
+        this.resetLayoutButton = document.getElementById('reset-layout-btn'); // New button
+        this.closePaneButton = document.getElementById('close-pane-btn');
+        this.columnVisibilityContainer = document.getElementById('column-visibility-container');
+
+        this.initGrid();
+        this.setupSettingsEventListeners();
     }
 
-    saveColumnWidths() {
-        const columns = this.table.getColumns();
-        const widths = {};
-
-        columns.forEach(column => {
-            const field = column.getField();
-            const width = column.getWidth();
-            if (field && width) {
-                widths[field] = width;
+    saveColumnState() {
+        if (this.gridApi) {
+            const columnState = this.gridApi.getColumnState();
+            try {
+                localStorage.setItem(this.COLUMN_STATE_LS_KEY, JSON.stringify(columnState));
+                console.debug('Column state saved:', columnState);
+                return columnState;
+            } catch (error) {
+                console.warn('Failed to save column state:', error);
+                return null;
             }
-        });
-
-        try {
-            localStorage.setItem(this.COLUMN_WIDTHS_LS_KEY, JSON.stringify(widths));
-            console.debug('Column widths saved:', widths);
-        } catch (error) {
-            console.warn('Failed to save column widths:', error);
         }
     }
 
-    loadColumnWidths() {
+    loadColumnState() {
         try {
-            const saved = localStorage.getItem(this.COLUMN_WIDTHS_LS_KEY);
+            const saved = localStorage.getItem(this.COLUMN_STATE_LS_KEY);
             if (saved) {
                 return JSON.parse(saved);
             }
         } catch (error) {
-            console.warn('Failed to load column widths:', error);
+            console.warn('Failed to load column state:', error);
         }
-        // saved data not found
-        return {};
+        return null; // Saved data not found
     }
 
-    applyColumnWidths(columnDefinitions, savedWidths) {
-        const applyWidthsRecursively = (columns) => {
-            columns.forEach(col => {
-                if (col.field && savedWidths[col.field]) {
-                    col.width = savedWidths[col.field];
-                }
-                if (col.columns) {
-                    applyWidthsRecursively(col.columns);
-                }
-            });
-        };
-
-        applyWidthsRecursively(columnDefinitions);
-    }
-
-    applyColumnVisibilityToDefinitions(columnDefinitions, savedVisibility) {
-        const applyVisibilityRecursively = (columns) => {
-            columns.forEach(col => {
-                const field = col.field || col.title;
-                if (field && savedVisibility[field] === false) {
-                    col.visible = false;
-                } else {
-                    col.visible = true; // Default to visible if not explicitly hidden
-                }
-
-                if (col.columns) {
-                    applyVisibilityRecursively(col.columns);
-                }
-            });
-        };
-        applyVisibilityRecursively(columnDefinitions);
-    }
-
-    saveColumnOrder() {
-        const columns = this.table.getColumns();
-        const order = columns.map(column => column.getField());
-
-        try {
-            localStorage.setItem(this.COLUMN_ORDER_LS_KEY, JSON.stringify(order));
-            console.debug('Column order saved:', order);
-        } catch (error) {
-            console.warn('Failed to save column order:', error);
-        }
-    }
-
-    loadColumnOrder() {
-        try {
-            const saved = localStorage.getItem(this.COLUMN_ORDER_LS_KEY);
-            if (saved) {
-                return JSON.parse(saved);
-            }
-        } catch (error) {
-            console.warn('Failed to load column order:', error);
-        }
-        // saved data not found
-        return null;
-    }
-
-    initTable() {
-        const columnDefinitions = this.getColumnDefinitions();
-
-        // Load and apply saved column widths
-        const savedWidths = this.loadColumnWidths();
-        console.debug('Saved column widths:', savedWidths);
-        this.applyColumnWidths(columnDefinitions, savedWidths);
-
-        // Load and apply saved column visibility
-        const savedVisibility = this.loadColumnVisibility();
-        console.debug('Saved column visibility:', savedVisibility);
-        this.applyColumnVisibilityToDefinitions(columnDefinitions, savedVisibility);
-
-        // Load and apply column order
-        const savedOrder = this.loadColumnOrder();
-        if (savedOrder) {
-            columnDefinitions.sort((a, b) => {
-                const indexA = savedOrder.indexOf(a.field);
-                const indexB = savedOrder.indexOf(b.field);
-                if (indexA === -1 || indexB === -1) return 0;
-                return indexA - indexB;
-            });
-        }
-
-        this.applyHeaderClass(columnDefinitions);
-
-        this.table = new Tabulator("#eng-view-table", {
-            layout: "fitColumns",
-            placeholder: "No Data Available",
-            columnHeaderSortMulti: false,
-            movableColumns: true,
-            virtualDom: false,
-            index: "id",
-            initialSort: [
-                {column: "position", dir: "asc"}
-            ],
-            columns: columnDefinitions,
-            rowFormatter: (row) => {
-                const data = row.getData();
-                const isReferenceDriver = data.isPlayer || data.index === this.spectatorIndex;
-
-                if (isReferenceDriver) {
-                    row.getElement().classList.add('player-row');
-                } else {
-                    row.getElement().classList.remove('player-row');
-                }
+    initGrid() {
+        this.columnDefs = this.getColumnDefinitions();
+        const gridOptions = {
+            columnDefs: this.columnDefs,
+            rowData: [], // Initial empty data
+            domLayout: 'normal', // or 'normal' if you want scrolling
+            rowHeight: 60, // Add this line - adjust height as needed
+            suppressColumnMoveAnimation: true,
+            suppressFieldDotNotation: false, // Allow dots in field names
+            defaultColDef: {
+                resizable: true,
+                sortable: true,
+                filter: false,
+                headerClass: "eng-view-table-main-header",
+                headerComponent: CustomHeader, // Use our custom header component
             },
-        });
+            noRowsOverlayComponent: CustomNoRowsOverlay,
+            noRowsOverlayComponentParams: {
+                noRowsMessageFunc: () => "Waiting for data... NOTE: Time Trial is not supported in Engineer View.",
+            },
+            onGridReady: (params) => {
+                this.gridApi = params.api;
+                console.debug("AG Grid ready.");
 
-        // Event listeners
-        // Distinct debounce timeouts for each event
-        this.columnResizedTimeout = null;
-        this.table.on("columnResized", (column) => {
-            // Debounce the save operation to avoid too frequent saves
-            console.debug("Column resized:", column);
-            clearTimeout(this.columnResizedTimeout);
-            this.columnResizedTimeout = setTimeout(() => {
-                this.saveColumnWidths();
-            }, 500); // Save 500ms after the last resize
-        });
+                // Apply saved column state
+                const savedColumnState = this.loadColumnState();
+                if (savedColumnState) {
+                    this.gridApi.applyColumnState({ state: savedColumnState, applyOrder: true });
+                    console.debug('Applied saved column state:', savedColumnState);
+                }
 
-        this.columnOrderChangedTimeout = null;
-        this.table.on("columnOrderChanged", (columns) => {
-            // Debounce the save operation for column order
-            console.debug("Column order changed:", columns);
-            clearTimeout(this.columnOrderChangedTimeout);
-            this.columnOrderChangedTimeout = setTimeout(() => {
-                this.saveColumnOrder();
-            }, 500); // Save 500ms after the last order change
-        });
-        this.saveColumnOrder();
+                // Add event listeners for column state changes
+                this.gridApi.addEventListener('columnResized', this.debounceSaveColumnState.bind(this));
+                this.gridApi.addEventListener('columnMoved', this.debounceSaveColumnState.bind(this));
+                this.gridApi.addEventListener('columnVisible', this.debounceSaveColumnState.bind(this));
+                this.gridApi.addEventListener('columnPinned', this.debounceSaveColumnState.bind(this)); // Add this for pinned columns
+
+                const columns = this.fetchGridColumns();
+            },
+            getRowId: (params) => params.data.id.toString(),
+            getRowClass: (params) => {
+                const data = params.data;
+                if (!data) return;
+                const isReferenceDriver = data.isPlayer || data.index === this.spectatorIndex;
+                return isReferenceDriver ? 'player-row' : '';
+            },
+            onRowClicked: (params) => {
+                const data = params.data;
+                fetch(`/driver-info?index=${data.index}`)
+                    .then(response => response.json())
+                    .then(driverData => {
+                        window.modalManager.openDriverModal(driverData, this.iconCache);
+                    })
+                    .catch(err => console.error("Fetch error:", err));
+            },
+        };
+
+        const gridDiv = document.querySelector("#eng-view-table");
+        if (!this.gridInitialized) {
+            this.grid = agGrid.createGrid(gridDiv, gridOptions);
+            this.gridInitialized = true;
+        }
     }
 
-    applyHeaderClass(columns) {
-        columns.forEach(col => {
-            col.cssClass = "eng-view-table-main-header";
-            if (col.columns) {
-                this.applyHeaderClass(col.columns);
+    debounceSaveColumnState() {
+        clearTimeout(this.columnStateSaveTimeout);
+        this.columnStateSaveTimeout = setTimeout(() => {
+            this.saveColumnState();
+        }, 500);
+    }
+
+    resetColumnState() {
+        try {
+            localStorage.removeItem(this.COLUMN_STATE_LS_KEY);
+            console.debug('Column state reset to default');
+            if (this.gridApi) {
+                this.gridApi.resetColumnState();
             }
-        });
-    }
-
-    resetColumnWidths() {
-        try {
-            localStorage.removeItem(this.COLUMN_WIDTHS_LS_KEY);
-            console.debug('Column widths reset to default');
         } catch (error) {
-            console.warn('Failed to reset column widths:', error);
+            console.warn('Failed to reset column state:', error);
         }
     }
 
-    loadColumnVisibility() {
-        try {
-            const saved = localStorage.getItem(this.COLUMN_VISIBILITY_LS_KEY);
-            if (saved) {
-                return JSON.parse(saved);
-            }
-        } catch (error) {
-            console.warn('Failed to load column visibility:', error);
-        }
-        return {}; // Saved data not found
-    }
-
-    saveColumnVisibility(visibility) {
-        try {
-            localStorage.setItem(this.COLUMN_VISIBILITY_LS_KEY, JSON.stringify(visibility));
-        } catch (error) {
-            console.warn('Failed to save column visibility:', error);
-        }
-    }
-
-    createSectorFormatter(sectorKey, timeKey, playerTimeKey, isLastLap) {
-        return (cell) => {
-            const driverInfo = cell.getRow().getData();
+    createSectorCellRenderer(sectorKey, timeKey, playerTimeKey, isLastLap) {
+        return (params) => {
+            const driverInfo = params.data;
             const lapInfo = (isLastLap) ? driverInfo["lap-info"]["last-lap"] : driverInfo["lap-info"]["best-lap"];
             const bestLapInfo = driverInfo["lap-info"]["best-lap"];
             const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
@@ -278,65 +244,30 @@ class EngViewRaceTable {
                 }
             }
 
-            const timeElement = `<div class="single-line-cell ${timeClass}">${formattedTime}</div>`;
-
             if (isReferenceDriver) {
-                return timeElement;
+                return this.createSingleLineCell(formattedTime, {className: timeClass});
             }
 
             const delta = timeMs - lapInfo[playerTimeKey];
             return this.createMultiLineCell({
-                row1: timeElement,
+                row1: formattedTime,
                 row2: formatDelta(delta),
-                escapeRow1: false
+                escapeRow1: false,
+                row1Class: timeClass // Apply the timeClass to the first row of multiline cell
             });
         };
     }
 
-    createLastLapFormatter(sectorKey, timeKey, playerTimeKey, isLastLap) {
-        return (cell) => {
-            const driverInfo = cell.getRow().getData();
-            const lapInfo = driverInfo["lap-info"]["last-lap"];
-            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
-
-            if (sectorKey === 'lap') {
-                const formattedTime = formatLapTime(lapInfo[timeKey]);
-                const bestLapInfo = driverInfo["lap-info"]["best-lap"];
-                let timeClass = '';
-                if (lapInfo[timeKey] === this.fastestLapMs) {
-                    timeClass = 'purple-time';
-                } else if (lapInfo[timeKey] === bestLapInfo[timeKey]) {
-                    timeClass = 'green-time';
-                }
-                const timeElement = `<div class="single-line-cell ${timeClass}">${formattedTime}</div>`;
-
-                if (isReferenceDriver) {
-                    return timeElement;
-                }
-
-                const delta = lapInfo[timeKey] - lapInfo[playerTimeKey];
-                return this.createMultiLineCell({
-                    row1: timeElement,
-                    row2: formatDelta(delta),
-                    escapeRow1: false
-                });
-            } else {
-                // For sectors, use the same logic as best lap
-                return this.createSectorFormatter(sectorKey, timeKey, playerTimeKey, isLastLap)(cell);
-            }
-        };
-    }
-
-    createTyreWearFormatter(wearField) {
-        return (cell) => {
-            const tyreInfo = cell.getRow().getData()["tyre-info"];
+    createTyreWearCellRenderer(wearField) {
+        return (params) => {
+            const tyreInfo = params.data["tyre-info"];
             const predictionLap = g_engView_predLapNum;
             const predictedTyreWearInfo = predictionLap
             ? tyreInfo["wear-prediction"]["predictions"].find(p => p["lap-number"] === predictionLap)
             : null;
             const currTyreWearInfo = tyreInfo["current-wear"];
 
-            const driverInfo = cell.getRow().getData();
+            const driverInfo = params.data;
             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
             if (telemetryPublic) {
                 return this.createMultiLineCell({
@@ -351,83 +282,39 @@ class EngViewRaceTable {
         };
     }
 
-    createSectorColumns(lapType) {
-        const isLastLap = lapType === 'last';
-        const formatterMethod = isLastLap ? 'createLastLapFormatter' : 'createSectorFormatter';
-
-        return [
-            {
-                title: "Lap",
-                field: `lap-info.${lapType}-lap.lap-time-ms`,
-                formatter: this[formatterMethod]('lap', 'lap-time-ms', 'lap-time-ms-player', isLastLap),
-                ...this.getDisableSorting()
-            },
-            {
-                title: "S1",
-                field: `lap-info.${lapType}-lap.s1-time-ms`,
-                formatter: this[formatterMethod]('s1', 's1-time-ms', 's1-time-ms-player', isLastLap),
-                ...this.getDisableSorting()
-            },
-            {
-                title: "S2",
-                field: `lap-info.${lapType}-lap.s2-time-ms`,
-                formatter: this[formatterMethod]('s2', 's2-time-ms', 's2-time-ms-player', isLastLap),
-                ...this.getDisableSorting()
-            },
-            {
-                title: "S3",
-                field: `lap-info.${lapType}-lap.s3-time-ms`,
-                formatter: this[formatterMethod]('s3', 's3-time-ms', 's3-time-ms-player', isLastLap),
-                ...this.getDisableSorting()
-            }
-        ];
-    }
-
-    getDisableSorting() {
-        return { headerSort: false };
-    }
-
     getColumnDefinitions() {
-        const disableSorting = this.getDisableSorting();
         return [
             {
-                title: "Pos",
+                headerName: "Pos",
+                context: {displayName: "Position"},
                 field: "position",
-                width: 40,
-                sorter: "number",
-                headerSort: false,
-                formatter: (cell) => {
-                    const driverInfo = cell.getRow().getData();
-                    const position = driverInfo.position;
-                    return this.createPositionStatusCell(position, driverInfo["driver-info"]);
-                },
+                flex: 4,
+                sortable: true,
+                cellRenderer: this.createPositionStatusCellRenderer(),
+                cellClass: 'ag-cell-multiline',
             },
             {
-                title: "Name",
+                headerName: "Name",
+                context: {displayName: "Driver Name"},
                 field: "name",
-                formatter: (cell, formatterParams, onRendered) => {
-                    const data = cell.getRow().getData();
+                flex: 12,
+                cellRenderer: (params) => {
+                    const data = params.data;
                     return this.createMultiLineCell({
                         row1: data.name,
                         row2: data.team
                     });
                 },
-                cellClick: (e, cell) => {
-                    const data = cell.getRow().getData();
-                    fetch(`/driver-info?index=${data.index}`)
-                        .then(response => response.json())
-                        .then(driverData => {
-                            window.modalManager.openDriverModal(driverData, this.iconCache);
-                        })
-                        .catch(err => console.error("Fetch error:", err));
-                },
-                ...disableSorting
+                sortable: false,
+                cellClass: 'ag-cell-multiline',
             },
             {
-                title: "Delta",
+                headerName: "Delta",
+                context: {displayName: "Delta"},
                 field: "delta-info",
-                formatter: (cell) => {
-                    const data = cell.getRow().getData();
+                flex: 8,
+                cellRenderer: (params) => {
+                    const data = params.data;
                     const position = data.position;
                     const deltaInfo = data["delta-info"];
                     const deltaToCarInFront = deltaInfo["delta-to-car-in-front"] / 1000;
@@ -443,37 +330,146 @@ class EngViewRaceTable {
                         row2: formatFloat(deltaToLeader, { precision: 3, signed: true })
                     });
                 },
-                ...disableSorting
+                sortable: false,
+                cellClass: 'ag-cell-multiline',
             },
             {
-                title: 'Penalties',
-                headerSort: false,
-                columns: [
-                    { title: "Track", field: "warns-pens-info.corner-cutting-warnings", ...disableSorting },
-                    { title: 'Time', field: 'warns-pens-info.time-penalties', ...disableSorting },
-                    { title: 'DT', field: 'warns-pens-info.num-dt', ...disableSorting },
-                    { title: 'Serv', field: 'warns-pens-info.num-sg', ...disableSorting },
+                headerName: 'Penalties',
+                context: {displayName: 'Penalties'},
+                children: [
+                    { headerName: "Track", context: {displayName: "Track Warnings"}, field: "warns-pens-info.corner-cutting-warnings", flex: 1.5, sortable: false, cellRenderer: this.createPenaltyCellRenderer("corner-cutting-warnings"), cellClass: 'ag-cell-single-line' },
+                    { headerName: 'Time', context: {displayName: "Time Penalties"}, field: 'warns-pens-info.time-penalties', flex: 1.5, sortable: false, cellRenderer: this.createPenaltyCellRenderer("time-penalties"), cellClass: 'ag-cell-single-line' },
+                    { headerName: 'DT', context: {displayName: "Drive Through"}, field: 'warns-pens-info.num-dt', flex: 1.5, sortable: false, cellRenderer: this.createPenaltyCellRenderer("num-dt"), cellClass: 'ag-cell-single-line' },
+                    { headerName: 'Serv', context: {displayName: "Stop Go"}, field: 'warns-pens-info.num-sg', flex: 1.5, sortable: false, cellRenderer: this.createPenaltyCellRenderer("num-sg"), cellClass: 'ag-cell-single-line' },
                 ],
             },
             {
-                title: 'Best Lap',
-                headerSort: false,
-                columns: this.createSectorColumns('best')
-            },
-            {
-                title: 'Last Lap',
-                headerSort: false,
-                columns: this.createSectorColumns('last')
-            },
-            {
-                title: 'Tyre Wear',
-                headerSort: false,
-                columns: [
+                headerName: 'Best Lap',
+                context: {displayName: 'Best Lap'},
+                children: [
                     {
-                        title: "Comp",
+                        headerName: "Lap",
+                        context: {displayName: "Best Lap Time"},
+                        field: `lap-info.best-lap.lap-time-ms`,
+                        cellRenderer: this.createSectorCellRenderer('lap', 'lap-time-ms', 'lap-time-ms-player', false),
+                        sortable: false,
+                        flex: 2.5,
+                        cellClass: (params) => {
+                            const driverInfo = params.data;
+                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
+                        },
+                    },
+                    {
+                        headerName: "S1",
+                        context: {displayName: "Best Sector 1"},
+                        field: `lap-info.best-lap.s1-time-ms`,
+                        cellRenderer: this.createSectorCellRenderer('s1', 's1-time-ms', 's1-time-ms-player', false),
+                        sortable: false,
+                        flex: 2.5,
+                        cellClass: (params) => {
+                            const driverInfo = params.data;
+                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
+                        },
+                    },
+                    {
+                        headerName: "S2",
+                        context: {displayName: "Best Sector 2"},
+                        field: `lap-info.best-lap.s2-time-ms`,
+                        cellRenderer: this.createSectorCellRenderer('s2', 's2-time-ms', 's2-time-ms-player', false),
+                        sortable: false,
+                        flex: 2.5,
+                        cellClass: (params) => {
+                            const driverInfo = params.data;
+                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
+                        },
+                    },
+                    {
+                        headerName: "S3",
+                        context: {displayName: "Best Sector 3"},
+                        field: `lap-info.best-lap.s3-time-ms`,
+                        cellRenderer: this.createSectorCellRenderer('s3', 's3-time-ms', 's3-time-ms-player', false),
+                        sortable: false,
+                        flex: 2.5,
+                        cellClass: (params) => {
+                            const driverInfo = params.data;
+                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
+                        },
+                    }
+                ]
+            },
+            {
+                headerName: 'Last Lap',
+                context: {displayName: 'Last Lap'},
+                children: [
+                    {
+                        headerName: "Lap",
+                        context: {displayName: "Last Lap Time"},
+                        field: `lap-info.last-lap.lap-time-ms`,
+                        cellRenderer: this.createSectorCellRenderer('lap', 'lap-time-ms', 'lap-time-ms-player', true),
+                        sortable: false,
+                        flex: 2.5,
+                        cellClass: (params) => {
+                            const driverInfo = params.data;
+                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
+                        },
+                    },
+                    {
+                        headerName: "S1",
+                        context: {displayName: "Last Sector 1"},
+                        field: `lap-info.last-lap.s1-time-ms`,
+                        cellRenderer: this.createSectorCellRenderer('s1', 's1-time-ms', 's1-time-ms-player', true),
+                        sortable: false,
+                        flex: 2.5,
+                        cellClass: (params) => {
+                            const driverInfo = params.data;
+                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
+                        },
+                    },
+                    {
+                        headerName: "S2",
+                        context: {displayName: "Last Sector 2"},
+                        field: `lap-info.last-lap.s2-time-ms`,
+                        cellRenderer: this.createSectorCellRenderer('s2', 's2-time-ms', 's2-time-ms-player', true),
+                        sortable: false,
+                        flex: 2.5,
+                        cellClass: (params) => {
+                            const driverInfo = params.data;
+                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
+                        },
+                    },
+                    {
+                        headerName: "S3",
+                        context: {displayName: "Last Sector 3"},
+                        field: `lap-info.last-lap.s3-time-ms`,
+                        cellRenderer: this.createSectorCellRenderer('s3', 's3-time-ms', 's3-time-ms-player', true),
+                        sortable: false,
+                        flex: 2.5,
+                        cellClass: (params) => {
+                            const driverInfo = params.data;
+                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
+                        },
+                    }
+                ]
+            },
+            {
+                headerName: 'Tyre Wear',
+                context: {displayName: 'Tyre Wear'},
+                children: [
+                    {
+                        headerName: "Comp",
+                        context: {displayName: "Tyre Compound"},
                         field: "tyre-info.visual-tyre-compound",
-                        formatter: (cell) => {
-                            const tyreInfo = cell.getRow().getData()["tyre-info"];
+                        flex: 4,
+                        cellRenderer: (params) => {
+                            const tyreInfo = params.data["tyre-info"];
                             const tyreIcon = this.iconCache.getIcon(tyreInfo["visual-tyre-compound"]).outerHTML;
                             const agePitInfoStr = `${tyreInfo["tyre-age"]} L (${tyreInfo["num-pitstops"]} pit)`;
                             return this.createMultiLineCell({
@@ -482,205 +478,250 @@ class EngViewRaceTable {
                                 escapeRow1: false
                             });
                         },
-                        ...disableSorting
+                        sortable: false,
+                        cellClass: 'ag-cell-multiline',
                     },
                     {
-                        title: "Rejoin",
+                        headerName: "Rejoin",
+                        context: {displayName: "Pit Rejoin Position"},
                         field: "tyre-info.pit-rejoin-position",
-                        formatter: (cell) => {
-                            const tyreInfo = cell.getRow().getData()["tyre-info"];
+                        flex: 4,
+                        cellRenderer: (params) => {
+                            const tyreInfo = params.data["tyre-info"];
                             const rejoinPosition = tyreInfo["pit-rejoin-position"] ?? null;
                             const rejoinPositionStr = (rejoinPosition != null)
                                 ? `P${tyreInfo["pit-rejoin-position"]}`
                                 : "N/A";
-                            return this.getSingleLineCell(rejoinPositionStr);
+                            return this.createSingleLineCell(rejoinPositionStr);
                         },
-                        ...disableSorting
+                        sortable: false,
+                        cellClass: 'ag-cell-single-line',
                     },
                     {
-                        title: "Lap",
+                        headerName: "Lap",
+                        context: {displayName: "Tyre Age / Pred. Lap"},
                         field: "tyre-info.tyre-age",
-                        formatter: (cell) => {
+                        flex: 4,
+                        cellRenderer: (params) => {
                             const predictionLap = g_engView_predLapNum;
                             return this.createMultiLineCell({
                                 row1: "cur",
                                 row2: predictionLap ? predictionLap : "---"
                             });
                         },
-                        ...disableSorting
+                        sortable: false,
+                        cellClass: 'ag-cell-multiline',
                     },
                     {
-                        title: "FL",
+                        headerName: "FL",
+                        context: {displayName: "Front Left Wear"},
                         field: "tyre-info.current-wear.front-left-wear",
-                        formatter: this.createTyreWearFormatter("front-left-wear"),
-                        ...disableSorting
+                        flex: 2,
+                        cellRenderer: this.createTyreWearCellRenderer("front-left-wear"),
+                        sortable: false,
+                        cellClass: 'ag-cell-multiline',
                     },
                     {
-                        title: "FR",
+                        headerName: "FR",
+                        context: {displayName: "Front Right Wear"},
                         field: "tyre-info.current-wear.front-right-wear",
-                        formatter: this.createTyreWearFormatter("front-right-wear"),
-                        ...disableSorting
+                        flex: 2,
+                        cellRenderer: this.createTyreWearCellRenderer("front-right-wear"),
+                        sortable: false,
+                        cellClass: 'ag-cell-multiline',
                     },
                     {
-                        title: "RL",
+                        headerName: "RL",
+                        context: {displayName: "Rear Left Wear"},
                         field: "tyre-info.current-wear.rear-left-wear",
-                        formatter: this.createTyreWearFormatter("rear-left-wear"),
-                        ...disableSorting
+                        flex: 2,
+                        cellRenderer: this.createTyreWearCellRenderer("rear-left-wear"),
+                        sortable: false,
+                        cellClass: 'ag-cell-multiline',
                     },
                     {
-                        title: "RR",
+                        headerName: "RR",
+                        context: {displayName: "Rear Right Wear"},
                         field: "tyre-info.current-wear.rear-right-wear",
-                        formatter: this.createTyreWearFormatter("rear-right-wear"),
-                        ...disableSorting
+                        flex: 2,
+                        cellRenderer: this.createTyreWearCellRenderer("rear-right-wear"),
+                        sortable: false,
+                        cellClass: 'ag-cell-multiline',
                     },
                 ],
             },
             {
-                title: 'ERS',
-                headerSort: false,
-                columns: [
-                    { title: "Avail", field: "ers-info.ers-percent",
-                        formatter: (cell) => {
-                            const driverInfo = cell.getRow().getData();
+                headerName: 'ERS',
+                context: {displayName: 'ERS'},
+                children: [
+                    { headerName: "Avail", context: {displayName: "ERS Available"}, field: "ers-info.ers-percent", flex: 3.33,
+                        cellRenderer: (params) => {
+                            const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return this.getSingleLineCell(cell.getValue());
+                                return this.createSingleLineCell(`${formatFloat(driverInfo["ers-info"]["ers-percent-float"])}%`);
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
-                        },
-                        ...disableSorting
+                        }, sortable: false, cellClass: 'ag-cell-single-line',
                     },
-                    { title: "Deploy", field: "ers-info.ers-deployed-this-lap",
-                        formatter: (cell) => {
-                            const driverInfo = cell.getRow().getData();
+                    { headerName: "Deploy", context: {displayName: "ERS Deployed"}, field: "ers-info.ers-deployed-this-lap", flex: 3.33,
+                        cellRenderer: (params) => {
+                            const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return this.getSingleLineCell(`${formatFloat(cell.getValue())}%`);
+                                return this.createSingleLineCell(`${formatFloat(driverInfo["ers-info"]["ers-deployed-this-lap"])}%`);
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
-                        }, ...disableSorting
+                        }, sortable: false, cellClass: 'ag-cell-single-line',
                     },
-                    { title: "Mode", field: "ers-info.ers-mode",
-                        formatter: (cell) => {
-                            const driverInfo = cell.getRow().getData();
+                    { headerName: "Mode", context: {displayName: "ERS Mode"}, field: "ers-info.ers-mode", flex: 3.33,
+                        cellRenderer: (params) => {
+                            const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return this.getSingleLineCell(getShortERSMode(cell.getValue()));
+                                return this.createSingleLineCell(getShortERSMode(driverInfo["ers-info"]["ers-mode"]));
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
-                        }, ...disableSorting
-                    },
-                ],
-            },
-            {
-                title: 'Fuel',
-                headerSort: false,
-                columns: [
-                    { title: "Total", field: "fuel-info.fuel-in-tank",
-                        formatter: (cell) => {
-                            const driverInfo = cell.getRow().getData();
-                            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
-                            if (telemetryPublic) {
-                                const cellContent = cell.getValue() == null ? "N/A"
-                                    : formatFloat(cell.getValue());
-                                return this.getSingleLineCell(cellContent);
-                            } else {
-                                return this.getTelemetryRestrictedContent();
-                            }
-                        }, ...disableSorting
-                    },
-                    { title: "Per Lap", field: "fuel-info.curr-fuel-rate",
-                        formatter: (cell) => {
-                            const driverInfo = cell.getRow().getData();
-                            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
-                            if (telemetryPublic) {
-                                const cellContent = cell.getValue() == null
-                                    ? "N/A" : formatFloat(cell.getValue());
-                                return this.getSingleLineCell(cellContent);
-                            } else {
-                                return this.getTelemetryRestrictedContent();
-                            }
-                        }, ...disableSorting
-                    },
-                    { title: "Est", field: "fuel-info.surplus-laps-png",
-                        formatter: (cell) => {
-                            const driverInfo = cell.getRow().getData();
-                            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
-                            if (telemetryPublic) {
-                                const cellContent = cell.getValue() == null ? "N/A"
-                                    : formatFloat(cell.getValue(), { signed: true });
-                                return this.getSingleLineCell(cellContent);
-                            } else {
-                                return this.getTelemetryRestrictedContent();
-                            }
-                        }, ...disableSorting
+                        }, sortable: false, cellClass: 'ag-cell-single-line',
                     },
                 ],
             },
             {
-                title: 'Damage',
-                headerSort: false,
-                columns: [
-                    { title: "FL", field: "damage-info.fl-wing-damage",
-                        formatter: (cell) =>  {
-                            const driverInfo = cell.getRow().getData();
+                headerName: 'Fuel',
+                context: {displayName: 'Fuel'},
+                children: [
+                    { headerName: "Total", context: {displayName: "Fuel In Tank"}, field: "fuel-info.fuel-in-tank", flex: 3.33,
+                        cellRenderer: (params) => {
+                            const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return this.getSingleLineCell(`${cell.getValue()}%`);
+                                const fuelInTank = driverInfo["fuel-info"]["fuel-in-tank"];
+                                const cellContent = fuelInTank == null ? "N/A"
+                                    : formatFloat(fuelInTank);
+                                return this.createSingleLineCell(cellContent);
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
-                        }, ...disableSorting
+                        }, sortable: false, cellClass: 'ag-cell-single-line',
                     },
-                    { title: "FR", field: "damage-info.fr-wing-damage",
-                        formatter: (cell) =>  {
-                            const driverInfo = cell.getRow().getData();
+                    { headerName: "Per Lap", context: {displayName: "Fuel Per Lap"}, field: "fuel-info.curr-fuel-rate", flex: 3.33,
+                        cellRenderer: (params) => {
+                            const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return this.getSingleLineCell(`${cell.getValue()}%`);
+                                const currFuelRate = driverInfo["fuel-info"]["curr-fuel-rate"];
+                                const cellContent = currFuelRate == null
+                                    ? "N/A" : formatFloat(currFuelRate);
+                                return this.createSingleLineCell(cellContent);
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
-                        }, ...disableSorting
+                        }, sortable: false, cellClass: 'ag-cell-single-line',
                     },
-                    { title: "RW", field: "damage-info.rear-wing-damage",
-                        formatter: (cell) =>  {
-                            const driverInfo = cell.getRow().getData();
+                    { headerName: "Est", context: {displayName: "Estimated Laps"}, field: "fuel-info.surplus-laps-png", flex: 3.33,
+                        cellRenderer: (params) => {
+                            const driverInfo = params.data;
                             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
                             if (telemetryPublic) {
-                                return this.getSingleLineCell(`${cell.getValue()}%`);
+                                const surplusLapsPng = driverInfo["fuel-info"]["surplus-laps-png"];
+                                const cellContent = surplusLapsPng == null ? "N/A"
+                                    : formatFloat(surplusLapsPng, { signed: true });
+                                return this.createSingleLineCell(cellContent);
                             } else {
                                 return this.getTelemetryRestrictedContent();
                             }
-                        }, ...disableSorting
+                        }, sortable: false, cellClass: 'ag-cell-single-line',
+                    },
+                ],
+            },
+            {
+                headerName: 'Damage',
+                context: {displayName: 'Damage'},
+                children: [
+                    { headerName: "FL", context: {displayName: "Front Left Wing"}, field: "damage-info.fl-wing-damage", flex: 3.33,
+                        cellRenderer: (params) =>  {
+                            const driverInfo = params.data;
+                            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+                            if (telemetryPublic) {
+                                const flWingDamage = driverInfo["damage-info"]["fl-wing-damage"];
+                                return this.createSingleLineCell(`${formatFloat(flWingDamage)}%`);
+                            } else {
+                                return this.getTelemetryRestrictedContent();
+                            }
+                        }, sortable: false, cellClass: 'ag-cell-single-line',
+                    },
+                    { headerName: "FR", context: {displayName: "Front Right Wing"}, field: "damage-info.fr-wing-damage", flex: 3.33,
+                        cellRenderer: (params) =>  {
+                            const driverInfo = params.data;
+                            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+                            if (telemetryPublic) {
+                                const frWingDamage = driverInfo["damage-info"]["fr-wing-damage"];
+                                return this.createSingleLineCell(`${formatFloat(frWingDamage)}%`);
+                            } else {
+                                return this.getTelemetryRestrictedContent();
+                            }
+                        }, sortable: false, cellClass: 'ag-cell-single-line',
+                    },
+                    { headerName: "RW", context: {displayName: "Rear Wing"}, field: "damage-info.rear-wing-damage", flex: 3.33,
+                        cellRenderer: (params) =>  {
+                            const driverInfo = params.data;
+                            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+                            if (telemetryPublic) {
+                                const rearWingDamage = driverInfo["damage-info"]["rear-wing-damage"];
+                                return this.createSingleLineCell(`${formatFloat(rearWingDamage)}%`);
+                            } else {
+                                return this.getTelemetryRestrictedContent();
+                            }
+                        }, sortable: false, cellClass: 'ag-cell-single-line',
                     },
                 ],
             },
         ];
     }
 
-    createPositionStatusCell(position, driverInfo) {
-        let statusClass = '';
-        let statusText = 'DRS';
-        if (driverInfo["is-pitting"]) {
-            statusText = 'PIT';
-            statusClass = 'driver-pitting';
-        }
-        else if (driverInfo["drs-activated"]) {
-            statusClass = 'drs-active';
-        } else if (driverInfo["drs-allowed"] || driverInfo["drs-distance"]) {
-            statusClass = 'drs-available';
-        } else {
-            statusClass = 'drs-not-available';
-        }
-        return this.createMultiLineCell({
-            row1: position,
-            row2: statusText,
-            row2Class: statusClass
-        })
+    createPenaltyCellRenderer(penaltyField) {
+        return (params) => {
+            const driverInfo = params.data;
+            const penaltyCount = driverInfo["warns-pens-info"][penaltyField];
+            const cellContent = (penaltyCount == null || penaltyCount === 0)
+                ? "0"
+                : penaltyCount.toString();
+            return this.createSingleLineCell(cellContent);
+        };
+    }
+
+    createPositionStatusCellRenderer() {
+        return (params) => {
+            const driverInfo = params.data;
+            const position = driverInfo.position;
+            let statusClass = '';
+            let statusText = 'DRS';
+            if (driverInfo["driver-info"]["is-pitting"]) {
+                statusText = 'PIT';
+                statusClass = 'driver-pitting';
+            }
+            else if (driverInfo["driver-info"]["drs-activated"]) {
+                statusClass = 'drs-active';
+            } else if (driverInfo["driver-info"]["drs-allowed"] || driverInfo["driver-info"]["drs-distance"]) {
+                statusClass = 'drs-available';
+            } else {
+                statusClass = 'drs-not-available';
+            }
+            return this.createMultiLineCell({
+                row1: position,
+                row2: statusText,
+                row2Class: statusClass
+            });
+        };
+    }
+
+    createSingleLineCell(value, { escape = true, className = '' } = {}) {
+        const processedValue = escape ? escapeHtml(value) : value;
+        const classes = `ag-cell-single-line-content ${className}`.trim();
+        return `<div class="${classes}">${processedValue}</div>`;
     }
 
     createMultiLineCell({
@@ -697,14 +738,23 @@ class EngViewRaceTable {
     }
 
     update(drivers, isSpectating, eventType, spectatorCarIndex, fastestLapMs, sessionUID, pitTimeLoss) {
+        const prevSpectatorIndex = this.spectatorIndex;
+        const prevIsSpectating = this.isSpectating;
+
         this.spectatorIndex = spectatorCarIndex;
         this.isSpectating = isSpectating;
         this.fastestLapMs = fastestLapMs;
 
         if (eventType === "Time Trial") {
-            this.table.clearData();
-            this.table.options.placeholder = "Time Trial not supported in Engineer View";
+            if (this.currEventType !== "Time Trial" && this.gridApi) {
+                this.gridApi.setGridOption("rowData", []); // Clear data for Time Trial
+                this.gridApi.showNoRowsOverlay();
+            }
             return;
+        }
+
+        if (this.gridApi) {
+            this.gridApi.hideOverlay();
         }
 
         updateReferenceLapTimes(drivers, (entry) =>
@@ -726,161 +776,226 @@ class EngViewRaceTable {
             index: driver['driver-info']['index'],
         }));
 
-        if (newTableData && newTableData.length > 0) {
-            // Store current scroll position
-            const scrollPosTop = this.table.rowManager.element.scrollTop;
-            const scrollPosLeft = this.table.rowManager.element.scrollLeft;
-
-            // Get current data to compare
-            const currentData = this.table.getData();
-            const currentDataMap = new Map(currentData.map(row => [row.id, row]));
-
-
-            if (this.needsFullUpdate(currentData, newTableData, currentDataMap, sessionUID)) {
-                // If reference driver changed or new drivers, do full update
-                this.table.setData(newTableData).then(() => {
-                    // Force sort by position after full update
-                    if (this.table && typeof this.table.setSort === 'function') {
-                        this.table.setSort("position", "asc");
-                    } else {
-                        console.warn("Tabulator table or setSort function not available for sorting.");
-                    }
-
-                    setTimeout(() => {
-                        this.table.rowManager.element.scrollTop = scrollPosTop;
-                        this.table.rowManager.element.scrollLeft = scrollPosLeft;
-                    }, 10);
-                });
+        if (this.gridApi) {
+            if (newTableData && newTableData.length > 0) {
+                // Set all row data - AG Grid will handle efficient updates internally
+                this.gridApi.setGridOption('rowData', newTableData);
             } else {
-                // Find rows that need updates
-                const rowsToUpdate = [];
-                const newDriverIds = new Set(newTableData.map(d => d.id));
+                // Clear data if no new data
+                this.gridApi.setGridOption('rowData', []);
+            }
 
-                newTableData.forEach(newRow => {
-                    const existingRow = currentDataMap.get(newRow.id);
-                    if (!existingRow || this.hasDataChanged(existingRow, newRow)) {
-                        rowsToUpdate.push(newRow);
-                    }
-                });
-
-                // Remove drivers that are no longer in the race
-                const rowsToDelete = currentData
-                    .filter(row => !newDriverIds.has(row.id))
-                    .map(row => row.id);
-
-                // Delete removed rows first
-                if (rowsToDelete.length > 0) {
-                    this.table.deleteRow(rowsToDelete);
-                }
-
-                // Update or add rows that have changed
-                if (rowsToUpdate.length > 0) {
-                    this.table.updateOrAddData(rowsToUpdate).then(() => {
-                        // Force sort by position after update
-                        if (this.table && typeof this.table.setSort === 'function') {
-                            this.table.setSort("position", "asc");
-                        } else {
-                            console.warn("Tabulator table or setSort function not available for sorting after update.");
-                        }
-
-                        // Restore scroll position after a short delay to ensure sorting is complete
-                        setTimeout(() => {
-                            this.table.rowManager.element.scrollTop = scrollPosTop;
-                            this.table.rowManager.element.scrollLeft = scrollPosLeft;
-                        }, 10);
-                    });
-                }
+            // If spectator index or spectating status changed, redraw rows to update 'player-row' class
+            if (prevSpectatorIndex !== this.spectatorIndex || prevIsSpectating !== this.isSpectating) {
+                this.gridApi.redrawRows();
             }
         }
+        this.currEventType = eventType;
     }
-
-    needsFullUpdate(currentData, newData, currentDataMap, sessionUID) {
-        // If different number of drivers, need full update
-        if (currentData.length !== newData.length) {
-            return true;
-        }
-
-        // If session ID has changed, need update
-        if (this.sessionUID !== sessionUID) {
-            this.sessionUID = sessionUID;
-            console.debug("Session UID changed, forcing full update", sessionUID);
-            return true;
-        }
-
-        // Check if spectator or player reference changed (affects all formatters)
-        for (const newRow of newData) {
-            const existingRow = currentDataMap.get(newRow.id);
-            if (existingRow && existingRow.isPlayer !== newRow.isPlayer) {
-                  return true;
-            }
-        }
-
-        // Check if spectator index changed (affects reference driver calculations)
-        const currentReferenceDrivers = currentData.filter(d => d.isPlayer || d.index === this.spectatorIndex);
-        const newReferenceDrivers = newData.filter(d => d.isPlayer || d.index === this.spectatorIndex);
-
-        if (currentReferenceDrivers.length !== newReferenceDrivers.length) {
-            return true;
-        }
-
-        if (currentReferenceDrivers.length > 0 && newReferenceDrivers.length > 0) {
-            if (currentReferenceDrivers[0].id !== newReferenceDrivers[0].id) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    hasDataChanged(oldData, newData) {
-        // Compare key fields that would affect display
-        // Add more fields as needed
-        const fieldsToCompare = [
-            'position',
-            'name',
-            'team',
-            'delta-info',
-            'warns-pens-info',
-            'lap-info',
-            'tyre-info',
-            'ers-info',
-            'fuel-info',
-            'damage-info',
-            'driver-info',
-            'isPlayer'
-        ];
-
-        for (const field of fieldsToCompare) {
-            if (!_.isEqual(oldData[field], newData[field])) {
-                return true;
-            }
-        }
-
-        // Also check if reference driver status changed (affects formatting)
-        const oldIsReference = oldData.isPlayer || oldData.index === this.spectatorIndex;
-        const newIsReference = newData.isPlayer || newData.index === this.spectatorIndex;
-        if (oldIsReference !== newIsReference) {
-            return true;
-        }
-
-        return false;
-    }
-
 
     getTelemetryRestrictedContent() {
-        return this.getSingleLineCell(this.TELEMETRY_DISABLED_TEXT);
-    }
-
-    getSingleLineCell(value, escape = true) {
-        const processedValue = escape ? escapeHtml(value) : value;
-        return `<div class="single-line-cell">${processedValue}</div>`;
+        return `<div class="telemetry-restricted-text">${this.TELEMETRY_DISABLED_TEXT}</div>`;
     }
 
     clear() {
-        this.table.clearData();
+        if (this.gridApi) {
+            this.gridApi.setGridOption('rowData', []);
+        }
+    }
+
+    fetchGridColumns() {
+        if (this.gridApi) {
+            const allColumns = this.gridApi.getColumns();
+            const columnNames = allColumns.map(column => column.getColDef().headerName || column.getColDef().field);
+            console.log("AG Grid Columns:", columnNames);
+            return columnNames;
+        }
+        console.warn("AG Grid gridApi not available.");
+        return [];
+    }
+    setupSettingsEventListeners() {
+        this.settingsButton.addEventListener('click', () => this.toggleColumnVisibilityPane());
+        this.closePaneButton.addEventListener('click', () => this.toggleColumnVisibilityPane());
+        this.resetVisibilityButton.addEventListener('click', () => this.resetColumnVisibility());
+        this.resetLayoutButton.addEventListener('click', () => this.resetColumnLayout()); // New event listener
+    }
+
+    toggleColumnVisibilityPane() {
+        this.columnVisibilityPane.classList.toggle('open');
+        if (this.columnVisibilityPane.classList.contains('open')) {
+            this.populateColumnVisibilityToggles();
+        }
+    }
+
+    resetColumnVisibility() {
+        this.resetColumnState(); // Call the existing method to reset AG Grid state
+        this.populateColumnVisibilityToggles(); // Re-populate toggles to reflect default state
+    }
+
+    populateColumnVisibilityToggles() {
+        if (!this.gridApi) {
+            console.warn("AG Grid API not available for populating column toggles.");
+            return;
+        }
+
+        this.columnVisibilityContainer.innerHTML = ''; // Clear existing toggles
+        let groupCounter = 0; // synthetic IDs for groups without colId/field
+
+        const createToggle = (colDef, parentColId = null, isGroup = false, initialIsVisible = null) => {
+            let colId = colDef.colId || colDef.field;
+
+            // For groups with no id/field, generate synthetic one
+            if (!colId && isGroup) {
+                colId = `__group_${groupCounter++}`;
+            }
+            if (!colId) return;
+
+            const column = this.gridApi.getColumn(colId);
+            // groups without backing columns won't exist in gridApi
+            const isVisible = initialIsVisible !== null ? initialIsVisible : (column ? column.isVisible() : true);
+
+            const displayName = colDef.context?.displayName || colDef.headerName || colDef.field || 'Group';
+
+            const toggleDiv = document.createElement('div');
+            toggleDiv.classList.add('form-check', 'form-switch', 'column-toggle');
+            if (parentColId) {
+                toggleDiv.classList.add('child-column-toggle');
+            }
+
+            const input = document.createElement('input');
+            input.classList.add('form-check-input');
+            input.type = 'checkbox';
+            input.id = `toggle-${colId}`;
+            input.checked = isVisible;
+
+            const label = document.createElement('label');
+            label.classList.add('form-check-label');
+            label.htmlFor = `toggle-${colId}`;
+            label.textContent = displayName;
+
+            input.addEventListener('change', (event) => {
+                const checked = event.target.checked;
+                let hasChanged = false;
+
+                if (column) {
+                    column.setVisible(checked);
+                    hasChanged = true;
+                }
+
+                if (colDef.children) {
+                    colDef.children.forEach(childColDef => {
+                        const childColId = childColDef.colId || childColDef.field;
+                        if (childColId) {
+                            const childColumn = this.gridApi.getColumn(childColId);
+                            if (childColumn) {
+                                childColumn.setVisible(checked);
+                                hasChanged = true;
+                            }
+                            const childInput = document.getElementById(`toggle-${childColId}`);
+                            if (childInput) {
+                                childInput.checked = checked;
+                            }
+                        }
+                    });
+                }
+                if (hasChanged) {
+                    const savedColumnState = this.saveColumnState();
+                    if (savedColumnState) {
+                        this.gridApi.applyColumnState({ state: savedColumnState, applyOrder: true });
+                    }
+                }
+            });
+
+            toggleDiv.appendChild(input);
+            toggleDiv.appendChild(label);
+            return toggleDiv;
+        };
+
+        this.columnDefs.forEach(colDef => {
+            if (colDef.children) {
+                // column group
+                const groupDiv = document.createElement('div');
+                groupDiv.classList.add('column-group');
+
+                // Determine initial visibility for the parent group
+                const anyChildVisible = colDef.children.some(childColDef => {
+                    const childColId = childColDef.colId || childColDef.field;
+                    const childColumn = childColId ? this.gridApi.getColumn(childColId) : null;
+                    return childColumn ? childColumn.isVisible() : false;
+                });
+
+                const parentToggle = createToggle(colDef, null, true, anyChildVisible);
+                if (parentToggle) {
+                    groupDiv.appendChild(parentToggle);
+                }
+
+                const childrenContainer = document.createElement('div');
+                childrenContainer.classList.add('column-group-children');
+
+                colDef.children.forEach(childColDef => {
+                    if (!childColDef.colId && childColDef.field) {
+                        childColDef.colId = childColDef.field;
+                    }
+                    const childToggle = createToggle(childColDef, colDef.colId || colDef.field);
+                    if (childToggle) {
+                        childrenContainer.appendChild(childToggle);
+                    }
+                });
+                groupDiv.appendChild(childrenContainer);
+                this.columnVisibilityContainer.appendChild(groupDiv);
+            } else {
+                // regular column
+                const toggle = createToggle(colDef);
+                if (toggle) {
+                    this.columnVisibilityContainer.appendChild(toggle);
+                }
+            }
+        });
+    }
+
+    resetColumnLayout() {
+        if (this.gridApi) {
+            // Get the initial column definitions to restore default widths and order
+            const initialColumnDefs = this.getColumnDefinitions();
+            const initialColumnState = [];
+
+            // Recursively process column definitions to build the initial state
+            const processColDefs = (colDefs) => {
+                colDefs.forEach(colDef => {
+                    if (colDef.children) {
+                        processColDefs(colDef.children);
+                    } else {
+                        initialColumnState.push({
+                            colId: colDef.colId || colDef.field,
+                            width: colDef.width || colDef.flex ? undefined : 100, // Default width if not flex
+                            flex: colDef.flex,
+                            hide: false, // Ensure visibility is not reset here
+                            pinned: colDef.pinned || null,
+                        });
+                    }
+                });
+            };
+            processColDefs(initialColumnDefs);
+
+            // Get the current column visibility state
+            const currentColumnState = this.gridApi.getColumnState();
+            const visibilityState = currentColumnState.reduce((acc, col) => {
+                acc[col.colId] = col.hide;
+                return acc;
+            }, {});
+
+            // Merge initial layout with current visibility
+            const newState = initialColumnState.map(col => ({
+                ...col,
+                hide: visibilityState[col.colId] !== undefined ? visibilityState[col.colId] : col.hide,
+            }));
+
+            this.gridApi.applyColumnState({ state: newState, applyOrder: true });
+            localStorage.removeItem(this.COLUMN_STATE_LS_KEY); // Clear saved state to ensure defaults are used
+            console.debug('Column layout (positions and widths) reset to default, visibility preserved.');
+        }
     }
 }
-
 function formatSessionTime(seconds) {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
@@ -1140,139 +1255,6 @@ function initDashboard() {
 
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
-
-    // Column Visibility Pane Logic
-    const columnVisibilityPane = document.getElementById('column-visibility-pane');
-    const settingsBtn = document.getElementById('settings-btn');
-    const closePaneBtn = document.getElementById('close-pane-btn');
-    const columnVisibilityContainer = document.getElementById('column-visibility-container');
-    const resetVisibilityBtn = document.getElementById('reset-visibility-btn');
-
-    settingsBtn.onclick = function() {
-        columnVisibilityPane.classList.add('open');
-        populateColumnVisibility();
-    }
-
-    closePaneBtn.onclick = function() {
-        columnVisibilityPane.classList.remove('open');
-    }
-
-    resetVisibilityBtn.onclick = function() {
-        // Clear the visibility from local storage so it resets to default
-        localStorage.removeItem(raceTable.COLUMN_VISIBILITY_LS_KEY);
-
-        // Re-populate the checkboxes which will now be all checked
-        populateColumnVisibility();
-
-        // Apply the default visibility to the table
-        applyColumnVisibility();
-    };
-
-    // Close the pane if clicked outside
-    window.addEventListener('click', function(event) {
-        if (!columnVisibilityPane.contains(event.target) && !settingsBtn.contains(event.target) && columnVisibilityPane.classList.contains('open')) {
-            columnVisibilityPane.classList.remove('open');
-        }
-    });
-
-    function populateColumnVisibility() {
-        columnVisibilityContainer.innerHTML = '';
-        const columns = raceTable.table.getColumns(true);
-        const visibility = raceTable.loadColumnVisibility();
-
-        columns.forEach(column => {
-            if (column.getDefinition().title) {
-                createCheckbox(column, columnVisibilityContainer, visibility);
-            }
-        });
-    }
-
-    function createColumnToggle(column, container, visibility, isSub = false) {
-        const columnDef = column.getDefinition();
-        const field = column.getField() || columnDef.title;
-        const isVisible = visibility[field] !== false; // Default to visible
-
-        const formCheckDiv = document.createElement('div');
-        formCheckDiv.classList.add('form-check', 'form-switch');
-        if (isSub) {
-            formCheckDiv.classList.add('sub-column');
-        }
-
-        const input = document.createElement('input');
-        input.classList.add('form-check-input');
-        input.type = 'checkbox';
-        input.role = 'switch';
-        input.id = `toggle-${field}`;
-        input.checked = isVisible;
-        input.dataset.field = field; // Store field name for easy lookup
-
-        const label = document.createElement('label');
-        label.classList.add('form-check-label');
-        label.htmlFor = `toggle-${field}`;
-        label.textContent = columnDef.title;
-
-        input.onchange = () => {
-            const newVisibility = raceTable.loadColumnVisibility();
-            newVisibility[field] = input.checked;
-
-            // Handle parent/child visibility
-            const subColumns = column.getDefinition().columns;
-            if (subColumns && subColumns.length > 0) {
-                subColumns.forEach(subColumnDef => {
-                    const subField = subColumnDef.field || subColumnDef.title;
-                    newVisibility[subField] = input.checked;
-                    const subInput = columnVisibilityContainer.querySelector(`input[data-field="${subField}"]`);
-                    if (subInput) {
-                        subInput.checked = input.checked;
-                        subInput.disabled = !input.checked;
-                    }
-                });
-            }
-
-            raceTable.saveColumnVisibility(newVisibility);
-            applyColumnVisibility();
-        };
-
-        formCheckDiv.appendChild(input);
-        formCheckDiv.appendChild(label);
-        container.appendChild(formCheckDiv);
-
-        const subColumns = column.getDefinition().columns;
-        if (subColumns && subColumns.length > 0) {
-            const columnComponents = column.getSubColumns();
-            columnComponents.forEach(subColumnComponent => {
-                createColumnToggle(subColumnComponent, container, visibility, true);
-            });
-        }
-    }
-
-    function populateColumnVisibility() {
-        columnVisibilityContainer.innerHTML = '';
-        const columns = raceTable.table.getColumns(true);
-        const visibility = raceTable.loadColumnVisibility();
-
-        columns.forEach(column => {
-            if (column.getDefinition().title) {
-                createColumnToggle(column, columnVisibilityContainer, visibility);
-            }
-        });
-    }
-
-    function applyColumnVisibility() {
-        const visibility = raceTable.loadColumnVisibility();
-        raceTable.table.getColumns().forEach(column => {
-            const field = column.getField() || column.getDefinition().title;
-            if (visibility[field] === false) {
-                column.hide();
-            } else {
-                column.show();
-            }
-        });
-    }
-
-    // Apply visibility on initial load
-    // This is no longer needed as visibility is applied during table initialization
-    // applyColumnVisibility();
 }
 
 // Start the dashboard when the page loads
