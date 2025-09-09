@@ -119,10 +119,10 @@ async def getMostRecentPoleLap(
             driver_name=rsp["driver_name"],
             driver_num=rsp["driver_number"],
             team_name=rsp["team_name"],
-            lap_ms=rsp["lap_duration"] * 1000,
-            s1_ms=rsp["duration_sector_1"] * 1000,
-            s2_ms=rsp["duration_sector_2"] * 1000,
-            s3_ms=rsp["duration_sector_3"] * 1000,
+            lap_ms=int(rsp["lap_duration"] * 1000),
+            s1_ms=int(rsp["duration_sector_1"] * 1000),
+            s2_ms=int(rsp["duration_sector_2"] * 1000),
+            s3_ms=int(rsp["duration_sector_3"] * 1000),
             speed_trap_kmph=rsp["st_speed"])
 
     return None
