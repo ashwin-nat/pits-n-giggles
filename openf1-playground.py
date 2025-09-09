@@ -37,33 +37,4 @@ async def run_async_stuff():
 
 
 if __name__ == "__main__":
-    if rsp := fetch_f1_sessions():
-        print("got sessions")
-        # build the dict
-
-        # Get list of circuits
-        circuit_map = {item["circuit_short_name"]: item["circuit_key"] for item in rsp}
-        print(json.dumps(circuit_map, indent=4))
-    else:
-        print("failed to get sessions")
-
-    print('*' * 50)
-    if rsp := fetch_f1_session_winner():
-        print("got session winner")
-        print(json.dumps(rsp, indent=4))
-    else:
-        print("failed to get session winner")
-
-    # Fetch most recent quali at given track
-    # if rsp :=
-
-# 1. go 3 years back [2025, 2024, 2023]. find session ID for quali
-#     https://api.openf1.org/v1/sessions?year=2025&circuit_key=63
-# 2. find pole driver using session ID
-#     https://api.openf1.org/v1/starting_grid?session_key=10010&position%3C=1
-# 3. find driver details
-#     https://api.openf1.org/v1/drivers?driver_number=81&session_key=10010
-# 4. find fastest lap
-#     https://api.openf1.org/v1/laps?session_key=10010&driver_number=81
-
     asyncio.run(run_async_stuff())
