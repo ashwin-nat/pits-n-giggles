@@ -35,7 +35,7 @@ if __name__ == "__main__":
 
         # Get list of circuits
         circuit_map = {item["circuit_short_name"]: item["circuit_key"] for item in rsp}
-        print(circuit_map)
+        print(json.dumps(circuit_map, indent=4))
     else:
         print("failed to get sessions")
 
