@@ -796,6 +796,7 @@ class DriversListRsp:
 
         # Init the TT packet copy
         self.m_time_trial_packet = _session_state_ref.m_time_trial_packet
+        self.m_irl_pole_lap = _session_state_ref.m_session_info.m_most_recent_pole_lap
 
         # Insert top speed into the lap-history-data records
         if player_obj.m_packet_copies.m_packet_session_history:
@@ -814,6 +815,7 @@ class DriversListRsp:
             "session-history": session_history,
             "tt-data": self.m_time_trial_packet.toJSON() if self.m_time_trial_packet else None,
             "tt-setups" : self._getTTSetupJSON(),
+            "irl-pole-lap": self.m_irl_pole_lap.toJSON() if self.m_irl_pole_lap else None
         }
 
     def _getTTSetupJSON(self) -> Dict[str, Any]:
