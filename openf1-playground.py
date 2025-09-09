@@ -1,5 +1,8 @@
 import requests
 import json
+import asyncio
+from lib.openf1 import getMostRecentPoleLap
+from lib.f1_types import TrackID
 
 def make_openf1_request(endpoint, params=None):
     base_url = "https://api.openf1.org/v1/"
@@ -28,6 +31,11 @@ def fetch_f1_session_winner(session_key=7782):
     }
     return make_openf1_request("session_result", params)
 
+async def run_async_stuff():
+    lap = await getMostRecentPoleLap(TrackID.Spa)
+    print(lap)
+
+
 if __name__ == "__main__":
     if rsp := fetch_f1_sessions():
         print("got sessions")
@@ -45,3 +53,17 @@ if __name__ == "__main__":
         print(json.dumps(rsp, indent=4))
     else:
         print("failed to get session winner")
+
+    # Fetch most recent quali at given track
+    # if rsp :=
+
+# 1. go 3 years back [2025, 2024, 2023]. find session ID for quali
+#     https://api.openf1.org/v1/sessions?year=2025&circuit_key=63
+# 2. find pole driver using session ID
+#     https://api.openf1.org/v1/starting_grid?session_key=10010&position%3C=1
+# 3. find driver details
+#     https://api.openf1.org/v1/drivers?driver_number=81&session_key=10010
+# 4. find fastest lap
+#     https://api.openf1.org/v1/laps?session_key=10010&driver_number=81
+
+    asyncio.run(run_async_stuff())
