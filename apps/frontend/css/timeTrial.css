@@ -138,6 +138,10 @@
     border-left: 4px solid #9c88ff;
 }
 
+.tt-irl-pole-lap {
+    border-left: 4px solid #00bcd4; /* A cyan-like color for IRL Pole Lap */
+}
+
 .tt-card-header {
     padding: 10px 12px;
     border-bottom: 1px solid #555;
@@ -172,6 +176,10 @@
 
 .tt-theoretical-best .tt-card-title {
     color: #9c88ff;
+}
+
+.tt-irl-pole-lap .tt-card-title {
+    color: #00bcd4; /* Matching color for the title */
 }
 
 .tt-main-time {

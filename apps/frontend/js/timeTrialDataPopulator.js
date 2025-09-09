@@ -28,6 +28,7 @@ class TimeTrialDataPopulator {
                 this.hideComparisonCardsForOlderFormat();
             }
 
+            this.updateIrlPoleLap(data["irl-pole-lap"]);
             this.updateTheoreticalBestAndSessionInfo(data['session-history']);
             this.lastData = data;
         } catch (error) {
@@ -344,6 +345,51 @@ class TimeTrialDataPopulator {
         }
     }
 
+    /**
+     * Update IRL Pole Lap card
+     */
+    updateIrlPoleLap(irlPoleLapData) {
+        const titleElement = document.getElementById('tt-irl-title');
+        const timeElement = document.getElementById('tt-irl-time');
+        const s1Element = document.getElementById('tt-irl-s1');
+        const s2Element = document.getElementById('tt-irl-s2');
+        const s3Element = document.getElementById('tt-irl-s3');
+
+        if (irlPoleLapData) {
+            const lapTimeStr = this.formatMillisecondsToLapTime(irlPoleLapData['lap-ms']);
+            const s1Str = this.formatMillisecondsToSectorTime(irlPoleLapData['s1-ms']);
+            const s2Str = this.formatMillisecondsToSectorTime(irlPoleLapData['s2-ms']);
+            const s3Str = this.formatMillisecondsToSectorTime(irlPoleLapData['s3-ms']);
+
+            if (titleElement) titleElement.textContent = `${irlPoleLapData['driver-name']} - ${irlPoleLapData['year']}`;
+            if (timeElement) timeElement.textContent = lapTimeStr;
+            if (s1Element) s1Element.textContent = s1Str;
+            if (s2Element) s2Element.textContent = s2Str;
+            if (s3Element) s3Element.textContent = s3Str;
+        } else {
+            if (titleElement) titleElement.textContent = 'IRL Pole Lap';
+            if (timeElement) timeElement.textContent = '--:--:---';
+            if (s1Element) s1Element.textContent = '--:---';
+            if (s2Element) s2Element.textContent = '--:---';
+            if (s3Element) s3Element.textContent = '--:---';
+        }
+    }
+
+    formatMillisecondsToLapTime(ms) {
+        if (!ms) return '--:--:---';
+        const minutes = Math.floor(ms / 60000);
+        const seconds = Math.floor((ms % 60000) / 1000);
+        const milliseconds = ms % 1000;
+        return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
+    }
+
+    formatMillisecondsToSectorTime(ms) {
+        if (!ms) return '--:---';
+        const seconds = Math.floor(ms / 1000);
+        const milliseconds = ms % 1000;
+        return `${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
+    }
+
     getAssistText(assistValue) {
         return assistValue ? '✅' : '❌';
     }
@@ -430,6 +476,21 @@ class TimeTrialDataPopulator {
             if (gearsEl) gearsEl.textContent = 'Gears: -';
             if (wingsEl) wingsEl.textContent = '-';
         });
+
+        // Clear IRL Pole Lap data
+        const irlTitleEl = document.getElementById('tt-irl-title');
+        const irlTimeEl = document.getElementById('tt-irl-time');
+        const irlS1El = document.getElementById('tt-irl-s1');
+        const irlS2El = document.getElementById('tt-irl-s2');
+        const irlS3El = document.getElementById('tt-irl-s3');
+        const irlDetailsAssistsEl = document.getElementById('tt-irl-details-assists');
+
+        if (irlTitleEl) irlTitleEl.textContent = 'IRL Pole Lap';
+        if (irlTimeEl) irlTimeEl.textContent = '--:--:---';
+        if (irlS1El) irlS1El.textContent = '--:---';
+        if (irlS2El) irlS2El.textContent = '--:---';
+        if (irlS3El) irlS3El.textContent = '--:---';
+        if (irlDetailsAssistsEl) irlDetailsAssistsEl.innerHTML = '';
 
         // Clear theoretical best and session info
         const theoreticalElements = [
