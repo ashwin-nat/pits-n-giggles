@@ -48,7 +48,10 @@ def initExternalApiTask(
     """
     tasks.append(asyncio.create_task(externalApiTask(logger, shutdown_event, session_state_ref), name="External API Task"))
 
-async def externalApiTask(logger: logging.Logger, shutdown_event: asyncio.Event, session_state_ref: SessionState) -> None:
+async def externalApiTask(
+        logger: logging.Logger,
+        shutdown_event: asyncio.Event,
+        session_state_ref: SessionState) -> None:
     """The actual task that calls the external API's
 
     Args:
@@ -60,8 +63,14 @@ async def externalApiTask(logger: logging.Logger, shutdown_event: asyncio.Event,
     while not shutdown_event.is_set():
         message: Optional[SessionChangeNotification] = await AsyncInterTaskCommunicator().receive("external-api-update")
         if message:
-            logger.info(f"External API update: {message}")
-            pole_lap = await getMostRecentPoleLap(track_id=message.m_trackID)
+            if not message.m_formula_type.is_f1() or not message.m_session_type.isQualiTypeSession():
+                logger.debug("Skipping external API update as session is unsupported. %s", message)
+                pole_lap = None
+            try:
+                pole_lap = await getMostRecentPoleLap(track_id=message.m_trackID, logger=logger)
+            except Exception as e: # pylint: disable=broad-exception-caught
+                logger.error(f"Error fetching most recent pole lap: {e}")
+                pole_lap = None
             session_state_ref.m_session_info.m_most_recent_pole_lap = pole_lap
 
     logger.debug("Shutting down External API task...")
