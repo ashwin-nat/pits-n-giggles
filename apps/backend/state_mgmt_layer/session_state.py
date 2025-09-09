@@ -46,7 +46,7 @@ from lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils,
                           ResultReason, ResultStatus, SafetyCarType,
                           SessionType, TrackID,
                           VisualTyreCompound, WeatherForecastSample)
-from lib.inter_task_communicator import TyreDeltaMessage
+from lib.inter_task_communicator import TyreDeltaMessage, AsyncInterTaskCommunicator
 from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
@@ -901,7 +901,7 @@ class SessionState:
         self.clear(reason)
         self.setRaceOngoing()
 
-    def processSessionUpdate(self, packet: PacketSessionData) -> bool:
+    async def processSessionUpdate(self, packet: PacketSessionData) -> bool:
         """Update the data strctures with session data
         Args:
             packet (PacketSessionData): Session data packet
@@ -909,9 +909,11 @@ class SessionState:
             bool - True if all data needs to be reset
         """
 
-        self._processSessionUpdateHelper(packet)
+        session_changed = self._processSessionUpdateHelper(packet)
         if should_clear := self.m_session_info.processSessionUpdate(packet):
             self.clear("session update")
+        if session_changed:
+            self._notifyExternalApiTask()
         return should_clear
 
 
@@ -1355,16 +1357,21 @@ class SessionState:
         # Check if this guy's lap is faster than the best lap
         return self.m_driver_data[self.m_fastest_index].m_lap_info.m_best_lap_ms > driver_best_lap_ms
 
-    def _processSessionUpdateHelper(self, packet: PacketSessionData) -> None:
+    def _processSessionUpdateHelper(self, packet: PacketSessionData) -> bool:
         """Process the Session Update packet. Update the total laps and ideal pit window for the player
 
         Args:
             packet (PacketSessionData): The incoming parsed packet object
+
+        Returns:
+            bool: True if all data needs to be reset
         """
 
+        session_changed = False
         if not self.m_first_session_update_received:
             # This is the first session update for this session. log the session info only once
             self.m_first_session_update_received = True
+            session_changed = True
             self.m_logger.info("Session update received: "
                                f"Game Year: {packet.m_header.m_gameYear}, "
                                f"ID: {packet.m_header.m_sessionUID}, "
@@ -1393,6 +1400,12 @@ class SessionState:
                 else max(packet.m_safetyCarStatus, obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status)
             )
             obj_to_be_updated.updateTotalLaps(packet.m_totalLaps)
+
+        return session_changed
+
+    async def _notifyExternalApiTask(self) -> None:
+        """Notify the external api task that the session has been updated"""
+        await AsyncInterTaskCommunicator().send("external-api-update", "session update")
 
     def _getCollisionObj(self, driver_1_index: int, driver_2_index: int) -> Optional[CollisionRecord]:
         """Returns a collision object containing collision information

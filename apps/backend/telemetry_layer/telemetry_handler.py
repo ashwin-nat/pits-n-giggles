@@ -225,7 +225,7 @@ class F1TelemetryHandler:
                 self.m_logger.info("Session duration is 0. clearing data structures")
                 self.clearAllDataStructures("Session duration is 0")
 
-            elif self.m_session_state_ref.processSessionUpdate(packet):
+            elif await self.m_session_state_ref.processSessionUpdate(packet):
                 self.m_logger.info("Session UID changed. clearing data structures")
                 self.clearAllDataStructures("Session UID changed")
 
