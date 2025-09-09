@@ -246,6 +246,9 @@ class AsyncInterTaskCommunicator:
             return None if item is self._unblock_receivers_obj else item
         except asyncio.TimeoutError:
             return None
+        except asyncio.CancelledError:
+            # If any task calls shutdown
+            return None
 
     async def unblock_receivers(self) -> None:
         """Unblocks any tasks waiting for messages on all queues."""
