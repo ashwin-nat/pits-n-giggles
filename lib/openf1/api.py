@@ -57,14 +57,6 @@ class MostRecentPoleLap:
     s2_ms: Optional[int] = None
     s3_ms: Optional[int] = None
 
-    def __str__(self) -> str:
-        """Return the string representation of the circuit ID."""
-        return str(self.circuit_id)
-
-    def __repr__(self) -> str:
-        """Return the debug representation of the object (circuit ID)."""
-        return str(self.circuit_id)
-
     def toJSON(self) -> Dict[str, Any]:
         """
         Convert the dataclass instance into a JSON-serializable dictionary.
