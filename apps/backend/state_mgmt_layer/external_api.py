@@ -24,9 +24,10 @@
 
 import asyncio
 import logging
-from typing import List
+from typing import List, Optional
 
-from lib.inter_task_communicator import AsyncInterTaskCommunicator
+from lib.inter_task_communicator import AsyncInterTaskCommunicator, SessionChangeNotification
+from lib.openf1 import getMostRecentPoleLap
 
 from .telemetry_state import SessionState
 
@@ -57,8 +58,10 @@ async def externalApiTask(logger: logging.Logger, shutdown_event: asyncio.Event,
     """
 
     while not shutdown_event.is_set():
-        if message := await AsyncInterTaskCommunicator().receive("external-api-update"):
+        message: Optional[SessionChangeNotification] = await AsyncInterTaskCommunicator().receive("external-api-update")
+        if message:
             logger.info(f"External API update: {message}")
-            # TODO: Call the external API
+            pole_lap = await getMostRecentPoleLap(track_id=message.m_trackID)
+            session_state_ref.m_session_info.m_most_recent_pole_lap = pole_lap
 
     logger.debug("Shutting down External API task...")

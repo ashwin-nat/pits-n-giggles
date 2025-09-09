@@ -33,6 +33,7 @@ from apps.backend.state_mgmt_layer.overtakes import (GetOvertakesStatus,
                                                      OvertakesHistory)
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
+from lib.config import PngSettings
 from lib.custom_marker_tracker import CustomMarkerEntry, CustomMarkersHistory
 from lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils,
                           FinalClassificationData, GameMode, LapData,
@@ -44,14 +45,16 @@ from lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils,
                           PacketSessionData, PacketSessionHistoryData,
                           PacketTimeTrialData, PacketTyreSetsData,
                           ResultReason, ResultStatus, SafetyCarType,
-                          SessionType, TrackID,
-                          VisualTyreCompound, WeatherForecastSample)
-from lib.inter_task_communicator import TyreDeltaMessage, AsyncInterTaskCommunicator
+                          SessionType, TrackID, VisualTyreCompound,
+                          WeatherForecastSample)
+from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
+                                         SessionChangeNotification,
+                                         TyreDeltaMessage)
+from lib.openf1 import MostRecentPoleLap
 from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.tyre_wear_extrapolator import TyreWearPerLap
-from lib.config import PngSettings
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -79,6 +82,7 @@ class SessionInfo:
          - m_packet_final_classification (Optional[PacketFinalClassificationData]): The final classification packet
          - m_game_year (Optional[int]): The current game year
          - m_packet_format (Optional[int]): The current packet format
+         - m_most_recent_pole_lap (Optional[MostRecentPoleLap]): The most recent pole lap IRL
     """
 
     __slots__ = (
@@ -104,6 +108,7 @@ class SessionInfo:
         "m_packet_final_classification",
         "m_game_year",
         "m_packet_format",
+        "m_most_recent_pole_lap",
     )
 
     def __init__(self, settings: PngSettings, logger: logging.Logger) -> None:
@@ -135,6 +140,7 @@ class SessionInfo:
         self.m_packet_final_classification : Optional[PacketFinalClassificationData] = None
         self.m_game_year : Optional[int] = None
         self.m_packet_format : Optional[int] = None
+        self.m_most_recent_pole_lap : Optional[MostRecentPoleLap] = None
 
         # Initialize the pit time loss dicts
         track_name_to_enum = {str(member): member for member in TrackID}
@@ -195,6 +201,7 @@ class SessionInfo:
         self.m_game_year = None
         self.m_packet_format = None
         self.m_pit_time_loss = None
+        self.m_most_recent_pole_lap = None
 
         # Dont clear the pit loss dicts. they are static
 
@@ -913,7 +920,7 @@ class SessionState:
         if should_clear := self.m_session_info.processSessionUpdate(packet):
             self.clear("session update")
         if session_changed:
-            self._notifyExternalApiTask()
+            await self._notifyExternalApiTask()
         return should_clear
 
 
@@ -1405,7 +1412,11 @@ class SessionState:
 
     async def _notifyExternalApiTask(self) -> None:
         """Notify the external api task that the session has been updated"""
-        await AsyncInterTaskCommunicator().send("external-api-update", "session update")
+        await AsyncInterTaskCommunicator().send("external-api-update", SessionChangeNotification(
+            trackID=self.m_session_info.m_track,
+            session_type=self.m_session_info.m_session_type,
+            formula_type=self.m_session_info.m_formula
+        ))
 
     def _getCollisionObj(self, driver_1_index: int, driver_2_index: int) -> Optional[CollisionRecord]:
         """Returns a collision object containing collision information
