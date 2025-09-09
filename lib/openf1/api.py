@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import asyncio
 import aiohttp
 from typing import Dict, Any, Optional
 from lib.f1_types import TrackID
@@ -95,6 +96,7 @@ async def getMostRecentPoleLap(track_id: TrackID) -> MostRecentPoleLap:
         OpenF1CircuitID: OpenF1 API friendly circuit ID
     """
 
+    await asyncio.sleep(5) # Simulate API call
     return MostRecentPoleLap(
         circuit_id=track_id,
         year=2023,
