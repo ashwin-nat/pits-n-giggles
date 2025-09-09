@@ -103,9 +103,9 @@
 .tt-comparison-container {
     flex: 1;
     overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+    display: grid; /* Use grid for consistent spacing */
+    grid-template-columns: 1fr; /* Single column layout */
+    gap: 12px; /* Consistent gap between cards */
     min-height: 0;
 }
 
