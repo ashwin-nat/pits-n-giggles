@@ -23,6 +23,8 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from enum import Enum
+from typing import Dict
+
 from lib.f1_types import TrackID
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -55,27 +57,27 @@ class OpenF1CircuitID(Enum):
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
-_CIRCUIT_ID_MAP = {
-    OpenF1CircuitID.SAKHIR: TrackID.Sakhir_Bahrain,
-    OpenF1CircuitID.JEDDAH: TrackID.Jeddah,
-    OpenF1CircuitID.MELBOURNE: TrackID.Melbourne,
-    OpenF1CircuitID.SUZUKA: TrackID.Suzuka,
-    OpenF1CircuitID.SHANGHAI: TrackID.Shanghai,
-    OpenF1CircuitID.MIAMI: TrackID.Miami,
-    OpenF1CircuitID.IMOLA: TrackID.Imola,
-    OpenF1CircuitID.MONTE_CARLO: TrackID.Monaco,
-    OpenF1CircuitID.MONTREAL: TrackID.Montreal,
-    OpenF1CircuitID.CATALUNYA: TrackID.Catalunya,
-    OpenF1CircuitID.SPIELBERG: TrackID.Austria,
-    OpenF1CircuitID.SILVERSTONE: TrackID.Silverstone,
-    OpenF1CircuitID.HUNGARORING: TrackID.Hungaroring,
-    OpenF1CircuitID.SPA_FRANCORCHAMPS: TrackID.Spa,
-    OpenF1CircuitID.ZANDVOORT: TrackID.Zandvoort,
-    OpenF1CircuitID.MONZA: TrackID.Monza,
-    OpenF1CircuitID.BAKU: TrackID.Baku_Azerbaijan,
-    OpenF1CircuitID.SINGAPORE: TrackID.Singapore,
-    OpenF1CircuitID.AUSTIN: TrackID.Texas,
-    OpenF1CircuitID.MEXICO_CITY: TrackID.Mexico,
+_CIRCUIT_ID_MAP: Dict[TrackID, OpenF1CircuitID] = {
+    TrackID.Sakhir_Bahrain: OpenF1CircuitID.SAKHIR,
+    TrackID.Jeddah: OpenF1CircuitID.JEDDAH,
+    TrackID.Melbourne: OpenF1CircuitID.MELBOURNE,
+    TrackID.Suzuka: OpenF1CircuitID.SUZUKA,
+    TrackID.Shanghai: OpenF1CircuitID.SHANGHAI,
+    TrackID.Miami: OpenF1CircuitID.MIAMI,
+    TrackID.Imola: OpenF1CircuitID.IMOLA,
+    TrackID.Monaco: OpenF1CircuitID.MONTE_CARLO,
+    TrackID.Montreal: OpenF1CircuitID.MONTREAL,
+    TrackID.Catalunya: OpenF1CircuitID.CATALUNYA,
+    TrackID.Austria: OpenF1CircuitID.SPIELBERG,
+    TrackID.Silverstone: OpenF1CircuitID.SILVERSTONE,
+    TrackID.Hungaroring: OpenF1CircuitID.HUNGARORING,
+    TrackID.Spa: OpenF1CircuitID.SPA_FRANCORCHAMPS,
+    TrackID.Zandvoort: OpenF1CircuitID.ZANDVOORT,
+    TrackID.Monza: OpenF1CircuitID.MONZA,
+    TrackID.Baku_Azerbaijan: OpenF1CircuitID.BAKU,
+    TrackID.Singapore: OpenF1CircuitID.SINGAPORE,
+    TrackID.Texas: OpenF1CircuitID.AUSTIN,
+    TrackID.Mexico: OpenF1CircuitID.MEXICO_CITY,
 }
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
