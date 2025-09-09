@@ -695,7 +695,6 @@ class SessionState:
             if driver and driver.is_valid:
                 # Add driver’s classification info
                 final_json["classification-data"].append(driver.toJSON(index))
-                # final_json["classification-data"][index] = driver.toJSON(index)
                 # Collect speed trap info
                 speed_trap_records.append(driver.getSpeedTrapRecordJSON())
 
