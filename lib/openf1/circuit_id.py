@@ -78,6 +78,10 @@ _CIRCUIT_ID_MAP: Dict[TrackID, OpenF1CircuitID] = {
     TrackID.Singapore: OpenF1CircuitID.SINGAPORE,
     TrackID.Texas: OpenF1CircuitID.AUSTIN,
     TrackID.Mexico: OpenF1CircuitID.MEXICO_CITY,
+    TrackID.Brazil: OpenF1CircuitID.INTERLAGOS,
+    TrackID.Las_Vegas: OpenF1CircuitID.LAS_VEGAS,
+    TrackID.Losail: OpenF1CircuitID.LUSAIL,
+    TrackID.Abu_Dhabi: OpenF1CircuitID.YAS_MARINA_CIRCUIT
 }
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
