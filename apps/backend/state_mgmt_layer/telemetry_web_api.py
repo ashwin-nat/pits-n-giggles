@@ -58,11 +58,15 @@ def _getValueOrDefaultValue(
     """
     return value if value is not None else default_value
 
-def initApiLayer(logger: logging.Logger) -> None:
+def initPngApiLayer(logger: logging.Logger, session_state_ref: TelState.SessionState) -> None:
     """Initialise the API layer by fetching the session state from the data store.
+
+    Args:
+        logger (logging.Logger): Logger
+        session_state_ref (TelState.SessionState): Reference to the session state
     """
     global _session_state_ref, _logger
-    _session_state_ref = TelState.getSessionStateRef()
+    _session_state_ref = session_state_ref
     _logger = logger
     assert _session_state_ref is not None
 

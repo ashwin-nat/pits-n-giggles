@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) [2024] [Ashwin Natarajan]
+# Copyright (c) [2025] [Ashwin Natarajan]
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,29 +26,39 @@ import asyncio
 import logging
 from typing import List
 
-from lib.config import PngSettings
+from lib.inter_task_communicator import AsyncInterTaskCommunicator
 
-from .telemetry_state import initSessionState
-from .telemetry_web_api import initPngApiLayer
-from .external_api import initExternalApiTask
+from .telemetry_state import SessionState
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def initStateManagementLayer(
+def initExternalApiTask(
     logger: logging.Logger,
-    settings: PngSettings,
-    ver_str: str,
     tasks: List[asyncio.Task],
-    shutdown_event: asyncio.Event) -> None:
+    shutdown_event: asyncio.Event,
+    session_state_ref: SessionState) -> None:
     """Initialise the state management layer
 
     Args:
         logger (logging.Logger): Logger
-        settings (PngSettings): Settings
-        ver_str (str): Version string
         tasks (List[asyncio.Task]): List of tasks
         shutdown_event (asyncio.Event): Shutdown event
+        session_state_ref (SessionState): Reference to the session state
     """
-    ref = initSessionState(logger=logger, settings=settings, ver_str=ver_str)
-    initPngApiLayer(logger=logger, session_state_ref=ref)
-    initExternalApiTask(logger=logger, tasks=tasks, shutdown_event=shutdown_event, session_state_ref=ref)
+    tasks.append(asyncio.create_task(externalApiTask(logger, shutdown_event, session_state_ref), name="External API Task"))
+
+async def externalApiTask(logger: logging.Logger, shutdown_event: asyncio.Event, session_state_ref: SessionState) -> None:
+    """The actual task that calls the external API's
+
+    Args:
+        logger (logging.Logger): Logger
+        shutdown_event (asyncio.Event): Shutdown event
+        session_state_ref (SessionState): Reference to the session state
+    """
+
+    while not shutdown_event.is_set():
+        if message := await AsyncInterTaskCommunicator().receive("external-api-update"):
+            logger.info(f"External API update: {message}")
+            # TODO: Call the external API
+
+    logger.debug("Shutting down External API task...")
