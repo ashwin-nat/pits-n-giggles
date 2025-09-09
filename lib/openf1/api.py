@@ -23,12 +23,16 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
-import aiohttp
-from typing import Dict, Any, Optional
-from lib.f1_types import TrackID
+import logging
 from dataclasses import dataclass
 from datetime import datetime
-from .circuit_id import to_openf1, OpenF1CircuitID
+from typing import Any, Dict, Optional
+
+import aiohttp
+
+from lib.f1_types import TrackID
+
+from .circuit_id import OpenF1CircuitID, to_openf1
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -83,22 +87,30 @@ class MostRecentPoleLap:
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-async def getMostRecentPoleLap(track_id: TrackID, num_recent_years = 3) -> MostRecentPoleLap:
+async def getMostRecentPoleLap(
+        track_id: TrackID,
+        logger: logging.Logger,
+        num_recent_years = 3) -> Optional[MostRecentPoleLap]:
     """Get the OpenF1CircuitID for a given TrackID
 
     Args:
         track_id (TrackID): The track ID
+        logger (logging.Logger): Logger
+        num_recent_years (int, optional): Number of recent years to search. Defaults to 3.
 
     Returns:
-        OpenF1CircuitID: OpenF1 API friendly circuit ID
+        OpenF1CircuitID: OpenF1 API friendly circuit ID. May be None
     """
 
     current_year = datetime.now().year
     circuit_id = to_openf1(track_id)
+    if not circuit_id:
+        logger.info("Unsupported circuit: %s", track_id)
+        return None
     years = list(range(current_year, current_year - num_recent_years, -1))
 
     for year in years:
-        rsp = await _fetchPoleLapByYear(circuit_id, year)
+        rsp = await _fetchPoleLapByYear(circuit_id, year, logger)
         if not rsp:
             continue
         return MostRecentPoleLap(
@@ -115,24 +127,27 @@ async def getMostRecentPoleLap(track_id: TrackID, num_recent_years = 3) -> MostR
 
     return None
 
-async def _fetchPoleLapByYear(circuit_id: OpenF1CircuitID, year: int) -> Dict[str, Any]:
+async def _fetchPoleLapByYear(circuit_id: OpenF1CircuitID, year: int, logger: logging.Logger) -> Dict[str, Any]:
 
     # Step 1 - Get list of sessions for given year and circuit
-    sessions = await make_openf1_request("sessions", {"year": year, "circuit_key": circuit_id.value})
+    sessions = await make_openf1_request("sessions", {"year": year, "circuit_key": circuit_id.value}, logger=logger)
     if not sessions:
+        logger.debug("Failed to get sessions for circuit %s and year %s", circuit_id, year)
         return {}
 
     # Step 2 - Get session ID for quali
     quali_session = next((session for session in sessions if session["session_name"] == "Qualifying"), None)
     if not quali_session:
+        logger.debug("Failed to get quali session for circuit %s and year %s", circuit_id, year)
         return {}
 
     # Step 3 - Get the pole position driver
     pole_driver = await make_openf1_request("starting_grid", {
         "session_key": quali_session["session_key"],
         "position": 1
-    })
+    }, logger=logger)
     if not pole_driver:
+        logger.debug("Failed to get pole driver for circuit %s and year %s", circuit_id, year)
         return {}
     pole_driver = pole_driver[0]
 
@@ -140,37 +155,42 @@ async def _fetchPoleLapByYear(circuit_id: OpenF1CircuitID, year: int) -> Dict[st
     drivers = await make_openf1_request("drivers", {
         "driver_number": pole_driver["driver_number"],
         "session_key": quali_session["session_key"]
-    })
+    }, logger=logger)
     if not drivers:
+        logger.debug("Failed to get drivers for circuit %s and year %s", circuit_id, year)
         return {}
     pole_driver = next((driver for driver in drivers if driver["driver_number"] == pole_driver["driver_number"]), None)
     if not pole_driver:
+        logger.debug("Failed to get pole driver details for circuit %s and year %s", circuit_id, year)
         return {}
 
     # Step 5 - Get fastest lap
     laps = await make_openf1_request("laps", {
         "session_key": quali_session["session_key"],
         "driver_number": pole_driver["driver_number"]
-    })
+    }, logger=logger)
     fastest_lap = min(
         (lap for lap in laps if lap["lap_duration"] is not None),
         key=lambda lap: lap["lap_duration"],
         default=None
     )
     if not fastest_lap:
+        logger.debug("Failed to get fastest lap for circuit %s and year %s", circuit_id, year)
         return {}
 
+    # Insert the driver details and return
     fastest_lap["driver_name"] = pole_driver["broadcast_name"].replace(" ", ". ", 1)
     fastest_lap["team_name"] = pole_driver["team_name"]
     return fastest_lap
 
-async def make_openf1_request(endpoint: str, params: Optional[Dict[str, Any]] = None):
+async def make_openf1_request(endpoint: str, params: Optional[Dict[str, Any]], logger: logging.Logger) -> Dict[str, Any]:
     """
     Asynchronously fetch data from the OpenF1 API using aiohttp.
 
     Args:
         endpoint (str): The API endpoint (relative to base_url).
         params (dict, optional): Query parameters.
+        logger (logging.Logger): Logger
 
     Returns:
         dict | None: JSON response if successful, otherwise None.
@@ -183,6 +203,7 @@ async def make_openf1_request(endpoint: str, params: Optional[Dict[str, Any]] = 
             async with session.get(url, params=params) as response:
                 response.raise_for_status()  # Raise an exception for HTTP errors
                 return await response.json()
-    except aiohttp.ClientError as e:
-        print(f"Error fetching data from {url}: {e}")
+    except (aiohttp.ClientError, asyncio.TimeoutError, asyncio.CancelledError, OSError) as e:
+        logger.debug(f"Error fetching data from {url}: {e}")
         return None
+
