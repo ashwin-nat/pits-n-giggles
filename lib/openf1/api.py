@@ -128,18 +128,29 @@ async def getMostRecentPoleLap(
     return None
 
 async def _fetchPoleLapByYear(circuit_id: OpenF1CircuitID, year: int, logger: logging.Logger) -> Dict[str, Any]:
+    """
+    Fetch pole lap data for a specific circuit and year.
+
+    Args:
+        circuit_id: OpenF1 API circuit identifier.
+        year: Year to fetch data for.
+        logger: Logger instance for debugging and error reporting.
+
+    Returns:
+        Dictionary containing pole lap data if successful, None otherwise.
+    """
 
     # Step 1 - Get list of sessions for given year and circuit
     sessions = await make_openf1_request("sessions", {"year": year, "circuit_key": circuit_id.value}, logger=logger)
     if not sessions:
         logger.debug("Failed to get sessions for circuit %s and year %s", circuit_id, year)
-        return {}
+        return None
 
     # Step 2 - Get session ID for quali
     quali_session = next((session for session in sessions if session["session_name"] == "Qualifying"), None)
     if not quali_session:
         logger.debug("Failed to get quali session for circuit %s and year %s", circuit_id, year)
-        return {}
+        return None
 
     # Step 3 - Get the pole position driver
     pole_driver = await make_openf1_request("starting_grid", {
@@ -148,7 +159,7 @@ async def _fetchPoleLapByYear(circuit_id: OpenF1CircuitID, year: int, logger: lo
     }, logger=logger)
     if not pole_driver:
         logger.debug("Failed to get pole driver for circuit %s and year %s", circuit_id, year)
-        return {}
+        return None
     pole_driver = pole_driver[0]
 
     # Step 4 - Get driver details and find pole position driver details
@@ -158,11 +169,11 @@ async def _fetchPoleLapByYear(circuit_id: OpenF1CircuitID, year: int, logger: lo
     }, logger=logger)
     if not drivers:
         logger.debug("Failed to get drivers for circuit %s and year %s", circuit_id, year)
-        return {}
+        return None
     pole_driver = next((driver for driver in drivers if driver["driver_number"] == pole_driver["driver_number"]), None)
     if not pole_driver:
         logger.debug("Failed to get pole driver details for circuit %s and year %s", circuit_id, year)
-        return {}
+        return None
 
     # Step 5 - Get fastest lap
     laps = await make_openf1_request("laps", {
@@ -176,7 +187,7 @@ async def _fetchPoleLapByYear(circuit_id: OpenF1CircuitID, year: int, logger: lo
     )
     if not fastest_lap:
         logger.debug("Failed to get fastest lap for circuit %s and year %s", circuit_id, year)
-        return {}
+        return None
 
     # Insert the driver details and return
     fastest_lap["driver_name"] = pole_driver["broadcast_name"].replace(" ", ". ", 1)
@@ -206,4 +217,3 @@ async def make_openf1_request(endpoint: str, params: Optional[Dict[str, Any]], l
     except (aiohttp.ClientError, asyncio.TimeoutError, asyncio.CancelledError, OSError) as e:
         logger.debug(f"Error fetching data from {url}: {e}")
         return None
-
