@@ -395,6 +395,25 @@ class TimeTrialDataPopulator {
     }
 
     /**
+     * Clears the IRL Pole Lap data from the UI.
+     */
+    clearIrlPoleLapData() {
+        const irlTitleEl = document.getElementById('tt-irl-title');
+        const irlTimeEl = document.getElementById('tt-irl-time');
+        const irlS1El = document.getElementById('tt-irl-s1');
+        const irlS2El = document.getElementById('tt-irl-s2');
+        const irlS3El = document.getElementById('tt-irl-s3');
+        const irlDetailsAssistsEl = document.getElementById('tt-irl-details-assists');
+
+        if (irlTitleEl) irlTitleEl.textContent = 'IRL Pole Lap';
+        if (irlTimeEl) irlTimeEl.textContent = '--:--:---';
+        if (irlS1El) irlS1El.textContent = '--:---';
+        if (irlS2El) irlS2El.textContent = '--:---';
+        if (irlS3El) irlS3El.textContent = '--:---';
+        if (irlDetailsAssistsEl) irlDetailsAssistsEl.innerHTML = '';
+    }
+
+    /**
      * Update theoretical best time and session info combined
      */
     updateTheoreticalBestAndSessionInfo(sessionHistory) {
@@ -414,10 +433,10 @@ class TimeTrialDataPopulator {
         const s2Element = document.getElementById('tt-theoretical-s2');
         const s3Element = document.getElementById('tt-theoretical-s3');
 
-        if (timeElement) timeElement.textContent = (theoreticalTimeMs != null) ? (formatLapTime(theoreticalTimeMs)) : ('--:--:---');
-        if (s1Element) s1Element.textContent = (s1TimeMs != null) ? (formatSectorTime(s1TimeMs)) : ('--:---');
-        if (s2Element) s2Element.textContent = (s2TimeMs != null) ? (formatSectorTime(s2TimeMs)) : ('--:---');
-        if (s3Element) s3Element.textContent = (s3TimeMs != null) ? (formatSectorTime(s3TimeMs)) : ('--:---');
+        if (timeElement) timeElement.textContent = (theoreticalTimeMs != null) ? (this.formatMillisecondsToLapTime(theoreticalTimeMs)) : ('--:--:---');
+        if (s1Element) s1Element.textContent = (s1TimeMs != null) ? (this.formatMillisecondsToSectorTime(s1TimeMs)) : ('--:---');
+        if (s2Element) s2Element.textContent = (s2TimeMs != null) ? (this.formatMillisecondsToSectorTime(s2TimeMs)) : ('--:---');
+        if (s3Element) s3Element.textContent = (s3TimeMs != null) ? (this.formatMillisecondsToSectorTime(s3TimeMs)) : ('--:---');
     }
 
     /**
@@ -449,19 +468,7 @@ class TimeTrialDataPopulator {
         });
 
         // Clear IRL Pole Lap data
-        const irlTitleEl = document.getElementById('tt-irl-title');
-        const irlTimeEl = document.getElementById('tt-irl-time');
-        const irlS1El = document.getElementById('tt-irl-s1');
-        const irlS2El = document.getElementById('tt-irl-s2');
-        const irlS3El = document.getElementById('tt-irl-s3');
-        const irlDetailsAssistsEl = document.getElementById('tt-irl-details-assists');
-
-        if (irlTitleEl) irlTitleEl.textContent = 'IRL Pole Lap';
-        if (irlTimeEl) irlTimeEl.textContent = '--:--:---';
-        if (irlS1El) irlS1El.textContent = '--:---';
-        if (irlS2El) irlS2El.textContent = '--:---';
-        if (irlS3El) irlS3El.textContent = '--:---';
-        if (irlDetailsAssistsEl) irlDetailsAssistsEl.innerHTML = '';
+        this.clearIrlPoleLapData();
 
         // Clear theoretical best and session info
         const theoreticalElements = [
