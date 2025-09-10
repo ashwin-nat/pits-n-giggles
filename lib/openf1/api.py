@@ -141,7 +141,7 @@ async def _fetchPoleLapByYear(circuit_id: OpenF1CircuitID, year: int, logger: lo
     """
 
     # Step 1 - Get list of sessions for given year and circuit
-    sessions = await make_openf1_request("sessions", {"year": year, "circuit_key": circuit_id.value}, logger=logger)
+    sessions = await _make_openf1_request("sessions", {"year": year, "circuit_key": circuit_id.value}, logger=logger)
     if not sessions:
         logger.debug("Failed to get sessions for circuit %s and year %s", circuit_id, year)
         return None
@@ -153,7 +153,7 @@ async def _fetchPoleLapByYear(circuit_id: OpenF1CircuitID, year: int, logger: lo
         return None
 
     # Step 3 - Get the pole position driver
-    pole_driver = await make_openf1_request("starting_grid", {
+    pole_driver = await _make_openf1_request("starting_grid", {
         "session_key": quali_session["session_key"],
         "position": 1
     }, logger=logger)
@@ -163,7 +163,7 @@ async def _fetchPoleLapByYear(circuit_id: OpenF1CircuitID, year: int, logger: lo
     pole_driver = pole_driver[0]
 
     # Step 4 - Get driver details and find pole position driver details
-    drivers = await make_openf1_request("drivers", {
+    drivers = await _make_openf1_request("drivers", {
         "driver_number": pole_driver["driver_number"],
         "session_key": quali_session["session_key"]
     }, logger=logger)
@@ -176,7 +176,7 @@ async def _fetchPoleLapByYear(circuit_id: OpenF1CircuitID, year: int, logger: lo
         return None
 
     # Step 5 - Get fastest lap
-    laps = await make_openf1_request("laps", {
+    laps = await _make_openf1_request("laps", {
         "session_key": quali_session["session_key"],
         "driver_number": pole_driver["driver_number"]
     }, logger=logger)
@@ -194,7 +194,7 @@ async def _fetchPoleLapByYear(circuit_id: OpenF1CircuitID, year: int, logger: lo
     fastest_lap["team_name"] = pole_driver["team_name"]
     return fastest_lap
 
-async def make_openf1_request(endpoint: str, params: Optional[Dict[str, Any]], logger: logging.Logger) -> Dict[str, Any]:
+async def _make_openf1_request(endpoint: str, params: Optional[Dict[str, Any]], logger: logging.Logger) -> Dict[str, Any]:
     """
     Asynchronously fetch data from the OpenF1 API using aiohttp.
 
