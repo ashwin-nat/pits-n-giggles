@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Function to save the current order to local storage
     const saveCardOrder = () => {
-        const cardOrder = Array.from(comparisonContainer.children).map(card => card.classList[1]); // Get the second class which identifies the card type
+        const cardOrder = Array.from(comparisonContainer.children).map(card => card.dataset.cardId); // Get the data-card-id which identifies the card type
         localStorage.setItem('timeTrialCardOrder', JSON.stringify(cardOrder));
     };
 
@@ -21,12 +21,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (savedOrder) {
             const cards = {};
             Array.from(comparisonContainer.children).forEach(card => {
-                cards[card.classList[1]] = card;
+                cards[card.dataset.cardId] = card;
             });
 
-            savedOrder.forEach(cardType => {
-                if (cards[cardType]) {
-                    comparisonContainer.appendChild(cards[cardType]);
+            savedOrder.forEach(cardId => {
+                if (cards[cardId]) {
+                    comparisonContainer.appendChild(cards[cardId]);
                 }
             });
         }
@@ -34,15 +34,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Add event listeners for drag and drop
     comparisonContainer.addEventListener('dragstart', (e) => {
-        const header = e.target.closest('.tt-card-header');
-        if (header) {
-            draggedItem = header.closest('.tt-comparison-card');
-            if (draggedItem) {
-                setTimeout(() => {
-                    draggedItem.style.opacity = '0.5';
-                }, 0);
-                e.dataTransfer.effectAllowed = 'move';
-            }
+        draggedItem = e.target.closest('.tt-comparison-card');
+        if (draggedItem) {
+            setTimeout(() => {
+                draggedItem.style.opacity = '0.5';
+            }, 0);
+            e.dataTransfer.effectAllowed = 'move';
         }
     });
 
@@ -77,11 +74,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Make card headers draggable
+    // Make card headers draggable
     Array.from(comparisonContainer.children).forEach(card => {
         const header = card.querySelector('.tt-card-header');
         if (header) {
             header.setAttribute('draggable', 'true');
         }
+    });
+    // Set draggable attribute on the cards themselves
+    Array.from(comparisonContainer.children).forEach(card => {
+        card.setAttribute('draggable', 'true');
     });
 
     // Load card order on initial page load
