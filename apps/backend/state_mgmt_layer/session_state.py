@@ -33,6 +33,7 @@ from apps.backend.state_mgmt_layer.overtakes import (GetOvertakesStatus,
                                                      OvertakesHistory)
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
+from lib.config import PngSettings
 from lib.custom_marker_tracker import CustomMarkerEntry, CustomMarkersHistory
 from lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils,
                           FinalClassificationData, GameMode, LapData,
@@ -44,14 +45,16 @@ from lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils,
                           PacketSessionData, PacketSessionHistoryData,
                           PacketTimeTrialData, PacketTyreSetsData,
                           ResultReason, ResultStatus, SafetyCarType,
-                          SessionType, TrackID,
-                          VisualTyreCompound, WeatherForecastSample)
-from lib.inter_task_communicator import TyreDeltaMessage
+                          SessionType, TrackID, VisualTyreCompound,
+                          WeatherForecastSample)
+from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
+                                         SessionChangeNotification,
+                                         TyreDeltaMessage)
+from lib.openf1 import MostRecentPoleLap
 from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.tyre_wear_extrapolator import TyreWearPerLap
-from lib.config import PngSettings
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -79,6 +82,7 @@ class SessionInfo:
          - m_packet_final_classification (Optional[PacketFinalClassificationData]): The final classification packet
          - m_game_year (Optional[int]): The current game year
          - m_packet_format (Optional[int]): The current packet format
+         - m_most_recent_pole_lap (Optional[MostRecentPoleLap]): The most recent pole lap IRL
     """
 
     __slots__ = (
@@ -104,6 +108,7 @@ class SessionInfo:
         "m_packet_final_classification",
         "m_game_year",
         "m_packet_format",
+        "m_most_recent_pole_lap",
     )
 
     def __init__(self, settings: PngSettings, logger: logging.Logger) -> None:
@@ -135,6 +140,7 @@ class SessionInfo:
         self.m_packet_final_classification : Optional[PacketFinalClassificationData] = None
         self.m_game_year : Optional[int] = None
         self.m_packet_format : Optional[int] = None
+        self.m_most_recent_pole_lap : Optional[MostRecentPoleLap] = None
 
         # Initialize the pit time loss dicts
         track_name_to_enum = {str(member): member for member in TrackID}
@@ -195,6 +201,7 @@ class SessionInfo:
         self.m_game_year = None
         self.m_packet_format = None
         self.m_pit_time_loss = None
+        self.m_most_recent_pole_lap = None
 
         # Dont clear the pit loss dicts. they are static
 
@@ -695,7 +702,6 @@ class SessionState:
             if driver and driver.is_valid:
                 # Add driver’s classification info
                 final_json["classification-data"].append(driver.toJSON(index))
-                # final_json["classification-data"][index] = driver.toJSON(index)
                 # Collect speed trap info
                 speed_trap_records.append(driver.getSpeedTrapRecordJSON())
 
@@ -902,7 +908,7 @@ class SessionState:
         self.clear(reason)
         self.setRaceOngoing()
 
-    def processSessionUpdate(self, packet: PacketSessionData) -> bool:
+    async def processSessionUpdate(self, packet: PacketSessionData) -> bool:
         """Update the data strctures with session data
         Args:
             packet (PacketSessionData): Session data packet
@@ -910,9 +916,11 @@ class SessionState:
             bool - True if all data needs to be reset
         """
 
-        self._processSessionUpdateHelper(packet)
+        session_changed = self._processSessionUpdateHelper(packet)
         if should_clear := self.m_session_info.processSessionUpdate(packet):
             self.clear("session update")
+        if session_changed:
+            await self._notifyExternalApiTask()
         return should_clear
 
 
@@ -1356,16 +1364,21 @@ class SessionState:
         # Check if this guy's lap is faster than the best lap
         return self.m_driver_data[self.m_fastest_index].m_lap_info.m_best_lap_ms > driver_best_lap_ms
 
-    def _processSessionUpdateHelper(self, packet: PacketSessionData) -> None:
+    def _processSessionUpdateHelper(self, packet: PacketSessionData) -> bool:
         """Process the Session Update packet. Update the total laps and ideal pit window for the player
 
         Args:
             packet (PacketSessionData): The incoming parsed packet object
+
+        Returns:
+            bool: True if all data needs to be reset
         """
 
+        session_changed = False
         if not self.m_first_session_update_received:
             # This is the first session update for this session. log the session info only once
             self.m_first_session_update_received = True
+            session_changed = True
             self.m_logger.info("Session update received: "
                                f"Game Year: {packet.m_header.m_gameYear}, "
                                f"ID: {packet.m_header.m_sessionUID}, "
@@ -1394,6 +1407,16 @@ class SessionState:
                 else max(packet.m_safetyCarStatus, obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status)
             )
             obj_to_be_updated.updateTotalLaps(packet.m_totalLaps)
+
+        return session_changed
+
+    async def _notifyExternalApiTask(self) -> None:
+        """Notify the external api task that the session has been updated"""
+        await AsyncInterTaskCommunicator().send("external-api-update", SessionChangeNotification(
+            trackID=self.m_session_info.m_track,
+            session_type=self.m_session_info.m_session_type,
+            formula_type=self.m_session_info.m_formula
+        ))
 
     def _getCollisionObj(self, driver_1_index: int, driver_2_index: int) -> Optional[CollisionRecord]:
         """Returns a collision object containing collision information

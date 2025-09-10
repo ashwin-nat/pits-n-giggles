@@ -58,11 +58,15 @@ def _getValueOrDefaultValue(
     """
     return value if value is not None else default_value
 
-def initApiLayer(logger: logging.Logger) -> None:
+def initPngApiLayer(logger: logging.Logger, session_state_ref: TelState.SessionState) -> None:
     """Initialise the API layer by fetching the session state from the data store.
+
+    Args:
+        logger (logging.Logger): Logger
+        session_state_ref (TelState.SessionState): Reference to the session state
     """
     global _session_state_ref, _logger
-    _session_state_ref = TelState.getSessionStateRef()
+    _session_state_ref = session_state_ref
     _logger = logger
     assert _session_state_ref is not None
 
@@ -792,6 +796,7 @@ class DriversListRsp:
 
         # Init the TT packet copy
         self.m_time_trial_packet = _session_state_ref.m_time_trial_packet
+        self.m_irl_pole_lap = _session_state_ref.m_session_info.m_most_recent_pole_lap
 
         # Insert top speed into the lap-history-data records
         if player_obj.m_packet_copies.m_packet_session_history:
@@ -802,14 +807,22 @@ class DriversListRsp:
         else:
             session_history = None
 
-        self.m_fastest_lap = player_obj.m_lap_info.m_best_lap_ms
+        if player_obj.m_lap_info.m_best_lap_ms:
+            self.m_fastest_lap = player_obj.m_lap_info.m_best_lap_ms
+            self.m_fastest_lap_tyre = VisualTyreCompound.SOFT # Always soft in TT
+        elif self.m_time_trial_packet:
+            self.m_fastest_lap = self.m_time_trial_packet.m_playerSessionBestDataSet.m_lapTimeInMS
+            self.m_fastest_lap_tyre = VisualTyreCompound.SOFT
+        else:
+            self.m_fastest_lap = None
+            self.m_fastest_lap_tyre = None
         self.m_fastest_lap_driver = player_obj.m_driver_info.name
-        self.m_fastest_lap_tyre = player_obj.m_lap_info.m_best_lap_tyre
         self.m_json_rsp = {
             "current-lap" : player_obj.m_lap_info.m_current_lap,
             "session-history": session_history,
             "tt-data": self.m_time_trial_packet.toJSON() if self.m_time_trial_packet else None,
             "tt-setups" : self._getTTSetupJSON(),
+            "irl-pole-lap": self.m_irl_pole_lap.toJSON() if self.m_irl_pole_lap else None
         }
 
     def _getTTSetupJSON(self) -> Dict[str, Any]:

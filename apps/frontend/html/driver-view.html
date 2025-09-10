@@ -134,7 +134,7 @@
               <div class="tt-right-panel">
                   <div class="tt-comparison-container">
                       <!-- Personal Best -->
-                      <div class="tt-comparison-card tt-personal-best">
+                      <div class="tt-comparison-card tt-personal-best" data-card-id="personal-best">
                           <div class="tt-card-header">
                               <div class="tt-card-header-content">
                                   <h6 class="tt-card-title">Personal Best</h6>
@@ -159,7 +159,7 @@
                       </div>
 
                       <!-- Session Best -->
-                      <div class="tt-comparison-card tt-session-best">
+                      <div class="tt-comparison-card tt-session-best" data-card-id="session-best">
                           <div class="tt-card-header">
                               <div class="tt-card-header-content">
                                   <h6 class="tt-card-title">Session Best</h6>
@@ -184,7 +184,7 @@
                       </div>
 
                       <!-- Rival Best -->
-                      <div class="tt-comparison-card tt-rival-best">
+                      <div class="tt-comparison-card tt-rival-best" data-card-id="rival-best">
                           <div class="tt-card-header">
                               <div class="tt-card-header-content">
                                   <h6 class="tt-card-title">Rival Best</h6>
@@ -208,8 +208,8 @@
                           </div>
                       </div>
 
-                      <!-- Theoretical Best & Session Info Combined -->
-                      <div class="tt-comparison-card tt-theoretical-best">
+                      <!-- Theoretical Best -->
+                      <div class="tt-comparison-card tt-theoretical-best" data-card-id="theoretical-best">
                           <div class="tt-card-header">
                               <div class="tt-card-header-content">
                                   <h6 class="tt-card-title">Theoretical Best</h6>
@@ -224,9 +224,26 @@
                               </div>
                           </div>
                       </div>
+
+                      <!-- IRL Pole Lap -->
+                      <div class="tt-comparison-card tt-irl-pole-lap" data-card-id="irl-pole-lap">
+                          <div class="tt-card-header">
+                              <div class="tt-card-header-content">
+                                  <h6 class="tt-card-title" id="tt-irl-title">IRL Pole Lap</h6>
+                                  <div class="tt-main-time" id="tt-irl-time">--:--:---</div>
+                              </div>
+                          </div>
+                          <div class="tt-card-body">
+                              <div class="tt-sectors">
+                                  <div class="tt-sector">S1: <span id="tt-irl-s1">--:---</span></div>
+                                  <div class="tt-sector">S2: <span id="tt-irl-s2">--:---</span></div>
+                                  <div class="tt-sector">S3: <span id="tt-irl-s3">--:---</span></div>
+                                  </div>
+                              </div>
+                          </div>
                   </div>
               </div>
-          </div>
+            </div>
         </div>
       </main>
     </div>
@@ -596,6 +613,7 @@
     <script src="{{ url_for('static', filename='js/frontendUpdate.js') }}"></script>
     <script src="{{ url_for('static', filename='js/tyreDeltaToast.js') }}"></script>
     <script src="{{ url_for('static', filename='js/barChart.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/timeTrialCardDragDrop.js') }}"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script src="{{ url_for('static', filename='js/updater.js') }}"></script>
     <script>

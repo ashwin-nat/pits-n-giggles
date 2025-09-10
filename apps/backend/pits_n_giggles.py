@@ -74,7 +74,9 @@ class PngRunner:
         initStateManagementLayer(
             logger=self.m_logger,
             settings=self.m_config,
-            ver_str=self.m_version
+            ver_str=self.m_version,
+            tasks=self.m_tasks,
+            shutdown_event=self.m_shutdown_event
         )
 
         self.m_telemetry_handler = initTelemetryLayer(

@@ -27,6 +27,7 @@ import contextvars
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, Optional
+from lib.f1_types import SessionType, TrackID, PacketSessionData
 
 # ------------------------- CLASS DEFINITIONS --------------------------------------------------------------------------
 
@@ -152,6 +153,39 @@ class FinalClassificationNotification:
             "player-position": self.m_player_position
         }
 
+class SessionChangeNotification:
+    def __init__(self, trackID: TrackID, session_type: SessionType, formula_type: PacketSessionData.FormulaType) -> None:
+        """Initialize the SessionChangeNotification object.
+
+        Args:
+            trackID (TrackID): The track ID
+            session_type (SessionType): The session type
+            formula_type (PacketSessionData.FormulaType): The formula type
+        """
+        self.m_trackID = trackID
+        self.m_session_type = session_type
+        self.m_formula_type = formula_type
+
+    def __repr__(self) -> str:
+        """Return a string representation of the SessionChangeNotification object."""
+        return f"SessionChangeNotification(trackID={self.m_trackID}, session_type={self.m_session_type}, formula_type={self.m_formula_type})"
+
+    def __str__(self) -> str:
+        """Return a string representation of the SessionChangeNotification object."""
+        return self.__repr__()
+
+    def toJSON(self) -> Dict[str, Any]:
+        """Get the JSON representation of this object.
+
+        Returns:
+            Dict[str, Any]: The JSON representation of this object.
+        """
+        return {
+            "track-id": self.m_trackID,
+            "session-type": self.m_session_type,
+            "formula-type": self.m_formula_type
+        }
+
 @dataclass(frozen=True)
 class ITCMessage:
     class MessageType(str, Enum):
@@ -245,6 +279,9 @@ class AsyncInterTaskCommunicator:
             item = await (asyncio.wait_for(q.get(), timeout) if timeout is not None else q.get())
             return None if item is self._unblock_receivers_obj else item
         except asyncio.TimeoutError:
+            return None
+        except asyncio.CancelledError:
+            # If any task calls shutdown
             return None
 
     async def unblock_receivers(self) -> None:
