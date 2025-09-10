@@ -807,9 +807,16 @@ class DriversListRsp:
         else:
             session_history = None
 
-        self.m_fastest_lap = player_obj.m_lap_info.m_best_lap_ms
+        if player_obj.m_lap_info.m_best_lap_ms:
+            self.m_fastest_lap = player_obj.m_lap_info.m_best_lap_ms
+            self.m_fastest_lap_tyre = VisualTyreCompound.SOFT # Always soft in TT
+        elif self.m_time_trial_packet:
+            self.m_fastest_lap = self.m_time_trial_packet.m_playerSessionBestDataSet.m_lapTimeInMS
+            self.m_fastest_lap_tyre = VisualTyreCompound.SOFT
+        else:
+            self.m_fastest_lap = None
+            self.m_fastest_lap_tyre = None
         self.m_fastest_lap_driver = player_obj.m_driver_info.name
-        self.m_fastest_lap_tyre = player_obj.m_lap_info.m_best_lap_tyre
         self.m_json_rsp = {
             "current-lap" : player_obj.m_lap_info.m_current_lap,
             "session-history": session_history,
