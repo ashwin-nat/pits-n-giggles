@@ -214,6 +214,6 @@ async def _make_openf1_request(endpoint: str, params: Optional[Dict[str, Any]], 
             async with session.get(url, params=params) as response:
                 response.raise_for_status()  # Raise an exception for HTTP errors
                 return await response.json()
-    except (aiohttp.ClientError, asyncio.TimeoutError, asyncio.CancelledError, OSError) as e:
+    except (aiohttp.ClientError, asyncio.TimeoutError, asyncio.CancelledError) as e:
         logger.debug(f"Error fetching data from {url}: {e}")
         return None
