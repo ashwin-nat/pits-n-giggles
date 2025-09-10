@@ -1,0 +1,82 @@
+// This file will contain the drag-and-drop logic for time trial comparison cards.
+
+document.addEventListener('DOMContentLoaded', () => {
+    const comparisonContainer = document.querySelector('.tt-comparison-container');
+    if (!comparisonContainer) {
+        console.warn('Time trial comparison container not found.');
+        return;
+    }
+
+    let draggedItem = null;
+
+    // Function to save the current order to local storage
+    const saveCardOrder = () => {
+        const cardOrder = Array.from(comparisonContainer.children).map(card => card.classList[1]); // Get the second class which identifies the card type
+        localStorage.setItem('timeTrialCardOrder', JSON.stringify(cardOrder));
+    };
+
+    // Function to load and apply the order from local storage
+    const loadCardOrder = () => {
+        const savedOrder = JSON.parse(localStorage.getItem('timeTrialCardOrder'));
+        if (savedOrder) {
+            const cards = {};
+            Array.from(comparisonContainer.children).forEach(card => {
+                cards[card.classList[1]] = card;
+            });
+
+            savedOrder.forEach(cardType => {
+                if (cards[cardType]) {
+                    comparisonContainer.appendChild(cards[cardType]);
+                }
+            });
+        }
+    };
+
+    // Add event listeners for drag and drop
+    comparisonContainer.addEventListener('dragstart', (e) => {
+        if (e.target.classList.contains('tt-comparison-card')) {
+            draggedItem = e.target;
+            setTimeout(() => {
+                e.target.style.opacity = '0.5';
+            }, 0);
+            e.dataTransfer.effectAllowed = 'move';
+        }
+    });
+
+    comparisonContainer.addEventListener('dragend', (e) => {
+        if (e.target.classList.contains('tt-comparison-card')) {
+            e.target.style.opacity = '1';
+            draggedItem = null;
+            saveCardOrder(); // Save order after drag ends
+        }
+    });
+
+    comparisonContainer.addEventListener('dragover', (e) => {
+        e.preventDefault(); // Allow drop
+        if (e.target.classList.contains('tt-comparison-card') && draggedItem !== e.target) {
+            const boundingBox = e.target.getBoundingClientRect();
+            const offset = boundingBox.y + (boundingBox.height / 2);
+            if (e.clientY - offset > 0) {
+                comparisonContainer.insertBefore(draggedItem, e.target.nextSibling);
+            } else {
+                comparisonContainer.insertBefore(draggedItem, e.target);
+            }
+        }
+    });
+
+    comparisonContainer.addEventListener('drop', (e) => {
+        e.preventDefault();
+        // The reordering is already handled in dragover, so just ensure opacity is reset
+        if (draggedItem) {
+            draggedItem.style.opacity = '1';
+        }
+    });
+
+    // Make cards draggable
+    Array.from(comparisonContainer.children).forEach(card => {
+        card.setAttribute('draggable', 'true');
+    });
+
+    // Load card order on initial page load
+    loadCardOrder();
+});
