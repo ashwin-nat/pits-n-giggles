@@ -63,7 +63,7 @@ async def externalApiTask(
     while not shutdown_event.is_set():
         message: Optional[SessionChangeNotification] = await AsyncInterTaskCommunicator().receive("external-api-update")
         if message:
-            if not message.m_formula_type.is_f1() or not message.m_session_type.isQualiTypeSession():
+            if not message.m_formula_type.is_f1() or not message.m_session_type.isTimeTrialTypeSession():
                 logger.debug("Skipping external API update as session is unsupported. %s", message)
                 pole_lap = None
             else:
