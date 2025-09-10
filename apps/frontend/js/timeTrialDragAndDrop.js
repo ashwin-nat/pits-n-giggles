@@ -34,18 +34,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Add event listeners for drag and drop
     comparisonContainer.addEventListener('dragstart', (e) => {
-        if (e.target.classList.contains('tt-comparison-card')) {
-            draggedItem = e.target;
-            setTimeout(() => {
-                e.target.style.opacity = '0.5';
-            }, 0);
-            e.dataTransfer.effectAllowed = 'move';
+        const header = e.target.closest('.tt-card-header');
+        if (header) {
+            draggedItem = header.closest('.tt-comparison-card');
+            if (draggedItem) {
+                setTimeout(() => {
+                    draggedItem.style.opacity = '0.5';
+                }, 0);
+                e.dataTransfer.effectAllowed = 'move';
+            }
         }
     });
 
     comparisonContainer.addEventListener('dragend', (e) => {
-        if (e.target.classList.contains('tt-comparison-card')) {
-            e.target.style.opacity = '1';
+        if (draggedItem) {
+            draggedItem.style.opacity = '1';
             draggedItem = null;
             saveCardOrder(); // Save order after drag ends
         }
@@ -53,13 +56,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     comparisonContainer.addEventListener('dragover', (e) => {
         e.preventDefault(); // Allow drop
-        if (e.target.classList.contains('tt-comparison-card') && draggedItem !== e.target) {
-            const boundingBox = e.target.getBoundingClientRect();
+        const targetCard = e.target.closest('.tt-comparison-card');
+        if (targetCard && draggedItem && draggedItem !== targetCard) {
+            const boundingBox = targetCard.getBoundingClientRect();
             const offset = boundingBox.y + (boundingBox.height / 2);
             if (e.clientY - offset > 0) {
-                comparisonContainer.insertBefore(draggedItem, e.target.nextSibling);
+                comparisonContainer.insertBefore(draggedItem, targetCard.nextSibling);
             } else {
-                comparisonContainer.insertBefore(draggedItem, e.target);
+                comparisonContainer.insertBefore(draggedItem, targetCard);
             }
         }
     });
@@ -72,9 +76,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Make cards draggable
+    // Make card headers draggable
     Array.from(comparisonContainer.children).forEach(card => {
-        card.setAttribute('draggable', 'true');
+        const header = card.querySelector('.tt-card-header');
+        if (header) {
+            header.setAttribute('draggable', 'true');
+        }
     });
 
     // Load card order on initial page load

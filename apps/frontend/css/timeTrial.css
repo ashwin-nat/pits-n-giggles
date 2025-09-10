@@ -148,6 +148,7 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
+    cursor: grab; /* Add grab cursor for draggable header */
 }
 
 .tt-card-header-content {
