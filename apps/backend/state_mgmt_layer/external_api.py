@@ -66,11 +66,12 @@ async def externalApiTask(
             if not message.m_formula_type.is_f1() or not message.m_session_type.isQualiTypeSession():
                 logger.debug("Skipping external API update as session is unsupported. %s", message)
                 pole_lap = None
-            try:
-                pole_lap = await getMostRecentPoleLap(track_id=message.m_trackID, logger=logger)
-            except Exception as e: # pylint: disable=broad-exception-caught
-                logger.error(f"Error fetching most recent pole lap: {e}")
-                pole_lap = None
+            else:
+                try:
+                    pole_lap = await getMostRecentPoleLap(track_id=message.m_trackID, logger=logger)
+                except Exception as e: # pylint: disable=broad-exception-caught
+                    logger.error(f"Error fetching most recent pole lap: {e}")
+                    pole_lap = None
             session_state_ref.m_session_info.m_most_recent_pole_lap = pole_lap
 
     logger.debug("Shutting down External API task...")
