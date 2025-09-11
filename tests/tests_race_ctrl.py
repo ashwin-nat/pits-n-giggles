@@ -31,7 +31,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from tests_base import F1TelemetryUnitTestsBase
 
-from lib.race_ctrl import SessionRaceControlManager, RaceControlMessage, MessageType, DriverRaceControlManager
+from lib.race_ctrl import SessionRaceControlManager, RaceCtrlMsgBase, MessageType, DriverRaceControlManager
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -47,9 +47,9 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         self.session_mgr.register_driver(2, self.driver2_mgr)
 
     async def test_add_message_and_index_as_id(self):
-        msg = RaceControlMessage(
+        msg = RaceCtrlMsgBase(
             timestamp=1.23,
-            message_type=MessageType.FLAG,
+            message_type=MessageType.SESSION_START,
             involved_drivers=set(),
         )
         msg_id = self.session_mgr.add_message(msg)
@@ -58,9 +58,9 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         self.assertIs(self.session_mgr.messages[msg_id], msg)
 
     async def test_message_stored_in_driver_refs(self):
-        msg = RaceControlMessage(
+        msg = RaceCtrlMsgBase(
             timestamp=2.34,
-            message_type=MessageType.PENALTY,
+            message_type=MessageType.SESSION_END,
             involved_drivers={1, 2},
         )
         self.session_mgr.add_message(msg)
@@ -71,9 +71,9 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         self.assertIs(self.driver2_mgr.messages[0], msg)
 
     async def test_message_with_no_driver_involvement(self):
-        msg = RaceControlMessage(
+        msg = RaceCtrlMsgBase(
             timestamp=3.45,
-            message_type=MessageType.NOTE,
+            message_type=MessageType.FASTEST_LAP,
             involved_drivers=set(),
         )
         self.session_mgr.add_message(msg)
@@ -82,9 +82,9 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         self.assertEqual(len(self.driver2_mgr.messages), 0)
 
     async def test_clear_resets_session_and_drivers(self):
-        msg = RaceControlMessage(
+        msg = RaceCtrlMsgBase(
             timestamp=4.56,
-            message_type=MessageType.OTHER,
+            message_type=MessageType.RETIREMENT,
             involved_drivers={1},
         )
         self.session_mgr.add_message(msg)
@@ -100,14 +100,14 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         self.assertEqual(len(self.session_mgr.drivers), 0)
 
     async def test_to_json_exports_ids_and_data(self):
-        msg1 = RaceControlMessage(
+        msg1 = RaceCtrlMsgBase(
             timestamp=5.0,
-            message_type=MessageType.FLAG,
+            message_type=MessageType.SESSION_START,
             involved_drivers={1},
         )
-        msg2 = RaceControlMessage(
+        msg2 = RaceCtrlMsgBase(
             timestamp=6.0,
-            message_type=MessageType.NOTE,
+            message_type=MessageType.FASTEST_LAP,
             involved_drivers={2},
         )
         self.session_mgr.add_message(msg1)
@@ -116,14 +116,14 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         exported = self.session_mgr.toJSON()
 
         self.assertEqual(exported[0]["id"], 0)
-        self.assertEqual(exported[0]["message_type"], "FLAG")
+        self.assertEqual(exported[0]["message_type"], "SESSION_START")
         self.assertEqual(exported[1]["id"], 1)
-        self.assertEqual(exported[1]["message_type"], "NOTE")
+        self.assertEqual(exported[1]["message_type"], "FASTEST_LAP")
 
     async def test_message_with_single_driver(self):
-        msg = RaceControlMessage(
+        msg = RaceCtrlMsgBase(
             timestamp=8.88,
-            message_type=MessageType.PENALTY,
+            message_type=MessageType.SESSION_END,
             involved_drivers={1},
         )
         self.session_mgr.add_message(msg)

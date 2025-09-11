@@ -30,16 +30,30 @@ from typing import Any, Dict, Optional, Set
 
 class MessageType(Enum):
     """Enumeration of possible race control message types."""
-    FLAG = auto()
+    SESSION_START = auto()
+    SESSION_END = auto()
+    FASTEST_LAP = auto()
+    RETIREMENT = auto()
+    DRS_ENABLED = auto()
+    DRS_DISABLED = auto()
+    CHEQUERED_FLAG = auto()
+    RACE_WINNER = auto()
     PENALTY = auto()
-    NOTE = auto()
-    OTHER = auto()
+    SPEED_TRAP = auto()
+    START_LIGHTS = auto()
+    LIGHTS_OUT = auto()
+    DRIVE_THROUGH_SERVED = auto()
+    STOP_GO_SERVED = auto()
+    RED_FLAG = auto()
+    OVERTAKE = auto()
+    SAFETY_CAR = auto()
+    COLLISION = auto()
 
     def __str__(self) -> str:
         return self.name
 
 @dataclass
-class RaceControlMessage:
+class RaceCtrlMsgBase:
     """
     Base class for all race control messages.
 

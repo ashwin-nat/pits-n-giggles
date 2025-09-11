@@ -24,7 +24,7 @@
 
 from typing import List
 
-from .messages import RaceControlMessage
+from .messages import RaceCtrlMsgBase
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -39,9 +39,9 @@ class DriverRaceControlManager:
 
     def __init__(self, driver_index: int) -> None:
         self.driver_index: int = driver_index
-        self.messages: List[RaceControlMessage] = []
+        self.messages: List[RaceCtrlMsgBase] = []
 
-    def add_message(self, message: RaceControlMessage) -> None:
+    def add_message(self, message: RaceCtrlMsgBase) -> None:
         """Register a message reference if the driver is involved."""
         self.messages.append(message)
 

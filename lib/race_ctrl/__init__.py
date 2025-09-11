@@ -23,14 +23,14 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .driver_mgr import DriverRaceControlManager
-from .messages import MessageType, RaceControlMessage
+from .messages import MessageType, RaceCtrlMsgBase
 from .session_mgr import SessionRaceControlManager
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
     "MessageType",
-    "RaceControlMessage",
+    "RaceCtrlMsgBase",
     "DriverRaceControlManager",
     "SessionRaceControlManager",
 ]

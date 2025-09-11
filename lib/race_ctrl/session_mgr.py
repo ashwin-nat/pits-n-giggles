@@ -25,7 +25,7 @@
 from typing import Dict, List
 
 from .driver_mgr import DriverRaceControlManager
-from .messages import RaceControlMessage
+from .messages import RaceCtrlMsgBase
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -39,14 +39,14 @@ class SessionRaceControlManager:
     """
 
     def __init__(self) -> None:
-        self.messages: List[RaceControlMessage] = []
+        self.messages: List[RaceCtrlMsgBase] = []
         self.drivers: Dict[int, DriverRaceControlManager] = {}
 
     def register_driver(self, driver_index: int, driver_mgr: DriverRaceControlManager) -> None:
         """Register a driver manager with this session."""
         self.drivers[driver_index] = driver_mgr
 
-    def add_message(self, message: RaceControlMessage) -> int:
+    def add_message(self, message: RaceCtrlMsgBase) -> int:
         """
         Add a race control message to the session and relevant drivers.
 
