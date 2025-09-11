@@ -52,12 +52,14 @@ class RaceControlMessage:
     timestamp: float
     message_type: MessageType
     involved_drivers: Set[int] = field(default_factory=set)
+    lap_number: Optional[int] = None
     _id: Optional[int] = None
 
     def toJSON(self) -> Dict[str, Any]:
         """Export the message as a JSON-ready dict."""
         return {
             "id": self._id,
+            "lap_number": self.lap_number,
             "timestamp": self.timestamp,
             "message_type": str(self.message_type),
             "involved_drivers": list(self.involved_drivers),
