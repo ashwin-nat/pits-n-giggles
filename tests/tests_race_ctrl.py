@@ -50,7 +50,7 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         msg = RaceCtrlMsgBase(
             timestamp=1.23,
             message_type=MessageType.SESSION_START,
-            involved_drivers=set(),
+            involved_drivers=[],
         )
         msg_id = self.session_mgr.add_message(msg)
 
@@ -61,7 +61,7 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         msg = RaceCtrlMsgBase(
             timestamp=2.34,
             message_type=MessageType.SESSION_END,
-            involved_drivers={1, 2},
+            involved_drivers=[1, 2],
         )
         self.session_mgr.add_message(msg)
 
@@ -74,7 +74,7 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         msg = RaceCtrlMsgBase(
             timestamp=3.45,
             message_type=MessageType.FASTEST_LAP,
-            involved_drivers=set(),
+            involved_drivers=[],
         )
         self.session_mgr.add_message(msg)
 
@@ -85,7 +85,7 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         msg = RaceCtrlMsgBase(
             timestamp=4.56,
             message_type=MessageType.RETIREMENT,
-            involved_drivers={1},
+            involved_drivers=[1],
         )
         self.session_mgr.add_message(msg)
 
@@ -103,12 +103,12 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         msg1 = RaceCtrlMsgBase(
             timestamp=5.0,
             message_type=MessageType.SESSION_START,
-            involved_drivers={1},
+            involved_drivers=[1],
         )
         msg2 = RaceCtrlMsgBase(
             timestamp=6.0,
             message_type=MessageType.FASTEST_LAP,
-            involved_drivers={2},
+            involved_drivers=[2],
         )
         self.session_mgr.add_message(msg1)
         self.session_mgr.add_message(msg2)
@@ -124,7 +124,7 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         msg = RaceCtrlMsgBase(
             timestamp=8.88,
             message_type=MessageType.SESSION_END,
-            involved_drivers={1},
+            involved_drivers=[1],
         )
         self.session_mgr.add_message(msg)
 

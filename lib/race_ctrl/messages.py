@@ -24,7 +24,7 @@
 
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Any, Dict, Optional, Set
+from typing import Any, Dict, List, Optional
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -61,11 +61,11 @@ class RaceCtrlMsgBase:
         _id (int): Unique identifier of the message.
         timestamp (float): Time at which the message was issued (seconds).
         message_type (MessageType): Type of race control message.
-        involved_drivers (Set[int]): Set of driver indices involved in the message.
+        involved_drivers (List[int]): List of driver indices involved in the message.
     """
     timestamp: float
     message_type: MessageType
-    involved_drivers: Set[int] = field(default_factory=set)
+    involved_drivers: List[int] = field(default_factory=list)
     lap_number: Optional[int] = None
     _id: Optional[int] = None
 
