@@ -113,21 +113,12 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         self.session_mgr.add_message(msg1)
         self.session_mgr.add_message(msg2)
 
-        exported = self.session_mgr.to_json()
+        exported = self.session_mgr.toJSON()
 
         self.assertEqual(exported[0]["id"], 0)
         self.assertEqual(exported[0]["message_type"], "FLAG")
         self.assertEqual(exported[1]["id"], 1)
         self.assertEqual(exported[1]["message_type"], "NOTE")
-
-    async def test_message_is_immutable(self):
-        msg = RaceControlMessage(
-            timestamp=7.89,
-            message_type=MessageType.FLAG,
-            involved_drivers={1},
-        )
-        with self.assertRaises(Exception):
-            msg.timestamp = 9.99  # frozen dataclass, should not allow reassignment
 
     async def test_message_with_single_driver(self):
         msg = RaceControlMessage(

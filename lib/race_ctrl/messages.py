@@ -24,7 +24,7 @@
 
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Dict, List, Set
+from typing import Any, Dict, Optional, Set
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -35,12 +35,16 @@ class MessageType(Enum):
     NOTE = auto()
     OTHER = auto()
 
-@dataclass(frozen=True)
+    def __str__(self) -> str:
+        return self.name
+
+@dataclass
 class RaceControlMessage:
     """
     Base class for all race control messages.
 
     Attributes:
+        _id (int): Unique identifier of the message.
         timestamp (float): Time at which the message was issued (seconds).
         message_type (MessageType): Type of race control message.
         involved_drivers (Set[int]): Set of driver indices involved in the message.
@@ -48,3 +52,12 @@ class RaceControlMessage:
     timestamp: float
     message_type: MessageType
     involved_drivers: Set[int] = field(default_factory=set)
+    _id: Optional[int] = None
+
+    def toJSON(self) -> Dict[str, Any]:
+        return {
+            "id": self._id,
+            "timestamp": self.timestamp,
+            "message_type": str(self.message_type),
+            "involved_drivers": list(self.involved_drivers),
+        }

@@ -53,15 +53,14 @@ class SessionRaceControlManager:
         Returns:
             int: The message ID (its index in the session list).
         """
+        message._id = len(self.messages)
         self.messages.append(message)
-        msg_id = len(self.messages) - 1
 
         for driver_idx in message.involved_drivers:
-            driver_mgr = self.drivers.get(driver_idx)
-            if driver_mgr:
+            if driver_mgr := self.drivers.get(driver_idx):
                 driver_mgr.add_message(message)
 
-        return msg_id
+        return message._id
 
     def clear(self) -> None:
         """Clear all session and driver messages. All registered drivers are automatically un-registered"""
@@ -70,14 +69,6 @@ class SessionRaceControlManager:
             driver_mgr.clear()
         self.drivers.clear()
 
-    def to_json(self) -> List[dict]:
+    def toJSON(self) -> List[dict]:
         """Export all session messages as JSON-ready dicts with implicit IDs."""
-        return [
-            {
-                "id": idx,
-                "timestamp": msg.timestamp,
-                "message_type": msg.message_type.name,
-                "involved_drivers": list(msg.involved_drivers),
-            }
-            for idx, msg in enumerate(self.messages)
-        ]
+        return [msg.toJSON() for msg in self.messages]
