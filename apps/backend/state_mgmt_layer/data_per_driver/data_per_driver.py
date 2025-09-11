@@ -28,8 +28,9 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
-from lib.f1_types import (F1Utils, LapData, PacketLapPositionsData, ResultStatus,
-                          SafetyCarType, SessionType, TrackID)
+from lib.f1_types import (F1Utils, LapData, PacketLapPositionsData,
+                          ResultStatus, SafetyCarType, SessionType, TrackID)
+from lib.race_ctrl import DriverRaceControlManager
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 
 from .car_info import CarInfo
@@ -61,6 +62,8 @@ class DataPerDriver:
         m_packet_copies (PacketCopies): Copies of various data packets related to the driver's performance.
         m_per_lap_snapshots (Dict[int, PerLapSnapshotEntry]): Snapshots of the driver's performance per lap
         m_position_history (List[int]): List of positions of the driver
+        m_pending_events_mgr (PendingEventsManager): Manager for pending events involving the driver.
+        m_driver_race_ctrl_mgr (DriverRaceControlManager): Manager for race control messages specific to the driver.
     """
 
     __slots__ = (
@@ -76,6 +79,7 @@ class DataPerDriver:
         "m_per_lap_snapshots",
         "m_position_history",
         "m_pending_events_mgr",
+        "m_race_ctrl",
     )
 
     def __repr__(self) -> str:
@@ -137,6 +141,9 @@ class DataPerDriver:
         self.m_pending_events_mgr: PendingEventsManager = PendingEventsManager(
             callback=self._delayedTyreSetsChange
         )
+
+        # Race control manager
+        self.m_race_ctrl: DriverRaceControlManager = DriverRaceControlManager(index)
 
     @property
     def is_valid(self) -> bool:

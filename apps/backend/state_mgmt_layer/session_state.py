@@ -54,6 +54,7 @@ from lib.openf1 import MostRecentPoleLap
 from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
+from lib.race_ctrl import SessionRaceControlManager
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
@@ -291,6 +292,7 @@ class SessionState:
         m_first_session_update_received (bool): Flag indicating whether the first session update packet has been received.
         m_version (str): Version string
         m_connected_to_sim (bool): Flag indicating whether the client is connected to the simulator
+        m_race_ctrl (RaceCtrl): The session race control messages manager
     """
 
     MAX_DRIVERS: int = 22
@@ -317,6 +319,7 @@ class SessionState:
         'm_first_session_update_received',
         'm_version',
         'm_connected_to_sim',
+        'm_race_ctrl',
     )
 
     def __init__(self,
@@ -356,6 +359,8 @@ class SessionState:
         self.m_custom_markers_history = CustomMarkersHistory()
         self.m_connected_to_sim: bool = False
 
+        self.m_race_ctrl: SessionRaceControlManager = SessionRaceControlManager()
+
     ####### Control Methods ########
 
     def clear(self, reason: str) -> None:
@@ -380,6 +385,7 @@ class SessionState:
         self.m_first_session_update_received = False
         self.m_session_info.clear()
         self.m_custom_markers_history.clear()
+        self.m_race_ctrl.clear()
 
         # No need to clear config params
 
@@ -1304,6 +1310,7 @@ class SessionState:
                 logger=self.m_logger,
                 total_laps=self.m_session_info.m_total_laps)
             self.m_driver_data[index] = obj
+            self.m_race_ctrl.register_driver(index, obj.m_race_ctrl)
         return obj
 
     def _recomputeFastestLap(self) -> None:
