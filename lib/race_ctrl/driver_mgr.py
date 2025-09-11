@@ -43,8 +43,7 @@ class DriverRaceControlManager:
 
     def add_message(self, message: RaceControlMessage) -> None:
         """Register a message reference if the driver is involved."""
-        if self.driver_index in message.involved_drivers:
-            self.messages.append(message)
+        self.messages.append(message)
 
     def clear(self) -> None:
         """Clear all stored messages for this driver."""

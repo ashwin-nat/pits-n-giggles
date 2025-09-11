@@ -55,6 +55,7 @@ class RaceControlMessage:
     _id: Optional[int] = None
 
     def toJSON(self) -> Dict[str, Any]:
+        """Export the message as a JSON-ready dict."""
         return {
             "id": self._id,
             "timestamp": self.timestamp,
