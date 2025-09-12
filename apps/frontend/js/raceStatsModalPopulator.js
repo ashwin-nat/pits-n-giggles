@@ -85,7 +85,6 @@ class RaceStatsModalPopulator {
             { id: 'position-history', method: this.populatePositionHistoryTab },
             { id: 'tyre-stint-history', method: this.populateTyreStintHistoryTab },
             { id: 'speed-trap-records', method: this.populateSpeedTrapRecordsTab },
-            { id: 'race-control', method: this.populateRaceControlTab },
             { id: 'race-control-messages', method: this.populateRaceControlMessagesTabWrapper },
         ];
 
@@ -292,15 +291,6 @@ class RaceStatsModalPopulator {
         });
 
         tabPane.appendChild(chartDiv);
-    }
-
-    populateRaceControlTab(tabPane) {
-
-        const messages = this.data["race-control-messages"] ?? [];
-        if (messages.length == 0) {
-            this.showDataNotAvailableMessage(tabPane, "Race Control Messages data not available");
-            return;
-        }
     }
 
     populateRaceControlMessagesTabWrapper(tabPane) {
