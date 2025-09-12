@@ -31,7 +31,7 @@ from .messages import (ChequeredFlagRaceCtrlMsg, CollisionRaceCtrlMsg,
                        DrsDisabledRaceCtrlMsg, DrsEnabledRaceCtrlMsg,
                        DtPenServedRaceCtrlMsg, FastestLapRaceCtrlMsg,
                        LightsOutRaceCtrlMsg, OvertakeRaceCtrlMsg,
-                       PenaltyRaceCtrlMsg, RaceCtrlMsgBase,
+                       PenaltyRaceCtrlMsg, RaceCtrlMsgBase, RedFlagRaceCtrlMsg,
                        RaceWinnerRaceCtrlMsg, RetirementRaceCtrlMsg,
                        SafetyCarRaceCtrlMsg, SessionEndRaceCtrlMsg,
                        SessionStartRaceCtrlMsg, SgPenServedRaceCtrlMsg,
@@ -106,6 +106,9 @@ def race_ctrl_msg_factory(packet: PacketEventData, lap_number: int) -> Optional[
             sg_pen_served: PacketEventData.StopGoPenaltyServed = packet.mEventDetails
             return SgPenServedRaceCtrlMsg(timestamp=time.time(), driver_index=sg_pen_served.vehicleIdx,
                                           stop_time=sg_pen_served.stopTime, lap_number=lap_number)
+
+        case PacketEventData.EventPacketType.RED_FLAG:
+            return RedFlagRaceCtrlMsg(timestamp=time.time(), lap_number=lap_number)
 
         case PacketEventData.EventPacketType.OVERTAKE:
             overtake: PacketEventData.Overtake = packet.mEventDetails
