@@ -178,7 +178,8 @@ class DataPerDriver:
                index: Optional[int] = None,
                include_tyre_wear_prediction : Optional[bool] = False,
                selected_pit_stop_lap : Optional[int] = None,
-               save_race_ctrl : Optional[bool] = False) -> Dict[str, Any]:
+               save_race_ctrl : Optional[bool] = False,
+               driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
         """Get a JSON representation of this DataPerDriver object
 
         Args:
@@ -186,6 +187,7 @@ class DataPerDriver:
             include_tyre_wear_prediction (Optional[bool]): Whether to include the tyre wear prediction
             selected_pit_stop_lap (Optional[int]): The lap number of the selected pit stop
             save_race_ctrl (Optional[bool]): Whether to save race control
+            driver_info_dict (Optional[Dict[int, dict]]): Dictionary of driver info
 
         Returns:
             Dict[str, Any]: The JSON dict
@@ -233,11 +235,7 @@ class DataPerDriver:
 
         # Race control
         if save_race_ctrl:
-            final_json["race-control"] = self.m_race_ctrl.toJSON({
-                'name': self.m_driver_info.name,
-                'team': self.m_driver_info.team,
-                'driver-number': self.m_driver_info.driver_number,
-            })
+            final_json["race-control"] = self.m_race_ctrl.toJSON(driver_info_dict)
 
         # Return this fully prepped JSON
         return final_json

@@ -698,6 +698,7 @@ class SessionState:
             "classification-data" : []
         }
         speed_trap_records = []
+        driver_info_dict = self._getRaceCtrlHelperDict() if self.m_process_race_ctrl_msg else None
 
         # --- Initialize optional structures
         if is_position_history_supported:
@@ -711,7 +712,8 @@ class SessionState:
             if driver and driver.is_valid:
                 # Add driver’s classification info
                 final_json["classification-data"].append(driver.toJSON(index=index,
-                                                                       save_race_ctrl=self.m_process_race_ctrl_msg))
+                                                                       save_race_ctrl=self.m_process_race_ctrl_msg,
+                                                                       driver_info_dict=driver_info_dict))
                 # Collect speed trap info
                 speed_trap_records.append(driver.getSpeedTrapRecordJSON())
 
@@ -760,7 +762,7 @@ class SessionState:
 
         # Finally, race control messages and app version
         if self.m_process_race_ctrl_msg:
-            final_json['race-control-messages'] = self.getRaceControlMessagesJSON()
+            final_json['race-control-messages'] = self.getRaceControlMessagesJSON(driver_info_dict)
         final_json['version'] = self.m_version
         return final_json
 
@@ -1004,7 +1006,9 @@ class SessionState:
                 selected_pit_stop_lap = self.m_ideal_pit_stop_window
             else:
                 selected_pit_stop_lap = None
-        final_json = driver_info_obj.toJSON(index, include_wear_prediction, selected_pit_stop_lap)
+        driver_info_dict = self._getRaceCtrlHelperDict()
+        final_json = driver_info_obj.toJSON(index, include_wear_prediction, selected_pit_stop_lap,
+                                            self.m_process_race_ctrl_msg, driver_info_dict)
         final_json["circuit"] = str(self.m_session_info.m_track)
         final_json["session-type"] = str(self.m_session_info.m_session_type)
         final_json["is-finish-line-after-pit-garage"] = F1Utils.isFinishLineAfterPitGarage(self.m_session_info.m_track) \
@@ -1311,20 +1315,27 @@ class SessionState:
         """Get the save data JSON."""
         return self.buildFinalClassificationJSON() if self.is_data_available else None
 
-    def getRaceControlMessagesJSON(self) -> List[Dict[str, Any]]:
+    def getRaceControlMessagesJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> List[Dict[str, Any]]:
         """Get the race control messages JSON."""
-        driver_info_dict = {
+
+        if not driver_info_dict:
+            driver_info_dict = self._getRaceCtrlHelperDict()
+        return self.m_race_ctrl.toJSON(driver_info_dict)
+
+    ##### Internal Helpers #####
+
+    def _getRaceCtrlHelperDict(self) -> Dict[str, Any]:
+        """Get the race control messages helper dictionary. This is a mapping of index against driver info JSON,
+        which contains the following keys: `name`, `team`, `driver-number`."""
+        return {
             index: {
                 'name': driver.m_driver_info.name,
                 'team': driver.m_driver_info.team,
                 'driver-number': driver.m_driver_info.driver_number,
             }
             for index, driver in enumerate(self.m_driver_data)
-            if driver.is_valid
+            if driver and driver.is_valid
         }
-        return self.m_race_ctrl.toJSON(driver_info_dict)
-
-    ##### Internal Helpers #####
 
     def _getObjectByIndex(self, index: int, create: bool = True, reason: str = None) -> DataPerDriver:
         """Looks up and retrieves the object at the specified index.
