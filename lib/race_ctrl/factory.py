@@ -23,9 +23,13 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import time
-from lib.f1_types import PacketEventData
 from typing import Optional
-from .messages import RaceCtrlMsgBase, SessionStartRaceCtrlMsg
+
+from lib.f1_types import PacketEventData
+
+from .messages import (FastestLapRaceCtrlMsg, OvertakeRaceCtrlMsg,
+                       RaceCtrlMsgBase, RetirementRaceCtrlMsg, CollisionRaceCtrlMsg,
+                       SessionEndRaceCtrlMsg, SessionStartRaceCtrlMsg)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -35,16 +39,30 @@ def race_ctrl_msg_factory(packet: PacketEventData, lap_number: int) -> Optional[
         case PacketEventData.EventPacketType.SESSION_STARTED:
             return SessionStartRaceCtrlMsg(timestamp=time.time(), lap_number=lap_number)
 
+        case PacketEventData.EventPacketType.SESSION_ENDED:
+            return SessionEndRaceCtrlMsg(timestamp=time.time(), lap_number=lap_number)
+
         case PacketEventData.EventPacketType.FASTEST_LAP:
-            return None
-        case PacketEventData.EventPacketType.SESSION_STARTED:
-            return None
+            fastest_lap: PacketEventData.FastestLap = packet.mEventDetails
+            return FastestLapRaceCtrlMsg(timestamp=time.time(), driver_index=fastest_lap.vehicleIdx,
+                                         lap_time_ms=int(fastest_lap.lapTime * 1000), lap_number=lap_number)
+
         case PacketEventData.EventPacketType.RETIREMENT:
-            return None
+            retirement: PacketEventData.Retirement = packet.mEventDetails
+            return RetirementRaceCtrlMsg(timestamp=time.time(), driver_index=retirement.vehicleIdx,
+                                         reason=retirement.m_reason, lap_number=lap_number)
+
         case PacketEventData.EventPacketType.OVERTAKE:
-            return None
+            overtake: PacketEventData.Overtake = packet.mEventDetails
+            return OvertakeRaceCtrlMsg(timestamp=time.time(), overtaker_index=overtake.overtakingVehicleIdx,
+                                       overtaken_index=overtake.beingOvertakenVehicleIdx, lap_number=lap_number)
+
         case PacketEventData.EventPacketType.COLLISION:
-            return None
+            collision: PacketEventData.Collision = packet.mEventDetails
+            return CollisionRaceCtrlMsg(timestamp=time.time(), involved_drivers=[collision.m_vehicle_1_index,
+                                                                                collision.m_vehicle_2_index],
+                                        lap_number=lap_number)
+
         case PacketEventData.EventPacketType.FLASHBACK:
             return None
         case PacketEventData.EventPacketType.START_LIGHTS:

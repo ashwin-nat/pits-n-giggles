@@ -90,3 +90,86 @@ class SessionStartRaceCtrlMsg(RaceCtrlMsgBase):
 
     def toJSON(self) -> Dict[str, Any]:
         return super().toJSON()
+
+class SessionEndRaceCtrlMsg(RaceCtrlMsgBase):
+
+    def __init__(self, timestamp: float, lap_number: Optional[int] = None) -> None:
+        super().__init__(
+            timestamp=timestamp,
+            message_type=MessageType.SESSION_END,
+            involved_drivers=[],
+            lap_number=lap_number)
+
+    def toJSON(self) -> Dict[str, Any]:
+        return super().toJSON()
+
+class FastestLapRaceCtrlMsg(RaceCtrlMsgBase):
+
+    def __init__(self, timestamp: float, driver_index: int, lap_time_ms: int, lap_number: Optional[int] = None) -> None:
+        super().__init__(
+            timestamp=timestamp,
+            message_type=MessageType.FASTEST_LAP,
+            involved_drivers=[driver_index],
+            lap_number=lap_number)
+        self.lap_time_ms: int = lap_time_ms
+
+    def toJSON(self) -> Dict[str, Any]:
+        return {
+            **super().toJSON(),
+            "lap-time-ms": self.lap_time_ms
+        }
+
+class RetirementRaceCtrlMsg(RaceCtrlMsgBase):
+
+    def __init__(self, timestamp: float, driver_index: int, reason: str, lap_number: Optional[int] = None) -> None:
+        super().__init__(
+            timestamp=timestamp,
+            message_type=MessageType.RETIREMENT,
+            involved_drivers=[driver_index],
+            lap_number=lap_number)
+        self.reason: str = reason
+
+    def toJSON(self) -> Dict[str, Any]:
+        return {
+            **super().toJSON(),
+            "reason": self.reason
+        }
+
+class OvertakeRaceCtrlMsg(RaceCtrlMsgBase):
+
+    def __init__(self, timestamp: float, overtaker_index: int, overtaken_index: int, lap_number: Optional[int] = None) -> None:
+        super().__init__(
+            timestamp=timestamp,
+            message_type=MessageType.OVERTAKE,
+            involved_drivers=[overtaker_index, overtaken_index],
+            lap_number=lap_number)
+
+    @property
+    def overtaker_index(self) -> int:
+        return self.involved_drivers[0]
+
+    @property
+    def overtaken_index(self) -> int:
+        return self.involved_drivers[1]
+
+    def toJSON(self) -> Dict[str, Any]:
+        return {
+            **super().toJSON(),
+            "overtaker-index": self.overtaker_index,
+            "overtaken-index": self.overtaken_index
+        }
+
+class CollisionRaceCtrlMsg(RaceCtrlMsgBase):
+
+    def __init__(self, timestamp: float, involved_drivers: List[int], lap_number: Optional[int] = None) -> None:
+        super().__init__(
+            timestamp=timestamp,
+            message_type=MessageType.COLLISION,
+            involved_drivers=involved_drivers,
+            lap_number=lap_number)
+
+    def toJSON(self) -> Dict[str, Any]:
+        return {
+            **super().toJSON(),
+            "involved-drivers": self.involved_drivers
+        }
