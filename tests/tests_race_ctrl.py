@@ -115,9 +115,9 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         exported = self.session_mgr.toJSON()
 
         self.assertEqual(exported[0]["id"], 0)
-        self.assertEqual(exported[0]["message_type"], "SESSION_START")
+        self.assertEqual(exported[0]["message-type"], "SESSION_START")
         self.assertEqual(exported[1]["id"], 1)
-        self.assertEqual(exported[1]["message_type"], "FASTEST_LAP")
+        self.assertEqual(exported[1]["message-type"], "FASTEST_LAP")
 
     async def test_message_with_single_driver(self):
         msg = RaceCtrlMsgBase(

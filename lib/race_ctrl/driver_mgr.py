@@ -51,7 +51,4 @@ class DriverRaceControlManager:
 
     def toJSON(self, driver_info: Optional[dict] = None) -> Dict[str, Any]:
         """Export all driver messages as JSON-ready dicts with implicit IDs."""
-        return {
-            "driver-index": self.driver_index,
-            "messages": [msg.toJSON(driver_info) for msg in self.messages]
-        }
+        return [msg.toJSON(driver_info) for msg in self.messages]
