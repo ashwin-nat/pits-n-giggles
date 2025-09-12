@@ -9,11 +9,23 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
     // Clear any existing content in the container
     containerElement.innerHTML = '';
 
-    // Create the div for the filter controls
-    const filterDiv = document.createElement('div');
-    filterDiv.id = 'raceControlMessageFilters';
-    filterDiv.classList.add('race-control-filters');
-    containerElement.appendChild(filterDiv);
+    // Create the filter button
+    const filterButton = document.createElement('button');
+    filterButton.textContent = 'Filters';
+    filterButton.classList.add('race-control-filter-button');
+    containerElement.appendChild(filterButton);
+
+    // Create the modal overlay
+    const modalOverlay = document.createElement('div');
+    modalOverlay.classList.add('race-control-modal-overlay');
+    modalOverlay.style.display = 'none'; // Hidden by default, controlled by class in CSS
+    containerElement.appendChild(modalOverlay);
+
+    // Create the modal content box
+    const filterCheckboxesContainer = document.createElement('div');
+    filterCheckboxesContainer.id = 'raceControlMessageFilters';
+    filterCheckboxesContainer.classList.add('race-control-filters-checkboxes');
+    modalOverlay.appendChild(filterCheckboxesContainer);
 
     // Create the div for the AG Grid
     const gridDiv = document.createElement('div');
@@ -34,16 +46,33 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
 
     // Populate filter checkboxes
     const populateFilters = (gridApi) => {
-        filterDiv.innerHTML = '<h3>Filter by Message Type:</h3>';
+        // Clear existing content using proper DOM API
+        while (filterCheckboxesContainer.firstChild) {
+            filterCheckboxesContainer.removeChild(filterCheckboxesContainer.firstChild);
+        }
+
+        const title = document.createElement('h3');
+        title.textContent = 'Message Types';
+        filterCheckboxesContainer.appendChild(title);
+
+        // Add a close button to the modal
+        const closeButton = document.createElement('button');
+        closeButton.textContent = 'X';
+        closeButton.classList.add('race-control-modal-close-button');
+        closeButton.addEventListener('click', () => {
+            modalOverlay.style.display = 'none';
+        });
+        filterCheckboxesContainer.appendChild(closeButton);
+
         allMessageTypes.forEach(type => {
-            const checkboxContainer = document.createElement('span');
+            const checkboxContainer = document.createElement('div');
             checkboxContainer.classList.add('filter-checkbox-container');
 
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.id = `filter-${type}`;
             checkbox.value = type;
-            checkbox.checked = true; // All checked by default
+            checkbox.checked = true;
 
             const label = document.createElement('label');
             label.htmlFor = `filter-${type}`;
@@ -60,7 +89,19 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
 
             checkboxContainer.appendChild(checkbox);
             checkboxContainer.appendChild(label);
-            filterDiv.appendChild(checkboxContainer);
+            filterCheckboxesContainer.appendChild(checkboxContainer);
+        });
+
+        // Toggle filter checkboxes visibility
+        filterButton.addEventListener('click', () => {
+            modalOverlay.style.display = 'flex'; // Show the modal
+        });
+
+        // Close modal when clicking outside
+        modalOverlay.addEventListener('click', (event) => {
+            if (event.target === modalOverlay) {
+                modalOverlay.style.display = 'none';
+            }
         });
     };
 
