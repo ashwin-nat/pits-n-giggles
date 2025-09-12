@@ -28,8 +28,14 @@ from .base import MessageType, RaceCtrlMsgBase
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class FastestLapRaceCtrlMsg(RaceCtrlMsgBase):
-
     def __init__(self, timestamp: float, driver_index: int, lap_time_ms: int, lap_number: Optional[int] = None) -> None:
+        """Fastest lap message
+
+        Args:
+            timestamp (float): Time at which the message was issued (seconds).
+            driver_index (int): Index of the driver.
+            lap_time_ms (int): Lap time in milliseconds
+        """
         super().__init__(
             timestamp=timestamp,
             message_type=MessageType.FASTEST_LAP,
@@ -38,6 +44,7 @@ class FastestLapRaceCtrlMsg(RaceCtrlMsgBase):
         self.lap_time_ms: int = lap_time_ms
 
     def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+        """Export the message as a JSON-ready dict."""
         ret = {
             **super().toJSON(driver_info_dict),
             "lap-time-ms": self.lap_time_ms
@@ -48,8 +55,14 @@ class FastestLapRaceCtrlMsg(RaceCtrlMsgBase):
         return ret
 
 class RetirementRaceCtrlMsg(RaceCtrlMsgBase):
-
     def __init__(self, timestamp: float, driver_index: int, reason: str, lap_number: Optional[int] = None) -> None:
+        """Retirement message
+
+        Args:
+            timestamp (float): Time at which the message was issued (seconds).
+            driver_index (int): Index of the driver.
+            reason (str): Retirement reason.
+        """
         super().__init__(
             timestamp=timestamp,
             message_type=MessageType.RETIREMENT,
@@ -58,6 +71,7 @@ class RetirementRaceCtrlMsg(RaceCtrlMsgBase):
         self.reason: str = reason
 
     def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+        """Export the message as a JSON-ready dict."""
         ret = {
             **super().toJSON(driver_info_dict),
             "reason": self.reason
@@ -68,10 +82,20 @@ class RetirementRaceCtrlMsg(RaceCtrlMsgBase):
         return ret
 
 class SpeedTrapRaceCtrlMsg(RaceCtrlMsgBase):
-
     def __init__(self, timestamp: float, driver_index: int, speed: float, is_session_fastest: bool,
                  is_personal_fastest: bool, fastest_index: int, session_fastest: float,
                  lap_number: Optional[int] = None) -> None:
+        """Speed trap message
+
+        Args:
+            timestamp (float): Time at which the message was issued (seconds).
+            driver_index (int): Index of the driver.
+            speed (float): Speed of the driver.
+            is_session_fastest (bool): Whether the driver is the session fastest.
+            is_personal_fastest (bool): Whether the driver is the personal fastest.
+            fastest_index (int): Index of the fastest driver.
+            session_fastest (float): Session fastest speed.
+        """
         super().__init__(
             timestamp=timestamp,
             message_type=MessageType.SPEED_TRAP,
@@ -85,6 +109,7 @@ class SpeedTrapRaceCtrlMsg(RaceCtrlMsgBase):
         self.session_fastest: float = session_fastest
 
     def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+        """Export the message as a JSON-ready dict."""
         ret = {
             **super().toJSON(driver_info_dict),
             "driver-index": self.driver_index,
@@ -102,8 +127,18 @@ class SpeedTrapRaceCtrlMsg(RaceCtrlMsgBase):
         return ret
 
 class OvertakeRaceCtrlMsg(RaceCtrlMsgBase):
+    def __init__(self,
+                 timestamp: float,
+                 overtaker_index: int,
+                 overtaken_index: int,
+                 lap_number: Optional[int] = None) -> None:
+        """Overtake message
 
-    def __init__(self, timestamp: float, overtaker_index: int, overtaken_index: int, lap_number: Optional[int] = None) -> None:
+        Args:
+            timestamp (float): Time at which the message was issued (seconds).
+            overtaker_index (int): Index of the overtaker.
+            overtaken_index (int): Index of the overtaken.
+        """
         super().__init__(
             timestamp=timestamp,
             message_type=MessageType.OVERTAKE,
@@ -119,6 +154,7 @@ class OvertakeRaceCtrlMsg(RaceCtrlMsgBase):
         return self.involved_drivers[1]
 
     def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+        """Export the message as a JSON-ready dict."""
         ret = {
             **super().toJSON(driver_info_dict),
             "overtaker-index": self.overtaker_index,

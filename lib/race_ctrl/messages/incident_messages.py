@@ -28,9 +28,19 @@ from .base import MessageType, RaceCtrlMsgBase
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class PenaltyRaceCtrlMsg(RaceCtrlMsgBase):
-
     def __init__(self, timestamp: float, penalty_type: str, infringement_type: str, vehicle_index: int,
                  other_vehicle_index: int, time: int, places_gained: int, lap_number: Optional[int] = None) -> None:
+        """Penalty message
+
+        Args:
+            timestamp (float): Time at which the message was issued (seconds).
+            penalty_type (str): Penalty type.
+            infringement_type (str): Infringement type.
+            vehicle_index (int): Index of the vehicle.
+            other_vehicle_index (int): Index of the other vehicle.
+            time (int): Penalty time in seconds.
+            places_gained (int): Number of places gained.
+        """
         super().__init__(
             timestamp=timestamp,
             message_type=MessageType.PENALTY,
@@ -46,6 +56,7 @@ class PenaltyRaceCtrlMsg(RaceCtrlMsgBase):
         self.places_gained: int = places_gained
 
     def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+        """Export the message as a JSON-ready dict."""
         ret = {
             **super().toJSON(driver_info_dict),
             "penalty-type": self.penalty_type,
@@ -63,8 +74,13 @@ class PenaltyRaceCtrlMsg(RaceCtrlMsgBase):
         return ret
 
 class DtPenServedRaceCtrlMsg(RaceCtrlMsgBase):
-
     def __init__(self, timestamp: float, driver_index: int, lap_number: Optional[int] = None) -> None:
+        """Drive through served message
+
+        Args:
+            timestamp (float): Time at which the message was issued (seconds).
+            driver_index (int): Index of the driver.
+        """
         super().__init__(
             timestamp=timestamp,
             message_type=MessageType.DRIVE_THROUGH_SERVED,
@@ -73,6 +89,7 @@ class DtPenServedRaceCtrlMsg(RaceCtrlMsgBase):
         self.driver_index: int = driver_index
 
     def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+        """Export the message as a JSON-ready dict."""
         ret = {
             **super().toJSON(driver_info_dict),
             "driver-index": self.driver_index
@@ -83,8 +100,14 @@ class DtPenServedRaceCtrlMsg(RaceCtrlMsgBase):
         return ret
 
 class SgPenServedRaceCtrlMsg(RaceCtrlMsgBase):
-
     def __init__(self, timestamp: float, driver_index: int, stop_time: float, lap_number: Optional[int] = None) -> None:
+        """Stop go served message
+
+        Args:
+            timestamp (float): Time at which the message was issued (seconds).
+            driver_index (int): Index of the driver.
+            stop_time (float): Stop time in seconds.
+        """
         super().__init__(
             timestamp=timestamp,
             message_type=MessageType.STOP_GO_SERVED,
@@ -94,6 +117,7 @@ class SgPenServedRaceCtrlMsg(RaceCtrlMsgBase):
         self.stop_time: float = stop_time
 
     def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+        """Export the message as a JSON-ready dict."""
         ret = {
             **super().toJSON(driver_info_dict),
             "driver-index": self.driver_index,
@@ -105,8 +129,13 @@ class SgPenServedRaceCtrlMsg(RaceCtrlMsgBase):
         return ret
 
 class CollisionRaceCtrlMsg(RaceCtrlMsgBase):
-
     def __init__(self, timestamp: float, involved_drivers: List[int], lap_number: Optional[int] = None) -> None:
+        """Collision message
+
+        Args:
+            timestamp (float): Time at which the message was issued (seconds).
+            involved_drivers (List[int]): List of involved drivers indices.
+        """
         super().__init__(
             timestamp=timestamp,
             message_type=MessageType.COLLISION,
@@ -114,6 +143,7 @@ class CollisionRaceCtrlMsg(RaceCtrlMsgBase):
             lap_number=lap_number)
 
     def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+        """Export the message as a JSON-ready dict."""
         ret = {
             **super().toJSON(driver_info_dict),
             "involved-drivers": self.involved_drivers

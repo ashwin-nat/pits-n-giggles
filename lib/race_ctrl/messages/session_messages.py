@@ -28,8 +28,13 @@ from .base import RaceCtrlMsgBase, MessageType
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class SessionStartRaceCtrlMsg(RaceCtrlMsgBase):
-
     def __init__(self, timestamp: float, lap_number: Optional[int] = None) -> None:
+        """Session start message
+
+        Args:
+            timestamp (float): Time at which the message was issued (seconds).
+            lap_number (Optional[int], optional): Lap number. Defaults to None.
+        """
         super().__init__(
             timestamp=timestamp,
             message_type=MessageType.SESSION_START,
@@ -37,8 +42,13 @@ class SessionStartRaceCtrlMsg(RaceCtrlMsgBase):
             lap_number=lap_number)
 
 class SessionEndRaceCtrlMsg(RaceCtrlMsgBase):
-
     def __init__(self, timestamp: float, lap_number: Optional[int] = None) -> None:
+        """Session end message
+
+        Args:
+            timestamp (float): Time at which the message was issued (seconds).
+            lap_number (Optional[int], optional): Lap number. Defaults to None.
+        """
         super().__init__(
             timestamp=timestamp,
             message_type=MessageType.SESSION_END,
@@ -46,8 +56,13 @@ class SessionEndRaceCtrlMsg(RaceCtrlMsgBase):
             lap_number=lap_number)
 
 class DrsEnabledRaceCtrlMsg(RaceCtrlMsgBase):
-
     def __init__(self, timestamp: float, lap_number: Optional[int] = None) -> None:
+        """DRS enabled message
+
+        Args:
+            timestamp (float): Time at which the message was issued (seconds).
+            lap_number (Optional[int], optional): Lap number. Defaults to None.
+        """
         super().__init__(
             timestamp=timestamp,
             message_type=MessageType.DRS_ENABLED,
@@ -55,8 +70,14 @@ class DrsEnabledRaceCtrlMsg(RaceCtrlMsgBase):
             lap_number=lap_number)
 
 class DrsDisabledRaceCtrlMsg(RaceCtrlMsgBase):
-
     def __init__(self, timestamp: float, reason: str, lap_number: Optional[int] = None) -> None:
+        """DRS disabled message
+
+        Args:
+            timestamp (float): Time at which the message was issued (seconds).
+            reason (str): Reason for disabling DRS.
+            lap_number (Optional[int], optional): Lap number. Defaults to None.
+        """
         super().__init__(
             timestamp=timestamp,
             message_type=MessageType.DRS_DISABLED,
@@ -71,8 +92,13 @@ class DrsDisabledRaceCtrlMsg(RaceCtrlMsgBase):
         }
 
 class ChequeredFlagRaceCtrlMsg(RaceCtrlMsgBase):
-
     def __init__(self, timestamp: float, lap_number: Optional[int] = None) -> None:
+        """Chequered flag message
+
+        Args:
+            timestamp (float): Time at which the message was issued (seconds).
+            lap_number (Optional[int], optional): Lap number. Defaults to None.
+        """
         super().__init__(
             timestamp=timestamp,
             message_type=MessageType.CHEQUERED_FLAG,
@@ -80,8 +106,14 @@ class ChequeredFlagRaceCtrlMsg(RaceCtrlMsgBase):
             lap_number=lap_number)
 
 class StartLightsRaceCtrlMsg(RaceCtrlMsgBase):
-
     def __init__(self, timestamp: float, num_lights: int, lap_number: Optional[int] = None) -> None:
+        """Start lights message
+
+        Args:
+            timestamp (float): Time at which the message was issued (seconds).
+            num_lights (int): Number of lights.
+            lap_number (Optional[int], optional): Lap number. Defaults to None.
+        """
         super().__init__(
             timestamp=timestamp,
             message_type=MessageType.START_LIGHTS,
@@ -96,8 +128,13 @@ class StartLightsRaceCtrlMsg(RaceCtrlMsgBase):
         }
 
 class LightsOutRaceCtrlMsg(RaceCtrlMsgBase):
-
     def __init__(self, timestamp: float, lap_number: Optional[int] = None) -> None:
+        """Lights out message
+
+        Args:
+            timestamp (float): Time at which the message was issued (seconds).
+            lap_number (Optional[int], optional): Lap number. Defaults to None.
+        """
         super().__init__(
             timestamp=timestamp,
             message_type=MessageType.LIGHTS_OUT,
@@ -105,8 +142,13 @@ class LightsOutRaceCtrlMsg(RaceCtrlMsgBase):
             lap_number=lap_number)
 
 class RedFlagRaceCtrlMsg(RaceCtrlMsgBase):
-
     def __init__(self, timestamp: float, lap_number: Optional[int] = None) -> None:
+        """Red flag message
+
+        Args:
+            timestamp (float): Time at which the message was issued (seconds).
+            lap_number (Optional[int], optional): Lap number. Defaults to None.
+        """
         super().__init__(
             timestamp=timestamp,
             message_type=MessageType.RED_FLAG,
@@ -114,8 +156,15 @@ class RedFlagRaceCtrlMsg(RaceCtrlMsgBase):
             lap_number=lap_number)
 
 class SafetyCarRaceCtrlMsg(RaceCtrlMsgBase):
-
     def __init__(self, timestamp: float, sc_type: str, event_type: str, lap_number: Optional[int] = None) -> None:
+        """Safety car message
+
+        Args:
+            timestamp (float): Time at which the message was issued (seconds).
+            sc_type (str): Safety car type.
+            event_type (str): Event type.
+            lap_number (Optional[int], optional): Lap number. Defaults to None.
+        """
         super().__init__(
             timestamp=timestamp,
             message_type=MessageType.SAFETY_CAR,
@@ -125,6 +174,7 @@ class SafetyCarRaceCtrlMsg(RaceCtrlMsgBase):
         self.event_type: str = event_type
 
     def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+        """Export the message as a JSON-ready dict."""
         return {
             **super().toJSON(driver_info_dict),
             "sc-type": self.sc_type,
@@ -132,8 +182,14 @@ class SafetyCarRaceCtrlMsg(RaceCtrlMsgBase):
         }
 
 class RaceWinnerRaceCtrlMsg(RaceCtrlMsgBase):
-
     def __init__(self, timestamp: float, winner_index: int, lap_number: Optional[int] = None) -> None:
+        """Race winner message
+
+        Args:
+            timestamp (float): Time at which the message was issued (seconds).
+            winner_index (int): Index of the winner.
+            lap_number (Optional[int], optional): Lap number. Defaults to None.
+        """
         super().__init__(
             timestamp=timestamp,
             message_type=MessageType.RACE_WINNER,
@@ -141,6 +197,7 @@ class RaceWinnerRaceCtrlMsg(RaceCtrlMsgBase):
             lap_number=lap_number)
 
     def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+        """Export the message as a JSON-ready dict."""
         ret = {
             **super().toJSON(driver_info_dict)
         }
