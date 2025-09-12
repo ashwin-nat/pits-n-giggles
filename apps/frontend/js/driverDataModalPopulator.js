@@ -940,6 +940,22 @@ class DriverModalPopulator {
         this.createModalDivElelements(tabPane, leftPanePopulator, rightPanePopulator);
     }
 
+    populateRaceControlTab(tabPane) {
+        const messages = this.data["race-control"] ?? [];
+        if (messages.length === 0) {
+            this.populateDataNotAvailableMessage(tabPane, "Race Control Messages data not available");
+            return;
+        }
+
+        // Call the globally accessible function, passing the data
+        if (window.populateRaceControlMessagesTab) {
+            window.populateRaceControlMessagesTab(tabPane, messages);
+        } else {
+            console.error('populateRaceControlMessagesTab function not found.');
+            this.populateDataNotAvailableMessage(tabPane, "Race Control Messages grid could not be loaded.");
+        }
+    }
+
     // Method to create the navigation tabs
     createNavTabs() {
         const navTabs = document.createElement('ul');
@@ -958,6 +974,7 @@ class DriverModalPopulator {
             { id: 'collisions-info', label: 'Collisions' },
             { id: 'tyre-sets', label: 'Tyre Sets' },
             { id: 'player-info', label: 'Player Info' },
+            { id: 'race-control', label: 'Race Control' },
         ];
 
         if ('car-setup' in this.data) {
@@ -1010,6 +1027,7 @@ class DriverModalPopulator {
             { id: 'collisions-info', method: this.populateCollisionsInfoTab },
             { id: 'tyre-sets', method: this.populateTyreSetsInfoTab },
             { id: 'player-info', method: this.populatePlayerInfoTab },
+            { id: 'race-control', method: this.populateRaceControlTab },
         ];
 
         if ('car-setup' in this.data) {
