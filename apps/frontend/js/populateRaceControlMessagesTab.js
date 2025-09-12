@@ -133,24 +133,7 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
                             driverDetails = "Unknown Driver";
                         }
                         return `Driver: ${driverDetails}, Lap Time: ${formatLapTime(message['lap-time-ms'])}`;
-                    case 'Warning':
-                        return `Driver: ${message.driver}, Reason: ${message.reason}`;
-                    case 'SafetyCar':
-                        return `Status: ${message.status}`;
-                    case 'VirtualSafetyCar':
-                        return `Status: ${message.status}`;
-                    case 'TrackLimitsWarning':
-                        return `Driver: ${message.driver}, Warnings: ${message.warnings}`;
-                    case 'OvertakeAllowed':
-                        return `Status: ${message.status}`;
-                    case 'OvertakeForbidden':
-                        return `Status: ${message.status}`;
-                    case 'RaceStewardDecision':
-                        return `Driver: ${message.driver}, Decision: ${message.decision}`;
-                    case 'ChequeredFlag':
-                        return `Status: ${message.status}`;
-                    case 'StartLights':
-                        return `Lights: ${message.lights}`;
+
                     default:
                         return `Type: ${message['message-type']} - Placeholder details.`; // Use 'message-type' here
                 }
