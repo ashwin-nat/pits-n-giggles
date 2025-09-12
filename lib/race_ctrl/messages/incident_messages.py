@@ -55,7 +55,7 @@ class PenaltyRaceCtrlMsg(RaceCtrlMsgBase):
         self.time: int = time
         self.places_gained: int = places_gained
 
-    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = None) -> Dict[str, Any]:
         """Export the message as a JSON-ready dict."""
         ret = {
             **super().toJSON(driver_info_dict),
@@ -88,7 +88,7 @@ class DtPenServedRaceCtrlMsg(RaceCtrlMsgBase):
             lap_number=lap_number)
         self.driver_index: int = driver_index
 
-    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = None) -> Dict[str, Any]:
         """Export the message as a JSON-ready dict."""
         ret = {
             **super().toJSON(driver_info_dict),
@@ -116,7 +116,7 @@ class SgPenServedRaceCtrlMsg(RaceCtrlMsgBase):
         self.driver_index: int = driver_index
         self.stop_time: float = stop_time
 
-    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = None) -> Dict[str, Any]:
         """Export the message as a JSON-ready dict."""
         ret = {
             **super().toJSON(driver_info_dict),
@@ -142,7 +142,7 @@ class CollisionRaceCtrlMsg(RaceCtrlMsgBase):
             involved_drivers=involved_drivers,
             lap_number=lap_number)
 
-    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = None) -> Dict[str, Any]:
         """Export the message as a JSON-ready dict."""
         ret = {
             **super().toJSON(driver_info_dict),

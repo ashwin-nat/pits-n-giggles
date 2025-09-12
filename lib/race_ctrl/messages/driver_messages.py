@@ -22,7 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 from .base import MessageType, RaceCtrlMsgBase
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -43,7 +43,7 @@ class FastestLapRaceCtrlMsg(RaceCtrlMsgBase):
             lap_number=lap_number)
         self.lap_time_ms: int = lap_time_ms
 
-    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = None) -> Dict[str, Any]:
         """Export the message as a JSON-ready dict."""
         ret = {
             **super().toJSON(driver_info_dict),
@@ -70,7 +70,7 @@ class RetirementRaceCtrlMsg(RaceCtrlMsgBase):
             lap_number=lap_number)
         self.reason: str = reason
 
-    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = None) -> Dict[str, Any]:
         """Export the message as a JSON-ready dict."""
         ret = {
             **super().toJSON(driver_info_dict),
@@ -108,7 +108,7 @@ class SpeedTrapRaceCtrlMsg(RaceCtrlMsgBase):
         self.fastest_index: int = fastest_index
         self.session_fastest: float = session_fastest
 
-    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = None) -> Dict[str, Any]:
         """Export the message as a JSON-ready dict."""
         ret = {
             **super().toJSON(driver_info_dict),
@@ -153,7 +153,7 @@ class OvertakeRaceCtrlMsg(RaceCtrlMsgBase):
     def overtaken_index(self) -> int:
         return self.involved_drivers[1]
 
-    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = None) -> Dict[str, Any]:
         """Export the message as a JSON-ready dict."""
         ret = {
             **super().toJSON(driver_info_dict),

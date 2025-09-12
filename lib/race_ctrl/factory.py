@@ -40,7 +40,15 @@ from .messages import (ChequeredFlagRaceCtrlMsg, CollisionRaceCtrlMsg,
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 def race_ctrl_msg_factory(packet: PacketEventData, lap_number: int) -> Optional[RaceCtrlMsgBase]:
+    """Create a race control message from a packet
 
+    Args:
+        packet (PacketEventData): Packet event data
+        lap_number (int): Lap number
+
+    Returns:
+        Optional[RaceCtrlMsgBase]: Race control message
+    """
     match packet.m_eventCode:
         case PacketEventData.EventPacketType.SESSION_STARTED:
             return SessionStartRaceCtrlMsg(timestamp=time.time(), lap_number=lap_number)

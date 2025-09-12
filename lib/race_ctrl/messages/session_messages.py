@@ -85,7 +85,7 @@ class DrsDisabledRaceCtrlMsg(RaceCtrlMsgBase):
             lap_number=lap_number)
         self.reason: str = reason
 
-    def toJSON(self, _driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+    def toJSON(self, _driver_info_dict: Optional[Dict[int, dict]] = None) -> Dict[str, Any]:
         return {
             **super().toJSON(_driver_info_dict),
             "reason": self.reason
@@ -121,7 +121,7 @@ class StartLightsRaceCtrlMsg(RaceCtrlMsgBase):
             lap_number=lap_number)
         self.num_lights: int = num_lights
 
-    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = None) -> Dict[str, Any]:
         return {
             **super().toJSON(driver_info_dict),
             "num-lights": self.num_lights
@@ -173,7 +173,7 @@ class SafetyCarRaceCtrlMsg(RaceCtrlMsgBase):
         self.sc_type: str = sc_type
         self.event_type: str = event_type
 
-    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = None) -> Dict[str, Any]:
         """Export the message as a JSON-ready dict."""
         return {
             **super().toJSON(driver_info_dict),
@@ -196,7 +196,7 @@ class RaceWinnerRaceCtrlMsg(RaceCtrlMsgBase):
             involved_drivers=[winner_index],
             lap_number=lap_number)
 
-    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = None) -> Dict[str, Any]:
         """Export the message as a JSON-ready dict."""
         ret = {
             **super().toJSON(driver_info_dict)

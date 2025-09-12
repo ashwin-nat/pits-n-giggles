@@ -179,7 +179,7 @@ class DataPerDriver:
                include_tyre_wear_prediction : Optional[bool] = False,
                selected_pit_stop_lap : Optional[int] = None,
                save_race_ctrl : Optional[bool] = False,
-               driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+               driver_info_dict: Optional[Dict[int, dict]] = None) -> Dict[str, Any]:
         """Get a JSON representation of this DataPerDriver object
 
         Args:

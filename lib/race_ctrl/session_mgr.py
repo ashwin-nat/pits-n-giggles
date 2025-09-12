@@ -69,7 +69,7 @@ class SessionRaceControlManager:
             driver_mgr.clear()
         self.drivers.clear()
 
-    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> List[dict]:
+    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = None) -> List[dict]:
         """Export all session messages as JSON-ready dicts with implicit IDs.
 
         Args:

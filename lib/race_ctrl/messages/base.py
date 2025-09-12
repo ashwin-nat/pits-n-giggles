@@ -69,7 +69,7 @@ class RaceCtrlMsgBase:
     lap_number: Optional[int] = None
     _id: Optional[int] = None
 
-    def toJSON(self, _driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+    def toJSON(self, _driver_info_dict: Optional[Dict[int, dict]] = None) -> Dict[str, Any]:
         """Export the message as a JSON-ready dict."""
         return {
             "id": self._id,

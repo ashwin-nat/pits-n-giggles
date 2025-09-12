@@ -1315,7 +1315,7 @@ class SessionState:
         """Get the save data JSON."""
         return self.buildFinalClassificationJSON() if self.is_data_available else None
 
-    def getRaceControlMessagesJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> List[Dict[str, Any]]:
+    def getRaceControlMessagesJSON(self, driver_info_dict: Optional[Dict[int, dict]] = None) -> List[Dict[str, Any]]:
         """Get the race control messages JSON."""
 
         if not driver_info_dict:
