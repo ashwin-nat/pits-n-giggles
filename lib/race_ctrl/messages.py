@@ -73,10 +73,10 @@ class RaceCtrlMsgBase:
         """Export the message as a JSON-ready dict."""
         return {
             "id": self._id,
-            "lap_number": self.lap_number,
+            "lap-number": self.lap_number,
             "timestamp": self.timestamp,
-            "message_type": str(self.message_type),
-            "involved_drivers": list(self.involved_drivers),
+            "message-type": str(self.message_type),
+            "involved-drivers": list(self.involved_drivers),
         }
 
 class SessionStartRaceCtrlMsg(RaceCtrlMsgBase):
