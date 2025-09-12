@@ -270,9 +270,9 @@ class RaceStatsModalPopulator {
     }
 
     populateSpeedTrapRecordsTab(tabPane) {
-        console.log("populateSpeedTrapRecordsTab", this.data["speed-trap-records"]);
 
-        if (this.data["speed-trap-records"].length == 0) {
+        const speedTrapRecords = this.data["speed-trap-records"] ?? [];
+        if (speedTrapRecords.length == 0) {
             this.showDataNotAvailableMessage(tabPane, "Speed Trap Records data not available");
             return;
         }
