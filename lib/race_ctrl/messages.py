@@ -162,6 +162,89 @@ class DrsDisabledRaceCtrlMsg(RaceCtrlMsgBase):
             "reason": self.reason
         }
 
+class ChequeredFlagRaceCtrlMsg(RaceCtrlMsgBase):
+
+    def __init__(self, timestamp: float, lap_number: Optional[int] = None) -> None:
+        super().__init__(
+            timestamp=timestamp,
+            message_type=MessageType.CHEQUERED_FLAG,
+            involved_drivers=[],
+            lap_number=lap_number)
+
+class RaceWinnerRaceCtrlMsg(RaceCtrlMsgBase):
+
+    def __init__(self, timestamp: float, winner_index: int, lap_number: Optional[int] = None) -> None:
+        super().__init__(
+            timestamp=timestamp,
+            message_type=MessageType.RACE_WINNER,
+            involved_drivers=[winner_index],
+            lap_number=lap_number)
+
+    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+        ret = {
+            **super().toJSON(driver_info_dict)
+        }
+
+        if driver_info := driver_info_dict.get(self.involved_drivers[0]):
+            ret["driver-info"] = driver_info
+        return ret
+
+class PenaltyRaceCtrlMsg(RaceCtrlMsgBase):
+
+    def __init__(self, timestamp: float, penalty_type: str, infringement_type: str, vehicle_index: int,
+                 other_vehicle_index: int, time: int, places_gained: int, lap_number: Optional[int] = None) -> None:
+        super().__init__(
+            timestamp=timestamp,
+            message_type=MessageType.PENALTY,
+            involved_drivers=[vehicle_index],
+            lap_number=lap_number)
+        self.penalty_type: str = penalty_type
+        self.infringement_type: str = infringement_type
+        self.vehicle_index: int = vehicle_index
+        self.other_vehicle_index: int = other_vehicle_index
+        if self.other_vehicle_index != 255:
+            self.involved_drivers.append(self.other_vehicle_index)
+        self.time: int = time
+        self.places_gained: int = places_gained
+
+    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+        ret = {
+            **super().toJSON(driver_info_dict),
+            "penalty-type": self.penalty_type,
+            "infringement-type": self.infringement_type,
+            "vehicle-index": self.vehicle_index,
+            "other-vehicle-index": self.other_vehicle_index,
+            "time": self.time,
+            "places-gained": self.places_gained
+        }
+
+        if driver_info := driver_info_dict.get(self.vehicle_index):
+            ret["driver-info"] = driver_info
+        if other_driver_info := driver_info_dict.get(self.other_vehicle_index):
+            ret["other-driver-info"] = other_driver_info
+        return ret
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class OvertakeRaceCtrlMsg(RaceCtrlMsgBase):
 
     def __init__(self, timestamp: float, overtaker_index: int, overtaken_index: int, lap_number: Optional[int] = None) -> None:

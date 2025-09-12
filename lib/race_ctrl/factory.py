@@ -27,10 +27,11 @@ from typing import Optional
 
 from lib.f1_types import PacketEventData
 
-from .messages import (CollisionRaceCtrlMsg, DrsDisabledRaceCtrlMsg,
-                       DrsEnabledRaceCtrlMsg, FastestLapRaceCtrlMsg,
-                       OvertakeRaceCtrlMsg, RaceCtrlMsgBase,
-                       RetirementRaceCtrlMsg, SessionEndRaceCtrlMsg,
+from .messages import (ChequeredFlagRaceCtrlMsg, CollisionRaceCtrlMsg,
+                       DrsDisabledRaceCtrlMsg, DrsEnabledRaceCtrlMsg,
+                       FastestLapRaceCtrlMsg, OvertakeRaceCtrlMsg,
+                       RaceCtrlMsgBase, RaceWinnerRaceCtrlMsg,
+                       RetirementRaceCtrlMsg, SessionEndRaceCtrlMsg, PenaltyRaceCtrlMsg,
                        SessionStartRaceCtrlMsg)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -61,6 +62,24 @@ def race_ctrl_msg_factory(packet: PacketEventData, lap_number: int) -> Optional[
             drs_disabled: PacketEventData.DrsDisabled = packet.mEventDetails
             return DrsDisabledRaceCtrlMsg(timestamp=time.time(), reason=str(drs_disabled.m_reason),
                                           lap_number=lap_number)
+
+        case PacketEventData.EventPacketType.CHEQUERED_FLAG:
+            return ChequeredFlagRaceCtrlMsg(timestamp=time.time(), lap_number=lap_number)
+
+        case PacketEventData.EventPacketType.RACE_WINNER:
+            race_winner: PacketEventData.RaceWinner = packet.mEventDetails
+            return RaceWinnerRaceCtrlMsg(timestamp=time.time(), winner_index=race_winner.vehicleIdx,
+                                         lap_number=lap_number)
+
+        case PacketEventData.EventPacketType.PENALTY_ISSUED:
+            penalty: PacketEventData.Penalty = packet.mEventDetails
+            return PenaltyRaceCtrlMsg(timestamp=time.time(), penalty_type=str(penalty.penaltyType),
+                                      infringement_type=str(penalty.infringementType), vehicle_index=penalty.vehicleIdx,
+                                      other_vehicle_index=penalty.otherVehicleIdx,
+                                      time=penalty.time, places_gained=penalty.placesGained, lap_number=penalty.lapNum)
+
+
+
 
         case PacketEventData.EventPacketType.OVERTAKE:
             overtake: PacketEventData.Overtake = packet.mEventDetails
