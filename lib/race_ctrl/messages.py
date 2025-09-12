@@ -224,12 +224,64 @@ class PenaltyRaceCtrlMsg(RaceCtrlMsgBase):
             ret["other-driver-info"] = other_driver_info
         return ret
 
+class SpeedTrapRaceCtrlMsg(RaceCtrlMsgBase):
 
+    def __init__(self, timestamp: float, driver_index: int, speed: float, is_session_fastest: bool,
+                 is_personal_fastest: bool, fastest_index: int, session_fastest: float,
+                 lap_number: Optional[int] = None) -> None:
+        super().__init__(
+            timestamp=timestamp,
+            message_type=MessageType.SPEED_TRAP,
+            involved_drivers=[driver_index],
+            lap_number=lap_number)
+        self.driver_index: int = driver_index
+        self.speed: float = speed
+        self.is_session_fastest: bool = is_session_fastest
+        self.is_personal_fastest: bool = is_personal_fastest
+        self.fastest_index: int = fastest_index
+        self.session_fastest: float = session_fastest
 
+    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+        ret = {
+            **super().toJSON(driver_info_dict),
+            "driver-index": self.driver_index,
+            "speed": self.speed,
+            "is-session-fastest": self.is_session_fastest,
+            "is-personal-fastest": self.is_personal_fastest,
+            "fastest-index": self.fastest_index,
+            "session-fastest": self.session_fastest
+        }
 
+        if driver_info := driver_info_dict.get(self.driver_index):
+            ret["driver-info"] = driver_info
+        if session_fastest_driver_info := driver_info_dict.get(self.fastest_index):
+            ret["session-fastest-driver-info"] = session_fastest_driver_info
+        return ret
 
+class StartLightsRaceCtrlMsg(RaceCtrlMsgBase):
 
+    def __init__(self, timestamp: float, num_lights: int, lap_number: Optional[int] = None) -> None:
+        super().__init__(
+            timestamp=timestamp,
+            message_type=MessageType.START_LIGHTS,
+            involved_drivers=[],
+            lap_number=lap_number)
+        self.num_lights: int = num_lights
 
+    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+        return {
+            **super().toJSON(driver_info_dict),
+            "num-lights": self.num_lights
+        }
+
+class LightsOutRaceCtrlMsg(RaceCtrlMsgBase):
+
+    def __init__(self, timestamp: float, lap_number: Optional[int] = None) -> None:
+        super().__init__(
+            timestamp=timestamp,
+            message_type=MessageType.LIGHTS_OUT,
+            involved_drivers=[],
+            lap_number=lap_number)
 
 
 

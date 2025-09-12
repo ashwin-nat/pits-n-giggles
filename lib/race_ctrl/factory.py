@@ -29,9 +29,9 @@ from lib.f1_types import PacketEventData
 
 from .messages import (ChequeredFlagRaceCtrlMsg, CollisionRaceCtrlMsg,
                        DrsDisabledRaceCtrlMsg, DrsEnabledRaceCtrlMsg,
-                       FastestLapRaceCtrlMsg, OvertakeRaceCtrlMsg,
+                       FastestLapRaceCtrlMsg, OvertakeRaceCtrlMsg, SpeedTrapRaceCtrlMsg, LightsOutRaceCtrlMsg,
                        RaceCtrlMsgBase, RaceWinnerRaceCtrlMsg,
-                       RetirementRaceCtrlMsg, SessionEndRaceCtrlMsg, PenaltyRaceCtrlMsg,
+                       RetirementRaceCtrlMsg, SessionEndRaceCtrlMsg, PenaltyRaceCtrlMsg, StartLightsRaceCtrlMsg,
                        SessionStartRaceCtrlMsg)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -77,6 +77,39 @@ def race_ctrl_msg_factory(packet: PacketEventData, lap_number: int) -> Optional[
                                       infringement_type=str(penalty.infringementType), vehicle_index=penalty.vehicleIdx,
                                       other_vehicle_index=penalty.otherVehicleIdx,
                                       time=penalty.time, places_gained=penalty.placesGained, lap_number=penalty.lapNum)
+
+        case PacketEventData.EventPacketType.SPEED_TRAP_TRIGGERED:
+            speed_trap: PacketEventData.SpeedTrap = packet.mEventDetails
+            return SpeedTrapRaceCtrlMsg(timestamp=time.time(), driver_index=speed_trap.vehicleIdx,
+                                        speed=speed_trap.speed, is_session_fastest=speed_trap.isOverallFastestInSession,
+                                        is_personal_fastest=speed_trap.isDriverFastestInSession,
+                                        fastest_index=speed_trap.fastestVehicleIdxInSession,
+                                        session_fastest=speed_trap.fastestSpeedInSession, lap_number=lap_number)
+
+        case PacketEventData.EventPacketType.START_LIGHTS:
+            start_lights: PacketEventData.StartLights = packet.mEventDetails
+            return StartLightsRaceCtrlMsg(timestamp=time.time(), num_lights=start_lights.numLights,
+                                          lap_number=lap_number)
+
+        case PacketEventData.EventPacketType.LIGHTS_OUT:
+            return LightsOutRaceCtrlMsg(timestamp=time.time(), lap_number=lap_number)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
