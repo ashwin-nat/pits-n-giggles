@@ -22,17 +22,32 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .driver_mgr import DriverRaceControlManager
-from .messages import MessageType, RaceCtrlMsgBase
-from .session_mgr import SessionRaceControlManager
-from .factory import race_ctrl_msg_factory
+import time
+from lib.f1_types import PacketEventData
+from typing import Optional
+from .messages import RaceCtrlMsgBase, SessionStartRaceCtrlMsg
 
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-__all__ = [
-    "MessageType",
-    "RaceCtrlMsgBase",
-    "DriverRaceControlManager",
-    "SessionRaceControlManager",
-    "race_ctrl_msg_factory",
-]
+def race_ctrl_msg_factory(packet: PacketEventData, lap_number: int) -> Optional[RaceCtrlMsgBase]:
+
+    match packet.m_eventCode:
+        case PacketEventData.EventPacketType.SESSION_STARTED:
+            return SessionStartRaceCtrlMsg(timestamp=time.time(), lap_number=lap_number)
+
+        case PacketEventData.EventPacketType.FASTEST_LAP:
+            return None
+        case PacketEventData.EventPacketType.SESSION_STARTED:
+            return None
+        case PacketEventData.EventPacketType.RETIREMENT:
+            return None
+        case PacketEventData.EventPacketType.OVERTAKE:
+            return None
+        case PacketEventData.EventPacketType.COLLISION:
+            return None
+        case PacketEventData.EventPacketType.FLASHBACK:
+            return None
+        case PacketEventData.EventPacketType.START_LIGHTS:
+            return None
+        case _:
+            return None

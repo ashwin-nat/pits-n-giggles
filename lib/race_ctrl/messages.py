@@ -78,3 +78,15 @@ class RaceCtrlMsgBase:
             "message_type": str(self.message_type),
             "involved_drivers": list(self.involved_drivers),
         }
+
+class SessionStartRaceCtrlMsg(RaceCtrlMsgBase):
+
+    def __init__(self, timestamp: float, lap_number: Optional[int] = None) -> None:
+        super().__init__(
+            timestamp=timestamp,
+            message_type=MessageType.SESSION_START,
+            involved_drivers=[],
+            lap_number=lap_number)
+
+    def toJSON(self) -> Dict[str, Any]:
+        return super().toJSON()

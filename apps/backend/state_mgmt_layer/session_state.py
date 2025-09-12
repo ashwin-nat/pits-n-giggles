@@ -54,7 +54,7 @@ from lib.openf1 import MostRecentPoleLap
 from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
-from lib.race_ctrl import SessionRaceControlManager
+from lib.race_ctrl import SessionRaceControlManager, race_ctrl_msg_factory
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
@@ -754,7 +754,8 @@ class SessionState:
             'tyre-stats' : getTyreStintRecordsDict(final_json)
         }
 
-        # Finally, app version
+        # Finally, race control messages and app version
+        final_json['race-control-messages'] = self.m_race_ctrl.toJSON()
         final_json['version'] = self.m_version
         return final_json
 
@@ -953,6 +954,22 @@ class SessionState:
         if (overtake_obj := self._getOvertakeObj(record.overtakingVehicleIdx,
                                                  record.beingOvertakenVehicleIdx)):
             self.m_overtakes_history.insert(overtake_obj)
+
+    def handleEvent(self, packet: PacketEventData):
+        """Handle the event packet
+
+        Args:
+            packet (PacketEventData): The parsed object containing the event data packet's contents
+        """
+
+        # Get lap number from leader
+        if driver := self.getDriverInfoByPosition(1):
+            lap_num = driver.m_lap_info.m_current_lap
+        else:
+            lap_num = None
+
+        if msg := race_ctrl_msg_factory(packet, lap_number=lap_num):
+            self.m_race_ctrl.add_message(msg)
 
     ##### Public Getters #####
 
