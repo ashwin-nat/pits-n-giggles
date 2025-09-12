@@ -22,7 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import List
+from typing import Any, Dict, List, Optional
 
 from .messages import RaceCtrlMsgBase
 
@@ -48,3 +48,10 @@ class DriverRaceControlManager:
     def clear(self) -> None:
         """Clear all stored messages for this driver."""
         self.messages.clear()
+
+    def toJSON(self, driver_info: Optional[dict] = None) -> Dict[str, Any]:
+        """Export all driver messages as JSON-ready dicts with implicit IDs."""
+        return {
+            "driver-index": self.driver_index,
+            "messages": [msg.toJSON(driver_info) for msg in self.messages]
+        }

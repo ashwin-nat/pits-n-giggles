@@ -229,6 +229,13 @@ class DataPerDriver:
         # Collisions data
         final_json["collisions"] = self.getCollisionStatsJSON()
 
+        # Race control
+        final_json["race-control"] = self.m_race_ctrl.toJSON({
+            'name': self.m_driver_info.name,
+            'team': self.m_driver_info.team,
+            'driver-number': self.m_driver_info.driver_number,
+        })
+
         # Return this fully prepped JSON
         return final_json
 
