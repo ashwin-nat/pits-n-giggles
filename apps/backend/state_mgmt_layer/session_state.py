@@ -288,6 +288,7 @@ class SessionState:
         m_udp_custom_marker_action_code (Optional[int]): The UDP action code for custom marker
         m_udp_tyre_delta_action_code (Optional[int]): The UDP action code for tyre delta notification
         m_process_car_setups (bool): Flag indicating whether to process car setups packets.
+        m_process_race_ctrl_msg (bool): Flag indicating whether to process race control messages.
         m_custom_markers_history (CustomMarkersHistory): An instance tracking custom markers history.
         m_first_session_update_received (bool): Flag indicating whether the first session update packet has been received.
         m_version (str): Version string
@@ -315,6 +316,7 @@ class SessionState:
         'm_overtakes_history',
         'm_session_info',
         'm_process_car_setups',
+        'm_process_race_ctrl_msg',
         'm_custom_markers_history',
         'm_first_session_update_received',
         'm_version',
@@ -355,6 +357,7 @@ class SessionState:
 
         # Config params
         self.m_process_car_setups: bool = settings.Privacy.process_car_setup
+        self.m_process_race_ctrl_msg: bool = settings.Capture.save_race_ctrl_msg
 
         self.m_custom_markers_history = CustomMarkersHistory()
         self.m_connected_to_sim: bool = False
@@ -707,7 +710,8 @@ class SessionState:
             driver = self._getObjectByIndex(index, create=False)
             if driver and driver.is_valid:
                 # Add driver’s classification info
-                final_json["classification-data"].append(driver.toJSON(index))
+                final_json["classification-data"].append(driver.toJSON(index=index,
+                                                                       save_race_ctrl=self.m_process_race_ctrl_msg))
                 # Collect speed trap info
                 speed_trap_records.append(driver.getSpeedTrapRecordJSON())
 
@@ -763,7 +767,8 @@ class SessionState:
             }
             for index, driver in enumerate(self.m_driver_data)
         }
-        final_json['race-control-messages'] = self.m_race_ctrl.toJSON(driver_info_dict)
+        if self.m_process_race_ctrl_msg:
+            final_json['race-control-messages'] = self.m_race_ctrl.toJSON(driver_info_dict)
         final_json['version'] = self.m_version
         return final_json
 
@@ -969,6 +974,9 @@ class SessionState:
         Args:
             packet (PacketEventData): The parsed object containing the event data packet's contents
         """
+
+        if not self.m_process_race_ctrl_msg:
+            return
 
         # Get lap number from leader
         if driver := self.getDriverInfoByPosition(1):
