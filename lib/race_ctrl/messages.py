@@ -283,19 +283,56 @@ class LightsOutRaceCtrlMsg(RaceCtrlMsgBase):
             involved_drivers=[],
             lap_number=lap_number)
 
+class DtPenServedRaceCtrlMsg(RaceCtrlMsgBase):
 
+    def __init__(self, timestamp: float, driver_index: int, lap_number: Optional[int] = None) -> None:
+        super().__init__(
+            timestamp=timestamp,
+            message_type=MessageType.DRIVE_THROUGH_SERVED,
+            involved_drivers=[driver_index],
+            lap_number=lap_number)
+        self.driver_index: int = driver_index
 
+    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+        ret = {
+            **super().toJSON(driver_info_dict),
+            "driver-index": self.driver_index
+        }
 
+        if driver_info := driver_info_dict.get(self.driver_index):
+            ret["driver-info"] = driver_info
+        return ret
 
+class SgPenServedRaceCtrlMsg(RaceCtrlMsgBase):
 
+    def __init__(self, timestamp: float, driver_index: int, stop_time: float, lap_number: Optional[int] = None) -> None:
+        super().__init__(
+            timestamp=timestamp,
+            message_type=MessageType.STOP_GO_SERVED,
+            involved_drivers=[driver_index],
+            lap_number=lap_number)
+        self.driver_index: int = driver_index
+        self.stop_time: float = stop_time
 
+    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+        ret = {
+            **super().toJSON(driver_info_dict),
+            "driver-index": self.driver_index,
+            "stop-time": self.stop_time
+        }
 
+        if driver_info := driver_info_dict.get(self.driver_index):
+            ret["driver-info"] = driver_info
+        return ret
 
+class RedFlagRaceCtrlMsg(RaceCtrlMsgBase):
 
-
-
-
-
+    def __init__(self, timestamp: float, lap_number: Optional[int] = None) -> None:
+        super().__init__(
+            timestamp=timestamp,
+            message_type=MessageType.RED_FLAG,
+            involved_drivers=[],
+            lap_number=lap_number)
 
 class OvertakeRaceCtrlMsg(RaceCtrlMsgBase):
 
@@ -326,6 +363,26 @@ class OvertakeRaceCtrlMsg(RaceCtrlMsgBase):
         if overtaken_info := driver_info_dict.get(self.involved_drivers[1]):
             ret["overtaken-info"] = overtaken_info
         return ret
+
+class SafetyCarRaceCtrlMsg(RaceCtrlMsgBase):
+
+    def __init__(self, timestamp: float, sc_type: str, event_type: str, lap_number: Optional[int] = None) -> None:
+        super().__init__(
+            timestamp=timestamp,
+            message_type=MessageType.SAFETY_CAR,
+            involved_drivers=[],
+            lap_number=lap_number)
+        self.sc_type: str = sc_type
+        self.event_type: str = event_type
+
+    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+        return {
+            **super().toJSON(driver_info_dict),
+            "sc-type": self.sc_type,
+            "event-type": self.event_type
+        }
+
+
 class CollisionRaceCtrlMsg(RaceCtrlMsgBase):
 
     def __init__(self, timestamp: float, involved_drivers: List[int], lap_number: Optional[int] = None) -> None:

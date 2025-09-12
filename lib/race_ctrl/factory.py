@@ -29,10 +29,13 @@ from lib.f1_types import PacketEventData
 
 from .messages import (ChequeredFlagRaceCtrlMsg, CollisionRaceCtrlMsg,
                        DrsDisabledRaceCtrlMsg, DrsEnabledRaceCtrlMsg,
-                       FastestLapRaceCtrlMsg, OvertakeRaceCtrlMsg, SpeedTrapRaceCtrlMsg, LightsOutRaceCtrlMsg,
-                       RaceCtrlMsgBase, RaceWinnerRaceCtrlMsg,
-                       RetirementRaceCtrlMsg, SessionEndRaceCtrlMsg, PenaltyRaceCtrlMsg, StartLightsRaceCtrlMsg,
-                       SessionStartRaceCtrlMsg)
+                       DtPenServedRaceCtrlMsg, FastestLapRaceCtrlMsg,
+                       LightsOutRaceCtrlMsg, OvertakeRaceCtrlMsg,
+                       PenaltyRaceCtrlMsg, RaceCtrlMsgBase,
+                       RaceWinnerRaceCtrlMsg, RetirementRaceCtrlMsg,
+                       SafetyCarRaceCtrlMsg, SessionEndRaceCtrlMsg,
+                       SessionStartRaceCtrlMsg, SgPenServedRaceCtrlMsg,
+                       SpeedTrapRaceCtrlMsg, StartLightsRaceCtrlMsg)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -94,30 +97,25 @@ def race_ctrl_msg_factory(packet: PacketEventData, lap_number: int) -> Optional[
         case PacketEventData.EventPacketType.LIGHTS_OUT:
             return LightsOutRaceCtrlMsg(timestamp=time.time(), lap_number=lap_number)
 
+        case PacketEventData.EventPacketType.DRIVE_THROUGH_SERVED:
+            dt_pen_served: PacketEventData.DriveThroughPenaltyServed = packet.mEventDetails
+            return DtPenServedRaceCtrlMsg(timestamp=time.time(), driver_index=dt_pen_served.vehicleIdx,
+                                          lap_number=lap_number)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        case PacketEventData.EventPacketType.STOP_GO_SERVED:
+            sg_pen_served: PacketEventData.StopGoPenaltyServed = packet.mEventDetails
+            return SgPenServedRaceCtrlMsg(timestamp=time.time(), driver_index=sg_pen_served.vehicleIdx,
+                                          stop_time=sg_pen_served.stopTime, lap_number=lap_number)
 
         case PacketEventData.EventPacketType.OVERTAKE:
             overtake: PacketEventData.Overtake = packet.mEventDetails
             return OvertakeRaceCtrlMsg(timestamp=time.time(), overtaker_index=overtake.overtakingVehicleIdx,
                                        overtaken_index=overtake.beingOvertakenVehicleIdx, lap_number=lap_number)
+
+        case PacketEventData.EventPacketType.SAFETY_CAR:
+            safety_car: PacketEventData.SafetyCarEvent = packet.mEventDetails
+            return SafetyCarRaceCtrlMsg(timestamp=time.time(), sc_type=str(safety_car.m_safety_car_type),
+                                        event_type=str(safety_car.m_event_type), lap_number=lap_number)
 
         case PacketEventData.EventPacketType.COLLISION:
             collision: PacketEventData.Collision = packet.mEventDetails
@@ -125,9 +123,5 @@ def race_ctrl_msg_factory(packet: PacketEventData, lap_number: int) -> Optional[
                                                                                 collision.m_vehicle_2_index],
                                         lap_number=lap_number)
 
-        case PacketEventData.EventPacketType.FLASHBACK:
-            return None
-        case PacketEventData.EventPacketType.START_LIGHTS:
-            return None
         case _:
             return None
