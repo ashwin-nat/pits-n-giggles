@@ -45,7 +45,7 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
     containerElement.appendChild(gridDiv);
 
     // Extract unique message types
-    const allMessageTypes = [...new Set(initialRowData.map(row => row['message-type']))]; // Use 'message-type'
+    const allMessageTypes = [...new Set(initialRowData.map(row => row['message-type']))].sort(); // Use 'message-type' and sort
     console.log('All Message Types:', allMessageTypes); // Console log for verification
     let selectedMessageTypes = [...allMessageTypes]; // All selected by default
 
@@ -64,7 +64,37 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
 
         const title = document.createElement('h3');
         title.textContent = 'Message Types';
+        title.style.color = 'white';
         filterCheckboxesContainer.appendChild(title);
+
+        // Add "Enable All" and "Disable All" buttons
+        const buttonContainer = document.createElement('div');
+        buttonContainer.classList.add('filter-button-container');
+
+        const enableAllButton = document.createElement('button');
+        enableAllButton.textContent = 'Enable All';
+        enableAllButton.classList.add('race-control-action-button');
+        enableAllButton.addEventListener('click', () => {
+            selectedMessageTypes = [...allMessageTypes];
+            filterCheckboxesContainer.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = true;
+            });
+            updateGrid(gridApi);
+        });
+        buttonContainer.appendChild(enableAllButton);
+
+        const disableAllButton = document.createElement('button');
+        disableAllButton.textContent = 'Disable All';
+        disableAllButton.classList.add('race-control-action-button');
+        disableAllButton.addEventListener('click', () => {
+            selectedMessageTypes = [];
+            filterCheckboxesContainer.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            updateGrid(gridApi);
+        });
+        buttonContainer.appendChild(disableAllButton);
+        filterCheckboxesContainer.appendChild(buttonContainer);
 
         // Add a close button to the modal
         const closeButton = document.createElement('button');
@@ -83,7 +113,7 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
             checkbox.type = 'checkbox';
             checkbox.id = `filter-${type}`;
             checkbox.value = type;
-            checkbox.checked = true;
+            checkbox.checked = selectedMessageTypes.includes(type); // Set checked based on current selection
 
             const label = document.createElement('label');
             label.htmlFor = `filter-${type}`;
