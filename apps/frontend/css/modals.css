@@ -1,73 +1,81 @@
-/* Ensure modal itself can grow to take up most of the screen */
-.driver-modal-content {
-    max-height: 90vh;
-    /* Maximum height of 90% of viewport */
-    height: auto;
-    /* Allow the height to auto-expand if content is smaller */
-    overflow: hidden;
-    /* Prevent overflow */
+/* modals.css */
+
+/* Basic styling for the modal container */
+.modal-content {
+    background-color: #222;
+    color: #eee;
+    border: 1px solid #555;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Styling for the AG Grid container */
+.ag-theme-alpine-dark {
+    --ag-background-color: #333;
+    --ag-odd-row-background-color: #2a2a2a;
+    --ag-header-background-color: #444;
+    --ag-header-foreground-color: #eee;
+    --ag-row-hover-color: #4a4a4a;
+    --ag-selected-row-background-color: #5a5a5a;
+    --ag-border-color: #555;
+    --ag-foreground-color: #eee;
+    --ag-secondary-foreground-color: #bbb;
+    --ag-font-size: 14px;
+    --ag-font-family: 'Roboto', sans-serif;
+    height: 500px; /* Example height, adjust as needed */
+    width: 100%;
+}
+
+/* Specific styling for the race control messages grid */
+#raceControlMessagesGrid {
+    margin-top: 15px;
+    margin-bottom: 15px;
+}
+
+/* Ensure the grid takes up available space within its parent */
+.ag-grid-container {
+    flex-grow: 1;
     display: flex;
     flex-direction: column;
-    border-radius: 8px;
-    /* background-color: var(--f1-darker); */
-    color: var(--f1-text);
 }
 
-/* Header remains sticky at the top */
-.driver-modal-header {
-    /* background-color: var(--f1-dark); */
-    color: var(--f1-text);
-    border-bottom: 1px solid var(--f1-light-gray);
-    position: sticky;
-    top: 0;
-    z-index: 1055;
-    padding: 1rem;
+/* Adjust header height for better readability */
+.ag-header-cell {
+    padding: 8px 4px;
 }
 
-.tab-pane {
-    height: 60vh;
+/* Pagination controls styling */
+.ag-paging-panel {
+    background-color: #333;
+    color: #eee;
+    border-top: 1px solid #555;
+    padding: 5px 10px;
 }
 
-.tab-pane>div {
-    height: inherit;
+.ag-paging-button {
+    color: #eee;
+    background-color: #555;
+    border: 1px solid #666;
+    margin: 0 2px;
+    padding: 3px 8px;
+    border-radius: 3px;
 }
 
-.bg-purple {
-    background-color: #800080;
+.ag-paging-button:hover {
+    background-color: #777;
 }
 
-.hidden-column {
-    display: none;
+.ag-paging-row-summary-panel,
+.ag-paging-page-summary-panel {
+    color: #eee;
 }
 
-.icon-btn {
-    background: transparent;
-    border: none;
-    color: var(--f1-text-secondary);
-    font-size: 1.25rem;
-    /* Adjust size as needed */
-    padding: 0.5rem;
-    /* Adds spacing around the icon */
-    cursor: pointer;
-}
-
-.icon-btn:hover {
-    color: var(--f1-text);
-}
-
-.tab-content {
-    height: 100%;
-    width: 100%;
-}
-
-.driver-modal-tab-content {
-    height: 100%;
-    width: 100%;
-}
-
-.chart-container {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
+/* Input fields for pagination */
+.ag-paging-number,
+.ag-paging-page-size {
+    background-color: #444;
+    color: #eee;
+    border: 1px solid #666;
+    padding: 2px 5px;
+    border-radius: 3px;
 }
