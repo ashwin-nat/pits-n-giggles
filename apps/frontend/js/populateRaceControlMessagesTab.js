@@ -120,8 +120,19 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
             cellRenderer: (params) => {
                 const message = params.data;
                 switch (message['message-type']) { // Use 'message-type' here
-                    case 'Penalty':
-                        return `Driver: ${message.driver}, Type: ${message.penaltyType}, Time: ${message.time}`;
+                    case 'SESSION_START':
+                        return `N/A`;
+                    case 'SESSION_END':
+                        return `N/A`;
+                    case 'FASTEST_LAP':
+                        let driverDetails;
+                        const driverInfo = message["driver-info"] ?? null;
+                        if (driverInfo) {
+                            driverDetails = `${driverInfo["name"]} - ${driverInfo["team"]} #${driverInfo["driver-number"]}`;
+                        } else {
+                            driverDetails = "Unknown Driver";
+                        }
+                        return `Driver: ${driverDetails}, Lap Time: ${formatLapTime(message['lap-time-ms'])}`;
                     case 'Warning':
                         return `Driver: ${message.driver}, Reason: ${message.reason}`;
                     case 'SafetyCar':
