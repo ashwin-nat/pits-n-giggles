@@ -109,6 +109,7 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
     const columnDefs = [
         { headerName: 'ID', field: 'id', sortable: true, filter: false, width: 80 },
         { headerName: 'Message Type', field: 'message-type', sortable: true, filter: false, width: 150 },
+        { headerName: 'Lap Number', field: 'lap-number', sortable: true, filter: false, width: 150 },
         // Placeholder for type-dependent fields.
         // These will be dynamically added or handled by a custom cell renderer
         // based on the message-type.
