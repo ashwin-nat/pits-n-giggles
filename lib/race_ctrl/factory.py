@@ -27,9 +27,11 @@ from typing import Optional
 
 from lib.f1_types import PacketEventData
 
-from .messages import (FastestLapRaceCtrlMsg, OvertakeRaceCtrlMsg,
-                       RaceCtrlMsgBase, RetirementRaceCtrlMsg, CollisionRaceCtrlMsg,
-                       SessionEndRaceCtrlMsg, SessionStartRaceCtrlMsg)
+from .messages import (CollisionRaceCtrlMsg, DrsDisabledRaceCtrlMsg,
+                       DrsEnabledRaceCtrlMsg, FastestLapRaceCtrlMsg,
+                       OvertakeRaceCtrlMsg, RaceCtrlMsgBase,
+                       RetirementRaceCtrlMsg, SessionEndRaceCtrlMsg,
+                       SessionStartRaceCtrlMsg)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -50,7 +52,15 @@ def race_ctrl_msg_factory(packet: PacketEventData, lap_number: int) -> Optional[
         case PacketEventData.EventPacketType.RETIREMENT:
             retirement: PacketEventData.Retirement = packet.mEventDetails
             return RetirementRaceCtrlMsg(timestamp=time.time(), driver_index=retirement.vehicleIdx,
-                                         reason=retirement.m_reason, lap_number=lap_number)
+                                         reason=str(retirement.m_reason), lap_number=lap_number)
+
+        case PacketEventData.EventPacketType.DRS_ENABLED:
+            return DrsEnabledRaceCtrlMsg(timestamp=time.time(), lap_number=lap_number)
+
+        case PacketEventData.EventPacketType.DRS_DISABLED:
+            drs_disabled: PacketEventData.DrsDisabled = packet.mEventDetails
+            return DrsDisabledRaceCtrlMsg(timestamp=time.time(), reason=str(drs_disabled.m_reason),
+                                          lap_number=lap_number)
 
         case PacketEventData.EventPacketType.OVERTAKE:
             overtake: PacketEventData.Overtake = packet.mEventDetails

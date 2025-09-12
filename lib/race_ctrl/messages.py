@@ -88,9 +88,6 @@ class SessionStartRaceCtrlMsg(RaceCtrlMsgBase):
             involved_drivers=[],
             lap_number=lap_number)
 
-    def toJSON(self, _driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
-        return super().toJSON(_driver_info_dict)
-
 class SessionEndRaceCtrlMsg(RaceCtrlMsgBase):
 
     def __init__(self, timestamp: float, lap_number: Optional[int] = None) -> None:
@@ -99,9 +96,6 @@ class SessionEndRaceCtrlMsg(RaceCtrlMsgBase):
             message_type=MessageType.SESSION_END,
             involved_drivers=[],
             lap_number=lap_number)
-
-    def toJSON(self, _driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
-        return super().toJSON(_driver_info_dict)
 
 class FastestLapRaceCtrlMsg(RaceCtrlMsgBase):
 
@@ -142,6 +136,32 @@ class RetirementRaceCtrlMsg(RaceCtrlMsgBase):
         if driver_info := driver_info_dict.get(self.involved_drivers[0]):
             ret["driver-info"] = driver_info
         return ret
+
+class DrsEnabledRaceCtrlMsg(RaceCtrlMsgBase):
+
+    def __init__(self, timestamp: float, lap_number: Optional[int] = None) -> None:
+        super().__init__(
+            timestamp=timestamp,
+            message_type=MessageType.DRS_ENABLED,
+            involved_drivers=[],
+            lap_number=lap_number)
+
+class DrsDisabledRaceCtrlMsg(RaceCtrlMsgBase):
+
+    def __init__(self, timestamp: float, reason: str, lap_number: Optional[int] = None) -> None:
+        super().__init__(
+            timestamp=timestamp,
+            message_type=MessageType.DRS_DISABLED,
+            involved_drivers=[],
+            lap_number=lap_number)
+        self.reason: str = reason
+
+    def toJSON(self, _driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+        return {
+            **super().toJSON(_driver_info_dict),
+            "reason": self.reason
+        }
+
 class OvertakeRaceCtrlMsg(RaceCtrlMsgBase):
 
     def __init__(self, timestamp: float, overtaker_index: int, overtaken_index: int, lap_number: Optional[int] = None) -> None:
