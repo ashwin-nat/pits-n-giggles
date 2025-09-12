@@ -1,5 +1,13 @@
 // populateRaceControlMessagesTab.js
 
+function getDriverDetailsStr(driverInfo) {
+    if (driverInfo) {
+        return `${driverInfo["name"]} - ${driverInfo["team"]} #${driverInfo["driver-number"]}`; // Use 'driver-number'
+    } else {
+        return "Unknown Driver";
+    }
+}
+
 /**
  * Populates the Race Control Messages tab with an AG Grid.
  * This function will fetch race control messages and display them in a sortable, paginated grid.
@@ -122,17 +130,32 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
                 switch (message['message-type']) { // Use 'message-type' here
                     case 'SESSION_START':
                         return `N/A`;
+
                     case 'SESSION_END':
                         return `N/A`;
-                    case 'FASTEST_LAP':
-                        let driverDetails;
-                        const driverInfo = message["driver-info"] ?? null;
-                        if (driverInfo) {
-                            driverDetails = `${driverInfo["name"]} - ${driverInfo["team"]} #${driverInfo["driver-number"]}`;
-                        } else {
-                            driverDetails = "Unknown Driver";
-                        }
+
+                    case 'FASTEST_LAP': {
+                        const driverDetails = getDriverDetailsStr(message["driver-info"] ?? null);
                         return `Driver: ${driverDetails}, Lap Time: ${formatLapTime(message['lap-time-ms'])}`;
+                    }
+
+                    case 'RETIREMENT': {
+                        const driverDetails = getDriverDetailsStr(message["driver-info"] ?? null);
+                        return `Driver: ${driverDetails}`;
+                    }
+
+                    case 'DRS_ENABLED':
+                        return `N/A`;
+
+                    case 'DRS_DISABLED':
+                        return `Reason: ${message['reason']}`; // Use 'reason' here
+
+                    case 'CHEQUERED_FLAG':
+                        return `N/A`;
+
+                    case 'RACE_WINNER': {
+                        return getDriverDetailsStr(message["driver-info"] ?? null);
+                    }
 
                     default:
                         return `Type: ${message['message-type']} - Placeholder details.`; // Use 'message-type' here
