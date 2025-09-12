@@ -755,7 +755,15 @@ class SessionState:
         }
 
         # Finally, race control messages and app version
-        final_json['race-control-messages'] = self.m_race_ctrl.toJSON()
+        driver_info_dict = {
+            index: {
+                'name': driver.m_driver_info.name,
+                'team': driver.m_driver_info.team,
+                'driver-number': driver.m_driver_info.driver_number,
+            }
+            for index, driver in enumerate(self.m_driver_data)
+        }
+        final_json['race-control-messages'] = self.m_race_ctrl.toJSON(driver_info_dict)
         final_json['version'] = self.m_version
         return final_json
 

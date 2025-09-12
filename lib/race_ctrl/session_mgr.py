@@ -22,7 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from .driver_mgr import DriverRaceControlManager
 from .messages import RaceCtrlMsgBase
@@ -69,6 +69,12 @@ class SessionRaceControlManager:
             driver_mgr.clear()
         self.drivers.clear()
 
-    def toJSON(self) -> List[dict]:
-        """Export all session messages as JSON-ready dicts with implicit IDs."""
-        return [msg.toJSON() for msg in self.messages]
+    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> List[dict]:
+        """Export all session messages as JSON-ready dicts with implicit IDs.
+
+        Args:
+            driver_info_dict (Optional[Dict[int, dict]]): Optional driver info dict.
+            If specified, the driver info will be added to the message JSON. The dict must be a mapping of index against
+            driver info JSON, which contains the following keys: `name`, `team`, `driver-number`.
+        """
+        return [msg.toJSON(driver_info_dict) for msg in self.messages]

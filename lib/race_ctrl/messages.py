@@ -69,7 +69,7 @@ class RaceCtrlMsgBase:
     lap_number: Optional[int] = None
     _id: Optional[int] = None
 
-    def toJSON(self) -> Dict[str, Any]:
+    def toJSON(self, _driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
         """Export the message as a JSON-ready dict."""
         return {
             "id": self._id,
@@ -88,8 +88,8 @@ class SessionStartRaceCtrlMsg(RaceCtrlMsgBase):
             involved_drivers=[],
             lap_number=lap_number)
 
-    def toJSON(self) -> Dict[str, Any]:
-        return super().toJSON()
+    def toJSON(self, _driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+        return super().toJSON(_driver_info_dict)
 
 class SessionEndRaceCtrlMsg(RaceCtrlMsgBase):
 
@@ -100,8 +100,8 @@ class SessionEndRaceCtrlMsg(RaceCtrlMsgBase):
             involved_drivers=[],
             lap_number=lap_number)
 
-    def toJSON(self) -> Dict[str, Any]:
-        return super().toJSON()
+    def toJSON(self, _driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+        return super().toJSON(_driver_info_dict)
 
 class FastestLapRaceCtrlMsg(RaceCtrlMsgBase):
 
@@ -113,11 +113,15 @@ class FastestLapRaceCtrlMsg(RaceCtrlMsgBase):
             lap_number=lap_number)
         self.lap_time_ms: int = lap_time_ms
 
-    def toJSON(self) -> Dict[str, Any]:
-        return {
-            **super().toJSON(),
+    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+        ret = {
+            **super().toJSON(driver_info_dict),
             "lap-time-ms": self.lap_time_ms
         }
+
+        if driver_info := driver_info_dict.get(self.involved_drivers[0]):
+            ret["driver-info"] = driver_info
+        return ret
 
 class RetirementRaceCtrlMsg(RaceCtrlMsgBase):
 
@@ -129,12 +133,15 @@ class RetirementRaceCtrlMsg(RaceCtrlMsgBase):
             lap_number=lap_number)
         self.reason: str = reason
 
-    def toJSON(self) -> Dict[str, Any]:
-        return {
-            **super().toJSON(),
+    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+        ret = {
+            **super().toJSON(driver_info_dict),
             "reason": self.reason
         }
 
+        if driver_info := driver_info_dict.get(self.involved_drivers[0]):
+            ret["driver-info"] = driver_info
+        return ret
 class OvertakeRaceCtrlMsg(RaceCtrlMsgBase):
 
     def __init__(self, timestamp: float, overtaker_index: int, overtaken_index: int, lap_number: Optional[int] = None) -> None:
@@ -152,13 +159,18 @@ class OvertakeRaceCtrlMsg(RaceCtrlMsgBase):
     def overtaken_index(self) -> int:
         return self.involved_drivers[1]
 
-    def toJSON(self) -> Dict[str, Any]:
-        return {
-            **super().toJSON(),
+    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+        ret = {
+            **super().toJSON(driver_info_dict),
             "overtaker-index": self.overtaker_index,
             "overtaken-index": self.overtaken_index
         }
 
+        if overtaker_info := driver_info_dict.get(self.involved_drivers[0]):
+            ret["overtaker-info"] = overtaker_info
+        if overtaken_info := driver_info_dict.get(self.involved_drivers[1]):
+            ret["overtaken-info"] = overtaken_info
+        return ret
 class CollisionRaceCtrlMsg(RaceCtrlMsgBase):
 
     def __init__(self, timestamp: float, involved_drivers: List[int], lap_number: Optional[int] = None) -> None:
@@ -168,8 +180,14 @@ class CollisionRaceCtrlMsg(RaceCtrlMsgBase):
             involved_drivers=involved_drivers,
             lap_number=lap_number)
 
-    def toJSON(self) -> Dict[str, Any]:
-        return {
-            **super().toJSON(),
+    def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = {}) -> Dict[str, Any]:
+        ret = {
+            **super().toJSON(driver_info_dict),
             "involved-drivers": self.involved_drivers
         }
+
+        if driver_1_info := driver_info_dict.get(self.involved_drivers[0]):
+            ret["driver-1-info"] = driver_1_info
+        if driver_2_info := driver_info_dict.get(self.involved_drivers[1]):
+            ret["driver-2-info"] = driver_2_info
+        return ret
