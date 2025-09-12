@@ -1174,6 +1174,10 @@ class DriverModalPopulator {
     }
 
     populateTelemetryDisabledMessage(tabPane) {
+        this.populateDataNotAvailableMessage(tabPane, 'Telemetry data is not available');
+    }
+
+    populateDataNotAvailableMessage(tabPane, text) {
         // Create the alert container
         const alertDiv = document.createElement('div');
         alertDiv.className = 'alert d-flex justify-content-center align-items-center text-center mb-3';
@@ -1185,7 +1189,7 @@ class DriverModalPopulator {
 
         // Create the message span
         const message = document.createElement('span');
-        message.textContent = 'Telemetry has been set to Restricted';
+        message.textContent = text;
 
         // Combine icon and message
         alertDiv.appendChild(icon);
