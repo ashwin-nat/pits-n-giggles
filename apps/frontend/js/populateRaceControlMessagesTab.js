@@ -1,7 +1,10 @@
 // populateRaceControlMessagesTab.js
 
-function getDriverDetailsStr(driverInfo) {
+function getDriverDetailsStr(driverInfo, brackets=false) {
     if (driverInfo) {
+        if (brackets) {
+            return `${driverInfo["name"]} (${driverInfo["team"]} ${driverInfo["driver-number"]})`; // Use 'driver-number'
+        }
         return `${driverInfo["name"]} - ${driverInfo["team"]} #${driverInfo["driver-number"]}`; // Use 'driver-number'
     } else {
         return "Unknown Driver";
@@ -148,7 +151,7 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
                         return `N/A`;
 
                     case 'DRS_DISABLED':
-                        return `Reason: ${message['reason']}`; // Use 'reason' here
+                        return `Reason: ${message['reason']}`;
 
                     case 'CHEQUERED_FLAG':
                         return `N/A`;
@@ -157,8 +160,66 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
                         return getDriverDetailsStr(message["driver-info"] ?? null);
                     }
 
+                    case 'PENALTY': {
+                        const driverDetails = getDriverDetailsStr(message["driver-info"] ?? null, true);
+                        const penaltyType = message['penalty-type'];
+                        const infringementType = message['infringement-type'];
+                        const otherDriverData = message['other-driver-info'] ?? null;
+                        if (otherDriverData) {
+                            const otherDriverDetails = getDriverDetailsStr(otherDriverData, true);
+                            return `${driverDetails}, ${penaltyType} - ${infringementType}, other driver: ${otherDriverDetails}`;
+                        }
+                        return `${driverDetails}, ${penaltyType} - ${infringementType}`;
+                    }
+
+                    case 'SPEED_TRAP': {
+                        const driverDetails = getDriverDetailsStr(message["driver-info"] ?? null);
+                        const speedStr = formatFloat(message["speed"]) + " km/h";
+                        return `Driver: ${driverDetails}, Speed: ${speedStr}`;
+                    }
+
+                    case 'START_LIGHTS': {
+                        const numLights = message['num-lights'];
+                        return `Number of lights: ${numLights}`;
+                    }
+
+                    case 'LIGHTS_OUT':
+                        return `N/A`;
+
+                    case 'DRIVE_THROUGH_SERVED': {
+                        const driverDetails = getDriverDetailsStr(message["driver-info"] ?? null);
+                        return `Driver: ${driverDetails}`;
+                    }
+
+                    case 'STOP_GO_SERVED': {
+                        const driverDetails = getDriverDetailsStr(message["driver-info"] ?? null);
+                        const stopTime = formatFloat(message['stop-time']) + ' s';
+                        return `Driver: ${driverDetails} - Stop Time: ${stopTime}`;
+                    }
+
+                    case 'RED_FLAG':
+                        return `N/A`;
+
+                    case 'OVERTAKE': {
+                        const overtakerDetails = getDriverDetailsStr(message["overtaker-info"] ?? null);
+                        const overtakenDetails = getDriverDetailsStr(message["overtaken-info"] ?? null);
+                        return `${overtakerDetails} overtook ${overtakenDetails}`;
+                    }
+
+                    case 'SAFETY_CAR': {
+                        const scType = message['sc-type'];
+                        const eventType = message['event-type'];
+                        return `${scType} - ${eventType}`;
+                    }
+
+                    case 'COLLISION': {
+                        const firstDriverDetails = getDriverDetailsStr(message["driver-1-info"] ?? null);
+                        const secondDriverDetails = getDriverDetailsStr(message["driver-2-info"] ?? null);
+                        return `${firstDriverDetails} and ${secondDriverDetails}`;
+                    }
+
                     default:
-                        return `Type: ${message['message-type']} - Placeholder details.`; // Use 'message-type' here
+                        return `Type: ${message['message-type']} - Placeholder details.`;
                 }
             }
         }
