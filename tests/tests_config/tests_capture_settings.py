@@ -45,6 +45,7 @@ class TestCaptureSettings(TestF1ConfigBase):
         self.assertTrue(settings.post_quali_data_autosave)
         self.assertFalse(settings.post_fp_data_autosave)
         self.assertFalse(settings.post_tt_data_autosave)
+        self.assertFalse(settings.save_race_ctrl_msg)
 
     def test_boolean_validation_post_race_data_autosave(self):
         capture_true = CaptureSettings(post_race_data_autosave=True)
@@ -88,19 +89,33 @@ class TestCaptureSettings(TestF1ConfigBase):
         capture_str_false = CaptureSettings(post_fp_data_autosave="False")
         self.assertFalse(capture_str_false.post_fp_data_autosave)
 
-    def test_boolean_validation_post_fp_data_autosave(self):
-        capture_true = CaptureSettings(post_fp_data_autosave=True)
-        self.assertTrue(capture_true.post_fp_data_autosave)
+    def test_boolean_validation_post_tt_data_autosave(self):
+        capture_true = CaptureSettings(post_tt_data_autosave=True)
+        self.assertTrue(capture_true.post_tt_data_autosave)
 
-        capture_false = CaptureSettings(post_fp_data_autosave=False)
-        self.assertFalse(capture_false.post_fp_data_autosave)
+        capture_false = CaptureSettings(post_tt_data_autosave=False)
+        self.assertFalse(capture_false.post_tt_data_autosave)
 
         # Also test coercion from strings if you want
-        capture_str_true = CaptureSettings(post_fp_data_autosave="True")
-        self.assertTrue(capture_str_true.post_fp_data_autosave)
+        capture_str_true = CaptureSettings(post_tt_data_autosave="True")
+        self.assertTrue(capture_str_true.post_tt_data_autosave)
 
-        capture_str_false = CaptureSettings(post_fp_data_autosave="False")
-        self.assertFalse(capture_str_false.post_fp_data_autosave)
+        capture_str_false = CaptureSettings(post_tt_data_autosave="False")
+        self.assertFalse(capture_str_false.post_tt_data_autosave)
+
+    def test_boolean_validation_save_race_ctrl_msg(self):
+        capture_true = CaptureSettings(save_race_ctrl_msg=True)
+        self.assertTrue(capture_true.save_race_ctrl_msg)
+
+        capture_false = CaptureSettings(save_race_ctrl_msg=False)
+        self.assertFalse(capture_false.save_race_ctrl_msg)
+
+        # Also test coercion from strings if you want
+        capture_str_true = CaptureSettings(save_race_ctrl_msg="True")
+        self.assertTrue(capture_str_true.save_race_ctrl_msg)
+
+        capture_str_false = CaptureSettings(save_race_ctrl_msg="False")
+        self.assertFalse(capture_str_false.save_race_ctrl_msg)
 
     def test_invalid_type_raises(self):
         with self.assertRaises(ValidationError):
@@ -111,3 +126,9 @@ class TestCaptureSettings(TestF1ConfigBase):
 
         with self.assertRaises(ValidationError):
             CaptureSettings(post_fp_data_autosave="notaboolean")
+
+        with self.assertRaises(ValidationError):
+            CaptureSettings(post_tt_data_autosave="notaboolean")
+
+        with self.assertRaises(ValidationError):
+            CaptureSettings(save_race_ctrl_msg="notaboolean")

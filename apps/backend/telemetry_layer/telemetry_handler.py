@@ -264,6 +264,8 @@ class F1TelemetryHandler:
             if event_handler:
                 await event_handler(packet)
 
+            self.m_session_state_ref.handleEvent(packet)
+
         @self.m_manager.on_packet(F1PacketType.PARTICIPANTS)
         async def processParticipantsUpdate(packet: PacketParticipantsData) -> None:
             """Update the data strucutre with participants information

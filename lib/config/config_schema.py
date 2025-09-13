@@ -64,6 +64,7 @@ class CaptureSettings(BaseModel):
                                         description="Autosave free practice data at the end of free practice sessions")
     post_tt_data_autosave: bool = Field(False,
                                         description="Autosave time trial data at the end of time trial sessions")
+    save_race_ctrl_msg: bool = Field(False, description="Save race control messages")
 
 class DisplaySettings(BaseModel):
     refresh_interval: int = Field(200, gt=0, description="Pits n' Giggles client update interval (ms)")
