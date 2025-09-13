@@ -1,5 +1,96 @@
 // populateRaceControlMessagesTab.js
 
+function createFilterModal(allTypes, onChange) {
+    const overlay = document.createElement('div');
+    overlay.classList.add('race-control-modal-overlay');
+    overlay.style.display = 'none';
+
+    const container = document.createElement('div');
+    container.id = 'raceControlMessageFilters';
+    container.classList.add('race-control-filters-checkboxes');
+    overlay.appendChild(container);
+
+    const title = document.createElement('h3');
+    title.textContent = 'Message Types';
+    title.style.color = 'white';
+    container.appendChild(title);
+
+    const buttonContainer = document.createElement('div');
+    buttonContainer.classList.add('filter-button-container');
+
+    const enableAllButton = document.createElement('button');
+    enableAllButton.textContent = 'Enable All';
+    enableAllButton.classList.add('race-control-action-button');
+    buttonContainer.appendChild(enableAllButton);
+
+    const disableAllButton = document.createElement('button');
+    disableAllButton.textContent = 'Disable All';
+    disableAllButton.classList.add('race-control-action-button');
+    buttonContainer.appendChild(disableAllButton);
+    container.appendChild(buttonContainer);
+
+    const closeButton = document.createElement('button');
+    closeButton.textContent = 'X';
+    closeButton.classList.add('race-control-modal-close-button');
+    container.appendChild(closeButton);
+
+    const checkboxes = {};
+
+    const updateCheckboxes = (selectedTypes) => {
+        allTypes.forEach(type => {
+            if (checkboxes[type]) {
+                checkboxes[type].checked = selectedTypes.includes(type);
+            }
+        });
+    };
+
+    allTypes.forEach(type => {
+        const checkboxContainer = document.createElement('div');
+        checkboxContainer.classList.add('filter-checkbox-container');
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `filter-${type}`;
+        checkbox.value = type;
+
+        const label = document.createElement('label');
+        label.htmlFor = `filter-${type}`;
+        label.textContent = type;
+
+        checkbox.addEventListener('change', () => {
+            const newSelectedTypes = Object.values(checkboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
+            onChange(newSelectedTypes);
+        });
+
+        checkboxContainer.appendChild(checkbox);
+        checkboxContainer.appendChild(label);
+        container.appendChild(checkboxContainer);
+        checkboxes[type] = checkbox;
+    });
+
+    enableAllButton.addEventListener('click', () => {
+        onChange(allTypes);
+    });
+
+    disableAllButton.addEventListener('click', () => {
+        onChange([]);
+    });
+
+    overlay.addEventListener('click', e => {
+        if (e.target === overlay || e.target === closeButton) {
+            overlay.style.display = 'none';
+        }
+    });
+
+    return {
+        overlay,
+        open: () => { overlay.style.display = 'flex'; },
+        update: updateCheckboxes
+    };
+}
+
 function getDriverDetailsStr(driverInfo, brackets=false) {
     if (driverInfo) {
         if (brackets) {
@@ -26,232 +117,92 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
     filterButton.classList.add('race-control-filter-button');
     containerElement.appendChild(filterButton);
 
-    // Create the modal overlay
-    const modalOverlay = document.createElement('div');
-    modalOverlay.classList.add('race-control-modal-overlay');
-    modalOverlay.style.display = 'none'; // Hidden by default, controlled by class in CSS
-    containerElement.appendChild(modalOverlay);
+    // Extract unique message types
+    const allMessageTypes = [...new Set(initialRowData.map(row => row['message-type']))].sort();
+    console.log('All Message Types:', allMessageTypes);
+    let selectedMessageTypes = [...allMessageTypes];
 
-    // Create the modal content box
-    const filterCheckboxesContainer = document.createElement('div');
-    filterCheckboxesContainer.id = 'raceControlMessageFilters';
-    filterCheckboxesContainer.classList.add('race-control-filters-checkboxes');
-    modalOverlay.appendChild(filterCheckboxesContainer);
+    // Function to update the grid based on selected filters
+    const updateGrid = (gridApi) => {
+        const filteredRowData = initialRowData.filter(row => selectedMessageTypes.includes(row['message-type']));
+        gridApi.setGridOption('rowData', filteredRowData);
+    };
+
+    const { overlay: modalOverlay, open: openFilter, update: updateModal } =
+        createFilterModal(allMessageTypes, newTypes => {
+            selectedMessageTypes = newTypes;
+            updateGrid(gridApi);
+        });
+
+    containerElement.appendChild(modalOverlay);
+    filterButton.addEventListener('click', openFilter);
 
     // Create the div for the AG Grid
     const gridDiv = document.createElement('div');
     gridDiv.id = 'raceControlMessagesGrid';
-    gridDiv.classList.add('ag-theme-alpine-dark'); // Apply the AG Grid theme class
+    gridDiv.classList.add('ag-theme-alpine-dark');
     containerElement.appendChild(gridDiv);
 
-    // Extract unique message types
-    const allMessageTypes = [...new Set(initialRowData.map(row => row['message-type']))].sort(); // Use 'message-type' and sort
-    console.log('All Message Types:', allMessageTypes); // Console log for verification
-    let selectedMessageTypes = [...allMessageTypes]; // All selected by default
-
-    // Function to update the grid based on selected filters
-    const updateGrid = (gridApi) => {
-        const filteredRowData = initialRowData.filter(row => selectedMessageTypes.includes(row['message-type'])); // Use 'message-type'
-        gridApi.setGridOption('rowData', filteredRowData);
-    };
-
-    // Populate filter checkboxes
-    const populateFilters = (gridApi) => {
-        // Clear existing content using proper DOM API
-        while (filterCheckboxesContainer.firstChild) {
-            filterCheckboxesContainer.removeChild(filterCheckboxesContainer.firstChild);
-        }
-
-        const title = document.createElement('h3');
-        title.textContent = 'Message Types';
-        title.style.color = 'white';
-        filterCheckboxesContainer.appendChild(title);
-
-        // Add "Enable All" and "Disable All" buttons
-        const buttonContainer = document.createElement('div');
-        buttonContainer.classList.add('filter-button-container');
-
-        const enableAllButton = document.createElement('button');
-        enableAllButton.textContent = 'Enable All';
-        enableAllButton.classList.add('race-control-action-button');
-        enableAllButton.addEventListener('click', () => {
-            selectedMessageTypes = [...allMessageTypes];
-            filterCheckboxesContainer.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-                checkbox.checked = true;
-            });
-            updateGrid(gridApi);
-        });
-        buttonContainer.appendChild(enableAllButton);
-
-        const disableAllButton = document.createElement('button');
-        disableAllButton.textContent = 'Disable All';
-        disableAllButton.classList.add('race-control-action-button');
-        disableAllButton.addEventListener('click', () => {
-            selectedMessageTypes = [];
-            filterCheckboxesContainer.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-                checkbox.checked = false;
-            });
-            updateGrid(gridApi);
-        });
-        buttonContainer.appendChild(disableAllButton);
-        filterCheckboxesContainer.appendChild(buttonContainer);
-
-        // Add a close button to the modal
-        const closeButton = document.createElement('button');
-        closeButton.textContent = 'X';
-        closeButton.classList.add('race-control-modal-close-button');
-        closeButton.addEventListener('click', () => {
-            modalOverlay.style.display = 'none';
-        });
-        filterCheckboxesContainer.appendChild(closeButton);
-
-        allMessageTypes.forEach(type => {
-            const checkboxContainer = document.createElement('div');
-            checkboxContainer.classList.add('filter-checkbox-container');
-
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.id = `filter-${type}`;
-            checkbox.value = type;
-            checkbox.checked = selectedMessageTypes.includes(type); // Set checked based on current selection
-
-            const label = document.createElement('label');
-            label.htmlFor = `filter-${type}`;
-            label.textContent = type;
-
-            checkbox.addEventListener('change', (event) => {
-                if (event.target.checked) {
-                    selectedMessageTypes.push(type);
-                } else {
-                    selectedMessageTypes = selectedMessageTypes.filter(t => t !== type);
-                }
-                updateGrid(gridApi);
-            });
-
-            checkboxContainer.appendChild(checkbox);
-            checkboxContainer.appendChild(label);
-            filterCheckboxesContainer.appendChild(checkboxContainer);
-        });
-
-        // Toggle filter checkboxes visibility
-        filterButton.addEventListener('click', () => {
-            modalOverlay.style.display = 'flex'; // Show the modal
-        });
-
-        // Close modal when clicking outside
-        modalOverlay.addEventListener('click', (event) => {
-            if (event.target === modalOverlay) {
-                modalOverlay.style.display = 'none';
+    // Define detail renderers as a lookup table
+    const detailRenderers = {
+        SESSION_START: () => 'N/A',
+        SESSION_END: () => 'N/A',
+        FASTEST_LAP: ({ 'driver-info': d, 'lap-time-ms': ms }) =>
+            `Driver: ${getDriverDetailsStr(d ?? null)}, Lap Time: ${formatLapTime(ms)}`,
+        RETIREMENT: ({ 'driver-info': d }) =>
+            `Driver: ${getDriverDetailsStr(d ?? null)}`,
+        DRS_ENABLED: () => 'N/A',
+        DRS_DISABLED: ({ reason }) =>
+            `Reason: ${reason}`,
+        CHEQUERED_FLAG: () => 'N/A',
+        RACE_WINNER: ({ 'driver-info': d }) =>
+            getDriverDetailsStr(d ?? null),
+        PENALTY: (message) => {
+            const driverDetails = getDriverDetailsStr(message["driver-info"] ?? null, true);
+            const penaltyType = message['penalty-type'];
+            const infringementType = message['infringement-type'];
+            const otherDriverData = message['other-driver-info'] ?? null;
+            if (otherDriverData) {
+                const otherDriverDetails = getDriverDetailsStr(otherDriverData, true);
+                return `${driverDetails}, ${penaltyType} - ${infringementType}, other driver: ${otherDriverDetails}`;
             }
-        });
+            return `${driverDetails}, ${penaltyType} - ${infringementType}`;
+        },
+        SPEED_TRAP: ({ 'driver-info': d, speed }) =>
+            `Driver: ${getDriverDetailsStr(d ?? null)}, Speed: ${formatFloat(speed)} km/h`,
+        START_LIGHTS: ({ 'num-lights': numLights }) =>
+            `Number of lights: ${numLights}`,
+        LIGHTS_OUT: () => 'N/A',
+        DRIVE_THROUGH_SERVED: ({ 'driver-info': d }) =>
+            `Driver: ${getDriverDetailsStr(d ?? null)}`,
+        STOP_GO_SERVED: ({ 'driver-info': d, 'stop-time': stopTime }) =>
+            `Driver: ${getDriverDetailsStr(d ?? null)} - Stop Time: ${formatFloat(stopTime)} s`,
+        RED_FLAG: () => 'N/A',
+        OVERTAKE: ({ 'overtaker-info': overtaker, 'overtaken-info': overtaken }) =>
+            `${getDriverDetailsStr(overtaker ?? null)} overtook ${getDriverDetailsStr(overtaken ?? null)}`,
+        SAFETY_CAR: ({ 'sc-type': scType, 'event-type': eventType }) =>
+            `${scType} - ${eventType}`,
+        COLLISION: ({ 'driver-1-info': d1, 'driver-2-info': d2 }) =>
+            `${getDriverDetailsStr(d1 ?? null)} and ${getDriverDetailsStr(d2 ?? null)}`,
+        DEFAULT: (msg) =>
+            `Type: ${msg['message-type']} - Placeholder details.`,
     };
+
+    function renderDetailsCell(msg) {
+        const fn = detailRenderers[msg['message-type']] || detailRenderers.DEFAULT;
+        return fn(msg);
+    }
 
     // Define column definitions for AG Grid
     const columnDefs = [
         { headerName: 'ID', field: 'id', sortable: true, filter: false, width: 80 },
         { headerName: 'Message Type', field: 'message-type', sortable: true, filter: false, width: 150 },
         { headerName: 'Lap Number', field: 'lap-number', sortable: true, filter: false, width: 150 },
-        // Placeholder for type-dependent fields.
-        // These will be dynamically added or handled by a custom cell renderer
-        // based on the message-type.
         {
             headerName: 'Details',
             field: 'details',
             flex: 1,
-            cellRenderer: (params) => {
-                const message = params.data;
-                switch (message['message-type']) { // Use 'message-type' here
-                    case 'SESSION_START':
-                        return `N/A`;
-
-                    case 'SESSION_END':
-                        return `N/A`;
-
-                    case 'FASTEST_LAP': {
-                        const driverDetails = getDriverDetailsStr(message["driver-info"] ?? null);
-                        return `Driver: ${driverDetails}, Lap Time: ${formatLapTime(message['lap-time-ms'])}`;
-                    }
-
-                    case 'RETIREMENT': {
-                        const driverDetails = getDriverDetailsStr(message["driver-info"] ?? null);
-                        return `Driver: ${driverDetails}`;
-                    }
-
-                    case 'DRS_ENABLED':
-                        return `N/A`;
-
-                    case 'DRS_DISABLED':
-                        return `Reason: ${message['reason']}`;
-
-                    case 'CHEQUERED_FLAG':
-                        return `N/A`;
-
-                    case 'RACE_WINNER': {
-                        return getDriverDetailsStr(message["driver-info"] ?? null);
-                    }
-
-                    case 'PENALTY': {
-                        const driverDetails = getDriverDetailsStr(message["driver-info"] ?? null, true);
-                        const penaltyType = message['penalty-type'];
-                        const infringementType = message['infringement-type'];
-                        const otherDriverData = message['other-driver-info'] ?? null;
-                        if (otherDriverData) {
-                            const otherDriverDetails = getDriverDetailsStr(otherDriverData, true);
-                            return `${driverDetails}, ${penaltyType} - ${infringementType}, other driver: ${otherDriverDetails}`;
-                        }
-                        return `${driverDetails}, ${penaltyType} - ${infringementType}`;
-                    }
-
-                    case 'SPEED_TRAP': {
-                        const driverDetails = getDriverDetailsStr(message["driver-info"] ?? null);
-                        const speedStr = formatFloat(message["speed"]) + " km/h";
-                        return `Driver: ${driverDetails}, Speed: ${speedStr}`;
-                    }
-
-                    case 'START_LIGHTS': {
-                        const numLights = message['num-lights'];
-                        return `Number of lights: ${numLights}`;
-                    }
-
-                    case 'LIGHTS_OUT':
-                        return `N/A`;
-
-                    case 'DRIVE_THROUGH_SERVED': {
-                        const driverDetails = getDriverDetailsStr(message["driver-info"] ?? null);
-                        return `Driver: ${driverDetails}`;
-                    }
-
-                    case 'STOP_GO_SERVED': {
-                        const driverDetails = getDriverDetailsStr(message["driver-info"] ?? null);
-                        const stopTime = formatFloat(message['stop-time']) + ' s';
-                        return `Driver: ${driverDetails} - Stop Time: ${stopTime}`;
-                    }
-
-                    case 'RED_FLAG':
-                        return `N/A`;
-
-                    case 'OVERTAKE': {
-                        const overtakerDetails = getDriverDetailsStr(message["overtaker-info"] ?? null);
-                        const overtakenDetails = getDriverDetailsStr(message["overtaken-info"] ?? null);
-                        return `${overtakerDetails} overtook ${overtakenDetails}`;
-                    }
-
-                    case 'SAFETY_CAR': {
-                        const scType = message['sc-type'];
-                        const eventType = message['event-type'];
-                        return `${scType} - ${eventType}`;
-                    }
-
-                    case 'COLLISION': {
-                        const firstDriverDetails = getDriverDetailsStr(message["driver-1-info"] ?? null);
-                        const secondDriverDetails = getDriverDetailsStr(message["driver-2-info"] ?? null);
-                        return `${firstDriverDetails} and ${secondDriverDetails}`;
-                    }
-
-                    default:
-                        return `Type: ${message['message-type']} - Placeholder details.`;
-                }
-            }
+            cellRenderer: params => renderDetailsCell(params.data)
         }
     ];
 
@@ -263,7 +214,7 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
         paginationPageSize: 20, // Set default page size
         domLayout: 'autoHeight', // Adjust grid height automatically
         onGridReady: (params) => {
-            populateFilters(params.api);
+            updateModal(selectedMessageTypes); // Initialize checkboxes
             updateGrid(params.api);
         }
         // Other options can be added here as needed
