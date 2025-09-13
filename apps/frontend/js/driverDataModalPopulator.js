@@ -1014,7 +1014,7 @@ class DriverModalPopulator {
     // Method to create the tab content container
     createTabContent() {
         const tabContent = document.createElement('div');
-        tabContent.className = 'tab-content driver-modal-tab-content flex-grow-1 overflow-hidden';
+        tabContent.className = 'tab-content driver-modal-tab-content flex-grow-1';
 
         // Array of tabs with ID and method to populate content
         const tabs = [
