@@ -9,22 +9,6 @@
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
-/* Styling for the AG Grid container */
-.ag-theme-alpine-dark {
-    --ag-background-color: #333;
-    --ag-odd-row-background-color: #2a2a2a;
-    --ag-header-background-color: #444;
-    --ag-header-foreground-color: #eee;
-    --ag-row-hover-color: #4a4a4a;
-    --ag-selected-row-background-color: #5a5a5a;
-    --ag-border-color: #555;
-    --ag-foreground-color: #eee;
-    --ag-secondary-foreground-color: #bbb;
-    --ag-font-size: 14px;
-    --ag-font-family: 'Roboto', sans-serif;
-    height: 500px; /* Example height, adjust as needed */
-    width: 100%;
-}
 
 /* Specific styling for the race control messages grid */
 #raceControlMessagesGrid {
@@ -32,52 +16,10 @@
     margin-bottom: 15px;
 }
 
-/* Ensure the grid takes up available space within its parent */
-.ag-grid-container {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-}
-
-/* Adjust header height for better readability */
-.ag-header-cell {
-    padding: 8px 4px;
-}
-
-/* Pagination controls styling */
-.ag-paging-panel {
-    background-color: #333;
-    color: #eee;
-    border-top: 1px solid #555;
-    padding: 5px 10px;
-}
-
-.ag-paging-button {
-    color: #eee;
-    background-color: #555;
-    border: 1px solid #666;
-    margin: 0 2px;
-    padding: 3px 8px;
-    border-radius: 3px;
-}
-
-.ag-paging-button:hover {
-    background-color: #777;
-}
-
-.ag-paging-row-summary-panel,
-.ag-paging-page-summary-panel {
-    color: #eee;
-}
-
-/* Input fields for pagination */
-.ag-paging-number,
-.ag-paging-page-size {
-    background-color: #444;
-    color: #eee;
-    border: 1px solid #666;
-    padding: 2px 5px;
-    border-radius: 3px;
+/* Specific styling for the race control messages grid */
+#raceControlMessagesGrid.race-control-grid {
+    margin-top: 15px;
+    margin-bottom: 15px;
 }
 
 /* Race Control Filters Button */

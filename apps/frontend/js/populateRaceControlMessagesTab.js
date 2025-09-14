@@ -1,5 +1,4 @@
 // populateRaceControlMessagesTab.js
-
 function createFilterModal(allTypes, onChange) {
     const overlay = document.createElement('div');
     overlay.classList.add('race-control-modal-overlay');
@@ -140,7 +139,6 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
     // Create the div for the AG Grid
     const gridDiv = document.createElement('div');
     gridDiv.id = 'raceControlMessagesGrid';
-    gridDiv.classList.add('ag-theme-alpine-dark');
     containerElement.appendChild(gridDiv);
 
     // Define detail renderers as a lookup table
@@ -206,6 +204,19 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
         }
     ];
 
+    const myTheme = agGrid.themeQuartz
+        .withParams({
+            backgroundColor: "#1f2836",
+            browserColorScheme: "dark",
+            chromeBackgroundColor: {
+                ref: "foregroundColor",
+                mix: 0.07,
+                onto: "backgroundColor"
+            },
+            foregroundColor: "#FFF",
+            headerFontSize: 14
+        });
+
     // AG Grid options
     const gridOptions = {
         columnDefs: columnDefs,
@@ -213,6 +224,15 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
         pagination: true, // Enable pagination
         paginationPageSize: 20, // Set default page size
         domLayout: 'autoHeight', // Adjust grid height automatically
+        theme: myTheme,
+        autoSizeStrategy: {
+            type: 'fitGridWidth',
+            // Default sizing works well for most cases, no need to specify columnLimits
+        },
+        defaultColDef: {
+            resizable: true,
+            // Other default column properties can be added here
+        },
         onGridReady: (params) => {
             updateModal(selectedMessageTypes); // Initialize checkboxes
             updateGrid(params.api);
