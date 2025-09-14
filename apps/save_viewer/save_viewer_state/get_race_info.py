@@ -45,6 +45,9 @@ def _getRaceInfo(json_data: Dict[str, Any]) -> Dict[str, Any]:
     else:
         ret["tyre-stint-history"] = _getTyreStintHistoryJSON(json_data)
 
+    if race_ctrl := json_data.get("race-control"):
+        ret["race-control"] = race_ctrl
+
     return ret
 
 def _getTyreStintHistoryJSON(json_data: Dict[str, Any]) -> List[Dict[str, Any]]:
