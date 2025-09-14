@@ -762,7 +762,7 @@ class SessionState:
 
         # Finally, race control messages and app version
         if self.m_process_race_ctrl_msg:
-            final_json['race-control-messages'] = self.getRaceControlMessagesJSON(driver_info_dict)
+            final_json['race-control'] = self.getRaceControlMessagesJSON(driver_info_dict)
         final_json['version'] = self.m_version
         return final_json
 
