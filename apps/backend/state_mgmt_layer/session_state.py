@@ -252,16 +252,27 @@ class SessionInfo:
         self.m_packet_format = packet.m_header.m_packetFormat
         self.m_safety_car_status = packet.m_safetyCarStatus
 
+        # Happens only once per session
         if ret_status or self.m_pit_time_loss is None:
-            if self.m_formula.is_f1:
+            if not isinstance(self.m_formula, PacketSessionData.FormulaType):
+                self._clear_pit_time_loss(reason="Invalid type. Could not cast to FormulaType")
+            elif self.m_formula.is_f1:
                 self.m_pit_time_loss = self.m_pit_time_loss_f1_dict.get(self.m_track)
             elif self.m_formula.is_f2:
                 self.m_pit_time_loss = self.m_pit_time_loss_f2_dict.get(self.m_track)
             else:
-                self.m_pit_time_loss = None
-                self.m_logger.debug("Unknown formula: %s Clearing pit time loss", str(self.m_formula))
+                self._clear_pit_time_loss(reason="Unsupported formula")
 
         return ret_status
+
+    def _clear_pit_time_loss(self, reason: str) -> None:
+        """Clears the pit time loss value and logs it
+
+        Args:
+            reason (str): Reason for clearing
+        """
+        self.m_pit_time_loss = None
+        self.m_logger.debug("%s: %s Clearing pit time loss", reason, str(self.m_formula))
 
 class SessionState:
     """
