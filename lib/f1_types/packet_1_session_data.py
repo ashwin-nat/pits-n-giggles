@@ -706,6 +706,8 @@ class PacketSessionData(F1PacketBase):
         SUPERCARS: int = 5
         ESPORTS: int = 6
         F2_2021: int = 7
+        F1_WORLD: int = 8
+        F1_ELIMINATION: int = 9
 
         def __str__(self) -> str:
             """Return a human-readable string representation of the formula type."""
@@ -717,17 +719,23 @@ class PacketSessionData(F1PacketBase):
                 PacketSessionData.FormulaType.BETA: "Beta",
                 PacketSessionData.FormulaType.SUPERCARS: "Supercars",
                 PacketSessionData.FormulaType.ESPORTS: "Esports",
-                PacketSessionData.FormulaType.F2_2021: "F2 2021"
+                PacketSessionData.FormulaType.F2_2021: "F2 2021",
+                PacketSessionData.FormulaType.F1_WORLD: "F1 World",
+                PacketSessionData.FormulaType.F1_ELIMINATION: "F1 Elimination",
             }[self]
 
         def is_f1(self) -> bool:
+            """Check if the formula type is F1."""
             return self in [
                 PacketSessionData.FormulaType.F1_MODERN,
                 PacketSessionData.FormulaType.F1_CLASSIC,
                 PacketSessionData.FormulaType.F1_GENERIC,
+                PacketSessionData.FormulaType.F1_WORLD,
+                PacketSessionData.FormulaType.F1_ELIMINATION,
             ]
 
         def is_f2(self) -> bool:
+            """Check if the formula type is F2."""
             return self in [
                 PacketSessionData.FormulaType.F2,
                 PacketSessionData.FormulaType.F2_2021
@@ -868,7 +876,7 @@ class PacketSessionData(F1PacketBase):
         self.m_trackLength: int
         self.m_sessionType: Union[SessionType23, SessionType24]
         self.m_trackId: TrackID
-        self.m_formula: int
+        self.m_formula: PacketSessionData.FormulaType
         self.m_sessionTimeLeft: int
         self.m_sessionDuration: int
         self.m_pitSpeedLimit: int
