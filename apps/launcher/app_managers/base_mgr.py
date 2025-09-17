@@ -22,9 +22,11 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import random
 import subprocess
 import sys
 import threading
+import time
 import tkinter as tk
 from abc import ABC, abstractmethod
 from tkinter import messagebox, ttk
@@ -32,10 +34,10 @@ from typing import Callable, Optional
 
 import psutil
 
+from lib.child_proc_mgmt import extract_pid_from_line, is_init_complete
 from lib.config import PngSettings
 from lib.error_status import PNG_ERROR_CODE_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN
-from lib.ipc import get_free_tcp_port, IpcParent
-from lib.child_proc_mgmt import extract_pid_from_line, is_init_complete
+from lib.ipc import IpcParent, get_free_tcp_port
 
 from ..console_interface import ConsoleInterface
 
@@ -102,6 +104,7 @@ class PngAppMgrBase(ABC):
         self.is_running = False
         self._is_restarting = threading.Event()
         self._is_stopping = threading.Event()
+        self._stop_heartbeat = threading.Event()
         self.start_by_default = start_by_default
         self.child_pid = None
         self._post_start_hook: Optional[Callable[[], None]] = None
@@ -174,6 +177,7 @@ class PngAppMgrBase(ABC):
         # Start output capture and monitor threads outside the lock to avoid deadlocks
         threading.Thread(target=self._capture_output, daemon=True).start()
         threading.Thread(target=self._monitor_process_exit, daemon=True).start()
+        threading.Thread(target=self._send_heartbeat, args=(self.ipc_port,), daemon=True).start()
 
         self.console_app.debug_log(f"{self.display_name} started successfully. PID = {self.child_pid}")
 
@@ -305,6 +309,28 @@ class PngAppMgrBase(ABC):
         finally:
             if self.process is this_process:
                 self.process = None
+            self._stop_heartbeat.set()
+
+    def _send_heartbeat(self, port_num: int) -> None:
+        """Send heartbeat messages to the child process periodically
+
+        Args:
+            port_num (int): IPC port number
+        """
+
+        initial_delay = random.uniform(0, 5.0)
+        time.sleep(initial_delay)
+
+        while not self._stop_heartbeat.is_set():
+            try:
+                rsp = IpcParent(port_num).heartbeat()
+                self.console_app.debug_log(f"{self.display_name}: Heartbeat response: {rsp}")
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                self.console_app.debug_log(f"{self.display_name}: Error sending heartbeat: {e}")
+            time.sleep(5.0) # TODO: make configurable
+
+        self._stop_heartbeat.clear()
+        self.console_app.debug_log(f"{self.display_name}: Heartbeat job stopped")
 
     def _is_restart_exit_expected(self, ret_code: int) -> bool:
         """
