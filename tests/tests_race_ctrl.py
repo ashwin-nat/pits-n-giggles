@@ -31,6 +31,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from tests_base import F1TelemetryUnitTestsBase
 
 from lib.race_ctrl import SessionRaceControlManager, RaceCtrlMsgBase, MessageType, DriverRaceControlManager
+from lib.race_ctrl.messages.driver_messages import FastestLapRaceCtrlMsg, OvertakeRaceCtrlMsg
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -134,3 +135,39 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         self.assertEqual(len(self.driver1_mgr.messages), 1)
         # Not stored in driver 2 manager
         self.assertEqual(len(self.driver2_mgr.messages), 0)
+
+    async def test_to_json_exports_ids_and_data(self):
+        msg1 = FastestLapRaceCtrlMsg(
+            timestamp=5.0,
+            driver_index=1,
+            lap_time_ms=60000,
+            lap_number=1,)
+        self.session_mgr.add_message(msg1)
+
+        exported = self.session_mgr.toJSON()
+
+        self.assertEqual(exported[0]["id"], 0)
+        self.assertEqual(exported[0]["message-type"], "FASTEST_LAP")
+
+    async def test_to_json_with_driver_info_dict(self):
+        msg1 = OvertakeRaceCtrlMsg(
+            timestamp=9.0,
+            overtaker_index=1,
+            overtaken_index=2,
+            lap_number=1)
+
+        self.session_mgr.add_message(msg1)
+
+        driver_info_dict = {
+            1: {"name": "Driver One", "team": "Alpha", "driver-number": 1},
+            2: {"name": "Driver Two", "team": "Beta", "driver-number": 2},
+        }
+
+        exported = self.session_mgr.toJSON(driver_info_dict=driver_info_dict)
+
+        self.assertEqual(exported[0]["overtaker-info"]["name"], "Driver One")
+        self.assertEqual(exported[0]["overtaker-info"]["team"], "Alpha")
+        self.assertEqual(exported[0]["overtaker-info"]["driver-number"], 1)
+        self.assertEqual(exported[0]["overtaken-info"]["name"], "Driver Two")
+        self.assertEqual(exported[0]["overtaken-info"]["team"], "Beta")
+        self.assertEqual(exported[0]["overtaken-info"]["driver-number"], 2)
