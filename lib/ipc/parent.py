@@ -66,6 +66,13 @@ class IpcParent:
         """Sends a ping command to the child."""
         return self.request("__ping__")
 
+    def heartbeat(self) -> dict:
+        """
+        Sends a heartbeat to the child.
+        Returns the child's response or error dict.
+        """
+        return self.request("__heartbeat__")
+
     def terminate_child(self) -> dict:
         """
         Sends a terminate command to the child. This is a brute force shutdown and the app will not be able to
