@@ -92,6 +92,7 @@ class PngAppMgrBase(ABC):
                  display_name: str,
                  start_by_default: bool,
                  console_app: ConsoleInterface,
+                 settings: PngSettings,
                  args: list[str] = None):
         """Initialize the sub-application
         :param port_conflict_settings_field: Settings field to check for port conflicts
@@ -100,6 +101,8 @@ class PngAppMgrBase(ABC):
         :param display_name: Display name for the sub-application
         :param start_by_default: Whether to start this app by default
         :param console_app: Reference to a console interface for logging
+        :param settings: Settings object
+        :param args: Additional Command line arguments to pass to the sub-application
         """
         self.port_conflict_settings_field = port_conflict_settings_field
         self.module_path = module_path
@@ -113,6 +116,7 @@ class PngAppMgrBase(ABC):
         self.is_running = False
         self._is_restarting = threading.Event()
         self._is_stopping = threading.Event()
+        self.heartbeat_interval: float = settings.SubSysCtrlCfg__.heartbeat_interval
         self._stop_heartbeat = threading.Event()
         self.start_by_default = start_by_default
         self.child_pid = None
@@ -327,16 +331,17 @@ class PngAppMgrBase(ABC):
             port_num (int): IPC port number
         """
 
+        # Initial delay to avoid bursts
         initial_delay = random.uniform(0, 5.0)
         time.sleep(initial_delay)
 
         while not self._stop_heartbeat.is_set():
             try:
                 rsp = IpcParent(port_num).heartbeat()
-                self.console_app.debug_log(f"{self.display_name}: Heartbeat response: {rsp}")
+                self.console_app.debug_log(f"{self.display_name}: Heartbeat response: {rsp}") # TODO: remove
             except Exception as e:  # pylint: disable=broad-exception-caught
                 self.console_app.debug_log(f"{self.display_name}: Error sending heartbeat: {e}")
-            time.sleep(5.0) # TODO: make configurable
+            time.sleep(self.heartbeat_interval)
 
         self._stop_heartbeat.clear()
         self.console_app.debug_log(f"{self.display_name}: Heartbeat job stopped")

@@ -35,14 +35,14 @@ from .base_mgr import PngAppMgrBase
 
 class BackendAppMgr(PngAppMgrBase):
     """Implementation of PngApp for backend services"""
-    def __init__(self, console_app: ConsoleInterface, port_str: str, args: list[str], proto: str):
+    def __init__(self, console_app: ConsoleInterface, settings: PngSettings, args: list[str], proto: str):
         """Initialize the backend manager
         :param console_app: Reference to a console interface for logging
-        :param port_str: Port number to use for the backend
+        :param settings: Settings object
         :param args: Additional Command line arguments to pass to the backend
         :param proto: Protocol to use to open webpage
         """
-        self.port_str = port_str
+        self.port_str = str(settings.Network.save_viewer_port)
         self.proto = proto
         super().__init__(
             port_conflict_settings_field='Network -> "Pits n\' Giggles HTTP Server Port"',
@@ -51,6 +51,7 @@ class BackendAppMgr(PngAppMgrBase):
             display_name="Server",
             start_by_default=True,
             console_app=console_app,
+            settings=settings,
             args=args
         )
         self.register_post_start(self.post_start)

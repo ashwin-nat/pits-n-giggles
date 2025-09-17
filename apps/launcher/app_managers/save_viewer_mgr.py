@@ -35,14 +35,14 @@ from .base_mgr import PngAppMgrBase
 
 class SaveViewerAppMgr(PngAppMgrBase):
     """Implementation of PngApp for save viewer"""
-    def __init__(self, console_app: ConsoleInterface, port_str: str, extra_args: list[str] = None):
+    def __init__(self, console_app: ConsoleInterface, settings: PngSettings, extra_args: list[str] = None):
         """Initialize the save viewer manager
         :param console_app: Reference to a console interface for logging
-        :param port_str: Port number to use for the save viewer
+        :param settings: Settings object
         :param extra_args: Additional Command line arguments to pass to the save
         """
-        self.port_str = port_str
-        args = ["--launcher", "--port", port_str]
+        self.port_str = str(settings.Network.save_viewer_port)
+        args = ["--launcher", "--port", self.port_str]
         self.extra_args = extra_args or []
         super().__init__(
             port_conflict_settings_field='Network -> "Pits n\' Giggles Save Data Viewer Port"',
@@ -51,6 +51,7 @@ class SaveViewerAppMgr(PngAppMgrBase):
             display_name="Save Viewer",
             start_by_default=True,
             console_app=console_app,
+            settings=settings,
             args=args + self.extra_args
         )
         self.register_post_start(self.post_start)
