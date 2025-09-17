@@ -114,7 +114,14 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
     const filterButton = document.createElement('button');
     filterButton.textContent = 'Filters';
     filterButton.classList.add('race-control-filter-button');
+    // Create the search input for quick filter
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.placeholder = 'Search messages...';
+    searchInput.id = 'raceControlMessageSearchInput';
+    searchInput.classList.add('race-control-search-input');
     containerElement.appendChild(filterButton);
+    containerElement.appendChild(searchInput);
 
     // Extract unique message types
     const allMessageTypes = [...new Set(initialRowData.map(row => row['message-type']))].sort();
@@ -200,7 +207,8 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
             headerName: 'Details',
             field: 'details',
             flex: 1,
-            cellRenderer: params => renderDetailsCell(params.data)
+            cellRenderer: params => renderDetailsCell(params.data),
+            getQuickFilterText: params => renderDetailsCell(params.data)
         }
     ];
 
@@ -236,6 +244,14 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
         onGridReady: (params) => {
             updateModal(selectedMessageTypes); // Initialize checkboxes
             updateGrid(params.api);
+            searchInput.addEventListener('input', (event) => {
+                const filterText = event.target.value;
+                console.log('Search Input:', filterText);
+                const gridApi = params.api;
+                  gridApi.setGridOption(
+                    "quickFilterText", filterText,
+                );
+            });
         }
         // Other options can be added here as needed
     };
