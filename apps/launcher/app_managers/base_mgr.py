@@ -36,7 +36,8 @@ import psutil
 
 from lib.child_proc_mgmt import extract_pid_from_line, is_init_complete
 from lib.config import PngSettings
-from lib.error_status import PNG_ERROR_CODE_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN
+from lib.error_status import (PNG_ERROR_CODE_PORT_IN_USE,
+                              PNG_ERROR_CODE_UNKNOWN, PNG_LOST_CONN_TO_PARENT)
 from lib.ipc import IpcParent, get_free_tcp_port
 
 from ..console_interface import ConsoleInterface
@@ -73,6 +74,14 @@ class PngAppMgrBase(ABC):
             ),
             "status": "Crashed",
         },
+        PNG_LOST_CONN_TO_PARENT: {
+            "title": "Lost Connection to Parent",
+            "message": (
+                "lost connection to the parent process.\n"
+                "Please check the logs for more details."
+            ),
+            "status": "Timed out",
+        }
     }
     DEFAULT_EXIT = EXIT_ERRORS[PNG_ERROR_CODE_UNKNOWN]
 

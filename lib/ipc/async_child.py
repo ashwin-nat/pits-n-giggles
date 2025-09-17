@@ -23,11 +23,14 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
+import os
 import time
 from typing import Awaitable, Callable, Optional
 
 import zmq
 import zmq.asyncio
+
+from lib.error_status import PNG_LOST_CONN_TO_PARENT
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -60,7 +63,7 @@ class IpcChildAsync:
         self.heartbeat_timeout = heartbeat_timeout
         self._last_heartbeat = None
         self._missed_heartbeats = 0
-        self._heartbeat_missed_callback = None
+        self._heartbeat_missed_callback = self._def_heartbeat_missed_callback
         self._heartbeat_task = None
 
     def register_shutdown_callback(self, callback: Callable[[dict], Awaitable[dict]]):
@@ -83,7 +86,7 @@ class IpcChildAsync:
         Background task that monitors heartbeats.
         Only runs if a heartbeat callback is registered.
         """
-        while self._running and self._heartbeat_missed_callback:
+        while self._running:
             await asyncio.sleep(self.heartbeat_timeout)
 
             if not self._running:
@@ -99,6 +102,7 @@ class IpcChildAsync:
             time_since_last = current_time - self._last_heartbeat
             if time_since_last > self.heartbeat_timeout:
                 self._missed_heartbeats += 1
+                # TODO: remove
                 print(f"[{self.name}] Missed heartbeat #{self._missed_heartbeats} "
                       f"(last seen {time_since_last:.1f}s ago)")
 
@@ -127,8 +131,7 @@ class IpcChildAsync:
         self._running = True
 
         # Start heartbeat monitoring only if callback is registered
-        if self._heartbeat_missed_callback:
-            self._heartbeat_task = asyncio.create_task(self._heartbeat_monitor())
+        self._heartbeat_task = asyncio.create_task(self._heartbeat_monitor())
 
         try:
             while self._running:
@@ -184,6 +187,10 @@ class IpcChildAsync:
                     pass
 
             self.close()
+
+    def _def_heartbeat_missed_callback(self, _missed_heartbeats: int) -> Awaitable[None]:
+        """Default heartbeat missed callback. Hard kills the app"""
+        os._exit(PNG_LOST_CONN_TO_PARENT)
 
     def close(self) -> None:
         """Closes the socket."""
