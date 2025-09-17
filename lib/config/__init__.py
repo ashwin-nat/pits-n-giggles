@@ -27,7 +27,7 @@ from .config_schema import (CaptureSettings, DisplaySettings, FilePathStr,
                             ForwardingSettings, HttpsSettings, LoggingSettings,
                             NetworkSettings, PitTimeLossF1, PitTimeLossF2,
                             PngSettings, PrivacySettings,
-                            StreamOverlaySettings)
+                            StreamOverlaySettings, SubSysCtrl)
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -39,6 +39,7 @@ __all__ = [
     'NetworkSettings',
     'PitTimeLossF1',
     'PitTimeLossF2',
+    'SubSysCtrl',
     'PngSettings',
     'PrivacySettings',
     'StreamOverlaySettings',
