@@ -376,23 +376,14 @@ class PngAppMgrBase(ABC):
         # All state updates below are done while holding the lock to ensure
         # consistent visibility across threads.
         if reported_pid and reported_pid != popen_pid:
-            self.console_app.debug_log(f"Terminating actual child PID {reported_pid} (launched by PyInstaller stub)")
+            self.console_app.debug_log(f"Killing actual child PID {reported_pid} (launched by PyInstaller stub)")
             try:
-                psutil.Process(reported_pid).terminate()
-                psutil.Process(reported_pid).wait(timeout=5)
+                psutil.Process(reported_pid).kill()
             except psutil.NoSuchProcess:
                 self.console_app.debug_log(f"Child PID {reported_pid} already exited.")
-            except psutil.TimeoutExpired:
-                self.console_app.debug_log(f"Child PID {reported_pid} did not exit in time. Killing it.")
-                psutil.Process(reported_pid).kill()
         elif self.process:
-            # Otherwise, just terminate the subprocess
-            self.console_app.debug_log(f"Terminating subprocess PID {popen_pid}")
-            try:
-                self.process.terminate()
-                self.process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                self.console_app.debug_log(f"{self.display_name} did not exit in time. Killing it.")
-                self.process.kill()
-                self.process.wait()
-        self.console_app.debug_log(f"{self.display_name} stopped successfully. Terminated PID = {used_pid}")
+            # Otherwise, just kill the subprocess
+            self.console_app.debug_log(f"Killing subprocess PID {popen_pid}")
+            self.process.kill()
+            self.process.wait() # Wait for the process to fully terminate after killing
+        self.console_app.debug_log(f"{self.display_name} stopped successfully. Killed PID = {used_pid}")
