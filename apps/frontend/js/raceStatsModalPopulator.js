@@ -44,6 +44,7 @@ class RaceStatsModalPopulator {
             { id: 'position-history', label: 'Position History' },
             { id: 'tyre-stint-history', label: 'Tyre Stint History' },
             { id: 'speed-trap-records', label: 'Speed Trap Records' },
+            { id: 'race-control-messages', label: 'Race Control Messages' },
         ];
 
         // Sort tabs alphabetically based on the label
@@ -84,6 +85,7 @@ class RaceStatsModalPopulator {
             { id: 'position-history', method: this.populatePositionHistoryTab },
             { id: 'tyre-stint-history', method: this.populateTyreStintHistoryTab },
             { id: 'speed-trap-records', method: this.populateSpeedTrapRecordsTab },
+            { id: 'race-control-messages', method: this.populateRaceControlMessagesTabWrapper },
         ];
 
         // Sort tabs alphabetically based on the label
@@ -289,6 +291,22 @@ class RaceStatsModalPopulator {
         });
 
         tabPane.appendChild(chartDiv);
+    }
+
+    populateRaceControlMessagesTabWrapper(tabPane) {
+        const messages = this.data["race-control"] ?? [];
+        if (messages.length === 0) {
+            this.showDataNotAvailableMessage(tabPane, "Race Control Messages data not available");
+            return;
+        }
+
+        // Call the globally accessible function, passing the data
+        if (window.populateRaceControlMessagesTab) {
+            window.populateRaceControlMessagesTab(tabPane, messages);
+        } else {
+            console.error('populateRaceControlMessagesTab function not found.');
+            this.showDataNotAvailableMessage(tabPane, "Race Control Messages grid could not be loaded.");
+        }
     }
 
     // Utils

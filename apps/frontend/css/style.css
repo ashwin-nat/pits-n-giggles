@@ -432,3 +432,8 @@ a {
 .ers-bar__fill--low {
   background-color: #ff1744;
 }
+
+/* For purple sector */
+.bg-purple {
+    background-color: #800080;
+}

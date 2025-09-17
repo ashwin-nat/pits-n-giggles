@@ -130,11 +130,32 @@ class EngViewRaceTable {
 
     initGrid() {
         this.columnDefs = this.getColumnDefinitions();
+        const myTheme = agGrid.themeQuartz
+            .withParams({
+                backgroundColor: "#15151E",
+                borderColor: "#333333",
+                browserColorScheme: "dark",
+                chromeBackgroundColor: {
+                    ref: "foregroundColor",
+                    mix: 0.07,
+                    onto: "backgroundColor"
+                },
+                columnBorder: true,
+                fontSize: 16,
+                foregroundColor: "#FFF",
+                headerBackgroundColor: "#0C0C12",
+                headerFontSize: 14,
+                oddRowBackgroundColor: "#1F1F2B",
+                rowHeight: 30,
+                rowHoverColor: "#2D2D3D",
+                selectedRowBackgroundColor: "#2D2D3D"
+            });
         const gridOptions = {
             columnDefs: this.columnDefs,
             rowData: [], // Initial empty data
             domLayout: 'normal', // or 'normal' if you want scrolling
             rowHeight: 60, // Add this line - adjust height as needed
+            theme: myTheme,
             suppressColumnMoveAnimation: true,
             suppressFieldDotNotation: false, // Allow dots in field names
             defaultColDef: {

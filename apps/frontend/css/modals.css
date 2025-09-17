@@ -1,73 +1,209 @@
-/* Ensure modal itself can grow to take up most of the screen */
-.driver-modal-content {
-    max-height: 90vh;
-    /* Maximum height of 90% of viewport */
-    height: auto;
-    /* Allow the height to auto-expand if content is smaller */
-    overflow: hidden;
-    /* Prevent overflow */
-    display: flex;
-    flex-direction: column;
+/* modals.css */
+
+/* Basic styling for the modal container */
+.modal-content {
+    background-color: #222;
+    color: #eee;
+    border: 1px solid #555;
     border-radius: 8px;
-    /* background-color: var(--f1-darker); */
-    color: var(--f1-text);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
-/* Header remains sticky at the top */
-.driver-modal-header {
-    /* background-color: var(--f1-dark); */
-    color: var(--f1-text);
-    border-bottom: 1px solid var(--f1-light-gray);
-    position: sticky;
-    top: 0;
-    z-index: 1055;
-    padding: 1rem;
+
+/* Specific styling for the race control messages grid */
+#raceControlMessagesGrid {
+    margin-top: 15px;
+    margin-bottom: 15px;
 }
 
-.tab-pane {
-    height: 60vh;
+/* Specific styling for the race control messages grid */
+#raceControlMessagesGrid.race-control-grid {
+    margin-top: 15px;
+    margin-bottom: 15px;
 }
 
-.tab-pane>div {
-    height: inherit;
-}
-
-.bg-purple {
-    background-color: #800080;
-}
-
-.hidden-column {
-    display: none;
-}
-
-.icon-btn {
-    background: transparent;
+/* Race Control Filters Button */
+.race-control-filter-button {
+    padding: 8px 15px;
+    background-color: #007bff;
+    color: white;
     border: none;
-    color: var(--f1-text-secondary);
-    font-size: 1.25rem;
-    /* Adjust size as needed */
-    padding: 0.5rem;
-    /* Adds spacing around the icon */
+    border-radius: 4px;
+    cursor: pointer;
+    margin-bottom: 10px;
+}
+
+.race-control-filter-button:hover {
+    background-color: #0056b3;
+}
+
+/* Race Control Modal Overlay */
+.race-control-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+/* Race Control Filter Checkboxes Container (Modal Content) */
+.race-control-filters-checkboxes {
+    background-color: #222;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    max-width: 300px;
+    width: 90%;
+    position: relative;
+}
+
+.race-control-filters-checkboxes h3 {
+    margin-top: 0;
+    color: white;
+    margin-bottom: 15px;
+}
+
+/* Close button for the modal */
+.race-control-modal-close-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    color: #eee;
+    font-size: 1.2em;
     cursor: pointer;
 }
 
-.icon-btn:hover {
-    color: var(--f1-text);
+.race-control-modal-close-button:hover {
+    color: #ff0000;
 }
 
-.tab-content {
-    height: 100%;
+/* Individual checkbox container */
+.filter-checkbox-container {
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+}
+
+.filter-checkbox-container input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+.filter-checkbox-container label {
+    color: #ccc;
+}
+/* Styles for Race Control Message Filters */
+.race-control-filter-button {
+    padding: 8px 15px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.race-control-filter-button:hover {
+    background-color: #0056b3;
+}
+
+.race-control-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
     width: 100%;
-}
-
-.driver-modal-tab-content {
     height: 100%;
-    width: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
 }
 
-.chart-container {
+.race-control-filters-checkboxes {
+    background-color: #2a2a2a;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    max-height: 80%;
+    overflow-y: auto;
+    color: white;
     position: relative;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
+    width: 300px; /* Adjust width as needed */
+}
+
+.race-control-filters-checkboxes h3 {
+    margin-top: 0;
+    color: #007bff;
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.race-control-modal-close-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    color: #aaa;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.race-control-modal-close-button:hover {
+    color: white;
+}
+
+.filter-checkbox-container {
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+}
+
+.filter-checkbox-container input[type="checkbox"] {
+    margin-right: 10px;
+    accent-color: #007bff; /* Highlight color for checkboxes */
+}
+
+.filter-checkbox-container label {
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.filter-button-container {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 15px;
+    gap: 10px; /* Space between buttons */
+}
+
+.race-control-action-button {
+    padding: 8px 12px;
+    background-color: #28a745; /* Green for Enable All */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    flex-grow: 1; /* Allow buttons to grow and fill space */
+}
+
+.race-control-action-button:hover {
+    background-color: #218838;
+}
+
+/* Specific style for Disable All to differentiate */
+.race-control-action-button:nth-child(2) {
+    background-color: #dc3545; /* Red for Disable All */
+}
+
+.race-control-action-button:nth-child(2):hover {
+    background-color: #c82333;
 }

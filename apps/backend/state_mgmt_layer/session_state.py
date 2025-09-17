@@ -54,6 +54,7 @@ from lib.openf1 import MostRecentPoleLap
 from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
+from lib.race_ctrl import SessionRaceControlManager, race_ctrl_msg_factory
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
@@ -298,10 +299,12 @@ class SessionState:
         m_udp_custom_marker_action_code (Optional[int]): The UDP action code for custom marker
         m_udp_tyre_delta_action_code (Optional[int]): The UDP action code for tyre delta notification
         m_process_car_setups (bool): Flag indicating whether to process car setups packets.
+        m_process_race_ctrl_msg (bool): Flag indicating whether to process race control messages.
         m_custom_markers_history (CustomMarkersHistory): An instance tracking custom markers history.
         m_first_session_update_received (bool): Flag indicating whether the first session update packet has been received.
         m_version (str): Version string
         m_connected_to_sim (bool): Flag indicating whether the client is connected to the simulator
+        m_race_ctrl (RaceCtrl): The session race control messages manager
     """
 
     MAX_DRIVERS: int = 22
@@ -324,10 +327,12 @@ class SessionState:
         'm_overtakes_history',
         'm_session_info',
         'm_process_car_setups',
+        'm_process_race_ctrl_msg',
         'm_custom_markers_history',
         'm_first_session_update_received',
         'm_version',
         'm_connected_to_sim',
+        'm_race_ctrl',
     )
 
     def __init__(self,
@@ -363,9 +368,12 @@ class SessionState:
 
         # Config params
         self.m_process_car_setups: bool = settings.Privacy.process_car_setup
+        self.m_process_race_ctrl_msg: bool = settings.Capture.save_race_ctrl_msg
 
         self.m_custom_markers_history = CustomMarkersHistory()
         self.m_connected_to_sim: bool = False
+
+        self.m_race_ctrl: SessionRaceControlManager = SessionRaceControlManager()
 
     ####### Control Methods ########
 
@@ -391,6 +399,7 @@ class SessionState:
         self.m_first_session_update_received = False
         self.m_session_info.clear()
         self.m_custom_markers_history.clear()
+        self.m_race_ctrl.clear()
 
         # No need to clear config params
 
@@ -700,6 +709,7 @@ class SessionState:
             "classification-data" : []
         }
         speed_trap_records = []
+        driver_info_dict = self._getRaceCtrlHelperDict() if self.m_process_race_ctrl_msg else None
 
         # --- Initialize optional structures
         if is_position_history_supported:
@@ -712,7 +722,9 @@ class SessionState:
             driver = self._getObjectByIndex(index, create=False)
             if driver and driver.is_valid:
                 # Add driver’s classification info
-                final_json["classification-data"].append(driver.toJSON(index))
+                final_json["classification-data"].append(driver.toJSON(index=index,
+                                                                       save_race_ctrl=self.m_process_race_ctrl_msg,
+                                                                       driver_info_dict=driver_info_dict))
                 # Collect speed trap info
                 speed_trap_records.append(driver.getSpeedTrapRecordJSON())
 
@@ -759,7 +771,9 @@ class SessionState:
             'tyre-stats' : getTyreStintRecordsDict(final_json)
         }
 
-        # Finally, app version
+        # Finally, race control messages and app version
+        if self.m_process_race_ctrl_msg:
+            final_json['race-control'] = self.getRaceControlMessagesJSON(driver_info_dict)
         final_json['version'] = self.m_version
         return final_json
 
@@ -959,6 +973,25 @@ class SessionState:
                                                  record.beingOvertakenVehicleIdx)):
             self.m_overtakes_history.insert(overtake_obj)
 
+    def handleEvent(self, packet: PacketEventData):
+        """Handle the event packet
+
+        Args:
+            packet (PacketEventData): The parsed object containing the event data packet's contents
+        """
+
+        if not self.m_process_race_ctrl_msg:
+            return
+
+        # Get lap number from leader
+        if driver := self.getDriverInfoByPosition(1):
+            lap_num = driver.m_lap_info.m_current_lap
+        else:
+            lap_num = None
+
+        if msg := race_ctrl_msg_factory(packet, lap_number=lap_num):
+            self.m_race_ctrl.add_message(msg)
+
     ##### Public Getters #####
 
     def getDriverInfoJsonByIndex(self, index: int) -> Optional[Dict[str, Any]]:
@@ -984,7 +1017,9 @@ class SessionState:
                 selected_pit_stop_lap = self.m_ideal_pit_stop_window
             else:
                 selected_pit_stop_lap = None
-        final_json = driver_info_obj.toJSON(index, include_wear_prediction, selected_pit_stop_lap)
+        driver_info_dict = self._getRaceCtrlHelperDict()
+        final_json = driver_info_obj.toJSON(index, include_wear_prediction, selected_pit_stop_lap,
+                                            self.m_process_race_ctrl_msg, driver_info_dict)
         final_json["circuit"] = str(self.m_session_info.m_track)
         final_json["session-type"] = str(self.m_session_info.m_session_type)
         final_json["is-finish-line-after-pit-garage"] = F1Utils.isFinishLineAfterPitGarage(self.m_session_info.m_track) \
@@ -1004,7 +1039,7 @@ class SessionState:
             "collisions" : self.getCollisionStatsJSON(),
             "session-info" : self.m_session_info.m_packet_session.toJSON() \
                 if self.m_session_info.m_packet_session else None,
-            # "overtakes" : self.getOvertakeStatsJSON()
+            "race-control" : self.getRaceControlMessagesJSON() if self.m_process_race_ctrl_msg else None
         }
 
     def getCollisionStatsJSON(self) -> Dict[str, Any]:
@@ -1291,7 +1326,27 @@ class SessionState:
         """Get the save data JSON."""
         return self.buildFinalClassificationJSON() if self.is_data_available else None
 
+    def getRaceControlMessagesJSON(self, driver_info_dict: Optional[Dict[int, dict]] = None) -> List[Dict[str, Any]]:
+        """Get the race control messages JSON."""
+
+        if not driver_info_dict:
+            driver_info_dict = self._getRaceCtrlHelperDict()
+        return self.m_race_ctrl.toJSON(driver_info_dict)
+
     ##### Internal Helpers #####
+
+    def _getRaceCtrlHelperDict(self) -> Dict[str, Any]:
+        """Get the race control messages helper dictionary. This is a mapping of index against driver info JSON,
+        which contains the following keys: `name`, `team`, `driver-number`."""
+        return {
+            index: {
+                'name': driver.m_driver_info.name,
+                'team': driver.m_driver_info.team,
+                'driver-number': driver.m_driver_info.driver_number,
+            }
+            for index, driver in enumerate(self.m_driver_data)
+            if driver and driver.is_valid
+        }
 
     def _getObjectByIndex(self, index: int, create: bool = True, reason: str = None) -> DataPerDriver:
         """Looks up and retrieves the object at the specified index.
@@ -1315,6 +1370,7 @@ class SessionState:
                 logger=self.m_logger,
                 total_laps=self.m_session_info.m_total_laps)
             self.m_driver_data[index] = obj
+            self.m_race_ctrl.register_driver(index, obj.m_race_ctrl)
         return obj
 
     def _recomputeFastestLap(self) -> None:
