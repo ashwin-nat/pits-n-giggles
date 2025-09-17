@@ -202,6 +202,6 @@ class RaceWinnerRaceCtrlMsg(RaceCtrlMsgBase):
             **super().toJSON(driver_info_dict)
         }
 
-        if driver_info := driver_info_dict.get(self.involved_drivers[0]):
+        if driver_info_dict and (driver_info := driver_info_dict.get(self.involved_drivers[0])):
             ret["driver-info"] = driver_info
         return ret

@@ -50,7 +50,7 @@ class FastestLapRaceCtrlMsg(RaceCtrlMsgBase):
             "lap-time-ms": self.lap_time_ms
         }
 
-        if driver_info := driver_info_dict.get(self.involved_drivers[0]):
+        if driver_info_dict and (driver_info := driver_info_dict.get(self.involved_drivers[0])):
             ret["driver-info"] = driver_info
         return ret
 
@@ -77,7 +77,7 @@ class RetirementRaceCtrlMsg(RaceCtrlMsgBase):
             "reason": self.reason
         }
 
-        if driver_info := driver_info_dict.get(self.involved_drivers[0]):
+        if driver_info_dict and (driver_info := driver_info_dict.get(self.involved_drivers[0])):
             ret["driver-info"] = driver_info
         return ret
 
@@ -120,10 +120,11 @@ class SpeedTrapRaceCtrlMsg(RaceCtrlMsgBase):
             "session-fastest": self.session_fastest
         }
 
-        if driver_info := driver_info_dict.get(self.driver_index):
-            ret["driver-info"] = driver_info
-        if session_fastest_driver_info := driver_info_dict.get(self.fastest_index):
-            ret["session-fastest-driver-info"] = session_fastest_driver_info
+        if driver_info_dict:
+            if driver_info := driver_info_dict.get(self.driver_index):
+                ret["driver-info"] = driver_info
+            if session_fastest_driver_info := driver_info_dict.get(self.fastest_index):
+                ret["session-fastest-driver-info"] = session_fastest_driver_info
         return ret
 
 class OvertakeRaceCtrlMsg(RaceCtrlMsgBase):
@@ -161,8 +162,9 @@ class OvertakeRaceCtrlMsg(RaceCtrlMsgBase):
             "overtaken-index": self.overtaken_index
         }
 
-        if overtaker_info := driver_info_dict.get(self.involved_drivers[0]):
-            ret["overtaker-info"] = overtaker_info
-        if overtaken_info := driver_info_dict.get(self.involved_drivers[1]):
-            ret["overtaken-info"] = overtaken_info
+        if driver_info_dict:
+            if overtaker_info := driver_info_dict.get(self.involved_drivers[0]):
+                ret["overtaker-info"] = overtaker_info
+            if overtaken_info := driver_info_dict.get(self.involved_drivers[1]):
+                ret["overtaken-info"] = overtaken_info
         return ret

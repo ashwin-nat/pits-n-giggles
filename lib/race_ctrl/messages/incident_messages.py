@@ -67,10 +67,11 @@ class PenaltyRaceCtrlMsg(RaceCtrlMsgBase):
             "places-gained": self.places_gained
         }
 
-        if driver_info := driver_info_dict.get(self.vehicle_index):
-            ret["driver-info"] = driver_info
-        if other_driver_info := driver_info_dict.get(self.other_vehicle_index):
-            ret["other-driver-info"] = other_driver_info
+        if driver_info_dict:
+            if driver_info := driver_info_dict.get(self.vehicle_index):
+                ret["driver-info"] = driver_info
+            if other_driver_info := driver_info_dict.get(self.other_vehicle_index):
+                ret["other-driver-info"] = other_driver_info
         return ret
 
 class DtPenServedRaceCtrlMsg(RaceCtrlMsgBase):
@@ -95,7 +96,7 @@ class DtPenServedRaceCtrlMsg(RaceCtrlMsgBase):
             "driver-index": self.driver_index
         }
 
-        if driver_info := driver_info_dict.get(self.driver_index):
+        if driver_info_dict and (driver_info := driver_info_dict.get(self.driver_index)):
             ret["driver-info"] = driver_info
         return ret
 
@@ -124,7 +125,7 @@ class SgPenServedRaceCtrlMsg(RaceCtrlMsgBase):
             "stop-time": self.stop_time
         }
 
-        if driver_info := driver_info_dict.get(self.driver_index):
+        if driver_info_dict and (driver_info := driver_info_dict.get(self.driver_index)):
             ret["driver-info"] = driver_info
         return ret
 
@@ -149,8 +150,9 @@ class CollisionRaceCtrlMsg(RaceCtrlMsgBase):
             "involved-drivers": self.involved_drivers
         }
 
-        if driver_1_info := driver_info_dict.get(self.involved_drivers[0]):
-            ret["driver-1-info"] = driver_1_info
-        if driver_2_info := driver_info_dict.get(self.involved_drivers[1]):
-            ret["driver-2-info"] = driver_2_info
+        if driver_info_dict:
+            if driver_1_info := driver_info_dict.get(self.involved_drivers[0]):
+                ret["driver-1-info"] = driver_1_info
+            if driver_2_info := driver_info_dict.get(self.involved_drivers[1]):
+                ret["driver-2-info"] = driver_2_info
         return ret
