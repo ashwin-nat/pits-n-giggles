@@ -1,93 +1,71 @@
 // populateRaceControlMessagesTab.js
+
+// Add a small helper to create elements with attributes and children
+function createEl(tag, props = {}, ...children) {
+  const el = document.createElement(tag);
+  for (const [key, val] of Object.entries(props)) {
+    if (key === 'class') {
+      el.classList.add(...val.split(' '));
+    } else if (key === 'style') {
+      Object.assign(el.style, val);
+    } else if (key.startsWith('on') && typeof val === 'function') {
+      el.addEventListener(key.slice(2).toLowerCase(), val);
+    } else {
+      el.setAttribute(key, val);
+    }
+  }
+  children.forEach(c => el.append(typeof c === 'string' ? document.createTextNode(c) : c));
+  return el;
+}
 function createFilterModal(allTypes, onChange) {
-    const overlay = document.createElement('div');
-    overlay.classList.add('race-control-modal-overlay');
-    overlay.style.display = 'none';
+  const getSelected = () =>
+    allTypes.filter(t => modal.querySelector(`#filter-${t}`).checked);
 
-    const container = document.createElement('div');
-    container.id = 'raceControlMessageFilters';
-    container.classList.add('race-control-filters-checkboxes');
-    overlay.appendChild(container);
+  const checkboxes = allTypes.map(type =>
+    createEl('div', { class: 'filter-checkbox-container' },
+      createEl('input', {
+        type: 'checkbox',
+        id: `filter-${type}`,
+        value: type,
+        onChange: () => onChange(getSelected())
+      }),
+      createEl('label', { for: `filter-${type}` }, type)
+    )
+  );
 
-    const title = document.createElement('h3');
-    title.textContent = 'Message Types';
-    title.style.color = 'white';
-    container.appendChild(title);
+  const modal = createEl('div', { class: 'race-control-modal-overlay', style: { display: 'none' } },
+    createEl('div', { id: 'raceControlMessageFilters', class: 'race-control-filters-checkboxes' },
+      createEl('h3', { style: { color: 'white' } }, 'Message Types'),
+      createEl('div', { class: 'filter-button-container' },
+        createEl('button', {
+          class: 'race-control-action-button',
+          onClick: () => { allTypes.forEach(t => modal.querySelector(`#filter-${t}`).checked = true); onChange(allTypes); }
+        }, 'Enable All'),
+        createEl('button', {
+          class: 'race-control-action-button',
+          onClick: () => { allTypes.forEach(t => modal.querySelector(`#filter-${t}`).checked = false); onChange([]); }
+        }, 'Disable All')
+      ),
+      createEl('button', {
+        class: 'race-control-modal-close-button',
+        onClick: () => modal.style.display = 'none'
+      }, 'X'),
+      ...checkboxes
+    )
+  );
 
-    const buttonContainer = document.createElement('div');
-    buttonContainer.classList.add('filter-button-container');
+  modal.addEventListener('click', e => {
+    if (e.target === modal) modal.style.display = 'none';
+  });
 
-    const enableAllButton = document.createElement('button');
-    enableAllButton.textContent = 'Enable All';
-    enableAllButton.classList.add('race-control-action-button');
-    buttonContainer.appendChild(enableAllButton);
-
-    const disableAllButton = document.createElement('button');
-    disableAllButton.textContent = 'Disable All';
-    disableAllButton.classList.add('race-control-action-button');
-    buttonContainer.appendChild(disableAllButton);
-    container.appendChild(buttonContainer);
-
-    const closeButton = document.createElement('button');
-    closeButton.textContent = 'X';
-    closeButton.classList.add('race-control-modal-close-button');
-    container.appendChild(closeButton);
-
-    const checkboxes = {};
-
-    const updateCheckboxes = (selectedTypes) => {
-        allTypes.forEach(type => {
-            if (checkboxes[type]) {
-                checkboxes[type].checked = selectedTypes.includes(type);
-            }
-        });
-    };
-
-    allTypes.forEach(type => {
-        const checkboxContainer = document.createElement('div');
-        checkboxContainer.classList.add('filter-checkbox-container');
-
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.id = `filter-${type}`;
-        checkbox.value = type;
-
-        const label = document.createElement('label');
-        label.htmlFor = `filter-${type}`;
-        label.textContent = type;
-
-        checkbox.addEventListener('change', () => {
-            const newSelectedTypes = Object.values(checkboxes)
-                .filter(cb => cb.checked)
-                .map(cb => cb.value);
-            onChange(newSelectedTypes);
-        });
-
-        checkboxContainer.appendChild(checkbox);
-        checkboxContainer.appendChild(label);
-        container.appendChild(checkboxContainer);
-        checkboxes[type] = checkbox;
-    });
-
-    enableAllButton.addEventListener('click', () => {
-        onChange(allTypes);
-    });
-
-    disableAllButton.addEventListener('click', () => {
-        onChange([]);
-    });
-
-    overlay.addEventListener('click', e => {
-        if (e.target === overlay || e.target === closeButton) {
-            overlay.style.display = 'none';
-        }
-    });
-
-    return {
-        overlay,
-        open: () => { overlay.style.display = 'flex'; },
-        update: updateCheckboxes
-    };
+  return {
+    overlay: modal,
+    open: () => modal.style.display = 'flex',
+    update: selected =>
+      allTypes.forEach(t => {
+        modal.querySelector(`#filter-${t}`).checked = selected.includes(t);
+      })
+  };
 }
 
 function getDriverDetailsStr(driverInfo, brackets=false) {
@@ -100,6 +78,43 @@ function getDriverDetailsStr(driverInfo, brackets=false) {
         return "Unknown Driver";
     }
 }
+
+// Extract detailRenderers into its own constant (can live at top of file or separate module)
+const detailRenderers = {
+  SESSION_START: () => 'N/A',
+  SESSION_END: () => 'N/A',
+  FASTEST_LAP: ({ 'driver-info': d, 'lap-time-ms': ms }) =>
+      `Driver: ${getDriverDetailsStr(d ?? null)}, Lap Time: ${formatLapTime(ms)}`,
+  RETIREMENT: ({ 'driver-info': d }) =>
+      `Driver: ${getDriverDetailsStr(d ?? null)}`,
+  DRS_ENABLED: () => 'N/A',
+  DRS_DISABLED: ({ reason }) =>
+      `Reason: ${reason}`,
+  CHEQUERED_FLAG: () => 'N/A',
+  RACE_WINNER: ({ 'driver-info': d }) =>
+      getDriverDetailsStr(d ?? null),
+  PENALTY: ({ 'driver-info': d, 'penalty-type': pt, 'infringement-type': it, 'other-driver-info': od }) => {
+    const base = `${getDriverDetailsStr(d, true)}, ${pt} - ${it}`;
+    return od ? `${base}, other driver: ${getDriverDetailsStr(od, true)}` : base;
+  },
+  SPEED_TRAP: ({ 'driver-info': d, speed }) =>
+      `Driver: ${getDriverDetailsStr(d ?? null)}, Speed: ${formatFloat(speed)} km/h`,
+  START_LIGHTS: ({ 'num-lights': numLights }) =>
+      `Number of lights: ${numLights}`,
+  LIGHTS_OUT: () => 'N/A',
+  DRIVE_THROUGH_SERVED: ({ 'driver-info': d }) =>
+      `Driver: ${getDriverDetailsStr(d ?? null)}`,
+  STOP_GO_SERVED: ({ 'driver-info': d, 'stop-time': stopTime }) =>
+      `Driver: ${getDriverDetailsStr(d ?? null)} - Stop Time: ${formatFloat(stopTime)} s`,
+  RED_FLAG: () => 'N/A',
+  OVERTAKE: ({ 'overtaker-info': overtaker, 'overtaken-info': overtaken }) =>
+      `${getDriverDetailsStr(overtaker ?? null)} overtook ${getDriverDetailsStr(overtaken ?? null)}`,
+  SAFETY_CAR: ({ 'sc-type': scType, 'event-type': eventType }) =>
+      `${scType} - ${eventType}`,
+  COLLISION: ({ 'driver-1-info': d1, 'driver-2-info': d2 }) =>
+      `${getDriverDetailsStr(d1 ?? null)} and ${getDriverDetailsStr(d2 ?? null)}`,
+  DEFAULT: msg => `Type: ${msg['message-type']} - Placeholder details.`
+};
 
 /**
  * Populates the Race Control Messages tab with an AG Grid.
@@ -147,51 +162,6 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
     const gridDiv = document.createElement('div');
     gridDiv.id = 'raceControlMessagesGrid';
     containerElement.appendChild(gridDiv);
-
-    // Define detail renderers as a lookup table
-    const detailRenderers = {
-        SESSION_START: () => 'N/A',
-        SESSION_END: () => 'N/A',
-        FASTEST_LAP: ({ 'driver-info': d, 'lap-time-ms': ms }) =>
-            `Driver: ${getDriverDetailsStr(d ?? null)}, Lap Time: ${formatLapTime(ms)}`,
-        RETIREMENT: ({ 'driver-info': d }) =>
-            `Driver: ${getDriverDetailsStr(d ?? null)}`,
-        DRS_ENABLED: () => 'N/A',
-        DRS_DISABLED: ({ reason }) =>
-            `Reason: ${reason}`,
-        CHEQUERED_FLAG: () => 'N/A',
-        RACE_WINNER: ({ 'driver-info': d }) =>
-            getDriverDetailsStr(d ?? null),
-        PENALTY: (message) => {
-            const driverDetails = getDriverDetailsStr(message["driver-info"] ?? null, true);
-            const penaltyType = message['penalty-type'];
-            const infringementType = message['infringement-type'];
-            const otherDriverData = message['other-driver-info'] ?? null;
-            if (otherDriverData) {
-                const otherDriverDetails = getDriverDetailsStr(otherDriverData, true);
-                return `${driverDetails}, ${penaltyType} - ${infringementType}, other driver: ${otherDriverDetails}`;
-            }
-            return `${driverDetails}, ${penaltyType} - ${infringementType}`;
-        },
-        SPEED_TRAP: ({ 'driver-info': d, speed }) =>
-            `Driver: ${getDriverDetailsStr(d ?? null)}, Speed: ${formatFloat(speed)} km/h`,
-        START_LIGHTS: ({ 'num-lights': numLights }) =>
-            `Number of lights: ${numLights}`,
-        LIGHTS_OUT: () => 'N/A',
-        DRIVE_THROUGH_SERVED: ({ 'driver-info': d }) =>
-            `Driver: ${getDriverDetailsStr(d ?? null)}`,
-        STOP_GO_SERVED: ({ 'driver-info': d, 'stop-time': stopTime }) =>
-            `Driver: ${getDriverDetailsStr(d ?? null)} - Stop Time: ${formatFloat(stopTime)} s`,
-        RED_FLAG: () => 'N/A',
-        OVERTAKE: ({ 'overtaker-info': overtaker, 'overtaken-info': overtaken }) =>
-            `${getDriverDetailsStr(overtaker ?? null)} overtook ${getDriverDetailsStr(overtaken ?? null)}`,
-        SAFETY_CAR: ({ 'sc-type': scType, 'event-type': eventType }) =>
-            `${scType} - ${eventType}`,
-        COLLISION: ({ 'driver-1-info': d1, 'driver-2-info': d2 }) =>
-            `${getDriverDetailsStr(d1 ?? null)} and ${getDriverDetailsStr(d2 ?? null)}`,
-        DEFAULT: (msg) =>
-            `Type: ${msg['message-type']} - Placeholder details.`,
-    };
 
     function renderDetailsCell(msg) {
         const fn = detailRenderers[msg['message-type']] || detailRenderers.DEFAULT;
