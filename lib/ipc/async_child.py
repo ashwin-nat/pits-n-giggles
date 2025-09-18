@@ -87,7 +87,13 @@ class IpcChildAsync:
         Only runs if a heartbeat callback is registered.
         """
         while self._running:
-            await asyncio.sleep(self.heartbeat_timeout)
+            try:
+                await asyncio.sleep(self.heartbeat_timeout)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                print(f"[{self.name}] Error in heartbeat monitor: {e}")
+                break
 
             if not self._running:
                 break
@@ -102,9 +108,6 @@ class IpcChildAsync:
             time_since_last = current_time - self._last_heartbeat
             if time_since_last > self.heartbeat_timeout:
                 self._missed_heartbeats += 1
-                # TODO: remove
-                print(f"[{self.name}] Missed heartbeat #{self._missed_heartbeats} "
-                      f"(last seen {time_since_last:.1f}s ago)")
 
                 # Check if we've missed too many consecutive heartbeats
                 if self._missed_heartbeats >= self.max_missed_heartbeats:
