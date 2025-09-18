@@ -22,9 +22,11 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import random
 import subprocess
 import sys
 import threading
+import time
 import tkinter as tk
 from abc import ABC, abstractmethod
 from tkinter import messagebox, ttk
@@ -32,10 +34,11 @@ from typing import Callable, Optional
 
 import psutil
 
-from lib.config import PngSettings
-from lib.error_status import PNG_ERROR_CODE_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN
-from lib.ipc import get_free_tcp_port, IpcParent
 from lib.child_proc_mgmt import extract_pid_from_line, is_init_complete
+from lib.config import PngSettings
+from lib.error_status import (PNG_ERROR_CODE_PORT_IN_USE,
+                              PNG_ERROR_CODE_UNKNOWN, PNG_LOST_CONN_TO_PARENT)
+from lib.ipc import IpcParent, get_free_tcp_port
 
 from ..console_interface import ConsoleInterface
 
@@ -71,6 +74,14 @@ class PngAppMgrBase(ABC):
             ),
             "status": "Crashed",
         },
+        PNG_LOST_CONN_TO_PARENT: {
+            "title": "Lost Connection to Parent",
+            "message": (
+                "lost connection to the parent process.\n"
+                "Please check the logs for more details."
+            ),
+            "status": "Timed out",
+        }
     }
     DEFAULT_EXIT = EXIT_ERRORS[PNG_ERROR_CODE_UNKNOWN]
 
@@ -81,6 +92,7 @@ class PngAppMgrBase(ABC):
                  display_name: str,
                  start_by_default: bool,
                  console_app: ConsoleInterface,
+                 settings: PngSettings,
                  args: list[str] = None):
         """Initialize the sub-application
         :param port_conflict_settings_field: Settings field to check for port conflicts
@@ -89,6 +101,8 @@ class PngAppMgrBase(ABC):
         :param display_name: Display name for the sub-application
         :param start_by_default: Whether to start this app by default
         :param console_app: Reference to a console interface for logging
+        :param settings: Settings object
+        :param args: Additional Command line arguments to pass to the sub-application
         """
         self.port_conflict_settings_field = port_conflict_settings_field
         self.module_path = module_path
@@ -102,6 +116,9 @@ class PngAppMgrBase(ABC):
         self.is_running = False
         self._is_restarting = threading.Event()
         self._is_stopping = threading.Event()
+        self.heartbeat_interval: float = settings.SubSysCtrlCfg__.heartbeat_interval
+        self.num_missable_heartbeats: int = settings.SubSysCtrlCfg__.num_missable_heartbeats
+        self._stop_heartbeat = threading.Event()
         self.start_by_default = start_by_default
         self.child_pid = None
         self._post_start_hook: Optional[Callable[[], None]] = None
@@ -174,6 +191,7 @@ class PngAppMgrBase(ABC):
         # Start output capture and monitor threads outside the lock to avoid deadlocks
         threading.Thread(target=self._capture_output, daemon=True).start()
         threading.Thread(target=self._monitor_process_exit, daemon=True).start()
+        threading.Thread(target=self._send_heartbeat, args=(self.ipc_port,), daemon=True).start()
 
         self.console_app.debug_log(f"{self.display_name} started successfully. PID = {self.child_pid}")
 
@@ -305,6 +323,48 @@ class PngAppMgrBase(ABC):
         finally:
             if self.process is this_process:
                 self.process = None
+            self._stop_heartbeat.set()
+
+    def _send_heartbeat(self, port_num: int) -> None:
+        """Send heartbeat messages to the child process periodically
+
+        Args:
+            port_num (int): IPC port number
+        """
+        # Initial delay to avoid bursts
+        initial_delay = random.uniform(0, 5.0)
+        time.sleep(initial_delay)
+        failed_heartbeat_count = 0
+
+        while not self._stop_heartbeat.is_set():
+            try:
+                rsp = IpcParent(port_num).heartbeat()
+
+                if rsp.get("status") == "success":
+                    failed_heartbeat_count = 0
+                    self.console_app.debug_log(f"{self.display_name}: Heartbeat response: {rsp}")
+                else:
+                    self.console_app.debug_log(
+                        f"{self.display_name}: Heartbeat failed with response: {rsp}"
+                    )
+                    failed_heartbeat_count += 1
+
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                self.console_app.debug_log(f"{self.display_name}: Error sending heartbeat: {e}")
+                failed_heartbeat_count += 1
+
+            # Check if we've exceeded the maximum allowed missed heartbeats
+            if failed_heartbeat_count > self.num_missable_heartbeats:
+                self.console_app.info_log(
+                    f"{self.display_name}: Missed {failed_heartbeat_count} consecutive heartbeats. Stopping."
+                )
+                self.stop()
+                break
+
+            self._stop_heartbeat.wait(self.heartbeat_interval)
+
+        self._stop_heartbeat.clear()
+        self.console_app.debug_log(f"{self.display_name}: Heartbeat job stopped")
 
     def _is_restart_exit_expected(self, ret_code: int) -> bool:
         """
@@ -376,23 +436,14 @@ class PngAppMgrBase(ABC):
         # All state updates below are done while holding the lock to ensure
         # consistent visibility across threads.
         if reported_pid and reported_pid != popen_pid:
-            self.console_app.debug_log(f"Terminating actual child PID {reported_pid} (launched by PyInstaller stub)")
+            self.console_app.debug_log(f"Killing actual child PID {reported_pid} (launched by PyInstaller stub)")
             try:
-                psutil.Process(reported_pid).terminate()
-                psutil.Process(reported_pid).wait(timeout=5)
+                psutil.Process(reported_pid).kill()
             except psutil.NoSuchProcess:
                 self.console_app.debug_log(f"Child PID {reported_pid} already exited.")
-            except psutil.TimeoutExpired:
-                self.console_app.debug_log(f"Child PID {reported_pid} did not exit in time. Killing it.")
-                psutil.Process(reported_pid).kill()
         elif self.process:
-            # Otherwise, just terminate the subprocess
-            self.console_app.debug_log(f"Terminating subprocess PID {popen_pid}")
-            try:
-                self.process.terminate()
-                self.process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                self.console_app.debug_log(f"{self.display_name} did not exit in time. Killing it.")
-                self.process.kill()
-                self.process.wait()
-        self.console_app.debug_log(f"{self.display_name} stopped successfully. Terminated PID = {used_pid}")
+            # Otherwise, just kill the subprocess
+            self.console_app.debug_log(f"Killing subprocess PID {popen_pid}")
+            self.process.kill()
+            self.process.wait() # Wait for the process to fully terminate after killing
+        self.console_app.debug_log(f"{self.display_name} stopped successfully. Killed PID = {used_pid}")

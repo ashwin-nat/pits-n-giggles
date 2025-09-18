@@ -10,12 +10,13 @@ import signal
 import ssl
 import subprocess
 import sys
+import threading
 import time
 import webbrowser
 from pathlib import Path
 
-from aiohttp import ClientSession, TCPConnector
 import gdown
+from aiohttp import ClientSession, TCPConnector
 
 # Add the parent directory to the Python path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -62,6 +63,38 @@ def kill_app(is_windows: bool, app_process: subprocess.Popen):
             os.killpg(app_process.pid, signal.SIGKILL)
         except ProcessLookupError:
             print("[WARN] App already exited")
+
+def send_heartbeat(
+        stop_event: threading.Event,
+        ipc_port: int,
+        num_missable_heartbeats: int = 3,
+        interval: float = 5.0) -> None:
+    failed_heartbeat_count = 0
+
+    while not stop_event.is_set():
+        try:
+            rsp = IpcParent(ipc_port).heartbeat()
+
+            if rsp.get("status") == "success":
+                failed_heartbeat_count = 0
+                print(f"Backend process: Heartbeat response: {rsp}")
+            else:
+                print(f"Backend process: Heartbeat failed with response: {rsp}")
+                failed_heartbeat_count += 1
+
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            print(f"Backend process: Error sending heartbeat: {e}")
+            failed_heartbeat_count += 1
+
+        # Check if we've exceeded the maximum allowed missed heartbeats
+        if failed_heartbeat_count > num_missable_heartbeats:
+            print(f"Backend process: Missed {failed_heartbeat_count} consecutive heartbeats. Stopping.")
+            break
+
+        time.sleep(interval)
+
+    stop_event.clear()
+    print(f"Backend process: Heartbeat job stopped")
 
 async def _check_endpoints_async(urls):
     results = []
@@ -142,6 +175,8 @@ def main(telemetry_port, http_port, proto):
     else:
         app_process = subprocess.Popen(app_cmd, start_new_session=True)
 
+    exit_event = threading.Event()
+    threading.Thread(target=send_heartbeat, args=(exit_event, ipc_port), daemon=True).start()
     print("Waiting for app to start...")
     time.sleep(5)
 
@@ -201,6 +236,7 @@ def main(telemetry_port, http_port, proto):
 
     finally:
         print(f"\nStopping app... PID={app_process.pid}")
+        exit_event.set()
         if not send_ipc_shutdown(ipc_port):
             kill_app(is_windows, app_process)
         time.sleep(5)

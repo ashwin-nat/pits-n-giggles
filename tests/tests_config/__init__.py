@@ -28,15 +28,16 @@ from .tests_config_edge import (TestEdgeCases, TestMissingSectionsAndKeys,
                                 TestSampleSettingsFixture)
 from .tests_config_io import TestConfigIO, TestLoadConfigFromIni
 from .tests_display_settings import TestDisplaySettings
+from .tests_file_path_str_config import TestFilePathStr
 from .tests_forwarding_settings import TestForwardingSettings
+from .tests_https_settings import TestHttpsSettings
 from .tests_logging_settings import TestLoggingSettings
 from .tests_network_settings import TestNetworkSettings
+from .tests_pit_time_loss import TestPitTimeLossF1, TestPitTimeLossF2
 from .tests_png_settings import TestPngSettings
 from .tests_privacy_settings import TestPrivacySettings
-from .tests_https_settings import TestHttpsSettings
-from .tests_file_path_str_config import TestFilePathStr
 from .tests_stream_overlay_settings import TestStreamOverlaySettings
-from .tests_pit_time_loss import TestPitTimeLossF1, TestPitTimeLossF2
+from .tests_subsysctrl import TestSubSysCtrl
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -57,6 +58,7 @@ __all__ = [
     "TestStreamOverlaySettings",
     "TestPitTimeLossF1",
     "TestPitTimeLossF2",
+    "TestSubSysCtrl",
 
     "TestFilePathStr",
 ]

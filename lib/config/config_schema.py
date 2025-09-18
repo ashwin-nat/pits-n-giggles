@@ -229,6 +229,10 @@ class PitTimeLossF2(BaseModel):
     Paul_Ricard: float = Field(None)
     Portimao: float = Field(None)
 
+class SubSysCtrl(BaseModel):
+    heartbeat_interval: float = Field(5.0, ge=1.0, le=60.0)
+    num_missable_heartbeats: int = Field(3, ge=1, le=20)
+
 class PngSettings(BaseModel):
     Network: NetworkSettings = Field(default_factory=NetworkSettings)
     Capture: CaptureSettings = Field(default_factory=CaptureSettings)
@@ -240,6 +244,7 @@ class PngSettings(BaseModel):
     HTTPS: HttpsSettings = Field(default_factory=HttpsSettings)
     TimeLossInPitsF1: PitTimeLossF1 = Field(default_factory=PitTimeLossF1)
     TimeLossInPitsF2: PitTimeLossF2 = Field(default_factory=PitTimeLossF2)
+    SubSysCtrlCfg__: SubSysCtrl = Field(default_factory=SubSysCtrl)
     class Config:
         str_strip_whitespace = True
 
