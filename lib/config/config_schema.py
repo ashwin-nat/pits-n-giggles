@@ -230,8 +230,8 @@ class PitTimeLossF2(BaseModel):
     Portimao: float = Field(None)
 
 class SubSysCtrl(BaseModel):
-    heartbeat_interval: float = Field(5.0)
-    num_missable_heartbeats: int = Field(3)
+    heartbeat_interval: float = Field(5.0, ge=1.0, le=60.0)
+    num_missable_heartbeats: int = Field(3, ge=1, le=20)
 
 class PngSettings(BaseModel):
     Network: NetworkSettings = Field(default_factory=NetworkSettings)
