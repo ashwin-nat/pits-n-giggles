@@ -81,6 +81,10 @@ class IpcChildAsync:
         """
         self._heartbeat_missed_callback = callback
 
+    @property
+    def is_running(self) -> bool:
+        return self._running
+
     async def _heartbeat_monitor(self) -> None:
         """
         Background task that monitors heartbeats.
@@ -191,6 +195,7 @@ class IpcChildAsync:
                     pass
 
             self.close()
+            self._running = False
 
     def _def_heartbeat_missed_callback(self, _missed_heartbeats: int) -> Awaitable[None]:
         """Default heartbeat missed callback. Hard kills the app"""

@@ -271,3 +271,10 @@ class TestIPC(F1TelemetryUnitTestsBase):
         parent.terminate_child()
         parent.close()
         thread.join(timeout=2)
+
+        self.assertTrue(self.heartbeat_missed_flag, "Heartbeat missed callback was not triggered.")
+        self.assertEqual(self.missed_heartbeats_count, max_missed_heartbeats,
+                         "Incorrect number of missed heartbeats reported.")
+
+        # Assert that the child process is terminated after missed heartbeats
+        self.assertFalse(child.is_running, "Child process was not terminated after missed heartbeats.")
