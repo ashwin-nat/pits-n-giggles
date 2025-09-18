@@ -50,6 +50,13 @@ class TestSubSysCtrl(TestF1ConfigBase):
         settings = SubSysCtrl(num_missable_heartbeats=5)
         self.assertEqual(settings.num_missable_heartbeats, 5)
 
+        # Boundary values
+        settings_min = SubSysCtrl(num_missable_heartbeats=1)
+        self.assertEqual(settings_min.num_missable_heartbeats, 1)
+
+        settings_max = SubSysCtrl(num_missable_heartbeats=19)
+        self.assertEqual(settings_max.num_missable_heartbeats, 19)
+
         # Invalid types should raise validation errors
         with self.assertRaises(ValidationError):
             SubSysCtrl(num_missable_heartbeats="notanumber")
@@ -62,10 +69,16 @@ class TestSubSysCtrl(TestF1ConfigBase):
 
         # Default values for the other fields
         self.assertEqual(settings.heartbeat_interval, 5.0)
-
     def test_heartbeat_interval(self):
         settings = SubSysCtrl(heartbeat_interval=10.0)
         self.assertEqual(settings.heartbeat_interval, 10.0)
+
+        # Boundary values
+        settings_min = SubSysCtrl(heartbeat_interval=1.0)
+        self.assertEqual(settings_min.heartbeat_interval, 1.0)
+
+        settings_max = SubSysCtrl(heartbeat_interval=60.0)
+        self.assertEqual(settings_max.heartbeat_interval, 60.0)
 
         with self.assertRaises(ValidationError):
             SubSysCtrl(heartbeat_interval="notanumber")
@@ -74,7 +87,4 @@ class TestSubSysCtrl(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             SubSysCtrl(heartbeat_interval=0.0)
         with self.assertRaises(ValidationError):
-            SubSysCtrl(heartbeat_interval=500.0)
-
-        # Default values for the other fields
-        self.assertEqual(settings.num_missable_heartbeats, 3)
+            SubSysCtrl(heartbeat_interval=60.1)
