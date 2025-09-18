@@ -361,7 +361,7 @@ class PngAppMgrBase(ABC):
                 self.stop()
                 break
 
-            time.sleep(self.heartbeat_interval)
+            self._stop_heartbeat.wait(self.heartbeat_interval)
 
         self._stop_heartbeat.clear()
         self.console_app.debug_log(f"{self.display_name}: Heartbeat job stopped")
