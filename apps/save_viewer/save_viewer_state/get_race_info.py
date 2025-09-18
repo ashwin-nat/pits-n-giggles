@@ -22,11 +22,21 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import logging
 from typing import Any, Dict, List
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def _getRaceInfo(json_data: Dict[str, Any]) -> Dict[str, Any]:
+def _getRaceInfo(json_data: Dict[str, Any], logger: logging.Logger) -> Dict[str, Any]:
+    """Get the race info.
+
+    Args:
+        json_data (Dict[str, Any]): JSON data
+        logger (logging.Logger): Logger
+
+    Returns:
+        Dict[str, Any]: Race info
+    """
 
     if not json_data:
         return {}
@@ -43,15 +53,23 @@ def _getRaceInfo(json_data: Dict[str, Any]) -> Dict[str, Any]:
     if new_style := json_data.get("tyre-stint-history-v2"):
         ret["tyre-stint-history-v2"] = new_style
     else:
-        ret["tyre-stint-history"] = _getTyreStintHistoryJSON(json_data)
+        ret["tyre-stint-history"] = _getTyreStintHistoryJSON(json_data, logger)
 
     if race_ctrl := json_data.get("race-control"):
         ret["race-control"] = race_ctrl
 
     return ret
 
-def _getTyreStintHistoryJSON(json_data: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """Get tyre stint history. (Assumes lock is already acquired)"""
+def _getTyreStintHistoryJSON(json_data: Dict[str, Any], logger: logging.Logger) -> List[Dict[str, Any]]:
+    """Get tyre stint history.
+
+    Args:
+        json_data (Dict[str, Any]): JSON data
+        logger (logging.Logger): Logger
+
+    Returns:
+        List[Dict[str, Any]]: The tyre stint history JSON
+    """
     if not json_data:
         return []
 
@@ -60,8 +78,7 @@ def _getTyreStintHistoryJSON(json_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         if not (driver_data := _getDriverByNameTeam(
             driver_entry["name"], driver_entry["team"], json_data["classification-data"])):
             # if required data is not available for any of the drivers, return empty list
-            # TODO: bring logging
-            # png_logger.debug(f"Driver data not available for {driver_entry['name']}")
+            logger.debug(f"Driver data not available for {driver_entry['name']}")
             return []
         # Insert position, grid position, proper delta, result status
         if "position" not in driver_entry:
@@ -76,7 +93,7 @@ def _getTyreStintHistoryJSON(json_data: Dict[str, Any]) -> List[Dict[str, Any]]:
     return sorted(old_style, key=lambda x: x["position"])
 
 def _getDriverByNameTeam(name: str, team: str, classification_data: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """Get driver by name. (assumes lock is already acquired)
+    """Get driver by name.
 
     Args:
         name (str): Name of the driver

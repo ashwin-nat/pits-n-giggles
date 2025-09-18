@@ -35,14 +35,12 @@ from apps.save_viewer.save_viewer_state import init_state
 from lib.version import get_version
 
 from lib.child_proc_mgmt import report_pid_from_child
+from lib.config import load_config_from_ini
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def parseArgs(logger: logging.Logger) -> argparse.Namespace:
+def parseArgs() -> argparse.Namespace:
     """Parse the command line args and perform validation
-
-    Args:
-        logger (logging.Logger): Logger
 
     Returns:
         argparse.Namespace: The parsed args namespace
@@ -52,18 +50,12 @@ def parseArgs(logger: logging.Logger) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Pits n' Giggles save data viewer")
 
     # Add command-line arguments with default values
-    parser.add_argument("--launcher", action="store_true", help="Enable launcher mode. Input is expeected via stdin")
-    parser.add_argument("--port", type=int, default=None, help="Port number for the server.")
+    parser.add_argument("--config-file", nargs="?", default="png_config.ini", help="Configuration file name (optional)")
+    parser.add_argument("--debug", action="store_true", help="Enable debug mode")
     parser.add_argument("--ipc-port", type=int, default=None, help="Port number for the IPC server.")
 
     # Parse the command-line arguments
-    parsed_args = parser.parse_args()
-
-    if parsed_args.launcher and parsed_args.port is None:
-        logger.info("Port number is required in launcher mode")
-        sys.exit(1)
-
-    return parsed_args
+    return parser.parse_args()
 
 async def main(logger: logging.Logger, server_port: int, ipc_port: int, version: str) -> None:
     """Main function
@@ -91,13 +83,18 @@ async def main(logger: logging.Logger, server_port: int, ipc_port: int, version:
 def entry_point():
     """Entry point"""
     report_pid_from_child()
-    png_logger = get_logger()
-    args = parseArgs(png_logger)
+    args = parseArgs()
+    png_logger = get_logger(args.debug)
     version = get_version()
+    configs = load_config_from_ini(args.config_file, png_logger)
     if sys.platform == 'win32':
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     try:
-        asyncio.run(main(logger=png_logger, server_port=args.port, ipc_port=args.ipc_port, version=version))
+        asyncio.run(main(
+            logger=png_logger,
+            server_port=configs.Network.save_viewer_port,
+            ipc_port=args.ipc_port,
+            version=version))
     except KeyboardInterrupt:
         png_logger.info("Program interrupted by user.")
     except asyncio.CancelledError:
