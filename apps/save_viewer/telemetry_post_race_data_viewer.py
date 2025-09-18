@@ -55,7 +55,8 @@ def parseArgs() -> argparse.Namespace:
     parser.add_argument("--ipc-port", type=int, default=None, help="Port number for the IPC server.")
 
     # Parse the command-line arguments
-    return parser.parse_args()
+    args, _ = parser.parse_known_args() # TODO: Fix this
+    return args
 
 async def main(logger: logging.Logger, server_port: int, ipc_port: int, version: str) -> None:
     """Main function
@@ -83,7 +84,7 @@ async def main(logger: logging.Logger, server_port: int, ipc_port: int, version:
 def entry_point():
     """Entry point"""
     report_pid_from_child()
-    args = parseArgs(png_logger)
+    args = parseArgs()
     png_logger = get_logger(args.debug)
     version = get_version()
     configs = load_config_from_ini(args.config_file, png_logger)
