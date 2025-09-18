@@ -54,7 +54,7 @@ def load_config_from_ini(path: str, logger: Optional[Logger] = None) -> PngSetti
         validated, restored, updated = _validate_sections(raw, logger)
         model = PngSettings(**validated)
         _maybe_update_config(raw, model, path, logger, updated, restored)
-        _log_invalid_keys(raw, model, logger)
+        _log_invalid_keys(raw, model, logger, restored)
         return model
 
     # No config file found → create one with defaults
@@ -104,14 +104,15 @@ def _backup_invalid_file(path: str, logger: Optional[Logger]) -> None:
     if logger:
         logger.info("Backed up invalid config to %s", backup_path)
 
-def _log_invalid_keys(raw: dict[str, dict[str, str]], defaults: PngSettings, logger: Optional[Logger]) -> None:
+def _log_invalid_keys(raw: dict[str, dict[str, str]], defaults: PngSettings, logger: Optional[Logger], restored_sections: Set[str]) -> None:
     """
-    Log keys with invalid or unrecognized values and show fallbacks.
+    Log keys with invalid or unrecognized values only when sections were actually restored or keys are truly invalid.
 
     Args:
         raw (dict[str, dict[str, str]]): The raw config dict parsed from INI.
         defaults (PngSettings): The default settings model.
         logger (Optional[Any]): Logger for debug output.
+        restored_sections (Set[str]): Set of section names that were restored to defaults due to validation errors.
     """
     if not logger:
         return
@@ -123,12 +124,16 @@ def _log_invalid_keys(raw: dict[str, dict[str, str]], defaults: PngSettings, log
             logger.debug("Ignored unknown section [%s]", section)
             continue
 
-        for key, value in items.items():
-            if key not in default_dict[section]:
-                logger.debug("Ignored unknown key [%s].[%s] = %r", section, key, value)
-            else:
-                default_value = default_dict[section][key]
-                logger.debug("Fallback: [%s].[%s] = %r -> default = %r", section, key, value, default_value)
+        # Only log issues for sections that were NOT restored (i.e., sections that loaded successfully)
+        if section not in restored_sections:
+            # Create case-insensitive lookup for valid keys in this section
+            valid_keys = {k.lower(): k for k in default_dict[section].keys()}
+
+            for key, value in items.items():
+                # Check if key exists (case-insensitive)
+                key_lower = key.lower()
+                if key_lower not in valid_keys:
+                    logger.debug("Ignored unknown key [%s].[%s] = %r", section, key, value)
 
 def _load_raw_ini(path: str) -> Dict[str, Dict[str, str]]:
     """Parse INI file into a nested dictionary."""
