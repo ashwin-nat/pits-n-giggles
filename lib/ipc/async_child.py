@@ -122,7 +122,7 @@ class IpcChildAsync:
         """
         self._last_heartbeat = time.time()
         self._missed_heartbeats = 0
-        return {"reply": "__heartbeat_ack__", "source": self.name}
+        return {"status": "success", "reply": "__heartbeat_ack__", "source": self.name}
 
     async def run(self, handler_fn: Callable[[dict], Awaitable[dict]], timeout: Optional[int] = None) -> None:
         """

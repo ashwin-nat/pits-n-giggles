@@ -117,6 +117,7 @@ class PngAppMgrBase(ABC):
         self._is_restarting = threading.Event()
         self._is_stopping = threading.Event()
         self.heartbeat_interval: float = settings.SubSysCtrlCfg__.heartbeat_interval
+        self.num_missable_heartbeats: int = settings.SubSysCtrlCfg__.num_missable_heartbeats
         self._stop_heartbeat = threading.Event()
         self.start_by_default = start_by_default
         self.child_pid = None
@@ -330,17 +331,36 @@ class PngAppMgrBase(ABC):
         Args:
             port_num (int): IPC port number
         """
-
         # Initial delay to avoid bursts
         initial_delay = random.uniform(0, 5.0)
         time.sleep(initial_delay)
+        failed_heartbeat_count = 0
 
         while not self._stop_heartbeat.is_set():
             try:
                 rsp = IpcParent(port_num).heartbeat()
-                self.console_app.debug_log(f"{self.display_name}: Heartbeat response: {rsp}") # TODO: remove
+
+                if rsp.get("status") == "success":
+                    failed_heartbeat_count = 0
+                    self.console_app.debug_log(f"{self.display_name}: Heartbeat response: {rsp}")
+                else:
+                    self.console_app.debug_log(
+                        f"{self.display_name}: Heartbeat failed with response: {rsp}"
+                    )
+                    failed_heartbeat_count += 1
+
             except Exception as e:  # pylint: disable=broad-exception-caught
                 self.console_app.debug_log(f"{self.display_name}: Error sending heartbeat: {e}")
+                failed_heartbeat_count += 1
+
+            # Check if we've exceeded the maximum allowed missed heartbeats
+            if failed_heartbeat_count > self.num_missable_heartbeats:
+                self.console_app.info_log(
+                    f"{self.display_name}: Missed {failed_heartbeat_count} consecutive heartbeats. Stopping."
+                )
+                self.stop()
+                break
+
             time.sleep(self.heartbeat_interval)
 
         self._stop_heartbeat.clear()
