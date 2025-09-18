@@ -98,13 +98,12 @@ class IpcChildAsync:
             if not self._running:
                 break
 
-            current_time = time.time()
-
             # Check if we've received our first heartbeat
             if self._last_heartbeat is None:
                 continue
 
             # Check if heartbeat is overdue
+            current_time = time.time()
             time_since_last = current_time - self._last_heartbeat
             if time_since_last > self.heartbeat_timeout:
                 self._missed_heartbeats += 1
@@ -113,6 +112,7 @@ class IpcChildAsync:
                 if self._missed_heartbeats >= self.max_missed_heartbeats:
                     try:
                         await self._heartbeat_missed_callback(self._missed_heartbeats)
+                        break
                     except Exception as e:
                         print(f"[{self.name}] Error in heartbeat missed callback: {e}")
 
@@ -134,6 +134,7 @@ class IpcChildAsync:
         self._running = True
 
         # Start heartbeat monitoring only if callback is registered
+        self._last_heartbeat = time.time()
         self._heartbeat_task = asyncio.create_task(self._heartbeat_monitor())
 
         try:
