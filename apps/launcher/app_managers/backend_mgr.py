@@ -35,14 +35,14 @@ from .base_mgr import PngAppMgrBase
 
 class BackendAppMgr(PngAppMgrBase):
     """Implementation of PngApp for backend services"""
-    def __init__(self, console_app: ConsoleInterface, port_str: str, args: list[str], proto: str):
+    def __init__(self, console_app: ConsoleInterface, port: int, args: list[str], proto: str):
         """Initialize the backend manager
         :param console_app: Reference to a console interface for logging
-        :param port_str: Port number to use for the backend
+        :param port: Port number to use for the backend
         :param args: Additional Command line arguments to pass to the backend
         :param proto: Protocol to use to open webpage
         """
-        self.port_str = port_str
+        self.port = port
         self.proto = proto
         super().__init__(
             port_conflict_settings_field='Network -> "Pits n\' Giggles HTTP Server Port"',
@@ -99,11 +99,11 @@ class BackendAppMgr(PngAppMgrBase):
 
     def open_dashboard(self):
         """Open the dashboard viewer in a web browser."""
-        webbrowser.open(f'{self.proto}://localhost:{self.port_str}', new=2)
+        webbrowser.open(f'{self.proto}://localhost:{self.port}', new=2)
 
     def open_obs_overlay(self):
         """Open the OBS overlay page in a web browser."""
-        webbrowser.open(f'{self.proto}://localhost:{self.port_str}/player-stream-overlay', new=2)
+        webbrowser.open(f'{self.proto}://localhost:{self.port}/player-stream-overlay', new=2)
 
     def on_settings_change(self, new_settings: PngSettings) -> bool:
         """Handle changes in settings for the backend application
@@ -114,7 +114,7 @@ class BackendAppMgr(PngAppMgrBase):
         """
 
         # Update the port number
-        self.port_str = str(new_settings.Network.server_port)
+        self.port = new_settings.Network.server_port
         self.proto = new_settings.HTTPS.proto
 
         # Always restart the backend, since there are so many settings, it's easier to just restart it

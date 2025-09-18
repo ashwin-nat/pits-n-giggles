@@ -176,14 +176,14 @@ class PngLauncher(ConsoleInterface):
             # Backend app reads port from config file
             "server": BackendAppMgr(
                 console_app=self,
-                port_str=str(self.settings.Network.server_port),
+                port=self.settings.Network.server_port,
                 args=server_args,
                 proto=self.settings.HTTPS.proto
             ),
             # SaveViewer app reads port from args
             "save_viewer": SaveViewerAppMgr(
                 console_app=self,
-                port_str=str(self.settings.Network.save_viewer_port),
+                port=self.settings.Network.save_viewer_port,
                 args=save_viewer_args,
             ),
         }

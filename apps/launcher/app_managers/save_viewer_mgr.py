@@ -35,13 +35,13 @@ from .base_mgr import PngAppMgrBase
 
 class SaveViewerAppMgr(PngAppMgrBase):
     """Implementation of PngApp for save viewer"""
-    def __init__(self, console_app: ConsoleInterface, port_str: str, args: list[str] = None):
+    def __init__(self, console_app: ConsoleInterface, port: int, args: list[str] = None):
         """Initialize the save viewer manager
         :param console_app: Reference to a console interface for logging
-        :param port_str: Port number to use for the save viewer
+        :param port: Port number to use for the save viewer
         :param args: Command line arguments to pass to the save viewer subsystem
         """
-        self.port_str = port_str
+        self.port = port
         self.args = args or []
         super().__init__(
             port_conflict_settings_field='Network -> "Pits n\' Giggles Save Data Viewer Port"',
@@ -91,7 +91,7 @@ class SaveViewerAppMgr(PngAppMgrBase):
 
     def open_dashboard(self):
         """Open the dashboard viewer in a web browser."""
-        webbrowser.open(f'http://localhost:{self.port_str}', new=2)
+        webbrowser.open(f'http://localhost:{self.port}', new=2)
 
     def open_file(self):
         file_path = filedialog.askopenfilename()
@@ -116,8 +116,8 @@ class SaveViewerAppMgr(PngAppMgrBase):
         :return: True if the app needs to be restarted
         """
         # Update the port number
-        should_restart = self.port_str != str(new_settings.Network.save_viewer_port)
-        self.port_str = str(new_settings.Network.server_port)
+        should_restart = (self.port != new_settings.Network.save_viewer_port)
+        self.port = new_settings.Network.server_port
         return should_restart
 
     def post_start(self):
