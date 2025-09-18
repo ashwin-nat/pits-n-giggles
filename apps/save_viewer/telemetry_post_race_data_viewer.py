@@ -55,8 +55,7 @@ def parseArgs() -> argparse.Namespace:
     parser.add_argument("--ipc-port", type=int, default=None, help="Port number for the IPC server.")
 
     # Parse the command-line arguments
-    args, _ = parser.parse_known_args() # TODO: Fix this
-    return args
+    return parser.parse_args()
 
 async def main(logger: logging.Logger, server_port: int, ipc_port: int, version: str) -> None:
     """Main function
