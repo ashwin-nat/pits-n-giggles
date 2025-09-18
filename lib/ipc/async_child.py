@@ -91,7 +91,7 @@ class IpcChildAsync:
                 await asyncio.sleep(self.heartbeat_timeout)
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except Exception as e: # pylint: disable=broad-exception-caught
                 print(f"[{self.name}] Error in heartbeat monitor: {e}")
                 break
 
@@ -113,7 +113,7 @@ class IpcChildAsync:
                     try:
                         await self._heartbeat_missed_callback(self._missed_heartbeats)
                         break
-                    except Exception as e:
+                    except Exception as e: # pylint: disable=broad-exception-caught
                         print(f"[{self.name}] Error in heartbeat missed callback: {e}")
 
     def _handle_heartbeat(self) -> dict:
@@ -156,7 +156,7 @@ class IpcChildAsync:
                     if cmd == "__terminate__":
                         break
 
-                    elif cmd == "__heartbeat__":
+                    if cmd == "__heartbeat__":
                         response = self._handle_heartbeat()
 
                     elif cmd == "__ping__":
