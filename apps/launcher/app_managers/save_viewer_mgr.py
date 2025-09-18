@@ -117,7 +117,7 @@ class SaveViewerAppMgr(PngAppMgrBase):
         """
         # Update the port number
         should_restart = (self.port != new_settings.Network.save_viewer_port)
-        self.port = new_settings.Network.server_port
+        self.port = new_settings.Network.save_viewer_port
         return should_restart
 
     def post_start(self):
