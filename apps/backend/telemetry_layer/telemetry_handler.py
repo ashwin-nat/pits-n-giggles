@@ -27,7 +27,7 @@ SOFTWARE.
 import asyncio
 import logging
 from datetime import datetime
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Coroutine
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Coroutine
 
 import apps.backend.state_mgmt_layer.telemetry_state as TelState
 from lib.button_debouncer import ButtonDebouncer

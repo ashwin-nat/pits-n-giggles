@@ -111,13 +111,6 @@ class PngRunner:
         """Entry point to start the HTTP server.
 
         Args:
-            http_port (int): Port number for the HTTP server.
-            logger (logging.Logger): Logger instance.
-            client_update_interval_ms (int): Client poll interval in milliseconds.
-            disable_browser_autoload (bool): Whether to disable browser autoload.
-            stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
-            tasks (List[asyncio.Task]): List of tasks to be executed
-            ver_str (str): Version string
             ipc_port (Optional[int], optional): IPC port. Defaults to None.
             debug_mode (bool, optional): Debug mode. Defaults to False.
 
