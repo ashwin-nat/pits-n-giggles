@@ -31,7 +31,7 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Corout
 
 import apps.backend.state_mgmt_layer.telemetry_state as TelState
 from lib.button_debouncer import ButtonDebouncer
-from lib.config import CaptureSettings
+from lib.config import CaptureSettings, PngSettings
 from lib.f1_types import (F1PacketType, PacketCarDamageData,
                           PacketCarSetupData, PacketCarStatusData,
                           PacketCarTelemetryData, PacketEventData,
@@ -51,28 +51,18 @@ from lib.wdt import WatchDogTimer
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def setupTelemetryTask(
-        port_number: int,
+        settings: PngSettings,
         replay_server: bool,
         logger: logging.Logger,
-        capture_settings: CaptureSettings,
-        udp_custom_action_code: Optional[int],
-        udp_tyre_delta_action_code: Optional[int],
-        forwarding_targets: List[Tuple[str, int]],
         ver_str: str,
-        wdt_interval: float,
         tasks: List[asyncio.Task]) -> "F1TelemetryHandler":
     """Entry point to start the F1 telemetry server.
 
     Args:
-        port_number (int): Port number for the telemetry client.
+        settings (PngSettings): App settings
         replay_server (bool): Whether to enable the TCP replay debug server.
         logger (logging.Logger): Logger instance
-        capture_settings (CaptureSettings): Capture settings
-        udp_custom_action_code (Optional[int]): UDP custom action code.
-        udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code.
-        forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
         ver_str (str): Version string
-        wdt_interval (float): Watchdog interval
         tasks (List[asyncio.Task]): List of tasks to be executed
 
     Returns:
@@ -80,13 +70,13 @@ def setupTelemetryTask(
     """
 
     telemetry_server = F1TelemetryHandler(
-        port=port_number,
-        forwarding_targets=forwarding_targets,
+        port=settings.Network.telemetry_port,
+        forwarding_targets=settings.Forwarding.forwarding_targets,
         logger=logger,
-        capture_settings=capture_settings,
-        wdt_interval=wdt_interval,
-        udp_custom_action_code=udp_custom_action_code,
-        udp_tyre_delta_action_code=udp_tyre_delta_action_code,
+        capture_settings=settings.Capture,
+        wdt_interval=float(settings.Network.wdt_interval_sec),
+        udp_custom_action_code=settings.Network.udp_custom_action_code,
+        udp_tyre_delta_action_code=settings.Network.udp_tyre_delta_action_code,
         replay_server=replay_server,
         ver_str=ver_str,
     )

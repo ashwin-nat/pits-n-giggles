@@ -61,15 +61,10 @@ def initTelemetryLayer(
     """
 
     handler = setupTelemetryTask(
-        port_number=settings.Network.telemetry_port,
+        settings=settings,
         replay_server=replay_server,
         logger=logger,
-        capture_settings=settings.Capture,
-        udp_custom_action_code=settings.Network.udp_custom_action_code,
-        udp_tyre_delta_action_code=settings.Network.udp_tyre_delta_action_code,
-        forwarding_targets=settings.Forwarding.forwarding_targets,
         ver_str=ver_str,
-        wdt_interval=float(settings.Network.wdt_interval_sec),
         tasks=tasks
     )
     setupForwarder(
