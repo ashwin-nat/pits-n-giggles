@@ -70,13 +70,8 @@ def setupTelemetryTask(
     """
 
     telemetry_server = F1TelemetryHandler(
-        port=settings.Network.telemetry_port,
-        forwarding_targets=settings.Forwarding.forwarding_targets,
+        settings=settings,
         logger=logger,
-        capture_settings=settings.Capture,
-        wdt_interval=float(settings.Network.wdt_interval_sec),
-        udp_custom_action_code=settings.Network.udp_custom_action_code,
-        udp_tyre_delta_action_code=settings.Network.udp_tyre_delta_action_code,
         replay_server=replay_server,
         ver_str=ver_str,
     )
@@ -96,19 +91,15 @@ class F1TelemetryHandler:
     """
 
     def __init__(self,
-        port: int,
-        forwarding_targets: List[Tuple[str, int]],
+        settings: PngSettings,
         logger: logging.Logger,
-        capture_settings: CaptureSettings,
-        wdt_interval: float,
-        udp_custom_action_code: Optional[int] = None,
-        udp_tyre_delta_action_code: Optional[int] = None,
         replay_server: bool = False,
         ver_str: str = "dev") -> None:
         """
         Initialize F1TelemetryHandler.
 
         Parameters:
+            - settings (PngSettings): Png settings
             - port (int): The port number for telemetry.
             - forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
             - logger (logging.Logger): Logger
@@ -120,28 +111,26 @@ class F1TelemetryHandler:
             - ver_str (str): Version string
         """
         self.m_manager = AsyncF1TelemetryManager(
-            port_number=port,
+            port_number=settings.Network.telemetry_port,
             logger=logger,
             replay_server=replay_server
         )
         self.m_logger: logging.Logger = logger
         self.m_session_state_ref: TelState.SessionState = TelState.getSessionStateRef()
 
-        self.m_directory_mapping: Dict[str, str] = {}
         self.m_last_session_uid: Optional[int] = None
         self.m_data_cleared_this_session: bool = False
-        self.m_udp_custom_action_code: Optional[int] = udp_custom_action_code
-        self.m_udp_tyre_delta_action_code: Optional[int] = udp_tyre_delta_action_code
+        self.m_udp_custom_action_code: Optional[int] = settings.Network.udp_custom_action_code
+        self.m_udp_tyre_delta_action_code: Optional[int] = settings.Network.udp_tyre_delta_action_code
         self.m_final_classification_processed: bool = False
-        self.m_post_race_data_autosave: bool = capture_settings.post_race_data_autosave
-        self.m_capture_settings: CaptureSettings = capture_settings
+        self.m_capture_settings: CaptureSettings = settings.Capture
         self.m_button_debouncer: ButtonDebouncer = ButtonDebouncer()
 
-        self.m_should_forward: bool = bool(forwarding_targets)
+        self.m_should_forward: bool = bool(settings.Forwarding.forwarding_targets)
         self.m_version: str = ver_str
         self.m_wdt: WatchDogTimer = WatchDogTimer(
             status_callback=self.m_session_state_ref.setConnectedToSim,
-            timeout=wdt_interval
+            timeout=float(settings.Network.wdt_interval_sec),
         )
         self.m_manager_task: Optional[asyncio.Task] = None
         self.registerCallbacks()
@@ -543,19 +532,15 @@ class F1TelemetryHandler:
             return
 
         # Save the JSON data
-        if self.m_post_race_data_autosave:
-
-            # Get timestamp in the format - year_month_day_hour_minute_second
-            timestamp_str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-            final_json_file_name = event_str + timestamp_str + '.json'
-            try:
-                await save_json_to_file(final_json, final_json_file_name)
-                self.m_logger.info("Wrote race info to %s", final_json_file_name)
-            except Exception: # pylint: disable=broad-except
-                # No need to crash the app just because write failed
-                self.m_logger.exception("Failed to write race info to %s", final_json_file_name)
-        else:
-            self.m_logger.debug("Not saving post race data")
+        # Get timestamp in the format - year_month_day_hour_minute_second
+        timestamp_str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        final_json_file_name = event_str + timestamp_str + '.json'
+        try:
+            await save_json_to_file(final_json, final_json_file_name)
+            self.m_logger.info("Wrote race info to %s", final_json_file_name)
+        except Exception: # pylint: disable=broad-except
+            # No need to crash the app just because write failed
+            self.m_logger.exception("Failed to write race info to %s", final_json_file_name)
 
     def _shouldSaveData(self) -> bool:
         """
