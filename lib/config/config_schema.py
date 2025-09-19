@@ -170,16 +170,12 @@ class HttpsSettings(BaseModel):
     @property
     def cert_path(self) -> Optional[str]:
         """Path to SSL certificate file. Will be None if HTTPS is disabled."""
-        if not self.enabled:
-            return None
-        return self.cert_file_path
+        return None if not self.enabled else self.cert_file_path
 
     @property
     def key_path(self) -> Optional[str]:
         """Path to SSL private key file. Will be None if HTTPS is disabled."""
-        if not self.enabled:
-            return None
-        return self.key_file_path
+        return None if not self.enabled else self.key_file_path
 
 class PitTimeLossF1(BaseModel):
     Melbourne: float = Field(18.0)
