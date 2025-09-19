@@ -33,38 +33,28 @@ from lib.web_server import ClientType
 from .ipc import registerIpcTask
 from .telemetry_web_server import TelemetryWebServer
 
+from lib.config import PngSettings
+
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def initUiIntfLayer(
-    port: int,
+    settings: PngSettings,
     logger: logging.Logger,
-    client_update_interval_ms: int,
     debug_mode: bool,
-    stream_overlay_start_sample_data: bool,
-    stream_overlay_update_interval_ms: int,
     tasks: List[asyncio.Task],
     ver_str: str,
-    cert_path: Optional[str],
-    key_path: Optional[str],
     ipc_port: Optional[int],
-    shutdown_event: asyncio.Event,
-    disable_browser_autoload: bool) -> TelemetryWebServer:
+    shutdown_event: asyncio.Event) -> TelemetryWebServer:
     """Initialize the UI interface layer and return then server obj for proper cleanup
 
     Args:
-        port (int): Port number
+        settings (PngSettings): Png settings
         logger (logging.Logger): Logger
-        client_update_interval_ms (int): How often the client will be updated with new info
         debug_mode (bool): Debug enabled if true
-        stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
-        stream_overlay_update_interval_ms (int): How often the stream overlay will be updated
         tasks (List[asyncio.Task]): List of tasks to be executed
         ver_str (str): Version string
-        cert_path (Optional[str]): Path to the certificate file
-        key_path (Optional[str]): Path to the key file
         ipc_port (Optional[int]): IPC port
         shutdown_event (asyncio.Event): Event to signal shutdown
-        disable_browser_autoload (bool): Whether to disable browser autoload
 
     Returns:
         TelemetryWebServer: The initialized web server
@@ -72,23 +62,24 @@ def initUiIntfLayer(
 
     # First, create the server instance
     web_server = TelemetryWebServer(
-        port=port,
+        port=settings.Network.server_port,
         ver_str=ver_str,
         logger=logger,
-        cert_path=cert_path,
-        key_path=key_path,
+        cert_path=settings.HTTPS.cert_path,
+        key_path=settings.HTTPS.key_path,
         debug_mode=debug_mode,
-        disable_browser_autoload=disable_browser_autoload,
-        stream_overlay_start_sample_data=stream_overlay_start_sample_data,
+        disable_browser_autoload=settings.Display.disable_browser_autoload,
+        stream_overlay_start_sample_data=settings.StreamOverlay.show_sample_data_at_start,
     )
 
     # Register tasks associated with this web server
     tasks.append(asyncio.create_task(web_server.run(), name="Web Server Task"))
-    tasks.append(asyncio.create_task(raceTableClientUpdateTask(client_update_interval_ms, web_server, shutdown_event),
+    tasks.append(asyncio.create_task(raceTableClientUpdateTask(settings.Display.refresh_interval, web_server,
+                                                               shutdown_event),
                                      name="Race Table Update Task"))
-    tasks.append(asyncio.create_task(streamOverlayUpdateTask(stream_overlay_update_interval_ms,
-                                                             stream_overlay_start_sample_data, web_server,
-                                                             shutdown_event),
+    tasks.append(asyncio.create_task(streamOverlayUpdateTask(settings.StreamOverlay.stream_overlay_update_interval_ms,
+                                                             settings.StreamOverlay.show_sample_data_at_start,
+                                                             web_server, shutdown_event),
                                      name="Stream Overlay Update Task"))
     tasks.append(asyncio.create_task(frontEndMessageTask(web_server, shutdown_event),
                                      name="Front End Message Task"))

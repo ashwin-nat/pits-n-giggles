@@ -88,13 +88,6 @@ class PngRunner:
             tasks=self.m_tasks
         )
         self.m_web_server = self._setupUiIntfLayer(
-            http_port=self.m_config.Network.server_port,
-            logger=self.m_logger,
-            client_update_interval_ms=self.m_config.Display.refresh_interval,
-            disable_browser_autoload=self.m_config.Display.disable_browser_autoload,
-            stream_overlay_start_sample_data=self.m_config.StreamOverlay.show_sample_data_at_start,
-            tasks=self.m_tasks,
-            ver_str=self.m_version,
             ipc_port=ipc_port,
             debug_mode=debug_mode
         )
@@ -113,13 +106,6 @@ class PngRunner:
             raise  # Ensure proper cancellation behavior
 
     def _setupUiIntfLayer(self,
-        http_port: int,
-        logger: logging.Logger,
-        client_update_interval_ms: int,
-        disable_browser_autoload: bool,
-        stream_overlay_start_sample_data: bool,
-        tasks: List[asyncio.Task],
-        ver_str: str,
         ipc_port: Optional[int] = None,
         debug_mode: Optional[bool] = False) -> TelemetryWebServer:
         """Entry point to start the HTTP server.
@@ -142,33 +128,26 @@ class PngRunner:
         log_str = "Starting F1 telemetry server. Open one of the below addresses in your browser\n"
         ip_addresses = self._getLocalIpAddresses()
         for ip_addr in ip_addresses:
-            log_str += f"    {self.m_config.HTTPS.proto}://{ip_addr}:{http_port}\n"
+            log_str += f"    {self.m_config.HTTPS.proto}://{ip_addr}:{self.m_config.Network.server_port}\n"
         log_str += "NOTE: The tables will be empty until the red lights appear on the screen before the race start\n"
         log_str += "That is when the game starts sending telemetry data"
         self.m_logger.info(log_str)
 
-        # Read the cert files only if HTTPS is enabled
-        if not self.m_config.HTTPS.enabled:
-            cert_path = None
-            key_path = None
-        else:
-            cert_path = self.m_config.HTTPS.cert_file_path
-            key_path = self.m_config.HTTPS.key_file_path
-
         return initUiIntfLayer(
-            port=http_port,
-            logger=logger,
-            client_update_interval_ms=client_update_interval_ms,
+            settings=self.m_config,
+            port=self.m_config.Network.server_port,
+            logger=self.m_logger,
+            client_update_interval_ms=self.m_config.Display.refresh_interval,
             debug_mode=debug_mode,
-            stream_overlay_start_sample_data=stream_overlay_start_sample_data,
+            stream_overlay_start_sample_data=self.m_config.StreamOverlay.show_sample_data_at_start,
             stream_overlay_update_interval_ms=self.m_config.StreamOverlay.stream_overlay_update_interval_ms,
-            tasks=tasks,
-            ver_str=ver_str,
-            cert_path=cert_path,
-            key_path=key_path,
+            tasks=self.m_tasks,
+            ver_str=self.m_version,
+            cert_path=self.m_config.HTTPS.cert_path,
+            key_path=self.m_config.HTTPS.key_path,
             ipc_port=ipc_port,
             shutdown_event=self.m_shutdown_event,
-            disable_browser_autoload=disable_browser_autoload
+            disable_browser_autoload=self.m_config.Display.disable_browser_autoload
         )
 
     def _getLocalIpAddresses(self) -> Set[str]:
