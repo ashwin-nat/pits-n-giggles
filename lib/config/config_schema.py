@@ -167,6 +167,20 @@ class HttpsSettings(BaseModel):
     def proto(self) -> str:
         return "https" if self.enabled else "http"
 
+    @property
+    def cert_path(self) -> Optional[str]:
+        """Path to SSL certificate file. Will be None if HTTPS is disabled."""
+        if not self.enabled:
+            return None
+        return self.cert_file_path
+
+    @property
+    def key_path(self) -> Optional[str]:
+        """Path to SSL private key file. Will be None if HTTPS is disabled."""
+        if not self.enabled:
+            return None
+        return self.key_file_path
+
 class PitTimeLossF1(BaseModel):
     Melbourne: float = Field(18.0)
     Shanghai: float = Field(22.0)

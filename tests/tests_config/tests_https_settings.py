@@ -46,6 +46,8 @@ class TestHttpsSettings(TestF1ConfigBase):
         self.assertEqual("", settings.key_file_path)
         self.assertEqual("", settings.cert_file_path)
         self.assertEqual("http", settings.proto)
+        self.assertEqual(None, settings.key_path)
+        self.assertEqual(None, settings.cert_path)
 
     def test_enabled_without_key_should_fail(self):
         """HTTPS enabled without key should raise appropriate error"""
@@ -110,3 +112,28 @@ class TestHttpsSettings(TestF1ConfigBase):
             )
         error_msg = str(ctx.exception)
         self.assertIn("Key file is required", error_msg)
+
+    def test_cert_key_property_valid(self):
+        """Should return None if HTTPS is disabled, otherwise return file paths"""
+        with tempfile.NamedTemporaryFile(delete=False) as key_file, \
+            tempfile.NamedTemporaryFile(delete=False) as cert_file:
+
+            key_path = key_file.name
+            cert_path = cert_file.name
+
+        try:
+            settings = HttpsSettings(
+                enabled=True,
+                key_file_path=key_path,
+                cert_file_path=cert_path,
+            )
+            self.assertEqual(settings.key_path, key_path)
+            self.assertEqual(settings.cert_path, cert_path)
+
+            settings.enabled = False
+            self.assertEqual(settings.key_path, None)
+            self.assertEqual(settings.cert_path, None)
+
+        finally:
+            os.unlink(key_path)
+            os.unlink(cert_path)
