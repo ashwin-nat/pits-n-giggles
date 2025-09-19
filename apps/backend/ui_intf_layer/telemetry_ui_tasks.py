@@ -62,14 +62,10 @@ def initUiIntfLayer(
 
     # First, create the server instance
     web_server = TelemetryWebServer(
-        port=settings.Network.server_port,
+        settings=settings,
         ver_str=ver_str,
         logger=logger,
-        cert_path=settings.HTTPS.cert_path,
-        key_path=settings.HTTPS.key_path,
         debug_mode=debug_mode,
-        disable_browser_autoload=settings.Display.disable_browser_autoload,
-        stream_overlay_start_sample_data=settings.StreamOverlay.show_sample_data_at_start,
     )
 
     # Register tasks associated with this web server
