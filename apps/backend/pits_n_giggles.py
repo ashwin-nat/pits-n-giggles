@@ -135,19 +135,12 @@ class PngRunner:
 
         return initUiIntfLayer(
             settings=self.m_config,
-            port=self.m_config.Network.server_port,
             logger=self.m_logger,
-            client_update_interval_ms=self.m_config.Display.refresh_interval,
             debug_mode=debug_mode,
-            stream_overlay_start_sample_data=self.m_config.StreamOverlay.show_sample_data_at_start,
-            stream_overlay_update_interval_ms=self.m_config.StreamOverlay.stream_overlay_update_interval_ms,
             tasks=self.m_tasks,
             ver_str=self.m_version,
-            cert_path=self.m_config.HTTPS.cert_path,
-            key_path=self.m_config.HTTPS.key_path,
             ipc_port=ipc_port,
             shutdown_event=self.m_shutdown_event,
-            disable_browser_autoload=self.m_config.Display.disable_browser_autoload
         )
 
     def _getLocalIpAddresses(self) -> Set[str]:
