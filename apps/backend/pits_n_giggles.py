@@ -80,15 +80,10 @@ class PngRunner:
         )
 
         self.m_telemetry_handler = initTelemetryLayer(
-            port_number=self.m_config.Network.telemetry_port,
+            settings=self.m_config,
             replay_server=replay_server,
             logger=self.m_logger,
-            capture_settings=self.m_config.Capture,
-            udp_custom_action_code=self.m_config.Network.udp_custom_action_code,
-            udp_tyre_delta_action_code=self.m_config.Network.udp_tyre_delta_action_code,
-            forwarding_targets=self.m_config.Forwarding.forwarding_targets,
             ver_str=self.m_version,
-            wdt_interval=float(self.m_config.Network.wdt_interval_sec),
             shutdown_event=self.m_shutdown_event,
             tasks=self.m_tasks
         )

@@ -26,7 +26,7 @@ import asyncio
 import logging
 from typing import List, Optional, Tuple
 
-from lib.config import CaptureSettings
+from lib.config import CaptureSettings, PngSettings
 
 from .telemetry_forwarder import setupForwarder
 from .telemetry_handler import setupTelemetryTask, F1TelemetryHandler
@@ -34,20 +34,16 @@ from .telemetry_handler import setupTelemetryTask, F1TelemetryHandler
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def initTelemetryLayer(
-        port_number: int,
+        settings: PngSettings,
         replay_server: bool,
         logger: logging.Logger,
-        capture_settings: CaptureSettings,
-        udp_custom_action_code: Optional[int],
-        udp_tyre_delta_action_code: Optional[int],
-        forwarding_targets: List[Tuple[str, int]],
         ver_str: str,
-        wdt_interval: float,
         shutdown_event: asyncio.Event,
         tasks: List[asyncio.Task]) -> F1TelemetryHandler:
     """Initialize the telemetry layer
 
     Args:
+        settings (PngSettings): Png settings
         port_number (int): Port number for the telemetry client.
         replay_server (bool): Whether to enable the TCP replay debug server.
         logger (logging.Logger): Logger instance
@@ -65,19 +61,19 @@ def initTelemetryLayer(
     """
 
     handler = setupTelemetryTask(
-        port_number=port_number,
+        port_number=settings.Network.telemetry_port,
         replay_server=replay_server,
         logger=logger,
-        capture_settings=capture_settings,
-        udp_custom_action_code=udp_custom_action_code,
-        udp_tyre_delta_action_code=udp_tyre_delta_action_code,
-        forwarding_targets=forwarding_targets,
+        capture_settings=settings.Capture,
+        udp_custom_action_code=settings.Network.udp_custom_action_code,
+        udp_tyre_delta_action_code=settings.Network.udp_tyre_delta_action_code,
+        forwarding_targets=settings.Forwarding.forwarding_targets,
         ver_str=ver_str,
-        wdt_interval=wdt_interval,
+        wdt_interval=float(settings.Network.wdt_interval_sec),
         tasks=tasks
     )
     setupForwarder(
-        forwarding_targets=forwarding_targets,
+        forwarding_targets=settings.Forwarding.forwarding_targets,
         tasks=tasks,
         shutdown_event=shutdown_event,
         logger=logger
