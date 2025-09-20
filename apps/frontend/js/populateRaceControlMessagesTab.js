@@ -125,6 +125,8 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
     // Clear any existing content in the container
     containerElement.innerHTML = '';
 
+    let gridApi; // Declare gridApi in a higher scope
+
     // Create the filter button
     const filterButton = document.createElement('button');
     filterButton.textContent = 'Filters';
@@ -144,7 +146,7 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
     let selectedMessageTypes = [...allMessageTypes];
 
     // Function to update the grid based on selected filters
-    const updateGrid = (gridApi) => {
+    const updateGrid = () => { // Removed gridApi parameter
         const filteredRowData = initialRowData.filter(row => selectedMessageTypes.includes(row['message-type']));
         gridApi.setGridOption('rowData', filteredRowData);
     };
@@ -152,7 +154,7 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
     const { overlay: modalOverlay, open: openFilter, update: updateModal } =
         createFilterModal(allMessageTypes, newTypes => {
             selectedMessageTypes = newTypes;
-            updateGrid(gridApi);
+            updateGrid(); // Removed gridApi argument
         });
 
     containerElement.appendChild(modalOverlay);
@@ -212,13 +214,13 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
             // Other default column properties can be added here
         },
         onGridReady: (params) => {
+            gridApi = params.api; // Assign gridApi
             updateModal(selectedMessageTypes); // Initialize checkboxes
-            updateGrid(params.api);
+            updateGrid(); // Removed gridApi argument
             searchInput.addEventListener('input', (event) => {
                 const filterText = event.target.value;
                 console.log('Search Input:', filterText);
-                const gridApi = params.api;
-                  gridApi.setGridOption(
+                gridApi.setGridOption( // Use the higher-scoped gridApi
                     "quickFilterText", filterText,
                 );
             });
