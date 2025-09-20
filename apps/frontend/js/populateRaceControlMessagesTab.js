@@ -126,6 +126,8 @@ const detailRenderers = {
   },
   WING_CHANGE: ({ 'driver-info': d, 'lap-number': lap }) =>
       `Driver: ${getDriverDetailsStr(d ?? null)}, Lap: ${lap}`,
+  TYRE_CHANGE: ({ 'driver-info': d, 'lap-number': lap, 'old-tyre-compound': oldTyreCompound, 'new-tyre-compound': newTyreCompound}) =>
+      `Driver: ${getDriverDetailsStr(d ?? null)}, Lap: ${lap} - Old Compound: ${oldTyreCompound}, New Compound: ${newTyreCompound}`,
 
   DEFAULT: msg => `Type: ${msg['message-type']} - Placeholder details.`
 };
