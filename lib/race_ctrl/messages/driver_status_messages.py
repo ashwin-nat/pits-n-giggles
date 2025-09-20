@@ -101,3 +101,47 @@ class WingChangeRaceCtrlMsg(RaceCtrlMsgBase):
         if driver_info_dict and (driver_info := driver_info_dict.get(self.involved_drivers[0])):
             ret["driver-info"] = driver_info
         return ret
+
+class TyreChangeRaceControlMessage(RaceCtrlMsgBase):
+    def __init__(self,
+                 timestamp: float,
+                 driver_index: int,
+                 lap_number: Optional[int],
+                 old_tyre_compound: str,
+                 old_tyre_index: int,
+                 new_tyre_compound: str,
+                 new_tyre_index: int) -> None:
+        """Driver pitting message
+
+        Args:
+            timestamp (float): Time at which the message was issued (seconds).
+            driver_index (int): Index of the driver.
+            lap_number (Optional[int]): Lap number
+            old_tyre_compound (str): Old tyre compound
+            old_tyre_index (int): Old tyre index
+            new_tyre_compound (str): New tyre compound
+            new_tyre_index (int): New tyre index
+        """
+        super().__init__(
+            timestamp=timestamp,
+            message_type=MessageType.TYRE_CHANGE,
+            involved_drivers=[driver_index],
+            lap_number=lap_number)
+        self.old_tyre_compound: str = old_tyre_compound
+        self.old_tyre_index: int = old_tyre_index
+        self.new_tyre_compound: str = new_tyre_compound
+        self.new_tyre_index: int = new_tyre_index
+
+    def toJSON(self, driver_info_dict = None) -> Dict[str, Any]:
+        """Export the message as a JSON-ready dict."""
+        ret = {
+            **super().toJSON(driver_info_dict),
+            "old-tyre-compound": self.old_tyre_compound,
+            "old-tyre-index": self.old_tyre_index,
+            "new-tyre-compound": self.new_tyre_compound,
+            "new-tyre-index": self.new_tyre_index
+        }
+
+        if driver_info_dict and (driver_info := driver_info_dict.get(self.involved_drivers[0])):
+            ret["driver-info"] = driver_info
+        return ret

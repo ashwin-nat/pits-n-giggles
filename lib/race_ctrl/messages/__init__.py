@@ -28,6 +28,7 @@ from .driver_event_messages import (FastestLapRaceCtrlMsg, OvertakeRaceCtrlMsg,
                                     SpeedTrapRaceCtrlMsg)
 from .driver_status_messages import (CarDamageRaceCtrlMerssage,
                                      DriverPittingRaceCtrlMsg,
+                                     TyreChangeRaceControlMessage,
                                      WingChangeRaceCtrlMsg)
 from .incident_messages import (CollisionRaceCtrlMsg, DtPenServedRaceCtrlMsg,
                                 PenaltyRaceCtrlMsg, SgPenServedRaceCtrlMsg)
@@ -55,6 +56,7 @@ __all__ = [
     "DriverPittingRaceCtrlMsg",
     "CarDamageRaceCtrlMerssage",
     "WingChangeRaceCtrlMsg",
+    "TyreChangeRaceControlMessage",
 
     # incident
     "CollisionRaceCtrlMsg",
