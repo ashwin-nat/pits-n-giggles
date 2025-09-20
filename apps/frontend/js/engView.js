@@ -469,10 +469,11 @@ class EngViewRaceTable {
                         field: "tyre-info.visual-tyre-compound",
                         flex: 4,
                         valueGetter: (params) => {
-                            const tyreInfo = params.data["tyre-info"];
-                            return `${tyreInfo["visual-tyre-compound"]}.
-                                    ${tyreInfo["tyre-age"]}.
-                                    ${tyreInfo["num-pitstops"]}`;
+                            const tyreInfo = params.data["tyre-info"] || {};
+                            const compound = tyreInfo["visual-tyre-compound"] ?? "-";
+                            const age = tyreInfo["tyre-age"] ?? "-";
+                            const pitstops = tyreInfo["num-pitstops"] ?? "-";
+                            return `${compound}.${age}.${pitstops}`;
                         },
                         cellRenderer: (params) => {
                             const tyreInfo = params.data["tyre-info"];
