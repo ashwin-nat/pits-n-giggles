@@ -53,7 +53,7 @@ class DummyDiffPacket(F1SubPacketBase):
         self.b = b
 
     def toJSON(self):
-        raise {"a": self.a, "b": self.b}
+        return {"a": self.a, "b": self.b}
 
 class OtherPacket(F1SubPacketBase):
     __slots__ = ("x",)
