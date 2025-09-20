@@ -251,7 +251,7 @@ class EngViewRaceTable {
             const delta = timeMs - lapInfo[playerTimeKey];
             return this.createMultiLineCell({
                 row1: formattedTime,
-                row2: formatDelta(delta),
+                row2: ((timeMs) ? (formatDelta(delta)) : ('---')),
                 escapeRow1: false,
                 row1Class: timeClass // Apply the timeClass to the first row of multiline cell
             });
