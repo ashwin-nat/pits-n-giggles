@@ -33,7 +33,8 @@ from lib.f1_types import (CarDamageData, F1Utils, LapData,
                           PacketLapPositionsData, ResultStatus, SafetyCarType,
                           SessionType, TrackID)
 from lib.race_ctrl import (CarDamageRaceCtrlMerssage, DriverPittingRaceCtrlMsg,
-                           DriverRaceControlManager, WingChangeRaceCtrlMsg)
+                           DriverRaceControlManager,
+                           TyreChangeRaceControlMessage, WingChangeRaceCtrlMsg)
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 
 from .car_info import CarInfo
@@ -716,6 +717,27 @@ class DataPerDriver:
         # Tyre set change detected. clear the extrapolation data
         self.m_tyre_info.m_tyre_wear_extrapolator.clear()
         self.m_tyre_info.m_tyre_wear_extrapolator.add(initial_tyre_wear)
+
+        # Add race control message - there needs to be atleast 2 tyre set history entries (one prev and one current)
+        if self.m_tyre_info.m_tyre_set_history_manager.length >= 2:
+            prev_entry = self.m_tyre_info.m_tyre_set_history_manager.getLastEntry()
+            curr_entry = self.m_tyre_info.m_tyre_set_history_manager.getEntry(index=-2)
+            if prev_entry and curr_entry and self.m_packet_copies.m_packet_tyre_sets:
+                prev_index = prev_entry.m_fitted_index
+                curr_index = curr_entry.m_fitted_index
+                prev_set = self.m_packet_copies.m_packet_tyre_sets.getTyreSet(prev_index)
+                curr_set = self.m_packet_copies.m_packet_tyre_sets.getTyreSet(curr_index)
+                if prev_set and curr_set:
+                    self.m_logger.debug("Driver %s - tyre set change detected. prev tyre set: %s, curr tyre set: %s",
+                                        str(self), str(prev_set), str(curr_set))
+                    self.m_race_ctrl.add_message(TyreChangeRaceControlMessage(
+                        timestamp=time.time(),
+                        driver_index=self.m_index,
+                        lap_number=lap_number,
+                        old_tyre_compound=str(prev_set.m_visualTyreCompound),
+                        old_tyre_index=prev_index,
+                        new_tyre_compound=str(curr_set.m_visualTyreCompound),
+                        new_tyre_index=curr_index))
 
     def processPittingStatus(self, lap_data: LapData, track: TrackID) -> None:
         """Process the pit status data
