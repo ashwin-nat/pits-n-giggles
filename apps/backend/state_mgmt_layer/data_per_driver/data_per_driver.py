@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
+import time
 from copy import deepcopy
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
@@ -30,7 +31,7 @@ from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
 from lib.f1_types import (F1Utils, LapData, PacketLapPositionsData,
                           ResultStatus, SafetyCarType, SessionType, TrackID)
-from lib.race_ctrl import DriverRaceControlManager
+from lib.race_ctrl import DriverPittingRaceCtrlMsg, DriverRaceControlManager
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 
 from .car_info import CarInfo
@@ -724,6 +725,10 @@ class DataPerDriver:
                 # note down curr tyre wear for delayed tyre set change handling
                 # take a deepcopy since this obj is volatile
                 self.m_pending_events_mgr.data = deepcopy(self.m_tyre_info.tyre_wear)
+            self.m_race_ctrl.add_message(DriverPittingRaceCtrlMsg(
+                timestamp=time.time(),
+                driver_index=self.m_index,
+                lap_number=lap_data.m_currentLapNum))
         elif self.m_lap_info.m_is_pitting and not curr_is_pitting:
             # leaving pits
             self.m_logger.debug("Driver %s - leaving pits.", str(self))
