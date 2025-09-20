@@ -45,6 +45,11 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         self.driver2_mgr = DriverRaceControlManager(driver_index=2)
         self.session_mgr.register_driver(1, self.driver1_mgr)
         self.session_mgr.register_driver(2, self.driver2_mgr)
+        self.assertEqual(len(self.session_mgr.drivers), 2)
+        self.assertEqual(self.session_mgr.drivers[1], self.driver1_mgr)
+        self.assertEqual(self.session_mgr.drivers[2], self.driver2_mgr)
+        self.assertEqual(self.driver1_mgr.session_mgr, self.session_mgr)
+        self.assertEqual(self.driver2_mgr.session_mgr, self.session_mgr)
 
     async def test_add_message_and_index_as_id(self):
         msg = RaceCtrlMsgBase(
@@ -171,3 +176,5 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         self.assertEqual(exported[0]["overtaken-info"]["name"], "Driver Two")
         self.assertEqual(exported[0]["overtaken-info"]["team"], "Beta")
         self.assertEqual(exported[0]["overtaken-info"]["driver-number"], 2)
+
+    # TODO - add driver message tests
