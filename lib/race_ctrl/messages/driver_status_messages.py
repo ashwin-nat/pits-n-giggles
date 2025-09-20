@@ -80,3 +80,24 @@ class CarDamageRaceCtrlMerssage(RaceCtrlMsgBase):
         if driver_info_dict and (driver_info := driver_info_dict.get(self.involved_drivers[0])):
             ret["driver-info"] = driver_info
         return ret
+
+class WingChangeRaceCtrlMsg(RaceCtrlMsgBase):
+    def __init__(self, timestamp: float, driver_index: int, lap_number: Optional[int] = None) -> None:
+        """Driver pitting message
+
+        Args:
+            timestamp (float): Time at which the message was issued (seconds).
+            driver_index (int): Index of the driver.
+        """
+        super().__init__(
+            timestamp=timestamp,
+            message_type=MessageType.WING_CHANGE,
+            involved_drivers=[driver_index],
+            lap_number=lap_number)
+
+    def toJSON(self, driver_info_dict = None):
+        """Export the message as a JSON-ready dict."""
+        ret = super().toJSON(driver_info_dict)
+        if driver_info_dict and (driver_info := driver_info_dict.get(self.involved_drivers[0])):
+            ret["driver-info"] = driver_info
+        return ret
