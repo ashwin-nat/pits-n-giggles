@@ -22,20 +22,29 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .driver_mgr import DriverRaceControlManager
-from .messages import MessageType, RaceCtrlMsgBase, DriverPittingRaceCtrlMsg
-from .session_mgr import SessionRaceControlManager
-from .factory import race_ctrl_event_msg_factory
+from typing import Any, Dict, Optional
+from .base import MessageType, RaceCtrlMsgBase
 
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-__all__ = [
-    "MessageType",
-    "RaceCtrlMsgBase",
-    "DriverRaceControlManager",
-    "SessionRaceControlManager",
-    "race_ctrl_event_msg_factory",
+class DriverPittingRaceCtrlMsg(RaceCtrlMsgBase):
+    def __init__(self, timestamp: float, driver_index: int, lap_number: Optional[int] = None) -> None:
+        """Driver pitting message
 
-    # Status messages
-    "DriverPittingRaceCtrlMsg",
-]
+        Args:
+            timestamp (float): Time at which the message was issued (seconds).
+            driver_index (int): Index of the driver.
+        """
+        super().__init__(
+            timestamp=timestamp,
+            message_type=MessageType.PITTING,
+            involved_drivers=[driver_index],
+            lap_number=lap_number)
+
+    def toJSON(self, driver_info_dict = None):
+        """Export the message as a JSON-ready dict."""
+        ret = super().toJSON(driver_info_dict)
+        if driver_info_dict and (driver_info := driver_info_dict.get(self.involved_drivers[0])):
+            ret["driver-info"] = driver_info
+        return ret
+

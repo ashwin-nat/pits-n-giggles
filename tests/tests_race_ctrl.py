@@ -32,9 +32,11 @@ from tests_base import F1TelemetryUnitTestsBase
 
 from lib.race_ctrl import (DriverRaceControlManager, MessageType,
                            RaceCtrlMsgBase, SessionRaceControlManager)
-from lib.race_ctrl.messages.driver_messages import (DriverPittingRaceCtrlMsg,
-                                                    FastestLapRaceCtrlMsg,
-                                                    OvertakeRaceCtrlMsg)
+from lib.race_ctrl.messages.driver_event_messages import (
+    FastestLapRaceCtrlMsg, OvertakeRaceCtrlMsg)
+from lib.race_ctrl.messages.driver_status_messages import (
+    DriverPittingRaceCtrlMsg
+)
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())

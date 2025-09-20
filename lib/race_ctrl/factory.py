@@ -28,15 +28,15 @@ from typing import Optional
 from lib.f1_types import PacketEventData
 
 from .messages import (ChequeredFlagRaceCtrlMsg, CollisionRaceCtrlMsg,
-                       DriverPittingRaceCtrlMsg, DrsDisabledRaceCtrlMsg,
-                       DrsEnabledRaceCtrlMsg, DtPenServedRaceCtrlMsg,
-                       FastestLapRaceCtrlMsg, LightsOutRaceCtrlMsg,
-                       OvertakeRaceCtrlMsg, PenaltyRaceCtrlMsg,
-                       RaceCtrlMsgBase, RaceWinnerRaceCtrlMsg,
-                       RedFlagRaceCtrlMsg, RetirementRaceCtrlMsg,
-                       SafetyCarRaceCtrlMsg, SessionEndRaceCtrlMsg,
-                       SessionStartRaceCtrlMsg, SgPenServedRaceCtrlMsg,
-                       SpeedTrapRaceCtrlMsg, StartLightsRaceCtrlMsg)
+                       DrsDisabledRaceCtrlMsg, DrsEnabledRaceCtrlMsg,
+                       DtPenServedRaceCtrlMsg, FastestLapRaceCtrlMsg,
+                       LightsOutRaceCtrlMsg, OvertakeRaceCtrlMsg,
+                       PenaltyRaceCtrlMsg, RaceCtrlMsgBase,
+                       RaceWinnerRaceCtrlMsg, RedFlagRaceCtrlMsg,
+                       RetirementRaceCtrlMsg, SafetyCarRaceCtrlMsg,
+                       SessionEndRaceCtrlMsg, SessionStartRaceCtrlMsg,
+                       SgPenServedRaceCtrlMsg, SpeedTrapRaceCtrlMsg,
+                       StartLightsRaceCtrlMsg)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
