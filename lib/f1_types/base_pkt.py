@@ -25,7 +25,7 @@
 from abc import abstractmethod
 from enum import Enum
 from functools import total_ordering
-from typing import Any, Dict, List, Optional, Type, TypeVar, Union, Tuple
+from typing import Any, Dict, List, Optional, Type, TypeVar, Union
 
 from .header import PacketHeader
 
@@ -117,6 +117,7 @@ class F1CompareableEnum(F1BaseEnum):
 class F1PacketBase:
     """
     Base class for parsed F1 telemetry packets.
+    All derived classes must use __slots__.
     """
 
     __slots__ = ("m_header",)
@@ -175,7 +176,7 @@ class F1SubPacketBase:
             )
 
         if fields is None:
-            fields = self.__slots__  # type: ignore[attr-defined]
+            fields = self.__slots__ # pylint: disable=no-member
 
         changes: Dict[str, Dict[str, Any]] = {}
         for field in fields:
