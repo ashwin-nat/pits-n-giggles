@@ -25,13 +25,14 @@
 from abc import abstractmethod
 from enum import Enum
 from functools import total_ordering
-from typing import Any, Dict, Optional, Type, TypeVar, Union
+from typing import Any, Dict, List, Optional, Type, TypeVar, Union
 
 from .header import PacketHeader
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
-T = TypeVar("T", bound="F1BaseEnum")
+T_Enum = TypeVar("T_Enum", bound="F1BaseEnum")
+T_SubPacket = TypeVar("T_SubPacket", bound="F1SubPacketBase")
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -52,7 +53,7 @@ class F1BaseEnum(Enum):
         return any(value == member.value for member in cls)
 
     @classmethod
-    def safeCast(cls: Type[T], value: Union[int, T]) -> Union[T, int]:
+    def safeCast(cls: Type[T_Enum], value: Union[int, T_Enum]) -> Union[T_Enum, int]:
         """
         Safely cast a value to the enum type.
 
@@ -116,6 +117,7 @@ class F1CompareableEnum(F1BaseEnum):
 class F1PacketBase:
     """
     Base class for parsed F1 telemetry packets.
+    All derived classes must use __slots__.
     """
 
     __slots__ = ("m_header",)
@@ -145,13 +147,42 @@ class F1PacketBase:
 class F1SubPacketBase:
     """
     Base class for parsed nested F1 telemetry packets.
+    All derived classes must use __slots__.
     """
 
     @abstractmethod
     def toJSON(self) -> Dict[str, Any]:
-        """Converts the object to a dictionary suitable for JSON serialization.
+        raise NotImplementedError(f"{self.__class__.__name__} must implement toJSON()")
+
+    def diff_fields(
+        self: T_SubPacket,
+        other: T_SubPacket,
+        fields: Optional[List[str]] = None
+    ) -> Dict[str, Dict[str, Any]]:
+        """
+        Compare two packet objects and return a dict of changed fields.
+
+        Args:
+            other: Another object of the same subclass.
+            fields: Optional list of field names to check.
+                    If None, defaults to this class's __slots__.
 
         Returns:
-            Dict[str, Any]: A dictionary representing the JSON-compatible data.
+            Dict[str, Dict[str, Any]]: {field: {"old_value": old, "new_value": new}}
         """
-        raise NotImplementedError(f"{self.__class__.__name__} must implement toJSON()")
+        if type(self) is not type(other):
+            raise TypeError(
+                f"Cannot diff objects of different types: {type(self)} vs {type(other)}"
+            )
+
+        if fields is None:
+            fields = self.__slots__ # pylint: disable=no-member
+
+        changes: Dict[str, Dict[str, Any]] = {}
+        for field in fields:
+            old_val = getattr(self, field)
+            new_val = getattr(other, field)
+            if old_val != new_val:
+                changes[field] = {"old_value": old_val, "new_value": new_val}
+
+        return changes
