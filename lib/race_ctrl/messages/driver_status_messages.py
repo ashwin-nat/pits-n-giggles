@@ -41,7 +41,7 @@ class DriverPittingRaceCtrlMsg(RaceCtrlMsgBase):
             involved_drivers=[driver_index],
             lap_number=lap_number)
 
-    def toJSON(self, driver_info_dict = None):
+    def toJSON(self, driver_info_dict = None) -> Dict[str, Any]:
         """Export the message as a JSON-ready dict."""
         ret = super().toJSON(driver_info_dict)
         if driver_info_dict and (driver_info := driver_info_dict.get(self.involved_drivers[0])):
@@ -71,7 +71,7 @@ class CarDamageRaceCtrlMerssage(RaceCtrlMsgBase):
         self.m_old_value: int | float = old_value
         self.m_new_value: int | float = new_value
 
-    def toJSON(self, driver_info_dict = None):
+    def toJSON(self, driver_info_dict = None) -> Dict[str, Any]:
         """Export the message as a JSON-ready dict."""
         ret = super().toJSON(driver_info_dict)
         ret["damaged-part"] = self.m_damaged_part
@@ -95,7 +95,7 @@ class WingChangeRaceCtrlMsg(RaceCtrlMsgBase):
             involved_drivers=[driver_index],
             lap_number=lap_number)
 
-    def toJSON(self, driver_info_dict = None):
+    def toJSON(self, driver_info_dict = None) -> Dict[str, Any]:
         """Export the message as a JSON-ready dict."""
         ret = super().toJSON(driver_info_dict)
         if driver_info_dict and (driver_info := driver_info_dict.get(self.involved_drivers[0])):
