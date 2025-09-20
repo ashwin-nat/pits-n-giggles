@@ -49,6 +49,7 @@ class MessageType(Enum):
     SAFETY_CAR = auto()
     COLLISION = auto()
     PITTING = auto()
+    CAR_DAMAGE = auto()
 
     def __str__(self) -> str:
         return self.name

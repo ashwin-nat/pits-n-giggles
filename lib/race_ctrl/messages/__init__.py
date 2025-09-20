@@ -25,7 +25,7 @@
 from .base import MessageType, RaceCtrlMsgBase
 from .driver_event_messages import (FastestLapRaceCtrlMsg, OvertakeRaceCtrlMsg,
                               RetirementRaceCtrlMsg, SpeedTrapRaceCtrlMsg)
-from .driver_status_messages import DriverPittingRaceCtrlMsg
+from .driver_status_messages import DriverPittingRaceCtrlMsg, CarDamageRaceCtrlMerssage
 from .incident_messages import (DtPenServedRaceCtrlMsg, PenaltyRaceCtrlMsg, CollisionRaceCtrlMsg,
                                 SgPenServedRaceCtrlMsg)
 from .session_messages import (ChequeredFlagRaceCtrlMsg,
@@ -50,6 +50,7 @@ __all__ = [
 
     # driver - status
     "DriverPittingRaceCtrlMsg",
+    "CarDamageRaceCtrlMerssage",
 
     # incident
     "CollisionRaceCtrlMsg",
