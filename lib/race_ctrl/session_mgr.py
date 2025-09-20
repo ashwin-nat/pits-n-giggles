@@ -62,7 +62,7 @@ class SessionRaceControlManager:
         message._id = len(self.messages)
         self.messages.append(message)
         if is_propagated:
-            return
+            return message._id
 
         for driver_idx in message.involved_drivers:
             if driver_mgr := self.drivers.get(driver_idx):

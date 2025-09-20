@@ -22,7 +22,8 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
+
 from .base import MessageType, RaceCtrlMsgBase
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -54,8 +55,8 @@ class CarDamageRaceCtrlMerssage(RaceCtrlMsgBase):
                  driver_index: int,
                  lap_number: int,
                  damaged_part: str,
-                 old_value: int | float,
-                 new_value: int | float) -> None:
+                 old_value: Union[int, float],
+                 new_value: Union[int, float]) -> None:
         """Driver pitting message
 
         Args:
@@ -68,8 +69,8 @@ class CarDamageRaceCtrlMerssage(RaceCtrlMsgBase):
             involved_drivers=[driver_index],
             lap_number=lap_number)
         self.m_damaged_part: str = damaged_part
-        self.m_old_value: int | float = old_value
-        self.m_new_value: int | float = new_value
+        self.m_old_value: Union[int, float] = old_value
+        self.m_new_value: Union[int, float] = new_value
 
     def toJSON(self, driver_info_dict = None) -> Dict[str, Any]:
         """Export the message as a JSON-ready dict."""
