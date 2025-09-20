@@ -32,7 +32,8 @@ from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
 from lib.f1_types import (CarDamageData, F1Utils, LapData,
                           PacketLapPositionsData, ResultStatus, SafetyCarType,
                           SessionType, TrackID)
-from lib.race_ctrl import DriverPittingRaceCtrlMsg, DriverRaceControlManager, CarDamageRaceCtrlMerssage
+from lib.race_ctrl import (CarDamageRaceCtrlMerssage, DriverPittingRaceCtrlMsg,
+                           DriverRaceControlManager, WingChangeRaceCtrlMsg)
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 
 from .car_info import CarInfo
@@ -1108,13 +1109,25 @@ class DataPerDriver:
         changed_fields = self.m_packet_copies.m_packet_car_damage.diff_fields(car_damage,
                                                                         self.CAR_DMG_RACE_CTRL_MSG_INTERESTED_FIELDS)
         for field, diff in changed_fields.items():
-            self.m_race_ctrl.add_message(CarDamageRaceCtrlMerssage(
-                timestamp=time.time(),
-                driver_index=self.m_index,
-                lap_number=self.m_lap_info.m_current_lap,
-                damaged_part=field,
-                old_value=diff["old_value"],
-                new_value=diff["new_value"]
-            ))
-            self.m_logger.debug("Driver %s - %s changed from %s to %s. Added car damage race control message",
-                                str(self), field, diff["old_value"], diff["new_value"])
+            new_value = diff["new_value"]
+            old_value = diff["old_value"]
+            if new_value > old_value:
+                self.m_race_ctrl.add_message(CarDamageRaceCtrlMerssage(
+                    timestamp=time.time(),
+                    driver_index=self.m_index,
+                    lap_number=self.m_lap_info.m_current_lap,
+                    damaged_part=field,
+                    old_value=old_value,
+                    new_value=new_value
+                ))
+                msg_type_str = "car damage"
+            else:
+                self.m_race_ctrl.add_message(WingChangeRaceCtrlMsg(
+                    timestamp=time.time(),
+                    driver_index=self.m_index,
+                    lap_number=self.m_lap_info.m_current_lap
+                ))
+                msg_type_str = "wing change"
+
+            self.m_logger.debug("Driver %s - %s changed from %s to %s. Added %s race control message",
+                                str(self), field, diff["old_value"], diff["new_value"], msg_type_str)
