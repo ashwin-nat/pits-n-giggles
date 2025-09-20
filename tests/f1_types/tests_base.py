@@ -37,13 +37,32 @@ class Severity(F1CompareableEnum):
     MEDIUM = 2
     HIGH = 3
 
-class DummyPacket(F1PacketBase):
+class PacketWithoutToJSON(F1PacketBase):
     def __init__(self, header):
         super().__init__(header)
 
-class DummySubPacket(F1SubPacketBase):
+class SubPacketWithoutToJSON(F1SubPacketBase):
     def __init__(self, _data: int):
         pass
+
+class DummyDiffPacket(F1SubPacketBase):
+    __slots__ = ("a", "b")
+
+    def __init__(self, a, b):
+        self.a = a
+        self.b = b
+
+    def toJSON(self):
+        raise NotImplementedError
+
+class OtherPacket(F1SubPacketBase):
+    __slots__ = ("x",)
+
+    def __init__(self, x):
+        self.x = x
+
+    def toJSON(self):
+        return {"x": self.x}
 
 # --- Test cases ---
 
@@ -73,16 +92,40 @@ class TestF1PacketBase(F1TypesTest):
         self.m_header = self.getRandomHeader(packet_type=F1PacketType.MOTION, game_year=25, num_players=22)
 
     def test_header_assignment(self):
-        packet = DummyPacket(self.m_header)
+        packet = PacketWithoutToJSON(self.m_header)
         self.assertEqual(packet.m_header, self.m_header)
 
     def test_not_implemented(self):
-        packet = DummyPacket(self.m_header)
+        packet = PacketWithoutToJSON(self.m_header)
         with self.assertRaises(NotImplementedError):
             packet.toJSON()
 
 class TestF1SubPacketBase(F1TypesTest):
     def test_not_implemented(self):
-        packet = DummySubPacket(1)
+        packet = SubPacketWithoutToJSON(1)
         with self.assertRaises(NotImplementedError):
             packet.toJSON()
+
+    def test_diff_no_changes(self):
+        p1 = DummyDiffPacket(1, 2)
+        p2 = DummyDiffPacket(1, 2)
+        changes = p1.diff_fields(p2)
+        self.assertEqual(changes, {})
+
+    def test_diff_with_changes(self):
+        p1 = DummyDiffPacket(1, 2)
+        p2 = DummyDiffPacket(1, 3)
+        changes = p1.diff_fields(p2)
+        self.assertEqual(changes, {"b": {"old_value": 2, "new_value": 3}})
+
+    def test_diff_with_field_subset(self):
+        p1 = DummyDiffPacket(1, 2)
+        p2 = DummyDiffPacket(9, 3)
+        changes = p1.diff_fields(p2, ["b"])
+        self.assertEqual(changes, {"b": {"old_value": 2, "new_value": 3}})
+
+    def test_diff_type_mismatch(self):
+        p1 = DummyDiffPacket(1, 2)
+        p2 = OtherPacket(5)
+        with self.assertRaises(TypeError):
+            p1.diff_fields(p2)
