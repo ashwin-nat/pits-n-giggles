@@ -29,9 +29,10 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
-from lib.f1_types import (F1Utils, LapData, PacketLapPositionsData,
-                          ResultStatus, SafetyCarType, SessionType, TrackID)
-from lib.race_ctrl import DriverPittingRaceCtrlMsg, DriverRaceControlManager
+from lib.f1_types import (CarDamageData, F1Utils, LapData,
+                          PacketLapPositionsData, ResultStatus, SafetyCarType,
+                          SessionType, TrackID)
+from lib.race_ctrl import DriverPittingRaceCtrlMsg, DriverRaceControlManager, CarDamageRaceCtrlMerssage
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 
 from .car_info import CarInfo
@@ -82,6 +83,12 @@ class DataPerDriver:
         "m_pending_events_mgr",
         "m_race_ctrl",
     )
+
+    CAR_DMG_RACE_CTRL_MSG_INTERESTED_FIELDS = [
+        "m_frontLeftWingDamage",
+        "m_frontRightWingDamage",
+        "m_rearWingDamage",
+    ]
 
     def __repr__(self) -> str:
         """Get the string representation of this object
@@ -1088,3 +1095,26 @@ class DataPerDriver:
             raise ValueError("Insert range goes out of bounds of the target list.")
 
         target[start:start + len(insert)] = insert
+
+    def addCarDamageRaceCtrlMsg(self, car_damage: CarDamageData) -> None:
+        """Add race control messages for car damage changes
+
+        Args:
+            car_damage (CarDamageData): The car damage data
+        """
+        if not self.m_packet_copies.m_packet_car_damage:
+            return
+
+        changed_fields = self.m_packet_copies.m_packet_car_damage.diff_fields(car_damage,
+                                                                        self.CAR_DMG_RACE_CTRL_MSG_INTERESTED_FIELDS)
+        for field, diff in changed_fields.items():
+            self.m_race_ctrl.add_message(CarDamageRaceCtrlMerssage(
+                timestamp=time.time(),
+                driver_index=self.m_index,
+                lap_number=self.m_lap_info.m_current_lap,
+                damaged_part=field,
+                old_value=diff["old_value"],
+                new_value=diff["new_value"]
+            ))
+            self.m_logger.debug("Driver %s - %s changed from %s to %s. Added car damage race control message",
+                                str(self), field, diff["old_value"], diff["new_value"])

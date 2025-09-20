@@ -786,6 +786,7 @@ class SessionState:
         """
         for index, car_damage in enumerate(packet.m_carDamageData):
             obj_to_be_updated = self._getObjectByIndex(index, reason='Car damage update')
+            obj_to_be_updated.addCarDamageRaceCtrlMsg(car_damage)
             obj_to_be_updated.m_packet_copies.m_packet_car_damage = car_damage
             obj_to_be_updated.m_tyre_info.tyre_wear = TyreWearPerLap(
                 fl_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
