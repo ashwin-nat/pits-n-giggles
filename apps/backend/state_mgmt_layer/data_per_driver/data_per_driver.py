@@ -173,12 +173,11 @@ class DataPerDriver:
 
         return has_valid_position and bool(has_driver_info)
 
-
     def toJSON(self,
                index: Optional[int] = None,
                include_tyre_wear_prediction : Optional[bool] = False,
                selected_pit_stop_lap : Optional[int] = None,
-               save_race_ctrl : Optional[bool] = False,
+               include_race_ctrl_msgs : Optional[bool] = False,
                driver_info_dict: Optional[Dict[int, dict]] = None) -> Dict[str, Any]:
         """Get a JSON representation of this DataPerDriver object
 
@@ -186,7 +185,7 @@ class DataPerDriver:
             index (int): The index number. Defaults to None.
             include_tyre_wear_prediction (Optional[bool]): Whether to include the tyre wear prediction
             selected_pit_stop_lap (Optional[int]): The lap number of the selected pit stop
-            save_race_ctrl (Optional[bool]): Whether to save race control
+            include_race_ctrl_msgs (Optional[bool]): Whether to include race control messages
             driver_info_dict (Optional[Dict[int, dict]]): Dictionary of driver info
 
         Returns:
@@ -234,7 +233,7 @@ class DataPerDriver:
         final_json["collisions"] = self.getCollisionStatsJSON()
 
         # Race control
-        if save_race_ctrl:
+        if include_race_ctrl_msgs:
             final_json["race-control"] = self.m_race_ctrl.toJSON(driver_info_dict)
 
         # Return this fully prepped JSON

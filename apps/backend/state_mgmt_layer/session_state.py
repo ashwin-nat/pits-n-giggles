@@ -299,7 +299,8 @@ class SessionState:
         m_udp_custom_marker_action_code (Optional[int]): The UDP action code for custom marker
         m_udp_tyre_delta_action_code (Optional[int]): The UDP action code for tyre delta notification
         m_process_car_setups (bool): Flag indicating whether to process car setups packets.
-        m_process_race_ctrl_msg (bool): Flag indicating whether to process race control messages.
+        m_save_race_ctrl_msgs (bool): Flag indicating whether to save race control messages to file
+                (will still be processed regardless)
         m_custom_markers_history (CustomMarkersHistory): An instance tracking custom markers history.
         m_first_session_update_received (bool): Flag indicating whether the first session update packet has been received.
         m_version (str): Version string
@@ -327,7 +328,7 @@ class SessionState:
         'm_overtakes_history',
         'm_session_info',
         'm_process_car_setups',
-        'm_process_race_ctrl_msg',
+        'm_save_race_ctrl_msgs',
         'm_custom_markers_history',
         'm_first_session_update_received',
         'm_version',
@@ -368,7 +369,7 @@ class SessionState:
 
         # Config params
         self.m_process_car_setups: bool = settings.Privacy.process_car_setup
-        self.m_process_race_ctrl_msg: bool = settings.Capture.save_race_ctrl_msg
+        self.m_save_race_ctrl_msgs: bool = settings.Capture.save_race_ctrl_msg
 
         self.m_custom_markers_history = CustomMarkersHistory()
         self.m_connected_to_sim: bool = False
@@ -709,7 +710,7 @@ class SessionState:
             "classification-data" : []
         }
         speed_trap_records = []
-        driver_info_dict = self._getRaceCtrlHelperDict() if self.m_process_race_ctrl_msg else None
+        driver_info_dict = self._getRaceCtrlHelperDict() if self.m_save_race_ctrl_msgs else None
 
         # --- Initialize optional structures
         if is_position_history_supported:
@@ -723,7 +724,7 @@ class SessionState:
             if driver and driver.is_valid:
                 # Add driver’s classification info
                 final_json["classification-data"].append(driver.toJSON(index=index,
-                                                                       save_race_ctrl=self.m_process_race_ctrl_msg,
+                                                                       include_race_ctrl_msgs=self.m_save_race_ctrl_msgs,
                                                                        driver_info_dict=driver_info_dict))
                 # Collect speed trap info
                 speed_trap_records.append(driver.getSpeedTrapRecordJSON())
@@ -772,7 +773,7 @@ class SessionState:
         }
 
         # Finally, race control messages and app version
-        if self.m_process_race_ctrl_msg:
+        if self.m_save_race_ctrl_msgs:
             final_json['race-control'] = self.getRaceControlMessagesJSON(driver_info_dict)
         final_json['version'] = self.m_version
         return final_json
@@ -980,8 +981,8 @@ class SessionState:
             packet (PacketEventData): The parsed object containing the event data packet's contents
         """
 
-        if not self.m_process_race_ctrl_msg:
-            return
+        # if not self.m_save_race_ctrl_msg:
+        #     return
 
         # Get lap number from leader
         if driver := self.getDriverInfoByPosition(1):
@@ -1019,7 +1020,7 @@ class SessionState:
                 selected_pit_stop_lap = None
         driver_info_dict = self._getRaceCtrlHelperDict()
         final_json = driver_info_obj.toJSON(index, include_wear_prediction, selected_pit_stop_lap,
-                                            self.m_process_race_ctrl_msg, driver_info_dict)
+                                            include_race_ctrl_msgs=True, driver_info_dict=driver_info_dict)
         final_json["circuit"] = str(self.m_session_info.m_track)
         final_json["session-type"] = str(self.m_session_info.m_session_type)
         final_json["is-finish-line-after-pit-garage"] = F1Utils.isFinishLineAfterPitGarage(self.m_session_info.m_track) \
@@ -1039,7 +1040,8 @@ class SessionState:
             "collisions" : self.getCollisionStatsJSON(),
             "session-info" : self.m_session_info.m_packet_session.toJSON() \
                 if self.m_session_info.m_packet_session else None,
-            "race-control" : self.getRaceControlMessagesJSON() if self.m_process_race_ctrl_msg else None
+            "race-control" : self.getRaceControlMessagesJSON()
+            # "race-control" : self.getRaceControlMessagesJSON() if self.m_save_race_ctrl_msg else None
         }
 
     def getCollisionStatsJSON(self) -> Dict[str, Any]:
@@ -1522,9 +1524,9 @@ class SessionState:
         """
         Return a list of dictionaries containing index, driver name, position, and participant data.
         """
-
-        return [driver_data.toJSON(index) for index, driver_data in enumerate(self.m_driver_data) \
-                if driver_data and driver_data.is_valid]
+        driver_info_dict = self._getRaceCtrlHelperDict()
+        return [driver_data.toJSON(index, include_race_ctrl_msgs=True, driver_info_dict=driver_info_dict) \
+                for index, driver_data in enumerate(self.m_driver_data) if driver_data and driver_data.is_valid]
 
 
     def _safeMin(self, arg1: int, arg2: Optional[int]) -> int:
