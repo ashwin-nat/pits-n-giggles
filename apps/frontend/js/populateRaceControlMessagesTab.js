@@ -113,6 +113,20 @@ const detailRenderers = {
       `${scType} - ${eventType}`,
   COLLISION: ({ 'driver-1-info': d1, 'driver-2-info': d2 }) =>
       `${getDriverDetailsStr(d1 ?? null)} and ${getDriverDetailsStr(d2 ?? null)}`,
+  PITTING: ({ 'driver-info': d, 'lap-number': lap }) =>
+      `Driver: ${getDriverDetailsStr(d ?? null)}, Lap: ${lap}`,
+  CAR_DAMAGE: ({ 'damaged-part': part, 'old-value': oldValue, 'new-value': newValue, 'driver-info': d }) => {
+    const partStr = {
+        'm_frontLeftWingDamage': 'Front Wing (Left)',
+        'm_frontRightWingDamage': 'Front Wing (Right)',
+        'm_rearWingDamage': 'Rear Wing',
+    }[part] ?? 'Unknown';
+    const base = `Part: ${partStr}, Old Value: ${oldValue}, New Value: ${newValue}`;
+    return d ? `Driver: ${getDriverDetailsStr(d ?? null)} - ${base}` : base;
+  },
+  WING_CHANGE: ({ 'driver-info': d, 'lap-number': lap }) =>
+      `Driver: ${getDriverDetailsStr(d ?? null)}, Lap: ${lap}`,
+
   DEFAULT: msg => `Type: ${msg['message-type']} - Placeholder details.`
 };
 
