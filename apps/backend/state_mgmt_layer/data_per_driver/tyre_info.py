@@ -306,16 +306,6 @@ class TyreSetHistoryManager:
 
         return self.getEntry(index=-1)
 
-    def getSecondLastEntry(self) -> Optional[TyreSetHistoryEntry]:
-        """Get the entry in the tyre set history collection at the specified index.
-                Caller's responsibility to ensure there is at least two entries
-
-        Returns:
-            Optional[TyreSetHistoryEntry]: History item (may be None)
-        """
-
-        return self.getEntry(index=-2)
-
     def toJSON(self, include_wear_history: bool, tyre_sets_packet: PacketTyreSetsData, final_lap_num: int) -> List[Dict[str, Any]]:
         """Get the JSON representation of the tyre set history
 
