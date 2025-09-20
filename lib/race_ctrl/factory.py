@@ -28,18 +28,19 @@ from typing import Optional
 from lib.f1_types import PacketEventData
 
 from .messages import (ChequeredFlagRaceCtrlMsg, CollisionRaceCtrlMsg,
-                       DrsDisabledRaceCtrlMsg, DrsEnabledRaceCtrlMsg,
-                       DtPenServedRaceCtrlMsg, FastestLapRaceCtrlMsg,
-                       LightsOutRaceCtrlMsg, OvertakeRaceCtrlMsg,
-                       PenaltyRaceCtrlMsg, RaceCtrlMsgBase, RedFlagRaceCtrlMsg,
-                       RaceWinnerRaceCtrlMsg, RetirementRaceCtrlMsg,
+                       DriverPittingRaceCtrlMsg, DrsDisabledRaceCtrlMsg,
+                       DrsEnabledRaceCtrlMsg, DtPenServedRaceCtrlMsg,
+                       FastestLapRaceCtrlMsg, LightsOutRaceCtrlMsg,
+                       OvertakeRaceCtrlMsg, PenaltyRaceCtrlMsg,
+                       RaceCtrlMsgBase, RaceWinnerRaceCtrlMsg,
+                       RedFlagRaceCtrlMsg, RetirementRaceCtrlMsg,
                        SafetyCarRaceCtrlMsg, SessionEndRaceCtrlMsg,
                        SessionStartRaceCtrlMsg, SgPenServedRaceCtrlMsg,
                        SpeedTrapRaceCtrlMsg, StartLightsRaceCtrlMsg)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-def race_ctrl_msg_factory(packet: PacketEventData, lap_number: int) -> Optional[RaceCtrlMsgBase]:
+def race_ctrl_event_msg_factory(packet: PacketEventData, lap_number: int) -> Optional[RaceCtrlMsgBase]:
     """Create a race control message from a packet
 
     Args:

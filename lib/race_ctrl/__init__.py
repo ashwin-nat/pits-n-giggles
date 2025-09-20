@@ -25,7 +25,7 @@
 from .driver_mgr import DriverRaceControlManager
 from .messages import MessageType, RaceCtrlMsgBase
 from .session_mgr import SessionRaceControlManager
-from .factory import race_ctrl_msg_factory
+from .factory import race_ctrl_event_msg_factory
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -34,5 +34,5 @@ __all__ = [
     "RaceCtrlMsgBase",
     "DriverRaceControlManager",
     "SessionRaceControlManager",
-    "race_ctrl_msg_factory",
+    "race_ctrl_event_msg_factory",
 ]
