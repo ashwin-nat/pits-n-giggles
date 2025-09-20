@@ -468,6 +468,12 @@ class EngViewRaceTable {
                         context: {displayName: "Tyre Compound"},
                         field: "tyre-info.visual-tyre-compound",
                         flex: 4,
+                        valueGetter: (params) => {
+                            const tyreInfo = params.data["tyre-info"];
+                            return `${tyreInfo["visual-tyre-compound"]}.
+                                    ${tyreInfo["tyre-age"]}.
+                                    ${tyreInfo["num-pitstops"]}`;
+                        },
                         cellRenderer: (params) => {
                             const tyreInfo = params.data["tyre-info"];
                             const tyreIcon = this.iconCache.getIcon(tyreInfo["visual-tyre-compound"]).outerHTML;
