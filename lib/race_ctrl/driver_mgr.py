@@ -22,9 +22,12 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from .messages import RaceCtrlMsgBase
+
+if TYPE_CHECKING:
+    from .session_mgr import SessionRaceControlManager
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -40,14 +43,28 @@ class DriverRaceControlManager:
     def __init__(self, driver_index: int) -> None:
         self.driver_index: int = driver_index
         self.messages: List[RaceCtrlMsgBase] = []
+        self.session_mgr: Optional["SessionRaceControlManager"] = None
 
-    def add_message(self, message: RaceCtrlMsgBase) -> None:
-        """Register a message reference if the driver is involved."""
+    def add_message(self, message: RaceCtrlMsgBase, propagate: bool = True) -> None:
+        """Register a message reference if the driver is involved.
+
+        Args:
+            message (RaceCtrlMsgBase): The message to register.
+            propagate (bool): Whether to propagate the message to the session manager.
+                            If true, the message will be added to the session manager as well.
+        """
         self.messages.append(message)
+        if propagate:
+            assert self.session_mgr
+            self.session_mgr.add_message(message, is_propagated=True)
 
     def clear(self) -> None:
         """Clear all stored messages for this driver."""
         self.messages.clear()
+
+    def register_session_manager(self, manager: "SessionRaceControlManager") -> None:
+        """Register a session manager with this driver manager."""
+        self.session_mgr = manager
 
     def toJSON(self, driver_info: Optional[dict] = None) -> Dict[str, Any]:
         """Export all driver messages as JSON-ready dicts with implicit IDs."""

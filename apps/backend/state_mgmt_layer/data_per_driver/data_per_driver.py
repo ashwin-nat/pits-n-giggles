@@ -23,14 +23,18 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
+import time
 from copy import deepcopy
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
-from lib.f1_types import (F1Utils, LapData, PacketLapPositionsData,
-                          ResultStatus, SafetyCarType, SessionType, TrackID)
-from lib.race_ctrl import DriverRaceControlManager
+from lib.f1_types import (CarDamageData, F1Utils, LapData,
+                          PacketLapPositionsData, ResultStatus, SafetyCarType,
+                          SessionType, TrackID)
+from lib.race_ctrl import (CarDamageRaceControlMessage, DriverPittingRaceCtrlMsg,
+                           DriverRaceControlManager,
+                           TyreChangeRaceControlMessage, WingChangeRaceCtrlMsg)
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 
 from .car_info import CarInfo
@@ -81,6 +85,12 @@ class DataPerDriver:
         "m_pending_events_mgr",
         "m_race_ctrl",
     )
+
+    CAR_DMG_RACE_CTRL_MSG_INTERESTED_FIELDS = [
+        "m_frontLeftWingDamage",
+        "m_frontRightWingDamage",
+        "m_rearWingDamage",
+    ]
 
     def __repr__(self) -> str:
         """Get the string representation of this object
@@ -708,6 +718,27 @@ class DataPerDriver:
         self.m_tyre_info.m_tyre_wear_extrapolator.clear()
         self.m_tyre_info.m_tyre_wear_extrapolator.add(initial_tyre_wear)
 
+        # Add race control message - there needs to be atleast 2 tyre set history entries (one prev and one current)
+        if self.m_tyre_info.m_tyre_set_history_manager.length >= 2:
+            prev_entry = self.m_tyre_info.m_tyre_set_history_manager.getLastEntry()
+            curr_entry = self.m_tyre_info.m_tyre_set_history_manager.getEntry(index=-2)
+            if prev_entry and curr_entry and self.m_packet_copies.m_packet_tyre_sets:
+                prev_index = prev_entry.m_fitted_index
+                curr_index = curr_entry.m_fitted_index
+                prev_set = self.m_packet_copies.m_packet_tyre_sets.getTyreSet(prev_index)
+                curr_set = self.m_packet_copies.m_packet_tyre_sets.getTyreSet(curr_index)
+                if prev_set and curr_set:
+                    self.m_logger.debug("Driver %s - tyre set change detected. prev tyre set: %s, curr tyre set: %s",
+                                        str(self), str(prev_set), str(curr_set))
+                    self.m_race_ctrl.add_message(TyreChangeRaceControlMessage(
+                        timestamp=time.time(),
+                        driver_index=self.m_index,
+                        lap_number=lap_number,
+                        old_tyre_compound=str(prev_set.m_visualTyreCompound),
+                        old_tyre_index=prev_index,
+                        new_tyre_compound=str(curr_set.m_visualTyreCompound),
+                        new_tyre_index=curr_index))
+
     def processPittingStatus(self, lap_data: LapData, track: TrackID) -> None:
         """Process the pit status data
 
@@ -724,6 +755,10 @@ class DataPerDriver:
                 # note down curr tyre wear for delayed tyre set change handling
                 # take a deepcopy since this obj is volatile
                 self.m_pending_events_mgr.data = deepcopy(self.m_tyre_info.tyre_wear)
+            self.m_race_ctrl.add_message(DriverPittingRaceCtrlMsg(
+                timestamp=time.time(),
+                driver_index=self.m_index,
+                lap_number=lap_data.m_currentLapNum))
         elif self.m_lap_info.m_is_pitting and not curr_is_pitting:
             # leaving pits
             self.m_logger.debug("Driver %s - leaving pits.", str(self))
@@ -1083,3 +1118,38 @@ class DataPerDriver:
             raise ValueError("Insert range goes out of bounds of the target list.")
 
         target[start:start + len(insert)] = insert
+
+    def addCarDamageRaceCtrlMsg(self, car_damage: CarDamageData) -> None:
+        """Add race control messages for car damage changes
+
+        Args:
+            car_damage (CarDamageData): The car damage data
+        """
+        if not self.m_packet_copies.m_packet_car_damage:
+            return
+
+        changed_fields = self.m_packet_copies.m_packet_car_damage.diff_fields(car_damage,
+                                                                        self.CAR_DMG_RACE_CTRL_MSG_INTERESTED_FIELDS)
+        for field, diff in changed_fields.items():
+            new_value = diff["new_value"]
+            old_value = diff["old_value"]
+            if new_value > old_value:
+                self.m_race_ctrl.add_message(CarDamageRaceControlMessage(
+                    timestamp=time.time(),
+                    driver_index=self.m_index,
+                    lap_number=self.m_lap_info.m_current_lap,
+                    damaged_part=field,
+                    old_value=old_value,
+                    new_value=new_value
+                ))
+                msg_type_str = "car damage"
+            else:
+                self.m_race_ctrl.add_message(WingChangeRaceCtrlMsg(
+                    timestamp=time.time(),
+                    driver_index=self.m_index,
+                    lap_number=self.m_lap_info.m_current_lap
+                ))
+                msg_type_str = "wing change"
+
+            self.m_logger.debug("Driver %s - %s changed from %s to %s. Added %s race control message",
+                                str(self), field, diff["old_value"], diff["new_value"], msg_type_str)

@@ -45,20 +45,28 @@ class SessionRaceControlManager:
     def register_driver(self, driver_index: int, driver_mgr: DriverRaceControlManager) -> None:
         """Register a driver manager with this session."""
         self.drivers[driver_index] = driver_mgr
+        driver_mgr.register_session_manager(self)
 
-    def add_message(self, message: RaceCtrlMsgBase) -> int:
+    def add_message(self, message: RaceCtrlMsgBase, is_propagated: bool = False) -> int:
         """
         Add a race control message to the session and relevant drivers.
+
+        Args:
+            message (RaceCtrlMsgBase): The message to add.
+            is_propagated (bool): Whether the message is propagated from the driver to the session. If true, the message
+                                  will not be added to the driver manager (given that the message came from the driver).
 
         Returns:
             int: The message ID (its index in the session list).
         """
         message._id = len(self.messages)
         self.messages.append(message)
+        if is_propagated:
+            return message._id
 
         for driver_idx in message.involved_drivers:
             if driver_mgr := self.drivers.get(driver_idx):
-                driver_mgr.add_message(message)
+                driver_mgr.add_message(message, propagate=False)
 
         return message._id
 

@@ -23,10 +23,15 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .base import MessageType, RaceCtrlMsgBase
-from .driver_messages import (FastestLapRaceCtrlMsg, OvertakeRaceCtrlMsg,
-                              RetirementRaceCtrlMsg, SpeedTrapRaceCtrlMsg)
-from .incident_messages import (DtPenServedRaceCtrlMsg, PenaltyRaceCtrlMsg, CollisionRaceCtrlMsg,
-                                SgPenServedRaceCtrlMsg)
+from .driver_event_messages import (FastestLapRaceCtrlMsg, OvertakeRaceCtrlMsg,
+                                    RetirementRaceCtrlMsg,
+                                    SpeedTrapRaceCtrlMsg)
+from .driver_status_messages import (CarDamageRaceControlMessage,
+                                     DriverPittingRaceCtrlMsg,
+                                     TyreChangeRaceControlMessage,
+                                     WingChangeRaceCtrlMsg)
+from .incident_messages import (CollisionRaceCtrlMsg, DtPenServedRaceCtrlMsg,
+                                PenaltyRaceCtrlMsg, SgPenServedRaceCtrlMsg)
 from .session_messages import (ChequeredFlagRaceCtrlMsg,
                                DrsDisabledRaceCtrlMsg, DrsEnabledRaceCtrlMsg,
                                LightsOutRaceCtrlMsg, RaceWinnerRaceCtrlMsg,
@@ -41,11 +46,17 @@ __all__ = [
     "MessageType",
     "RaceCtrlMsgBase",
 
-    # driver
+    # driver - event
     "FastestLapRaceCtrlMsg",
     "RetirementRaceCtrlMsg",
     "SpeedTrapRaceCtrlMsg",
     "OvertakeRaceCtrlMsg",
+
+    # driver - status
+    "DriverPittingRaceCtrlMsg",
+    "CarDamageRaceControlMessage",
+    "WingChangeRaceCtrlMsg",
+    "TyreChangeRaceControlMessage",
 
     # incident
     "CollisionRaceCtrlMsg",

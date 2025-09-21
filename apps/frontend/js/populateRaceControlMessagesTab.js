@@ -113,6 +113,22 @@ const detailRenderers = {
       `${scType} - ${eventType}`,
   COLLISION: ({ 'driver-1-info': d1, 'driver-2-info': d2 }) =>
       `${getDriverDetailsStr(d1 ?? null)} and ${getDriverDetailsStr(d2 ?? null)}`,
+  PITTING: ({ 'driver-info': d, 'lap-number': lap }) =>
+      `Driver: ${getDriverDetailsStr(d ?? null)}, Lap: ${lap}`,
+  CAR_DAMAGE: ({ 'damaged-part': part, 'old-value': oldValue, 'new-value': newValue, 'driver-info': d }) => {
+    const partStr = {
+        'm_frontLeftWingDamage': 'Front Wing (Left)',
+        'm_frontRightWingDamage': 'Front Wing (Right)',
+        'm_rearWingDamage': 'Rear Wing',
+    }[part] ?? 'Unknown';
+    const base = `Part: ${partStr}, Old Value: ${oldValue}, New Value: ${newValue}`;
+    return d ? `Driver: ${getDriverDetailsStr(d ?? null)} - ${base}` : base;
+  },
+  WING_CHANGE: ({ 'driver-info': d, 'lap-number': lap }) =>
+      `Driver: ${getDriverDetailsStr(d ?? null)}, Lap: ${lap}`,
+  TYRE_CHANGE: ({ 'driver-info': d, 'lap-number': lap, 'old-tyre-compound': oldTyreCompound, 'new-tyre-compound': newTyreCompound}) =>
+      `Driver: ${getDriverDetailsStr(d ?? null)}, Lap: ${lap} - Old Compound: ${oldTyreCompound}, New Compound: ${newTyreCompound}`,
+
   DEFAULT: msg => `Type: ${msg['message-type']} - Placeholder details.`
 };
 
@@ -124,6 +140,8 @@ const detailRenderers = {
 function populateRaceControlMessagesTab(containerElement, initialRowData) {
     // Clear any existing content in the container
     containerElement.innerHTML = '';
+
+    let gridApi; // Declare gridApi in a higher scope
 
     // Create the filter button
     const filterButton = document.createElement('button');
@@ -144,7 +162,7 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
     let selectedMessageTypes = [...allMessageTypes];
 
     // Function to update the grid based on selected filters
-    const updateGrid = (gridApi) => {
+    const updateGrid = () => { // Removed gridApi parameter
         const filteredRowData = initialRowData.filter(row => selectedMessageTypes.includes(row['message-type']));
         gridApi.setGridOption('rowData', filteredRowData);
     };
@@ -152,7 +170,7 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
     const { overlay: modalOverlay, open: openFilter, update: updateModal } =
         createFilterModal(allMessageTypes, newTypes => {
             selectedMessageTypes = newTypes;
-            updateGrid(gridApi);
+            updateGrid(); // Removed gridApi argument
         });
 
     containerElement.appendChild(modalOverlay);
@@ -212,13 +230,13 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
             // Other default column properties can be added here
         },
         onGridReady: (params) => {
+            gridApi = params.api; // Assign gridApi
             updateModal(selectedMessageTypes); // Initialize checkboxes
-            updateGrid(params.api);
+            updateGrid(); // Removed gridApi argument
             searchInput.addEventListener('input', (event) => {
                 const filterText = event.target.value;
                 console.log('Search Input:', filterText);
-                const gridApi = params.api;
-                  gridApi.setGridOption(
+                gridApi.setGridOption( // Use the higher-scoped gridApi
                     "quickFilterText", filterText,
                 );
             });

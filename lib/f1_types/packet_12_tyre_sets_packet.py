@@ -335,6 +335,20 @@ class PacketTyreSetsData(F1PacketBase):
             return None
         return f"{str(self.m_fittedIdx)}.{str(self.m_tyreSetData[self.m_fittedIdx].m_actualTyreCompound)}"
 
+    def getTyreSet(self, index) -> Optional[TyreSetData]:
+        """Tyre set at the given index
+
+        Arguments:
+            index (int): Tyre set index
+
+        Returns:
+            Optional[TyreSetData]: Tyre Set if index is valid, else None
+        """
+
+        if 0 <= index < len(self.m_tyreSetData):
+            return self.m_tyreSetData[index]
+        return None
+
     def getTyreSetKey(self, index) -> Optional[str]:
         """Key containing tyre set ID and actual compound name for the given index
 
@@ -345,8 +359,8 @@ class PacketTyreSetsData(F1PacketBase):
             Optional[str]: Key if index is valid, else None
         """
 
-        if 0 <= index < len(self.m_tyreSetData):
-            return f"{str(index)}.{str(self.m_tyreSetData[index].m_actualTyreCompound)}"
+        if tyre_set := self.getTyreSet(index):
+            return f"{str(index)}.{str(tyre_set.m_actualTyreCompound)}"
         return None
 
     def __eq__(self, other: "PacketTyreSetsData") -> bool:

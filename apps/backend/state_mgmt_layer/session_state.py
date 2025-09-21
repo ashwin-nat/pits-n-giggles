@@ -54,7 +54,7 @@ from lib.openf1 import MostRecentPoleLap
 from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
-from lib.race_ctrl import SessionRaceControlManager, race_ctrl_msg_factory
+from lib.race_ctrl import SessionRaceControlManager, race_ctrl_event_msg_factory
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
@@ -786,6 +786,7 @@ class SessionState:
         """
         for index, car_damage in enumerate(packet.m_carDamageData):
             obj_to_be_updated = self._getObjectByIndex(index, reason='Car damage update')
+            obj_to_be_updated.addCarDamageRaceCtrlMsg(car_damage)
             obj_to_be_updated.m_packet_copies.m_packet_car_damage = car_damage
             obj_to_be_updated.m_tyre_info.tyre_wear = TyreWearPerLap(
                 fl_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
@@ -990,7 +991,7 @@ class SessionState:
         else:
             lap_num = None
 
-        if msg := race_ctrl_msg_factory(packet, lap_number=lap_num):
+        if msg := race_ctrl_event_msg_factory(packet, lap_number=lap_num):
             self.m_race_ctrl.add_message(msg)
 
     ##### Public Getters #####

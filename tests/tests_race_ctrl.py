@@ -30,8 +30,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from tests_base import F1TelemetryUnitTestsBase
 
-from lib.race_ctrl import SessionRaceControlManager, RaceCtrlMsgBase, MessageType, DriverRaceControlManager
-from lib.race_ctrl.messages.driver_messages import FastestLapRaceCtrlMsg, OvertakeRaceCtrlMsg
+from lib.race_ctrl import (DriverRaceControlManager, MessageType,
+                           RaceCtrlMsgBase, SessionRaceControlManager)
+from lib.race_ctrl.messages.driver_event_messages import (
+    FastestLapRaceCtrlMsg, OvertakeRaceCtrlMsg)
+from lib.race_ctrl.messages.driver_status_messages import (
+    DriverPittingRaceCtrlMsg
+)
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -45,6 +50,16 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         self.driver2_mgr = DriverRaceControlManager(driver_index=2)
         self.session_mgr.register_driver(1, self.driver1_mgr)
         self.session_mgr.register_driver(2, self.driver2_mgr)
+        self.assertEqual(len(self.session_mgr.drivers), 2)
+        self.assertEqual(self.session_mgr.drivers[1], self.driver1_mgr)
+        self.assertEqual(self.session_mgr.drivers[2], self.driver2_mgr)
+        self.assertEqual(self.driver1_mgr.session_mgr, self.session_mgr)
+        self.assertEqual(self.driver2_mgr.session_mgr, self.session_mgr)
+
+        self.driver_info_dict = {
+            1: {"name": "Driver One", "team": "Alpha", "driver-number": 1},
+            2: {"name": "Driver Two", "team": "Beta", "driver-number": 2},
+        }
 
     async def test_add_message_and_index_as_id(self):
         msg = RaceCtrlMsgBase(
@@ -143,7 +158,6 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
             lap_time_ms=60000,
             lap_number=1,)
         self.session_mgr.add_message(msg1)
-
         exported = self.session_mgr.toJSON()
 
         self.assertEqual(exported[0]["id"], 0)
@@ -157,13 +171,7 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
             lap_number=1)
 
         self.session_mgr.add_message(msg1)
-
-        driver_info_dict = {
-            1: {"name": "Driver One", "team": "Alpha", "driver-number": 1},
-            2: {"name": "Driver Two", "team": "Beta", "driver-number": 2},
-        }
-
-        exported = self.session_mgr.toJSON(driver_info_dict=driver_info_dict)
+        exported = self.session_mgr.toJSON(driver_info_dict=self.driver_info_dict)
 
         self.assertEqual(exported[0]["overtaker-info"]["name"], "Driver One")
         self.assertEqual(exported[0]["overtaker-info"]["team"], "Alpha")
@@ -171,3 +179,21 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         self.assertEqual(exported[0]["overtaken-info"]["name"], "Driver Two")
         self.assertEqual(exported[0]["overtaken-info"]["team"], "Beta")
         self.assertEqual(exported[0]["overtaken-info"]["driver-number"], 2)
+
+    async def test_driver_message(self):
+        msg = DriverPittingRaceCtrlMsg(
+            timestamp=9.0,
+            driver_index=1,
+            lap_number=10)
+        self.driver1_mgr.add_message(msg)
+        exported = self.session_mgr.toJSON(self.driver_info_dict)
+
+        self.assertEqual(exported[0]["id"], 0)
+        self.assertEqual(exported[0]["message-type"], "PITTING")
+        self.assertEqual(exported[0]["lap-number"], 10)
+        self.assertEqual(exported[0]["driver-info"]["name"], "Driver One")
+        self.assertEqual(exported[0]["driver-info"]["team"], "Alpha")
+        self.assertEqual(exported[0]["driver-info"]["driver-number"], 1)
+        self.assertEqual(len(self.driver1_mgr.messages), 1)
+        self.assertEqual(len(self.session_mgr.messages), 1)
+        self.assertEqual(self.driver1_mgr.messages[0], self.session_mgr.messages[0])
