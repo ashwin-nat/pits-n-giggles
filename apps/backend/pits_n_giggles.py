@@ -274,14 +274,24 @@ def entry_point():
 #     yappi.set_clock_type("wall")  # Use "cpu" for CPU-bound tasks
 #     yappi.start()
 
+#     report_pid_from_child()
 #     args_obj = parseArgs()
-#     png_logger = initLogger(file_name='png_log.log', max_size=100000, debug_mode=args_obj.debug)
+#     png_logger = initLogger(
+#         file_name=args_obj.log_file_name,
+#         max_size=100000,
+#         debug_mode=args_obj.debug
+#     )
+#     if sys.platform == 'win32':
+#         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 #     try:
 #         asyncio.run(main(png_logger, args_obj))
 #     except KeyboardInterrupt:
 #         png_logger.info("Program interrupted by user.")
 #     except asyncio.CancelledError:
 #         png_logger.info("Program shutdown gracefully.")
+#     except Exception as e: # pylint: disable=broad-exception-caught
+#         png_logger.exception("Error in main: %s", e)
+#         sys.exit(1)
 #     finally:
 #         yappi.stop()
 
