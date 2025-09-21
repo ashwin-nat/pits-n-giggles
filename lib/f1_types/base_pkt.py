@@ -48,9 +48,11 @@ class F1BaseEnum(Enum):
         Returns:
             bool: True if valid for this enum.
         """
-        if isinstance(value, cls):
+        try:
+            cls(value)
             return True
-        return any(value == member.value for member in cls)
+        except ValueError:
+            return False
 
     @classmethod
     def safeCast(cls: Type[T_Enum], value: Union[int, T_Enum]) -> Union[T_Enum, int]:
@@ -63,7 +65,10 @@ class F1BaseEnum(Enum):
         Returns:
             Optional[F1BaseEnum]: The cast enum value.
         """
-        return cls(value) if cls.isValid(value) else value
+        try:
+            return cls(value)
+        except ValueError:
+            return value
 
     def __str__(self):
         """Return the string representation of this object
