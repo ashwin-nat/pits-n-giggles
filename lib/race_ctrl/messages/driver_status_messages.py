@@ -49,7 +49,7 @@ class DriverPittingRaceCtrlMsg(RaceCtrlMsgBase):
             ret["driver-info"] = driver_info
         return ret
 
-class CarDamageRaceCtrlMerssage(RaceCtrlMsgBase):
+class CarDamageRaceControlMessage(RaceCtrlMsgBase):
     def __init__(self,
                  timestamp: float,
                  driver_index: int,

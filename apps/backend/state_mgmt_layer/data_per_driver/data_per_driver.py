@@ -32,7 +32,7 @@ from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
 from lib.f1_types import (CarDamageData, F1Utils, LapData,
                           PacketLapPositionsData, ResultStatus, SafetyCarType,
                           SessionType, TrackID)
-from lib.race_ctrl import (CarDamageRaceCtrlMerssage, DriverPittingRaceCtrlMsg,
+from lib.race_ctrl import (CarDamageRaceControlMessage, DriverPittingRaceCtrlMsg,
                            DriverRaceControlManager,
                            TyreChangeRaceControlMessage, WingChangeRaceCtrlMsg)
 from lib.tyre_wear_extrapolator import TyreWearPerLap
@@ -1134,7 +1134,7 @@ class DataPerDriver:
             new_value = diff["new_value"]
             old_value = diff["old_value"]
             if new_value > old_value:
-                self.m_race_ctrl.add_message(CarDamageRaceCtrlMerssage(
+                self.m_race_ctrl.add_message(CarDamageRaceControlMessage(
                     timestamp=time.time(),
                     driver_index=self.m_index,
                     lap_number=self.m_lap_info.m_current_lap,
