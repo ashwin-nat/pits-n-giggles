@@ -61,12 +61,8 @@ Follow these steps to profile Pits n' Giggles using Yappi:
 - **Comment out** the production `if __name__ == "__main__"` block in pits_n_giggles.py.
 - **Uncomment** the `PROFILER MODE` section just below it.
 
-### 2. Enable Profiler in `telemetry_handler.py`
-- Search for `PROFILER MODE` in `telemetry_handler.py`.
-- **Uncomment** the related lines to enable profiling hooks.
-
-### 3. Start the Backend
-Run the backend in debug mode with the replay server enabled:
+### 2. Integration test runner script
+The profiler data will be saved when the script cleanly terminates the app in the end
 
 ```bash
 poetry run python -m apps.backend --replay-server --debug
