@@ -486,6 +486,50 @@ class LapData(F1SubPacketBase):
         """
         return not self.__eq__(other)
 
+    @property
+    def s1TimeMS(self) -> int:
+        """Return the total S1 time in ms
+
+        Returns:
+            int: Total S1 time in ms
+        """
+
+        return self.__getCombinedTimeMS(self.m_sector1TimeInMS, self.m_sector1TimeMinutes)
+
+    @property
+    def s2TimeMS(self) -> int:
+        """Return the total S2 time in ms
+
+        Returns:
+            int: Total S2 time in ms
+        """
+
+        return self.__getCombinedTimeMS(self.m_sector2TimeInMS, self.m_sector2TimeMinutes)
+
+    @property
+    def s3TimeMS(self) -> int:
+        """Return the total S3 time in ms
+
+        Returns:
+            int: Total S3 time in ms
+        """
+
+        # Since there is no S3 time, return total - (s1 + s2)
+        return self.m_currentLapTimeInMS - (self.s1TimeMS + self.s2TimeMS)
+
+    def __getCombinedTimeMS(self, ms_part: int, min_part: int) -> int:
+        """
+        Combines minutes and milliseconds into a total time in milliseconds.
+
+        Args:
+            ms_part (int): The milliseconds part of the time.
+            min_part (int): The minutes part of the time.
+
+        Returns:
+            int: The total time in milliseconds.
+        """
+        return (min_part * 60 * 1000) + ms_part
+
 class PacketLapData(F1PacketBase):
     """Class representing the incoming PacketLapData.
 
