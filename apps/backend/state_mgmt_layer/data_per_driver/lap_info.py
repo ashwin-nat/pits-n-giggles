@@ -54,6 +54,13 @@ class LapInfo:
         m_is_pitting (Optional[bool]): Indicates whether the driver is currently in the pit lane.
         m_total_race_time (Optional[float]): Total race time in seconds.
         m_result_status  (Optional[ResultStatus]): The result status of the driver.
+        m_curr_lap_s1_ms (Optional[int]): Current lap sector 1 time in milliseconds.
+        m_curr_lap_s2_ms (Optional[int]): Current lap sector 2 time in milliseconds.
+        m_curr_lap_s3_ms (Optional[int]): Current lap sector 3 time in milliseconds.
+        m_curr_lap_ms (Optional[int]): Current lap time in milliseconds.
+        m_curr_sector (Optional[LapData.Sector]): Current lap sector.
+        m_curr_lap_invalid (Optional[bool]): Current lap validity
+        m_curr_status (Optional[LapData.DriverStatus]): Current lap driver status
     """
     m_best_lap_ms: Optional[int] = None
     m_best_lap_obj: Optional[LapHistoryData] = None
