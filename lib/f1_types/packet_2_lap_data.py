@@ -24,7 +24,8 @@
 import struct
 from typing import Any, Dict, List
 
-from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
+from .base_pkt import (F1BaseEnum, F1CompareableEnum, F1PacketBase,
+                       F1SubPacketBase)
 from .common import F1Utils, ResultStatus
 from .header import PacketHeader
 
@@ -235,7 +236,7 @@ class LapData(F1SubPacketBase):
         PITTING = 1
         IN_PIT_AREA = 2
 
-    class Sector(F1BaseEnum):
+    class Sector(F1CompareableEnum):
         """
         Enumeration representing the sector of a racing track.
         """
