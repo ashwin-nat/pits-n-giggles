@@ -25,8 +25,9 @@
 from abc import abstractmethod
 from enum import Enum
 from functools import total_ordering
-from typing import Any, Dict, List, Optional, Type, TypeVar, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union
 
+from .errors import PacketCountValidationError, PacketParsingError
 from .header import PacketHeader
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
@@ -191,3 +192,47 @@ class F1SubPacketBase:
                 changes[field] = {"old_value": old_val, "new_value": new_val}
 
         return changes
+
+    @classmethod
+    def parse_array(
+        cls: type[T_SubPacket],
+        data: bytes,
+        offset: int,
+        item_len: int,
+        count: int,
+        max_count: int,
+        **item_kwargs: Any
+    ) -> Tuple[List[T_SubPacket], int]:
+        """
+        Parse a fixed number of sub-packets of this subclass from the data.
+
+        Args:
+            data (bytes): The raw data buffer.
+            offset (int): The starting offset in the data.
+            item_len (int): The length in bytes of each item.
+            count (int): The number of items to parse.
+            max_count (int): The maximum allowed items.
+            **item_kwargs: Extra args passed to the subclass constructor.
+
+        Returns:
+            tuple[list[T_SubPacket], int]: A list of parsed sub-packets and the updated offset.
+        """
+        total_raw_len = max_count * item_len
+        raw = data[offset : offset + total_raw_len]
+        expected_len = count * item_len
+
+        if count > max_count:
+            raise PacketCountValidationError(
+                f"Too many {cls.__name__} items: {count} > {max_count}"
+            )
+        if total_raw_len < expected_len:
+            raise PacketParsingError(
+                f"Insufficient {cls.__name__} data: "
+                f"expected {expected_len} bytes, got {total_raw_len} for {count} items"
+            )
+
+        items = [
+            cls(raw[i : i + item_len], **item_kwargs)
+            for i in range(0, expected_len, item_len)
+        ]
+        return items, offset + total_raw_len
