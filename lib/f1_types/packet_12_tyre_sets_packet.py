@@ -24,9 +24,9 @@
 import struct
 from typing import Any, Dict, List, Optional, Union
 
-from .common import (ActualTyreCompound, SessionType23, _validate_parse_fixed_segments,
-                     SessionType24, VisualTyreCompound)
 from .base_pkt import F1PacketBase, F1SubPacketBase
+from .common import (ActualTyreCompound, SessionType23, SessionType24,
+                     VisualTyreCompound)
 from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -279,10 +279,9 @@ class PacketTyreSetsData(F1PacketBase):
         self.m_carIdx: int = self.COMPILED_PACKET_STRUCT_CAR_IDX.unpack(data[:self.PACKET_LEN_CAR_IDX])[0]
 
         self.m_tyreSetData: List[TyreSetData]
-        self.m_tyreSetData, offset_so_far = _validate_parse_fixed_segments(
+        self.m_tyreSetData, offset_so_far = TyreSetData.parse_array(
             data=data,
             offset=self.PACKET_LEN_CAR_IDX,
-            item_cls=TyreSetData,
             item_len=TyreSetData.PACKET_LEN,
             count=self.MAX_TYRE_SETS,
             max_count=self.MAX_TYRE_SETS,

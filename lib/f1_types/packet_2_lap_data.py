@@ -24,10 +24,9 @@
 import struct
 from typing import Any, Dict, List
 
-from .common import (F1Utils,
-                     ResultStatus, _validate_parse_fixed_segments)
-from .header import PacketHeader
 from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
+from .common import F1Utils, ResultStatus
+from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -523,10 +522,9 @@ class PacketLapData(F1PacketBase):
         # Process each car's lap data individually
         # Extract chunks of the correct size and create LapData objects
         self.m_lapData: List[LapData]
-        self.m_lapData, offset_so_far = _validate_parse_fixed_segments(
+        self.m_lapData, offset_so_far = LapData.parse_array(
             data=packet,
             offset=0,
-            item_cls=LapData,
             item_len=lap_data_obj_size,
             count=self.MAX_CARS,
             max_count=self.MAX_CARS,

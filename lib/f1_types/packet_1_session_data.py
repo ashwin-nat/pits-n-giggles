@@ -26,8 +26,7 @@ from typing import Any, Dict, List, Union
 
 from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
 from .common import (GameMode, GearboxAssistMode, RuleSet, SafetyCarType,
-                     SessionLength, SessionType23, SessionType24, TrackID,
-                     _validate_parse_fixed_segments)
+                     SessionLength, SessionType23, SessionType24, TrackID)
 from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -987,10 +986,9 @@ class PacketSessionData(F1PacketBase):
         self.m_formula = PacketSessionData.FormulaType.safeCast(self.m_formula)
 
         # Next section 1, marshalZones
-        self.m_marshalZones, byte_index_so_far = _validate_parse_fixed_segments(
+        self.m_marshalZones, byte_index_so_far = MarshalZone.parse_array(
             data=data,
             offset=byte_index_so_far,
-            item_cls=MarshalZone,
             item_len=MarshalZone.PACKET_LEN,
             count=self.m_numMarshalZones,
             max_count=self.F1_23_MAX_NUM_MARSHAL_ZONES,
@@ -1009,10 +1007,9 @@ class PacketSessionData(F1PacketBase):
         section_2_raw_data = None
 
         # Section 3 - weather forecast samples
-        self.m_weatherForecastSamples, byte_index_so_far = _validate_parse_fixed_segments(
+        self.m_weatherForecastSamples, byte_index_so_far = WeatherForecastSample.parse_array(
             data=data,
             offset=byte_index_so_far,
-            item_cls=WeatherForecastSample,
             item_len=WeatherForecastSample.PACKET_LEN,
             count=self.m_numWeatherForecastSamples,
             max_count=max_weather_forecast_samples,

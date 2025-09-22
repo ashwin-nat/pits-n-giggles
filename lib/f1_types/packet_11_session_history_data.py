@@ -26,9 +26,8 @@ from __future__ import annotations
 import struct
 from typing import Any, Dict, List, Optional
 
-from .common import (ActualTyreCompound, F1Utils,
-                     VisualTyreCompound, _validate_parse_fixed_segments)
 from .base_pkt import F1PacketBase, F1SubPacketBase
+from .common import ActualTyreCompound, F1Utils, VisualTyreCompound
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -439,20 +438,18 @@ class PacketSessionHistoryData(F1PacketBase):
         self.m_tyreStintsHistoryData: List[TyreStintHistoryData] = []
 
         # Next, parse the lap history data
-        self.m_lapHistoryData, bytes_index_so_far = _validate_parse_fixed_segments(
+        self.m_lapHistoryData, bytes_index_so_far = LapHistoryData.parse_array(
             data=data,
             offset=bytes_index_so_far,
-            item_cls=LapHistoryData,
             item_len=LapHistoryData.PACKET_LEN,
             count=self.m_numLaps,
             max_count=PacketSessionHistoryData.MAX_LAPS,
         )
 
         # Finally, parse tyre stint data
-        self.m_tyreStintsHistoryData, bytes_index_so_far = _validate_parse_fixed_segments(
+        self.m_tyreStintsHistoryData, bytes_index_so_far = TyreStintHistoryData.parse_array(
             data=data,
             offset=bytes_index_so_far,
-            item_cls=TyreStintHistoryData,
             item_len=TyreStintHistoryData.PACKET_LEN,
             count=self.m_numTyreStints,
             max_count=PacketSessionHistoryData.MAX_TYRE_STINT_COUNT,

@@ -22,10 +22,10 @@
 
 
 import struct
-from typing import Dict, Any, List
-from .common import _validate_parse_fixed_segments
-from .header import PacketHeader
+from typing import Any, Dict, List
+
 from .base_pkt import F1PacketBase, F1SubPacketBase
+from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -403,10 +403,9 @@ class PacketCarTelemetryData(F1PacketBase):
         super().__init__(header)
         self.m_carTelemetryData: List[CarTelemetryData]
 
-        self.m_carTelemetryData, offset_so_far = _validate_parse_fixed_segments(
+        self.m_carTelemetryData, offset_so_far = CarTelemetryData.parse_array(
             data=packet,
             offset=0,
-            item_cls=CarTelemetryData,
             item_len=CarTelemetryData.PACKET_LEN,
             count=self.MAX_CARS,
             max_count=self.MAX_CARS

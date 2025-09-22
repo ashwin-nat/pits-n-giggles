@@ -22,10 +22,10 @@
 
 
 import struct
-from typing import Dict, Any, List, Optional
-from .common import _validate_parse_fixed_segments
+from typing import Any, Dict, List, Optional
+
+from .base_pkt import F1PacketBase, F1SubPacketBase
 from .header import PacketHeader
-from .base_pkt import F1SubPacketBase, F1PacketBase
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -546,10 +546,9 @@ class PacketCarSetupData(F1PacketBase):
         self.m_carSetups: List[CarSetupData]
 
         packet_len = CarSetupData.PACKET_LEN_23 if (header.m_packetFormat == 2023) else CarSetupData.PACKET_LEN_24
-        self.m_carSetups, offset_so_far = _validate_parse_fixed_segments(
+        self.m_carSetups, offset_so_far = CarSetupData.parse_array(
             data=packet,
             offset=0,
-            item_cls=CarSetupData,
             item_len=packet_len,
             count=self.MAX_CARS,
             max_count=self.MAX_CARS,
