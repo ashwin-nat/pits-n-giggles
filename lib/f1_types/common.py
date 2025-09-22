@@ -30,10 +30,9 @@
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
 from abc import abstractmethod
-from typing import Any, List, Optional, Set, Union
+from typing import List, Optional, Set, Union
 
 from .base_pkt import F1BaseEnum, F1CompareableEnum
-from .errors import PacketParsingError, PacketCountValidationError
 
 # -------------------- COMMON CLASSES ----------------------------------------------------------------------------------
 

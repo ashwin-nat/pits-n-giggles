@@ -289,7 +289,7 @@ def entry_point():
 #         png_logger.info("Program interrupted by user.")
 #     except asyncio.CancelledError:
 #         png_logger.info("Program shutdown gracefully.")
-#     except Exception as e: # pylint: disable=broad-exception-caught
+#     except Exception as e:
 #         png_logger.exception("Error in main: %s", e)
 #         sys.exit(1)
 #     finally:
