@@ -27,35 +27,15 @@
 ## F1 24 - https://answers.ea.com/t5/General-Discussion/F1-24-UDP-Specification/td-p/13745220
 ## F1 25 - https://forums.ea.com/blog/f1-games-game-info-hub-en/ea-sports%E2%84%A2-f1%C2%AE25-udp-specification/12187347
 
-# ------------------------- IMPORTS -------------------------------------------------------------------------------------
+# ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
 from abc import abstractmethod
 from typing import Any, List, Optional, Set, Union
 
 from .base_pkt import F1BaseEnum, F1CompareableEnum
+from .errors import PacketParsingError, PacketCountValidationError
 
-# ------------------------- ERROR CLASSES ------------------------------------------------------------------------------
-
-class InvalidPacketLengthError(Exception):
-    """
-    This exception type is used to indicate to the telemetry manager that there has
-    been a parsing error due to receving a packet of unexpected length (possibly
-    incomplete or corrupt. or more realistically a bug)
-    """
-    def __init__(self, message):
-        super().__init__(f"Invalid packet length. {message}")
-
-class PacketParsingError(Exception):
-    """Raised when packet data is malformed or insufficient"""
-    def __init__(self, message):
-        super().__init__(f"Malformed packet. {message}")
-
-class PacketCountValidationError(Exception):
-    """Raised when sub-packet count validation against max count fails"""
-    def __init__(self, message):
-        super().__init__(f"Packet count validation error. {message}")
-
-# -------------------- COMMON CLASSES ------------------------------------------
+# -------------------- COMMON CLASSES ----------------------------------------------------------------------------------
 
 class ResultStatus(F1BaseEnum):
     """
