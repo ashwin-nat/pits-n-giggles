@@ -25,7 +25,8 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from lib.f1_types import LapHistoryData, VisualTyreCompound, ResultStatus
+from lib.f1_types import (LapData, LapHistoryData, ResultStatus,
+                          VisualTyreCompound)
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -70,3 +71,26 @@ class LapInfo:
     m_is_pitting: Optional[bool] = None
     m_total_race_time: Optional[float] = None
     m_result_status: Optional[ResultStatus] = None
+    m_curr_lap_s1_ms: Optional[int] = None
+    m_curr_lap_s2_ms: Optional[int] = None
+    m_curr_lap_s3_ms: Optional[int] = None
+    m_curr_lap_ms: Optional[int] = None
+    m_curr_sector: Optional[LapData.Sector] = None
+    m_curr_lap_invalid: Optional[bool] = None
+    m_curr_status: Optional[LapData.DriverStatus] = None
+
+    def processLapDataUpdate(self, lap_data: LapData) -> None:
+        """Update the lap information based on the provided lap data object"""
+        self.m_delta_to_car_in_front = lap_data.m_deltaToCarInFrontInMS
+        self.m_delta_to_leader = (
+            lap_data.m_deltaToRaceLeaderInMS +
+            (lap_data.m_deltaToRaceLeaderMinutes * 60000)
+        )
+
+        self.m_curr_lap_ms = lap_data.m_currentLapTimeInMS
+        self.m_curr_lap_invalid = lap_data.m_currentLapInvalid
+        self.m_curr_status = lap_data.m_driverStatus
+        self.m_curr_sector = lap_data.m_sector
+        self.m_curr_lap_s1_ms = lap_data.s1TimeMS
+        self.m_curr_lap_s2_ms = lap_data.s2TimeMS
+        self.m_curr_lap_s3_ms = lap_data.s3TimeMS
