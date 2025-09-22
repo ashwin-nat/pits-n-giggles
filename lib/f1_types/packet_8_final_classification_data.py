@@ -24,11 +24,10 @@
 import struct
 from typing import Any, Dict, List
 
-from .common import (ActualTyreCompound, F1Utils, ResultReason,
-                     ResultStatus, VisualTyreCompound,
-                     _validate_parse_fixed_segments)
+from .base_pkt import F1PacketBase, F1SubPacketBase
+from .common import (ActualTyreCompound, F1Utils, ResultReason, ResultStatus,
+                     VisualTyreCompound)
 from .header import PacketHeader
-from .base_pkt import F1SubPacketBase, F1PacketBase
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -618,10 +617,9 @@ class PacketFinalClassificationData(F1PacketBase):
         # Iterate over packet[1:] in steps of packet_len,
         # creating FinalClassificationData objects for each segment.
         self.m_classificationData: List[FinalClassificationData]
-        self.m_classificationData, _ = _validate_parse_fixed_segments(
+        self.m_classificationData, _ = FinalClassificationData.parse_array(
             data=packet,
             offset=1,
-            item_cls=FinalClassificationData,
             item_len=packet_len,
             count=self.m_numCars,
             max_count=self.MAX_CARS,

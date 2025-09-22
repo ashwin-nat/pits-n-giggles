@@ -24,10 +24,10 @@
 import struct
 from typing import Any, Dict, List, Optional
 
-from .common import (Nationality, _validate_parse_fixed_segments, Platform,
-                     TeamID, TeamID23, TeamID24, TeamID25, TelemetrySetting)
-from .header import PacketHeader
 from .base_pkt import F1PacketBase, F1SubPacketBase
+from .common import (Nationality, Platform, TeamID, TeamID23, TeamID24,
+                     TeamID25, TelemetrySetting)
+from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -256,10 +256,9 @@ class ParticipantData(F1SubPacketBase):
                 self.m_numColours
             ) = self.COMPILED_PACKET_STRUCT_25_BASE.unpack(data[:self.PACKET_LEN_25_BASE])
 
-            self.m_liveryColours, _ = _validate_parse_fixed_segments(
+            self.m_liveryColours, _ = LiveryColour.parse_array(
                 data=data,
                 offset=self.PACKET_LEN_25_BASE,
-                item_cls=LiveryColour,
                 item_len=LiveryColour.PACKET_LEN,
                 count=self.m_numColours,
                 max_count=self.MAX_LIVERY_COLOURS
@@ -591,10 +590,9 @@ class PacketParticipantsData(F1PacketBase):
                 packet_len = ParticipantData.PACKET_LEN_25
 
         self.m_participants: List[ParticipantData]
-        self.m_participants, _ = _validate_parse_fixed_segments(
+        self.m_participants, _ = ParticipantData.parse_array(
             data=packet,
             offset=1,
-            item_cls=ParticipantData,
             item_len=packet_len,
             count=self.MAX_PARTICIPANTS,
             max_count=self.MAX_PARTICIPANTS,

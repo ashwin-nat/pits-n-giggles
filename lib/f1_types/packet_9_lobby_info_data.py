@@ -24,11 +24,10 @@
 import struct
 from typing import Any, Dict, List, Optional
 
-from .common import (Nationality, Platform, TeamID,
-                     TeamID23, TeamID24, TeamID25, TelemetrySetting,
-                     _validate_parse_fixed_segments)
-from .header import PacketHeader
 from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
+from .common import (Nationality, Platform, TeamID, TeamID23, TeamID24,
+                     TeamID25, TelemetrySetting)
+from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -384,10 +383,9 @@ class PacketLobbyInfoData(F1PacketBase):
             packet_len = LobbyInfoData.PACKET_LEN_25
 
         self.m_lobbyPlayers: List[LobbyInfoData]
-        self.m_lobbyPlayers, _ = _validate_parse_fixed_segments(
+        self.m_lobbyPlayers, _ = LobbyInfoData.parse_array(
             data=packet,
             offset=1,
-            item_cls=LobbyInfoData,
             item_len=packet_len,
             count=self.m_numPlayers,
             max_count=self.MAX_PLAYERS,

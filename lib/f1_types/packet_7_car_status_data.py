@@ -26,7 +26,7 @@ from typing import Any, Dict, List, Union
 
 from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
 from .common import (ActualTyreCompound, TractionControlAssistMode,
-                     VisualTyreCompound, _validate_parse_fixed_segments)
+                     VisualTyreCompound)
 from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -553,10 +553,9 @@ class PacketCarStatusData(F1PacketBase):
         super().__init__(header)
         self.m_carStatusData: List[CarStatusData]
 
-        self.m_carStatusData, _ = _validate_parse_fixed_segments(
+        self.m_carStatusData, _ = CarStatusData.parse_array(
             data=packet,
             offset=0,
-            item_cls=CarStatusData,
             item_len=CarStatusData.PACKET_LEN,
             count=self.MAX_CARS,
             max_count=self.MAX_CARS

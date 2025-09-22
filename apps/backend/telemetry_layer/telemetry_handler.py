@@ -313,23 +313,6 @@ class F1TelemetryHandler:
                 )
                 await AsyncInterTaskCommunicator().send("frontend-update", message)
 
-
-            # ------------ PROFILER MODE --------------
-            # Uncomment the below lines for profiling - Kill the process after one session
-            # # Cancel all tasks except itself
-            # import asyncio
-            # current_task = asyncio.current_task()
-            # for task in asyncio.all_tasks():
-            #     if task is not current_task:
-            #         task.cancel()
-
-            # # Option 1: Self-cancel
-            # try:
-            #     current_task.cancel()
-            # except asyncio.CancelledError:
-            #     pass  # Suppress the traceback
-            # return  # Ensure it stops running
-
         @self.m_manager.on_packet(F1PacketType.CAR_DAMAGE)
         async def processCarDamageUpdate(packet: PacketCarDamageData):
             """Update the data strucutres with car damage information
