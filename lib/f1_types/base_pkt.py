@@ -52,7 +52,7 @@ class F1BaseEnum(Enum):
         try:
             cls(value)
             return True
-        except ValueError:
+        except (ValueError, TypeError):
             return False
 
     @classmethod
@@ -217,6 +217,9 @@ class F1SubPacketBase:
         Returns:
             tuple[list[T_SubPacket], int]: A list of parsed sub-packets and the updated offset.
         """
+        if count == 0:
+            return [], offset
+
         total_raw_len = max_count * item_len
         raw = data[offset : offset + total_raw_len]
         expected_len = count * item_len
