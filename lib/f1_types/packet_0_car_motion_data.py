@@ -24,9 +24,10 @@
 import struct
 from typing import Any, Dict, List
 
-from .common import InvalidPacketLengthError, _validate_parse_fixed_segments
-from .header import PacketHeader
 from .base_pkt import F1PacketBase, F1SubPacketBase
+from .common import _validate_parse_fixed_segments
+from .errors import InvalidPacketLengthError
+from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 

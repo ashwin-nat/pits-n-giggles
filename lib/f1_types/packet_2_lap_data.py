@@ -511,8 +511,7 @@ class PacketLapData(F1PacketBase):
         Args:
             - header (PacketHeader): Packet header information.
             - packet (bytes): Binary data containing lap data packet.
-        Raises:
-            - InvalidPacketLengthError: If the received packet length is not as expected.
+
         """
         super().__init__(header)
 
