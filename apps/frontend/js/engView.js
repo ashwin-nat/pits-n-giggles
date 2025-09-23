@@ -279,6 +279,34 @@ class EngViewRaceTable {
         };
     }
 
+    createSectorCellRendererCurrLap(sectorKey, timeKey) {
+        return (params) => {
+            const driverInfo = params.data;
+            const lapInfo = driverInfo["lap-info"]["curr-lap"];
+            const sectorStatus = lapInfo["sector-status"];
+
+            const timeMs = lapInfo[timeKey];
+            const formattedTime = sectorKey === 'lap'
+                ? formatLapTime(timeMs)
+                : formatSectorTime(timeMs);
+
+            let timeClass = '';
+            if (sectorStatus) {
+                if (sectorKey !== 'lap') {
+                    const sectorIndex = parseInt(sectorKey.slice(1)) - 1;
+                    if (sectorStatus[sectorIndex] === this.GREEN_SECTOR) {
+                        timeClass = 'green-time';
+                    } else if (sectorStatus[sectorIndex] === this.PURPLE_SECTOR) {
+                        timeClass = 'purple-time';
+                    } else if (sectorStatus[sectorIndex] === this.RED_SECTOR) {
+                        timeClass = 'red-time';
+                    }
+                }
+            }
+            return this.createSingleLineCell(formattedTime, {className: timeClass});
+        };
+    }
+
     createTyreWearCellRenderer(wearField) {
         return (params) => {
             const tyreInfo = params.data["tyre-info"];
@@ -478,6 +506,48 @@ class EngViewRaceTable {
                             return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
                         },
                     }
+                ]
+            },
+            {
+                headerName: 'Current Lap',
+                context: {displayName: 'Curr Lap'},
+                children: [
+                    {
+                        headerName: "Lap",
+                        context: {displayName: "Current Lap Time"},
+                        field: `lap-info.curr-lap.lap-time-ms`,
+                        cellRenderer: this.createSectorCellRendererCurrLap('lap', 'lap-time-ms'),
+                        sortable: false,
+                        flex: 2.5,
+                        cellClass: 'ag-cell-single-line',
+                    },
+                    {
+                        headerName: "S1",
+                        context: {displayName: "Current Sector 1"},
+                        field: `lap-info.curr-lap.s1-time-ms`,
+                        cellRenderer: this.createSectorCellRendererCurrLap('s1', 's1-time-ms'),
+                        sortable: false,
+                        flex: 2.5,
+                        cellClass: 'ag-cell-single-line',
+                    },
+                    {
+                        headerName: "S2",
+                        context: {displayName: "Current Sector 2"},
+                        field: `lap-info.curr-lap.s2-time-ms`,
+                        cellRenderer: this.createSectorCellRendererCurrLap('s2', 's2-time-ms'),
+                        sortable: false,
+                        flex: 2.5,
+                        cellClass: 'ag-cell-single-line',
+                    },
+                    {
+                        headerName: "S3",
+                        context: {displayName: "Current Sector 3"},
+                        field: `lap-info.curr-lap.s3-time-ms`,
+                        cellRenderer: this.createSectorCellRendererCurrLap('s3', 's3-time-ms'),
+                        sortable: false,
+                        flex: 2.5,
+                        cellClass: 'ag-cell-single-line',
+                    },
                 ]
             },
             {
