@@ -287,12 +287,12 @@ class EngViewRaceTable {
             const driverId = driverInfo.id;
             const delayedData = this.delayedLapData.get(driverId);
             const currentTime = Date.now();
-            const FIVE_SECONDS_MS = 5000;
+            const CURR_LAP_FREEZE_DURATION = 5000; // 5 sec
 
             let lapInfo;
             let sectorStatus;
 
-            if (delayedData && (currentTime - delayedData.timestamp < FIVE_SECONDS_MS)) {
+            if (delayedData && (currentTime - delayedData.timestamp < CURR_LAP_FREEZE_DURATION)) {
                 // Use delayed data
                 lapInfo = delayedData.oldLapData;
                 sectorStatus = lapInfo["sector-status"];
