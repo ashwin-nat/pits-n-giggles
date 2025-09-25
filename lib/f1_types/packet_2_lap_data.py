@@ -489,57 +489,59 @@ class LapData(F1SubPacketBase):
 
     @property
     def s1TimeMS(self) -> int:
-        """Return the total S1 time in ms
-
-        Returns:
-            int: Total S1 time in ms
-        """
+        """Return the total S1 time in ms."""
+        if not self._is_active_with_valid_time():
+            return 0
 
         if self.m_sector == LapData.Sector.SECTOR1:
-            # Since S1 is ongoing, it will be 0 in the packet. Hence it is basically the current lap time
+            # S1 is ongoing, use current lap time
             return self.m_currentLapTimeInMS
-        return self.__getCombinedTimeMS(self.m_sector1TimeInMS, self.m_sector1TimeMinutes)
+
+        return self._get_combined_time_ms(self.m_sector1TimeInMS, self.m_sector1TimeMinutes)
 
     @property
     def s2TimeMS(self) -> int:
-        """Return the total S2 time in ms
+        """Return the total S2 time in ms."""
+        if not self._is_active_with_valid_time():
+            return 0
 
-        Returns:
-            int: Total S2 time in ms
-        """
         if self.m_sector == LapData.Sector.SECTOR1:
             return 0
+
         if self.m_sector == LapData.Sector.SECTOR2:
-            # Since S2 is ongoing, it will be 0 in the packet. Hence it is basically the current lap time minus S1
+            # S2 is ongoing, calculate as current lap time minus S1
             return self.m_currentLapTimeInMS - self.s1TimeMS
 
-        # Since S2 is completed, we can directly read the S2 field
-        return self.__getCombinedTimeMS(self.m_sector2TimeInMS, self.m_sector2TimeMinutes)
+        # S2 is completed, read from packet
+        return self._get_combined_time_ms(self.m_sector2TimeInMS, self.m_sector2TimeMinutes)
 
     @property
     def s3TimeMS(self) -> int:
-        """Return the total S3 time in ms
-
-        Returns:
-            int: Total S3 time in ms
-        """
+        """Return the total S3 time in ms."""
+        if not self._is_active_with_valid_time():
+            return 0
 
         if self.m_sector < LapData.Sector.SECTOR3:
             return 0
 
-        # Since there is no S3 time, return total - (s1 + s2)
+        # Calculate S3 as remaining time after S1 and S2
         return self.m_currentLapTimeInMS - (self.s1TimeMS + self.s2TimeMS)
 
-    def __getCombinedTimeMS(self, ms_part: int, min_part: int) -> int:
+    def _is_active_with_valid_time(self) -> bool:
+        """Check if result is active and has valid current lap time."""
+        return (self.m_resultStatus == ResultStatus.ACTIVE and
+                self.m_currentLapTimeInMS > 0)
+
+    def _get_combined_time_ms(self, ms_part: int, min_part: int) -> int:
         """
-        Combines minutes and milliseconds into a total time in milliseconds.
+        Combine minutes and milliseconds into total milliseconds.
 
         Args:
-            ms_part (int): The milliseconds part of the time.
-            min_part (int): The minutes part of the time.
+            ms_part: The milliseconds component
+            min_part: The minutes component
 
         Returns:
-            int: The total time in milliseconds.
+            Total time in milliseconds
         """
         return (min_part * 60 * 1000) + ms_part
 
