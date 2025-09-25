@@ -164,7 +164,7 @@ class RaceTableRowPopulator {
     }
 
     addCurrLapInfo() {
-        if (isRaceSession(this.sessionType)) {
+        if (!this.isLiveDataMode || isRaceSession(this.sessionType)) {
             return this;
         }
 
@@ -297,7 +297,7 @@ class RaceTableRowPopulator {
         return midPointPrediction ? [midPointPrediction, lastPrediction] : [lastPrediction];
     }
     addTyrePredictionInfo() {
-        if (!isRaceSession(this.sessionType)) {
+        if (!this.isLiveDataMode || !isRaceSession(this.sessionType)) {
             return this;
         }
 

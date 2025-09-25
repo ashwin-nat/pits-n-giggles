@@ -353,13 +353,8 @@ class TelemetryRenderer {
   }
 
   setWearPredictionColumnState(isLiveDataMode, sessionType) {
-    // TODO: hide in save viewer mode
-    let shouldHide = false;
-    if (!isRaceSession(sessionType)) {
-      shouldHide = true;
-    }
-
-    this.hideColumn('WEAR PREDICTION', shouldHide);
+      const shouldHide = !isLiveDataMode || !isRaceSession(sessionType);
+      this.hideColumn('WEAR PREDICTION', shouldHide);
   }
 
   setWingDamageColumnState(sessionType) {
