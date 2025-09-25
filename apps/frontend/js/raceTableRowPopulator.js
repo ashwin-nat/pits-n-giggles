@@ -1,5 +1,5 @@
 class RaceTableRowPopulator {
-    constructor(row, rowData, packetFormat, isLiveDataMode, iconCache, raceEnded, spectatorIndex) {
+    constructor(row, rowData, packetFormat, isLiveDataMode, iconCache, raceEnded, spectatorIndex, sessionType) {
         this.row = row;
         this.rowData = rowData;
         this.packetFormat = packetFormat;
@@ -7,6 +7,7 @@ class RaceTableRowPopulator {
         this.iconCache = iconCache;
         this.raceEnded = raceEnded;
         this.spectatorIndex = spectatorIndex;
+        this.sessionType = sessionType;
     }
 
     populate() {
@@ -19,6 +20,7 @@ class RaceTableRowPopulator {
             .addWarningsPensInfo()
             .addBestLapInfo()
             .addLastLapInfo()
+            .addCurrLapInfo()
             .addCurrTyreInfo();
 
         if (isTelemetryPublic) {
@@ -161,6 +163,16 @@ class RaceTableRowPopulator {
         return this;
     }
 
+    addCurrLapInfo() {
+        if (isRaceSession(this.sessionType)) {
+            return this;
+        }
+
+        let tempCell = this.row.insertCell();
+        tempCell.textContent = "TODO";
+        return this;
+    }
+
     addCurrTyreInfo() {
         const tyreInfoData = this.rowData["tyre-info"];
         const currTyreWearData = tyreInfoData["current-wear"];
@@ -245,6 +257,10 @@ class RaceTableRowPopulator {
         return midPointPrediction ? [midPointPrediction, lastPrediction] : [lastPrediction];
     }
     addTyrePredictionInfo() {
+        if (!isRaceSession(this.sessionType)) {
+            return this;
+        }
+
         const currentLap = this.rowData["lap-info"]["current-lap"];
         const predictionData = this.#getWearPredictions(this.rowData["tyre-info"]["wear-prediction"], currentLap);
 
@@ -272,6 +288,9 @@ class RaceTableRowPopulator {
     }
 
     addDamageInfo() {
+        if (!isRaceSession(this.sessionType)) {
+            return this;
+        }
         const damageInfo = this.rowData["damage-info"];
         // Wing damage key will always be present
         const flWingDamage = damageInfo["fl-wing-damage"] == null ? "N/A" :
@@ -332,7 +351,7 @@ class RaceTableRowPopulator {
     }
 
     addFuelInfo() {
-        if (!this.isLiveDataMode) {
+        if (!this.isLiveDataMode || !isRaceSession(this.sessionType)) {
           return this;
         }
         const fuelInfo = this.rowData["fuel-info"];
@@ -345,17 +364,22 @@ class RaceTableRowPopulator {
       }
 
     addTelemetryRestrictedColspan() {
-        const cell = this.row.insertCell();
-        cell.colSpan = 3;
-        cell.style.textAlign = "center";
-        cell.style.verticalAlign = "middle";
+        if (isRaceSession(this.sessionType)) {
+            // we will show this message only in race view, since wear prediction, damage and fuel are
+            // only supported in race. in FP/quali, these columns are not shown. Hence, no need to show this
+            const cell = this.row.insertCell();
+            cell.colSpan = 3;
+            cell.style.textAlign = "center";
+            cell.style.verticalAlign = "middle";
 
-        const message = document.createElement("div");
-        message.textContent = "Driver has telemetry set to Restricted";
-        message.style.fontStyle = "italic"; // Make the text italic
-        cell.appendChild(message);
+            const message = document.createElement("div");
+            message.textContent = "Driver has telemetry set to Restricted";
+            message.style.fontStyle = "italic"; // Make the text italic
+            cell.appendChild(message);
+        }
 
         return this;
+
     }
 
     createMultiLineCell(lines, onClick = null) {

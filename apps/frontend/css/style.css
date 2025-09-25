@@ -206,8 +206,9 @@ body {
 }
 
 .telemetry-table .best-lap,
+.telemetry-table .curr-lap,
 .telemetry-table .last-lap {
-  width: 12%; /* Equal width for "Best Lap" and "Last Lap" */
+  width: 12%; /* Equal width for "Best Lap", "Current Lap" and "Last Lap" */
 }
 
 .telemetry-table th:nth-child(1) { width: 5%; } /* POS */

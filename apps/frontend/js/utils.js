@@ -417,3 +417,15 @@ function insertRejoinPositions(drivers, pitLoss) {
         driver["tyre-info"]["pit-rejoin-position"] = pos;
     }
 }
+
+function isPracticeSession(sessionType) {
+    return sessionType.includes('Practice');
+}
+
+function isQualiSession(sessionType) {
+    return (sessionType.includes('Qualifying') || sessionType.includes('Shootout'));
+}
+
+function isRaceSession(sessionType) {
+    return !isPracticeSession(sessionType) && !isQualiSession(sessionType);
+}

@@ -26,12 +26,13 @@ class TelemetryRenderer {
     this.statusContainer.append(this.blinkingDot, this.statusText)
   }
 
-  renderTelemetryRow(data, packetFormat, isLiveDataMode, raceEnded, spectatorIndex) {
+  renderTelemetryRow(data, packetFormat, isLiveDataMode, raceEnded, spectatorIndex, sessionType) {
     const { 'driver-info': driverInfo } = data;
     const row = document.createElement('tr');
 
     // Populate row with data
-    new RaceTableRowPopulator(row, data, packetFormat, isLiveDataMode, this.iconCache, raceEnded, spectatorIndex).populate();
+    new RaceTableRowPopulator(row, data, packetFormat, isLiveDataMode, this.iconCache, raceEnded, spectatorIndex,
+                                    sessionType).populate();
 
     // Apply CSS classes based on row state
     const cssClasses = this.determineRowClasses(driverInfo, isLiveDataMode, spectatorIndex);
@@ -108,8 +109,8 @@ class TelemetryRenderer {
   }
 
   // Update or create row based on existing data
-  updateOrCreateRow(row, data, packetFormat, isLiveDataMode, driverIndex, raceEnded, spectatorIndex) {
-    const newRow = this.renderTelemetryRow(data, packetFormat, isLiveDataMode, raceEnded, spectatorIndex);
+  updateOrCreateRow(row, data, packetFormat, isLiveDataMode, driverIndex, raceEnded, spectatorIndex, sessionType) {
+    const newRow = this.renderTelemetryRow(data, packetFormat, isLiveDataMode, raceEnded, spectatorIndex, sessionType);
     if (row) {
       row.innerHTML = newRow.innerHTML;
     } else {
@@ -125,8 +126,12 @@ class TelemetryRenderer {
     const raceEnded = incomingData["race-ended"];
     const spectatorMode = incomingData["is-spectating"];
     const spectatorCarIndex = incomingData["spectator-car-index"];
+    const sessionType = incomingData["session-type"];
     this.setDeltaColumnState(isLiveDataMode);
-    this.setFuelColumnState(isLiveDataMode);
+    this.setFuelColumnState(isLiveDataMode, sessionType);
+    this.setCurrLapColumnState(isLiveDataMode, sessionType);
+    this.setWearPredictionColumnState(isLiveDataMode, sessionType);
+    this.setWingDamageColumnState(sessionType);
 
     const tableEntries = this.getRelevantRaceTableRows(incomingData);
     updateReferenceLapTimes(tableEntries,
@@ -145,7 +150,8 @@ class TelemetryRenderer {
     tableEntries.forEach(data => {
       const driverIndex = data["driver-info"]["index"];
       let row = driverRowMap.get(driverIndex);
-      row = this.updateOrCreateRow(row, data, packetFormat, isLiveDataMode, driverIndex, raceEnded, spectatorCarIndex);
+      row = this.updateOrCreateRow(row, data, packetFormat, isLiveDataMode, driverIndex, raceEnded, spectatorCarIndex,
+                                    sessionType);
       this.telemetryTable.appendChild(row);
     });
     // Rows not referenced in tableEntries will be left out
@@ -322,10 +328,44 @@ class TelemetryRenderer {
     this.hideColumn('DELTA 🛈', isLiveDataMode);
   }
 
-  setFuelColumnState(isLiveDataMode) {
-    // show the column in live mode
-    const shouldHide = !isLiveDataMode;
+  setFuelColumnState(isLiveDataMode, sessionType) {
+    // show the column in live mode, but only for race sessions
+    let shouldHide;
+    if (!isLiveDataMode) {
+      shouldHide = true;
+    } else {
+      shouldHide = !isRaceSession(sessionType);
+    }
     this.hideColumn('FUEL 🛈', shouldHide);
+  }
+
+  setCurrLapColumnState(isLiveDataMode, sessionType) {
+    // show the column in live mode, but only in FP and quali sessions
+    let shouldHide = false;
+    if (!isLiveDataMode) {
+      shouldHide = true;
+    }
+    else {
+      shouldHide = isRaceSession(sessionType);
+    }
+
+    this.hideColumn('CURRENT LAP', shouldHide);
+  }
+
+  setWearPredictionColumnState(isLiveDataMode, sessionType) {
+    // TODO: hide in save viewer mode
+    let shouldHide = false;
+    if (!isRaceSession(sessionType)) {
+      shouldHide = true;
+    }
+
+    this.hideColumn('WEAR PREDICTION', shouldHide);
+  }
+
+  setWingDamageColumnState(sessionType) {
+    // hide the column in FP/Quali modes
+    const shouldHide = !isRaceSession(sessionType);
+    this.hideColumn('WING DAMAGE', shouldHide);
   }
 
   hideColumn(columnName, shouldHide) {
