@@ -207,3 +207,18 @@
 .race-control-action-button:nth-child(2):hover {
     background-color: #c82333;
 }
+
+.icon-btn {
+    background: transparent;
+    border: none;
+    color: var(--f1-text-secondary);
+    font-size: 1.25rem;
+    /* Adjust size as needed */
+    padding: 0.5rem;
+    /* Adds spacing around the icon */
+    cursor: pointer;
+}
+
+.icon-btn:hover {
+    color: var(--f1-text);
+}
