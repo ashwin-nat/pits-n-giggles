@@ -89,6 +89,8 @@ class EngViewRaceTable {
         this.PURPLE_SECTOR = 2;
         this.COLUMN_STATE_LS_KEY = 'eng-view-table-column-state-ag';
         this.TELEMETRY_DISABLED_TEXT = "⌀";
+        this.delayedLapData = new Map(); // Stores { oldLapData, timestamp } for each driver
+        this.previousTableData = []; // Stores the data from the previous update cycle
 
         // Column visibility pane elements
         this.settingsButton = document.getElementById('settings-btn');
@@ -282,8 +284,23 @@ class EngViewRaceTable {
     createSectorCellRendererCurrLap(sectorKey, timeKey) {
         return (params) => {
             const driverInfo = params.data;
-            const lapInfo = driverInfo["lap-info"]["curr-lap"];
-            const sectorStatus = lapInfo["sector-status"];
+            const driverId = driverInfo.id;
+            const delayedData = this.delayedLapData.get(driverId);
+            const currentTime = Date.now();
+            const FIVE_SECONDS_MS = 5000;
+
+            let lapInfo;
+            let sectorStatus;
+
+            if (delayedData && (currentTime - delayedData.timestamp < FIVE_SECONDS_MS)) {
+                // Use delayed data
+                lapInfo = delayedData.oldLapData;
+                sectorStatus = lapInfo["sector-status"];
+            } else {
+                // Use current data
+                lapInfo = driverInfo["lap-info"]["curr-lap"];
+                sectorStatus = lapInfo["sector-status"];
+            }
 
             const timeMs = lapInfo[timeKey];
             const formattedTime = sectorKey === 'lap'
@@ -875,6 +892,31 @@ class EngViewRaceTable {
         }));
 
         if (this.gridApi) {
+            const currentTime = Date.now();
+            const FIVE_SECONDS_MS = 5000;
+
+            newTableData.forEach(newDriverData => {
+                const driverId = newDriverData.id;
+                const oldDriverData = this.previousTableData.find(d => d.id === driverId);
+
+                const newLapNum = newDriverData["lap-info"]["curr-lap"]["lap-num"];
+                const oldLapNum = oldDriverData ? oldDriverData["lap-info"]["curr-lap"]["lap-num"] : null;
+
+                if (newLapNum !== oldLapNum && oldLapNum !== null) {
+                    // Lap number changed, store the old lap data for delay
+                    this.delayedLapData.set(driverId, {
+                        oldLapData: oldDriverData["lap-info"]["curr-lap"],
+                        timestamp: currentTime,
+                    });
+                } else if (this.delayedLapData.has(driverId)) {
+                    // Check if 5 seconds have passed since the lap number change
+                    const { timestamp } = this.delayedLapData.get(driverId);
+                    if (currentTime - timestamp > FIVE_SECONDS_MS) {
+                        this.delayedLapData.delete(driverId); // Clear delayed data
+                    }
+                }
+            });
+
             if (newTableData && newTableData.length > 0) {
                 // Set all row data - AG Grid will handle efficient updates internally
                 this.gridApi.setGridOption('rowData', newTableData);
@@ -882,6 +924,8 @@ class EngViewRaceTable {
                 // Clear data if no new data
                 this.gridApi.setGridOption('rowData', []);
             }
+
+            this.previousTableData = newTableData; // Store current data for next update cycle
 
             // If spectator index or spectating status changed, redraw rows to update 'player-row' class
             if (prevSpectatorIndex !== this.spectatorIndex || prevIsSpectating !== this.isSpectating) {
