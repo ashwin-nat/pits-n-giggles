@@ -8,10 +8,10 @@ class RaceTableRowPopulator {
         this.raceEnded = raceEnded;
         this.spectatorIndex = spectatorIndex;
         this.sessionType = sessionType;
+        this.isTelemetryPublic = this.rowData["driver-info"]["telemetry-setting"] === "Public"
     }
 
     populate() {
-        const isTelemetryPublic = this.rowData["driver-info"]["telemetry-setting"] === "Public";
 
         this.addPositionInfo()
             .addNameInfo()
@@ -23,7 +23,7 @@ class RaceTableRowPopulator {
             .addCurrLapInfo()
             .addCurrTyreInfo();
 
-        if (isTelemetryPublic) {
+        if (this.isTelemetryPublic) {
             this.addTyrePredictionInfo()
                 .addDamageInfo()
                 .addFuelInfo();
@@ -191,48 +191,71 @@ class RaceTableRowPopulator {
     }
 
     addCurrTyreInfo() {
-        const tyreInfoData = this.rowData["tyre-info"];
-        const currTyreWearData = tyreInfoData["current-wear"];
-        let tyreWearText = "";
-        if (g_pref_tyreWearAverageFormat) {
-            tyreWearText = currTyreWearData
-                ? formatFloat(currTyreWearData["average"]) + "%"
-                : "N/A";
-        } else {
-            tyreWearText = currTyreWearData
-                ? (() => {
-                    const maxTyreWearData = getMaxTyreWear(currTyreWearData);
-                    return `${maxTyreWearData["max-key"]}: ${formatFloat(maxTyreWearData["max-wear"])}%`;
-                })()
-                : "N/A";
-        }
-
+        const tyreInfo = this.rowData["tyre-info"];
         const cell = this.row.insertCell();
 
-        const firstRow = document.createElement("div");
-        const icon = this.iconCache.getIcon(tyreInfoData["visual-tyre-compound"]);
-        const tyreCompound = getTyreCompoundStr(tyreInfoData["visual-tyre-compound"], tyreInfoData["actual-tyre-compound"]);
+        // Add tyre compound and wear information
+        this.#addTyreCompoundRow(cell, tyreInfo);
 
-        if (icon) {
-            firstRow.appendChild(icon);
-            firstRow.appendChild(document.createTextNode(" " + tyreWearText));
-        } else {
-            firstRow.textContent = `${tyreCompound} ${tyreWearText}`;
-        }
+        // Add tyre age and pit information
+        this.#addTyreAgeRow(cell, tyreInfo);
 
-        const secondRow = document.createElement("div");
-        secondRow.textContent = `${tyreInfoData["tyre-age"]} lap(s) (${tyreInfoData["num-pitstops"]} pit)`;
-        cell.appendChild(firstRow);
-        cell.appendChild(secondRow);
-
-        if (!this.raceEnded && this.isLiveDataMode) {
-            const thirdRow = document.createElement("div");
-            const rejoin = tyreInfoData["pit-rejoin-position"];
-            thirdRow.textContent = `Pit rejoin: ${(rejoin !== null && rejoin !== undefined) ? "P" + rejoin : "N/A"}`;
-            cell.appendChild(thirdRow);
+        // Add pit rejoin information if in live mode and race not ended
+        if (!this.raceEnded && this.isLiveDataMode && isRaceSession(this.sessionType)) {
+            this.#addPitRejoinRow(cell, tyreInfo);
         }
 
         return this;
+    }
+
+    #formatTyreWearText(currTyreWearData) {
+        if (!currTyreWearData) {
+            return "N/A";
+        }
+
+        if (!this.isTelemetryPublic) {
+            return "RESTRICTED";
+        }
+
+        if (g_pref_tyreWearAverageFormat) {
+            return `${formatFloat(currTyreWearData["average"])}%`;
+        }
+
+        const maxTyreWearData = getMaxTyreWear(currTyreWearData);
+        return `${maxTyreWearData["max-key"]}: ${formatFloat(maxTyreWearData["max-wear"])}%`;
+    }
+
+    #addTyreCompoundRow(cell, tyreInfo) {
+        const firstRow = document.createElement("div");
+        const tyreWearText = this.#formatTyreWearText(tyreInfo["current-wear"]);
+        const icon = this.iconCache.getIcon(tyreInfo["visual-tyre-compound"]);
+
+        if (icon) {
+            firstRow.appendChild(icon);
+            firstRow.appendChild(document.createTextNode(` ${tyreWearText}`));
+        } else {
+            const tyreCompound = getTyreCompoundStr(
+                tyreInfo["visual-tyre-compound"],
+                tyreInfo["actual-tyre-compound"]
+            );
+            firstRow.textContent = `${tyreCompound} ${tyreWearText}`;
+        }
+
+        cell.appendChild(firstRow);
+    }
+
+    #addTyreAgeRow(cell, tyreInfo) {
+        const secondRow = document.createElement("div");
+        secondRow.textContent = `${tyreInfo["tyre-age"]} lap(s) (${tyreInfo["num-pitstops"]} pit)`;
+        cell.appendChild(secondRow);
+    }
+
+    #addPitRejoinRow(cell, tyreInfo) {
+        const thirdRow = document.createElement("div");
+        const rejoin = tyreInfo["pit-rejoin-position"];
+        const rejoinText = (rejoin !== null && rejoin !== undefined) ? `P${rejoin}` : "N/A";
+        thirdRow.textContent = `Pit rejoin: ${rejoinText}`;
+        cell.appendChild(thirdRow);
     }
 
     #getPitStopPrediction(data) {
