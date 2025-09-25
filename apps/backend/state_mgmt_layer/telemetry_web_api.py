@@ -1017,7 +1017,7 @@ class DriversListRsp:
         return {
             "lap-time-ms": driver_data.m_lap_info.m_curr_lap_ms,
             "s1-time-ms": driver_data.m_lap_info.m_curr_lap_s1_ms,
-            "s2-time-ms": driver_data.m_lap_info.m_curr_lap_s1_ms,
+            "s2-time-ms": driver_data.m_lap_info.m_curr_lap_s2_ms,
             "s3-time-ms": driver_data.m_lap_info.m_curr_lap_s3_ms,
             "sector" : str(driver_data.m_lap_info.m_curr_sector),
             "driver-status" : str(driver_data.m_lap_info.m_curr_status),

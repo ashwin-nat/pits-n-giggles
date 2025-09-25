@@ -495,6 +495,9 @@ class LapData(F1SubPacketBase):
             int: Total S1 time in ms
         """
 
+        if self.m_sector == LapData.Sector.SECTOR1:
+            # Since S1 is ongoing, it will be 0 in the packet. Hence it is basically the current lap time
+            return self.m_currentLapTimeInMS
         return self.__getCombinedTimeMS(self.m_sector1TimeInMS, self.m_sector1TimeMinutes)
 
     @property
@@ -504,7 +507,13 @@ class LapData(F1SubPacketBase):
         Returns:
             int: Total S2 time in ms
         """
+        if self.m_sector == LapData.Sector.SECTOR1:
+            return 0
+        if self.m_sector == LapData.Sector.SECTOR2:
+            # Since S2 is ongoing, it will be 0 in the packet. Hence it is basically the current lap time minus S1
+            return self.m_currentLapTimeInMS - self.s1TimeMS
 
+        # Since S2 is completed, we can directly read the S2 field
         return self.__getCombinedTimeMS(self.m_sector2TimeInMS, self.m_sector2TimeMinutes)
 
     @property
@@ -514,6 +523,9 @@ class LapData(F1SubPacketBase):
         Returns:
             int: Total S3 time in ms
         """
+
+        if self.m_sector < LapData.Sector.SECTOR3:
+            return 0
 
         # Since there is no S3 time, return total - (s1 + s2)
         return self.m_currentLapTimeInMS - (self.s1TimeMS + self.s2TimeMS)
