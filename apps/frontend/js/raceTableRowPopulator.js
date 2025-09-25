@@ -168,8 +168,25 @@ class RaceTableRowPopulator {
             return this;
         }
 
-        let tempCell = this.row.insertCell();
-        tempCell.textContent = "TODO";
+        const lapInfo = this.rowData["lap-info"]["curr-lap"];
+        const driverStatus = lapInfo["driver-status"];
+        if (driverStatus === "FLYING_LAP" || driverStatus === "ON_TRACK") {
+            const cellContent = [];
+            const lapTimeContent = getFormattedLapTimeStr({
+                lapTimeMs: lapInfo["lap-time-ms"],
+                showAbsoluteFormat: true
+            });
+            cellContent.push(lapTimeContent);
+
+            const cell = this.createMultiLineCell(cellContent);
+            if (lapInfo["lap-time-ms"]) {
+                this.addSectorInfo(cell, lapInfo["sector-status"]);
+            }
+        } else {
+            let idleDriverCell = this.row.insertCell();
+            idleDriverCell.textContent = driverStatus;
+        }
+
         return this;
     }
 
