@@ -308,17 +308,15 @@ class EngViewRaceTable {
                 : formatSectorTime(timeMs);
 
             let timeClass = '';
-            if (sectorStatus) {
-                if (sectorKey !== 'lap') {
-                    const sectorIndex = parseInt(sectorKey.slice(1)) - 1;
-                    if (sectorStatus[sectorIndex] === this.GREEN_SECTOR) {
-                        timeClass = 'green-time';
-                    } else if (sectorStatus[sectorIndex] === this.PURPLE_SECTOR) {
-                        timeClass = 'purple-time';
-                    } else if (sectorStatus[sectorIndex] === this.RED_SECTOR) {
-                        timeClass = 'red-time';
-                    }
-                }
+            if (sectorStatus && sectorKey !== 'lap') {
+                  const sectorIndex = parseInt(sectorKey.slice(1)) - 1;
+                  if (sectorStatus[sectorIndex] === this.GREEN_SECTOR) {
+                      timeClass = 'green-time';
+                  } else if (sectorStatus[sectorIndex] === this.PURPLE_SECTOR) {
+                      timeClass = 'purple-time';
+                  } else if (sectorStatus[sectorIndex] === this.RED_SECTOR) {
+                      timeClass = 'red-time';
+                  }
             }
             return this.createSingleLineCell(formattedTime, {className: timeClass});
         };
@@ -859,6 +857,11 @@ class EngViewRaceTable {
         this.spectatorIndex = spectatorCarIndex;
         this.isSpectating = isSpectating;
         this.fastestLapMs = fastestLapMs;
+        if (this.sessionUID !== sessionUID) {
+            // clear the data structures if the session has changed
+            this.previousTableData = [];
+            this.delayedLapData = new Map();
+        }
 
         if (eventType === "Time Trial") {
             if (this.currEventType !== "Time Trial" && this.gridApi) {
