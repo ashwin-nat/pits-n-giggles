@@ -1343,8 +1343,9 @@ function initDashboard() {
     weatherTable = new EngViewWeatherTable(iconCache);
 
     const driverModal = true;
-    const raceStatsModal = false;
-    window.modalManager = new ModalManager(driverModal, raceStatsModal, false);
+    const settingsModal = false;
+    const raceStatsModal = true;
+    window.modalManager = new ModalManager(driverModal, settingsModal, raceStatsModal);
 
     const connectStart = Date.now();
     const socketio = io(`${location.protocol}//${location.hostname}:${location.port}`, {

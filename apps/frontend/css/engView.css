@@ -345,3 +345,21 @@ input[type="number"]::-webkit-outer-spin-button {
 .inactive .nav-link {
   color: var(--f1-text-secondary);
 }
+
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 200px;
+  background-color: #333; /* Dark background */
+  color: #fff; /* White text */
+  border-radius: 20px; /* Rounded corners */
+  padding: 10px 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4); /* Subtle shadow for better visibility */
+}
+
+.toast-body {
+  font-size: 16px; /* Standard font size */
+  text-align: center; /* Centered text */
+}
