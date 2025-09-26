@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import argparse
 import atexit
 import os
 import shutil
@@ -38,6 +39,34 @@ from lib.file_path import resolve_user_file
 _temp_icon_file = None
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+
+def parse_args() -> argparse.Namespace:
+    """
+    Parse command-line arguments for the application.
+
+    Returns:
+        argparse.Namespace: Parsed command-line arguments containing:
+            - smoke_test (Optional[str]): Name or mode for smoke testing, if provided.
+            - debug (bool): True if debug mode is enabled, False otherwise.
+    """
+    parser = argparse.ArgumentParser(description="Launch Pits n' Giggles")
+
+    # Smoke test requires an argument if provided
+    parser.add_argument(
+        "--smoke-test",
+        required=False,
+        help="Run smoke test with a required mode or test name",
+        metavar="TEST_NAME"
+    )
+
+    # Debug mode is an optional boolean flag
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug mode"
+    )
+
+    return parser.parse_args()
 
 def resource_path(relative_path):
     """
@@ -92,23 +121,32 @@ SETTINGS_ICON_PATH = str(resource_path("assets/settings.ico"))
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
-def entry_point():
+def entry_point() -> None:
+    """
+    Main entry point for the Pits n' Giggles application.
 
-    smoke_test_arg = "--smoke-test" in sys.argv
-    if smoke_test_arg:
-        smoke_test()
+    Handles:
+        - Running smoke tests if the --smoke-test flag is provided.
+        - Launching the main Tkinter application otherwise.
+    """
+    args: argparse.Namespace = parse_args()
+
+    # Handle smoke test
+    if args.smoke_test is not None:
+        smoke_test(args.smoke_test)
         sys.exit(0)
 
-    debug_mode = "--debug" in sys.argv
-    root = tk.Tk()
+    # Launch the main application
+    root: tk.Tk = tk.Tk()
     root.title("Pits n' Giggles")
-    root.iconbitmap(load_icon_safely("assets/favicon.ico"))  # Set the icon for the main window
+    root.iconbitmap(load_icon_safely("assets/favicon.ico"))
+
     app = PngLauncher(
         root=root,
         ver_str=get_version(),
         logo_path=APP_ICON_PATH,
         settings_icon_path=SETTINGS_ICON_PATH,
-        debug_mode=debug_mode
+        debug_mode=args.debug
     )
     root.protocol("WM_DELETE_WINDOW", app.on_closing)
     root.createcommand("::tk::mac::Quit", app.on_closing)
