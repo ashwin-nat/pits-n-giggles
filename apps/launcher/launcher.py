@@ -31,6 +31,7 @@ import tkinter as tk
 
 from apps.launcher.png_launcher import PngLauncher
 from lib.version import get_version
+from lib.file_path import resolve_user_file
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -76,6 +77,12 @@ def _cleanup_temp_icon():
             pass
         _temp_icon_file = None
 
+def smoke_test():
+    """Create a test file and the log file path. Process parent will test if the file exists."""
+    path = resolve_user_file("png_smoke_test.txt")
+    with open(path, "w") as f:
+        f.write("PNG_SMOKE_TEST")
+
 atexit.register(_cleanup_temp_icon)
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
@@ -86,6 +93,12 @@ SETTINGS_ICON_PATH = str(resource_path("assets/settings.ico"))
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
 def entry_point():
+
+    smoke_test_arg = "--smoke-test" in sys.argv
+    if smoke_test_arg:
+        smoke_test()
+        sys.exit(0)
+
     debug_mode = "--debug" in sys.argv
     root = tk.Tk()
     root.title("Pits n' Giggles")
