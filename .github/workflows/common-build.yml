@@ -63,3 +63,29 @@ jobs:
           path: |
             dist/*.app
             dist/*.exe
+      - name: Run Smoke Test
+        run: |
+          if [[ "${{ runner.os }}" == "macOS" ]]; then
+            APP_PATH=$(find dist -name "*.app" | head -n 1)
+            TEST_FILE="$HOME/Library/Application Support/pits_n_giggles/png_smoke_test.txt"
+            # Launch app in smoke test mode with dummy content
+            open -W "$APP_PATH" --args --smoke-test "hello-smoke"
+            # Verify the file was created
+            if [ ! -f "$TEST_FILE" ]; then
+              echo "Smoke test failed: $TEST_FILE not found"
+              exit 1
+            fi
+          else
+            EXE_PATH=$(find dist -name "*.exe" | head -n 1)
+            TEST_FILE="./png_smoke_test.txt"
+            # Launch app in smoke test mode with dummy content
+            "$EXE_PATH" --smoke-test "hello-smoke"
+            # Wait a little for file creation
+            sleep 2
+            if [ ! -f "$TEST_FILE" ]; then
+              echo "Smoke test failed: $TEST_FILE not found"
+              exit 1
+            fi
+          fi
+          echo "Smoke test passed!"
+        shell: bash
