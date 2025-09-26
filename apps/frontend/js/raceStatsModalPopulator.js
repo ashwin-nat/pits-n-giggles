@@ -75,7 +75,7 @@ class RaceStatsModalPopulator {
 
     createTabContent() {
         const tabContent = document.createElement('div');
-        tabContent.className = 'tab-content driver-modal-tab-content';
+        tabContent.className = 'tab-content driver-modal-tab-content h-100'; /* Add h-100 to make it fill height */
 
         // Array of tabs with ID and method to populate content
         const tabs = [

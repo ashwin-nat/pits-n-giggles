@@ -179,7 +179,7 @@
 
 /* Styling for the driver modal tab panes to prevent overflow */
 .driver-modal-tab-pane {
-    max-height: 60vh; /* Adjust as needed */
+    height: 100%; /* Allow content to fill available height */
     overflow-y: auto;
     padding: 10px; /* Add some padding for better appearance */
 }
