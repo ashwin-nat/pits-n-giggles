@@ -83,10 +83,16 @@ jobs:
             TEST_FILE="./png_smoke_test.txt"
             # Launch app in smoke test mode with dummy content
             "$EXE_PATH" --smoke-test "hello-smoke"
-            # Wait a little for file creation
-            sleep 2
+            # Wait for file creation with polling (timeout: 10s)
+            TIMEOUT=10
+            INTERVAL=0.5
+            ELAPSED=0
+            while [ ! -f "$TEST_FILE" ] && [ "$(echo "$ELAPSED < $TIMEOUT" | bc)" -eq 1 ]; do
+              sleep $INTERVAL
+              ELAPSED=$(echo "$ELAPSED + $INTERVAL" | bc)
+            done
             if [ ! -f "$TEST_FILE" ]; then
-              echo "Smoke test failed: $TEST_FILE not found"
+              echo "Smoke test failed: $TEST_FILE not found after $TIMEOUT seconds"
               exit 1
             fi
           fi
