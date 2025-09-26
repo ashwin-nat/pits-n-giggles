@@ -1082,8 +1082,7 @@ class DriverModalPopulator {
 
         // Split the tab content into two vertical halves
         const containerDiv = document.createElement('div');
-        containerDiv.className = 'd-flex';
-        // containerDiv.style.height = '100vh';
+        containerDiv.className = 'd-flex h-100';
 
         // Left half: Create the fuel usage table
         const leftDiv = document.createElement('div');
@@ -1092,7 +1091,7 @@ class DriverModalPopulator {
 
         // Right half: Empty for now
         const rightDiv = document.createElement('div');
-        rightDiv.className = 'w-50 border border-light-subtle rounded overflow-auto'; // Half width
+        rightDiv.className = 'w-50 border border-light-subtle rounded overflow-auto d-flex flex-column h-100'; // Half width
         rightPanePopulator(rightDiv);
 
         containerDiv.appendChild(leftDiv);
