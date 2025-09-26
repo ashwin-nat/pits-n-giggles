@@ -106,11 +106,16 @@ def _cleanup_temp_icon():
             pass
         _temp_icon_file = None
 
-def smoke_test():
-    """Create a test file and the log file path. Process parent will test if the file exists."""
+def smoke_test(file_content: str) -> None:
+    """Create a test file at the log file path. (CWD for windows, ~/Library/Application Support/pits_n_giggles for mac)
+        Parent process is responsible to test if the file exists.
+
+        Args:
+            file_content (str): The content to write to the file.
+    """
     path = resolve_user_file("png_smoke_test.txt")
     with open(path, "w") as f:
-        f.write("PNG_SMOKE_TEST")
+        f.write(file_content)
 
 atexit.register(_cleanup_temp_icon)
 
