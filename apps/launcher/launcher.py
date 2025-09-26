@@ -114,7 +114,7 @@ def smoke_test(file_content: str) -> None:
             file_content (str): The content to write to the file.
     """
     path = resolve_user_file("png_smoke_test.txt")
-    with open(path, "w") as f:
+    with open(path, "w", encoding='utf-8') as f:
         f.write(file_content)
 
 atexit.register(_cleanup_temp_icon)
