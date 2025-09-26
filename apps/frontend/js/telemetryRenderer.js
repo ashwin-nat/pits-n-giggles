@@ -112,9 +112,6 @@ class TelemetryRenderer {
 
   // Update or create row based on existing data
   updateOrCreateRow(driverRowObj, data, packetFormat, isLiveDataMode, driverIndex, raceEnded, spectatorIndex, sessionType) {
-    if (!driverRowObj) {
-      driverRowObj = { row: null, context: {} };
-    }
     const newRow = this.renderTelemetryRow(data, packetFormat, isLiveDataMode, raceEnded, spectatorIndex, sessionType,
                           driverRowObj.context);
     if (driverRowObj.row) {
@@ -157,6 +154,12 @@ class TelemetryRenderer {
     tableEntries.forEach(data => {
       const driverIndex = data["driver-info"]["index"];
       let driverRowObj = driverRowMap.get(driverIndex);
+
+      if (!driverRowObj) {
+        const existingContext = this.driverContextMap.get(driverIndex) || {};
+        driverRowObj = { row: null, context: existingContext };
+      }
+
       driverRowObj = this.updateOrCreateRow(driverRowObj, data, packetFormat, isLiveDataMode, driverIndex, raceEnded, spectatorCarIndex,
                                     sessionType);
       this.telemetryTable.appendChild(driverRowObj.row);
