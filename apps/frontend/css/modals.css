@@ -177,6 +177,21 @@
     cursor: pointer;
 }
 
+/* Styling for the driver modal tab panes to prevent overflow */
+.driver-modal-tab-pane {
+    max-height: 60vh; /* Adjust as needed */
+    overflow-y: auto;
+    padding: 10px; /* Add some padding for better appearance */
+}
+
+/* Styling for chart containers within the modal */
+.chart-container,
+.driver-modal-tab-pane canvas {
+    max-height: 55vh; /* Adjust as needed, slightly less than tab-pane to account for padding/margins */
+    width: 100%;
+    display: block; /* Ensure canvas behaves as a block element */
+}
+
 .filter-button-container {
     display: flex;
     justify-content: space-around;
