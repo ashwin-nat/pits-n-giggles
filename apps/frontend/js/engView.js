@@ -862,6 +862,7 @@ class EngViewRaceTable {
             this.previousTableData = [];
             this.delayedLapData = new Map();
         }
+        this.sessionUID = sessionUID;
 
         if (eventType === "Time Trial") {
             if (this.currEventType !== "Time Trial" && this.gridApi) {

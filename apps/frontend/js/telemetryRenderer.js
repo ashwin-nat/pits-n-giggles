@@ -17,6 +17,7 @@ class TelemetryRenderer {
     this.iconCache = iconCache;
     this.uiMode = 'Splash';
     this.driverContextMap = new Map();
+    this.sessionUID = null;
 
     this.connected = null;
     this.statusContainer   = document.getElementById('status-wrapper')
@@ -131,6 +132,13 @@ class TelemetryRenderer {
     const spectatorMode = incomingData["is-spectating"];
     const spectatorCarIndex = incomingData["spectator-car-index"];
     const sessionType = incomingData["session-type"];
+
+    if (this.sessionUID != incomingData["session-uid"]) {
+      // reset map when session changes
+      this.driverContextMap = new Map();
+    }
+    this.sessionUID = incomingData["session-uid"];
+
     this.setDeltaColumnState(isLiveDataMode);
     this.setFuelColumnState(isLiveDataMode, sessionType);
     this.setCurrLapColumnState(isLiveDataMode, sessionType);
