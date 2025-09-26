@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import argparse
 import atexit
 import os
 import shutil
@@ -31,12 +32,41 @@ import tkinter as tk
 
 from apps.launcher.png_launcher import PngLauncher
 from lib.version import get_version
+from lib.file_path import resolve_user_file
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
 _temp_icon_file = None
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+
+def parse_args() -> argparse.Namespace:
+    """
+    Parse command-line arguments for the application.
+
+    Returns:
+        argparse.Namespace: Parsed command-line arguments containing:
+            - smoke_test (Optional[str]): Name or mode for smoke testing, if provided.
+            - debug (bool): True if debug mode is enabled, False otherwise.
+    """
+    parser = argparse.ArgumentParser(description="Launch Pits n' Giggles")
+
+    # Smoke test requires an argument if provided
+    parser.add_argument(
+        "--smoke-test",
+        required=False,
+        help="Run smoke test with a required mode or test name",
+        metavar="TEST_NAME"
+    )
+
+    # Debug mode is an optional boolean flag
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug mode"
+    )
+
+    return parser.parse_args()
 
 def resource_path(relative_path):
     """
@@ -76,6 +106,17 @@ def _cleanup_temp_icon():
             pass
         _temp_icon_file = None
 
+def smoke_test(file_content: str) -> None:
+    """Create a test file at the log file path. (CWD for windows, ~/Library/Application Support/pits_n_giggles for mac)
+        Parent process is responsible to test if the file exists.
+
+        Args:
+            file_content (str): The content to write to the file.
+    """
+    path = resolve_user_file("png_smoke_test.txt")
+    with open(path, "w", encoding='utf-8') as f:
+        f.write(file_content)
+
 atexit.register(_cleanup_temp_icon)
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
@@ -85,17 +126,32 @@ SETTINGS_ICON_PATH = str(resource_path("assets/settings.ico"))
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
-def entry_point():
-    debug_mode = "--debug" in sys.argv
-    root = tk.Tk()
+def entry_point() -> None:
+    """
+    Main entry point for the Pits n' Giggles application.
+
+    Handles:
+        - Running smoke tests if the --smoke-test flag is provided.
+        - Launching the main Tkinter application otherwise.
+    """
+    args: argparse.Namespace = parse_args()
+
+    # Handle smoke test
+    if args.smoke_test is not None:
+        smoke_test(args.smoke_test)
+        sys.exit(0)
+
+    # Launch the main application
+    root: tk.Tk = tk.Tk()
     root.title("Pits n' Giggles")
-    root.iconbitmap(load_icon_safely("assets/favicon.ico"))  # Set the icon for the main window
+    root.iconbitmap(load_icon_safely("assets/favicon.ico"))
+
     app = PngLauncher(
         root=root,
         ver_str=get_version(),
         logo_path=APP_ICON_PATH,
         settings_icon_path=SETTINGS_ICON_PATH,
-        debug_mode=debug_mode
+        debug_mode=args.debug
     )
     root.protocol("WM_DELETE_WINDOW", app.on_closing)
     root.createcommand("::tk::mac::Quit", app.on_closing)
