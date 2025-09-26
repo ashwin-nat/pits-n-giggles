@@ -16,6 +16,7 @@ class TelemetryRenderer {
     this.indexByPosition = null;
     this.iconCache = iconCache;
     this.uiMode = 'Splash';
+    this.driverContextMap = new Map();
 
     this.connected = null;
     this.statusContainer   = document.getElementById('status-wrapper')
@@ -26,13 +27,13 @@ class TelemetryRenderer {
     this.statusContainer.append(this.blinkingDot, this.statusText)
   }
 
-  renderTelemetryRow(data, packetFormat, isLiveDataMode, raceEnded, spectatorIndex, sessionType) {
+  renderTelemetryRow(data, packetFormat, isLiveDataMode, raceEnded, spectatorIndex, sessionType, driverContext) {
     const { 'driver-info': driverInfo } = data;
     const row = document.createElement('tr');
 
     // Populate row with data
     new RaceTableRowPopulator(row, data, packetFormat, isLiveDataMode, this.iconCache, raceEnded, spectatorIndex,
-                                    sessionType).populate();
+                                     sessionType, driverContext).populate();
 
     // Apply CSS classes based on row state
     const cssClasses = this.determineRowClasses(driverInfo, isLiveDataMode, spectatorIndex);
@@ -93,7 +94,8 @@ class TelemetryRenderer {
     const driverRowMap = new Map();
     Array.from(this.telemetryTable.querySelectorAll('tr[data-driver-index]')).forEach(row => {
       const driverIndex = row.getAttribute('data-driver-index');
-      driverRowMap.set(driverIndex, row);
+      const existingContext = this.driverContextMap.get(driverIndex) || {};
+      driverRowMap.set(driverIndex, { row: row, context: existingContext });
       row.parentNode.removeChild(row);
     });
     return driverRowMap;
@@ -109,15 +111,20 @@ class TelemetryRenderer {
   }
 
   // Update or create row based on existing data
-  updateOrCreateRow(row, data, packetFormat, isLiveDataMode, driverIndex, raceEnded, spectatorIndex, sessionType) {
-    const newRow = this.renderTelemetryRow(data, packetFormat, isLiveDataMode, raceEnded, spectatorIndex, sessionType);
-    if (row) {
-      row.innerHTML = newRow.innerHTML;
-    } else {
-      row = newRow;
-      row.setAttribute('data-driver-index', driverIndex);
+  updateOrCreateRow(driverRowObj, data, packetFormat, isLiveDataMode, driverIndex, raceEnded, spectatorIndex, sessionType) {
+    if (!driverRowObj) {
+      driverRowObj = { row: null, context: {} };
     }
-    return row;
+    const newRow = this.renderTelemetryRow(data, packetFormat, isLiveDataMode, raceEnded, spectatorIndex, sessionType,
+                          driverRowObj.context);
+    if (driverRowObj.row) {
+      driverRowObj.row.innerHTML = newRow.innerHTML;
+    } else {
+      driverRowObj.row = newRow;
+      driverRowObj.row.setAttribute('data-driver-index', driverIndex);
+    }
+    this.driverContextMap.set(driverIndex, driverRowObj.context);
+    return driverRowObj;
   }
 
   updateRaceTableData(incomingData) {
@@ -149,10 +156,10 @@ class TelemetryRenderer {
 
     tableEntries.forEach(data => {
       const driverIndex = data["driver-info"]["index"];
-      let row = driverRowMap.get(driverIndex);
-      row = this.updateOrCreateRow(row, data, packetFormat, isLiveDataMode, driverIndex, raceEnded, spectatorCarIndex,
+      let driverRowObj = driverRowMap.get(driverIndex);
+      driverRowObj = this.updateOrCreateRow(driverRowObj, data, packetFormat, isLiveDataMode, driverIndex, raceEnded, spectatorCarIndex,
                                     sessionType);
-      this.telemetryTable.appendChild(row);
+      this.telemetryTable.appendChild(driverRowObj.row);
     });
     // Rows not referenced in tableEntries will be left out
   }
