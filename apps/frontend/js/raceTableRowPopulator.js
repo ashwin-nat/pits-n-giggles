@@ -231,7 +231,7 @@ class RaceTableRowPopulator {
             if (newLapNum !== oldLapNum && oldLapNum !== null) {
                 // Display old data first
                 lapNumDisplayElement.textContent = `Lap ${oldLapNum}`;
-                updateLapTimeAndSector(oldLapTimeMs, oldSectorStatus);
+                updateLapTimeAndSector(oldLapTimeMs, this.rowData["lap-info"]["last-lap"]["sector-status"]);
 
                 this.context.currLap.lapNumTimeoutId = setTimeout(() => {
                     lapNumDisplayElement.textContent = `Lap ${newLapNum}`;
