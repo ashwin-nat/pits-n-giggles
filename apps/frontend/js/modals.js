@@ -302,7 +302,7 @@ class ModalManager {
   openRaceStatsModal(data, activeTabId = null) {
 
     if (!this.raceStatsModal) {
-      this.console.error("Race stats modal not initialized");
+      console.error("Race stats modal not initialized");
       return;
     }
 
