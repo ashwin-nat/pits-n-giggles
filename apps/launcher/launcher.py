@@ -138,8 +138,7 @@ def entry_point() -> None:
 
     # Handle smoke test
     if args.smoke_test is not None:
-        # TODO: undo
-        # smoke_test(args.smoke_test)
+        smoke_test(args.smoke_test)
         sys.exit(0)
 
     # Launch the main application
