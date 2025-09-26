@@ -1,5 +1,5 @@
 class RaceTableRowPopulator {
-    constructor(row, rowData, packetFormat, isLiveDataMode, iconCache, raceEnded, spectatorIndex, sessionType) {
+    constructor(row, rowData, packetFormat, isLiveDataMode, iconCache, raceEnded, spectatorIndex, sessionType, context) {
         this.row = row;
         this.rowData = rowData;
         this.packetFormat = packetFormat;
@@ -9,6 +9,12 @@ class RaceTableRowPopulator {
         this.spectatorIndex = spectatorIndex;
         this.sessionType = sessionType;
         this.isTelemetryPublic = this.rowData["driver-info"]["telemetry-setting"] === "Public"
+        this.context = context;
+        this.currLapCell = null; // Initialize the cell reference for current lap info
+        if (this.context.currLap === undefined || this.context.currLap === null) {
+            this.context.currLap = {}; // Initialize currLap context only if it doesn't exist
+        }
+        this.context.currLap.lapNumTimeoutId = null; // Initialize timeout ID for lap number updates
     }
 
     populate() {
@@ -168,23 +174,89 @@ class RaceTableRowPopulator {
             return this;
         }
 
+        // Ensure the cell exists and is cleared for updates
+        if (!this.currLapCell) {
+            this.currLapCell = this.row.insertCell();
+        } else {
+            this.currLapCell.innerHTML = ''; // Clear previous content
+        }
+
         const lapInfo = this.rowData["lap-info"]["curr-lap"];
         const driverStatus = lapInfo["driver-status"];
-        if (driverStatus === "FLYING_LAP" || driverStatus === "ON_TRACK") {
-            const cellContent = [];
-            const lapTimeContent = getFormattedLapTimeStr({
-                lapTimeMs: lapInfo["lap-time-ms"],
-                showAbsoluteFormat: true
-            });
-            cellContent.push(lapTimeContent);
+        const newLapNum = lapInfo["lap-num"];
+        const newLapTimeMs = lapInfo["lap-time-ms"];
+        const newSectorStatus = lapInfo["sector-status"];
 
-            const cell = this.createMultiLineCell(cellContent);
-            if (lapInfo["lap-time-ms"]) {
-                this.addSectorInfo(cell, lapInfo["sector-status"]);
+        const oldLapNum = this.context["currLapNum"] ?? null;
+        const oldLapTimeMs = this.context["currLapTimeMs"] ?? null;
+        const oldSectorStatus = this.context["currSectorStatus"] ?? null;
+
+        // Clear any existing timeouts to prevent multiple updates
+        if (this.context.currLap.lapNumTimeoutId) {
+            clearTimeout(this.context.currLap.lapNumTimeoutId);
+            this.context.currLap.lapNumTimeoutId = null;
+        }
+        if (this.context["lapTimeTimeoutId"]) {
+            clearTimeout(this.context["lapTimeTimeoutId"]);
+            this.context["lapTimeTimeoutId"] = null;
+        }
+        if (this.context["sectorStatusTimeoutId"]) {
+            clearTimeout(this.context["sectorStatusTimeoutId"]);
+            this.context["sectorStatusTimeoutId"] = null;
+        }
+
+        if (driverStatus === "FLYING_LAP" || driverStatus === "ON_TRACK") {
+            const lapNumDisplayElement = document.createElement("div");
+            lapNumDisplayElement.classList.add("lap-num-display"); // Add a class for potential styling/targeting
+
+            const lapTimeContentElement = document.createElement("div");
+            const sectorBarContainer = document.createElement("div"); // Container for sector bar
+            sectorBarContainer.classList.add("sector-bar-container");
+
+            this.currLapCell.appendChild(lapNumDisplayElement);
+            this.currLapCell.appendChild(lapTimeContentElement);
+            this.currLapCell.appendChild(sectorBarContainer); // Append sector bar container
+
+            const updateLapTimeAndSector = (lapTime, sectorStatus) => {
+                lapTimeContentElement.textContent = getFormattedLapTimeStr({
+                    lapTimeMs: lapTime,
+                    showAbsoluteFormat: true
+                });
+                sectorBarContainer.innerHTML = ''; // Clear previous sector bar
+                if (lapTime) {
+                    this.addSectorInfo(sectorBarContainer, sectorStatus);
+                }
+            };
+
+            if (newLapNum !== oldLapNum && oldLapNum !== null) {
+                // Display old data first
+                lapNumDisplayElement.textContent = `Lap ${oldLapNum}`;
+                updateLapTimeAndSector(oldLapTimeMs, oldSectorStatus);
+
+                this.context.currLap.lapNumTimeoutId = setTimeout(() => {
+                    lapNumDisplayElement.textContent = `Lap ${newLapNum}`;
+                    this.context["currLapNum"] = newLapNum;
+                }, 5000);
+
+                this.context["lapTimeTimeoutId"] = setTimeout(() => {
+                    updateLapTimeAndSector(newLapTimeMs, newSectorStatus);
+                    this.context["currLapTimeMs"] = newLapTimeMs;
+                    this.context["currSectorStatus"] = newSectorStatus;
+                }, 5000);
+
+            } else {
+                // Display new data immediately
+                lapNumDisplayElement.textContent = `Lap ${newLapNum}`;
+                updateLapTimeAndSector(newLapTimeMs, newSectorStatus);
+                this.context["currLapNum"] = newLapNum;
+                this.context["currLapTimeMs"] = newLapTimeMs;
+                this.context["currSectorStatus"] = newSectorStatus;
             }
         } else {
-            let idleDriverCell = this.row.insertCell();
-            idleDriverCell.textContent = driverStatus;
+            this.currLapCell.textContent = driverStatus;
+            this.context["currLapNum"] = newLapNum;
+            this.context["currLapTimeMs"] = newLapTimeMs;
+            this.context["currSectorStatus"] = newSectorStatus;
         }
 
         return this;
