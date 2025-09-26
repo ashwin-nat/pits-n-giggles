@@ -1047,6 +1047,57 @@ class DataPerDriver:
                 sector_valid_flag=lap_obj.isSector3Valid()),
         ] if lap_obj else default_val
 
+    def getCurrLapSectorStatus(self, s1_best_ms: int, s2_best_ms: int) -> list[Optional[int]]:
+        """
+        Determine sector status for the current lap.
+
+        Note:
+            - Sector 3 is not considered because once it's finished, the lap becomes
+            the last lap, not the current lap. Hence, its status is always N/A.
+
+        Args:
+            s1_best_ms: Best sector 1 time in milliseconds
+            s2_best_ms: Best sector 2 time in milliseconds
+
+        Returns:
+            List of sector statuses (purple, green, yellow, invalid, or N/A)
+        """
+
+        # If lap hasn't started or still in sector 1
+        if not self.m_lap_info.m_curr_lap_ms or self.m_lap_info.m_curr_sector == LapData.Sector.SECTOR1:
+            return [
+                F1Utils.SECTOR_STATUS_NA,
+                F1Utils.SECTOR_STATUS_NA,
+                F1Utils.SECTOR_STATUS_NA,
+            ]
+
+        # Sector 2 is ongoing
+        if self.m_lap_info.m_curr_sector == LapData.Sector.SECTOR2:
+            s1_status = self._get_sector_status(
+                sector_time=self.m_lap_info.m_curr_lap_ms,
+                sector_best_ms=s1_best_ms,
+                is_personal_best_sector_lap=(self.m_lap_info.m_curr_lap_ms == self.m_lap_info.m_pb_s1_ms),
+                sector_valid_flag=not self.m_lap_info.m_curr_lap_invalid
+            )
+            return [s1_status, F1Utils.SECTOR_STATUS_NA, F1Utils.SECTOR_STATUS_NA]
+
+        # Sector 3 (final sector) is ongoing
+        s1_status = self._get_sector_status(
+            sector_time=self.m_lap_info.m_curr_lap_ms,
+            sector_best_ms=s1_best_ms,
+            is_personal_best_sector_lap=(self.m_lap_info.m_curr_lap_ms == self.m_lap_info.m_pb_s1_ms),
+            sector_valid_flag=not self.m_lap_info.m_curr_lap_invalid
+        )
+        s2_status = self._get_sector_status(
+            sector_time=self.m_lap_info.m_curr_lap_s1_ms,
+            sector_best_ms=s2_best_ms,
+            is_personal_best_sector_lap=(self.m_lap_info.m_curr_lap_s1_ms == self.m_lap_info.m_pb_s2_ms),
+            sector_valid_flag=not self.m_lap_info.m_curr_lap_invalid
+        )
+
+        return [s1_status, s2_status, F1Utils.SECTOR_STATUS_NA]
+
+
     def _get_sector_status(
         self,
         sector_time: int,

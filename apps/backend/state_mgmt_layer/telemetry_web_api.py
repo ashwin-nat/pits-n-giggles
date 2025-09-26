@@ -966,6 +966,7 @@ class DriversListRsp:
             "current-lap": driver_data.m_lap_info.m_current_lap,
             "last-lap": self._getLapDetailsSubsection(driver_data, for_best_lap=False),
             "best-lap": self._getLapDetailsSubsection(driver_data, for_best_lap=True),
+            "curr-lap": self._getCurrLapSubsection(driver_data),
             "lap-progress": lap_progress,
             "speed-trap-record-kmph": self._getSpeedTrapRecord(driver_data),
             "top-speed-kmph": driver_data.m_lap_info.m_top_speed_kmph_this_lap,
@@ -1009,6 +1010,19 @@ class DriversListRsp:
             "s1-time-ms": s1_time,
             "s2-time-ms": s2_time,
             "s3-time-ms": s3_time,
+        }
+
+    def _getCurrLapSubsection(self, driver_data: DataPerDriver) -> Dict[str, Any]:
+        """Create current lap subsection."""
+        return {
+            "lap-time-ms": driver_data.m_lap_info.m_curr_lap_ms,
+            "s1-time-ms": driver_data.m_lap_info.m_curr_lap_s1_ms,
+            "s2-time-ms": driver_data.m_lap_info.m_curr_lap_s2_ms,
+            "s3-time-ms": driver_data.m_lap_info.m_curr_lap_s3_ms,
+            "sector" : str(driver_data.m_lap_info.m_curr_sector),
+            "driver-status" : str(driver_data.m_lap_info.m_curr_status),
+            "sector-status" : driver_data.getCurrLapSectorStatus(self.m_fastest_s1_ms, self.m_fastest_s2_ms),
+            "lap-num" : driver_data.m_lap_info.m_current_lap,
         }
 
     def _getWarningsPenaltiesJSON(self, driver_data: DataPerDriver) -> Dict[str, Any]:

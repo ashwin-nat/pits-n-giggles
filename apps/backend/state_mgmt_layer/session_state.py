@@ -486,11 +486,7 @@ class SessionState:
         """
         driver_obj.m_driver_info.position = lap_data.m_carPosition
         driver_obj.m_driver_info.grid_position = lap_data.m_gridPosition
-        driver_obj.m_lap_info.m_delta_to_car_in_front = lap_data.m_deltaToCarInFrontInMS
-        driver_obj.m_lap_info.m_delta_to_leader = (
-            lap_data.m_deltaToRaceLeaderInMS +
-            (lap_data.m_deltaToRaceLeaderMinutes * 60000)
-        )
+        driver_obj.m_lap_info.processLapDataUpdate(lap_data)
 
     def _handleLapChangeLogic(self, driver_obj: DataPerDriver, lap_data: LapData) -> None:
         """Handle lap change detection and snapshot capture

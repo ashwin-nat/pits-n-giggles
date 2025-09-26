@@ -89,6 +89,8 @@ class EngViewRaceTable {
         this.PURPLE_SECTOR = 2;
         this.COLUMN_STATE_LS_KEY = 'eng-view-table-column-state-ag';
         this.TELEMETRY_DISABLED_TEXT = "⌀";
+        this.delayedLapData = new Map(); // Stores { oldLapData, timestamp } for each driver
+        this.previousTableData = []; // Stores the data from the previous update cycle
 
         // Column visibility pane elements
         this.settingsButton = document.getElementById('settings-btn');
@@ -276,6 +278,47 @@ class EngViewRaceTable {
                 escapeRow1: false,
                 row1Class: timeClass // Apply the timeClass to the first row of multiline cell
             });
+        };
+    }
+
+    createSectorCellRendererCurrLap(sectorKey, timeKey) {
+        return (params) => {
+            const driverInfo = params.data;
+            const driverId = driverInfo.id;
+            const delayedData = this.delayedLapData.get(driverId);
+            const currentTime = Date.now();
+            const CURR_LAP_FREEZE_DURATION = 5000; // 5 sec
+
+            let lapInfo;
+            let sectorStatus;
+
+            if (delayedData && (currentTime - delayedData.timestamp < CURR_LAP_FREEZE_DURATION)) {
+                // Use delayed data
+                lapInfo = delayedData.oldLapData;
+                sectorStatus = lapInfo["sector-status"];
+            } else {
+                // Use current data
+                lapInfo = driverInfo["lap-info"]["curr-lap"];
+                sectorStatus = lapInfo["sector-status"];
+            }
+
+            const timeMs = lapInfo[timeKey];
+            const formattedTime = sectorKey === 'lap'
+                ? formatLapTime(timeMs)
+                : formatSectorTime(timeMs);
+
+            let timeClass = '';
+            if (sectorStatus && sectorKey !== 'lap') {
+                  const sectorIndex = parseInt(sectorKey.slice(1)) - 1;
+                  if (sectorStatus[sectorIndex] === this.GREEN_SECTOR) {
+                      timeClass = 'green-time';
+                  } else if (sectorStatus[sectorIndex] === this.PURPLE_SECTOR) {
+                      timeClass = 'purple-time';
+                  } else if (sectorStatus[sectorIndex] === this.RED_SECTOR) {
+                      timeClass = 'red-time';
+                  }
+            }
+            return this.createSingleLineCell(formattedTime, {className: timeClass});
         };
     }
 
@@ -478,6 +521,48 @@ class EngViewRaceTable {
                             return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
                         },
                     }
+                ]
+            },
+            {
+                headerName: 'Current Lap',
+                context: {displayName: 'Curr Lap'},
+                children: [
+                    {
+                        headerName: "Lap",
+                        context: {displayName: "Current Lap Time"},
+                        field: `lap-info.curr-lap.lap-time-ms`,
+                        cellRenderer: this.createSectorCellRendererCurrLap('lap', 'lap-time-ms'),
+                        sortable: false,
+                        flex: 2.5,
+                        cellClass: 'ag-cell-single-line',
+                    },
+                    {
+                        headerName: "S1",
+                        context: {displayName: "Current Sector 1"},
+                        field: `lap-info.curr-lap.s1-time-ms`,
+                        cellRenderer: this.createSectorCellRendererCurrLap('s1', 's1-time-ms'),
+                        sortable: false,
+                        flex: 2.5,
+                        cellClass: 'ag-cell-single-line',
+                    },
+                    {
+                        headerName: "S2",
+                        context: {displayName: "Current Sector 2"},
+                        field: `lap-info.curr-lap.s2-time-ms`,
+                        cellRenderer: this.createSectorCellRendererCurrLap('s2', 's2-time-ms'),
+                        sortable: false,
+                        flex: 2.5,
+                        cellClass: 'ag-cell-single-line',
+                    },
+                    {
+                        headerName: "S3",
+                        context: {displayName: "Current Sector 3"},
+                        field: `lap-info.curr-lap.s3-time-ms`,
+                        cellRenderer: this.createSectorCellRendererCurrLap('s3', 's3-time-ms'),
+                        sortable: false,
+                        flex: 2.5,
+                        cellClass: 'ag-cell-single-line',
+                    },
                 ]
             },
             {
@@ -772,6 +857,12 @@ class EngViewRaceTable {
         this.spectatorIndex = spectatorCarIndex;
         this.isSpectating = isSpectating;
         this.fastestLapMs = fastestLapMs;
+        if (this.sessionUID !== sessionUID) {
+            // clear the data structures if the session has changed
+            this.previousTableData = [];
+            this.delayedLapData = new Map();
+        }
+        this.sessionUID = sessionUID;
 
         if (eventType === "Time Trial") {
             if (this.currEventType !== "Time Trial" && this.gridApi) {
@@ -805,6 +896,31 @@ class EngViewRaceTable {
         }));
 
         if (this.gridApi) {
+            const currentTime = Date.now();
+            const FIVE_SECONDS_MS = 5000;
+
+            newTableData.forEach(newDriverData => {
+                const driverId = newDriverData.id;
+                const oldDriverData = this.previousTableData.find(d => d.id === driverId);
+
+                const newLapNum = newDriverData["lap-info"]["curr-lap"]["lap-num"];
+                const oldLapNum = oldDriverData ? oldDriverData["lap-info"]["curr-lap"]["lap-num"] : null;
+
+                if (newLapNum !== oldLapNum && oldLapNum !== null) {
+                    // Lap number changed, store the old lap data for delay
+                    this.delayedLapData.set(driverId, {
+                        oldLapData: oldDriverData["lap-info"]["curr-lap"],
+                        timestamp: currentTime,
+                    });
+                } else if (this.delayedLapData.has(driverId)) {
+                    // Check if 5 seconds have passed since the lap number change
+                    const { timestamp } = this.delayedLapData.get(driverId);
+                    if (currentTime - timestamp > FIVE_SECONDS_MS) {
+                        this.delayedLapData.delete(driverId); // Clear delayed data
+                    }
+                }
+            });
+
             if (newTableData && newTableData.length > 0) {
                 // Set all row data - AG Grid will handle efficient updates internally
                 this.gridApi.setGridOption('rowData', newTableData);
@@ -812,6 +928,8 @@ class EngViewRaceTable {
                 // Clear data if no new data
                 this.gridApi.setGridOption('rowData', []);
             }
+
+            this.previousTableData = newTableData; // Store current data for next update cycle
 
             // If spectator index or spectating status changed, redraw rows to update 'player-row' class
             if (prevSpectatorIndex !== this.spectatorIndex || prevIsSpectating !== this.isSpectating) {

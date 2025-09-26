@@ -16,6 +16,8 @@ class TelemetryRenderer {
     this.indexByPosition = null;
     this.iconCache = iconCache;
     this.uiMode = 'Splash';
+    this.driverContextMap = new Map();
+    this.sessionUID = null;
 
     this.connected = null;
     this.statusContainer   = document.getElementById('status-wrapper')
@@ -26,12 +28,13 @@ class TelemetryRenderer {
     this.statusContainer.append(this.blinkingDot, this.statusText)
   }
 
-  renderTelemetryRow(data, packetFormat, isLiveDataMode, raceEnded, spectatorIndex) {
+  renderTelemetryRow(data, packetFormat, isLiveDataMode, raceEnded, spectatorIndex, sessionType, driverContext) {
     const { 'driver-info': driverInfo } = data;
     const row = document.createElement('tr');
 
     // Populate row with data
-    new RaceTableRowPopulator(row, data, packetFormat, isLiveDataMode, this.iconCache, raceEnded, spectatorIndex).populate();
+    new RaceTableRowPopulator(row, data, packetFormat, isLiveDataMode, this.iconCache, raceEnded, spectatorIndex,
+                                     sessionType, driverContext).populate();
 
     // Apply CSS classes based on row state
     const cssClasses = this.determineRowClasses(driverInfo, isLiveDataMode, spectatorIndex);
@@ -92,7 +95,8 @@ class TelemetryRenderer {
     const driverRowMap = new Map();
     Array.from(this.telemetryTable.querySelectorAll('tr[data-driver-index]')).forEach(row => {
       const driverIndex = row.getAttribute('data-driver-index');
-      driverRowMap.set(driverIndex, row);
+      const existingContext = this.driverContextMap.get(driverIndex) || {};
+      driverRowMap.set(driverIndex, { row: row, context: existingContext });
       row.parentNode.removeChild(row);
     });
     return driverRowMap;
@@ -108,15 +112,17 @@ class TelemetryRenderer {
   }
 
   // Update or create row based on existing data
-  updateOrCreateRow(row, data, packetFormat, isLiveDataMode, driverIndex, raceEnded, spectatorIndex) {
-    const newRow = this.renderTelemetryRow(data, packetFormat, isLiveDataMode, raceEnded, spectatorIndex);
-    if (row) {
-      row.innerHTML = newRow.innerHTML;
+  updateOrCreateRow(driverRowObj, data, packetFormat, isLiveDataMode, driverIndex, raceEnded, spectatorIndex, sessionType) {
+    const newRow = this.renderTelemetryRow(data, packetFormat, isLiveDataMode, raceEnded, spectatorIndex, sessionType,
+                          driverRowObj.context);
+    if (driverRowObj.row) {
+      driverRowObj.row.innerHTML = newRow.innerHTML;
     } else {
-      row = newRow;
-      row.setAttribute('data-driver-index', driverIndex);
+      driverRowObj.row = newRow;
+      driverRowObj.row.setAttribute('data-driver-index', driverIndex);
     }
-    return row;
+    this.driverContextMap.set(driverIndex, driverRowObj.context);
+    return driverRowObj;
   }
 
   updateRaceTableData(incomingData) {
@@ -125,8 +131,19 @@ class TelemetryRenderer {
     const raceEnded = incomingData["race-ended"];
     const spectatorMode = incomingData["is-spectating"];
     const spectatorCarIndex = incomingData["spectator-car-index"];
+    const sessionType = incomingData["session-type"];
+
+    if (this.sessionUID != incomingData["session-uid"]) {
+      // reset map when session changes
+      this.driverContextMap = new Map();
+    }
+    this.sessionUID = incomingData["session-uid"];
+
     this.setDeltaColumnState(isLiveDataMode);
-    this.setFuelColumnState(isLiveDataMode);
+    this.setFuelColumnState(isLiveDataMode, sessionType);
+    this.setCurrLapColumnState(isLiveDataMode, sessionType);
+    this.setWearPredictionColumnState(isLiveDataMode, sessionType);
+    this.setWingDamageColumnState(sessionType);
 
     const tableEntries = this.getRelevantRaceTableRows(incomingData);
     updateReferenceLapTimes(tableEntries,
@@ -144,9 +161,16 @@ class TelemetryRenderer {
 
     tableEntries.forEach(data => {
       const driverIndex = data["driver-info"]["index"];
-      let row = driverRowMap.get(driverIndex);
-      row = this.updateOrCreateRow(row, data, packetFormat, isLiveDataMode, driverIndex, raceEnded, spectatorCarIndex);
-      this.telemetryTable.appendChild(row);
+      let driverRowObj = driverRowMap.get(driverIndex);
+
+      if (!driverRowObj) {
+        const existingContext = this.driverContextMap.get(driverIndex) || {};
+        driverRowObj = { row: null, context: existingContext };
+      }
+
+      driverRowObj = this.updateOrCreateRow(driverRowObj, data, packetFormat, isLiveDataMode, driverIndex, raceEnded, spectatorCarIndex,
+                                    sessionType);
+      this.telemetryTable.appendChild(driverRowObj.row);
     });
     // Rows not referenced in tableEntries will be left out
   }
@@ -322,10 +346,39 @@ class TelemetryRenderer {
     this.hideColumn('DELTA 🛈', isLiveDataMode);
   }
 
-  setFuelColumnState(isLiveDataMode) {
-    // show the column in live mode
-    const shouldHide = !isLiveDataMode;
+  setFuelColumnState(isLiveDataMode, sessionType) {
+    // show the column in live mode, but only for race sessions
+    let shouldHide;
+    if (!isLiveDataMode) {
+      shouldHide = true;
+    } else {
+      shouldHide = !isRaceSession(sessionType);
+    }
     this.hideColumn('FUEL 🛈', shouldHide);
+  }
+
+  setCurrLapColumnState(isLiveDataMode, sessionType) {
+    // show the column in live mode, but only in FP and quali sessions
+    let shouldHide = false;
+    if (!isLiveDataMode) {
+      shouldHide = true;
+    }
+    else {
+      shouldHide = isRaceSession(sessionType);
+    }
+
+    this.hideColumn('CURRENT LAP', shouldHide);
+  }
+
+  setWearPredictionColumnState(isLiveDataMode, sessionType) {
+      const shouldHide = !isLiveDataMode || !isRaceSession(sessionType);
+      this.hideColumn('WEAR PREDICTION', shouldHide);
+  }
+
+  setWingDamageColumnState(sessionType) {
+    // hide the column in FP/Quali modes
+    const shouldHide = !isRaceSession(sessionType);
+    this.hideColumn('WING DAMAGE', shouldHide);
   }
 
   hideColumn(columnName, shouldHide) {

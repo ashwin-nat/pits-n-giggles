@@ -1,5 +1,5 @@
 class RaceTableRowPopulator {
-    constructor(row, rowData, packetFormat, isLiveDataMode, iconCache, raceEnded, spectatorIndex) {
+    constructor(row, rowData, packetFormat, isLiveDataMode, iconCache, raceEnded, spectatorIndex, sessionType, context) {
         this.row = row;
         this.rowData = rowData;
         this.packetFormat = packetFormat;
@@ -7,10 +7,17 @@ class RaceTableRowPopulator {
         this.iconCache = iconCache;
         this.raceEnded = raceEnded;
         this.spectatorIndex = spectatorIndex;
+        this.sessionType = sessionType;
+        this.isTelemetryPublic = this.rowData["driver-info"]["telemetry-setting"] === "Public"
+        this.context = context;
+        this.currLapCell = null; // Initialize the cell reference for current lap info
+        if (this.context.currLap === undefined || this.context.currLap === null) {
+            this.context.currLap = {}; // Initialize currLap context only if it doesn't exist
+        }
+        this.context.currLap.lapNumTimeoutId = null; // Initialize timeout ID for lap number updates
     }
 
     populate() {
-        const isTelemetryPublic = this.rowData["driver-info"]["telemetry-setting"] === "Public";
 
         this.addPositionInfo()
             .addNameInfo()
@@ -19,9 +26,10 @@ class RaceTableRowPopulator {
             .addWarningsPensInfo()
             .addBestLapInfo()
             .addLastLapInfo()
+            .addCurrLapInfo()
             .addCurrTyreInfo();
 
-        if (isTelemetryPublic) {
+        if (this.isTelemetryPublic) {
             this.addTyrePredictionInfo()
                 .addDamageInfo()
                 .addFuelInfo();
@@ -161,49 +169,165 @@ class RaceTableRowPopulator {
         return this;
     }
 
-    addCurrTyreInfo() {
-        const tyreInfoData = this.rowData["tyre-info"];
-        const currTyreWearData = tyreInfoData["current-wear"];
-        let tyreWearText = "";
-        if (g_pref_tyreWearAverageFormat) {
-            tyreWearText = currTyreWearData
-                ? formatFloat(currTyreWearData["average"]) + "%"
-                : "N/A";
-        } else {
-            tyreWearText = currTyreWearData
-                ? (() => {
-                    const maxTyreWearData = getMaxTyreWear(currTyreWearData);
-                    return `${maxTyreWearData["max-key"]}: ${formatFloat(maxTyreWearData["max-wear"])}%`;
-                })()
-                : "N/A";
+    addCurrLapInfo() {
+        if (!this.isLiveDataMode || isRaceSession(this.sessionType)) {
+            return this;
         }
 
-        const cell = this.row.insertCell();
-
-        const firstRow = document.createElement("div");
-        const icon = this.iconCache.getIcon(tyreInfoData["visual-tyre-compound"]);
-        const tyreCompound = getTyreCompoundStr(tyreInfoData["visual-tyre-compound"], tyreInfoData["actual-tyre-compound"]);
-
-        if (icon) {
-            firstRow.appendChild(icon);
-            firstRow.appendChild(document.createTextNode(" " + tyreWearText));
+        // Ensure the cell exists and is cleared for updates
+        if (!this.currLapCell) {
+            this.currLapCell = this.row.insertCell();
         } else {
-            firstRow.textContent = `${tyreCompound} ${tyreWearText}`;
+            this.currLapCell.innerHTML = ''; // Clear previous content
         }
 
-        const secondRow = document.createElement("div");
-        secondRow.textContent = `${tyreInfoData["tyre-age"]} lap(s) (${tyreInfoData["num-pitstops"]} pit)`;
-        cell.appendChild(firstRow);
-        cell.appendChild(secondRow);
+        const lapInfo = this.rowData["lap-info"]["curr-lap"];
+        const driverStatus = lapInfo["driver-status"];
+        const newLapNum = lapInfo["lap-num"];
+        const newLapTimeMs = lapInfo["lap-time-ms"];
+        const newSectorStatus = lapInfo["sector-status"];
 
-        if (!this.raceEnded && this.isLiveDataMode) {
-            const thirdRow = document.createElement("div");
-            const rejoin = tyreInfoData["pit-rejoin-position"];
-            thirdRow.textContent = `Pit rejoin: ${(rejoin !== null && rejoin !== undefined) ? "P" + rejoin : "N/A"}`;
-            cell.appendChild(thirdRow);
+        const oldLapNum = this.context["currLapNum"] ?? null;
+        const oldLapTimeMs = this.context["currLapTimeMs"] ?? null;
+        const oldSectorStatus = this.context["currSectorStatus"] ?? null;
+
+        // Clear any existing timeouts to prevent multiple updates
+        if (this.context.currLap.lapNumTimeoutId) {
+            clearTimeout(this.context.currLap.lapNumTimeoutId);
+            this.context.currLap.lapNumTimeoutId = null;
+        }
+        if (this.context["lapTimeTimeoutId"]) {
+            clearTimeout(this.context["lapTimeTimeoutId"]);
+            this.context["lapTimeTimeoutId"] = null;
+        }
+        if (this.context["sectorStatusTimeoutId"]) {
+            clearTimeout(this.context["sectorStatusTimeoutId"]);
+            this.context["sectorStatusTimeoutId"] = null;
+        }
+
+        if (driverStatus === "FLYING_LAP" || driverStatus === "ON_TRACK") {
+            const lapNumDisplayElement = document.createElement("div");
+            lapNumDisplayElement.classList.add("lap-num-display"); // Add a class for potential styling/targeting
+
+            const lapTimeContentElement = document.createElement("div");
+            const sectorBarContainer = document.createElement("div"); // Container for sector bar
+            sectorBarContainer.classList.add("sector-bar-container");
+
+            this.currLapCell.appendChild(lapNumDisplayElement);
+            this.currLapCell.appendChild(lapTimeContentElement);
+            this.currLapCell.appendChild(sectorBarContainer); // Append sector bar container
+
+            const updateLapTimeAndSector = (lapTime, sectorStatus) => {
+                lapTimeContentElement.textContent = getFormattedLapTimeStr({
+                    lapTimeMs: lapTime,
+                    showAbsoluteFormat: true
+                });
+                sectorBarContainer.innerHTML = ''; // Clear previous sector bar
+                if (lapTime) {
+                    this.addSectorInfo(sectorBarContainer, sectorStatus);
+                }
+            };
+
+            if (newLapNum !== oldLapNum && oldLapNum !== null) {
+                // Display old data first
+                lapNumDisplayElement.textContent = `Lap ${oldLapNum}`;
+                updateLapTimeAndSector(oldLapTimeMs, this.rowData["lap-info"]["last-lap"]["sector-status"]);
+
+                this.context.currLap.lapNumTimeoutId = setTimeout(() => {
+                    lapNumDisplayElement.textContent = `Lap ${newLapNum}`;
+                    this.context["currLapNum"] = newLapNum;
+                }, 5000);
+
+                this.context["lapTimeTimeoutId"] = setTimeout(() => {
+                    updateLapTimeAndSector(newLapTimeMs, newSectorStatus);
+                    this.context["currLapTimeMs"] = newLapTimeMs;
+                    this.context["currSectorStatus"] = newSectorStatus;
+                }, 5000);
+
+            } else {
+                // Display new data immediately
+                lapNumDisplayElement.textContent = `Lap ${newLapNum}`;
+                updateLapTimeAndSector(newLapTimeMs, newSectorStatus);
+                this.context["currLapNum"] = newLapNum;
+                this.context["currLapTimeMs"] = newLapTimeMs;
+                this.context["currSectorStatus"] = newSectorStatus;
+            }
+        } else {
+            this.currLapCell.textContent = driverStatus;
+            this.context["currLapNum"] = newLapNum;
+            this.context["currLapTimeMs"] = newLapTimeMs;
+            this.context["currSectorStatus"] = newSectorStatus;
         }
 
         return this;
+    }
+
+    addCurrTyreInfo() {
+        const tyreInfo = this.rowData["tyre-info"];
+        const cell = this.row.insertCell();
+
+        // Add tyre compound and wear information
+        this.#addTyreCompoundRow(cell, tyreInfo);
+
+        // Add tyre age and pit information
+        this.#addTyreAgeRow(cell, tyreInfo);
+
+        // Add pit rejoin information if in live mode and race not ended
+        if (!this.raceEnded && this.isLiveDataMode && isRaceSession(this.sessionType)) {
+            this.#addPitRejoinRow(cell, tyreInfo);
+        }
+
+        return this;
+    }
+
+    #formatTyreWearText(currTyreWearData) {
+        if (!currTyreWearData) {
+            return "N/A";
+        }
+
+        if (!this.isTelemetryPublic) {
+            return "RESTRICTED";
+        }
+
+        if (g_pref_tyreWearAverageFormat) {
+            return `${formatFloat(currTyreWearData["average"])}%`;
+        }
+
+        const maxTyreWearData = getMaxTyreWear(currTyreWearData);
+        return `${maxTyreWearData["max-key"]}: ${formatFloat(maxTyreWearData["max-wear"])}%`;
+    }
+
+    #addTyreCompoundRow(cell, tyreInfo) {
+        const firstRow = document.createElement("div");
+        const tyreWearText = this.#formatTyreWearText(tyreInfo["current-wear"]);
+        const icon = this.iconCache.getIcon(tyreInfo["visual-tyre-compound"]);
+
+        if (icon) {
+            firstRow.appendChild(icon);
+            firstRow.appendChild(document.createTextNode(` ${tyreWearText}`));
+        } else {
+            const tyreCompound = getTyreCompoundStr(
+                tyreInfo["visual-tyre-compound"],
+                tyreInfo["actual-tyre-compound"]
+            );
+            firstRow.textContent = `${tyreCompound} ${tyreWearText}`;
+        }
+
+        cell.appendChild(firstRow);
+    }
+
+    #addTyreAgeRow(cell, tyreInfo) {
+        const secondRow = document.createElement("div");
+        secondRow.textContent = `${tyreInfo["tyre-age"]} lap(s) (${tyreInfo["num-pitstops"]} pit)`;
+        cell.appendChild(secondRow);
+    }
+
+    #addPitRejoinRow(cell, tyreInfo) {
+        const thirdRow = document.createElement("div");
+        const rejoin = tyreInfo["pit-rejoin-position"];
+        const rejoinText = (rejoin !== null && rejoin !== undefined) ? `P${rejoin}` : "N/A";
+        thirdRow.textContent = `Pit rejoin: ${rejoinText}`;
+        cell.appendChild(thirdRow);
     }
 
     #getPitStopPrediction(data) {
@@ -245,6 +369,10 @@ class RaceTableRowPopulator {
         return midPointPrediction ? [midPointPrediction, lastPrediction] : [lastPrediction];
     }
     addTyrePredictionInfo() {
+        if (!this.isLiveDataMode || !isRaceSession(this.sessionType)) {
+            return this;
+        }
+
         const currentLap = this.rowData["lap-info"]["current-lap"];
         const predictionData = this.#getWearPredictions(this.rowData["tyre-info"]["wear-prediction"], currentLap);
 
@@ -272,6 +400,9 @@ class RaceTableRowPopulator {
     }
 
     addDamageInfo() {
+        if (!isRaceSession(this.sessionType)) {
+            return this;
+        }
         const damageInfo = this.rowData["damage-info"];
         // Wing damage key will always be present
         const flWingDamage = damageInfo["fl-wing-damage"] == null ? "N/A" :
@@ -332,7 +463,7 @@ class RaceTableRowPopulator {
     }
 
     addFuelInfo() {
-        if (!this.isLiveDataMode) {
+        if (!this.isLiveDataMode || !isRaceSession(this.sessionType)) {
           return this;
         }
         const fuelInfo = this.rowData["fuel-info"];
@@ -345,17 +476,22 @@ class RaceTableRowPopulator {
       }
 
     addTelemetryRestrictedColspan() {
-        const cell = this.row.insertCell();
-        cell.colSpan = 3;
-        cell.style.textAlign = "center";
-        cell.style.verticalAlign = "middle";
+        if (isRaceSession(this.sessionType)) {
+            // we will show this message only in race view, since wear prediction, damage and fuel are
+            // only supported in race. in FP/quali, these columns are not shown. Hence, no need to show this
+            const cell = this.row.insertCell();
+            cell.colSpan = 3;
+            cell.style.textAlign = "center";
+            cell.style.verticalAlign = "middle";
 
-        const message = document.createElement("div");
-        message.textContent = "Driver has telemetry set to Restricted";
-        message.style.fontStyle = "italic"; // Make the text italic
-        cell.appendChild(message);
+            const message = document.createElement("div");
+            message.textContent = "Driver has telemetry set to Restricted";
+            message.style.fontStyle = "italic"; // Make the text italic
+            cell.appendChild(message);
+        }
 
         return this;
+
     }
 
     createMultiLineCell(lines, onClick = null) {
