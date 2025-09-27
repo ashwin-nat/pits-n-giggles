@@ -30,6 +30,7 @@ from datetime import datetime
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Coroutine
 
 import apps.backend.state_mgmt_layer.telemetry_state as TelState
+from apps.backend.state_mgmt_layer import SessionState
 from lib.button_debouncer import ButtonDebouncer
 from lib.config import CaptureSettings, PngSettings
 from lib.f1_types import (F1PacketType, PacketCarDamageData,
@@ -51,6 +52,7 @@ from lib.wdt import WatchDogTimer
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def setupTelemetryTask(
+        session_state_ref: SessionState,
         settings: PngSettings,
         replay_server: bool,
         logger: logging.Logger,
@@ -70,6 +72,7 @@ def setupTelemetryTask(
     """
 
     telemetry_server = F1TelemetryHandler(
+        session_state_ref=session_state_ref,
         settings=settings,
         logger=logger,
         replay_server=replay_server,
@@ -91,6 +94,7 @@ class F1TelemetryHandler:
     """
 
     def __init__(self,
+        session_state_ref: SessionState,
         settings: PngSettings,
         logger: logging.Logger,
         replay_server: bool = False,
@@ -99,14 +103,9 @@ class F1TelemetryHandler:
         Initialize F1TelemetryHandler.
 
         Parameters:
+            - session_state_ref (SessionState): Session state
             - settings (PngSettings): Png settings
-            - port (int): The port number for telemetry.
-            - forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
             - logger (logging.Logger): Logger
-            - capture_settings (CaptureSettings): Capture settings
-            - wdt_interval (float): Watchdog interval
-            - udp_custom_action_code (Optional[int]): UDP custom action code.
-            - udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code
             - replay_server: bool: If true, init in replay mode (TCP). Else init in live mode (UDP)
             - ver_str (str): Version string
         """
@@ -116,7 +115,7 @@ class F1TelemetryHandler:
             replay_server=replay_server
         )
         self.m_logger: logging.Logger = logger
-        self.m_session_state_ref: TelState.SessionState = TelState.getSessionStateRef()
+        self.m_session_state_ref: TelState.SessionState = session_state_ref
 
         self.m_last_session_uid: Optional[int] = None
         self.m_data_cleared_this_session: bool = False

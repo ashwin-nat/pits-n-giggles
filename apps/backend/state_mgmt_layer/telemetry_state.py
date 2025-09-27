@@ -91,12 +91,3 @@ def initSessionState(logger: logging.Logger, settings: PngSettings, ver_str: str
         ver_str
     )
     return _session_state
-
-def getSessionStateRef() -> SessionState:
-    """Get the SessionState object reference
-
-    Returns:
-        SessionState: The SessionState object reference
-    """
-    global _session_state
-    return _session_state

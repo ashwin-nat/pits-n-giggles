@@ -30,10 +30,11 @@ from lib.config import PngSettings
 
 from .telemetry_forwarder import setupForwarder
 from .telemetry_handler import F1TelemetryHandler, setupTelemetryTask
-
+from apps.backend.state_mgmt_layer import SessionState
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def initTelemetryLayer(
+        session_state_ref: SessionState,
         settings: PngSettings,
         replay_server: bool,
         logger: logging.Logger,
@@ -43,6 +44,7 @@ def initTelemetryLayer(
     """Initialize the telemetry layer
 
     Args:
+        session_state_ref (SessionState): Session state
         settings (PngSettings): Png settings
         replay_server (bool): Whether to enable the TCP replay debug server.
         logger (logging.Logger): Logger instance
@@ -55,6 +57,7 @@ def initTelemetryLayer(
     """
 
     handler = setupTelemetryTask(
+        session_state_ref=session_state_ref,
         settings=settings,
         replay_server=replay_server,
         logger=logger,
