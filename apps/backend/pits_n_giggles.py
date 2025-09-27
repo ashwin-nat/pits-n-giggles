@@ -71,7 +71,7 @@ class PngRunner:
         self.m_logger.debug(self.m_config)
         self.m_shutdown_event: asyncio.Event = asyncio.Event()
 
-        session_state =initStateManagementLayer(
+        self.m_session_state =initStateManagementLayer(
             logger=self.m_logger,
             settings=self.m_config,
             ver_str=self.m_version,
@@ -80,7 +80,7 @@ class PngRunner:
         )
 
         self.m_telemetry_handler = initTelemetryLayer(
-            session_state_ref=session_state,
+            session_state_ref=self.m_session_state,
             settings=self.m_config,
             replay_server=replay_server,
             logger=self.m_logger,
@@ -128,6 +128,7 @@ class PngRunner:
         self.m_logger.info(log_str)
 
         return initUiIntfLayer(
+            session_state_ref=self.m_session_state,
             settings=self.m_config,
             logger=self.m_logger,
             debug_mode=debug_mode,

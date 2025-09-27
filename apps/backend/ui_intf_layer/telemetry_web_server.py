@@ -28,6 +28,7 @@ from http import HTTPStatus
 from typing import Any, Dict, Tuple
 
 import apps.backend.state_mgmt_layer as TelState
+from apps.backend.state_mgmt_layer import SessionState
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import PngSettings
 from lib.web_server import BaseWebServer
@@ -54,6 +55,7 @@ class TelemetryWebServer(BaseWebServer):
     """
 
     def __init__(self,
+                 session_state_ref: SessionState,
                  settings: PngSettings,
                  ver_str: str,
                  logger: logging.Logger,
@@ -78,6 +80,7 @@ class TelemetryWebServer(BaseWebServer):
         self.define_routes()
         self.register_post_start_callback(self._post_start)
         self.m_show_start_sample_data = settings.StreamOverlay.show_sample_data_at_start
+        self.m_session_state_ref: SessionState = session_state_ref
 
     def define_routes(self) -> None:
         """

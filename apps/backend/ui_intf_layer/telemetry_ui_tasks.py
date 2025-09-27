@@ -27,6 +27,7 @@ import logging
 from typing import List, Optional
 
 import apps.backend.state_mgmt_layer as TelWebAPI
+from apps.backend.state_mgmt_layer import SessionState
 from lib.config import PngSettings
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.web_server import ClientType
@@ -37,6 +38,7 @@ from .telemetry_web_server import TelemetryWebServer
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def initUiIntfLayer(
+    session_state_ref: SessionState,
     settings: PngSettings,
     logger: logging.Logger,
     debug_mode: bool,
@@ -61,6 +63,7 @@ def initUiIntfLayer(
 
     # First, create the server instance
     web_server = TelemetryWebServer(
+        session_state_ref=session_state_ref,
         settings=settings,
         ver_str=ver_str,
         logger=logger,
