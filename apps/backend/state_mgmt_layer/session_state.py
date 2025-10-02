@@ -24,6 +24,7 @@
 
 import json
 import logging
+import time
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -54,7 +55,8 @@ from lib.openf1 import MostRecentPoleLap
 from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
-from lib.race_ctrl import SessionRaceControlManager, race_ctrl_event_msg_factory
+from lib.race_ctrl import (DriverAiStatusChange, SessionRaceControlManager,
+                           race_ctrl_event_msg_factory)
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
@@ -603,6 +605,23 @@ class SessionState:
             obj_to_be_updated.m_driver_info.driver_number = participant.m_raceNumber
             obj_to_be_updated.m_driver_info.is_player = (index == packet.m_header.m_playerCarIndex)
             obj_to_be_updated.m_driver_info.telemetry_setting = participant.m_yourTelemetry
+
+            if obj_to_be_updated.m_packet_copies.m_packet_particpant_data:
+                # Capture all AI state transitions
+                old_ai = obj_to_be_updated.m_packet_copies.m_packet_particpant_data.m_aiControlled
+                new_ai = participant.m_aiControlled
+                if old_ai != new_ai:
+                    self.m_logger.debug("%s AI state changed from %s to %s", obj_to_be_updated, old_ai, new_ai)
+                    msg = DriverAiStatusChange(
+                        timestamp=time.time(),
+                        driver_index=index,
+                        lap_number=obj_to_be_updated.m_lap_info.m_current_lap,
+                        old_state=old_ai,
+                        new_state=new_ai,
+                    )
+                    obj_to_be_updated.m_race_ctrl.add_message(msg)
+
+            # Update pkt copy
             obj_to_be_updated.m_packet_copies.m_packet_particpant_data = participant
 
     def processCarTelemetryUpdate(self, packet: PacketCarTelemetryData) -> None:
