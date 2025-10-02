@@ -146,3 +146,36 @@ class TyreChangeRaceControlMessage(RaceCtrlMsgBase):
         if driver_info_dict and (driver_info := driver_info_dict.get(self.involved_drivers[0])):
             ret["driver-info"] = driver_info
         return ret
+
+class DriverAiStatusChange(RaceCtrlMsgBase):
+    def __init__(self,
+                 timestamp: float,
+                 driver_index: int,
+                 lap_number: Optional[int],
+                 old_state: bool,
+                 new_state: bool) -> None:
+        """Driver AI status change message
+
+        Args:
+            timestamp (float): Time at which the message was issued (seconds).
+            driver_index (int): Index of the driver.
+            lap_number (Optional[int]): Lap number
+            old_state (bool): Old AI state
+            new_state (bool): New AI state
+        """
+        super().__init__(
+            timestamp=timestamp,
+            message_type=MessageType.DRIVER_AI_STATUS_CHANGE,
+            involved_drivers=[driver_index],
+            lap_number=lap_number)
+        self.old_state: bool = old_state
+        self.new_state: bool = new_state
+
+    def toJSON(self, driver_info_dict = None) -> Dict[str, Any]:
+        """Export the message as a JSON-ready dict."""
+        ret = super().toJSON(driver_info_dict)
+        ret["old-state"] = self.old_state
+        ret["new-state"] = self.new_state
+        if driver_info_dict and (driver_info := driver_info_dict.get(self.involved_drivers[0])):
+            ret["driver-info"] = driver_info
+        return ret

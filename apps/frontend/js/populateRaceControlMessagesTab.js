@@ -81,32 +81,32 @@ function getDriverDetailsStr(driverInfo, brackets=false) {
 
 // Extract detailRenderers into its own constant (can live at top of file or separate module)
 const detailRenderers = {
-  SESSION_START: () => 'N/A',
-  SESSION_END: () => 'N/A',
+  SESSION_START: () => '---',
+  SESSION_END: () => '---',
   FASTEST_LAP: ({ 'driver-info': d, 'lap-time-ms': ms }) =>
       `Driver: ${getDriverDetailsStr(d ?? null)}, Lap Time: ${formatLapTime(ms)}`,
   RETIREMENT: ({ 'driver-info': d }) =>
       `Driver: ${getDriverDetailsStr(d ?? null)}`,
-  DRS_ENABLED: () => 'N/A',
+  DRS_ENABLED: () => '---',
   DRS_DISABLED: ({ reason }) =>
       `Reason: ${reason}`,
-  CHEQUERED_FLAG: () => 'N/A',
+  CHEQUERED_FLAG: () => '---',
   RACE_WINNER: ({ 'driver-info': d }) =>
       getDriverDetailsStr(d ?? null),
   PENALTY: ({ 'driver-info': d, 'penalty-type': pt, 'infringement-type': it, 'other-driver-info': od }) => {
     const base = `${getDriverDetailsStr(d, true)}, ${pt} - ${it}`;
     return od ? `${base}, other driver: ${getDriverDetailsStr(od, true)}` : base;
   },
-  SPEED_TRAP: ({ 'driver-info': d, speed }) =>
+  SPEED_TRAP_RECORD: ({ 'driver-info': d, speed }) =>
       `Driver: ${getDriverDetailsStr(d ?? null)}, Speed: ${formatFloat(speed)} km/h`,
   START_LIGHTS: ({ 'num-lights': numLights }) =>
       `Number of lights: ${numLights}`,
-  LIGHTS_OUT: () => 'N/A',
+  LIGHTS_OUT: () => '---',
   DRIVE_THROUGH_SERVED: ({ 'driver-info': d }) =>
       `Driver: ${getDriverDetailsStr(d ?? null)}`,
   STOP_GO_SERVED: ({ 'driver-info': d, 'stop-time': stopTime }) =>
       `Driver: ${getDriverDetailsStr(d ?? null)} - Stop Time: ${formatFloat(stopTime)} s`,
-  RED_FLAG: () => 'N/A',
+  RED_FLAG: () => '---',
   OVERTAKE: ({ 'overtaker-info': overtaker, 'overtaken-info': overtaken }) =>
       `${getDriverDetailsStr(overtaker ?? null)} overtook ${getDriverDetailsStr(overtaken ?? null)}`,
   SAFETY_CAR: ({ 'sc-type': scType, 'event-type': eventType }) =>
@@ -126,8 +126,18 @@ const detailRenderers = {
   },
   WING_CHANGE: ({ 'driver-info': d, 'lap-number': lap }) =>
       `Driver: ${getDriverDetailsStr(d ?? null)}, Lap: ${lap}`,
-  TYRE_CHANGE: ({ 'driver-info': d, 'lap-number': lap, 'old-tyre-compound': oldTyreCompound, 'new-tyre-compound': newTyreCompound}) =>
-      `Driver: ${getDriverDetailsStr(d ?? null)}, Lap: ${lap} - Old Compound: ${oldTyreCompound}, New Compound: ${newTyreCompound}`,
+  TYRE_CHANGE: ({ 'driver-info': d, 'lap-number': lap, 'old-tyre-compound': oldTyreCompound, 'old-tyre-index': oldTyreIndex,
+                  'new-tyre-compound': newTyreCompound, 'new-tyre-index': newTyreIndex}) =>
+      `Driver: ${getDriverDetailsStr(d ?? null)}, Lap: ${lap} - ${oldTyreCompound}(${oldTyreIndex}) → ${newTyreCompound}(${newTyreIndex})`,
+  DRIVER_AI_STATUS_CHANGE: ({
+    'driver-info': d,
+    'lap-number': lap,
+    'old-state': oldState,
+    'new-state': newState}) => {
+    const stateLabel = (s) => (s ? "AI" : "Player");
+    return `Driver: ${getDriverDetailsStr(d ?? null)}, Lap: ${lap} - State changed from ${stateLabel(oldState)} to ${stateLabel(newState)}`;
+  },
+  FLASHBACK: () => '---',
 
   DEFAULT: msg => `Type: ${msg['message-type']} - Placeholder details.`
 };

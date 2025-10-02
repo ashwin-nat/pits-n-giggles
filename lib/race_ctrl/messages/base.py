@@ -39,7 +39,7 @@ class MessageType(Enum):
     CHEQUERED_FLAG = auto()
     RACE_WINNER = auto()
     PENALTY = auto()
-    SPEED_TRAP = auto()
+    SPEED_TRAP_RECORD = auto()
     START_LIGHTS = auto()
     LIGHTS_OUT = auto()
     DRIVE_THROUGH_SERVED = auto()
@@ -52,6 +52,8 @@ class MessageType(Enum):
     CAR_DAMAGE = auto()
     WING_CHANGE = auto()
     TYRE_CHANGE = auto()
+    DRIVER_AI_STATUS_CHANGE = auto()
+    FLASHBACK = auto()
 
     def __str__(self) -> str:
         return self.name

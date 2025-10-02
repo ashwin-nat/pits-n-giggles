@@ -30,13 +30,13 @@ from lib.f1_types import PacketEventData
 from .messages import (ChequeredFlagRaceCtrlMsg, CollisionRaceCtrlMsg,
                        DrsDisabledRaceCtrlMsg, DrsEnabledRaceCtrlMsg,
                        DtPenServedRaceCtrlMsg, FastestLapRaceCtrlMsg,
-                       LightsOutRaceCtrlMsg, OvertakeRaceCtrlMsg,
-                       PenaltyRaceCtrlMsg, RaceCtrlMsgBase,
-                       RaceWinnerRaceCtrlMsg, RedFlagRaceCtrlMsg,
-                       RetirementRaceCtrlMsg, SafetyCarRaceCtrlMsg,
-                       SessionEndRaceCtrlMsg, SessionStartRaceCtrlMsg,
-                       SgPenServedRaceCtrlMsg, SpeedTrapRaceCtrlMsg,
-                       StartLightsRaceCtrlMsg)
+                       FlashBackRaceCtrlMsg, LightsOutRaceCtrlMsg,
+                       OvertakeRaceCtrlMsg, PenaltyRaceCtrlMsg,
+                       RaceCtrlMsgBase, RaceWinnerRaceCtrlMsg,
+                       RedFlagRaceCtrlMsg, RetirementRaceCtrlMsg,
+                       SafetyCarRaceCtrlMsg, SessionEndRaceCtrlMsg,
+                       SessionStartRaceCtrlMsg, SgPenServedRaceCtrlMsg,
+                       SpeedTrapRaceCtrlMsg, StartLightsRaceCtrlMsg)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -134,6 +134,9 @@ def race_ctrl_event_msg_factory(packet: PacketEventData, lap_number: int) -> Opt
             return CollisionRaceCtrlMsg(timestamp=time.time(), involved_drivers=[collision.m_vehicle_1_index,
                                                                                 collision.m_vehicle_2_index],
                                         lap_number=lap_number)
+
+        case PacketEventData.EventPacketType.FLASHBACK:
+            return FlashBackRaceCtrlMsg(timestamp=time.time(), lap_number=lap_number)
 
         case _:
             return None

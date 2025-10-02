@@ -98,7 +98,7 @@ class SpeedTrapRaceCtrlMsg(RaceCtrlMsgBase):
         """
         super().__init__(
             timestamp=timestamp,
-            message_type=MessageType.SPEED_TRAP,
+            message_type=MessageType.SPEED_TRAP_RECORD,
             involved_drivers=[driver_index],
             lap_number=lap_number)
         self.driver_index: int = driver_index
