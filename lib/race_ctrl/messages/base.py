@@ -39,7 +39,7 @@ class MessageType(Enum):
     CHEQUERED_FLAG = auto()
     RACE_WINNER = auto()
     PENALTY = auto()
-    SPEED_TRAP = auto()
+    SPEED_TRAP_RECORD = auto()
     START_LIGHTS = auto()
     LIGHTS_OUT = auto()
     DRIVE_THROUGH_SERVED = auto()

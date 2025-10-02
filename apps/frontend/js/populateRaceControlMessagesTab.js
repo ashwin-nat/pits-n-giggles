@@ -97,7 +97,7 @@ const detailRenderers = {
     const base = `${getDriverDetailsStr(d, true)}, ${pt} - ${it}`;
     return od ? `${base}, other driver: ${getDriverDetailsStr(od, true)}` : base;
   },
-  SPEED_TRAP: ({ 'driver-info': d, speed }) =>
+  SPEED_TRAP_RECORD: ({ 'driver-info': d, speed }) =>
       `Driver: ${getDriverDetailsStr(d ?? null)}, Speed: ${formatFloat(speed)} km/h`,
   START_LIGHTS: ({ 'num-lights': numLights }) =>
       `Number of lights: ${numLights}`,
