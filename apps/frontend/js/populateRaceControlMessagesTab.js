@@ -128,6 +128,14 @@ const detailRenderers = {
       `Driver: ${getDriverDetailsStr(d ?? null)}, Lap: ${lap}`,
   TYRE_CHANGE: ({ 'driver-info': d, 'lap-number': lap, 'old-tyre-compound': oldTyreCompound, 'new-tyre-compound': newTyreCompound}) =>
       `Driver: ${getDriverDetailsStr(d ?? null)}, Lap: ${lap} - Old Compound: ${oldTyreCompound}, New Compound: ${newTyreCompound}`,
+  DRIVER_AI_STATUS_CHANGE: ({
+    'driver-info': d,
+    'lap-number': lap,
+    'old-state': oldState,
+    'new-state': newState}) => {
+    const stateLabel = (s) => (s ? "AI" : "Player");
+    return `Driver: ${getDriverDetailsStr(d ?? null)}, Lap: ${lap} - State changed from ${stateLabel(oldState)} to ${stateLabel(newState)}`;
+  },
 
   DEFAULT: msg => `Type: ${msg['message-type']} - Placeholder details.`
 };
