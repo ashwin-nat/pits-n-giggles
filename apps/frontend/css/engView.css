@@ -241,80 +241,16 @@ input[type="number"]::-webkit-outer-spin-button {
     border-radius: 4px;
 }
 
-/* AG Grid custom styling */
-.ag-theme-alpine-dark {
-    --ag-background-color: var(--f1-dark);
-    --ag-header-background-color: var(--f1-darker);
-    --ag-header-foreground-color: var(--f1-text);
-    --ag-row-background-color: var(--f1-dark);
-    --ag-odd-row-background-color: var(--f1-gray);
-    --ag-border-color: #333;
-    --ag-row-hover-color: var(--f1-light-gray);
-    --ag-selected-row-background-color: var(--f1-light-gray);
-    --ag-font-size: 1rem; /* Increased font size */
-    --ag-row-height: 38px; /* Increased row height */
-    color: var(--f1-text);
-}
-
 .ag-header-cell-text {
-    font-weight: 500;
     text-align: center;
-    color: var(--f1-text);
-    overflow: auto;
 }
 
 .ag-header-group-cell-label .ag-header-cell-text {
-    color: var(--f1-text);
-    font-size: 0.8rem;
-    font-weight: normal;
     text-align: center;
-}
-
-.ag-header-group-text {
-    color: var(--f1-text);
-}
-
-.ag-cell {
-    padding: 0.3rem;
-    border-right: 1px solid #222;
-    display: flex;
-    align-items: flex-start; /* Changed to flex-start for left alignment */
-    justify-content: flex-start; /* Changed to flex-start for left alignment */
-    line-height: 1.2; /* Adjust line height for better multiline appearance */
-    text-align: left;
-}
-
-.ag-cell-single-line {
-    white-space: nowrap; /* Prevent text from wrapping */
-    overflow: hidden; /* Hide overflow text */
-    text-overflow: ellipsis; /* Add ellipsis for truncated text */
-    color: var(--f1-text);
-    text-align: left;
-    display: flex; /* Add flex display */
-    align-items: center; /* Vertically center content */
-}
-
-.ag-cell-multiline {
-    white-space: normal; /* Allow text to wrap */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: flex-start; /* Changed to flex-start for left alignment */
-    height: 100%; /* Ensure the cell takes full height */
-    color: var(--f1-text);
-    text-align: left;
-}
-
-.ag-row-hover {
-    font-weight: bold;
 }
 
 .player-row {
     border: 2px solid #ffd700 !important;
-}
-
-.player-row .ag-cell {
-    border: none !important;
 }
 
 /* Column Visibility Pane */
@@ -408,4 +344,22 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .inactive .nav-link {
   color: var(--f1-text-secondary);
+}
+
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 200px;
+  background-color: #333; /* Dark background */
+  color: #fff; /* White text */
+  border-radius: 20px; /* Rounded corners */
+  padding: 10px 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4); /* Subtle shadow for better visibility */
+}
+
+.toast-body {
+  font-size: 16px; /* Standard font size */
+  text-align: center; /* Centered text */
 }

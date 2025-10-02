@@ -120,7 +120,8 @@ disable=
     too-many-positional,
     too-many-boolean-expressions,
     redefined-variable-type,
-    unnecessary-pass
+    unnecessary-pass,
+    too-many-return-statements
 
 [REPORTS]
 

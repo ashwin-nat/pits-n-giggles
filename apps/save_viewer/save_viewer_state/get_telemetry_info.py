@@ -128,6 +128,7 @@ def _get_time_trial_telemetry_info(json_data: Dict[str, Any]) -> Dict[str, Any]:
         "session-history": session_history,
         "tt-data": None,
         "tt-setups": None,
+        "irl-pole-lap": None
     }
 
     return json_response

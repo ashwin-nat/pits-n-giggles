@@ -24,7 +24,7 @@
 
 import os
 import re
-from typing import ClassVar, Optional
+from typing import Any, ClassVar, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -45,13 +45,13 @@ class NetworkSettings(BaseModel):
         fields_map = type(self).model_fields
 
         if self.server_port == self.save_viewer_port:
-            desc1 = fields_map["server_port"].description
-            desc2 = fields_map["save_viewer_port"].description
+            desc1 = fields_map["server_port"].description # pylint: disable=unsubscriptable-object
+            desc2 = fields_map["save_viewer_port"].description # pylint: disable=unsubscriptable-object
             raise ValueError(f"{desc1} and {desc2} must not be the same (both are {self.server_port})")
 
         if self.udp_tyre_delta_action_code == self.udp_custom_action_code:
-            desc1 = fields_map["udp_tyre_delta_action_code"].description
-            desc2 = fields_map["udp_custom_action_code"].description
+            desc1 = fields_map["udp_tyre_delta_action_code"].description # pylint: disable=unsubscriptable-object
+            desc2 = fields_map["udp_custom_action_code"].description # pylint: disable=unsubscriptable-object
             raise ValueError(f"{desc1} and {desc2} must not be the same (both are {self.udp_tyre_delta_action_code})")
 
         return self
@@ -64,6 +64,7 @@ class CaptureSettings(BaseModel):
                                         description="Autosave free practice data at the end of free practice sessions")
     post_tt_data_autosave: bool = Field(False,
                                         description="Autosave time trial data at the end of time trial sessions")
+    save_race_ctrl_msg: bool = Field(False, description="Save race control messages")
 
 class DisplaySettings(BaseModel):
     refresh_interval: int = Field(200, gt=0, description="Pits n' Giggles client update interval (ms)")
@@ -154,17 +155,27 @@ class HttpsSettings(BaseModel):
     key_file_path: FilePathStr = Field("", description="Path to SSL private key file")
     cert_file_path: FilePathStr = Field("", description="Path to SSL certificate file")
 
-    def model_post_init(self, __context) -> None:
+    def model_post_init(self, __context: Any) -> None: # pylint: disable=arguments-differ
         """Validate file existence only if HTTPS is enabled."""
         if self.enabled:
-            if not self.key_file_path.strip() or not os.path.isfile(self.key_file_path):
+            if not self.key_file_path.strip() or not os.path.isfile(self.key_file_path): # pylint: disable=no-member
                 raise ValueError("Key file is required and must exist when HTTPS is enabled")
-            if not self.cert_file_path.strip() or not os.path.isfile(self.cert_file_path):
+            if not self.cert_file_path.strip() or not os.path.isfile(self.cert_file_path): # pylint: disable=no-member
                 raise ValueError("Certificate file is required and must exist when HTTPS is enabled")
 
     @property
     def proto(self) -> str:
         return "https" if self.enabled else "http"
+
+    @property
+    def cert_path(self) -> Optional[str]:
+        """Path to SSL certificate file. Will be None if HTTPS is disabled."""
+        return None if not self.enabled else self.cert_file_path
+
+    @property
+    def key_path(self) -> Optional[str]:
+        """Path to SSL private key file. Will be None if HTTPS is disabled."""
+        return None if not self.enabled else self.key_file_path
 
 class PitTimeLossF1(BaseModel):
     Melbourne: float = Field(18.0)
@@ -228,6 +239,10 @@ class PitTimeLossF2(BaseModel):
     Paul_Ricard: float = Field(None)
     Portimao: float = Field(None)
 
+class SubSysCtrl(BaseModel):
+    heartbeat_interval: float = Field(5.0, ge=1.0, le=60.0)
+    num_missable_heartbeats: int = Field(3, ge=1, le=20)
+
 class PngSettings(BaseModel):
     Network: NetworkSettings = Field(default_factory=NetworkSettings)
     Capture: CaptureSettings = Field(default_factory=CaptureSettings)
@@ -239,6 +254,7 @@ class PngSettings(BaseModel):
     HTTPS: HttpsSettings = Field(default_factory=HttpsSettings)
     TimeLossInPitsF1: PitTimeLossF1 = Field(default_factory=PitTimeLossF1)
     TimeLossInPitsF2: PitTimeLossF2 = Field(default_factory=PitTimeLossF2)
+    SubSysCtrlCfg__: SubSysCtrl = Field(default_factory=SubSysCtrl)
     class Config:
         str_strip_whitespace = True
 

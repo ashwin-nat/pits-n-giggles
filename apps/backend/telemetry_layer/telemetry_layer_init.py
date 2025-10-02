@@ -24,39 +24,29 @@
 
 import asyncio
 import logging
-from typing import List, Optional, Tuple
+from typing import List
 
-from lib.config import CaptureSettings
+from lib.config import PngSettings
 
 from .telemetry_forwarder import setupForwarder
-from .telemetry_handler import setupTelemetryTask, F1TelemetryHandler
+from .telemetry_handler import F1TelemetryHandler, setupTelemetryTask
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def initTelemetryLayer(
-        port_number: int,
+        settings: PngSettings,
         replay_server: bool,
         logger: logging.Logger,
-        capture_settings: CaptureSettings,
-        udp_custom_action_code: Optional[int],
-        udp_tyre_delta_action_code: Optional[int],
-        forwarding_targets: List[Tuple[str, int]],
         ver_str: str,
-        wdt_interval: float,
         shutdown_event: asyncio.Event,
         tasks: List[asyncio.Task]) -> F1TelemetryHandler:
     """Initialize the telemetry layer
 
     Args:
-        port_number (int): Port number for the telemetry client.
+        settings (PngSettings): Png settings
         replay_server (bool): Whether to enable the TCP replay debug server.
         logger (logging.Logger): Logger instance
-        capture_settings (CaptureSettings): Capture settings
-        udp_custom_action_code (Optional[int]): UDP custom action code.
-        udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code.
-        forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
         ver_str (str): Version string
-        wdt_interval (float): Watchdog interval
         shutdown_event (asyncio.Event): Shutdown event
         tasks (List[asyncio.Task]): List of tasks to be executed
 
@@ -65,19 +55,14 @@ def initTelemetryLayer(
     """
 
     handler = setupTelemetryTask(
-        port_number=port_number,
+        settings=settings,
         replay_server=replay_server,
         logger=logger,
-        capture_settings=capture_settings,
-        udp_custom_action_code=udp_custom_action_code,
-        udp_tyre_delta_action_code=udp_tyre_delta_action_code,
-        forwarding_targets=forwarding_targets,
         ver_str=ver_str,
-        wdt_interval=wdt_interval,
         tasks=tasks
     )
     setupForwarder(
-        forwarding_targets=forwarding_targets,
+        forwarding_targets=settings.Forwarding.forwarding_targets,
         tasks=tasks,
         shutdown_event=shutdown_event,
         logger=logger

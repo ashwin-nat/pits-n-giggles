@@ -102,7 +102,8 @@ class SettingsWindow:
 
         for section_name, field in type(self.settings).model_fields.items():
             # Only for this particular section, the user is expected to configure by editing the ini file
-            if section_name in {"TimeLossInPitsF1", "TimeLossInPitsF2"}:
+            # __SubSysCtrlCfg__ is not documented and the user should not touch this
+            if section_name in {"TimeLossInPitsF1", "TimeLossInPitsF2", "SubSysCtrlCfg__"}:
                 continue
             section_model = getattr(self.settings, section_name)
             section_name_formatted = self._pascal_to_title(section_name)

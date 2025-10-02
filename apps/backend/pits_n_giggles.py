@@ -74,30 +74,20 @@ class PngRunner:
         initStateManagementLayer(
             logger=self.m_logger,
             settings=self.m_config,
-            ver_str=self.m_version
+            ver_str=self.m_version,
+            tasks=self.m_tasks,
+            shutdown_event=self.m_shutdown_event
         )
 
         self.m_telemetry_handler = initTelemetryLayer(
-            port_number=self.m_config.Network.telemetry_port,
+            settings=self.m_config,
             replay_server=replay_server,
             logger=self.m_logger,
-            capture_settings=self.m_config.Capture,
-            udp_custom_action_code=self.m_config.Network.udp_custom_action_code,
-            udp_tyre_delta_action_code=self.m_config.Network.udp_tyre_delta_action_code,
-            forwarding_targets=self.m_config.Forwarding.forwarding_targets,
             ver_str=self.m_version,
-            wdt_interval=float(self.m_config.Network.wdt_interval_sec),
             shutdown_event=self.m_shutdown_event,
             tasks=self.m_tasks
         )
         self.m_web_server = self._setupUiIntfLayer(
-            http_port=self.m_config.Network.server_port,
-            logger=self.m_logger,
-            client_update_interval_ms=self.m_config.Display.refresh_interval,
-            disable_browser_autoload=self.m_config.Display.disable_browser_autoload,
-            stream_overlay_start_sample_data=self.m_config.StreamOverlay.show_sample_data_at_start,
-            tasks=self.m_tasks,
-            ver_str=self.m_version,
             ipc_port=ipc_port,
             debug_mode=debug_mode
         )
@@ -116,25 +106,11 @@ class PngRunner:
             raise  # Ensure proper cancellation behavior
 
     def _setupUiIntfLayer(self,
-        http_port: int,
-        logger: logging.Logger,
-        client_update_interval_ms: int,
-        disable_browser_autoload: bool,
-        stream_overlay_start_sample_data: bool,
-        tasks: List[asyncio.Task],
-        ver_str: str,
         ipc_port: Optional[int] = None,
         debug_mode: Optional[bool] = False) -> TelemetryWebServer:
         """Entry point to start the HTTP server.
 
         Args:
-            http_port (int): Port number for the HTTP server.
-            logger (logging.Logger): Logger instance.
-            client_update_interval_ms (int): Client poll interval in milliseconds.
-            disable_browser_autoload (bool): Whether to disable browser autoload.
-            stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
-            tasks (List[asyncio.Task]): List of tasks to be executed
-            ver_str (str): Version string
             ipc_port (Optional[int], optional): IPC port. Defaults to None.
             debug_mode (bool, optional): Debug mode. Defaults to False.
 
@@ -145,33 +121,20 @@ class PngRunner:
         log_str = "Starting F1 telemetry server. Open one of the below addresses in your browser\n"
         ip_addresses = self._getLocalIpAddresses()
         for ip_addr in ip_addresses:
-            log_str += f"    {self.m_config.HTTPS.proto}://{ip_addr}:{http_port}\n"
+            # pylint: disable=no-member
+            log_str += f"    {self.m_config.HTTPS.proto}://{ip_addr}:{self.m_config.Network.server_port}\n"
         log_str += "NOTE: The tables will be empty until the red lights appear on the screen before the race start\n"
         log_str += "That is when the game starts sending telemetry data"
         self.m_logger.info(log_str)
 
-        # Read the cert files only if HTTPS is enabled
-        if not self.m_config.HTTPS.enabled:
-            cert_path = None
-            key_path = None
-        else:
-            cert_path = self.m_config.HTTPS.cert_file_path
-            key_path = self.m_config.HTTPS.key_file_path
-
         return initUiIntfLayer(
-            port=http_port,
-            logger=logger,
-            client_update_interval_ms=client_update_interval_ms,
+            settings=self.m_config,
+            logger=self.m_logger,
             debug_mode=debug_mode,
-            stream_overlay_start_sample_data=stream_overlay_start_sample_data,
-            stream_overlay_update_interval_ms=self.m_config.StreamOverlay.stream_overlay_update_interval_ms,
-            tasks=tasks,
-            ver_str=ver_str,
-            cert_path=cert_path,
-            key_path=key_path,
+            tasks=self.m_tasks,
+            ver_str=self.m_version,
             ipc_port=ipc_port,
             shutdown_event=self.m_shutdown_event,
-            disable_browser_autoload=disable_browser_autoload
         )
 
     def _getLocalIpAddresses(self) -> Set[str]:
@@ -312,14 +275,24 @@ def entry_point():
 #     yappi.set_clock_type("wall")  # Use "cpu" for CPU-bound tasks
 #     yappi.start()
 
+#     report_pid_from_child()
 #     args_obj = parseArgs()
-#     png_logger = initLogger(file_name='png_log.log', max_size=100000, debug_mode=args_obj.debug)
+#     png_logger = initLogger(
+#         file_name=args_obj.log_file_name,
+#         max_size=100000,
+#         debug_mode=args_obj.debug
+#     )
+#     if sys.platform == 'win32':
+#         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 #     try:
 #         asyncio.run(main(png_logger, args_obj))
 #     except KeyboardInterrupt:
 #         png_logger.info("Program interrupted by user.")
 #     except asyncio.CancelledError:
 #         png_logger.info("Program shutdown gracefully.")
+#     except Exception as e:
+#         png_logger.exception("Error in main: %s", e)
+#         sys.exit(1)
 #     finally:
 #         yappi.stop()
 

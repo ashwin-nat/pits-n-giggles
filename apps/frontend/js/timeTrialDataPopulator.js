@@ -2,6 +2,10 @@ class TimeTrialDataPopulator {
     constructor() {
         this.container = document.getElementById('tt-container');
         this.lastData = null;
+        this.lapValidMask = 1;
+        this.s1ValidMask = 2;
+        this.s2ValidMask = 4;
+        this.s3ValidMask = 8;
         if (!this.container) {
             throw new Error('Time Trial container not found');
         }
@@ -28,6 +32,7 @@ class TimeTrialDataPopulator {
                 this.hideComparisonCardsForOlderFormat();
             }
 
+            this.updateIrlPoleLap(data["irl-pole-lap"]);
             this.updateTheoreticalBestAndSessionInfo(data['session-history']);
             this.lastData = data;
         } catch (error) {
@@ -210,10 +215,6 @@ class TimeTrialDataPopulator {
         const bestLapIndex = sessionHistory['best-lap-time-lap-num'] - 1;
 
         tbody.innerHTML = '';
-        const lapValidMask = 1;
-        const s1ValidMask = 2;
-        const s2ValidMask = 4;
-        const s3ValidMask = 8;
 
         const bestLapTimeLapNum = sessionHistory["best-lap-time-lap-num"];
         const bestS1TimeLapNum  = sessionHistory["best-sector-1-lap-num"];
@@ -225,10 +226,10 @@ class TimeTrialDataPopulator {
             const lapNum = index + 1;
 
             const validBitFlags = lap['lap-valid-bit-flags'];
-            const isLapValid = validBitFlags & lapValidMask;
-            const isS1Valid = validBitFlags & s1ValidMask;
-            const isS2Valid = validBitFlags & s2ValidMask;
-            const isS3Valid = validBitFlags & s3ValidMask;
+            const isLapValid = validBitFlags & this.lapValidMask;
+            const isS1Valid = validBitFlags & this.s1ValidMask;
+            const isS2Valid = validBitFlags & this.s2ValidMask;
+            const isS3Valid = validBitFlags & this.s3ValidMask;
 
             const lapCell = document.createElement('td');
             const lapStrong = document.createElement('strong');
@@ -344,8 +345,72 @@ class TimeTrialDataPopulator {
         }
     }
 
+    /**
+     * Update IRL Pole Lap card
+     */
+    updateIrlPoleLap(irlPoleLapData) {
+        const titleElement = document.getElementById('tt-irl-title');
+        const timeElement = document.getElementById('tt-irl-time');
+        const s1Element = document.getElementById('tt-irl-s1');
+        const s2Element = document.getElementById('tt-irl-s2');
+        const s3Element = document.getElementById('tt-irl-s3');
+
+        if (irlPoleLapData) {
+            const lapTimeStr = this.formatMillisecondsToLapTime(irlPoleLapData['lap-ms']);
+            const s1Str = this.formatMillisecondsToSectorTime(irlPoleLapData['s1-ms']);
+            const s2Str = this.formatMillisecondsToSectorTime(irlPoleLapData['s2-ms']);
+            const s3Str = this.formatMillisecondsToSectorTime(irlPoleLapData['s3-ms']);
+
+            if (titleElement) titleElement.textContent = `${irlPoleLapData['driver-name']} - ${irlPoleLapData['year']}`;
+            if (timeElement) timeElement.textContent = lapTimeStr;
+            if (s1Element) s1Element.textContent = s1Str;
+            if (s2Element) s2Element.textContent = s2Str;
+            if (s3Element) s3Element.textContent = s3Str;
+        } else {
+            if (titleElement) titleElement.textContent = 'IRL Pole Lap';
+            if (timeElement) timeElement.textContent = '--:--:---';
+            if (s1Element) s1Element.textContent = '--:---';
+            if (s2Element) s2Element.textContent = '--:---';
+            if (s3Element) s3Element.textContent = '--:---';
+        }
+    }
+
+    formatMillisecondsToLapTime(ms) {
+        if (!ms) return '--:--:---';
+        const minutes = Math.floor(ms / 60000);
+        const seconds = Math.floor((ms % 60000) / 1000);
+        const milliseconds = ms % 1000;
+        return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
+    }
+
+    formatMillisecondsToSectorTime(ms) {
+        if (!ms) return '--:---';
+        const seconds = Math.floor(ms / 1000);
+        const milliseconds = ms % 1000;
+        return `${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
+    }
+
     getAssistText(assistValue) {
         return assistValue ? '✅' : '❌';
+    }
+
+    /**
+     * Clears the IRL Pole Lap data from the UI.
+     */
+    clearIrlPoleLapData() {
+        const irlTitleEl = document.getElementById('tt-irl-title');
+        const irlTimeEl = document.getElementById('tt-irl-time');
+        const irlS1El = document.getElementById('tt-irl-s1');
+        const irlS2El = document.getElementById('tt-irl-s2');
+        const irlS3El = document.getElementById('tt-irl-s3');
+        const irlDetailsAssistsEl = document.getElementById('tt-irl-details-assists');
+
+        if (irlTitleEl) irlTitleEl.textContent = 'IRL Pole Lap';
+        if (irlTimeEl) irlTimeEl.textContent = '--:--:---';
+        if (irlS1El) irlS1El.textContent = '--:---';
+        if (irlS2El) irlS2El.textContent = '--:---';
+        if (irlS3El) irlS3El.textContent = '--:---';
+        if (irlDetailsAssistsEl) irlDetailsAssistsEl.innerHTML = '';
     }
 
     /**
@@ -357,39 +422,10 @@ class TimeTrialDataPopulator {
         }
 
         const lapData = sessionHistory['lap-history-data'];
-        let bestS1TimeStr = null, bestS2TimeStr = null, bestS3TimeStr = null;
-        let bestS1TimeMs = Infinity, bestS2TimeMs = Infinity, bestS3TimeMs = Infinity;
-
-        const bestS1LapNum = sessionHistory["best-sector-1-lap-num"];
-        const bestS2LapNum = sessionHistory["best-sector-2-lap-num"];
-        const bestS3LapNum = sessionHistory["best-sector-3-lap-num"];
-
-        if (bestS1LapNum && bestS1LapNum < lapData.length) {
-            bestS1TimeStr = lapData[bestS1LapNum - 1]['sector-1-time-str'];
-            bestS1TimeMs = lapData[bestS1LapNum - 1]['sector-1-time-in-ms'];
-        }
-
-        if (bestS2LapNum && bestS2LapNum < lapData.length) {
-            bestS2TimeStr = lapData[bestS2LapNum - 1]['sector-2-time-str'];
-            bestS2TimeMs = lapData[bestS2LapNum - 1]['sector-2-time-in-ms'];
-        }
-
-        if (bestS3LapNum && bestS3LapNum < lapData.length) {
-            bestS3TimeStr = lapData[bestS3LapNum - 1]['sector-3-time-str'];
-            bestS3TimeMs = lapData[bestS3LapNum - 1]['sector-3-time-in-ms'];
-        }
-
-        // Calculate theoretical best time
-        let theoreticalTimeMs = 0;
-        let theoreticalTimeStr = '--:--:---';
-
-        if (bestS1TimeMs !== Infinity && bestS2TimeMs !== Infinity && bestS3TimeMs !== Infinity) {
-            theoreticalTimeMs = bestS1TimeMs + bestS2TimeMs + bestS3TimeMs;
-            const minutes = Math.floor(theoreticalTimeMs / 60000);
-            const seconds = Math.floor((theoreticalTimeMs % 60000) / 1000);
-            const milliseconds = theoreticalTimeMs % 1000;
-            theoreticalTimeStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
-        }
+        const s1TimeMs = this.getBestValidSectorTime(lapData, 1, this.s1ValidMask);
+        const s2TimeMs = this.getBestValidSectorTime(lapData, 2, this.s2ValidMask);
+        const s3TimeMs = this.getBestValidSectorTime(lapData, 3, this.s3ValidMask);
+        const theoreticalTimeMs = this.getTheoreticalBestLap(s1TimeMs, s2TimeMs, s3TimeMs);
 
         // Update theoretical best elements
         const timeElement = document.getElementById('tt-theoretical-time');
@@ -397,10 +433,10 @@ class TimeTrialDataPopulator {
         const s2Element = document.getElementById('tt-theoretical-s2');
         const s3Element = document.getElementById('tt-theoretical-s3');
 
-        if (timeElement) timeElement.textContent = theoreticalTimeStr;
-        if (s1Element) s1Element.textContent = bestS1TimeStr || '--:---';
-        if (s2Element) s2Element.textContent = bestS2TimeStr || '--:---';
-        if (s3Element) s3Element.textContent = bestS3TimeStr || '--:---';
+        if (timeElement) timeElement.textContent = (theoreticalTimeMs != null) ? (this.formatMillisecondsToLapTime(theoreticalTimeMs)) : ('--:--:---');
+        if (s1Element) s1Element.textContent = (s1TimeMs != null) ? (this.formatMillisecondsToSectorTime(s1TimeMs)) : ('--:---');
+        if (s2Element) s2Element.textContent = (s2TimeMs != null) ? (this.formatMillisecondsToSectorTime(s2TimeMs)) : ('--:---');
+        if (s3Element) s3Element.textContent = (s3TimeMs != null) ? (this.formatMillisecondsToSectorTime(s3TimeMs)) : ('--:---');
     }
 
     /**
@@ -431,6 +467,9 @@ class TimeTrialDataPopulator {
             if (wingsEl) wingsEl.textContent = '-';
         });
 
+        // Clear IRL Pole Lap data
+        this.clearIrlPoleLapData();
+
         // Clear theoretical best and session info
         const theoreticalElements = [
             'tt-theoretical-time', 'tt-theoretical-s1', 'tt-theoretical-s2', 'tt-theoretical-s3'
@@ -446,4 +485,50 @@ class TimeTrialDataPopulator {
             }
         });
     }
+
+    /**
+     * Finds the best valid sector time across all laps.
+     *
+     * @param {Array<Object>} laps - List of lap time objects.
+     * @param {number} sectorNum - The sector number
+     * @param {number} mask - Bitmask to check validity (e.g. s1ValidMask).
+     * @returns {number|null} Best valid time in ms, or null if none valid.
+     */
+    getBestValidSectorTime(laps, sectorNum, mask) {
+        let bestTime = null;
+        const sectorMinutesKey = `sector-${sectorNum}-time-minutes`;
+        const sectorMsKey = `sector-${sectorNum}-time-in-ms`;
+
+        for (const lap of laps) {
+            if ((lap["lap-valid-bit-flags"] & mask) !== 0) {
+                const minutes = lap[sectorMinutesKey] ?? 0;
+                const ms = lap[sectorMsKey] ?? 0;
+                const totalMs = minutes * 60000 + ms;
+                if (totalMs === 0) continue;
+
+                if (bestTime === null || totalMs < bestTime) {
+                    bestTime = totalMs;
+                }
+            }
+        }
+
+        return bestTime;
+    }
+
+    /**
+     * Computes the theoretical best lap using best valid sector times.
+     *
+     * @param {number|null} bestS1Ms - Best sector 1 time in ms.
+     * @param {number|null} bestS2Ms - Best sector 2 time in ms.
+     * @param {number|null} bestS3Ms - Best sector 3 time in ms.
+     * @returns {number|null} Best lap time in ms, or null if incomplete.
+     */
+    getTheoreticalBestLap(bestS1Ms, bestS2Ms, bestS3Ms) {
+        if (bestS1Ms === null || bestS2Ms === null || bestS3Ms === null) {
+            return null; // not all sectors available
+        }
+
+        return bestS1Ms + bestS2Ms + bestS3Ms;
+    }
+
 }

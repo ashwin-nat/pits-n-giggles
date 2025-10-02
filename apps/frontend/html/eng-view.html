@@ -13,6 +13,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/lapSectorRecords.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tyreRecords.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/fuelCalculator.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/barChart.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tyreStintHistoryModal.css') }}">
     <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/msgpack-lite@0.1.26/dist/msgpack.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
@@ -34,6 +36,9 @@
                             <h5 class="mb-0" id="raceStatusHeader">Race Status</h5>
                             <div class="d-flex">
                                 <span style="font-size: 2.1rem;" data-bs-toggle="tooltip" data-bs-title="This symbol shows up when a driver has set their telemetry to restricted">⌀</span>
+                                <button id="race-stats-btn" class="settings-button" data-bs-toggle="tooltip" data-bs-title="Show Race Stats">
+                                    🏁
+                                </button>
                                 <a id="driver-view-btn" class="btn settings-button" href="/" data-bs-toggle="tooltip" data-bs-title="Switch to driver view">
                                     <i class="bi bi-car-front-fill"></i>
                                 </a>
@@ -164,17 +169,55 @@
         </div>
     </div>
 
+    <!-- Race Stats Modal -->
+    <div class="modal fade" id="raceStatsModal" tabindex="-1" aria-labelledby="raceStatsModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-fullscreen race-stats-modal-dialog">
+        <div class="modal-content race-stats-modal-content bg-dark">
+          <!-- Modal Header -->
+          <div class="modal-header race-stats-modal-header d-flex justify-content-between align-items-center bg-dark border border-dark-subtle rounded">
+            <!-- Title and Navigation Buttons -->
+            <div class="d-flex align-items-center">
+              <h5 class="modal-title m-0 text-white" id="raceStatsModalLabel">Race Stats</h5>
+            </div>
+            <!-- Refresh and Close Buttons -->
+            <div class="d-flex align-items-center">
+              <button type="button" class="icon-btn me-2" id="refreshButtonRace" title="Refresh">
+                <i class="bi bi-arrow-clockwise"></i>
+              </button>
+              <button type="button" class="icon-btn" id="closeButtonRace" data-bs-dismiss="modal" aria-label="Close" title="Close">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+          </div>
+          <div class="modal-body race-stats-modal-body border border-dark-subtle rounded">
+            <!-- Nav tabs and tab content will be dynamically injected here by JavaScript -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+      <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-body"></div>
+      </div>
+    </div>
+
     <script src="{{ url_for('static', filename='js/preferences.js') }}"></script>
     <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
     <script src="{{ url_for('static', filename='js/iconCache.js') }}"></script>
     <script src="{{ url_for('static', filename='js/modals.js') }}"></script>
     <script src="{{ url_for('static', filename='js/graph.js') }}"></script>
     <script src="{{ url_for('static', filename='js/fuelCalculator.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/populateRaceControlMessagesTab.js') }}"></script>
     <script src="{{ url_for('static', filename='js/driverDataModalPopulator.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/raceStatsModalPopulator.js') }}"></script>
     <script src="{{ url_for('static', filename='js/tyreSetsCards.js') }}"></script>
     <script src="{{ url_for('static', filename='js/lapSectorRecords.js') }}"></script>
     <script src="{{ url_for('static', filename='js/tyreRecords.js') }}"></script>
     <script src="{{ url_for('static', filename='js/weatherUI.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/barChart.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/tyreStintHistoryModal.js') }}"></script>
     <script src="{{ url_for('static', filename='js/engView.js') }}"></script>
 </body>
 </html>

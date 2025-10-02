@@ -35,15 +35,14 @@ from .base_mgr import PngAppMgrBase
 
 class SaveViewerAppMgr(PngAppMgrBase):
     """Implementation of PngApp for save viewer"""
-    def __init__(self, console_app: ConsoleInterface, port_str: str, extra_args: list[str] = None):
+    def __init__(self, console_app: ConsoleInterface, settings: PngSettings, args: list[str] = None):
         """Initialize the save viewer manager
         :param console_app: Reference to a console interface for logging
-        :param port_str: Port number to use for the save viewer
-        :param extra_args: Additional Command line arguments to pass to the save
+        :param settings: Settings object
+        :param args: Command line arguments to pass to the save viewer subsystem
         """
-        self.port_str = port_str
-        args = ["--launcher", "--port", port_str]
-        self.extra_args = extra_args or []
+        self.port = settings.Network.save_viewer_port
+        self.args = args or []
         super().__init__(
             port_conflict_settings_field='Network -> "Pits n\' Giggles Save Data Viewer Port"',
             module_path="apps.save_viewer",
@@ -51,7 +50,8 @@ class SaveViewerAppMgr(PngAppMgrBase):
             display_name="Save Viewer",
             start_by_default=True,
             console_app=console_app,
-            args=args + self.extra_args
+            settings=settings,
+            args=self.args
         )
         self.register_post_start(self.post_start)
         self.register_post_stop(self.post_stop)
@@ -92,7 +92,7 @@ class SaveViewerAppMgr(PngAppMgrBase):
 
     def open_dashboard(self):
         """Open the dashboard viewer in a web browser."""
-        webbrowser.open(f'http://localhost:{self.port_str}', new=2)
+        webbrowser.open(f'http://localhost:{self.port}', new=2)
 
     def open_file(self):
         file_path = filedialog.askopenfilename()
@@ -110,21 +110,15 @@ class SaveViewerAppMgr(PngAppMgrBase):
                 self.console_app.info_log("No process running to send the file path to.")
 
     def on_settings_change(self, new_settings: PngSettings) -> bool:
-        """Handle changes in settings for the sub-application
+        """Handle changes in settings for the backend application
 
         :param new_settings: New settings
 
         :return: True if the app needs to be restarted
         """
-        # Implementation of handling settings changes
-        self.console_app.debug_log(f"Settings changed for {self.display_name}")
-        should_restart = self.port_str != str(new_settings.Network.save_viewer_port)
-
-        # Update the args with the new port
-        self.port_str = str(new_settings.Network.save_viewer_port)
-        self.args = ["--launcher", "--port", self.port_str] + self.extra_args
-        self.console_app.debug_log(f"Updated args: {self.args}")
-
+        # Update the port number
+        should_restart = (self.port != new_settings.Network.save_viewer_port)
+        self.port = new_settings.Network.save_viewer_port
         return should_restart
 
     def post_start(self):

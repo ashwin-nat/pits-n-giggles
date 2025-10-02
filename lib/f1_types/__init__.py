@@ -23,14 +23,15 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .base_pkt import F1PacketBase
-from .common import (ActualTyreCompound, F1Utils, GameMode,
-                     GearboxAssistMode, InvalidPacketLengthError, Nationality,
-                     PacketCountValidationError,
-                     PacketParsingError, Platform, ResultReason, ResultStatus,
+from .common import (ActualTyreCompound, F1Utils, GameMode, GearboxAssistMode,
+                     Nationality, Platform, ResultReason, ResultStatus,
                      SafetyCarType, SessionLength, SessionType, SessionType23,
                      SessionType24, TeamID, TeamID23, TeamID24, TeamID25,
                      TelemetrySetting, TrackID, TractionControlAssistMode,
                      VisualTyreCompound)
+from .errors import (InvalidPacketLengthError, PacketCountValidationError,
+                     PacketParsingError)
+from .header import F1PacketType, PacketHeader
 from .packet_0_car_motion_data import CarMotionData, PacketMotionData
 from .packet_1_session_data import (MarshalZone, PacketSessionData,
                                     WeatherForecastSample)
@@ -53,7 +54,6 @@ from .packet_12_tyre_sets_packet import PacketTyreSetsData, TyreSetData
 from .packet_13_motion_ex_data import PacketMotionExData
 from .packet_14_time_trial_data import PacketTimeTrialData, TimeTrialDataSet
 from .packet_15_lap_positions_data import PacketLapPositionsData
-from .header import F1PacketType, PacketHeader
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 

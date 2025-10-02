@@ -25,13 +25,15 @@
 from abc import abstractmethod
 from enum import Enum
 from functools import total_ordering
-from typing import Any, Dict, Optional, Type, TypeVar, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union
 
+from .errors import PacketCountValidationError, PacketParsingError
 from .header import PacketHeader
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
-T = TypeVar("T", bound="F1BaseEnum")
+T_Enum = TypeVar("T_Enum", bound="F1BaseEnum")
+T_SubPacket = TypeVar("T_SubPacket", bound="F1SubPacketBase")
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -47,12 +49,14 @@ class F1BaseEnum(Enum):
         Returns:
             bool: True if valid for this enum.
         """
-        if isinstance(value, cls):
+        try:
+            cls(value)
             return True
-        return any(value == member.value for member in cls)
+        except (ValueError, TypeError):
+            return False
 
     @classmethod
-    def safeCast(cls: Type[T], value: Union[int, T]) -> Union[T, int]:
+    def safeCast(cls: Type[T_Enum], value: Union[int, T_Enum]) -> Union[T_Enum, int]:
         """
         Safely cast a value to the enum type.
 
@@ -62,7 +66,10 @@ class F1BaseEnum(Enum):
         Returns:
             Optional[F1BaseEnum]: The cast enum value.
         """
-        return cls(value) if cls.isValid(value) else value
+        try:
+            return cls(value)
+        except ValueError:
+            return value
 
     def __str__(self):
         """Return the string representation of this object
@@ -116,6 +123,7 @@ class F1CompareableEnum(F1BaseEnum):
 class F1PacketBase:
     """
     Base class for parsed F1 telemetry packets.
+    All derived classes must use __slots__.
     """
 
     __slots__ = ("m_header",)
@@ -145,13 +153,87 @@ class F1PacketBase:
 class F1SubPacketBase:
     """
     Base class for parsed nested F1 telemetry packets.
+    All derived classes must use __slots__.
     """
 
     @abstractmethod
     def toJSON(self) -> Dict[str, Any]:
-        """Converts the object to a dictionary suitable for JSON serialization.
+        raise NotImplementedError(f"{self.__class__.__name__} must implement toJSON()")
+
+    def diff_fields(
+        self: T_SubPacket,
+        other: T_SubPacket,
+        fields: Optional[List[str]] = None
+    ) -> Dict[str, Dict[str, Any]]:
+        """
+        Compare two packet objects and return a dict of changed fields.
+
+        Args:
+            other: Another object of the same subclass.
+            fields: Optional list of field names to check.
+                    If None, defaults to this class's __slots__.
 
         Returns:
-            Dict[str, Any]: A dictionary representing the JSON-compatible data.
+            Dict[str, Dict[str, Any]]: {field: {"old_value": old, "new_value": new}}
         """
-        raise NotImplementedError(f"{self.__class__.__name__} must implement toJSON()")
+        if type(self) is not type(other):
+            raise TypeError(
+                f"Cannot diff objects of different types: {type(self)} vs {type(other)}"
+            )
+
+        if fields is None:
+            fields = self.__slots__ # pylint: disable=no-member
+
+        changes: Dict[str, Dict[str, Any]] = {}
+        for field in fields:
+            old_val = getattr(self, field)
+            new_val = getattr(other, field)
+            if old_val != new_val:
+                changes[field] = {"old_value": old_val, "new_value": new_val}
+
+        return changes
+
+    @classmethod
+    def parse_array(
+        cls: type[T_SubPacket],
+        data: bytes,
+        offset: int,
+        item_len: int,
+        count: int,
+        max_count: int,
+        **item_kwargs: Any
+    ) -> Tuple[List[T_SubPacket], int]:
+        """
+        Parse a fixed number of sub-packets of this subclass from the data.
+
+        Args:
+            data (bytes): The raw data buffer.
+            offset (int): The starting offset in the data.
+            item_len (int): The length in bytes of each item.
+            count (int): The number of items to parse.
+            max_count (int): The maximum allowed items.
+            **item_kwargs: Extra args passed to the subclass constructor.
+
+        Returns:
+            tuple[list[T_SubPacket], int]: A list of parsed sub-packets and the updated offset.
+        """
+
+        total_raw_len = max_count * item_len
+        raw = data[offset : offset + total_raw_len]
+        expected_len = count * item_len
+
+        if count > max_count:
+            raise PacketCountValidationError(
+                f"Too many {cls.__name__} items: {count} > {max_count}"
+            )
+        if total_raw_len < expected_len:
+            raise PacketParsingError(
+                f"Insufficient {cls.__name__} data: "
+                f"expected {expected_len} bytes, got {total_raw_len} for {count} items"
+            )
+
+        items = [
+            cls(raw[i : i + item_len], **item_kwargs)
+            for i in range(0, expected_len, item_len)
+        ]
+        return items, offset + total_raw_len

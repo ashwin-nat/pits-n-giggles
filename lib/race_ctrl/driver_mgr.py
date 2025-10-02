@@ -1,0 +1,71 @@
+# MIT License
+#
+# Copyright (c) [2025] [Ashwin Natarajan]
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# -------------------------------------- IMPORTS -----------------------------------------------------------------------
+
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+from .messages import RaceCtrlMsgBase
+
+if TYPE_CHECKING:
+    from .session_mgr import SessionRaceControlManager
+
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
+
+class DriverRaceControlManager:
+    """
+    Manager for race control messages specific to a single driver.
+
+    Attributes:
+        driver_index (int): Unique identifier of the driver.
+        messages (List[RaceControlMessage]): References to messages involving this driver.
+    """
+
+    def __init__(self, driver_index: int) -> None:
+        self.driver_index: int = driver_index
+        self.messages: List[RaceCtrlMsgBase] = []
+        self.session_mgr: Optional["SessionRaceControlManager"] = None
+
+    def add_message(self, message: RaceCtrlMsgBase, propagate: bool = True) -> None:
+        """Register a message reference if the driver is involved.
+
+        Args:
+            message (RaceCtrlMsgBase): The message to register.
+            propagate (bool): Whether to propagate the message to the session manager.
+                            If true, the message will be added to the session manager as well.
+        """
+        self.messages.append(message)
+        if propagate:
+            assert self.session_mgr
+            self.session_mgr.add_message(message, is_propagated=True)
+
+    def clear(self) -> None:
+        """Clear all stored messages for this driver."""
+        self.messages.clear()
+
+    def register_session_manager(self, manager: "SessionRaceControlManager") -> None:
+        """Register a session manager with this driver manager."""
+        self.session_mgr = manager
+
+    def toJSON(self, driver_info: Optional[dict] = None) -> Dict[str, Any]:
+        """Export all driver messages as JSON-ready dicts with implicit IDs."""
+        return [msg.toJSON(driver_info) for msg in self.messages]

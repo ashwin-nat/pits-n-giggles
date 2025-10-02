@@ -24,9 +24,9 @@
 import struct
 from typing import Any, Dict, List
 
-from .common import InvalidPacketLengthError, _validate_parse_fixed_segments
-from .header import PacketHeader
 from .base_pkt import F1PacketBase, F1SubPacketBase
+from .errors import InvalidPacketLengthError
+from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -332,10 +332,9 @@ class PacketMotionData(F1PacketBase):
 
         # Slice the packet bytes in steps of CarMotionData.PACKET_LEN to create CarMotionData objects.
         self.m_carMotionData: List[CarMotionData]
-        self.m_carMotionData, _ = _validate_parse_fixed_segments(
+        self.m_carMotionData, _ = CarMotionData.parse_array(
             data=packet,
             offset=0,
-            item_cls=CarMotionData,
             item_len=CarMotionData.PACKET_LEN,
             count=self.MAX_CARS,
             max_count=self.MAX_CARS

@@ -24,9 +24,9 @@
 import struct
 from typing import Any, Dict, List, Optional, Union
 
-from .common import (ActualTyreCompound, SessionType23, _validate_parse_fixed_segments,
-                     SessionType24, VisualTyreCompound)
 from .base_pkt import F1PacketBase, F1SubPacketBase
+from .common import (ActualTyreCompound, SessionType23, SessionType24,
+                     VisualTyreCompound)
 from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -279,10 +279,9 @@ class PacketTyreSetsData(F1PacketBase):
         self.m_carIdx: int = self.COMPILED_PACKET_STRUCT_CAR_IDX.unpack(data[:self.PACKET_LEN_CAR_IDX])[0]
 
         self.m_tyreSetData: List[TyreSetData]
-        self.m_tyreSetData, offset_so_far = _validate_parse_fixed_segments(
+        self.m_tyreSetData, offset_so_far = TyreSetData.parse_array(
             data=data,
             offset=self.PACKET_LEN_CAR_IDX,
-            item_cls=TyreSetData,
             item_len=TyreSetData.PACKET_LEN,
             count=self.MAX_TYRE_SETS,
             max_count=self.MAX_TYRE_SETS,
@@ -335,6 +334,20 @@ class PacketTyreSetsData(F1PacketBase):
             return None
         return f"{str(self.m_fittedIdx)}.{str(self.m_tyreSetData[self.m_fittedIdx].m_actualTyreCompound)}"
 
+    def getTyreSet(self, index) -> Optional[TyreSetData]:
+        """Tyre set at the given index
+
+        Arguments:
+            index (int): Tyre set index
+
+        Returns:
+            Optional[TyreSetData]: Tyre Set if index is valid, else None
+        """
+
+        if 0 <= index < len(self.m_tyreSetData):
+            return self.m_tyreSetData[index]
+        return None
+
     def getTyreSetKey(self, index) -> Optional[str]:
         """Key containing tyre set ID and actual compound name for the given index
 
@@ -345,8 +358,8 @@ class PacketTyreSetsData(F1PacketBase):
             Optional[str]: Key if index is valid, else None
         """
 
-        if 0 <= index < len(self.m_tyreSetData):
-            return f"{str(index)}.{str(self.m_tyreSetData[index].m_actualTyreCompound)}"
+        if tyre_set := self.getTyreSet(index):
+            return f"{str(index)}.{str(tyre_set.m_actualTyreCompound)}"
         return None
 
     def __eq__(self, other: "PacketTyreSetsData") -> bool:

@@ -83,5 +83,9 @@ def _getDriverInfo(json_data: Dict[str, Any], index: int) -> Dict[str, Any]:
     # collisions
     final_json["collisions"] = driver_data["collisions"] if "collisions" in driver_data else {}
 
+    # Race control
+    if race_ctrl := driver_data.get("race-control"):
+        final_json["race-control"] = race_ctrl
+
     # Return this fully prepped JSON
     return final_json

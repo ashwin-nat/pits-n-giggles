@@ -166,19 +166,24 @@ class PngLauncher(ConsoleInterface):
 
     def setup_subapps(self):
         """Set up the hard-coded sub-apps"""
+        save_viewer_args = ["--config-file", self.config_file]
+        server_args = ["--config-file", self.config_file]
+        if self.debug_mode:
+            save_viewer_args.append("--debug")
+            server_args.extend(["--debug", "--replay-server"])
+
         self.subapps = {
             # Backend app reads port from config file
             "server": BackendAppMgr(
                 console_app=self,
-                port_str=str(self.settings.Network.server_port),
-                args=["--config-file", self.config_file, "--debug", "--replay-server"] \
-                    if self.debug_mode else ["--config-file", self.config_file ],
-                proto=self.settings.HTTPS.proto
+                settings=self.settings,
+                args=server_args,
             ),
             # SaveViewer app reads port from args
             "save_viewer": SaveViewerAppMgr(
                 console_app=self,
-                port_str=str(self.settings.Network.save_viewer_port),
+                settings=self.settings,
+                args=save_viewer_args,
             ),
         }
 

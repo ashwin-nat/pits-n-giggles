@@ -27,14 +27,21 @@ import logging
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def get_logger(name: str = "save_viewer") -> logging.Logger:
+def get_logger(debug_mode: bool = False, name: str = "save_viewer") -> logging.Logger:
     """Get a logger with a console handler.
+
+    Args:
+        debug_mode (bool, optional): Whether to enable debug mode. Defaults to False.
+        name (str, optional): The name of the logger. Defaults to "save_viewer".
 
     Returns:
         logging.Logger: The logger
     """
     png_logger = logging.getLogger(name)
-    png_logger.setLevel(logging.INFO)
+    if debug_mode:
+        png_logger.setLevel(logging.DEBUG)
+    else:
+        png_logger.setLevel(logging.INFO)
 
     handler = logging.StreamHandler()
     formatter = logging.Formatter(
@@ -47,4 +54,3 @@ def get_logger(name: str = "save_viewer") -> logging.Logger:
         png_logger.addHandler(handler)
 
     return png_logger
-

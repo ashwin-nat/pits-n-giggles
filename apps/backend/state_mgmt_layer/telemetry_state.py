@@ -73,13 +73,16 @@ def isDriverIndexValid(index: int) -> bool:
     return  (0 <= index < len(_session_state.m_driver_data)) and \
             (_session_state.m_driver_data[index] and _session_state.m_driver_data[index].is_valid)
 
-def initSessionState(logger: logging.Logger, settings: PngSettings, ver_str: str) -> None:
+def initSessionState(logger: logging.Logger, settings: PngSettings, ver_str: str) -> SessionState:
     """Init the DriverData object
 
     Args:
         logger (logging.Logger): Logger
         settings (PngSettings): Settings
         ver_str (str): Version string
+
+    Returns:
+        SessionState: The SessionState object reference
     """
     global _session_state
     _session_state = SessionState(
@@ -87,6 +90,7 @@ def initSessionState(logger: logging.Logger, settings: PngSettings, ver_str: str
         settings,
         ver_str
     )
+    return _session_state
 
 def getSessionStateRef() -> SessionState:
     """Get the SessionState object reference

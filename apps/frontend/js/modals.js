@@ -80,7 +80,7 @@ class ModalManager {
     console.log("Changed fuel target state to ", !isDisabled);
   }
 
-  openDriverModal(data) {
+  openDriverModal(data, activeTabId = null) {
     if (!this.driverModal) {
       console.error("Driver modal not initialized");
       return;
@@ -106,6 +106,17 @@ class ModalManager {
     const tabContent = modalDataPopulator.createTabContent();
     modalBody.appendChild(tabContent);
 
+    // Restore active tab if an ID is provided
+    if (activeTabId) {
+      const newActiveTab = document.getElementById(activeTabId);
+      if (newActiveTab) {
+        const newActiveNavLink = document.querySelector(`#driverModal .nav-link[data-bs-target="#${activeTabId}"]`);
+        if (newActiveNavLink) {
+          new bootstrap.Tab(newActiveNavLink).show();
+        }
+      }
+    }
+
     // Event Listeners for Buttons
     refreshButton.onclick = () => this.refreshDriverData(data);
 
@@ -115,6 +126,9 @@ class ModalManager {
 
   refreshDriverData(data) {
     console.log("Refresh clicked", data);
+    const activeTabElement = document.querySelector('#driverModal .tab-pane.active');
+    const activeTabId = activeTabElement ? activeTabElement.id : null;
+
     const requestPayload = {
       "index" : data["index"],
       "__dummy" : {
@@ -128,7 +142,7 @@ class ModalManager {
       })
       .then(data => {
         console.log('Driver info sync response received:', data);
-        this.openDriverModal(data, this.iconCache); // Reload the modal with the current data
+        this.openDriverModal(data, activeTabId); // Reload the modal with the current data, passing the active tab ID
       })
       .catch(err => {
           console.error("Fetch error:", err);
@@ -285,10 +299,10 @@ class ModalManager {
     return tempVal;
   }
 
-  openRaceStatsModal(data) {
+  openRaceStatsModal(data, activeTabId = null) {
 
     if (!this.raceStatsModal) {
-      this.console.error("Race stats modal not initialized");
+      console.error("Race stats modal not initialized");
       return;
     }
 
@@ -313,6 +327,17 @@ class ModalManager {
     const tabContent = modalDataPopulator.createTabContent();
     modalBody.appendChild(tabContent);
 
+    // Restore active tab if an ID is provided
+    if (activeTabId) {
+      const newActiveTab = document.getElementById(activeTabId);
+      if (newActiveTab) {
+        const newActiveNavLink = document.querySelector(`#raceStatsModal .nav-link[data-bs-target="#${activeTabId}"]`);
+        if (newActiveNavLink) {
+          new bootstrap.Tab(newActiveNavLink).show();
+        }
+      }
+    }
+
     // Event Listeners for Buttons
     refreshButton.onclick = () => this.refreshRaceStatsData(data);
 
@@ -322,6 +347,9 @@ class ModalManager {
 
   refreshRaceStatsData(data) {
     console.log("Refresh race stats clicked", data);
+    const activeTabElement = document.querySelector('#raceStatsModal .tab-pane.active');
+    const activeTabId = activeTabElement ? activeTabElement.id : null;
+
     const requestPayload = {
       "__dummy" : {
         "refresh" : true
@@ -334,7 +362,7 @@ class ModalManager {
       })
       .then(data => {
         console.log('Race info sync response received:', data);
-        this.openRaceStatsModal(data); // Reload the modal with the current data
+        this.openRaceStatsModal(data, activeTabId); // Reload the modal with the current data, passing the active tab ID
       })
       .catch(err => {
           console.error("Fetch error:", err);

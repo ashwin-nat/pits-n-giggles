@@ -24,10 +24,10 @@
 import struct
 from typing import Any, Dict, List
 
-from .common import (F1Utils,
-                     ResultStatus, _validate_parse_fixed_segments)
+from .base_pkt import (F1BaseEnum, F1CompareableEnum, F1PacketBase,
+                       F1SubPacketBase)
+from .common import F1Utils, ResultStatus
 from .header import PacketHeader
-from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
@@ -236,7 +236,7 @@ class LapData(F1SubPacketBase):
         PITTING = 1
         IN_PIT_AREA = 2
 
-    class Sector(F1BaseEnum):
+    class Sector(F1CompareableEnum):
         """
         Enumeration representing the sector of a racing track.
         """
@@ -487,6 +487,64 @@ class LapData(F1SubPacketBase):
         """
         return not self.__eq__(other)
 
+    @property
+    def s1TimeMS(self) -> int:
+        """Return the total S1 time in ms."""
+        if not self._is_active_with_valid_time():
+            return 0
+
+        if self.m_sector == LapData.Sector.SECTOR1:
+            # S1 is ongoing, use current lap time
+            return self.m_currentLapTimeInMS
+
+        return self._get_combined_time_ms(self.m_sector1TimeInMS, self.m_sector1TimeMinutes)
+
+    @property
+    def s2TimeMS(self) -> int:
+        """Return the total S2 time in ms."""
+        if not self._is_active_with_valid_time():
+            return 0
+
+        if self.m_sector == LapData.Sector.SECTOR1:
+            return 0
+
+        if self.m_sector == LapData.Sector.SECTOR2:
+            # S2 is ongoing, calculate as current lap time minus S1
+            return self.m_currentLapTimeInMS - self.s1TimeMS
+
+        # S2 is completed, read from packet
+        return self._get_combined_time_ms(self.m_sector2TimeInMS, self.m_sector2TimeMinutes)
+
+    @property
+    def s3TimeMS(self) -> int:
+        """Return the total S3 time in ms."""
+        if not self._is_active_with_valid_time():
+            return 0
+
+        if self.m_sector < LapData.Sector.SECTOR3:
+            return 0
+
+        # Calculate S3 as remaining time after S1 and S2
+        return self.m_currentLapTimeInMS - (self.s1TimeMS + self.s2TimeMS)
+
+    def _is_active_with_valid_time(self) -> bool:
+        """Check if result is active and has valid current lap time."""
+        return (self.m_resultStatus == ResultStatus.ACTIVE and
+                self.m_currentLapTimeInMS > 0)
+
+    def _get_combined_time_ms(self, ms_part: int, min_part: int) -> int:
+        """
+        Combine minutes and milliseconds into total milliseconds.
+
+        Args:
+            ms_part: The milliseconds component
+            min_part: The minutes component
+
+        Returns:
+            Total time in milliseconds
+        """
+        return (min_part * 60 * 1000) + ms_part
+
 class PacketLapData(F1PacketBase):
     """Class representing the incoming PacketLapData.
 
@@ -511,8 +569,7 @@ class PacketLapData(F1PacketBase):
         Args:
             - header (PacketHeader): Packet header information.
             - packet (bytes): Binary data containing lap data packet.
-        Raises:
-            - InvalidPacketLengthError: If the received packet length is not as expected.
+
         """
         super().__init__(header)
 
@@ -524,10 +581,9 @@ class PacketLapData(F1PacketBase):
         # Process each car's lap data individually
         # Extract chunks of the correct size and create LapData objects
         self.m_lapData: List[LapData]
-        self.m_lapData, offset_so_far = _validate_parse_fixed_segments(
+        self.m_lapData, offset_so_far = LapData.parse_array(
             data=packet,
             offset=0,
-            item_cls=LapData,
             item_len=lap_data_obj_size,
             count=self.MAX_CARS,
             max_count=self.MAX_CARS,

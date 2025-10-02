@@ -58,8 +58,8 @@ def getTelemetryInfo() -> Dict[str, Any]:
 
 def getRaceInfo() -> Dict[str, Any]:
     """Get the race info."""
-    global _json_data
-    return _getRaceInfo(_json_data)
+    global _json_data, _logger
+    return _getRaceInfo(_json_data, _logger)
 
 def getDriverInfo(index: int) -> Dict[str, Any]:
     """Get the driver info for the given index. Assumes the index is an int. Type checking is caller's responsibility

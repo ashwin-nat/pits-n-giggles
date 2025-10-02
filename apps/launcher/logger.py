@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
+import os
 from logging.handlers import RotatingFileHandler
 from typing import Tuple
 
@@ -100,4 +101,11 @@ def get_rotating_logger(
         handler.setFormatter(ConditionalTimestampFormatter())
         logger.addHandler(handler)
 
-    return logger, log_file_path
+    # Find first FileHandler or RotatingFileHandler
+    file_path = None
+    for handler in logger.handlers:
+        if isinstance(handler, logging.FileHandler):
+            file_path = os.path.abspath(handler.baseFilename)
+            break
+
+    return logger, file_path

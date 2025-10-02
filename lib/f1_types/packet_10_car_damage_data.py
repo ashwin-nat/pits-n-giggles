@@ -24,7 +24,6 @@
 import struct
 from typing import Any, Dict, List
 
-from .common import _validate_parse_fixed_segments
 from .header import PacketHeader
 
 from .base_pkt import F1PacketBase, F1SubPacketBase
@@ -549,10 +548,9 @@ class PacketCarDamageData(F1PacketBase):
             packet_len = CarDamageData.PACKET_LEN
         # Slice the data bytes in steps of CarDamageData.PACKET_LEN to create CarDamageData objects.
         self.m_carDamageData: List[CarDamageData]
-        self.m_carDamageData, _ = _validate_parse_fixed_segments(
+        self.m_carDamageData, _ = CarDamageData.parse_array(
             data=data,
             offset=0,
-            item_cls=CarDamageData,
             item_len=packet_len,
             count=self.MAX_CARS,
             max_count=self.MAX_CARS,

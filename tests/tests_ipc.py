@@ -222,3 +222,59 @@ class TestIPC(F1TelemetryUnitTestsBase):
 
         parent.close()
         thread.join(timeout=2)
+
+    def test_heartbeat_monitor_starts_immediately(self):
+        """Test: Heartbeat monitor starts immediately and detects missed heartbeats."""
+
+        # Use a shorter timeout and max missed heartbeats for quicker test execution
+        heartbeat_timeout = 0.1
+        max_missed_heartbeats = 2
+
+        self.heartbeat_missed_flag = False
+        self.missed_heartbeats_count = 0
+
+        async def heartbeat_missed_callback(missed_heartbeats: int):
+            self.heartbeat_missed_flag = True
+            self.missed_heartbeats_count = missed_heartbeats
+            print(f"Heartbeat missed callback triggered with {missed_heartbeats} missed heartbeats.")
+
+        async def handler(_msg):
+            return {"unexpected": True}
+
+        child = IpcChildAsync(
+            self.port,
+            name="HeartbeatChild",
+            max_missed_heartbeats=max_missed_heartbeats,
+            heartbeat_timeout=heartbeat_timeout
+        )
+        child.register_heartbeat_missed_callback(heartbeat_missed_callback)
+
+        def run_async_child():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(child.run(handler))
+
+        thread = threading.Thread(target=run_async_child, daemon=True)
+        thread.start()
+
+        # Wait long enough for the heartbeat monitor to trigger the callback
+        # It should trigger after (max_missed_heartbeats * heartbeat_timeout)
+        # Plus a small buffer
+        time.sleep(heartbeat_timeout * (max_missed_heartbeats + 1) + 0.1)
+
+        self.assertTrue(self.heartbeat_missed_flag, "Heartbeat missed callback was not triggered.")
+        self.assertEqual(self.missed_heartbeats_count, max_missed_heartbeats,
+                         "Incorrect number of missed heartbeats reported.")
+
+        # Ensure the child is terminated cleanly
+        parent = IpcParent(self.port, timeout_ms=500)
+        parent.terminate_child()
+        parent.close()
+        thread.join(timeout=2)
+
+        self.assertTrue(self.heartbeat_missed_flag, "Heartbeat missed callback was not triggered.")
+        self.assertEqual(self.missed_heartbeats_count, max_missed_heartbeats,
+                         "Incorrect number of missed heartbeats reported.")
+
+        # Assert that the child process is terminated after missed heartbeats
+        self.assertFalse(child.is_running, "Child process was not terminated after missed heartbeats.")
