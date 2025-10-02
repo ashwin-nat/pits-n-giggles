@@ -135,7 +135,7 @@ def race_ctrl_event_msg_factory(packet: PacketEventData, lap_number: int) -> Opt
                                                                                 collision.m_vehicle_2_index],
                                         lap_number=lap_number)
 
-        case PacketEventData.Flashback:
+        case PacketEventData.EventPacketType.FLASHBACK:
             return FlashBackRaceCtrlMsg(timestamp=time.time(), lap_number=lap_number)
 
         case _:
