@@ -81,16 +81,16 @@ function getDriverDetailsStr(driverInfo, brackets=false) {
 
 // Extract detailRenderers into its own constant (can live at top of file or separate module)
 const detailRenderers = {
-  SESSION_START: () => 'N/A',
-  SESSION_END: () => 'N/A',
+  SESSION_START: () => '---',
+  SESSION_END: () => '---',
   FASTEST_LAP: ({ 'driver-info': d, 'lap-time-ms': ms }) =>
       `Driver: ${getDriverDetailsStr(d ?? null)}, Lap Time: ${formatLapTime(ms)}`,
   RETIREMENT: ({ 'driver-info': d }) =>
       `Driver: ${getDriverDetailsStr(d ?? null)}`,
-  DRS_ENABLED: () => 'N/A',
+  DRS_ENABLED: () => '---',
   DRS_DISABLED: ({ reason }) =>
       `Reason: ${reason}`,
-  CHEQUERED_FLAG: () => 'N/A',
+  CHEQUERED_FLAG: () => '---',
   RACE_WINNER: ({ 'driver-info': d }) =>
       getDriverDetailsStr(d ?? null),
   PENALTY: ({ 'driver-info': d, 'penalty-type': pt, 'infringement-type': it, 'other-driver-info': od }) => {
@@ -106,7 +106,7 @@ const detailRenderers = {
       `Driver: ${getDriverDetailsStr(d ?? null)}`,
   STOP_GO_SERVED: ({ 'driver-info': d, 'stop-time': stopTime }) =>
       `Driver: ${getDriverDetailsStr(d ?? null)} - Stop Time: ${formatFloat(stopTime)} s`,
-  RED_FLAG: () => 'N/A',
+  RED_FLAG: () => '---',
   OVERTAKE: ({ 'overtaker-info': overtaker, 'overtaken-info': overtaken }) =>
       `${getDriverDetailsStr(overtaker ?? null)} overtook ${getDriverDetailsStr(overtaken ?? null)}`,
   SAFETY_CAR: ({ 'sc-type': scType, 'event-type': eventType }) =>
