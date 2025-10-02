@@ -101,7 +101,7 @@ const detailRenderers = {
       `Driver: ${getDriverDetailsStr(d ?? null)}, Speed: ${formatFloat(speed)} km/h`,
   START_LIGHTS: ({ 'num-lights': numLights }) =>
       `Number of lights: ${numLights}`,
-  LIGHTS_OUT: () => 'N/A',
+  LIGHTS_OUT: () => '---',
   DRIVE_THROUGH_SERVED: ({ 'driver-info': d }) =>
       `Driver: ${getDriverDetailsStr(d ?? null)}`,
   STOP_GO_SERVED: ({ 'driver-info': d, 'stop-time': stopTime }) =>
