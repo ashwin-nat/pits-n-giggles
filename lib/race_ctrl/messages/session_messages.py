@@ -205,3 +205,17 @@ class RaceWinnerRaceCtrlMsg(RaceCtrlMsgBase):
         if driver_info_dict and (driver_info := driver_info_dict.get(self.involved_drivers[0])):
             ret["driver-info"] = driver_info
         return ret
+
+class FlashBackRaceCtrlMsg(RaceCtrlMsgBase):
+    def __init__(self, timestamp: float, lap_number: Optional[int] = None) -> None:
+        """Flashback message
+
+        Args:
+            timestamp (float): Time at which the message was issued (seconds).
+            lap_number (Optional[int], optional): Lap number. Defaults to None.
+        """
+        super().__init__(
+            timestamp=timestamp,
+            message_type=MessageType.FLASHBACK,
+            involved_drivers=[],
+            lap_number=lap_number)

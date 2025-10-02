@@ -35,10 +35,10 @@ from .incident_messages import (CollisionRaceCtrlMsg, DtPenServedRaceCtrlMsg,
                                 PenaltyRaceCtrlMsg, SgPenServedRaceCtrlMsg)
 from .session_messages import (ChequeredFlagRaceCtrlMsg,
                                DrsDisabledRaceCtrlMsg, DrsEnabledRaceCtrlMsg,
-                               LightsOutRaceCtrlMsg, RaceWinnerRaceCtrlMsg,
-                               RedFlagRaceCtrlMsg, SafetyCarRaceCtrlMsg,
-                               SessionEndRaceCtrlMsg, SessionStartRaceCtrlMsg,
-                               StartLightsRaceCtrlMsg)
+                               FlashBackRaceCtrlMsg, LightsOutRaceCtrlMsg,
+                               RaceWinnerRaceCtrlMsg, RedFlagRaceCtrlMsg,
+                               SafetyCarRaceCtrlMsg, SessionEndRaceCtrlMsg,
+                               SessionStartRaceCtrlMsg, StartLightsRaceCtrlMsg)
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -70,6 +70,7 @@ __all__ = [
     "ChequeredFlagRaceCtrlMsg",
     "DrsDisabledRaceCtrlMsg",
     "DrsEnabledRaceCtrlMsg",
+    "FlashBackRaceCtrlMsg",
     "LightsOutRaceCtrlMsg",
     "RaceWinnerRaceCtrlMsg",
     "RedFlagRaceCtrlMsg",
