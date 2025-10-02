@@ -137,6 +137,7 @@ const detailRenderers = {
     const stateLabel = (s) => (s ? "AI" : "Player");
     return `Driver: ${getDriverDetailsStr(d ?? null)}, Lap: ${lap} - State changed from ${stateLabel(oldState)} to ${stateLabel(newState)}`;
   },
+  FLASHBACK: () => '---',
 
   DEFAULT: msg => `Type: ${msg['message-type']} - Placeholder details.`
 };
