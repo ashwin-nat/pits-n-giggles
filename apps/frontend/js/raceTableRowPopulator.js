@@ -116,7 +116,8 @@ class RaceTableRowPopulator {
             isPlayer,
             index,
             spectatorIndex: this.spectatorIndex,
-            showAbsoluteFormat: g_pref_bestLapAbsoluteFormat
+            showAbsoluteFormat: g_pref_bestLapAbsoluteFormat,
+            isSaveViewerMode: !this.isLiveDataMode
         });
 
         const speedTrapValue = speedTrapRecord != null
@@ -158,7 +159,8 @@ class RaceTableRowPopulator {
             isPlayer,
             index,
             spectatorIndex: this.spectatorIndex,
-            showAbsoluteFormat: g_pref_lastLapAbsoluteFormat
+            showAbsoluteFormat: g_pref_lastLapAbsoluteFormat,
+            isSaveViewerMode: !this.isLiveDataMode
         });
         cellContent.push(lapTimeContent);
 
@@ -220,7 +222,8 @@ class RaceTableRowPopulator {
             const updateLapTimeAndSector = (lapTime, sectorStatus) => {
                 lapTimeContentElement.textContent = getFormattedLapTimeStr({
                     lapTimeMs: lapTime,
-                    showAbsoluteFormat: true
+                    showAbsoluteFormat: true,
+                    isSaveViewerMode: !this.isLiveDataMode
                 });
                 sectorBarContainer.innerHTML = ''; // Clear previous sector bar
                 if (lapTime) {
