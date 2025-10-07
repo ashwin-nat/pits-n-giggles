@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .proc_man import ProcManParentSync, ProcManChildAsync
+from .pub_sub import PublisherAsync, SubscriberSync
 from .utils import get_free_tcp_port
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
@@ -30,6 +31,9 @@ from .utils import get_free_tcp_port
 __all__ = [
     'ProcManParentSync',
     'ProcManChildAsync',
+
+    'PublisherAsync',
+    'SubscriberSync',
 
     'get_free_tcp_port',
 ]
