@@ -19,7 +19,7 @@ async def connect():
     print(f'   Session ID: {sio.sid}')
 
     # Small delay to ensure connection is fully established
-    await asyncio.sleep(0.1)
+    # await asyncio.sleep(0.1)
 
     # Emit registration message
     registration_data = {"type": "race-table"}
