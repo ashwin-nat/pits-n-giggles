@@ -22,9 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Dict, Any, Callable
+from typing import Any, Callable, Dict, Optional
+import logging
+
 import zmq
-import json
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -34,19 +35,21 @@ class SubscriberSync:
     Subscribes to messages from a specified port and processes them with a callback.
     """
 
-    def __init__(self, port: int = 4768) -> None:
+    def __init__(self, port: int = 4768, logger: Optional[logging.Logger] = None) -> None:
         """
         Initializes the SubscriberSync.
 
         Args:
             port (int): The port number to connect to.
+            logger (Optional[logging.Logger]): An optional logger object.
         """
-        self.port: int = port
-        self.context: zmq.Context = zmq.Context()
-        self.socket: zmq.Socket = self.context.socket(zmq.SUB)
-        self.socket.connect(f"tcp://localhost:{self.port}")
-        self.socket.setsockopt_string(zmq.SUBSCRIBE, "") # Subscribe to all messages
+        self._port: int = port
+        self._context: zmq.Context = zmq.Context()
+        self._socket: zmq.Socket = self._context.socket(zmq.SUB)
+        self._socket.connect(f"tcp://localhost:{self._port}")
+        self._socket.setsockopt_string(zmq.SUBSCRIBE, "") # Subscribe to all messages
         self._running: bool = False
+        self._logger = logger
 
     def run(self, callback: Callable[[Dict[str, Any]], None]) -> None:
         """
@@ -56,11 +59,12 @@ class SubscriberSync:
         Args:
             callback (Callable[[Dict[str, Any]], None]): The function to call with received data.
         """
-        print(f"Subscriber connected to port {self.port}")
+        if self._logger:
+            self._logger.info(f"Subscriber connected to port {self._port}")
         self._running = True
         while self._running:
             try:
-                message: str = self.socket.recv_string(flags=zmq.NOBLOCK)
+                message: str = self._socket.recv_string(flags=zmq.NOBLOCK)
                 # Assuming the message is a string representation of a dictionary
                 data: Dict[str, Any] = eval(message) # This is generally unsafe, use json.loads if actual JSON
                 callback(data)
@@ -68,8 +72,8 @@ class SubscriberSync:
                 # No message received yet, continue
                 pass
             except Exception as e:
-                if self._running: # Only print error if not intentionally closing
-                    print(f"Subscriber error: {e}")
+                if self._running and self._logger: # Only log error if not intentionally closing
+                    self._logger.error(f"Subscriber error: {e}")
                 break
 
     def close(self) -> None:
@@ -77,6 +81,7 @@ class SubscriberSync:
         Closes the subscriber socket and terminates the ZeroMQ context.
         """
         self._running = False
-        self.socket.close()
-        self.context.term()
-        print("Subscriber closed.")
+        self._socket.close()
+        self._context.term()
+        if self._logger:
+            self._logger.info("Subscriber closed.")

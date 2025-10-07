@@ -22,8 +22,9 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Dict, Any
-import asyncio
+import logging
+from typing import Any, Dict, Optional
+
 import zmq
 import zmq.asyncio as zaio
 
@@ -35,26 +36,20 @@ class PublisherAsync:
     Publishes messages to a specified port.
     """
 
-    def __init__(self, port: int = 4768):
-        self.port = port
-        self.context = zaio.Context()
-        self.socket = self.context.socket(zmq.PUB)
-        self.num_subscribers_val = 0
+    def __init__(self, port: int = 4768, logger: Optional[logging.Logger] = None):
+        self._port = port
+        self._context = zaio.Context()
+        self._socket = self._context.socket(zmq.PUB)
+        self._num_sub = 0
+        self._logger = logger
 
     async def run(self) -> None:
         """
         Binds the publisher socket to the specified port.
         """
-        self.socket.bind(f"tcp://*:{self.port}")
-        print(f"Publisher listening on port {self.port}")
-
-    async def close(self) -> None:
-        """
-        Closes the publisher socket and terminates the ZeroMQ context.
-        """
-        self.socket.close()
-        self.context.term()
-        print("Publisher closed.")
+        self._socket.bind(f"tcp://*:{self._port}")
+        if self._logger:
+            self._logger.info(f"Publisher listening on port {self._port}")
 
     @property
     def num_subscribers(self) -> int:
@@ -64,16 +59,25 @@ class PublisherAsync:
         This property is a placeholder and might require a custom mechanism
         if an accurate count is needed.
         """
-        # In a real-world scenario, you might implement a custom heartbeat/registration
-        # mechanism to track subscribers if an accurate count is critical.
-        # For basic pub/sub, this is often not strictly necessary.
-        return self.num_subscribers_val
+        return self._num_sub
 
     async def publish(self, data: Dict[str, Any]) -> None:
         """
         Publishes data to all connected subscribers.
         The data is sent as a JSON-encoded string.
         """
-        message = str(data).encode('utf-8') # Simple string conversion for basic test
-        await self.socket.send(message)
-        # print(f"Published: {data}")
+        try:
+            message = str(data).encode('utf-8') # Simple string conversion for basic test
+            await self._socket.send(message)
+        except Exception as e:
+            if self._logger:
+                self._logger.error(f"Error publishing message: {e}")
+
+    async def close(self) -> None:
+        """
+        Closes the publisher socket and terminates the ZeroMQ context.
+        """
+        self._socket.close()
+        self._context.term()
+        if self._logger:
+            self._logger.info("Publisher closed.")
