@@ -42,10 +42,15 @@ if sys.platform == 'win32':
 
 class TestPubSub(F1TelemetryUnitTestsBase):
 
+    def setUp(self):
+        super().setUp()
+        self.logger = self.getTestLogger(to_stdout=True) # TODO: This should be a dummy logger
+
     async def test_basic_pub_sub(self):
         port = 5556
-        publisher = PublisherAsync(port=port)
-        subscriber = SubscriberSync(port=port)
+
+        publisher = PublisherAsync(port=port, logger=self.logger)
+        subscriber = SubscriberSync(port=port, logger=self.logger)
 
         received_messages = []
         def subscriber_callback(data):

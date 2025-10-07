@@ -189,10 +189,8 @@ class TestTyreSetHistoryManager(TestTyreSets):
 
     def setUp(self):
         # Create a dummy logger that discards all logs
-        dummy_logger = logging.getLogger("dummy.test.logger")
-        dummy_logger.addHandler(logging.NullHandler())
-        dummy_logger.propagate = False
-        self.manager = TyreSetHistoryManager(dummy_logger)
+        dummy_logger = self.getTestLogger()
+        self.manager: TyreSetHistoryManager = TyreSetHistoryManager(dummy_logger)
 
 def test_remove_empty_history(self):
     """Test remove method with empty history."""

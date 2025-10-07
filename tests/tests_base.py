@@ -144,13 +144,15 @@ class F1TelemetryUnitTestsBase(unittest.IsolatedAsyncioTestCase):
             # Fallback to string conversion for non-serializable objects
             return json.dumps(str(obj), indent=4)
 
-    def getStdoutLogger(name: str = None) -> logging.Logger:
-        """Return a logger that prints all messages to stdout."""
-        logger = logging.getLogger(name)
-        logger.setLevel(logging.DEBUG)
+    def getTestLogger(self, to_stdout: bool = False) -> logging.Logger:
+        """Return a logger that writes to stdout if enabled, else a dummy logger."""
+        logger = logging.getLogger("png_test_logger")
 
-        # Avoid duplicate handlers if function called multiple times
-        if not logger.handlers:
+        # Clear previous handlers to avoid duplication if reused
+        logger.handlers.clear()
+
+        if to_stdout:
+            logger.setLevel(logging.DEBUG)
             handler = logging.StreamHandler(sys.stdout)
             handler.setLevel(logging.DEBUG)
             formatter = logging.Formatter(
@@ -159,5 +161,8 @@ class F1TelemetryUnitTestsBase(unittest.IsolatedAsyncioTestCase):
             )
             handler.setFormatter(formatter)
             logger.addHandler(handler)
+        else:
+            # Dummy (no-op) configuration
+            logger.addHandler(logging.NullHandler())
 
         return logger
