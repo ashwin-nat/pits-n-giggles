@@ -26,7 +26,7 @@ import webbrowser
 from tkinter import ttk, messagebox
 
 from lib.config import PngSettings
-from lib.ipc import IpcParent
+from lib.ipc import ProcManParentSync
 
 from ..console_interface import ConsoleInterface
 from .base_mgr import PngAppMgrBase
@@ -139,7 +139,7 @@ class BackendAppMgr(PngAppMgrBase):
     def manual_save(self):
         """Send a manual save command to the backend."""
         self.console_app.debug_log("Sending manual save command to backend...")
-        ipc_client = IpcParent(self.ipc_port)
+        ipc_client = ProcManParentSync(self.ipc_port)
         rsp = ipc_client.request("manual-save", {})
         status = rsp["status"]
         message = rsp.get("message")

@@ -29,7 +29,7 @@ from typing import List, Dict, Any
 
 import apps.save_viewer.save_viewer_state as SaveViewerState
 from apps.save_viewer.save_web_server import SaveViewerWebServer
-from lib.ipc import IpcChildAsync
+from lib.ipc import ProcManChildAsync
 from lib.web_server import ClientType
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -47,7 +47,7 @@ class SaveViewerIpc:
         self.m_ipc_port = ipc_port
         self.m_server = server
         self.m_should_open_ui = True
-        self.m_ipc_server = IpcChildAsync(ipc_port, "Save Viewer")
+        self.m_ipc_server = ProcManChildAsync(ipc_port, "Save Viewer")
         self.m_ipc_server.register_shutdown_callback(self._shutdown_handler)
 
     async def run(self) -> None:

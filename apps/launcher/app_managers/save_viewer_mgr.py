@@ -26,7 +26,7 @@ import webbrowser
 from tkinter import filedialog, messagebox, ttk
 
 from lib.config import PngSettings
-from lib.ipc import IpcParent
+from lib.ipc import ProcManParentSync
 
 from ..console_interface import ConsoleInterface
 from .base_mgr import PngAppMgrBase
@@ -99,7 +99,7 @@ class SaveViewerAppMgr(PngAppMgrBase):
         if file_path:
             self.console_app.debug_log(f"Selected file: {file_path}")
             if self.process:
-                ipc_client = IpcParent(self.ipc_port)
+                ipc_client = ProcManParentSync(self.ipc_port)
                 rsp = ipc_client.request("open-file", {"file-path": file_path})
                 if rsp["status"] != "error":
                     self.console_app.info_log("File path sent successfully.")

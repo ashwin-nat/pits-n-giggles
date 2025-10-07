@@ -28,7 +28,7 @@ import zmq
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class IpcParent:
+class ProcManParentSync:
     """
     Synchronous ZeroMQ REQ socket client.
     Used by parent process to send command and receive response.

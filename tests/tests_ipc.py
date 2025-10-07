@@ -32,7 +32,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from tests_base import F1TelemetryUnitTestsBase
 
-from lib.ipc import IpcParent, IpcChildAsync, get_free_tcp_port
+from lib.ipc import ProcManParentSync, ProcManChildAsync, get_free_tcp_port
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -53,7 +53,7 @@ class TestIPC(F1TelemetryUnitTestsBase):
                 return {'reply': 'pong-async'}
             return {'error': 'unknown'}
 
-        child = IpcChildAsync(self.port)
+        child = ProcManChildAsync(self.port)
 
         def run_async_child():
             loop = asyncio.new_event_loop()
@@ -64,7 +64,7 @@ class TestIPC(F1TelemetryUnitTestsBase):
         thread.start()
 
         time.sleep(0.1)
-        parent = IpcParent(self.port, timeout_ms=500)
+        parent = ProcManParentSync(self.port, timeout_ms=500)
         resp = parent.request('ping')
         self.assertEqual(resp.get('reply'), 'pong-async')
 
@@ -78,7 +78,7 @@ class TestIPC(F1TelemetryUnitTestsBase):
         async def handler(msg):
             raise RuntimeError("Simulated crash")
 
-        child = IpcChildAsync(self.port)
+        child = ProcManChildAsync(self.port)
 
         def run_async_child():
             loop = asyncio.new_event_loop()
@@ -89,7 +89,7 @@ class TestIPC(F1TelemetryUnitTestsBase):
         thread.start()
 
         time.sleep(0.1)
-        parent = IpcParent(self.port, timeout_ms=500)
+        parent = ProcManParentSync(self.port, timeout_ms=500)
         resp = parent.request('ping')
         self.assertIn('error', resp)
         parent.close()
@@ -97,7 +97,7 @@ class TestIPC(F1TelemetryUnitTestsBase):
 
     def test_child_not_started(self):
         """Test: Parent attempts to connect but child was never started"""
-        parent = IpcParent(get_free_tcp_port(), timeout_ms=500)
+        parent = ProcManParentSync(get_free_tcp_port(), timeout_ms=500)
         resp = parent.request('ping')
         self.assertIn('error', resp)
 
@@ -118,7 +118,7 @@ class TestIPC(F1TelemetryUnitTestsBase):
             await asyncio.sleep(1)
             return {"reply": "late"}
 
-        child = IpcChildAsync(self.port)
+        child = ProcManChildAsync(self.port)
 
         def run_async_child():
             loop = asyncio.new_event_loop()
@@ -129,7 +129,7 @@ class TestIPC(F1TelemetryUnitTestsBase):
         thread.start()
 
         time.sleep(0.1)  # allow bind
-        parent = IpcParent(self.port, timeout_ms=100)
+        parent = ProcManParentSync(self.port, timeout_ms=100)
         resp = parent.request("ping")
 
         # Expect timeout error
@@ -145,7 +145,7 @@ class TestIPC(F1TelemetryUnitTestsBase):
             # Should not be called for ping
             return {"unexpected": True}
 
-        child = IpcChildAsync(self.port, name="PingChild")
+        child = ProcManChildAsync(self.port, name="PingChild")
 
         def run_async_child():
             loop = asyncio.new_event_loop()
@@ -156,7 +156,7 @@ class TestIPC(F1TelemetryUnitTestsBase):
         thread.start()
 
         time.sleep(0.1)
-        parent = IpcParent(self.port, timeout_ms=500)
+        parent = ProcManParentSync(self.port, timeout_ms=500)
         resp = parent.ping()
 
         self.assertEqual(resp.get("reply"), "__pong__")
@@ -172,7 +172,7 @@ class TestIPC(F1TelemetryUnitTestsBase):
         async def handler(_msg):
             return {"unexpected": True}
 
-        child = IpcChildAsync(self.port, name="TerminateChild")
+        child = ProcManChildAsync(self.port, name="TerminateChild")
 
         def run_async_child():
             loop = asyncio.new_event_loop()
@@ -183,7 +183,7 @@ class TestIPC(F1TelemetryUnitTestsBase):
         thread.start()
 
         time.sleep(0.1)
-        parent = IpcParent(self.port, timeout_ms=500)
+        parent = ProcManParentSync(self.port, timeout_ms=500)
         resp = parent.terminate_child()
 
         # No strict expected format — just ensure it's a dict
@@ -202,7 +202,7 @@ class TestIPC(F1TelemetryUnitTestsBase):
         async def handler(_msg):
             return {"unexpected": True}
 
-        child = IpcChildAsync(self.port, name="ShutdownChild")
+        child = ProcManChildAsync(self.port, name="ShutdownChild")
         child.register_shutdown_callback(shutdown_callback)
 
         def run_async_child():
@@ -214,7 +214,7 @@ class TestIPC(F1TelemetryUnitTestsBase):
         thread.start()
 
         time.sleep(0.1)  # allow bind
-        parent = IpcParent(self.port, timeout_ms=500)
+        parent = ProcManParentSync(self.port, timeout_ms=500)
         resp = parent.shutdown_child()
 
         self.assertEqual(resp.get("status"), "ok")
@@ -241,7 +241,7 @@ class TestIPC(F1TelemetryUnitTestsBase):
         async def handler(_msg):
             return {"unexpected": True}
 
-        child = IpcChildAsync(
+        child = ProcManChildAsync(
             self.port,
             name="HeartbeatChild",
             max_missed_heartbeats=max_missed_heartbeats,
@@ -267,7 +267,7 @@ class TestIPC(F1TelemetryUnitTestsBase):
                          "Incorrect number of missed heartbeats reported.")
 
         # Ensure the child is terminated cleanly
-        parent = IpcParent(self.port, timeout_ms=500)
+        parent = ProcManParentSync(self.port, timeout_ms=500)
         parent.terminate_child()
         parent.close()
         thread.join(timeout=2)

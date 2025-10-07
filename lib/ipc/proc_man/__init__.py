@@ -22,36 +22,12 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import asyncio
-import logging
-from functools import partial
-from typing import List, Optional
-
-from lib.ipc import ProcManChildAsync
-
-from .command_dispatcher import processIpcCommand
-from .command_handlers import handleShutdown
-
-# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
-
-def registerIpcTask(ipc_port: Optional[int], logger: logging.Logger, tasks: List[asyncio.Task]) -> None:
-    """Register the IPC task
-
-    Args:
-        ipc_port (Optional[int]): IPC port
-        logger (logging.Logger): Logger
-        tasks (List[asyncio.Task]): List of tasks
-    """
-
-    # Register the IPC task only if port is specified
-    if ipc_port:
-        logger.debug(f"Starting IPC server on port {ipc_port}")
-        server = ProcManChildAsync(ipc_port, "Backend")
-        server.register_shutdown_callback(partial(handleShutdown, logger=logger))
-        tasks.append(asyncio.create_task(server.run(partial(processIpcCommand, logger=logger)), name="IPC Task"))
+from .child import ProcManChildAsync
+from .parent import ProcManParentSync
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    "registerIpcTask",
+    'ProcManParentSync',
+    'ProcManChildAsync',
 ]

@@ -22,15 +22,14 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .async_child import IpcChildAsync
-from .parent import IpcParent
+from .proc_man import ProcManParentSync, ProcManChildAsync
 from .utils import get_free_tcp_port
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    'IpcParent',
-    'IpcChildAsync',
+    'ProcManParentSync',
+    'ProcManChildAsync',
 
     'get_free_tcp_port',
 ]

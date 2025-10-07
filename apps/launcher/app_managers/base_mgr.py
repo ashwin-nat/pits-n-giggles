@@ -38,7 +38,7 @@ from lib.child_proc_mgmt import extract_pid_from_line, is_init_complete
 from lib.config import PngSettings
 from lib.error_status import (PNG_ERROR_CODE_PORT_IN_USE,
                               PNG_ERROR_CODE_UNKNOWN, PNG_LOST_CONN_TO_PARENT)
-from lib.ipc import IpcParent, get_free_tcp_port
+from lib.ipc import ProcManParentSync, get_free_tcp_port
 
 from ..console_interface import ConsoleInterface
 
@@ -338,7 +338,7 @@ class PngAppMgrBase(ABC):
 
         while not self._stop_heartbeat.is_set():
             try:
-                rsp = IpcParent(port_num).heartbeat()
+                rsp = ProcManParentSync(port_num).heartbeat()
 
                 if rsp.get("status") == "success":
                     failed_heartbeat_count = 0
@@ -420,7 +420,7 @@ class PngAppMgrBase(ABC):
             True if the shutdown was successful, False otherwise.
         """
         try:
-            rsp = IpcParent(self.ipc_port).shutdown_child("Stop requested")
+            rsp = ProcManParentSync(self.ipc_port).shutdown_child("Stop requested")
             return rsp.get("status") == "success"
         except Exception as e: # pylint: disable=broad-exception-caught
             self.console_app.debug_log(f"IPC shutdown failed: {e}")

@@ -22,7 +22,7 @@ from aiohttp import ClientSession, TCPConnector
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 from lib.config import load_config_from_ini
-from lib.ipc import IpcParent, get_free_tcp_port
+from lib.ipc import ProcManParentSync, get_free_tcp_port
 
 # Google Drive folder URL
 DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/13tIadKMvi3kuItkovT6GUTTHOL3YM6n_?usp=drive_link"
@@ -42,7 +42,7 @@ def send_ipc_shutdown(ipc_port) -> bool:
         True if the shutdown was successful, False otherwise.
     """
     try:
-        rsp = IpcParent(ipc_port).shutdown_child("Integration test complete")
+        rsp = ProcManParentSync(ipc_port).shutdown_child("Integration test complete")
         return rsp.get("status") == "success"
     except Exception as e: # pylint: disable=broad-exception-caught
         print(f"IPC shutdown failed: {e}")
@@ -73,7 +73,7 @@ def send_heartbeat(
 
     while not stop_event.is_set():
         try:
-            rsp = IpcParent(ipc_port).heartbeat()
+            rsp = ProcManParentSync(ipc_port).heartbeat()
 
             if rsp.get("status") == "success":
                 failed_heartbeat_count = 0

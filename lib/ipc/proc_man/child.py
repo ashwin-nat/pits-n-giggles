@@ -34,7 +34,7 @@ from lib.error_status import PNG_LOST_CONN_TO_PARENT
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class IpcChildAsync:
+class ProcManChildAsync:
     """
     Asynchronous ZeroMQ REP socket server.
     Used by child process to handle requests using asyncio.
