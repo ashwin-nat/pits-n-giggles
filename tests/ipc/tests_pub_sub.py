@@ -42,4 +42,47 @@ if sys.platform == 'win32':
 
 class TestPubSub(F1TelemetryUnitTestsBase):
 
-    pass
+    async def test_basic_pub_sub(self):
+        port = 5556
+        publisher = PublisherAsync(port=port)
+        subscriber = SubscriberSync(port=port)
+
+        received_messages = []
+        def subscriber_callback(data):
+            received_messages.append(data)
+
+        # Run publisher in a separate task
+        publisher_task = asyncio.create_task(publisher.run())
+        await asyncio.sleep(0.1) # Give publisher a moment to bind
+
+        # Run subscriber in a separate thread
+        subscriber_thread = threading.Thread(target=subscriber.run, args=(subscriber_callback,))
+        subscriber_thread.daemon = True
+        subscriber_thread.start()
+        await asyncio.sleep(0.1) # Give subscriber a moment to connect
+
+        # Publish some messages
+        test_data_1 = {"key": "value1", "number": 1}
+        test_data_2 = {"key": "value2", "number": 2}
+
+        await publisher.publish(test_data_1)
+        await asyncio.sleep(0.1)
+        await publisher.publish(test_data_2)
+        await asyncio.sleep(0.1)
+
+        # Close publisher and subscriber
+        await publisher.close()
+        # Signal the subscriber to stop and then close it
+        subscriber.close()
+        subscriber_thread.join(timeout=1) # Wait for the subscriber thread to finish
+
+        self.assertEqual(len(received_messages), 2)
+        self.assertEqual(received_messages[0], test_data_1)
+        self.assertEqual(received_messages[1], test_data_2)
+
+        # Clean up the publisher task
+        publisher_task.cancel()
+        try:
+            await publisher_task
+        except asyncio.CancelledError:
+            pass

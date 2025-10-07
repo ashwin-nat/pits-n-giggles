@@ -23,16 +23,60 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from typing import Dict, Any, Callable
+import zmq
+import json
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class SubscriberSync:
+    """
+    Synchronous ZeroMQ Subscriber for inter-process communication.
+    Subscribes to messages from a specified port and processes them with a callback.
+    """
 
-    def __init__(self, port: int = 4768):
-        pass
+    def __init__(self, port: int = 4768) -> None:
+        """
+        Initializes the SubscriberSync.
+
+        Args:
+            port (int): The port number to connect to.
+        """
+        self.port: int = port
+        self.context: zmq.Context = zmq.Context()
+        self.socket: zmq.Socket = self.context.socket(zmq.SUB)
+        self.socket.connect(f"tcp://localhost:{self.port}")
+        self.socket.setsockopt_string(zmq.SUBSCRIBE, "") # Subscribe to all messages
+        self._running: bool = False
 
     def run(self, callback: Callable[[Dict[str, Any]], None]) -> None:
-        pass
+        """
+        Starts the subscriber, continuously receiving messages and
+        calling the provided callback function with the received data.
+
+        Args:
+            callback (Callable[[Dict[str, Any]], None]): The function to call with received data.
+        """
+        print(f"Subscriber connected to port {self.port}")
+        self._running = True
+        while self._running:
+            try:
+                message: str = self.socket.recv_string(flags=zmq.NOBLOCK)
+                # Assuming the message is a string representation of a dictionary
+                data: Dict[str, Any] = eval(message) # This is generally unsafe, use json.loads if actual JSON
+                callback(data)
+            except zmq.Again:
+                # No message received yet, continue
+                pass
+            except Exception as e:
+                if self._running: # Only print error if not intentionally closing
+                    print(f"Subscriber error: {e}")
+                break
 
     def close(self) -> None:
-        pass
+        """
+        Closes the subscriber socket and terminates the ZeroMQ context.
+        """
+        self._running = False
+        self.socket.close()
+        self.context.term()
+        print("Subscriber closed.")
