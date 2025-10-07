@@ -22,6 +22,8 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+from typing import Dict, Any
+
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class PublisherAsync:
@@ -29,4 +31,18 @@ class PublisherAsync:
     TODO: fill in
     """
 
-    pass
+    def __init__(self, port: int = 4768):
+        pass
+
+    async def run(self) -> None:
+        pass
+
+    async def close(self) -> None:
+        pass
+
+    property
+    def num_subscribers(self) -> int:
+        pass
+
+    async def publish(self, data: Dict[str, Any]) -> None:
+        pass

@@ -22,7 +22,17 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+from typing import Dict, Any, Callable
+
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class SubscriberSync:
-    pass
+
+    def __init__(self, port: int = 4768):
+        pass
+
+    def run(self, callback: Callable[[Dict[str, Any]], None]) -> None:
+        pass
+
+    def close(self) -> None:
+        pass
