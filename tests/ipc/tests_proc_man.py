@@ -39,7 +39,7 @@ if sys.platform == 'win32':
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-class TestIPC(F1TelemetryUnitTestsBase):
+class TestProcMan(F1TelemetryUnitTestsBase):
 
     def setUp(self):
         self.port = get_free_tcp_port()
