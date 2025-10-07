@@ -65,7 +65,7 @@ from tests_base import CustomTestResult, F1TelemetryUnitTestsBase
 #                                     TestFuelRateRecommenderRemove,
 #                                     TestFuelRemainingPerLap)
 # from tests.ipc import TestProcMan
-from tests.ipc import TestPubSub
+from tests.ipc import TestPubSub # TODO: uncomment others
 # from tests_itc import TestAsyncInterTaskCommunicator
 # from tests_overtake_analyzer import (TestOvertakeAnalyzerEmptyInput,
 #                                      TestOvertakeAnalyzerFileCsv,
