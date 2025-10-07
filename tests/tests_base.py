@@ -21,11 +21,13 @@
 # SOFTWARE.
 # pylint: skip-file
 
-import unittest
-import os
-from colorama import Fore, Style
-import sys
 import json
+import logging
+import os
+import sys
+import unittest
+
+from colorama import Fore, Style
 from deepdiff import DeepDiff
 
 # Add the parent directory to the Python path
@@ -141,3 +143,21 @@ class F1TelemetryUnitTestsBase(unittest.IsolatedAsyncioTestCase):
         except TypeError:  # If serialization fails due to non-serializable types
             # Fallback to string conversion for non-serializable objects
             return json.dumps(str(obj), indent=4)
+
+    def getStdoutLogger(name: str = None) -> logging.Logger:
+        """Return a logger that prints all messages to stdout."""
+        logger = logging.getLogger(name)
+        logger.setLevel(logging.DEBUG)
+
+        # Avoid duplicate handlers if function called multiple times
+        if not logger.handlers:
+            handler = logging.StreamHandler(sys.stdout)
+            handler.setLevel(logging.DEBUG)
+            formatter = logging.Formatter(
+                fmt="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+                datefmt="%H:%M:%S"
+            )
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
+
+        return logger
