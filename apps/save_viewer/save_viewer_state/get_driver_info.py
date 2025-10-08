@@ -70,6 +70,7 @@ def _getDriverInfo(json_data: Dict[str, Any], index: int) -> Dict[str, Any]:
 
     # Insert the tyre set history
     final_json["tyre-set-history"]= driver_data["tyre-set-history"]
+    _fill_missing_tyre_set(final_json["tyre-set-history"], driver_data)
 
     # Insert the per lap backup
     final_json["per-lap-info"] = driver_data["per-lap-info"]
@@ -89,3 +90,22 @@ def _getDriverInfo(json_data: Dict[str, Any], index: int) -> Dict[str, Any]:
 
     # Return this fully prepped JSON
     return final_json
+
+def _fill_missing_tyre_set(tyre_set_history: Dict[str, Any], driver_data: Dict[str, Any]) -> None:
+    """Ensure tyre set history exists for all stints. Fills into the given JSON"""
+
+    # There is a bug in the backend where sometimes the tyre set data will be missing from this key
+    # Insert it in such cases
+    if not tyre_set_history:
+        return
+
+    for stint in tyre_set_history:
+        if not stint.get("tyre-set-data"):
+            fitted_index = stint.get("fitted-index")
+            tyre_sets = driver_data.get("tyre-sets", {}).get("tyre-set-data")
+            if fitted_index is not None:
+                # Check if fitted index is valid
+                if 0 <= fitted_index < len(tyre_sets):
+                    stint["tyre-set-data"] = tyre_sets[fitted_index]
+                else:
+                    stint["tyre-set-data"] = None
