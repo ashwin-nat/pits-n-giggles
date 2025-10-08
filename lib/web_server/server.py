@@ -174,7 +174,7 @@ class BaseWebServer:
                 sid (str): Session ID of the registering client.
                 data (Dict[str, str]): Registration data containing client type.
             """
-            self.m_logger.debug('Client registered. SID = %s Type = %s', sid, data['type'])
+            self.m_logger.debug('Client registered. SID = %s Type = %s ID=%s', sid, data['type'], data.get('id', 'N/A'))
             if (client_type := data['type']) in {'player-stream-overlay', 'race-table'}:
                 await self.m_sio.enter_room(sid, client_type)
                 if self._on_client_connect_callback:

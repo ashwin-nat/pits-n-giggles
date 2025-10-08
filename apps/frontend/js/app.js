@@ -34,7 +34,7 @@ function clearSocketIoRequestTimeout() {
 }
 
 socketio.on('connect', function () {
-    socketio.emit('register-client', { type: 'race-table' });
+    socketio.emit('register-client', { type: 'race-table', id: 'driver-view' });
     console.log(`⏱️ Socket connected in ${Date.now() - connectStart}ms`);
 });
 

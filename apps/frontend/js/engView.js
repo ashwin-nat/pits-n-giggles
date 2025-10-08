@@ -1362,7 +1362,7 @@ function initDashboard() {
     });
 
     socketio.on('connect', () => {
-        socketio.emit('register-client', { type: 'race-table' });
+        socketio.emit('register-client', { type: 'race-table', id: 'eng-view' });
         console.log(`⏱️ Socket connected in ${Date.now() - connectStart}ms`);
     });
 
