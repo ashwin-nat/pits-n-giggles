@@ -218,7 +218,7 @@ class BaseWebServer:
         Returns:
             bool: True if a client of the specified type is connected
         """
-        return self._is_room_empty(str(client_type))
+        return not self._is_room_empty(str(client_type))
 
     def _is_room_empty(self, room_name: str, namespace: Optional[str] = '/') -> bool:
         """Check if a room is empty"""

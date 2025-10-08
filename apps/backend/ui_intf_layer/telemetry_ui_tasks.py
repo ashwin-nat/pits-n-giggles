@@ -96,7 +96,7 @@ async def raceTableClientUpdateTask(
 
     sleep_duration = update_interval_ms / 1000
     while not shutdown_event.is_set():
-        if not server.is_client_of_type_connected(ClientType.RACE_TABLE):
+        if server.is_client_of_type_connected(ClientType.RACE_TABLE):
             await server.send_to_clients_of_type(
                 event='race-table-update',
                 data=TelWebAPI.RaceInfoUpdate().toJSON(),
@@ -120,7 +120,7 @@ async def streamOverlayUpdateTask(
 
     sleep_duration = update_interval_ms / 1000
     while not shutdown_event.is_set():
-        if not server.is_client_of_type_connected(ClientType.PLAYER_STREAM_OVERLAY):
+        if server.is_client_of_type_connected(ClientType.PLAYER_STREAM_OVERLAY):
             await server.send_to_clients_of_type(
                 event='player-overlay-update',
                 data=TelWebAPI.PlayerTelemetryOverlayUpdate().toJSON(stream_overlay_start_sample_data),
