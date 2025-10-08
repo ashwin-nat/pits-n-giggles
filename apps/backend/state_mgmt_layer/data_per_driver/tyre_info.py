@@ -321,7 +321,7 @@ class TyreSetHistoryManager:
         self._computeTyreStintEndLaps(final_lap_num)
         tyre_set_history = []
         for entry in self.m_history:
-            is_index_valid = 0 < entry.m_fitted_index < len(tyre_sets_packet.m_tyreSetData)
+            is_index_valid = (0 <= entry.m_fitted_index < len(tyre_sets_packet.m_tyreSetData))
             entry_json = entry.toJSON(include_wear_history)
             entry_json['tyre-set-data'] = \
                 tyre_sets_packet.m_tyreSetData[entry.m_fitted_index].toJSON() if is_index_valid else None
