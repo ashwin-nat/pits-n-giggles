@@ -277,6 +277,7 @@ class RaceStatsModalPopulator {
         }
 
         const chartDiv = document.createElement('div');
+        chartDiv.className = 'bar-chart-container h-100 d-flex flex-column';
         const chart = new BarChart(chartDiv);
         let chartData = [];
         const unit = g_pref_speedUnitMetric ? "km/h" : "mph";
