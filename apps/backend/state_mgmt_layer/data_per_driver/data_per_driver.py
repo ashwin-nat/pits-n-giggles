@@ -1187,22 +1187,29 @@ class DataPerDriver:
             new_value = diff["new_value"]
             old_value = diff["old_value"]
             if new_value > old_value:
-                self.m_race_ctrl.add_message(CarDamageRaceControlMessage(
+                msg = CarDamageRaceControlMessage(
                     timestamp=time.time(),
                     driver_index=self.m_index,
                     lap_number=self.m_lap_info.m_current_lap,
                     damaged_part=field,
                     old_value=old_value,
                     new_value=new_value
-                ))
-                msg_type_str = "car damage"
-            else:
-                self.m_race_ctrl.add_message(WingChangeRaceCtrlMsg(
+                )
+                self.m_race_ctrl.add_message(msg)
+            elif new_value == 0: # damage going from some value to 0 implies wing change
+                msg = WingChangeRaceCtrlMsg(
                     timestamp=time.time(),
                     driver_index=self.m_index,
                     lap_number=self.m_lap_info.m_current_lap
-                ))
-                msg_type_str = "wing change"
+                )
+                self.m_race_ctrl.add_message(msg)
+            else:
+                # something strange is going on. damage decreasing but not to 0
+                msg = None
 
-            self.m_logger.debug("Driver %s - %s changed from %s to %s. Added %s race control message",
-                                str(self), field, diff["old_value"], diff["new_value"], msg_type_str)
+            if msg:
+                self.m_logger.debug("Driver %s - %s changed from %s to %s. Added %s race control message",
+                                str(self), field, diff["old_value"], diff["new_value"], str(msg.message_type))
+            else:
+                self.m_logger.warning("Driver %s - unexpected car damage change for field %s. old: %s, new: %s",
+                                    str(self), field, str(old_value), str(new_value))
