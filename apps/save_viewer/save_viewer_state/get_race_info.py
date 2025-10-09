@@ -79,8 +79,7 @@ def _getTyreStintHistoryJSON(json_data: Dict[str, Any], logger: logging.Logger) 
     old_style = json_data.get("tyre-stint-history", [])
     classification_data = json_data.get("classification-data", [])
     for driver_entry in old_style:
-        # TODO: index based check first
-        driver_data = _getDriverByNameTeam(driver_entry["name"], driver_entry["team"], classification_data)
+        driver_data = _getDriverData(driver_entry, classification_data)
         if not driver_data:
             # if required data is not available for any of the drivers, return empty list
             logger.debug(f"Driver data not available for {driver_entry['name']}")
@@ -96,6 +95,24 @@ def _getTyreStintHistoryJSON(json_data: Dict[str, Any], logger: logging.Logger) 
             driver_entry["telemetry-settings"] = driver_data["telemetry-settings"]
 
     return sorted(old_style, key=lambda x: x["position"])
+
+def _getDriverData(driver_entry: Dict[str, Any], classification_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Get driver data. Search based on index if available, else name/team pair
+
+    Args:
+        driver_entry (Dict[str, Any]): Driver entry
+        classification_data (List[Dict[str, Any]]): Classification data
+
+    Returns:
+        Dict[str, Any]: Driver data
+    """
+    # Index may not always be available, since it was added only from v2.13.1 onwards
+    index = driver_entry.get("index")
+    if index is not None:
+        if 0 <= index < len(classification_data):
+            return classification_data[index]
+    # Index not available/valid, search by name and team
+    return _getDriverByNameTeam(driver_entry["name"], driver_entry["team"], classification_data)
 
 def _getDriverByNameTeam(name: str, team: str, classification_data: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Get driver by name.
@@ -130,8 +147,7 @@ def _fill_missing_tyre_set_data (tyre_set_history: List[Dict[str, Any]], full_js
         return
 
     for driver_entry in tyre_set_history:
-        # TODO: index based check first
-        driver_data = _getDriverByNameTeam(driver_entry["name"], driver_entry["team"], classification_data)
+        driver_data = _getDriverData(driver_entry, classification_data)
         if not driver_data:
             continue
         if driver_data["telemetry-settings"] == "Public":
