@@ -479,7 +479,7 @@ class RaceTableRowPopulator {
       }
 
     addTelemetryRestrictedColspan() {
-        if (isRaceSession(this.sessionType)) {
+        if (this.isLiveDataMode && isRaceSession(this.sessionType)) {
             // we will show this message only in race view, since wear prediction, damage and fuel are
             // only supported in race. in FP/quali, these columns are not shown. Hence, no need to show this
             const cell = this.row.insertCell();
@@ -491,6 +491,8 @@ class RaceTableRowPopulator {
             message.textContent = "Driver has telemetry set to Restricted";
             message.style.fontStyle = "italic"; // Make the text italic
             cell.appendChild(message);
+        } else {
+            this.createMultiLineCell(["Telemetry", "Restricted"]);
         }
 
         return this;
