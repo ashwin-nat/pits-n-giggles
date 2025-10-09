@@ -330,9 +330,9 @@ function getFormattedLapTimeStr({
     isPlayer,
     index,
     spectatorIndex,
-    showAbsoluteFormat,
-    isSaveViewerMode
+    showAbsoluteFormat
 }) {
+    const isSaveViewerMode = spectatorIndex == null; // no spectator index -> save data viewer
     const isReferenceCar = (!isSaveViewerMode) && spectatorIndex === index;
     const missingPlayerLap = lapTimeMsPlayer == null;
 
