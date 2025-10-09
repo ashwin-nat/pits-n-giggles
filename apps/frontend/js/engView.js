@@ -565,6 +565,25 @@ class EngViewRaceTable {
                     },
                 ]
             },
+
+            {
+                headerName: 'Speed Trap',
+                context: {displayName: 'Speed Trap'},
+                field: "lap-info.speed-trap-record-kmph",
+                flex: 8,
+                cellRenderer: (params) =>  {
+                    const driverInfo = params.data;
+                    const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+                    if (telemetryPublic) {
+                        const speedTrap = driverInfo["lap-info"]["speed-trap-record-kmph"];
+                        return this.createSingleLineCell(speedTrap == null ? "N/A" : `${formatFloat(speedTrap)}`);
+                    } else {
+                        return this.getTelemetryRestrictedContent();
+                    }
+                },
+                sortable: false,
+                cellClass: 'ag-cell-single-line',
+            },
             {
                 headerName: 'Tyre Wear',
                 context: {displayName: 'Tyre Wear'},
