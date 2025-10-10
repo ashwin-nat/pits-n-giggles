@@ -22,7 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Dict, Any
+from typing import Any, Dict, List
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -91,7 +91,7 @@ def _getDriverInfo(json_data: Dict[str, Any], index: int) -> Dict[str, Any]:
     # Return this fully prepped JSON
     return final_json
 
-def _fill_missing_tyre_set(tyre_set_history: Dict[str, Any], driver_data: Dict[str, Any]) -> None:
+def _fill_missing_tyre_set(tyre_set_history: List[Dict[str, Any]], driver_data: Dict[str, Any]) -> None:
     """Ensure tyre set history exists for all stints. Fills into the given JSON"""
 
     # There is a bug in the backend where sometimes the tyre set data will be missing from this key

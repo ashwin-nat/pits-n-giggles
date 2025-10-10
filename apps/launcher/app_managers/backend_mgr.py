@@ -44,7 +44,9 @@ class BackendAppMgr(PngAppMgrBase):
         """
 
         if debug_mode:
-            args.extend(["--debug", "--replay-server"])
+            temp_args = args + ["--debug", "--replay-server"]
+        else:
+            temp_args = args or []
         self.port = settings.Network.server_port
         self.proto = settings.HTTPS.proto
         super().__init__(
@@ -55,7 +57,7 @@ class BackendAppMgr(PngAppMgrBase):
             start_by_default=True,
             console_app=console_app,
             settings=settings,
-            args=args,
+            args=temp_args,
             debug_mode=debug_mode
         )
         self.register_post_start(self.post_start)

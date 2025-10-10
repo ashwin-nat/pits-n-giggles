@@ -108,9 +108,8 @@ def _getDriverData(driver_entry: Dict[str, Any], classification_data: List[Dict[
     """
     # Index may not always be available, since it was added only from v2.13.1 onwards
     index = driver_entry.get("index")
-    if index is not None:
-        if 0 <= index < len(classification_data):
-            return classification_data[index]
+    if index is not None and 0 <= index < len(classification_data):
+        return classification_data[index]
     # Index not available/valid, search by name and team
     return _getDriverByNameTeam(driver_entry["name"], driver_entry["team"], classification_data)
 

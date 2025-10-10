@@ -43,9 +43,10 @@ class SaveViewerAppMgr(PngAppMgrBase):
         :param debug_mode: Whether to run the save viewer in debug mode
         """
         self.port = settings.Network.save_viewer_port
-        self.args = args or []
         if debug_mode:
-            args.append("--debug")
+            self.args = args + ["--debug"]
+        else:
+            self.args = args or []
         super().__init__(
             port_conflict_settings_field='Network -> "Pits n\' Giggles Save Data Viewer Port"',
             module_path="apps.save_viewer",
