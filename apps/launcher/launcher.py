@@ -147,7 +147,7 @@ def entry_point() -> None:
         try:
             myappid = "png.launcher" # arbitrary unique string
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-        except Exception:
+        except Exception: # pylint: disable=broad-except
             pass
 
     root: tk.Tk = tk.Tk()
