@@ -181,33 +181,69 @@ class RaceStatsModalPopulator {
     }
 
     populatePositionHistoryTab(tabPane) {
-
         const positionHistoryGraphSubDiv = document.createElement('div');
+        positionHistoryGraphSubDiv.className = 'position-history-container';
 
-        if ("position-history" in this.data && this.data["position-history"].length > 0) {
+        // Add the toggle switch for TLA/Full Name
+        const toggleContainer = document.createElement('div');
+        toggleContainer.className = 'form-check form-switch position-history-toggle';
 
-            const positionHistoryArray = this.data["position-history"];
+        const toggleInput = document.createElement('input');
+        toggleInput.className = 'form-check-input';
+        toggleInput.type = 'checkbox';
+        toggleInput.id = 'tlaNameToggle';
+        toggleInput.setAttribute('role', 'switch');
+
+        const toggleLabel = document.createElement('label');
+        toggleLabel.className = 'form-check-label';
+        toggleLabel.setAttribute('for', 'tlaNameToggle');
+        toggleLabel.textContent = 'Show TLA';
+
+        const infoIcon = document.createElement('i');
+        infoIcon.className = 'bi bi-info-circle ms-1 info-icon';
+        infoIcon.setAttribute('data-bs-toggle', 'tooltip');
+        infoIcon.setAttribute('data-bs-placement', 'top');
+        infoIcon.setAttribute('title', 'Toggle between Three Letter Abbreviation (TLA) and full driver names on the chart.');
+
+        toggleContainer.appendChild(toggleInput);
+        toggleContainer.appendChild(toggleLabel);
+        toggleContainer.appendChild(infoIcon); // Append the info icon
+        positionHistoryGraphSubDiv.appendChild(toggleContainer);
+
+        const positionHistoryArray = this.data["position-history"];
+        if (!positionHistoryArray || positionHistoryArray.length === 0) {
+            this.showDataNotAvailableMessage(tabPane, "Position History data not available");
+            tabPane.appendChild(positionHistoryGraphSubDiv);
+            return;
+        }
+
+        // Load preference from local storage, default to true (TLA)
+        let showTLA = localStorage.getItem('positionHistoryShowTLA') === 'false' ? false : true;
+        toggleInput.checked = showTLA;
+
+        // Function to draw/redraw the chart
+        const drawChart = (useTLA) => {
+            // Clear existing chart if any
+            const existingGraphDiv = positionHistoryGraphSubDiv.querySelector('.chart-container');
+            if (existingGraphDiv) {
+                existingGraphDiv.remove();
+            }
+
             const leaderPositionHistory = positionHistoryArray[0];
             const totalLaps = leaderPositionHistory["driver-position-history"][leaderPositionHistory["driver-position-history"].length - 1]["lap-number"];
 
-            let lapList = [];
-            for (let i = 0; i <= totalLaps; i++) {
-                lapList.push(i);
-            }
-
             let datasets = [];
             positionHistoryArray.forEach((driverInfo) => {
-
                 const name = driverInfo["name"];
                 const team = getTeamName(driverInfo["team"]);
                 const driverPositionHistory = driverInfo["driver-position-history"];
-                let positionHistoryArray = [];
+                let positionHistoryData = [];
                 driverPositionHistory.forEach((perLapRecord) => {
-                    positionHistoryArray.push({ x: perLapRecord["lap-number"], y: perLapRecord["position"] });
+                    positionHistoryData.push({ x: perLapRecord["lap-number"], y: perLapRecord["position"] });
                 });
                 datasets.push({
-                    label: getTLA(name),
-                    data: positionHistoryArray,
+                    label: useTLA ? getTLA(name) : name,
+                    data: positionHistoryData,
                     borderColor: this.getF1TeamColor(team)
                 });
                 if (datasets[datasets.length - 1].borderColor === null) {
@@ -216,7 +252,6 @@ class RaceStatsModalPopulator {
             });
 
             if (datasets.length > 0) {
-                // Create graph canvas
                 const graphDiv = document.createElement('div');
                 const elementId = 'positionHistoryGraph';
                 const graphCanvas = document.createElement('canvas');
@@ -224,12 +259,26 @@ class RaceStatsModalPopulator {
                 graphCanvas.id = elementId;
                 graphDiv.classList.add('chart-container');
 
-                // Plot graph
                 this.plotGraphPositionHistory(graphCanvas, datasets, 'Lap number', 'Position');
                 positionHistoryGraphSubDiv.appendChild(graphDiv);
             }
-        }
+        };
+
+        // Initial draw
+        drawChart(showTLA);
+
+        // Add event listener for the toggle switch
+        toggleInput.addEventListener('change', (event) => {
+            showTLA = event.target.checked;
+            localStorage.setItem('positionHistoryShowTLA', showTLA);
+            drawChart(showTLA);
+        });
+
         tabPane.appendChild(positionHistoryGraphSubDiv);
+
+        // Initialize tooltips after elements are added to the DOM
+        const tooltipTriggerList = positionHistoryGraphSubDiv.querySelectorAll('[data-bs-toggle="tooltip"]');
+        [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
     }
 
     populateTyreStintHistoryTab(tabPane) {
@@ -560,7 +609,7 @@ class RaceStatsModalPopulator {
                 layout: {
                     padding: {
                         top: 10,
-                        right: 75,
+                        right: 150,
                         bottom: 10,
                         left: 10
                     }
