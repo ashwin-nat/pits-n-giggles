@@ -51,9 +51,12 @@ def _getRaceInfo(json_data: Dict[str, Any], logger: logging.Logger) -> Dict[str,
     }
 
     if new_style := json_data.get("tyre-stint-history-v2"):
+        _fill_missing_tyre_set_data(new_style, json_data)
         ret["tyre-stint-history-v2"] = new_style
     else:
-        ret["tyre-stint-history"] = _getTyreStintHistoryJSON(json_data, logger)
+        old_style = _getTyreStintHistoryJSON(json_data, logger)
+        _fill_missing_tyre_set_data(old_style, json_data)
+        ret["tyre-stint-history"] = old_style
 
     if race_ctrl := json_data.get("race-control"):
         ret["race-control"] = race_ctrl
@@ -74,9 +77,10 @@ def _getTyreStintHistoryJSON(json_data: Dict[str, Any], logger: logging.Logger) 
         return []
 
     old_style = json_data.get("tyre-stint-history", [])
+    classification_data = json_data.get("classification-data", [])
     for driver_entry in old_style:
-        if not (driver_data := _getDriverByNameTeam(
-            driver_entry["name"], driver_entry["team"], json_data["classification-data"])):
+        driver_data = _getDriverData(driver_entry, classification_data)
+        if not driver_data:
             # if required data is not available for any of the drivers, return empty list
             logger.debug(f"Driver data not available for {driver_entry['name']}")
             return []
@@ -91,6 +95,23 @@ def _getTyreStintHistoryJSON(json_data: Dict[str, Any], logger: logging.Logger) 
             driver_entry["telemetry-settings"] = driver_data["telemetry-settings"]
 
     return sorted(old_style, key=lambda x: x["position"])
+
+def _getDriverData(driver_entry: Dict[str, Any], classification_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Get driver data. Search based on index if available, else name/team pair
+
+    Args:
+        driver_entry (Dict[str, Any]): Driver entry
+        classification_data (List[Dict[str, Any]]): Classification data
+
+    Returns:
+        Dict[str, Any]: Driver data
+    """
+    # Index may not always be available, since it was added only from v2.13.1 onwards
+    index = driver_entry.get("index")
+    if index is not None and 0 <= index < len(classification_data):
+        return classification_data[index]
+    # Index not available/valid, search by name and team
+    return _getDriverByNameTeam(driver_entry["name"], driver_entry["team"], classification_data)
 
 def _getDriverByNameTeam(name: str, team: str, classification_data: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Get driver by name.
@@ -111,3 +132,43 @@ def _getDriverByNameTeam(name: str, team: str, classification_data: List[Dict[st
         ),
         None,
     )
+
+def _fill_missing_tyre_set_data (tyre_set_history: List[Dict[str, Any]], full_json_data: Dict[str, Any]) -> None:
+    """Ensure tyre set history exists for all stints. Fills into the given JSON"""
+
+    # There is a bug in the backend where sometimes the tyre set data will be missing from this key
+    # Insert it in such cases
+    if not tyre_set_history:
+        return
+
+    classification_data = full_json_data.get("classification-data")
+    if not classification_data:
+        return
+
+    for driver_entry in tyre_set_history:
+        driver_data = _getDriverData(driver_entry, classification_data)
+        if not driver_data:
+            continue
+        if driver_data["telemetry-settings"] == "Public":
+            _fill_missing_tyre_set_data_driver(driver_entry, driver_data)
+
+def _fill_missing_tyre_set_data_driver(driver_entry: Dict[str, Any], driver_data: Dict[str, Any]) -> None:
+    """Ensure tyre set history exists for all stints for curr driver entry. Fills into the given JSON"""
+
+    # There is a bug in the backend where sometimes the tyre set data will be missing from this key
+    # Insert it in such cases
+    tyre_stint_history = driver_entry.get("tyre-stint-history", [])
+    if not tyre_stint_history:
+        return
+
+    tyre_set_data_ref = driver_data.get("tyre-sets", {}).get("tyre-set-data")
+
+    for stint in tyre_stint_history:
+        tyre_set_data = stint.get("tyre-set-data")
+        if not tyre_set_data:
+            fitted_index = stint.get("fitted-index")
+            if (fitted_index is None) or not (0 <= fitted_index < len(tyre_set_data_ref)):
+                # Fitted index must be valid
+                continue
+            stint["tyre-set-data"] = tyre_set_data_ref[fitted_index]
+

@@ -35,12 +35,15 @@ from .base_mgr import PngAppMgrBase
 
 class BackendAppMgr(PngAppMgrBase):
     """Implementation of PngApp for backend services"""
-    def __init__(self, console_app: ConsoleInterface, settings: PngSettings, args: list[str]):
+    def __init__(self, console_app: ConsoleInterface, settings: PngSettings, args: list[str], debug_mode: bool):
         """Initialize the backend manager
         :param console_app: Reference to a console interface for logging
         :param settings: Settings object
         :param args: Additional Command line arguments to pass to the backend
+        :param debug_mode: Whether to run the backend in debug mode
         """
+
+        temp_args = args + ["--debug", "--replay-server"] if debug_mode else (args or [])
         self.port = settings.Network.server_port
         self.proto = settings.HTTPS.proto
         super().__init__(
@@ -51,7 +54,8 @@ class BackendAppMgr(PngAppMgrBase):
             start_by_default=True,
             console_app=console_app,
             settings=settings,
-            args=args
+            args=temp_args,
+            debug_mode=debug_mode
         )
         self.register_post_start(self.post_start)
         self.register_post_stop(self.post_stop)

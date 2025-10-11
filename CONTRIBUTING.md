@@ -1,4 +1,4 @@
-# Contributing to pits_n_giggles
+# Contributing to Pits n' Giggles
 
 Thanks for your interest in contributing! 🎉 Whether it's bug reports, feature suggestions, code, or docs — all contributions are welcome.
 
@@ -10,21 +10,25 @@ For detailed instructions on setting up the project, please refer to the [RUNNIN
 
 ## 🧑‍💻 Making Changes
 
-- Create a new branch from `main`.
-- Follow existing naming and code style conventions.
-- Include helpful commit messages.
-- Test your changes before committing.
-    - Ensure that you build and test with the executable as well, since change of files/paths may require modification in the build config
+- All development work happens off the `dev` branch.
+- To make a change:
+  1. Create a new **feature branch** from `dev`.
+  2. Make small, incremental commits with clear messages.
+  3. Follow existing naming and code style conventions.
+  4. Test your changes before committing.
+
+- For documentation related changes, make a PR from the main branch
+
 ---
 
 ## 📦 Submitting Pull Requests
 
-1. Fork the repo and create your branch from `main`.
-2. Push your changes and open a pull request.
-3. In the PR description, explain:
-   - What you changed
-   - Why you changed it
-   - Any relevant screenshots or logs
+1. Push your feature branch and open a **PR into `dev`**.
+   - This PR will be **fully reviewed** before merge.
+   - In the PR description, explain:
+     - What you changed
+     - Why you changed it
+     - Any relevant screenshots or logs
 
 ---
 
