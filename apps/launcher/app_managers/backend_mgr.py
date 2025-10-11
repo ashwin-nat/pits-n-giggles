@@ -43,10 +43,7 @@ class BackendAppMgr(PngAppMgrBase):
         :param debug_mode: Whether to run the backend in debug mode
         """
 
-        if debug_mode:
-            temp_args = args + ["--debug", "--replay-server"]
-        else:
-            temp_args = args or []
+        temp_args = args + ["--debug", "--replay-server"] if debug_mode else (args or [])
         self.port = settings.Network.server_port
         self.proto = settings.HTTPS.proto
         super().__init__(
