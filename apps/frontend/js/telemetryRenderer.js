@@ -181,7 +181,7 @@ class TelemetryRenderer {
 
     this.fastestLapTimeSpan.textContent = formatLapTime(incomingData['fastest-lap-overall']);
     this.fastestLapNameSpan.textContent = (incomingData['event-type'] === 'Time Trial') ?
-        ('') : (truncateName(incomingData['fastest-lap-overall-driver']).toUpperCase());
+        ('') : (getTLA(incomingData['fastest-lap-overall-driver']));
 
     this.fastestLapTyreSpan.innerHTML = '';
     const fastestLapTyre = incomingData['fastest-lap-overall-tyre'];

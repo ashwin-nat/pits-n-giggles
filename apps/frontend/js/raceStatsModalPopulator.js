@@ -206,7 +206,7 @@ class RaceStatsModalPopulator {
                     positionHistoryArray.push({ x: perLapRecord["lap-number"], y: perLapRecord["position"] });
                 });
                 datasets.push({
-                    label: this.getFirstThreeLetters(name),
+                    label: getTLA(name),
                     data: positionHistoryArray,
                     borderColor: this.getF1TeamColor(team)
                 });
@@ -570,13 +570,6 @@ class RaceStatsModalPopulator {
             },
             plugins: [endLabelPlugin]
         });
-    }
-
-    getFirstThreeLetters(name) {
-        if (name.length < 3) {
-            return name.toUpperCase();
-        }
-        return name.substring(0, 3).toUpperCase();
     }
 
     showDataNotAvailableMessage(tabPane, text) {

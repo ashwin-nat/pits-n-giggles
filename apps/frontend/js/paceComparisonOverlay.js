@@ -61,7 +61,7 @@ class PaceComparison {
         if (name === null) {
             return '---';
         } else {
-            return truncateName(driver['name']).toUpperCase();
+            return getTLA(driver['name']);
         }
     }
 
