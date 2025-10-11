@@ -249,8 +249,12 @@ input[type="number"]::-webkit-outer-spin-button {
     text-align: center;
 }
 
-.player-row {
+.ref-row {
     border: 2px solid #ffd700 !important;
+}
+
+.teammate-row {
+    border: 2px solid #C0C0C0 !important;
 }
 
 /* Column Visibility Pane */
