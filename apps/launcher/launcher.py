@@ -24,6 +24,7 @@
 
 import argparse
 import atexit
+import ctypes
 import os
 import shutil
 import sys
@@ -31,8 +32,8 @@ import tempfile
 import tkinter as tk
 
 from apps.launcher.png_launcher import PngLauncher
-from lib.version import get_version
 from lib.file_path import resolve_user_file
+from lib.version import get_version
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -141,7 +142,14 @@ def entry_point() -> None:
         smoke_test(args.smoke_test)
         sys.exit(0)
 
-    # Launch the main application
+    # Set AppUserModelID to ensure correct taskbar icon in dev mode
+    if os.name == "nt":  # Only on Windows
+        try:
+            myappid = "png.launcher" # arbitrary unique string
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+        except Exception:
+            pass
+
     root: tk.Tk = tk.Tk()
     root.title("Pits n' Giggles")
     root.iconbitmap(load_icon_safely("assets/favicon.ico"))
