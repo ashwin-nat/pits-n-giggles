@@ -91,6 +91,8 @@ class EngViewRaceTable {
         this.TELEMETRY_DISABLED_TEXT = "⌀";
         this.delayedLapData = new Map(); // Stores { oldLapData, timestamp } for each driver
         this.previousTableData = []; // Stores the data from the previous update cycle
+        this.refDriverTeam = null; // Team of the reference driver (player or spectated)
+        this.INVALID_TEAMS = new Set(["F1 Generic"]);
 
         // Column visibility pane elements
         this.settingsButton = document.getElementById('settings-btn');
@@ -195,7 +197,13 @@ class EngViewRaceTable {
                 const data = params.data;
                 if (!data) return;
                 const isReferenceDriver = data.isPlayer || data.index === this.spectatorIndex;
-                return isReferenceDriver ? 'player-row' : '';
+                if (isReferenceDriver) {
+                    return 'ref-row';
+                }
+                if ((!this.INVALID_TEAMS.has(data.team)) && (data.team === this.refDriverTeam)) {
+                    return 'teammate-row';
+                }
+                return '';
             },
             onRowClicked: (params) => {
                 const data = params.data;
@@ -894,11 +902,15 @@ class EngViewRaceTable {
             this.gridApi.hideOverlay();
         }
 
-        updateReferenceLapTimes(drivers, (entry) =>
+        const refEntry = updateReferenceLapTimes(drivers, (entry) =>
             this.isSpectating ?
             entry["driver-info"]?.["index"] == this.spectatorIndex :
             entry["driver-info"]?.["is-player"]
         );
+        if (refEntry) {
+            // this.refDriverTeam = refEntry["driver-info"]?.["team"] || '';
+            this.refDriverTeam = refEntry["driver-info"]["team"];
+        }
 
         // Sort, compute and insert rejoin positions
         drivers.sort((a, b) => a["driver-info"]["position"] - b["driver-info"]["position"]);
@@ -949,7 +961,7 @@ class EngViewRaceTable {
 
             this.previousTableData = newTableData; // Store current data for next update cycle
 
-            // If spectator index or spectating status changed, redraw rows to update 'player-row' class
+            // If spectator index or spectating status changed, redraw rows to update 'ref-row' class
             if (prevSpectatorIndex !== this.spectatorIndex || prevIsSpectating !== this.isSpectating) {
                 this.gridApi.redrawRows();
             }
