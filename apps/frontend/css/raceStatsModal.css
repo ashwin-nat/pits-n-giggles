@@ -1,0 +1,22 @@
+.position-history-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    padding: 10px; /* Add some padding around the content */
+}
+
+.position-history-toggle {
+    align-self: flex-end; /* Align the toggle to the right */
+    margin-bottom: 10px; /* Space between toggle and chart */
+    z-index: 10; /* Ensure it's above the chart */
+    color: white; /* Adjust text color for dark theme */
+}
+
+.position-history-toggle .form-check-label {
+    margin-right: 5px; /* Space between label and info icon */
+}
+
+.position-history-toggle .info-icon {
+    cursor: help; /* Indicate it's a clickable/hoverable info icon */
+}

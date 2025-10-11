@@ -80,6 +80,9 @@ class BarChart {
                 maintainAspectRatio: false,
                 categoryPercentage: 0.6, // Make bars less wide
                 barPercentage: 0.9, // Make individual bars less wide
+                layout: {
+                   autoPadding: true,
+                },
                 plugins: {
                     title: {
                         display: !!config.title,
