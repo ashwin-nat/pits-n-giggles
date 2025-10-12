@@ -104,7 +104,7 @@ class PngLauncher(ConsoleInterface):
 
         # Check for updates in parallel (no-op in dev mode)
         if self.version:
-            threading.Thread(target=self.check_for_updates_background, daemon=True).start()
+            threading.Thread(target=self.check_for_updates_background, daemon=True, name="Update Checker").start()
 
         # Initial log message
         self.info_log(f"Pits n' Giggles started. Version: {self.version}. Log file: {self.log_file_path}")
