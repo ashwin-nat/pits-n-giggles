@@ -165,6 +165,12 @@ class PngAppMgrBase(ABC):
 
     def start(self):
         """Start the sub-application process"""
+
+        # Ensure any existing heartbeat thread is stopped before starting a new one. **Just in case**.
+        self._stop_heartbeat.set()
+        time.sleep(0.1)
+        self._stop_heartbeat.clear()
+
         with self._process_lock:
             if self.is_running:
                 self.console_app.debug_log(f"{self.display_name} is already running.")
