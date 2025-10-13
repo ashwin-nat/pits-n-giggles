@@ -42,30 +42,36 @@ class IpcChildAsync:
     Includes optional heartbeat monitoring.
     """
 
-    def __init__(self, port: int, name: str = "IpcChildAsync", max_missed_heartbeats: int = 3,
+    def __init__(self, port: Optional[int], name: str = "IpcChildAsync", max_missed_heartbeats: int = 3,
                  heartbeat_timeout: float = 5.0):
         """
-        :param port: Port to bind to.
+        :param port: Port to bind to. If None, auto-selects an available port.
         :param name: Name for logging purposes.
         :param max_missed_heartbeats: Number of consecutive missed heartbeats before calling callback.
         :param heartbeat_timeout: Time in seconds to wait for heartbeat before considering it missed.
         """
         self.name = name
-        self.endpoint = f"tcp://127.0.0.1:{port}"
         self.ctx = zmq.asyncio.Context()
         self.sock = self.ctx.socket(zmq.REP)
-        self.sock.bind(self.endpoint)
-        self._running = False
-        self._shutdown_callback = None
 
-        # Heartbeat monitoring (only active if callback is registered)
+        if port is None:
+            # Auto-select an available port
+            port = self.sock.bind_to_random_port("tcp://127.0.0.1")
+        else:
+            self.sock.bind(f"tcp://127.0.0.1:{port}")
+
+        self.port = port
+        self.endpoint = f"tcp://127.0.0.1:{port}"
+
+        self._running = False
+        self._shutdown_cb = None
         self.max_missed_heartbeats = max_missed_heartbeats
         self.heartbeat_timeout = heartbeat_timeout
         self._last_heartbeat = None
         self._missed_heartbeats = 0
-        self._heartbeat_missed_callback = self._def_heartbeat_missed_callback
+        self._heartbeat_missed_cb = self._def_heartbeat_missed_callback
         self._heartbeat_task = None
-
+        self._heartbeat_listener_ready_cb: Optional[Callable[[], None]] = None
     def register_shutdown_callback(self, callback: Callable[[dict], Awaitable[dict]]):
         """
         Registers an async callback to be called before shutdown.
