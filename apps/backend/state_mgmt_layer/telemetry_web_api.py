@@ -246,16 +246,17 @@ class DriverInfoRsp:
     Driver info response class.
     """
 
-    def __init__(self, index: int):
+    def __init__(self, session_state: SessionState, index: int):
         """Get the driver info and prepare the rsp fields
 
         Args:
+            session_state (SessionState): Handle to the session state data structure
             index (int): Index of the driver
         """
 
-        self.m_rsp = _session_state_ref.getDriverInfoJsonByIndex(index)
+        self.m_rsp = session_state.getDriverInfoJsonByIndex(index)
         assert self.m_rsp
-        status, overtakes_info = _session_state_ref.getOvertakeJSON(self.m_rsp["driver-name"])
+        status, overtakes_info = session_state.getOvertakeJSON(self.m_rsp["driver-name"])
         self.m_rsp["overtakes-status-code"] = str(status)
         self.m_rsp['overtakes'] = overtakes_info
         assert status != GetOvertakesStatus.INVALID_INDEX

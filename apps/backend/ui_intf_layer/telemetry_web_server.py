@@ -202,7 +202,7 @@ class TelemetryWebServer(BaseWebServer):
             return self.jsonify(error_response), HTTPStatus.NOT_FOUND
 
         # Process parameters and generate response
-        return TelState.DriverInfoRsp(index_int).toJSON(), HTTPStatus.OK
+        return TelState.DriverInfoRsp(self.m_session_state, index_int).toJSON(), HTTPStatus.OK
 
     async def _post_start(self) -> None:
         """Function to be called after the server starts serving."""
