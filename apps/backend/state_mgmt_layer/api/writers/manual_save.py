@@ -26,7 +26,6 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
-import apps.backend.state_mgmt_layer.telemetry_state as TelState
 from apps.backend.state_mgmt_layer import SessionState
 import lib.race_analyzer as RaceAnalyzer
 from apps.backend.state_mgmt_layer.data_per_driver import (DataPerDriver,
