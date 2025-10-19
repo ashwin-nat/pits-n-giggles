@@ -34,31 +34,29 @@ from .telemetry_state import SessionState
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def initExternalApiTask(
-    logger: logging.Logger,
     tasks: List[asyncio.Task],
     shutdown_event: asyncio.Event,
     session_state_ref: SessionState) -> None:
     """Initialise the state management layer
 
     Args:
-        logger (logging.Logger): Logger
         tasks (List[asyncio.Task]): List of tasks
         shutdown_event (asyncio.Event): Shutdown event
         session_state_ref (SessionState): Reference to the session state
     """
-    tasks.append(asyncio.create_task(externalApiTask(logger, shutdown_event, session_state_ref), name="External API Task"))
+    tasks.append(asyncio.create_task(externalApiTask(shutdown_event, session_state_ref), name="External API Task"))
 
 async def externalApiTask(
-        logger: logging.Logger,
         shutdown_event: asyncio.Event,
         session_state_ref: SessionState) -> None:
     """The actual task that calls the external API's
 
     Args:
-        logger (logging.Logger): Logger
         shutdown_event (asyncio.Event): Shutdown event
         session_state_ref (SessionState): Reference to the session state
     """
+
+    logger = logging.getLogger('png')
 
     while not shutdown_event.is_set():
         message: Optional[SessionChangeNotification] = await AsyncInterTaskCommunicator().receive("external-api-update")

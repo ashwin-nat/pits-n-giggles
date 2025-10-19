@@ -28,7 +28,7 @@ from typing import List
 
 from lib.config import PngSettings
 
-from .telemetry_state import initSessionState
+from .telemetry_state import initSessionState, SessionState
 from .telemetry_web_api import initPngApiLayer
 from .external_api import initExternalApiTask
 
@@ -39,7 +39,7 @@ def initStateManagementLayer(
     settings: PngSettings,
     ver_str: str,
     tasks: List[asyncio.Task],
-    shutdown_event: asyncio.Event) -> None:
+    shutdown_event: asyncio.Event) -> SessionState:
     """Initialise the state management layer
 
     Args:
@@ -48,7 +48,11 @@ def initStateManagementLayer(
         ver_str (str): Version string
         tasks (List[asyncio.Task]): List of tasks
         shutdown_event (asyncio.Event): Shutdown event
+
+    Returns:
+        SessionState: Handle to the session state
     """
-    ref = initSessionState(logger=logger, settings=settings, ver_str=ver_str)
+    ref = initSessionState(settings=settings, ver_str=ver_str)
     initPngApiLayer(logger=logger, session_state_ref=ref)
-    initExternalApiTask(logger=logger, tasks=tasks, shutdown_event=shutdown_event, session_state_ref=ref)
+    initExternalApiTask(tasks=tasks, shutdown_event=shutdown_event, session_state_ref=ref)
+    return ref
