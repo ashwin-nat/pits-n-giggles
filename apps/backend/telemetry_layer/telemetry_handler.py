@@ -133,6 +133,7 @@ class F1TelemetryHandler:
             timeout=float(settings.Network.wdt_interval_sec),
         )
         self.m_manager_task: Optional[asyncio.Task] = None
+        self.m_pkt_count: int = 0
         self.registerCallbacks()
 
     def getTask(self, name: Optional[str] = "Game Telemetry Listener Task") -> asyncio.Task:
@@ -188,6 +189,7 @@ class F1TelemetryHandler:
                 packet (List[bytes]): The raw telemetry packet.
             """
             self.m_wdt.kick()
+            self.m_pkt_count += 1
             if self.m_should_forward:
                 await AsyncInterTaskCommunicator().send("packet-forward", packet)
 
@@ -501,6 +503,7 @@ class F1TelemetryHandler:
         self.m_session_state_ref.processSessionStarted(reason)
         self.m_data_cleared_this_session = True
         self.m_final_classification_processed = False
+        self.m_pkt_count = 0
 
     async def postGameDumpToFile(self, final_json: Dict[str, Any]) -> None:
         """
@@ -513,6 +516,9 @@ class F1TelemetryHandler:
         event_str = self.m_session_state_ref.getEventInfoStr()
         if not event_str:
             return
+
+        # Insert packet count for debugging
+        final_json["packet-count"] = self.m_pkt_count
 
         # Save the JSON data
         # Get timestamp in the format - year_month_day_hour_minute_second
