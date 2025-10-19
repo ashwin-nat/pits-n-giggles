@@ -131,6 +131,7 @@ class PngRunner:
         return initUiIntfLayer(
             settings=self.m_config,
             logger=self.m_logger,
+            session_state=self.m_session_state,
             debug_mode=debug_mode,
             tasks=self.m_tasks,
             ver_str=self.m_version,

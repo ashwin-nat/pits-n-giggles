@@ -27,6 +27,7 @@ import logging
 from typing import List, Optional
 
 import apps.backend.state_mgmt_layer as TelWebAPI
+from apps.backend.state_mgmt_layer import SessionState
 from lib.config import PngSettings
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.web_server import ClientType
@@ -39,6 +40,7 @@ from .telemetry_web_server import TelemetryWebServer
 def initUiIntfLayer(
     settings: PngSettings,
     logger: logging.Logger,
+    session_state: SessionState,
     debug_mode: bool,
     tasks: List[asyncio.Task],
     ver_str: str,
@@ -49,6 +51,7 @@ def initUiIntfLayer(
     Args:
         settings (PngSettings): Png settings
         logger (logging.Logger): Logger
+        session_state (SessionState): Handle to the session state
         debug_mode (bool): Debug enabled if true
         tasks (List[asyncio.Task]): List of tasks to be executed
         ver_str (str): Version string
@@ -64,6 +67,7 @@ def initUiIntfLayer(
         settings=settings,
         ver_str=ver_str,
         logger=logger,
+        session_state=session_state,
         debug_mode=debug_mode,
     )
 
