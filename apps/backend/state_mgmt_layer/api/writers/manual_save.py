@@ -29,11 +29,9 @@ from typing import Any, Dict
 from apps.backend.state_mgmt_layer import SessionState
 from lib.save_to_disk import save_json_to_file
 
-from ..base import BaseAPI
-
 # ------------------------- API - CLASSES ------------------------------------------------------------------------------
 
-class ManualSaveRsp(BaseAPI):
+class ManualSaveRsp:
     """
     Manual save response class.
     """
