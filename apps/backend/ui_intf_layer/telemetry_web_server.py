@@ -194,7 +194,7 @@ class TelemetryWebServer(BaseWebServer):
 
         # Check if the given index is valid
         index_int = int(index_arg)
-        if not TelState.isDriverIndexValid(index_int):
+        if not self.m_session_state.isIndexValid(index_int):
             error_response = {
                 'error' : 'Invalid parameter value',
                 'message' : 'Invalid index',

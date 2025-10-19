@@ -23,7 +23,6 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .state_layer_init import initStateManagementLayer, SessionState
-from .telemetry_state import isDriverIndexValid
 from . import api
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------

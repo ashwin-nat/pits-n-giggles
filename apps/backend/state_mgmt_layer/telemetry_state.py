@@ -30,28 +30,7 @@ from lib.config import PngSettings
 
 from .session_state import SessionState
 
-# -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
-
-# -------------------------------------- GLOBALS -----------------------------------------------------------------------
-
-_session_state: Optional[SessionState] = None
-
-# TODO: deprecate this whole file
-
-# -------------------------------------- UTILTIES ----------------------------------------------------------------------
-
-def isDriverIndexValid(index: int) -> bool:
-    """Check if the given index is a valid driver index
-
-    Args:
-        index (int): Index of the driver
-
-    Returns:
-        bool: True if valid
-    """
-
-    return  (0 <= index < len(_session_state.m_driver_data)) and \
-            (_session_state.m_driver_data[index] and _session_state.m_driver_data[index].is_valid)
+# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def initSessionState(logger: logging.Logger, settings: PngSettings, ver_str: str) -> SessionState:
     """Init the DriverData object
@@ -64,10 +43,8 @@ def initSessionState(logger: logging.Logger, settings: PngSettings, ver_str: str
     Returns:
         SessionState: The SessionState object reference
     """
-    global _session_state
-    _session_state = SessionState(
+    return SessionState(
         logger,
         settings,
         ver_str
     )
-    return _session_state
