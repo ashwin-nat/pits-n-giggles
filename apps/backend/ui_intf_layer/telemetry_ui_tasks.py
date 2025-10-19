@@ -74,11 +74,13 @@ def initUiIntfLayer(
     # Register tasks associated with this web server
     tasks.append(asyncio.create_task(web_server.run(), name="Web Server Task"))
     tasks.append(asyncio.create_task(raceTableClientUpdateTask(settings.Display.refresh_interval, web_server,
+                                                               session_state,
+                                                               logger,
                                                                shutdown_event),
                                      name="Race Table Update Task"))
     tasks.append(asyncio.create_task(streamOverlayUpdateTask(settings.StreamOverlay.stream_overlay_update_interval_ms,
                                                              settings.StreamOverlay.show_sample_data_at_start,
-                                                             web_server, shutdown_event),
+                                                             web_server, session_state, shutdown_event),
                                      name="Stream Overlay Update Task"))
     tasks.append(asyncio.create_task(frontEndMessageTask(web_server, shutdown_event),
                                      name="Front End Message Task"))
@@ -89,12 +91,16 @@ def initUiIntfLayer(
 async def raceTableClientUpdateTask(
         update_interval_ms: int,
         server: TelemetryWebServer,
+        session_state: SessionState,
+        logger: logging.Logger,
         shutdown_event: asyncio.Event) -> None:
     """Task to update clients with telemetry data
 
     Args:
         update_interval_ms (int): Update interval in milliseconds
         server (TelemetryWebServer): The telemetry web server
+        session_state (SessionState): Handle to the session state data structure
+        logger (logging.Logger): Logger handle
         shutdown_event (asyncio.Event): Event to signal shutdown
     """
 
@@ -103,7 +109,7 @@ async def raceTableClientUpdateTask(
         if not server.is_client_of_type_connected(ClientType.RACE_TABLE):
             await server.send_to_clients_of_type(
                 event='race-table-update',
-                data=TelWebAPI.RaceInfoUpdate().toJSON(),
+                data=TelWebAPI.RaceInfoUpdate(logger, session_state).toJSON(),
                 client_type=ClientType.RACE_TABLE)
         await asyncio.sleep(sleep_duration)
 
@@ -113,12 +119,14 @@ async def streamOverlayUpdateTask(
     update_interval_ms: int,
     stream_overlay_start_sample_data: bool,
     server: TelemetryWebServer,
+    session_state: SessionState,
     shutdown_event: asyncio.Event) -> None:
     """Task to update clients with player telemetry overlay data
     Args:
         update_interval_ms (int): Update interval in milliseconds
         stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
         server (TelemetryWebServer): The telemetry web server
+        session_state (SessionState): Handle to the session state data structure
         shutdown_event (asyncio.Event): Event to signal shutdown
     """
 
@@ -127,7 +135,7 @@ async def streamOverlayUpdateTask(
         if not server.is_client_of_type_connected(ClientType.PLAYER_STREAM_OVERLAY):
             await server.send_to_clients_of_type(
                 event='player-overlay-update',
-                data=TelWebAPI.PlayerTelemetryOverlayUpdate().toJSON(stream_overlay_start_sample_data),
+                data=TelWebAPI.PlayerTelemetryOverlayUpdate(session_state).toJSON(stream_overlay_start_sample_data),
                 client_type=ClientType.PLAYER_STREAM_OVERLAY)
         await asyncio.sleep(sleep_duration)
 

@@ -27,6 +27,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
 import apps.backend.state_mgmt_layer.telemetry_state as TelState
+from apps.backend.state_mgmt_layer import SessionState
 import lib.race_analyzer as RaceAnalyzer
 from apps.backend.state_mgmt_layer.data_per_driver import (DataPerDriver,
                                                            TyreSetInfo)
@@ -75,16 +76,23 @@ def initPngApiLayer(logger: logging.Logger, session_state_ref: TelState.SessionS
 class RaceInfoUpdate:
     """This class will prepare the live race telemetry info response. Use toJSON() method to get the JSON rsp
     """
-    def __init__(self) -> None:
+    def __init__(self, logger: logging.Logger, session_state: SessionState) -> None:
         """Initialse the member variables by fetching necessary data from the data store
 
+        Args:
+            logger (logging.Logger): Handle to the logger
+            session_state (SessionState): Handle to the session state data structure
         """
 
-        self.m_session_info = _session_state_ref.m_session_info
-        self.m_wdt_status = _session_state_ref.m_connected_to_sim
+        self.m_session_info = session_state.m_session_info
+        self.m_wdt_status = session_state.m_connected_to_sim
         track_length = self.m_session_info.m_packet_session.m_trackLength if self.m_session_info.m_packet_session else None
-        self.m_driver_list_rsp = DriversListRsp(self.m_session_info.m_is_spectating, track_length,
-                                                (str(self.m_session_info.m_session_type) == "Time Trial"))
+        self.m_driver_list_rsp = DriversListRsp(
+            logger=logger,
+            session_state=session_state,
+            is_spectator_mode=self.m_session_info.m_is_spectating,
+            track_length=track_length,
+            is_tt_mode=(str(self.m_session_info.m_session_type) == "Time Trial"))
         self.m_curr_lap = self.m_driver_list_rsp.getCurrentLap()
         if self.m_session_info.m_weather_forecast_samples is None:
             self.m_session_info.m_weather_forecast_samples = []
@@ -157,11 +165,17 @@ class OverallRaceStatsRsp:
     Overall race stats response class.
     """
 
-    def __init__(self):
+    def __init__(self, logger: logging.Logger, session_state: SessionState):
         """Get the overall race stats and prepare the rsp fields
+
+        Args:
+            logger (logging.Logger): Handle to the logger
+            session_state (SessionState): Handle to the session state data structure
         """
 
-        self.m_rsp = _session_state_ref.getRaceInfo()
+        self.m_logger: logging.Logger = logger
+        self.m_session_state: SessionState = session_state
+        self.m_rsp = self.m_session_state.getRaceInfo()
         self._checkUpdateRecords()
         # Remove the classification-data key as it is not used by the frontend
         self.m_rsp.pop('classification-data', None)
@@ -177,7 +191,7 @@ class OverallRaceStatsRsp:
             try:
                 self.m_rsp["records"]["fastest"] = RaceAnalyzer.getFastestTimesJson(self.m_rsp)
             except ValueError:
-                _logger.debug('Failed to get fastest times JSON')
+                self.m_logger.debug('Failed to get fastest times JSON')
                 self.m_rsp["records"]["fastest"] = None
 
         if "tyre-stats" not in self.m_rsp["records"]:
@@ -200,17 +214,19 @@ class OverallRaceStatsRsp:
                 should_recompute_overtakes = True
 
         if should_recompute_overtakes:
-            _, overtake_records = _session_state_ref.getOvertakeJSON()
+            _, overtake_records = self.m_session_state.getOvertakeJSON()
             self.m_rsp["overtakes"] = self.m_rsp["overtakes"] | overtake_records
 
-        self.m_rsp["custom-markers"] = _session_state_ref.m_custom_markers_history.getJSONList()
-        if _session_state_ref.m_session_info.is_valid:
+        self.m_rsp["custom-markers"] = self.m_session_state.m_custom_markers_history.getJSONList()
+        if self.m_session_state.m_session_info.is_valid:
             drivers_list_rsp = DriversListRsp(
-                                    is_spectator_mode=True,
-                                    is_tt_mode=_session_state_ref.m_session_info.m_session_type.isTimeTrialTypeSession())
-            if _session_state_ref.isPositionHistorySupported():
+                logger=self.m_logger,
+                session_state=self.m_session_state,
+                is_spectator_mode=True,
+                is_tt_mode=self.m_session_state.m_session_info.m_session_type.isTimeTrialTypeSession())
+            if self.m_session_state.isPositionHistorySupported():
                 self.m_rsp["position-history"] = drivers_list_rsp.getPositionHistoryJSON()
-                if _session_state_ref.m_session_info.m_packet_format == 2023:
+                if self.m_session_state.m_session_info.m_packet_format == 2023:
                     self.m_rsp["tyre-stint-history"] = drivers_list_rsp.getTyreStintHistoryJSON()
                 else:
                     self.m_rsp["tyre-stint-history-v2"] = drivers_list_rsp.getTyreStintHistoryJSONv2()
@@ -258,40 +274,43 @@ class PlayerTelemetryOverlayUpdate:
     Player telemetry overlay update class.
     """
 
-    def __init__(self):
-        """Get the player telemetry data and prep the fields
+    def __init__(self, session_state: SessionState) -> None:
+        """Initialse the member variables by fetching necessary data from the data store
+
+        Args:
+            session_state (SessionState): Handle to the session state data structure
         """
 
-        self.m_track_temp               = _session_state_ref.m_session_info.m_track_temp
-        self.m_air_temp                 = _session_state_ref.m_session_info.m_air_temp
-        self.m_weather_forecast_samples = _session_state_ref.m_session_info.m_weather_forecast_samples
+        self.m_track_temp               = session_state.m_session_info.m_track_temp
+        self.m_air_temp                 = session_state.m_session_info.m_air_temp
+        self.m_weather_forecast_samples = session_state.m_session_info.m_weather_forecast_samples
         if self.m_weather_forecast_samples is None:
             self.m_weather_forecast_samples = []
-        self.m_circuit                  = _session_state_ref.m_session_info.m_track
-        self.m_total_laps               = _session_state_ref.m_session_info.m_total_laps
-        self.m_game_year                = _session_state_ref.m_session_info.m_game_year
-        self.m_packet_format            = _session_state_ref.m_session_info.m_packet_format
-        self.m_session_type               = _session_state_ref.m_session_info.m_session_type
-        self.m_pit_speed_limit          = _session_state_ref.m_session_info.m_pit_speed_limit
+        self.m_circuit                  = session_state.m_session_info.m_track
+        self.m_total_laps               = session_state.m_session_info.m_total_laps
+        self.m_game_year                = session_state.m_session_info.m_game_year
+        self.m_packet_format            = session_state.m_session_info.m_packet_format
+        self.m_session_type             = session_state.m_session_info.m_session_type
+        self.m_pit_speed_limit          = session_state.m_session_info.m_pit_speed_limit
 
-        self.m_next_pit_window          = _session_state_ref.m_ideal_pit_stop_window
+        self.m_next_pit_window          = session_state.m_ideal_pit_stop_window
         self.m_fastest_lap_ms           = \
-            _session_state_ref.m_driver_data[_session_state_ref.m_fastest_index].m_lap_info.m_best_lap_ms if \
-                _session_state_ref.m_fastest_index is not None else None
-        self.m_fastest_s1_ms            = _session_state_ref.m_fastest_s1_ms
-        self.m_fastest_s2_ms            = _session_state_ref.m_fastest_s2_ms
-        self.m_fastest_s3_ms            = _session_state_ref.m_fastest_s3_ms
-        player_index = _session_state_ref.m_session_info.m_spectator_car_index \
-                        if _session_state_ref.m_session_info.m_is_spectating \
-                        else _session_state_ref.m_player_index
+            session_state.m_driver_data[session_state.m_fastest_index].m_lap_info.m_best_lap_ms if \
+                session_state.m_fastest_index is not None else None
+        self.m_fastest_s1_ms            = session_state.m_fastest_s1_ms
+        self.m_fastest_s2_ms            = session_state.m_fastest_s2_ms
+        self.m_fastest_s3_ms            = session_state.m_fastest_s3_ms
+        player_index = session_state.m_session_info.m_spectator_car_index \
+                        if session_state.m_session_info.m_is_spectating \
+                        else session_state.m_player_index
         player_data = (
-            _session_state_ref.m_driver_data[player_index]
-            if player_index is not None and 0 <= player_index < len(_session_state_ref.m_driver_data)
+            session_state.m_driver_data[player_index]
+            if player_index is not None and 0 <= player_index < len(session_state.m_driver_data)
             else None
         )
         player_position = player_data.m_driver_info.position if player_data else None
-        prev_data = _session_state_ref.getDriverInfoByPosition(player_position - 1) if player_position else None
-        next_data = _session_state_ref.getDriverInfoByPosition(player_position + 1) if player_position else None
+        prev_data = session_state.getDriverInfoByPosition(player_position - 1) if player_position else None
+        next_data = session_state.getDriverInfoByPosition(player_position + 1) if player_position else None
 
         self.__initCarTelemetry(player_data)
         self.__initLapTimes(player_data)
@@ -605,7 +624,13 @@ class DriversListRsp:
     Drivers list response class.
     """
 
-    def __init__(self, is_spectator_mode: bool, track_length: Optional[int] = None, is_tt_mode: bool = False):
+    def __init__(self,
+                 logger: logging.Logger,
+                 session_state: SessionState,
+                 is_spectator_mode: bool,
+                 track_length: Optional[int] = None,
+                 is_tt_mode: bool = False
+                 ):
         """Get the drivers list and prepare the rsp fields
 
         Args:
@@ -614,6 +639,8 @@ class DriversListRsp:
             is_tt_mode (bool, optional): Whether the player is in time trial mode
         """
 
+        self.m_logger: logging.Logger = logger
+        self.m_session_state: SessionState = session_state
         self.m_is_spectator_mode : bool = is_spectator_mode
         self.m_track_length : int = track_length
         self.m_json_rsp : Union[List[Dict[str, Any]], Dict[str, Any]] = [] # In TT mode dict, else list
@@ -668,7 +695,7 @@ class DriversListRsp:
 
         # Use original list since this request comes only once in a bluemoon
         return [data_per_driver.getPositionHistoryJSON() \
-                for data_per_driver in _session_state_ref.m_driver_data \
+                for data_per_driver in self.m_session_state.m_driver_data \
                     if data_per_driver and data_per_driver.is_valid]
 
     def getSpeedTrapRecordsJSON(self) -> List[Dict[str, Any]]:
@@ -678,14 +705,14 @@ class DriversListRsp:
             List[Dict[str, Any]]: The speed trap records JSON
         """
 
-        if not _session_state_ref.m_session_info or _session_state_ref.m_session_info.m_packet_format < 2024:
+        if not self.m_session_state.m_session_info or self.m_session_state.m_session_info.m_packet_format < 2024:
             return []
         if not self.m_json_rsp:
             return []
 
         # Use original list since this request comes only once in a bluemoon
         ret = [data_per_driver.getSpeedTrapRecordJSON() \
-                for data_per_driver in _session_state_ref.m_driver_data \
+                for data_per_driver in self.m_session_state.m_driver_data \
                 if data_per_driver and data_per_driver.is_valid]
         return sorted(ret, key=lambda x: x["speed-trap-record-kmph"], reverse=True)
 
@@ -700,7 +727,7 @@ class DriversListRsp:
             return []
 
         ret = [data_per_driver.getTyreStintHistoryJSON() \
-                for data_per_driver in _session_state_ref.m_driver_data \
+                for data_per_driver in self.m_session_state.m_driver_data \
                 if data_per_driver and data_per_driver.is_valid]
         return sorted(ret, key=lambda x: x["position"])
 
@@ -715,7 +742,7 @@ class DriversListRsp:
             return []
 
         ret = [data_per_driver.getTyreStintHistoryJSONv2() \
-                for data_per_driver in _session_state_ref.m_driver_data \
+                for data_per_driver in self.m_session_state.m_driver_data \
                 if data_per_driver and data_per_driver.is_valid]
         return sorted(ret, key=lambda x: x["position"])
 
@@ -752,30 +779,30 @@ class DriversListRsp:
         """
 
         # Player index can never be none, since the player always an index, even if a spectator (for Lobby packet)
-        if not _session_state_ref.is_data_available:
+        if not self.m_session_state.is_data_available:
             return
 
         # Update the list data
-        self.m_next_pit_stop_window = _session_state_ref.m_ideal_pit_stop_window
-        if _session_state_ref.m_fastest_index is not None:
-            self.m_fastest_lap = _session_state_ref.m_driver_data[
-                                    _session_state_ref.m_fastest_index].m_lap_info.m_best_lap_ms
-            self.m_fastest_lap_driver = _session_state_ref.m_driver_data[
-                                        _session_state_ref.m_fastest_index].m_driver_info.name
-            self.m_fastest_lap_tyre = _session_state_ref.m_driver_data[
-                                        _session_state_ref.m_fastest_index].m_lap_info.m_best_lap_tyre
+        self.m_next_pit_stop_window = self.m_session_state.m_ideal_pit_stop_window
+        if self.m_session_state.m_fastest_index is not None:
+            self.m_fastest_lap = self.m_session_state.m_driver_data[
+                                    self.m_session_state.m_fastest_index].m_lap_info.m_best_lap_ms
+            self.m_fastest_lap_driver = self.m_session_state.m_driver_data[
+                                        self.m_session_state.m_fastest_index].m_driver_info.name
+            self.m_fastest_lap_tyre = self.m_session_state.m_driver_data[
+                                        self.m_session_state.m_fastest_index].m_lap_info.m_best_lap_tyre
 
-        self.m_fastest_s1_ms = _session_state_ref.m_fastest_s1_ms
-        self.m_fastest_s2_ms = _session_state_ref.m_fastest_s2_ms
-        self.m_fastest_s3_ms = _session_state_ref.m_fastest_s3_ms
+        self.m_fastest_s1_ms = self.m_session_state.m_fastest_s1_ms
+        self.m_fastest_s2_ms = self.m_session_state.m_fastest_s2_ms
+        self.m_fastest_s3_ms = self.m_session_state.m_fastest_s3_ms
 
         # for each driver:
-        for index, driver_data in enumerate(_session_state_ref.m_driver_data):
+        for index, driver_data in enumerate(self.m_session_state.m_driver_data):
             if (index, driver_data) == (None, None):
                 return
             if not driver_data.is_valid:
                 continue
-            if not 1 <= driver_data.m_driver_info.position <= _session_state_ref.m_num_active_cars:
+            if not 1 <= driver_data.m_driver_info.position <= self.m_session_state.m_num_active_cars:
                 continue
             self.m_json_rsp.append(self._getDriverJSON(index,driver_data))
 
@@ -784,19 +811,19 @@ class DriversListRsp:
         """
 
         # Player index can never be none, since the player always an index, even if a spectator (for Lobby packet)
-        player_index = _session_state_ref.m_player_index
-        if (player_index is None) or (_session_state_ref.m_num_active_cars is None):
+        player_index = self.m_session_state.m_player_index
+        if (player_index is None) or (self.m_session_state.m_num_active_cars is None):
             return
 
         # Player object must be found in TT mode
-        player_obj = _session_state_ref.m_driver_data[player_index]
+        player_obj = self.m_session_state.m_driver_data[player_index]
         if not player_obj:
-            _logger.debug("Player not found in TT mode")
+            self.m_logger.debug("Player not found in TT mode")
             return
 
         # Init the TT packet copy
-        self.m_time_trial_packet = _session_state_ref.m_time_trial_packet
-        self.m_irl_pole_lap = _session_state_ref.m_session_info.m_most_recent_pole_lap
+        self.m_time_trial_packet = self.m_session_state.m_time_trial_packet
+        self.m_irl_pole_lap = self.m_session_state.m_session_info.m_most_recent_pole_lap
 
         # Insert top speed into the lap-history-data records
         if player_obj.m_packet_copies.m_packet_session_history:
@@ -869,8 +896,8 @@ class DriversListRsp:
 
     def _safeGetDriver(self, index: int) -> Optional[DataPerDriver]:
         """Safely get a non-None DataPerDriver from m_driver_data by index."""
-        if 0 <= index < len(_session_state_ref.m_driver_data):
-            driver = _session_state_ref.m_driver_data[index]
+        if 0 <= index < len(self.m_session_state.m_driver_data):
+            driver = self.m_session_state.m_driver_data[index]
             if driver is not None:
                 return driver
         return None
@@ -914,7 +941,7 @@ class DriversListRsp:
             "grid-position": _getValueOrDefaultValue(driver_data.m_driver_info.grid_position),
             "name": _getValueOrDefaultValue(driver_data.m_driver_info.name),
             "team": _getValueOrDefaultValue(driver_data.m_driver_info.team),
-            "is-fastest": _getValueOrDefaultValue(index == _session_state_ref.m_fastest_index),
+            "is-fastest": _getValueOrDefaultValue(index == self.m_session_state.m_fastest_index),
             "is-player": _getValueOrDefaultValue(driver_data.m_driver_info.is_player),
             "dnf-status": _getValueOrDefaultValue(driver_data.m_driver_info.m_dnf_status_code),
             "index": _getValueOrDefaultValue(index),

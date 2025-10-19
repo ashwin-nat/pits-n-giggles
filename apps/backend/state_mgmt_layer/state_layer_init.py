@@ -29,7 +29,7 @@ from typing import List
 from lib.config import PngSettings
 
 from .telemetry_state import initSessionState, SessionState
-from .telemetry_web_api import initPngApiLayer
+# from .telemetry_web_api import initPngApiLayer
 from .external_api import initExternalApiTask
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
@@ -53,6 +53,6 @@ def initStateManagementLayer(
         SessionState: Handle to the session state data structure
     """
     ref = initSessionState(logger=logger, settings=settings, ver_str=ver_str)
-    initPngApiLayer(logger=logger, session_state_ref=ref)
+    # initPngApiLayer(logger=logger, session_state_ref=ref)
     initExternalApiTask(logger=logger, tasks=tasks, shutdown_event=shutdown_event, session_state_ref=ref)
     return ref
