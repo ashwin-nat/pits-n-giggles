@@ -22,11 +22,15 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .telemetry_web_api import RaceInfoUpdate, OverallRaceStatsRsp, DriverInfoRsp, PlayerTelemetryOverlayUpdate
+from .race_info_update import RaceInfoUpdate
+from .overall_race_stats import OverallRaceStatsRsp
+from .driver_info import DriverInfoRsp
+from .player_telemetry_overlay import PlayerTelemetryOverlayUpdate
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
+
     "DriverInfoRsp",
     "OverallRaceStatsRsp",
     "PlayerTelemetryOverlayUpdate",
