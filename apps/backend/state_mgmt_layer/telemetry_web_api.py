@@ -37,11 +37,6 @@ from lib.f1_types import (CarStatusData, F1Utils, LapHistoryData,
 from lib.save_to_disk import save_json_to_file
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 
-# -------------------------------------- GLOBALS -----------------------------------------------------------------------
-
-_logger: logging.Logger = None
-_session_state_ref: TelState.SessionState = None
-
 # ------------------------- UTILITIES ----------------------------------------------------------------------------------
 
 def _getValueOrDefaultValue(
@@ -58,18 +53,6 @@ def _getValueOrDefaultValue(
         str: The value as is or default string if None.
     """
     return value if value is not None else default_value
-
-def initPngApiLayer(logger: logging.Logger, session_state_ref: TelState.SessionState) -> None:
-    """Initialise the API layer by fetching the session state from the data store.
-
-    Args:
-        logger (logging.Logger): Logger
-        session_state_ref (TelState.SessionState): Reference to the session state
-    """
-    global _session_state_ref, _logger
-    _session_state_ref = session_state_ref
-    _logger = logger
-    assert _session_state_ref is not None
 
 # ------------------------- API - CLASSES ------------------------------------------------------------------------------
 
@@ -566,14 +549,20 @@ class ManualSaveRsp:
     Manual save response class.
     """
 
-    def __init__(self):
+    def __init__(self, logger: logging.Logger, session_state: SessionState):
         """Get the drivers list and prepare the rsp fields
+
+        Args:
+            logger (logging.Logger): Logger
+            session_state_ref (TelState.SessionState): Reference to the session state
         """
 
-        self.m_data_available = _session_state_ref.is_data_available
-        self.m_event_str = _session_state_ref.getEventInfoStr()
+        self.m_logger: logging.Logger = logger
+        self.m_session_state: SessionState = session_state
+        self.m_data_available = self.m_session_state.is_data_available
+        self.m_event_str = self.m_session_state.getEventInfoStr()
         if self.m_data_available:
-            self.m_data = _session_state_ref.getSaveDataJSON()
+            self.m_data = self.m_session_state.getSaveDataJSON()
         else:
             self.m_data = None
 
@@ -596,7 +585,7 @@ class ManualSaveRsp:
         final_json_file_name = f"{self.m_event_str}Manual_{timestamp_str}.json"
 
         # Build final classification JSON
-        final_json = _session_state_ref.buildFinalClassificationJSON()
+        final_json = self.m_session_state.buildFinalClassificationJSON()
         if not final_json:
             return {
                 "status": "error",
@@ -606,13 +595,13 @@ class ManualSaveRsp:
         # Save to disk
         try:
             path = await save_json_to_file(final_json, final_json_file_name)
-            _logger.info("Wrote session info to %s", final_json_file_name)
+            self.m_logger.info("Wrote session info to %s", final_json_file_name)
             return {
                 "status": "success",
                 "message": f"Data saved to {path}"
             }
         except Exception as e:  # pylint: disable=broad-except
-            _logger.exception("Failed to write session info to %s", final_json_file_name)
+            self.m_logger.exception("Failed to write session info to %s", final_json_file_name)
             return {
                 "status": "error",
                 "message": f"Failed to write session info: {e.__class__.__name__}: {e}"
@@ -635,6 +624,8 @@ class DriversListRsp:
         """Get the drivers list and prepare the rsp fields
 
         Args:
+            logger (logging.Logger): Logger
+            session_state_ref (TelState.SessionState): Reference to the session state
             is_spectator_mode (bool): Whether the player is in spectator mode
             track_length (Optional[int], optional): The track length. Defaults to None.
             is_tt_mode (bool, optional): Whether the player is in time trial mode

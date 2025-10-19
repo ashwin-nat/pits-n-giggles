@@ -85,7 +85,7 @@ def initUiIntfLayer(
     tasks.append(asyncio.create_task(frontEndMessageTask(web_server, shutdown_event),
                                      name="Front End Message Task"))
 
-    registerIpcTask(ipc_port, logger, tasks)
+    registerIpcTask(ipc_port, logger, session_state, tasks)
     return web_server
 
 async def raceTableClientUpdateTask(
