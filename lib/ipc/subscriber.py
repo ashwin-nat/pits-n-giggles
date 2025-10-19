@@ -22,11 +22,13 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import threading
+# TODO: run imports organizer
 from typing import Optional, Callable
-import socketio
 import logging
+import threading
 import time
+
+import socketio
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -110,7 +112,7 @@ class BaseSubscriber:
         if self._connect_callback:
             try:
                 self._connect_callback()
-            except Exception as e:
+            except Exception as e: # pylint: disable=broad-except
                 self._log(logging.ERROR, f"Error in on_connect callback: {e}")
 
     def _handle_disconnect(self):
@@ -120,7 +122,7 @@ class BaseSubscriber:
         if self._disconnect_callback:
             try:
                 self._disconnect_callback()
-            except Exception as e:
+            except Exception as e: # pylint: disable=broad-except
                 self._log(logging.ERROR, f"Error in on_disconnect callback: {e}")
 
     # ------------------- Public API -------------------
@@ -140,7 +142,7 @@ class BaseSubscriber:
             except socketio.exceptions.ConnectionError:
                 self._log(logging.WARNING, "Connection failed, retrying...")
                 time.sleep(1)
-            except Exception as e:
+            except Exception as e: # pylint: disable=broad-except
                 self._log(logging.ERROR, f"Unexpected error: {e}")
                 time.sleep(2)
             finally:
@@ -148,7 +150,7 @@ class BaseSubscriber:
                 if self._connected:
                     try:
                         self._sio.disconnect()
-                    except Exception:
+                    except Exception: # pylint: disable=broad-except
                         pass
                     self._connected = False
 
@@ -165,7 +167,7 @@ class BaseSubscriber:
             self._log(logging.INFO, "Disconnecting from server...")
             try:
                 self._sio.disconnect()
-            except Exception as e:
+            except Exception as e: # pylint: disable=broad-except
                 self._log(logging.ERROR, f"Error during disconnect: {e}")
             finally:
                 self._connected = False
@@ -178,6 +180,7 @@ class BaseSubscriber:
             self.logger.log(level, msg)
 
 # ------------------------- EXAMPLES -----------------------------------------------------------------------------------
+# TODO: remove
 
 class RaceTableClient(BaseSubscriber):
     def __init__(self, url: str, logger: Optional[logging.Logger] = None):
@@ -209,7 +212,7 @@ def get_logger(name: str = None, to_stdout: bool = True) -> logging.Logger:
     logger.handlers.clear()
 
     if to_stdout:
-        import sys
+        import sys # pylint: disable=import-outside-toplevel
         logger.setLevel(logging.DEBUG)
         handler = logging.StreamHandler(sys.stdout)
         handler.setLevel(logging.DEBUG)
