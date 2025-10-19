@@ -22,7 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .state_layer_init import initStateManagementLayer
+from .state_layer_init import initStateManagementLayer, SessionState
 from .telemetry_state import getSessionStateRef, isDriverIndexValid
 from .telemetry_web_api import (DriverInfoRsp, ManualSaveRsp,
                                 OverallRaceStatsRsp,
@@ -44,4 +44,7 @@ __all__ = [
 
     # Init
     "initStateManagementLayer",
+
+    # Data structure
+    "SessionState",
 ]

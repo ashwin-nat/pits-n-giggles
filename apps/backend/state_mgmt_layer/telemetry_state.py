@@ -36,27 +36,7 @@ from .session_state import SessionState
 
 _session_state: Optional[SessionState] = None
 
-# -------------------------------------- TELEMETRY PACKET HANDLERS -----------------------------------------------------
-
-async def processCustomMarkerCreate() -> None:
-    """Update the data structures with custom marker information
-    """
-
-    if custom_marker_obj := _session_state.getInsertCustomMarkerEntryObj():
-        await AsyncInterTaskCommunicator().send("frontend-update", ITCMessage(
-            m_message_type=ITCMessage.MessageType.CUSTOM_MARKER,
-            m_message=custom_marker_obj))
-
-async def processTyreDeltaSound() -> None:
-    """Send the tyre delta notification to the frontend."""
-    if messages := _session_state.getTyreDeltaNotificationMessages():
-        await AsyncInterTaskCommunicator().send(
-            "frontend-update",
-            ITCMessage(
-                m_message_type=ITCMessage.MessageType.TYRE_DELTA_NOTIFICATION_V2,
-                m_message=TyreDeltaNotificationMessageCollection(messages)
-            )
-        )
+# TODO: deprecate this whole file
 
 # -------------------------------------- UTILTIES ----------------------------------------------------------------------
 
