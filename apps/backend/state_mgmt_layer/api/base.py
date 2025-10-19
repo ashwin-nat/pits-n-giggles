@@ -22,29 +22,34 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .state_layer_init import initStateManagementLayer, SessionState
-from .telemetry_state import getSessionStateRef, isDriverIndexValid
-from .api.telemetry_web_api import (DriverInfoRsp, ManualSaveRsp,
-                                OverallRaceStatsRsp,
-                                PlayerTelemetryOverlayUpdate, RaceInfoUpdate)
+from abc import ABC, abstractmethod
+from typing import Any, Dict, Optional
 
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-__all__ = [
-    # Readers
-    "RaceInfoUpdate",
-    "OverallRaceStatsRsp",
-    "DriverInfoRsp",
-    "PlayerTelemetryOverlayUpdate",
-    "isDriverIndexValid",
-    "getSessionStateRef",
+class BaseAPI(ABC):
+    """Base class representing all API classes. Derived classes MUST implement toJSON"""
+    def _getValueOrDefaultValue(
+        self,
+        value: Optional[Any],
+        default_value: str ='---') -> Optional[Any]:
+        """
+        Get value or default as string.
 
-    # Writers
-    "ManualSaveRsp",
+        Args:
+            value: The value to check.
+            default_value (str, optional): Default value if the input is None. Defaults to '---'.
 
-    # Init
-    "initStateManagementLayer",
+        Returns:
+            str: The value as is or default string if None.
+        """
+        return value if value is not None else default_value
 
-    # Data structure
-    "SessionState",
-]
+    @abstractmethod
+    def toJSON(self) -> Dict[str, Any]:
+        """Converts the object to a dictionary suitable for JSON serialization.
+
+        Returns:
+            Dict[str, Any]: A dictionary representing the JSON-compatible data.
+        """
+        raise NotImplementedError(f"{self.__class__.__name__} must implement toJSON()")
