@@ -22,22 +22,14 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
+from .telemetry_web_api import RaceInfoUpdate, OverallRaceStatsRsp, DriverInfoRsp, PlayerTelemetryOverlayUpdate
 
-from apps.backend.state_mgmt_layer import SessionState
-from apps.backend.state_mgmt_layer.api import ManualSaveRsp
-from lib.inter_task_communicator import AsyncInterTaskCommunicator
+# -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
-# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+__all__ = [
+    "DriverInfoRsp",
+    "OverallRaceStatsRsp",
+    "PlayerTelemetryOverlayUpdate",
+    "RaceInfoUpdate",
 
-async def handleManualSave(_msg: dict, logger: logging.Logger, session_state: SessionState) -> dict:
-    """Handle manual save command"""
-    return await ManualSaveRsp(logger, session_state).saveToDisk()
-
-async def handleShutdown(msg: dict, logger: logging.Logger) -> dict:
-    """Handle shutdown command"""
-
-    reason = msg.get('reason', 'N/A')
-    logger.info(f"Received shutdown command. Reason: {reason}")
-    await AsyncInterTaskCommunicator().send('shutdown', {"reason" : reason})
-    return {'status': 'success'}
+]

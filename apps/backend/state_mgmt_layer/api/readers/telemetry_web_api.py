@@ -36,7 +36,7 @@ from lib.f1_types import (CarStatusData, F1Utils, LapHistoryData,
                           VisualTyreCompound)
 from lib.save_to_disk import save_json_to_file
 from lib.tyre_wear_extrapolator import TyreWearPerLap
-from .base import BaseAPI
+from ..base import BaseAPI
 
 # ------------------------- API - CLASSES ------------------------------------------------------------------------------
 
