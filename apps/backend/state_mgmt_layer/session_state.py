@@ -339,16 +339,18 @@ class SessionState:
     )
 
     def __init__(self,
+                 logger: logging.Logger,
                  settings: PngSettings,
                  ver_str: str) -> None:
         """Init the DriverData object
 
         Args:
+            logger (logging.Logger): Logger
             settings (PngSettings): Settings
             ver_str (str): Version string
         """
 
-        self.m_logger = logging.getLogger('png')
+        self.m_logger = logger
         self.m_driver_data: List[Optional[DataPerDriver]] = [None] * self.MAX_DRIVERS
         self.m_player_index: Optional[int] = None
         self.m_fastest_index: Optional[int] = None
@@ -363,7 +365,7 @@ class SessionState:
         self.m_fastest_s3_ms: Optional[int] = None
         self.m_time_trial_packet : Optional[PacketTimeTrialData] = None
         self.m_overtakes_history = OvertakesHistory()
-        self.m_session_info: SessionInfo = SessionInfo(settings, self.m_logger)
+        self.m_session_info: SessionInfo = SessionInfo(settings, logger)
         self.m_first_session_update_received: bool = False
         self.m_version: str = ver_str
 
