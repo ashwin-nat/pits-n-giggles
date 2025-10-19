@@ -40,7 +40,7 @@ from .helpers import DriversListRsp
 
 # ------------------------- API - CLASSES ------------------------------------------------------------------------------
 
-class RaceInfoUpdate(BaseAPI):
+class PeriodicUpdateData(BaseAPI):
     """This class will prepare the live race telemetry info response. Use toJSON() method to get the JSON rsp
     """
     def __init__(self, logger: logging.Logger, session_state: SessionState) -> None:

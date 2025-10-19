@@ -145,7 +145,7 @@ class TelemetryWebServer(BaseWebServer):
             Returns:
                 Tuple[str, int]: JSON response and HTTP status code.
             """
-            return API.RaceInfoUpdate(self.m_logger, self.m_session_state).toJSON(), HTTPStatus.OK
+            return API.PeriodicUpdateData(self.m_logger, self.m_session_state).toJSON(), HTTPStatus.OK
 
         @self.http_route('/race-info')
         async def raceInfoHTTP() -> Tuple[str, int]:
@@ -155,7 +155,7 @@ class TelemetryWebServer(BaseWebServer):
             Returns:
                 Tuple[str, int]: JSON response and HTTP status code.
             """
-            return API.OverallRaceStatsRsp(self.m_logger, self.m_session_state).toJSON(), HTTPStatus.OK
+            return API.RaceInfoData(self.m_logger, self.m_session_state).toJSON(), HTTPStatus.OK
 
         @self.http_route('/driver-info')
         async def driverInfoHTTP() -> Tuple[str, int]:
@@ -175,7 +175,7 @@ class TelemetryWebServer(BaseWebServer):
             Returns:
                 Tuple[str, int]: JSON response and HTTP status code.
             """
-            return API.PlayerTelemetryOverlayUpdate(self.m_session_state).toJSON(self.m_show_start_sample_data), HTTPStatus.OK
+            return API.StreamOverlayData(self.m_session_state).toJSON(self.m_show_start_sample_data), HTTPStatus.OK
 
     def _processDriverInfoRequest(self, index_arg: Any) -> Tuple[Dict[str, Any], HTTPStatus]:
         """

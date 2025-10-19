@@ -40,7 +40,7 @@ from .helpers import LapTimeHistory
 
 # ------------------------- API - CLASSES ------------------------------------------------------------------------------
 
-class PlayerTelemetryOverlayUpdate(BaseAPI):
+class StreamOverlayData(BaseAPI):
     """
     Player telemetry overlay update class.
     """

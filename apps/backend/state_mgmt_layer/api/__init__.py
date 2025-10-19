@@ -22,7 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .readers import RaceInfoUpdate, OverallRaceStatsRsp, DriverInfoRsp, PlayerTelemetryOverlayUpdate
+from .readers import PeriodicUpdateData, RaceInfoData, DriverInfoRsp, StreamOverlayData
 from .writers import ManualSaveRsp
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
@@ -30,10 +30,10 @@ from .writers import ManualSaveRsp
 __all__ = [
 
     # Readers
-    "RaceInfoUpdate",
-    "OverallRaceStatsRsp",
+    "PeriodicUpdateData",
+    "RaceInfoData",
     "DriverInfoRsp",
-    "PlayerTelemetryOverlayUpdate",
+    "StreamOverlayData",
 
     # Writers
     "ManualSaveRsp",

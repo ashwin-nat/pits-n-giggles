@@ -40,7 +40,7 @@ from .helpers import DriversListRsp
 
 # ------------------------- API - CLASSES ------------------------------------------------------------------------------
 
-class OverallRaceStatsRsp(BaseAPI):
+class RaceInfoData(BaseAPI):
     """
     Overall race stats response class.
     """
