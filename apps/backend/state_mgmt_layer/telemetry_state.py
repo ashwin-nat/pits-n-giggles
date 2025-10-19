@@ -23,9 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
-from typing import Optional
 
-from lib.inter_task_communicator import AsyncInterTaskCommunicator, ITCMessage, TyreDeltaNotificationMessageCollection
 from lib.config import PngSettings
 
 from .session_state import SessionState

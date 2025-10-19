@@ -26,11 +26,11 @@ import asyncio
 import logging
 from typing import List
 
+from apps.backend.state_mgmt_layer import SessionState
 from lib.config import PngSettings
 
 from .telemetry_forwarder import setupForwarder
 from .telemetry_handler import F1TelemetryHandler, setupTelemetryTask
-from apps.backend.state_mgmt_layer import SessionState
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 

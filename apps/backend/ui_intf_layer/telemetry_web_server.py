@@ -27,9 +27,8 @@ import webbrowser
 from http import HTTPStatus
 from typing import Any, Dict, Tuple
 
-import apps.backend.state_mgmt_layer as TelState
-from apps.backend.state_mgmt_layer import SessionState
 import apps.backend.state_mgmt_layer.api as API
+from apps.backend.state_mgmt_layer import SessionState
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import PngSettings
 from lib.web_server import BaseWebServer

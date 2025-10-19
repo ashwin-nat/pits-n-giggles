@@ -22,19 +22,13 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-import logging
-from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Optional
 
 from apps.backend.state_mgmt_layer import SessionState
-import lib.race_analyzer as RaceAnalyzer
-from apps.backend.state_mgmt_layer.data_per_driver import (DataPerDriver,
-                                                           TyreSetInfo)
-from apps.backend.state_mgmt_layer.overtakes import GetOvertakesStatus
-from lib.f1_types import (CarStatusData, F1Utils, LapHistoryData,
-                          VisualTyreCompound)
-from lib.save_to_disk import save_json_to_file
+from apps.backend.state_mgmt_layer.data_per_driver import DataPerDriver
+from lib.f1_types import CarStatusData, F1Utils
 from lib.tyre_wear_extrapolator import TyreWearPerLap
+
 from ..base import BaseAPI
 from .helpers import LapTimeHistory
 

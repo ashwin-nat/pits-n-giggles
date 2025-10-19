@@ -34,7 +34,6 @@ import tkinter as tk
 from apps.launcher.png_launcher import PngLauncher
 from lib.file_path import resolve_user_file
 from lib.version import get_version
-from lib.file_path import resolve_user_file
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
