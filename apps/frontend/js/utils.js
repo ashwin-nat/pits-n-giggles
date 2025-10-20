@@ -236,15 +236,6 @@ function formatSecondsToMMSS(seconds) {
     return `${formattedMinutes}:${formattedSeconds}`;
 }
 
-function truncateName(name) {
-    const maxLength = 3;
-    if (name.length > maxLength) {
-      return name.substring(0, maxLength);
-    } else {
-      return name;
-    }
-}
-
 function randomInRange(min, max) {
     return Math.random() * (max - min) + min;
 }
@@ -281,7 +272,7 @@ function shootConfetti(durationMs) {
  * mutate the input JSON and inserts reference lap times into every driver object
  * @param {Array} tableEntriesJson - Array of table entry objects.
  * @param {Function} matchFn - Function to identify the reference entry.
- * @returns {Array} New array with updated lap times.
+ * @returns {Object} Reference obj is found, else null
  */
 function updateReferenceLapTimes(tableEntriesJson, matchFn = (entry) => entry["driver-info"]?.["is-player"]) {
   const referenceEntry = tableEntriesJson.find(matchFn);
@@ -322,6 +313,7 @@ function updateReferenceLapTimes(tableEntriesJson, matchFn = (entry) => entry["d
       }
     });
   }
+  return referenceEntry;
 }
 
 function getFormattedLapTimeStr({
@@ -428,4 +420,30 @@ function isQualiSession(sessionType) {
 
 function isRaceSession(sessionType) {
     return !isPracticeSession(sessionType) && !isQualiSession(sessionType);
+}
+
+function getTLA(name) {
+  if (!name || typeof name !== 'string') return '';
+
+  let clean = name.trim();
+
+  // Remove leading or trailing clan/guild tags in common formats
+  clean = clean
+    .replace(/^(\s*[\[\(\{<\$|]+.*?[\]\)\}>\$|]+\s*)+/, '') // leading tags like [TAG], $TAG$, |TAG|
+    .replace(/(\s*[\[\(\{<\$|]+.*?[\]\)\}>\$|]+\s*)+$/, '') // trailing tags
+    .replace(/^\s*[-_]+\s*/, '')                            // leading dashes/underscores
+    .replace(/\s*[-_]+\s*$/, '')                            // trailing dashes/underscores
+    .replace(/^\s*\|\s*/, '')                               // leading pipe separator
+    .replace(/\s*\|\s*$/, '')                               // trailing pipe separator
+    .trim();
+
+  // If there's a separator (like "Clan | Player" or "Team - Player"), take the rightmost segment
+  const parts = clean.split(/\s*\|\s*|\s*-\s*/);
+  clean = parts[parts.length - 1].trim();
+
+  // Keep only alphanumeric characters
+  clean = clean.replace(/[^a-zA-Z0-9]/g, '');
+
+  // Return first 3 uppercase letters
+  return clean.substring(0, 3).toUpperCase();
 }

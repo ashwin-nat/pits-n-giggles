@@ -26,6 +26,7 @@ import json
 import logging
 import time
 from copy import deepcopy
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 from apps.backend.state_mgmt_layer.data_per_driver import (DataPerDriver,
@@ -724,6 +725,16 @@ class SessionState:
         final_json = {
             "classification-data" : []
         }
+
+        # Add session debug info
+        now = datetime.now().astimezone()
+        final_json["debug"] = {
+            "session-uid" : self.m_session_info.m_session_uid,
+            "timestamp" : now.strftime("%Y-%m-%d %H:%M:%S %Z"),
+            "timezone" : now.tzinfo.key if hasattr(now.tzinfo, "key") else str(now.tzinfo),
+            "utc-offset-seconds" : int(now.utcoffset().total_seconds()),
+        }
+
         speed_trap_records = []
         driver_info_dict = self._getRaceCtrlHelperDict() if self.m_save_race_ctrl_msgs else None
 
