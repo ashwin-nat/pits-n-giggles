@@ -137,6 +137,7 @@ class F1TelemetryHandler:
             timeout=float(settings.Network.wdt_interval_sec),
         )
         self.m_manager_task: Optional[asyncio.Task] = None
+        self.m_pkt_count: int = 0
         self.registerCallbacks()
 
     def getTask(self, name: Optional[str] = "Game Telemetry Listener Task") -> asyncio.Task:
@@ -192,6 +193,7 @@ class F1TelemetryHandler:
                 packet (List[bytes]): The raw telemetry packet.
             """
             self.m_wdt.kick()
+            self.m_pkt_count += 1
             if self.m_should_forward:
                 await AsyncInterTaskCommunicator().send("packet-forward", packet)
 
@@ -505,6 +507,7 @@ class F1TelemetryHandler:
         self.m_session_state_ref.processSessionStarted(reason)
         self.m_data_cleared_this_session = True
         self.m_final_classification_processed = False
+        self.m_pkt_count = 0
 
     async def postGameDumpToFile(self, final_json: Dict[str, Any]) -> None:
         """
@@ -518,13 +521,21 @@ class F1TelemetryHandler:
         if not event_str:
             return
 
+        # Insert extra debug info
+        # TODO - bring this into manual save code flow as well
+        final_json["debug"] = final_json.get("debug", {})
+        final_json["debug"].update({
+            "packet-count": self.m_pkt_count,
+            "auto-save": True,
+        })
+
         # Save the JSON data
         # Get timestamp in the format - year_month_day_hour_minute_second
         timestamp_str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         final_json_file_name = event_str + timestamp_str + '.json'
         try:
             await save_json_to_file(final_json, final_json_file_name)
-            self.m_logger.info("Wrote race info to %s", final_json_file_name)
+            self.m_logger.info("Wrote race info to %s. Num pkts %d", final_json_file_name, self.m_pkt_count)
         except Exception: # pylint: disable=broad-except
             # No need to crash the app just because write failed
             self.m_logger.exception("Failed to write race info to %s", final_json_file_name)
