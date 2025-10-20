@@ -26,7 +26,7 @@ import json
 import logging
 import time
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 from apps.backend.state_mgmt_layer.data_per_driver import (DataPerDriver,
