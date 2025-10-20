@@ -524,7 +524,7 @@ class DataPerDriver:
 
         # Handle flashbacks/retry practice programmes
         # If old_lap_number is less than max lap num in the dict, then scrap the now outdated data
-        if is_flashback and not F1Utils.isPracticeSession(session_type):
+        if is_flashback and session_type and session_type.isRaceTypeSession():
             self._handleFlashBack(old_lap_number)
 
         # Check if the old lap number is already present in the snapshots (lap already processed)
