@@ -517,8 +517,13 @@ class F1TelemetryHandler:
         if not event_str:
             return
 
-        # Insert packet count for debugging
-        final_json["packet-count"] = self.m_pkt_count
+        # Insert extra debug info
+        # TODO - bring this into manual save code flow as well
+        final_json["debug"] = final_json.get("debug", {})
+        final_json["debug"].update({
+            "packet-count": self.m_pkt_count,
+            "auto-save": True,
+        })
 
         # Save the JSON data
         # Get timestamp in the format - year_month_day_hour_minute_second
@@ -526,7 +531,7 @@ class F1TelemetryHandler:
         final_json_file_name = event_str + timestamp_str + '.json'
         try:
             await save_json_to_file(final_json, final_json_file_name)
-            self.m_logger.info("Wrote race info to %s", final_json_file_name)
+            self.m_logger.info("Wrote race info to %s. Num pkts %d", final_json_file_name, self.m_pkt_count)
         except Exception: # pylint: disable=broad-except
             # No need to crash the app just because write failed
             self.m_logger.exception("Failed to write race info to %s", final_json_file_name)
