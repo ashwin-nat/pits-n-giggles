@@ -27,7 +27,7 @@ import logging
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def get_logger(debug_mode: bool = False, name: str = "save_viewer") -> logging.Logger:
+def get_logger(name: str, debug_mode: bool = False) -> logging.Logger:
     """Get a logger with a console handler.
 
     Args:

@@ -22,20 +22,19 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import argparse
 import asyncio
 import logging
-import argparse
 import sys
 from typing import List
 
-from apps.save_viewer.save_web_server import init_server_task
 from apps.save_viewer.save_viewer_ipc import init_ipc_task
-from apps.save_viewer.logger import get_logger
 from apps.save_viewer.save_viewer_state import init_state
-from lib.version import get_version
-
+from apps.save_viewer.save_web_server import init_server_task
 from lib.child_proc_mgmt import report_pid_from_child
 from lib.config import load_config_from_ini
+from lib.logger import get_logger
+from lib.version import get_version
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -84,7 +83,7 @@ def entry_point():
     """Entry point"""
     report_pid_from_child()
     args = parseArgs()
-    png_logger = get_logger(args.debug)
+    png_logger = get_logger("save_viewer", args.debug)
     version = get_version()
     configs = load_config_from_ini(args.config_file, png_logger)
     if sys.platform == 'win32':
