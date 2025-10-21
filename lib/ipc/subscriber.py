@@ -38,15 +38,20 @@ class IpcSubscriber:
     @self.on_connect / @self.on_disconnect.
     """
 
-    def __init__(self, url: str, logger: Optional[logging.Logger] = None) -> None:
+    def __init__(self,
+                 url: str,
+                 logger: Optional[logging.Logger] = None,
+                 stop_event: Optional[threading.Event] = None
+                 ) -> None:
         """
         Args:
             url: Socket.IO server URL.
             logger: Optional logger; if None, logging is disabled.
+            stop_event: Optional threading.Event to signal stopping; if None, a new one is created.
         """
         self.url = url
         self.logger = logger
-        self._stop_event = threading.Event()
+        self._stop_event = threading.Event() if stop_event is None else stop_event
         self._connected = False
 
         # storage for event bindings (so they persist across reconnects)

@@ -25,6 +25,7 @@
 import argparse
 import logging
 import sys
+import threading
 from functools import partial
 
 from lib.child_proc_mgmt import (notify_parent_init_complete,
@@ -33,6 +34,9 @@ from lib.config import PngSettings, load_config_from_ini
 from lib.ipc import IpcChildSync
 from lib.logger import get_logger
 from lib.version import get_version
+
+from .listener.task import run_hud_update_thread
+from .ipc import run_ipc_task
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -54,19 +58,6 @@ def parseArgs() -> argparse.Namespace:
     # Parse the command-line arguments
     return parser.parse_args()
 
-def ipc_handler(msg: dict, logger: logging.Logger) -> dict:
-    """Handles incoming IPC messages and dispatches commands.
-
-    Args:
-        msg (dict): IPC message
-        logger (logging.Logger): Logger
-
-    Returns:
-        dict: IPC response
-    """
-    logger.info(f"Received IPC message: {msg}")
-    return {'status': 'success'}
-
 def main(logger: logging.Logger, config: PngSettings, ipc_port: int, version: str) -> None:
     """Main function
 
@@ -77,13 +68,21 @@ def main(logger: logging.Logger, config: PngSettings, ipc_port: int, version: st
         version (str): Version
     """
 
-    ipc_server = IpcChildSync(
+    notify_parent_init_complete() # TODO: re-evaluate placement
+    stop_event = threading.Event()
+    updater_thread = run_hud_update_thread(
+        logger=logger,
+        stop_event=stop_event,
+        port=config.Network.server_port)
+
+    run_ipc_task(
         port=ipc_port,
-        name="hud"
-    )
-    notify_parent_init_complete()
-    ipc_server.serve(partial(ipc_handler, logger=logger))
+        logger=logger,
+        stop_event=stop_event)
     logger.info("IPC server stopped.")
+
+    updater_thread.join()
+    logger.info("Data update listener thread stopped.")
 
 def entry_point():
     """Entry point"""

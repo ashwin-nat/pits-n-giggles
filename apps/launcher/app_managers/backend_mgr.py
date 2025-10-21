@@ -51,7 +51,7 @@ class BackendAppMgr(PngAppMgrBase):
             module_path="apps.backend",
             exe_name_without_ext="backend",
             display_name="Server",
-            start_by_default=False,
+            start_by_default=True,
             console_app=console_app,
             settings=settings,
             args=temp_args,
