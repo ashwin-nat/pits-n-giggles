@@ -44,14 +44,6 @@ from ..console_interface import ConsoleInterface
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def get_executable_extension() -> str:
-    """Get the executable file extension based on the operating system"""
-    if sys.platform == "win32":
-        return ".exe"
-    if sys.platform == "darwin":
-        return ".app"
-    return "" if sys.platform.startswith("linux") else ""
-
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
 class PngAppMgrBase(ABC):
@@ -88,7 +80,6 @@ class PngAppMgrBase(ABC):
     def __init__(self,
                  port_conflict_settings_field: str,
                  module_path: str,
-                 exe_name_without_ext: str,
                  display_name: str,
                  start_by_default: bool,
                  console_app: ConsoleInterface,
@@ -98,7 +89,6 @@ class PngAppMgrBase(ABC):
         """Initialize the sub-application
         :param port_conflict_settings_field: Settings field to check for port conflicts
         :param module_path: Path to the sub-application module
-        :param exe_name_without_ext: Executable name without extension
         :param display_name: Display name for the sub-application
         :param start_by_default: Whether to start this app by default
         :param console_app: Reference to a console interface for logging
@@ -109,7 +99,6 @@ class PngAppMgrBase(ABC):
         self.port_conflict_settings_field = port_conflict_settings_field
         self.module_path = module_path
         self.display_name = display_name
-        self.exec_name = exe_name_without_ext + get_executable_extension()
         self.console_app = console_app
         self.args = args or []  # Store CLI args
         self.process: Optional[subprocess.Popen] = None

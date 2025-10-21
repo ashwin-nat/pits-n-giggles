@@ -47,7 +47,6 @@ class HudAppMgr(PngAppMgrBase):
         super().__init__(
             port_conflict_settings_field='Network -> "Pits n\' Giggles HUD Manager"',
             module_path="apps.hud",
-            exe_name_without_ext="hud",
             display_name="HUD",
             start_by_default=True,
             console_app=console_app,

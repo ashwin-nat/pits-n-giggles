@@ -47,7 +47,6 @@ class SaveViewerAppMgr(PngAppMgrBase):
         super().__init__(
             port_conflict_settings_field='Network -> "Pits n\' Giggles Save Data Viewer Port"',
             module_path="apps.save_viewer",
-            exe_name_without_ext="save_viewer",
             display_name="Save Viewer",
             start_by_default=False,
             console_app=console_app,
