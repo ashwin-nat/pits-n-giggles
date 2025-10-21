@@ -48,6 +48,14 @@ class IpcChildSync:
         self.sock.bind(self.endpoint)
         self._thread: Optional[threading.Thread] = None
         self._running = False
+        self._shutdown_callback = None
+
+    def register_shutdown_callback(self, callback: Callable[[dict], dict]) -> None:
+        """
+        Registers a callback to be called on shutdown command.
+        :param callback: Function to call on shutdown command.
+        """
+        self._shutdown_callback = callback
 
     def serve(self, handler_fn: Callable[[dict], dict]) -> None:
         """
@@ -67,6 +75,15 @@ class IpcChildSync:
                     response = {"reply": "__pong__", "source": self.name}
                     self.sock.send_json(response)
                     continue
+                if cmd == "__shutdown__":
+                    if self._shutdown_callback:
+                        response = self._shutdown_callback(msg.get("args", {}))
+                    else:
+                        response = {
+                            "status": "success",
+                            "message": "default shutdown complete",
+                        }
+                    self._running = False
 
                 response = handler_fn(msg)
                 self.sock.send_json(response)

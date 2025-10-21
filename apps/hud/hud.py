@@ -83,6 +83,7 @@ def main(logger: logging.Logger, config: PngSettings, ipc_port: int, version: st
     )
     notify_parent_init_complete()
     ipc_server.serve(partial(ipc_handler, logger=logger))
+    logger.info("IPC server stopped.")
 
 def entry_point():
     """Entry point"""

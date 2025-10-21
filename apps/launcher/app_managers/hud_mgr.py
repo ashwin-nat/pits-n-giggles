@@ -48,7 +48,7 @@ class HudAppMgr(PngAppMgrBase):
             port_conflict_settings_field='Network -> "Pits n\' Giggles HUD Manager"',
             module_path="apps.hud",
             exe_name_without_ext="hud",
-            display_name="HUD Manager",
+            display_name="HUD",
             start_by_default=True,
             console_app=console_app,
             settings=settings,
@@ -71,13 +71,13 @@ class HudAppMgr(PngAppMgrBase):
             style="Racing.TButton",
             state="disabled"  # Initially disabled until the app is running
         )
-        # self.start_stop_button = ttk.Button(
-        #     frame,
-        #     text="Start",
-        #     command=self.start_stop_callback,
-        #     style="Racing.TButton",
-        #     state="disabled"  # Initially disabled until the app is running
-        # )
+        self.start_stop_button = ttk.Button(
+            frame,
+            text="Start",
+            command=self.start_stop_callback,
+            style="Racing.TButton",
+            state="disabled"  # Initially disabled until the app is running
+        )
         # self.open_file_button = ttk.Button(
         #     frame,
         #     text="Open File",
@@ -94,7 +94,7 @@ class HudAppMgr(PngAppMgrBase):
         # )
 
         return [
-        #     self.start_stop_button,
+            self.start_stop_button,
         #     self.open_file_button,
         #     self.open_dashboard_button,
             self.ping_button,
@@ -120,15 +120,20 @@ class HudAppMgr(PngAppMgrBase):
     def post_start(self):
         """Update buttons after app start"""
         self.ping_button.config(state="normal")
+        self.start_stop_button.config(text="Stop")
+        self.start_stop_button.config(state="normal")
 
     def post_stop(self):
         """Update buttons after app stop"""
         self.ping_button.config(state="disabled")
+        self.start_stop_button.config(text="Start")
+        self.start_stop_button.config(state="normal")
 
     def start_stop_callback(self):
         """Start or stop the backend application."""
         # disable the button. enable in post_start/post_stop
         self.ping_button.config(state="disabled")
+        self.start_stop_button.config(state="disabled")
         try:
             # Call the start_stop method
             self.start_stop()
@@ -137,3 +142,4 @@ class HudAppMgr(PngAppMgrBase):
             self.console_app.debug_log(f"{self.display_name}:Error during start/stop: {e}")
             # If no exception, it will be handled in post_start/post_stop
             self.ping_button.config(state="normal")
+            self.start_stop_button.config(state="normal")
