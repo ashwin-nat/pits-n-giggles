@@ -35,7 +35,7 @@ import psutil
 from apps.backend.common.png_logger import initLogger
 from apps.backend.state_mgmt_layer import initStateManagementLayer, SessionState
 from apps.backend.telemetry_layer import initTelemetryLayer
-from apps.backend.ui_intf_layer import TelemetryWebServer, initUiIntfLayer
+from apps.backend.intf_layer import TelemetryWebServer, initUiIntfLayer
 from lib.child_proc_mgmt import report_pid_from_child
 from lib.config import load_config_from_ini
 from lib.error_status import PngError

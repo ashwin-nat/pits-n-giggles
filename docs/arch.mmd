@@ -23,7 +23,7 @@ flowchart TD
             PACKET_FWD["📤 Packet Forwarder"]
         end
 
-        subgraph UI_INTF_LAYER["🖥️ UI Interface Layer"]
+        subgraph INTF_LAYER["🖥️ Interface Layer"]
             direction LR
             QUART["🌐 Quart HTTP Server"]
             SOCKETIO["⚡ SocketIO"]
@@ -68,5 +68,5 @@ flowchart TD
     classDef component fill:#C0FDFB,stroke:#0077B6,stroke-width:2px,color:#03045E,rounded
 
     class F1_SIM,EXT_TGT external
-    class TELEMETRY_LAYER,STATE_MGMT_LAYER,UI_INTF_LAYER layer
+    class TELEMETRY_LAYER,STATE_MGMT_LAYER,INTF_LAYER layer
     class UDP_RECV,PARSERS,PACKET_FWD,COMP_ENGINE,API_INTF,SHARED_STATE,QUART,SOCKETIO component
