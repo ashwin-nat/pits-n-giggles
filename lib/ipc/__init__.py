@@ -25,6 +25,7 @@
 from .async_child import IpcChildAsync
 from .parent import IpcParent
 from .subscriber import IpcSubscriber
+from .sync_child import IpcChildSync
 from .utils import get_free_tcp_port
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
@@ -32,6 +33,7 @@ from .utils import get_free_tcp_port
 __all__ = [
     'IpcParent',
     'IpcChildAsync',
+    'IpcChildSync',
     'IpcSubscriber',
 
     'get_free_tcp_port',

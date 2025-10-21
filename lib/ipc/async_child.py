@@ -203,5 +203,6 @@ class IpcChildAsync:
 
     def close(self) -> None:
         """Closes the socket."""
+        self._running = False
         self.sock.close()
         self.ctx.term()
