@@ -22,8 +22,9 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .base_mgr import PngAppMgrBase
 from .backend_mgr import BackendAppMgr
+from .base_mgr import PngAppMgrBase
+from .hud_mgr import HudAppMgr
 from .save_viewer_mgr import SaveViewerAppMgr
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
@@ -32,4 +33,5 @@ __all__ = [
     "PngAppMgrBase",
     "BackendAppMgr",
     "SaveViewerAppMgr",
+    "HudAppMgr",
 ]

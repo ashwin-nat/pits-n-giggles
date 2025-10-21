@@ -27,7 +27,8 @@ import logging
 import sys
 from functools import partial
 
-from lib.child_proc_mgmt import report_pid_from_child
+from lib.child_proc_mgmt import (notify_parent_init_complete,
+                                 report_pid_from_child)
 from lib.config import PngSettings, load_config_from_ini
 from lib.ipc import IpcChildSync
 from lib.logger import get_logger
@@ -80,6 +81,7 @@ def main(logger: logging.Logger, config: PngSettings, ipc_port: int, version: st
         port=ipc_port,
         name="hud"
     )
+    notify_parent_init_complete()
     ipc_server.serve(partial(ipc_handler, logger=logger))
 
 def entry_point():

@@ -33,12 +33,12 @@ from typing import Callable, Dict
 from PIL import Image, ImageTk
 
 from lib.config import PngSettings, load_config_from_ini
-from lib.version import is_update_available
 from lib.file_path import resolve_user_file
-
+from lib.version import is_update_available
 from meta.meta import APP_NAME
 
-from .app_managers import BackendAppMgr, PngAppMgrBase, SaveViewerAppMgr
+from .app_managers import (BackendAppMgr, HudAppMgr, PngAppMgrBase,
+                           SaveViewerAppMgr)
 from .console_interface import ConsoleInterface
 from .logger import get_rotating_logger
 from .settings import SettingsWindow
@@ -170,6 +170,7 @@ class PngLauncher(ConsoleInterface):
 
         save_viewer_args = ["--config-file", self.config_file]
         server_args = ["--config-file", self.config_file]
+        hud_args = ["--config-file", self.config_file]
 
         self.subapps = {
             # Backend app reads port from config file
@@ -184,6 +185,13 @@ class PngLauncher(ConsoleInterface):
                 console_app=self,
                 settings=self.settings,
                 args=save_viewer_args,
+                debug_mode=self.debug_mode,
+            ),
+            # HUD app reads ipc port from args
+            "hud": HudAppMgr(
+                console_app=self,
+                settings=self.settings,
+                args=hud_args,
                 debug_mode=self.debug_mode,
             ),
         }
