@@ -64,7 +64,7 @@ from tests_debouncer import TestMultiButtonDebouncer
 from tests_fuel_recommender import (TestFuelRateRecommenderMisc,
                                     TestFuelRateRecommenderRemove,
                                     TestFuelRemainingPerLap)
-from tests_ipc import TestIPC
+from tests.ipc import TestIpcParentChild
 from tests_itc import TestAsyncInterTaskCommunicator
 from tests_overtake_analyzer import (TestOvertakeAnalyzerEmptyInput,
                                      TestOvertakeAnalyzerFileCsv,
