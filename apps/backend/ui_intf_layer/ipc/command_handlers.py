@@ -25,7 +25,7 @@
 import logging
 
 from apps.backend.state_mgmt_layer import SessionState
-from apps.backend.state_mgmt_layer.api import ManualSaveRsp
+from apps.backend.state_mgmt_layer.intf import ManualSaveRsp
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------

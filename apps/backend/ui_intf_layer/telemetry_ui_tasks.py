@@ -26,7 +26,7 @@ import asyncio
 import logging
 from typing import List, Optional
 
-import apps.backend.state_mgmt_layer.api as TelWebAPI
+import apps.backend.state_mgmt_layer.intf as TelWebAPI
 from apps.backend.state_mgmt_layer import SessionState
 from lib.config import PngSettings
 from lib.inter_task_communicator import AsyncInterTaskCommunicator

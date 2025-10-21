@@ -23,7 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .state_layer_init import initStateManagementLayer, SessionState
-from . import api
+from . import intf
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -35,5 +35,5 @@ __all__ = [
     "SessionState",
 
     # Module
-    "api",
+    "intf",
 ]
