@@ -64,7 +64,6 @@ from tests_debouncer import TestMultiButtonDebouncer
 from tests_fuel_recommender import (TestFuelRateRecommenderMisc,
                                     TestFuelRateRecommenderRemove,
                                     TestFuelRemainingPerLap)
-from tests_ipc import TestIPC
 from tests_itc import TestAsyncInterTaskCommunicator
 from tests_overtake_analyzer import (TestOvertakeAnalyzerEmptyInput,
                                      TestOvertakeAnalyzerFileCsv,
@@ -82,6 +81,7 @@ from tests_tyre_wear_extrapolator import (
 from tests_udp_forwarder import TestAsyncUDPForwarder
 from tests_version import TestGetVersion, TestIsUpdateAvailable
 
+from tests.ipc import TestIpcParentChild, TestIpcSubscriber
 from tests.tests_child_proc_mgmt import TestIsInitComplete, TestPidReport
 from tests.tests_port_check import TestPortAvailability
 from tests.tests_race_ctrl import TestRaceControlMessages

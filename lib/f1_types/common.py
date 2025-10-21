@@ -30,7 +30,7 @@
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
 from abc import abstractmethod
-from typing import List, Optional, Set, Union
+from typing import List, Optional, Set
 
 from .base_pkt import F1BaseEnum, F1CompareableEnum
 
@@ -1284,29 +1284,6 @@ class F1Utils:
         """
 
         return (track_id in F1Utils.TRACKS_WHERE_FINISH_LINE_AFTER_PIT_GARAGE)
-
-    @staticmethod
-    def isPracticeSession(session_type: Union[SessionType23, SessionType24]) -> bool:
-        """Is this a practice session?
-
-        Args:
-            session_type (Union[SessionType23, SessionType24]): The session type enum
-
-        Returns:
-            bool: True if practice session, else False
-        """
-
-        return session_type in [
-            SessionType23.PRACTICE_1,
-            SessionType23.PRACTICE_2,
-            SessionType23.PRACTICE_3,
-            SessionType23.SHORT_PRACTICE,
-
-            SessionType24.PRACTICE_1,
-            SessionType24.PRACTICE_2,
-            SessionType24.PRACTICE_3,
-            SessionType24.SHORT_PRACTICE,
-        ]
 
     @staticmethod
     def transposeLapPositions(lap_major: List[List[int]]) -> List[List[int]]:

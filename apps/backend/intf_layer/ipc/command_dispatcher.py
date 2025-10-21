@@ -22,53 +22,49 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import asyncio
+import json
 import logging
-from typing import List
+from typing import Callable, Awaitable, Dict
 
 from apps.backend.state_mgmt_layer import SessionState
-from lib.config import PngSettings
 
-from .telemetry_forwarder import setupForwarder
-from .telemetry_handler import F1TelemetryHandler, setupTelemetryTask
+from .command_handlers import handleManualSave
+
+# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
+
+# Define a type for async handler functions
+CommandHandler = Callable[[dict, logging.Logger, SessionState], Awaitable[dict]]
+
+
+# Registry of command handlers
+COMMAND_HANDLERS: Dict[str, CommandHandler] = {
+    "manual-save": handleManualSave,
+}
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def initTelemetryLayer(
-        settings: PngSettings,
-        replay_server: bool,
-        logger: logging.Logger,
-        ver_str: str,
-        shutdown_event: asyncio.Event,
-        session_state: SessionState,
-        tasks: List[asyncio.Task]) -> F1TelemetryHandler:
-    """Initialize the telemetry layer
+async def processIpcCommand(msg: dict, logger: logging.Logger, session_state: SessionState) -> dict:
+    """Handle IPC commands from the parent process (launcher)
 
     Args:
-        settings (PngSettings): Png settings
-        replay_server (bool): Whether to enable the TCP replay debug server.
-        logger (logging.Logger): Logger instance
-        ver_str (str): Version string
-        shutdown_event (asyncio.Event): Shutdown event
-        session_state (SessionState): Handle to the session state
-        tasks (List[asyncio.Task]): List of tasks to be executed
+        msg (dict): IPC command
+        logger (logging.Logger): Logger
+        session_state (SessionState): Handle to the session state object
 
     Returns:
-        F1TelemetryHandler: Telemetry handler
+        dict: IPC response
     """
+    logger.debug(f"Received IPC command: {json.dumps(msg, indent=2)}")
 
-    handler = setupTelemetryTask(
-        settings=settings,
-        replay_server=replay_server,
-        session_state=session_state,
-        logger=logger,
-        ver_str=ver_str,
-        tasks=tasks
-    )
-    setupForwarder(
-        forwarding_targets=settings.Forwarding.forwarding_targets,
-        tasks=tasks,
-        shutdown_event=shutdown_event,
-        logger=logger
-    )
-    return handler
+    if not (cmd := msg.get("cmd")):
+        return {"status": "error", "message": "Missing command name"}
+
+    if not (handler := COMMAND_HANDLERS.get(cmd)):
+        return {"status": "error", "message": f"Unknown command: {cmd}"}
+
+    try:
+        args = msg.get("args", {})
+        return await handler(args, logger, session_state)
+    except Exception as e: # pylint: disable=broad-except
+        logger.exception(f"Error handling command '{cmd}': {e}")
+        return {"status": "error", "message": f"Exception during command handling: {str(e)}"}

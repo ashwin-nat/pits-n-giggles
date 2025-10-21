@@ -93,7 +93,8 @@ class PngAppMgrBase(ABC):
                  start_by_default: bool,
                  console_app: ConsoleInterface,
                  settings: PngSettings,
-                 args: list[str] = None):
+                 args: list[str],
+                 debug_mode: bool):
         """Initialize the sub-application
         :param port_conflict_settings_field: Settings field to check for port conflicts
         :param module_path: Path to the sub-application module
@@ -103,6 +104,7 @@ class PngAppMgrBase(ABC):
         :param console_app: Reference to a console interface for logging
         :param settings: Settings object
         :param args: Additional Command line arguments to pass to the sub-application
+        :param debug_mode: Whether to run the sub-application in debug mode
         """
         self.port_conflict_settings_field = port_conflict_settings_field
         self.module_path = module_path
@@ -124,6 +126,7 @@ class PngAppMgrBase(ABC):
         self._post_start_hook: Optional[Callable[[], None]] = None
         self._post_stop_hook: Optional[Callable[[], None]] = None
         self.ipc_port = None
+        self._debug_mode = debug_mode
 
     @abstractmethod
     def get_buttons(self, frame: ttk.Frame) -> list[dict]:
@@ -354,11 +357,11 @@ class PngAppMgrBase(ABC):
                 failed_heartbeat_count += 1
 
             # Check if we've exceeded the maximum allowed missed heartbeats
-            if failed_heartbeat_count > self.num_missable_heartbeats:
-                self.console_app.info_log(
-                    f"{self.display_name}: Missed {failed_heartbeat_count} consecutive heartbeats. Stopping."
-                )
+            if (failed_heartbeat_count > self.num_missable_heartbeats) and not self._debug_mode:
                 self.stop()
+                self.console_app.info_log(
+                    f"{self.display_name}: Missed {failed_heartbeat_count} consecutive heartbeats. Stopping"
+                )
                 break
 
             self._stop_heartbeat.wait(self.heartbeat_interval)

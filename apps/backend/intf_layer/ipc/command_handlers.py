@@ -22,36 +22,22 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import asyncio
 import logging
-from functools import partial
-from typing import List, Optional
 
-from lib.ipc import IpcChildAsync
-
-from .command_dispatcher import processIpcCommand
-from .command_handlers import handleShutdown
+from apps.backend.state_mgmt_layer import SessionState
+from apps.backend.state_mgmt_layer.intf import ManualSaveRsp
+from lib.inter_task_communicator import AsyncInterTaskCommunicator
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def registerIpcTask(ipc_port: Optional[int], logger: logging.Logger, tasks: List[asyncio.Task]) -> None:
-    """Register the IPC task
+async def handleManualSave(_msg: dict, logger: logging.Logger, session_state: SessionState) -> dict:
+    """Handle manual save command"""
+    return await ManualSaveRsp(logger, session_state).saveToDisk()
 
-    Args:
-        ipc_port (Optional[int]): IPC port
-        logger (logging.Logger): Logger
-        tasks (List[asyncio.Task]): List of tasks
-    """
+async def handleShutdown(msg: dict, logger: logging.Logger) -> dict:
+    """Handle shutdown command"""
 
-    # Register the IPC task only if port is specified
-    if ipc_port:
-        logger.debug(f"Starting IPC server on port {ipc_port}")
-        server = IpcChildAsync(ipc_port, "Backend")
-        server.register_shutdown_callback(partial(handleShutdown, logger=logger))
-        tasks.append(asyncio.create_task(server.run(partial(processIpcCommand, logger=logger)), name="IPC Task"))
-
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
-
-__all__ = [
-    "registerIpcTask",
-]
+    reason = msg.get('reason', 'N/A')
+    logger.info(f"Received shutdown command. Reason: {reason}")
+    await AsyncInterTaskCommunicator().send('shutdown', {"reason" : reason})
+    return {'status': 'success'}

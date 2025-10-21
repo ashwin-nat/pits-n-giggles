@@ -29,7 +29,7 @@ import logging
 from datetime import datetime
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Coroutine
 
-import apps.backend.state_mgmt_layer.telemetry_state as TelState
+from apps.backend.state_mgmt_layer import SessionState
 from lib.button_debouncer import ButtonDebouncer
 from lib.config import CaptureSettings, PngSettings
 from lib.f1_types import (F1PacketType, PacketCarDamageData,
@@ -40,7 +40,7 @@ from lib.f1_types import (F1PacketType, PacketCarDamageData,
                           PacketSessionData, PacketSessionHistoryData,
                           PacketTimeTrialData, PacketTyreSetsData)
 from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
-                                         FinalClassificationNotification,
+                                         FinalClassificationNotification, TyreDeltaNotificationMessageCollection,
                                          ITCMessage)
 from lib.save_to_disk import save_json_to_file
 from lib.telemetry_manager import AsyncF1TelemetryManager
@@ -53,6 +53,7 @@ from lib.wdt import WatchDogTimer
 def setupTelemetryTask(
         settings: PngSettings,
         replay_server: bool,
+        session_state: SessionState,
         logger: logging.Logger,
         ver_str: str,
         tasks: List[asyncio.Task]) -> "F1TelemetryHandler":
@@ -61,6 +62,7 @@ def setupTelemetryTask(
     Args:
         settings (PngSettings): App settings
         replay_server (bool): Whether to enable the TCP replay debug server.
+        session_state (SessionState): Handle to the session state
         logger (logging.Logger): Logger instance
         ver_str (str): Version string
         tasks (List[asyncio.Task]): List of tasks to be executed
@@ -72,6 +74,7 @@ def setupTelemetryTask(
     telemetry_server = F1TelemetryHandler(
         settings=settings,
         logger=logger,
+        session_state=session_state,
         replay_server=replay_server,
         ver_str=ver_str,
     )
@@ -93,6 +96,7 @@ class F1TelemetryHandler:
     def __init__(self,
         settings: PngSettings,
         logger: logging.Logger,
+        session_state: SessionState,
         replay_server: bool = False,
         ver_str: str = "dev") -> None:
         """
@@ -116,7 +120,7 @@ class F1TelemetryHandler:
             replay_server=replay_server
         )
         self.m_logger: logging.Logger = logger
-        self.m_session_state_ref: TelState.SessionState = TelState.getSessionStateRef()
+        self.m_session_state_ref: SessionState = session_state
 
         self.m_last_session_uid: Optional[int] = None
         self.m_data_cleared_this_session: bool = False
@@ -133,6 +137,7 @@ class F1TelemetryHandler:
             timeout=float(settings.Network.wdt_interval_sec),
         )
         self.m_manager_task: Optional[asyncio.Task] = None
+        self.m_pkt_count: int = 0
         self.registerCallbacks()
 
     def getTask(self, name: Optional[str] = "Game Telemetry Listener Task") -> asyncio.Task:
@@ -188,6 +193,7 @@ class F1TelemetryHandler:
                 packet (List[bytes]): The raw telemetry packet.
             """
             self.m_wdt.kick()
+            self.m_pkt_count += 1
             if self.m_should_forward:
                 await AsyncInterTaskCommunicator().send("packet-forward", packet)
 
@@ -416,13 +422,13 @@ class F1TelemetryHandler:
             (packet.mEventDetails.isUDPActionPressed(self.m_udp_custom_action_code)) and \
             (self.m_button_debouncer.onButtonPress(self.m_udp_custom_action_code)):
                 self.m_logger.debug('UDP action %d pressed - Custom Marker', self.m_udp_custom_action_code)
-                await TelState.processCustomMarkerCreate()
+                await self._processCustomMarkerCreate()
 
             if (self.m_udp_tyre_delta_action_code is not None) and \
             (packet.mEventDetails.isUDPActionPressed(self.m_udp_tyre_delta_action_code)) and \
             (self.m_button_debouncer.onButtonPress(self.m_udp_tyre_delta_action_code)):
                 self.m_logger.debug('UDP action %d pressed - Tyre Delta', self.m_udp_tyre_delta_action_code)
-                await TelState.processTyreDeltaSound()
+                await self._processTyreDeltaSound()
 
         async def handleFlashBackEvent(packet: PacketEventData) -> None:
             """
@@ -501,6 +507,7 @@ class F1TelemetryHandler:
         self.m_session_state_ref.processSessionStarted(reason)
         self.m_data_cleared_this_session = True
         self.m_final_classification_processed = False
+        self.m_pkt_count = 0
 
     async def postGameDumpToFile(self, final_json: Dict[str, Any]) -> None:
         """
@@ -514,13 +521,21 @@ class F1TelemetryHandler:
         if not event_str:
             return
 
+        # Insert extra debug info
+        # TODO - bring this into manual save code flow as well
+        final_json["debug"] = final_json.get("debug", {})
+        final_json["debug"].update({
+            "packet-count": self.m_pkt_count,
+            "auto-save": True,
+        })
+
         # Save the JSON data
         # Get timestamp in the format - year_month_day_hour_minute_second
         timestamp_str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         final_json_file_name = event_str + timestamp_str + '.json'
         try:
             await save_json_to_file(final_json, final_json_file_name)
-            self.m_logger.info("Wrote race info to %s", final_json_file_name)
+            self.m_logger.info("Wrote race info to %s. Num pkts %d", final_json_file_name, self.m_pkt_count)
         except Exception: # pylint: disable=broad-except
             # No need to crash the app just because write failed
             self.m_logger.exception("Failed to write race info to %s", final_json_file_name)
@@ -547,3 +562,23 @@ class F1TelemetryHandler:
         if curr_session_type.isTimeTrialTypeSession() and self.m_capture_settings.post_tt_data_autosave:
             return True
         return False # movie or story mode
+
+    async def _processCustomMarkerCreate(self) -> None:
+        """Update the data structures with custom marker information
+        """
+
+        if custom_marker_obj := self.m_session_state_ref.getInsertCustomMarkerEntryObj():
+            await AsyncInterTaskCommunicator().send("frontend-update", ITCMessage(
+                m_message_type=ITCMessage.MessageType.CUSTOM_MARKER,
+                m_message=custom_marker_obj))
+
+    async def _processTyreDeltaSound(self) -> None:
+        """Send the tyre delta notification to the frontend."""
+        if messages := self.m_session_state_ref.getTyreDeltaNotificationMessages():
+            await AsyncInterTaskCommunicator().send(
+                "frontend-update",
+                ITCMessage(
+                    m_message_type=ITCMessage.MessageType.TYRE_DELTA_NOTIFICATION_V2,
+                    m_message=TyreDeltaNotificationMessageCollection(messages)
+                )
+            )

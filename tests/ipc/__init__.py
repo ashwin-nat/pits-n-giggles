@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) [2024] [Ashwin Natarajan]
+# Copyright (c) [2025] [Ashwin Natarajan]
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -19,30 +19,16 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+# pylint: skip-file
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
+from .tests_parent_child import TestIpcParentChild
+from .tests_subscriber import TestIpcSubscriber
 
-from lib.config import PngSettings
+# -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
-from .session_state import SessionState
-
-# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
-
-def initSessionState(logger: logging.Logger, settings: PngSettings, ver_str: str) -> SessionState:
-    """Init the DriverData object
-
-    Args:
-        logger (logging.Logger): Logger
-        settings (PngSettings): Settings
-        ver_str (str): Version string
-
-    Returns:
-        SessionState: The SessionState object reference
-    """
-    return SessionState(
-        logger,
-        settings,
-        ver_str
-    )
+__all__ = [
+    "TestIpcParentChild",
+    "TestIpcSubscriber",
+]

@@ -26,6 +26,7 @@ import json
 import logging
 import time
 from copy import deepcopy
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 from apps.backend.state_mgmt_layer.data_per_driver import (DataPerDriver,
@@ -525,7 +526,6 @@ class SessionState:
             driver_obj.m_lap_info.m_current_lap = new_lap
             driver_obj.m_pending_events_mgr.onEvent(DriverPendingEvents.LAP_CHANGE_EVENT)
 
-
     def _updateDriverStatus(self, driver_obj: DataPerDriver, lap_data: LapData, driver_index: int) -> None:
         """Update driver's current status including DNF status
 
@@ -724,6 +724,16 @@ class SessionState:
         final_json = {
             "classification-data" : []
         }
+
+        # Add session debug info
+        now = datetime.now().astimezone()
+        final_json["debug"] = {
+            "session-uid" : self.m_session_info.m_session_uid,
+            "timestamp" : now.strftime("%Y-%m-%d %H:%M:%S %Z"),
+            "timezone" : now.tzinfo.key if hasattr(now.tzinfo, "key") else str(now.tzinfo),
+            "utc-offset-seconds" : int(now.utcoffset().total_seconds()),
+        }
+
         speed_trap_records = []
         driver_info_dict = self._getRaceCtrlHelperDict() if self.m_save_race_ctrl_msgs else None
 
@@ -939,7 +949,6 @@ class SessionState:
             if obj_to_be_updated := self._getObjectByIndex(index, create=False):
                 obj_to_be_updated.processPositionsHistoryUpdate(packet, position_hist)
 
-
     def processSessionStarted(self, reason: str) -> None:
         """
         Reset the data structures when SESSION_STARTED has been received
@@ -964,7 +973,6 @@ class SessionState:
         if session_changed:
             await self._notifyExternalApiTask()
         return should_clear
-
 
     def processCollisionEvent(self, packet: PacketEventData.Collision) -> None:
         """Process the collision event update packet and update the necessary fields
@@ -1351,6 +1359,21 @@ class SessionState:
             driver_info_dict = self._getRaceCtrlHelperDict()
         return self.m_race_ctrl.toJSON(driver_info_dict)
 
+    ##### Utils #####
+
+    def isIndexValid(self, index: int) -> bool:
+        """Check if the given index is a valid driver index
+
+        Args:
+            index (int): Index of the driver
+
+        Returns:
+            bool: True if valid
+        """
+
+        return  (0 <= index < len(self.m_driver_data)) and \
+                (self.m_driver_data[index] and self.m_driver_data[index].is_valid)
+
     ##### Internal Helpers #####
 
     def _getRaceCtrlHelperDict(self) -> Dict[str, Any]:
@@ -1543,7 +1566,6 @@ class SessionState:
         driver_info_dict = self._getRaceCtrlHelperDict()
         return [driver_data.toJSON(index, include_race_ctrl_msgs=True, driver_info_dict=driver_info_dict) \
                 for index, driver_data in enumerate(self.m_driver_data) if driver_data and driver_data.is_valid]
-
 
     def _safeMin(self, arg1: int, arg2: Optional[int]) -> int:
         """

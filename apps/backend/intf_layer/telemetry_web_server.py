@@ -27,7 +27,11 @@ import webbrowser
 from http import HTTPStatus
 from typing import Any, Dict, Tuple
 
-import apps.backend.state_mgmt_layer as TelState
+from apps.backend.state_mgmt_layer import SessionState
+from apps.backend.state_mgmt_layer.intf import (DriverInfoRsp,
+                                                PeriodicUpdateData,
+                                                RaceInfoData,
+                                                StreamOverlayData)
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import PngSettings
 from lib.web_server import BaseWebServer
@@ -57,6 +61,7 @@ class TelemetryWebServer(BaseWebServer):
                  settings: PngSettings,
                  ver_str: str,
                  logger: logging.Logger,
+                 session_state: SessionState,
                  debug_mode: bool = False):
         """
         Initialize the TelemetryWebServer.
@@ -65,6 +70,7 @@ class TelemetryWebServer(BaseWebServer):
             settings (PngSettings): App settings.
             ver_str (str): The version string.
             logger (logging.Logger): The logger instance.
+            session_state (SessionState): Handle to the session state
             debug_mode (bool, optional): Enable or disable debug mode. Defaults to False.
         """
         super().__init__(
@@ -78,6 +84,7 @@ class TelemetryWebServer(BaseWebServer):
         self.define_routes()
         self.register_post_start_callback(self._post_start)
         self.m_show_start_sample_data = settings.StreamOverlay.show_sample_data_at_start
+        self.m_session_state: SessionState = session_state
 
     def define_routes(self) -> None:
         """
@@ -140,7 +147,7 @@ class TelemetryWebServer(BaseWebServer):
             Returns:
                 Tuple[str, int]: JSON response and HTTP status code.
             """
-            return TelState.RaceInfoUpdate().toJSON(), HTTPStatus.OK
+            return PeriodicUpdateData(self.m_logger, self.m_session_state).toJSON(), HTTPStatus.OK
 
         @self.http_route('/race-info')
         async def raceInfoHTTP() -> Tuple[str, int]:
@@ -150,7 +157,7 @@ class TelemetryWebServer(BaseWebServer):
             Returns:
                 Tuple[str, int]: JSON response and HTTP status code.
             """
-            return TelState.OverallRaceStatsRsp().toJSON(), HTTPStatus.OK
+            return RaceInfoData(self.m_logger, self.m_session_state).toJSON(), HTTPStatus.OK
 
         @self.http_route('/driver-info')
         async def driverInfoHTTP() -> Tuple[str, int]:
@@ -170,7 +177,7 @@ class TelemetryWebServer(BaseWebServer):
             Returns:
                 Tuple[str, int]: JSON response and HTTP status code.
             """
-            return TelState.PlayerTelemetryOverlayUpdate().toJSON(self.m_show_start_sample_data), HTTPStatus.OK
+            return StreamOverlayData(self.m_session_state).toJSON(self.m_show_start_sample_data), HTTPStatus.OK
 
     def _processDriverInfoRequest(self, index_arg: Any) -> Tuple[Dict[str, Any], HTTPStatus]:
         """
@@ -189,7 +196,7 @@ class TelemetryWebServer(BaseWebServer):
 
         # Check if the given index is valid
         index_int = int(index_arg)
-        if not TelState.isDriverIndexValid(index_int):
+        if not self.m_session_state.isIndexValid(index_int):
             error_response = {
                 'error' : 'Invalid parameter value',
                 'message' : 'Invalid index',
@@ -198,7 +205,7 @@ class TelemetryWebServer(BaseWebServer):
             return self.jsonify(error_response), HTTPStatus.NOT_FOUND
 
         # Process parameters and generate response
-        return TelState.DriverInfoRsp(index_int).toJSON(), HTTPStatus.OK
+        return DriverInfoRsp(self.m_session_state, index_int).toJSON(), HTTPStatus.OK
 
     async def _post_start(self) -> None:
         """Function to be called after the server starts serving."""
