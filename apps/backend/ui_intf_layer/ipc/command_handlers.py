@@ -24,14 +24,15 @@
 
 import logging
 
-import apps.backend.state_mgmt_layer as TelWebAPI
+from apps.backend.state_mgmt_layer import SessionState
+from apps.backend.state_mgmt_layer.api import ManualSaveRsp
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-async def handleManualSave(_msg: dict, _logger: logging.Logger) -> dict:
+async def handleManualSave(_msg: dict, logger: logging.Logger, session_state: SessionState) -> dict:
     """Handle manual save command"""
-    return await TelWebAPI.ManualSaveRsp().saveToDisk()
+    return await ManualSaveRsp(logger, session_state).saveToDisk()
 
 async def handleShutdown(msg: dict, logger: logging.Logger) -> dict:
     """Handle shutdown command"""

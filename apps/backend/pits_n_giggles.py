@@ -33,7 +33,7 @@ from typing import List, Optional, Set
 import psutil
 
 from apps.backend.common.png_logger import initLogger
-from apps.backend.state_mgmt_layer import initStateManagementLayer
+from apps.backend.state_mgmt_layer import initStateManagementLayer, SessionState
 from apps.backend.telemetry_layer import initTelemetryLayer
 from apps.backend.ui_intf_layer import TelemetryWebServer, initUiIntfLayer
 from lib.child_proc_mgmt import report_pid_from_child
@@ -71,7 +71,7 @@ class PngRunner:
         self.m_logger.debug(self.m_config)
         self.m_shutdown_event: asyncio.Event = asyncio.Event()
 
-        initStateManagementLayer(
+        self.m_session_state: SessionState = initStateManagementLayer(
             logger=self.m_logger,
             settings=self.m_config,
             ver_str=self.m_version,
@@ -85,6 +85,7 @@ class PngRunner:
             logger=self.m_logger,
             ver_str=self.m_version,
             shutdown_event=self.m_shutdown_event,
+            session_state=self.m_session_state,
             tasks=self.m_tasks
         )
         self.m_web_server = self._setupUiIntfLayer(
@@ -130,6 +131,7 @@ class PngRunner:
         return initUiIntfLayer(
             settings=self.m_config,
             logger=self.m_logger,
+            session_state=self.m_session_state,
             debug_mode=debug_mode,
             tasks=self.m_tasks,
             ver_str=self.m_version,

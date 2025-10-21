@@ -22,26 +22,18 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .state_layer_init import initStateManagementLayer
-from .telemetry_state import getSessionStateRef, isDriverIndexValid
-from .telemetry_web_api import (DriverInfoRsp, ManualSaveRsp,
-                                OverallRaceStatsRsp,
-                                PlayerTelemetryOverlayUpdate, RaceInfoUpdate)
+from .state_layer_init import initStateManagementLayer, SessionState
+from . import api
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    # Readers
-    "RaceInfoUpdate",
-    "OverallRaceStatsRsp",
-    "DriverInfoRsp",
-    "PlayerTelemetryOverlayUpdate",
-    "isDriverIndexValid",
-    "getSessionStateRef",
-
-    # Writers
-    "ManualSaveRsp",
-
     # Init
     "initStateManagementLayer",
+
+    # Data structure
+    "SessionState",
+
+    # Module
+    "api",
 ]

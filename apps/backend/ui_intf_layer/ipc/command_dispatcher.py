@@ -26,12 +26,14 @@ import json
 import logging
 from typing import Callable, Awaitable, Dict
 
+from apps.backend.state_mgmt_layer import SessionState
+
 from .command_handlers import handleManualSave
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
 # Define a type for async handler functions
-CommandHandler = Callable[[dict, logging.Logger], Awaitable[dict]]
+CommandHandler = Callable[[dict, logging.Logger, SessionState], Awaitable[dict]]
 
 
 # Registry of command handlers
@@ -41,12 +43,13 @@ COMMAND_HANDLERS: Dict[str, CommandHandler] = {
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-async def processIpcCommand(msg: dict, logger: logging.Logger) -> dict:
+async def processIpcCommand(msg: dict, logger: logging.Logger, session_state: SessionState) -> dict:
     """Handle IPC commands from the parent process (launcher)
 
     Args:
         msg (dict): IPC command
         logger (logging.Logger): Logger
+        session_state (SessionState): Handle to the session state object
 
     Returns:
         dict: IPC response
@@ -61,7 +64,7 @@ async def processIpcCommand(msg: dict, logger: logging.Logger) -> dict:
 
     try:
         args = msg.get("args", {})
-        return await handler(args, logger)
+        return await handler(args, logger, session_state)
     except Exception as e: # pylint: disable=broad-except
         logger.exception(f"Error handling command '{cmd}': {e}")
         return {"status": "error", "message": f"Exception during command handling: {str(e)}"}

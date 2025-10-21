@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) [2024] [Ashwin Natarajan]
+# Copyright (c) [2025] [Ashwin Natarajan]
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,27 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
+from .manual_save import ManualSaveRsp
 
-from lib.config import PngSettings
+# -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
-from .session_state import SessionState
-
-# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
-
-def initSessionState(logger: logging.Logger, settings: PngSettings, ver_str: str) -> SessionState:
-    """Init the DriverData object
-
-    Args:
-        logger (logging.Logger): Logger
-        settings (PngSettings): Settings
-        ver_str (str): Version string
-
-    Returns:
-        SessionState: The SessionState object reference
-    """
-    return SessionState(
-        logger,
-        settings,
-        ver_str
-    )
+__all__ = [
+    "ManualSaveRsp",
+]

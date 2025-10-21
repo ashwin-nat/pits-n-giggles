@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) [2024] [Ashwin Natarajan]
+# Copyright (c) [2025] [Ashwin Natarajan]
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,27 +22,34 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
+from abc import ABC, abstractmethod
+from typing import Any, Dict, Optional
 
-from lib.config import PngSettings
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-from .session_state import SessionState
+class BaseAPI(ABC):
+    """Base class representing all API classes. Derived classes MUST implement toJSON"""
+    def _getValueOrDefaultValue(
+        self,
+        value: Optional[Any],
+        default_value: str ='---') -> Optional[Any]:
+        """
+        Get value or default as string.
 
-# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+        Args:
+            value: The value to check.
+            default_value (str, optional): Default value if the input is None. Defaults to '---'.
 
-def initSessionState(logger: logging.Logger, settings: PngSettings, ver_str: str) -> SessionState:
-    """Init the DriverData object
+        Returns:
+            str: The value as is or default string if None.
+        """
+        return value if value is not None else default_value
 
-    Args:
-        logger (logging.Logger): Logger
-        settings (PngSettings): Settings
-        ver_str (str): Version string
+    @abstractmethod
+    def toJSON(self) -> Dict[str, Any]:
+        """Converts the object to a dictionary suitable for JSON serialization.
 
-    Returns:
-        SessionState: The SessionState object reference
-    """
-    return SessionState(
-        logger,
-        settings,
-        ver_str
-    )
+        Returns:
+            Dict[str, Any]: A dictionary representing the JSON-compatible data.
+        """
+        raise NotImplementedError(f"{self.__class__.__name__} must implement toJSON()")
