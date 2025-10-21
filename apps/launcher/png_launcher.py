@@ -166,6 +166,8 @@ class PngLauncher(ConsoleInterface):
 
     def setup_subapps(self):
         """Set up the hard-coded sub-apps"""
+        SUBAPPS_PER_ROW = 2 # hardcoded value, change if required
+
         save_viewer_args = ["--config-file", self.config_file]
         server_args = ["--config-file", self.config_file]
 
@@ -188,12 +190,14 @@ class PngLauncher(ConsoleInterface):
 
         # Create UI for each subapp
         for i, (_, subapp) in enumerate(self.subapps.items()):
+            row_num = i // SUBAPPS_PER_ROW
+            col_num = i % SUBAPPS_PER_ROW
             frame = ttk.Frame(self.subapps_frame, style="Racing.TFrame")
-            frame.grid(row=0, column=i, padx=15, pady=5)
+            frame.grid(row=row_num, column=col_num, padx=15, pady=5, sticky="nw")
 
             # Add controls for this subapp
             label = ttk.Label(frame, text=f"{subapp.display_name}:", style="Racing.TLabel")
-            label.grid(row=0, column=0, padx=5, pady=5)
+            label.grid(row=0, column=0, padx=5, pady=5, sticky="w")
 
             status_label = ttk.Label(frame, textvariable=subapp.status_var, width=10, style="Stopped.TLabel")
             status_label.grid(row=0, column=1, padx=5, pady=5)
