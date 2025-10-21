@@ -351,7 +351,7 @@
         const maxWeatherSamples = 5;
         // Emit a custom event to register client type upon connection
         socketio.on('connect', function () {
-            socketio.emit('register-client', { type: 'player-stream-overlay' });
+            socketio.emit('register-client', { type: 'player-stream-overlay', id: 'stream-overlay' });
             console.log(`⏱️ Socket connected in ${Date.now() - connectStart}ms`);
         });
 

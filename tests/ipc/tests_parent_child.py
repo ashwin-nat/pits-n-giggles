@@ -30,7 +30,7 @@ import os
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from tests_base import F1TelemetryUnitTestsBase
+from .base import TestIPC
 
 from lib.ipc import IpcParent, IpcChildAsync, get_free_tcp_port
 
@@ -39,7 +39,7 @@ if sys.platform == 'win32':
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-class TestIPC(F1TelemetryUnitTestsBase):
+class TestIpcParentChild(TestIPC):
 
     def setUp(self):
         self.port = get_free_tcp_port()

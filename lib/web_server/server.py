@@ -174,7 +174,7 @@ class BaseWebServer:
                 sid (str): Session ID of the registering client.
                 data (Dict[str, str]): Registration data containing client type.
             """
-            self.m_logger.debug('Client registered. SID = %s Type = %s', sid, data['type'])
+            self.m_logger.debug('Client registered. SID = %s Type = %s ID=%s', sid, data['type'], data.get('id', 'N/A'))
             if (client_type := data['type']) in {'player-stream-overlay', 'race-table'}:
                 await self.m_sio.enter_room(sid, client_type)
                 if self._on_client_connect_callback:
@@ -218,7 +218,7 @@ class BaseWebServer:
         Returns:
             bool: True if a client of the specified type is connected
         """
-        return self._is_room_empty(str(client_type))
+        return not self._is_room_empty(str(client_type))
 
     def _is_room_empty(self, room_name: str, namespace: Optional[str] = '/') -> bool:
         """Check if a room is empty"""

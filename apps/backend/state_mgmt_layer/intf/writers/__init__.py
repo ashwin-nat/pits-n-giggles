@@ -22,21 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
+from .manual_save import ManualSaveRsp
 
-import apps.backend.state_mgmt_layer as TelWebAPI
-from lib.inter_task_communicator import AsyncInterTaskCommunicator
+# -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
-# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
-
-async def handleManualSave(_msg: dict, _logger: logging.Logger) -> dict:
-    """Handle manual save command"""
-    return await TelWebAPI.ManualSaveRsp().saveToDisk()
-
-async def handleShutdown(msg: dict, logger: logging.Logger) -> dict:
-    """Handle shutdown command"""
-
-    reason = msg.get('reason', 'N/A')
-    logger.info(f"Received shutdown command. Reason: {reason}")
-    await AsyncInterTaskCommunicator().send('shutdown', {"reason" : reason})
-    return {'status': 'success'}
+__all__ = [
+    "ManualSaveRsp",
+]

@@ -22,46 +22,45 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import json
+import asyncio
 import logging
-from typing import Callable, Awaitable, Dict
+from functools import partial
+from typing import List, Optional
 
-from .command_handlers import handleManualSave
+from lib.ipc import IpcChildAsync
 
-# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
+from apps.backend.state_mgmt_layer import SessionState
 
-# Define a type for async handler functions
-CommandHandler = Callable[[dict, logging.Logger], Awaitable[dict]]
-
-
-# Registry of command handlers
-COMMAND_HANDLERS: Dict[str, CommandHandler] = {
-    "manual-save": handleManualSave,
-}
+from .command_dispatcher import processIpcCommand
+from .command_handlers import handleShutdown
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-async def processIpcCommand(msg: dict, logger: logging.Logger) -> dict:
-    """Handle IPC commands from the parent process (launcher)
+def registerIpcTask(
+        ipc_port: Optional[int],
+        logger: logging.Logger,
+        session_state: SessionState,
+        tasks: List[asyncio.Task]
+        ) -> None:
+    """Register the IPC task
 
     Args:
-        msg (dict): IPC command
+        ipc_port (Optional[int]): IPC port
         logger (logging.Logger): Logger
-
-    Returns:
-        dict: IPC response
+        session_state (SessionState): Handle to the session state object
+        tasks (List[asyncio.Task]): List of tasks
     """
-    logger.debug(f"Received IPC command: {json.dumps(msg, indent=2)}")
 
-    if not (cmd := msg.get("cmd")):
-        return {"status": "error", "message": "Missing command name"}
+    # Register the IPC task only if port is specified
+    if ipc_port:
+        logger.debug(f"Starting IPC server on port {ipc_port}")
+        server = IpcChildAsync(ipc_port, "Backend")
+        server.register_shutdown_callback(partial(handleShutdown, logger=logger))
+        tasks.append(asyncio.create_task(server.run(partial(
+            processIpcCommand, logger=logger, session_state=session_state)), name="IPC Task"))
 
-    if not (handler := COMMAND_HANDLERS.get(cmd)):
-        return {"status": "error", "message": f"Unknown command: {cmd}"}
+# -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
-    try:
-        args = msg.get("args", {})
-        return await handler(args, logger)
-    except Exception as e: # pylint: disable=broad-except
-        logger.exception(f"Error handling command '{cmd}': {e}")
-        return {"status": "error", "message": f"Exception during command handling: {str(e)}"}
+__all__ = [
+    "registerIpcTask",
+]

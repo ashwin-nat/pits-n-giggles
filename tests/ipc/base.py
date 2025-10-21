@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) [2024] [Ashwin Natarajan]
+# Copyright (c) [2025] [Ashwin Natarajan]
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -19,30 +19,17 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+# pylint: skip-file
 
-# -------------------------------------- IMPORTS -----------------------------------------------------------------------
+import sys
+import os
 
-import logging
+# Add the parent directory to the Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from lib.config import PngSettings
+from tests_base import F1TelemetryUnitTestsBase
 
-from .session_state import SessionState
+# ----------------------------------------------------------------------------------------------------------------------
 
-# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
-
-def initSessionState(logger: logging.Logger, settings: PngSettings, ver_str: str) -> SessionState:
-    """Init the DriverData object
-
-    Args:
-        logger (logging.Logger): Logger
-        settings (PngSettings): Settings
-        ver_str (str): Version string
-
-    Returns:
-        SessionState: The SessionState object reference
-    """
-    return SessionState(
-        logger,
-        settings,
-        ver_str
-    )
+class TestIPC(F1TelemetryUnitTestsBase):
+    pass
