@@ -26,7 +26,6 @@ import json
 import logging
 import time
 from copy import deepcopy
-from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 from apps.backend.state_mgmt_layer.data_per_driver import (DataPerDriver,
@@ -315,6 +314,7 @@ class SessionState:
 
     __slots__ = (
         'm_logger',
+        'm_pkt_count',
         'm_driver_data',
         'm_player_index',
         'm_fastest_index',
@@ -352,6 +352,7 @@ class SessionState:
         """
 
         self.m_logger = logger
+        self.m_pkt_count: int = 0
         self.m_driver_data: List[Optional[DataPerDriver]] = [None] * self.MAX_DRIVERS
         self.m_player_index: Optional[int] = None
         self.m_fastest_index: Optional[int] = None
@@ -404,6 +405,8 @@ class SessionState:
         self.m_session_info.clear()
         self.m_custom_markers_history.clear()
         self.m_race_ctrl.clear()
+
+        self.m_pkt_count = 0
 
         # No need to clear config params
 
@@ -723,15 +726,6 @@ class SessionState:
         # --- Start constructing base JSON from packet
         final_json = {
             "classification-data" : []
-        }
-
-        # Add session debug info
-        now = datetime.now().astimezone()
-        final_json["debug"] = {
-            "session-uid" : self.m_session_info.m_session_uid,
-            "timestamp" : now.strftime("%Y-%m-%d %H:%M:%S %Z"),
-            "timezone" : now.tzinfo.key if hasattr(now.tzinfo, "key") else str(now.tzinfo),
-            "utc-offset-seconds" : int(now.utcoffset().total_seconds()),
         }
 
         speed_trap_records = []

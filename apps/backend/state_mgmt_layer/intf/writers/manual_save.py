@@ -67,8 +67,10 @@ class ManualSaveRsp:
                 "message": "No data available to save"
             }
 
+        now = datetime.now().astimezone()
+
         # Construct output filename using timestamp
-        timestamp_str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        timestamp_str = now.strftime("%Y_%m_%d_%H_%M_%S")
         final_json_file_name = f"{self.m_event_str}Manual_{timestamp_str}.json"
 
         # Build final classification JSON
@@ -78,6 +80,17 @@ class ManualSaveRsp:
                 "status": "error",
                 "message": "No data available to save"
             }
+
+        final_json["debug"] = final_json.get("debug", {})
+        final_json["debug"].update({
+            "session-uid" : self.m_session_state.m_session_info.m_session_uid,
+            "timestamp" : now.strftime("%Y-%m-%d %H:%M:%S %Z"),
+            "timezone" : now.tzinfo.key if hasattr(now.tzinfo, "key") else str(now.tzinfo),
+            "utc-offset-seconds" : int(now.utcoffset().total_seconds()),
+            "reason": "Manual save",
+            "packet-count": self.m_session_state.m_pkt_count,
+            "file-name": final_json_file_name,
+        })
 
         # Save to disk
         try:
