@@ -22,17 +22,16 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-# TODO: run imports organizer
-from typing import Optional, Callable
 import logging
 import threading
 import time
+from typing import Callable, Optional
 
 import socketio
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class BaseSubscriber:
+class IpcSubscriber:
     """
     Base class for a synchronous Socket.IO client running in its own thread.
     Subclasses register events via @self.on('event-name') and optionally
@@ -182,7 +181,7 @@ class BaseSubscriber:
 # ------------------------- EXAMPLES -----------------------------------------------------------------------------------
 # TODO: remove
 
-class RaceTableClient(BaseSubscriber):
+class RaceTableClient(IpcSubscriber):
     def __init__(self, url: str, logger: Optional[logging.Logger] = None):
         super().__init__(url, logger)
 
@@ -212,7 +211,7 @@ def get_logger(name: str = None, to_stdout: bool = True) -> logging.Logger:
     logger.handlers.clear()
 
     if to_stdout:
-        import sys # pylint: disable=import-outside-toplevel
+        import sys  # pylint: disable=import-outside-toplevel
         logger.setLevel(logging.DEBUG)
         handler = logging.StreamHandler(sys.stdout)
         handler.setLevel(logging.DEBUG)
