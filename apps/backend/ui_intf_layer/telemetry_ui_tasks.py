@@ -26,8 +26,9 @@ import asyncio
 import logging
 from typing import List, Optional
 
-import apps.backend.state_mgmt_layer.intf as TelWebAPI
 from apps.backend.state_mgmt_layer import SessionState
+from apps.backend.state_mgmt_layer.intf import (PeriodicUpdateData,
+                                                StreamOverlayData)
 from lib.config import PngSettings
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.web_server import ClientType
@@ -109,7 +110,7 @@ async def raceTableClientUpdateTask(
         if server.is_client_of_type_connected(ClientType.RACE_TABLE):
             await server.send_to_clients_of_type(
                 event='race-table-update',
-                data=TelWebAPI.PeriodicUpdateData(logger, session_state).toJSON(),
+                data=PeriodicUpdateData(logger, session_state).toJSON(),
                 client_type=ClientType.RACE_TABLE)
         await asyncio.sleep(sleep_duration)
 
@@ -135,7 +136,7 @@ async def streamOverlayUpdateTask(
         if server.is_client_of_type_connected(ClientType.PLAYER_STREAM_OVERLAY):
             await server.send_to_clients_of_type(
                 event='player-overlay-update',
-                data=TelWebAPI.StreamOverlayData(session_state).toJSON(stream_overlay_start_sample_data),
+                data=StreamOverlayData(session_state).toJSON(stream_overlay_start_sample_data),
                 client_type=ClientType.PLAYER_STREAM_OVERLAY)
         await asyncio.sleep(sleep_duration)
 

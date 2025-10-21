@@ -24,8 +24,8 @@
 
 from typing import Any, Dict
 
-from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.overtakes import GetOvertakesStatus
+from apps.backend.state_mgmt_layer.session_state import SessionState
 
 from ..base import BaseAPI
 

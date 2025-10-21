@@ -24,8 +24,8 @@
 
 from typing import Any, Dict, Optional
 
-from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.data_per_driver import DataPerDriver
+from apps.backend.state_mgmt_layer.session_state import SessionState
 from lib.f1_types import CarStatusData, F1Utils
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 

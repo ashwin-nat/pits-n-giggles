@@ -26,7 +26,7 @@ import logging
 from datetime import datetime
 from typing import Any, Dict
 
-from apps.backend.state_mgmt_layer import SessionState
+from apps.backend.state_mgmt_layer.session_state import SessionState
 from lib.save_to_disk import save_json_to_file
 
 # ------------------------- API - CLASSES ------------------------------------------------------------------------------
