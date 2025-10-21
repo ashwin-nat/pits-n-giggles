@@ -24,9 +24,11 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .tests_parent_child import TestIpcParentChild
+from .tests_subscriber import TestIpcSubscriber
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
     "TestIpcParentChild",
+    "TestIpcSubscriber",
 ]
