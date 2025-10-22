@@ -181,9 +181,10 @@ class PngAppMgrBase(ABC):
             self.status_var.set("Starting...")
 
         # Start output capture and monitor threads outside the lock to avoid deadlocks
-        threading.Thread(target=self._capture_output, daemon=True).start()
-        threading.Thread(target=self._monitor_process_exit, daemon=True).start()
-        threading.Thread(target=self._send_heartbeat, args=(self.ipc_port,), daemon=True).start()
+        threading.Thread(target=self._capture_output, daemon=True, name=f"{self.display_name} output capture").start()
+        threading.Thread(target=self._monitor_process_exit, daemon=True, name=f"{self.display_name} exit monitor").start()
+        threading.Thread(target=self._send_heartbeat, args=(self.ipc_port,), daemon=True,
+                         name=f"{self.display_name} heartbeat").start()
 
         self.console_app.debug_log(f"{self.display_name} started successfully. PID = {self.child_pid}")
 
@@ -230,7 +231,7 @@ class PngAppMgrBase(ABC):
             except Exception as e:  # pylint: disable=broad-exception-caught
                 self.console_app.debug_log(f"{self.display_name}: Error during start/stop: {e}")
 
-        threading.Thread(target=worker, daemon=True).start()
+        threading.Thread(target=worker, daemon=True, name=f"{self.display_name} start/stop").start()
 
     def _start_stop_blocking(self):
         """Actual start/stop logic that may block (called in worker thread)."""
