@@ -177,6 +177,9 @@ class HttpsSettings(BaseModel):
         """Path to SSL private key file. Will be None if HTTPS is disabled."""
         return None if not self.enabled else self.key_file_path
 
+class HudSettings(BaseModel):
+    enabled: bool = Field(False, description="Enable HUD (only on Windows, setting will be ignored on other OS's)")
+
 class PitTimeLossF1(BaseModel):
     Melbourne: float = Field(18.0)
     Shanghai: float = Field(22.0)
@@ -252,6 +255,7 @@ class PngSettings(BaseModel):
     Forwarding: ForwardingSettings = Field(default_factory=ForwardingSettings)
     StreamOverlay: StreamOverlaySettings = Field(default_factory=StreamOverlaySettings)
     HTTPS: HttpsSettings = Field(default_factory=HttpsSettings)
+    HUD: HudSettings = Field(default_factory=HudSettings)
     TimeLossInPitsF1: PitTimeLossF1 = Field(default_factory=PitTimeLossF1)
     TimeLossInPitsF2: PitTimeLossF2 = Field(default_factory=PitTimeLossF2)
     SubSysCtrlCfg__: SubSysCtrl = Field(default_factory=SubSysCtrl)
