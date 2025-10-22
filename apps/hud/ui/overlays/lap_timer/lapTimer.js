@@ -13,10 +13,7 @@ class LapTimer {
     }
 
     update(data) {
-        // console.log("LapTimer got data 123:", data);
-        // test_import();
         const refRow = getRefRow(data);
-        console.log("LapTimer refRow:", refRow);
 
         if (!refRow) {
             this.#clear();

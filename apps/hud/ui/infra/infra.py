@@ -245,7 +245,7 @@ class WindowManager:
                 self.logger.debug(f"[WindowManager]   Checking window: '{title}' (hwnd={h})")
                 if window_id == title:
                     hwnd = h
-                    self.logger.info(f"[WindowManager] ✓ Found window handle for '{window_id}': {hwnd}")
+                    self.logger.info(f"[WindowManager] Found window handle for '{window_id}': {hwnd}")
                     return False  # Stop enumeration
             return True
 
@@ -271,7 +271,7 @@ class WindowManager:
             time.sleep(0.2)
 
         if not hwnd:
-            self.logger.error(f"[WindowManager] ✗ Window '{window_id}' not found after {max_attempts} attempts")
+            self.logger.error(f"[WindowManager] Window '{window_id}' not found after {max_attempts} attempts")
             return False
 
         # Update internal state
@@ -311,7 +311,7 @@ class WindowManager:
             win32con.SWP_NOSIZE | win32con.SWP_NOZORDER
         )
 
-        self.logger.info(f"[WindowManager] ✓ Window '{window_id}' mode successfully changed to {mode}")
+        self.logger.info(f"[WindowManager] Window '{window_id}' mode successfully changed to {mode}")
         return True
 
     def toggle_mode(self, window_id):
@@ -356,7 +356,7 @@ class WindowManager:
             """
             window.evaluate_js(js_code)
         except Exception as e: # pylint: disable=broad-exception-caught
-            self.logger.error(f"[WindowManager] ✗ Failed to push data to '{window_id}': {type(e).__name__}: {e}")
+            self.logger.error(f"[WindowManager] Failed to push data to '{window_id}': {type(e).__name__}: {e}")
 
     def stop(self):
         """Stop telemetry updates and close windows"""
@@ -365,7 +365,7 @@ class WindowManager:
         for window_id, window in self.windows.items():
             try:
                 window.destroy()
-                self.logger.info(f"[WindowManager] ✓ Closed window '{window_id}'")
+                self.logger.info(f"[WindowManager] Closed window '{window_id}'")
             except Exception as e: # pylint: disable=broad-except
                 self.logger.error(f"[WindowManager] Failed to close window '{window_id}': {e}")
         self.logger.info("[WindowManager] All windows closed")
