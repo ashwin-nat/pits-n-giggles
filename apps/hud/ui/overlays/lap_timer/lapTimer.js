@@ -7,71 +7,105 @@ class LapTimer {
         this.sector2El = document.getElementById('sector2');
         this.sector3El = document.getElementById('sector3');
 
-        this.startTime = Date.now();
-        this.updateCurrentLap();
-
-        // this.simulateDemo();
-    }
-
-    formatTime(milliseconds) {
-        const totalSeconds = Math.floor(milliseconds / 1000);
-        const minutes = Math.floor(totalSeconds / 60);
-        const seconds = totalSeconds % 60;
-        const ms = milliseconds % 1000;
-
-        return `${minutes}:${seconds.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+        this.currSessionUID = null;
+        this.currLapNum = null;
+        this.isDisplayingCompletedLap = false;
     }
 
     update(data) {
         // console.log("LapTimer got data 123:", data);
         // test_import();
-    }
+        const refRow = getRefRow(data);
+        console.log("LapTimer refRow:", refRow);
 
-    updateLastLap(time) {
-        this.lastLapEl.textContent = this.formatTime(time);
-    }
-
-    updateBestLap(time) {
-        this.bestLapEl.textContent = this.formatTime(time);
-    }
-
-    updateCurrentLap() {
-        const elapsed = Date.now() - this.startTime;
-        this.currentLapEl.textContent = this.formatTime(elapsed);
-        requestAnimationFrame(() => this.updateCurrentLap());
-    }
-
-    setSectorStatus(sectorNumber, status) {
-        const sectorEl = [this.sector1El, this.sector2El, this.sector3El][sectorNumber - 1];
-
-        sectorEl.classList.remove('purple', 'green', 'yellow', 'red');
-
-        if (status !== 'none') {
-            sectorEl.classList.add(status);
+        if (!refRow) {
+            this.#clear();
+            return;
         }
+
+        if (this.currSessionUID != data["session-uid"]) {
+            this.#clear();
+        }
+        this.currSessionUID = data["session-uid"];
+
+        const lapInfo = refRow["lap-info"];
+        this.updateLastLap(lapInfo["last-lap"]["lap-time-ms"]);
+        this.updateBestLap(lapInfo["best-lap"]["lap-time-ms"]);
+
+        const currLap = lapInfo["curr-lap"];
+        this.updateCurrLap(currLap["lap-time-ms"]);
+
+        if (this.currLapNum != lapInfo["current-lap"]) {
+            // completed a lap
+            this.isDisplayingCompletedLap = true;
+
+            // display completed lap first
+            this.updateSectorStatus(lapInfo["last-lap"]["sector-status"]);
+            this.updateCurrLap(lapInfo["last-lap"]["lap-time-ms"]);
+
+            setTimeout(() => {
+                // display new lap after 5s
+                this.isDisplayingCompletedLap = false;
+                this.updateSectorStatus(currLap["sector-status"]);
+                this.updateCurrLap(currLap["lap-time-ms"]);
+            }, 5000);
+
+            console.log("LapTimer: completed lap, displaying completed lap sector status for 5s");
+        } else {
+            if (!this.isDisplayingCompletedLap) {
+                this.updateSectorStatus(currLap["sector-status"]);
+                this.updateCurrLap(currLap["lap-time-ms"]);
+            } else {
+                console.log("LapTimer: still displaying completed lap sector status");
+            }
+        }
+
+        this.currLapNum = lapInfo["current-lap"];
     }
 
-    simulateDemo() {
-        setTimeout(() => {
-            this.setSectorStatus(1, 'green');
-        }, 2000);
+    updateLastLap(timeMs) {
+        this.lastLapEl.textContent = formatLapTime(timeMs);
+    }
 
-        setTimeout(() => {
-            this.setSectorStatus(2, 'purple');
-        }, 4000);
+    updateBestLap(timeMs) {
+        this.bestLapEl.textContent = formatLapTime(timeMs);
+    }
 
-        setTimeout(() => {
-            this.setSectorStatus(3, 'yellow');
-        }, 6000);
+    updateCurrLap(timeMs) {
+        this.currentLapEl.textContent = formatLapTime(timeMs);
+        requestAnimationFrame(() => this.updateCurrLap(timeMs));
+    }
 
-        setTimeout(() => {
-            this.updateLastLap(87234);
-            this.updateBestLap(85678);
-            this.startTime = Date.now();
-            this.setSectorStatus(1, 'none');
-            this.setSectorStatus(2, 'none');
-            this.setSectorStatus(3, 'none');
-        }, 8000);
+    updateSectorStatus(sectorStatus) {
+
+        this.#updateSectorStatusHelper(this.sector1El, sectorStatus[0]);
+        this.#updateSectorStatusHelper(this.sector2El, sectorStatus[1]);
+        this.#updateSectorStatusHelper(this.sector3El, sectorStatus[2]);
+    }
+
+    #updateSectorStatusHelper(sectorElement, status) {
+
+        sectorElement.classList.remove('purple', 'green', 'yellow', 'red', 'grey');
+        const classMap = {
+            [-2]: 'grey',
+            [-1]: 'red',
+            [0]: 'yellow',
+            [1]: 'green',
+            [2]: 'purple',
+        };
+        sectorElement.classList.add(classMap[status]);
+    }
+
+    #clear() {
+        // this.lastLapEl.textContent = '--:--.---';
+        // this.bestLapEl.textContent = '--:--.---';
+        // this.currentLapEl.textContent = '--:--.---';
+        // this.sector1El.className = '';
+        // this.sector2El.className = '';
+        // this.sector3El.className = '';
+
+        this.currLapNum = null;
+        this.currSessionUID = null;
     }
 }
 

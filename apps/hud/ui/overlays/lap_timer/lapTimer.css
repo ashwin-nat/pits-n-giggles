@@ -6,7 +6,7 @@
 
 body {
     font-family: 'Arial', sans-serif;
-    background: #1a1a1a;
+    background: none;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -58,13 +58,13 @@ body {
 
 .sector-status {
     display: flex;
-    gap: 8px;
-    margin-top: 24px;
+    /* gap: 8px; */
+    /* margin-top: 24px; */
 }
 
 .sector {
     flex: 1;
-    height: 60px;
+    height: 30px;
     background: #1a1a1a;
     border: 2px solid #2a2a2a;
     border-radius: 6px;
@@ -82,8 +82,8 @@ body {
 }
 
 .sector.purple {
-    background: linear-gradient(135deg, #8b5cf6, #6d28d9);
-    border-color: #8b5cf6;
+    background: linear-gradient(135deg, #800080, #6d28d9);
+    border-color: #800080;
 }
 
 .sector.purple .sector-label {
@@ -91,8 +91,8 @@ body {
 }
 
 .sector.green {
-    background: linear-gradient(135deg, #10b981, #059669);
-    border-color: #10b981;
+    background: linear-gradient(135deg, #28a745, #059669);
+    border-color: #28a745;
 }
 
 .sector.green .sector-label {
@@ -100,8 +100,8 @@ body {
 }
 
 .sector.yellow {
-    background: linear-gradient(135deg, #fbbf24, #f59e0b);
-    border-color: #fbbf24;
+    background: linear-gradient(135deg, #ffc107, #f59e0b);
+    border-color: #ffc107;
 }
 
 .sector.yellow .sector-label {
@@ -109,10 +109,19 @@ body {
 }
 
 .sector.red {
-    background: linear-gradient(135deg, #ef4444, #dc2626);
-    border-color: #ef4444;
+    background: linear-gradient(135deg, #dc3545, #dc2626);
+    border-color: #dc3545;
 }
 
 .sector.red .sector-label {
+    color: #ffffff;
+}
+
+.sector.grey {
+    background: linear-gradient(135deg, #6c757d, #495057);
+    border-color: #6c757d;
+}
+
+.sector.grey .sector-label {
     color: #ffffff;
 }

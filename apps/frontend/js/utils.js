@@ -528,3 +528,25 @@ function getRelevantRaceTableRows(data, numAdjacentCars, shouldInsertRejoinPosit
     const upperIndex = relevantPositions[relevantPositions.length - 1];
     return sortedTableEntries.slice(lowerIndex, upperIndex);
 }
+
+function getRefRow(data) {
+
+    if (!data || !data["table-entries"] || (data["table-entries"].length === 0)) {
+        return null;
+    }
+
+    const isSpectating = data["is-spectating"];
+    const spectatorIndex = data["spectator-car-index"];
+
+    if (isSpectating && (spectatorIndex != null)) {
+        if (spectatorIndex >= 0 && spectatorIndex < data["table-entries"].length) {
+            return data["table-entries"][spectatorIndex];
+        } else {
+            console.warn(`Spectator index ${spectatorIndex} is out of bounds.`);
+            return null;
+        }
+    } else {
+        const playerRow = data["table-entries"].find(row => row?.["driver-info"]?.["is-player"] === true);
+        return playerRow;
+    }
+}
