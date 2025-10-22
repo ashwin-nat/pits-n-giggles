@@ -5,11 +5,10 @@ import random
 import ctypes
 import win32gui
 import win32con
+import signal
+import sys
 
 from typing import Dict
-
-# Global config - set to 1 or 2
-INITIAL_MODE = 2  # 1 = normal, 2 = click-through frameless
 
 class API:
     def __init__(self, window_id):
@@ -25,24 +24,33 @@ class API:
         """Called from JS to get current telemetry data"""
         return self.data
 
+    # Capture console logs from JS
     def log(self, message):
         print(f"[{self.window_id} JS]: {message}")
 
 class WindowManager:
     def __init__(self):
-        self.windows = {}
+        self.windows: Dict[str, webview.Window] = {}
         self.apis: Dict[str, API] = {}
+        self.window_modes: Dict[str, int] = {}
+        self._running = True
 
-    def create_window(self, window_id, x=100, y=100):
-        """Create a new overlay window"""
+    def create_window(self, window_id, x=100, y=100, initial_mode=2):
+        """
+        Create a new overlay window.
+        initial_mode:
+            1 = normal (clickable + resizable)
+            2 = click-through frameless
+        """
         api = API(window_id)
         self.apis[window_id] = api
+        self.window_modes[window_id] = initial_mode
 
-        frameless = (INITIAL_MODE == 2)
-        resizable = (INITIAL_MODE == 1)
+        frameless = (initial_mode == 2)
+        resizable = (initial_mode == 1)
 
         window = webview.create_window(
-            f'Sim Racing Overlay {window_id}',
+            window_id,
             'index.html',
             js_api=api,
             width=400,
@@ -51,13 +59,14 @@ class WindowManager:
             y=y,
             frameless=frameless,
             on_top=True,
-            resizable=resizable,
+            resizable=resizable
         )
 
         self.windows[window_id] = window
 
-        # 🔥 Patch console.log in the browser to redirect to Python
-        def inject_logger():
+        # Inject JS logger and apply mode after window is ready
+        def on_window_ready():
+            # Inject logger
             js_code = """
                 (function() {
                     const origLog = console.log;
@@ -77,24 +86,63 @@ class WindowManager:
                     };
                 })();
             """
-            window.evaluate_js(js_code)
+            try:
+                window.evaluate_js(js_code)
+            except Exception as e:
+                print(f"[WARN] Could not inject logger for {window_id}: {e}")
 
-        # Delay injection slightly so the DOM is ready
-        threading.Timer(1.0, inject_logger).start()
+            # Apply mode after window is fully loaded
+            time.sleep(0.5)  # Give OS time to register the window
+            self.set_window_mode(window_id, initial_mode)
 
-        # Apply mode after the window is fully created
-        threading.Timer(0.5, lambda: self.set_window_mode(window_id, INITIAL_MODE)).start()
+        window.events.loaded += on_window_ready
 
         return window
 
-    def set_window_mode(self, window_id, mode):
-        """Set mode for a specific window"""
-        hwnd = win32gui.FindWindow(None, f'Sim Racing Overlay {window_id}')
+    def find_window_handle(self, window_id):
+        """Find window handle by enumerating all windows"""
+        hwnd = None
+
+        def callback(h, extra):
+            nonlocal hwnd
+            if win32gui.IsWindowVisible(h):
+                title = win32gui.GetWindowText(h)
+                print(f"In callback: found window title: {title}")
+                if window_id == title:
+                    hwnd = h
+                    print(f"[INFO] Found window handle for {window_id}: {hwnd}")
+                    return False  # Stop enumeration
+            return True
+
+        win32gui.EnumWindows(callback, None)
+
         if not hwnd:
+            # Try alternative approach
+            hwnd = win32gui.FindWindow(None, window_id)
+
+        return hwnd
+
+    def set_window_mode(self, window_id, mode):
+        """Set mode for a specific window dynamically"""
+        max_attempts = 10
+        hwnd = None
+
+        # Try to find the window with retries
+        for attempt in range(max_attempts):
+            hwnd = self.find_window_handle(window_id)
+            if hwnd:
+                break
+            time.sleep(0.2)
+
+        if not hwnd:
+            print(f"[WARN] Window {window_id} not found after {max_attempts} attempts.")
             return False
 
+        # Update internal state
+        self.window_modes[window_id] = mode
+
         if mode == 1:
-            # Normal window with controls and resize
+            # Normal mode
             ex_style = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
             ex_style &= ~win32con.WS_EX_TRANSPARENT
             win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, ex_style)
@@ -102,19 +150,17 @@ class WindowManager:
             style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
             style |= win32con.WS_CAPTION | win32con.WS_SYSMENU | win32con.WS_THICKFRAME
             win32gui.SetWindowLong(hwnd, win32con.GWL_STYLE, style)
-
         else:
-            # Frameless, click-through
+            # Click-through frameless
             ex_style = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
             ex_style |= (
-                win32con.WS_EX_LAYERED |
-                win32con.WS_EX_TRANSPARENT|
-                win32con.WS_EX_NOACTIVATE |
-                win32con.WS_EX_TOOLWINDOW
+                win32con.WS_EX_LAYERED
+                | win32con.WS_EX_TRANSPARENT
+                | win32con.WS_EX_NOACTIVATE
+                | win32con.WS_EX_TOOLWINDOW
             )
             win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, ex_style)
 
-            # Fully visible (255 alpha)
             ctypes.windll.user32.SetLayeredWindowAttributes(hwnd, 0, 255, 0x2)
 
             style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
@@ -128,29 +174,45 @@ class WindowManager:
             win32con.SWP_NOSIZE | win32con.SWP_NOZORDER
         )
 
+        print(f"[INFO] Window '{window_id}' mode changed to {mode}.")
         return True
 
+    def toggle_mode(self, window_id):
+        """Convenience method to switch between normal and click-through"""
+        current = self.window_modes.get(window_id, 1)
+        new_mode = 2 if current == 1 else 1
+        self.set_window_mode(window_id, new_mode)
+        return new_mode
+
     def update_window_data(self, window_id, data):
-        """Update data for a specific window"""
         if window_id in self.apis:
             self.apis[window_id].data.update(data)
 
     def broadcast_data(self, data):
-        """Update data for all windows"""
         for api in self.apis.values():
             api.data.update(data)
 
     def unicast_data(self, window_id, data):
-        """Update data for a specific window only"""
         window = self.apis.get(window_id)
-        if not window_id:
-            return
-        window.data.update(data)
+        if window:
+            window.data.update(data)
+
+    def stop(self):
+        """Stop telemetry updates and close windows"""
+        print("[INFO] Stopping WindowManager...")
+        self._running = False
+        for window_id, window in self.windows.items():
+            try:
+                window.destroy()
+                print(f"[INFO] Closed window {window_id}")
+            except Exception:
+                pass
+        print("[INFO] All windows closed.")
 
 def update_telemetry(manager: WindowManager):
     """Background thread that updates telemetry data"""
     lap_time = 0.0
-    while True:
+    while manager._running:
         time.sleep(0.1)
         data = {
             'speed': random.randint(0, 320),
@@ -165,14 +227,29 @@ def update_telemetry(manager: WindowManager):
 
 manager = WindowManager()
 
+def signal_handler(sig, frame):
+    """Handle Ctrl+C gracefully"""
+    print("\n[INFO] Received interrupt signal. Shutting down...")
+    manager.stop()
+    sys.exit(0)
+
 def main():
-    manager.create_window('window1', x=100, y=100)
-    manager.create_window('window2', x=550, y=100)
+    # Register signal handler for Ctrl+C
+    signal.signal(signal.SIGINT, signal_handler)
+
+    # Each window can now have its own mode
+    manager.create_window('window1', x=100, y=100, initial_mode=2)
+    manager.create_window('window2', x=550, y=100, initial_mode=2)
 
     telemetry_thread = threading.Thread(target=update_telemetry, args=(manager,), daemon=True)
     telemetry_thread.start()
 
-    webview.start()
+    try:
+        webview.start(debug=False)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        manager.stop()
 
 if __name__ == '__main__':
     main()
