@@ -211,18 +211,37 @@ class WindowManager:
         self.set_window_mode(window_id, new_mode)
         return new_mode
 
-    def update_window_data(self, window_id, data):
-        if window_id in self.apis:
-            self.apis[window_id].data.update(data)
-
     def broadcast_data(self, data):
-        for api in self.apis.values():
+        for window_id, api in self.apis.items():
             api.data.update(data)
+            if window := self.windows.get(window_id):
+                self._push_to_window(window, window_id, data)
 
     def unicast_data(self, window_id, data):
         window = self.apis.get(window_id)
         if window:
             window.data.update(data)
+            self._push_to_window(window, window_id, data)
+
+    def _push_to_window(self, window: webview.Window, window_id, data):
+        """Push data update to JavaScript via custom event"""
+        try:
+            # Convert data to JSON string for JS
+            import json
+            data_json = json.dumps(data)
+
+            # Dispatch custom event to JS
+            js_code = f"""
+                (function() {{
+                    const event = new CustomEvent('telemetry-update', {{
+                        detail: {data_json}
+                    }});
+                    window.dispatchEvent(event);
+                }})();
+            """
+            window.evaluate_js(js_code)
+        except Exception as e:
+            print(f"[WARN] Failed to push data to {window_id}: {e}")
 
     def stop(self):
         """Stop telemetry updates and close windows"""
