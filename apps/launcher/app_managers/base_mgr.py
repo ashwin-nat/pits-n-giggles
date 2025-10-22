@@ -200,7 +200,7 @@ class PngAppMgrBase(ABC):
             self.status_var.set("Stopping...")
             if self._send_ipc_shutdown():
                 try:
-                    self.process.wait(timeout=5)
+                    self.process.wait(timeout=10)
                 except subprocess.TimeoutExpired:
                     self.console_app.debug_log(f"{self.display_name} did not exit in time after IPC shutdown. Killing it.")
                     self._terminate_process()
