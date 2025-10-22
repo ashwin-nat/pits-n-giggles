@@ -23,7 +23,8 @@ class LapTimer {
     }
 
     update(data) {
-        console.log("LapTimer got data:", data);
+        // console.log("LapTimer got data 123:", data);
+        test_import();
     }
 
     updateLastLap(time) {
@@ -81,8 +82,11 @@ window.addEventListener('telemetry-update', (event) => {
     timer.update(event.detail);
 });
 
-// Initial update when ready
-window.addEventListener('pywebviewready', async () => {
+// Wait for utils to be ready before trying to use them
+window.addEventListener('utils-ready', async () => {
+    console.log('[LapTimer] Utils ready, fetching initial telemetry...');
+
+    // Now safe to use utils functions
     try {
         const data = await pywebview.api.get_data();
         timer.update(data);

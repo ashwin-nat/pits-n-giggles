@@ -447,3 +447,7 @@ function getTLA(name) {
   // Return first 3 uppercase letters
   return clean.substring(0, 3).toUpperCase();
 }
+
+function test_import() {
+    console.log("---------------------------------->>> Utils test function executed.");
+}

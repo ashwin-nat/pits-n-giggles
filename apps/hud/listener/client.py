@@ -61,5 +61,4 @@ class HudClient(IpcSubscriber):
         @self.on('race-table-update')
         def handle_race_table(data):
             """Race table data update handler."""
-            self._log(logging.INFO, "[RaceTableClient] Received race-table-update")
             self.m_window_manager.race_table_update(data)

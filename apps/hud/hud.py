@@ -83,7 +83,7 @@ def main(logger: logging.Logger, config: PngSettings, ipc_port: int) -> None:
         window_manager=window_manager,
         stop_event=stop_event)
 
-    webview.start()
+    webview.start(debug=True)
 
     # TODO: timeouts?
     updater_thread.join()
