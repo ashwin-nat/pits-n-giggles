@@ -26,19 +26,21 @@ import logging
 import threading
 
 from lib.ipc import IpcSubscriber
+from ..ui.infra import WindowManager
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class HudClient(IpcSubscriber):
     """Socket.IO client to receive HUD data updates."""
-    def __init__(self, port: int, logger: logging.Logger, stop_event: threading.Event):
+    def __init__(self, port: int, logger: logging.Logger, window_manager: WindowManager, stop_event: threading.Event):
         """Args:
             port: Port number of the Socket.IO server.
             logger: Logger instance.
             stop_event: Event to signal stopping.
         """
         url = f"http://localhost:{port}"
-        super().__init__(url, logger, stop_event)
+        super().__init__(url, logger, stop_event, msg_packed=True)
+        self.m_window_manager = window_manager
 
         # optional connect/disconnect hooks
         @self.on_connect
@@ -59,4 +61,5 @@ class HudClient(IpcSubscriber):
         @self.on('race-table-update')
         def handle_race_table(data):
             """Race table data update handler."""
-            self._log(logging.INFO, f"[RaceTableClient] Received race-table-update ({len(data)} bytes)")
+            self._log(logging.INFO, f"[RaceTableClient] Received race-table-update")
+            self.m_window_manager.race_table_update(data)

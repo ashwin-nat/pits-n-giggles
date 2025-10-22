@@ -22,13 +22,14 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import webview
-import time
 import ctypes
-import win32gui
-import win32con
-
+import logging
+import time
 from typing import Dict
+
+import webview
+import win32con
+import win32gui
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -56,7 +57,8 @@ class API:
         print(f"[{self.window_id} JS]: {message}")
 
 class WindowManager:
-    def __init__(self):
+    def __init__(self, logger: logging.Logger):
+        self.logger = logger
         self.windows: Dict[str, webview.Window] = {}
         self.apis: Dict[str, API] = {}
         self.window_modes: Dict[str, int] = {}
@@ -218,9 +220,9 @@ class WindowManager:
                 self._push_to_window(window, window_id, data)
 
     def unicast_data(self, window_id, data):
-        window = self.apis.get(window_id)
-        if window:
-            window.data.update(data)
+        if api := self.apis.get(window_id):
+            api.data.update(data)
+        if window := self.windows.get(window_id):
             self._push_to_window(window, window_id, data)
 
     def _push_to_window(self, window: webview.Window, window_id, data):
@@ -254,3 +256,8 @@ class WindowManager:
             except Exception:
                 pass
         print("[INFO] All windows closed.")
+
+    def race_table_update(self, data):
+        """Handle race table update"""
+        self.logger.info(f"[WindowManager] Received race-table-update ({len(data)} bytes)")
+        self.unicast_data("lap_timer", data)

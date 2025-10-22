@@ -27,6 +27,7 @@ import threading
 import time
 from typing import Callable, Optional
 
+import msgpack
 import socketio
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -41,18 +42,21 @@ class IpcSubscriber:
     def __init__(self,
                  url: str,
                  logger: Optional[logging.Logger] = None,
-                 stop_event: Optional[threading.Event] = None
+                 stop_event: Optional[threading.Event] = None,
+                 msg_packed: bool = False
                  ) -> None:
         """
         Args:
             url: Socket.IO server URL.
             logger: Optional logger; if None, logging is disabled.
             stop_event: Optional threading.Event to signal stopping; if None, a new one is created.
+            msg_packed: Whether to use msgpack for message de-serialization.
         """
         self.url = url
         self.logger = logger
         self._stop_event = threading.Event() if stop_event is None else stop_event
         self._connected = False
+        self._msg_packed = msg_packed
 
         # storage for event bindings (so they persist across reconnects)
         self._event_handlers: list[tuple[str, Callable]] = []
@@ -84,6 +88,7 @@ class IpcSubscriber:
     def on(self, event_name: str):
         """
         Decorator to register a handler for a custom Socket.IO event.
+        Automatically unpacks msgpack data if self._msg_packed is True.
 
         Usage:
             @self.on('race-table-update')
@@ -91,9 +96,21 @@ class IpcSubscriber:
                 ...
         """
         def decorator(func):
+            # wrap the user's handler to decode msgpack if needed
+            if self._msg_packed:
+                def wrapped_handler(data):
+                    try:
+                        decoded = msgpack.unpackb(data, raw=False)
+                    except Exception as e: # pylint: disable=broad-except
+                        self._log(logging.ERROR, f"Failed to decode msgpack for event '{event_name}': {e}")
+                        return
+                    return func(decoded)
+            else:
+                wrapped_handler = func
+
             # store handler for future rebinds
-            self._event_handlers.append((event_name, func))
-            self._sio.on(event_name, func)
+            self._event_handlers.append((event_name, wrapped_handler))
+            self._sio.on(event_name, wrapped_handler)
             return func
         return decorator
 

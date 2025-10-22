@@ -74,9 +74,9 @@ def main(logger: logging.Logger, config: PngSettings, ipc_port: int, version: st
     stop_event = threading.Event()
     window_manager = get_window_manager(logger)
 
-
     updater_thread = run_hud_update_thread(
         logger=logger,
+        window_manager=window_manager,
         stop_event=stop_event,
         port=config.Network.server_port)
 
@@ -109,3 +109,5 @@ def entry_point():
     except Exception as e: # pylint: disable=broad-except
         png_logger.exception("Error in main: %s", e)
         sys.exit(1)
+
+    png_logger.info("HUD application exiting normally.")

@@ -22,6 +22,10 @@ class LapTimer {
         return `${minutes}:${seconds.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
     }
 
+    update(data) {
+        console.log("LapTimer got data:", data);
+    }
+
     updateLastLap(time) {
         this.lastLapEl.textContent = this.formatTime(time);
     }
@@ -72,14 +76,17 @@ class LapTimer {
 
 const timer = new LapTimer();
 
-window.lapTimer = {
-    setLastLap: (ms) => timer.updateLastLap(ms),
-    setBestLap: (ms) => timer.updateBestLap(ms),
-    setSector: (sectorNum, status) => timer.setSectorStatus(sectorNum, status),
-    resetLap: () => {
-        timer.startTime = Date.now();
-        timer.setSectorStatus(1, 'none');
-        timer.setSectorStatus(2, 'none');
-        timer.setSectorStatus(3, 'none');
+// Listen for updates from Python
+window.addEventListener('telemetry-update', (event) => {
+    timer.update(event.detail);
+});
+
+// Initial update when ready
+window.addEventListener('pywebviewready', async () => {
+    try {
+        const data = await pywebview.api.get_data();
+        timer.update(data);
+    } catch (error) {
+        console.error('Error getting initial telemetry:', error);
     }
-};
+});
