@@ -43,13 +43,15 @@ class HudAppMgr(PngAppMgrBase):
         :param debug_mode: Whether to run the save viewer in debug mode
         """
         self.port = settings.Network.save_viewer_port
+        self.supported = (sys.platform == "win32") # Only supported on Windows
+        self.enabled = settings.HUD.enabled
         self.args = args + ["--debug"] if debug_mode else (args or [])
         self.locked = True # HUD starts locked by default
         super().__init__(
             port_conflict_settings_field='Network -> "Pits n\' Giggles HUD Manager"',
             module_path="apps.hud",
             display_name="HUD",
-            start_by_default=(sys.platform == "win32"), # Only start by default on Windows
+            start_by_default=(self.supported and self.enabled),
             console_app=console_app,
             settings=settings,
             args=self.args,
@@ -139,8 +141,32 @@ class HudAppMgr(PngAppMgrBase):
 
         :return: True if the app needs to be restarted
         """
-        # TODO: temp
-        return False
+
+        ret = False
+
+        if new_settings.HUD.enabled != self.enabled:
+            self.enabled = new_settings.HUD.enabled
+            self.start_by_default = new_settings.HUD.enabled
+            self.console_app.debug_log(f"{self.display_name}: Enabled setting changed to {new_settings.HUD.enabled}")
+            self.process_enabled_change()
+            ret = True
+
+        if new_settings.Network.server_port != self.port:
+            self.port = new_settings.Network.save_viewer_port
+            self.console_app.debug_log(f"{self.display_name}: Server port changed to {self.port}")
+            ret = True
+
+        return ret
+
+    def start(self):
+        """Check for enabled flag before starting"""
+        if not self.enabled:
+            self.console_app.debug_log(f"{self.display_name} is not enabled.")
+            self.status_var.set("Disabled")
+            return
+
+        # Run the standard start
+        super().start()
 
     def post_start(self):
         """Update buttons after app start"""
@@ -178,3 +204,25 @@ class HudAppMgr(PngAppMgrBase):
             self.lock_button.config(text="Unlock")
         else:
             self.lock_button.config(text="Lock")
+
+    def process_enabled_change(self):
+        """
+        Process the enabled state change and update the GUI accordingly.
+
+        If the application is enabled, start the backend application,
+        enable the start/stop button, update the lock button text and
+        enable the ping button. If the application is disabled, stop
+        the backend application, disable the start/stop button and
+        disable the ping and lock buttons.
+        """
+
+        if self.enabled:
+            self.start()
+            self.start_stop_button.config(state="normal")
+            self.set_lock_button_text()
+            self.ping_button.config(state="normal")
+        else:
+            self.stop()
+            self.start_stop_button.config(state="disabled")
+            self.ping_button.config(state="disabled")
+            self.lock_button.config(state="disabled")
