@@ -22,12 +22,26 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import webview
+import time
+import ctypes
+import win32gui
+import win32con
+import logging
+
 from .infra import WindowManager
-from .task import get_window_manager
 
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
+from typing import Dict
 
-__all__ = [
-    "WindowManager",
-    "get_window_manager",
-]
+# -------------------------------------- FUNCTIONS -----------------------------------------------------------------------
+
+def get_window_manager(logger: logging.Logger) -> WindowManager:
+    """Returns the global WindowManager instance."""
+
+    manager = WindowManager()
+    manager.create_window(
+        window_id="lap_timer",
+        html_path="apps/hud/ui/overlays/lap_timer/lap_timer.html",
+        initial_mode=1)
+
+    return manager

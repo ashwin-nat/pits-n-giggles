@@ -28,22 +28,26 @@ from functools import partial
 
 from lib.ipc import IpcChildSync
 
+from ..ui.infra import WindowManager
+
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def run_ipc_task(port: int, logger: logging.Logger, stop_event: threading.Event):
+def run_ipc_task(port: int, logger: logging.Logger, window_manager: WindowManager, stop_event: threading.Event):
     """Runs the IPC task."""
     ipc_server = IpcChildSync(
         port=port,
         name="hud"
     )
-    ipc_server.serve(partial(_ipc_handler, logger=logger, stop_event=stop_event))
+    return ipc_server.serve_in_thread(partial(
+        _ipc_handler, window_manager=window_manager, logger=logger, stop_event=stop_event))
 
-def _ipc_handler(msg: dict, logger: logging.Logger, stop_event: threading.Event) -> dict:
+def _ipc_handler(msg: dict, logger: logging.Logger, window_manager: WindowManager, stop_event: threading.Event) -> dict:
     """Handles incoming IPC messages and dispatches commands.
 
     Args:
         msg (dict): IPC message
         logger (logging.Logger): Logger
+        window_manager (WindowManager): WindowManager
         stop_event (threading.Event): Event to signal stopping
 
     Returns:
@@ -55,7 +59,19 @@ def _ipc_handler(msg: dict, logger: logging.Logger, stop_event: threading.Event)
         return {"status": "error", "message": "Missing command name"}
 
     if cmd == "shutdown":
-        stop_event.set()
+        threading.Thread(target=_stop_other_tasks, args=(logger, window_manager, stop_event,)).start()
         return {"status": "success",}
     else:
         return {"status": "error", "message": f"Unknown command: {cmd}"}
+
+def _stop_other_tasks(logger: logging.Logger, window_manager: WindowManager, stop_event: threading.Event) -> None:
+    """Stop all other tasks when IPC shutdown is received.
+
+    Args:
+        logger (logging.Logger): Logger
+        window_manager (WindowManager): WindowManager
+        stop_event (threading.Event): Event to signal stopping
+    """
+    logger.info("Shutdown command received via IPC. Stopping all tasks...")
+    stop_event.set()
+    window_manager.stop()

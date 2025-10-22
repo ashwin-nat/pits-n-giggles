@@ -62,7 +62,7 @@ class WindowManager:
         self.window_modes: Dict[str, int] = {}
         self._running = True
 
-    def create_window(self, window_id, x=100, y=100, initial_mode=2):
+    def create_window(self, window_id, html_path, x=100, y=100, initial_mode=2):
         """
         Create a new overlay window.
         initial_mode:
@@ -78,7 +78,7 @@ class WindowManager:
 
         window = webview.create_window(
             window_id,
-            'index.html',
+            html_path,
             js_api=api,
             width=400,
             height=300,

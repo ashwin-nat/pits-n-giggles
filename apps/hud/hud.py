@@ -26,6 +26,7 @@ import argparse
 import logging
 import sys
 import threading
+import webview
 from functools import partial
 
 from lib.child_proc_mgmt import (notify_parent_init_complete,
@@ -37,6 +38,7 @@ from lib.version import get_version
 
 from .listener.task import run_hud_update_thread
 from .ipc import run_ipc_task
+from .ui.infra import get_window_manager, WindowManager
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -70,16 +72,21 @@ def main(logger: logging.Logger, config: PngSettings, ipc_port: int, version: st
 
     notify_parent_init_complete() # TODO: re-evaluate placement
     stop_event = threading.Event()
+    window_manager = get_window_manager(logger)
+
+
     updater_thread = run_hud_update_thread(
         logger=logger,
         stop_event=stop_event,
         port=config.Network.server_port)
 
-    run_ipc_task(
+    ipc_thread = run_ipc_task(
         port=ipc_port,
         logger=logger,
+        window_manager=window_manager,
         stop_event=stop_event)
-    logger.info("IPC server stopped.")
+
+    webview.start()
 
     updater_thread.join()
     logger.info("Data update listener thread stopped.")

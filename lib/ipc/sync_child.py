@@ -181,10 +181,20 @@ class IpcChildSync:
 
         self.close()
 
-    def serve_in_thread(self, handler_fn: Callable[[dict], dict], timeout: Optional[float] = None) -> None:
-        """Starts the serve loop in a background thread."""
+    def serve_in_thread(self, handler_fn: Callable[[dict], dict], timeout: Optional[float] = None) -> threading.Thread:
+        """Starts the serve loop in a background thread.
+
+        Args:
+            handler_fn (Callable[[dict], dict]): Function to handle each request.
+            timeout (Optional[float]): Optional timeout (in seconds) for recv_json.
+                                       Ensures loop remains responsive even with no messages.
+
+        Returns:
+            threading.Thread: The thread handle.
+        """
         self._thread = threading.Thread(target=self.serve, args=(handler_fn, timeout), daemon=True)
         self._thread.start()
+        return self._thread
 
     def close(self) -> None:
         """Closes the socket and stops all threads cleanly."""
