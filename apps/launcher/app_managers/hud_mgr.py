@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import sys
 from tkinter import ttk
 
 from lib.config import PngSettings
@@ -48,7 +49,7 @@ class HudAppMgr(PngAppMgrBase):
             port_conflict_settings_field='Network -> "Pits n\' Giggles HUD Manager"',
             module_path="apps.hud",
             display_name="HUD",
-            start_by_default=True,
+            start_by_default=(sys.platform == "win32"), # Only start by default on Windows
             console_app=console_app,
             settings=settings,
             args=self.args,
