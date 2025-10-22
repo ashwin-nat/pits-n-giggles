@@ -25,10 +25,22 @@
 import logging
 import threading
 from functools import partial
+from typing import Callable, Dict
 
 from lib.ipc import IpcChildSync
 
 from ..ui.infra import WindowManager
+from .handlers import handle_lock_widgets
+
+# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
+
+# Define a type for handler functions
+CommandHandler = Callable[[dict, logging.Logger, WindowManager], dict]
+
+# Registry of command handlers
+COMMAND_HANDLERS: Dict[str, CommandHandler] = {
+    "lock-widgets": handle_lock_widgets,
+}
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -58,6 +70,9 @@ def _ipc_handler(msg: dict, logger: logging.Logger, window_manager: WindowManage
 
     if not (cmd := msg.get("cmd")):
         return {"status": "error", "message": "Missing command name"}
+
+    if (handler := COMMAND_HANDLERS.get(cmd)):
+        return handler(msg, logger, window_manager)
 
     return {"status": "error", "message": f"Unknown command: {cmd}"}
 

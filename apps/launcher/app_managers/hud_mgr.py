@@ -43,6 +43,7 @@ class HudAppMgr(PngAppMgrBase):
         """
         self.port = settings.Network.save_viewer_port
         self.args = args + ["--debug"] if debug_mode else (args or [])
+        self.locked = True # HUD starts locked by default
         super().__init__(
             port_conflict_settings_field='Network -> "Pits n\' Giggles HUD Manager"',
             module_path="apps.hud",
@@ -62,6 +63,13 @@ class HudAppMgr(PngAppMgrBase):
         :return: List of button objects
         """
 
+        self.start_stop_button = ttk.Button(
+            frame,
+            text="Start",
+            command=self.start_stop_callback,
+            style="Racing.TButton",
+            state="disabled"  # Initially disabled until the app is running
+        )
         self.ping_button = ttk.Button(
             frame,
             text="Ping",
@@ -69,10 +77,10 @@ class HudAppMgr(PngAppMgrBase):
             style="Racing.TButton",
             state="disabled"  # Initially disabled until the app is running
         )
-        self.start_stop_button = ttk.Button(
+        self.lock_button = ttk.Button(
             frame,
-            text="Start",
-            command=self.start_stop_callback,
+            text="Unlock",
+            command=self.lock_callback,
             style="Racing.TButton",
             state="disabled"  # Initially disabled until the app is running
         )
@@ -96,6 +104,7 @@ class HudAppMgr(PngAppMgrBase):
         #     self.open_file_button,
         #     self.open_dashboard_button,
             self.ping_button,
+            self.lock_button,
         ]
 
     def ping_callback(self):
@@ -104,6 +113,23 @@ class HudAppMgr(PngAppMgrBase):
         client = IpcParent(self.ipc_port)
         rsp = client.request("ping", {})
         self.console_app.info_log(str(rsp))
+
+    def lock_callback(self):
+        """Lock or unlock the HUD from receiving data."""
+        self.console_app.debug_log("Toggling HUD lock state...")
+        rsp = IpcParent(self.ipc_port).request(command="lock-widgets", args={
+            "old-value": self.locked,
+            "new-value": not self.locked,
+        })
+        self.locked = not self.locked
+        self.console_app.info_log(str(rsp))
+
+        status = rsp.get("status", None)
+        if status is not None:
+            self.lock_button.config(text="Unlock")
+            self.set_lock_button_text()
+        else:
+            self.console_app.error_log("Failed to toggle lock state.")
 
     def on_settings_change(self, new_settings: PngSettings) -> bool:
         """Handle changes in settings for the backend application
@@ -120,18 +146,21 @@ class HudAppMgr(PngAppMgrBase):
         self.ping_button.config(state="normal")
         self.start_stop_button.config(text="Stop")
         self.start_stop_button.config(state="normal")
+        self.lock_button.config(state="normal")
 
     def post_stop(self):
         """Update buttons after app stop"""
         self.ping_button.config(state="disabled")
         self.start_stop_button.config(text="Start")
         self.start_stop_button.config(state="normal")
+        self.lock_button.config(state="disabled")
 
     def start_stop_callback(self):
         """Start or stop the backend application."""
         # disable the button. enable in post_start/post_stop
         self.ping_button.config(state="disabled")
         self.start_stop_button.config(state="disabled")
+        self.lock_button.config(state="disabled")
         try:
             # Call the start_stop method
             self.start_stop()
@@ -141,3 +170,10 @@ class HudAppMgr(PngAppMgrBase):
             # If no exception, it will be handled in post_start/post_stop
             self.ping_button.config(state="normal")
             self.start_stop_button.config(state="normal")
+            self.lock_button.config(state="normal")
+
+    def set_lock_button_text(self):
+        if self.locked:
+            self.lock_button.config(text="Unlock")
+        else:
+            self.lock_button.config(text="Lock")

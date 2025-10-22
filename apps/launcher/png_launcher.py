@@ -344,6 +344,10 @@ class PngLauncher(ConsoleInterface):
         """Log an info message to console and file."""
         self._write_log(self.m_logger.info, message, is_child_message)
 
+    def error_log(self, message: str, is_child_message: bool = False):
+        """Log an error message to console and file."""
+        self._write_log(self.m_logger.error, message, is_child_message)
+
     def clear_log(self):
         """Clear the console log"""
         self.console.configure(state=tk.NORMAL)

@@ -24,7 +24,7 @@ class LapTimer {
 
     update(data) {
         // console.log("LapTimer got data 123:", data);
-        test_import();
+        // test_import();
     }
 
     updateLastLap(time) {

@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) [2025] [Ashwin Natarajan]
+# Copyright (c) [2024] [Ashwin Natarajan]
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,23 +22,24 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from abc import ABC, abstractmethod
+import logging
 
-# -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
+from ..ui.infra import WindowManager
 
-class ConsoleInterface(ABC):
-    """Abstract base class for console logger interface"""
-    @abstractmethod
-    def debug_log(self, message: str, is_child_message: bool = False) -> None:
-        """Log a message to the console"""
-        pass
+# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-    @abstractmethod
-    def info_log(self, message: str, is_child_message: bool = False) -> None:
-        """Log a message to the console"""
-        pass
+def handle_lock_widgets(msg: dict, logger: logging.Logger, window_manager: WindowManager) -> dict:
+    """Handle the 'lock-widgets' IPC command to lock or unlock HUD widgets.
 
-    @abstractmethod
-    def error_log(self, message: str, is_child_message: bool = False) -> None:
-        """Log a message to the console"""
-        pass
+    Args:
+        msg (dict): IPC command message
+        logger (logging.Logger): Logger
+        window_manager (WindowManager): WindowManager
+
+    Returns:
+        dict: IPC response
+    """
+
+    # TODO: Implement actual locking logic here
+    logger.info("Received lock-widgets command. args: %s", msg)
+    return {"status": "success", "message": "Dummy lock-widgets handler executed."}
