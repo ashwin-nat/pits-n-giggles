@@ -1,0 +1,118 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background: #1a1a1a;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.lap-timer {
+    background: #0a0a0a;
+    border: 2px solid #333;
+    border-radius: 8px;
+    padding: 24px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.time-field {
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    background: #1a1a1a;
+    border-radius: 6px;
+    border: 1px solid #2a2a2a;
+}
+
+.time-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #888;
+    margin-bottom: 6px;
+}
+
+.time-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #ffffff;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 1px;
+}
+
+.time-value.best {
+    color: #00ff88;
+}
+
+.time-value.current {
+    color: #00d4ff;
+}
+
+.sector-status {
+    display: flex;
+    gap: 8px;
+    margin-top: 24px;
+}
+
+.sector {
+    flex: 1;
+    height: 60px;
+    background: #1a1a1a;
+    border: 2px solid #2a2a2a;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.sector-label {
+    font-size: 14px;
+    font-weight: 700;
+    color: #666;
+    letter-spacing: 1px;
+}
+
+.sector.purple {
+    background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+    border-color: #8b5cf6;
+}
+
+.sector.purple .sector-label {
+    color: #ffffff;
+}
+
+.sector.green {
+    background: linear-gradient(135deg, #10b981, #059669);
+    border-color: #10b981;
+}
+
+.sector.green .sector-label {
+    color: #ffffff;
+}
+
+.sector.yellow {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    border-color: #fbbf24;
+}
+
+.sector.yellow .sector-label {
+    color: #1a1a1a;
+}
+
+.sector.red {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    border-color: #ef4444;
+}
+
+.sector.red .sector-label {
+    color: #ffffff;
+}

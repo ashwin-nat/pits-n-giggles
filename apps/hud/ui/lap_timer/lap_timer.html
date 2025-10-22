@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lap Timer</title>
+    <link rel="stylesheet" href="lapTimer.css">
+</head>
+<body>
+    <div class="lap-timer">
+        <div class="time-field">
+            <div class="time-label">LAST LAP</div>
+            <div class="time-value" id="lastLap">--:--.---</div>
+        </div>
+
+        <div class="time-field">
+            <div class="time-label">BEST LAP</div>
+            <div class="time-value best" id="bestLap">--:--.---</div>
+        </div>
+
+        <div class="time-field">
+            <div class="time-label">CURRENT LAP</div>
+            <div class="time-value current" id="currentLap">--:--.---</div>
+        </div>
+
+        <div class="sector-status">
+            <div class="sector" id="sector1">
+                <div class="sector-label">S1</div>
+            </div>
+            <div class="sector" id="sector2">
+                <div class="sector-label">S2</div>
+            </div>
+            <div class="sector" id="sector3">
+                <div class="sector-label">S3</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="lapTimer.js"></script>
+</body>
+</html>
