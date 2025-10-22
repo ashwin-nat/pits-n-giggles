@@ -22,8 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import webbrowser
-from tkinter import filedialog, messagebox, ttk
+from tkinter import ttk
 
 from lib.config import PngSettings
 from lib.ipc import IpcParent

@@ -89,11 +89,6 @@ class IpcSubscriber:
         """
         Decorator to register a handler for a custom Socket.IO event.
         Automatically unpacks msgpack data if self._msg_packed is True.
-
-        Usage:
-            @self.on('race-table-update')
-            def handle(data):
-                ...
         """
         def decorator(func):
             # wrap the user's handler to decode msgpack if needed
@@ -101,10 +96,10 @@ class IpcSubscriber:
                 def wrapped_handler(data):
                     try:
                         decoded = msgpack.unpackb(data, raw=False)
-                    except Exception as e: # pylint: disable=broad-except
+                    except Exception as e: # pylint: disable=broad-exception-caught
                         self._log(logging.ERROR, f"Failed to decode msgpack for event '{event_name}': {e}")
-                        return
-                    return func(decoded)
+                        return  # consistently returns None
+                    func(decoded)  # call handler without returning its value
             else:
                 wrapped_handler = func
 
@@ -112,6 +107,7 @@ class IpcSubscriber:
             self._event_handlers.append((event_name, wrapped_handler))
             self._sio.on(event_name, wrapped_handler)
             return func
+
         return decorator
 
     def on_connect(self, func: Callable[[], None]):

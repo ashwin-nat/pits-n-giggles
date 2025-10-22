@@ -114,7 +114,7 @@ class IpcChildSync:
                         callback = self._heartbeat_missed_callback or self._def_heartbeat_missed_callback
                         callback(self._missed_heartbeats)
                         break
-                    except Exception as e:  # pylint: disable=broad-except
+                    except Exception:  # pylint: disable=broad-except
                         break
 
     # -------------------------------------- MAIN LOOP ------------------------------------------------------------------
@@ -138,6 +138,7 @@ class IpcChildSync:
         poller.register(self.sock, zmq.POLLIN)
 
         while self._running:
+            # pylint: disable=too-many-try-statements
             try:
                 socks = dict(poller.poll(timeout * 1000 if timeout else None))
                 if self.sock not in socks:
@@ -214,10 +215,10 @@ class IpcChildSync:
             # Use linger 0 to discard pending messages immediately
             self.sock.setsockopt(zmq.LINGER, 0)
             self.sock.close()
-        except Exception as e:
+        except Exception: # pylint: disable=broad-except
             pass
 
         try:
             self.ctx.term()
-        except Exception as e:
+        except Exception: # pylint: disable=broad-except
             pass

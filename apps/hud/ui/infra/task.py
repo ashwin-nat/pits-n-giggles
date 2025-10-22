@@ -22,16 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import webview
-import time
-import ctypes
-import win32gui
-import win32con
 import logging
-from .infra import WindowManager
-
-from typing import Dict
 import os
+
+from .infra import WindowManager
 
 # -------------------------------------- FUNCTIONS -----------------------------------------------------------------------
 

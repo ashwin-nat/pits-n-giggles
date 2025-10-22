@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import ctypes
+import json
 import logging
 import time
 from typing import Dict
@@ -117,7 +118,7 @@ class WindowManager:
             """
             try:
                 window.evaluate_js(js_code)
-            except Exception as e:
+            except Exception as e: # pylint: disable=broad-exception-caught
                 print(f"[WARN] Could not inject logger for {window_id}: {e}")
 
             # Apply mode after window is fully loaded
@@ -132,7 +133,7 @@ class WindowManager:
         """Find window handle by enumerating all windows"""
         hwnd = None
 
-        def callback(h, extra):
+        def callback(h, _):
             nonlocal hwnd
             if win32gui.IsWindowVisible(h):
                 title = win32gui.GetWindowText(h)
@@ -157,7 +158,7 @@ class WindowManager:
         hwnd = None
 
         # Try to find the window with retries
-        for attempt in range(max_attempts):
+        for _ in range(max_attempts):
             hwnd = self.find_window_handle(window_id)
             if hwnd:
                 break
@@ -229,7 +230,6 @@ class WindowManager:
         """Push data update to JavaScript via custom event"""
         try:
             # Convert data to JSON string for JS
-            import json
             data_json = json.dumps(data)
 
             # Dispatch custom event to JS
@@ -242,7 +242,7 @@ class WindowManager:
                 }})();
             """
             window.evaluate_js(js_code)
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-exception-caught
             print(f"[WARN] Failed to push data to {window_id}: {e}")
 
     def stop(self):
@@ -253,7 +253,7 @@ class WindowManager:
             try:
                 window.destroy()
                 print(f"[INFO] Closed window {window_id}")
-            except Exception:
+            except Exception: # pylint: disable=broad-except
                 pass
         print("[INFO] All windows closed.")
 

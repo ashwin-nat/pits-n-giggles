@@ -26,19 +26,17 @@ import argparse
 import logging
 import sys
 import threading
+
 import webview
-from functools import partial
 
 from lib.child_proc_mgmt import (notify_parent_init_complete,
                                  report_pid_from_child)
 from lib.config import PngSettings, load_config_from_ini
-from lib.ipc import IpcChildSync
 from lib.logger import get_logger
-from lib.version import get_version
 
-from .listener.task import run_hud_update_thread
 from .ipc import run_ipc_task
-from .ui.infra import get_window_manager, WindowManager
+from .listener.task import run_hud_update_thread
+from .ui.infra import get_window_manager
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -60,14 +58,13 @@ def parseArgs() -> argparse.Namespace:
     # Parse the command-line arguments
     return parser.parse_args()
 
-def main(logger: logging.Logger, config: PngSettings, ipc_port: int, version: str) -> None:
+def main(logger: logging.Logger, config: PngSettings, ipc_port: int) -> None:
     """Main function
 
     Args:
         logger (logging.Logger): Logger
         config (PngSettings): Configurations
         ipc_port (int): IPC port
-        version (str): Version
     """
 
     notify_parent_init_complete() # TODO: re-evaluate placement
@@ -88,7 +85,9 @@ def main(logger: logging.Logger, config: PngSettings, ipc_port: int, version: st
 
     webview.start()
 
+    # TODO: timeouts?
     updater_thread.join()
+    ipc_thread.join()
     logger.info("Data update listener thread stopped.")
 
 def entry_point():
@@ -96,14 +95,12 @@ def entry_point():
     report_pid_from_child()
     args = parseArgs()
     png_logger = get_logger("hud", args.debug)
-    version = get_version()
     configs = load_config_from_ini(args.config_file, png_logger)
     try:
         main(
             logger=png_logger,
-            config=configs, # pylint: disable=no-member
-            ipc_port=args.ipc_port,
-            version=version)
+            config=configs,
+            ipc_port=args.ipc_port)
     except KeyboardInterrupt:
         png_logger.info("Program interrupted by user.")
     except Exception as e: # pylint: disable=broad-except

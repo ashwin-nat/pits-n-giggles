@@ -41,16 +41,15 @@ def run_ipc_task(port: int, logger: logging.Logger, window_manager: WindowManage
     ipc_server.register_shutdown_callback(partial(
         _shutdown_handler, logger=logger, window_manager=window_manager, stop_event=stop_event))
     return ipc_server.serve_in_thread(partial(
-        _ipc_handler, logger=logger, window_manager=window_manager, stop_event=stop_event))
+        _ipc_handler, logger=logger, window_manager=window_manager))
 
-def _ipc_handler(msg: dict, logger: logging.Logger, window_manager: WindowManager, stop_event: threading.Event) -> dict:
+def _ipc_handler(msg: dict, logger: logging.Logger, window_manager: WindowManager) -> dict:
     """Handles incoming IPC messages and dispatches commands.
 
     Args:
         msg (dict): IPC message
         logger (logging.Logger): Logger
         window_manager (WindowManager): WindowManager
-        stop_event (threading.Event): Event to signal stopping
 
     Returns:
         dict: IPC response
