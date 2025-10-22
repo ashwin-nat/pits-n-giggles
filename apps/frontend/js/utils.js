@@ -451,3 +451,80 @@ function getTLA(name) {
 function test_import() {
     console.log("---------------------------------->>> Utils test function executed.");
 }
+
+function getPlayerPosition(data) {
+    let tableEntries = data["table-entries"];
+    let playerPosition = null;
+
+    for (let i = 0; i < tableEntries.length; i++) {
+        let entry = tableEntries[i];
+        const driverInfo = entry["driver-info"];
+        if (driverInfo["is-player"]) {
+            playerPosition = driverInfo["position"];
+            break; // Breaks out of the loop once player position is found
+        }
+    }
+    return playerPosition;
+}
+
+function getAdjacentPositions(position, total_cars, num_adjacent_cars) {
+    if (!(position >= 1 && position <= total_cars)) {
+      return [];
+    }
+
+    let min_valid_lower_bound = 1;
+    let max_valid_upper_bound = total_cars;
+    let lower_bound;
+    let upper_bound;
+
+    // In time trial, total_cars will be lower than num_adjacent_cars
+    if (num_adjacent_cars >= total_cars) {
+      num_adjacent_cars = total_cars;
+      lower_bound = min_valid_lower_bound;
+      upper_bound = max_valid_upper_bound;
+    }
+    // GP scenario, lower bound and upper bound are off input position by num_adjacent_cars
+    else {
+      lower_bound = position - num_adjacent_cars;
+      upper_bound = position + num_adjacent_cars;
+    }
+
+    // now correct if lower and upper bounds have become invalid
+    if (lower_bound < min_valid_lower_bound) {
+      // lower bound is negative, need to shift the entire window right
+      upper_bound += min_valid_lower_bound - lower_bound;
+      lower_bound = min_valid_lower_bound;
+    }
+    if (upper_bound > total_cars) {
+      // upper bound is greater than limit, need to shift the entire window left
+      lower_bound -= upper_bound - total_cars;
+      upper_bound = max_valid_upper_bound;
+    }
+
+    return Array.from({ length: upper_bound - lower_bound + 1 }, (_, i) => lower_bound + i);
+  }
+
+function getRelevantRaceTableRows(data, numAdjacentCars, shouldInsertRejoinPositions) {
+    const tableEntries = data["table-entries"];
+    if (tableEntries.length == 0) {
+        return [];
+    }
+    // Sort the list by position before computing relevant positions and update rejoin positions
+    const sortedTableEntries = tableEntries.sort((a, b) => a["driver-info"]["position"] - b["driver-info"]["position"]);
+    if (shouldInsertRejoinPositions) {
+        insertRejoinPositions(sortedTableEntries, data["pit-time-loss"] ?? null);
+    }
+
+    // TODO: for spectator mode, add support for relevant rows
+    if (data["is-spectating"] || data["race-ended"]) {
+        return sortedTableEntries;
+    }
+
+    const totalCars = sortedTableEntries.length;
+    const playerPosition = getPlayerPosition(data);
+    const relevantPositions = getAdjacentPositions(playerPosition, totalCars, numAdjacentCars);
+
+    const lowerIndex = relevantPositions[0] - 1;
+    const upperIndex = relevantPositions[relevantPositions.length - 1];
+    return sortedTableEntries.slice(lowerIndex, upperIndex);
+}
