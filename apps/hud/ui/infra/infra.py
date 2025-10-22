@@ -200,13 +200,14 @@ class WindowManager:
             window_id,
             html_path,
             js_api=api,
-            width=400,
-            height=300,
+            width=350,
+            height=420,
             x=x,
             y=y,
             frameless=frameless,
             on_top=True,
             resizable=resizable,
+            transparent=True,
         )
 
         self.windows[window_id] = window
@@ -295,6 +296,7 @@ class WindowManager:
                 | win32con.WS_EX_TOOLWINDOW
             )
             win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, ex_style)
+            ctypes.windll.dwmapi.DwmExtendFrameIntoClientArea(hwnd, ctypes.byref(ctypes.c_int(-1)))
 
             ctypes.windll.user32.SetLayeredWindowAttributes(hwnd, 0, 255, 0x2)
 
@@ -319,6 +321,11 @@ class WindowManager:
         self.logger.debug(f"[WindowManager] Current mode: {current}, New mode: {new_mode}")
         self.set_window_mode(window_id, new_mode)
         return new_mode
+
+    def toggle_mode_all(self):
+        """Toggle mode for all managed windows"""
+        for window_id in self.windows.keys():
+            self.toggle_mode(window_id)
 
     def broadcast_data(self, data):
         for window_id, api in self.apis.items():
