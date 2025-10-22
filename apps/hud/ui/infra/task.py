@@ -28,12 +28,18 @@ import ctypes
 import win32gui
 import win32con
 import logging
-
 from .infra import WindowManager
 
 from typing import Dict
+import os
 
 # -------------------------------------- FUNCTIONS -----------------------------------------------------------------------
+
+def _get_html_path_for_window(window_id: str) -> str:
+    """Constructs the absolute path to the HTML file for a given window ID."""
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    html_file_path = os.path.join(base_dir, "..", "overlays", window_id, f"{window_id}.html")
+    return html_file_path
 
 def get_window_manager(logger: logging.Logger) -> WindowManager:
     """Returns the global WindowManager instance."""
@@ -41,7 +47,7 @@ def get_window_manager(logger: logging.Logger) -> WindowManager:
     manager = WindowManager()
     manager.create_window(
         window_id="lap_timer",
-        html_path="apps/hud/ui/overlays/lap_timer/lap_timer.html",
+        html_path=_get_html_path_for_window("lap_timer"),
         initial_mode=1)
 
     return manager
