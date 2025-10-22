@@ -6,6 +6,8 @@ import ctypes
 import win32gui
 import win32con
 
+from typing import Dict
+
 # Global config - set to 1 or 2
 INITIAL_MODE = 2  # 1 = normal, 2 = click-through frameless
 
@@ -23,10 +25,13 @@ class API:
         """Called from JS to get current telemetry data"""
         return self.data
 
+    def log(self, message):
+        print(f"[{self.window_id} JS]: {message}")
+
 class WindowManager:
     def __init__(self):
         self.windows = {}
-        self.apis = {}
+        self.apis: Dict[str, API] = {}
 
     def create_window(self, window_id, x=100, y=100):
         """Create a new overlay window"""
@@ -46,10 +51,36 @@ class WindowManager:
             y=y,
             frameless=frameless,
             on_top=True,
-            resizable=resizable
+            resizable=resizable,
         )
 
         self.windows[window_id] = window
+
+        # 🔥 Patch console.log in the browser to redirect to Python
+        def inject_logger():
+            js_code = """
+                (function() {
+                    const origLog = console.log;
+                    console.log = function(...args) {
+                        window.pywebview.api.log(args.join(' '));
+                        origLog.apply(console, args);
+                    };
+                    const origErr = console.error;
+                    console.error = function(...args) {
+                        window.pywebview.api.log('[ERROR] ' + args.join(' '));
+                        origErr.apply(console, args);
+                    };
+                    const origWarn = console.warn;
+                    console.warn = function(...args) {
+                        window.pywebview.api.log('[WARN] ' + args.join(' '));
+                        origWarn.apply(console, args);
+                    };
+                })();
+            """
+            window.evaluate_js(js_code)
+
+        # Delay injection slightly so the DOM is ready
+        threading.Timer(1.0, inject_logger).start()
 
         # Apply mode after the window is fully created
         threading.Timer(0.5, lambda: self.set_window_mode(window_id, INITIAL_MODE)).start()
@@ -75,7 +106,12 @@ class WindowManager:
         else:
             # Frameless, click-through
             ex_style = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
-            ex_style |= win32con.WS_EX_LAYERED | win32con.WS_EX_TRANSPARENT | win32con.WS_EX_NOACTIVATE | win32con.WS_EX_TOOLWINDOW
+            ex_style |= (
+                win32con.WS_EX_LAYERED |
+                win32con.WS_EX_TRANSPARENT|
+                win32con.WS_EX_NOACTIVATE |
+                win32con.WS_EX_TOOLWINDOW
+            )
             win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, ex_style)
 
             # Fully visible (255 alpha)
@@ -104,7 +140,14 @@ class WindowManager:
         for api in self.apis.values():
             api.data.update(data)
 
-def update_telemetry(manager):
+    def unicast_data(self, window_id, data):
+        """Update data for a specific window only"""
+        window = self.apis.get(window_id)
+        if not window_id:
+            return
+        window.data.update(data)
+
+def update_telemetry(manager: WindowManager):
     """Background thread that updates telemetry data"""
     lap_time = 0.0
     while True:
@@ -123,16 +166,13 @@ def update_telemetry(manager):
 manager = WindowManager()
 
 def main():
-    # Create windows
     manager.create_window('window1', x=100, y=100)
     manager.create_window('window2', x=550, y=100)
 
-    # Start telemetry thread
     telemetry_thread = threading.Thread(target=update_telemetry, args=(manager,), daemon=True)
     telemetry_thread.start()
 
-    # Start webview
-    webview.start(debug=False)
+    webview.start()
 
 if __name__ == '__main__':
     main()

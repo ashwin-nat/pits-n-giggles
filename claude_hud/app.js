@@ -8,6 +8,7 @@ const lapTimeEl = document.getElementById('lapTime');
 async function updateTelemetry() {
     try {
         const data = await pywebview.api.get_data();
+        console.log("got data:", data);
 
         speedEl.textContent = data.speed;
         rpmEl.textContent = data.rpm;
