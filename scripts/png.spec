@@ -71,7 +71,8 @@ entry_script = os.path.join(PROJECT_ROOT, "apps", "launcher", "__main__.py")
 hiddenimports = (
     collect_submodules("apps.launcher") +
     collect_submodules("apps.backend") +
-    collect_submodules("apps.save_viewer")
+    collect_submodules("apps.save_viewer") +
+    collect_submodules("apps.hud")
 )
 
 datas = [
@@ -93,6 +94,17 @@ datas = [
     (os.path.join(PROJECT_ROOT, "assets", "tyre-icons", "intermediate_tyre.svg"), "assets/tyre-icons"),
     (os.path.join(PROJECT_ROOT, "assets", "tyre-icons", "super_soft_tyre.svg"), "assets/tyre-icons"),
 ]
+
+# Overlays
+overlays_base = os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays")
+
+# Dynamically add all overlay folders
+for overlay_name in os.listdir(overlays_base):
+    overlay_path = os.path.join(overlays_base, overlay_name)
+    if os.path.isdir(overlay_path):
+        datas.append(
+            (overlay_path, f"apps/hud/ui/overlays/{overlay_name}")
+        )
 
 # --------------------------------------------------------------------------------------------------
 # Build pipeline
