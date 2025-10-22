@@ -185,17 +185,44 @@ class WindowManager:
         return new_mode
 
     def update_window_data(self, window_id, data):
+        """Update data for a specific window and push to JS"""
         if window_id in self.apis:
             self.apis[window_id].data.update(data)
+            self._push_to_window(window_id, data)
 
     def broadcast_data(self, data):
-        for api in self.apis.values():
+        """Update all windows and push data to their JS"""
+        for window_id, api in self.apis.items():
             api.data.update(data)
+            self._push_to_window(window_id, data)
 
     def unicast_data(self, window_id, data):
-        window = self.apis.get(window_id)
+        """Update single window and push data to its JS"""
+        if window_id in self.apis:
+            self.apis[window_id].data.update(data)
+            self._push_to_window(window_id, data)
+
+    def _push_to_window(self, window_id, data):
+        """Push data update to JavaScript via custom event"""
+        window = self.windows.get(window_id)
         if window:
-            window.data.update(data)
+            try:
+                # Convert data to JSON string for JS
+                import json
+                data_json = json.dumps(data)
+
+                # Dispatch custom event to JS
+                js_code = f"""
+                    (function() {{
+                        const event = new CustomEvent('telemetry-update', {{
+                            detail: {data_json}
+                        }});
+                        window.dispatchEvent(event);
+                    }})();
+                """
+                window.evaluate_js(js_code)
+            except Exception as e:
+                print(f"[WARN] Failed to push data to {window_id}: {e}")
 
     def stop(self):
         """Stop telemetry updates and close windows"""
@@ -213,7 +240,7 @@ def update_telemetry(manager: WindowManager):
     """Background thread that updates telemetry data"""
     lap_time = 0.0
     while manager._running:
-        time.sleep(0.1)
+        time.sleep(0.1)  # Producer controls the update interval
         data = {
             'speed': random.randint(0, 320),
             'rpm': random.randint(1000, 8000),
@@ -223,6 +250,8 @@ def update_telemetry(manager: WindowManager):
         minutes = int(lap_time // 60)
         seconds = lap_time % 60
         data['lap_time'] = f"{minutes}:{seconds:06.3f}"
+
+        # Push data to all windows
         manager.broadcast_data(data)
 
 manager = WindowManager()
