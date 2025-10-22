@@ -25,7 +25,7 @@ dependencies = [
     "aiohttp (>=3.12.15,<4.0.0)",
     "websocket-client (>=1.8.0,<2.0.0)",
     "pywebview (>=6.0,<7.0)",
-    "pywin32 (>=311,<312)",
+    "pywin32 (>=311,<312); sys_platform == 'win32'"
 ]
 
 
