@@ -1078,22 +1078,22 @@ class DataPerDriver:
             s1_status = self._get_sector_status(
                 sector_time=self.m_lap_info.m_curr_lap_ms,
                 sector_best_ms=s1_best_ms,
-                is_personal_best_sector_lap=(self.m_lap_info.m_curr_lap_ms == self.m_lap_info.m_pb_s1_ms),
+                is_personal_best_sector_lap=(self.m_lap_info.m_curr_lap_s1_ms == self.m_lap_info.m_pb_s1_ms),
                 sector_valid_flag=not self.m_lap_info.m_curr_lap_invalid
             )
             return [s1_status, F1Utils.SECTOR_STATUS_NA, F1Utils.SECTOR_STATUS_NA]
 
         # Sector 3 (final sector) is ongoing
         s1_status = self._get_sector_status(
-            sector_time=self.m_lap_info.m_curr_lap_ms,
+            sector_time=self.m_lap_info.m_curr_lap_s1_ms,
             sector_best_ms=s1_best_ms,
-            is_personal_best_sector_lap=(self.m_lap_info.m_curr_lap_ms == self.m_lap_info.m_pb_s1_ms),
+            is_personal_best_sector_lap=(self.m_lap_info.m_curr_lap_s1_ms == self.m_lap_info.m_pb_s1_ms),
             sector_valid_flag=not self.m_lap_info.m_curr_lap_invalid
         )
         s2_status = self._get_sector_status(
-            sector_time=self.m_lap_info.m_curr_lap_s1_ms,
+            sector_time=self.m_lap_info.m_curr_lap_s2_ms,
             sector_best_ms=s2_best_ms,
-            is_personal_best_sector_lap=(self.m_lap_info.m_curr_lap_s1_ms == self.m_lap_info.m_pb_s2_ms),
+            is_personal_best_sector_lap=(self.m_lap_info.m_curr_lap_s2_ms == self.m_lap_info.m_pb_s2_ms),
             sector_valid_flag=not self.m_lap_info.m_curr_lap_invalid
         )
 
