@@ -359,15 +359,33 @@ class WindowManager:
             self.logger.error(f"[WindowManager] Failed to push data to '{window_id}': {type(e).__name__}: {e}")
 
     def stop(self):
-        """Stop telemetry updates and close windows"""
+        """Stop telemetry updates and close all windows safely."""
         self.logger.info("[WindowManager] Stopping WindowManager...")
         self._running = False
-        for window_id, window in self.windows.items():
+
+        # Copy keys to avoid modifying dict during iteration
+        for window_id in list(self.windows.keys()):
+            window = self.windows[window_id]
             try:
-                window.destroy()
-                self.logger.info(f"[WindowManager] Closed window '{window_id}'")
-            except Exception as e: # pylint: disable=broad-except
+                # Detach event handlers if any to prevent callbacks after destroy
+                if hasattr(window, 'events'):
+                    try:
+                        window.events.closed.clear()  # remove all closed handlers
+                    except Exception:
+                        pass
+
+                # Destroy the window if it still exists
+                if window and getattr(window, "webview_window", None):
+                    window.destroy()
+                    self.logger.info(f"[WindowManager] Closed window '{window_id}'")
+            except Exception as e:  # Catch any PyWebView / WebView2 teardown errors
                 self.logger.error(f"[WindowManager] Failed to close window '{window_id}': {e}")
+
+        # Short delay to allow WebView2 cleanup
+        time.sleep(0.05)
+
+        # Clear the window registry
+        self.windows.clear()
         self.logger.info("[WindowManager] All windows closed")
 
     def race_table_update(self, data):
