@@ -359,10 +359,11 @@ class EngViewRaceTable {
             {
                 headerName: "Pos",
                 context: {displayName: "Position"},
-                field: "position",
+                field: "driver-info",
                 flex: 4,
                 sortable: true,
                 cellRenderer: this.createPositionStatusCellRenderer(),
+                equals: this.createPositionEqualsComparator,
                 cellClass: 'ag-cell-multiline',
             },
             {
@@ -1171,6 +1172,43 @@ class EngViewRaceTable {
             localStorage.removeItem(this.COLUMN_STATE_LS_KEY); // Clear saved state to ensure defaults are used
             console.debug('Column layout (positions and widths) reset to default, visibility preserved.');
         }
+    }
+
+    createPositionEqualsComparator(valueA, valueB) {
+            // If either value is missing, re-render
+        if (!valueA || !valueB) {
+            return false;
+        }
+
+        const oldValue = valueA?.["driver-info"];
+        const newValue = valueB?.["driver-info"];
+
+        if (!oldValue || !newValue) {
+            return false;
+        }
+
+        // If position changed, definitely re-render
+        if (oldValue["position"] !== newValue["position"]) {
+            return false;
+        }
+
+        if (driverInfoA['is-pitting'] !== driverInfoB['is-pitting']) {
+            console.log("Pit status changed");
+            return false;
+        }
+
+        if (driverInfoA['drs-activated'] !== driverInfoB['drs-activated']) {
+            console.log("DRS status changed");
+            return false;
+        }
+
+        if (driverInfoA['drs-allowed'] !== driverInfoB['drs-allowed']) {
+            console.log("DRS status changed");
+            return false;
+        }
+
+        console.log("Position and status same, no re-render needed");
+        return true;
     }
 }
 function formatSessionTime(seconds) {
