@@ -1213,22 +1213,19 @@ class EngViewRaceTable {
             return false;
         }
 
+        // re-render if pitting or drs status has changed
         if (driverInfoA['is-pitting'] !== driverInfoB['is-pitting']) {
-            console.log("Pit status changed");
             return false;
         }
 
         if (driverInfoA['drs-activated'] !== driverInfoB['drs-activated']) {
-            console.log("DRS status changed");
             return false;
         }
 
         if (driverInfoA['drs-allowed'] !== driverInfoB['drs-allowed']) {
-            console.log("DRS status changed");
             return false;
         }
 
-        console.log("Position and status same, no re-render needed");
         return true;
     }
 
@@ -1254,7 +1251,6 @@ class EngViewRaceTable {
             // This logic needs to be consistent with createSectorCellRenderer
             const fastestLapMs = this.fastestLapMs;
             const pbLapMs = valueB["best-lap"]["lap-time-ms"];
-            const newFastestLapMs = this.fastestLapMs; // This will be the same as oldFastestLapMs in a single update cycle
             const oldTimeClass = oldLapInfo[`lap-time-ms-class`];
             let newTimeClass = '';
             const newLapTimeMs = newLapInfo['lap-time-ms'];
