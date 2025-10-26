@@ -69,24 +69,18 @@ def main(logger: logging.Logger, config: PngSettings, ipc_port: int) -> None:
     notify_parent_init_complete() # TODO: re-evaluate placement
     window_manager = get_window_manager(logger)
 
-    updater_thread, client = run_hud_update_thread(
+    client = run_hud_update_thread(
         logger=logger,
         window_manager=window_manager,
         port=config.Network.server_port)
 
-    ipc_thread = run_ipc_task(
+    run_ipc_task(
         port=ipc_port,
         logger=logger,
         window_manager=window_manager,
         receiver_client=client,)
 
     webview.start(debug=True)
-    logger.debug("After webview.start()")
-
-    # TODO: timeouts?
-    updater_thread.join()
-    ipc_thread.join()
-    logger.info("Data update listener thread stopped.")
 
 def entry_point():
     """Entry point"""

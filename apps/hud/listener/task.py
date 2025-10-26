@@ -24,7 +24,6 @@
 
 import logging
 import threading
-from typing import Tuple
 
 from ..ui.infra import WindowManager
 from .client import HudClient
@@ -35,7 +34,7 @@ def run_hud_update_thread(
         port: int,
         window_manager: WindowManager,
         logger: logging.Logger
-        ) -> Tuple[threading.Thread, HudClient]:
+        ) -> HudClient:
     """Creates, runs and returns the HUD update thread.
 
     Args:
@@ -44,9 +43,8 @@ def run_hud_update_thread(
         window_manager: WindowManager instance.
 
     Returns:
-        Tuple[threading.Thread, HudClient]: Thread and client
+        HudClient - the incoming data receiver client obj
     """
     client = HudClient(port, logger, window_manager)
-    thread = threading.Thread(target=client.run, daemon=True, name="Socket.IO listener")
-    thread.start()
-    return thread, client
+    threading.Thread(target=client.run, daemon=True, name="Socket.IO listener").start()
+    return client

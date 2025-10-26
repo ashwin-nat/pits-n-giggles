@@ -23,16 +23,17 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
+import os
 import threading
+import time
 from functools import partial
 from typing import Callable, Dict
 
 from lib.ipc import IpcChildSync
 
+from ..listener import HudClient
 from ..ui.infra import WindowManager
 from .handlers import handle_lock_widgets
-
-from ..listener import HudClient
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
@@ -107,7 +108,6 @@ def _shutdown_handler(args: dict, logger: logging.Logger, window_manager: Window
 
 def _stop_other_tasks(args: dict, logger: logging.Logger, window_manager: WindowManager, receiver_client: HudClient) -> None:
     """Stop all other tasks when IPC shutdown is received.
-
     Args:
         args (dict): IPC message
         logger (logging.Logger): Logger
@@ -116,5 +116,12 @@ def _stop_other_tasks(args: dict, logger: logging.Logger, window_manager: Window
     """
     reason = args.get("reason", "N/A")
     logger.info(f"Shutdown command received via IPC. Reason: {reason}. Stopping all tasks...")
+
     receiver_client.stop()
     window_manager.stop()
+
+    # Give Windows time to cleanup WebView2 resources
+    time.sleep(0.5)
+
+    logger.info("Exiting HUD subsystem")
+    os._exit(0)
