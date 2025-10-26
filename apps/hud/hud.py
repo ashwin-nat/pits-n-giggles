@@ -66,7 +66,6 @@ def main(logger: logging.Logger, config: PngSettings, ipc_port: int) -> None:
         ipc_port (int): IPC port
     """
 
-    notify_parent_init_complete() # TODO: re-evaluate placement
     window_manager = get_window_manager(logger)
 
     client = run_hud_update_thread(
@@ -80,7 +79,7 @@ def main(logger: logging.Logger, config: PngSettings, ipc_port: int) -> None:
         window_manager=window_manager,
         receiver_client=client,)
 
-    webview.start(debug=True)
+    webview.start(notify_parent_init_complete, debug=True)
 
 def entry_point():
     """Entry point"""
