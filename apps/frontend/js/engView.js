@@ -316,7 +316,7 @@ class EngViewRaceTable {
             const timeMs = lapInfo[timeKey];
             let cellText = '';
             const status = lapInfo["driver-status"];
-            if (status === "FLYING_LAP" || timeKey !== 'lap-time-ms') {
+            if (status === "FLYING_LAP" || status === "ON_TRACK" || timeKey !== 'lap-time-ms') {
                 cellText = (sectorKey === 'lap')
                     ? formatLapTime(timeMs)
                     : formatSectorTime(timeMs);
@@ -1200,34 +1200,27 @@ class EngViewRaceTable {
         }
     }
 
-    createPositionEqualsComparator(valueA, valueB) {
+    createPositionEqualsComparator(oldDriverInfo, newDriverInfo) {
         // If either value is missing, re-render
-        if (!valueA || !valueB) {
-            return false;
-        }
-
-        const oldValue = valueA?.["driver-info"];
-        const newValue = valueB?.["driver-info"];
-
-        if (!oldValue || !newValue) {
+        if (!oldDriverInfo || !newDriverInfo) {
             return false;
         }
 
         // If position changed, definitely re-render
-        if (oldValue["position"] !== newValue["position"]) {
+        if (oldDriverInfo["position"] !== newDriverInfo["position"]) {
             return false;
         }
 
         // re-render if pitting or drs status has changed
-        if (driverInfoA['is-pitting'] !== driverInfoB['is-pitting']) {
+        if (oldDriverInfo['is-pitting'] !== newDriverInfo['is-pitting']) {
             return false;
         }
 
-        if (driverInfoA['drs-activated'] !== driverInfoB['drs-activated']) {
+        if (oldDriverInfo['drs-activated'] !== newDriverInfo['drs-activated']) {
             return false;
         }
 
-        if (driverInfoA['drs-allowed'] !== driverInfoB['drs-allowed']) {
+        if (oldDriverInfo['drs-allowed'] !== newDriverInfo['drs-allowed']) {
             return false;
         }
 
