@@ -1243,7 +1243,7 @@ class EngViewRaceTable {
                     } else {
                         initialColumnState.push({
                             colId: colDef.colId,
-                            width: colDef.width || colDef.flex ? undefined : 100, // Default width if not flex
+                            width: colDef.width || colDef.flex ? undefined : null, // Default width if not flex
                             flex: colDef.flex,
                             hide: false, // Ensure visibility is not reset here
                             pinned: colDef.pinned || null,
