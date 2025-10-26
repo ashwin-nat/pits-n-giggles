@@ -36,7 +36,7 @@ import win32gui
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
 # Global config - set to 1 or 2
-INITIAL_MODE = 2  # 1 = normal, 2 = click-through frameless
+INITIAL_LOCKED_STATE = True  # True = frameless, not resizable (locked); False = normal (resizable, not frameless)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -63,7 +63,7 @@ class WindowManager:
         self.logger = logger
         self.windows: Dict[str, webview.Window] = {}
         self.apis: Dict[str, API] = {}
-        self.window_modes: Dict[str, int] = {}
+        self.window_locked_states: Dict[str, bool] = {}
         self._running = True
 
         # Configure scripts to inject
@@ -224,19 +224,16 @@ class WindowManager:
             self.logger.error(f"[WindowManager] Failed to dispatch utils-ready event for '{window_id}': {e}")
             return False
 
-    def create_window(self, window_id, html_path, x=100, y=100, initial_mode=2):
+    def create_window(self, window_id, html_path, x=100, y=100):
         """
-        Create a new overlay window.
-        initial_mode:
-            1 = normal (clickable + resizable)
-            2 = click-through frameless
+        Create a new overlay window. Windows are created in a locked state by default.
         """
         api = API(window_id)
         self.apis[window_id] = api
-        self.window_modes[window_id] = initial_mode
+        self.window_locked_states[window_id] = True  # Default to locked
 
-        frameless = (initial_mode == 2)
-        resizable = (initial_mode == 1)
+        frameless = True
+        resizable = False
 
         window = webview.create_window(
             window_id,
@@ -264,7 +261,7 @@ class WindowManager:
 
             # Step 3: Apply window mode after everything is loaded
             time.sleep(0.5)  # Give OS time to register the window
-            self.set_window_mode(window_id, initial_mode)
+            self.set_window_locked_state(window_id, True) # Default to locked
 
         window.events.loaded += on_window_ready
 
@@ -293,9 +290,9 @@ class WindowManager:
 
         return hwnd
 
-    def set_window_mode(self, window_id, mode):
-        """Set mode for a specific window dynamically"""
-        self.logger.info(f"[WindowManager] Setting window '{window_id}' to mode {mode}")
+    def set_window_locked_state(self, window_id, locked: bool):
+        """Set locked state for a specific window dynamically"""
+        self.logger.info(f"[WindowManager] Setting window '{window_id}' locked state to {locked}")
         max_attempts = 10
         hwnd = None
 
@@ -311,19 +308,10 @@ class WindowManager:
             return False
 
         # Update internal state
-        self.window_modes[window_id] = mode
+        self.window_locked_states[window_id] = locked
 
-        if mode == 1:
-            # Normal mode
-            ex_style = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
-            ex_style &= ~win32con.WS_EX_TRANSPARENT
-            win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, ex_style)
-
-            style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
-            style |= win32con.WS_CAPTION | win32con.WS_SYSMENU | win32con.WS_THICKFRAME
-            win32gui.SetWindowLong(hwnd, win32con.GWL_STYLE, style)
-        else:
-            # Click-through frameless
+        if locked:
+            # Locked mode (frameless, click-through)
             ex_style = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
             ex_style |= (
                 win32con.WS_EX_LAYERED
@@ -339,6 +327,15 @@ class WindowManager:
             style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
             style &= ~(win32con.WS_CAPTION | win32con.WS_SYSMENU | win32con.WS_THICKFRAME)
             win32gui.SetWindowLong(hwnd, win32con.GWL_STYLE, style)
+        else:
+            # Unlocked mode (normal, resizable)
+            ex_style = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
+            ex_style &= ~win32con.WS_EX_TRANSPARENT
+            win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, ex_style)
+
+            style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
+            style |= win32con.WS_CAPTION | win32con.WS_SYSMENU | win32con.WS_THICKFRAME
+            win32gui.SetWindowLong(hwnd, win32con.GWL_STYLE, style)
 
         # Apply changes
         win32gui.SetWindowPos(
@@ -347,21 +344,21 @@ class WindowManager:
             win32con.SWP_NOSIZE | win32con.SWP_NOZORDER
         )
 
-        self.logger.info(f"[WindowManager] Window '{window_id}' mode successfully changed to {mode}")
+        self.logger.info(f"[WindowManager] Window '{window_id}' locked state successfully changed to {locked}")
         return True
 
-    def toggle_mode(self, window_id):
-        """Convenience method to switch between normal and click-through"""
-        current = self.window_modes.get(window_id, 1)
-        new_mode = 2 if current == 1 else 1
-        self.logger.debug(f"[WindowManager] Current mode: {current}, New mode: {new_mode}")
-        self.set_window_mode(window_id, new_mode)
-        return new_mode
+    def toggle_locked_state(self, window_id):
+        """Convenience method to switch between locked and unlocked states"""
+        current_locked_state = self.window_locked_states.get(window_id, INITIAL_LOCKED_STATE)
+        new_locked_state = not current_locked_state
+        self.logger.debug(f"[WindowManager] Current locked state: {current_locked_state}, New locked state: {new_locked_state}")
+        self.set_window_locked_state(window_id, new_locked_state)
+        return new_locked_state
 
-    def toggle_mode_all(self):
-        """Toggle mode for all managed windows"""
+    def toggle_locked_state_all(self):
+        """Toggle locked state for all managed windows"""
         for window_id in self.windows.keys():
-            self.toggle_mode(window_id)
+            self.toggle_locked_state(window_id)
 
     def broadcast_data(self, data):
         for window_id, api in self.apis.items():

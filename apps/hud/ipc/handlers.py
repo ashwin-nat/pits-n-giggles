@@ -42,5 +42,5 @@ def handle_lock_widgets(msg: dict, logger: logging.Logger, window_manager: Windo
 
     # TODO - instead of toggle, use set logic based on msg content
     logger.info("Received lock-widgets command. args: %s", msg)
-    window_manager.toggle_mode_all()
+    window_manager.toggle_locked_state_all()
     return {"status": "success", "message": "Dummy lock-widgets handler executed."}

@@ -41,7 +41,6 @@ def get_window_manager(logger: logging.Logger) -> WindowManager:
     manager = WindowManager(logger)
     manager.create_window(
         window_id="lap_timer",
-        html_path=_get_html_path_for_window("lap_timer"),
-        initial_mode=2)
+        html_path=_get_html_path_for_window("lap_timer"))
 
     return manager
