@@ -40,7 +40,6 @@ def handle_lock_widgets(msg: dict, logger: logging.Logger, window_manager: Windo
         dict: IPC response
     """
 
-    # TODO - instead of toggle, use set logic based on msg content
     logger.info("Received lock-widgets command. args: %s", msg)
 
     args = msg.get("args", {})

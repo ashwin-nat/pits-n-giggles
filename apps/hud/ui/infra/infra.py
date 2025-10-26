@@ -360,21 +360,28 @@ class WindowManager:
         self.logger.debug(f"[WindowManager] Setting locked state for all windows to {new_locked_state}")
         for window_id in self.windows.keys():
             self.set_window_locked_state(window_id, new_locked_state)
+        self.broadcast_lock_state_change(locked_state_dict)
         return True
 
     def broadcast_data(self, data):
         for window_id, api in self.apis.items():
             api.data.update(data)
             if window := self.windows.get(window_id):
-                self._push_to_window(window, window_id, data)
+                self._push_to_window(window, window_id, 'telemetry-update', data)
 
-    def unicast_data(self, window_id, data):
+    def unicast_data(self, window_id: str, data: dict):
         if api := self.apis.get(window_id):
             api.data.update(data)
         if window := self.windows.get(window_id):
-            self._push_to_window(window, window_id, data)
+            self._push_to_window(window, window_id, 'telemetry-update', data)
 
-    def _push_to_window(self, window: webview.Window, window_id, data):
+    def broadcast_lock_state_change(self, data):
+        for window_id, api in self.apis.items():
+            api.data.update(data)
+            if window := self.windows.get(window_id):
+                self._push_to_window(window, window_id, 'lock-state-change', data)
+
+    def _push_to_window(self, window: webview.Window, window_id: str, event_name: str, data: dict):
         """Push data update to JavaScript via custom event"""
         try:
             # Convert data to JSON string for JS
@@ -383,7 +390,7 @@ class WindowManager:
             # Dispatch custom event to JS
             js_code = f"""
                 (function() {{
-                    const event = new CustomEvent('telemetry-update', {{
+                    const event = new CustomEvent('{event_name}', {{
                         detail: {data_json}
                     }});
                     window.dispatchEvent(event);
