@@ -35,6 +35,7 @@ from lib.child_proc_mgmt import report_pid_from_child
 from lib.config import load_config_from_ini
 from lib.logger import get_logger
 from lib.version import get_version
+from meta.meta import APP_NAME
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -46,7 +47,7 @@ def parseArgs() -> argparse.Namespace:
     """
 
     # Initialize the ArgumentParser
-    parser = argparse.ArgumentParser(description="Pits n' Giggles save data viewer")
+    parser = argparse.ArgumentParser(description=f"{APP_NAME} save data viewer")
 
     # Add command-line arguments with default values
     parser.add_argument("--config-file", nargs="?", default="png_config.ini", help="Configuration file name (optional)")

@@ -28,14 +28,16 @@ from typing import Any, ClassVar, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from meta.meta import APP_NAME
+
 from .file_path_str import FilePathStr
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
 class NetworkSettings(BaseModel):
     telemetry_port: int = Field(20777, ge=0, le=65535, description="F1 UDP Telemetry Port")
-    server_port: int = Field(4768, ge=0, le=65535, description="Pits n' Giggles HTTP Server Port")
-    save_viewer_port: int = Field(4769, ge=0, le=65535, description="Pits n' Giggles Save Data Viewer Port")
+    server_port: int = Field(4768, ge=0, le=65535, description=f"{APP_NAME} HTTP Server Port")
+    save_viewer_port: int = Field(4769, ge=0, le=65535, description=f"{APP_NAME} Save Data Viewer Port")
     udp_tyre_delta_action_code: int = Field(11, ge=1, le=12, description="Tyre Delta Marker: UDP Action Code")
     udp_custom_action_code: int = Field(12, ge=1, le=12, description="Custom Marker: UDP Action Code")
     wdt_interval_sec: int = Field(30, ge=1, le=120, description="UDP Telemetry Timeout (sec)")
@@ -67,7 +69,7 @@ class CaptureSettings(BaseModel):
     save_race_ctrl_msg: bool = Field(False, description="Save race control messages")
 
 class DisplaySettings(BaseModel):
-    refresh_interval: int = Field(200, gt=0, description="Pits n' Giggles client update interval (ms)")
+    refresh_interval: int = Field(200, gt=0, description=f"{APP_NAME} client update interval (ms)")
     disable_browser_autoload: bool = Field(False, description="Disable automatic opening of the web page in the browser")
 
 class LoggingSettings(BaseModel):

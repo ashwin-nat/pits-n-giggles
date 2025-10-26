@@ -86,7 +86,7 @@ class PngLauncher(ConsoleInterface):
         self.header_frame = ttk.Frame(root, padding="10", style="Racing.TFrame")
         self.header_frame.pack(fill=tk.X)
 
-        self.subapps_frame = ttk.LabelFrame(root, text="Pits n' Giggles subsystems",
+        self.subapps_frame = ttk.LabelFrame(root, text=f"{APP_NAME} subsystems",
                                             padding="10", style="Racing.TLabelframe")
         self.subapps_frame.pack(fill=tk.X, padx=10, pady=5)
 
@@ -107,7 +107,7 @@ class PngLauncher(ConsoleInterface):
             threading.Thread(target=self.check_for_updates_background, daemon=True).start()
 
         # Initial log message
-        self.info_log(f"Pits n' Giggles started. Version: {self.version}. Log file: {self.log_file_path}")
+        self.info_log(f"{APP_NAME} started. Version: {self.version}. Log file: {self.log_file_path}")
 
     def create_custom_style(self):
         """Create custom styles for the application"""
