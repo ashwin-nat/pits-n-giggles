@@ -272,6 +272,9 @@ class EngViewRaceTable {
                     } else if (timeMs === bestLapInfo[timeKey]) {
                         timeClass = 'green-time';
                     }
+                    // Store the computed timeClass directly on the lapInfo object for lap times
+                    // This will be used by the comparator
+                    lapInfo[`${timeKey}-class`] = timeClass;
                 }
             }
 
@@ -311,9 +314,15 @@ class EngViewRaceTable {
             }
 
             const timeMs = lapInfo[timeKey];
-            const formattedTime = sectorKey === 'lap'
-                ? formatLapTime(timeMs)
-                : formatSectorTime(timeMs);
+            let cellText = '';
+            const status = lapInfo["driver-status"];
+            if (status === "FLYING_LAP" || status === "ON_TRACK" || timeKey !== 'lap-time-ms') {
+                cellText = (sectorKey === 'lap')
+                    ? formatLapTime(timeMs)
+                    : formatSectorTime(timeMs);
+            } else {
+                cellText = status;
+            }
 
             let timeClass = '';
             if (sectorStatus && sectorKey !== 'lap') {
@@ -326,7 +335,7 @@ class EngViewRaceTable {
                       timeClass = 'red-time';
                   }
             }
-            return this.createSingleLineCell(formattedTime, {className: timeClass});
+            return this.createSingleLineCell(cellText, {className: timeClass});
         };
     }
 
@@ -359,10 +368,11 @@ class EngViewRaceTable {
             {
                 headerName: "Pos",
                 context: {displayName: "Position"},
-                field: "position",
+                field: "driver-info",
                 flex: 4,
                 sortable: true,
                 cellRenderer: this.createPositionStatusCellRenderer(),
+                equals: this.createPositionEqualsComparator,
                 cellClass: 'ag-cell-multiline',
             },
             {
@@ -422,7 +432,7 @@ class EngViewRaceTable {
                     {
                         headerName: "Lap",
                         context: {displayName: "Best Lap Time"},
-                        field: `lap-info.best-lap.lap-time-ms`,
+                        field: `lap-info`,
                         cellRenderer: this.createSectorCellRenderer('lap', 'lap-time-ms', 'lap-time-ms-player', false),
                         sortable: false,
                         flex: 2.5,
@@ -431,11 +441,12 @@ class EngViewRaceTable {
                             const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
                             return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
                         },
+                        equals: this.createLapTimeEqualsComparator('best-lap'),
                     },
                     {
                         headerName: "S1",
                         context: {displayName: "Best Sector 1"},
-                        field: `lap-info.best-lap.s1-time-ms`,
+                        field: `lap-info`,
                         cellRenderer: this.createSectorCellRenderer('s1', 's1-time-ms', 's1-time-ms-player', false),
                         sortable: false,
                         flex: 2.5,
@@ -444,11 +455,12 @@ class EngViewRaceTable {
                             const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
                             return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
                         },
+                        equals: this.createSectorTimeEqualsComparator('best-lap', 's1', 's1-time-ms'),
                     },
                     {
                         headerName: "S2",
                         context: {displayName: "Best Sector 2"},
-                        field: `lap-info.best-lap.s2-time-ms`,
+                        field: `lap-info`,
                         cellRenderer: this.createSectorCellRenderer('s2', 's2-time-ms', 's2-time-ms-player', false),
                         sortable: false,
                         flex: 2.5,
@@ -457,11 +469,12 @@ class EngViewRaceTable {
                             const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
                             return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
                         },
+                        equals: this.createSectorTimeEqualsComparator('best-lap', 's2', 's2-time-ms'),
                     },
                     {
                         headerName: "S3",
                         context: {displayName: "Best Sector 3"},
-                        field: `lap-info.best-lap.s3-time-ms`,
+                        field: `lap-info`,
                         cellRenderer: this.createSectorCellRenderer('s3', 's3-time-ms', 's3-time-ms-player', false),
                         sortable: false,
                         flex: 2.5,
@@ -470,6 +483,7 @@ class EngViewRaceTable {
                             const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
                             return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
                         },
+                        equals: this.createSectorTimeEqualsComparator('best-lap', 's3', 's3-time-ms'),
                     }
                 ]
             },
@@ -480,7 +494,7 @@ class EngViewRaceTable {
                     {
                         headerName: "Lap",
                         context: {displayName: "Last Lap Time"},
-                        field: `lap-info.last-lap.lap-time-ms`,
+                        field: `lap-info`,
                         cellRenderer: this.createSectorCellRenderer('lap', 'lap-time-ms', 'lap-time-ms-player', true),
                         sortable: false,
                         flex: 2.5,
@@ -489,11 +503,12 @@ class EngViewRaceTable {
                             const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
                             return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
                         },
+                        equals: this.createLapTimeEqualsComparator('last-lap'),
                     },
                     {
                         headerName: "S1",
                         context: {displayName: "Last Sector 1"},
-                        field: `lap-info.last-lap.s1-time-ms`,
+                        field: `lap-info`,
                         cellRenderer: this.createSectorCellRenderer('s1', 's1-time-ms', 's1-time-ms-player', true),
                         sortable: false,
                         flex: 2.5,
@@ -502,11 +517,12 @@ class EngViewRaceTable {
                             const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
                             return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
                         },
+                        equals: this.createSectorTimeEqualsComparator('last-lap', 's1', 's1-time-ms'),
                     },
                     {
                         headerName: "S2",
                         context: {displayName: "Last Sector 2"},
-                        field: `lap-info.last-lap.s2-time-ms`,
+                        field: `lap-info`,
                         cellRenderer: this.createSectorCellRenderer('s2', 's2-time-ms', 's2-time-ms-player', true),
                         sortable: false,
                         flex: 2.5,
@@ -515,11 +531,12 @@ class EngViewRaceTable {
                             const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
                             return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
                         },
+                        equals: this.createSectorTimeEqualsComparator('last-lap', 's2', 's2-time-ms'),
                     },
                     {
                         headerName: "S3",
                         context: {displayName: "Last Sector 3"},
-                        field: `lap-info.last-lap.s3-time-ms`,
+                        field: `lap-info`,
                         cellRenderer: this.createSectorCellRenderer('s3', 's3-time-ms', 's3-time-ms-player', true),
                         sortable: false,
                         flex: 2.5,
@@ -528,6 +545,7 @@ class EngViewRaceTable {
                             const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
                             return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
                         },
+                        equals: this.createSectorTimeEqualsComparator('last-lap', 's3', 's3-time-ms'),
                     }
                 ]
             },
@@ -538,38 +556,42 @@ class EngViewRaceTable {
                     {
                         headerName: "Lap",
                         context: {displayName: "Current Lap Time"},
-                        field: `lap-info.curr-lap.lap-time-ms`,
+                        field: `lap-info`,
                         cellRenderer: this.createSectorCellRendererCurrLap('lap', 'lap-time-ms'),
                         sortable: false,
                         flex: 2.5,
                         cellClass: 'ag-cell-single-line',
+                        // No comparator for current lap time, since no css classes are applied on this column
                     },
                     {
                         headerName: "S1",
                         context: {displayName: "Current Sector 1"},
-                        field: `lap-info.curr-lap.s1-time-ms`,
+                        field: `lap-info`,
                         cellRenderer: this.createSectorCellRendererCurrLap('s1', 's1-time-ms'),
                         sortable: false,
                         flex: 2.5,
                         cellClass: 'ag-cell-single-line',
+                        equals: this.createSectorTimeEqualsComparator('curr-lap', 's1', 's1-time-ms'),
                     },
                     {
                         headerName: "S2",
                         context: {displayName: "Current Sector 2"},
-                        field: `lap-info.curr-lap.s2-time-ms`,
+                        field: `lap-info`,
                         cellRenderer: this.createSectorCellRendererCurrLap('s2', 's2-time-ms'),
                         sortable: false,
                         flex: 2.5,
                         cellClass: 'ag-cell-single-line',
+                        equals: this.createSectorTimeEqualsComparator('curr-lap', 's2', 's2-time-ms'),
                     },
                     {
                         headerName: "S3",
                         context: {displayName: "Current Sector 3"},
-                        field: `lap-info.curr-lap.s3-time-ms`,
+                        field: `lap-info`,
                         cellRenderer: this.createSectorCellRendererCurrLap('s3', 's3-time-ms'),
                         sortable: false,
                         flex: 2.5,
                         cellClass: 'ag-cell-single-line',
+                        equals: this.createSectorTimeEqualsComparator('curr-lap', 's3', 's3-time-ms'),
                     },
                 ]
             },
@@ -876,6 +898,12 @@ class EngViewRaceTable {
         return `<div class='${row1Class}'>${processedRow1}</div><div class='${row2Class}'>${processedRow2}</div>`;
     }
 
+    #clear() {
+        this.previousTableData = [];
+        this.delayedLapData = new Map();
+        this.delayedLapDataJustCleared = false;
+    }
+
     update(drivers, isSpectating, eventType, spectatorCarIndex, fastestLapMs, sessionUID, pitTimeLoss) {
         const prevSpectatorIndex = this.spectatorIndex;
         const prevIsSpectating = this.isSpectating;
@@ -885,8 +913,7 @@ class EngViewRaceTable {
         this.fastestLapMs = fastestLapMs;
         if (this.sessionUID !== sessionUID) {
             // clear the data structures if the session has changed
-            this.previousTableData = [];
-            this.delayedLapData = new Map();
+            this.#clear();
         }
         this.sessionUID = sessionUID;
 
@@ -1170,6 +1197,112 @@ class EngViewRaceTable {
             localStorage.removeItem(this.COLUMN_STATE_LS_KEY); // Clear saved state to ensure defaults are used
             console.debug('Column layout (positions and widths) reset to default, visibility preserved.');
         }
+    }
+
+    createPositionEqualsComparator(oldDriverInfo, newDriverInfo) {
+        // If either value is missing, re-render
+        if (!oldDriverInfo || !newDriverInfo) {
+            return false;
+        }
+
+        // If position changed, definitely re-render
+        if (oldDriverInfo["position"] !== newDriverInfo["position"]) {
+            return false;
+        }
+
+        // re-render if pitting or drs status has changed
+        if (oldDriverInfo['is-pitting'] !== newDriverInfo['is-pitting']) {
+            return false;
+        }
+
+        if (oldDriverInfo['drs-activated'] !== newDriverInfo['drs-activated']) {
+            return false;
+        }
+
+        if (oldDriverInfo['drs-allowed'] !== newDriverInfo['drs-allowed']) {
+            return false;
+        }
+
+        return true;
+    }
+
+    createLapTimeEqualsComparator(lapType) {
+        return (valueA, valueB) => {
+            if (!valueA || !valueB) {
+                return false;
+            }
+
+            const oldLapInfo = valueA[lapType];
+            const newLapInfo = valueB[lapType];
+
+            if (!oldLapInfo || !newLapInfo) {
+                return false;
+            }
+
+            // If lap time changed, re-render
+            if (oldLapInfo['lap-time-ms'] !== newLapInfo['lap-time-ms']) {
+                return false;
+            }
+
+            // Check for overall lap status change (purple/green)
+            // This logic needs to be consistent with createSectorCellRenderer
+            const fastestLapMs = this.fastestLapMs;
+            const pbLapMs = valueB["best-lap"]["lap-time-ms"];
+            const oldTimeClass = oldLapInfo[`lap-time-ms-class`];
+            let newTimeClass = '';
+            const newLapTimeMs = newLapInfo['lap-time-ms'];
+            if (newLapTimeMs) {
+                if (newLapTimeMs === fastestLapMs) {
+                    newTimeClass = 'purple-time';
+                } else if (newLapTimeMs === pbLapMs) {
+                    newTimeClass = 'green-time';
+                }
+            }
+
+            if (oldTimeClass !== newTimeClass) {
+                return false;
+            }
+
+            return true;
+        };
+    }
+
+    createSectorTimeEqualsComparator(lapType, sectorKey, timeKey) {
+        return (valueA, valueB) => {
+            if (!valueA || !valueB) {
+                return false;
+            }
+
+            const oldLapInfo = valueA[lapType];
+            const newLapInfo = valueB[lapType];
+
+            if (!oldLapInfo || !newLapInfo) {
+                return false;
+            }
+
+            // If sector time changed, re-render
+            const oldTimeMs = oldLapInfo[timeKey];
+            const newTimeMs = newLapInfo[timeKey];
+            if (oldTimeMs !== newTimeMs) {
+                return false;
+            }
+
+            // If sector times are 0, just re-render.
+            if ((lapType === 'curr-lap') && (newTimeMs === 0)) {
+                return false;
+            }
+
+            // If sector status changed, re-render
+            const sectorIndex = parseInt(sectorKey.slice(1)) - 1;
+            const oldSectorStatus = oldLapInfo["sector-status"] ? oldLapInfo["sector-status"][sectorIndex] : null;
+            const newSectorStatus = newLapInfo["sector-status"] ? newLapInfo["sector-status"][sectorIndex] : null;
+
+            if (oldSectorStatus !== newSectorStatus) {
+                return false;
+            }
+
+            return true;
+        };
     }
 }
 function formatSessionTime(seconds) {

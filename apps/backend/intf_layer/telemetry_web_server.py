@@ -79,12 +79,12 @@ class TelemetryWebServer(BaseWebServer):
             logger=logger,
             cert_path=settings.HTTPS.cert_path,
             key_path=settings.HTTPS.key_path,
-            disable_browser_autoload=settings.Display.disable_browser_autoload,
             debug_mode=debug_mode)
         self.define_routes()
         self.register_post_start_callback(self._post_start)
         self.m_show_start_sample_data = settings.StreamOverlay.show_sample_data_at_start
         self.m_session_state: SessionState = session_state
+        self.m_disable_browser_autoload = settings.Display.disable_browser_autoload
 
     def define_routes(self) -> None:
         """
@@ -209,6 +209,7 @@ class TelemetryWebServer(BaseWebServer):
 
     async def _post_start(self) -> None:
         """Function to be called after the server starts serving."""
-        proto = 'https' if self.m_cert_path else 'http'
-        webbrowser.open(f'{proto}://localhost:{self.m_port}', new=2)
         notify_parent_init_complete()
+        if not self.m_disable_browser_autoload:
+            proto = 'https' if self.m_cert_path else 'http'
+            webbrowser.open(f'{proto}://localhost:{self.m_port}', new=2)

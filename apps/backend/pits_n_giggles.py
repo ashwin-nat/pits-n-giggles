@@ -41,6 +41,7 @@ from lib.config import load_config_from_ini
 from lib.error_status import PngError
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.version import get_version
+from meta.meta import APP_NAME
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -194,7 +195,7 @@ def parseArgs() -> argparse.Namespace:
     """
 
     # Initialize the ArgumentParser
-    parser = argparse.ArgumentParser(description="Pits n' Giggles Realtime Telemetry Server")
+    parser = argparse.ArgumentParser(description=f"{APP_NAME} Realtime Telemetry Server")
 
     # Add command-line arguments with default values
     parser.add_argument("--config-file", nargs="?", default="png_config.ini", help="Configuration file name (optional)")
