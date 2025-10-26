@@ -63,7 +63,6 @@ class WindowManager:
         self.logger = logger
         self.windows: Dict[str, webview.Window] = {}
         self.apis: Dict[str, API] = {}
-        self.window_locked_states: Dict[str, bool] = {}
         self._running = True
 
         # Configure scripts to inject
@@ -230,7 +229,6 @@ class WindowManager:
         """
         api = API(window_id)
         self.apis[window_id] = api
-        self.window_locked_states[window_id] = True  # Default to locked
 
         frameless = True
         resizable = False
@@ -307,9 +305,6 @@ class WindowManager:
             self.logger.error(f"[WindowManager] Window '{window_id}' not found after {max_attempts} attempts")
             return False
 
-        # Update internal state
-        self.window_locked_states[window_id] = locked
-
         if locked:
             # Locked mode (frameless, click-through)
             ex_style = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
@@ -347,18 +342,25 @@ class WindowManager:
         self.logger.info(f"[WindowManager] Window '{window_id}' locked state successfully changed to {locked}")
         return True
 
-    def toggle_locked_state(self, window_id):
-        """Convenience method to switch between locked and unlocked states"""
-        current_locked_state = self.window_locked_states.get(window_id, INITIAL_LOCKED_STATE)
-        new_locked_state = not current_locked_state
-        self.logger.debug(f"[WindowManager] Current locked state: {current_locked_state}, New locked state: {new_locked_state}")
-        self.set_window_locked_state(window_id, new_locked_state)
-        return new_locked_state
+    def set_locked_state(self, window_id: str, locked_state_dict: Dict[str, bool]):
+        """Set locked state for a specific window based on the new-value in the dict"""
+        new_locked_state = locked_state_dict.get('new-value')
+        if new_locked_state is None:
+            self.logger.error(f"[WindowManager] 'new-value' not found in locked_state_dict for window '{window_id}'")
+            return False
+        self.logger.debug(f"[WindowManager] Setting locked state for '{window_id}' to {new_locked_state}")
+        return self.set_window_locked_state(window_id, new_locked_state)
 
-    def toggle_locked_state_all(self):
-        """Toggle locked state for all managed windows"""
+    def set_locked_state_all(self, locked_state_dict: Dict[str, bool]):
+        """Set locked state for all managed windows based on the new-value in the dict"""
+        new_locked_state = locked_state_dict.get('new-value')
+        if new_locked_state is None:
+            self.logger.error(f"[WindowManager] 'new-value' not found in locked_state_dict for all windows")
+            return False
+        self.logger.debug(f"[WindowManager] Setting locked state for all windows to {new_locked_state}")
         for window_id in self.windows.keys():
-            self.toggle_locked_state(window_id)
+            self.set_window_locked_state(window_id, new_locked_state)
+        return True
 
     def broadcast_data(self, data):
         for window_id, api in self.apis.items():
