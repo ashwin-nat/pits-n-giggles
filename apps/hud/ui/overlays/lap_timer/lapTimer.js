@@ -116,6 +116,7 @@ window.addEventListener('telemetry-update', (event) => {
 // Wait for utils to be ready before trying to use them
 window.addEventListener('utils-ready', async () => {
     console.log('[LapTimer] Utils ready, fetching initial telemetry...');
+    test_import(); // TODO: remove
 
     // Now safe to use utils functions
     try {

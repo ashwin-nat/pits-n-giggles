@@ -66,83 +66,104 @@ class WindowManager:
         self.window_modes: Dict[str, int] = {}
         self._running = True
 
-    def _get_shared_utils_path(self) -> str:
-        """Construct the absolute path to the shared utils.js file"""
-        # From apps/hud/ui/infra -> apps/frontend/js/utils.js
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        self.logger.debug(f"[WindowManager] Base directory: {base_dir}")
+        # Configure scripts to inject
+        self.injectable_scripts = [
+            {
+                'name': 'utils.js',
+                'path_segments': ['..', '..', '..', 'frontend', 'js', 'utils.js'],
+                'description': 'Shared utility functions'
+            },
+        ]
 
-        utils_path = os.path.join(
-            base_dir,      # apps/hud/ui/infra
-            "..",          # apps/hud/ui
-            "..",          # apps/hud
-            "..",          # apps
-            "frontend",    # apps/frontend
-            "js",          # apps/frontend/js
-            "utils.js"     # apps/frontend/js/utils.js
-        )
+    def _construct_script_path(self, path_segments: list) -> str:
+        """Construct an absolute path from base directory and path segments"""
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+
+        # Join all segments
+        script_path = os.path.join(base_dir, *path_segments)
 
         # Normalize the path to remove '..' segments
-        utils_path = os.path.normpath(utils_path)
-        self.logger.debug(f"[WindowManager] Constructed utils.js path: {utils_path}")
+        return os.path.normpath(script_path)
 
-        return utils_path
-
-    def _inject_shared_utils(self, window: webview.Window, window_id: str):
-        """Inject shared utility JavaScript into the window"""
-        self.logger.info(f"[WindowManager] Attempting to inject shared utils.js into '{window_id}'")
-
-        utils_path = self._get_shared_utils_path()
+    def _inject_script(self, window: webview.Window, window_id: str, script_name: str, script_path: str) -> bool:
+        """Inject a JavaScript file into the window"""
+        self.logger.info(f"[WindowManager] Attempting to inject {script_name} into '{window_id}'")
 
         # Check if file exists
-        if not os.path.exists(utils_path):
-            self.logger.error(f"[WindowManager] utils.js NOT FOUND at path: {utils_path}")
+        if not os.path.exists(script_path):
+            self.logger.error(f"[WindowManager] {script_name} NOT FOUND at path: {script_path}")
             self.logger.error(f"[WindowManager] Current working directory: {os.getcwd()}")
             return False
 
-        self.logger.info(f"[WindowManager] Found utils.js at: {utils_path}")
+        self.logger.info(f"[WindowManager] Found {script_name} at: {script_path}")
 
         try:
-            # Read the utils.js file
-            self.logger.debug(f"[WindowManager] Reading utils.js file...")
-            with open(utils_path, 'r', encoding='utf-8') as f:
-                utils_code = f.read()
+            # Read the script file
+            self.logger.debug(f"[WindowManager] Reading {script_name} file...")
+            with open(script_path, 'r', encoding='utf-8') as f:
+                script_code = f.read()
 
-            file_size = len(utils_code)
-            self.logger.info(f"[WindowManager] Read {file_size} bytes from utils.js")
+            file_size = len(script_code)
+            self.logger.info(f"[WindowManager] Read {file_size} bytes from {script_name}")
 
             if file_size == 0:
-                self.logger.warning(f"[WindowManager] utils.js is empty!")
+                self.logger.warning(f"[WindowManager] {script_name} is empty!")
                 return False
 
-            # Add logging around the utils code (no IIFE wrapper to keep functions global)
+            # Wrap with logging
             wrapped_code = f"""
-                console.log('[UTILS] Injecting shared utils.js...');
-                {utils_code}
-                console.log('[UTILS] Successfully injected shared utils.js');
+                console.log('[INJECT] Loading {script_name}...');
+                {script_code}
+                console.log('[INJECT] Successfully loaded {script_name}');
             """
 
             # Inject into window
-            self.logger.debug(f"[WindowManager] Evaluating JavaScript in window '{window_id}'...")
+            self.logger.debug(f"[WindowManager] Evaluating {script_name} in window '{window_id}'...")
             window.evaluate_js(wrapped_code)
 
-            self.logger.info(f"[WindowManager] ✓ Successfully injected utils.js into '{window_id}'")
+            self.logger.info(f"[WindowManager] Successfully injected {script_name} into '{window_id}'")
             return True
 
         except FileNotFoundError as e:
-            self.logger.error(f"[WindowManager] File not found error: {e}")
+            self.logger.error(f"[WindowManager] File not found error for {script_name}: {e}")
             return False
         except PermissionError as e:
-            self.logger.error(f"[WindowManager] Permission error reading utils.js: {e}")
+            self.logger.error(f"[WindowManager] Permission error reading {script_name}: {e}")
             return False
         except UnicodeDecodeError as e:
-            self.logger.error(f"[WindowManager] Encoding error reading utils.js: {e}")
+            self.logger.error(f"[WindowManager] Encoding error reading {script_name}: {e}")
             return False
         except Exception as e:
-            self.logger.error(f"[WindowManager] Failed to inject utils.js into '{window_id}': {type(e).__name__}: {e}")
+            self.logger.error(f"[WindowManager] Failed to inject {script_name} into '{window_id}': {type(e).__name__}: {e}")
             import traceback
             self.logger.error(f"[WindowManager] Traceback: {traceback.format_exc()}")
             return False
+
+    def _inject_all_scripts(self, window: webview.Window, window_id: str) -> dict:
+        """Inject all configured scripts into the window"""
+        results = {}
+
+        for script_config in self.injectable_scripts:
+            script_name = script_config['name']
+            script_path = self._construct_script_path(script_config['path_segments'])
+
+            self.logger.debug(f"[WindowManager] Injecting {script_name} ({script_config.get('description', 'No description')})")
+            success = self._inject_script(window, window_id, script_name, script_path)
+            results[script_name] = success
+
+        # Log summary
+        successful = sum(1 for success in results.values() if success)
+        total = len(results)
+
+        if successful == total:
+            self.logger.info(f"[WindowManager] All {total} scripts injected successfully for '{window_id}'")
+        else:
+            self.logger.warning(f"[WindowManager] {successful}/{total} scripts injected for '{window_id}'")
+
+        # Dispatch utils-ready event after all scripts are loaded
+        self._dispatch_utils_ready(window, window_id)
+
+        return results
 
     def _inject_console_logger(self, window: webview.Window, window_id: str):
         """Inject console logging interceptor into the window"""
@@ -176,10 +197,31 @@ class WindowManager:
 
         try:
             window.evaluate_js(js_code)
-            self.logger.info(f"[WindowManager] ✓ Console logger injected into '{window_id}'")
+            self.logger.info(f"[WindowManager] Console logger injected into '{window_id}'")
             return True
         except Exception as e:
             self.logger.warning(f"[WindowManager] Could not inject logger for '{window_id}': {e}")
+            return False
+
+    def _dispatch_utils_ready(self, window: webview.Window, window_id: str):
+        """Dispatch utils-ready event to notify JavaScript that all scripts are loaded"""
+        self.logger.info(f"[WindowManager] Dispatching utils-ready event for '{window_id}'")
+
+        js_code = """
+            (function() {
+                console.log('[WindowManager] Dispatching utils-ready event...');
+                const event = new Event('utils-ready');
+                window.dispatchEvent(event);
+                console.log('[WindowManager] utils-ready event dispatched');
+            })();
+        """
+
+        try:
+            window.evaluate_js(js_code)
+            self.logger.info(f"[WindowManager] utils-ready event dispatched for '{window_id}'")
+            return True
+        except Exception as e:
+            self.logger.error(f"[WindowManager] Failed to dispatch utils-ready event for '{window_id}': {e}")
             return False
 
     def create_window(self, window_id, html_path, x=100, y=100, initial_mode=2):
@@ -214,17 +256,11 @@ class WindowManager:
 
         # Inject utilities and logger after window is ready
         def on_window_ready():
-
             # Step 1: Inject console logger first so we can see subsequent logs
             self._inject_console_logger(window, window_id)
 
-            # Step 2: Inject shared utils.js
-            utils_success = self._inject_shared_utils(window, window_id)
-
-            # if utils_success:
-            #     self.logger.info(f"[WindowManager] ✓ All injections successful for '{window_id}'")
-            # else:
-            #     self.logger.warning(f"[WindowManager] ⚠ Some injections failed for '{window_id}'")
+            # Step 2: Inject all configured scripts
+            self._inject_all_scripts(window, window_id)
 
             # Step 3: Apply window mode after everything is loaded
             time.sleep(0.5)  # Give OS time to register the window
