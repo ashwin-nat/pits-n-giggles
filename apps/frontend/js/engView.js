@@ -1288,13 +1288,15 @@ class EngViewRaceTable {
                 return false;
             }
 
-            // If old lap data was just cleared re-render
-            if (false) {
+            // If sector time changed, re-render
+            const oldTimeMs = oldLapInfo[timeKey];
+            const newTimeMs = newLapInfo[timeKey];
+            if (oldTimeMs !== newTimeMs) {
                 return false;
             }
 
-            // If sector time changed, re-render
-            if (oldLapInfo[timeKey] !== newLapInfo[timeKey]) {
+            // If sector times are 0, just re-render.
+            if ((lapType === 'curr-lap') && (newTimeMs === 0)) {
                 return false;
             }
 
