@@ -367,7 +367,8 @@ class EngViewRaceTable {
         return [
             {
                 headerName: "Pos",
-                context: {displayName: "Position", id: "position"},
+                colId: "position",
+                context: {displayName: "Position", },
                 field: "driver-info",
                 flex: 4,
                 sortable: true,
@@ -377,7 +378,8 @@ class EngViewRaceTable {
             },
             {
                 headerName: "Name",
-                context: {displayName: "Driver Name", id: "name"},
+                colId: "name",
+                context: {displayName: "Driver Name", },
                 field: "name",
                 flex: 12,
                 cellRenderer: (params) => {
@@ -392,7 +394,8 @@ class EngViewRaceTable {
             },
             {
                 headerName: "Delta",
-                context: {displayName: "Delta", id: "delta"},
+                colId: "delta",
+                context: {displayName: "Delta", },
                 field: "delta-info",
                 flex: 8,
                 cellRenderer: (params) => {
@@ -417,29 +420,34 @@ class EngViewRaceTable {
             },
             {
                 headerName: 'Penalties',
-                context: {displayName: 'Penalties', id: 'penalties'},
+                colId: 'penalties',
+                context: {displayName: 'Penalties', },
                 children: [
                     {
                         headerName: "Track",
-                        context: {displayName: "Track Warnings", id: "track-warnings"},
+                        colId: "track-warnings",
+                        context: {displayName: "Track Warnings", },
                         cellRenderer: this.createPenaltyCellRenderer("corner-cutting-warnings"),
                         field: "warns-pens-info.corner-cutting-warnings", flex: 1.5, sortable: false, cellClass: 'ag-cell-single-line',
                     },
                     {
                         headerName: 'Time',
-                        context: {displayName: "Time Penalties", id: "time-penalties"},
+                        colId: 'time-penalties',
+                        context: {displayName: "Time Penalties", },
                         cellRenderer: this.createPenaltyCellRenderer("time-penalties"),
                         field: 'warns-pens-info.time-penalties', flex: 1.5, sortable: false, cellClass: 'ag-cell-single-line'
                     },
                     {
                         headerName: 'DT',
-                        context: {displayName: "Drive Through", id: "drive-through"},
+                        colId: 'drive-through',
+                        context: {displayName: "Drive Through", },
                         field: 'warns-pens-info.num-dt', flex: 1.5, sortable: false, cellClass: 'ag-cell-single-line',
                         cellRenderer: this.createPenaltyCellRenderer("num-dt"),
                     },
                     {
                         headerName: 'Serv',
-                        context: {displayName: "Stop Go", id: "stop-go"},
+                        colId: 'stop-go',
+                        context: {displayName: "Stop Go", },
                         field: 'warns-pens-info.num-sg', flex: 1.5, sortable: false, cellClass: 'ag-cell-single-line',
                         cellRenderer: this.createPenaltyCellRenderer("num-sg"),
                     },
@@ -447,11 +455,13 @@ class EngViewRaceTable {
             },
             {
                 headerName: 'Best Lap',
-                context: {displayName: 'Best Lap', id: 'best-lap'},
+                colId: 'best-lap',
+                context: {displayName: 'Best Lap', },
                 children: [
                     {
                         headerName: "Lap",
-                        context: {displayName: "Best Lap Time", id: "best-lap-time"},
+                        colId: "best-lap-time",
+                        context: {displayName: "Best Lap Time", },
                         field: `lap-info`,
                         cellRenderer: this.createSectorCellRenderer('lap', 'lap-time-ms', 'lap-time-ms-player', false),
                         sortable: false,
@@ -465,7 +475,8 @@ class EngViewRaceTable {
                     },
                     {
                         headerName: "S1",
-                        context: {displayName: "Best Sector 1", id: "best-sector-1"},
+                        colId: "best-sector-1",
+                        context: {displayName: "Best Sector 1", },
                         field: `lap-info`,
                         cellRenderer: this.createSectorCellRenderer('s1', 's1-time-ms', 's1-time-ms-player', false),
                         sortable: false,
@@ -479,7 +490,8 @@ class EngViewRaceTable {
                     },
                     {
                         headerName: "S2",
-                        context: {displayName: "Best Sector 2", id: "best-sector-2"},
+                        colId: "best-sector-2",
+                        context: {displayName: "Best Sector 2", },
                         field: `lap-info`,
                         cellRenderer: this.createSectorCellRenderer('s2', 's2-time-ms', 's2-time-ms-player', false),
                         sortable: false,
@@ -493,7 +505,8 @@ class EngViewRaceTable {
                     },
                     {
                         headerName: "S3",
-                        context: {displayName: "Best Sector 3", id: "best-sector-3"},
+                        colId: "best-sector-3",
+                        context: {displayName: "Best Sector 3", },
                         field: `lap-info`,
                         cellRenderer: this.createSectorCellRenderer('s3', 's3-time-ms', 's3-time-ms-player', false),
                         sortable: false,
@@ -509,11 +522,13 @@ class EngViewRaceTable {
             },
             {
                 headerName: 'Last Lap',
-                context: {displayName: 'Last Lap', id: 'last-lap'},
+                colId: 'last-lap',
+                context: {displayName: 'Last Lap', },
                 children: [
                     {
                         headerName: "Lap",
-                        context: {displayName: "Last Lap Time", id: "last-lap-time"},
+                        colId: "last-lap-time",
+                        context: {displayName: "Last Lap Time", },
                         field: `lap-info`,
                         cellRenderer: this.createSectorCellRenderer('lap', 'lap-time-ms', 'lap-time-ms-player', true),
                         sortable: false,
@@ -527,7 +542,8 @@ class EngViewRaceTable {
                     },
                     {
                         headerName: "S1",
-                        context: {displayName: "Last Sector 1", id: "last-sector-1"},
+                        colId: "last-sector-1",
+                        context: {displayName: "Last Sector 1", },
                         field: `lap-info`,
                         cellRenderer: this.createSectorCellRenderer('s1', 's1-time-ms', 's1-time-ms-player', true),
                         sortable: false,
@@ -541,7 +557,8 @@ class EngViewRaceTable {
                     },
                     {
                         headerName: "S2",
-                        context: {displayName: "Last Sector 2", id: "last-sector-2"},
+                        colId: "last-sector-2",
+                        context: {displayName: "Last Sector 2",},
                         field: `lap-info`,
                         cellRenderer: this.createSectorCellRenderer('s2', 's2-time-ms', 's2-time-ms-player', true),
                         sortable: false,
@@ -555,7 +572,8 @@ class EngViewRaceTable {
                     },
                     {
                         headerName: "S3",
-                        context: {displayName: "Last Sector 3", id: "last-sector-3"},
+                        colId: "last-sector-3",
+                        context: {displayName: "Last Sector 3", },
                         field: `lap-info`,
                         cellRenderer: this.createSectorCellRenderer('s3', 's3-time-ms', 's3-time-ms-player', true),
                         sortable: false,
@@ -571,11 +589,13 @@ class EngViewRaceTable {
             },
             {
                 headerName: 'Current Lap',
-                context: {displayName: 'Curr Lap', id: 'curr-lap'},
+                colId: 'curr-lap',
+                context: {displayName: 'Curr Lap', },
                 children: [
                     {
                         headerName: "Lap",
-                        context: {displayName: "Current Lap Time", id: "curr-lap-time"},
+                        colId: "curr-lap-time",
+                        context: {displayName: "Current Lap Time", },
                         field: `lap-info`,
                         cellRenderer: this.createSectorCellRendererCurrLap('lap', 'lap-time-ms'),
                         sortable: false,
@@ -585,7 +605,8 @@ class EngViewRaceTable {
                     },
                     {
                         headerName: "S1",
-                        context: {displayName: "Current Sector 1", id: "curr-sector-1"},
+                        colId: "curr-sector-1",
+                        context: {displayName: "Current Sector 1", },
                         field: `lap-info`,
                         cellRenderer: this.createSectorCellRendererCurrLap('s1', 's1-time-ms'),
                         sortable: false,
@@ -595,7 +616,8 @@ class EngViewRaceTable {
                     },
                     {
                         headerName: "S2",
-                        context: {displayName: "Current Sector 2", id: "curr-sector-2"},
+                        colId: "curr-sector-2",
+                        context: {displayName: "Current Sector 2", },
                         field: `lap-info`,
                         cellRenderer: this.createSectorCellRendererCurrLap('s2', 's2-time-ms'),
                         sortable: false,
@@ -605,7 +627,8 @@ class EngViewRaceTable {
                     },
                     {
                         headerName: "S3",
-                        context: {displayName: "Current Sector 3", id: "curr-sector-3"},
+                        colId: "curr-sector-3",
+                        context: {displayName: "Current Sector 3", },
                         field: `lap-info`,
                         cellRenderer: this.createSectorCellRendererCurrLap('s3', 's3-time-ms'),
                         sortable: false,
@@ -615,10 +638,10 @@ class EngViewRaceTable {
                     },
                 ]
             },
-
             {
                 headerName: 'Speed Trap',
-                context: {displayName: 'Speed Trap', id: 'speed-trap'},
+                colId: 'speed-trap',
+                context: {displayName: 'Speed Trap', },
                 field: "lap-info.speed-trap-record-kmph",
                 flex: 8,
                 cellRenderer: (params) =>  {
@@ -636,11 +659,13 @@ class EngViewRaceTable {
             },
             {
                 headerName: 'Tyre Wear',
-                context: {displayName: 'Tyre Wear', id: 'tyre-wear'},
+                colId: 'tyre-wear',
+                context: {displayName: 'Tyre Wear', },
                 children: [
                     {
                         headerName: "Comp",
-                        context: {displayName: "Tyre Compound", id: "tyre-compound"},
+                        colId: "tyre-compound",
+                        context: {displayName: "Tyre Compound", },
                         field: "tyre-info.visual-tyre-compound",
                         flex: 4,
                         valueGetter: (params) => {
@@ -665,7 +690,8 @@ class EngViewRaceTable {
                     },
                     {
                         headerName: "Rejoin",
-                        context: {displayName: "Pit Rejoin Position", id: "pit-rejoin-position"},
+                        colId: "pit-rejoin-position",
+                        context: {displayName: "Pit Rejoin Position", },
                         field: "tyre-info.pit-rejoin-position",
                         flex: 4,
                         cellRenderer: (params) => {
@@ -681,7 +707,8 @@ class EngViewRaceTable {
                     },
                     {
                         headerName: "Lap",
-                        context: {displayName: "Tyre Age / Pred. Lap", id: "tyre-age"},
+                        colId: "tyre-age",
+                        context: {displayName: "Tyre Age / Pred. Lap", },
                         field: "tyre-info.tyre-age",
                         flex: 4,
                         cellRenderer: (params) => {
@@ -696,7 +723,8 @@ class EngViewRaceTable {
                     },
                     {
                         headerName: "FL",
-                        context: {displayName: "Front Left Wear", id: "front-left-wear"},
+                        colId: "front-left-wear",
+                        context: {displayName: "Front Left Wear", },
                         field: "tyre-info.current-wear.front-left-wear",
                         flex: 2,
                         cellRenderer: this.createTyreWearCellRenderer("front-left-wear"),
@@ -705,7 +733,8 @@ class EngViewRaceTable {
                     },
                     {
                         headerName: "FR",
-                        context: {displayName: "Front Right Wear", id: "front-right-wear"},
+                        colId: "front-right-wear",
+                        context: {displayName: "Front Right Wear", },
                         field: "tyre-info.current-wear.front-right-wear",
                         flex: 2,
                         cellRenderer: this.createTyreWearCellRenderer("front-right-wear"),
@@ -714,7 +743,8 @@ class EngViewRaceTable {
                     },
                     {
                         headerName: "RL",
-                        context: {displayName: "Rear Left Wear", id: "rear-left-wear"},
+                        colId: "rear-left-wear",
+                        context: {displayName: "Rear Left Wear", },
                         field: "tyre-info.current-wear.rear-left-wear",
                         flex: 2,
                         cellRenderer: this.createTyreWearCellRenderer("rear-left-wear"),
@@ -723,7 +753,8 @@ class EngViewRaceTable {
                     },
                     {
                         headerName: "RR",
-                        context: {displayName: "Rear Right Wear", id: "rear-right-wear"},
+                        colId: "rear-right-wear",
+                        context: {displayName: "Rear Right Wear", },
                         field: "tyre-info.current-wear.rear-right-wear",
                         flex: 2,
                         cellRenderer: this.createTyreWearCellRenderer("rear-right-wear"),
@@ -734,10 +765,11 @@ class EngViewRaceTable {
             },
             {
                 headerName: 'ERS',
-                context: {displayName: 'ERS', id: 'ers'},
+                colId: 'ers',
+                context: {displayName: 'ERS', },
                 children: [
                     {
-                        headerName: "Avail", context: {displayName: "ERS Available", id: "ers-avail"},
+                        headerName: "Avail", colId: "ers-avail", context: {displayName: "ERS Available", },
                         field: "ers-info.ers-percent", flex: 3.33,
                         cellRenderer: (params) => {
                             const driverInfo = params.data;
@@ -750,7 +782,7 @@ class EngViewRaceTable {
                         }, sortable: false, cellClass: 'ag-cell-single-line',
                     },
                     {
-                        headerName: "Deploy", context: {displayName: "ERS Deployed", id: "ers-deployed"},
+                        headerName: "Deploy", colId: "ers-deployed", context: {displayName: "ERS Deployed", },
                         field: "ers-info.ers-deployed-this-lap", flex: 3.33,
                         cellRenderer: (params) => {
                             const driverInfo = params.data;
@@ -763,7 +795,7 @@ class EngViewRaceTable {
                         }, sortable: false, cellClass: 'ag-cell-single-line',
                     },
                     {
-                        headerName: "Mode", context: {displayName: "ERS Mode", id: "ers-mode"},
+                        headerName: "Mode", colId: "ers-mode", context: {displayName: "ERS Mode", },
                         field: "ers-info.ers-mode", flex: 3.33,
                         cellRenderer: (params) => {
                             const driverInfo = params.data;
@@ -779,10 +811,11 @@ class EngViewRaceTable {
             },
             {
                 headerName: 'Fuel',
-                context: {displayName: 'Fuel', id: 'fuel'},
+                colId: 'fuel',
+                context: {displayName: 'Fuel', },
                 children: [
                     {
-                        headerName: "Total", context: {displayName: "Fuel In Tank", id: "fuel-in-tank"},
+                        headerName: "Total", colId: "fuel-in-tank", context: {displayName: "Fuel In Tank", },
                         field: "fuel-info.fuel-in-tank", flex: 3.33,
                         cellRenderer: (params) => {
                             const driverInfo = params.data;
@@ -798,7 +831,7 @@ class EngViewRaceTable {
                         }, sortable: false, cellClass: 'ag-cell-single-line',
                     },
                     {
-                        headerName: "Per Lap", context: {displayName: "Fuel Per Lap", id: "fuel-per-lap"},
+                        headerName: "Per Lap", colId: "fuel-per-lap", context: {displayName: "Fuel Per Lap", },
                         field: "fuel-info.curr-fuel-rate", flex: 3.33,
                         cellRenderer: (params) => {
                             const driverInfo = params.data;
@@ -814,7 +847,7 @@ class EngViewRaceTable {
                         }, sortable: false, cellClass: 'ag-cell-single-line',
                     },
                     {
-                        headerName: "Est", context: {displayName: "Estimated Laps", id: "estimated-laps"},
+                        headerName: "Est", colId: "estimated-laps", context: {displayName: "Estimated Laps", },
                         field: "fuel-info.surplus-laps-png", flex: 3.33,
                         cellRenderer: (params) => {
                             const driverInfo = params.data;
@@ -833,10 +866,11 @@ class EngViewRaceTable {
             },
             {
                 headerName: 'Damage',
-                context: {displayName: 'Damage', id: 'damage'},
+                colId: 'damage',
+                context: {displayName: 'Damage', },
                 children: [
                     {
-                        headerName: "FL", context: {displayName: "Front Left Wing", id: "fl-wing-damage"},
+                        headerName: "FL", colId: "fl-wing-damage", context: {displayName: "Front Left Wing", },
                         field: "damage-info.fl-wing-damage", flex: 3.33,
                         cellRenderer: (params) =>  {
                             const driverInfo = params.data;
@@ -850,7 +884,7 @@ class EngViewRaceTable {
                         }, sortable: false, cellClass: 'ag-cell-single-line',
                     },
                     {
-                        headerName: "FR", context: {displayName: "Front Right Wing", id: "fr-wing-damage"},
+                        headerName: "FR", colId: "fr-wing-damage", context: {displayName: "Front Right Wing",},
                         field: "damage-info.fr-wing-damage", flex: 3.33,
                         cellRenderer: (params) =>  {
                             const driverInfo = params.data;
@@ -864,7 +898,7 @@ class EngViewRaceTable {
                         }, sortable: false, cellClass: 'ag-cell-single-line',
                     },
                     {
-                        headerName: "RW", context: {displayName: "Rear Wing", id: "rear-wing-damage"},
+                        headerName: "RW", colId: "rear-wing-damage", context: {displayName: "Rear Wing", },
                         field: "damage-info.rear-wing-damage", flex: 3.33,
                         cellRenderer: (params) =>  {
                             const driverInfo = params.data;
@@ -1084,7 +1118,7 @@ class EngViewRaceTable {
         let groupCounter = 0; // synthetic IDs for groups without colId/field
 
         const createToggle = (colDef, parentColId = null, isGroup = false, initialIsVisible = null) => {
-            let colId = colDef.colId || colDef.field;
+            let colId = colDef.colId;
 
             // For groups with no id/field, generate synthetic one
             if (!colId && isGroup) {
@@ -1126,7 +1160,7 @@ class EngViewRaceTable {
 
                 if (colDef.children) {
                     colDef.children.forEach(childColDef => {
-                        const childColId = childColDef.colId || childColDef.field;
+                        const childColId = childColDef.colId;
                         if (childColId) {
                             const childColumn = this.gridApi.getColumn(childColId);
                             if (childColumn) {
@@ -1161,7 +1195,7 @@ class EngViewRaceTable {
 
                 // Determine initial visibility for the parent group
                 const anyChildVisible = colDef.children.some(childColDef => {
-                    const childColId = childColDef.colId || childColDef.field;
+                    const childColId = childColDef.colId;
                     const childColumn = childColId ? this.gridApi.getColumn(childColId) : null;
                     return childColumn ? childColumn.isVisible() : false;
                 });
@@ -1178,7 +1212,7 @@ class EngViewRaceTable {
                     if (!childColDef.colId && childColDef.field) {
                         childColDef.colId = childColDef.field;
                     }
-                    const childToggle = createToggle(childColDef, colDef.colId || colDef.field);
+                    const childToggle = createToggle(childColDef, colDef.colId);
                     if (childToggle) {
                         childrenContainer.appendChild(childToggle);
                     }
@@ -1208,7 +1242,7 @@ class EngViewRaceTable {
                         processColDefs(colDef.children);
                     } else {
                         initialColumnState.push({
-                            colId: colDef.colId || colDef.field,
+                            colId: colDef.colId,
                             width: colDef.width || colDef.flex ? undefined : 100, // Default width if not flex
                             flex: colDef.flex,
                             hide: false, // Ensure visibility is not reset here
