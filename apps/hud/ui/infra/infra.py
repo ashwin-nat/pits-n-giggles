@@ -233,6 +233,9 @@ class WindowManager:
         frameless = True
         resizable = False
 
+        self.logger.debug(f"[WindowManager] Creating window '{window_id}' at ({x}, {y}) for {html_path}")
+        assert os.path.exists(html_path)
+
         window = webview.create_window(
             window_id,
             html_path,
