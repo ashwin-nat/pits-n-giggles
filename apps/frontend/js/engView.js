@@ -899,6 +899,12 @@ class EngViewRaceTable {
         return `<div class='${row1Class}'>${processedRow1}</div><div class='${row2Class}'>${processedRow2}</div>`;
     }
 
+    #clear() {
+        this.previousTableData = [];
+        this.delayedLapData = new Map();
+        this.delayedLapDataJustCleared = false;
+    }
+
     update(drivers, isSpectating, eventType, spectatorCarIndex, fastestLapMs, sessionUID, pitTimeLoss) {
         const prevSpectatorIndex = this.spectatorIndex;
         const prevIsSpectating = this.isSpectating;
@@ -908,8 +914,7 @@ class EngViewRaceTable {
         this.fastestLapMs = fastestLapMs;
         if (this.sessionUID !== sessionUID) {
             // clear the data structures if the session has changed
-            this.previousTableData = [];
-            this.delayedLapData = new Map();
+            this.#clear();
         }
         this.sessionUID = sessionUID;
 
@@ -1280,6 +1285,11 @@ class EngViewRaceTable {
             const newLapInfo = valueB[lapType];
 
             if (!oldLapInfo || !newLapInfo) {
+                return false;
+            }
+
+            // If old lap data was just cleared re-render
+            if (false) {
                 return false;
             }
 
