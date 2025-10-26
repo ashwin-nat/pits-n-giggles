@@ -180,7 +180,8 @@ def main(telemetry_port, http_port, proto):
     print("Waiting for app to start...")
     time.sleep(5)
 
-    print("Launching engineer view and overlay clients")
+    print("Launching driver view, engineer view and overlay clients")
+    webbrowser.open(f'{proto}://localhost:{http_port}/', new=2)
     webbrowser.open(f'{proto}://localhost:{http_port}/eng-view', new=2)
     webbrowser.open(f'{proto}://localhost:{http_port}/player-stream-overlay', new=2)
 
