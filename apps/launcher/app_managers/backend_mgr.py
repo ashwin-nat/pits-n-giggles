@@ -50,7 +50,7 @@ class BackendAppMgr(PngAppMgrBase):
             port_conflict_settings_field='Network -> "Pits n\' Giggles HTTP Server Port"',
             module_path="apps.backend",
             display_name="Server",
-            start_by_default=True, # TODO: revert
+            start_by_default=False, # TODO: revert
             console_app=console_app,
             settings=settings,
             args=temp_args,

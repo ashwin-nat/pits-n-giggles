@@ -42,19 +42,17 @@ class IpcSubscriber:
     def __init__(self,
                  url: str,
                  logger: Optional[logging.Logger] = None,
-                 stop_event: Optional[threading.Event] = None,
                  msg_packed: bool = False
                  ) -> None:
         """
         Args:
             url: Socket.IO server URL.
             logger: Optional logger; if None, logging is disabled.
-            stop_event: Optional threading.Event to signal stopping; if None, a new one is created.
             msg_packed: Whether to use msgpack for message de-serialization.
         """
         self.url = url
         self.logger = logger
-        self._stop_event = threading.Event() if stop_event is None else stop_event
+        self._stop_event = threading.Event()
         self._connected = False
         self._msg_packed = msg_packed
 
@@ -175,13 +173,16 @@ class IpcSubscriber:
                 if not self._stop_event.is_set():
                     self._setup_sio()
 
+        self._log(logging.DEBUG, "IPC subscriber. Finished run loop")
+
     def stop(self) -> None:
         """Thread-safe stop method."""
         if self._stop_event.is_set():
             return
+        self._log(logging.INFO, "Stopping IPC subscriber...")
         self._stop_event.set()
         if self._connected:
-            self._log(logging.INFO, "Disconnecting from server...")
+            self._log(logging.DEBUG, "Disconnecting from server...")
             try:
                 self._sio.disconnect()
             except Exception as e: # pylint: disable=broad-except

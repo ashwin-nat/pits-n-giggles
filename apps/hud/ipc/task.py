@@ -32,6 +32,8 @@ from lib.ipc import IpcChildSync
 from ..ui.infra import WindowManager
 from .handlers import handle_lock_widgets
 
+from ..listener import HudClient
+
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
 # Define a type for handler functions
@@ -44,16 +46,30 @@ COMMAND_HANDLERS: Dict[str, CommandHandler] = {
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def run_ipc_task(port: int, logger: logging.Logger, window_manager: WindowManager, stop_event: threading.Event):
-    """Runs the IPC task."""
+def run_ipc_task(
+        port: int, logger:
+        logging.Logger,
+        window_manager: WindowManager,
+        receiver_client: HudClient
+        ) -> threading.Thread:
+    """Runs the IPC task.
+
+    Args:
+        port (int): IPC port
+        logger (logging.Logger): Logger
+        window_manager (WindowManager): WindowManager
+        receiver_client (HudClient): Receiver client
+
+    Returns:
+        threading.Thread: IPC thread handle
+    """
     ipc_server = IpcChildSync(
         port=port,
         name="hud"
     )
     ipc_server.register_shutdown_callback(partial(
-        _shutdown_handler, logger=logger, window_manager=window_manager, stop_event=stop_event))
-    return ipc_server.serve_in_thread(partial(
-        _ipc_handler, logger=logger, window_manager=window_manager))
+        _shutdown_handler, logger=logger, window_manager=window_manager, receiver_client=receiver_client))
+    return ipc_server.serve_in_thread(partial(_ipc_handler, logger=logger, window_manager=window_manager))
 
 def _ipc_handler(msg: dict, logger: logging.Logger, window_manager: WindowManager) -> dict:
     """Handles incoming IPC messages and dispatches commands.
@@ -76,29 +92,29 @@ def _ipc_handler(msg: dict, logger: logging.Logger, window_manager: WindowManage
 
     return {"status": "error", "message": f"Unknown command: {cmd}"}
 
-def _shutdown_handler(args: dict, logger: logging.Logger, window_manager: WindowManager, stop_event: threading.Event) -> None:
+def _shutdown_handler(args: dict, logger: logging.Logger, window_manager: WindowManager, receiver_client: HudClient) -> None:
     """Handles shutdown command.
 
     Args:
         args (dict): IPC message
         logger (logging.Logger): Logger
         window_manager (WindowManager): WindowManager
-        stop_event (threading.Event): Event to signal stopping
+        receiver_client (HudClient): Receiver client obj
     """
 
-    threading.Thread(target=_stop_other_tasks, args=(args, logger, window_manager, stop_event,)).start()
+    threading.Thread(target=_stop_other_tasks, args=(args, logger, window_manager, receiver_client,), name="Shutdown tasks").start()
     return {"status": "success", "message": "Shutting down HUD manager"}
 
-def _stop_other_tasks(args: dict, logger: logging.Logger, window_manager: WindowManager, stop_event: threading.Event) -> None:
+def _stop_other_tasks(args: dict, logger: logging.Logger, window_manager: WindowManager, receiver_client: HudClient) -> None:
     """Stop all other tasks when IPC shutdown is received.
 
     Args:
         args (dict): IPC message
         logger (logging.Logger): Logger
         window_manager (WindowManager): WindowManager
-        stop_event (threading.Event): Event to signal stopping
+        receiver_client (HudClient): Receiver client
     """
     reason = args.get("reason", "N/A")
     logger.info(f"Shutdown command received via IPC. Reason: {reason}. Stopping all tasks...")
-    stop_event.set()
+    receiver_client.stop()
     window_manager.stop()

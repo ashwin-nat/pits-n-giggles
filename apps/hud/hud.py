@@ -25,7 +25,6 @@
 import argparse
 import logging
 import sys
-import threading
 
 import webview
 
@@ -68,22 +67,21 @@ def main(logger: logging.Logger, config: PngSettings, ipc_port: int) -> None:
     """
 
     notify_parent_init_complete() # TODO: re-evaluate placement
-    stop_event = threading.Event()
     window_manager = get_window_manager(logger)
 
-    updater_thread = run_hud_update_thread(
+    updater_thread, client = run_hud_update_thread(
         logger=logger,
         window_manager=window_manager,
-        stop_event=stop_event,
         port=config.Network.server_port)
 
     ipc_thread = run_ipc_task(
         port=ipc_port,
         logger=logger,
         window_manager=window_manager,
-        stop_event=stop_event)
+        receiver_client=client,)
 
     webview.start(debug=True)
+    logger.debug("After webview.start()")
 
     # TODO: timeouts?
     updater_thread.join()

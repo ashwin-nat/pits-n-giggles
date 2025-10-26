@@ -23,7 +23,6 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
-import threading
 
 from lib.ipc import IpcSubscriber
 from ..ui.infra import WindowManager
@@ -32,14 +31,13 @@ from ..ui.infra import WindowManager
 
 class HudClient(IpcSubscriber):
     """Socket.IO client to receive HUD data updates."""
-    def __init__(self, port: int, logger: logging.Logger, window_manager: WindowManager, stop_event: threading.Event):
+    def __init__(self, port: int, logger: logging.Logger, window_manager: WindowManager):
         """Args:
             port: Port number of the Socket.IO server.
             logger: Logger instance.
-            stop_event: Event to signal stopping.
         """
         url = f"http://localhost:{port}"
-        super().__init__(url, logger, stop_event, msg_packed=True)
+        super().__init__(url, logger, msg_packed=True)
         self.m_window_manager = window_manager
 
         # optional connect/disconnect hooks

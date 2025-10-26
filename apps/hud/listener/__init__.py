@@ -22,8 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+from .client import HudClient
 from .task import run_hud_update_thread
 
 __all__ = [
+    "HudClient",
     "run_hud_update_thread",
 ]

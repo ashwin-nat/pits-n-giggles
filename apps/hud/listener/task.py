@@ -24,34 +24,29 @@
 
 import logging
 import threading
+from typing import Tuple
 
-from .client import HudClient
 from ..ui.infra import WindowManager
+from .client import HudClient
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
-
-def _hud_update_task(port: int, logger: logging.Logger, window_manager: WindowManager, stop_event: threading.Event):
-    """Hud update task."""
-    client = HudClient(port, logger, window_manager, stop_event)
-    client.run()
 
 def run_hud_update_thread(
         port: int,
         window_manager: WindowManager,
-        logger: logging.Logger,
-        stop_event: threading.Event
-        ) -> threading.Thread:
+        logger: logging.Logger
+        ) -> Tuple[threading.Thread, HudClient]:
     """Creates, runs and returns the HUD update thread.
 
     Args:
         port: Port number of the Socket.IO server.
         logger: Logger instance.
         window_manager: WindowManager instance.
-        stop_event: Event to signal stopping.
 
     Returns:
-        threading.Thread: HUD update thread.
+        Tuple[threading.Thread, HudClient]: Thread and client
     """
-    ret = threading.Thread(target=_hud_update_task, args=(port, logger, window_manager, stop_event), daemon=True)
-    ret.start()
-    return ret
+    client = HudClient(port, logger, window_manager)
+    thread = threading.Thread(target=client.run, daemon=True, name="Socket.IO listener")
+    thread.start()
+    return thread, client
