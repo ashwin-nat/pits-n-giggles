@@ -32,6 +32,7 @@ from lib.child_proc_mgmt import (notify_parent_init_complete,
                                  report_pid_from_child)
 from lib.config import PngSettings, load_config_from_ini
 from lib.logger import get_logger
+from meta.meta import APP_NAME
 
 from .ipc import run_ipc_task
 from .listener.task import run_hud_update_thread
@@ -47,7 +48,7 @@ def parseArgs() -> argparse.Namespace:
     """
 
     # Initialize the ArgumentParser
-    parser = argparse.ArgumentParser(description="Pits n' Giggles save data viewer")
+    parser = argparse.ArgumentParser(description=f"{APP_NAME} HUD")
 
     # Add command-line arguments with default values
     parser.add_argument("--config-file", nargs="?", default="png_config.ini", help="Configuration file name (optional)")
