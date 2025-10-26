@@ -363,6 +363,8 @@ class WindowManager:
         self.logger.debug(f"[WindowManager] Setting locked state for all windows to {new_locked_state}")
         for window_id in self.windows.keys():
             self.set_window_locked_state(window_id, new_locked_state)
+            window_info = self.get_window_info(window_id)
+            self.logger.debug(f"Window {window_id} info: {json.dumps(window_info, indent=2)}")
         self.broadcast_lock_state_change(locked_state_dict)
         return True
 
@@ -402,6 +404,47 @@ class WindowManager:
             window.evaluate_js(js_code)
         except Exception as e: # pylint: disable=broad-exception-caught
             self.logger.error(f"[WindowManager] Failed to push data to '{window_id}': {type(e).__name__}: {e}")
+
+    def get_window_info(self, window_id):
+        """Get size and position information for a specific window
+
+        Returns:
+            dict: Dictionary containing window information with keys:
+                - x (int): X coordinate of window's left edge
+                - y (int): Y coordinate of window's top edge
+                - width (int): Window width in pixels
+                - height (int): Window height in pixels
+                - right (int): X coordinate of window's right edge
+                - bottom (int): Y coordinate of window's bottom edge
+            None: If window not found or error occurs
+        """
+        self.logger.debug(f"[WindowManager] Getting info for window '{window_id}'")
+
+        hwnd = self.find_window_handle(window_id)
+        if not hwnd:
+            self.logger.error(f"[WindowManager] Window '{window_id}' not found")
+            return None
+
+        try:
+            # Get window rectangle (left, top, right, bottom)
+            rect = win32gui.GetWindowRect(hwnd)
+            left, top, right, bottom = rect
+
+            window_info = {
+                'x': left,
+                'y': top,
+                'width': right - left,
+                'height': bottom - top,
+                'right': right,
+                'bottom': bottom
+            }
+
+            self.logger.info(f"[WindowManager] Window '{window_id}' info: {window_info}")
+            return window_info
+
+        except Exception as e:
+            self.logger.error(f"[WindowManager] Failed to get info for window '{window_id}': {type(e).__name__}: {e}")
+            return None
 
     def stop(self):
         """Stop telemetry updates and close all windows safely."""
