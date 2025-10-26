@@ -34,6 +34,7 @@ import tkinter as tk
 from apps.launcher.png_launcher import PngLauncher
 from lib.file_path import resolve_user_file
 from lib.version import get_version
+from meta.meta import APP_NAME
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -50,7 +51,7 @@ def parse_args() -> argparse.Namespace:
             - smoke_test (Optional[str]): Name or mode for smoke testing, if provided.
             - debug (bool): True if debug mode is enabled, False otherwise.
     """
-    parser = argparse.ArgumentParser(description="Launch Pits n' Giggles")
+    parser = argparse.ArgumentParser(description=f"Launch {APP_NAME}")
 
     # Smoke test requires an argument if provided
     parser.add_argument(
@@ -151,7 +152,7 @@ def entry_point() -> None:
             pass
 
     root: tk.Tk = tk.Tk()
-    root.title("Pits n' Giggles")
+    root.title(APP_NAME)
     root.iconbitmap(load_icon_safely("assets/favicon.ico"))
 
     app = PngLauncher(
