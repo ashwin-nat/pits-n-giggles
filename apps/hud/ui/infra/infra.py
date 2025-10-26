@@ -436,4 +436,4 @@ class WindowManager:
     def race_table_update(self, data):
         """Handle race table update"""
         # self.logger.debug(f"[WindowManager] Race table update received")
-        self.unicast_data("lap_timer", data)
+        self.unicast_data("lapTimer", data)
