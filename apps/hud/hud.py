@@ -26,17 +26,14 @@ import argparse
 import logging
 import sys
 
-import webview
-
-from lib.child_proc_mgmt import (notify_parent_init_complete,
-                                 report_pid_from_child)
+from lib.child_proc_mgmt import report_pid_from_child
 from lib.config import PngSettings, load_config_from_ini
 from lib.logger import get_logger
 from meta.meta import APP_NAME
 
 from .ipc import run_ipc_task
 from .listener.task import run_hud_update_thread
-from .ui.infra import get_window_manager
+from .ui.infra import OverlaysMgr
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -67,20 +64,20 @@ def main(logger: logging.Logger, config: PngSettings, ipc_port: int) -> None:
         ipc_port (int): IPC port
     """
 
-    window_manager = get_window_manager(logger)
+    overlays_mgr = OverlaysMgr(logger)
 
     client = run_hud_update_thread(
         logger=logger,
-        window_manager=window_manager,
+        overlays_mgr=overlays_mgr,
         port=config.Network.server_port)
 
     run_ipc_task(
         port=ipc_port,
         logger=logger,
-        window_manager=window_manager,
+        overlays_mgr=overlays_mgr,
         receiver_client=client,)
 
-    webview.start(notify_parent_init_complete, debug=True)
+    overlays_mgr.run()
 
 def entry_point():
     """Entry point"""

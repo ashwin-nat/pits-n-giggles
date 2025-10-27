@@ -25,26 +25,26 @@
 import logging
 import threading
 
-from ..ui.infra import WindowManager
+from ..ui.infra import OverlaysMgr
 from .client import HudClient
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def run_hud_update_thread(
         port: int,
-        window_manager: WindowManager,
-        logger: logging.Logger
+        logger: logging.Logger,
+        overlays_mgr: OverlaysMgr
         ) -> HudClient:
     """Creates, runs and returns the HUD update thread.
 
     Args:
         port: Port number of the Socket.IO server.
         logger: Logger instance.
-        window_manager: WindowManager instance.
+        overlays_mgr: Overlays manager
 
     Returns:
         HudClient - the incoming data receiver client obj
     """
-    client = HudClient(port, logger, window_manager)
+    client = HudClient(port, logger, overlays_mgr)
     threading.Thread(target=client.run, daemon=True, name="Socket.IO listener").start()
     return client

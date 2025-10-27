@@ -22,25 +22,34 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
-import os
+import json
+from dataclasses import dataclass
+from typing import Dict
 
-from .infra import WindowManager
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-# -------------------------------------- FUNCTIONS -----------------------------------------------------------------------
+@dataclass
+class OverlaysConfig:
+    x: int
+    y: int
+    width: int
+    height: int
 
-def _get_html_path_for_window(window_id: str) -> str:
-    """Constructs the absolute path to the HTML file for a given window ID."""
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    html_file_path = os.path.join(base_dir, "..", "overlays", window_id, f"{window_id}.html")
-    return html_file_path
+    def toJSON(self) -> Dict[str, int]:
+        """Convert this object to a JSON serializable dictionary."""
+        return {
+            "x": self.x,
+            "y": self.y,
+            "width": self.width,
+            "height": self.height
+        }
 
-def get_window_manager(logger: logging.Logger) -> WindowManager:
-    """Returns the global WindowManager instance."""
-
-    manager = WindowManager(logger)
-    manager.create_window(
-        window_id="lapTimer",
-        html_path=_get_html_path_for_window("lapTimer"))
-
-    return manager
+    @classmethod
+    def fromJSON(cls, json_dict: Dict[str, int]) -> "OverlaysConfig":
+        """Create an OverlaysConfig object from a JSON dictionary."""
+        return cls(
+            x=json_dict["x"],
+            y=json_dict["y"],
+            width=json_dict["width"],
+            height=json_dict["height"],
+        )

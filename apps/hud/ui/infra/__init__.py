@@ -22,12 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .infra import WindowManager
-from .task import get_window_manager
+from .overlays_mgr import OverlaysMgr
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    "WindowManager",
-    "get_window_manager",
+    "OverlaysMgr",
 ]

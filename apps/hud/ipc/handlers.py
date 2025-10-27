@@ -24,17 +24,17 @@
 
 import logging
 
-from ..ui.infra import WindowManager
+from ..ui.infra import OverlaysMgr
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def handle_lock_widgets(msg: dict, logger: logging.Logger, window_manager: WindowManager) -> dict:
+def handle_lock_widgets(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
     """Handle the 'lock-widgets' IPC command to lock or unlock HUD widgets.
 
     Args:
         msg (dict): IPC command message
         logger (logging.Logger): Logger
-        window_manager (WindowManager): WindowManager
+        overlays_mgr (OverlaysMgr): Overlays manager
 
     Returns:
         dict: IPC response
@@ -44,7 +44,6 @@ def handle_lock_widgets(msg: dict, logger: logging.Logger, window_manager: Windo
 
     args = msg.get("args", {})
     if args:
-        window_manager.set_locked_state_all(args)
+        overlays_mgr.on_locked_state_change(args)
         return {"status": "success", "message": "Dummy lock-widgets handler executed."}
-    else:
-        return {"status": "error", "message": "Missing args in lock-widgets command."}
+    return {"status": "error", "message": "Missing args in lock-widgets command."}

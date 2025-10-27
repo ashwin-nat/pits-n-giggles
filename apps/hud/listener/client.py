@@ -25,20 +25,20 @@
 import logging
 
 from lib.ipc import IpcSubscriber
-from ..ui.infra import WindowManager
+from ..ui.infra import OverlaysMgr
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class HudClient(IpcSubscriber):
     """Socket.IO client to receive HUD data updates."""
-    def __init__(self, port: int, logger: logging.Logger, window_manager: WindowManager):
+    def __init__(self, port: int, logger: logging.Logger, overlays_mgr: OverlaysMgr):
         """Args:
             port: Port number of the Socket.IO server.
             logger: Logger instance.
         """
         url = f"http://localhost:{port}"
         super().__init__(url, logger, msg_packed=True)
-        self.m_window_manager = window_manager
+        self.m_overlays_mgr = overlays_mgr
 
         # optional connect/disconnect hooks
         @self.on_connect
@@ -59,4 +59,4 @@ class HudClient(IpcSubscriber):
         @self.on('race-table-update')
         def handle_race_table(data):
             """Race table data update handler."""
-            self.m_window_manager.race_table_update(data)
+            self.m_overlays_mgr.race_table_update(data)

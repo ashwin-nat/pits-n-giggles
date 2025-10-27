@@ -32,13 +32,13 @@ from typing import Callable, Dict
 from lib.ipc import IpcChildSync
 
 from ..listener import HudClient
-from ..ui.infra import WindowManager
+from ..ui.infra import OverlaysMgr
 from .handlers import handle_lock_widgets
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
 # Define a type for handler functions
-CommandHandler = Callable[[dict, logging.Logger, WindowManager], dict]
+CommandHandler = Callable[[dict, logging.Logger, OverlaysMgr], dict]
 
 # Registry of command handlers
 COMMAND_HANDLERS: Dict[str, CommandHandler] = {
@@ -50,7 +50,7 @@ COMMAND_HANDLERS: Dict[str, CommandHandler] = {
 def run_ipc_task(
         port: int, logger:
         logging.Logger,
-        window_manager: WindowManager,
+        overlays_mgr: OverlaysMgr,
         receiver_client: HudClient
         ) -> threading.Thread:
     """Runs the IPC task.
@@ -58,7 +58,7 @@ def run_ipc_task(
     Args:
         port (int): IPC port
         logger (logging.Logger): Logger
-        window_manager (WindowManager): WindowManager
+        overlays_mgr (OverlaysMgr): Overlays manager
         receiver_client (HudClient): Receiver client
 
     Returns:
@@ -69,16 +69,16 @@ def run_ipc_task(
         name="hud"
     )
     ipc_server.register_shutdown_callback(partial(
-        _shutdown_handler, logger=logger, window_manager=window_manager, receiver_client=receiver_client))
-    return ipc_server.serve_in_thread(partial(_ipc_handler, logger=logger, window_manager=window_manager))
+        _shutdown_handler, logger=logger, overlays_mgr=overlays_mgr, receiver_client=receiver_client))
+    return ipc_server.serve_in_thread(partial(_ipc_handler, logger=logger, overlays_mgr=overlays_mgr))
 
-def _ipc_handler(msg: dict, logger: logging.Logger, window_manager: WindowManager) -> dict:
+def _ipc_handler(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
     """Handles incoming IPC messages and dispatches commands.
 
     Args:
         msg (dict): IPC message
         logger (logging.Logger): Logger
-        window_manager (WindowManager): WindowManager
+        overlays_mgr (OverlaysMgr): Overlays manager
 
     Returns:
         dict: IPC response
@@ -89,36 +89,37 @@ def _ipc_handler(msg: dict, logger: logging.Logger, window_manager: WindowManage
         return {"status": "error", "message": "Missing command name"}
 
     if (handler := COMMAND_HANDLERS.get(cmd)):
-        return handler(msg, logger, window_manager)
+        return handler(msg, logger, overlays_mgr)
 
     return {"status": "error", "message": f"Unknown command: {cmd}"}
 
-def _shutdown_handler(args: dict, logger: logging.Logger, window_manager: WindowManager, receiver_client: HudClient) -> None:
+def _shutdown_handler(args: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr, receiver_client: HudClient) -> None:
     """Handles shutdown command.
 
     Args:
         args (dict): IPC message
         logger (logging.Logger): Logger
-        window_manager (WindowManager): WindowManager
+        overlays_mgr (OverlaysMgr): Overlays manager
         receiver_client (HudClient): Receiver client obj
     """
 
-    threading.Thread(target=_stop_other_tasks, args=(args, logger, window_manager, receiver_client,), name="Shutdown tasks").start()
+    threading.Thread(target=_stop_other_tasks, args=(args, logger, overlays_mgr, receiver_client,),
+                     name="Shutdown tasks").start()
     return {"status": "success", "message": "Shutting down HUD manager"}
 
-def _stop_other_tasks(args: dict, logger: logging.Logger, window_manager: WindowManager, receiver_client: HudClient) -> None:
+def _stop_other_tasks(args: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr, receiver_client: HudClient) -> None:
     """Stop all other tasks when IPC shutdown is received.
     Args:
         args (dict): IPC message
         logger (logging.Logger): Logger
-        window_manager (WindowManager): WindowManager
+        overlays_mgr (OverlaysMgr): Overlays manager
         receiver_client (HudClient): Receiver client
     """
     reason = args.get("reason", "N/A")
     logger.info(f"Shutdown command received via IPC. Reason: {reason}. Stopping all tasks...")
 
     receiver_client.stop()
-    window_manager.stop()
+    overlays_mgr.stop()
 
     # Give Windows time to cleanup WebView2 resources
     time.sleep(0.5)

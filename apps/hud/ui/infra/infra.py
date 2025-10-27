@@ -27,16 +27,13 @@ import json
 import logging
 import os
 import time
+import traceback
 from typing import Dict
 
 import webview
 import win32con
 import win32gui
-
-# -------------------------------------- GLOBALS -----------------------------------------------------------------------
-
-# Global config - set to 1 or 2
-INITIAL_LOCKED_STATE = True  # True = frameless, not resizable (locked); False = normal (resizable, not frameless)
+from .config import OverlaysConfig
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -132,9 +129,8 @@ class WindowManager:
         except UnicodeDecodeError as e:
             self.logger.error(f"[WindowManager] Encoding error reading {script_name}: {e}")
             return False
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-exception-caught
             self.logger.error(f"[WindowManager] Failed to inject {script_name} into '{window_id}': {type(e).__name__}: {e}")
-            import traceback
             self.logger.error(f"[WindowManager] Traceback: {traceback.format_exc()}")
             return False
 
@@ -198,7 +194,7 @@ class WindowManager:
             window.evaluate_js(js_code)
             self.logger.info(f"[WindowManager] Console logger injected into '{window_id}'")
             return True
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-exception-caught
             self.logger.warning(f"[WindowManager] Could not inject logger for '{window_id}': {e}")
             return False
 
@@ -219,13 +215,27 @@ class WindowManager:
             window.evaluate_js(js_code)
             self.logger.info(f"[WindowManager] utils-ready event dispatched for '{window_id}'")
             return True
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-exception-caught
             self.logger.error(f"[WindowManager] Failed to dispatch utils-ready event for '{window_id}': {e}")
             return False
 
-    def create_window(self, window_id, html_path, x=100, y=100):
+    def create_windows(self, window_id_map: dict) -> None:
+        """Create overlay windows from the provided window ID map
+
+        Args:
+            window_id_map: Dictionary mapping window ID's to size/position parameters
+        """
+        for window_id, html_path in window_id_map.items():
+            self.create_window(window_id, html_path)
+
+    def create_window(self, window_id: str, html_path: str, params: OverlaysConfig) -> None:
         """
         Create a new overlay window. Windows are created in a locked state by default.
+
+        Args:
+            window_id: Unique identifier for the window
+            html_path: Path to the HTML file to load in the window
+            params: Window parameters
         """
         api = API(window_id)
         self.apis[window_id] = api
@@ -233,17 +243,17 @@ class WindowManager:
         frameless = True
         resizable = False
 
-        self.logger.debug(f"[WindowManager] Creating window '{window_id}' at ({x}, {y}) for {html_path}")
+        self.logger.debug(f"[WindowManager] Creating window '{window_id}' at ({params.x}, {params.y}) for {html_path}")
         assert os.path.exists(html_path)
 
         window = webview.create_window(
             window_id,
             html_path,
             js_api=api,
-            width=350,
-            height=420,
-            x=x,
-            y=y,
+            width=params.width,
+            height=params.height,
+            x=params.x,
+            y=params.y,
             frameless=frameless,
             on_top=True,
             resizable=resizable,
@@ -358,13 +368,11 @@ class WindowManager:
         """Set locked state for all managed windows based on the new-value in the dict"""
         new_locked_state = locked_state_dict.get('new-value')
         if new_locked_state is None:
-            self.logger.error(f"[WindowManager] 'new-value' not found in locked_state_dict for all windows")
+            self.logger.error("[WindowManager] 'new-value' not found in locked_state_dict for all windows")
             return False
         self.logger.debug(f"[WindowManager] Setting locked state for all windows to {new_locked_state}")
-        for window_id in self.windows.keys():
+        for window_id, _ in self.windows.items():
             self.set_window_locked_state(window_id, new_locked_state)
-            window_info = self.get_window_info(window_id)
-            self.logger.debug(f"Window {window_id} info: {json.dumps(window_info, indent=2)}")
         self.broadcast_lock_state_change(locked_state_dict)
         return True
 
@@ -430,19 +438,17 @@ class WindowManager:
             rect = win32gui.GetWindowRect(hwnd)
             left, top, right, bottom = rect
 
-            window_info = {
-                'x': left,
-                'y': top,
-                'width': right - left,
-                'height': bottom - top,
-                'right': right,
-                'bottom': bottom
-            }
+            window_info = OverlaysConfig(
+                x=left,
+                y=right,
+                width=(right - left),
+                height=(bottom - top),
+            )
 
             self.logger.info(f"[WindowManager] Window '{window_id}' info: {window_info}")
             return window_info
 
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-exception-caught
             self.logger.error(f"[WindowManager] Failed to get info for window '{window_id}': {type(e).__name__}: {e}")
             return None
 
@@ -459,14 +465,15 @@ class WindowManager:
                 if hasattr(window, 'events'):
                     try:
                         window.events.closed.clear()  # remove all closed handlers
-                    except Exception:
+                    except Exception: # pylint: disable=broad-except
                         pass
 
                 # Destroy the window if it still exists
                 if window and getattr(window, "webview_window", None):
                     window.destroy()
                     self.logger.info(f"[WindowManager] Closed window '{window_id}'")
-            except Exception as e:  # Catch any PyWebView / WebView2 teardown errors
+            # Catch any PyWebView / WebView2 teardown errors
+            except Exception as e: # pylint: disable=broad-exception-caught
                 self.logger.error(f"[WindowManager] Failed to close window '{window_id}': {e}")
 
         # Short delay to allow WebView2 cleanup
@@ -475,8 +482,3 @@ class WindowManager:
         # Clear the window registry
         self.windows.clear()
         self.logger.info("[WindowManager] All windows closed")
-
-    def race_table_update(self, data):
-        """Handle race table update"""
-        # self.logger.debug(f"[WindowManager] Race table update received")
-        self.unicast_data("lapTimer", data)

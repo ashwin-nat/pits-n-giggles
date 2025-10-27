@@ -1,0 +1,157 @@
+# MIT License
+#
+# Copyright (c) [2025] [Ashwin Natarajan]
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# -------------------------------------- IMPORTS -----------------------------------------------------------------------
+
+import json
+import logging
+import os
+from typing import Dict, Optional
+
+import webview
+
+from lib.child_proc_mgmt import notify_parent_init_complete
+from lib.file_path import resolve_user_file
+
+from .infra import WindowManager
+from .config import OverlaysConfig
+# -------------------------------------- GLOBALS -----------------------------------------------------------------------
+
+_DEFAULT_OVERLAYS_CONFIG: Dict[str, OverlaysConfig] = {
+    'lapTimer': OverlaysConfig(
+        x=10,
+        y=300,
+        width=280,
+        height=380,
+    ),
+    'timingTower': OverlaysConfig(
+        x=10,
+        y=55,
+        width=450,
+        height=270,
+    ),
+}
+
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
+
+class OverlaysMgr:
+    def __init__(self, logger: logging.Logger, config_file: Optional[str] = 'png_overlays.json'):
+        """Construct a new OverlaysMgr object. Ctor will init config files and windows
+
+        Args:
+            logger (logging.Logger): Logger object
+            config_file (str, optional): Path to config file. Defaults to 'png_overlays.json'.
+        """
+        self.logger = logger
+        self.config_file = resolve_user_file(config_file)
+        self._init_config()
+
+        self.window_manager = WindowManager(logger)
+        for window_id, window_config in self.config.items():
+            self.window_manager.create_window(
+                window_id=window_id,
+                html_path=self._get_html_path_for_window(window_id),
+                params=window_config)
+
+    def run(self):
+        """Start the overlays manager"""
+        webview.start(notify_parent_init_complete, debug=True)
+
+    def on_locked_state_change(self, args: Dict[str, bool]):
+        """Handle locked state change"""
+        self.window_manager.set_locked_state_all(args)
+        locked_value = args.get('new-value')
+        if not locked_value:
+            return
+
+        changed = False
+        for window_id, window_params in self.config.items():
+            curr_params = self.window_manager.get_window_info(window_id)
+            if curr_params != window_params:
+                self.logger.debug(f"Updating config for window '{window_id}'")
+                self.config[window_id] = curr_params
+                changed = True
+
+        if changed:
+            self.logger.debug(f"Saving config to {self.config_file}")
+            self._save_config()
+
+    def race_table_update(self, data):
+        """Handle race table update"""
+        self.window_manager.unicast_data("lapTimer", data)
+
+    def stop(self):
+        """Stop the overlays manager"""
+        self.window_manager.stop()
+
+    def _get_html_path_for_window(self, window_id: str) -> str:
+        """Constructs the absolute path to the HTML file for a given window ID."""
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        html_file_path = os.path.join(base_dir, "..", "overlays", window_id, f"{window_id}.html")
+        return html_file_path
+
+    def _init_config(self):
+        """"Load config file if it exists. Else, use default config."""
+        should_write = False
+        config = self._load_config()
+        if not config:
+            self.config = _DEFAULT_OVERLAYS_CONFIG
+            self.logger.debug("Using default config")
+            should_write = True
+        else:
+            # Check if any keys are missing from default config and add them with default values
+            for key, value in _DEFAULT_OVERLAYS_CONFIG.items():
+                if key not in config:
+                    config[key] = value
+                    self.logger.debug(f"Added {key} to config")
+                    should_write = True
+
+            self.config = config
+        if should_write:
+            pass
+
+    def _save_config(self):
+        """"Save config file"""
+        self.logger.debug(f"Saving config to {self.config_file}")
+        json_dict = {}
+        for window_id, params in self.config:
+            json_dict[window_id] = params.t
+        with open(self.config_file, 'w', encoding='utf-8') as f:
+            json.dump(self.config, f, indent=4)
+
+    def _load_config(self) -> Optional[Dict[str, OverlaysConfig]]:
+        """"Load config file if it exists. Else, return None"""
+        if os.path.exists(self.config_file):
+            try:
+                with open(self.config_file, 'r', encoding='utf-8') as f:
+                    try:
+                        parsed_contents = json.load(f)
+                        return {
+                            window_name: OverlaysConfig.fromJSON(params)
+                            for window_name, params in parsed_contents.items()
+                        }
+                    except Exception as e: # pylint: disable=broad-exception-caught
+                        self.logger.error(f"Failed to load config file: {e}. Falling back to default config")
+            except Exception as e: # pylint: disable=broad-exception-caught
+                self.logger.error(f"Failed to load config file: {e}. Falling back to default config")
+
+        return None
