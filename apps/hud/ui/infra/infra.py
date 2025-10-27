@@ -219,15 +219,6 @@ class WindowManager:
             self.logger.error(f"[WindowManager] Failed to dispatch utils-ready event for '{window_id}': {e}")
             return False
 
-    def create_windows(self, window_id_map: dict) -> None:
-        """Create overlay windows from the provided window ID map
-
-        Args:
-            window_id_map: Dictionary mapping window ID's to size/position parameters
-        """
-        for window_id, html_path in window_id_map.items():
-            self.create_window(window_id, html_path)
-
     def create_window(self, window_id: str, html_path: str, params: OverlaysConfig) -> None:
         """
         Create a new overlay window. Windows are created in a locked state by default.
