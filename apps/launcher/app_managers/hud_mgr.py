@@ -27,6 +27,7 @@ from tkinter import ttk
 
 from lib.config import PngSettings
 from lib.ipc import IpcParent
+from lib.button_debouncer import ButtonDebouncer
 
 from ..console_interface import ConsoleInterface
 from .base_mgr import PngAppMgrBase
@@ -47,6 +48,7 @@ class HudAppMgr(PngAppMgrBase):
         self.enabled = settings.HUD.enabled
         self.args = args + ["--debug"] if debug_mode else (args or [])
         self.locked = True # HUD starts locked by default
+        self.debouncer = ButtonDebouncer(debounce_time=1.5)
         super().__init__(
             port_conflict_settings_field='Network -> "Pits n\' Giggles HUD Manager"',
             module_path="apps.hud",
@@ -103,6 +105,10 @@ class HudAppMgr(PngAppMgrBase):
 
     def lock_callback(self):
         """Lock or unlock the HUD from receiving data."""
+        if not self.debouncer.onButtonPress("lock_button"):
+            self.console_app.debug_log("Lock button press debounced.")
+            return
+
         self.console_app.debug_log("Toggling HUD lock state...")
         self.lock_button.config(state="disabled")
         rsp = IpcParent(self.ipc_port).request(command="lock-widgets", args={
@@ -115,7 +121,6 @@ class HudAppMgr(PngAppMgrBase):
         self.lock_button.config(state="normal")
         status = rsp.get("status", None)
         if status is not None:
-            self.lock_button.config(text="Unlock")
             self.set_lock_button_text()
         else:
             self.console_app.error_log("Failed to toggle lock state.")

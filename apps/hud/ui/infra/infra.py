@@ -28,11 +28,12 @@ import logging
 import os
 import time
 import traceback
-from typing import Dict
+from typing import Dict, Optional
 
 import webview
 import win32con
 import win32gui
+
 from .config import OverlaysConfig
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -266,7 +267,7 @@ class WindowManager:
 
         return window
 
-    def find_window_handle(self, window_id):
+    def find_window_handle(self, window_id: str) -> Optional[int]:
         """Find window handle by enumerating all windows"""
         hwnd = None
 
@@ -278,7 +279,7 @@ class WindowManager:
                 if window_id == title:
                     hwnd = h
                     self.logger.info(f"[WindowManager] Found window handle for '{window_id}': {hwnd}")
-                    return False  # Stop enumeration
+                    return False
             return True
 
         win32gui.EnumWindows(callback, None)
@@ -289,60 +290,56 @@ class WindowManager:
 
         return hwnd
 
-    def set_window_locked_state(self, window_id, locked: bool):
-        """Set locked state for a specific window dynamically"""
+    def set_window_locked_state(self, window_id: str, locked: bool) -> bool:
+        """Set locked state for a specific window"""
         self.logger.info(f"[WindowManager] Setting window '{window_id}' locked state to {locked}")
-        max_attempts = 10
-        hwnd = None
 
-        # Try to find the window with retries
-        for _ in range(1, max_attempts + 1):
-            hwnd = self.find_window_handle(window_id)
-            if hwnd:
-                break
-            time.sleep(0.2)
-
+        hwnd = self.find_window_handle(window_id)
         if not hwnd:
-            self.logger.error(f"[WindowManager] Window '{window_id}' not found after {max_attempts} attempts")
+            self.logger.error(f"[WindowManager] Window '{window_id}' not found")
             return False
 
-        if locked:
-            # Locked mode (frameless, click-through)
-            ex_style = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
-            ex_style |= (
-                win32con.WS_EX_LAYERED
-                | win32con.WS_EX_TRANSPARENT
-                | win32con.WS_EX_NOACTIVATE
-                | win32con.WS_EX_TOOLWINDOW
+        try:
+            if locked:
+                # Locked mode (frameless, click-through)
+                ex_style = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
+                ex_style |= (
+                    win32con.WS_EX_LAYERED
+                    | win32con.WS_EX_TRANSPARENT
+                    | win32con.WS_EX_NOACTIVATE
+                    | win32con.WS_EX_TOOLWINDOW
+                )
+                win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, ex_style)
+                ctypes.windll.dwmapi.DwmExtendFrameIntoClientArea(hwnd, ctypes.byref(ctypes.c_int(-1)))
+                ctypes.windll.user32.SetLayeredWindowAttributes(hwnd, 0, 255, 0x2)
+
+                style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
+                style &= ~(win32con.WS_CAPTION | win32con.WS_SYSMENU | win32con.WS_THICKFRAME)
+                win32gui.SetWindowLong(hwnd, win32con.GWL_STYLE, style)
+            else:
+                # Unlocked mode (frameless but resizable)
+                ex_style = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
+                ex_style &= ~(win32con.WS_EX_TRANSPARENT | win32con.WS_EX_NOACTIVATE | win32con.WS_EX_TOOLWINDOW)
+                win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, ex_style)
+
+                style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
+                style &= ~(win32con.WS_CAPTION | win32con.WS_SYSMENU)
+                style |= win32con.WS_THICKFRAME
+                win32gui.SetWindowLong(hwnd, win32con.GWL_STYLE, style)
+
+            # Apply changes
+            win32gui.SetWindowPos(
+                hwnd, None, 0, 0, 0, 0,
+                win32con.SWP_FRAMECHANGED | win32con.SWP_NOMOVE |
+                win32con.SWP_NOSIZE | win32con.SWP_NOZORDER
             )
-            win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, ex_style)
-            ctypes.windll.dwmapi.DwmExtendFrameIntoClientArea(hwnd, ctypes.byref(ctypes.c_int(-1)))
 
-            ctypes.windll.user32.SetLayeredWindowAttributes(hwnd, 0, 255, 0x2)
+            self.logger.info(f"[WindowManager] Window '{window_id}' locked state successfully changed to {locked}")
+            return True
 
-            style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
-            style &= ~(win32con.WS_CAPTION | win32con.WS_SYSMENU | win32con.WS_THICKFRAME)
-            win32gui.SetWindowLong(hwnd, win32con.GWL_STYLE, style)
-        else:
-            # Unlocked mode (frameless but resizable)
-            ex_style = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
-            ex_style &= ~(win32con.WS_EX_TRANSPARENT | win32con.WS_EX_NOACTIVATE | win32con.WS_EX_TOOLWINDOW)
-            win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, ex_style)
-
-            style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
-            # Remove caption and system menu but KEEP thick frame for resizing
-            style &= ~(win32con.WS_CAPTION | win32con.WS_SYSMENU)
-            style |= win32con.WS_THICKFRAME
-            win32gui.SetWindowLong(hwnd, win32con.GWL_STYLE, style)
-        # Apply changes
-        win32gui.SetWindowPos(
-            hwnd, None, 0, 0, 0, 0,
-            win32con.SWP_FRAMECHANGED | win32con.SWP_NOMOVE |
-            win32con.SWP_NOSIZE | win32con.SWP_NOZORDER
-        )
-
-        self.logger.info(f"[WindowManager] Window '{window_id}' locked state successfully changed to {locked}")
-        return True
+        except Exception as e:
+            self.logger.error(f"[WindowManager] Failed to set locked state for '{window_id}': {e}")
+            return False
 
     def set_locked_state(self, window_id: str, locked_state_dict: Dict[str, bool]):
         """Set locked state for a specific window based on the new-value in the dict"""
@@ -353,14 +350,14 @@ class WindowManager:
         self.logger.debug(f"[WindowManager] Setting locked state for '{window_id}' to {new_locked_state}")
         return self.set_window_locked_state(window_id, new_locked_state)
 
-    def set_locked_state_all(self, locked_state_dict: Dict[str, bool]):
+    def set_locked_state_all(self, locked_state_dict: Dict[str, bool]) -> bool:
         """Set locked state for all managed windows based on the new-value in the dict"""
         new_locked_state = locked_state_dict.get('new-value')
         if new_locked_state is None:
             self.logger.error("[WindowManager] 'new-value' not found in locked_state_dict for all windows")
             return False
         self.logger.debug(f"[WindowManager] Setting locked state for all windows to {new_locked_state}")
-        for window_id, _ in self.windows.items():
+        for window_id in self.windows.keys():
             self.set_window_locked_state(window_id, new_locked_state)
         self.broadcast_lock_state_change(locked_state_dict)
         return True
