@@ -87,25 +87,9 @@ class HudAppMgr(PngAppMgrBase):
             style="Racing.TButton",
             state="disabled"  # Initially disabled until the app is running
         )
-        # self.open_file_button = ttk.Button(
-        #     frame,
-        #     text="Open File",
-        #     command=self.open_file,
-        #     style="Racing.TButton",
-        #     state="disabled"  # Initially disabled until the app is running
-        # )
-        # self.open_dashboard_button = ttk.Button(
-        #     frame,
-        #     text="Dashboard",
-        #     command=self.open_dashboard,
-        #     style="Racing.TButton",
-        #     state="disabled"  # Initially disabled until the app is running
-        # )
 
         return [
             self.start_stop_button,
-        #     self.open_file_button,
-        #     self.open_dashboard_button,
             self.ping_button,
             self.lock_button,
         ]
@@ -120,6 +104,7 @@ class HudAppMgr(PngAppMgrBase):
     def lock_callback(self):
         """Lock or unlock the HUD from receiving data."""
         self.console_app.debug_log("Toggling HUD lock state...")
+        self.lock_button.config(state="disabled")
         rsp = IpcParent(self.ipc_port).request(command="lock-widgets", args={
             "old-value": self.locked,
             "new-value": not self.locked,
@@ -127,6 +112,7 @@ class HudAppMgr(PngAppMgrBase):
         self.locked = not self.locked
         self.console_app.info_log(str(rsp))
 
+        self.lock_button.config(state="normal")
         status = rsp.get("status", None)
         if status is not None:
             self.lock_button.config(text="Unlock")
