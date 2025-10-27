@@ -231,9 +231,6 @@ class WindowManager:
         api = API(window_id)
         self.apis[window_id] = api
 
-        frameless = True
-        resizable = False
-
         self.logger.debug(f"[WindowManager] Creating window '{window_id}' at ({params.x}, {params.y}) for {html_path}")
         assert os.path.exists(html_path)
 
@@ -245,9 +242,9 @@ class WindowManager:
             height=params.height,
             x=params.x,
             y=params.y,
-            frameless=frameless,
+            frameless=True,
             on_top=True,
-            resizable=resizable,
+            resizable=False,
             transparent=True,
         )
 
@@ -327,15 +324,16 @@ class WindowManager:
             style &= ~(win32con.WS_CAPTION | win32con.WS_SYSMENU | win32con.WS_THICKFRAME)
             win32gui.SetWindowLong(hwnd, win32con.GWL_STYLE, style)
         else:
-            # Unlocked mode (normal, resizable)
+            # Unlocked mode (frameless but resizable)
             ex_style = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
-            ex_style &= ~win32con.WS_EX_TRANSPARENT
+            ex_style &= ~(win32con.WS_EX_TRANSPARENT | win32con.WS_EX_NOACTIVATE | win32con.WS_EX_TOOLWINDOW)
             win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, ex_style)
 
             style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
-            style |= win32con.WS_CAPTION | win32con.WS_SYSMENU | win32con.WS_THICKFRAME
+            # Remove caption and system menu but KEEP thick frame for resizing
+            style &= ~(win32con.WS_CAPTION | win32con.WS_SYSMENU)
+            style |= win32con.WS_THICKFRAME
             win32gui.SetWindowLong(hwnd, win32con.GWL_STYLE, style)
-
         # Apply changes
         win32gui.SetWindowPos(
             hwnd, None, 0, 0, 0, 0,
