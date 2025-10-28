@@ -20,3 +20,5 @@ png-venv/
 .invalid
 *.pem
 .DS_Store
+.coverage
+htmlcov/
