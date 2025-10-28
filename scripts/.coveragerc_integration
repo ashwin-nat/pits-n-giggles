@@ -1,5 +1,9 @@
 [run]
 branch = True
+parallel = True
+concurrency =
+    multiprocessing
+    thread
 omit =
     */__init__.py
     */tests/*

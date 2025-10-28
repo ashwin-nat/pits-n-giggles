@@ -21,4 +21,6 @@ png-venv/
 *.pem
 .DS_Store
 .coverage
+.coverage_*
+.coverage.*
 htmlcov/

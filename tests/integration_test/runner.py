@@ -167,9 +167,14 @@ def main(telemetry_port, http_port, proto):
     ipc_port = get_free_tcp_port()
 
     print("\nStarting app in replay server mode...")
-    app_cmd = ["poetry", "run", "python", "-m", "apps.backend", "--replay-server", "--debug",
-               "--ipc-port", str(ipc_port)]
+    app_cmd = [
+        sys.executable, "-m", "coverage", "run",
+        "--parallel-mode", "--rcfile", "scripts/.coveragerc_integration", "-m", "apps.backend",
+            "--replay-server", "--debug", "--ipc-port", str(ipc_port)
+    ]
 
+
+    os.environ["COVERAGE_PROCESS_START"] = str(Path("scripts/.coveragerc_integration").resolve())
     if is_windows:
         app_process = subprocess.Popen(app_cmd, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
     else:
