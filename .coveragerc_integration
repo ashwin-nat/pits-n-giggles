@@ -1,0 +1,14 @@
+[run]
+branch = True
+omit =
+    */__init__.py
+    */tests/*
+source =
+    lib
+    apps/backend
+
+[report]
+show_missing = True
+skip_empty = True
+precision = 1
+fail_under = 85
