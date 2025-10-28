@@ -124,7 +124,7 @@ async def _check_endpoints_async(urls):
 
     return results
 
-def main(telemetry_port, http_port, proto):
+def main(telemetry_port, http_port, proto, coverage_enabled):
     CACHE_DIR.mkdir(exist_ok=True)
     is_windows = platform.system() == "Windows"
 
@@ -167,14 +167,21 @@ def main(telemetry_port, http_port, proto):
     ipc_port = get_free_tcp_port()
 
     print("\nStarting app in replay server mode...")
-    app_cmd = [
-        sys.executable, "-m", "coverage", "run",
-        "--parallel-mode", "--rcfile", "scripts/.coveragerc_integration", "-m", "apps.backend",
-            "--replay-server", "--debug", "--ipc-port", str(ipc_port)
+    app_cmd_base = ["-m", "apps.backend",
+               "--replay-server", "--debug", "--ipc-port", str(ipc_port)
     ]
 
+    if coverage_enabled:
+        app_cmd = [
+            sys.executable, "-m", "coverage", "run",
+            "--parallel-mode", "--rcfile", "scripts/.coveragerc_integration", *app_cmd_base
+        ]
+        os.environ["COVERAGE_PROCESS_START"] = str(Path("scripts/.coveragerc_integration").resolve())
+    else:
+        app_cmd = [
+            sys.executable, *app_cmd_base
+        ]
 
-    os.environ["COVERAGE_PROCESS_START"] = str(Path("scripts/.coveragerc_integration").resolve())
     if is_windows:
         app_process = subprocess.Popen(app_cmd, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
     else:
@@ -266,11 +273,14 @@ def main(telemetry_port, http_port, proto):
 if __name__ == "__main__":
     settings = load_config_from_ini("png_config.ini")
 
+    coverage_enabled = "--coverage" in sys.argv
+
     start_time = time.perf_counter()
     success = main(
         telemetry_port=settings.Network.telemetry_port,
         http_port=settings.Network.server_port,
-        proto=settings.HTTPS.proto
+        proto=settings.HTTPS.proto,
+        coverage_enabled=coverage_enabled
     )
     end_time = time.perf_counter()
     mm, ss = divmod(int(end_time - start_time), 60)

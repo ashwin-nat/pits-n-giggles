@@ -10,6 +10,8 @@ is_ci = "--ci" in sys.argv
 
 run_coverage(
     RUN_TYPE="integration",
-    args_str="--rcfile=scripts/.coveragerc_integration",
+    cov_args_str="--rcfile=scripts/.coveragerc_integration",
     script="tests/integration_test/runner.py",
-    show_report=not is_ci)
+    script_args_str="--coverage --ci" if is_ci else "--coverage",
+    show_report=not is_ci
+)

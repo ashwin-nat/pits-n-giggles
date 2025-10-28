@@ -2,14 +2,14 @@ import os
 import datetime
 import webbrowser
 
-def run_coverage(RUN_TYPE, args_str, script, show_report):
+def run_coverage(RUN_TYPE, cov_args_str, script, script_args_str="", show_report=False):
 
     RUN_TYPE = "integration"
     timestamp = datetime.datetime.now().strftime("%Y_%m_%d__%H_%M_%S")
     data_file = f".coverage_{RUN_TYPE}_{timestamp}"
 
     # Run coverage with named data file
-    status = os.system(f"coverage run --data-file={data_file} {args_str} {script}")
+    status = os.system(f"coverage run --data-file={data_file} {cov_args_str} {script} {script_args_str}")
     if status != 0:
         print(f"{RUN_TYPE.title()} tests failed")
         raise SystemExit(status)
