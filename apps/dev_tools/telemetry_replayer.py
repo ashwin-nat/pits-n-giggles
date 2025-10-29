@@ -126,7 +126,7 @@ def main():
                 total=total_packets,
                 desc='Sending Packets',
                 unit='packet',
-                mininterval=0.1
+                mininterval=2
             )
             for timestamp, packet in captured_packets.getPackets():
                 progress_bar.update(1)
@@ -165,8 +165,7 @@ def main():
                 total=total_packets,
                 desc='Sending Packets',
                 unit='packet',
-                mininterval=0.1,
-                miniters=1
+                mininterval=2,
             )
 
             # Send each packet one by one and update the progress bar
