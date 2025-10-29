@@ -27,5 +27,5 @@ poetry run python scripts/integration_test/runner.py
 
 To run integration tests with code coverage:
 ```bash
-poetry run python scripts/coverage_interation_tests.py
+poetry run python scripts/coverage_integration_tests.py
 ```

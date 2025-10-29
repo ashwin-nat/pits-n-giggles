@@ -95,7 +95,7 @@ def send_heartbeat(
         time.sleep(interval)
 
     stop_event.clear()
-    logger.test_log(f"Backend process: Heartbeat job stopped")
+    logger.test_log("Backend process: Heartbeat job stopped")
 
 async def _check_endpoints_async(urls):
     results = []
