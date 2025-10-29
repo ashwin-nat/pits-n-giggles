@@ -23,11 +23,12 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 from lib.config import load_config_from_ini
 from lib.ipc import IpcParent, get_free_tcp_port
+from tests.integration_test.log import create_logger, TestLogger
 
 # Google Drive folder URL
 DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/13tIadKMvi3kuItkovT6GUTTHOL3YM6n_?usp=drive_link"
 CACHE_DIR = Path("test_data")
-
+logger = create_logger()
 
 def get_cached_files() -> list[str]:
     return sorted(str(p) for p in CACHE_DIR.glob("*.f1pcap"))
@@ -45,7 +46,7 @@ def send_ipc_shutdown(ipc_port) -> bool:
         rsp = IpcParent(ipc_port).shutdown_child("Integration test complete")
         return rsp.get("status") == "success"
     except Exception as e: # pylint: disable=broad-exception-caught
-        print(f"IPC shutdown failed: {e}")
+        logger.test_log(f"IPC shutdown failed: {e}")
         return False
 
 def kill_app(is_windows: bool, app_process: subprocess.Popen):
@@ -55,14 +56,14 @@ def kill_app(is_windows: bool, app_process: subprocess.Popen):
             try:
                 subprocess.call(["taskkill", "/F", "/T", "/PID", str(app_process.pid)])
             except Exception as e:
-                print(f"[WARN] Could not terminate app: {e}")
+                logger.test_log(f"[WARN] Could not terminate app: {e}")
         else:
-            print(f"App already exited (PID={app_process.pid})")
+            logger.test_log(f"App already exited (PID={app_process.pid})")
     else:
         try:
             os.killpg(app_process.pid, signal.SIGKILL)
         except ProcessLookupError:
-            print("[WARN] App already exited")
+            logger.test_log("[WARN] App already exited")
 
 def send_heartbeat(
         stop_event: threading.Event,
@@ -77,24 +78,24 @@ def send_heartbeat(
 
             if rsp.get("status") == "success":
                 failed_heartbeat_count = 0
-                print(f"Backend process: Heartbeat response: {rsp}")
+                logger.test_log(f"Backend process: Heartbeat response: {rsp}")
             else:
-                print(f"Backend process: Heartbeat failed with response: {rsp}")
+                logger.test_log(f"Backend process: Heartbeat failed with response: {rsp}")
                 failed_heartbeat_count += 1
 
         except Exception as e:  # pylint: disable=broad-exception-caught
-            print(f"Backend process: Error sending heartbeat: {e}")
+            logger.test_log(f"Backend process: Error sending heartbeat: {e}")
             failed_heartbeat_count += 1
 
         # Check if we've exceeded the maximum allowed missed heartbeats
         if failed_heartbeat_count > num_missable_heartbeats:
-            print(f"Backend process: Missed {failed_heartbeat_count} consecutive heartbeats. Stopping.")
+            logger.test_log(f"Backend process: Missed {failed_heartbeat_count} consecutive heartbeats. Stopping.")
             break
 
         time.sleep(interval)
 
     stop_event.clear()
-    print(f"Backend process: Heartbeat job stopped")
+    logger.test_log(f"Backend process: Heartbeat job stopped")
 
 async def _check_endpoints_async(urls):
     results = []
@@ -110,13 +111,13 @@ async def _check_endpoints_async(urls):
             try:
                 async with session.get(url, timeout=5) as response:
                     if response.status in {200, 404}:
-                        print(f"  [OK] Endpoint check PASSED: {url}")
+                        logger.test_log(f"  [OK] Endpoint check PASSED: {url}")
                         return (url, True)
                     else:
-                        print(f"  [FAIL] Endpoint check FAILED ({response.status}): {url}")
+                        logger.test_log(f"  [FAIL] Endpoint check FAILED ({response.status}): {url}")
                         return (url, False)
             except Exception as e:
-                print(f"  [FAIL] Endpoint check FAILED (exception): {url} - {e}")
+                logger.test_log(f"  [FAIL] Endpoint check FAILED (exception): {url} - {e}")
                 return (url, False)
 
         tasks = [fetch(url) for url in urls]
@@ -128,12 +129,12 @@ def main(telemetry_port, http_port, proto, coverage_enabled):
     CACHE_DIR.mkdir(exist_ok=True)
     is_windows = platform.system() == "Windows"
 
-    print("Checking for cached test files...")
+    logger.test_log("Checking for cached test files...")
     if cached_files := get_cached_files():
-        print(f"Found {len(cached_files)} cached files - skipping download")
+        logger.test_log(f"Found {len(cached_files)} cached files - skipping download")
         files = cached_files
     else:
-        print("No cached files found. Downloading test files from Google Drive...")
+        logger.test_log("No cached files found. Downloading test files from Google Drive...")
         try:
             files = gdown.download_folder(
                 DRIVE_FOLDER_URL,
@@ -142,16 +143,16 @@ def main(telemetry_port, http_port, proto, coverage_enabled):
                 remaining_ok=True
             )
             if not files:
-                print("No files were downloaded from Google Drive!")
+                logger.test_log("No files were downloaded from Google Drive!")
                 sys.exit(1)
-            print(f"Downloaded {len(files)} test files")
+            logger.test_log(f"Downloaded {len(files)} test files")
         except Exception as e:
-            print(f"Error occurred while downloading test files from Google Drive: {e}")
+            logger.test_log(f"Error occurred while downloading test files from Google Drive: {e}")
             files = get_cached_files()
             if files:
-                print(f"Using {len(files)} cached files")
+                logger.test_log(f"Using {len(files)} cached files")
             else:
-                print("No test files available to run.")
+                logger.test_log("No test files available to run.")
                 sys.exit(1)
 
     http_endpoints = [
@@ -166,7 +167,7 @@ def main(telemetry_port, http_port, proto, coverage_enabled):
 
     ipc_port = get_free_tcp_port()
 
-    print("\nStarting app in replay server mode...")
+    logger.test_log("\nStarting app in replay server mode...")
     app_cmd_base = ["-m", "apps.backend",
                "--replay-server", "--debug", "--ipc-port", str(ipc_port)
     ]
@@ -189,10 +190,10 @@ def main(telemetry_port, http_port, proto, coverage_enabled):
 
     exit_event = threading.Event()
     threading.Thread(target=send_heartbeat, args=(exit_event, ipc_port), daemon=True).start()
-    print("Waiting for app to start...")
+    logger.test_log("Waiting for app to start...")
     time.sleep(5)
 
-    print("Launching driver view, engineer view and overlay clients")
+    logger.test_log("Launching driver view, engineer view and overlay clients")
     webbrowser.open(f'{proto}://localhost:{http_port}/', new=2)
     webbrowser.open(f'{proto}://localhost:{http_port}/eng-view', new=2)
     webbrowser.open(f'{proto}://localhost:{http_port}/player-stream-overlay', new=2)
@@ -202,12 +203,12 @@ def main(telemetry_port, http_port, proto, coverage_enabled):
         for index, file_path in enumerate(files):
             # If app is already dead, don't even try to replay
             if app_process.poll() is not None:
-                print(f"\n[FAIL] App crashed or exited unexpectedly (code={app_process.returncode}) - aborting remaining tests")
+                logger.test_log(f"\n[FAIL] App crashed or exited unexpectedly (code={app_process.returncode}) - aborting remaining tests")
                 break
 
             file_name = os.path.basename(file_path)
-            print("=" * 40)
-            print(f"\nRunning test {index + 1} of {len(files)}: {file_name}")
+            logger.test_log("=" * 40)
+            logger.test_log(f"\nRunning test {index + 1} of {len(files)}: {file_name}")
 
             # Build replayer command
             replayer_cmd = [
@@ -224,17 +225,17 @@ def main(telemetry_port, http_port, proto, coverage_enabled):
                 result = subprocess.run(replayer_cmd, timeout=120)
                 replay_success = (result.returncode == 0)
             except subprocess.TimeoutExpired:
-                print(f"[FAIL] Test FAILED: {file_name} timed out after 120 seconds")
+                logger.test_log(f"[FAIL] Test FAILED: {file_name} timed out after 120 seconds")
 
             # Abort early if replay failed and app has crashed
             if not replay_success:
-                print(f"[FAIL] App crashed during replay (code={app_process.returncode}) - aborting remaining tests")
+                logger.test_log(f"[FAIL] App crashed during replay (code={app_process.returncode}) - aborting remaining tests")
                 results.append((file_name, False, replay_success, []))
                 break
 
             # If app crashed during replay
             if app_process.poll() is not None:
-                print(f"[FAIL] App crashed during replay (code={app_process.returncode}) - skipping endpoint checks")
+                logger.test_log(f"[FAIL] App crashed during replay (code={app_process.returncode}) - skipping endpoint checks")
                 results.append((file_name, False, replay_success, []))
                 break
 
@@ -245,32 +246,33 @@ def main(telemetry_port, http_port, proto, coverage_enabled):
             results.append((file_name, overall_success, replay_success, endpoint_status))
 
             status = "PASSED" if overall_success else "FAILED"
-            print(f"Test {index + 1} of {len(files)} {status}: {file_name}")
+            logger.test_log(f"Test {index + 1} of {len(files)} {status}: {file_name}")
 
     finally:
-        print(f"\nStopping app... PID={app_process.pid}")
+        logger.test_log(f"\nStopping app... PID={app_process.pid}")
         exit_event.set()
         if not send_ipc_shutdown(ipc_port):
             kill_app(is_windows, app_process)
         time.sleep(5)
 
-    print("\n===== TEST RESULTS =====")
+    logger.test_log("\n===== TEST RESULTS =====")
     success_count = sum(overall for _, overall, _, _ in results)
-    print(f"Passed: {success_count}/{len(results)}\n")
+    logger.test_log(f"Passed: {success_count}/{len(results)}\n")
 
     for file_name, overall, replay_success, endpoint_status in results:
         status = "PASS" if overall else "FAIL"
-        print(f"{status}: {file_name}")
+        logger.test_log(f"{status}: {file_name}")
 
         if not replay_success:
-            print("  [FAIL] Replayer failed")
+            logger.test_log("  [FAIL] Replayer failed")
         for url, ok in endpoint_status:
             if not ok:
-                print(f"  [FAIL] Endpoint failed: {url}")
+                logger.test_log(f"  [FAIL] Endpoint failed: {url}")
 
     return success_count == len(results)
 
 if __name__ == "__main__":
+
     settings = load_config_from_ini("png_config.ini")
 
     coverage_enabled = "--coverage" in sys.argv
@@ -285,6 +287,6 @@ if __name__ == "__main__":
     end_time = time.perf_counter()
     mm, ss = divmod(int(end_time - start_time), 60)
     ms = int((end_time - start_time - mm * 60 - ss) * 1000)
-    print(f"Total time: {mm:02d}:{ss:02d}.{ms:03d}")
+    logger.test_log(f"Total time: {mm:02d}:{ss:02d}.{ms:03d}")
 
     sys.exit(0 if success else 1)
