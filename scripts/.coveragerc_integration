@@ -19,8 +19,8 @@ skip_empty = True
 precision = 1
 fail_under = 75
 exclude_also =
-    def __str__
-    def __repr__
-    def __eq__
-    def __hash__
-    if __name__ == .__main__.:
+    ^\s*def __repr__\(self.*\)\s*(->.*)?:$
+    ^\s*def __eq__\(self.*\)\s*(->.*)?:$
+    ^\s*def __hash__\(self.*\)\s*(->.*)?:$
+    ^\s*def __str__\(self.*\)\s*(->.*)?:$
+    ^\s*def __repr__\(self.*\)\s*(->.*)?:$
