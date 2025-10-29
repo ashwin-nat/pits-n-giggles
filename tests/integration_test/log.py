@@ -17,9 +17,13 @@ class TestFormatter(logging.Formatter):
             ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S,%f")[:-3]
             return f"{ts} [TEST] [{record.filename}:{record.lineno}] - {record.getMessage()}"
 
-        elif log_type == "child":
-            # Example: [TEST] - <Message>
-            return f"[TEST] - {record.getMessage()}"
+        elif log_type == "proc":
+            # Example: [PROC] - <Message>
+            return f"[PROC] - {record.getMessage()}"
+
+        elif log_type == "replayer":
+            # Example: [REPLAYER] - <Message>
+            return f"[REPLAYER] - {record.getMessage()}"
 
         # Fallback for unknown log type
         return f"[UNKNOWN] - {record.getMessage()}"
@@ -48,11 +52,15 @@ class TestLogger(logging.Logger):
 
     def test_log(self, message: str):
         """Log a test runner message."""
-        self.info(message, extra={"log_type": "runner"})
+        self.info(message, extra={"log_type": "runner"}, stacklevel=2)
 
     def proc_log(self, message: str):
         """Log a child process (stdout) message."""
-        self.info(message, extra={"log_type": "child"})
+        self.info(message, extra={"log_type": "proc"}, stacklevel=2)
+
+    def replayer_log(self, message: str):
+        """Log a replayer process (stderr) message."""
+        self.info(message, extra={"log_type": "replayer"}, stacklevel=2)
 
 
 # ---------- Factory Function ----------

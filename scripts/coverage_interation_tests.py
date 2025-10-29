@@ -13,5 +13,6 @@ run_coverage(
     rcfile="scripts/.coveragerc_integration",
     script="tests/integration_test/runner.py",
     script_args_str="--coverage --ci" if is_ci else "--coverage",
+    manage_coverage=False,
     show_report=not is_ci
 )

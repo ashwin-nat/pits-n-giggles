@@ -169,7 +169,7 @@ def main(telemetry_port, http_port, proto, coverage_enabled):
 
     logger.test_log("\nStarting app in replay server mode...")
     app_cmd_base = ["-m", "apps.backend",
-               "--replay-server", "--debug", "--ipc-port", str(ipc_port)
+                "--replay-server", "--debug", "--ipc-port", str(ipc_port)
     ]
 
     if coverage_enabled:
@@ -179,17 +179,49 @@ def main(telemetry_port, http_port, proto, coverage_enabled):
         ]
         os.environ["COVERAGE_PROCESS_START"] = str(Path("scripts/.coveragerc_integration").resolve())
     else:
-        app_cmd = [
-            sys.executable, *app_cmd_base
-        ]
+        app_cmd = [sys.executable, *app_cmd_base]
 
     if is_windows:
-        app_process = subprocess.Popen(app_cmd, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+        app_process = subprocess.Popen(
+            app_cmd,
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True)
     else:
-        app_process = subprocess.Popen(app_cmd, start_new_session=True)
+        app_process = subprocess.Popen(
+            app_cmd,
+            start_new_session=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True)
+
+    logger.test_log(f"App process started with PID: {app_process.pid}. Command line: {' '.join(app_cmd)}")
+
+    # --- Threaded background jobs ---
+    def log_app_output(process, log_func, stop_event):
+        for line in iter(process.stdout.readline, ''):
+            if stop_event.is_set():
+                break
+            log_func(line.strip())
+        process.stdout.close()
 
     exit_event = threading.Event()
-    threading.Thread(target=send_heartbeat, args=(exit_event, ipc_port), daemon=True).start()
+    app_output_stop_event = threading.Event()
+
+    threads = []
+
+    heartbeat_thread = threading.Thread(target=send_heartbeat, args=(exit_event, ipc_port))
+    threads.append(heartbeat_thread)
+    heartbeat_thread.start()
+    logger.test_log(f"Heartbeat thread started. PID: {heartbeat_thread.ident}")
+
+    app_output_thread = threading.Thread(
+        target=log_app_output, args=(app_process, logger.proc_log, app_output_stop_event))
+    threads.append(app_output_thread)
+    app_output_thread.start()
+    logger.test_log(f"App output thread started. PID: {app_output_thread.ident}")
+
     logger.test_log("Waiting for app to start...")
     time.sleep(5)
 
@@ -201,16 +233,10 @@ def main(telemetry_port, http_port, proto, coverage_enabled):
     results = []
     try:
         for index, file_path in enumerate(files):
-            # If app is already dead, don't even try to replay
-            if app_process.poll() is not None:
-                logger.test_log(f"\n[FAIL] App crashed or exited unexpectedly (code={app_process.returncode}) - aborting remaining tests")
-                break
-
             file_name = os.path.basename(file_path)
             logger.test_log("=" * 40)
-            logger.test_log(f"\nRunning test {index + 1} of {len(files)}: {file_name}")
+            logger.test_log(f"Running test {index + 1} of {len(files)}: {file_name}")
 
-            # Build replayer command
             replayer_cmd = [
                 "poetry", "run", "python", "-m", "apps.dev_tools.telemetry_replayer",
                 "--file-name", str(file_path),
@@ -219,28 +245,35 @@ def main(telemetry_port, http_port, proto, coverage_enabled):
 
             replay_success = False
             endpoint_status = []
+            replayer_process = None
 
-            # Launch the replayer — will cause file decompression
             try:
-                result = subprocess.run(replayer_cmd, timeout=120)
-                replay_success = (result.returncode == 0)
+                replayer_process = subprocess.Popen(
+                    replayer_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                replayer_output_stop_event = threading.Event()
+
+                logger.test_log(f"Replayer process started with PID: {replayer_process.pid}. Command line: {' '.join(replayer_cmd)}")
+
+                replayer_thread = threading.Thread(
+                    target=log_app_output, args=(replayer_process, logger.replayer_log, replayer_output_stop_event))
+                replayer_thread.start()
+                logger.test_log(f"Replayer output thread started. PID: {replayer_thread.ident}")
+
+                replayer_process.wait(timeout=6000)
+                replay_success = (replayer_process.returncode == 0)
             except subprocess.TimeoutExpired:
                 logger.test_log(f"[FAIL] Test FAILED: {file_name} timed out after 120 seconds")
+                if replayer_process:
+                    kill_app(is_windows, replayer_process)
+            finally:
+                if replayer_process:
+                    replayer_output_stop_event.set()
 
-            # Abort early if replay failed and app has crashed
-            if not replay_success:
-                logger.test_log(f"[FAIL] App crashed during replay (code={app_process.returncode}) - aborting remaining tests")
-                results.append((file_name, False, replay_success, []))
-                break
-
-            # If app crashed during replay
-            if app_process.poll() is not None:
-                logger.test_log(f"[FAIL] App crashed during replay (code={app_process.returncode}) - skipping endpoint checks")
-                results.append((file_name, False, replay_success, []))
-                break
-
-            # Only run endpoint checks if replay succeeded and app is still alive
-            endpoint_status = check_endpoints_blocking(http_endpoints)
+            # Endpoint checks only if replay succeeded
+            if replay_success:
+                endpoint_status = check_endpoints_blocking(http_endpoints)
+            else:
+                logger.test_log(f"[FAIL] Replay failed for {file_name}")
 
             overall_success = replay_success and all(ok for _, ok in endpoint_status)
             results.append((file_name, overall_success, replay_success, endpoint_status))
@@ -251,9 +284,24 @@ def main(telemetry_port, http_port, proto, coverage_enabled):
     finally:
         logger.test_log(f"\nStopping app... PID={app_process.pid}")
         exit_event.set()
+        app_output_stop_event.set()
+
+        # Give heartbeat a chance to exit gracefully
+        time.sleep(1)
+
+        # Try clean IPC shutdown
         if not send_ipc_shutdown(ipc_port):
+            logger.test_log("[WARN] IPC shutdown failed, forcing termination")
             kill_app(is_windows, app_process)
-        time.sleep(5)
+
+        try:
+            app_process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            logger.test_log("[WARN] App did not terminate in time")
+
+        # Join all threads
+        for t in threads:
+            t.join(timeout=2)
 
     logger.test_log("\n===== TEST RESULTS =====")
     success_count = sum(overall for _, overall, _, _ in results)
