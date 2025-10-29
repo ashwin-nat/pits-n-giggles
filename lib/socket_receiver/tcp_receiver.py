@@ -95,7 +95,12 @@ class TcpReceiver(TelemetryReceiver):
             # Connection closed or error
             if self._writer:
                 self._writer.close()
-                await self._writer.wait_closed()
+                try:
+                    await self._writer.wait_closed()
+                except ConnectionResetError:
+                    # Peer closed connection abruptly; safe to ignore
+                    pass
+
             self.m_connection = None
             self._reader = None
             self._writer = None
@@ -107,7 +112,10 @@ class TcpReceiver(TelemetryReceiver):
         """Closes the socket receiver and any active connection."""
         if self._writer is not None:
             self._writer.close()
-            await self._writer.wait_closed()
+            try:
+                await self._writer.wait_closed()
+            except ConnectionResetError:
+                pass
 
         if self.m_socket:
             self.m_socket.close()
