@@ -280,8 +280,9 @@ def main(telemetry_port, http_port, proto, coverage_enabled):
             results.append((file_name, overall_success, replay_success, endpoint_status))
 
             end_time = time.perf_counter()
+            time_elapsed = end_time - start_time
             status = "PASSED" if overall_success else "FAILED"
-            logger.test_log(f"Test {index + 1} of {len(files)} {status}: {file_name}. Time ={end_time - start_time:.2f} s")
+            logger.test_log(f"Test {index + 1} of {len(files)} {status}: {file_name} | Elapsed: {time_elapsed:.2f} s")
 
     finally:
         logger.test_log(f"\nStopping app... PID={app_process.pid}")
