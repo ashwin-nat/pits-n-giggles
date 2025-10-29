@@ -235,7 +235,7 @@ def main(telemetry_port, http_port, proto, coverage_enabled):
         for index, file_path in enumerate(files):
             file_name = os.path.basename(file_path)
             logger.test_log("=" * 40)
-            logger.test_log(f"Running test {index + 1} of {len(files)}: {file_name}")
+            logger.test_log(f"\n{'='*80}\n>>> Running test {index + 1} of {len(files)}: {file_name} <<<\n{'='*80}")
 
             replayer_cmd = [
                 "poetry", "run", "python", "-m", "apps.dev_tools.telemetry_replayer",
@@ -253,6 +253,7 @@ def main(telemetry_port, http_port, proto, coverage_enabled):
                 replayer_output_stop_event = threading.Event()
 
                 logger.test_log(f"Replayer process started with PID: {replayer_process.pid}. Command line: {' '.join(replayer_cmd)}")
+                start_time = time.perf_counter()
 
                 replayer_thread = threading.Thread(
                     target=log_app_output, args=(replayer_process, logger.replayer_log, replayer_output_stop_event))
@@ -278,8 +279,9 @@ def main(telemetry_port, http_port, proto, coverage_enabled):
             overall_success = replay_success and all(ok for _, ok in endpoint_status)
             results.append((file_name, overall_success, replay_success, endpoint_status))
 
+            end_time = time.perf_counter()
             status = "PASSED" if overall_success else "FAILED"
-            logger.test_log(f"Test {index + 1} of {len(files)} {status}: {file_name}")
+            logger.test_log(f"Test {index + 1} of {len(files)} {status}: {file_name}. Time ={end_time - start_time:.2f} s")
 
     finally:
         logger.test_log(f"\nStopping app... PID={app_process.pid}")
@@ -288,6 +290,9 @@ def main(telemetry_port, http_port, proto, coverage_enabled):
 
         # Give heartbeat a chance to exit gracefully
         time.sleep(1)
+
+        # Give time for watchdog to expire
+        time.sleep(3)
 
         # Try clean IPC shutdown
         if not send_ipc_shutdown(ipc_port):
@@ -321,7 +326,7 @@ def main(telemetry_port, http_port, proto, coverage_enabled):
 
 if __name__ == "__main__":
 
-    settings = load_config_from_ini("png_config.ini")
+    settings = load_config_from_ini("integration_test_cfg.ini")
 
     coverage_enabled = "--coverage" in sys.argv
 

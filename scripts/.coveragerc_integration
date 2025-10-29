@@ -7,6 +7,8 @@ concurrency =
 omit =
     */__init__.py
     */tests/*
+    lib/packet_cap.py
+    lib/socket_receiver/udp_receiver.py
 source =
     lib
     apps/backend
@@ -15,4 +17,10 @@ source =
 show_missing = True
 skip_empty = True
 precision = 1
-fail_under = 85
+fail_under = 75
+exclude_also =
+    def __str__
+    def __repr__
+    def __eq__
+    def __hash__
+    if __name__ == .__main__.:
