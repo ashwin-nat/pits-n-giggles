@@ -24,3 +24,4 @@ png-venv/
 .coverage_*
 .coverage.*
 htmlcov/
+coverage_reports/
