@@ -30,7 +30,7 @@ from pydantic import ValidationError
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from lib.config import (CaptureSettings, DisplaySettings, ForwardingSettings,
-                        LoggingSettings, NetworkSettings, PngSettings,
+                        LoggingSettings, NetworkSettings, PngSettings, HttpsSettings, HudSettings,
                         PrivacySettings, StreamOverlaySettings)
 
 from .tests_config_base import TestF1ConfigBase
@@ -50,6 +50,8 @@ class TestPngSettings(TestF1ConfigBase):
             Privacy=PrivacySettings(),
             Forwarding=ForwardingSettings(),
             StreamOverlay=StreamOverlaySettings(),
+            HTTPS=HttpsSettings(),
+            HUD=HudSettings(),
         )
 
         self.assertIsInstance(settings.Network, NetworkSettings)
@@ -69,4 +71,19 @@ class TestPngSettings(TestF1ConfigBase):
                 Logging=LoggingSettings(),
                 Privacy=PrivacySettings(),
                 Forwarding=ForwardingSettings()
+            )
+
+    def test_udp_action_code(self):
+        """Test UDP action code validation across areas of the model"""
+
+        with self.assertRaises(ValidationError):
+            PngSettings(
+                Network=NetworkSettings(udp_tyre_delta_action_code=0),
+                HUD=HudSettings(toggle_overlays_udp_action_code=0)
+            )
+
+        with self.assertRaises(ValidationError):
+            PngSettings(
+                Network=NetworkSettings(udp_custom_action_code=0),
+                HUD=HudSettings(toggle_overlays_udp_action_code=0)
             )

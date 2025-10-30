@@ -181,6 +181,10 @@ class HttpsSettings(BaseModel):
 
 class HudSettings(BaseModel):
     enabled: bool = Field(False, description="Enable HUD (only on Windows, setting will be ignored on other OS's)")
+    show_lap_timer: bool = Field(True, description="Show lap timer overlay")
+    show_timing_tower: bool = Field(True, description="Show timing tower overlay")
+    toggle_overlays_udp_action_code: int = Field(10, ge=1, le=12,
+                                                description="The UDP custom action code to show/hide overlays")
 
 class PitTimeLossF1(BaseModel):
     Melbourne: float = Field(18.0)
@@ -263,6 +267,16 @@ class PngSettings(BaseModel):
     SubSysCtrlCfg__: SubSysCtrl = Field(default_factory=SubSysCtrl)
     class Config:
         str_strip_whitespace = True
+
+    @model_validator(mode="after")
+    def check_udp_action_codes(self) -> "PngSettings":
+
+        if self.HUD.toggle_overlays_udp_action_code == self.Network.udp_custom_action_code:
+            raise ValueError(f"HUD toggle overlays action code and Network UDP custom action code "
+                              "must not be the same")
+        if self.HUD.toggle_overlays_udp_action_code == self.Network.udp_tyre_delta_action_code:
+            raise ValueError(f"HUD toggle overlays action code and Network Tyre delta action code "
+                              "must not be the same")
 
     def __str__(self) -> str:
         lines = ["PngSettings:"]
