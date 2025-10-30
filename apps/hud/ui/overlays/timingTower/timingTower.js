@@ -35,12 +35,12 @@ class F1TimingTower {
             rowData: [],
             domLayout: 'normal',
             theme: myTheme,
+            headerHeight: 0,  // Disable header
             suppressMovableColumns: true,
             suppressCellFocus: true,
             defaultColDef: {
                 sortable: false,
                 resizable: false,
-                flex: 1
             }
         };
 
@@ -58,7 +58,7 @@ class F1TimingTower {
             {
                 headerName: 'DRIVER',
                 field: 'name',
-                flex: 2
+                flex: 3
             },
             {
                 headerName: 'DELTA',
@@ -73,7 +73,7 @@ class F1TimingTower {
             {
                 headerName: 'TYRE',
                 field: 'tyre',
-                flex: 1,
+                flex: 2,
                 valueFormatter: params => {
                     return (params.value || 'UNKNOWN').toUpperCase();
                 }
@@ -81,7 +81,7 @@ class F1TimingTower {
             {
                 headerName: 'ERS',
                 field: 'ers',
-                flex: 1,
+                flex: 2,
                 valueFormatter: params => {
                     const value = params.value || 0;
                     return `${Math.round(value * 100)}%`;
