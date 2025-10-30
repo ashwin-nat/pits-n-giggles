@@ -171,3 +171,37 @@ class F1TimingTower {
         }
     }
 }
+
+// Initialize the timing tower
+const timingTower = new F1TimingTower('timingGrid', {
+    filterFunction: (driverData) => {
+        // Show positions 3-7 (P3 to P7)
+        const position = driverData['driver-info'].position;
+        return position >= 3 && position <= 7;
+    }
+});
+
+// Start periodic updates with dummy data
+timingTower.startDummyUpdates(500);
+
+// Listen for updates from Python
+window.addEventListener('telemetry-update', (event) => {
+    // timer.update(event.detail);
+});
+
+window.addEventListener('lock-state-change', (event) => {
+    const locked = event.detail['new-value'];
+    console.log('lock-state-change', event.detail);
+
+    if (locked) {
+        // Lock/disable column resizing
+    } else {
+        // Unlock/enable column resizing
+    }
+});
+
+// Wait for utils to be ready before trying to use them
+window.addEventListener('utils-ready', async () => {
+    console.log('[LapTimer] Utils ready, fetching initial telemetry...');
+    test_import(); // TODO: remove
+});
