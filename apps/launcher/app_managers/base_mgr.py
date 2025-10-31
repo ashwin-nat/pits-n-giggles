@@ -121,6 +121,7 @@ class PngAppMgrBase(ABC):
         self.heartbeat_interval: float = settings.SubSysCtrlCfg__.heartbeat_interval
         self.num_missable_heartbeats: int = settings.SubSysCtrlCfg__.num_missable_heartbeats
         self._stop_heartbeat = threading.Event()
+        self._heartbeat_stopped = threading.Event()
         self.start_by_default = start_by_default
         self.child_pid = None
         self._post_start_hook: Optional[Callable[[], None]] = None
@@ -217,6 +218,14 @@ class PngAppMgrBase(ABC):
             else:
                 self.console_app.debug_log(f"Failed to send shutdown signal to {self.display_name}.")
                 self._terminate_process()
+
+            # Wait for heartbeat thread to stop
+            self.console_app.debug_log(f"{self.display_name} - Waiting for heartbeat thread to stop...")
+            if self._heartbeat_stopped.wait(timeout=self.heartbeat_interval + 1.0):
+                self.console_app.debug_log(f"{self.display_name} - Heartbeat thread stopped.")
+            else:
+                self.console_app.debug_log(f"{self.display_name} - Timed out waiting for heartbeat thread to stop.")
+            self._heartbeat_stopped.clear()
 
             # Clear process-related state atomically to avoid race conditions
             self.process = None
@@ -338,12 +347,14 @@ class PngAppMgrBase(ABC):
         initial_delay = random.uniform(0, 5.0)
         time.sleep(initial_delay)
         failed_heartbeat_count = 0
+        timeout_ms = (int(self.heartbeat_interval) - 2) * 1000
 
         self.console_app.debug_log(f"{self.display_name}: Starting heartbeat on port {port_num}...")
+        self._heartbeat_stopped.clear()
 
         while not self._stop_heartbeat.is_set():
             try:
-                rsp = IpcParent(port_num).heartbeat()
+                rsp = IpcParent(port_num, timeout_ms).heartbeat()
 
                 if rsp.get("status") == "success":
                     failed_heartbeat_count = 0
@@ -369,6 +380,7 @@ class PngAppMgrBase(ABC):
             self._stop_heartbeat.wait(self.heartbeat_interval)
 
         self._stop_heartbeat.clear()
+        self._heartbeat_stopped.set()
         self.console_app.debug_log(f"{self.display_name}: Heartbeat job stopped on port {port_num}")
 
     def _is_restart_exit_expected(self, ret_code: int) -> bool:
