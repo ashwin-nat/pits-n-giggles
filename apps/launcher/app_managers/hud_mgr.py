@@ -142,9 +142,10 @@ class HudAppMgr(PngAppMgrBase):
             ],
         })
         self.console_app.debug_log(f"{self.display_name} Settings changed: {json.dumps(diff, indent=2)}")
-
-        # Restart if diff is not empty
-        return bool(diff)
+        has_changed = bool(diff)
+        if has_changed:
+            self.enabled = new_settings.HUD.enabled
+        return has_changed
 
     def start(self):
         """Check for enabled flag before starting"""
