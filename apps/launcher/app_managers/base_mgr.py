@@ -339,35 +339,37 @@ class PngAppMgrBase(ABC):
         time.sleep(initial_delay)
         failed_heartbeat_count = 0
 
+        self.console_app.debug_log(f"{self.display_name}: Starting heartbeat on port {port_num}...")
+
         while not self._stop_heartbeat.is_set():
             try:
                 rsp = IpcParent(port_num).heartbeat()
 
                 if rsp.get("status") == "success":
                     failed_heartbeat_count = 0
-                    self.console_app.debug_log(f"{self.display_name}: Heartbeat response: {rsp}")
+                    self.console_app.debug_log(f"{self.display_name}: Heartbeat success response: {rsp} on port {port_num}")
                 else:
                     self.console_app.debug_log(
-                        f"{self.display_name}: Heartbeat failed with response: {rsp}"
+                        f"{self.display_name}: Heartbeat failed with response: {rsp} on port {port_num}"
                     )
                     failed_heartbeat_count += 1
 
             except Exception as e:  # pylint: disable=broad-exception-caught
-                self.console_app.debug_log(f"{self.display_name}: Error sending heartbeat: {e}")
+                self.console_app.debug_log(f"{self.display_name}: Error sending heartbeat: {e} on port {port_num}")
                 failed_heartbeat_count += 1
 
             # Check if we've exceeded the maximum allowed missed heartbeats
             if (failed_heartbeat_count > self.num_missable_heartbeats) and not self._debug_mode:
                 self.stop()
                 self.console_app.info_log(
-                    f"{self.display_name}: Missed {failed_heartbeat_count} consecutive heartbeats. Stopping"
-                )
+                    f"{self.display_name}: Missed {failed_heartbeat_count} consecutive heartbeats on port {port_num}. "
+                    "Stopping")
                 break
 
             self._stop_heartbeat.wait(self.heartbeat_interval)
 
         self._stop_heartbeat.clear()
-        self.console_app.debug_log(f"{self.display_name}: Heartbeat job stopped")
+        self.console_app.debug_log(f"{self.display_name}: Heartbeat job stopped on port {port_num}")
 
     def _is_restart_exit_expected(self, ret_code: int) -> bool:
         """
