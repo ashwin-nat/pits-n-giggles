@@ -57,17 +57,23 @@ _DEFAULT_OVERLAYS_CONFIG: Dict[str, OverlaysConfig] = {
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class OverlaysMgr:
-    def __init__(self, logger: logging.Logger, settings: PngSettings, config_file: Optional[str] = 'png_overlays.json'):
+    def __init__(self,
+                 logger: logging.Logger,
+                 settings: PngSettings,
+                 config_file: Optional[str] = 'png_overlays.json',
+                 debug: bool = False):
         """Construct a new OverlaysMgr object. Ctor will init config files and windows
 
         Args:
             logger (logging.Logger): Logger object
             settings (PngSettings): App Settings
             config_file (str, optional): Path to config file. Defaults to 'png_overlays.json'.
+            debug (bool, optional): Debug mode. Defaults to False.
         """
         self.logger = logger
         self.config_file = resolve_user_file(config_file)
         self.debouncer = ButtonDebouncer(debounce_time=1.0)
+        self.debug_mode = debug
         self._init_config()
 
         assert settings.HUD.enabled, "HUD must be enabled to run overlays manager"
@@ -89,7 +95,7 @@ class OverlaysMgr:
 
     def run(self):
         """Start the overlays manager"""
-        webview.start(notify_parent_init_complete, debug=True)
+        webview.start(notify_parent_init_complete, debug=self.debug_mode)
 
     def on_locked_state_change(self, args: Dict[str, bool]):
         """Handle locked state change"""
@@ -102,12 +108,11 @@ class OverlaysMgr:
         for window_id, window_params in self.config.items():
             curr_params = self.window_manager.get_window_info(window_id)
             if curr_params != window_params:
-                self.logger.debug(f"Updating config for window '{window_id}'")
+                self.logger.debug(f"Updating config for window '{window_id}' to {curr_params}")
                 self.config[window_id] = curr_params
                 changed = True
 
         if changed:
-            self.logger.debug(f"Saving config to {self.config_file}")
             self._save_config()
 
     def race_table_update(self, data):
@@ -145,21 +150,21 @@ class OverlaysMgr:
             for key, value in _DEFAULT_OVERLAYS_CONFIG.items():
                 if key not in config:
                     config[key] = value
-                    self.logger.debug(f"Added {key} to config")
+                    self.logger.debug(f"Missing overlay config key. Added {key} to config")
                     should_write = True
 
             self.config = config
+            json_str = json.dumps({k: v.toJSON() for k, v in self.config.items()}, indent=2)
+            self.logger.debug(f"Final loaded config: \n{json_str}")
         if should_write:
             pass
 
     def _save_config(self):
         """"Save config file"""
-        self.logger.debug(f"Saving config to {self.config_file}")
-        json_dict = {}
-        for window_id, params in self.config:
-            json_dict[window_id] = params.t
+        json_str = json.dumps({k: v.toJSON() for k, v in self.config.items()}, indent=2)
+        self.logger.debug(f"Saving config to {self.config_file}. Config: \n{json_str}")
         with open(self.config_file, 'w', encoding='utf-8') as f:
-            json.dump(self.config, f, indent=4)
+            json.dump({k: v.toJSON() for k, v in self.config.items()}, f, indent=4)
 
     def _load_config(self) -> Optional[Dict[str, OverlaysConfig]]:
         """"Load config file if it exists. Else, return None"""

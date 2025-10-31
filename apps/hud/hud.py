@@ -55,16 +55,17 @@ def parseArgs() -> argparse.Namespace:
     # Parse the command-line arguments
     return parser.parse_args()
 
-def main(logger: logging.Logger, config: PngSettings, ipc_port: int) -> None:
+def main(logger: logging.Logger, config: PngSettings, ipc_port: int, debug_mode: bool) -> None:
     """Main function
 
     Args:
         logger (logging.Logger): Logger
         config (PngSettings): Configurations
         ipc_port (int): IPC port
+        debug_mode (bool): Debug mode
     """
 
-    overlays_mgr = OverlaysMgr(logger, config)
+    overlays_mgr = OverlaysMgr(logger, config, debug=debug_mode)
 
     client = run_hud_update_thread(
         logger=logger,
@@ -89,7 +90,8 @@ def entry_point():
         main(
             logger=png_logger,
             config=configs,
-            ipc_port=args.ipc_port)
+            ipc_port=args.ipc_port,
+            debug_mode=args.debug)
     except KeyboardInterrupt:
         png_logger.info("Program interrupted by user.")
     except Exception as e: # pylint: disable=broad-except

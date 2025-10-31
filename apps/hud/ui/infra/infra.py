@@ -252,21 +252,67 @@ class WindowManager:
 
         self.windows[window_id] = window
 
+        # Store params for use in callback
+        window._init_params = params
+        window._window_id = window_id
+
         # Inject utilities and logger after window is ready
-        def on_window_ready():
-            # Step 1: Inject console logger first so we can see subsequent logs
-            self._inject_console_logger(window, window_id)
-
-            # Step 2: Inject all configured scripts
-            self._inject_all_scripts(window, window_id)
-
-            # Step 3: Apply window mode after everything is loaded
-            time.sleep(0.5)  # Give OS time to register the window
-            self.set_window_locked_state(window_id, True) # Default to locked
-
-        window.events.loaded += on_window_ready
-
+        window.events.loaded += self._on_window_loaded
         return window
+
+    def _on_window_loaded(self, window):
+        """Callback when window is loaded - inject scripts and configure window"""
+        window_id = window._window_id
+        params = window._init_params
+
+        # Step 1: Inject console logger first so we can see subsequent logs
+        self._inject_console_logger(window, window_id)
+
+        # Step 2: Inject all configured scripts
+        self._inject_all_scripts(window, window_id)
+
+        # Step 3: Apply window mode after everything is loaded
+        time.sleep(0.2)  # Give OS time to register the window
+        self.set_window_locked_state(window_id, True)  # Default to locked
+
+        # Step 4: Force window dimensions after locking (fixes size issue)
+        self._apply_window_dimensions(window_id, params)
+
+    def _apply_window_dimensions(self, window_id: str, params: OverlaysConfig) -> bool:
+        """Force window to specific dimensions after creation
+
+        Args:
+            window_id: Unique identifier for the window
+            params: Window parameters with x, y, width, height
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        self.logger.debug(f"[WindowManager] Applying dimensions to '{window_id}': {params.width}x{params.height} at ({params.x}, {params.y})")
+
+        hwnd = self.find_window_handle(window_id)
+        if not hwnd:
+            self.logger.error(f"[WindowManager] Window '{window_id}' not found for dimension adjustment")
+            return False
+
+        try:
+            # Use SetWindowPos to force exact dimensions
+            win32gui.SetWindowPos(
+                hwnd,
+                win32con.HWND_TOPMOST,  # Keep on top
+                params.x,
+                params.y,
+                params.width,
+                params.height,
+                win32con.SWP_SHOWWINDOW
+            )
+
+            self.logger.info(f"[WindowManager] Applied dimensions to '{window_id}': {params.width}x{params.height} at ({params.x}, {params.y})")
+            return True
+
+        except Exception as e:
+            self.logger.error(f"[WindowManager] Failed to apply dimensions to '{window_id}': {type(e).__name__}: {e}")
+            return False
 
     def find_window_handle(self, window_id: str) -> Optional[int]:
         """Find window handle by enumerating all windows"""
@@ -427,7 +473,7 @@ class WindowManager:
 
             window_info = OverlaysConfig(
                 x=left,
-                y=right,
+                y=top,
                 width=(right - left),
                 height=(bottom - top),
             )
