@@ -64,7 +64,7 @@ def main(logger: logging.Logger, config: PngSettings, ipc_port: int) -> None:
         ipc_port (int): IPC port
     """
 
-    overlays_mgr = OverlaysMgr(logger)
+    overlays_mgr = OverlaysMgr(logger, config)
 
     client = run_hud_update_thread(
         logger=logger,

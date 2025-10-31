@@ -31,6 +31,7 @@ import webview
 
 from lib.button_debouncer import ButtonDebouncer
 from lib.child_proc_mgmt import notify_parent_init_complete
+from lib.config import PngSettings
 from lib.file_path import resolve_user_file
 
 from .config import OverlaysConfig
@@ -56,11 +57,12 @@ _DEFAULT_OVERLAYS_CONFIG: Dict[str, OverlaysConfig] = {
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class OverlaysMgr:
-    def __init__(self, logger: logging.Logger, config_file: Optional[str] = 'png_overlays.json'):
+    def __init__(self, logger: logging.Logger, settings: PngSettings, config_file: Optional[str] = 'png_overlays.json'):
         """Construct a new OverlaysMgr object. Ctor will init config files and windows
 
         Args:
             logger (logging.Logger): Logger object
+            settings (PngSettings): App Settings
             config_file (str, optional): Path to config file. Defaults to 'png_overlays.json'.
         """
         self.logger = logger
@@ -68,12 +70,22 @@ class OverlaysMgr:
         self.debouncer = ButtonDebouncer(debounce_time=1.0)
         self._init_config()
 
+        assert settings.HUD.enabled, "HUD must be enabled to run overlays manager"
         self.window_manager = WindowManager(logger)
-        for window_id, window_config in self.config.items():
-            self.window_manager.create_window(
-                window_id=window_id,
-                html_path=self._get_html_path_for_window(window_id),
-                params=window_config)
+
+        if settings.HUD.show_lap_timer:
+            window_id = 'lapTimer'
+            self._init_window_by_id(window_id)
+            self.logger.debug(f"Created window '{window_id}'")
+        else:
+            self.logger.debug("Lap timer overlay is disabled")
+
+        if settings.HUD.show_timing_tower:
+            window_id = 'timingTower'
+            self._init_window_by_id(window_id)
+            self.logger.debug(f"Created window '{window_id}'")
+        else:
+            self.logger.debug("Timing tower overlay is disabled")
 
     def run(self):
         """Start the overlays manager"""
@@ -166,3 +178,12 @@ class OverlaysMgr:
                 self.logger.error(f"Failed to load config file: {e}. Falling back to default config")
 
         return None
+
+    def _init_window_by_id(self, window_id: str) -> None:
+        """Initialize a window by its ID"""
+        window_config = self.config.get(window_id)
+        assert window_config, f"Window '{window_id}' not found in config"
+        self.window_manager.create_window(
+            window_id=window_id,
+            html_path=self._get_html_path_for_window(window_id),
+            params=window_config)
