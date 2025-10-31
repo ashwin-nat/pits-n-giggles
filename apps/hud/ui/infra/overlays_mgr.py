@@ -192,3 +192,4 @@ class OverlaysMgr:
             window_id=window_id,
             html_path=self._get_html_path_for_window(window_id),
             params=window_config)
+        self.logger.info(f"Created window '{window_id}'")

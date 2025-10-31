@@ -39,8 +39,9 @@ from .config import OverlaysConfig
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class API:
-    def __init__(self, window_id):
+    def __init__(self, window_id, logger=None):
         self.window_id = window_id
+        self.logger: Optional[logging.Logger] = logger
         self.data = {
             'speed': 0,
             'rpm': 0,
@@ -54,7 +55,8 @@ class API:
 
     # Capture console logs from JS
     def log(self, message):
-        print(f"[{self.window_id} JS]: {message}")
+        if self.logger:
+            self.logger.debug(f"[{self.window_id} JS]: {message}")
 
 class WindowManager:
     def __init__(self, logger: logging.Logger):
@@ -85,7 +87,7 @@ class WindowManager:
 
     def _inject_script(self, window: webview.Window, window_id: str, script_name: str, script_path: str) -> bool:
         """Inject a JavaScript file into the window"""
-        self.logger.info(f"[WindowManager] Attempting to inject {script_name} into '{window_id}'")
+        self.logger.debug(f"[WindowManager] Attempting to inject {script_name} into '{window_id}'")
 
         # Check if file exists
         if not os.path.exists(script_path):
@@ -93,7 +95,7 @@ class WindowManager:
             self.logger.error(f"[WindowManager] Current working directory: {os.getcwd()}")
             return False
 
-        self.logger.info(f"[WindowManager] Found {script_name} at: {script_path}")
+        self.logger.debug(f"[WindowManager] Found {script_name} at: {script_path}")
 
         try:
             # Read the script file
@@ -102,7 +104,7 @@ class WindowManager:
                 script_code = f.read()
 
             file_size = len(script_code)
-            self.logger.info(f"[WindowManager] Read {file_size} bytes from {script_name}")
+            self.logger.debug(f"[WindowManager] Read {file_size} bytes from {script_name}")
 
             if file_size == 0:
                 self.logger.warning(f"[WindowManager] {script_name} is empty!")
@@ -119,7 +121,7 @@ class WindowManager:
             self.logger.debug(f"[WindowManager] Evaluating {script_name} in window '{window_id}'...")
             window.evaluate_js(wrapped_code)
 
-            self.logger.info(f"[WindowManager] Successfully injected {script_name} into '{window_id}'")
+            self.logger.debug(f"[WindowManager] Successfully injected {script_name} into '{window_id}'")
             return True
 
         except FileNotFoundError as e:
@@ -153,7 +155,7 @@ class WindowManager:
         total = len(results)
 
         if successful == total:
-            self.logger.info(f"[WindowManager] All {total} scripts injected successfully for '{window_id}'")
+            self.logger.debug(f"[WindowManager] All {total} scripts injected successfully for '{window_id}'")
         else:
             self.logger.warning(f"[WindowManager] {successful}/{total} scripts injected for '{window_id}'")
 
@@ -194,7 +196,7 @@ class WindowManager:
 
         try:
             window.evaluate_js(js_code)
-            self.logger.info(f"[WindowManager] Console logger injected into '{window_id}'")
+            self.logger.debug(f"[WindowManager] Console logger injected into '{window_id}'")
             return True
         except Exception as e: # pylint: disable=broad-exception-caught
             self.logger.warning(f"[WindowManager] Could not inject logger for '{window_id}': {e}")
@@ -202,7 +204,7 @@ class WindowManager:
 
     def _dispatch_utils_ready(self, window: webview.Window, window_id: str):
         """Dispatch utils-ready event to notify JavaScript that all scripts are loaded"""
-        self.logger.info(f"[WindowManager] Dispatching utils-ready event for '{window_id}'")
+        self.logger.debug(f"[WindowManager] Dispatching utils-ready event for '{window_id}'")
 
         js_code = """
             (function() {
@@ -215,7 +217,7 @@ class WindowManager:
 
         try:
             window.evaluate_js(js_code)
-            self.logger.info(f"[WindowManager] utils-ready event dispatched for '{window_id}'")
+            self.logger.debug(f"[WindowManager] utils-ready event dispatched for '{window_id}'")
             return True
         except Exception as e: # pylint: disable=broad-exception-caught
             self.logger.error(f"[WindowManager] Failed to dispatch utils-ready event for '{window_id}': {e}")
@@ -230,7 +232,7 @@ class WindowManager:
             html_path: Path to the HTML file to load in the window
             params: Window parameters
         """
-        api = API(window_id)
+        api = API(window_id, self.logger)
         self.apis[window_id] = api
 
         self.logger.debug(f"[WindowManager] Creating window '{window_id}' at ({params.x}, {params.y}) for {html_path}")
@@ -307,7 +309,7 @@ class WindowManager:
                 win32con.SWP_SHOWWINDOW
             )
 
-            self.logger.info(f"[WindowManager] Applied dimensions to '{window_id}': {params.width}x{params.height} at ({params.x}, {params.y})")
+            self.logger.debug(f"[WindowManager] Applied dimensions to '{window_id}': {params.width}x{params.height} at ({params.x}, {params.y})")
             return True
 
         except Exception as e:
@@ -325,7 +327,7 @@ class WindowManager:
                 self.logger.debug(f"[WindowManager]   Checking window: '{title}' (hwnd={h})")
                 if window_id == title:
                     hwnd = h
-                    self.logger.info(f"[WindowManager] Found window handle for '{window_id}': {hwnd}")
+                    self.logger.debug(f"[WindowManager] Found window handle for '{window_id}': {hwnd}")
                     return False
             return True
 
@@ -339,7 +341,7 @@ class WindowManager:
 
     def set_window_locked_state(self, window_id: str, locked: bool) -> bool:
         """Set locked state for a specific window"""
-        self.logger.info(f"[WindowManager] Setting window '{window_id}' locked state to {locked}")
+        self.logger.debug(f"[WindowManager] Setting window '{window_id}' locked state to {locked}")
 
         hwnd = self.find_window_handle(window_id)
         if not hwnd:
@@ -381,7 +383,7 @@ class WindowManager:
                 win32con.SWP_NOSIZE | win32con.SWP_NOZORDER
             )
 
-            self.logger.info(f"[WindowManager] Window '{window_id}' locked state successfully changed to {locked}")
+            self.logger.debug(f"[WindowManager] Window '{window_id}' locked state successfully changed to {locked}")
             return True
 
         except Exception as e: # pylint: disable=broad-exception-caught
@@ -478,7 +480,7 @@ class WindowManager:
                 height=(bottom - top),
             )
 
-            self.logger.info(f"[WindowManager] Window '{window_id}' info: {window_info}")
+            self.logger.debug(f"[WindowManager] Window '{window_id}' info: {window_info}")
             return window_info
 
         except Exception as e: # pylint: disable=broad-exception-caught
@@ -499,7 +501,7 @@ class WindowManager:
             if self.set_window_visibility(window_id, self._windows_visible):
                 success_count += 1
 
-        self.logger.info(f"[WindowManager] Set visibility for {success_count}/{len(self.windows)} windows")
+        self.logger.debug(f"[WindowManager] Set visibility for {success_count}/{len(self.windows)} windows")
         return success_count == len(self.windows)
 
     def set_window_visibility(self, window_id: str, visible: bool) -> bool:
@@ -512,7 +514,7 @@ class WindowManager:
         Returns:
             bool: True if successful, False otherwise
         """
-        self.logger.info(f"[WindowManager] Setting window '{window_id}' visibility to {visible}")
+        self.logger.debug(f"[WindowManager] Setting window '{window_id}' visibility to {visible}")
 
         hwnd = self.find_window_handle(window_id)
         if not hwnd:
@@ -525,7 +527,7 @@ class WindowManager:
             else:
                 win32gui.ShowWindow(hwnd, win32con.SW_HIDE)
 
-            self.logger.info(f"[WindowManager] Window '{window_id}' visibility successfully changed to {visible}")
+            self.logger.debug(f"[WindowManager] Window '{window_id}' visibility successfully changed to {visible}")
             return True
 
         except Exception as e: # pylint: disable=broad-exception-caught
@@ -533,7 +535,7 @@ class WindowManager:
             return False
     def stop(self):
         """Stop telemetry updates and close all windows safely."""
-        self.logger.info("[WindowManager] Stopping WindowManager...")
+        self.logger.debug("[WindowManager] Stopping WindowManager...")
         self._running = False
 
         # Copy keys to avoid modifying dict during iteration
