@@ -117,6 +117,11 @@ class SaveViewerAppMgr(PngAppMgrBase):
 
         :return: True if the app needs to be restarted
         """
+
+        diff = self.curr_settings.diff(new_settings, {
+            "Network": ["save_viewer_port"],
+        })
+        self.console_app.debug_log(f"{self.display_name} Settings changed: {diff}")
         # Update the port number
         should_restart = (self.port != new_settings.Network.save_viewer_port)
         self.port = new_settings.Network.save_viewer_port
