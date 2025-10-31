@@ -194,7 +194,7 @@ class HudToggleNotification:
 
     def __repr__(self) -> str:
         """Return a string representation of the HudToggleNotification object."""
-        return f"HudToggleNotification()"
+        return "HudToggleNotification()"
 
     def __str__(self) -> str:
         """Return a string representation of the HudToggleNotification object."""

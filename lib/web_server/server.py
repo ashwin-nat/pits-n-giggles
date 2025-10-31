@@ -54,7 +54,7 @@ class BaseWebServer:
                  port: int,
                  ver_str: str,
                  logger: logging.Logger,
-                 client_event_mappings: Dict[ClientType, List[str]] = {},
+                 client_event_mappings: Dict[ClientType, List[str]] = None,
                  cert_path: Optional[str] = None,
                  key_path: Optional[str] = None,
                  debug_mode: bool = False):
@@ -76,7 +76,10 @@ class BaseWebServer:
         self.m_cert_path: Optional[str] = cert_path
         self.m_key_path: Optional[str] = key_path
         self.m_debug_mode: bool = debug_mode
-        self.m_client_event_mappings: Dict[ClientType, List[str]] = client_event_mappings
+        if client_event_mappings:
+            self.m_client_event_mappings: Dict[ClientType, List[str]] = client_event_mappings
+        else:
+            self.m_client_event_mappings: Dict[ClientType, List[str]] = {}
         self._post_start_callback: Optional[Callable[[], Awaitable[None]]] = None
         self._on_client_connect_callback: Optional[Callable[[ClientType, str], Awaitable[None]]] = None
 

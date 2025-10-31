@@ -20,6 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# pylint: disable=no-member
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import os
@@ -270,12 +271,12 @@ class PngSettings(BaseModel):
 
     @model_validator(mode="after")
     def check_udp_action_codes(self) -> "PngSettings":
-
+        """Check that the Network UDP action codes are not the same as the HUD toggle overlays action code."""
         if self.HUD.toggle_overlays_udp_action_code == self.Network.udp_custom_action_code:
-            raise ValueError(f"HUD toggle overlays action code and Network UDP custom action code "
+            raise ValueError("HUD toggle overlays action code and Network UDP custom action code "
                               "must not be the same")
         if self.HUD.toggle_overlays_udp_action_code == self.Network.udp_tyre_delta_action_code:
-            raise ValueError(f"HUD toggle overlays action code and Network Tyre delta action code "
+            raise ValueError("HUD toggle overlays action code and Network Tyre delta action code "
                               "must not be the same")
 
         return self

@@ -338,7 +338,7 @@ class WindowManager:
             self.logger.info(f"[WindowManager] Window '{window_id}' locked state successfully changed to {locked}")
             return True
 
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-exception-caught
             self.logger.error(f"[WindowManager] Failed to set locked state for '{window_id}': {e}")
             return False
 
@@ -358,7 +358,7 @@ class WindowManager:
             self.logger.error("[WindowManager] 'new-value' not found in locked_state_dict for all windows")
             return False
         self.logger.debug(f"[WindowManager] Setting locked state for all windows to {new_locked_state}")
-        for window_id in self.windows.keys():
+        for window_id in self.windows:
             self.set_window_locked_state(window_id, new_locked_state)
         self.broadcast_lock_state_change(locked_state_dict)
         return True
@@ -449,7 +449,7 @@ class WindowManager:
         self.logger.debug(f"[WindowManager] Setting visibility for all windows to {self._windows_visible}")
 
         success_count = 0
-        for window_id in self.windows.keys():
+        for window_id in self.windows:
             if self.set_window_visibility(window_id, self._windows_visible):
                 success_count += 1
 
@@ -482,7 +482,7 @@ class WindowManager:
             self.logger.info(f"[WindowManager] Window '{window_id}' visibility successfully changed to {visible}")
             return True
 
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-exception-caught
             self.logger.error(f"[WindowManager] Failed to set visibility for '{window_id}': {e}")
             return False
     def stop(self):
