@@ -146,6 +146,9 @@ class BackendAppMgr(PngAppMgrBase):
             "Privacy" : [],
             "Forwarding" : [],
             "StreamOverlay" : [],
+            "HUD": [
+                "toggle_overlays_udp_action_code",
+            ]
         })
         self.console_app.debug_log(f"{self.display_name} Settings changed: {json.dumps(diff, indent=2)}")
 

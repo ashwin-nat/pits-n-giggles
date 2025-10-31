@@ -22,12 +22,13 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import json
 import sys
 from tkinter import ttk
 
+from lib.button_debouncer import ButtonDebouncer
 from lib.config import PngSettings
 from lib.ipc import IpcParent
-from lib.button_debouncer import ButtonDebouncer
 
 from ..console_interface import ConsoleInterface
 from .base_mgr import PngAppMgrBase
@@ -133,21 +134,17 @@ class HudAppMgr(PngAppMgrBase):
         :return: True if the app needs to be restarted
         """
 
-        ret = False
+        diff = self.curr_settings.diff(new_settings, {
+            "HUD": [
+                "enabled",
+                "show_lap_timer",
+                "show_timing_tower",
+            ],
+        })
+        self.console_app.debug_log(f"{self.display_name} Settings changed: {json.dumps(diff, indent=2)}")
 
-        if new_settings.HUD.enabled != self.enabled:
-            self.enabled = new_settings.HUD.enabled
-            self.start_by_default = new_settings.HUD.enabled
-            self.console_app.debug_log(f"{self.display_name}: Enabled setting changed to {new_settings.HUD.enabled}")
-            self.process_enabled_change()
-            ret = True
-
-        if new_settings.Network.server_port != self.port:
-            self.port = new_settings.Network.save_viewer_port
-            self.console_app.debug_log(f"{self.display_name}: Server port changed to {self.port}")
-            ret = True
-
-        return ret
+        # Restart if diff is not empty
+        return bool(diff)
 
     def start(self):
         """Check for enabled flag before starting"""
