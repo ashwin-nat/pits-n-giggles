@@ -44,19 +44,24 @@ class HudClient(IpcSubscriber):
         @self.on_connect
         def connected():
             """Post connection callback."""
-            self._log(logging.INFO, "[RaceTableClient] Connected")
+            self._log(logging.INFO, "[HudClient] Connected")
             self._sio.emit('register-client', {
-                'type': 'race-table',
-                'id': 'race-table-client',
+                'type': 'hud',
+                'id': 'hud-mgr',
             })
 
         @self.on_disconnect
         def disconnected():
             """Post disconnection callback."""
-            self._log(logging.INFO, "[RaceTableClient] Disconnected")
+            self._log(logging.INFO, "[HudClient] Disconnected")
 
         # custom event handler
         @self.on('race-table-update')
         def handle_race_table(data):
             """Race table data update handler."""
             self.m_overlays_mgr.race_table_update(data)
+
+        @self.on('hud-toggle-notification')
+        def handle_hud_toggle_notification(_data):
+            """HUD toggle notification handler."""
+            self.logger.debug(f"[HudClient] Received HUD toggle notification: {_data}")

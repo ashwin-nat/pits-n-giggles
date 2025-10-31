@@ -27,7 +27,7 @@ SOFTWARE.
 import asyncio
 import logging
 from datetime import datetime
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Coroutine
+from typing import Any, Awaitable, Callable, Coroutine, Dict, List, Optional
 
 from apps.backend.state_mgmt_layer import SessionState
 from lib.button_debouncer import ButtonDebouncer
@@ -39,9 +39,9 @@ from lib.f1_types import (F1PacketType, PacketCarDamageData,
                           PacketMotionData, PacketParticipantsData,
                           PacketSessionData, PacketSessionHistoryData,
                           PacketTimeTrialData, PacketTyreSetsData)
-from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
-                                         FinalClassificationNotification, TyreDeltaNotificationMessageCollection,
-                                         ITCMessage)
+from lib.inter_task_communicator import (
+    AsyncInterTaskCommunicator, FinalClassificationNotification,
+    HudToggleNotification, ITCMessage, TyreDeltaNotificationMessageCollection)
 from lib.save_to_disk import save_json_to_file
 from lib.telemetry_manager import AsyncF1TelemetryManager
 from lib.wdt import WatchDogTimer
@@ -126,6 +126,7 @@ class F1TelemetryHandler:
         self.m_data_cleared_this_session: bool = False
         self.m_udp_custom_action_code: Optional[int] = settings.Network.udp_custom_action_code
         self.m_udp_tyre_delta_action_code: Optional[int] = settings.Network.udp_tyre_delta_action_code
+        self.m_hud_toggle_udp_action_code: Optional[int] = settings.HUD.toggle_overlays_udp_action_code
         self.m_final_classification_processed: bool = False
         self.m_capture_settings: CaptureSettings = settings.Capture
         self.m_button_debouncer: ButtonDebouncer = ButtonDebouncer()
@@ -417,17 +418,18 @@ class F1TelemetryHandler:
                 packet (PacketEventData): The parsed object containing the button status packet's contents.
             """
 
-            if (self.m_udp_custom_action_code is not None) and \
-            (packet.mEventDetails.isUDPActionPressed(self.m_udp_custom_action_code)) and \
-            (self.m_button_debouncer.onButtonPress(self.m_udp_custom_action_code)):
+            buttons: PacketEventData.Buttons = packet.mEventDetails
+            if self._isUdpActionButtonPressed(buttons, self.m_udp_custom_action_code):
                 self.m_logger.debug('UDP action %d pressed - Custom Marker', self.m_udp_custom_action_code)
                 await self._processCustomMarkerCreate()
 
-            if (self.m_udp_tyre_delta_action_code is not None) and \
-            (packet.mEventDetails.isUDPActionPressed(self.m_udp_tyre_delta_action_code)) and \
-            (self.m_button_debouncer.onButtonPress(self.m_udp_tyre_delta_action_code)):
+            if self._isUdpActionButtonPressed(buttons, self.m_udp_tyre_delta_action_code):
                 self.m_logger.debug('UDP action %d pressed - Tyre Delta', self.m_udp_tyre_delta_action_code)
                 await self._processTyreDeltaSound()
+
+            if self._isUdpActionButtonPressed(buttons, self.m_hud_toggle_udp_action_code):
+                self.m_logger.debug('UDP action %d pressed - HUD toggle', self.m_hud_toggle_udp_action_code)
+                await self._processToggleHud()
 
         async def handleFlashBackEvent(packet: PacketEventData) -> None:
             """
@@ -567,6 +569,22 @@ class F1TelemetryHandler:
             return True
         return False # movie or story mode
 
+    def _isUdpActionButtonPressed(self,
+                                       buttons_event: PacketEventData.Buttons,
+                                       action_code: Optional[int]
+                                       ) -> bool:
+        """Check if the UDP action button is pressed.
+
+        Args:
+            buttons_event (PacketEventData.Buttons): The buttons event packet.
+            action_code (Optional[int]): The UDP action code to check.
+        """
+        return (
+            action_code is not None
+            and buttons_event.isUDPActionPressed(action_code)
+            and self.m_button_debouncer.onButtonPress(action_code)
+        )
+
     async def _processCustomMarkerCreate(self) -> None:
         """Update the data structures with custom marker information
         """
@@ -586,3 +604,13 @@ class F1TelemetryHandler:
                     m_message=TyreDeltaNotificationMessageCollection(messages)
                 )
             )
+
+    async def _processToggleHud(self) -> None:
+        """Send the toggle HUD notification to the HUD manager."""
+        await AsyncInterTaskCommunicator().send(
+            "hud-notifier",
+            ITCMessage(
+                m_message_type=ITCMessage.MessageType.HUD_TOGGLE_NOTIFICATION,
+                m_message=HudToggleNotification()
+            )
+        )

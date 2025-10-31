@@ -85,6 +85,7 @@ def initUiIntfLayer(
                                      name="Stream Overlay Update Task"))
     tasks.append(asyncio.create_task(frontEndMessageTask(web_server, shutdown_event),
                                      name="Front End Message Task"))
+    tasks.append(asyncio.create_task(hudNotifierTask(web_server, shutdown_event), name="HUD Notifier Task"))
 
     registerIpcTask(ipc_port, logger, session_state, tasks)
     return web_server
@@ -107,11 +108,11 @@ async def raceTableClientUpdateTask(
 
     sleep_duration = update_interval_ms / 1000
     while not shutdown_event.is_set():
-        if server.is_client_of_type_connected(ClientType.RACE_TABLE):
-            await server.send_to_clients_of_type(
+        if server.is_any_client_interested_in_event('race-table-update'):
+            await server.send_to_clients_interested_in_event(
                 event='race-table-update',
-                data=PeriodicUpdateData(logger, session_state).toJSON(),
-                client_type=ClientType.RACE_TABLE)
+                data=PeriodicUpdateData(logger, session_state).toJSON()
+            )
         await asyncio.sleep(sleep_duration)
 
     server.m_logger.debug("Shutting down race table update task")
@@ -133,11 +134,10 @@ async def streamOverlayUpdateTask(
 
     sleep_duration = update_interval_ms / 1000
     while not shutdown_event.is_set():
-        if server.is_client_of_type_connected(ClientType.PLAYER_STREAM_OVERLAY):
-            await server.send_to_clients_of_type(
+        if server.is_any_client_interested_in_event('player-overlay-update'):
+            await server.send_to_clients_interested_in_event(
                 event='player-overlay-update',
-                data=StreamOverlayData(session_state).toJSON(stream_overlay_start_sample_data),
-                client_type=ClientType.PLAYER_STREAM_OVERLAY)
+                data=StreamOverlayData(session_state).toJSON(stream_overlay_start_sample_data))
         await asyncio.sleep(sleep_duration)
 
     server.m_logger.debug("Shutting down stream overlay update task")
@@ -158,3 +158,19 @@ async def frontEndMessageTask(server: TelemetryWebServer, shutdown_event: asynci
                 client_type=ClientType.RACE_TABLE)
 
     server.m_logger.debug("Shutting down front end message task")
+
+async def hudNotifierTask(server: TelemetryWebServer, shutdown_event: asyncio.Event) -> None:
+    """Task to update HUD clients with telemetry data
+
+    Args:
+        server (TelemetryWebServer): The telemetry web server
+        shutdown_event (asyncio.Event): Event to signal shutdown
+    """
+
+    while not shutdown_event.is_set():
+        if message := await AsyncInterTaskCommunicator().receive("hud-notifier"):
+            await server.send_to_clients_interested_in_event(
+                event=str(message.m_message_type),
+                data=message.toJSON())
+
+    server.m_logger.debug("Shutting down HUD notifier task")

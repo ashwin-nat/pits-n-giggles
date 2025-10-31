@@ -278,6 +278,8 @@ class PngSettings(BaseModel):
             raise ValueError(f"HUD toggle overlays action code and Network Tyre delta action code "
                               "must not be the same")
 
+        return self
+
     def __str__(self) -> str:
         lines = ["PngSettings:"]
         for section_name, section_model in self:

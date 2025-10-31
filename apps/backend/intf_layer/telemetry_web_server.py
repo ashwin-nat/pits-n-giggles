@@ -34,7 +34,7 @@ from apps.backend.state_mgmt_layer.intf import (DriverInfoRsp,
                                                 StreamOverlayData)
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import PngSettings
-from lib.web_server import BaseWebServer
+from lib.web_server import BaseWebServer, ClientType
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -77,6 +77,11 @@ class TelemetryWebServer(BaseWebServer):
             port=settings.Network.server_port,
             ver_str=ver_str,
             logger=logger,
+            client_event_mappings={
+                ClientType.RACE_TABLE: ['frontend-update', 'race-table-update'],
+                ClientType.HUD: ['race-table-update', 'hud-toggle-notification'],
+                ClientType.PLAYER_STREAM_OVERLAY: ['stream-overlay-update'],
+            },
             cert_path=settings.HTTPS.cert_path,
             key_path=settings.HTTPS.key_path,
             debug_mode=debug_mode)

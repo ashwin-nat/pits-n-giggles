@@ -186,6 +186,30 @@ class SessionChangeNotification:
             "formula-type": self.m_formula_type
         }
 
+class HudToggleNotification:
+    def __init__(self) -> None:
+        """Initialize the HudToggleNotification object.
+        """
+        pass
+
+    def __repr__(self) -> str:
+        """Return a string representation of the HudToggleNotification object."""
+        return f"HudToggleNotification()"
+
+    def __str__(self) -> str:
+        """Return a string representation of the HudToggleNotification object."""
+        return self.__repr__()
+
+    def toJSON(self) -> Dict[str, Any]:
+        """Get the JSON representation of this object.
+
+        Returns:
+            Dict[str, Any]: The JSON representation of this object.
+        """
+        return {
+            "dummy": "dummy"
+        }
+
 @dataclass(frozen=True)
 class ITCMessage:
     class MessageType(str, Enum):
@@ -194,6 +218,7 @@ class ITCMessage:
         TYRE_DELTA_NOTIFICATION_V2         = "tyre-delta-v2"
         UDP_PACKET_FORWARD                 = "udp-packet-forward"
         FINAL_CLASSIFICATION_NOTIFICATION  = "final-classification-notification"
+        HUD_TOGGLE_NOTIFICATION            = "hud-toggle-notification"
 
         def __str__(self) -> str:
             return self.value
