@@ -70,3 +70,65 @@ class TestPngSettings(TestF1ConfigBase):
                 Privacy=PrivacySettings(),
                 Forwarding=ForwardingSettings()
             )
+
+    def test_diff_top_level(self):
+        """Test the diff method"""
+        settings1 = PngSettings(
+            Network=NetworkSettings(),
+            Capture=CaptureSettings(),
+            Display=DisplaySettings(),
+            Logging=LoggingSettings(),
+            Privacy=PrivacySettings(),
+            Forwarding=ForwardingSettings(),
+            StreamOverlay=StreamOverlaySettings(),
+        )
+
+        settings2 = PngSettings(
+            Network=NetworkSettings(),
+            Capture=CaptureSettings(),
+            Display=DisplaySettings(),
+            Logging=LoggingSettings(),
+            Privacy=PrivacySettings(),
+            Forwarding=ForwardingSettings(),
+            StreamOverlay=StreamOverlaySettings(),
+        )
+
+        settings3 = PngSettings(
+            Network=NetworkSettings(server_port=12345),
+            Capture=CaptureSettings(),
+            Display=DisplaySettings(refresh_interval=1000),
+            Logging=LoggingSettings(),
+            Privacy=PrivacySettings(),
+            Forwarding=ForwardingSettings(),
+            StreamOverlay=StreamOverlaySettings(),
+        )
+
+        self.assertFalse(settings1.has_changed(settings2))
+        self.assertEqual(settings1.diff(settings2), {})
+        self.assertTrue(settings1.has_changed(settings3))
+        self.assertEqual(settings1.diff(settings3),
+            {
+                "Network" : {
+                    "server_port" : {
+                        "old_value" : 4768,
+                        "new_value" : 12345
+                    }
+                },
+                "Display" : {
+                    "refresh_interval" : {
+                        "old_value" : 200,
+                        "new_value" : 1000
+                    }
+                }
+            })
+
+    def test_diff_container_level(self):
+        """Test the diff method"""
+        settings1 = CaptureSettings()
+        settings2 = CaptureSettings()
+        settings3 = CaptureSettings(save_race_ctrl_msg=True)
+
+        self.assertFalse(settings1.has_changed(settings2))
+        self.assertEqual(settings1.diff(settings2), {})
+        self.assertTrue(settings1.has_changed(settings3))
+        self.assertEqual(settings1.diff(settings3), {"save_race_ctrl_msg" : {"old_value" : False, "new_value" : True}})
