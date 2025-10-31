@@ -47,7 +47,13 @@ from .styles import COLOUR_SCHEME
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
 class PngLauncher(ConsoleInterface):
-    def __init__(self, root: tk.Tk, ver_str: str, logo_path: str, settings_icon_path: str, debug_mode: bool):
+    def __init__(self,
+                 root: tk.Tk,
+                 ver_str: str,
+                 logo_path: str,
+                 settings_icon_path: str,
+                 debug_mode: bool,
+                 replay_mode: bool):
         """Initialize the main application window
 
         Args:
@@ -56,6 +62,7 @@ class PngLauncher(ConsoleInterface):
             logo_path (str): Path to the application logo
             settings_icon_path (str): Path to the settings icon
             debug_mode (bool): Flag to enable debug mode
+            replay_mode (bool): Flag to enable replay mode
         """
 
         self.root = root
@@ -65,6 +72,7 @@ class PngLauncher(ConsoleInterface):
         self.logo_path = logo_path
         self.settings_icon_path = settings_icon_path
         self.debug_mode = debug_mode
+        self.replay_mode = replay_mode
 
         # Init logger before anything else
         self.setup_logger()
@@ -176,6 +184,7 @@ class PngLauncher(ConsoleInterface):
                 settings=self.settings,
                 args=server_args,
                 debug_mode=self.debug_mode,
+                replay_server=self.replay_mode
             ),
             # SaveViewer app reads port from args
             "save_viewer": SaveViewerAppMgr(

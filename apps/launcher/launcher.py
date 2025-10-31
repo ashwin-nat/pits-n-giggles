@@ -68,6 +68,13 @@ def parse_args() -> argparse.Namespace:
         help="Enable debug mode"
     )
 
+    # Replay server is an optional boolean flag
+    parser.add_argument(
+        "--replay-server",
+        action="store_true",
+        help="Enable replay mode"
+    )
+
     return parser.parse_args()
 
 def resource_path(relative_path):
@@ -160,7 +167,8 @@ def entry_point() -> None:
         ver_str=get_version(),
         logo_path=APP_ICON_PATH,
         settings_icon_path=SETTINGS_ICON_PATH,
-        debug_mode=args.debug
+        debug_mode=args.debug,
+        replay_mode=args.replay_server
     )
     root.protocol("WM_DELETE_WINDOW", app.on_closing)
     root.createcommand("::tk::mac::Quit", app.on_closing)
