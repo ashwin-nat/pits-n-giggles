@@ -69,7 +69,6 @@ class PngRunner:
         self.m_tasks: List[asyncio.Task] = []
         self.m_version: str = get_version()
 
-        self.m_logger.debug(self.m_config)
         self.m_shutdown_event: asyncio.Event = asyncio.Event()
 
         self.m_session_state: SessionState = initStateManagementLayer(
