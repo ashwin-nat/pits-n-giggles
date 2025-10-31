@@ -93,7 +93,7 @@ def entry_point():
     try:
         asyncio.run(main(
             logger=png_logger,
-            server_port=configs.Network.save_viewer_port, # pylint: disable=no-member
+            server_port=configs.Network.save_viewer_port,
             ipc_port=args.ipc_port,
             version=version))
     except KeyboardInterrupt:

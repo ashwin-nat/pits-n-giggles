@@ -350,6 +350,7 @@ class PngAppMgrBase(ABC):
         time.sleep(initial_delay)
         failed_heartbeat_count = 0
         timeout_ms = (int(self.heartbeat_interval) - 2) * 1000
+        assert timeout_ms > 0
 
         self.console_app.debug_log(f"{self.display_name}: Starting heartbeat on port {port_num}...")
         self._heartbeat_stopped.clear()

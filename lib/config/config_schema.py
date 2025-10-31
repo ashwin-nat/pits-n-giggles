@@ -24,7 +24,7 @@
 
 import os
 import re
-from typing import Any, ClassVar, Iterable, Optional
+from typing import Any, ClassVar, Dict, Iterable, List, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -37,7 +37,10 @@ from .file_path_str import FilePathStr
 class ConfigDiffMixin:
     """Provides recursive diffing and change detection for Pydantic config models."""
 
-    def diff(self, other: "ConfigDiffMixin", fields: dict[str, list[str]] | list[str] | None = None) -> dict[str, Any]:
+    def diff(self,
+             other: "ConfigDiffMixin",
+             fields: Optional[Union[Dict[str, List[str]], List[str]]] = None
+             ) -> Dict[str, Any]:
         """
         Return a nested dict showing changed fields and their old/new values.
 
@@ -45,7 +48,7 @@ class ConfigDiffMixin:
           Empty lists inside it (e.g. {"Capture": []}) mean "compare all fields in that section".
         - If fields is None, {}, or [], compares everything recursively.
         """
-        result: dict[str, Any] = {}
+        result: Dict[str, Any] = {}
 
         # --- Case 1: Nested dict like {"Network": [...], "Capture": []}
         if isinstance(fields, dict):
@@ -79,12 +82,11 @@ class ConfigDiffMixin:
                 subdiff = value.diff(other_value)
                 if subdiff:
                     result[name] = subdiff
-            else:
-                if value != other_value:
+            elif value != other_value:
                     result[name] = {"old_value": value, "new_value": other_value}
         return result
 
-    def _basic_diff(self, self_obj: Any, other_obj: Any, fields: Iterable[str]) -> dict[str, Any]:
+    def _basic_diff(self, self_obj: Any, other_obj: Any, fields: Iterable[str]) -> Dict[str, Any]:
         """Compare plain attributes and return a dict of changed fields with old/new values."""
         changes = {}
         for f in fields:
@@ -94,7 +96,10 @@ class ConfigDiffMixin:
                 changes[f] = {"old_value": old_val, "new_value": new_val}
         return changes
 
-    def has_changed(self, other: "ConfigDiffMixin", fields: dict[str, list[str]] | list[str] | None = None) -> bool:
+    def has_changed(self,
+                    other: "ConfigDiffMixin",
+                    fields: Optional[Union[Dict[str, List[str]], List[str]]] = None
+                    ) -> bool:
         """Return True if any watched field (or any field if none specified) differs."""
         return bool(self.diff(other, fields))
 
