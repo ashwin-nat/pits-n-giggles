@@ -41,29 +41,27 @@ class ConfigDiffMixin:
         """
         Return a nested dict showing changed fields and their old/new values.
 
-        If `fields` is None, {}, or [], compares all model fields recursively.
-
-        Example:
-        {
-            "Network": {
-                "server_port": {"old_value": 4768, "new_value": 9999}
-            }
-        }
+        - If fields is a dict, you can specify sub-sections.
+          Empty lists inside it (e.g. {"Capture": []}) mean "compare all fields in that section".
+        - If fields is None, {}, or [], compares everything recursively.
         """
         result: dict[str, Any] = {}
 
-        # --- Case 1: Nested dict: {"Network": ["server_port", "udp_custom_action_code"]}
-        if isinstance(fields, dict) and fields:
+        # --- Case 1: Nested dict like {"Network": [...], "Capture": []}
+        if isinstance(fields, dict):
             for section, subfields in fields.items():
                 self_section = getattr(self, section, None)
                 other_section = getattr(other, section, None)
                 if self_section is None or other_section is None:
                     continue
 
-                if hasattr(self_section, "diff"):
-                    section_diff = self_section.diff(other_section, subfields)
+                # Empty list → full recursive diff for that section
+                if not subfields:
+                    section_diff = self_section.diff(other_section)
                 else:
-                    section_diff = self._basic_diff(self_section, other_section, subfields)
+                    section_diff = self_section.diff(other_section, subfields) \
+                        if hasattr(self_section, "diff") \
+                        else self._basic_diff(self_section, other_section, subfields)
 
                 if section_diff:
                     result[section] = section_diff
@@ -73,7 +71,7 @@ class ConfigDiffMixin:
         if isinstance(fields, list) and fields:
             return self._basic_diff(self, other, fields)
 
-        # --- Case 3: fields is None, empty list, or empty dict → compare everything recursively
+        # --- Case 3: Compare everything recursively (fields is None, empty, etc.)
         result = {}
         for name, value in getattr(self, "__dict__", {}).items():
             other_value = getattr(other, name, None)

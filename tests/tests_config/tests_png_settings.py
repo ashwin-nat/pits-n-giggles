@@ -122,6 +122,23 @@ class TestPngSettings(TestF1ConfigBase):
                 }
             })
 
+        # Interested in a full container diff
+        self.assertEqual(settings1.diff(settings3, {"Network": [], "Display": []}),
+            {
+                "Network" : {
+                    "server_port" : {
+                        "old_value" : 4768,
+                        "new_value" : 12345
+                    }
+                },
+                "Display" : {
+                    "refresh_interval" : {
+                        "old_value" : 200,
+                        "new_value" : 1000
+                    }
+                }
+            })
+
     def test_diff_container_level(self):
         """Test the diff method"""
         settings1 = CaptureSettings()
