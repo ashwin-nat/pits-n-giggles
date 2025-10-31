@@ -41,6 +41,28 @@
             }
         },
         {
+            "name": "Launcher (replay)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "apps.launcher",
+            "console": "integratedTerminal",
+            "args": [
+                "--replay-server"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Launcher (live)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "apps.launcher",
+            "console": "integratedTerminal",
+            "args": [
+
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
             "name": "App - Module",
             "type": "debugpy",
             "request": "launch",

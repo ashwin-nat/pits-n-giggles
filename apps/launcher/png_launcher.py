@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import copy
 import datetime
 import sys
 import threading
@@ -33,9 +34,8 @@ from typing import Callable, Dict
 from PIL import Image, ImageTk
 
 from lib.config import PngSettings, load_config_from_ini
-from lib.version import is_update_available
 from lib.file_path import resolve_user_file
-
+from lib.version import is_update_available
 from meta.meta import APP_NAME
 
 from .app_managers import BackendAppMgr, PngAppMgrBase, SaveViewerAppMgr
@@ -371,7 +371,10 @@ class PngLauncher(ConsoleInterface):
         # Propagate settings to sub-apps and restart them
         for _, subapp in self.subapps.items():
             # Check if the subapp needs to be restarted
-            if subapp.on_settings_change(new_settings):
+            should_restart = subapp.on_settings_change(new_settings)
+            subapp.curr_settings = copy.deepcopy(new_settings)
+            if should_restart:
+                self.info_log(f"Restarting {subapp.display_name} due to settings change...")
                 subapp.restart()
 
     def flush(self):

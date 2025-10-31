@@ -22,8 +22,9 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import json
 import webbrowser
-from tkinter import ttk, messagebox
+from tkinter import messagebox, ttk
 
 from lib.config import PngSettings
 from lib.ipc import IpcParent
@@ -132,8 +133,25 @@ class BackendAppMgr(PngAppMgrBase):
         self.port = new_settings.Network.server_port
         self.proto = new_settings.HTTPS.proto
 
-        # Always restart the backend, since there are so many settings, it's easier to just restart it
-        return True
+        diff = self.curr_settings.diff(new_settings, {
+            "Network": [
+                "telemetry_port",
+                "server_port",
+                "udp_tyre_delta_action_code",
+                "udp_custom_action_code",
+                "wdt_interval_sec",
+            ],
+            "Capture" : [],
+            "Display" : [],
+            "Logging" : [],
+            "Privacy" : [],
+            "Forwarding" : [],
+            "StreamOverlay" : [],
+        })
+        self.console_app.debug_log(f"{self.display_name} Settings changed: {json.dumps(diff, indent=2)}")
+
+        # Restart if diff is not empty
+        return bool(diff)
 
     def post_start(self):
         """Update buttons after app start"""
