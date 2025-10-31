@@ -62,6 +62,7 @@ class WindowManager:
         self.windows: Dict[str, webview.Window] = {}
         self.apis: Dict[str, API] = {}
         self._running = True
+        self._windows_visible = True
 
         # Configure scripts to inject
         self.injectable_scripts = [
@@ -438,6 +439,52 @@ class WindowManager:
             self.logger.error(f"[WindowManager] Failed to get info for window '{window_id}': {type(e).__name__}: {e}")
             return None
 
+    def toggle_visibility_all(self) -> bool:
+        """Toggle visibility for all managed windows
+
+        Returns:
+            bool: True if all operations successful, False otherwise
+        """
+        self._windows_visible = not self._windows_visible
+        self.logger.debug(f"[WindowManager] Setting visibility for all windows to {self._windows_visible}")
+
+        success_count = 0
+        for window_id in self.windows.keys():
+            if self.set_window_visibility(window_id, self._windows_visible):
+                success_count += 1
+
+        self.logger.info(f"[WindowManager] Set visibility for {success_count}/{len(self.windows)} windows")
+        return success_count == len(self.windows)
+
+    def set_window_visibility(self, window_id: str, visible: bool) -> bool:
+        """Set visibility state for a specific window
+
+        Args:
+            window_id: Unique identifier for the window
+            visible: True to show window, False to hide
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        self.logger.info(f"[WindowManager] Setting window '{window_id}' visibility to {visible}")
+
+        hwnd = self.find_window_handle(window_id)
+        if not hwnd:
+            self.logger.error(f"[WindowManager] Window '{window_id}' not found")
+            return False
+
+        try:
+            if visible:
+                win32gui.ShowWindow(hwnd, win32con.SW_SHOW)
+            else:
+                win32gui.ShowWindow(hwnd, win32con.SW_HIDE)
+
+            self.logger.info(f"[WindowManager] Window '{window_id}' visibility successfully changed to {visible}")
+            return True
+
+        except Exception as e:
+            self.logger.error(f"[WindowManager] Failed to set visibility for '{window_id}': {e}")
+            return False
     def stop(self):
         """Stop telemetry updates and close all windows safely."""
         self.logger.info("[WindowManager] Stopping WindowManager...")

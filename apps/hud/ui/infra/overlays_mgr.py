@@ -29,11 +29,13 @@ from typing import Dict, Optional
 
 import webview
 
+from lib.button_debouncer import ButtonDebouncer
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.file_path import resolve_user_file
 
-from .infra import WindowManager
 from .config import OverlaysConfig
+from .infra import WindowManager
+
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
 _DEFAULT_OVERLAYS_CONFIG: Dict[str, OverlaysConfig] = {
@@ -63,6 +65,7 @@ class OverlaysMgr:
         """
         self.logger = logger
         self.config_file = resolve_user_file(config_file)
+        self.debouncer = ButtonDebouncer(debounce_time=1.0)
         self._init_config()
 
         self.window_manager = WindowManager(logger)
@@ -98,6 +101,14 @@ class OverlaysMgr:
     def race_table_update(self, data):
         """Handle race table update"""
         self.window_manager.unicast_data("lapTimer", data)
+
+    def toggle_overlays_visibility(self):
+        """Toggle overlays visibility"""
+        if self.debouncer.onButtonPress("toggle_overlays_visibility"):
+            self.logger.debug("Toggling overlays visibility")
+            self.window_manager.toggle_visibility_all()
+        else:
+            self.logger.debug("Not toggling overlays visibility. Reason: debounce")
 
     def stop(self):
         """Stop the overlays manager"""

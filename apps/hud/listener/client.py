@@ -65,3 +65,4 @@ class HudClient(IpcSubscriber):
         def handle_hud_toggle_notification(_data):
             """HUD toggle notification handler."""
             self.logger.debug(f"[HudClient] Received HUD toggle notification: {_data}")
+            self.m_overlays_mgr.toggle_overlays_visibility()
