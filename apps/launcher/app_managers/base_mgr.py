@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import copy
 import random
 import subprocess
 import sys
@@ -118,6 +119,7 @@ class PngAppMgrBase(ABC):
         self.is_running = False
         self._is_restarting = threading.Event()
         self._is_stopping = threading.Event()
+        self.curr_settings = copy.deepcopy(settings)
         self.heartbeat_interval: float = settings.SubSysCtrlCfg__.heartbeat_interval
         self.num_missable_heartbeats: int = settings.SubSysCtrlCfg__.num_missable_heartbeats
         self._stop_heartbeat = threading.Event()
