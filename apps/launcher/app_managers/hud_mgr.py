@@ -101,7 +101,7 @@ class HudAppMgr(PngAppMgrBase):
         """Open the dashboard viewer in a web browser."""
         self.console_app.info_log("Sending ping to HUD...")
         client = IpcParent(self.ipc_port)
-        rsp = client.request("ping", {})
+        rsp = client.ping()
         self.console_app.info_log(str(rsp))
 
     def lock_callback(self):

@@ -45,5 +45,5 @@ def handle_lock_widgets(msg: dict, logger: logging.Logger, overlays_mgr: Overlay
     args = msg.get("args", {})
     if args:
         overlays_mgr.on_locked_state_change(args)
-        return {"status": "success", "message": "Dummy lock-widgets handler executed."}
+        return {"status": "success", "message": "lock-widgets handler executed."}
     return {"status": "error", "message": "Missing args in lock-widgets command."}

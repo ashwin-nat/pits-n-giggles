@@ -195,4 +195,4 @@ class IpcSubscriber:
     def _log(self, level: int, msg: str) -> None:
         """Log a message, using the logger if available."""
         if self.logger:
-            self.logger.log(level, msg)
+            self.logger.log(level, msg, stacklevel=2)

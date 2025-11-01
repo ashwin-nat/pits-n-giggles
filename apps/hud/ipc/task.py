@@ -103,8 +103,10 @@ def _shutdown_handler(args: dict, logger: logging.Logger, overlays_mgr: Overlays
         receiver_client (HudClient): Receiver client obj
     """
 
+    logger.info("Shutdown command received via IPC. Before thread creation")
     threading.Thread(target=_stop_other_tasks, args=(args, logger, overlays_mgr, receiver_client,),
                      name="Shutdown tasks").start()
+    logger.info("Shutdown command received via IPC. Stopping all tasks...")
     return {"status": "success", "message": "Shutting down HUD manager"}
 
 def _stop_other_tasks(args: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr, receiver_client: HudClient) -> None:
@@ -118,8 +120,8 @@ def _stop_other_tasks(args: dict, logger: logging.Logger, overlays_mgr: Overlays
     reason = args.get("reason", "N/A")
     logger.info(f"Shutdown command received via IPC. Reason: {reason}. Stopping all tasks...")
 
-    receiver_client.stop()
-    overlays_mgr.stop()
+    # receiver_client.stop()
+    # overlays_mgr.stop()
 
     # Give Windows time to cleanup WebView2 resources
     time.sleep(0.5)

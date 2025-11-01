@@ -28,6 +28,7 @@ import logging
 import os
 import time
 import traceback
+from threading import Lock, Thread
 from typing import Dict, Optional
 
 import webview
@@ -65,6 +66,8 @@ class WindowManager:
         self.apis: Dict[str, API] = {}
         self._running = True
         self._windows_visible = True
+        self._window_lock = Lock()
+        self._hwnd_cache = {}
 
         # Configure scripts to inject
         self.injectable_scripts = [
@@ -92,7 +95,6 @@ class WindowManager:
         # Check if file exists
         if not os.path.exists(script_path):
             self.logger.error(f"[WindowManager] {script_name} NOT FOUND at path: {script_path}")
-            self.logger.error(f"[WindowManager] Current working directory: {os.getcwd()}")
             return False
 
         self.logger.debug(f"[WindowManager] Found {script_name} at: {script_path}")
@@ -220,7 +222,7 @@ class WindowManager:
             self.logger.debug(f"[WindowManager] utils-ready event dispatched for '{window_id}'")
             return True
         except Exception as e: # pylint: disable=broad-exception-caught
-            self.logger.error(f"[WindowManager] Failed to dispatch utils-ready event for '{window_id}': {e}")
+            self.logger.error(f"[WindowManager] Failed to dispatch utils-ready for '{window_id}': {e}")
             return False
 
     def create_window(self, window_id: str, html_path: str, params: OverlaysConfig) -> None:
@@ -267,18 +269,63 @@ class WindowManager:
         window_id = window._window_id
         params = window._init_params
 
-        # Step 1: Inject console logger first so we can see subsequent logs
-        self._inject_console_logger(window, window_id)
+        self.logger.debug(f"[WindowManager] Window '{window_id}' loaded callback started")
 
-        # Step 2: Inject all configured scripts
-        self._inject_all_scripts(window, window_id)
+        try:
+            # Step 1: Inject console logger
+            self._inject_console_logger(window, window_id)
 
-        # Step 3: Apply window mode after everything is loaded
-        time.sleep(0.2)  # Give OS time to register the window
-        self.set_window_locked_state(window_id, True)  # Default to locked
+            # Step 2: Inject all scripts
+            self._inject_all_scripts(window, window_id)
 
-        # Step 4: Force window dimensions after locking (fixes size issue)
-        self._apply_window_dimensions(window_id, params)
+            # Step 3: Schedule window configuration in a separate thread to avoid blocking
+            # NEW: Use thread to prevent blocking other window loads
+            config_thread = Thread(
+                target=self._configure_window_delayed,
+                args=(window_id, params),
+                daemon=True,
+                name=f"ConfigThread-{window_id}"
+            )
+            config_thread.start()
+
+            self.logger.debug(f"[WindowManager] Window '{window_id}' loaded callback completed")
+
+        except Exception as e:
+            self.logger.error(f"[WindowManager] Error in _on_window_loaded for '{window_id}': {e}")
+            self.logger.error(traceback.format_exc())
+
+    def _configure_window_delayed(self, window_id: str, params: OverlaysConfig):
+        """Configure window after a delay - runs in separate thread"""
+        try:
+            self.logger.debug(f"[WindowManager] Starting delayed config for '{window_id}'")
+
+            # Give the window time to fully initialize
+            time.sleep(0.3)
+
+            # Use lock to prevent race conditions
+            with self._window_lock:
+                self.logger.debug(f"[WindowManager] Acquired lock for '{window_id}' configuration")
+
+                # Apply locked state
+                if self.set_window_locked_state(window_id, True):
+                    self.logger.debug(f"[WindowManager] Successfully locked '{window_id}'")
+                else:
+                    self.logger.warning(f"[WindowManager] Failed to lock '{window_id}'")
+
+                # Small delay between operations
+                time.sleep(0.1)
+
+                # Apply dimensions
+                if self._apply_window_dimensions(window_id, params):
+                    self.logger.debug(f"[WindowManager] Successfully applied dimensions to '{window_id}'")
+                else:
+                    self.logger.warning(f"[WindowManager] Failed to apply dimensions to '{window_id}'")
+
+            self.logger.debug(f"[WindowManager] Completed delayed config for '{window_id}'")
+
+        except Exception as e:
+            self.logger.error(f"[WindowManager] Error in delayed config for '{window_id}': {e}")
+            self.logger.error(traceback.format_exc())
 
     def _apply_window_dimensions(self, window_id: str, params: OverlaysConfig) -> bool:
         """Force window to specific dimensions after creation
@@ -301,7 +348,7 @@ class WindowManager:
             # Use SetWindowPos to force exact dimensions
             win32gui.SetWindowPos(
                 hwnd,
-                win32con.HWND_TOPMOST,  # Keep on top
+                win32con.HWND_TOPMOST, # Keep on top
                 params.x,
                 params.y,
                 params.width,
@@ -316,28 +363,66 @@ class WindowManager:
             self.logger.error(f"[WindowManager] Failed to apply dimensions to '{window_id}': {type(e).__name__}: {e}")
             return False
 
-    def find_window_handle(self, window_id: str) -> Optional[int]:
-        """Find window handle by enumerating all windows"""
-        hwnd = None
+    def find_window_handle(self, window_id: str, max_retries: int = 3) -> Optional[int]:
+        """Find window handle with retry logic - NEW: Added caching and retry"""
+        # Check cache first
+        if window_id in self._hwnd_cache:
+            hwnd = self._hwnd_cache[window_id]
+            # Verify cached handle is still valid
+            try:
+                if win32gui.IsWindow(hwnd):
+                    return hwnd
+                else:
+                    # Cached handle is invalid, remove from cache
+                    del self._hwnd_cache[window_id]
+            except Exception:
+                del self._hwnd_cache[window_id]
 
-        def callback(h, _):
-            nonlocal hwnd
-            if win32gui.IsWindowVisible(h):
-                title = win32gui.GetWindowText(h)
-                self.logger.debug(f"[WindowManager]   Checking window: '{title}' (hwnd={h})")
-                if window_id == title:
-                    hwnd = h
-                    self.logger.debug(f"[WindowManager] Found window handle for '{window_id}': {hwnd}")
-                    return False
-            return True
+        # Try to find the window with retries
+        for attempt in range(max_retries):
+            self.logger.debug(f"[WindowManager] Finding window '{window_id}' (attempt {attempt + 1}/{max_retries})")
 
-        win32gui.EnumWindows(callback, None)
+            hwnd = None
 
-        if not hwnd:
-            # Try alternative approach
-            hwnd = win32gui.FindWindow(None, window_id)
+            def callback(h, _):
+                nonlocal hwnd
+                try:
+                    if win32gui.IsWindowVisible(h):
+                        title = win32gui.GetWindowText(h)
+                        if window_id == title:
+                            hwnd = h
+                            self.logger.debug(f"[WindowManager] Found '{window_id}' at hwnd={hwnd}")
+                            return False  # Stop enumeration
+                except Exception as e:
+                    # Skip windows that cause errors during enumeration
+                    self.logger.debug(f"[WindowManager] Error checking window {h}: {e}")
+                return True
 
-        return hwnd
+            try:
+                win32gui.EnumWindows(callback, None)
+            except Exception as e:
+                self.logger.error(f"[WindowManager] Error during window enumeration: {e}")
+
+            if hwnd:
+                # Cache the found handle
+                self._hwnd_cache[window_id] = hwnd
+                return hwnd
+
+            # If not found, try alternative approach
+            try:
+                hwnd = win32gui.FindWindow(None, window_id)
+                if hwnd:
+                    self._hwnd_cache[window_id] = hwnd
+                    return hwnd
+            except Exception as e:
+                self.logger.debug(f"[WindowManager] FindWindow failed: {e}")
+
+            # Wait before retry
+            if attempt < max_retries - 1:
+                time.sleep(0.2)
+
+        self.logger.error(f"[WindowManager] Could not find window '{window_id}' after {max_retries} attempts")
+        return None
 
     def set_window_locked_state(self, window_id: str, locked: bool) -> bool:
         """Set locked state for a specific window"""
@@ -406,8 +491,9 @@ class WindowManager:
             self.logger.error("[WindowManager] 'new-value' not found in locked_state_dict for all windows")
             return False
         self.logger.debug(f"[WindowManager] Setting locked state for all windows to {new_locked_state}")
-        for window_id in self.windows:
-            self.set_window_locked_state(window_id, new_locked_state)
+        with self._window_lock:
+            for window_id in self.windows:
+                self.set_window_locked_state(window_id, new_locked_state)
         self.broadcast_lock_state_change(locked_state_dict)
         return True
 
@@ -446,7 +532,7 @@ class WindowManager:
             """
             window.evaluate_js(js_code)
         except Exception as e: # pylint: disable=broad-exception-caught
-            self.logger.error(f"[WindowManager] Failed to push data to '{window_id}': {type(e).__name__}: {e}")
+            self.logger.error(f"[WindowManager] Failed to push data to '{window_id}': {e}")
 
     def get_window_info(self, window_id):
         """Get size and position information for a specific window
@@ -497,9 +583,10 @@ class WindowManager:
         self.logger.debug(f"[WindowManager] Setting visibility for all windows to {self._windows_visible}")
 
         success_count = 0
-        for window_id in self.windows:
-            if self.set_window_visibility(window_id, self._windows_visible):
-                success_count += 1
+        with self._window_lock:
+            for window_id in self.windows:
+                if self.set_window_visibility(window_id, self._windows_visible):
+                    success_count += 1
 
         self.logger.debug(f"[WindowManager] Set visibility for {success_count}/{len(self.windows)} windows")
         return success_count == len(self.windows)
@@ -539,27 +626,30 @@ class WindowManager:
         self._running = False
 
         # Copy keys to avoid modifying dict during iteration
-        for window_id in list(self.windows.keys()):
-            window = self.windows[window_id]
-            try:
-                # Detach event handlers if any to prevent callbacks after destroy
-                if hasattr(window, 'events'):
-                    try:
-                        window.events.closed.clear()  # remove all closed handlers
-                    except Exception: # pylint: disable=broad-except
-                        pass
+        with self._window_lock:
+            for window_id in list(self.windows.keys()):
+                window = self.windows[window_id]
+                try:
+                    # Detach event handlers if any to prevent callbacks after destroy
+                    if hasattr(window, 'events'):
+                        try:
+                            window.events.closed.clear() # remove all closed handlers
+                        except Exception: # pylint: disable=broad-except
+                            pass
 
-                # Destroy the window if it still exists
-                if window and getattr(window, "webview_window", None):
-                    window.destroy()
-                    self.logger.info(f"[WindowManager] Closed window '{window_id}'")
-            # Catch any PyWebView / WebView2 teardown errors
-            except Exception as e: # pylint: disable=broad-exception-caught
-                self.logger.error(f"[WindowManager] Failed to close window '{window_id}': {e}")
+                    # Destroy the window if it still exists
+                    if window and getattr(window, "webview_window", None):
+                        window.destroy()
+                        self.logger.info(f"[WindowManager] Closed window '{window_id}'")
+                # Catch any PyWebView / WebView2 teardown errors
+                except Exception as e: # pylint: disable=broad-exception-caught
+                    self.logger.error(f"[WindowManager] Failed to close window '{window_id}': {e}")
 
-        # Short delay to allow WebView2 cleanup
-        time.sleep(0.05)
+            # Short delay to allow WebView2 cleanup
+            time.sleep(0.05)
 
-        # Clear the window registry
-        self.windows.clear()
+            # Clear the window registry
+            self.windows.clear()
+            self._hwnd_cache.clear()
+
         self.logger.info("[WindowManager] All windows closed")

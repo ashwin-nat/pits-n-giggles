@@ -117,7 +117,7 @@ class OverlaysMgr:
 
     def race_table_update(self, data):
         """Handle race table update"""
-        self.window_manager.unicast_data("lapTimer", data)
+        self.window_manager.broadcast_data(data)
 
     def toggle_overlays_visibility(self):
         """Toggle overlays visibility"""
