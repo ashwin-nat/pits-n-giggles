@@ -1,11 +1,12 @@
 class F1TimingTower {
     constructor(containerId, options = {}) {
         this.containerId = containerId;
-        this.filterFunction = options.filterFunction || (() => true);
+        this.filterFunction = options.filterFunction || (() => []);
         this.gridApi = null;
         this.allDriverData = [];
         this.updateInterval = null;
         this.sessionUid = null;
+        this.allowedPositions = [];
 
         this.initGrid();
     }
@@ -47,7 +48,7 @@ class F1TimingTower {
             doesExternalFilterPass: (node) => {
                 const position = node.data['driver-info']?.position;
                 if (!position) return false;
-                return this.filterFunction(position);
+                return this.allowedPositions.includes(position);
             },
             initialState: {
                 columns: {
@@ -67,8 +68,16 @@ class F1TimingTower {
             {
                 headerName: 'POS',
                 field: 'driver-info.position',
-                sort: 'asc',
                 flex: 1,
+                sort: 'asc',
+                comparator: (a, b) => {
+                    const numA = parseInt(a, 10);
+                    const numB = parseInt(b, 10);
+                    if (isNaN(numA) && isNaN(numB)) return 0;
+                    if (isNaN(numA)) return 1;
+                    if (isNaN(numB)) return -1;
+                    return numA - numB;
+                },
                 valueGetter: params => params.data['driver-info']?.position || 0
             },
             {
@@ -120,12 +129,14 @@ class F1TimingTower {
 
         // Store all incoming data
         const driversData = incomingData['table-entries'];
-        console.log('driversData length', driversData.length);
         if (driversData.length === 0) {
             // TODO: clear table if current table is populated
             return;
         }
         this.allDriverData = driversData;
+
+        // Compute allowed positions once per update
+        this.allowedPositions = this.filterFunction(incomingData);
 
         // Update grid with all data - ag-grid will handle filtering
         if (this.gridApi) {
@@ -158,10 +169,11 @@ class F1TimingTower {
 
 // Initialize the timing tower
 const timingTower = new F1TimingTower('timingGrid', {
-    filterFunction: (position) => {
-        // Show positions 3-7 (P3 to P7)
-        const allowedPositions = [3, 4, 5, 6, 7];
-        return allowedPositions.includes(position);
+    filterFunction: (incomingData) => {
+        const playerPosition = getPlayerPosition(incomingData);
+        const totalCars = incomingData["table-entries"].length;
+        const numAdjacentCars = 2;
+        return getAdjacentPositions(playerPosition, totalCars, numAdjacentCars);
     }
 });
 
@@ -182,12 +194,6 @@ window.addEventListener('lock-state-change', (event) => {
     } else {
         // Unlock/enable column resizing
     }
-});
-
-// Wait for utils to be ready before trying to use them
-window.addEventListener('utils-ready', async () => {
-    console.log('[TimingTower] Utils ready, fetching initial telemetry...');
-    test_import(); // TODO: remove
 });
 
 window.addEventListener('utils-ready', async () => {
