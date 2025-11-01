@@ -5,6 +5,7 @@ class F1TimingTower {
         this.gridApi = null;
         this.allDriverData = [];
         this.updateInterval = null;
+        this.sessionUid = null;
 
         this.initGrid();
     }
@@ -67,7 +68,7 @@ class F1TimingTower {
                 valueFormatter: params => {
                     if (params.value === null || params.value === undefined) return '--';
                     if (params.value === 0) return 'LEADER';
-                    return `+${params.value.toFixed(3)}`;
+                    return formatFloat((params.value / 1000), { precision: 3, signed: true });
                 }
             },
             {
@@ -84,18 +85,31 @@ class F1TimingTower {
                 flex: 2,
                 valueFormatter: params => {
                     const value = params.value || 0;
-                    return `${Math.round(value * 100)}%`;
+                    return `${formatFloat(value, { precision: 0, signed: false })}%`;
                 }
             }
         ];
     }
 
     update(incomingData) {
+
+        if (this.sessionUid !== incomingData['session-uid']) {
+            // clear the data structures if the session has changed
+            this.sessionUid = incomingData['session-uid'];
+            this.#clear();
+        }
+
         // Store all incoming data
-        this.allDriverData = incomingData;
+        const driversData = incomingData['table-entries'];
+        console.log('driversData length', driversData.length);
+        if (driversData.length === 0) {
+            // TODO: clear table if current table is populated
+            return;
+        }
+        this.allDriverData = driversData;
 
         // Transform and filter data
-        const transformedData = incomingData
+        const transformedData = driversData
             .filter(driver => this.filterFunction(driver))
             .map(driver => ({
                 position: driver['driver-info']?.position || 0,
@@ -112,55 +126,18 @@ class F1TimingTower {
         }
     }
 
+    #clear() {
+        this.allDriverData = [];
+        if (this.gridApi) {
+            this.gridApi.setGridOption('rowData', []);
+        }
+    }
+
     setFilterFunction(filterFn) {
         this.filterFunction = filterFn;
         // Re-apply with current data
         if (this.allDriverData.length > 0) {
             this.update(this.allDriverData);
-        }
-    }
-
-    // Dummy data generator for testing
-    generateDummyData() {
-        const drivers = [
-            'VER', 'PER', 'HAM', 'RUS', 'LEC', 'SAI', 'NOR', 'PIA',
-            'ALO', 'STR', 'GAS', 'OCO', 'ALB', 'SAR', 'TSU', 'RIC',
-            'MAG', 'HUL', 'BOT', 'ZHO'
-        ];
-
-        const tyres = ['soft', 'medium', 'hard', 'intermediate', 'wet'];
-
-        return drivers.map((driver, index) => ({
-            'driver-info': {
-                position: index + 1,
-                name: driver
-            },
-            'delta-info': {
-                'delta-to-car-in-front': index === 0 ? 0 : Math.random() * 10
-            },
-            'tyre-info': {
-                'visual-tyre-compound': tyres[Math.floor(Math.random() * tyres.length)]
-            },
-            'ers-info': {
-                'ers-percent-float': Math.random()
-            }
-        }));
-    }
-
-    startDummyUpdates(intervalMs = 1000) {
-        // Initial update
-        this.update(this.generateDummyData());
-
-        // Periodic updates
-        this.updateInterval = setInterval(() => {
-            this.update(this.generateDummyData());
-        }, intervalMs);
-    }
-
-    stopDummyUpdates() {
-        if (this.updateInterval) {
-            clearInterval(this.updateInterval);
-            this.updateInterval = null;
         }
     }
 
@@ -182,11 +159,11 @@ const timingTower = new F1TimingTower('timingGrid', {
 });
 
 // Start periodic updates with dummy data
-timingTower.startDummyUpdates(500);
+// timingTower.startDummyUpdates(500);
 
 // Listen for updates from Python
 window.addEventListener('telemetry-update', (event) => {
-    // timer.update(event.detail);
+    timingTower.update(event.detail);
 });
 
 window.addEventListener('lock-state-change', (event) => {
@@ -202,6 +179,19 @@ window.addEventListener('lock-state-change', (event) => {
 
 // Wait for utils to be ready before trying to use them
 window.addEventListener('utils-ready', async () => {
-    console.log('[LapTimer] Utils ready, fetching initial telemetry...');
+    console.log('[TimingTower] Utils ready, fetching initial telemetry...');
     test_import(); // TODO: remove
+});
+
+window.addEventListener('utils-ready', async () => {
+    console.log('[TimingTower] Utils ready, fetching initial telemetry...');
+    test_import(); // TODO: remove
+
+    // Now safe to use utils functions
+    try {
+        const data = await pywebview.api.get_data();
+        timingTower.update(data);
+    } catch (error) {
+        console.error('Error getting initial telemetry:', error);
+    }
 });

@@ -89,7 +89,7 @@ function formatFloat(floatNumber, { precision = 2, signed = false } = {}) {
     if (typeof floatNumber !== 'number' || isNaN(floatNumber)) {
         console.error('Invalid input. Please provide a valid number.', floatNumber);
         console.trace();
-        return null;
+        return "N/A";
     }
 
     const floatStr = floatNumber.toFixed(precision);
