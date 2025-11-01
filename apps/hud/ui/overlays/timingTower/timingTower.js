@@ -42,6 +42,13 @@ class F1TimingTower {
             defaultColDef: {
                 sortable: false,
                 resizable: false,
+            },
+            initialState: {
+                columns: {
+                    columnGroup: [
+                        { colId: 'driver-info.position', sort: 'asc' }
+                    ]
+                }
             }
         };
 
@@ -53,19 +60,22 @@ class F1TimingTower {
         return [
             {
                 headerName: 'POS',
-                field: 'position',
-                flex: 1
+                field: 'driver-info.position',
+                flex: 1,
+                valueGetter: params => params.data['driver-info']?.position || 0
             },
             {
                 headerName: 'DRIVER',
-                field: 'name',
-                flex: 3
+                field: 'driver-info.name',
+                flex: 3,
+                valueGetter: params => params.data['driver-info']?.name || 'Unknown'
             },
             {
                 headerName: 'DELTA',
-                field: 'delta',
+                field: 'delta-info.delta-to-car-in-front',
                 flex: 2,
-                valueFormatter: params => {
+                valueGetter: params => params.data['delta-info']?.['delta-to-car-in-front'],
+                cellRenderer: params => {
                     if (params.value === null || params.value === undefined) return '--';
                     if (params.value === 0) return 'LEADER';
                     return formatFloat((params.value / 1000), { precision: 3, signed: true });
@@ -73,17 +83,19 @@ class F1TimingTower {
             },
             {
                 headerName: 'TYRE',
-                field: 'tyre',
+                field: 'tyre-info.visual-tyre-compound',
                 flex: 2,
-                valueFormatter: params => {
+                valueGetter: params => params.data['tyre-info']?.['visual-tyre-compound'] || 'unknown',
+                cellRenderer: params => {
                     return (params.value || 'UNKNOWN').toUpperCase();
                 }
             },
             {
                 headerName: 'ERS',
-                field: 'ers',
+                field: 'ers-info.ers-percent-float',
                 flex: 2,
-                valueFormatter: params => {
+                valueGetter: params => params.data['ers-info']?.['ers-percent-float'] || 0,
+                cellRenderer: params => {
                     const value = params.value || 0;
                     return `${formatFloat(value, { precision: 0, signed: false })}%`;
                 }
@@ -108,21 +120,13 @@ class F1TimingTower {
         }
         this.allDriverData = driversData;
 
-        // Transform and filter data
-        const transformedData = driversData
-            .filter(driver => this.filterFunction(driver))
-            .map(driver => ({
-                position: driver['driver-info']?.position || 0,
-                name: driver['driver-info']?.name || 'Unknown',
-                delta: driver['delta-info']?.['delta-to-car-in-front'],
-                tyre: driver['tyre-info']?.['visual-tyre-compound'] || 'unknown',
-                ers: driver['ers-info']?.['ers-percent-float'] || 0
-            }))
-            .sort((a, b) => a.position - b.position);
+        // Filter data
+        const filteredData = driversData
+            .filter(driver => this.filterFunction(driver));
 
         // Update grid
         if (this.gridApi) {
-            this.gridApi.setGridOption('rowData', transformedData);
+            this.gridApi.setGridOption('rowData', filteredData);
         }
     }
 
