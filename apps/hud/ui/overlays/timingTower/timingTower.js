@@ -43,6 +43,12 @@ class F1TimingTower {
                 sortable: false,
                 resizable: false,
             },
+            isExternalFilterPresent: () => true,
+            doesExternalFilterPass: (node) => {
+                const position = node.data['driver-info']?.position;
+                if (!position) return false;
+                return this.filterFunction(position);
+            },
             initialState: {
                 columns: {
                     columnGroup: [
@@ -61,6 +67,7 @@ class F1TimingTower {
             {
                 headerName: 'POS',
                 field: 'driver-info.position',
+                sort: 'asc',
                 flex: 1,
                 valueGetter: params => params.data['driver-info']?.position || 0
             },
@@ -120,13 +127,9 @@ class F1TimingTower {
         }
         this.allDriverData = driversData;
 
-        // Filter data
-        const filteredData = driversData
-            .filter(driver => this.filterFunction(driver));
-
-        // Update grid
+        // Update grid with all data - ag-grid will handle filtering
         if (this.gridApi) {
-            this.gridApi.setGridOption('rowData', filteredData);
+            this.gridApi.setGridOption('rowData', driversData);
         }
     }
 
@@ -139,9 +142,9 @@ class F1TimingTower {
 
     setFilterFunction(filterFn) {
         this.filterFunction = filterFn;
-        // Re-apply with current data
-        if (this.allDriverData.length > 0) {
-            this.update(this.allDriverData);
+        // Trigger ag-grid to re-evaluate the external filter
+        if (this.gridApi) {
+            this.gridApi.onFilterChanged();
         }
     }
 
@@ -155,10 +158,10 @@ class F1TimingTower {
 
 // Initialize the timing tower
 const timingTower = new F1TimingTower('timingGrid', {
-    filterFunction: (driverData) => {
+    filterFunction: (position) => {
         // Show positions 3-7 (P3 to P7)
-        const position = driverData['driver-info'].position;
-        return position >= 3 && position <= 7;
+        const allowedPositions = [3, 4, 5, 6, 7];
+        return allowedPositions.includes(position);
     }
 });
 
