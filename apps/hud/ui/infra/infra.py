@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import base64
 import ctypes
 import json
 import logging
@@ -76,6 +77,47 @@ class WindowManager:
                 'path_segments': ['..', '..', '..', 'frontend', 'js', 'utils.js'],
                 'description': 'Shared utility functions'
             },
+        ]
+
+        # Configure assets to inject
+        self.injectable_assets = [
+            {
+                'name': 'hard_tyre.svg',
+                'path_segments': ['..', '..', '..', '..', 'assets', 'tyre-icons', 'hard_tyre.svg'],
+                'type': 'icon',
+                'description': 'Hard tyre icon'
+            },
+            {
+                'name': 'medium_tyre.svg',
+                'path_segments': ['..', '..', '..', '..', 'assets', 'tyre-icons', 'medium_tyre.svg'],
+                'type': 'icon',
+                'description': 'Medium tyre icon'
+            },
+            {
+                'name': 'soft_tyre.svg',
+                'path_segments': ['..', '..', '..', '..', 'assets', 'tyre-icons', 'soft_tyre.svg'],
+                'type': 'icon',
+                'description': 'Soft tyre icon'
+            },
+            {
+                'name': 'super_soft_tyre.svg',
+                'path_segments': ['..', '..', '..', '..', 'assets', 'tyre-icons', 'super_soft_tyre.svg'],
+                'type': 'icon',
+                'description': 'Super soft tyre icon'
+            },
+            {
+                'name': 'intermediate_tyre.svg',
+                'path_segments': ['..', '..', '..', '..', 'assets', 'tyre-icons', 'intermediate_tyre.svg'],
+                'type': 'icon',
+                'description': 'Intermediate tyre icon'
+            },
+            {
+                'name': 'soft_tyre.svg',
+                'path_segments': ['..', '..', '..', '..', 'assets', 'tyre-icons', 'soft_tyre.svg'],
+                'type': 'icon',
+                'description': 'Soft tyre icon'
+            }
+            # Add more assets here as needed
         ]
 
     def _construct_script_path(self, path_segments: list) -> str:
@@ -139,6 +181,99 @@ class WindowManager:
             self.logger.error(f"[WindowManager] Failed to inject {script_name} into '{window_id}': {type(e).__name__}: {e}")
             self.logger.error(f"[WindowManager] Traceback: {traceback.format_exc()}")
             return False
+
+    def _inject_asset(self, window: webview.Window, window_id: str, asset_name: str, asset_path: str) -> bool:
+        """Inject an asset (icon/image) as a data URI into the window"""
+        self.logger.debug(f"[WindowManager] Attempting to inject asset '{asset_name}' into '{window_id}'")
+
+        # Check if file exists
+        if not os.path.exists(asset_path):
+            self.logger.error(f"[WindowManager] Asset '{asset_name}' NOT FOUND at path: {asset_path}")
+            return False
+
+        self.logger.debug(f"[WindowManager] Found asset '{asset_name}' at: {asset_path}")
+
+        try:
+            # Read asset file as binary
+            with open(asset_path, 'rb') as f:
+                asset_data = f.read()
+
+            file_size = len(asset_data)
+            self.logger.debug(f"[WindowManager] Read {file_size} bytes from asset '{asset_name}'")
+
+            if file_size == 0:
+                self.logger.warning(f"[WindowManager] Asset '{asset_name}' is empty!")
+                return False
+
+            # Convert to base64
+            asset_base64 = base64.b64encode(asset_data).decode('utf-8')
+
+            # Determine MIME type based on extension
+            ext = os.path.splitext(asset_path)[1].lower()
+            mime_types = {
+                '.png': 'image/png',
+                '.jpg': 'image/jpeg',
+                '.jpeg': 'image/jpeg',
+                '.svg': 'image/svg+xml',
+                '.ico': 'image/x-icon',
+                '.gif': 'image/gif',
+                '.webp': 'image/webp',
+                '.bmp': 'image/bmp'
+            }
+            mime_type = mime_types.get(ext, 'image/png')
+
+            # Create data URI
+            data_uri = f"data:{mime_type};base64,{asset_base64}"
+
+            # Inject into window as a global variable
+            js_code = f"""
+                (function() {{
+                    if (!window.assets) {{
+                        window.assets = {{}};
+                        console.log('[INJECT] Initialized window.assets object');
+                    }}
+                    window.assets['{asset_name}'] = '{data_uri}';
+                    console.log('[INJECT] Loaded asset: {asset_name} ({file_size} bytes, {mime_type})');
+                }})();
+            """
+
+            window.evaluate_js(js_code)
+            self.logger.debug(f"[WindowManager] Successfully injected asset '{asset_name}' into '{window_id}'")
+            return True
+
+        except FileNotFoundError as e:
+            self.logger.error(f"[WindowManager] File not found error for asset '{asset_name}': {e}")
+            return False
+        except PermissionError as e:
+            self.logger.error(f"[WindowManager] Permission error reading asset '{asset_name}': {e}")
+            return False
+        except Exception as e: # pylint: disable=broad-exception-caught
+            self.logger.error(f"[WindowManager] Failed to inject asset '{asset_name}' into '{window_id}': {type(e).__name__}: {e}")
+            self.logger.error(f"[WindowManager] Traceback: {traceback.format_exc()}")
+            return False
+
+    def _inject_all_assets(self, window: webview.Window, window_id: str) -> dict:
+        """Inject all configured assets into the window"""
+        results = {}
+
+        for asset_config in self.injectable_assets:
+            asset_name = asset_config['name']
+            asset_path = self._construct_script_path(asset_config['path_segments'])
+
+            self.logger.debug(f"[WindowManager] Injecting asset '{asset_name}' ({asset_config.get('description', 'No description')})")
+            success = self._inject_asset(window, window_id, asset_name, asset_path)
+            results[asset_name] = success
+
+        # Log summary
+        successful = sum(1 for success in results.values() if success)
+        total = len(results)
+
+        if successful == total:
+            self.logger.debug(f"[WindowManager] All {total} assets injected successfully for '{window_id}'")
+        else:
+            self.logger.warning(f"[WindowManager] {successful}/{total} assets injected for '{window_id}'")
+
+        return results
 
     def _inject_all_scripts(self, window: webview.Window, window_id: str) -> dict:
         """Inject all configured scripts into the window"""
@@ -265,7 +400,7 @@ class WindowManager:
         return window
 
     def _on_window_loaded(self, window):
-        """Callback when window is loaded - inject scripts and configure window"""
+        """Callback when window is loaded - inject scripts, assets, and configure window"""
         window_id = window._window_id
         params = window._init_params
 
@@ -275,11 +410,13 @@ class WindowManager:
             # Step 1: Inject console logger
             self._inject_console_logger(window, window_id)
 
-            # Step 2: Inject all scripts
+            # Step 2: Inject all assets (icons, images, etc.)
+            self._inject_all_assets(window, window_id)
+
+            # Step 3: Inject all scripts
             self._inject_all_scripts(window, window_id)
 
-            # Step 3: Schedule window configuration in a separate thread to avoid blocking
-            # NEW: Use thread to prevent blocking other window loads
+            # Step 4: Schedule window configuration in a separate thread to avoid blocking
             config_thread = Thread(
                 target=self._configure_window_delayed,
                 args=(window_id, params),
@@ -620,6 +757,7 @@ class WindowManager:
         except Exception as e: # pylint: disable=broad-exception-caught
             self.logger.error(f"[WindowManager] Failed to set visibility for '{window_id}': {e}")
             return False
+
     def stop(self):
         """Stop telemetry updates and close all windows safely."""
         self.logger.debug("[WindowManager] Stopping WindowManager...")

@@ -199,6 +199,7 @@ window.addEventListener('lock-state-change', (event) => {
 window.addEventListener('utils-ready', async () => {
     console.log('[TimingTower] Utils ready, fetching initial telemetry...');
     test_import(); // TODO: remove
+    console.log("assets", window.assets);
 
     // Now safe to use utils functions
     try {
