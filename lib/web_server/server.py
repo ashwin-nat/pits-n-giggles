@@ -42,7 +42,6 @@ from quart import send_from_directory as quart_send_from_directory
 from quart import url_for
 
 from lib.error_status import PngPortInUseError
-from lib.port_check import is_port_available
 
 from .client_types import ClientType
 
@@ -227,11 +226,10 @@ class BaseWebServer:
         Run the web server asynchronously using Uvicorn.
 
         Sets up the server configuration and starts serving the application.
-        """
 
-        if not is_port_available(self.m_port):
-            self.m_logger.error(f"Port {self.m_port} is already in use")
-            raise PngPortInUseError()
+        Raises:
+            PngPortInUseError: If the specified port is already in use.
+        """
 
         # Register post start callback before running
         @self.m_app.before_serving
@@ -240,14 +238,29 @@ class BaseWebServer:
             if self._post_start_callback:
                 await self._post_start_callback()
 
-        # Create a socket manually to set SO_REUSEADDR
+        # Create a socket manually
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+        # On Windows, SO_REUSEADDR allows multiple binds to the same port, which we don't want
+        # Only set SO_REUSEADDR on non-Windows platforms for faster restart after shutdown
         if platform.system() != "Windows":
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             with contextlib.suppress(AttributeError, OSError):
                 # pylint: disable=useless-suppression
                 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1) # pylint: disable=no-member
-        sock.bind(("0.0.0.0", self.m_port))
+
+        try:
+            sock.bind(("0.0.0.0", self.m_port))
+        except OSError as e:
+            sock.close()
+            # errno 48: EADDRINUSE on macOS/BSD
+            # errno 98: EADDRINUSE on Linux
+            # errno 10048: WSAEADDRINUSE on Windows
+            if e.errno in (48, 98, 10048):
+                self.m_logger.error(f"Port {self.m_port} is already in use")
+                raise PngPortInUseError() from e
+            raise  # Re-raise if it's a different OSError
+
         sock.listen(1024)
         sock.setblocking(False)
 
