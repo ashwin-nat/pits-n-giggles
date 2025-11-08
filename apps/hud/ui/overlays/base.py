@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import logging
 from dataclasses import dataclass
 
 from PySide6.QtCore import Qt
@@ -35,18 +36,19 @@ from apps.hud.ui.infra.config import OverlaysConfig
 class BaseOverlay(QWidget):
     """Base class for all display-only overlays (e.g., lap timer, tyre info, etc.)."""
 
-    def __init__(self, config: OverlaysConfig, locked: bool = False):
+    def __init__(self, config: OverlaysConfig, logger: logging.Logger, locked: bool = False):
         super().__init__()
         self.config = config
         self.locked = locked
+        self.logger = logger
         self._drag_pos = None
         self._setup_window()
         self.build_ui()
         self.apply_config()
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Setup
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     def _setup_window(self):
         """Apply base window setup and initial flags."""
         self.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
@@ -63,9 +65,9 @@ class BaseOverlay(QWidget):
             self.config.height
         )
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Window State
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     def update_window_flags(self):
         """Refresh window flags based on locked state."""
         flags = Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool
@@ -98,9 +100,9 @@ class BaseOverlay(QWidget):
             height=geo.height()
         )
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Subclass hooks
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     def build_ui(self):
         """Subclasses must implement this to build their layout."""
         raise NotImplementedError
@@ -109,9 +111,9 @@ class BaseOverlay(QWidget):
         """Subclasses implement to refresh their displayed data."""
         pass
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Mouse interactions (dragging + resizing only)
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     def mousePressEvent(self, event: QMouseEvent):
         if not self.locked and event.button() == Qt.MouseButton.LeftButton:
             self._drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
@@ -125,3 +127,27 @@ class BaseOverlay(QWidget):
     def mouseReleaseEvent(self, event: QMouseEvent):
         self._drag_pos = None
         event.accept()
+
+    # --------------------------------------------------------------------------
+    # Data handling helpers
+    # --------------------------------------------------------------------------
+    def _get_ref_row(self, data: dict) -> dict:
+        """Helper to get the reference row from incoming race table data."""
+
+        if not data or "table-entries" not in data or not data["table-entries"]:
+            return None
+
+        is_spectating = data.get("is-spectating", False)
+        spectator_index = data.get("spectator-car-index")
+
+        if is_spectating and spectator_index is not None:
+            if 0 <= spectator_index < len(data["table-entries"]):
+                return data["table-entries"][spectator_index]
+            else:
+                self.logger.warning(f"Warning: Spectator index {spectator_index} is out of bounds.")
+                return None
+        else:
+            for row in data["table-entries"]:
+                if row.get("driver-info", {}).get("is-player") is True:
+                    return row
+            return None

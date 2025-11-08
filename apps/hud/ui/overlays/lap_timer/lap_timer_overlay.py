@@ -25,12 +25,13 @@
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QHBoxLayout
 from PySide6.QtGui import QFont
 from base import BaseOverlay
-import random
 from .sector_status_bar import SectorStatusBar
+from apps.hud.ui.infra.config import OverlaysConfig
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class LapTimerOverlay(BaseOverlay):
+
     def build_ui(self):
 
         layout = QVBoxLayout()
@@ -70,23 +71,24 @@ class LapTimerOverlay(BaseOverlay):
         row.addWidget(label)
         return row
 
-    def update_data(self, data):
-        # Dummy data for sector status
-        sector_status = [random.randint(0, 3) for _ in range(3)]
-        self.sector_bar.set_sector_status(sector_status)
+    def update_data(self, data: dict):
+        self.logger.debug(f'Received data')
+        # # Dummy data for sector status
+        # sector_status = [random.randint(0, 3) for _ in range(3)]
+        # self.sector_bar.set_sector_status(sector_status)
 
-        delta = random.uniform(-0.3, 0.3)
-        self.current_lap_time += delta
+        # delta = random.uniform(-0.3, 0.3)
+        # self.current_lap_time += delta
 
-        if random.random() < 0.2:
-            self.last_lap_time = self.current_lap_time
-            if self.last_lap_time < self.best_lap_time:
-                self.best_lap_time = self.last_lap_time
-            self.current_lap_time = 100 + random.uniform(-1.0, 1.0)
+        # if random.random() < 0.2:
+        #     self.last_lap_time = self.current_lap_time
+        #     if self.last_lap_time < self.best_lap_time:
+        #         self.best_lap_time = self.last_lap_time
+        #     self.current_lap_time = 100 + random.uniform(-1.0, 1.0)
 
-        self.curr_label.setText(f"Current: {self.format_time(self.current_lap_time)}")
-        self.last_label.setText(f"Last: {self.format_time(self.last_lap_time)}")
-        self.best_label.setText(f"Best: {self.format_time(self.best_lap_time)}")
+        # self.curr_label.setText(f"Current: {self.format_time(self.current_lap_time)}")
+        # self.last_label.setText(f"Last: {self.format_time(self.last_lap_time)}")
+        # self.best_label.setText(f"Best: {self.format_time(self.best_lap_time)}")
 
     @staticmethod
     def format_time(seconds: float) -> str:
