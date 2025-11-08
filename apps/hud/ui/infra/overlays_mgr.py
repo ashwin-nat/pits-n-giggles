@@ -27,7 +27,7 @@ import logging
 import os
 from typing import Dict, Optional
 
-import webview
+import time
 
 from lib.button_debouncer import ButtonDebouncer
 from lib.child_proc_mgmt import notify_parent_init_complete
@@ -35,7 +35,7 @@ from lib.config import PngSettings
 from lib.file_path import resolve_user_file
 
 from .config import OverlaysConfig
-from .infra import WindowManager
+from .window_mgr import WindowManager
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -75,6 +75,7 @@ class OverlaysMgr:
         self.debouncer = ButtonDebouncer(debounce_time=1.0)
         self.debug_mode = debug
         self._init_config()
+        self.running = False
 
         assert settings.HUD.enabled, "HUD must be enabled to run overlays manager"
         self.window_manager = WindowManager(logger)
@@ -95,7 +96,11 @@ class OverlaysMgr:
 
     def run(self):
         """Start the overlays manager"""
-        webview.start(notify_parent_init_complete, debug=self.debug_mode)
+        self.running = True
+        notify_parent_init_complete()
+        while self.running:
+            time.sleep(1.0)
+        pass # TODO
 
     def on_locked_state_change(self, args: Dict[str, bool]):
         """Handle locked state change"""
@@ -130,6 +135,7 @@ class OverlaysMgr:
     def stop(self):
         """Stop the overlays manager"""
         self.window_manager.stop()
+        self.running = False
 
     def _get_html_path_for_window(self, window_id: str) -> str:
         """Constructs the absolute path to the HTML file for a given window ID."""
@@ -190,6 +196,5 @@ class OverlaysMgr:
         assert window_config, f"Window '{window_id}' not found in config"
         self.window_manager.create_window(
             window_id=window_id,
-            html_path=self._get_html_path_for_window(window_id),
             params=window_config)
         self.logger.info(f"Created window '{window_id}'")
