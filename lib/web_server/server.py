@@ -41,7 +41,7 @@ from quart import request as quart_request
 from quart import send_from_directory as quart_send_from_directory
 from quart import url_for
 
-from lib.error_status import PngPortInUseError
+from lib.error_status import PngHttpPortInUseError, is_port_in_use_errror
 
 from .client_types import ClientType
 
@@ -228,7 +228,8 @@ class BaseWebServer:
         Sets up the server configuration and starts serving the application.
 
         Raises:
-            PngPortInUseError: If the specified port is already in use.
+            PngHttpPortInUseError: If the specified port is already in use.
+            OSError: If the server fails to start and error is not a port in use error.
         """
 
         # Register post start callback before running
@@ -253,12 +254,9 @@ class BaseWebServer:
             sock.bind(("0.0.0.0", self.m_port))
         except OSError as e:
             sock.close()
-            # errno 48: EADDRINUSE on macOS/BSD
-            # errno 98: EADDRINUSE on Linux
-            # errno 10048: WSAEADDRINUSE on Windows
-            if e.errno in (48, 98, 10048):
+            if is_port_in_use_errror(e.errno):
                 self.m_logger.error(f"Port {self.m_port} is already in use")
-                raise PngPortInUseError() from e
+                raise PngHttpPortInUseError() from e
             raise  # Re-raise if it's a different OSError
 
         sock.listen(1024)

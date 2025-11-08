@@ -27,6 +27,7 @@ import logging
 from typing import List
 
 from lib.config import PngSettings
+from lib.error_status import PngTelemetryPortInUseError, is_port_in_use_errror
 
 from .telemetry_forwarder import setupForwarder
 from .telemetry_handler import F1TelemetryHandler, setupTelemetryTask
@@ -54,13 +55,20 @@ def initTelemetryLayer(
         F1TelemetryHandler: Telemetry handler
     """
 
-    handler = setupTelemetryTask(
-        settings=settings,
-        replay_server=replay_server,
-        logger=logger,
-        ver_str=ver_str,
-        tasks=tasks
-    )
+    try:
+        handler = setupTelemetryTask(
+            settings=settings,
+            replay_server=replay_server,
+            logger=logger,
+            ver_str=ver_str,
+            tasks=tasks
+        )
+    except OSError as e:
+        logger.error(f"setupTelemetryTask failed with error {e}")
+        if is_port_in_use_errror(e.errno):
+            raise PngTelemetryPortInUseError() from e
+        raise  # Re-raise if it's a different OSError
+
     setupForwarder(
         forwarding_targets=settings.Forwarding.forwarding_targets,
         tasks=tasks,
