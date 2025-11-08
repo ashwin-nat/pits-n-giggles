@@ -45,7 +45,7 @@ class PngTelemetryPortInUseError(PngError):
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def is_port_in_use_errror(errno: int) -> bool:
+def is_port_in_use_error(errno: int) -> bool:
     # errno 48: EADDRINUSE on macOS/BSD
     # errno 98: EADDRINUSE on Linux
     # errno 10048: WSAEADDRINUSE on Windows

@@ -40,7 +40,7 @@ from quart import request as quart_request
 from quart import send_from_directory as quart_send_from_directory
 from quart import url_for
 
-from lib.error_status import PngHttpPortInUseError, is_port_in_use_errror
+from lib.error_status import PngHttpPortInUseError, is_port_in_use_error
 
 from .client_types import ClientType
 
@@ -252,7 +252,7 @@ class BaseWebServer:
             sock.bind(("0.0.0.0", self.m_port))
         except OSError as e:
             sock.close()
-            if is_port_in_use_errror(e.errno):
+            if is_port_in_use_error(e.errno):
                 self.m_logger.error(f"Port {self.m_port} is already in use")
                 raise PngHttpPortInUseError() from e
             raise  # Re-raise if it's a different OSError
