@@ -438,12 +438,12 @@ class DataPerDriver:
                 tyre_set_data = None
 
                 if not lap_snapshot:
-                    self.m_logger.debug("%s - No lap snapshot found for lap number %s", str(self), tyre_wear.lap_number)
+                    self.m_logger.warning("%s - No lap snapshot found for lap number %s", str(self), tyre_wear.lap_number)
                 elif not lap_snapshot.m_tyre_sets_packet:
-                    self.m_logger.debug("%s - No tyre sets packet found for lap number %s",
+                    self.m_logger.warning("%s - No tyre sets packet found for lap number %s",
                                         str(self), tyre_wear.lap_number)
                 elif not (0 <= tyre_set_meta_data.m_fitted_index < len(lap_snapshot.m_tyre_sets_packet.m_tyreSetData)):
-                    self.m_logger.debug("%s - Tyre set index %s out of bounds for lap number %s (array size: %s)",
+                    self.m_logger.warning("%s - Tyre set index %s out of bounds for lap number %s (array size: %s)",
                         str(self), tyre_set_meta_data.m_fitted_index,tyre_wear.lap_number,
                         len(lap_snapshot.m_tyre_sets_packet.m_tyreSetData))
                 else:
