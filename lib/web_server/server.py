@@ -242,13 +242,12 @@ class BaseWebServer:
         # Create a socket manually
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        # On Windows, SO_REUSEADDR allows multiple binds to the same port, which we don't want
-        # Only set SO_REUSEADDR on non-Windows platforms for faster restart after shutdown
+        # Platform-specific socket options:
+        # - Windows: SO_REUSEADDR allows multiple binds (unsafe), so we skip it entirely
+        # - Unix/Linux/macOS: SO_REUSEADDR allows binding to TIME_WAIT ports (safe for quick restart)
         if platform.system() != "Windows":
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            with contextlib.suppress(AttributeError, OSError):
-                # pylint: disable=useless-suppression
-                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1) # pylint: disable=no-member
+            # DO NOT set SO_REUSEPORT - it prevents proper port-in-use detection on Unix systems
 
         try:
             sock.bind(("0.0.0.0", self.m_port))
