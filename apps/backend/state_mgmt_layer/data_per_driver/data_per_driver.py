@@ -99,7 +99,8 @@ class DataPerDriver:
             str: The string representation
         """
 
-        return f"DataPerDriver({self.m_driver_info.position}|{self.m_driver_info.name}|{self.m_driver_info.team})"
+        return  f"DataPerDriver([{self.m_index}]|{self.m_driver_info.position}|" \
+                f"{self.m_driver_info.name}|{self.m_driver_info.team})"
 
     def __str__(self) -> str:
         """Get the string representation of this object
@@ -433,9 +434,21 @@ class DataPerDriver:
         ret = []
         for tyre_set_meta_data in self.m_tyre_info.m_tyre_set_history_manager.getEntries():
             for tyre_wear in tyre_set_meta_data.m_tyre_wear_history:
-                tyre_set_data = self.m_per_lap_snapshots[tyre_wear.lap_number] \
-                    .m_tyre_sets_packet.m_tyreSetData[tyre_set_meta_data.m_fitted_index] \
-                            if tyre_wear.lap_number in self.m_per_lap_snapshots else None
+                lap_snapshot = self.m_per_lap_snapshots.get(tyre_wear.lap_number)
+                tyre_set_data = None
+
+                if not lap_snapshot:
+                    self.m_logger.debug("%s - No lap snapshot found for lap number %s", str(self), tyre_wear.lap_number)
+                elif not lap_snapshot.m_tyre_sets_packet:
+                    self.m_logger.debug("%s - No tyre sets packet found for lap number %s",
+                                        str(self), tyre_wear.lap_number)
+                elif not (0 <= tyre_set_meta_data.m_fitted_index < len(lap_snapshot.m_tyre_sets_packet.m_tyreSetData)):
+                    self.m_logger.debug("%s - Tyre set index %s out of bounds for lap number %s (array size: %s)",
+                        str(self), tyre_set_meta_data.m_fitted_index,tyre_wear.lap_number,
+                        len(lap_snapshot.m_tyre_sets_packet.m_tyreSetData))
+                else:
+                    tyre_set_data = lap_snapshot.m_tyre_sets_packet.m_tyreSetData[tyre_set_meta_data.m_fitted_index]
+
                 ret.append({
                     'tyre-wear' : tyre_wear.toJSON(),
                     'lap-number' : tyre_wear.lap_number,
