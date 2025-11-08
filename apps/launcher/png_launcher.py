@@ -339,7 +339,7 @@ class PngLauncher(ConsoleInterface):
         else:
             formatted_message = message
 
-        logger_func(message.rstrip(), extra={"with_timestamp": with_timestamp}, stacklevel=2)
+        logger_func(message.rstrip(), extra={"with_timestamp": with_timestamp}, stacklevel=3)
 
         self.console.configure(state=tk.NORMAL)
         self.console.insert(tk.END, formatted_message)
