@@ -25,10 +25,12 @@
 import json
 import logging
 import os
+import time
 from typing import Dict, Optional
 
-import time
+from PySide6.QtWidgets import QApplication
 
+from apps.hud.ui.overlays import LapTimerOverlay
 from lib.button_debouncer import ButtonDebouncer
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import PngSettings
@@ -40,13 +42,13 @@ from .window_mgr import WindowManager
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
 _DEFAULT_OVERLAYS_CONFIG: Dict[str, OverlaysConfig] = {
-    'lapTimer': OverlaysConfig(
+    'lap_timer': OverlaysConfig(
         x=10,
         y=300,
         width=280,
         height=380,
     ),
-    'timingTower': OverlaysConfig(
+    'timing_tower': OverlaysConfig(
         x=10,
         y=55,
         width=450,
@@ -70,6 +72,7 @@ class OverlaysMgr:
             config_file (str, optional): Path to config file. Defaults to 'png_overlays.json'.
             debug (bool, optional): Debug mode. Defaults to False.
         """
+        self.app = QApplication()
         self.logger = logger
         self.config_file = resolve_user_file(config_file)
         self.debouncer = ButtonDebouncer(debounce_time=1.0)
@@ -81,26 +84,26 @@ class OverlaysMgr:
         self.window_manager = WindowManager(logger)
 
         if settings.HUD.show_lap_timer:
-            window_id = 'lapTimer'
-            self._init_window_by_id(window_id)
-            self.logger.debug(f"Created window '{window_id}'")
+            self.window_manager.register_overlay('lap_timer', LapTimerOverlay(
+                self.config['lap_timer'],
+                self.logger,
+                locked=True
+            ))
         else:
             self.logger.debug("Lap timer overlay is disabled")
 
-        if settings.HUD.show_timing_tower:
-            window_id = 'timingTower'
-            self._init_window_by_id(window_id)
-            self.logger.debug(f"Created window '{window_id}'")
-        else:
-            self.logger.debug("Timing tower overlay is disabled")
+        # if settings.HUD.show_timing_tower:
+        #     window_id = 'timingTower'
+        #     self._init_window_by_id(window_id)
+        #     self.logger.debug(f"Created window '{window_id}'")
+        # else:
+        #     self.logger.debug("Timing tower overlay is disabled")
 
     def run(self):
         """Start the overlays manager"""
         self.running = True
         notify_parent_init_complete()
-        while self.running:
-            time.sleep(1.0)
-        pass # TODO
+        self.app.exec()
 
     def on_locked_state_change(self, args: Dict[str, bool]):
         """Handle locked state change"""

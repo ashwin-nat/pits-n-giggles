@@ -24,7 +24,7 @@
 
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QHBoxLayout
 from PySide6.QtGui import QFont
-from base import BaseOverlay
+from apps.hud.ui.overlays.base import BaseOverlay
 from .sector_status_bar import SectorStatusBar
 from apps.hud.ui.infra.config import OverlaysConfig
 

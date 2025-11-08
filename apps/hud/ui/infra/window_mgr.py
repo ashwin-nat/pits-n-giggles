@@ -36,15 +36,21 @@ import win32con
 import win32gui
 
 from .config import OverlaysConfig
+from apps.hud.ui.overlays import BaseOverlay
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class WindowManager:
     def __init__(self, logger: logging.Logger):
         self.logger = logger
+        self.overlays: Dict[str, BaseOverlay] = {}
 
     def create_window(self, window_id: str, params: OverlaysConfig):
         pass # TODO
+
+    def register_overlay(self, window_id: str, overlay: BaseOverlay):
+        self.logger.debug(f"Registering overlay {window_id}")
+        self.overlays[window_id] = overlay
 
     def set_locked_state_all(self, args: Dict[str, bool]):
         pass # TODO
