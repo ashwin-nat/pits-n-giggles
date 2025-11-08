@@ -56,11 +56,6 @@ class BaseOverlay(QWidget):
             flags |= (
                 Qt.Window
                 | Qt.CustomizeWindowHint
-                | Qt.WindowTitleHint
-                | Qt.WindowSystemMenuHint
-                | Qt.WindowCloseButtonHint
-                | Qt.WindowMinMaxButtonsHint
-                | Qt.FramelessWindowHint
             )
             self.setWindowFlag(Qt.WindowTransparentForInput, False)
 
