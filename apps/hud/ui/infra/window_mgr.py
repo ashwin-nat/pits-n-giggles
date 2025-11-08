@@ -32,7 +32,6 @@ import traceback
 from threading import Lock, Thread
 from typing import Dict, Optional
 
-import webview
 import win32con
 import win32gui
 
