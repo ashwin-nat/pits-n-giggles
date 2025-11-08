@@ -23,8 +23,9 @@
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
-PNG_ERROR_CODE_PORT_IN_USE = 100
+PNG_ERROR_CODE_HTTP_PORT_IN_USE = 100
 PNG_LOST_CONN_TO_PARENT = 101
+PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE = 102
 PNG_ERROR_CODE_UNKNOWN = 999
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -34,6 +35,18 @@ class PngError(Exception):
         self.exit_code = exit_code
         super().__init__(f"exiting with code {exit_code}: {message}")
 
-class PngPortInUseError(PngError):
+class PngHttpPortInUseError(PngError):
     def __init__(self):
-        super().__init__(PNG_ERROR_CODE_PORT_IN_USE, "Port already in use")
+        super().__init__(PNG_ERROR_CODE_HTTP_PORT_IN_USE, "Port already in use")
+
+class PngTelemetryPortInUseError(PngError):
+    def __init__(self):
+        super().__init__(PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE, "Port already in use")
+
+# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+
+def is_port_in_use_error(errno: int) -> bool:
+    # errno 48: EADDRINUSE on macOS/BSD
+    # errno 98: EADDRINUSE on Linux
+    # errno 10048: WSAEADDRINUSE on Windows
+    return errno in {48, 98, 10048}

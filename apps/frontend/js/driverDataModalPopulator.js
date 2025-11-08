@@ -67,6 +67,9 @@ class DriverModalPopulator {
                     } else {
                         tyreCell.textContent = compound;
                     }
+                } else {
+                    tyreCell.textContent = '---';
+                    console.warn(`Tyre set info not found for lap ${index + 1}`, lap);
                 }
                 row.appendChild(tyreCell);
 
