@@ -23,7 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
-from dataclasses import dataclass
+from abc import abstractmethod
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QMouseEvent
@@ -109,7 +109,7 @@ class BaseOverlay(QWidget):
 
     def update_data(self, data):
         """Subclasses implement to refresh their displayed data."""
-        pass
+        raise NotImplementedError
 
     # --------------------------------------------------------------------------
     # Mouse interactions (dragging + resizing only)

@@ -65,7 +65,8 @@ class WindowManager:
         pass # TODO
 
     def broadcast_data(self, data):
-        pass # TODO
+        for overlay in self.overlays.values():
+            overlay.update_data(data)
 
     def get_window_info(self, window_id: str) -> OverlaysConfig:
         return OverlaysConfig(x=0, y=0, width=0, height=0) # TODO
