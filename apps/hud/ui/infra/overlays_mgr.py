@@ -192,12 +192,3 @@ class OverlaysMgr:
                 self.logger.error(f"Failed to load config file: {e}. Falling back to default config")
 
         return None
-
-    def _init_window_by_id(self, window_id: str) -> None:
-        """Initialize a window by its ID"""
-        window_config = self.config.get(window_id)
-        assert window_config, f"Window '{window_id}' not found in config"
-        self.window_manager.create_window(
-            window_id=window_id,
-            params=window_config)
-        self.logger.info(f"Created window '{window_id}'")

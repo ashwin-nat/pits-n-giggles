@@ -45,15 +45,15 @@ class WindowManager:
         self.logger = logger
         self.overlays: Dict[str, BaseOverlay] = {}
 
-    def create_window(self, window_id: str, params: OverlaysConfig):
-        pass # TODO
-
     def register_overlay(self, window_id: str, overlay: BaseOverlay):
         self.logger.debug(f"Registering overlay {window_id}")
         self.overlays[window_id] = overlay
 
     def set_locked_state_all(self, args: Dict[str, bool]):
-        pass # TODO
+        locked = args['new-value']
+        for name, overlay in self.overlays.items():
+            self.logger.debug(f"Setting locked state for overlay {name}. locked={locked}")
+            overlay.set_locked_state(locked)
 
     def race_table_update(self, data):
         pass # TODO
