@@ -32,7 +32,6 @@ from apps.hud.ui.infra.config import OverlaysConfig
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-@dataclass
 class BaseOverlay(QWidget):
     """Base class for all display-only overlays (e.g., lap timer, tyre info, etc.)."""
 
