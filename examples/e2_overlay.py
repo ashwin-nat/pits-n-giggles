@@ -64,15 +64,7 @@ class LapTimerOverlay(BaseOverlay):
 
         self.setLayout(layout)
 
-        self.resize(220, 140) # Increased height to accommodate the sector bar
-
-    def make_row(self, title, label):
-        row = QHBoxLayout()
-        lbl = QLabel(title)
-        lbl.setStyleSheet("font-weight: bold; color: #ddd;")
-        row.addWidget(lbl)
-        row.addWidget(label)
-        return row
+        self.resize(220, 140)
 
     def update_data(self, data):
         # Dummy data for sector status
