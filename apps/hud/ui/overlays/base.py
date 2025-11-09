@@ -36,8 +36,9 @@ from apps.hud.ui.infra.config import OverlaysConfig
 class BaseOverlay(QWidget):
     """Base class for all display-only overlays (e.g., lap timer, tyre info, etc.)."""
 
-    def __init__(self, config: OverlaysConfig, logger: logging.Logger, locked: bool = False):
+    def __init__(self, overlay_id: str, config: OverlaysConfig, logger: logging.Logger, locked: bool = False):
         super().__init__()
+        self.overlay_id = overlay_id
         self.config = config
         self.locked = locked
         self.logger = logger
@@ -107,10 +108,12 @@ class BaseOverlay(QWidget):
         """Subclasses must implement this to build their layout."""
         raise NotImplementedError
 
-    @Slot(dict)
-    def update_data(self, data: dict):
+    @Slot(str, str, dict)
+    def _handle_cmd(self, recipient: str, cmd: str, data: dict):
         """Subclasses implement to refresh their displayed data."""
-        self.logger.debug(f"Received data. cmd: {data.get('cmd', 'N/A')}")
+        self.logger.debug(f"Received data. recipient: {recipient}, cmd: {cmd}")
+        if ('' == recipient) or (recipient == self.id):
+            self.logger.debug(f"Handling data. cmd: {cmd}")
 
     # --------------------------------------------------------------------------
     # Mouse interactions (dragging + resizing only)

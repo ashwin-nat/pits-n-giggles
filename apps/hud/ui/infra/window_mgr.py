@@ -43,10 +43,7 @@ from apps.hud.ui.overlays import BaseOverlay
 
 class WindowManager(QObject):
     # Define signals for broadcasting data
-    data_updated = Signal(dict)
-    locked_state_changed = Signal(bool)
-    # Signal for sending data to specific overlay (window_id, data)
-    overlay_data_updated = Signal(str, dict)
+    mgmt_cmd_signal = Signal(str, str, dict) # recipient, cmd, data
 
     def __init__(self, logger: logging.Logger):
         super().__init__()
@@ -59,13 +56,7 @@ class WindowManager(QObject):
         self.overlays[window_id] = overlay
 
         # Connect broadcast signal to overlay's update_data slot
-        self.data_updated.connect(overlay.update_data)
-
-        # Connect targeted signal using a lambda to filter by window_id
-        self.overlay_data_updated.connect(
-            lambda target_id, data, overlay=overlay, window_id=window_id:
-                overlay.update_data(data) if target_id == window_id else None
-        )
+        self.mgmt_cmd_signal.connect(overlay._handle_cmd)
 
     def unregister_overlay(self, window_id: str):
         """Unregister an overlay and disconnect its signals."""
@@ -73,7 +64,7 @@ class WindowManager(QObject):
             overlay = self.overlays[window_id]
             # Disconnect all signals from this overlay
             try:
-                self.data_updated.disconnect(overlay.update_data)
+                self.mgmt_cmd_signal.disconnect(overlay._handle_cmd)
             except RuntimeError:
                 pass  # Already disconnected
             del self.overlays[window_id]
@@ -81,18 +72,14 @@ class WindowManager(QObject):
 
     def set_locked_state_all(self, args: Dict[str, bool]):
         """Set locked state for all overlays."""
-        locked = args['new-value']
-        for name, overlay in self.overlays.items():
-            self.logger.debug(f"Setting locked state for overlay {name}. locked={locked}")
-            overlay.set_locked_state(locked)
+        pass
+        # locked = args['new-value']
+        # for name, overlay in self.overlays.items():
+        #     self.logger.debug(f"Setting locked state for overlay {name}. locked={locked}")
+        #     overlay.set_locked_state(locked)
 
-        # Emit signal for any other listeners
-        self.locked_state_changed.emit(locked)
-
-    def race_table_update(self, data: dict):
-        """Update all overlays with race table data."""
-        self.logger.debug("Broadcasting race table update")
-        self.broadcast_data(data)
+        # # Emit signal for any other listeners
+        # self.locked_state_changed.emit(locked)
 
     def toggle_visibility_all(self):
         """Toggle visibility for all overlays."""
@@ -110,18 +97,15 @@ class WindowManager(QObject):
         for window_id in list(self.overlays.keys()):
             self.unregister_overlay(window_id)
 
-    def broadcast_data(self, data: dict):
+    def broadcast_data(self, cmd:str, data: dict):
         """Broadcast data to all registered overlays using signal."""
         self.logger.debug(f"Broadcasting data to {len(self.overlays)} overlays")
-        self.data_updated.emit(data)
+        self.mgmt_cmd_signal.emit('', cmd, data)
 
-    def send_data_to_overlay(self, window_id: str, data: dict):
-        """Send data to a specific overlay using signal."""
-        if window_id in self.overlays:
-            self.logger.debug(f"Sending data to overlay {window_id}")
-            self.overlay_data_updated.emit(window_id, data)
-        else:
-            self.logger.warning(f"Overlay {window_id} not found")
+    def unicast_data(self, overlay_id: str, cmd: str, data: dict):
+        """Unicast data to a specific overlay using signal."""
+        self.logger.debug(f"Unicasting data to overlay {overlay_id}")
+        self.mgmt_cmd_signal.emit(overlay_id, cmd, data)
 
     def get_window_info(self, window_id: str) -> OverlaysConfig:
         """Get window configuration for a specific overlay."""

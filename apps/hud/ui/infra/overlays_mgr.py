@@ -126,10 +126,7 @@ class OverlaysMgr:
 
     def race_table_update(self, data):
         """Handle race table update"""
-        self.window_manager.broadcast_data({
-            'cmd': 'race_table_update',
-            'data': data
-        })
+        self.window_manager.broadcast_data('race_table_update', data)
 
     def toggle_overlays_visibility(self):
         """Toggle overlays visibility"""

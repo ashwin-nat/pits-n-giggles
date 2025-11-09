@@ -27,10 +27,14 @@ from PySide6.QtGui import QFont
 from apps.hud.ui.overlays.base import BaseOverlay
 from .sector_status_bar import SectorStatusBar
 from apps.hud.ui.infra.config import OverlaysConfig
+import logging
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class LapTimerOverlay(BaseOverlay):
+
+    def __init__(self, config: OverlaysConfig, logger: logging.Logger, locked: bool = False):
+        super().__init__("lap_timer", config, logger, locked)
 
     def build_ui(self):
 
