@@ -322,22 +322,22 @@ class TimingTowerOverlay(BaseOverlay):
             # Normal before session start, when no data is available
             return []
 
-        # Sort the list by position before computing relevant positions and update rejoin positions
-        sorted_table_entries = sorted(table_entries, key=lambda x: x.get("driver-info", {}).get("position", 999))
-        total_cars = len(sorted_table_entries)
-
         ref_index = self._get_ref_row_index(data)
 
         if ref_index is None:
             self.logger.warning(f'<<TIMING_TOWER>> Reference index is None!')
             return []
 
-        ref_position = sorted_table_entries[ref_index]["driver-info"]["position"]
+        ref_position = table_entries[ref_index]["driver-info"]["position"]
+        total_cars = len(table_entries)
         lower_bound, upper_bound = self._get_adjacent_positions(ref_position, total_cars, num_adjacent_cars)
 
         if lower_bound is None:
             self.logger.warning(f'<<TIMING_TOWER>> Lower bound is None!')
             return []
+
+        # Sort the list by position before computing relevant positions and update rejoin positions
+        sorted_table_entries = sorted(table_entries, key=lambda x: x.get("driver-info", {}).get("position", 999))
 
         lower_index = lower_bound - 1
         result = sorted_table_entries[lower_index:upper_bound] # since upper bound is exclusive
