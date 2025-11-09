@@ -84,7 +84,8 @@ class LapTimerOverlay(BaseOverlay):
 
         @self.on_command("race_table_update")
         def handle_race_update(data: Dict[str, Any]) -> None:
-            self.logger.debug(f'<<LAP_TIMER>> Received data')
+            # self.logger.debug(f'<<LAP_TIMER>> Received data')
+            pass
 
     # def update_data(self, data: dict):
     #     self.logger.debug(f'<<LAP_TIMER>> Received data')

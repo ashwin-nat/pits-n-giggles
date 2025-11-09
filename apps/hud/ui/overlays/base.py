@@ -25,7 +25,7 @@
 import logging
 from typing import Any, Callable, Dict
 
-from PySide6.QtCore import Qt, Slot
+from PySide6.QtCore import Qt, Slot, Signal
 from PySide6.QtGui import QMouseEvent
 from PySide6.QtWidgets import QWidget
 
@@ -38,7 +38,8 @@ OverlayCommandHandler = Callable[[Dict[str, Any]], None] # Takes dict arg, retur
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class BaseOverlay(QWidget):
-    """Base class for all display-only overlays (e.g., lap timer, tyre info, etc.)."""
+    # Add signal for responses
+    response_signal = Signal(str, object)  # request_type, response_data
 
     def __init__(self, overlay_id: str, config: OverlaysConfig, logger: logging.Logger, locked: bool = False):
         super().__init__()
@@ -47,10 +48,14 @@ class BaseOverlay(QWidget):
         self.locked = locked
         self.logger = logger
         self._drag_pos = None
-        self._command_handlers: Dict[str, OverlayCommandHandler] = {}  # per-instance command registry
+        self._command_handlers: Dict[str, OverlayCommandHandler] = {}
+        self._request_handlers: Dict[str, OverlayCommandHandler] = {}  # New: request handlers
         self._setup_window()
         self.build_ui()
         self.apply_config()
+
+        # Register default request handlers
+        self._register_default_handlers()
 
     # --------------------------------------------------------------------------
     # Setup
@@ -123,6 +128,52 @@ class BaseOverlay(QWidget):
             return func
         return decorator
 
+    def _register_default_handlers(self):
+        """Register built-in request handlers."""
+        @self.on_request("get_window_info")
+        def handle_get_window_info(_data: Dict[str, Any]):
+            self.logger.debug(f'{self.overlay_id} | Received request "get_window_info"')
+            # Return actual window info, not dummy values!
+            return self.get_window_info()
+
+        @self.on_command("set_locked_state")
+        def handle_set_locked_state(data: dict):
+            locked = data.get('new-value', False)
+            self.set_locked_state(locked)
+
+        @self.on_command("toggle_visibility")
+        def handle_toggle_visibility(_data: dict):
+            if self.isVisible():
+                self.hide()
+            else:
+                self.show()
+
+    def on_request(self, request_type: str):
+        """Decorator for registering request handlers that return responses."""
+        def decorator(func: Callable[[dict], Any]):
+            self._request_handlers[request_type] = func
+            return func
+        return decorator
+
+    @Slot(str, str, dict)
+    def _handle_request(self, recipient: str, request_type: str, request_data: dict):
+        """Internal request dispatcher for overlays."""
+        if recipient and recipient != self.overlay_id:
+            return  # Not for this overlay
+
+        handler = self._request_handlers.get(request_type)
+        if handler:
+            self.logger.debug(f"{self.overlay_id} | Handling request '{request_type}'")
+            try:
+                response = handler(request_data)
+                # Emit response back through window manager
+                self.response_signal.emit(request_type, response)
+            except Exception as e:
+                self.logger.exception(f"{self.overlay_id} | Error handling request '{request_type}': {e}")
+        else:
+            self.logger.debug(f"{self.overlay_id} | No handler for request '{request_type}'")
+
+    # Existing _handle_cmd method stays the same
     @Slot(str, str, dict)
     def _handle_cmd(self, recipient: str, cmd: str, data: dict):
         """Internal command dispatcher for overlays."""
@@ -131,13 +182,13 @@ class BaseOverlay(QWidget):
 
         handler = self._command_handlers.get(cmd)
         if handler:
-            self.logger.debug(f"{self.overlay_id} | Dispatching command '{cmd}' to {handler.__name__}")
+            # self.logger.debug(f"{self.overlay_id} | Dispatching command '{cmd}' to {handler.__name__}")
             try:
                 handler(data)
             except Exception as e:
                 self.logger.exception(f"{self.overlay_id} | Error handling command '{cmd}': {e}")
         else:
-            self.logger.debug(f"{self.overlay_id} | No handler registered for command '{cmd}'")
+            self.logger.warning(f"{self.overlay_id} | No handler registered for command '{cmd}'")
 
     # --------------------------------------------------------------------------
     # Mouse interactions (dragging + resizing only)

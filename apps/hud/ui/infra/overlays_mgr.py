@@ -107,22 +107,22 @@ class OverlaysMgr:
 
     def on_locked_state_change(self, args: Dict[str, bool]):
         """Handle locked state change"""
-        pass
-        # self.window_manager.set_locked_state_all(args)
-        # locked_value = args.get('new-value')
-        # if not locked_value:
-        #     return
+        self.window_manager.set_locked_state_all(args)
+        locked_value = args.get('new-value')
+        if not locked_value:
+            return
 
-        # changed = False
-        # for window_id, window_params in self.config.items():
-        #     curr_params = self.window_manager.get_window_info(window_id)
-        #     if curr_params != window_params:
-        #         self.logger.debug(f"Updating config for window '{window_id}' to {curr_params}")
-        #         self.config[window_id] = curr_params
-        #         changed = True
+        changed = False
+        for window_id in list(self.window_manager.overlays.keys()):
+            curr_params = self.window_manager.get_window_info_threadsafe(window_id)
+            self.logger.debug(f"Current config for window '{window_id}' is {curr_params}")
+            if curr_params != window_params:
+                self.logger.debug(f"Updating config for window '{window_id}' to {curr_params}")
+                self.config[window_id] = curr_params
+                changed = True
 
-        # if changed:
-        #     self._save_config()
+        if changed:
+            self._save_config()
 
     def race_table_update(self, data):
         """Handle race table update"""
