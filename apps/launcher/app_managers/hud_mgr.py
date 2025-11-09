@@ -61,6 +61,10 @@ class HudAppMgr(PngAppMgrBase):
             args=self.args,
             debug_mode=debug_mode
         )
+        if not self.enabled:
+            self.status_var.set("Disabled")
+        elif not self.supported:
+            self.status_var.set("Unsupported")
         self.register_post_start(self.post_start)
         self.register_post_stop(self.post_stop)
 
