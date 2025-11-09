@@ -44,10 +44,10 @@ from apps.hud.ui.overlays import BaseOverlay
 
 class WindowManager(QObject):
     # Existing signal
-    mgmt_cmd_signal = Signal(str, str, dict)  # recipient, cmd, data
+    mgmt_cmd_signal = Signal(str, str, str)  # recipient, cmd, data (serialised into string)
 
     # New request/response signals
-    mgmt_request_signal = Signal(str, str, dict)  # recipient, request_type, request_data
+    mgmt_request_signal = Signal(str, str, str)  # recipient, request_type, request_data
     mgmt_response_signal = Signal(str, object)     # request_type, response_data
 
     def __init__(self, logger: logging.Logger):
@@ -129,7 +129,7 @@ class WindowManager(QObject):
             self._response_received = False
 
             # Emit request
-            self.mgmt_request_signal.emit(recipient, request_type, request_data or {})
+            self.mgmt_request_signal.emit(recipient, request_type, json.dumps(request_data) or {})
 
             # Wait for response
             if self._response_condition.wait(self._response_mutex, timeout_ms):
@@ -142,9 +142,9 @@ class WindowManager(QObject):
     def broadcast_data(self, cmd: str, data: dict):
         """Broadcast data to all registered overlays using signal."""
         # self.logger.debug(f"Broadcasting data to {len(self.overlays)} overlays")
-        self.mgmt_cmd_signal.emit('', cmd, data)
+        self.mgmt_cmd_signal.emit('', cmd, json.dumps(data))
 
     def unicast_data(self, overlay_id: str, cmd: str, data: dict):
         """Unicast data to a specific overlay using signal."""
         self.logger.debug(f"Unicasting data to overlay {overlay_id}")
-        self.mgmt_cmd_signal.emit(overlay_id, cmd, data)
+        self.mgmt_cmd_signal.emit(overlay_id, cmd, json.dumps(data))

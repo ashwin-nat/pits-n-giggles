@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import json
 import logging
 from typing import Any, Callable, Dict
 
@@ -34,6 +35,7 @@ from apps.hud.ui.infra.config import OverlaysConfig
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
 OverlayCommandHandler = Callable[[Dict[str, Any]], None] # Takes dict arg, returns None
+OverlayRequestHandler = Callable[[Dict[str, Any]], Any] # Takes dict arg, returns Any
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -49,7 +51,7 @@ class BaseOverlay(QWidget):
         self.logger = logger
         self._drag_pos = None
         self._command_handlers: Dict[str, OverlayCommandHandler] = {}
-        self._request_handlers: Dict[str, OverlayCommandHandler] = {}  # New: request handlers
+        self._request_handlers: Dict[str, OverlayRequestHandler] = {}  # New: request handlers
         self._setup_window()
         self.build_ui()
         self.apply_config()
@@ -168,8 +170,9 @@ class BaseOverlay(QWidget):
         handler = self._request_handlers.get(request_type)
         if handler:
             self.logger.debug(f"{self.overlay_id} | Handling request '{request_type}'")
+            parsed_data = json.loads(request_data)
             try:
-                response = handler(request_data)
+                response = handler(parsed_data)
                 # Emit response back through window manager
                 self.response_signal.emit(request_type, response)
             except Exception as e:
@@ -178,17 +181,18 @@ class BaseOverlay(QWidget):
             self.logger.debug(f"{self.overlay_id} | No handler for request '{request_type}'")
 
     # Existing _handle_cmd method stays the same
-    @Slot(str, str, dict)
-    def _handle_cmd(self, recipient: str, cmd: str, data: dict):
+    @Slot(str, str, str)
+    def _handle_cmd(self, recipient: str, cmd: str, data: str):
         """Internal command dispatcher for overlays."""
         if recipient and recipient != self.overlay_id:
             return  # Not for this overlay
 
         handler = self._command_handlers.get(cmd)
         if handler:
+            parsed_data = json.loads(data)
             # self.logger.debug(f"{self.overlay_id} | Dispatching command '{cmd}' to {handler.__name__}")
             try:
-                handler(data)
+                handler(parsed_data)
             except Exception as e:
                 self.logger.exception(f"{self.overlay_id} | Error handling command '{cmd}': {e}")
         else:
