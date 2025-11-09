@@ -116,7 +116,8 @@ class OverlaysMgr:
         for window_id in list(self.window_manager.overlays.keys()):
             curr_params = self.window_manager.get_window_info_threadsafe(window_id)
             self.logger.debug(f"Current config for window '{window_id}' is {curr_params}")
-            if curr_params != window_params:
+            saved_params = self.config[window_id]
+            if curr_params != saved_params:
                 self.logger.debug(f"Updating config for window '{window_id}' to {curr_params}")
                 self.config[window_id] = curr_params
                 changed = True
