@@ -131,12 +131,11 @@ class OverlaysMgr:
 
     def toggle_overlays_visibility(self):
         """Toggle overlays visibility"""
-        pass
-        # if self.debouncer.onButtonPress("toggle_overlays_visibility"):
-        #     self.logger.debug("Toggling overlays visibility")
-        #     self.window_manager.toggle_visibility_all()
-        # else:
-        #     self.logger.debug("Not toggling overlays visibility. Reason: debounce")
+        if self.debouncer.onButtonPress("toggle_overlays_visibility"):
+            self.logger.debug("Toggling overlays visibility")
+            self.window_manager.toggle_visibility_all()
+        else:
+            self.logger.debug("Not toggling overlays visibility. Reason: debounce")
 
     def stop(self):
         """Stop the overlays manager"""

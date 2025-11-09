@@ -33,7 +33,7 @@ from lib.ipc import IpcChildSync
 
 from ..listener import HudClient
 from ..ui.infra import OverlaysMgr
-from .handlers import handle_lock_widgets
+from .handlers import handle_lock_widgets, handle_toggle_visibility
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
@@ -43,6 +43,7 @@ CommandHandler = Callable[[dict, logging.Logger, OverlaysMgr], dict]
 # Registry of command handlers
 COMMAND_HANDLERS: Dict[str, CommandHandler] = {
     "lock-widgets": handle_lock_widgets,
+    "toggle-overlays-visibility": handle_toggle_visibility,
 }
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------

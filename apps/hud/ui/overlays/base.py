@@ -143,9 +143,12 @@ class BaseOverlay(QWidget):
 
         @self.on_command("toggle_visibility")
         def handle_toggle_visibility(_data: dict):
+            self.logger.debug(f'{self.overlay_id} | Toggling visibility')
             if self.isVisible():
+                self.logger.debug(f'{self.overlay_id} | Hiding overlay')
                 self.hide()
             else:
+                self.logger.debug(f'{self.overlay_id} | Showing overlay')
                 self.show()
 
     def on_request(self, request_type: str):

@@ -104,10 +104,7 @@ class WindowManager(QObject):
 
     def toggle_visibility_all(self):
         """Toggle visibility for all overlays."""
-        for name, overlay in self.overlays.items():
-            if overlay.isVisible():
-                overlay.hide()
-                self.logger.debug(f"Hiding overlay {name}")
+        self.broadcast_data('toggle_visibility', {})
 
     @Slot(str, str, dict)
     def _handle_request(self, recipient: str, request_type: str, request_data: dict):
