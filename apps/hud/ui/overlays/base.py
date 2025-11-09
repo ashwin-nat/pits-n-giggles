@@ -139,6 +139,7 @@ class BaseOverlay(QWidget):
         @self.on_command("set_locked_state")
         def handle_set_locked_state(data: dict):
             locked = data.get('new-value', False)
+            self.logger.debug(f'{self.overlay_id} | Setting locked state to {locked}')
             self.set_locked_state(locked)
 
         @self.on_command("toggle_visibility")

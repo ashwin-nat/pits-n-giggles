@@ -93,14 +93,7 @@ class WindowManager(QObject):
 
     def set_locked_state_all(self, args: Dict[str, bool]):
         """Set locked state for all overlays."""
-        pass
-        # locked = args['new-value']
-        # for name, overlay in self.overlays.items():
-        #     self.logger.debug(f"Setting locked state for overlay {name}. locked={locked}")
-        #     overlay.set_locked_state(locked)
-
-        # # Emit signal for any other listeners
-        # self.locked_state_changed.emit(locked)
+        self.broadcast_data('set_locked_state', args)
 
     def toggle_visibility_all(self):
         """Toggle visibility for all overlays."""
