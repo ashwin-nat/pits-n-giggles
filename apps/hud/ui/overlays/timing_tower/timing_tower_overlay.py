@@ -128,6 +128,8 @@ class TimingTowerOverlay(BaseOverlay):
         self.timing_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.timing_table.verticalHeader().setVisible(False)
         self.timing_table.horizontalHeader().setVisible(False)
+        self.timing_table.setMouseTracking(False)
+        self.timing_table.setAttribute(Qt.WA_TransparentForMouseEvents, True)
 
         # Disable scrollbars
         self.timing_table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -228,7 +230,7 @@ class TimingTowerOverlay(BaseOverlay):
 
         # Delta
         if delta is not None and delta > 0:
-            delta_text = f"{F1Utils.formatFloat(delta/1000, 3)}"
+            delta_text = f"{F1Utils.formatFloat(delta/1000, precision=3, signed=True)}"
         elif delta == 0 or delta is None:
             delta_text = "--.-"
         else:
