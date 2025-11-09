@@ -43,10 +43,10 @@ from .window_mgr import WindowManager
 
 _DEFAULT_OVERLAYS_CONFIG: Dict[str, OverlaysConfig] = {
     'lap_timer': OverlaysConfig(
-        x=10,
-        y=300,
-        width=190,
-        height=120,
+        x=600,
+        y=60,
+        width=250,
+        height=150,
     ),
     'timing_tower': OverlaysConfig(
         x=10,

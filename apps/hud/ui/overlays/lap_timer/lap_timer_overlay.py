@@ -58,7 +58,7 @@ class LapTimerOverlay(BaseOverlay):
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(5)
 
-        font = QFont("Consolas", 14, QFont.Bold)
+        font = QFont("Consolas", 20, QFont.Bold)
 
         self.curr_label = QLabel(f"Curr: {self._default_time_str}")
         self.curr_label.setFont(font)

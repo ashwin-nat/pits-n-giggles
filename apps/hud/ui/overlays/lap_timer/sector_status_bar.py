@@ -35,7 +35,7 @@ class SectorStatusBar(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedHeight(10)
+        self.setFixedHeight(15)
         self.sector_status = self.DEFAULT_SECTOR_STATUS
 
     def paintEvent(self, _event):
@@ -43,6 +43,7 @@ class SectorStatusBar(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         width = self.width()
+        height = self.height()
         sector_width = width / 3
 
         # Make colours consistent with the bootstrap colours used in driver view
@@ -54,9 +55,16 @@ class SectorStatusBar(QWidget):
             F1Utils.SECTOR_STATUS_INVALID: QColor(0xdc, 0x35, 0x45)
         }
 
+        # Draw filled rectangles
         for i, status in enumerate(self.sector_status):
             color = colors.get(status, QColor(50, 50, 50))
-            painter.fillRect(int(i * sector_width), 0, int(sector_width), self.height(), color)
+            painter.fillRect(int(i * sector_width), 0, int(sector_width), height, color)
+
+        # Draw black separator lines between sectors
+        painter.setPen(QColor(0, 0, 0))
+        for i in range(1, 3):  # lines between sectors
+            x = int(i * sector_width)
+            painter.drawLine(x, 0, x, height)
 
     def set_sector_status(self, status_list):
         if len(status_list) == 3:
