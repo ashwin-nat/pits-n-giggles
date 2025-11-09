@@ -37,7 +37,8 @@ import psutil
 
 from lib.child_proc_mgmt import extract_pid_from_line, is_init_complete
 from lib.config import PngSettings
-from lib.error_status import (PNG_ERROR_CODE_PORT_IN_USE,
+from lib.error_status import (PNG_ERROR_CODE_HTTP_PORT_IN_USE,
+                              PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE,
                               PNG_ERROR_CODE_UNKNOWN, PNG_LOST_CONN_TO_PARENT)
 from lib.ipc import IpcParent, get_free_tcp_port
 
@@ -49,13 +50,21 @@ class PngAppMgrBase(ABC):
     """Class to manage a sub-application process"""
 
     EXIT_ERRORS = {
-        PNG_ERROR_CODE_PORT_IN_USE: {
-            "title": "Port In Use",
+        PNG_ERROR_CODE_HTTP_PORT_IN_USE: {
+            "title": "HTTP Port In Use",
             "message": (
                 "failed to start because the required port is already in use.\n"
                 "Please close the conflicting app or change the port in settings."
             ),
-            "status": "Port Conflict",
+            "status": "HTTP Port Conflict",
+        },
+        PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE: {
+            "title": "Telemetry Port In Use",
+            "message": (
+                "failed to start because the required UDP port is already in use.\n"
+                "Please close the conflicting app or setup forwarding to the current port in settings."
+            ),
+            "status": "UDP Port Conflict",
         },
         PNG_ERROR_CODE_UNKNOWN: {
             "title": "Unknown Error",
@@ -77,7 +86,8 @@ class PngAppMgrBase(ABC):
     DEFAULT_EXIT = EXIT_ERRORS[PNG_ERROR_CODE_UNKNOWN]
 
     def __init__(self,
-                 port_conflict_settings_field: str,
+                 http_port_conflict_settings_field: str,
+                 udp_port_conflict_settings_field: str,
                  module_path: str,
                  display_name: str,
                  start_by_default: bool,
@@ -86,7 +96,8 @@ class PngAppMgrBase(ABC):
                  args: list[str],
                  debug_mode: bool):
         """Initialize the sub-application
-        :param port_conflict_settings_field: Settings field to check for port conflicts
+        :param http_port_conflict_settings_field: Settings field to check for HTTP port conflicts
+        :param udp_port_conflict_settings_field: Settings field to check for UDP port conflicts
         :param module_path: Path to the sub-application module
         :param display_name: Display name for the sub-application
         :param start_by_default: Whether to start this app by default
@@ -95,7 +106,8 @@ class PngAppMgrBase(ABC):
         :param args: Additional Command line arguments to pass to the sub-application
         :param debug_mode: Whether to run the sub-application in debug mode
         """
-        self.port_conflict_settings_field = port_conflict_settings_field
+        self.http_port_conflict_settings_field = http_port_conflict_settings_field
+        self.udp_port_conflict_settings_field = udp_port_conflict_settings_field
         self.module_path = module_path
         self.display_name = display_name
         self.console_app = console_app
@@ -385,9 +397,13 @@ class PngAppMgrBase(ABC):
 
         info = self.EXIT_ERRORS.get(ret_code, self.DEFAULT_EXIT)
         err_msg = f"{self.display_name} {info['message']}"
+        self.console_app.info_log(f'{self.display_name} failed. error={err_msg}')
 
-        if info["status"] == "Port Conflict":
-            err_msg += f". Please fix the following field in the settings: {self.port_conflict_settings_field}"
+        status = info.get("status")
+        if status == "HTTP Port Conflict":
+            err_msg += f". Please fix the following field in the settings: {self.http_port_conflict_settings_field}"
+        elif status == "UDP Port Conflict":
+            err_msg += f". Please fix the following field in the settings: {self.udp_port_conflict_settings_field}"
         self.console_app.info_log(err_msg)
         messagebox.showerror(
             title=f"{self.display_name} - {info['title']}",

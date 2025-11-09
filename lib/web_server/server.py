@@ -22,7 +22,6 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import contextlib
 import logging
 import os
 import platform
@@ -41,8 +40,7 @@ from quart import request as quart_request
 from quart import send_from_directory as quart_send_from_directory
 from quart import url_for
 
-from lib.error_status import PngPortInUseError
-from lib.port_check import is_port_available
+from lib.error_status import PngHttpPortInUseError, is_port_in_use_error
 
 from .client_types import ClientType
 
@@ -271,11 +269,11 @@ class BaseWebServer:
         Run the web server asynchronously using Uvicorn.
 
         Sets up the server configuration and starts serving the application.
-        """
 
-        if not is_port_available(self.m_port):
-            self.m_logger.error(f"Port {self.m_port} is already in use")
-            raise PngPortInUseError()
+        Raises:
+            PngHttpPortInUseError: If the specified port is already in use.
+            OSError: If the server fails to start and error is not a port in use error.
+        """
 
         # Register post start callback before running
         @self.m_app.before_serving
@@ -284,14 +282,25 @@ class BaseWebServer:
             if self._post_start_callback:
                 await self._post_start_callback()
 
-        # Create a socket manually to set SO_REUSEADDR
+        # Create a socket manually
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+        # Platform-specific socket options:
+        # - Windows: SO_REUSEADDR allows multiple binds (unsafe), so we skip it entirely
+        # - Unix/Linux/macOS: SO_REUSEADDR allows binding to TIME_WAIT ports (safe for quick restart)
         if platform.system() != "Windows":
-            with contextlib.suppress(AttributeError, OSError):
-                # pylint: disable=useless-suppression
-                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1) # pylint: disable=no-member
-        sock.bind(("0.0.0.0", self.m_port))
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            # DO NOT set SO_REUSEPORT - it prevents proper port-in-use detection on Unix systems
+
+        try:
+            sock.bind(("0.0.0.0", self.m_port))
+        except OSError as e:
+            sock.close()
+            if is_port_in_use_error(e.errno):
+                self.m_logger.error(f"Port {self.m_port} is already in use")
+                raise PngHttpPortInUseError() from e
+            raise  # Re-raise if it's a different OSError
+
         sock.listen(1024)
         sock.setblocking(False)
 
