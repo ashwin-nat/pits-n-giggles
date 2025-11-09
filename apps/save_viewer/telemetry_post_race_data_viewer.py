@@ -33,6 +33,7 @@ from apps.save_viewer.save_viewer_state import init_state
 from apps.save_viewer.save_web_server import init_server_task
 from lib.child_proc_mgmt import report_pid_from_child
 from lib.config import load_config_from_ini
+from lib.error_status import PngError
 from lib.logger import get_logger
 from lib.version import get_version
 from meta.meta import APP_NAME
@@ -79,6 +80,10 @@ async def main(logger: logging.Logger, server_port: int, ipc_port: int, version:
         for task in tasks:
             task.cancel()
         raise  # Ensure proper cancellation behavior
+    except PngError as e:
+        logger.error(f"Terminating due to Error: {e} with code {e.exit_code}")
+        sys.exit(e.exit_code)
+
 
 def entry_point():
     """Entry point"""

@@ -59,7 +59,8 @@ class BackendAppMgr(PngAppMgrBase):
         self.port = settings.Network.server_port
         self.proto = settings.HTTPS.proto
         super().__init__(
-            port_conflict_settings_field='Network -> "Pits n\' Giggles HTTP Server Port"',
+            http_port_conflict_settings_field='Network -> "Pits n\' Giggles HTTP Server Port"',
+            udp_port_conflict_settings_field='Network -> "F1 UDP Telemetry Port"',
             module_path="apps.backend",
             display_name="Server",
             start_by_default=True, # TODO: revert
