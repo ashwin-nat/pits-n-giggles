@@ -107,33 +107,38 @@ class OverlaysMgr:
 
     def on_locked_state_change(self, args: Dict[str, bool]):
         """Handle locked state change"""
-        self.window_manager.set_locked_state_all(args)
-        locked_value = args.get('new-value')
-        if not locked_value:
-            return
+        pass
+        # self.window_manager.set_locked_state_all(args)
+        # locked_value = args.get('new-value')
+        # if not locked_value:
+        #     return
 
-        changed = False
-        for window_id, window_params in self.config.items():
-            curr_params = self.window_manager.get_window_info(window_id)
-            if curr_params != window_params:
-                self.logger.debug(f"Updating config for window '{window_id}' to {curr_params}")
-                self.config[window_id] = curr_params
-                changed = True
+        # changed = False
+        # for window_id, window_params in self.config.items():
+        #     curr_params = self.window_manager.get_window_info(window_id)
+        #     if curr_params != window_params:
+        #         self.logger.debug(f"Updating config for window '{window_id}' to {curr_params}")
+        #         self.config[window_id] = curr_params
+        #         changed = True
 
-        if changed:
-            self._save_config()
+        # if changed:
+        #     self._save_config()
 
     def race_table_update(self, data):
         """Handle race table update"""
-        self.window_manager.broadcast_data(data)
+        self.window_manager.broadcast_data({
+            'cmd': 'race_table_update',
+            'data': data
+        })
 
     def toggle_overlays_visibility(self):
         """Toggle overlays visibility"""
-        if self.debouncer.onButtonPress("toggle_overlays_visibility"):
-            self.logger.debug("Toggling overlays visibility")
-            self.window_manager.toggle_visibility_all()
-        else:
-            self.logger.debug("Not toggling overlays visibility. Reason: debounce")
+        pass
+        # if self.debouncer.onButtonPress("toggle_overlays_visibility"):
+        #     self.logger.debug("Toggling overlays visibility")
+        #     self.window_manager.toggle_visibility_all()
+        # else:
+        #     self.logger.debug("Not toggling overlays visibility. Reason: debounce")
 
     def stop(self):
         """Stop the overlays manager"""

@@ -25,7 +25,7 @@
 import logging
 from abc import abstractmethod
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QMouseEvent
 from PySide6.QtWidgets import QWidget
 
@@ -107,9 +107,10 @@ class BaseOverlay(QWidget):
         """Subclasses must implement this to build their layout."""
         raise NotImplementedError
 
-    def update_data(self, data):
+    @Slot(dict)
+    def update_data(self, data: dict):
         """Subclasses implement to refresh their displayed data."""
-        raise NotImplementedError
+        self.logger.debug(f"Received data. cmd: {data.get('cmd', 'N/A')}")
 
     # --------------------------------------------------------------------------
     # Mouse interactions (dragging + resizing only)

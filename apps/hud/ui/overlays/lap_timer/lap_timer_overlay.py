@@ -71,8 +71,8 @@ class LapTimerOverlay(BaseOverlay):
         row.addWidget(label)
         return row
 
-    def update_data(self, data: dict):
-        self.logger.debug(f'<<LAP_TIMER>> Received data')
+    # def update_data(self, data: dict):
+    #     self.logger.debug(f'<<LAP_TIMER>> Received data')
         # # Dummy data for sector status
         # sector_status = [random.randint(0, 3) for _ in range(3)]
         # self.sector_bar.set_sector_status(sector_status)
