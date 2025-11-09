@@ -25,9 +25,10 @@
 import logging
 from typing import Any, Dict, Optional
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QBrush, QColor, QFont
-from PySide6.QtWidgets import (QHeaderView, QLabel, QTableWidget,
+from PySide6.QtCore import QModelIndex, Qt
+from PySide6.QtGui import QBrush, QColor, QFont, QPainter
+from PySide6.QtWidgets import (QHeaderView, QLabel, QStyledItemDelegate,
+                               QStyleOptionViewItem, QTableWidget,
                                QTableWidgetItem, QVBoxLayout, QWidget)
 
 from apps.hud.ui.infra.config import OverlaysConfig
@@ -35,6 +36,53 @@ from apps.hud.ui.overlays.base import BaseOverlay
 from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
+
+class ERSDelegate(QStyledItemDelegate):
+    """Custom delegate to paint ERS cell with vertical color bar"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.ers_colours = {
+            "None": QColor("#888888"),
+            "Medium": QColor("#ffff00"),
+            "Hotlap": QColor("#00ff00"),
+            "Overtake": QColor("#ff0000")
+        }
+
+    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex) -> None:
+        # Get the ERS mode color from item data
+        ers_mode_color = index.data(Qt.UserRole)
+
+        if ers_mode_color is None:
+            super().paint(painter, option, index)
+            return
+
+        painter.save()
+
+        # Fill background FIRST
+        bg_color = QColor(25, 25, 25, 180)
+        painter.fillRect(option.rect, bg_color)
+
+        # Draw vertical bar on the left (15% width) ON TOP of background
+        bar_width = int(option.rect.width() * 0.15)
+        bar_rect = option.rect.adjusted(0, 0, -option.rect.width() + bar_width, 0)
+        painter.fillRect(bar_rect, ers_mode_color)
+
+        # Draw text in the remaining space (after the color bar)
+        painter.setPen(QColor("white"))
+
+        # Get font from item data or create a new one
+        font = index.data(Qt.FontRole)
+        if not font:
+            font = QFont()
+        font.setPointSize(11)  # Match the size from _create_table_item
+        font.setBold(True)
+        painter.setFont(font)
+
+        text_rect = option.rect.adjusted(bar_width, 0, 0, 0)
+        painter.drawText(text_rect, Qt.AlignCenter, index.data(Qt.DisplayRole))
+
+        painter.restore()
 
 class TimingTowerOverlay(BaseOverlay):
 
@@ -50,13 +98,18 @@ class TimingTowerOverlay(BaseOverlay):
         self.session_info_label: Optional[QLabel] = None
         self.timing_table: Optional[QTableWidget] = None
 
-        # Tyre compound colors
-        self.tyre_colors = {
+        self.tyre_colours = {
             "SOFT": QColor("#ff0000"),
             "MEDIUM": QColor("#ffff00"),
             "HARD": QColor("#ffffff"),
             "INTERMEDIATE": QColor("#00ff00"),
             "WET": QColor("#0000ff")
+        }
+        self.ers_colours = {
+            "None": QColor("#888888"),
+            "Medium": QColor("#ffff00"),
+            "Hotlap": QColor("#00ff00"),
+            "Overtake": QColor("#ff0000")
         }
 
         super().__init__("lap_timer", config, logger, locked)
@@ -149,6 +202,9 @@ class TimingTowerOverlay(BaseOverlay):
         for i in range(self.total_rows):
             self.timing_table.setRowHeight(i, 32)
 
+        # Set custom delegate for ERS column (column 4)
+        self.timing_table.setItemDelegateForColumn(4, ERSDelegate(self.timing_table))
+
         # Set fixed size for table to fit all rows without resizing issues
         table_width = 40 + 140 + 90 + 75 + 75 + 20  # columns + margins
         table_height = 32 * self.total_rows + 4  # row height * rows + small margin
@@ -213,7 +269,7 @@ class TimingTowerOverlay(BaseOverlay):
         return item
 
     def _update_row(self, row_idx: int, position: int, name: str, delta: Optional[float],
-                   tyre: str, ers: float, is_player: bool = False):
+                   tyre: str, ers_mode: str, ers: float, is_player: bool = False):
         """Update a specific row in the timing table"""
 
         # Position
@@ -240,15 +296,19 @@ class TimingTowerOverlay(BaseOverlay):
 
         # Tyre compound
         tyre_display = tyre[:1] if tyre else "--"
-        tyre_color = self.tyre_colors.get(tyre, QColor("#cccccc"))
+        tyre_color = self.tyre_colours.get(tyre, QColor("#cccccc"))
         tyre_item = self._create_table_item(tyre_display, Qt.AlignCenter,
                                            tyre_color, bold=True)
         self.timing_table.setItem(row_idx, 3, tyre_item)
 
-        # ERS
+        # ERS with mode color bar
         ers_text = f"{F1Utils.formatFloat(ers, precision=0, signed=False)}%"
-        ers_item = self._create_table_item(ers_text, Qt.AlignCenter,
-                                          QColor("#ffaa00"), bold=True)
+        ers_item = self._create_table_item(ers_text, Qt.AlignCenter)
+
+        # Store ERS mode color in item data for the delegate to use
+        ers_mode_color = self.ers_colours.get(ers_mode, QColor("#888888"))
+        ers_item.setData(Qt.UserRole, ers_mode_color)
+
         self.timing_table.setItem(row_idx, 4, ers_item)
 
         # Highlight player row
@@ -303,9 +363,10 @@ class TimingTowerOverlay(BaseOverlay):
                     is_player = row_data.get("driver-info", {}).get("is-player", False)
                     delta = row_data.get("delta-info", {}).get("delta-to-car-in-front")
                     tyre = row_data.get("tyre-info", {}).get("visual-tyre-compound", "UNKNOWN")
-                    ers = row_data.get("ers-info", {}).get("ers-percent-float", 0.0)
+                    ers_mode = row_data.get("ers-info", {}).get("ers-mode", "None")
+                    ers_perc = row_data.get("ers-info", {}).get("ers-percent-float", 0.0)
 
-                    self._update_row(idx, position, name, delta, tyre, ers, is_player)
+                    self._update_row(idx, position, name, delta, tyre, ers_mode, ers_perc, is_player)
 
     def clear(self):
         """Clear all timing data"""
