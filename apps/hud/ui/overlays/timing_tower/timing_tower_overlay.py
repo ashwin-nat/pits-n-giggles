@@ -301,12 +301,10 @@ class TimingTowerOverlay(BaseOverlay):
         self.timing_table.setItem(row_idx, 1, name_item)
 
         # Delta
-        if delta is not None and delta > 0:
-            delta_text = f"{F1Utils.formatFloat(delta/1000, precision=3, signed=True)}"
-        elif delta == 0 or delta is None:
-            delta_text = "--.-"
+        if is_player or delta == 0 or delta is None:
+            delta_text = "---"
         else:
-            delta_text = f"{delta:.3f}"
+            delta_text = f"{F1Utils.formatFloat(delta/1000, precision=3, signed=True)}"
 
         delta_item = self._create_table_item(delta_text, Qt.AlignCenter,
                                             QColor("#00ff99"), font_family="Courier New")
@@ -356,7 +354,8 @@ class TimingTowerOverlay(BaseOverlay):
         @self.on_command("race_table_update")
         def handle_race_update(data: Dict[str, Any]) -> None:
 
-            relevant_rows = self._get_relevant_race_table_rows(data, self.num_adjacent_cars)
+            relevant_rows, ref_index = self._get_relevant_race_table_rows(data, self.num_adjacent_cars)
+            self._insert_relative_deltas(relevant_rows, ref_index)
             session_type = data.get("event-type", "N/A")
 
             # Update header with session type
@@ -392,7 +391,7 @@ class TimingTowerOverlay(BaseOverlay):
                         position = row_data.get("driver-info", {}).get("position", 0)
                         name = row_data.get("driver-info", {}).get("name", "UNKNOWN")
                         is_player = row_data.get("driver-info", {}).get("is-player", False)
-                        delta = row_data.get("delta-info", {}).get("delta-to-car-in-front")
+                        delta = row_data.get("delta-info", {}).get("relative-delta", 0)
                         tyre_compound = row_data.get("tyre-info", {}).get("visual-tyre-compound", "UNKNOWN")
                         tyre_age = row_data.get("tyre-info", {}).get("tyre-age", 0)
                         ers_mode = row_data.get("ers-info", {}).get("ers-mode", "None")
@@ -414,13 +413,13 @@ class TimingTowerOverlay(BaseOverlay):
 
         if len(table_entries) == 0:
             # Normal before session start, when no data is available
-            return []
+            return [], None
 
         ref_index = self._get_ref_row_index(data)
 
         if ref_index is None:
             self.logger.warning('<<TIMING_TOWER>> Reference index is None!')
-            return []
+            return [], None
 
         ref_position = table_entries[ref_index]["driver-info"]["position"]
         total_cars = len(table_entries)
@@ -428,14 +427,14 @@ class TimingTowerOverlay(BaseOverlay):
 
         if lower_bound is None:
             self.logger.warning('<<TIMING_TOWER>> Lower bound is None!')
-            return []
+            return [], None
 
         # Sort the list by position before computing relevant positions and update rejoin positions
         sorted_table_entries = sorted(table_entries, key=lambda x: x.get("driver-info", {}).get("position", 999))
 
         lower_index = lower_bound - 1
         result = sorted_table_entries[lower_index:upper_bound] # since upper bound is exclusive
-        return result
+        return result, ref_index
 
     def _get_adjacent_positions(self, position, total_cars, num_adjacent_cars):
         if not (1 <= position <= total_cars):
@@ -470,3 +469,38 @@ class TimingTowerOverlay(BaseOverlay):
     def _should_show_lap_number(self, session_type: str) -> bool:
         unsupported_session_types = ['Qualifying', 'Practice', 'Shootout']
         return not any(sub in session_type for sub in unsupported_session_types)
+
+    def _insert_relative_deltas(self, relevant_rows, ref_index) -> None:
+        if ref_index is None:
+            return
+
+        # Map driver index → position in relevant_rows
+        index_to_pos = {
+            row["driver-info"]["index"]: i for i, row in enumerate(relevant_rows)
+        }
+
+        ref_pos = index_to_pos.get(ref_index)
+        if ref_pos is None:
+            return
+
+        # For each car, sum the deltas between it and the reference car;
+        # cars ahead get negative values, cars behind get positive values.
+        for i, row in enumerate(relevant_rows):
+            if i == ref_pos:
+                row["delta-info"]["relative-delta"] = 0.0
+                continue
+
+            if i < ref_pos:
+                # Car(s) ahead of reference
+                total_delta = sum(
+                    relevant_rows[j + 1]["delta-info"]["delta-to-car-in-front"]
+                    for j in range(i, ref_pos)
+                )
+                row["delta-info"]["relative-delta"] = -total_delta
+            else:
+                # Car(s) behind reference
+                total_delta = sum(
+                    relevant_rows[j + 1]["delta-info"]["delta-to-car-in-front"]
+                    for j in range(ref_pos, i)
+                )
+                row["delta-info"]["relative-delta"] = total_delta
