@@ -22,12 +22,16 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from PySide6.QtWidgets import QLabel, QVBoxLayout, QHBoxLayout
-from PySide6.QtGui import QFont
-from apps.hud.ui.overlays.base import BaseOverlay
-from .sector_status_bar import SectorStatusBar
-from apps.hud.ui.infra.config import OverlaysConfig
 import logging
+from typing import Any, Dict
+
+from PySide6.QtGui import QFont
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout
+
+from apps.hud.ui.infra.config import OverlaysConfig
+from apps.hud.ui.overlays.base import BaseOverlay
+
+from .sector_status_bar import SectorStatusBar
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -35,6 +39,7 @@ class LapTimerOverlay(BaseOverlay):
 
     def __init__(self, config: OverlaysConfig, logger: logging.Logger, locked: bool = False):
         super().__init__("lap_timer", config, logger, locked)
+        self._init_cmd_handlers()
 
     def build_ui(self):
 
@@ -74,6 +79,12 @@ class LapTimerOverlay(BaseOverlay):
         row.addWidget(lbl)
         row.addWidget(label)
         return row
+
+    def _init_cmd_handlers(self):
+
+        @self.on_command("race_table_update")
+        def handle_race_update(data: Dict[str, Any]) -> None:
+            self.logger.debug(f'<<LAP_TIMER>> Received data')
 
     # def update_data(self, data: dict):
     #     self.logger.debug(f'<<LAP_TIMER>> Received data')

@@ -23,13 +23,17 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
-from abc import abstractmethod
+from typing import Any, Callable, Dict
 
 from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QMouseEvent
 from PySide6.QtWidgets import QWidget
 
 from apps.hud.ui.infra.config import OverlaysConfig
+
+# -------------------------------------- TYPES -------------------------------------------------------------------------
+
+OverlayCommandHandler = Callable[[Dict[str, Any]], None] # Takes dict arg, returns None
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -43,6 +47,7 @@ class BaseOverlay(QWidget):
         self.locked = locked
         self.logger = logger
         self._drag_pos = None
+        self._command_handlers: Dict[str, OverlayCommandHandler] = {}  # per-instance command registry
         self._setup_window()
         self.build_ui()
         self.apply_config()
@@ -108,12 +113,31 @@ class BaseOverlay(QWidget):
         """Subclasses must implement this to build their layout."""
         raise NotImplementedError
 
+    # --------------------------------------------------------------------------
+    # Command infra
+    # --------------------------------------------------------------------------
+    def on_command(self, cmd_name: str):
+        """Flask-style decorator for registering command handlers."""
+        def decorator(func: OverlayCommandHandler):
+            self._command_handlers[cmd_name] = func
+            return func
+        return decorator
+
     @Slot(str, str, dict)
     def _handle_cmd(self, recipient: str, cmd: str, data: dict):
-        """Subclasses implement to refresh their displayed data."""
-        self.logger.debug(f"Received data. recipient: {recipient}, cmd: {cmd}")
-        if ('' == recipient) or (recipient == self.id):
-            self.logger.debug(f"Handling data. cmd: {cmd}")
+        """Internal command dispatcher for overlays."""
+        if recipient and recipient != self.overlay_id:
+            return  # Not for this overlay
+
+        handler = self._command_handlers.get(cmd)
+        if handler:
+            self.logger.debug(f"{self.overlay_id} | Dispatching command '{cmd}' to {handler.__name__}")
+            try:
+                handler(data)
+            except Exception as e:
+                self.logger.exception(f"{self.overlay_id} | Error handling command '{cmd}': {e}")
+        else:
+            self.logger.debug(f"{self.overlay_id} | No handler registered for command '{cmd}'")
 
     # --------------------------------------------------------------------------
     # Mouse interactions (dragging + resizing only)
