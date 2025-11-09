@@ -283,6 +283,8 @@ class TimingTowerOverlay(BaseOverlay):
             }
         """)
 
+        self.clear()
+
     def _init_cmd_handlers(self):
 
         @self.on_command("race_table_update")
@@ -295,7 +297,10 @@ class TimingTowerOverlay(BaseOverlay):
             self.header_label.setText(f"{session_type.upper()}")
 
             # Update session info (lap or time)
-            if self._should_show_lap_number(session_type):
+            if session_type == 'None':
+                self.header_label.setText("TIMING TOWER")
+                self.session_info_label.setText("----")
+            elif self._should_show_lap_number(session_type):
                 current_lap = data.get("current-lap", 0)
                 total_laps = data.get("total-laps", 0)
                 self.session_info_label.setText(f"LAP {current_lap} / {total_laps}")
