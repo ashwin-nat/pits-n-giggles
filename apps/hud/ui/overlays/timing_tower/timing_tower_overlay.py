@@ -118,13 +118,18 @@ class TimingTowerOverlay(BaseOverlay):
     def build_ui(self):
         """Build the timing tower UI"""
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setContentsMargins(5, 5, 5, 5)  # Equal margins on all sides
         main_layout.setSpacing(5)
+        main_layout.setAlignment(Qt.AlignCenter)  # Center align the content
+
+        # Calculate the exact content width for both header and table
+        content_width = 40 + 140 + 90 + 75 + 75  # Sum of column widths
 
         # Header section
         header_widget = QWidget()
+        header_widget.setFixedWidth(content_width)  # Match table width
         header_layout = QVBoxLayout(header_widget)
-        header_layout.setContentsMargins(5, 5, 5, 5)
+        header_layout.setContentsMargins(0, 5, 0, 5)  # Remove side margins
         header_layout.setSpacing(3)
 
         # Session type header
@@ -205,10 +210,13 @@ class TimingTowerOverlay(BaseOverlay):
         # Set custom delegate for ERS column (column 4)
         self.timing_table.setItemDelegateForColumn(4, ERSDelegate(self.timing_table))
 
-        # Set fixed size for table to fit all rows without resizing issues
-        table_width = 40 + 140 + 90 + 75 + 75 + 20  # columns + margins
+        # Set fixed size for table to match content width
         table_height = 32 * self.total_rows + 4  # row height * rows + small margin
-        self.timing_table.setFixedSize(table_width, table_height)
+        self.timing_table.setFixedSize(content_width, table_height)
+
+        # Remove table frame and margins
+        self.timing_table.setFrameShape(QTableWidget.NoFrame)
+        self.timing_table.setContentsMargins(0, 0, 0, 0)
 
         # Apply clean styling
         self.timing_table.setStyleSheet("""
