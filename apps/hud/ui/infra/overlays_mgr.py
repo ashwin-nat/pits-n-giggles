@@ -107,14 +107,14 @@ class OverlaysMgr:
 
     def on_locked_state_change(self, args: Dict[str, bool]):
         """Handle locked state change"""
-        self.window_manager.set_locked_state_all(args)
+        self.window_manager.broadcast_data('set_locked_state', args)
         locked_value = args.get('new-value')
         if not locked_value:
             return
 
         changed = False
         for window_id in list(self.window_manager.overlays.keys()):
-            curr_params = self.window_manager.get_window_info_threadsafe(window_id)
+            curr_params = self._get_window_info_threadsafe(window_id)
             self.logger.debug(f"Current config for window '{window_id}' is {curr_params}")
             saved_params = self.config[window_id]
             if curr_params != saved_params:
@@ -133,7 +133,7 @@ class OverlaysMgr:
         """Toggle overlays visibility"""
         if self.debouncer.onButtonPress("toggle_overlays_visibility"):
             self.logger.debug("Toggling overlays visibility")
-            self.window_manager.toggle_visibility_all()
+            self.window_manager.broadcast_data('toggle_visibility', {})
         else:
             self.logger.debug("Not toggling overlays visibility. Reason: debounce")
 
@@ -194,3 +194,8 @@ class OverlaysMgr:
                 self.logger.error(f"Failed to load config file: {e}. Falling back to default config")
 
         return None
+
+    def _get_window_info_threadsafe(self, window_id: str, timeout_ms: int = 5000) -> Optional[OverlaysConfig]:
+        """Thread-safe query for specific window info."""
+        self.logger.debug(f"Requesting window info for {window_id}")
+        return self.window_manager.request(window_id, "get_window_info", timeout_ms=timeout_ms)

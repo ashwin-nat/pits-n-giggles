@@ -91,14 +91,6 @@ class WindowManager(QObject):
             del self.overlays[window_id]
             self.logger.debug(f"Unregistered overlay {window_id}")
 
-    def set_locked_state_all(self, args: Dict[str, bool]):
-        """Set locked state for all overlays."""
-        self.broadcast_data('set_locked_state', args)
-
-    def toggle_visibility_all(self):
-        """Toggle visibility for all overlays."""
-        self.broadcast_data('toggle_visibility', {})
-
     @Slot(str, str, dict)
     def _handle_request(self, recipient: str, request_type: str, request_data: dict):
         """Handle requests on GUI thread - manager-level requests only."""
@@ -145,21 +137,6 @@ class WindowManager(QObject):
             else:
                 self.logger.warning(f"Request timeout: {request_type} to {recipient or 'manager'}")
                 return None
-
-    # Convenience methods
-    def get_window_info_threadsafe(self, window_id: str, timeout_ms: int = 5000) -> Optional[OverlaysConfig]:
-        """Thread-safe query for specific window info."""
-        self.logger.debug(f"Requesting window info for {window_id}")
-        return self.request(window_id, "get_window_info", timeout_ms=timeout_ms)
-
-    def get_all_window_info_threadsafe(self, timeout_ms: int = 5000) -> Dict[str, OverlaysConfig]:
-        """Thread-safe query for all window info."""
-        result = {}
-        for window_id in list(self.overlays.keys()):
-            window_info = self.get_window_info_threadsafe(window_id, timeout_ms)
-            if window_info is not None:
-                result[window_id] = window_info
-        return result
 
     # Keep existing methods for GUI thread use
     def broadcast_data(self, cmd: str, data: dict):
