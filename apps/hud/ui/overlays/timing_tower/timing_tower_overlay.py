@@ -136,9 +136,9 @@ class TimingTowerOverlay(BaseOverlay):
         # Set column widths
         self.timing_table.setColumnWidth(0, 40)   # Position
         self.timing_table.setColumnWidth(1, 140)  # Driver name
-        self.timing_table.setColumnWidth(2, 85)   # Delta (increased for 6 chars)
-        self.timing_table.setColumnWidth(3, 45)   # Tyre
-        self.timing_table.setColumnWidth(4, 55)   # ERS
+        self.timing_table.setColumnWidth(2, 90)   # Delta (increased for 6 chars)
+        self.timing_table.setColumnWidth(3, 75)   # Tyre
+        self.timing_table.setColumnWidth(4, 75)   # ERS
 
         # Configure header
         header = self.timing_table.horizontalHeader()
@@ -150,7 +150,7 @@ class TimingTowerOverlay(BaseOverlay):
             self.timing_table.setRowHeight(i, 32)
 
         # Set fixed size for table to fit all rows without resizing issues
-        table_width = 40 + 140 + 85 + 45 + 55 + 20  # columns + margins
+        table_width = 40 + 140 + 90 + 75 + 75 + 20  # columns + margins
         table_height = 32 * self.total_rows + 4  # row height * rows + small margin
         self.timing_table.setFixedSize(table_width, table_height)
 
