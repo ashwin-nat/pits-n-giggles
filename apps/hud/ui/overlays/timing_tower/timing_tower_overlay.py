@@ -287,7 +287,7 @@ class TimingTowerOverlay(BaseOverlay):
         return item
 
     def _update_row(self, row_idx: int, position: int, name: str, delta: Optional[float],
-                   tyre: str, ers_mode: str, ers: float, is_player: bool = False):
+                   tyre_compound: str, tyre_age: int, ers_mode: str, ers: float, is_player: bool = False):
         """Update a specific row in the timing table"""
 
         # Position
@@ -313,8 +313,17 @@ class TimingTowerOverlay(BaseOverlay):
         self.timing_table.setItem(row_idx, 2, delta_item)
 
         # Tyre compound
-        tyre_display = tyre[:1] if tyre else "--"
-        tyre_item = self._create_table_item(tyre_display, Qt.AlignCenter, bold=True)
+        tyre_icon = self.icon_mappings.get(tyre_compound)
+        tyre_text = f"{tyre_age}L"
+        if tyre_icon and not tyre_icon.isNull():
+            # Icon found -> show icon + text (e.g., "5L")
+            tyre_item = QTableWidgetItem(tyre_icon, tyre_text)
+        else:
+            # No icon -> show fallback display text (first letter or "--")
+            tyre_display = (f"{tyre_compound[:1]}({tyre_text})") if tyre_compound else "--"
+            tyre_item = self._create_table_item(tyre_display, Qt.AlignCenter, bold=True)
+
+        tyre_item.setTextAlignment(Qt.AlignCenter)
         self.timing_table.setItem(row_idx, 3, tyre_item)
 
         # ERS with mode color bar
@@ -384,11 +393,12 @@ class TimingTowerOverlay(BaseOverlay):
                         name = row_data.get("driver-info", {}).get("name", "UNKNOWN")
                         is_player = row_data.get("driver-info", {}).get("is-player", False)
                         delta = row_data.get("delta-info", {}).get("delta-to-car-in-front")
-                        tyre = row_data.get("tyre-info", {}).get("visual-tyre-compound", "UNKNOWN")
+                        tyre_compound = row_data.get("tyre-info", {}).get("visual-tyre-compound", "UNKNOWN")
+                        tyre_age = row_data.get("tyre-info", {}).get("tyre-age", 0)
                         ers_mode = row_data.get("ers-info", {}).get("ers-mode", "None")
                         ers_perc = row_data.get("ers-info", {}).get("ers-percent-float", 0.0)
 
-                        self._update_row(idx, position, name, delta, tyre, ers_mode, ers_perc, is_player)
+                        self._update_row(idx, position, name, delta, tyre_compound, tyre_age, ers_mode, ers_perc, is_player)
 
     def clear(self):
         """Clear all timing data"""
