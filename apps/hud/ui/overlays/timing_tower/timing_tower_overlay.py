@@ -360,7 +360,8 @@ class TimingTowerOverlay(BaseOverlay):
             self.logger.warning(f'<<TIMING_TOWER>> Lower bound is None!')
             return []
 
-        result = sorted_table_entries[lower_bound:upper_bound]
+        lower_index = lower_bound - 1
+        result = sorted_table_entries[lower_index:upper_bound] # since upper bound is exclusive
         return result
 
     def _get_adjacent_positions(self, position, total_cars, num_adjacent_cars):
@@ -394,5 +395,5 @@ class TimingTowerOverlay(BaseOverlay):
         return lower_bound, upper_bound
 
     def _should_show_lap_number(self, session_type: str) -> bool:
-        unsupported_session_types = ['Qualifying', 'Practice', 'Sprint Shootout']
-        return session_type not in unsupported_session_types
+        unsupported_session_types = ['Qualifying', 'Practice', 'Shootout']
+        return not any(sub in session_type for sub in unsupported_session_types)
