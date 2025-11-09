@@ -126,6 +126,10 @@ class LapTimerOverlay(BaseOverlay):
                 # Display last lap
                 display_time_ms = last_lap["lap-time-ms"]
                 display_sector_status = last_lap["sector-status"]
+            elif data.get("race-ended"):
+                # Race over, display last lap
+                display_time_ms = last_lap["lap-time-ms"]
+                display_sector_status = last_lap["sector-status"]
             else:
                 # Display current lap
                 display_time_ms = curr_lap["lap-time-ms"]
