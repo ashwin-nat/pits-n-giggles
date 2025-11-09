@@ -22,22 +22,12 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import base64
-import ctypes
 import json
 import logging
-import os
-import time
-import traceback
-from threading import Lock, Thread
 from typing import Dict, Optional, Any
-
-import win32con
-import win32gui
 
 from PySide6.QtCore import QObject, Signal, Slot, QMutex, QWaitCondition, QMutexLocker
 
-from .config import OverlaysConfig
 from apps.hud.ui.overlays import BaseOverlay
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -91,8 +81,9 @@ class WindowManager(QObject):
             del self.overlays[window_id]
             self.logger.debug(f"Unregistered overlay {window_id}")
 
+    # pylint: disable=useless-return
     @Slot(str, str, dict)
-    def _handle_request(self, recipient: str, request_type: str, request_data: dict):
+    def _handle_request(self, recipient: str, _request_type: str, _request_data: dict):
         """Handle requests on GUI thread - manager-level requests only."""
         if recipient:
             return  # Overlay-specific requests handled by overlay
@@ -134,9 +125,8 @@ class WindowManager(QObject):
             # Wait for response
             if self._response_condition.wait(self._response_mutex, timeout_ms):
                 return self._response_data
-            else:
-                self.logger.warning(f"Request timeout: {request_type} to {recipient or 'manager'}")
-                return None
+            self.logger.warning(f"Request timeout: {request_type} to {recipient or 'manager'}")
+            return None
 
     # Keep existing methods for GUI thread use
     def broadcast_data(self, cmd: str, data: dict):

@@ -23,17 +23,15 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional
 
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QFont, QColor, QBrush
-from PySide6.QtWidgets import (QHBoxLayout, QLabel, QVBoxLayout, QWidget,
-                                QFrame, QSizePolicy, QTableWidget, QTableWidgetItem,
-                                QHeaderView)
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QBrush, QColor, QFont
+from PySide6.QtWidgets import (QHeaderView, QLabel, QTableWidget,
+                               QTableWidgetItem, QVBoxLayout, QWidget)
 
 from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays.base import BaseOverlay
-
 from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -327,7 +325,7 @@ class TimingTowerOverlay(BaseOverlay):
         ref_index = self._get_ref_row_index(data)
 
         if ref_index is None:
-            self.logger.warning(f'<<TIMING_TOWER>> Reference index is None!')
+            self.logger.warning('<<TIMING_TOWER>> Reference index is None!')
             return []
 
         ref_position = table_entries[ref_index]["driver-info"]["position"]
@@ -335,7 +333,7 @@ class TimingTowerOverlay(BaseOverlay):
         lower_bound, upper_bound = self._get_adjacent_positions(ref_position, total_cars, num_adjacent_cars)
 
         if lower_bound is None:
-            self.logger.warning(f'<<TIMING_TOWER>> Lower bound is None!')
+            self.logger.warning('<<TIMING_TOWER>> Lower bound is None!')
             return []
 
         # Sort the list by position before computing relevant positions and update rejoin positions

@@ -29,6 +29,7 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
+import math
 from abc import abstractmethod
 from typing import List, Optional, Set
 
@@ -1239,7 +1240,7 @@ class F1Utils:
         if not isinstance(float_number, (int, float)) or isinstance(float_number, bool):
             return "N/A"
 
-        if float_number != float_number:  # check for NaN
+        if math.isnan(float_number):
             return "N/A"
 
         float_str = f"{float_number:.{precision}f}"

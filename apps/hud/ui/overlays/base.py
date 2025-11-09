@@ -175,7 +175,7 @@ class BaseOverlay(QWidget):
                 response = handler(parsed_data)
                 # Emit response back through window manager
                 self.response_signal.emit(request_type, response)
-            except Exception as e:
+            except Exception as e: # pylint: disable=broad-except
                 self.logger.exception(f"{self.overlay_id} | Error handling request '{request_type}': {e}")
         else:
             self.logger.debug(f"{self.overlay_id} | No handler for request '{request_type}'")
@@ -192,7 +192,7 @@ class BaseOverlay(QWidget):
             parsed_data = json.loads(data)
             try:
                 handler(parsed_data)
-            except Exception as e:
+            except Exception as e: # pylint: disable=broad-except
                 self.logger.exception(f"{self.overlay_id} | Error handling command '{cmd}': {e}")
         else:
             self.logger.warning(f"{self.overlay_id} | No handler registered for command '{cmd}'")
@@ -229,14 +229,13 @@ class BaseOverlay(QWidget):
         if is_spectating and spectator_index is not None:
             if 0 <= spectator_index < len(data["table-entries"]):
                 return spectator_index
-            else:
-                self.logger.warning(f"Warning: Spectator index {spectator_index} is out of bounds.")
-                return None
-        else:
-            for index, row in enumerate(data["table-entries"]):
-                if row.get("driver-info", {}).get("is-player") is True:
-                    return index
+            self.logger.warning(f"Warning: Spectator index {spectator_index} is out of bounds.")
             return None
+
+        for index, row in enumerate(data["table-entries"]):
+            if row.get("driver-info", {}).get("is-player") is True:
+                return index
+        return None
 
     def _get_ref_row(self, data: dict) -> dict:
         """Helper to get the reference row from incoming race table data."""

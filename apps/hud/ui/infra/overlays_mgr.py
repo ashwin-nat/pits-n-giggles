@@ -25,11 +25,10 @@
 import json
 import logging
 import os
-import time
 from typing import Dict, Optional
 
-from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QMetaObject, Qt
+from PySide6.QtWidgets import QApplication
 
 from apps.hud.ui.overlays import LapTimerOverlay, TimingTowerOverlay
 from lib.button_debouncer import ButtonDebouncer

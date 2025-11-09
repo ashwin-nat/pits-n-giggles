@@ -31,10 +31,9 @@ from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout
 
 from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays.base import BaseOverlay
+from lib.f1_types import F1Utils
 
 from .sector_status_bar import SectorStatusBar
-
-from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -121,18 +120,17 @@ class LapTimerOverlay(BaseOverlay):
                 # TODO - see if we can avoid this update
                 display_time_ms = last_lap["lap-time-ms"]
                 display_sector_status = last_lap["sector-status"]
-            else:
+            elif self.curr_lap_num and (self.curr_lap_num != incoming_lap_num):
                 # If lap number has changed, start timer to display current lap time
-                if self.curr_lap_num and (self.curr_lap_num != incoming_lap_num):
-                    self.logger.debug(f'<<LAP_TIMER>> Detected lap number change from {self.curr_lap_num} to {incoming_lap_num}')
-                    self._set_timer()
-                    # Display last lap
-                    display_time_ms = last_lap["lap-time-ms"]
-                    display_sector_status = last_lap["sector-status"]
-                else:
-                    # Display current lap
-                    display_time_ms = curr_lap["lap-time-ms"]
-                    display_sector_status = curr_lap["sector-status"]
+                self.logger.debug(f'<<LAP_TIMER>> Detected lap number change from {self.curr_lap_num} to {incoming_lap_num}')
+                self._set_timer()
+                # Display last lap
+                display_time_ms = last_lap["lap-time-ms"]
+                display_sector_status = last_lap["sector-status"]
+            else:
+                # Display current lap
+                display_time_ms = curr_lap["lap-time-ms"]
+                display_sector_status = curr_lap["sector-status"]
             self.curr_lap_num = incoming_lap_num
             self._update_curr_lap(display_time_ms)
             self.logger.debug(f'<<LAP_TIMER>> Updated current sector status {display_sector_status}')
@@ -165,7 +163,7 @@ class LapTimerOverlay(BaseOverlay):
         return self.curr_lap_display_timer.isActive()
 
     def _set_timer(self, interval_ms: int = 5000):
-        assert self.curr_lap_display_timer.isActive() == False, "Current lap display timer is already running"
+        assert not self.curr_lap_display_timer.isActive(), "Current lap display timer is already running"
         self.curr_lap_display_timer.setSingleShot(True)
         self.curr_lap_display_timer.timeout.connect(self._on_timer_expiry)
         self.curr_lap_display_timer.start(interval_ms)

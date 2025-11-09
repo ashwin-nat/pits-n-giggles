@@ -22,10 +22,11 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from PySide6.QtGui import QPainter, QColor
+from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QWidget
 
 from lib.f1_types import F1Utils
+
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 class SectorStatusBar(QWidget):
