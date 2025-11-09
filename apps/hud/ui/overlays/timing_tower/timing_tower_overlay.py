@@ -359,30 +359,37 @@ class TimingTowerOverlay(BaseOverlay):
                 seconds = int(time_remaining_sec % 60)
                 self.session_info_label.setText(f"TIME: {minutes:02d}:{seconds:02d}")
 
-            # Clear all rows first
-            for i in range(self.total_rows):
-                self._clear_row(i)
+            # If no data, hide all rows
+            if not relevant_rows:
+                for i in range(self.total_rows):
+                    self.timing_table.setRowHidden(i, True)
+            else:
+                # Show all rows and clear them first
+                for i in range(self.total_rows):
+                    self.timing_table.setRowHidden(i, False)
+                    self._clear_row(i)
 
-            # Populate rows with data
-            for idx, row_data in enumerate(relevant_rows):
-                if idx < self.total_rows:
-                    position = row_data.get("driver-info", {}).get("position", 0)
-                    name = row_data.get("driver-info", {}).get("name", "UNKNOWN")
-                    is_player = row_data.get("driver-info", {}).get("is-player", False)
-                    delta = row_data.get("delta-info", {}).get("delta-to-car-in-front")
-                    tyre = row_data.get("tyre-info", {}).get("visual-tyre-compound", "UNKNOWN")
-                    ers_mode = row_data.get("ers-info", {}).get("ers-mode", "None")
-                    ers_perc = row_data.get("ers-info", {}).get("ers-percent-float", 0.0)
+                # Populate rows with data
+                for idx, row_data in enumerate(relevant_rows):
+                    if idx < self.total_rows:
+                        position = row_data.get("driver-info", {}).get("position", 0)
+                        name = row_data.get("driver-info", {}).get("name", "UNKNOWN")
+                        is_player = row_data.get("driver-info", {}).get("is-player", False)
+                        delta = row_data.get("delta-info", {}).get("delta-to-car-in-front")
+                        tyre = row_data.get("tyre-info", {}).get("visual-tyre-compound", "UNKNOWN")
+                        ers_mode = row_data.get("ers-info", {}).get("ers-mode", "None")
+                        ers_perc = row_data.get("ers-info", {}).get("ers-percent-float", 0.0)
 
-                    self._update_row(idx, position, name, delta, tyre, ers_mode, ers_perc, is_player)
+                        self._update_row(idx, position, name, delta, tyre, ers_mode, ers_perc, is_player)
 
     def clear(self):
         """Clear all timing data"""
         self.header_label.setText("TIMING TOWER")
         self.session_info_label.setText("-- / --")
 
+        # Hide all rows when clearing
         for i in range(self.total_rows):
-            self._clear_row(i)
+            self.timing_table.setRowHidden(i, True)
 
     def _get_relevant_race_table_rows(self, data, num_adjacent_cars):
         table_entries = data.get("table-entries", [])
