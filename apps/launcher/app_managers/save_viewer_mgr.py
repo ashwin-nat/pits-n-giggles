@@ -45,7 +45,8 @@ class SaveViewerAppMgr(PngAppMgrBase):
         self.port = settings.Network.save_viewer_port
         self.args = args + ["--debug"] if debug_mode else (args or [])
         super().__init__(
-            port_conflict_settings_field='Network -> "Pits n\' Giggles Save Data Viewer Port"',
+            http_port_conflict_settings_field='Network -> "Pits n\' Giggles Save Data Viewer Port"',
+            udp_port_conflict_settings_field="N/A",
             module_path="apps.save_viewer",
             exe_name_without_ext="save_viewer",
             display_name="Save Viewer",

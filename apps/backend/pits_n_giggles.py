@@ -215,13 +215,17 @@ async def main(logger: logging.Logger, args: argparse.Namespace) -> None:
         args (argparse.Namespace): Parsed command-line arguments.
     """
 
-    app = PngRunner(
-        logger=logger,
-        config_file=args.config_file,
-        replay_server=args.replay_server,
-        debug_mode=args.debug,
-        ipc_port=args.ipc_port
-    )
+    try:
+        app = PngRunner(
+            logger=logger,
+            config_file=args.config_file,
+            replay_server=args.replay_server,
+            debug_mode=args.debug,
+            ipc_port=args.ipc_port
+        )
+    except PngError as e:
+        logger.error(f"Terminating due to Error: {e} with code {e.exit_code}")
+        sys.exit(e.exit_code)
     try:
         await app.run()
     except PngError as e:
