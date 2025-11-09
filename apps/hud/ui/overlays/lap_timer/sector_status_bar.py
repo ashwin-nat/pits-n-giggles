@@ -25,12 +25,17 @@
 from PySide6.QtGui import QPainter, QColor
 from PySide6.QtWidgets import QWidget
 
+from lib.f1_types import F1Utils
+
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 class SectorStatusBar(QWidget):
+
+    DEFAULT_SECTOR_STATUS = [F1Utils.SECTOR_STATUS_NA] * 3
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFixedHeight(10)
-        self.sector_status = [1, 2, 3]  # 0: neutral, 1: green, 2: purple, 3: red
+        self.sector_status = self.DEFAULT_SECTOR_STATUS
 
     def paintEvent(self, _event):
         painter = QPainter(self)
@@ -39,11 +44,13 @@ class SectorStatusBar(QWidget):
         width = self.width()
         sector_width = width / 3
 
+        # Make colours consistent with the bootstrap colours used in driver view
         colors = {
-            0: QColor(50, 50, 50),   # Neutral/Grey
-            1: QColor(0, 255, 0),    # Green (Best)
-            2: QColor(128, 0, 128),  # Purple (Personal Best)
-            3: QColor(255, 0, 0)     # Red (Worse)
+            F1Utils.SECTOR_STATUS_NA: QColor(0x6c, 0x75, 0x7d),
+            F1Utils.SECTOR_STATUS_YELLOW: QColor(0xff, 0xc1, 0x07),
+            F1Utils.SECTOR_STATUS_GREEN: QColor(0x28, 0xa7, 0x45),
+            F1Utils.SECTOR_STATUS_PURPLE: QColor(0x80, 0, 0x80),
+            F1Utils.SECTOR_STATUS_INVALID: QColor(0xdc, 0x35, 0x45)
         }
 
         for i, status in enumerate(self.sector_status):
