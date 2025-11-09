@@ -129,7 +129,7 @@ class WindowManager(QObject):
             self._response_received = False
 
             # Emit request
-            self.mgmt_request_signal.emit(recipient, request_type, json.dumps(request_data) or {})
+            self.mgmt_request_signal.emit(recipient, request_type, json.dumps(request_data,separators=(',', ':')) or {})
 
             # Wait for response
             if self._response_condition.wait(self._response_mutex, timeout_ms):
@@ -142,9 +142,9 @@ class WindowManager(QObject):
     def broadcast_data(self, cmd: str, data: dict):
         """Broadcast data to all registered overlays using signal."""
         # self.logger.debug(f"Broadcasting data to {len(self.overlays)} overlays")
-        self.mgmt_cmd_signal.emit('', cmd, json.dumps(data))
+        self.mgmt_cmd_signal.emit('', cmd, json.dumps(data, separators=(',', ':')))
 
     def unicast_data(self, overlay_id: str, cmd: str, data: dict):
         """Unicast data to a specific overlay using signal."""
         self.logger.debug(f"Unicasting data to overlay {overlay_id}")
-        self.mgmt_cmd_signal.emit(overlay_id, cmd, json.dumps(data))
+        self.mgmt_cmd_signal.emit(overlay_id, cmd, json.dumps(data, separators=(',', ':')))
