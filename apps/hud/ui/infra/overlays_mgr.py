@@ -45,8 +45,8 @@ _DEFAULT_OVERLAYS_CONFIG: Dict[str, OverlaysConfig] = {
     'lap_timer': OverlaysConfig(
         x=10,
         y=300,
-        width=280,
-        height=380,
+        width=190,
+        height=120,
     ),
     'timing_tower': OverlaysConfig(
         x=10,
