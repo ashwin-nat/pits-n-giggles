@@ -95,7 +95,6 @@ class LapTimerOverlay(BaseOverlay):
 
         @self.on_command("race_table_update")
         def handle_race_update(data: Dict[str, Any]) -> None:
-            # self.logger.debug(f'<<LAP_TIMER>> Received data')
             ref_row = self._get_ref_row(data)
             if not ref_row:
                 return
@@ -133,7 +132,6 @@ class LapTimerOverlay(BaseOverlay):
                 display_sector_status = curr_lap["sector-status"]
             self.curr_lap_num = incoming_lap_num
             self._update_curr_lap(display_time_ms)
-            self.logger.debug(f'<<LAP_TIMER>> Updated current sector status {display_sector_status}')
             self.sector_bar.set_sector_status(display_sector_status)
 
     def clear(self):
