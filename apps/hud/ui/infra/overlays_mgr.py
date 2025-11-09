@@ -29,6 +29,7 @@ import time
 from typing import Dict, Optional
 
 from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QMetaObject, Qt
 
 from apps.hud.ui.overlays import LapTimerOverlay
 from lib.button_debouncer import ButtonDebouncer
@@ -139,8 +140,12 @@ class OverlaysMgr:
 
     def stop(self):
         """Stop the overlays manager"""
-        self.window_manager.stop()
         self.running = False
+        QMetaObject.invokeMethod(
+            self.app,
+            "quit",
+            Qt.ConnectionType.QueuedConnection
+        )
 
     def _get_html_path_for_window(self, window_id: str) -> str:
         """Constructs the absolute path to the HTML file for a given window ID."""

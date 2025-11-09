@@ -190,7 +190,6 @@ class BaseOverlay(QWidget):
         handler = self._command_handlers.get(cmd)
         if handler:
             parsed_data = json.loads(data)
-            # self.logger.debug(f"{self.overlay_id} | Dispatching command '{cmd}' to {handler.__name__}")
             try:
                 handler(parsed_data)
             except Exception as e:
