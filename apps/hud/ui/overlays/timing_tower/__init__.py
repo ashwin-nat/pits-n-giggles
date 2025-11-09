@@ -22,14 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .base import BaseOverlay
-from .lap_timer import LapTimerOverlay
-from .timing_tower import TimingTowerOverlay
+from .timing_tower_overlay import TimingTowerOverlay
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    "BaseOverlay",
-    "LapTimerOverlay",
     "TimingTowerOverlay",
 ]

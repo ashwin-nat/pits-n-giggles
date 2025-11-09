@@ -31,7 +31,7 @@ from typing import Dict, Optional
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QMetaObject, Qt
 
-from apps.hud.ui.overlays import LapTimerOverlay
+from apps.hud.ui.overlays import LapTimerOverlay, TimingTowerOverlay
 from lib.button_debouncer import ButtonDebouncer
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import PngSettings
@@ -93,12 +93,14 @@ class OverlaysMgr:
         else:
             self.logger.debug("Lap timer overlay is disabled")
 
-        # if settings.HUD.show_timing_tower:
-        #     window_id = 'timingTower'
-        #     self._init_window_by_id(window_id)
-        #     self.logger.debug(f"Created window '{window_id}'")
-        # else:
-        #     self.logger.debug("Timing tower overlay is disabled")
+        if settings.HUD.show_timing_tower:
+            self.window_manager.register_overlay('timing_tower', TimingTowerOverlay(
+                self.config['timing_tower'],
+                self.logger,
+                locked=True
+            ))
+        else:
+            self.logger.debug("Timing tower overlay is disabled")
 
     def run(self):
         """Start the overlays manager"""

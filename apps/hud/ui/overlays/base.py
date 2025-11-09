@@ -217,9 +217,9 @@ class BaseOverlay(QWidget):
     # --------------------------------------------------------------------------
     # Data handling helpers
     # --------------------------------------------------------------------------
-    def _get_ref_row(self, data: dict) -> dict:
-        """Helper to get the reference row from incoming race table data."""
 
+    def _get_ref_row_index(self, data: dict) -> int:
+        """Helper to get the reference row index from incoming race table data."""
         if not data or "table-entries" not in data or not data["table-entries"]:
             return None
 
@@ -228,12 +228,21 @@ class BaseOverlay(QWidget):
 
         if is_spectating and spectator_index is not None:
             if 0 <= spectator_index < len(data["table-entries"]):
-                return data["table-entries"][spectator_index]
+                return spectator_index
             else:
                 self.logger.warning(f"Warning: Spectator index {spectator_index} is out of bounds.")
                 return None
         else:
-            for row in data["table-entries"]:
+            for index, row in enumerate(data["table-entries"]):
                 if row.get("driver-info", {}).get("is-player") is True:
-                    return row
+                    return index
             return None
+
+    def _get_ref_row(self, data: dict) -> dict:
+        """Helper to get the reference row from incoming race table data."""
+
+        ref_index = self._get_ref_row_index(data)
+        if ref_index is None:
+            return None
+
+        return data["table-entries"][ref_index]
