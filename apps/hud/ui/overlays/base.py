@@ -24,10 +24,12 @@
 
 import json
 import logging
+import os
+import sys
 from typing import Any, Callable, Dict
 
-from PySide6.QtCore import Qt, Slot, Signal
-from PySide6.QtGui import QMouseEvent
+from PySide6.QtCore import Qt, Signal, Slot
+from PySide6.QtGui import QIcon, QMouseEvent
 from PySide6.QtWidgets import QWidget
 
 from apps.hud.ui.infra.config import OverlaysConfig
@@ -213,6 +215,30 @@ class BaseOverlay(QWidget):
     def mouseReleaseEvent(self, event: QMouseEvent):
         self._drag_pos = None
         event.accept()
+
+    def load_icon(self, relative_path: str) -> QIcon:
+        """
+        Load an icon that works in both dev and PyInstaller builds.
+
+        Args:
+            relative_path: Path to the icon file, relative to the project root or build bundle.
+
+        Returns:
+            QIcon: The loaded icon, or an empty QIcon if loading fails.
+        """
+        try:
+            if hasattr(sys, "_MEIPASS"):
+                # Running inside a PyInstaller bundle
+                base_path = sys._MEIPASS
+            else:
+                # Running from source
+                base_path = os.path.abspath(".")
+
+            full_path = os.path.join(base_path, relative_path)
+            return QIcon(full_path)
+        except Exception as e:  # pylint: disable=broad-except
+            self.logger.warning(f"{self.overlay_id} | Failed to load icon '{relative_path}': {e}")
+            return QIcon()
 
     # --------------------------------------------------------------------------
     # Data handling helpers

@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from PySide6.QtCore import QModelIndex, Qt
@@ -42,7 +43,7 @@ class ERSDelegate(QStyledItemDelegate):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.ers_colours = {
+        self.ers_colors = {
             "None": QColor("#888888"),
             "Medium": QColor("#ffff00"),
             "Hotlap": QColor("#00ff00"),
@@ -98,14 +99,7 @@ class TimingTowerOverlay(BaseOverlay):
         self.session_info_label: Optional[QLabel] = None
         self.timing_table: Optional[QTableWidget] = None
 
-        self.tyre_colours = {
-            "SOFT": QColor("#ff0000"),
-            "MEDIUM": QColor("#ffff00"),
-            "HARD": QColor("#ffffff"),
-            "INTERMEDIATE": QColor("#00ff00"),
-            "WET": QColor("#0000ff")
-        }
-        self.ers_colours = {
+        self.ers_colors = {
             "None": QColor("#888888"),
             "Medium": QColor("#ffff00"),
             "Hotlap": QColor("#00ff00"),
@@ -114,6 +108,22 @@ class TimingTowerOverlay(BaseOverlay):
 
         super().__init__("lap_timer", config, logger, locked)
         self._init_cmd_handlers()
+
+        icon_base = Path("assets") / "tyre-icons"
+        self.icon_mappings = {
+            "Soft": self.load_icon(str(icon_base / "soft_tyre.svg")),
+            "Super Soft": self.load_icon(str(icon_base / "super_soft_tyre.svg")),
+            "Medium": self.load_icon(str(icon_base / "medium_tyre.svg")),
+            "Hard": self.load_icon(str(icon_base / "hard_tyre.svg")),
+            "Inters": self.load_icon(str(icon_base / "intermediate_tyre.svg")),
+            "Wet": self.load_icon(str(icon_base / "wet_tyre.svg")),
+        }
+        for name, icon in self.icon_mappings.items():
+            if icon.isNull():
+                self.logger.warning(f"{self.overlay_id} | Failed to load tyre icon: {name}")
+            else:
+                self.logger.debug(f"{self.overlay_id} | Loaded tyre icon successfully: {name}")
+
 
     def build_ui(self):
         """Build the timing tower UI"""
@@ -304,9 +314,7 @@ class TimingTowerOverlay(BaseOverlay):
 
         # Tyre compound
         tyre_display = tyre[:1] if tyre else "--"
-        tyre_color = self.tyre_colours.get(tyre, QColor("#cccccc"))
-        tyre_item = self._create_table_item(tyre_display, Qt.AlignCenter,
-                                           tyre_color, bold=True)
+        tyre_item = self._create_table_item(tyre_display, Qt.AlignCenter, bold=True)
         self.timing_table.setItem(row_idx, 3, tyre_item)
 
         # ERS with mode color bar
@@ -314,7 +322,7 @@ class TimingTowerOverlay(BaseOverlay):
         ers_item = self._create_table_item(ers_text, Qt.AlignCenter)
 
         # Store ERS mode color in item data for the delegate to use
-        ers_mode_color = self.ers_colours.get(ers_mode, QColor("#888888"))
+        ers_mode_color = self.ers_colors.get(ers_mode, QColor("#888888"))
         ers_item.setData(Qt.UserRole, ers_mode_color)
 
         self.timing_table.setItem(row_idx, 4, ers_item)
