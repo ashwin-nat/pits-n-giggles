@@ -112,8 +112,9 @@ class PngLauncher(ConsoleInterface):
         sys.stdout = self
 
         # Check for updates in parallel (no-op in dev mode)
-        if self.version:
-            threading.Thread(target=self.check_for_updates_background, daemon=True).start()
+        # TODO: undo. currently disabled for beta
+        # if self.version:
+        #     threading.Thread(target=self.check_for_updates_background, daemon=True).start()
 
         # Initial log message
         self.info_log(f"{APP_NAME} started. Version: {self.version}. Log file: {self.log_file_path}")
