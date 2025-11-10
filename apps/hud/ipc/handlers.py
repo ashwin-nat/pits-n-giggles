@@ -64,3 +64,24 @@ def handle_toggle_visibility(msg: dict, logger: logging.Logger, overlays_mgr: Ov
 
     overlays_mgr.toggle_overlays_visibility()
     return {"status": "success", "message": "toggle-visibility handler executed."}
+
+def handle_set_opacity(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
+    """Handle the 'set-opacity' IPC command to set HUD widgets opacity.
+
+    Args:
+        msg (dict): IPC command message
+        logger (logging.Logger): Logger
+        overlays_mgr (OverlaysMgr): Overlays manager
+
+    Returns:
+        dict: IPC response
+    """
+
+    logger.info("Received set-opacity command. args: %s", msg)
+
+    args = msg.get("args", {})
+    opacity = args.get("opacity")
+    if opacity is not None and 0 <= opacity <= 100:
+        overlays_mgr.set_overlays_opacity(opacity)
+        return {"status": "success", "message": "set-opacity handler executed."}
+    return {"status": "error", "message": "Invalid or missing opacity value in set-opacity command."}

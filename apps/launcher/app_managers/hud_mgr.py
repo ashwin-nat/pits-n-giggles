@@ -145,16 +145,25 @@ class HudAppMgr(PngAppMgrBase):
                 "enabled",
                 "show_lap_timer",
                 "show_timing_tower",
-                "overlays_opacity" # TODO - handle opacity change gracefully
             ],
         })
         self.console_app.debug_log(f"{self.display_name} Settings changed: {json.dumps(diff, indent=2)}")
-        has_changed = bool(diff)
-        if has_changed:
+        should_restart = bool(diff)
+        if should_restart:
             self.enabled = new_settings.HUD.enabled
 
         # TODO: Handle opacity change here
-        return has_changed
+        if self.curr_settings.diff(new_settings, {
+            "HUD": [
+                "overlays_opacity",
+            ],
+        }):
+            self.console_app.info_log("Sending set-overlays-opacity command to HUD...")
+            rsp = IpcParent(self.ipc_port).request(command="set-overlays-opacity", args={
+                "opacity": new_settings.HUD.overlays_opacity,
+            })
+            self.console_app.info_log(str(rsp))
+        return should_restart
 
     def start(self):
         """Check for enabled flag before starting"""

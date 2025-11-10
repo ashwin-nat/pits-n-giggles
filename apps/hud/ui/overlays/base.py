@@ -80,9 +80,9 @@ class BaseOverlay(QWidget):
             self.config.width,
             self.config.height
         )
-        self.setOpacity(self.opacity)
+        self.set_opacity(self.opacity)
 
-    def setOpacity(self, opacity: int):
+    def set_opacity(self, opacity: int):
         """Set window opacity (0-100)."""
         self.opacity = opacity
         self.logger.debug(f"{self.overlay_id} | Setting opacity to {opacity}%")
@@ -163,6 +163,11 @@ class BaseOverlay(QWidget):
             else:
                 self.logger.debug(f'{self.overlay_id} | Showing overlay')
                 self.show()
+
+        @self.on_command("set_opacity")
+        def handle_set_opacity(data: dict):
+            opacity = data["opacity"]
+            self.set_opacity(opacity)
 
     def on_request(self, request_type: str):
         """Decorator for registering request handlers that return responses."""
