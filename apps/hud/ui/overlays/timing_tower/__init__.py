@@ -20,8 +20,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# ----------------------------------------------------------------------------------------------------------------------
+# -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-APP_VERSION = "3.0.0_beta_1"
-APP_NAME_SNAKE = "pits_n_giggles"
-APP_NAME = "Pits n' Giggles"
+from .timing_tower_overlay import TimingTowerOverlay
+
+# -------------------------------------- EXPORTS -----------------------------------------------------------------------
+
+__all__ = [
+    "TimingTowerOverlay",
+]

@@ -47,3 +47,20 @@ def handle_lock_widgets(msg: dict, logger: logging.Logger, overlays_mgr: Overlay
         overlays_mgr.on_locked_state_change(args)
         return {"status": "success", "message": "lock-widgets handler executed."}
     return {"status": "error", "message": "Missing args in lock-widgets command."}
+
+def handle_toggle_visibility(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
+    """Handle the 'toggle-visibility' IPC command to show or hide HUD widgets.
+
+    Args:
+        msg (dict): IPC command message
+        logger (logging.Logger): Logger
+        overlays_mgr (OverlaysMgr): Overlays manager
+
+    Returns:
+        dict: IPC response
+    """
+
+    logger.info("Received toggle-visibility command. args: %s", msg)
+
+    overlays_mgr.toggle_overlays_visibility()
+    return {"status": "success", "message": "toggle-visibility handler executed."}

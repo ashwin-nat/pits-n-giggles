@@ -23,7 +23,6 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
-import os
 import threading
 import time
 from functools import partial
@@ -33,7 +32,7 @@ from lib.ipc import IpcChildSync
 
 from ..listener import HudClient
 from ..ui.infra import OverlaysMgr
-from .handlers import handle_lock_widgets
+from .handlers import handle_lock_widgets, handle_toggle_visibility
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
@@ -43,6 +42,7 @@ CommandHandler = Callable[[dict, logging.Logger, OverlaysMgr], dict]
 # Registry of command handlers
 COMMAND_HANDLERS: Dict[str, CommandHandler] = {
     "lock-widgets": handle_lock_widgets,
+    "toggle-overlays-visibility": handle_toggle_visibility,
 }
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
@@ -120,11 +120,11 @@ def _stop_other_tasks(args: dict, logger: logging.Logger, overlays_mgr: Overlays
     reason = args.get("reason", "N/A")
     logger.info(f"Shutdown command received via IPC. Reason: {reason}. Stopping all tasks...")
 
-    # receiver_client.stop()
-    # overlays_mgr.stop()
+    receiver_client.stop()
+    overlays_mgr.stop()
 
     # Give Windows time to cleanup WebView2 resources
     time.sleep(0.5)
 
     logger.info("Exiting HUD subsystem")
-    os._exit(0)
+    # os._exit(0)

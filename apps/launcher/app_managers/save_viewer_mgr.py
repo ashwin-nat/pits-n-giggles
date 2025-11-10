@@ -49,7 +49,7 @@ class SaveViewerAppMgr(PngAppMgrBase):
             udp_port_conflict_settings_field="N/A",
             module_path="apps.save_viewer",
             display_name="Save Viewer",
-            start_by_default=False, # TODO: revert
+            start_by_default=True,
             console_app=console_app,
             settings=settings,
             args=self.args,

@@ -61,6 +61,10 @@ class HudAppMgr(PngAppMgrBase):
             args=self.args,
             debug_mode=debug_mode
         )
+        if not self.enabled:
+            self.status_var.set("Disabled")
+        elif not self.supported:
+            self.status_var.set("Unsupported")
         self.register_post_start(self.post_start)
         self.register_post_stop(self.post_stop)
 
@@ -79,8 +83,8 @@ class HudAppMgr(PngAppMgrBase):
         )
         self.ping_button = ttk.Button(
             frame,
-            text="Ping",
-            command=self.ping_callback,
+            text="Hide/Show",
+            command=self.hide_show_callback,
             style="Racing.TButton",
             state="disabled"  # Initially disabled until the app is running
         )
@@ -98,11 +102,12 @@ class HudAppMgr(PngAppMgrBase):
             self.lock_button,
         ]
 
-    def ping_callback(self):
+    def hide_show_callback(self):
         """Open the dashboard viewer in a web browser."""
-        self.console_app.info_log("Sending ping to HUD...")
-        client = IpcParent(self.ipc_port)
-        rsp = client.ping()
+        self.console_app.info_log("Sending hide/show command to HUD...")
+        rsp = IpcParent(self.ipc_port).request(
+            command="toggle-overlays-visibility", args={}
+        )
         self.console_app.info_log(str(rsp))
 
     def lock_callback(self):

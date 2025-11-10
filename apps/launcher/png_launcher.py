@@ -25,7 +25,7 @@
 import copy
 import datetime
 import sys
-import threading
+import threading # pylint: disable=unused-import # TODO: undo
 import tkinter as tk
 import webbrowser
 from tkinter import ttk
@@ -112,8 +112,9 @@ class PngLauncher(ConsoleInterface):
         sys.stdout = self
 
         # Check for updates in parallel (no-op in dev mode)
-        if self.version:
-            threading.Thread(target=self.check_for_updates_background, daemon=True).start()
+        # TODO: undo. currently disabled for beta
+        # if self.version:
+        #     threading.Thread(target=self.check_for_updates_background, daemon=True).start()
 
         # Initial log message
         self.info_log(f"{APP_NAME} started. Version: {self.version}. Log file: {self.log_file_path}")
@@ -339,7 +340,7 @@ class PngLauncher(ConsoleInterface):
         else:
             formatted_message = message
 
-        logger_func(message.rstrip(), extra={"with_timestamp": with_timestamp}, stacklevel=2)
+        logger_func(message.rstrip(), extra={"with_timestamp": with_timestamp}, stacklevel=3)
 
         self.console.configure(state=tk.NORMAL)
         self.console.insert(tk.END, formatted_message)
