@@ -87,7 +87,8 @@ class OverlaysMgr:
             self.window_manager.register_overlay('lap_timer', LapTimerOverlay(
                 self.config['lap_timer'],
                 self.logger,
-                locked=True
+                locked=True,
+                opacity=settings.HUD.overlays_opacity
             ))
         else:
             self.logger.debug("Lap timer overlay is disabled")
@@ -96,7 +97,8 @@ class OverlaysMgr:
             self.window_manager.register_overlay('timing_tower', TimingTowerOverlay(
                 self.config['timing_tower'],
                 self.logger,
-                locked=True
+                locked=True,
+                opacity=settings.HUD.overlays_opacity
             ))
         else:
             self.logger.debug("Timing tower overlay is disabled")

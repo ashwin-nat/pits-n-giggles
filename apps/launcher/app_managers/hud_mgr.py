@@ -145,12 +145,15 @@ class HudAppMgr(PngAppMgrBase):
                 "enabled",
                 "show_lap_timer",
                 "show_timing_tower",
+                "overlays_opacity" # TODO - handle opacity change gracefully
             ],
         })
         self.console_app.debug_log(f"{self.display_name} Settings changed: {json.dumps(diff, indent=2)}")
         has_changed = bool(diff)
         if has_changed:
             self.enabled = new_settings.HUD.enabled
+
+        # TODO: Handle opacity change here
         return has_changed
 
     def start(self):

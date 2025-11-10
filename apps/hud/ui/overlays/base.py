@@ -45,7 +45,7 @@ class BaseOverlay(QWidget):
     # Add signal for responses
     response_signal = Signal(str, object)  # request_type, response_data
 
-    def __init__(self, overlay_id: str, config: OverlaysConfig, logger: logging.Logger, locked: bool = False):
+    def __init__(self, overlay_id: str, config: OverlaysConfig, logger: logging.Logger, locked: bool, opacity: int):
         super().__init__()
         self.overlay_id = overlay_id
         self.config = config
