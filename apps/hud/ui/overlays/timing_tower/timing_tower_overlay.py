@@ -150,12 +150,17 @@ class TimingTowerOverlay(BaseOverlay):
 
             "Williams": self.load_icon(str(icon_base_teams / "williams.svg"))
         }
+        self.default_team_logo = self.load_icon(str(icon_base_teams / "default.svg"))
 
         for name, icon in self.team_logo_mappings.items():
             if icon.isNull():
                 self.logger.warning(f"{self.overlay_id} | Failed to load team icon: {name}")
             else:
                 self.logger.debug(f"{self.overlay_id} | Loaded team icon successfully: {name}")
+        if self.default_team_logo.isNull():
+            self.logger.warning(f"{self.overlay_id} | Failed to load default team icon")
+        else:
+            self.logger.debug(f"{self.overlay_id} | Loaded default team icon successfully")
 
     def build_ui(self):
         """Build the timing tower UI"""
@@ -345,8 +350,9 @@ class TimingTowerOverlay(BaseOverlay):
         team_icon = self.team_logo_mappings.get(team)
         if team_icon and not team_icon.isNull():
             team_item = QTableWidgetItem(team_icon, "")
+        elif self.default_team_logo and not self.default_team_logo.isNull():
+            team_item = QTableWidgetItem(self.default_team_logo, "")
         else:
-            # Fallback: show first 3 letters of team name
             team_display = "??"
             team_item = self._create_table_item(team_display, Qt.AlignCenter, bold=True)
 

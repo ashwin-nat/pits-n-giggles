@@ -93,18 +93,31 @@ datas = [
     (os.path.join(PROJECT_ROOT, "assets", "tyre-icons", "wet_tyre.svg"), "assets/tyre-icons"),
     (os.path.join(PROJECT_ROOT, "assets", "tyre-icons", "intermediate_tyre.svg"), "assets/tyre-icons"),
     (os.path.join(PROJECT_ROOT, "assets", "tyre-icons", "super_soft_tyre.svg"), "assets/tyre-icons"),
+
+    # Team icons
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "alpine.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "aston_martin.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "ferrari.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "haas.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "mclaren.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "mercedes.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "rb.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "red_bull.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "sauber.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "williams.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "default.svg"), "assets/team-logos"),
 ]
 
 # Overlays
-overlays_base = os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays")
+# overlays_base = os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays")
 
-# Dynamically add all overlay folders
-for overlay_name in os.listdir(overlays_base):
-    overlay_path = os.path.join(overlays_base, overlay_name)
-    if os.path.isdir(overlay_path):
-        datas.append(
-            (overlay_path, f"apps/hud/ui/overlays/{overlay_name}")
-        )
+# # Dynamically add all overlay folders
+# for overlay_name in os.listdir(overlays_base):
+#     overlay_path = os.path.join(overlays_base, overlay_name)
+#     if os.path.isdir(overlay_path):
+#         datas.append(
+#             (overlay_path, f"apps/hud/ui/overlays/{overlay_name}")
+#         )
 
 # --------------------------------------------------------------------------------------------------
 # Build pipeline
