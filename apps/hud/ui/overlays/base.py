@@ -189,6 +189,9 @@ class BaseOverlay(QWidget):
                 response = handler(parsed_data)
                 # Emit response back through window manager
                 self.response_signal.emit(request_type, response)
+            except AssertionError:
+                self.logger.exception(f"{self.overlay_id} | Assertion error handling request '{request_type}'")
+                raise # We want to crash on assertions for debugging
             except Exception as e: # pylint: disable=broad-except
                 self.logger.exception(f"{self.overlay_id} | Error handling request '{request_type}': {e}")
         else:

@@ -505,6 +505,12 @@ class TimingTowerOverlay(BaseOverlay):
 
         lower_index = lower_bound - 1
         result = sorted_table_entries[lower_index:upper_bound] # since upper bound is exclusive
+
+        if total_cars >= 5:
+            assert len(result) == 5
+        else:
+            assert len(result) == total_cars
+
         return result, ref_index
 
     def _get_adjacent_positions(self, position, total_cars, num_adjacent_cars):
@@ -514,26 +520,22 @@ class TimingTowerOverlay(BaseOverlay):
         min_valid_lower_bound = 1
         max_valid_upper_bound = total_cars
 
-        # In time trial, total_cars will be lower than num_adjacent_cars
-        if num_adjacent_cars >= total_cars:
-            num_adjacent_cars = total_cars
-            lower_bound = min_valid_lower_bound
-            upper_bound = max_valid_upper_bound
-        # GP scenario, lower bound and upper bound are off input position by num_adjacent_cars
-        else:
-            lower_bound = position - num_adjacent_cars
-            upper_bound = position + num_adjacent_cars
+        # Calculate a window of num_adjacent_cars on each side of the position (inclusive bounds).
+        # If the window exceeds valid bounds, shift it towards the center while capping at boundaries
+        # to ensure lower_bound stays >= 1 and upper_bound stays <= total_cars.
+        lower_bound = position - num_adjacent_cars
+        upper_bound = position + num_adjacent_cars
 
-        # now correct if lower and upper bounds have become invalid
+        # Adjust if window exceeds boundaries
         if lower_bound < min_valid_lower_bound:
-            # lower bound is negative, need to shift the entire window right
-            upper_bound += min_valid_lower_bound - lower_bound
+            shift = min_valid_lower_bound - lower_bound
             lower_bound = min_valid_lower_bound
+            upper_bound = min(upper_bound + shift, max_valid_upper_bound)
 
-        if upper_bound > total_cars:
-            # upper bound is greater than limit, need to shift the entire window left
-            lower_bound -= upper_bound - total_cars
+        if upper_bound > max_valid_upper_bound:
+            shift = upper_bound - max_valid_upper_bound
             upper_bound = max_valid_upper_bound
+            lower_bound = max(lower_bound - shift, min_valid_lower_bound)
 
         return lower_bound, upper_bound
 
