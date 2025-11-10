@@ -25,7 +25,7 @@
 import configparser
 import re
 import tkinter as tk
-from tkinter import BooleanVar, StringVar, messagebox, ttk, filedialog
+from tkinter import BooleanVar, StringVar, messagebox, ttk, filedialog, DoubleVar
 from typing import Callable, get_args, get_origin, Union
 
 from pydantic import ValidationError
@@ -94,80 +94,103 @@ class SettingsWindow:
         """
         Create tabs for each section of the settings using the schema model.
 
+        - Uses `ui_meta` at the class level to determine section visibility and label.
+        - Uses field-level `json_schema_extra` to select the input control type.
         - Boolean fields get checkboxes.
-        - FilePathStr fields get an entry box with a 'Browse...' button.
-        - Other fields get standard entry boxes.
+        - FilePathStr fields get entry + Browse/Clear buttons.
+        - Fields with ui='slider' get a horizontal scale.
+        - Fields with ui='hostport_entry' get a simple text entry (future: specialized widget).
+        - All other fields get standard entry boxes.
         """
         self.entry_vars = {}
 
-        for section_name, field in type(self.settings).model_fields.items():
-            # Only for this particular section, the user is expected to configure by editing the ini file
-            # __SubSysCtrlCfg__ is not documented and the user should not touch this
-            if section_name in {"TimeLossInPitsF1", "TimeLossInPitsF2", "SubSysCtrlCfg__"}:
+        for section_name, section_field in type(self.settings).model_fields.items():
+            section_class = section_field.annotation
+            ui_meta = getattr(section_class, "ui_meta", {}) or {}
+
+            # Skip invisible or unsupported sections
+            if not ui_meta.get("visible", True):
                 continue
-            section_model = getattr(self.settings, section_name)
-            section_name_formatted = self._pascal_to_title(section_name)
+
+            section_instance = self.settings.__dict__[section_name]
+            section_label = ui_meta.get("label", self._pascal_to_title(section_name))
+
+            # --- Create tab ---
             tab = ttk.Frame(self.notebook)
-            self.notebook.add(tab, text=section_name_formatted)
+            self.notebook.add(tab, text=section_label)
             self.entry_vars.setdefault(section_name, {})
 
-            # Configure grid columns - make sure we have 4 columns (including 2 for buttons)
-            tab.columnconfigure(0, weight=0)  # Labels column
-            tab.columnconfigure(1, weight=1)  # Entry fields column
-            tab.columnconfigure(2, weight=0)  # Button column (e.g., Save)
-            tab.columnconfigure(3, weight=0)  # Button column (e.g., Clear)
+            # --- Grid configuration ---
+            tab.columnconfigure(0, weight=0)  # Label column
+            tab.columnconfigure(1, weight=1)  # Input column
+            tab.columnconfigure(2, weight=0)  # Browse/Clear buttons
+            tab.columnconfigure(3, weight=0)
 
-            model_fields = type(section_model).model_fields
-            for i, (field_name, field) in enumerate(model_fields.items()):
-                label_text = field.description or field_name
-                label = ttk.Label(tab, text=f"{label_text}:")
-                label.grid(row=i, column=0, sticky="w", padx=5, pady=5)
+            # --- Populate fields ---
+            for i, (field_name, field_info) in enumerate(section_class.model_fields.items()):
+                label_text = field_info.description or field_name
+                ttk.Label(tab, text=f"{label_text}:").grid(row=i, column=0, sticky="w", padx=5, pady=5)
 
-                value = getattr(section_model, field_name)
-                annotation = field.annotation
+                value = section_instance.__dict__[field_name]
+                field_meta = field_info.json_schema_extra or {}
+                annotation = field_info.annotation
                 origin = get_origin(annotation)
                 args = get_args(annotation)
+
+                # Detect file path type
                 is_file_path = (
                     annotation is FilePathStr or
                     origin is FilePathStr or
                     (origin is Union and FilePathStr in args)
                 )
 
+                # ----- Choose widget type -----
+                ui_type = field_meta.get("ui")
+
                 if isinstance(value, bool):
                     var = BooleanVar(value=value)
-                    control = ttk.Checkbutton(tab, variable=var)
-                    control.grid(row=i, column=1, sticky="w", padx=5, pady=5)
+                    widget = ttk.Checkbutton(tab, variable=var)
+                    widget.grid(row=i, column=1, sticky="w", padx=5, pady=5)
+
+                elif ui_type == "slider":
+                    minv = field_meta.get("min", 0)
+                    maxv = field_meta.get("max", 100)
+                    step = field_meta.get("step", 1)
+                    var = DoubleVar(value=value)
+                    scale = ttk.Scale(tab, from_=minv, to=maxv, orient="horizontal", variable=var)
+                    scale.grid(row=i, column=1, sticky="ew", padx=5, pady=5)
+                    widget = scale
+
+                elif ui_type == "hostport_entry":
+                    var = StringVar(value=str(value))
+                    entry = ttk.Entry(tab, textvariable=var)
+                    entry.grid(row=i, column=1, sticky="ew", padx=5, pady=5)
+                    widget = entry
 
                 elif is_file_path:
                     var = StringVar(value=str(value))
 
-                    # Entry field
                     entry = ttk.Entry(tab, textvariable=var)
                     entry.grid(row=i, column=1, sticky="ew", padx=(5, 2), pady=5)
 
-                    # Browse button
                     browse_btn = ttk.Button(
-                        tab,
-                        text="Browse...",
-                        command=lambda v=var: self._browse_file(v)
+                        tab, text="Browse...", command=lambda v=var: self._browse_file(v)
                     )
                     browse_btn.grid(row=i, column=2, sticky="w", padx=(2, 2), pady=5)
 
-                    # Clear button
-                    clear_btn = ttk.Button(
-                        tab,
-                        text="Clear",
-                        command=lambda v=var: v.set("")
-                    )
+                    clear_btn = ttk.Button(tab, text="Clear", command=lambda v=var: v.set(""))
                     clear_btn.grid(row=i, column=3, sticky="w", padx=(0, 5), pady=5)
+                    widget = entry
 
                 else:
                     var = StringVar(value=str(value))
-                    control = ttk.Entry(tab, textvariable=var, width=30)
-                    control.grid(row=i, column=1, sticky="ew", padx=5, pady=5)
+                    entry = ttk.Entry(tab, textvariable=var, width=30)
+                    entry.grid(row=i, column=1, sticky="ew", padx=5, pady=5)
+                    widget = entry
 
-                # ⬇️ Hoisted line (common to all branches)
+                # Store reference for later save/apply
                 self.entry_vars[section_name][field_name] = var
+
 
     def create_buttons(self) -> None:
         """
