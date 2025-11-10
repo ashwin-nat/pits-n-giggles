@@ -25,10 +25,12 @@
 import configparser
 import re
 import tkinter as tk
-from tkinter import BooleanVar, StringVar, messagebox, ttk, filedialog, DoubleVar
-from typing import Callable, get_args, get_origin, Union
+from tkinter import (BooleanVar, DoubleVar, IntVar, StringVar, filedialog,
+                     messagebox, ttk)
+from typing import Callable, Union, get_args, get_origin, Optional
 
 from pydantic import ValidationError
+
 
 from lib.config import FilePathStr, PngSettings, save_config_to_ini
 
@@ -145,27 +147,45 @@ class SettingsWindow:
                 )
 
                 # ----- Choose widget type -----
-                ui_type = field_meta.get("ui")
+                ui_meta = field_meta["ui"]
+                ui_type = ui_meta["type"]
 
-                if isinstance(value, bool):
+                if ui_type == "check_box":
                     var = BooleanVar(value=value)
                     widget = ttk.Checkbutton(tab, variable=var)
                     widget.grid(row=i, column=1, sticky="w", padx=5, pady=5)
+                    self.app.debug_log(f"Created checkbox for {section_name}.{field_name}")
 
                 elif ui_type == "slider":
-                    minv = field_meta.get("min", 0)
-                    maxv = field_meta.get("max", 100)
+                    minv = ui_meta["min"]
+                    maxv = ui_meta["max"]
                     step = field_meta.get("step", 1)
-                    var = DoubleVar(value=value)
+
+                    is_int_field = field_info.annotation in (int, Optional[int])
+                    var = IntVar(value=int(value)) if is_int_field else DoubleVar(value=float(value))
+
                     scale = ttk.Scale(tab, from_=minv, to=maxv, orient="horizontal", variable=var)
                     scale.grid(row=i, column=1, sticky="ew", padx=5, pady=5)
-                    widget = scale
+
+                    # live label
+                    fmt = "{:.0f}" if is_int_field else "{:.2f}"
+                    value_label = ttk.Label(tab, text=fmt.format(value))
+                    value_label.grid(row=i, column=2, sticky="w", padx=(5, 10), pady=5)
+
+                    def _update_label(*_):
+                        value_label.config(text=fmt.format(var.get()))
+
+                    var.trace_add("write", _update_label)
+
+
+
 
                 elif ui_type == "hostport_entry":
                     var = StringVar(value=str(value))
                     entry = ttk.Entry(tab, textvariable=var)
                     entry.grid(row=i, column=1, sticky="ew", padx=5, pady=5)
                     widget = entry
+                    self.app.debug_log(f"Created hostport entry for {section_name}.{field_name}")
 
                 elif is_file_path:
                     var = StringVar(value=str(value))
@@ -181,12 +201,14 @@ class SettingsWindow:
                     clear_btn = ttk.Button(tab, text="Clear", command=lambda v=var: v.set(""))
                     clear_btn.grid(row=i, column=3, sticky="w", padx=(0, 5), pady=5)
                     widget = entry
+                    self.app.debug_log(f"Created file path entry for {section_name}.{field_name}")
 
                 else:
                     var = StringVar(value=str(value))
                     entry = ttk.Entry(tab, textvariable=var, width=30)
                     entry.grid(row=i, column=1, sticky="ew", padx=5, pady=5)
                     widget = entry
+                    self.app.debug_log(f"Created text entry for {section_name}.{field_name}")
 
                 # Store reference for later save/apply
                 self.entry_vars[section_name][field_name] = var
