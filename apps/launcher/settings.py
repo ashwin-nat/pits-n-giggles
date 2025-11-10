@@ -131,7 +131,7 @@ class SettingsWindow:
 
                 value: Any = section_instance.__dict__[field_name]
                 field_meta: Dict[str, Any] = field_info.json_schema_extra
-                ui_meta: Dict[str, Any] = field_meta["ui_meta"]
+                ui_meta: Dict[str, Any] = field_meta["ui"]
                 ui_type: str = ui_meta.get("type")
 
                 # Create widget using dispatch table
@@ -300,7 +300,7 @@ class SettingsWindow:
         Returns:
             StringVar bound to the entry widget
         """
-        var: StringVar = StringVar(value=str(value))
+        var: StringVar = StringVar(value=value)
         entry: ttk.Entry = ttk.Entry(tab, textvariable=var)
         entry.grid(row=row, column=1, sticky="ew", padx=5, pady=5)
         self.app.debug_log(f"Created hostport entry for {section_name}.{field_name}")
@@ -329,7 +329,7 @@ class SettingsWindow:
         Returns:
             StringVar bound to the entry widget
         """
-        var: StringVar = StringVar(value=str(value))
+        var: StringVar = StringVar(value=value)
 
         entry: ttk.Entry = ttk.Entry(tab, textvariable=var)
         entry.grid(row=row, column=1, sticky="ew", padx=(5, 2), pady=5)
