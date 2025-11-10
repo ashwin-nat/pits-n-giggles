@@ -13,76 +13,76 @@ flowchart LR
 %% ---------------------------------------------------------------------------
 %% External Systems
 %% ---------------------------------------------------------------------------
-subgraph EXTERNAL["🌍 External Systems"]
+subgraph EXTERNAL[" External Systems"]
 direction TB
-F1_SIM["🏎️  F1 Simulator"]
-EXT_TGT["🌐  External Targets"]
+F1_SIM["  F1 Simulator"]
+EXT_TGT["  External Targets"]
 end
 
 %% ---------------------------------------------------------------------------
 %% Launcher and Process Manager
 %% ---------------------------------------------------------------------------
-subgraph PNG_LAUNCHER["🚀  Pits-n-Giggles Launcher"]
+subgraph PNG_LAUNCHER["  Pits-n-Giggles Launcher"]
 direction TB
-    subgraph PROC_MGR["⚙️ Process Manager"]
-        BACKEND_PROC_MGR["🖥️ Backend"]
-        HUD_PROC_MGR["🕶️ HUD"]
-        SAVE_VIEWER_PROC_MGR["💾 Save Viewer"]
+    subgraph PROC_MGR[" Process Manager"]
+        BACKEND_PROC_MGR[" Backend"]
+        HUD_PROC_MGR[" HUD"]
+        SAVE_VIEWER_PROC_MGR[" Save Viewer"]
     end
 end
 
 %% ---------------------------------------------------------------------------
 %% Backend
 %% ---------------------------------------------------------------------------
-subgraph BACKEND["🔄 Backend Event Loop"]
+subgraph BACKEND[" Backend Event Loop"]
 direction TB
-    subgraph TELEMETRY["📡 Telemetry Layer"]
-        UDP_RECV["📶 UDP Receiver"]
-        PARSERS["🔍 Parsers"]
-        PACKET_FWD["📤 Packet Forwarder"]
+    subgraph TELEMETRY[" Telemetry Layer"]
+        UDP_RECV[" UDP Receiver"]
+        PARSERS[" Parsers"]
+        PACKET_FWD[" Packet Forwarder"]
     end
 
-    subgraph INTF["🖥️ Interface Layer"]
-        HTTP["🌐 HTTP Server"]
-        SOCKETIO["⚡ Socket.IO"]
-        IPC["🔗 ZMQ IPC Server"]
+    subgraph INTF[" Interface Layer"]
+        HTTP[" HTTP Server"]
+        SOCKETIO[" Socket.IO"]
+        IPC[" ZMQ IPC Server"]
     end
 
-    subgraph STATE["🧠 State Management Layer"]
-        COMP_ENGINE["⚙️ Computation Engine"]
-        SHARED_STATE["💾 Shared State"]
-        API_INTF["🔌 API Interface"]
+    subgraph STATE[" State Management Layer"]
+        COMP_ENGINE[" Computation Engine"]
+        SHARED_STATE[" Shared State"]
+        API_INTF[" API Interface"]
     end
 end
 
 %% ---------------------------------------------------------------------------
 %% HUD Subsystem
 %% ---------------------------------------------------------------------------
-subgraph HUD["🕶️ HUD Subsystem"]
+subgraph HUD[" HUD Subsystem"]
 direction TB
-HUD_IPC["🔗 IPC Server"]
-HUD_CLIENT["⚡ Socket.IO Client"]
-HUD_QT["🖼️ Qt Overlays"]
+HUD_IPC[" IPC Server"]
+HUD_CLIENT[" Socket.IO Client"]
+HUD_QT[" Qt Overlays"]
 end
 
 %% ---------------------------------------------------------------------------
 %% Save Viewer Subsystem
 %% ---------------------------------------------------------------------------
-subgraph SAVE_VIEWER["💾 Save Viewer Subsystem"]
+subgraph SAVE_VIEWER[" Save Viewer Subsystem"]
 direction TB
-SV_IPC["🔗 IPC Server"]
-SV_HTTP["🌐 HTTP Server"]
-SV_SOCKETIO["⚡ Socket.IO Server"]
+SV_IPC[" IPC Server"]
+SV_HTTP[" HTTP Server"]
+SV_SOCKETIO[" Socket.IO Server"]
 end
 
 %% ---------------------------------------------------------------------------
 %% UI Clients
 %% ---------------------------------------------------------------------------
-subgraph UI_CLIENTS["💻 UI Clients"]
+subgraph UI_CLIENTS[" UI Clients"]
 direction TB
-STREAM_OVERLAY["🎥 Stream Overlay"]
-DRV_VIEW["🧑🏎️ Driver Dashboard"]
-ENG_VIEW["🧑‍🔧 Engineer Dashboard"]
+STREAM_OVERLAY[" Stream Overlay"]
+DRV_VIEW[" Driver Dashboard"]
+ENG_VIEW[" Engineer Dashboard"]
 end
 
 %% ---------------------------------------------------------------------------
