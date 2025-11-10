@@ -25,18 +25,20 @@
 import configparser
 import re
 import tkinter as tk
-from tkinter import (BooleanVar, DoubleVar, IntVar, StringVar, filedialog,
+from tkinter import (BooleanVar, DoubleVar, IntVar, StringVar, filedialog, Variable,
                      messagebox, ttk)
-from typing import Callable, Union, get_args, get_origin, Optional
+from typing import Any, Callable, Dict, Optional, Union, get_args, get_origin
 
-from pydantic import ValidationError
-
+from pydantic import ValidationError, BaseModel
 
 from lib.config import FilePathStr, PngSettings, save_config_to_ini
 
 from .console_interface import ConsoleInterface
 
-# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
+# -------------------------------------- TYPES -------------------------------------------------------------------------
+
+WidgetCreator = Callable[[ttk.Frame, int, str, Any, Any, Dict[str, Any], str],
+                         Variable]
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -69,9 +71,6 @@ class SettingsWindow:
         self.app = app
         self.save_callback = save_callback
         self.config_file = config_file
-        self.settings = configparser.ConfigParser()
-
-        # Load or create settings
         self.settings = settings
 
         # Create settings window
@@ -96,29 +95,26 @@ class SettingsWindow:
         """
         Create tabs for each section of the settings using the schema model.
 
-        - Uses `ui_meta` at the class level to determine section visibility and label.
-        - Uses field-level `json_schema_extra` to select the input control type.
-        - Boolean fields get checkboxes.
-        - FilePathStr fields get entry + Browse/Clear buttons.
-        - Fields with ui='slider' get a horizontal scale.
-        - Fields with ui='hostport_entry' get a simple text entry (future: specialized widget).
-        - All other fields get standard entry boxes.
+        Uses `ui_meta` at the class level to determine section visibility and label.
+        Uses field-level `json_schema_extra` to select the input control type.
+        Widget creation is handled via a dispatch table based on ui_type.
         """
-        self.entry_vars = {}
+        self.entry_vars: Dict[str, Dict[str, Variable]] = {}
 
         for section_name, section_field in type(self.settings).model_fields.items():
-            section_class = section_field.annotation
-            ui_meta = getattr(section_class, "ui_meta", {}) or {}
+            section_class: BaseModel = section_field.annotation
+            ui_meta: Dict[str, Any] = section_class.ui_meta
 
             # Skip invisible or unsupported sections
-            if not ui_meta.get("visible", True):
+            if not ui_meta["visible"]:
+                self.app.debug_log(f"Skipping invisible settings section: {section_name}")
                 continue
 
             section_instance = self.settings.__dict__[section_name]
-            section_label = ui_meta.get("label", self._pascal_to_title(section_name))
+            section_label: str = self._pascal_to_title(section_name)
 
             # --- Create tab ---
-            tab = ttk.Frame(self.notebook)
+            tab: ttk.Frame = ttk.Frame(self.notebook)
             self.notebook.add(tab, text=section_label)
             self.entry_vars.setdefault(section_name, {})
 
@@ -130,85 +126,253 @@ class SettingsWindow:
 
             # --- Populate fields ---
             for i, (field_name, field_info) in enumerate(section_class.model_fields.items()):
-                label_text = field_info.description or field_name
+                label_text: str = field_info.description
                 ttk.Label(tab, text=f"{label_text}:").grid(row=i, column=0, sticky="w", padx=5, pady=5)
 
-                value = section_instance.__dict__[field_name]
-                field_meta = field_info.json_schema_extra or {}
-                annotation = field_info.annotation
-                origin = get_origin(annotation)
-                args = get_args(annotation)
+                value: Any = section_instance.__dict__[field_name]
+                field_meta: Dict[str, Any] = field_info.json_schema_extra
+                ui_meta: Dict[str, Any] = field_meta["ui_meta"]
+                ui_type: str = ui_meta.get("type")
 
-                # Detect file path type
-                is_file_path = (
-                    annotation is FilePathStr or
-                    origin is FilePathStr or
-                    (origin is Union and FilePathStr in args)
+                # Create widget using dispatch table
+                var: Variable = self._create_widget(
+                    tab, i, field_name, field_info, value, ui_meta, ui_type, section_name
                 )
-
-                # ----- Choose widget type -----
-                ui_meta = field_meta["ui"]
-                ui_type = ui_meta["type"]
-
-                if ui_type == "check_box":
-                    var = BooleanVar(value=value)
-                    widget = ttk.Checkbutton(tab, variable=var)
-                    widget.grid(row=i, column=1, sticky="w", padx=5, pady=5)
-                    self.app.debug_log(f"Created checkbox for {section_name}.{field_name}")
-
-                elif ui_type == "slider":
-                    minv = ui_meta["min"]
-                    maxv = ui_meta["max"]
-
-                    is_int_field = field_info.annotation in (int, Optional[int])
-                    var = IntVar(value=int(value)) if is_int_field else DoubleVar(value=float(value))
-
-                    scale = ttk.Scale(tab, from_=minv, to=maxv, orient="horizontal", variable=var)
-                    scale.grid(row=i, column=1, sticky="ew", padx=5, pady=5)
-
-                    # Precompute label width from the max value length
-                    max_text = f"{maxv:.0f}" if is_int_field else f"{maxv:.2f}"
-                    fmt = "{:.0f}" if is_int_field else "{:.2f}"
-                    value_label = ttk.Label(tab, text=fmt.format(value), width=len(max_text), anchor="e")
-                    value_label.grid(row=i, column=2, sticky="e", padx=(5, 10), pady=5)
-
-                    def _update_label(*_):
-                        value_label.config(text=fmt.format(var.get()))
-
-                    var.trace_add("write", _update_label)
-
-                elif ui_type == "hostport_entry":
-                    var = StringVar(value=str(value))
-                    entry = ttk.Entry(tab, textvariable=var)
-                    entry.grid(row=i, column=1, sticky="ew", padx=5, pady=5)
-                    widget = entry
-                    self.app.debug_log(f"Created hostport entry for {section_name}.{field_name}")
-
-                elif is_file_path:
-                    var = StringVar(value=str(value))
-
-                    entry = ttk.Entry(tab, textvariable=var)
-                    entry.grid(row=i, column=1, sticky="ew", padx=(5, 2), pady=5)
-
-                    browse_btn = ttk.Button(
-                        tab, text="Browse...", command=lambda v=var: self._browse_file(v)
-                    )
-                    browse_btn.grid(row=i, column=2, sticky="w", padx=(2, 2), pady=5)
-
-                    clear_btn = ttk.Button(tab, text="Clear", command=lambda v=var: v.set(""))
-                    clear_btn.grid(row=i, column=3, sticky="w", padx=(0, 5), pady=5)
-                    widget = entry
-                    self.app.debug_log(f"Created file path entry for {section_name}.{field_name}")
-
-                else:
-                    var = StringVar(value=str(value))
-                    entry = ttk.Entry(tab, textvariable=var, width=30)
-                    entry.grid(row=i, column=1, sticky="ew", padx=5, pady=5)
-                    widget = entry
-                    self.app.debug_log(f"Created text entry for {section_name}.{field_name}")
 
                 # Store reference for later save/apply
                 self.entry_vars[section_name][field_name] = var
+
+    def _create_widget(
+        self,
+        tab: ttk.Frame,
+        row: int,
+        field_name: str,
+        field_info: Any,
+        value: Any,
+        ui_meta: Dict[str, Any],
+        ui_type: str,
+        section_name: str
+    ) -> Union[BooleanVar, IntVar, DoubleVar, StringVar]:
+        """
+        Create a widget based on ui_type using a dispatch table.
+
+        Args:
+            tab: The parent frame/tab to place the widget in
+            row: Grid row number for widget placement
+            field_name: Name of the field being created
+            field_info: Pydantic field info object containing metadata
+            value: Current value of the field
+            ui_meta: UI metadata dictionary from json_schema_extra
+            ui_type: Type of UI widget to create (e.g., 'check_box', 'slider')
+            section_name: Name of the settings section
+
+        Returns:
+            Variable object (BooleanVar, IntVar, DoubleVar, or StringVar) bound to the widget
+        """
+
+        # Dispatch table mapping ui_type to creator methods
+        widget_creators: Dict[str, WidgetCreator] = {
+            "check_box": self._create_checkbox,
+            "slider": self._create_slider,
+            "hostport_entry": self._create_hostport_entry,
+            "file_path": self._create_file_path,
+        }
+
+        # Check if it's a file path field (for backward compatibility)
+        annotation = field_info.annotation
+        origin = get_origin(annotation)
+        args = get_args(annotation)
+        is_file_path: bool = (
+            annotation is FilePathStr or
+            origin is FilePathStr or
+            (origin is Union and FilePathStr in args)
+        )
+
+        # Determine creator
+        if ui_type in widget_creators:
+            creator: Callable = widget_creators[ui_type]
+        elif is_file_path:
+            creator = self._create_file_path
+        else:
+            creator = self._create_text_entry
+
+        # Call the appropriate creator
+        return creator(tab, row, field_name, field_info, value, ui_meta, section_name)
+
+    def _create_checkbox(
+        self,
+        tab: ttk.Frame,
+        row: int,
+        field_name: str,
+        _field_info: Any,
+        value: bool,
+        _ui_meta: Dict[str, Any],
+        section_name: str
+    ) -> BooleanVar:
+        """
+        Create a checkbox widget.
+
+        Args:
+            tab: The parent frame/tab to place the widget in
+            row: Grid row number for widget placement
+            field_name: Name of the field being created
+            value: Current boolean value of the field
+            section_name: Name of the settings section
+
+        Returns:
+            BooleanVar bound to the checkbox widget
+        """
+        var: BooleanVar = BooleanVar(value=value)
+        widget: ttk.Checkbutton = ttk.Checkbutton(tab, variable=var)
+        widget.grid(row=row, column=1, sticky="w", padx=5, pady=5)
+        self.app.debug_log(f"Created checkbox for {section_name}.{field_name}")
+        return var
+
+    def _create_slider(
+        self,
+        tab: ttk.Frame,
+        row: int,
+        field_name: str,
+        field_info: Any,
+        value: Union[int, float],
+        ui_meta: Dict[str, Any],
+        section_name: str
+    ) -> Union[IntVar, DoubleVar]:
+        """
+        Create a slider widget with value label.
+
+        Args:
+            tab: The parent frame/tab to place the widget in
+            row: Grid row number for widget placement
+            field_name: Name of the field being created
+            field_info: Pydantic field info object containing metadata
+            value: Current numeric value of the field
+            ui_meta: UI metadata dictionary containing 'min' and 'max' keys
+            section_name: Name of the settings section
+
+        Returns:
+            IntVar or DoubleVar bound to the slider widget
+        """
+        minv: Union[int, float] = ui_meta["min"]
+        maxv: Union[int, float] = ui_meta["max"]
+
+        is_int_field: bool = field_info.annotation in (int, Optional[int])
+        var: Union[IntVar, DoubleVar] = IntVar(value=int(value)) if is_int_field else DoubleVar(value=float(value))
+
+        scale: ttk.Scale = ttk.Scale(tab, from_=minv, to=maxv, orient="horizontal", variable=var)
+        scale.grid(row=row, column=1, sticky="ew", padx=5, pady=5)
+
+        # Precompute label width from the max value length
+        max_text: str = f"{maxv:.0f}" if is_int_field else f"{maxv:.2f}"
+        fmt: str = "{:.0f}" if is_int_field else "{:.2f}"
+        value_label: ttk.Label = ttk.Label(tab, text=fmt.format(value), width=len(max_text), anchor="e")
+        value_label.grid(row=row, column=2, sticky="e", padx=(5, 10), pady=5)
+
+        def _update_label(*_: Any) -> None:
+            """Update the label text when slider value changes."""
+            value_label.config(text=fmt.format(var.get()))
+
+        var.trace_add("write", _update_label)
+
+        self.app.debug_log(f"Created slider for {section_name}.{field_name}")
+        return var
+
+    def _create_hostport_entry(
+        self,
+        tab: ttk.Frame,
+        row: int,
+        field_name: str,
+        _field_info: Any,
+        value: str,
+        _ui_meta: Dict[str, Any],
+        section_name: str
+    ) -> StringVar:
+        """
+        Create a host:port entry widget.
+
+        Args:
+            tab: The parent frame/tab to place the widget in
+            row: Grid row number for widget placement
+            field_name: Name of the field being created
+            value: Current string value of the field
+            section_name: Name of the settings section
+
+        Returns:
+            StringVar bound to the entry widget
+        """
+        var: StringVar = StringVar(value=str(value))
+        entry: ttk.Entry = ttk.Entry(tab, textvariable=var)
+        entry.grid(row=row, column=1, sticky="ew", padx=5, pady=5)
+        self.app.debug_log(f"Created hostport entry for {section_name}.{field_name}")
+        return var
+
+    def _create_file_path(
+        self,
+        tab: ttk.Frame,
+        row: int,
+        field_name: str,
+        _field_info: Any,
+        value: str,
+        _ui_meta: Dict[str, Any],
+        section_name: str
+    ) -> StringVar:
+        """
+        Create a file path entry with Browse and Clear buttons.
+
+        Args:
+            tab: The parent frame/tab to place the widget in
+            row: Grid row number for widget placement
+            field_name: Name of the field being created
+            value: Current file path value
+            section_name: Name of the settings section
+
+        Returns:
+            StringVar bound to the entry widget
+        """
+        var: StringVar = StringVar(value=str(value))
+
+        entry: ttk.Entry = ttk.Entry(tab, textvariable=var)
+        entry.grid(row=row, column=1, sticky="ew", padx=(5, 2), pady=5)
+
+        browse_btn: ttk.Button = ttk.Button(
+            tab, text="Browse...", command=lambda v=var: self._browse_file(v)
+        )
+        browse_btn.grid(row=row, column=2, sticky="w", padx=(2, 2), pady=5)
+
+        clear_btn: ttk.Button = ttk.Button(tab, text="Clear", command=lambda v=var: v.set(""))
+        clear_btn.grid(row=row, column=3, sticky="w", padx=(0, 5), pady=5)
+
+        self.app.debug_log(f"Created file path entry for {section_name}.{field_name}")
+        return var
+
+    def _create_text_entry(
+        self,
+        tab: ttk.Frame,
+        row: int,
+        field_name: str,
+        _field_info: Any,
+        value: Any,
+        _ui_meta: Dict[str, Any],
+        section_name: str
+    ) -> StringVar:
+        """
+        Create a standard text entry widget.
+
+        Args:
+            tab: The parent frame/tab to place the widget in
+            row: Grid row number for widget placement
+            field_name: Name of the field being created
+            value: Current value of the field (will be converted to string)
+            section_name: Name of the settings section
+
+        Returns:
+            StringVar bound to the entry widget
+        """
+        var: StringVar = StringVar(value=str(value))
+        entry: ttk.Entry = ttk.Entry(tab, textvariable=var, width=30)
+        entry.grid(row=row, column=1, sticky="ew", padx=5, pady=5)
+        self.app.debug_log(f"Created text entry for {section_name}.{field_name}")
+        return var
 
     def create_buttons(self) -> None:
         """

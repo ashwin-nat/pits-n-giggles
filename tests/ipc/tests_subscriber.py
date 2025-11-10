@@ -125,7 +125,7 @@ class TestIpcSubscriber(TestIPC):
     def test_logging(self):
         subscriber = IpcSubscriber(self.url, self.logger)
         subscriber._log(logging.INFO, "test message")
-        self.logger.log.assert_called_with(logging.INFO, "test message")
+        self.logger.log.assert_called_with(logging.INFO, "test message", stacklevel=2)
 
     def test_run_reconnect_on_connection_error(self):
         """Ensure that run() retries on ConnectionError."""
@@ -148,7 +148,7 @@ class TestIpcSubscriber(TestIPC):
             subscriber.run()
 
             self.assertEqual(subscriber._sio.connect.call_count, 2)
-            self.logger.log.assert_any_call(logging.WARNING, "Connection failed, retrying...")
+            self.logger.log.assert_any_call(logging.WARNING, "Connection failed, retrying...", stacklevel=2)
 
     def test_run_connects_and_sleeps(self):
         """Test that run() calls connect and sleeps once, then exits."""
