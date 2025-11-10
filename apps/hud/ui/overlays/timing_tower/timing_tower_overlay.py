@@ -108,21 +108,54 @@ class TimingTowerOverlay(BaseOverlay):
 
         super().__init__("timing_tower", config, logger, locked)
         self._init_cmd_handlers()
+        self._init_icons()
 
-        icon_base = Path("assets") / "tyre-icons"
-        self.icon_mappings = {
-            "Soft": self.load_icon(str(icon_base / "soft_tyre.svg")),
-            "Super Soft": self.load_icon(str(icon_base / "super_soft_tyre.svg")),
-            "Medium": self.load_icon(str(icon_base / "medium_tyre.svg")),
-            "Hard": self.load_icon(str(icon_base / "hard_tyre.svg")),
-            "Inters": self.load_icon(str(icon_base / "intermediate_tyre.svg")),
-            "Wet": self.load_icon(str(icon_base / "wet_tyre.svg")),
+    def _init_icons(self):
+
+        icon_base_tyres = Path("assets") / "tyre-icons"
+        self.tyre_icon_mappings = {
+            "Soft": self.load_icon(str(icon_base_tyres / "soft_tyre.svg")),
+            "Super Soft": self.load_icon(str(icon_base_tyres / "super_soft_tyre.svg")),
+            "Medium": self.load_icon(str(icon_base_tyres / "medium_tyre.svg")),
+            "Hard": self.load_icon(str(icon_base_tyres / "hard_tyre.svg")),
+            "Inters": self.load_icon(str(icon_base_tyres / "intermediate_tyre.svg")),
+            "Wet": self.load_icon(str(icon_base_tyres / "wet_tyre.svg")),
         }
-        for name, icon in self.icon_mappings.items():
+        for name, icon in self.tyre_icon_mappings.items():
             if icon.isNull():
                 self.logger.warning(f"{self.overlay_id} | Failed to load tyre icon: {name}")
             else:
                 self.logger.debug(f"{self.overlay_id} | Loaded tyre icon successfully: {name}")
+
+        icon_base_teams = Path("assets") / "team-logos"
+        self.team_logo_mappings = {
+            "Alpine": self.load_icon(str(icon_base_teams / "alpine.svg")),
+            "Aston Martin": self.load_icon(str(icon_base_teams / "aston_martin.svg")),
+            "Ferrari": self.load_icon(str(icon_base_teams / "ferrari.svg")),
+            "Haas": self.load_icon(str(icon_base_teams / "haas.svg")),
+
+            "McLaren": self.load_icon(str(icon_base_teams / "mclaren.svg")),
+            "Mclaren": self.load_icon(str(icon_base_teams / "mclaren.svg")),
+
+            "Mercedes": self.load_icon(str(icon_base_teams / "mercedes.svg")),
+
+            "RB": self.load_icon(str(icon_base_teams / "rb.svg")),
+            "VCARB": self.load_icon(str(icon_base_teams / "rb.svg")),
+            "Alpha Tauri": self.load_icon(str(icon_base_teams / "rb.svg")),
+
+            "Red Bull": self.load_icon(str(icon_base_teams / "red_bull.svg")),
+
+            "Sauber": self.load_icon(str(icon_base_teams / "sauber.svg")),
+            "Alfa Romeo": self.load_icon(str(icon_base_teams / "sauber.svg")),
+
+            "Williams": self.load_icon(str(icon_base_teams / "williams.svg"))
+        }
+
+        for name, icon in self.team_logo_mappings.items():
+            if icon.isNull():
+                self.logger.warning(f"{self.overlay_id} | Failed to load team icon: {name}")
+            else:
+                self.logger.debug(f"{self.overlay_id} | Loaded team icon successfully: {name}")
 
     def build_ui(self):
         """Build the timing tower UI"""
@@ -148,7 +181,7 @@ class TimingTowerOverlay(BaseOverlay):
 
     def _calculate_content_width(self) -> int:
         """Return total content width based on column sizes."""
-        return 40 + 140 + 90 + 75 + 75
+        return 40 + 30 + 160 + 90 + 75 + 75
 
     def _create_header_section(self, content_width: int) -> QWidget:
         """Create the header section with title and session info."""
@@ -200,8 +233,8 @@ class TimingTowerOverlay(BaseOverlay):
 
     def _create_timing_table(self, content_width: int) -> QTableWidget:
         """Create and configure the timing table."""
-        table = QTableWidget(self.total_rows, 5)
-        table.setHorizontalHeaderLabels(["Pos", "Driver", "Delta", "Tyre", "ERS"])
+        table = QTableWidget(self.total_rows, 6)
+        table.setHorizontalHeaderLabels(["Pos", "Team", "Driver", "Delta", "Tyre", "ERS"])
 
         self._configure_table_behavior(table)
         self._set_table_dimensions(table, content_width)
@@ -227,11 +260,11 @@ class TimingTowerOverlay(BaseOverlay):
         header.setSectionResizeMode(QHeaderView.Fixed)
         header.setStretchLastSection(False)
 
-        table.setItemDelegateForColumn(4, ERSDelegate(table))
+        table.setItemDelegateForColumn(5, ERSDelegate(table))
 
     def _set_table_dimensions(self, table: QTableWidget, content_width: int) -> None:
         """Set column widths, row heights, and overall table size."""
-        column_widths = [40, 140, 90, 75, 75]
+        column_widths = [40, 30, 160, 90, 75, 75]
         for i, width in enumerate(column_widths):
             table.setColumnWidth(i, width)
 
@@ -299,7 +332,7 @@ class TimingTowerOverlay(BaseOverlay):
 
         return item
 
-    def _update_row(self, row_idx: int, position: int, name: str, delta: Optional[float],
+    def _update_row(self, row_idx: int, position: int, team: str, name: str, delta: Optional[float],
                    tyre_compound: str, tyre_age: int, ers_mode: str, ers: float, is_player: bool = False):
         """Update a specific row in the timing table"""
 
@@ -308,10 +341,22 @@ class TimingTowerOverlay(BaseOverlay):
                                           QColor("#ddd"), bold=True)
         self.timing_table.setItem(row_idx, 0, pos_item)
 
+        # Team logo
+        team_icon = self.team_logo_mappings.get(team)
+        if team_icon and not team_icon.isNull():
+            team_item = QTableWidgetItem(team_icon, "")
+        else:
+            # Fallback: show first 3 letters of team name
+            team_display = "??"
+            team_item = self._create_table_item(team_display, Qt.AlignCenter, bold=True)
+
+        team_item.setTextAlignment(Qt.AlignCenter)
+        self.timing_table.setItem(row_idx, 1, team_item)
+
         # Driver name
         name_item = self._create_table_item(name, Qt.AlignLeft | Qt.AlignVCenter,
                                            QColor("#ffffff"), bold=True)
-        self.timing_table.setItem(row_idx, 1, name_item)
+        self.timing_table.setItem(row_idx, 2, name_item)
 
         # Delta
         if is_player or delta == 0 or delta is None:
@@ -321,10 +366,10 @@ class TimingTowerOverlay(BaseOverlay):
 
         delta_item = self._create_table_item(delta_text, Qt.AlignCenter,
                                             QColor("#00ff99"), font_family="Courier New")
-        self.timing_table.setItem(row_idx, 2, delta_item)
+        self.timing_table.setItem(row_idx, 3, delta_item)
 
         # Tyre compound
-        tyre_icon = self.icon_mappings.get(tyre_compound)
+        tyre_icon = self.tyre_icon_mappings.get(tyre_compound)
         tyre_text = f"{tyre_age}L"
         if tyre_icon and not tyre_icon.isNull():
             # Icon found -> show icon + text (e.g., "5L")
@@ -335,7 +380,7 @@ class TimingTowerOverlay(BaseOverlay):
             tyre_item = self._create_table_item(tyre_display, Qt.AlignCenter, bold=True)
 
         tyre_item.setTextAlignment(Qt.AlignCenter)
-        self.timing_table.setItem(row_idx, 3, tyre_item)
+        self.timing_table.setItem(row_idx, 4, tyre_item)
 
         # ERS with mode color bar
         ers_text = f"{F1Utils.formatFloat(ers, precision=0, signed=False)}%"
@@ -345,21 +390,22 @@ class TimingTowerOverlay(BaseOverlay):
         ers_mode_color = self.ers_colors.get(ers_mode, QColor("#888888"))
         ers_item.setData(Qt.UserRole, ers_mode_color)
 
-        self.timing_table.setItem(row_idx, 4, ers_item)
+        self.timing_table.setItem(row_idx, 5, ers_item)
 
         # Highlight player row
         if is_player:
-            for col in range(5):
+            for col in range(6):
                 if item := self.timing_table.item(row_idx, col):
                     item.setBackground(QBrush(QColor(0, 100, 200, 200)))
 
     def _clear_row(self, row_idx: int):
         """Clear a specific row"""
         self.timing_table.setItem(row_idx, 0, self._create_table_item("--"))
-        self.timing_table.setItem(row_idx, 1, self._create_table_item("---", Qt.AlignLeft))
-        self.timing_table.setItem(row_idx, 2, self._create_table_item("--.-"))
-        self.timing_table.setItem(row_idx, 3, self._create_table_item("--"))
-        self.timing_table.setItem(row_idx, 4, self._create_table_item("0%"))
+        self.timing_table.setItem(row_idx, 1, self._create_table_item("---"))
+        self.timing_table.setItem(row_idx, 2, self._create_table_item("---", Qt.AlignLeft))
+        self.timing_table.setItem(row_idx, 3, self._create_table_item("--.-"))
+        self.timing_table.setItem(row_idx, 4, self._create_table_item("--"))
+        self.timing_table.setItem(row_idx, 5, self._create_table_item("0%"))
 
     def _init_cmd_handlers(self):
 
@@ -402,6 +448,7 @@ class TimingTowerOverlay(BaseOverlay):
                     if idx < self.total_rows:
                         position = row_data.get("driver-info", {}).get("position", 0)
                         name = row_data.get("driver-info", {}).get("name", "UNKNOWN")
+                        team = row_data.get("driver-info", {}).get("team", "UNKNOWN")
                         is_player = row_data.get("driver-info", {}).get("is-player", False)
                         delta = row_data.get("delta-info", {}).get("relative-delta", 0)
                         tyre_compound = row_data.get("tyre-info", {}).get("visual-tyre-compound", "UNKNOWN")
@@ -409,7 +456,7 @@ class TimingTowerOverlay(BaseOverlay):
                         ers_mode = row_data.get("ers-info", {}).get("ers-mode", "None")
                         ers_perc = row_data.get("ers-info", {}).get("ers-percent-float", 0.0)
 
-                        self._update_row(idx, position, name, delta, tyre_compound, tyre_age, ers_mode, ers_perc, is_player)
+                        self._update_row(idx, position, team, name, delta, tyre_compound, tyre_age, ers_mode, ers_perc, is_player)
 
     def clear(self):
         """Clear all timing data"""
