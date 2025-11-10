@@ -39,7 +39,7 @@ from .sector_status_bar import SectorStatusBar
 
 class LapTimerOverlay(BaseOverlay):
 
-    def __init__(self, config: OverlaysConfig, logger: logging.Logger, locked: bool = False):
+    def __init__(self, config: OverlaysConfig, logger: logging.Logger, locked: bool, opacity: int):
 
         # Overlay specific fields
         self.curr_session_uid = None
@@ -48,7 +48,7 @@ class LapTimerOverlay(BaseOverlay):
         # constants
         self._default_time_str = "--:--.---"
 
-        super().__init__("lap_timer", config, logger, locked)
+        super().__init__("lap_timer", config, logger, locked, opacity)
         self._init_cmd_handlers()
         self.curr_lap_display_timer: QTimer = QTimer(self)
 

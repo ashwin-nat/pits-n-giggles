@@ -87,7 +87,7 @@ class ERSDelegate(QStyledItemDelegate):
 
 class TimingTowerOverlay(BaseOverlay):
 
-    def __init__(self, config: OverlaysConfig, logger: logging.Logger, locked: bool = False):
+    def __init__(self, config: OverlaysConfig, logger: logging.Logger, locked: bool, opacity: int):
 
         # Overlay specific fields
         self.num_adjacent_cars = 2
@@ -106,7 +106,7 @@ class TimingTowerOverlay(BaseOverlay):
             "Overtake": QColor("#ff0000")
         }
 
-        super().__init__("timing_tower", config, logger, locked)
+        super().__init__("timing_tower", config, logger, locked, opacity)
         self._init_cmd_handlers()
         self._init_icons()
 

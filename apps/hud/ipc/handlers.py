@@ -24,6 +24,8 @@
 
 import logging
 
+from pydantic import TypeAdapter, ValidationError, conint
+
 from ..ui.infra import OverlaysMgr
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
@@ -64,3 +66,26 @@ def handle_toggle_visibility(msg: dict, logger: logging.Logger, overlays_mgr: Ov
 
     overlays_mgr.toggle_overlays_visibility()
     return {"status": "success", "message": "toggle-visibility handler executed."}
+
+def handle_set_opacity(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
+    """Handle the 'set-opacity' IPC command to set HUD widgets opacity.
+
+    Args:
+        msg (dict): IPC command message
+        logger (logging.Logger): Logger
+        overlays_mgr (OverlaysMgr): Overlays manager
+
+    Returns:
+        dict: IPC response
+    """
+
+    logger.info("Received set-opacity command. args: %s", msg)
+
+    args = msg.get("args", {})
+    opacity = args.get("opacity")
+    try:
+        opacity = TypeAdapter(conint(ge=0, le=100)).validate_python(opacity)
+        overlays_mgr.set_overlays_opacity(opacity)
+        return {"status": "success", "message": "set-opacity handler executed."}
+    except ValidationError as e:
+        return {"status": "error", "message": f"Invalid or missing opacity value in set-opacity command. {e}"}

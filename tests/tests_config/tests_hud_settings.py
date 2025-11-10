@@ -46,6 +46,7 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.toggle_overlays_udp_action_code, 10)
         self.assertEqual(settings.show_lap_timer, True)
         self.assertEqual(settings.show_timing_tower, True)
+        self.assertEqual(settings.overlays_opacity, 100)
 
     def test_enabled_validation(self):
         """Test valid and invalid log_file_size values"""
@@ -110,3 +111,33 @@ class TestHudSettings(TestF1ConfigBase):
 
         with self.assertRaises(ValidationError):
             HudSettings(show_timing_tower=420)
+
+    def test_overlays_opacity_validation(self):
+        """Test valid and invalid overlays_opacity values"""
+        # Valid value
+        opacity = 75
+        hud_settings = HudSettings(overlays_opacity=opacity)
+        self.assertEqual(hud_settings.overlays_opacity, opacity)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(overlays_opacity=None)  # type: ignore
+
+        with self.assertRaises(ValidationError):
+            HudSettings(overlays_opacity="invalid")
+
+        with self.assertRaises(ValidationError):
+            HudSettings(overlays_opacity=-10)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(overlays_opacity=150)
+
+        # Boundary value: minimum (0)
+        min_opacity = 0
+        hud_settings_min = HudSettings(overlays_opacity=min_opacity)
+        self.assertEqual(hud_settings_min.overlays_opacity, min_opacity)
+        # Boundary value: maximum (100)
+        max_opacity = 100
+        hud_settings_max = HudSettings(overlays_opacity=max_opacity)
+        self.assertEqual(hud_settings_max.overlays_opacity, max_opacity)
+        with self.assertRaises(ValidationError):
+            HudSettings(overlays_opacity=None)  # type: ignore

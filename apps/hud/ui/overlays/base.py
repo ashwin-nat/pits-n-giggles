@@ -45,12 +45,13 @@ class BaseOverlay(QWidget):
     # Add signal for responses
     response_signal = Signal(str, object)  # request_type, response_data
 
-    def __init__(self, overlay_id: str, config: OverlaysConfig, logger: logging.Logger, locked: bool = False):
+    def __init__(self, overlay_id: str, config: OverlaysConfig, logger: logging.Logger, locked: bool, opacity: int):
         super().__init__()
         self.overlay_id = overlay_id
         self.config = config
         self.locked = locked
         self.logger = logger
+        self.opacity = opacity
         self._drag_pos = None
         self._command_handlers: Dict[str, OverlayCommandHandler] = {}
         self._request_handlers: Dict[str, OverlayRequestHandler] = {}  # New: request handlers
@@ -79,6 +80,13 @@ class BaseOverlay(QWidget):
             self.config.width,
             self.config.height
         )
+        self.set_opacity(self.opacity)
+
+    def set_opacity(self, opacity: int):
+        """Set window opacity (0-100)."""
+        self.opacity = opacity
+        self.logger.debug(f"{self.overlay_id} | Setting opacity to {opacity}%")
+        self.setWindowOpacity(self.opacity / 100.0)
 
     # --------------------------------------------------------------------------
     # Window State
@@ -155,6 +163,11 @@ class BaseOverlay(QWidget):
             else:
                 self.logger.debug(f'{self.overlay_id} | Showing overlay')
                 self.show()
+
+        @self.on_command("set_opacity")
+        def handle_set_opacity(data: dict):
+            opacity = data["opacity"]
+            self.set_opacity(opacity)
 
     def on_request(self, request_type: str):
         """Decorator for registering request handlers that return responses."""

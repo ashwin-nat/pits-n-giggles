@@ -551,6 +551,20 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
+    overlays_opacity: int = Field(
+        default=100,
+        ge=0,
+        le=100,
+        description="Overlays opacity percentage",
+        json_schema_extra={
+            "ui": {
+                "type" : "slider",
+                "visible": True,
+                "min": 0,
+                "max": 100
+            }
+        }
+    )
 
 class PitTimeLossF1(ConfigDiffMixin, BaseModel):
     ui_meta: ClassVar[Dict[str, Any]] = {

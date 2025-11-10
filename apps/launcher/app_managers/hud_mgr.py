@@ -148,10 +148,18 @@ class HudAppMgr(PngAppMgrBase):
             ],
         })
         self.console_app.debug_log(f"{self.display_name} Settings changed: {json.dumps(diff, indent=2)}")
-        has_changed = bool(diff)
-        if has_changed:
+        should_restart = bool(diff)
+        if should_restart:
             self.enabled = new_settings.HUD.enabled
-        return has_changed
+
+        # TODO: Handle opacity change here
+        if self.curr_settings.diff(new_settings, {
+            "HUD": [
+                "overlays_opacity",
+            ],
+        }):
+            self._send_overlays_opacity_change(new_settings)
+        return should_restart
 
     def start(self):
         """Check for enabled flag before starting"""
@@ -221,3 +229,18 @@ class HudAppMgr(PngAppMgrBase):
             self.start_stop_button.config(state="disabled")
             self.ping_button.config(state="disabled")
             self.lock_button.config(state="disabled")
+
+    def _send_overlays_opacity_change(self, new_settings: PngSettings) -> None:
+        """Send overlays opacity change to HUD app
+
+        Args:
+            new_settings (PngSettings): New settings
+        """
+        self.console_app.debug_log("Sending set-overlays-opacity command to HUD...")
+        rsp = IpcParent(self.ipc_port).request(command="set-overlays-opacity", args={
+            "opacity": new_settings.HUD.overlays_opacity,
+        })
+        if not rsp or rsp.get("status") != "success":
+            self.console_app.error_log(f"Failed to set overlays opacity: {rsp}")
+        else:
+            self.console_app.debug_log(f"Set overlays opacity response: {rsp}")
