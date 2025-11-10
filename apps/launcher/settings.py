@@ -159,7 +159,6 @@ class SettingsWindow:
                 elif ui_type == "slider":
                     minv = ui_meta["min"]
                     maxv = ui_meta["max"]
-                    step = field_meta.get("step", 1)
 
                     is_int_field = field_info.annotation in (int, Optional[int])
                     var = IntVar(value=int(value)) if is_int_field else DoubleVar(value=float(value))
@@ -167,18 +166,16 @@ class SettingsWindow:
                     scale = ttk.Scale(tab, from_=minv, to=maxv, orient="horizontal", variable=var)
                     scale.grid(row=i, column=1, sticky="ew", padx=5, pady=5)
 
-                    # live label
+                    # Precompute label width from the max value length
+                    max_text = f"{maxv:.0f}" if is_int_field else f"{maxv:.2f}"
                     fmt = "{:.0f}" if is_int_field else "{:.2f}"
-                    value_label = ttk.Label(tab, text=fmt.format(value))
-                    value_label.grid(row=i, column=2, sticky="w", padx=(5, 10), pady=5)
+                    value_label = ttk.Label(tab, text=fmt.format(value), width=len(max_text), anchor="e")
+                    value_label.grid(row=i, column=2, sticky="e", padx=(5, 10), pady=5)
 
                     def _update_label(*_):
                         value_label.config(text=fmt.format(var.get()))
 
                     var.trace_add("write", _update_label)
-
-
-
 
                 elif ui_type == "hostport_entry":
                     var = StringVar(value=str(value))
@@ -212,7 +209,6 @@ class SettingsWindow:
 
                 # Store reference for later save/apply
                 self.entry_vars[section_name][field_name] = var
-
 
     def create_buttons(self) -> None:
         """
