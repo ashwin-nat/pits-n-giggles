@@ -106,7 +106,7 @@ class TimingTowerOverlay(BaseOverlay):
             "Overtake": QColor("#ff0000")
         }
 
-        super().__init__("lap_timer", config, logger, locked)
+        super().__init__("timing_tower", config, logger, locked)
         self._init_cmd_handlers()
 
         icon_base = Path("assets") / "tyre-icons"
