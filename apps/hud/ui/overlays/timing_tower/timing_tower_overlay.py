@@ -448,14 +448,12 @@ class TimingTowerOverlay(BaseOverlay):
                 for i in range(self.total_rows):
                     self.timing_table.setRowHidden(i, True)
             else:
-                # Show all rows and clear them first
-                for i in range(self.total_rows):
-                    self.timing_table.setRowHidden(i, False)
-                    self._clear_row(i)
+                num_rows_with_data = min(len(relevant_rows), self.total_rows)
 
                 # Populate rows with data
                 for idx, row_data in enumerate(relevant_rows):
                     if idx < self.total_rows:
+                        self.timing_table.setRowHidden(idx, False)
                         position = row_data.get("driver-info", {}).get("position", 0)
                         name = row_data.get("driver-info", {}).get("name", "UNKNOWN")
                         team = row_data.get("driver-info", {}).get("team", "UNKNOWN")
@@ -467,6 +465,10 @@ class TimingTowerOverlay(BaseOverlay):
                         ers_perc = row_data.get("ers-info", {}).get("ers-percent-float", 0.0)
 
                         self._update_row(idx, position, team, name, delta, tyre_compound, tyre_age, ers_mode, ers_perc, is_player)
+
+                # Hide remaining empty rows
+                for i in range(num_rows_with_data, self.total_rows):
+                    self.timing_table.setRowHidden(i, True)
 
     def clear(self):
         """Clear all timing data"""
