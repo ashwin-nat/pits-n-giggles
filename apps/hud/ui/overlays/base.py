@@ -51,6 +51,7 @@ class BaseOverlay(QWidget):
         self.config = config
         self.locked = locked
         self.logger = logger
+        self.opacity = opacity
         self._drag_pos = None
         self._command_handlers: Dict[str, OverlayCommandHandler] = {}
         self._request_handlers: Dict[str, OverlayRequestHandler] = {}  # New: request handlers
@@ -79,6 +80,13 @@ class BaseOverlay(QWidget):
             self.config.width,
             self.config.height
         )
+        self.setOpacity(self.opacity)
+
+    def setOpacity(self, opacity: int):
+        """Set window opacity (0-100)."""
+        self.opacity = opacity
+        self.logger.debug(f"{self.overlay_id} | Setting opacity to {opacity}%")
+        self.setWindowOpacity(self.opacity / 100.0)
 
     # --------------------------------------------------------------------------
     # Window State
