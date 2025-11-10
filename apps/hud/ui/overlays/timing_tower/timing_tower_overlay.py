@@ -380,6 +380,10 @@ class TimingTowerOverlay(BaseOverlay):
         if tyre_icon and not tyre_icon.isNull():
             # Icon found -> show icon + text (e.g., "5L")
             tyre_item = QTableWidgetItem(tyre_icon, tyre_text)
+            font = tyre_item.font()
+            font.setPointSize(11)
+            font.setBold(False)
+            tyre_item.setFont(font)
         else:
             # No icon -> show fallback display text (first letter or "--")
             tyre_display = (f"{tyre_compound[:1]}({tyre_text})") if tyre_compound else "--"
