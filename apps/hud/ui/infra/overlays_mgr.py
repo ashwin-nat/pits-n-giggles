@@ -115,13 +115,13 @@ class OverlaysMgr:
             return
 
         changed = False
-        for window_id in list(self.window_manager.overlays.keys()):
-            curr_params = self._get_window_info_threadsafe(window_id)
-            self.logger.debug(f"Current config for window '{window_id}' is {curr_params}")
-            saved_params = self.config[window_id]
+        for overlay_id in list(self.window_manager.overlays.keys()):
+            curr_params = self._get_window_info_threadsafe(overlay_id)
+            self.logger.debug(f"Current config for overlay '{overlay_id}' is {curr_params}")
+            saved_params = self.config[overlay_id]
             if curr_params != saved_params:
-                self.logger.debug(f"Updating config for window '{window_id}' to {curr_params}")
-                self.config[window_id] = curr_params
+                self.logger.debug(f"Updating config for overlay '{overlay_id}' to {curr_params}")
+                self.config[overlay_id] = curr_params
                 changed = True
 
         if changed:
@@ -148,10 +148,10 @@ class OverlaysMgr:
             Qt.ConnectionType.QueuedConnection
         )
 
-    def _get_html_path_for_window(self, window_id: str) -> str:
+    def _get_html_path_for_window(self, overlay_id: str) -> str:
         """Constructs the absolute path to the HTML file for a given window ID."""
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        html_file_path = os.path.join(base_dir, "..", "overlays", window_id, f"{window_id}.html")
+        html_file_path = os.path.join(base_dir, "..", "overlays", overlay_id, f"{overlay_id}.html")
         return html_file_path
 
     def _init_config(self):
@@ -191,8 +191,8 @@ class OverlaysMgr:
                     try:
                         parsed_contents = json.load(f)
                         return {
-                            window_name: OverlaysConfig.fromJSON(params)
-                            for window_name, params in parsed_contents.items()
+                            overlay_id: OverlaysConfig.fromJSON(params)
+                            for overlay_id, params in parsed_contents.items()
                         }
                     except Exception as e: # pylint: disable=broad-exception-caught
                         self.logger.error(f"Failed to load config file: {e}. Falling back to default config")
@@ -201,7 +201,7 @@ class OverlaysMgr:
 
         return None
 
-    def _get_window_info_threadsafe(self, window_id: str, timeout_ms: int = 5000) -> Optional[OverlaysConfig]:
+    def _get_window_info_threadsafe(self, overlay_id: str, timeout_ms: int = 5000) -> Optional[OverlaysConfig]:
         """Thread-safe query for specific window info."""
-        self.logger.debug(f"Requesting window info for {window_id}")
-        return self.window_manager.request(window_id, "get_window_info", timeout_ms=timeout_ms)
+        self.logger.debug(f"Requesting window info for {overlay_id}")
+        return self.window_manager.request(overlay_id, "get_window_info", timeout_ms=timeout_ms)

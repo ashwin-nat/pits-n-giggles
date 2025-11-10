@@ -55,10 +55,10 @@ class WindowManager(QObject):
         self.mgmt_request_signal.connect(self._handle_request)
         self.mgmt_response_signal.connect(self._store_response)
 
-    def register_overlay(self, window_id: str, overlay: BaseOverlay):
+    def register_overlay(self, overlay_id: str, overlay: BaseOverlay):
         """Register an overlay and connect signals to its slots."""
-        self.logger.debug(f"Registering overlay {window_id}")
-        self.overlays[window_id] = overlay
+        self.logger.debug(f"Registering overlay {overlay_id}")
+        self.overlays[overlay_id] = overlay
 
         # Connect command and request signals TO the overlay
         self.mgmt_cmd_signal.connect(overlay._handle_cmd)
@@ -67,10 +67,10 @@ class WindowManager(QObject):
         # **CRITICAL FIX**: Connect overlay's response signal back to manager
         overlay.response_signal.connect(self.mgmt_response_signal.emit)
 
-    def unregister_overlay(self, window_id: str):
+    def unregister_overlay(self, overlay_id: str):
         """Unregister an overlay and disconnect its signals."""
-        if window_id in self.overlays:
-            overlay = self.overlays[window_id]
+        if overlay_id in self.overlays:
+            overlay = self.overlays[overlay_id]
             # Disconnect all signals from this overlay
             try:
                 self.mgmt_cmd_signal.disconnect(overlay._handle_cmd)
@@ -78,8 +78,8 @@ class WindowManager(QObject):
                 overlay.response_signal.disconnect(self.mgmt_response_signal.emit)
             except RuntimeError:
                 pass  # Already disconnected
-            del self.overlays[window_id]
-            self.logger.debug(f"Unregistered overlay {window_id}")
+            del self.overlays[overlay_id]
+            self.logger.debug(f"Unregistered overlay {overlay_id}")
 
     # pylint: disable=useless-return
     @Slot(str, str, dict)
