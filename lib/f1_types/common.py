@@ -1236,6 +1236,7 @@ class F1Utils:
         Format a float with given precision and optional sign.
 
         Returns "N/A" if the input is not a valid number.
+        Normalizes -0.0 to 0.0 and ensures very small values near zero are formatted as 0.00 (or appropriate precision).
         """
         if not isinstance(float_number, (int, float)) or isinstance(float_number, bool):
             return "N/A"
@@ -1243,12 +1244,12 @@ class F1Utils:
         if math.isnan(float_number):
             return "N/A"
 
+        # Normalize -0.0 to 0.0 and very small values near zero to 0.0
+        if abs(float_number) < 1e-12:
+            float_number = 0.0
+
         float_str = f"{float_number:.{precision}f}"
-
-        if signed and float_number >= 0:
-            return f"+{float_str}"
-
-        return float_str
+        return f"+{float_str}" if signed and float_number >= 0 else float_str
 
     @staticmethod
     def getLapTimeStrSplit(minutes_part: int, milliseconds_part: int) -> str:

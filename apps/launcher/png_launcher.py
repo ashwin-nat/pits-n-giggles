@@ -25,7 +25,7 @@
 import copy
 import datetime
 import sys
-import threading
+import threading # pylint: disable=unused-import # TODO: undo
 import tkinter as tk
 import webbrowser
 from tkinter import ttk

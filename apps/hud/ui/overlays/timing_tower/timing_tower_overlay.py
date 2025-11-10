@@ -124,25 +124,41 @@ class TimingTowerOverlay(BaseOverlay):
             else:
                 self.logger.debug(f"{self.overlay_id} | Loaded tyre icon successfully: {name}")
 
-
     def build_ui(self):
         """Build the timing tower UI"""
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(5, 5, 5, 5)  # Equal margins on all sides
-        main_layout.setSpacing(5)
-        main_layout.setAlignment(Qt.AlignCenter)  # Center align the content
+        self._configure_main_layout(main_layout)
 
-        # Calculate the exact content width for both header and table
-        content_width = 40 + 140 + 90 + 75 + 75  # Sum of column widths
+        content_width = self._calculate_content_width()
 
-        # Header section
+        header_widget = self._create_header_section(content_width)
+        main_layout.addWidget(header_widget)
+
+        self.timing_table = self._create_timing_table(content_width)
+        main_layout.addWidget(self.timing_table)
+
+        self._apply_overall_style()
+        self.clear()
+
+    def _configure_main_layout(self, layout: QVBoxLayout) -> None:
+        """Configure main layout spacing, margins, and alignment."""
+        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setSpacing(5)
+        layout.setAlignment(Qt.AlignCenter)
+
+    def _calculate_content_width(self) -> int:
+        """Return total content width based on column sizes."""
+        return 40 + 140 + 90 + 75 + 75
+
+    def _create_header_section(self, content_width: int) -> QWidget:
+        """Create the header section with title and session info."""
         header_widget = QWidget()
-        header_widget.setFixedWidth(content_width)  # Match table width
+        header_widget.setFixedWidth(content_width)
+
         header_layout = QVBoxLayout(header_widget)
-        header_layout.setContentsMargins(0, 5, 0, 5)  # Remove side margins
+        header_layout.setContentsMargins(0, 5, 0, 5)
         header_layout.setSpacing(3)
 
-        # Session type header
         self.header_label = QLabel("TIMING TOWER")
         self.header_label.setAlignment(Qt.AlignCenter)
         self.header_label.setStyleSheet("""
@@ -156,7 +172,6 @@ class TimingTowerOverlay(BaseOverlay):
             }
         """)
 
-        # Session info (lap count or time remaining)
         self.session_info_label = QLabel("-- / --")
         self.session_info_label.setAlignment(Qt.AlignCenter)
         self.session_info_label.setStyleSheet("""
@@ -173,6 +188,7 @@ class TimingTowerOverlay(BaseOverlay):
 
         header_layout.addWidget(self.header_label)
         header_layout.addWidget(self.session_info_label)
+
         header_widget.setStyleSheet("""
             QWidget {
                 background-color: rgba(15, 15, 15, 200);
@@ -180,56 +196,56 @@ class TimingTowerOverlay(BaseOverlay):
             }
         """)
 
-        main_layout.addWidget(header_widget)
+        return header_widget
 
-        # Create timing table
-        self.timing_table = QTableWidget(self.total_rows, 5)
-        self.timing_table.setHorizontalHeaderLabels(["Pos", "Driver", "Delta", "Tyre", "ERS"])
+    def _create_timing_table(self, content_width: int) -> QTableWidget:
+        """Create and configure the timing table."""
+        table = QTableWidget(self.total_rows, 5)
+        table.setHorizontalHeaderLabels(["Pos", "Driver", "Delta", "Tyre", "ERS"])
 
-        # Configure table appearance
-        self.timing_table.setShowGrid(False)
-        self.timing_table.setAlternatingRowColors(True)
-        self.timing_table.setSelectionMode(QTableWidget.NoSelection)
-        self.timing_table.setFocusPolicy(Qt.NoFocus)
-        self.timing_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.timing_table.verticalHeader().setVisible(False)
-        self.timing_table.horizontalHeader().setVisible(False)
-        self.timing_table.setMouseTracking(False)
-        self.timing_table.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        self._configure_table_behavior(table)
+        self._set_table_dimensions(table, content_width)
+        self._apply_table_style(table)
 
-        # Disable scrollbars
-        self.timing_table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.timing_table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        return table
 
-        # Set column widths
-        self.timing_table.setColumnWidth(0, 40)   # Position
-        self.timing_table.setColumnWidth(1, 140)  # Driver name
-        self.timing_table.setColumnWidth(2, 90)   # Delta (increased for 6 chars)
-        self.timing_table.setColumnWidth(3, 75)   # Tyre
-        self.timing_table.setColumnWidth(4, 75)   # ERS
+    def _configure_table_behavior(self, table: QTableWidget) -> None:
+        """Disable editing, selection, scrollbars, etc."""
+        table.setShowGrid(False)
+        table.setAlternatingRowColors(True)
+        table.setSelectionMode(QTableWidget.NoSelection)
+        table.setFocusPolicy(Qt.NoFocus)
+        table.setEditTriggers(QTableWidget.NoEditTriggers)
+        table.verticalHeader().setVisible(False)
+        table.horizontalHeader().setVisible(False)
+        table.setMouseTracking(False)
+        table.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
-        # Configure header
-        header = self.timing_table.horizontalHeader()
+        header = table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Fixed)
         header.setStretchLastSection(False)
 
-        # Set row heights
+        table.setItemDelegateForColumn(4, ERSDelegate(table))
+
+    def _set_table_dimensions(self, table: QTableWidget, content_width: int) -> None:
+        """Set column widths, row heights, and overall table size."""
+        column_widths = [40, 140, 90, 75, 75]
+        for i, width in enumerate(column_widths):
+            table.setColumnWidth(i, width)
+
         for i in range(self.total_rows):
-            self.timing_table.setRowHeight(i, 32)
+            table.setRowHeight(i, 32)
 
-        # Set custom delegate for ERS column (column 4)
-        self.timing_table.setItemDelegateForColumn(4, ERSDelegate(self.timing_table))
+        table_height = 32 * self.total_rows + 4
+        table.setFixedSize(content_width, table_height)
+        table.setFrameShape(QTableWidget.NoFrame)
+        table.setContentsMargins(0, 0, 0, 0)
 
-        # Set fixed size for table to match content width
-        table_height = 32 * self.total_rows + 4  # row height * rows + small margin
-        self.timing_table.setFixedSize(content_width, table_height)
-
-        # Remove table frame and margins
-        self.timing_table.setFrameShape(QTableWidget.NoFrame)
-        self.timing_table.setContentsMargins(0, 0, 0, 0)
-
-        # Apply clean styling
-        self.timing_table.setStyleSheet("""
+    def _apply_table_style(self, table: QTableWidget) -> None:
+        """Apply modern dark theme styling to the table."""
+        table.setStyleSheet("""
             QTableWidget {
                 background-color: rgba(15, 15, 15, 220);
                 border: none;
@@ -253,17 +269,14 @@ class TimingTowerOverlay(BaseOverlay):
             }
         """)
 
-        main_layout.addWidget(self.timing_table)
-
-        # Set overall styling
+    def _apply_overall_style(self) -> None:
+        """Apply background and border styling to the main widget."""
         self.setStyleSheet("""
             QWidget {
                 background-color: rgba(10, 10, 10, 220);
                 border-radius: 8px;
             }
         """)
-
-        self.clear()
 
     def _create_table_item(self, text: str, alignment: Qt.AlignmentFlag = Qt.AlignCenter,
                           color: Optional[QColor] = None, font_family: str = None,
@@ -337,8 +350,7 @@ class TimingTowerOverlay(BaseOverlay):
         # Highlight player row
         if is_player:
             for col in range(5):
-                item = self.timing_table.item(row_idx, col)
-                if item:
+                if item := self.timing_table.item(row_idx, col):
                     item.setBackground(QBrush(QColor(0, 100, 200, 200)))
 
     def _clear_row(self, row_idx: int):

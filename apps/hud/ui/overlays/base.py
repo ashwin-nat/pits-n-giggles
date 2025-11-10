@@ -169,8 +169,7 @@ class BaseOverlay(QWidget):
         if recipient and recipient != self.overlay_id:
             return  # Not for this overlay
 
-        handler = self._request_handlers.get(request_type)
-        if handler:
+        if handler := self._request_handlers.get(request_type):
             self.logger.debug(f"{self.overlay_id} | Handling request '{request_type}'")
             parsed_data = json.loads(request_data)
             try:
@@ -189,8 +188,7 @@ class BaseOverlay(QWidget):
         if recipient and recipient != self.overlay_id:
             return  # Not for this overlay
 
-        handler = self._command_handlers.get(cmd)
-        if handler:
+        if handler := self._command_handlers.get(cmd):
             parsed_data = json.loads(data)
             try:
                 handler(parsed_data)
@@ -258,16 +256,17 @@ class BaseOverlay(QWidget):
             self.logger.warning(f"Warning: Spectator index {spectator_index} is out of bounds.")
             return None
 
-        for index, row in enumerate(data["table-entries"]):
-            if row.get("driver-info", {}).get("is-player") is True:
-                return index
-        return None
+        return next(
+            (
+                index
+                for index, row in enumerate(data["table-entries"])
+                if row.get("driver-info", {}).get("is-player") is True
+            ),
+            None,
+        )
 
     def _get_ref_row(self, data: dict) -> dict:
         """Helper to get the reference row from incoming race table data."""
 
         ref_index = self._get_ref_row_index(data)
-        if ref_index is None:
-            return None
-
-        return data["table-entries"][ref_index]
+        return None if ref_index is None else data["table-entries"][ref_index]
