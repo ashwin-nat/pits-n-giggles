@@ -338,7 +338,7 @@ class TimingTowerOverlay(BaseOverlay):
         return item
 
     def _update_row(self, row_idx: int, position: int, team: str, name: str, delta: Optional[float],
-                   tyre_compound: str, tyre_age: int, ers_mode: str, ers: float, is_player: bool = False):
+                   tyre_compound: str, tyre_age: int, ers_mode: str, ers: float, is_ref: bool = False):
         """Update a specific row in the timing table"""
 
         # Position
@@ -365,7 +365,7 @@ class TimingTowerOverlay(BaseOverlay):
         self.timing_table.setItem(row_idx, 2, name_item)
 
         # Delta
-        if is_player or delta == 0 or delta is None:
+        if is_ref or delta == 0 or delta is None:
             delta_text = "---"
         else:
             delta_text = f"{F1Utils.formatFloat(delta/1000, precision=3, signed=True)}"
@@ -402,8 +402,8 @@ class TimingTowerOverlay(BaseOverlay):
 
         self.timing_table.setItem(row_idx, 5, ers_item)
 
-        # Highlight player row
-        if is_player:
+        # Highlight reference row
+        if is_ref:
             for col in range(6):
                 if item := self.timing_table.item(row_idx, col):
                     item.setBackground(QBrush(QColor(0, 100, 200, 200)))
@@ -454,17 +454,27 @@ class TimingTowerOverlay(BaseOverlay):
                 for idx, row_data in enumerate(relevant_rows):
                     if idx < self.total_rows:
                         self.timing_table.setRowHidden(idx, False)
-                        position = row_data.get("driver-info", {}).get("position", 0)
-                        name = row_data.get("driver-info", {}).get("name", "UNKNOWN")
-                        team = row_data.get("driver-info", {}).get("team", "UNKNOWN")
-                        is_player = row_data.get("driver-info", {}).get("is-player", False)
-                        delta = row_data.get("delta-info", {}).get("relative-delta", 0)
-                        tyre_compound = row_data.get("tyre-info", {}).get("visual-tyre-compound", "UNKNOWN")
-                        tyre_age = row_data.get("tyre-info", {}).get("tyre-age", 0)
-                        ers_mode = row_data.get("ers-info", {}).get("ers-mode", "None")
-                        ers_perc = row_data.get("ers-info", {}).get("ers-percent-float", 0.0)
+                        driver_info = row_data.get("driver-info", {})
+                        delta_info = row_data.get("delta-info", {})
+                        tyre_info = row_data.get("tyre-info", {})
+                        ers_info = row_data.get("ers-info", {})
 
-                        self._update_row(idx, position, team, name, delta, tyre_compound, tyre_age, ers_mode, ers_perc, is_player)
+                        position = driver_info.get("position", 0)
+                        name = driver_info.get("name", "UNKNOWN")
+                        team = driver_info.get("team", "UNKNOWN")
+                        driver_idx = driver_info.get("index", -1)
+
+                        delta = delta_info.get("relative-delta", 0)
+
+                        tyre_compound = tyre_info.get("visual-tyre-compound", "UNKNOWN")
+                        tyre_age = tyre_info.get("tyre-age", 0)
+
+                        ers_mode = ers_info.get("ers-mode", "None")
+                        ers_perc = ers_info.get("ers-percent-float", 0.0)
+
+
+                        self._update_row(idx, position, team, name, delta, tyre_compound, tyre_age, ers_mode, ers_perc,
+                                         driver_idx == ref_index)
 
                 # Hide remaining empty rows
                 for i in range(num_rows_with_data, self.total_rows):
