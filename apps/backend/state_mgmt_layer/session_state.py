@@ -278,9 +278,9 @@ class SessionInfo:
 
 class SessionState:
     """
-    Enter ye now this holy state,
+    Enter ye this holy state,
     Where only the CPU may operate.
-    Do thy deeds with fervent rate
+    Do thy deeds with fervent rate.
     For in this realm, none dare await.
 
     No I/O, nor DB, nor HTTP,
