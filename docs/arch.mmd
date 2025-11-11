@@ -22,67 +22,68 @@ end
 %% ---------------------------------------------------------------------------
 %% Launcher and Process Manager
 %% ---------------------------------------------------------------------------
-subgraph PNG_LAUNCHER["  Pits-n-Giggles Launcher"]
-direction TB
-    subgraph PROC_MGR[" Process Manager"]
-        BACKEND_PROC_MGR[" Backend"]
-        HUD_PROC_MGR[" HUD"]
-        SAVE_VIEWER_PROC_MGR[" Save Viewer"]
+subgraph PNG_LAUNCHER["Pits n' Giggles"]
+    direction TB
+        subgraph PROC_MGR[" Process Manager"]
+            BACKEND_PROC_MGR[" Backend"]
+            HUD_PROC_MGR[" HUD"]
+            SAVE_VIEWER_PROC_MGR[" Save Viewer"]
+        end
+
+
+    %% -------------------------------------------------------------------------
+    %% Backend
+    %% -------------------------------------------------------------------------
+    subgraph BACKEND["Main Server"]
+    direction TB
+        subgraph TELEMETRY[" Telemetry Layer"]
+            UDP_RECV[" UDP Receiver"]
+            PARSERS[" Parsers"]
+            PACKET_FWD[" Packet Forwarder"]
+        end
+
+        subgraph INTF[" Interface Layer"]
+            HTTP[" HTTP Server"]
+            SOCKETIO[" Socket.IO"]
+            IPC[" ZMQ IPC Server"]
+        end
+
+        subgraph STATE[" State Management Layer"]
+            COMP_ENGINE[" Computation Engine"]
+            SHARED_STATE[" Shared State"]
+            API_INTF[" API Interface"]
+        end
     end
-end
 
-%% ---------------------------------------------------------------------------
-%% Backend
-%% ---------------------------------------------------------------------------
-subgraph BACKEND[" Backend Event Loop"]
-direction TB
-    subgraph TELEMETRY[" Telemetry Layer"]
-        UDP_RECV[" UDP Receiver"]
-        PARSERS[" Parsers"]
-        PACKET_FWD[" Packet Forwarder"]
+    %% -------------------------------------------------------------------------
+    %% HUD Subsystem
+    %% -------------------------------------------------------------------------
+    subgraph HUD[" HUD Subsystem"]
+        direction TB
+        HUD_IPC[" IPC Server"]
+        HUD_CLIENT[" Socket.IO Client"]
+        HUD_QT[" Qt Overlays"]
     end
 
-    subgraph INTF[" Interface Layer"]
-        HTTP[" HTTP Server"]
-        SOCKETIO[" Socket.IO"]
-        IPC[" ZMQ IPC Server"]
+    %% -------------------------------------------------------------------------
+    %% Save Viewer Subsystem
+    %% -------------------------------------------------------------------------
+    subgraph SAVE_VIEWER[" Save Viewer Subsystem"]
+        direction TB
+        SV_IPC[" IPC Server"]
+        SV_HTTP[" HTTP Server"]
+        SV_SOCKETIO[" Socket.IO Server"]
     end
-
-    subgraph STATE[" State Management Layer"]
-        COMP_ENGINE[" Computation Engine"]
-        SHARED_STATE[" Shared State"]
-        API_INTF[" API Interface"]
-    end
-end
-
-%% ---------------------------------------------------------------------------
-%% HUD Subsystem
-%% ---------------------------------------------------------------------------
-subgraph HUD[" HUD Subsystem"]
-direction TB
-HUD_IPC[" IPC Server"]
-HUD_CLIENT[" Socket.IO Client"]
-HUD_QT[" Qt Overlays"]
-end
-
-%% ---------------------------------------------------------------------------
-%% Save Viewer Subsystem
-%% ---------------------------------------------------------------------------
-subgraph SAVE_VIEWER[" Save Viewer Subsystem"]
-direction TB
-SV_IPC[" IPC Server"]
-SV_HTTP[" HTTP Server"]
-SV_SOCKETIO[" Socket.IO Server"]
 end
 
 %% ---------------------------------------------------------------------------
 %% UI Clients
 %% ---------------------------------------------------------------------------
 subgraph UI_CLIENTS[" UI Clients"]
-direction TB
-STREAM_OVERLAY[" Stream Overlay"]
-DRV_VIEW[" Driver Dashboard"]
-ENG_VIEW[" Engineer Dashboard"]
+    direction TB
+    STREAM_OVERLAY[" Stream Overlay"]
+    DRV_VIEW[" Driver Dashboard"]
+    ENG_VIEW[" Engineer Dashboard"]
 end
 
 %% ---------------------------------------------------------------------------
@@ -94,7 +95,7 @@ UDP_RECV --> PACKET_FWD --> EXT_TGT
 PARSERS --> COMP_ENGINE --> SHARED_STATE
 API_INTF <-->|Read/Write| SHARED_STATE
 HTTP -->|"Request"| API_INTF
-SOCKETIO -->|"Emit / Listen"| API_INTF
+SOCKETIO -->|"Read / Fetch"| API_INTF
 
 SOCKETIO -->|"Periodic Updates"| STREAM_OVERLAY & DRV_VIEW & ENG_VIEW
 HTTP -->|"Serve Pages"| UI_CLIENTS
