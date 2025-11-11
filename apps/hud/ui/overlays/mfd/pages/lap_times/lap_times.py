@@ -24,7 +24,7 @@
 
 import itertools
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from PySide6.QtCore import Qt, QModelIndex
 from PySide6.QtGui import QFont
@@ -48,12 +48,14 @@ class NoElideDelegate(QStyledItemDelegate):
 
 class LapTimesPage(BasePage):
     """Elegant lap times table with modern styling."""
-    HEADERS = ["Lap", "S1", "S2", "S3", "Lap Time"]
+    HEADERS = ["Lap", "S1", "S2", "S3", "Time"]
+    NUM_ROWS = 5
 
     def __init__(self, parent: QWidget, logger: logging.Logger):
 
         self.overlay_id: str = "mfd.lap_times"
         super().__init__(parent, logger, "RECENT LAP TIMES")
+        self._last_processed_laps: List[Dict[str, Any]]
 
         # Font configuration
         FONT_SIZE = 9
@@ -100,12 +102,18 @@ class LapTimesPage(BasePage):
             QTableWidget::item:alternate {{
                 background-color: #252525;
             }}
+            QTableWidget::item:hover {{
+                background-color: transparent;  /* Disable hover highlighting */
+            }}
+            QTableWidget::item:alternate:hover {{
+                background-color: #252525;
+            }}
             QHeaderView::section {{
                 background-color: #2d2d2d;
-                color: #FF0000;  /* Red text for headers */
+                color: #FF0000;
                 padding: 8px;
                 border: none;
-                border-bottom: 2px solid #FF0000;  /* Red bottom border */
+                border-bottom: 2px solid #FF0000;
                 font-weight: bold;
                 font-family: {HEADER_FONT};
                 font-size: {HEADER_FONT_SIZE}pt;
@@ -134,20 +142,33 @@ class LapTimesPage(BasePage):
             return
 
         # Get the last 5 laps (if fewer exist, it's fine)
-        recent_laps = history_data[-5:]
+        recent_laps = history_data[-self.NUM_ROWS:]
+        if not recent_laps:
+            return
+
+        if self._last_processed_laps == recent_laps:
+            return
 
         # Clear old contents but keep headers
         self.table.clearContents()
 
+        # TODO: implement lap/sector colours
         # Fill available laps (latest at bottom)
         for row, lap_info in enumerate(reversed(recent_laps)):
-            lap_num = lap_info.get("lap-number", "-")
-            s1_time = lap_info.get("sector-1-time-str", "-")
-            s2_time = lap_info.get("sector-2-time-str", "-")
-            s3_time = lap_info.get("sector-3-time-str", "-")
-            lap_time = lap_info.get("lap-time-str", "-")
+            lap_num = lap_info.get("lap-number", 0)
+            s1_time = lap_info.get("sector-1-time-str", 0)
+            s2_time = lap_info.get("sector-2-time-str", 0)
+            s3_time = lap_info.get("sector-3-time-str", 0)
+            lap_time = lap_info.get("lap-time-str", 0)
 
             for col, value in enumerate([lap_num, s1_time, s2_time, s3_time, lap_time]):
-                item = QTableWidgetItem(str(value))
+                if col == 0: # lap num
+                    content = str(value)
+                else:
+                    content = value if value not in ["0.000", "00:00.000"]  else "---"
+                item = QTableWidgetItem(content)
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 self.table.setItem(row, col, item)
+
+        # Update the cache
+        self._last_processed_laps = recent_laps
