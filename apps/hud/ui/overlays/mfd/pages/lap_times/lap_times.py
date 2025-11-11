@@ -46,20 +46,13 @@ class LapTimesPage(BasePage):
     def __init__(self, parent: QWidget, logger: logging.Logger):
 
         self.overlay_id: str = "mfd.lap_times"
-        super().__init__(parent, logger)
+        super().__init__(parent, logger, "RECENT LAP TIMES")
 
         # Font configuration
         FONT_SIZE = 11
         FONT_FAMILY = "Segoe UI"  # Clean, modern font (falls back gracefully)
         HEADER_FONT = "Orbitron"  # F1-style font (you can change this to any other appropriate font)
         HEADER_FONT_SIZE = 11
-
-        # Title bar
-        title_label = QLabel("RECENT LAP TIMES", self)
-        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_label.setFont(QFont(HEADER_FONT, HEADER_FONT_SIZE))
-        title_label.setStyleSheet("color: #FF0000; font-weight: bold; margin-bottom: 10px;")
-        self.page_layout.addWidget(title_label)
 
         self.table = QTableWidget(5, 5, self)
         self.table.setHorizontalHeaderLabels(self.HEADERS)

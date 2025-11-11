@@ -25,14 +25,14 @@
 import logging
 import sys
 import os
-from typing import Dict, Any
+from typing import Dict, Optional
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QStackedWidget,
     QTableWidget, QTableWidgetItem, QHeaderView
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QFont
 
 from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays.base import BaseOverlay
@@ -43,7 +43,7 @@ from apps.hud.ui.overlays.base import BaseOverlay
 class BasePage(QWidget):
     """Minimal page shown when MFD is collapsed."""
 
-    def __init__(self, parent: QWidget, logger: logging.Logger):
+    def __init__(self, parent: QWidget, logger: logging.Logger, title: Optional[str] = None):
         super().__init__(parent)
         self.page_layout = QVBoxLayout(self)
         self.page_layout.setContentsMargins(0, 0, 0, 0)
@@ -51,6 +51,23 @@ class BasePage(QWidget):
         self._icon_cache: Dict[str, QIcon] = {}
         self.logger = logger
         self.overlay_id = None  # type: ignore  # derived classes should set this
+
+        # Add title bar if specified
+        if title:
+            self._add_title_bar(title)
+
+    def _add_title_bar(self, title: str) -> None:
+        """
+        Create and add a nicely formatted title bar at the top of the widget.
+
+        Args:
+            title: The title text to display
+        """
+        title_label = QLabel(title, self)
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title_label.setFont(QFont("Orbitron", 11))
+        title_label.setStyleSheet("color: #FF0000; font-weight: bold; margin-bottom: 10px;")
+        self.page_layout.addWidget(title_label)
 
     def load_icon(self, relative_path: str) -> QIcon:
         """
