@@ -22,22 +22,29 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 import itertools
-from typing import Dict, Any
+import logging
+from typing import Any, Dict
 
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QStackedWidget,
-    QTableWidget, QTableWidgetItem, QHeaderView
-)
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QModelIndex
 from PySide6.QtGui import QFont
+from PySide6.QtWidgets import (QHeaderView, QLabel, QStackedWidget,
+                               QStyledItemDelegate, QTableWidget, QStyleOptionViewItem,
+                               QTableWidgetItem, QVBoxLayout, QWidget)
 
 from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays.base import BaseOverlay
 from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
+
+class NoElideDelegate(QStyledItemDelegate):
+    def initStyleOption(self, option: QStyleOptionViewItem, index: QModelIndex):
+        # prepare the option as usual
+        super().initStyleOption(option, index)
+        # set the elide mode on the style option so Qt won't draw "…"
+        # new enum location may vary between PySide6 versions, so try both
+        option.textElideMode = Qt.TextElideMode.ElideNone
 
 class LapTimesPage(BasePage):
     """Elegant lap times table with modern styling."""
@@ -49,10 +56,10 @@ class LapTimesPage(BasePage):
         super().__init__(parent, logger, "RECENT LAP TIMES")
 
         # Font configuration
-        FONT_SIZE = 11
-        FONT_FAMILY = "Segoe UI"  # Clean, modern font (falls back gracefully)
-        HEADER_FONT = "Orbitron"  # F1-style font (you can change this to any other appropriate font)
-        HEADER_FONT_SIZE = 11
+        FONT_SIZE = 9
+        FONT_FAMILY = "Montserrat"  # Clean, modern font (falls back gracefully)
+        HEADER_FONT = "Montserrat"  # F1-style font (you can change this to any other appropriate font)
+        HEADER_FONT_SIZE = 9
 
         self.table = QTableWidget(5, 5, self)
         self.table.setHorizontalHeaderLabels(self.HEADERS)
@@ -86,7 +93,7 @@ class LapTimesPage(BasePage):
                 border-radius: 5px;
             }}
             QTableWidget::item {{
-                padding: 8px;
+                padding: 2px;
                 font-family: {FONT_FAMILY};
                 font-size: {FONT_SIZE}pt;
             }}
@@ -106,12 +113,14 @@ class LapTimesPage(BasePage):
         """)
 
         # Set column widths here (adjust as needed)
-        self.table.setColumnWidth(0, 50)  # Set width for the "Lap" column (index 0)
+        self.table.setColumnWidth(0, 20)  # Set width for the "Lap" column (index 0)
         self.table.setColumnWidth(1, 100) # Set width for the "S1" column (index 1)
         self.table.setColumnWidth(2, 100) # Set width for the "S2" column (index 2)
         self.table.setColumnWidth(3, 100) # Set width for the "S3" column (index 3)
-        self.table.setColumnWidth(4, 120) # Set width for the "Lap Time" column (index 4)
+        self.table.setColumnWidth(4, 150) # Set width for the "Lap Time" column (index 4)
 
+        # Disable text ellipsis — text will just be truncated visually
+        self.table.setItemDelegate(NoElideDelegate(self.table))
         self.page_layout.addWidget(self.table)
 
     def update_data(self, actual_data: Dict[str, Any]):

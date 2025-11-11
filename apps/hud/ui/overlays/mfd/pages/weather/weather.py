@@ -52,10 +52,10 @@ class WeatherForecastPage(BasePage):
         "Thunderstorm": "⛈️"
     }
 
-    FONT_FACE = "Orbitron"
-    TIME_FONT_SIZE = 7
-    RAIN_FONT_SIZE = 7
-    EMOJI_FONT_FACE = "Segoe UI Emoji"
+    FONT_FACE = "Montserrat"
+    TIME_FONT_SIZE = 10
+    RAIN_FONT_SIZE = 10
+    EMOJI_FONT_FACE = "Montserrat"
     EMOJI_FONT_SIZE = 22
     MAX_SAMPLES = 5
 
