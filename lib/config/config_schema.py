@@ -153,7 +153,8 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
         "ui": {
             "type" : "text_box",
             "visible": True
-        }
+        },
+        "udp_action_code" : True
     })
     udp_custom_action_code: int = Field(
         default=12,
@@ -163,7 +164,8 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
         json_schema_extra={
             "ui": {
                 "type" : "text_box"
-            }
+            },
+            "udp_action_code" : True
         }
     )
     wdt_interval_sec: int = Field(
@@ -558,7 +560,21 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             "ui": {
                 "type" : "text_box",
                 "visible": True
-            }
+            },
+            "udp_action_code" : True
+        }
+    )
+    cycle_mfd_udp_action_code: int = Field(
+        default=9,
+        ge=1,
+        le=12,
+        description="The UDP custom action code to cycle MFD pages",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True
+            },
+            "udp_action_code" : True
         }
     )
     overlays_opacity: int = Field(
@@ -575,6 +591,14 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
+
+    def model_post_init(self, __context: Any) -> None: # pylint: disable=arguments-differ
+        """Validate file existence only if HTTPS is enabled."""
+        # Not allowed to enable HUD while all overlays are disabled
+        if self.enabled:
+            if not self.show_lap_timer and not self.show_timing_tower and not self.show_mfd:
+                raise ValueError("HUD cannot be enabled while all overlays are disabled")
+
 
 class PitTimeLossF1(ConfigDiffMixin, BaseModel):
     ui_meta: ClassVar[Dict[str, Any]] = {
@@ -675,13 +699,27 @@ class PngSettings(ConfigDiffMixin, BaseModel):
 
     @model_validator(mode="after")
     def check_udp_action_codes(self) -> "PngSettings":
-        """Check that the Network UDP action codes are not the same as the HUD toggle overlays action code."""
-        if self.HUD.toggle_overlays_udp_action_code == self.Network.udp_custom_action_code:
-            raise ValueError("HUD toggle overlays action code and Network UDP custom action code "
-                              "must not be the same")
-        if self.HUD.toggle_overlays_udp_action_code == self.Network.udp_tyre_delta_action_code:
-            raise ValueError("HUD toggle overlays action code and Network Tyre delta action code "
-                              "must not be the same")
+        """Ensure all UDP action code fields across subsettings are unique."""
+        udp_fields = []
+
+        # Walk through submodels
+        for section_name, section in self.__dict__.items():
+            if isinstance(section, BaseModel):
+                # Access model_fields via the class (Pydantic v2/v3 safe)
+                for field_name, field in type(section).model_fields.items():
+                    extra = field.json_schema_extra or {}
+                    if extra.get("udp_action_code"):
+                        value = getattr(section, field_name)
+                        udp_fields.append((f"{section_name}.{field_name}", value))
+
+        # Check for duplicates
+        seen = {}
+        for name, val in udp_fields:
+            if val in seen:
+                raise ValueError(
+                    f"Duplicate UDP action code {val} between {seen[val]} and {name}"
+                )
+            seen[val] = name
 
         return self
 

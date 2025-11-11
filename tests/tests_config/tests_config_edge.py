@@ -34,7 +34,7 @@ import sys
 
 from pydantic import ValidationError
 
-from lib.config import LoggingSettings
+from lib.config import LoggingSettings, HudSettings
 
 from .tests_config_base import TestF1ConfigBase
 
@@ -427,3 +427,11 @@ target_1 = localhost:8080
         # Ensure original values are still present
         self.assertIn("telemetry_port = 20777", saved_content)
         self.assertIn("target_1 = localhost:8080", saved_content)
+
+    def test_udp_action_codes_dup_across_containers(self):
+
+        with self.assertRaises(ValidationError):
+            PngSettings(
+                Network=NetworkSettings(udp_tyre_delta_action_code=1),
+                HUD=HudSettings(toggle_overlays_udp_action_code=1)
+            )
