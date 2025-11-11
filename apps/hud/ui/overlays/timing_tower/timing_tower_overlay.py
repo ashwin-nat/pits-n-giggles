@@ -42,6 +42,8 @@ from .drs_ers_delegate import DrsErsDelegate
 
 class TimingTowerOverlay(BaseOverlay):
 
+    OVERLAY_ID: str = "timing_tower"
+
     def __init__(self, config: OverlaysConfig, logger: logging.Logger, locked: bool, opacity: int):
 
         # Overlay specific fields
@@ -57,7 +59,7 @@ class TimingTowerOverlay(BaseOverlay):
         self.border_delegate = None
         self.drs_ers_delegate = None
 
-        super().__init__("timing_tower", config, logger, locked, opacity)
+        super().__init__(self.OVERLAY_ID, config, logger, locked, opacity)
         self._init_cmd_handlers()
         self._init_icons()
 

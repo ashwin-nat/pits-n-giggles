@@ -42,13 +42,13 @@ from .window_mgr import WindowManager
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
 _DEFAULT_OVERLAYS_CONFIG: Dict[str, OverlaysConfig] = {
-    'lap_timer': OverlaysConfig(
+    LapTimerOverlay.OVERLAY_ID: OverlaysConfig(
         x=600,
         y=60,
         width=250,
         height=150,
     ),
-    'timing_tower': OverlaysConfig(
+    TimingTowerOverlay.OVERLAY_ID: OverlaysConfig(
         x=10,
         y=55,
         width=450,
@@ -84,8 +84,8 @@ class OverlaysMgr:
         self.window_manager = WindowManager(logger)
 
         if settings.HUD.show_lap_timer:
-            self.window_manager.register_overlay('lap_timer', LapTimerOverlay(
-                self.config['lap_timer'],
+            self.window_manager.register_overlay(LapTimerOverlay.OVERLAY_ID, LapTimerOverlay(
+                self.config[LapTimerOverlay.OVERLAY_ID],
                 self.logger,
                 locked=True,
                 opacity=settings.HUD.overlays_opacity
@@ -94,8 +94,8 @@ class OverlaysMgr:
             self.logger.debug("Lap timer overlay is disabled")
 
         if settings.HUD.show_timing_tower:
-            self.window_manager.register_overlay('timing_tower', TimingTowerOverlay(
-                self.config['timing_tower'],
+            self.window_manager.register_overlay(TimingTowerOverlay.OVERLAY_ID, TimingTowerOverlay(
+                self.config[TimingTowerOverlay.OVERLAY_ID],
                 self.logger,
                 locked=True,
                 opacity=settings.HUD.overlays_opacity
