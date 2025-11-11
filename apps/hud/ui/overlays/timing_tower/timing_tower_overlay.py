@@ -24,121 +24,21 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List, Tuple
 
-from PySide6.QtCore import QModelIndex, Qt
-from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen
-from PySide6.QtWidgets import (QHeaderView, QLabel, QStyledItemDelegate,
-                               QStyleOptionViewItem, QTableWidget,
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QBrush, QColor, QFont
+from PySide6.QtWidgets import (QHeaderView, QLabel, QTableWidget, QFrame,
                                QTableWidgetItem, QVBoxLayout, QWidget)
 
 from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays.base import BaseOverlay
 from lib.f1_types import F1Utils
 
+from .border_delegate import BorderDelegate
+from .ers_delegate import ERSDelegate
+
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
-
-class BorderDelegate(QStyledItemDelegate):
-    """Custom delegate to draw borders around reference rows"""
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.reference_row = -1
-
-    def set_reference_row(self, row: int):
-        """Set which row should have a border"""
-        self.reference_row = row
-
-    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex) -> None:
-        # First, paint the normal item
-        super().paint(painter, option, index)
-
-        # If this is the reference row, draw a white border around it
-        if index.row() == self.reference_row:
-            painter.save()
-            painter.setPen(QPen(QColor("white"), 2))  # 2px white border
-
-            # Get the table widget to calculate full row rect
-            table = self.parent()
-            if isinstance(table, QTableWidget):
-                # Draw border only on the edges of the row
-                rect = option.rect
-
-                # Left edge (first column only)
-                if index.column() == 0:
-                    painter.drawLine(rect.left(), rect.top(), rect.left(), rect.bottom())
-
-                # Right edge (last column only)
-                if index.column() == table.columnCount() - 1:
-                    painter.drawLine(rect.right(), rect.top(), rect.right(), rect.bottom())
-
-                # Top and bottom edges (all columns)
-                painter.drawLine(rect.left(), rect.top(), rect.right(), rect.top())
-                painter.drawLine(rect.left(), rect.bottom(), rect.right(), rect.bottom())
-
-            painter.restore()
-
-class ERSDelegate(QStyledItemDelegate):
-    """Custom delegate to paint ERS cell with vertical color bar"""
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.ers_colors = {
-            "None": QColor("#888888"),
-            "Medium": QColor("#ffff00"),
-            "Hotlap": QColor("#00ff00"),
-            "Overtake": QColor("#ff0000")
-        }
-        self.reference_row = -1
-
-    def set_reference_row(self, row: int):
-        """Set which row should have a border"""
-        self.reference_row = row
-
-    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex) -> None:
-        # Get the ERS mode color from item data
-        ers_mode_color = index.data(Qt.UserRole)
-
-        if ers_mode_color is None:
-            super().paint(painter, option, index)
-            return
-
-        painter.save()
-
-        # Fill background FIRST
-        bg_color = QColor(25, 25, 25, 180)
-        painter.fillRect(option.rect, bg_color)
-
-        # Draw vertical bar on the left (15% width) ON TOP of background
-        bar_width = int(option.rect.width() * 0.15)
-        bar_rect = option.rect.adjusted(0, 0, -option.rect.width() + bar_width, 0)
-        painter.fillRect(bar_rect, ers_mode_color)
-
-        # Draw text in the remaining space (after the color bar)
-        painter.setPen(QColor("white"))
-
-        # Get font from item data or create a new one
-        font = index.data(Qt.FontRole)
-        if not font:
-            font = QFont()
-        font.setPointSize(11)  # Match the size from _create_table_item
-        font.setBold(True)
-        painter.setFont(font)
-
-        text_rect = option.rect.adjusted(bar_width, 0, 0, 0)
-        painter.drawText(text_rect, Qt.AlignCenter, index.data(Qt.DisplayRole))
-
-        # Draw border if this is the reference row
-        if index.row() == self.reference_row:
-            painter.setPen(QPen(QColor("white"), 2))
-            rect = option.rect
-            # Right edge (this is the last column)
-            painter.drawLine(rect.right() - 1, rect.top(), rect.right() - 1, rect.bottom())
-            # Top and bottom edges
-            painter.drawLine(rect.left(), rect.top(), rect.right(), rect.top())
-            painter.drawLine(rect.left(), rect.bottom(), rect.right(), rect.bottom())
-
-        painter.restore()
 
 class TimingTowerOverlay(BaseOverlay):
 
@@ -153,13 +53,6 @@ class TimingTowerOverlay(BaseOverlay):
         self.header_label: Optional[QLabel] = None
         self.session_info_label: Optional[QLabel] = None
         self.timing_table: Optional[QTableWidget] = None
-
-        self.ers_colors = {
-            "None": QColor("#888888"),
-            "Medium": QColor("#ffff00"),
-            "Hotlap": QColor("#00ff00"),
-            "Overtake": QColor("#ff0000")
-        }
 
         self.border_delegate = None
         self.ers_delegate = None
@@ -240,7 +133,7 @@ class TimingTowerOverlay(BaseOverlay):
         """Configure main layout spacing, margins, and alignment."""
         layout.setContentsMargins(5, 5, 5, 5)
         layout.setSpacing(5)
-        layout.setAlignment(Qt.AlignCenter)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
     def _calculate_content_width(self) -> int:
         """Return total content width based on column sizes."""
@@ -256,7 +149,7 @@ class TimingTowerOverlay(BaseOverlay):
         header_layout.setSpacing(3)
 
         self.header_label = QLabel("TIMING TOWER")
-        self.header_label.setAlignment(Qt.AlignCenter)
+        self.header_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.header_label.setStyleSheet("""
             QLabel {
                 background-color: rgba(200, 0, 0, 220);
@@ -269,7 +162,7 @@ class TimingTowerOverlay(BaseOverlay):
         """)
 
         self.session_info_label = QLabel("-- / --")
-        self.session_info_label.setAlignment(Qt.AlignCenter)
+        self.session_info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.session_info_label.setStyleSheet("""
             QLabel {
                 background-color: rgba(40, 40, 40, 200);
@@ -309,18 +202,18 @@ class TimingTowerOverlay(BaseOverlay):
         """Disable editing, selection, scrollbars, etc."""
         table.setShowGrid(False)
         table.setAlternatingRowColors(True)
-        table.setSelectionMode(QTableWidget.NoSelection)
-        table.setFocusPolicy(Qt.NoFocus)
-        table.setEditTriggers(QTableWidget.NoEditTriggers)
+        table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
+        table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setVisible(False)
         table.setMouseTracking(False)
-        table.setAttribute(Qt.WA_TransparentForMouseEvents, True)
-        table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        table.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         header = table.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Fixed)
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
         header.setStretchLastSection(False)
 
         # Create ERS delegate with border support
@@ -343,7 +236,7 @@ class TimingTowerOverlay(BaseOverlay):
 
         table_height = 32 * self.total_rows + 4
         table.setFixedSize(content_width, table_height)
-        table.setFrameShape(QTableWidget.NoFrame)
+        table.setFrameShape(QFrame.Shape.NoFrame)
         table.setContentsMargins(0, 0, 0, 0)
 
     def _apply_table_style(self, table: QTableWidget) -> None:
@@ -381,7 +274,7 @@ class TimingTowerOverlay(BaseOverlay):
             }
         """)
 
-    def _create_table_item(self, text: str, alignment: Qt.AlignmentFlag = Qt.AlignCenter,
+    def _create_table_item(self, text: str, alignment: Qt.AlignmentFlag = Qt.AlignmentFlag.AlignCenter,
                           color: Optional[QColor] = None, font_family: str = None,
                           bold: bool = False) -> QTableWidgetItem:
         """Helper to create styled table items"""
@@ -407,7 +300,7 @@ class TimingTowerOverlay(BaseOverlay):
         """Update a specific row in the timing table"""
 
         # Position
-        pos_item = self._create_table_item(str(position), Qt.AlignCenter,
+        pos_item = self._create_table_item(str(position), Qt.AlignmentFlag.AlignCenter,
                                           QColor("#ddd"), bold=True)
         self.timing_table.setItem(row_idx, 0, pos_item)
 
@@ -419,13 +312,13 @@ class TimingTowerOverlay(BaseOverlay):
             team_item = QTableWidgetItem(self.default_team_logo, "")
         else:
             team_display = "??"
-            team_item = self._create_table_item(team_display, Qt.AlignCenter, bold=True)
+            team_item = self._create_table_item(team_display, Qt.AlignmentFlag.AlignCenter, bold=True)
 
-        team_item.setTextAlignment(Qt.AlignCenter)
+        team_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         self.timing_table.setItem(row_idx, 1, team_item)
 
         # Driver name
-        name_item = self._create_table_item(name, Qt.AlignLeft | Qt.AlignVCenter,
+        name_item = self._create_table_item(name, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
                                            QColor("#ffffff"), bold=True)
         self.timing_table.setItem(row_idx, 2, name_item)
 
@@ -435,7 +328,7 @@ class TimingTowerOverlay(BaseOverlay):
         else:
             delta_text = f"{F1Utils.formatFloat(delta/1000, precision=3, signed=True)}"
 
-        delta_item = self._create_table_item(delta_text, Qt.AlignCenter,
+        delta_item = self._create_table_item(delta_text, Qt.AlignmentFlag.AlignCenter,
                                             QColor("#00ff99"), font_family="Courier New")
         self.timing_table.setItem(row_idx, 3, delta_item)
 
@@ -452,19 +345,17 @@ class TimingTowerOverlay(BaseOverlay):
         else:
             # No icon -> show fallback display text (first letter or "--")
             tyre_display = (f"{tyre_compound[:1]}({tyre_text})") if tyre_compound else "--"
-            tyre_item = self._create_table_item(tyre_display, Qt.AlignCenter, bold=True)
+            tyre_item = self._create_table_item(tyre_display, Qt.AlignmentFlag.AlignCenter, bold=True)
 
-        tyre_item.setTextAlignment(Qt.AlignCenter)
+        tyre_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         self.timing_table.setItem(row_idx, 4, tyre_item)
 
         # ERS with mode color bar
         ers_text = f"{F1Utils.formatFloat(ers, precision=0, signed=False)}%"
-        ers_item = self._create_table_item(ers_text, Qt.AlignCenter)
+        ers_item = self._create_table_item(ers_text, Qt.AlignmentFlag.AlignCenter)
 
         # Store ERS mode color in item data for the delegate to use
-        ers_mode_color = self.ers_colors.get(ers_mode, QColor("#888888"))
-        ers_item.setData(Qt.UserRole, ers_mode_color)
-
+        ers_item.setData(Qt.ItemDataRole.UserRole, ers_mode)
         self.timing_table.setItem(row_idx, 5, ers_item)
 
         # Update border delegates to highlight reference row
@@ -482,7 +373,7 @@ class TimingTowerOverlay(BaseOverlay):
         """Clear a specific row"""
         self.timing_table.setItem(row_idx, 0, self._create_table_item("--"))
         self.timing_table.setItem(row_idx, 1, self._create_table_item("---"))
-        self.timing_table.setItem(row_idx, 2, self._create_table_item("---", Qt.AlignLeft))
+        self.timing_table.setItem(row_idx, 2, self._create_table_item("---", Qt.AlignmentFlag.AlignLeft))
         self.timing_table.setItem(row_idx, 3, self._create_table_item("--.-"))
         self.timing_table.setItem(row_idx, 4, self._create_table_item("--"))
         self.timing_table.setItem(row_idx, 5, self._create_table_item("0%"))
@@ -500,7 +391,7 @@ class TimingTowerOverlay(BaseOverlay):
 
             relevant_rows, ref_index = self._get_relevant_race_table_rows(data, self.num_adjacent_cars)
             self._insert_relative_deltas(relevant_rows, ref_index)
-            session_type = data.get("event-type", "N/A")
+            session_type: str = data.get("event-type", "N/A")
 
             # Update header with session type
             self.header_label.setText(f"{session_type.upper()}")
@@ -530,10 +421,10 @@ class TimingTowerOverlay(BaseOverlay):
                 for idx, row_data in enumerate(relevant_rows):
                     if idx < self.total_rows:
                         self.timing_table.setRowHidden(idx, False)
-                        driver_info = row_data.get("driver-info", {})
-                        delta_info = row_data.get("delta-info", {})
-                        tyre_info = row_data.get("tyre-info", {})
-                        ers_info = row_data.get("ers-info", {})
+                        driver_info: Dict[str, Any] = row_data.get("driver-info", {})
+                        delta_info: Dict[str, Any]  = row_data.get("delta-info", {})
+                        tyre_info: Dict[str, Any]   = row_data.get("tyre-info", {})
+                        ers_info: Dict[str, Any]    = row_data.get("ers-info", {})
 
                         position = driver_info.get("position", 0)
                         name = driver_info.get("name", "UNKNOWN")
@@ -565,7 +456,9 @@ class TimingTowerOverlay(BaseOverlay):
         for i in range(self.total_rows):
             self.timing_table.setRowHidden(i, True)
 
-    def _get_relevant_race_table_rows(self, data, num_adjacent_cars):
+    def _get_relevant_race_table_rows(self,
+                                      data: Dict[str, Any],
+                                      num_adjacent_cars: int) -> Tuple[List[Dict[str, Any]], Optional[int]]:
         table_entries = data.get("table-entries", [])
 
         if len(table_entries) == 0:
