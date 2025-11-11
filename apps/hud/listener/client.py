@@ -70,5 +70,4 @@ class HudClient(IpcSubscriber):
         @self.on('stream-overlay-update')
         def handle_stream_overlay_update(data):
             """Stream overlay data update handler."""
-            self.logger.debug("[HudClient] Received stream overlay update")
-            # self.m_overlays_mgr.stream_overlay_update(data)
+            self.m_overlays_mgr.stream_overlays_update(data)

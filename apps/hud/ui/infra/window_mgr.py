@@ -136,5 +136,4 @@ class WindowManager(QObject):
 
     def unicast_data(self, overlay_id: str, cmd: str, data: dict):
         """Unicast data to a specific overlay using signal."""
-        self.logger.debug(f"Unicasting data to overlay {overlay_id}")
         self.mgmt_cmd_signal.emit(overlay_id, cmd, json.dumps(data, separators=(',', ':')))

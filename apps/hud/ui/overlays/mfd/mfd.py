@@ -82,8 +82,14 @@ class MfdOverlay(BaseOverlay):
 
         @self.on_command("race_table_update")
         def handle_race_update(data: Dict[str, Any]):
+            pass
+            # if self.current_index == 1:
+            #     self.lap_times_page.update_data(data.get("lap_data", []))
+
+        @self.on_command("stream_overlay_update")
+        def handle_stream_overlay_update(data: Dict[str, Any]):
             if self.current_index == 1:
-                self.lap_times_page.update_data(data.get("lap_data", []))
+                self.lap_times_page.update_data(data)
 
     def switch_page(self, index: int):
         """Switch page and resize MFD based on open/closed state."""

@@ -57,49 +57,31 @@ class LapTimesPage(QWidget):
 
         layout.addWidget(self.table)
 
-    def update_data(self, actual_data: list[Dict[str, Any]]):
-        """Update table rows with lap data (dicts)."""
+    def update_data(self, actual_data: Dict[str, Any]):
+        """Populate the lap table with up to the last 5 laps. Leave remaining rows blank."""
+        lap_time_history = actual_data.get("lap-time-history", {})
+        if not lap_time_history:
+            return
 
-        lap_data = [
-            {
-                "lap-number": 1,
-                "s1-time-ms": 30000,
-                "s2-time-ms": 30000,
-                "s3-time-ms": 30000,
-                "lap-time-ms": 90000,
-            },
-            {
-                "lap-number": 2,
-                "s1-time-ms": 30000,
-                "s2-time-ms": 30000,
-                "s3-time-ms": 30000,
-                "lap-time-ms": 90000,
-            },
-            {
-                "lap-number": 3,
-                "s1-time-ms": 30000,
-                "s2-time-ms": 30000,
-                "s3-time-ms": 30000,
-                "lap-time-ms": 90000,
-            },
-            {
-                "lap-number": 4,
-                "s1-time-ms": 30000,
-                "s2-time-ms": 30000,
-                "s3-time-ms": 30000,
-                "lap-time-ms": 90000,
-            },
-            {
-                "lap-number": 5,
-                "s1-time-ms": 30000,
-                "s2-time-ms": 30000,
-                "s3-time-ms": 30000,
-                "lap-time-ms": 90000,
-            }
-        ]
-        for row, entry in enumerate(lap_data[:5]):
-            self.table.setItem(row, 0, QTableWidgetItem(str(entry.get("lap", "-"))))
-            self.table.setItem(row, 1, QTableWidgetItem(str(entry.get("s1", "-"))))
-            self.table.setItem(row, 2, QTableWidgetItem(str(entry.get("s2", "-"))))
-            self.table.setItem(row, 3, QTableWidgetItem(str(entry.get("s3", "-"))))
-            self.table.setItem(row, 4, QTableWidgetItem(str(entry.get("laptime", "-"))))
+        history_data = lap_time_history.get("lap-time-history-data", [])
+        if not history_data:
+            return
+
+        # Get the last 5 laps (if fewer exist, it’s fine)
+        recent_laps = history_data[-5:]
+
+        # Clear old contents but keep headers
+        self.table.clearContents()
+
+        # Fill available laps (latest at bottom)
+        for row, lap_info in enumerate(reversed(recent_laps)):
+            lap_num = lap_info.get("lap-number", "-")
+            s1_time = lap_info.get("sector-1-time-str", "-")
+            s2_time = lap_info.get("sector-2-time-str", "-")
+            s3_time = lap_info.get("sector-3-time-str", "-")
+            lap_time = lap_info.get("lap-time-str", "-")
+
+            for col, value in enumerate([lap_num, s1_time, s2_time, s3_time, lap_time]):
+                item = QTableWidgetItem(str(value))
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.table.setItem(row, col, item)

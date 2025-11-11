@@ -163,7 +163,12 @@ class OverlaysMgr:
         self.window_manager.broadcast_data('set_opacity', {'opacity': opacity})
 
     def next_page(self):
-        self.window_manager.unicast_data('mfd', 'next_page', {})
+        """Go to the next page in MFD overlay"""
+        self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID, 'next_page', {})
+
+    def stream_overlays_update(self, data):
+        """Handle the stream overlay update event"""
+        self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID, 'stream_overlay_update', data)
 
     def stop(self):
         """Stop the overlays manager"""
