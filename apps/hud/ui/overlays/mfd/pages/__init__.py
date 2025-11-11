@@ -22,16 +22,12 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .base import BaseOverlay
-from .lap_timer import LapTimerOverlay
-from .mfd import MfdOverlay
-from .timing_tower import TimingTowerOverlay
+from .collapsed import CollapsedPage
+from .lap_times import LapTimesPage
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    "BaseOverlay",
-    "LapTimerOverlay",
-    "TimingTowerOverlay",
-    "MfdOverlay",
+    "CollapsedPage",
+    "LapTimesPage",
 ]

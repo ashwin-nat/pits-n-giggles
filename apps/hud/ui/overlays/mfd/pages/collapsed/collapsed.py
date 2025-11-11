@@ -22,16 +22,31 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .base import BaseOverlay
-from .lap_timer import LapTimerOverlay
-from .mfd import MfdOverlay
-from .timing_tower import TimingTowerOverlay
+import logging
+import itertools
+from typing import Dict, Any
 
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QLabel, QStackedWidget,
+    QTableWidget, QTableWidgetItem, QHeaderView
+)
+from PySide6.QtCore import Qt
 
-__all__ = [
-    "BaseOverlay",
-    "LapTimerOverlay",
-    "TimingTowerOverlay",
-    "MfdOverlay",
-]
+from apps.hud.ui.infra.config import OverlaysConfig
+from apps.hud.ui.overlays.base import BaseOverlay
+
+
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
+
+class CollapsedPage(QWidget):
+    """Minimal page shown when MFD is collapsed."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        label = QLabel("MFD Collapsed", self)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(label)

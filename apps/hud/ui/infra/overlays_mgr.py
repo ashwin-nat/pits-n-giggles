@@ -30,7 +30,7 @@ from typing import Dict, Optional
 from PySide6.QtCore import QMetaObject, Qt
 from PySide6.QtWidgets import QApplication
 
-from apps.hud.ui.overlays import LapTimerOverlay, TimingTowerOverlay
+from apps.hud.ui.overlays import LapTimerOverlay, TimingTowerOverlay, MfdOverlay
 from lib.button_debouncer import ButtonDebouncer
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import PngSettings
@@ -49,6 +49,12 @@ _DEFAULT_OVERLAYS_CONFIG: Dict[str, OverlaysConfig] = {
         height=150,
     ),
     TimingTowerOverlay.OVERLAY_ID: OverlaysConfig(
+        x=10,
+        y=55,
+        width=450,
+        height=270,
+    ),
+    MfdOverlay.OVERLAY_ID: OverlaysConfig(
         x=10,
         y=55,
         width=450,
@@ -103,6 +109,16 @@ class OverlaysMgr:
         else:
             self.logger.debug("Timing tower overlay is disabled")
 
+        if settings.HUD.show_mfd:
+            self.window_manager.register_overlay(MfdOverlay.OVERLAY_ID, MfdOverlay(
+                self.config[MfdOverlay.OVERLAY_ID],
+                self.logger,
+                locked=True,
+                opacity=settings.HUD.overlays_opacity
+            ))
+        else:
+            self.logger.debug("MFD overlay is disabled")
+
     def run(self):
         """Start the overlays manager"""
         self.running = True
@@ -145,6 +161,9 @@ class OverlaysMgr:
         """Set overlays opacity"""
         self.logger.debug(f"Setting overlays opacity to {opacity}%")
         self.window_manager.broadcast_data('set_opacity', {'opacity': opacity})
+
+    def next_page(self):
+        self.window_manager.unicast_data('mfd', 'next_page', {})
 
     def stop(self):
         """Stop the overlays manager"""
