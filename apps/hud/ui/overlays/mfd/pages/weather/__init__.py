@@ -22,14 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .collapsed import CollapsedPage
-from .lap_times import LapTimesPage
 from .weather import WeatherForecastPage
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    "CollapsedPage",
     "LapTimesPage",
-    "WeatherForecastPage",
 ]

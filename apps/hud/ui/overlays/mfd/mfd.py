@@ -24,7 +24,7 @@
 
 import logging
 import itertools
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List
 
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QFont
@@ -34,7 +34,7 @@ from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays.base import BaseOverlay
 from lib.f1_types import F1Utils
 
-from apps.hud.ui.overlays.mfd.pages import LapTimesPage, CollapsedPage
+from apps.hud.ui.overlays.mfd.pages import LapTimesPage, CollapsedPage, WeatherForecastPage
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -65,10 +65,12 @@ class MfdOverlay(BaseOverlay):
         # Define pages
         self.collapsed_page = CollapsedPage(self, self.logger)
         self.lap_times_page = LapTimesPage(self, self.logger)
+        self.weather_page   = WeatherForecastPage(self, self.logger)
 
         # Add to stacked widget
         self.pages.addWidget(self.collapsed_page)
         self.pages.addWidget(self.lap_times_page)
+        self.pages.addWidget(self.weather_page)
 
         # Build an opaque iterator that cycles indefinitely
         self.page_cycle = itertools.cycle(range(self.pages.count()))
@@ -88,9 +90,8 @@ class MfdOverlay(BaseOverlay):
 
         @self.on_command("race_table_update")
         def _handle_race_update(data: Dict[str, Any]):
-            pass
-            # if self.current_index == 1:
-            #     self.lap_times_page.update_data(data.get("lap_data", []))
+            if self._is_page_active(self.weather_page):
+                self.weather_page.update_forecast(data)
 
         @self.on_command("stream_overlay_update")
         def _handle_stream_overlay_update(data: Dict[str, Any]):
