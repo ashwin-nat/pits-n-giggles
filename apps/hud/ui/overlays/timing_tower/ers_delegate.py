@@ -66,6 +66,10 @@ class ERSDelegate(QStyledItemDelegate):
         bar_rect = rect.adjusted(0, 0, -rect.width() + bar_width, 0)
         painter.fillRect(bar_rect, ers_mode_color)
 
+        # Draw thin black border around the bar
+        painter.setPen(QPen(QColor("black"), 1))
+        painter.drawRect(bar_rect.adjusted(0, 0, -1, -1))  # Adjust to stay within bounds
+
         # Draw text in the remaining space (after the color bar)
         painter.setPen(QColor("white"))
 
@@ -82,10 +86,10 @@ class ERSDelegate(QStyledItemDelegate):
 
         # Draw border if this is the reference row
         if index.row() == self.reference_row:
-            painter.setPen(QPen(QColor("white"), 2))
+            painter.setPen(QPen(QColor("white"), 1))
             rect = rect
             # Right edge (this is the last column)
-            painter.drawLine(rect.right() - 1, rect.top(), rect.right() - 1, rect.bottom())
+            painter.drawLine(rect.right() - 2, rect.top(), rect.right() - 2, rect.bottom())
             # Top and bottom edges
             painter.drawLine(rect.left(), rect.top(), rect.right(), rect.top())
             painter.drawLine(rect.left(), rect.bottom(), rect.right(), rect.bottom())

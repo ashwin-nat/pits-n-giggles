@@ -48,7 +48,7 @@ class BorderDelegate(QStyledItemDelegate):
         # If this is the reference row, draw a white border around it
         if index.row() == self.reference_row:
             painter.save()
-            painter.setPen(QPen(QColor("white"), 2))  # 2px white border
+            painter.setPen(QPen(QColor("white"), 1))  # 2px white border
 
             # Get the table widget to calculate full row rect
             table = self.parent()
