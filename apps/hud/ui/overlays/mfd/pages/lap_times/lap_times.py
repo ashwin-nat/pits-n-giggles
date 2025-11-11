@@ -35,16 +35,18 @@ from PySide6.QtGui import QFont
 
 from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays.base import BaseOverlay
-
+from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class LapTimesPage(QWidget):
+class LapTimesPage(BasePage):
     """Elegant lap times table with modern styling."""
     HEADERS = ["Lap", "S1", "S2", "S3", "Lap Time"]
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self, parent: QWidget, logger: logging.Logger):
+
+        self.overlay_id: str = "mfd.lap_times"
+        super().__init__(parent, logger)
 
         # Font configuration
         FONT_SIZE = 11
@@ -52,15 +54,12 @@ class LapTimesPage(QWidget):
         HEADER_FONT = "Orbitron"  # F1-style font (you can change this to any other appropriate font)
         HEADER_FONT_SIZE = 11
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 10, 10, 10)
-
         # Title bar
         title_label = QLabel("RECENT LAP TIMES", self)
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title_label.setFont(QFont(HEADER_FONT, HEADER_FONT_SIZE))
         title_label.setStyleSheet("color: #FF0000; font-weight: bold; margin-bottom: 10px;")
-        layout.addWidget(title_label)
+        self.page_layout.addWidget(title_label)
 
         self.table = QTableWidget(5, 5, self)
         self.table.setHorizontalHeaderLabels(self.HEADERS)
@@ -120,7 +119,7 @@ class LapTimesPage(QWidget):
         self.table.setColumnWidth(3, 100) # Set width for the "S3" column (index 3)
         self.table.setColumnWidth(4, 120) # Set width for the "Lap Time" column (index 4)
 
-        layout.addWidget(self.table)
+        self.page_layout.addWidget(self.table)
 
     def update_data(self, actual_data: Dict[str, Any]):
         """Populate the lap table with up to the last 5 laps. Leave remaining rows blank."""

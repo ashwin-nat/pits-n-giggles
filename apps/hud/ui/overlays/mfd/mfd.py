@@ -63,8 +63,8 @@ class MfdOverlay(BaseOverlay):
         layout.addWidget(self.pages)
 
         # Define pages
-        self.collapsed_page = CollapsedPage(self)
-        self.lap_times_page = LapTimesPage(self)
+        self.collapsed_page = CollapsedPage(self, self.logger)
+        self.lap_times_page = LapTimesPage(self, self.logger)
 
         # Add to stacked widget
         self.pages.addWidget(self.collapsed_page)

@@ -34,19 +34,18 @@ from PySide6.QtCore import Qt
 
 from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays.base import BaseOverlay
-
+from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class CollapsedPage(QWidget):
+class CollapsedPage(BasePage):
     """Minimal page shown when MFD is collapsed."""
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    def __init__(self, parent: BasePage, logger: logging.Logger):
+        self.overlay_id: str = "mfd.collapsed"
+        super().__init__(parent, logger)
 
         label = QLabel("Pits n' Giggles MFD", self)
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(label)
+        self.page_layout.addWidget(label)
+
