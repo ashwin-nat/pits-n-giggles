@@ -14,9 +14,9 @@ flowchart LR
 %% External Systems
 %% ---------------------------------------------------------------------------
 subgraph EXTERNAL[" External Systems"]
-direction TB
-F1_SIM["  F1 Simulator"]
-EXT_TGT["  External Targets"]
+    direction TB
+    F1_SIM["  F1 Simulator"]
+    EXT_TGT["  External Targets"]
 end
 
 %% ---------------------------------------------------------------------------
@@ -73,6 +73,7 @@ subgraph PNG_LAUNCHER["Pits n' Giggles"]
         SV_IPC[" IPC Server"]
         SV_HTTP[" HTTP Server"]
         SV_SOCKETIO[" Socket.IO Server"]
+        SV_STATE[" State "]
     end
 end
 
@@ -110,6 +111,14 @@ SAVE_VIEWER_PROC_MGR -->|"Manage / Heartbeat"| SV_IPC
 BACKEND -->|"stdout"| BACKEND_PROC_MGR
 HUD -->|"stdout"| HUD_PROC_MGR
 SAVE_VIEWER -->|"stdout"| SAVE_VIEWER_PROC_MGR
+
+HUD_CLIENT --> |"Data Feed"| HUD_QT
+HUD_IPC --> |"Comamnds"| HUD_QT
+HUD_QT --> |"Responses"| HUD_IPC
+
+SV_IPC --> |"Save file path"| SV_STATE
+SV_SOCKETIO --> |"Read"| SV_STATE
+SV_STATE --> |"Notify"| SV_SOCKETIO
 
 %% ---------------------------------------------------------------------------
 %% Styles
