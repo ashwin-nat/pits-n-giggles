@@ -47,7 +47,14 @@ class MfdOverlay(BaseOverlay):
         self.mfdClosed = 40
         self.mfdOpen = 300
 
+        # Always start collapsed, but keep width & position
+        geo = self.geometry()
+        self.setGeometry(geo.x(), geo.y(), geo.width(), self.mfdClosed)
+
+        # Initialize handlers and start on page 0
         self._init_cmd_handlers()
+        self.current_index = 0
+        self.pages.setCurrentIndex(self.current_index)
 
     def build_ui(self):
         """Set up stacked pages and layout."""
