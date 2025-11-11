@@ -87,7 +87,6 @@ class ERSDelegate(QStyledItemDelegate):
         # Draw border if this is the reference row
         if index.row() == self.reference_row:
             painter.setPen(QPen(QColor("white"), 1))
-            rect = rect
             # Right edge (this is the last column)
             painter.drawLine(rect.right() - 2, rect.top(), rect.right() - 2, rect.bottom())
             # Top and bottom edges
