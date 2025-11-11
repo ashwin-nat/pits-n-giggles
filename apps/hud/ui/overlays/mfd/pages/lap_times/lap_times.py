@@ -31,6 +31,7 @@ from PySide6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView
 )
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont
 
 from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays.base import BaseOverlay
@@ -39,21 +40,85 @@ from apps.hud.ui.overlays.base import BaseOverlay
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class LapTimesPage(QWidget):
-    """Simple 5x5 table for lap times."""
-
+    """Elegant lap times table with modern styling."""
     HEADERS = ["Lap", "S1", "S2", "S3", "Lap Time"]
 
     def __init__(self, parent=None):
         super().__init__(parent)
+
+        # Font configuration
+        FONT_SIZE = 11
+        FONT_FAMILY = "Segoe UI"  # Clean, modern font (falls back gracefully)
+        HEADER_FONT = "Orbitron"  # F1-style font (you can change this to any other appropriate font)
+        HEADER_FONT_SIZE = 11
+
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(10, 10, 10, 10)
+
+        # Title bar
+        title_label = QLabel("RECENT LAP TIMES", self)
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title_label.setFont(QFont(HEADER_FONT, HEADER_FONT_SIZE))
+        title_label.setStyleSheet("color: #FF0000; font-weight: bold; margin-bottom: 10px;")
+        layout.addWidget(title_label)
 
         self.table = QTableWidget(5, 5, self)
         self.table.setHorizontalHeaderLabels(self.HEADERS)
         self.table.verticalHeader().setVisible(False)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+
+        # Disable mouse interaction
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
+        self.table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+
+        # Hide scroll bars
+        self.table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        # Styling table appearance
+        self.table.setAlternatingRowColors(True)
+        self.table.setShowGrid(True)
+
+        # Apply font to table
+        table_font = QFont(FONT_FAMILY, FONT_SIZE)
+        self.table.setFont(table_font)
+
+        # Cleaned-up and fixed stylesheet
+        self.table.setStyleSheet(f"""
+            QTableWidget {{
+                background-color: #1e1e1e;
+                color: #ffffff;
+                gridline-color: #3a3a3a;
+                border: 1px solid #3a3a3a;
+                border-radius: 5px;
+            }}
+            QTableWidget::item {{
+                padding: 8px;
+                font-family: {FONT_FAMILY};
+                font-size: {FONT_SIZE}pt;
+            }}
+            QTableWidget::item:alternate {{
+                background-color: #252525;
+            }}
+            QHeaderView::section {{
+                background-color: #2d2d2d;
+                color: #FF0000;  /* Red text for headers */
+                padding: 8px;
+                border: none;
+                border-bottom: 2px solid #FF0000;  /* Red bottom border */
+                font-weight: bold;
+                font-family: {HEADER_FONT};
+                font-size: {HEADER_FONT_SIZE}pt;
+            }}
+        """)
+
+        # Set column widths here (adjust as needed)
+        self.table.setColumnWidth(0, 50)  # Set width for the "Lap" column (index 0)
+        self.table.setColumnWidth(1, 100) # Set width for the "S1" column (index 1)
+        self.table.setColumnWidth(2, 100) # Set width for the "S2" column (index 2)
+        self.table.setColumnWidth(3, 100) # Set width for the "S3" column (index 3)
+        self.table.setColumnWidth(4, 120) # Set width for the "Lap Time" column (index 4)
 
         layout.addWidget(self.table)
 
@@ -67,7 +132,7 @@ class LapTimesPage(QWidget):
         if not history_data:
             return
 
-        # Get the last 5 laps (if fewer exist, it’s fine)
+        # Get the last 5 laps (if fewer exist, it's fine)
         recent_laps = history_data[-5:]
 
         # Clear old contents but keep headers
