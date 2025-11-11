@@ -36,7 +36,7 @@ from apps.hud.ui.overlays.base import BaseOverlay
 from lib.f1_types import F1Utils
 
 from .border_delegate import BorderDelegate
-from .ers_delegate import ERSDelegate
+from .drs_ers_delegate import DrsErsDelegate
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -55,7 +55,7 @@ class TimingTowerOverlay(BaseOverlay):
         self.timing_table: Optional[QTableWidget] = None
 
         self.border_delegate = None
-        self.ers_delegate = None
+        self.drs_ers_delegate = None
 
         super().__init__("timing_tower", config, logger, locked, opacity)
         self._init_cmd_handlers()
@@ -217,8 +217,8 @@ class TimingTowerOverlay(BaseOverlay):
         header.setStretchLastSection(False)
 
         # Create ERS delegate with border support
-        self.ers_delegate = ERSDelegate(table)
-        table.setItemDelegateForColumn(5, self.ers_delegate)
+        self.drs_ers_delegate = DrsErsDelegate(table)
+        table.setItemDelegateForColumn(5, self.drs_ers_delegate)
 
         # Create border delegate for all other columns to handle reference row highlighting
         self.border_delegate = BorderDelegate(table)
@@ -296,7 +296,7 @@ class TimingTowerOverlay(BaseOverlay):
         return item
 
     def _update_row(self, row_idx: int, position: int, team: str, name: str, delta: Optional[float],
-                   tyre_compound: str, tyre_age: int, ers_mode: str, ers: float, is_ref: bool = False):
+                   tyre_compound: str, tyre_age: int, ers_mode: str, ers: float, is_ref: bool, drs: bool):
         """Update a specific row in the timing table"""
 
         # Position
@@ -355,15 +355,18 @@ class TimingTowerOverlay(BaseOverlay):
         ers_item = self._create_table_item(ers_text, Qt.AlignmentFlag.AlignCenter)
 
         # Store ERS mode color in item data for the delegate to use
-        ers_item.setData(Qt.ItemDataRole.UserRole, ers_mode)
+        ers_item.setData(Qt.ItemDataRole.UserRole, {
+            "ers-mode": ers_mode,
+            "drs" : drs,
+        })
         self.timing_table.setItem(row_idx, 5, ers_item)
 
         # Update border delegates to highlight reference row
         if is_ref:
             if self.border_delegate:
                 self.border_delegate.set_reference_row(row_idx)
-            if self.ers_delegate:
-                self.ers_delegate.set_reference_row(row_idx)
+            if self.drs_ers_delegate:
+                self.drs_ers_delegate.set_reference_row(row_idx)
             # Force repaint of all cells in this row
             for col in range(6):
                 index = self.timing_table.model().index(row_idx, col)
@@ -381,8 +384,8 @@ class TimingTowerOverlay(BaseOverlay):
         # Clear reference row border if this was the reference
         if self.border_delegate and self.border_delegate.reference_row == row_idx:
             self.border_delegate.set_reference_row(-1)
-        if self.ers_delegate and self.ers_delegate.reference_row == row_idx:
-            self.ers_delegate.set_reference_row(-1)
+        if self.drs_ers_delegate and self.drs_ers_delegate.reference_row == row_idx:
+            self.drs_ers_delegate.set_reference_row(-1)
 
     def _init_cmd_handlers(self):
 
@@ -443,9 +446,10 @@ class TimingTowerOverlay(BaseOverlay):
                         ers_mode = ers_info.get("ers-mode", "None")
                         ers_perc = ers_info.get("ers-percent-float", 0.0)
 
+                        drs = driver_info.get("drs", False)
 
                         self._update_row(idx, position, team, name, delta, tyre_compound, tyre_age, ers_mode, ers_perc,
-                                         driver_idx == ref_index)
+                                         (driver_idx == ref_index), drs)
 
                 # Hide remaining empty rows
                 for i in range(num_rows_with_data, self.total_rows):
