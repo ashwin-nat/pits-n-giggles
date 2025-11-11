@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from PySide6.QtCore import QModelIndex, Qt
-from PySide6.QtGui import QBrush, QColor, QFont, QPainter
+from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import (QHeaderView, QLabel, QStyledItemDelegate,
                                QStyleOptionViewItem, QTableWidget,
                                QTableWidgetItem, QVBoxLayout, QWidget)
@@ -37,6 +37,46 @@ from apps.hud.ui.overlays.base import BaseOverlay
 from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
+
+class BorderDelegate(QStyledItemDelegate):
+    """Custom delegate to draw borders around reference rows"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.reference_row = -1
+
+    def set_reference_row(self, row: int):
+        """Set which row should have a border"""
+        self.reference_row = row
+
+    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex) -> None:
+        # First, paint the normal item
+        super().paint(painter, option, index)
+
+        # If this is the reference row, draw a white border around it
+        if index.row() == self.reference_row:
+            painter.save()
+            painter.setPen(QPen(QColor("white"), 2))  # 2px white border
+
+            # Get the table widget to calculate full row rect
+            table = self.parent()
+            if isinstance(table, QTableWidget):
+                # Draw border only on the edges of the row
+                rect = option.rect
+
+                # Left edge (first column only)
+                if index.column() == 0:
+                    painter.drawLine(rect.left(), rect.top(), rect.left(), rect.bottom())
+
+                # Right edge (last column only)
+                if index.column() == table.columnCount() - 1:
+                    painter.drawLine(rect.right(), rect.top(), rect.right(), rect.bottom())
+
+                # Top and bottom edges (all columns)
+                painter.drawLine(rect.left(), rect.top(), rect.right(), rect.top())
+                painter.drawLine(rect.left(), rect.bottom(), rect.right(), rect.bottom())
+
+            painter.restore()
 
 class ERSDelegate(QStyledItemDelegate):
     """Custom delegate to paint ERS cell with vertical color bar"""
@@ -105,6 +145,7 @@ class TimingTowerOverlay(BaseOverlay):
             "Hotlap": QColor("#00ff00"),
             "Overtake": QColor("#ff0000")
         }
+        self.border_delegate = None
 
         super().__init__("timing_tower", config, logger, locked, opacity)
         self._init_cmd_handlers()
@@ -244,6 +285,11 @@ class TimingTowerOverlay(BaseOverlay):
         self._configure_table_behavior(table)
         self._set_table_dimensions(table, content_width)
         self._apply_table_style(table)
+
+        self.border_delegate = BorderDelegate(table)
+        for col in range(6):
+            if col != 5:  # Don't override ERS delegate
+                table.setItemDelegateForColumn(col, self.border_delegate)
 
         return table
 
@@ -404,9 +450,12 @@ class TimingTowerOverlay(BaseOverlay):
 
         # Highlight reference row
         if is_ref:
-            for col in range(6):
-                if item := self.timing_table.item(row_idx, col):
-                    item.setBackground(QBrush(QColor(0, 100, 200, 200)))
+            if self.border_delegate:
+                self.border_delegate.set_reference_row(row_idx)
+                # Force repaint of all cells in this row
+                for col in range(6):
+                    index = self.timing_table.model().index(row_idx, col)
+                    self.timing_table.update(index)
 
     def _clear_row(self, row_idx: int):
         """Clear a specific row"""
@@ -416,6 +465,10 @@ class TimingTowerOverlay(BaseOverlay):
         self.timing_table.setItem(row_idx, 3, self._create_table_item("--.-"))
         self.timing_table.setItem(row_idx, 4, self._create_table_item("--"))
         self.timing_table.setItem(row_idx, 5, self._create_table_item("0%"))
+
+        # Clear reference row border if this was the reference
+        if self.border_delegate and self.border_delegate.reference_row == row_idx:
+            self.border_delegate.set_reference_row(-1)
 
     def _init_cmd_handlers(self):
 
