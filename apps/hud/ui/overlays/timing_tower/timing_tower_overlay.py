@@ -89,6 +89,11 @@ class ERSDelegate(QStyledItemDelegate):
             "Hotlap": QColor("#00ff00"),
             "Overtake": QColor("#ff0000")
         }
+        self.reference_row = -1
+
+    def set_reference_row(self, row: int):
+        """Set which row should have a border"""
+        self.reference_row = row
 
     def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex) -> None:
         # Get the ERS mode color from item data
@@ -123,6 +128,16 @@ class ERSDelegate(QStyledItemDelegate):
         text_rect = option.rect.adjusted(bar_width, 0, 0, 0)
         painter.drawText(text_rect, Qt.AlignCenter, index.data(Qt.DisplayRole))
 
+        # Draw border if this is the reference row
+        if index.row() == self.reference_row:
+            painter.setPen(QPen(QColor("white"), 2))
+            rect = option.rect
+            # Right edge (this is the last column)
+            painter.drawLine(rect.right() - 1, rect.top(), rect.right() - 1, rect.bottom())
+            # Top and bottom edges
+            painter.drawLine(rect.left(), rect.top(), rect.right(), rect.top())
+            painter.drawLine(rect.left(), rect.bottom(), rect.right(), rect.bottom())
+
         painter.restore()
 
 class TimingTowerOverlay(BaseOverlay):
@@ -145,7 +160,9 @@ class TimingTowerOverlay(BaseOverlay):
             "Hotlap": QColor("#00ff00"),
             "Overtake": QColor("#ff0000")
         }
+
         self.border_delegate = None
+        self.ers_delegate = None
 
         super().__init__("timing_tower", config, logger, locked, opacity)
         self._init_cmd_handlers()
@@ -286,11 +303,6 @@ class TimingTowerOverlay(BaseOverlay):
         self._set_table_dimensions(table, content_width)
         self._apply_table_style(table)
 
-        self.border_delegate = BorderDelegate(table)
-        for col in range(6):
-            if col != 5:  # Don't override ERS delegate
-                table.setItemDelegateForColumn(col, self.border_delegate)
-
         return table
 
     def _configure_table_behavior(self, table: QTableWidget) -> None:
@@ -311,7 +323,14 @@ class TimingTowerOverlay(BaseOverlay):
         header.setSectionResizeMode(QHeaderView.Fixed)
         header.setStretchLastSection(False)
 
-        table.setItemDelegateForColumn(5, ERSDelegate(table))
+        # Create ERS delegate with border support
+        self.ers_delegate = ERSDelegate(table)
+        table.setItemDelegateForColumn(5, self.ers_delegate)
+
+        # Create border delegate for all other columns to handle reference row highlighting
+        self.border_delegate = BorderDelegate(table)
+        for col in range(5):  # Columns 0-4, excluding ERS column
+            table.setItemDelegateForColumn(col, self.border_delegate)
 
     def _set_table_dimensions(self, table: QTableWidget, content_width: int) -> None:
         """Set column widths, row heights, and overall table size."""
@@ -448,14 +467,16 @@ class TimingTowerOverlay(BaseOverlay):
 
         self.timing_table.setItem(row_idx, 5, ers_item)
 
-        # Highlight reference row
+        # Update border delegates to highlight reference row
         if is_ref:
             if self.border_delegate:
                 self.border_delegate.set_reference_row(row_idx)
-                # Force repaint of all cells in this row
-                for col in range(6):
-                    index = self.timing_table.model().index(row_idx, col)
-                    self.timing_table.update(index)
+            if self.ers_delegate:
+                self.ers_delegate.set_reference_row(row_idx)
+            # Force repaint of all cells in this row
+            for col in range(6):
+                index = self.timing_table.model().index(row_idx, col)
+                self.timing_table.update(index)
 
     def _clear_row(self, row_idx: int):
         """Clear a specific row"""
@@ -469,6 +490,8 @@ class TimingTowerOverlay(BaseOverlay):
         # Clear reference row border if this was the reference
         if self.border_delegate and self.border_delegate.reference_row == row_idx:
             self.border_delegate.set_reference_row(-1)
+        if self.ers_delegate and self.ers_delegate.reference_row == row_idx:
+            self.ers_delegate.set_reference_row(-1)
 
     def _init_cmd_handlers(self):
 
