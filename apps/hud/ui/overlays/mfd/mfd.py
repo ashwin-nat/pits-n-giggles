@@ -28,7 +28,7 @@ from typing import Any, Dict, Optional
 
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QStackedWidget
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QStackedWidget, QWidget
 
 from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays.base import BaseOverlay
@@ -51,10 +51,8 @@ class MfdOverlay(BaseOverlay):
         geo = self.geometry()
         self.setGeometry(geo.x(), geo.y(), geo.width(), self.mfdClosed)
 
-        # Initialize handlers and start on page 0
+        # Initialize handlers and start on default/collapsed page
         self._init_cmd_handlers()
-        self.current_index = 0
-        self.pages.setCurrentIndex(self.current_index)
 
     def build_ui(self):
         """Set up stacked pages and layout."""
@@ -72,44 +70,42 @@ class MfdOverlay(BaseOverlay):
         self.pages.addWidget(self.collapsed_page)
         self.pages.addWidget(self.lap_times_page)
 
-        # Create page iterator (cycle)
+        # Build an opaque iterator that cycles indefinitely
         self.page_cycle = itertools.cycle(range(self.pages.count()))
-        self.current_index = 0
-        self.pages.setCurrentIndex(self.current_index)
+        self.pages.setCurrentIndex(0)
 
     def _init_cmd_handlers(self):
         @self.on_command("next_page")
-        def handle_next_page(_data: Dict[str, Any]):
+        def _handle_next_page(_data: Dict[str, Any]):
             self.logger.debug(f"{self.overlay_id} | Switching to next page...")
+
+            # Step forward until we find a new index different from current
+            current_index = self.pages.currentIndex()
             next_index = next(self.page_cycle)
-            # Ensure we actually move to a *different* page each time
-            if next_index == self.current_index:
+            while next_index == current_index:
                 next_index = next(self.page_cycle)
-            self.switch_page(next_index)
+            self._switch_page(next_index)
 
         @self.on_command("race_table_update")
-        def handle_race_update(data: Dict[str, Any]):
+        def _handle_race_update(data: Dict[str, Any]):
             pass
             # if self.current_index == 1:
             #     self.lap_times_page.update_data(data.get("lap_data", []))
 
         @self.on_command("stream_overlay_update")
-        def handle_stream_overlay_update(data: Dict[str, Any]):
-            if self.current_index == 1:
+        def _handle_stream_overlay_update(data: Dict[str, Any]):
+            if self._is_page_active(self.lap_times_page):
                 self.lap_times_page.update_data(data)
 
-    def switch_page(self, index: int):
+    def _switch_page(self, index: int):
         """Switch page and resize MFD based on open/closed state."""
-        self.logger.debug(f"MFD: switching to page {index}")
-        self.current_index = index
         self.pages.setCurrentIndex(index)
-
-        # Adjust height
         target_height = self.mfdClosed if index == 0 else self.mfdOpen
         self.resize(self.width(), target_height)
-        self.logger.debug(
-            f"MFD: resized to {'collapsed' if index == 0 else 'expanded'} height ({target_height})"
-        )
 
-    def clear(self):
-        pass
+        page_name = "collapsed" if index == 0 else "expanded"
+        self.logger.debug(f"MFD: switched to {page_name} page (height={target_height})")
+
+    def _is_page_active(self, page: QWidget) -> bool:
+        """Return True if the given page is currently active."""
+        return self.pages.currentWidget() is page
