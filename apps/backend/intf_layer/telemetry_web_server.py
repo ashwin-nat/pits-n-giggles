@@ -79,7 +79,7 @@ class TelemetryWebServer(BaseWebServer):
             logger=logger,
             client_event_mappings={
                 ClientType.RACE_TABLE: ['frontend-update', 'race-table-update'],
-                ClientType.HUD: ['race-table-update', 'hud-toggle-notification'],
+                ClientType.HUD: ['race-table-update', 'hud-toggle-notification', 'stream-overlay-update'],
                 ClientType.PLAYER_STREAM_OVERLAY: ['stream-overlay-update'],
             },
             cert_path=settings.HTTPS.cert_path,
