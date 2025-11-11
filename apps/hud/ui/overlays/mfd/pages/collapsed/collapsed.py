@@ -47,6 +47,6 @@ class CollapsedPage(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        label = QLabel("MFD Collapsed", self)
+        label = QLabel("Pits n' Giggles MFD", self)
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(label)

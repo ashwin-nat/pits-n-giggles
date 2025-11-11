@@ -44,8 +44,8 @@ class MfdOverlay(BaseOverlay):
 
     def __init__(self, config: OverlaysConfig, logger: logging.Logger, locked: bool, opacity: int):
         super().__init__(self.OVERLAY_ID, config, logger, locked, opacity)
-        self.mfdClosed = 40
-        self.mfdOpen = 300
+        self.mfdClosed = 10
+        self.mfdOpen = config.height
 
         # Always start collapsed, but keep width & position
         geo = self.geometry()
