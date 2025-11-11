@@ -55,6 +55,7 @@ class BaseOverlay(QWidget):
         self._drag_pos = None
         self._command_handlers: Dict[str, OverlayCommandHandler] = {}
         self._request_handlers: Dict[str, OverlayRequestHandler] = {}  # New: request handlers
+        self._icon_cache: Dict[str, QIcon] = {}
         self._setup_window()
         self.build_ui()
         self.apply_config()
@@ -249,7 +250,15 @@ class BaseOverlay(QWidget):
                 base_path = os.path.abspath(".")
 
             full_path = os.path.join(base_path, relative_path)
-            return QIcon(full_path)
+            if cached_icon := self._icon_cache.get(full_path):
+                self.logger.debug(f"{self.overlay_id} | Loaded icon from cache: '{relative_path}'")
+                return cached_icon
+
+            actual_icon = QIcon(full_path)
+            self._icon_cache[full_path] = actual_icon
+            self.logger.debug(f"{self.overlay_id} | Icon not in cache: '{relative_path}. Loaded from disk.")
+            return actual_icon
+
         except Exception as e:  # pylint: disable=broad-except
             self.logger.warning(f"{self.overlay_id} | Failed to load icon '{relative_path}': {e}")
             return QIcon()
