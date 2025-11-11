@@ -98,6 +98,20 @@ class MfdOverlay(BaseOverlay):
             if self._is_page_active(self.lap_times_page):
                 self.lap_times_page.update_data(data)
 
+        @self.on_command("set_locked_state")
+        def handle_set_locked_state(data: dict):
+            locked = data.get('new-value', False)
+            self.logger.debug(f'{self.overlay_id} | [OVERRIDDEN METHOD] Setting locked state to {locked}')
+
+            # We need to not be in the default/collapse page when unlocking, so that the user gets a sense of how much
+            # width to configure.
+            if not locked:
+                if self._is_page_active(self.collapsed_page):
+                    self.logger.debug(f"{self.overlay_id} | Switching to next page before unlocking ...")
+                    _handle_next_page(data)
+
+            self.set_locked_state(locked)
+
     def _switch_page(self, index: int):
         """Switch page and resize MFD based on open/closed state."""
         self.pages.setCurrentIndex(index)

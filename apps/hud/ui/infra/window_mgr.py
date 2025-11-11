@@ -131,7 +131,6 @@ class WindowManager(QObject):
     # Keep existing methods for GUI thread use
     def broadcast_data(self, cmd: str, data: dict):
         """Broadcast data to all registered overlays using signal."""
-        # self.logger.debug(f"Broadcasting data to {len(self.overlays)} overlays")
         self.mgmt_cmd_signal.emit('', cmd, json.dumps(data, separators=(',', ':')))
 
     def unicast_data(self, overlay_id: str, cmd: str, data: dict):
