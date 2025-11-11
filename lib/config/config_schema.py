@@ -539,6 +539,16 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
+    show_mfd: bool = Field(
+        default=True,
+        description="Show MFD overlay",
+        json_schema_extra={
+            "ui": {
+                "type" : "check_box",
+                "visible": True
+            }
+        }
+    )
     toggle_overlays_udp_action_code: int = Field(
         default=10,
         ge=1,

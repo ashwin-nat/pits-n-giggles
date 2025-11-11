@@ -46,6 +46,7 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.toggle_overlays_udp_action_code, 10)
         self.assertEqual(settings.show_lap_timer, True)
         self.assertEqual(settings.show_timing_tower, True)
+        self.assertEqual(settings.show_mfd, True)
         self.assertEqual(settings.overlays_opacity, 100)
 
     def test_enabled_validation(self):
@@ -141,3 +142,19 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(hud_settings_max.overlays_opacity, max_opacity)
         with self.assertRaises(ValidationError):
             HudSettings(overlays_opacity=None)  # type: ignore
+
+    def test_show_mfd_validation(self):
+        """Test valid and invalid show_mfd values"""
+        # Valid value
+        show_mfd = True
+        hud_settings = HudSettings(show_mfd=show_mfd)
+        self.assertEqual(hud_settings.show_mfd, show_mfd)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(show_mfd=None)  # type: ignore
+
+        with self.assertRaises(ValidationError):
+            HudSettings(show_mfd="invalid")
+
+        with self.assertRaises(ValidationError):
+            HudSettings(show_mfd=420)
