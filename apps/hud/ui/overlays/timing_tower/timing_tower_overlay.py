@@ -389,8 +389,12 @@ class TimingTowerOverlay(BaseOverlay):
         @self.on_command("race_table_update")
         def handle_race_update(data: Dict[str, Any]) -> None:
 
+            session_type = data["event-type"]
             relevant_rows, ref_index = self._get_relevant_race_table_rows(data, self.num_adjacent_cars)
-            self._insert_relative_deltas(relevant_rows, ref_index)
+            if self._is_race_type_session(session_type):
+                self._insert_relative_deltas_race(relevant_rows, ref_index)
+            elif not self._is_tt_session(session_type):
+                self._insert_relative_deltas_fp_quali(relevant_rows, ref_index)
             session_type: str = data.get("event-type", "N/A")
 
             # Update header with session type
@@ -518,11 +522,17 @@ class TimingTowerOverlay(BaseOverlay):
 
         return lower_bound, upper_bound
 
+    def _is_tt_session(self, session_type: str) -> bool:
+        return session_type == "Time Trial"
+
+    def _is_race_type_session(self, session_type: str) -> bool:
+        return "Race" in session_type
+
     def _should_show_lap_number(self, session_type: str) -> bool:
         unsupported_session_types = ['Qualifying', 'Practice', 'Shootout']
         return not any(sub in session_type for sub in unsupported_session_types)
 
-    def _insert_relative_deltas(self, relevant_rows, ref_index) -> None:
+    def _insert_relative_deltas_race(self, relevant_rows, ref_index) -> None:
         if ref_index is None:
             return
 
@@ -539,7 +549,7 @@ class TimingTowerOverlay(BaseOverlay):
         # cars ahead get negative values, cars behind get positive values.
         for i, row in enumerate(relevant_rows):
             if i == ref_pos:
-                row["delta-info"]["relative-delta"] = 0.0
+                row["delta-info"]["relative-delta"] = 0
                 continue
 
             if i < ref_pos:
@@ -556,3 +566,29 @@ class TimingTowerOverlay(BaseOverlay):
                     for j in range(ref_pos, i)
                 )
                 row["delta-info"]["relative-delta"] = total_delta
+
+    def _insert_relative_deltas_fp_quali(self, relevant_rows, ref_index) -> None:
+        if ref_index is None:
+            return
+
+        ref_row = next(
+            (
+                row
+                for row in relevant_rows
+                if row["driver-info"]["index"] == ref_index
+            ),
+            None
+        )
+        if not ref_row:
+            self.logger.warning('<<TIMING_TOWER>> Reference row is None!')
+            return
+        ref_best_lap_ms = ref_row["lap-info"]["best-lap"]["lap-time-ms"]
+
+        # For each car, compute the best lap delta against the ref car
+        # ref lap - car lap
+        for row in relevant_rows:
+            best_lap_ms = row["lap-info"]["best-lap"]["lap-time-ms"]
+            if ref_best_lap_ms is None or best_lap_ms is None:
+                row["delta-info"]["relative-delta"] = 0
+            else:
+                row["delta-info"]["relative-delta"] = best_lap_ms - ref_best_lap_ms
