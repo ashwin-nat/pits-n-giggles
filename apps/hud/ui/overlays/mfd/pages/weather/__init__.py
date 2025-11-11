@@ -27,5 +27,5 @@ from .weather import WeatherForecastPage
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    "LapTimesPage",
+    "WeatherForecastPage",
 ]

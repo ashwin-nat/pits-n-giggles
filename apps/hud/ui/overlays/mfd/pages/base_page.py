@@ -23,20 +23,13 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
-import sys
 import os
+import sys
 from typing import Dict, Optional
 
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QStackedWidget,
-    QTableWidget, QTableWidgetItem, QHeaderView
-)
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon, QFont
-
-from apps.hud.ui.infra.config import OverlaysConfig
-from apps.hud.ui.overlays.base import BaseOverlay
-
+from PySide6.QtGui import QFont, QIcon
+from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 

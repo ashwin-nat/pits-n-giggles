@@ -22,19 +22,17 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 import itertools
-from typing import Any, Dict, List
+import logging
+from typing import Any, Dict
 
-from PySide6.QtCore import QTimer
-from PySide6.QtGui import QFont
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QStackedWidget, QWidget
+from PySide6.QtWidgets import (QStackedWidget,
+                               QVBoxLayout, QWidget)
 
 from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays.base import BaseOverlay
-from lib.f1_types import F1Utils
-
-from apps.hud.ui.overlays.mfd.pages import LapTimesPage, CollapsedPage, WeatherForecastPage
+from apps.hud.ui.overlays.mfd.pages import (CollapsedPage, LapTimesPage,
+                                            WeatherForecastPage)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 

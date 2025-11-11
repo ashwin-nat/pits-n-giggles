@@ -22,18 +22,15 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import itertools
 import logging
 from typing import Any, Dict, List
 
-from PySide6.QtCore import Qt, QModelIndex
+from PySide6.QtCore import QModelIndex, Qt
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import (QHeaderView, QLabel, QStackedWidget,
-                               QStyledItemDelegate, QTableWidget, QStyleOptionViewItem,
-                               QTableWidgetItem, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QHeaderView, QStyledItemDelegate,
+                               QStyleOptionViewItem, QTableWidget,
+                               QTableWidgetItem, QWidget)
 
-from apps.hud.ui.infra.config import OverlaysConfig
-from apps.hud.ui.overlays.base import BaseOverlay
 from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
