@@ -25,23 +25,16 @@
 import logging
 from typing import Any, Dict, List
 
-from PySide6.QtCore import QModelIndex, Qt
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import (QHeaderView, QStyledItemDelegate,
-                               QStyleOptionViewItem, QTableWidget,
-                               QTableWidgetItem, QWidget)
+from PySide6.QtWidgets import (QHeaderView, QTableWidget, QTableWidgetItem,
+                               QWidget)
 
 from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
 
-# -------------------------------------- CLASSES -----------------------------------------------------------------------
+from .text_cell_delegate import NoElideDelegate
 
-class NoElideDelegate(QStyledItemDelegate):
-    def initStyleOption(self, option: QStyleOptionViewItem, index: QModelIndex):
-        # prepare the option as usual
-        super().initStyleOption(option, index)
-        # set the elide mode on the style option so Qt won't draw "…"
-        # new enum location may vary between PySide6 versions, so try both
-        option.textElideMode = Qt.TextElideMode.ElideNone
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class LapTimesPage(BasePage):
     """Elegant lap times table with modern styling."""
