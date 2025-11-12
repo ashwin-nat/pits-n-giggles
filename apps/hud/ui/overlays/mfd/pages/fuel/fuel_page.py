@@ -59,7 +59,6 @@ class FuelInfoPage(BasePage):
     def __init__(self, parent: QWidget, logger: logging.Logger):
         super().__init__(parent, logger, title="FUEL INFO")
         self.overlay_id = "mfd.fuel_info"
-        self._last_processed_samples: List[Dict[str, Any]] = []
 
         # Load fuel icon
         icon_base = Path("assets")
