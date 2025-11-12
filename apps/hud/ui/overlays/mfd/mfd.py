@@ -63,6 +63,8 @@ class MfdOverlay(BaseOverlay):
         self.pages = AnimatedStackedWidget(self)
         self.pages.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         layout.addWidget(self.pages)
+        # Re-apply height rules after every animated page change
+        self.pages.currentChanged.connect(self._on_page_changed)
 
         # Define pages
         self.collapsed_page = CollapsedPage(self, self.logger)
@@ -154,3 +156,17 @@ class MfdOverlay(BaseOverlay):
     def _is_page_active(self, page: QWidget) -> bool:
         """Return True if the given page is currently active."""
         return self.pages.currentWidget() is page
+
+    def _on_page_changed(self, index: int):
+        """Ensure correct MFD height when a page changes (after animation)."""
+        if index == 0:
+            # Collapsed state
+            self.pages.setFixedHeight(self.mfdClosed)
+            self.resize(self.width(), self.mfdClosed)
+            self.logger.debug(f"{self.overlay_id} | Page changed -> collapsed (height={self.mfdClosed})")
+        else:
+            # Expanded state
+            self.pages.setMaximumHeight(16777215)  # Qt::QWIDGETSIZE_MAX
+            self.pages.setMinimumHeight(0)
+            self.resize(self.width(), self.mfdOpen)
+            self.logger.debug(f"{self.overlay_id} | Page changed -> expanded (height={self.mfdOpen})")
