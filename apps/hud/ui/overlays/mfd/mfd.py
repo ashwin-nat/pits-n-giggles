@@ -31,7 +31,7 @@ from PySide6.QtWidgets import (QStackedWidget,
 
 from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays.base import BaseOverlay
-from apps.hud.ui.overlays.mfd.pages import (CollapsedPage, LapTimesPage, FuelInfoPage,
+from apps.hud.ui.overlays.mfd.pages import (CollapsedPage, LapTimesPage, FuelInfoPage, TyreWearPage,
                                             WeatherForecastPage)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -65,12 +65,14 @@ class MfdOverlay(BaseOverlay):
         self.lap_times_page = LapTimesPage(self, self.logger)
         self.weather_page   = WeatherForecastPage(self, self.logger)
         self.fuel_page      = FuelInfoPage(self, self.logger)
+        self.tyre_wear_page = TyreWearPage(self, self.logger)
 
         # Add to stacked widget
         self.pages.addWidget(self.collapsed_page)
         self.pages.addWidget(self.lap_times_page)
         self.pages.addWidget(self.weather_page)
         self.pages.addWidget(self.fuel_page)
+        self.pages.addWidget(self.tyre_wear_page)
 
         # Build an opaque iterator that cycles indefinitely
         self.page_cycle = itertools.cycle(range(self.pages.count()))
@@ -94,6 +96,8 @@ class MfdOverlay(BaseOverlay):
                 self.weather_page.update(data)
             elif self._is_page_active(self.fuel_page):
                 self.fuel_page.update(data)
+            elif self._is_page_active(self.tyre_wear_page):
+                self.tyre_wear_page.update(data)
 
         @self.on_command("stream_overlay_update")
         def _handle_stream_overlay_update(data: Dict[str, Any]):

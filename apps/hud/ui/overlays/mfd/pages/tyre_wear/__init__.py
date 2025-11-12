@@ -22,18 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .collapsed import CollapsedPage
-from .fuel import FuelInfoPage
-from .lap_times import LapTimesPage
-from .tyre_wear import TyreWearPage
-from .weather import WeatherForecastPage
+from .tyre_wear_page import TyreWearPage
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    "CollapsedPage",
-    "FuelInfoPage",
-    "LapTimesPage",
     "TyreWearPage",
-    "WeatherForecastPage",
 ]
