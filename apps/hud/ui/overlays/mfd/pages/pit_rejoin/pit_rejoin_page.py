@@ -244,7 +244,7 @@ class PitRejoinPredictionPage(BasePage):
         return item
 
     def _update_row(self, row_idx: int, position: int, team: str, name: str, delta: Optional[float],
-                   tyre_compound: str, tyre_age: int, ers_mode: str, ers: float, is_ref: bool, drs: bool):
+                   tyre_compound: str, max_tyre_wear_str: str, ers_mode: str, ers: float, is_ref: bool, drs: bool):
         """Update a specific row in the timing table"""
 
         # Position
@@ -282,17 +282,16 @@ class PitRejoinPredictionPage(BasePage):
 
         # Tyre compound
         tyre_icon = self.tyre_icon_mappings.get(tyre_compound)
-        tyre_text = f"{tyre_age}L"
         if tyre_icon and not tyre_icon.isNull():
             # Icon found -> show icon + text (e.g., "5L")
-            tyre_item = QTableWidgetItem(tyre_icon, tyre_text)
+            tyre_item = QTableWidgetItem(tyre_icon, max_tyre_wear_str)
             font = tyre_item.font()
             font.setPointSize(11)
             font.setBold(False)
             tyre_item.setFont(font)
         else:
             # No icon -> show fallback display text (first letter or "--")
-            tyre_display = (f"{tyre_compound[:1]}({tyre_text})") if tyre_compound else "--"
+            tyre_display = (f"{tyre_compound[:1]}({max_tyre_wear_str})") if tyre_compound else "--"
             tyre_item = self._create_table_item(tyre_display, Qt.AlignmentFlag.AlignCenter, bold=True)
 
         tyre_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -389,14 +388,14 @@ class PitRejoinPredictionPage(BasePage):
                     delta = delta_info.get("relative-delta", 0)
 
                     tyre_compound = tyre_info.get("visual-tyre-compound", "UNKNOWN")
-                    tyre_age = tyre_info.get("tyre-age", 0)
+                    max_wear = F1Utils.getMaxTyreWear(tyre_info["current-wear"])
+                    max_wear_str = f"{F1Utils.formatFloat(max_wear['max-wear'], 0)}%"
 
                     ers_mode = ers_info.get("ers-mode", "None")
                     ers_perc = ers_info.get("ers-percent-float", 0.0)
-
                     drs = driver_info.get("drs", False)
 
-                    self._update_row(idx, position, team, name, delta, tyre_compound, tyre_age, ers_mode, ers_perc,
+                    self._update_row(idx, position, team, name, delta, tyre_compound, max_wear_str, ers_mode, ers_perc,
                                         (driver_idx == ref_index), drs)
 
             # Hide remaining empty rows

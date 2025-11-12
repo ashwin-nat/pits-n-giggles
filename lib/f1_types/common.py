@@ -31,7 +31,7 @@
 
 import math
 from abc import abstractmethod
-from typing import List, Optional, Set
+from typing import List, Optional, Set, Dict, Any
 
 from .base_pkt import F1BaseEnum, F1CompareableEnum
 
@@ -1342,3 +1342,28 @@ class F1Utils:
         """
         # Transpose using zip and map. zip(*lap_major) groups values per car index.
         return [list(car_lap_positions) for car_lap_positions in zip(*lap_major)]
+
+    @staticmethod
+    def getMaxTyreWear(wear_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Get the maximum tyre wear from the given dictionary of tyre wear data."""
+        relevant_keys = {
+            "front-left-wear": "FL",
+            "front-right-wear": "FR",
+            "rear-left-wear": "RL",
+            "rear-right-wear": "RR"
+        }
+
+        max_key = None
+        max_value = float("-inf")
+
+        # Iterate only through relevant keys
+        for key, short_key in relevant_keys.items():
+            if key in wear_data and wear_data[key] > max_value:
+                max_value = wear_data[key]
+                max_key = short_key
+
+        # Return the result as a dictionary
+        return {
+            "max-key": max_key,
+            "max-wear": max_value
+        }
