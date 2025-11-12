@@ -410,25 +410,13 @@ class FuelInfoPage(BasePage):
             # Widget was deleted, ignore
             pass
 
-    def _get_fuel_color(self, current: float, capacity: float) -> str:
-        """Get color based on fuel level percentage."""
-        percentage = (current / capacity) * 100 if capacity > 0 else 0
-
-        if percentage < 15:
-            return self.COLOR_DANGER
-        elif percentage < 30:
-            return self.COLOR_WARNING
-        else:
-            return self.COLOR_PRIMARY
-
     def _get_surplus_color(self, surplus: float) -> str:
         """Get color based on surplus laps."""
         if surplus < 0:
             return self.COLOR_DANGER
         elif surplus < self.MIN_FUEL:
             return self.COLOR_WARNING
-        else:
-            return self.COLOR_PRIMARY
+        return self.COLOR_PRIMARY
 
     def _show_telemetry_disabled(self):
         """Show message when telemetry is disabled."""
