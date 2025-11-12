@@ -43,8 +43,8 @@ class LapTimesPage(BasePage):
 
     def __init__(self, parent: QWidget, logger: logging.Logger):
 
-        self.overlay_id: str = "mfd.lap_times"
         super().__init__(parent, logger, "RECENT LAP TIMES")
+        self.overlay_id: str = "mfd.lap_times"
         self._last_processed_laps: List[Dict[str, Any]] = []
 
         # Font configuration
