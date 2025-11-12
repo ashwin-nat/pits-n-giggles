@@ -26,13 +26,14 @@ import itertools
 import logging
 from typing import Any, Dict
 
-from PySide6.QtWidgets import (QStackedWidget,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import QStackedWidget, QVBoxLayout, QWidget
 
 from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays.base import BaseOverlay
-from apps.hud.ui.overlays.mfd.pages import (CollapsedPage, LapTimesPage, FuelInfoPage, TyreWearPage,
-                                            WeatherForecastPage)
+from apps.hud.ui.overlays.mfd.pages import (CollapsedPage, FuelInfoPage,
+                                            LapTimesPage,
+                                            PitRejoinPredictionPage,
+                                            TyreWearPage, WeatherForecastPage)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -66,6 +67,7 @@ class MfdOverlay(BaseOverlay):
         self.weather_page   = WeatherForecastPage(self, self.logger)
         self.fuel_page      = FuelInfoPage(self, self.logger)
         self.tyre_wear_page = TyreWearPage(self, self.logger)
+        self.pit_rejoin_page= PitRejoinPredictionPage(self, self.logger)
 
         # Add to stacked widget
         self.pages.addWidget(self.collapsed_page)
@@ -73,6 +75,7 @@ class MfdOverlay(BaseOverlay):
         self.pages.addWidget(self.weather_page)
         self.pages.addWidget(self.fuel_page)
         self.pages.addWidget(self.tyre_wear_page)
+        self.pages.addWidget(self.pit_rejoin_page)
 
         # Build an opaque iterator that cycles indefinitely
         self.page_cycle = itertools.cycle(range(self.pages.count()))
@@ -98,6 +101,8 @@ class MfdOverlay(BaseOverlay):
                 self.fuel_page.update(data)
             elif self._is_page_active(self.tyre_wear_page):
                 self.tyre_wear_page.update(data)
+            elif self._is_page_active(self.pit_rejoin_page):
+                self.pit_rejoin_page.update(data)
 
         @self.on_command("stream_overlay_update")
         def _handle_stream_overlay_update(data: Dict[str, Any]):
