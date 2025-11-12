@@ -55,8 +55,7 @@ class WeatherForecastPage(BasePage):
     MAX_SAMPLES = 5
 
     def __init__(self, parent: QWidget, logger: logging.Logger):
-        super().__init__(parent, logger, title="Weather Forecast")
-        self.overlay_id = "mfd.weather_forecast"
+        super().__init__(parent, logger, "mfd.weather_forecast", title="Weather Forecast")
         self._last_processed_samples: List[Dict[str, Any]] = []
 
         # Compact horizontal layout filling available width

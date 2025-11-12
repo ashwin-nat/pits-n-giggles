@@ -55,8 +55,7 @@ class PitRejoinPredictionPage(BasePage):
         self.border_delegate = None
         self.drs_ers_delegate = None
 
-        super().__init__(parent, logger, title="PIT REJOIN PREDICTION")
-        self.overlay_id = "mfd.pit_rejoin"
+        super().__init__(parent, logger, "mfd.pit_rejoin", title="PIT REJOIN PREDICTION")
         self._init_icons()
         self._build_ui()
 

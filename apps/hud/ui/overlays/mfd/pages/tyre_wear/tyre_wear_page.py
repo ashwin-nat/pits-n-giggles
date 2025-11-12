@@ -46,8 +46,7 @@ class TyreWearPage(BasePage):
     DANGER_WEAR = 75
 
     def __init__(self, parent: QWidget, logger: logging.Logger):
-        super().__init__(parent, logger, title="TYRE WEAR INFO")
-        self.overlay_id = "mfd.tyre_info"
+        super().__init__(parent, logger, "mfd.tyre_info", title="TYRE WEAR INFO")
 
         self._init_icons()
         self._build_ui()

@@ -36,8 +36,7 @@ class CollapsedPage(BasePage):
     """Minimal page shown when MFD is collapsed."""
 
     def __init__(self, parent: BasePage, logger: logging.Logger):
-        super().__init__(parent, logger)
-        self.overlay_id: str = "mfd.collapsed"
+        super().__init__(parent, logger, "mfd.collapsed")
 
         icon_base = Path("assets")
         icon_path = icon_base / "logo.png"

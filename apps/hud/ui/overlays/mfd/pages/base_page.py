@@ -36,14 +36,14 @@ from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 class BasePage(QWidget):
     """Minimal page shown when MFD is collapsed."""
 
-    def __init__(self, parent: QWidget, logger: logging.Logger, title: Optional[str] = None):
+    def __init__(self, parent: QWidget, logger: logging.Logger, id: str, title: Optional[str] = None):
         super().__init__(parent)
         self.page_layout = QVBoxLayout(self)
         self.page_layout.setContentsMargins(0, 0, 0, 0)
         self.page_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._icon_cache: Dict[str, QIcon] = {}
         self.logger = logger
-        self.overlay_id = None  # type: ignore  # derived classes should set this AFTER super().__init__
+        self.overlay_id = id
 
         # Add title bar if specified
         if title:

@@ -57,8 +57,7 @@ class FuelInfoPage(BasePage):
     MIN_FUEL = 0.2  # Minimum fuel threshold in laps
 
     def __init__(self, parent: QWidget, logger: logging.Logger):
-        super().__init__(parent, logger, title="FUEL INFO")
-        self.overlay_id = "mfd.fuel_info"
+        super().__init__(parent, logger, "mfd.fuel_info", title="FUEL INFO")
 
         # Load fuel icon
         icon_base = Path("assets")
