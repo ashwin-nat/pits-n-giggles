@@ -26,6 +26,7 @@ import logging
 from pathlib import Path
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QHBoxLayout, QLabel
 
 from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
@@ -34,6 +35,9 @@ from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
 
 class CollapsedPage(BasePage):
     """Minimal page shown when MFD is collapsed."""
+
+    FONT_FACE = "Montserrat"
+    FONT_SIZE = 12
 
     def __init__(self, parent: BasePage, logger: logging.Logger):
         super().__init__(parent, logger, "mfd.collapsed")
@@ -58,6 +62,8 @@ class CollapsedPage(BasePage):
 
             # Text
             text_label = QLabel(page_text, self)
+            font = QFont(self.FONT_FACE, self.FONT_SIZE)
+            text_label.setFont(font)
             text_label.setAlignment(Qt.AlignmentFlag.AlignVCenter)
 
             # Combine
@@ -68,5 +74,7 @@ class CollapsedPage(BasePage):
 
         else:
             label = QLabel(page_text, self)
+            font = QFont(self.FONT_FACE, self.FONT_SIZE)
+            label.setFont(font)
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.page_layout.addWidget(label)
