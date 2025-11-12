@@ -42,9 +42,9 @@ class MfdOverlay(BaseOverlay):
     OVERLAY_ID = "mfd"
 
     def __init__(self, config: OverlaysConfig, logger: logging.Logger, locked: bool, opacity: int):
-        super().__init__(self.OVERLAY_ID, config, logger, locked, opacity)
-        self.mfdClosed = 10
+        self.mfdClosed = 40
         self.mfdOpen = config.height
+        super().__init__(self.OVERLAY_ID, config, logger, locked, opacity)
 
         # Always start collapsed, but keep width & position
         geo = self.geometry()
@@ -59,10 +59,14 @@ class MfdOverlay(BaseOverlay):
         layout.setContentsMargins(0, 0, 0, 0)
 
         self.pages = QStackedWidget(self)
+        # Set size policy to allow shrinking
+        from PySide6.QtWidgets import QSizePolicy
+        self.pages.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
         layout.addWidget(self.pages)
 
         # Define pages
         self.collapsed_page = CollapsedPage(self, self.logger)
+
         self.lap_times_page = LapTimesPage(self, self.logger)
         self.weather_page   = WeatherForecastPage(self, self.logger)
         self.fuel_page      = FuelInfoPage(self, self.logger)
@@ -80,6 +84,9 @@ class MfdOverlay(BaseOverlay):
         # Build an opaque iterator that cycles indefinitely
         self.page_cycle = itertools.cycle(range(self.pages.count()))
         self.pages.setCurrentIndex(0)
+
+        # Apply initial height constraint for collapsed page
+        self.pages.setFixedHeight(self.mfdClosed)
 
     def _init_cmd_handlers(self):
         @self.on_command("next_page")
@@ -125,8 +132,20 @@ class MfdOverlay(BaseOverlay):
 
     def _switch_page(self, index: int):
         """Switch page and resize MFD based on open/closed state."""
-        self.pages.setCurrentIndex(index)
         target_height = self.mfdClosed if index == 0 else self.mfdOpen
+
+        # First set the stacked widget height constraint
+        if index == 0:
+            self.pages.setFixedHeight(self.mfdClosed)
+        else:
+            # Remove fixed height constraint for expanded pages
+            self.pages.setMaximumHeight(16777215)  # Qt's QWIDGETSIZE_MAX
+            self.pages.setMinimumHeight(0)
+
+        # Then switch the page
+        self.pages.setCurrentIndex(index)
+
+        # Finally resize the window
         self.resize(self.width(), target_height)
 
         page_name = "collapsed" if index == 0 else "expanded"

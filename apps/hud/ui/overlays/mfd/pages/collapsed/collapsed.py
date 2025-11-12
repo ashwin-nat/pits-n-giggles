@@ -60,8 +60,6 @@ class CollapsedPage(BasePage):
             # Text
             text_label = QLabel(page_text, self)
             text_label.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-            # Optional styling for better visibility
-            # text_label.setStyleSheet("color: #ccc; font-weight: bold; font-size: 14px;")
 
             # Combine
             layout.addWidget(icon_label)
