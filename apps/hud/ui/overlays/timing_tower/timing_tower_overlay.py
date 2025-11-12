@@ -428,31 +428,32 @@ class TimingTowerOverlay(BaseOverlay):
 
                 # Populate rows with data
                 for idx, row_data in enumerate(relevant_rows):
-                    if idx < self.total_rows:
-                        self.timing_table.setRowHidden(idx, False)
-                        driver_info: Dict[str, Any] = row_data.get("driver-info", {})
-                        delta_info: Dict[str, Any]  = row_data.get("delta-info", {})
-                        tyre_info: Dict[str, Any]   = row_data.get("tyre-info", {})
-                        ers_info: Dict[str, Any]    = row_data.get("ers-info", {})
+                    self.timing_table.setRowHidden(idx, False)
+                    driver_info: Dict[str, Any] = row_data.get("driver-info", {})
+                    delta_info: Dict[str, Any]  = row_data.get("delta-info", {})
+                    tyre_info: Dict[str, Any]   = row_data.get("tyre-info", {})
+                    ers_info: Dict[str, Any]    = row_data.get("ers-info", {})
+                    warns_pens_info: Dict[str, Any] = row_data.get("warns-pens-info", {})
 
-                        position = driver_info.get("position", 0)
-                        name = driver_info.get("name", "UNKNOWN")
-                        team = driver_info.get("team", "UNKNOWN")
-                        driver_idx = driver_info.get("index", -1)
+                    position = driver_info.get("position", 0)
+                    name = driver_info.get("name", "UNKNOWN")
+                    team = driver_info.get("team", "UNKNOWN")
+                    driver_idx = driver_info.get("index", -1)
 
-                        delta = delta_info.get("relative-delta", 0)
+                    delta = delta_info.get("relative-delta", 0)
 
-                        tyre_compound = tyre_info.get("visual-tyre-compound", "UNKNOWN")
-                        max_wear = F1Utils.getMaxTyreWear(tyre_info["current-wear"])
-                        max_wear_str = f"{F1Utils.formatFloat(max_wear['max-wear'], 0)}%"
+                    tyre_compound = tyre_info.get("visual-tyre-compound", "UNKNOWN")
+                    max_wear = F1Utils.getMaxTyreWear(tyre_info["current-wear"])
+                    max_wear_str = f"{F1Utils.formatFloat(max_wear['max-wear'], 0)}%"
 
-                        ers_mode = ers_info.get("ers-mode", "None")
-                        ers_perc = ers_info.get("ers-percent-float", 0.0)
+                    ers_mode = ers_info.get("ers-mode", "None")
+                    ers_perc = ers_info.get("ers-percent-float", 0.0)
 
-                        drs = driver_info.get("drs", False)
+                    drs = driver_info.get("drs", False)
+                    time_pens_sec = warns_pens_info.get("time-penalties", 0)
 
-                        self._update_row(idx, position, team, name, delta, tyre_compound, max_wear_str,
-                                         ers_mode, ers_perc, (driver_idx == ref_index), drs)
+                    self._update_row(idx, position, team, name, delta, tyre_compound, max_wear_str,
+                                        ers_mode, ers_perc, (driver_idx == ref_index), drs, time_pens_sec)
 
                 # Hide remaining empty rows
                 for i in range(num_rows_with_data, self.total_rows):
