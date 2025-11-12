@@ -91,7 +91,7 @@ class AnimatedStackedWidget(QStackedWidget):
             self.setCurrentIndex(index)
             self._fade_in.start()
 
-        self._fade_out.finished.connect(self._on_animation_finished())
+        self._fade_out.finished.connect(self._on_animation_finished)
         self._fade_out.valueChanged.connect(
             lambda: switch_page() if self._fade_out.currentValue() <= 0.5 and
                                      self.currentIndex() != index else None

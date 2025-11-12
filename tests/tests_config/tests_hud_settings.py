@@ -198,9 +198,20 @@ class TestHudSettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             HudSettings(cycle_mfd_udp_action_code=None)  # type: ignore
 
+        # Non-integer float value should raise ValidationError
+        with self.assertRaises(ValidationError):
+            HudSettings(cycle_mfd_udp_action_code=5.5)
+
     def test_hud_enabled_dependency(self):
         """Test hud_enabled dependency on show_lap_timer, show_timing_tower values, show_mfd"""
 
         # Disable all overlays and enable HUD
         with self.assertRaises(ValidationError):
             HudSettings(enabled=True, show_lap_timer=False, show_timing_tower=False, show_mfd=False)
+
+        # Enable atleast one overlay
+        settings = HudSettings(enabled=True, show_lap_timer=True, show_timing_tower=False, show_mfd=False)
+        self.assertEqual(settings.enabled, True)
+        self.assertEqual(settings.show_lap_timer, True)
+        self.assertEqual(settings.show_timing_tower, False)
+        self.assertEqual(settings.show_mfd, False)

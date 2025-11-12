@@ -40,7 +40,7 @@ class BasePage(QWidget):
     TITLE_FONT_FACE = "Montserrat"
     TITLE_FONT_SIZE = 11
 
-    def __init__(self, parent: QWidget, logger: logging.Logger, id: str, title: Optional[str] = None):
+    def __init__(self, parent: QWidget, logger: logging.Logger, overlay_id: str, title: Optional[str] = None):
         super().__init__(parent)
 
         # Main layout for the entire page
@@ -50,7 +50,7 @@ class BasePage(QWidget):
 
         self._icon_cache: Dict[str, QIcon] = {}
         self.logger = logger
-        self.overlay_id = id
+        self.overlay_id = overlay_id
 
         # Add title bar if specified
         if title:

@@ -240,81 +240,120 @@ class PitRejoinPredictionPage(BasePage):
 
         return item
 
-    def _update_row(self, row_idx: int, position: int, team: str, name: str, delta: Optional[float],
-                   tyre_compound: str, max_tyre_wear_str: str, ers_mode: str, ers: float, is_ref: bool, drs: bool):
-        """Update a specific row in the timing table"""
+    def _update_row(
+        self,
+        row_idx: int,
+        position: int,
+        team: str,
+        name: str,
+        delta: Optional[float],
+        tyre_compound: str,
+        max_tyre_wear_str: str,
+        ers_mode: str,
+        ers: float,
+        is_ref: bool,
+        drs: bool,
+    ):
+        """Update a specific row in the timing table."""
 
-        # Position
-        pos_item = self._create_table_item(str(position), Qt.AlignmentFlag.AlignCenter,
-                                          QColor("#ddd"), bold=True)
+        self._update_position_cell(row_idx, position)
+        self._update_team_cell(row_idx, team)
+        self._update_name_cell(row_idx, name)
+        self._update_delta_cell(row_idx, delta, is_ref)
+        self._update_tyre_cell(row_idx, tyre_compound, max_tyre_wear_str)
+        self._update_ers_cell(row_idx, ers, ers_mode, drs)
+        self._update_reference_highlight(row_idx, is_ref)
+
+    # -------------------------
+    # Per-column update helpers
+    # -------------------------
+
+    def _update_position_cell(self, row_idx: int, position: int) -> None:
+        """Update position cell (column 0)."""
+        pos_item = self._create_table_item(
+            str(position), Qt.AlignmentFlag.AlignCenter, QColor("#ddd"), bold=True
+        )
         self.timing_table.setItem(row_idx, 0, pos_item)
 
-        # Team logo
+    def _update_team_cell(self, row_idx: int, team: str) -> None:
+        """Update team cell (column 1) with team icon."""
         team_icon = self.team_logo_mappings.get(team)
         if team_icon and not team_icon.isNull():
             team_item = QTableWidgetItem(team_icon, "")
         elif self.default_team_logo and not self.default_team_logo.isNull():
             team_item = QTableWidgetItem(self.default_team_logo, "")
         else:
-            team_display = "??"
-            team_item = self._create_table_item(team_display, Qt.AlignmentFlag.AlignCenter, bold=True)
+            team_item = self._create_table_item("??", Qt.AlignmentFlag.AlignCenter, bold=True)
 
         team_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         self.timing_table.setItem(row_idx, 1, team_item)
 
-        # Driver name
-        name_item = self._create_table_item(name, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
-                                           QColor("#ffffff"), bold=True)
+    def _update_name_cell(self, row_idx: int, name: str) -> None:
+        """Update driver name cell (column 2)."""
+        name_item = self._create_table_item(
+            name,
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+            QColor("#ffffff"),
+            bold=True,
+        )
         self.timing_table.setItem(row_idx, 2, name_item)
 
-        # Delta
+    def _update_delta_cell(self, row_idx: int, delta: Optional[float], is_ref: bool) -> None:
+        """Update delta cell (column 3)."""
         if is_ref or delta == 0 or delta is None:
             delta_text = "---"
         else:
-            delta_text = f"{F1Utils.formatFloat(delta/1000, precision=3, signed=True)}"
+            delta_text = f"{F1Utils.formatFloat(delta / 1000, precision=3, signed=True)}"
 
-        delta_item = self._create_table_item(delta_text, Qt.AlignmentFlag.AlignCenter,
-                                            QColor("#00ff99"), font_family="Courier New")
+        delta_item = self._create_table_item(
+            delta_text, Qt.AlignmentFlag.AlignCenter, QColor("#00ff99"), font_family="Courier New"
+        )
         self.timing_table.setItem(row_idx, 3, delta_item)
 
-        # Tyre compound
+    def _update_tyre_cell(self, row_idx: int, tyre_compound: str, max_tyre_wear_str: str) -> None:
+        """Update tyre cell (column 4) with icon + wear percentage."""
         tyre_icon = self.tyre_icon_mappings.get(tyre_compound)
         if tyre_icon and not tyre_icon.isNull():
-            # Icon found -> show icon + text (e.g., "5L")
             tyre_item = QTableWidgetItem(tyre_icon, max_tyre_wear_str)
             font = tyre_item.font()
             font.setPointSize(11)
-            font.setBold(False)
             tyre_item.setFont(font)
         else:
-            # No icon -> show fallback display text (first letter or "--")
-            tyre_display = (f"{tyre_compound[:1]}({max_tyre_wear_str})") if tyre_compound else "--"
-            tyre_item = self._create_table_item(tyre_display, Qt.AlignmentFlag.AlignCenter, bold=True)
+            tyre_display = (
+                f"{tyre_compound[:1]}({max_tyre_wear_str})" if tyre_compound else "--"
+            )
+            tyre_item = self._create_table_item(
+                tyre_display, Qt.AlignmentFlag.AlignCenter, bold=True
+            )
 
         tyre_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         self.timing_table.setItem(row_idx, 4, tyre_item)
 
-        # ERS with mode color bar
+    def _update_ers_cell(self, row_idx: int, ers: float, ers_mode: str, drs: bool) -> None:
+        """Update ERS cell (column 5)."""
         ers_text = f"{F1Utils.formatFloat(ers, precision=0, signed=False)}%"
         ers_item = self._create_table_item(ers_text, Qt.AlignmentFlag.AlignCenter)
-
-        # Store ERS mode color in item data for the delegate to use
-        ers_item.setData(Qt.ItemDataRole.UserRole, {
-            "ers-mode": ers_mode,
-            "drs" : drs,
-        })
+        ers_item.setData(
+            Qt.ItemDataRole.UserRole,
+            {"ers-mode": ers_mode, "drs": drs},
+        )
         self.timing_table.setItem(row_idx, 5, ers_item)
 
-        # Update border delegates to highlight reference row
-        if is_ref:
-            if self.border_delegate:
-                self.border_delegate.set_reference_row(row_idx)
-            if self.drs_ers_delegate:
-                self.drs_ers_delegate.set_reference_row(row_idx)
-            # Force repaint of all cells in this row
-            for col in range(6):
-                index = self.timing_table.model().index(row_idx, col)
-                self.timing_table.update(index)
+    def _update_reference_highlight(self, row_idx: int, is_ref: bool) -> None:
+        """Highlight the reference row and trigger repaint."""
+        if not is_ref:
+            return
+
+        if self.border_delegate:
+            self.border_delegate.set_reference_row(row_idx)
+        if self.drs_ers_delegate:
+            self.drs_ers_delegate.set_reference_row(row_idx)
+
+        # Force repaint
+        for col in range(6):
+            index = self.timing_table.model().index(row_idx, col)
+            self.timing_table.update(index)
+
 
     def _clear_row(self, row_idx: int):
         """Clear a specific row"""
@@ -336,24 +375,23 @@ class PitRejoinPredictionPage(BasePage):
 
         session_type = data["event-type"]
         if not self._is_race_type_session(session_type):
-            self._clear()
+            self._show_error("Only supported in Race/Sprint Sessions")
             return
-
-        ref_row = self._get_ref_row(data)
-        if not ref_row:
-            self._clear()
-            return
-        ref_index = ref_row["driver-info"]["index"]
 
         table_entries = data["table-entries"]
         if not table_entries:
             self._clear()
             return
 
-        pit_time_loss = data["pit-time-loss"]
+        ref_row = self._get_ref_row(data)
+        if not ref_row:
+            self._show_error("ERROR: Please check the logs")
+            return
+        ref_index = ref_row["driver-info"]["index"]
+
+        pit_time_loss = data.get("pit-time-loss")
         if not pit_time_loss:
-            # TODO: display an error saying pit time loss has not been configured for this track
-            self._clear()
+            self._show_error("Pit time loss not configured for this track")
             return
 
         table_entries.sort(key=lambda x: x["driver-info"]["position"])
@@ -585,3 +623,36 @@ class PitRejoinPredictionPage(BasePage):
             table_entries[i]["delta-info"]["delta-to-car-in-front"] = curr - prev
 
         return table_entries
+
+    def _show_error(self, message: str) -> None:
+        """Display a single-row full-width error message in the timing table."""
+        if not self.timing_table:
+            return
+
+        # Ensure table has at least one visible row
+        for i in range(self.total_rows):
+            self.timing_table.setRowHidden(i, True)
+
+        # Use row 0 for the message (un-hide it)
+        self.timing_table.setRowHidden(0, False)
+
+        # Create the message item and style it
+        msg_item = QTableWidgetItem(message)
+        msg_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        font = QFont()
+        font.setPointSize(12)
+        font.setBold(True)
+        msg_item.setFont(font)
+        msg_item.setForeground(QBrush(QColor("#ffb86b")))  # orange-ish warning color
+
+        # Place the item in column 0 and span across all columns
+        self.timing_table.setItem(0, 0, msg_item)
+        self.timing_table.setSpan(0, 0, 1, self.timing_table.columnCount())
+
+        # Clear any leftover items in the spanned columns (avoid duplicate visuals)
+        for c in range(1, self.timing_table.columnCount()):
+            self.timing_table.setItem(0, c, QTableWidgetItem(""))
+
+        # Ensure remaining rows are hidden
+        for i in range(1, self.total_rows):
+            self.timing_table.setRowHidden(i, True)

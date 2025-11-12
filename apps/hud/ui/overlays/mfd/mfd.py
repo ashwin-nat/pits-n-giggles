@@ -125,10 +125,9 @@ class MfdOverlay(BaseOverlay):
 
             # We need to not be in the default/collapse page when unlocking, so that the user gets a sense of how much
             # width to configure.
-            if not locked:
-                if self._is_page_active(self.collapsed_page):
-                    self.logger.debug(f"{self.overlay_id} | Switching to next page before unlocking ...")
-                    _handle_next_page(data)
+            if not locked and self._is_page_active(self.collapsed_page):
+                self.logger.debug(f"{self.overlay_id} | Switching to next page before unlocking ...")
+                _handle_next_page(data)
 
             self.set_locked_state(locked)
 

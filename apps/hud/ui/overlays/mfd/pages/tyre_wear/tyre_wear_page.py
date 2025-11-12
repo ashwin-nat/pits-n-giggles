@@ -285,20 +285,17 @@ class TyreWearPage(BasePage):
     def _update_wear_table(self, curr_wear: Dict[str, float], curr_lap: int,
                           predictions: Optional[List[Dict]], pit_lap: Optional[int]) -> None:
         """Update the wear table with current and predicted values."""
-        rows_data = []
-
-        # Current wear row
-        rows_data.append({
+        rows_data = [{
             'label': 'curr',
             'fl': curr_wear.get('front-left-wear', 0.0),
             'fr': curr_wear.get('front-right-wear', 0.0),
             'rl': curr_wear.get('rear-left-wear', 0.0),
             'rr': curr_wear.get('rear-right-wear', 0.0),
-        })
+        }]
 
         # Add predictions if available
         if predictions and len(predictions) > 0:
-            end_lap = pit_lap if pit_lap else predictions[-1]["lap-number"]
+            end_lap = pit_lap or predictions[-1]["lap-number"]
             mid_lap = curr_lap + (end_lap - curr_lap) // 2
 
             pred_mid = self._find_closest_prediction(predictions, mid_lap)
