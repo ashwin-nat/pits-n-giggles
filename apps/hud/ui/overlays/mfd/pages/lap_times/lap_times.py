@@ -45,7 +45,7 @@ class LapTimesPage(BasePage):
 
         self.overlay_id: str = "mfd.lap_times"
         super().__init__(parent, logger, "RECENT LAP TIMES")
-        self._last_processed_laps: List[Dict[str, Any]]
+        self._last_processed_laps: List[Dict[str, Any]] = []
 
         # Font configuration
         FONT_SIZE = 9

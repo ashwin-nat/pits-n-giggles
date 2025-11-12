@@ -43,7 +43,7 @@ class BasePage(QWidget):
         self.page_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._icon_cache: Dict[str, QIcon] = {}
         self.logger = logger
-        self.overlay_id = None  # type: ignore  # derived classes should set this
+        self.overlay_id = None  # type: ignore  # derived classes should set this AFTER super().__init__
 
         # Add title bar if specified
         if title:
@@ -93,3 +93,32 @@ class BasePage(QWidget):
         except Exception as e:  # pylint: disable=broad-except
             self.logger.warning(f"{self.overlay_id} | Failed to load icon '{relative_path}': {e}")
             return QIcon()
+
+    def _get_ref_row_index(self, data: dict) -> int:
+        """Helper to get the reference row index from incoming race table data."""
+        if not data or "table-entries" not in data or not data["table-entries"]:
+            return None
+
+        is_spectating = data.get("is-spectating", False)
+        spectator_index = data.get("spectator-car-index")
+
+        if is_spectating and spectator_index is not None:
+            if 0 <= spectator_index < len(data["table-entries"]):
+                return spectator_index
+            self.logger.warning(f"Warning: Spectator index {spectator_index} is out of bounds.")
+            return None
+
+        return next(
+            (
+                index
+                for index, row in enumerate(data["table-entries"])
+                if row.get("driver-info", {}).get("is-player") is True
+            ),
+            None,
+        )
+
+    def _get_ref_row(self, data: dict) -> dict:
+        """Helper to get the reference row from incoming race table data."""
+
+        ref_index = self._get_ref_row_index(data)
+        return None if ref_index is None else data["table-entries"][ref_index]
