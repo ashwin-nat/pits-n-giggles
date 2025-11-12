@@ -97,6 +97,7 @@ class TimingTowerOverlay(BaseOverlay):
             "Alpha Tauri": self.load_icon(str(icon_base_teams / "rb.svg")),
 
             "Red Bull": self.load_icon(str(icon_base_teams / "red_bull.svg")),
+            "Red Bull Racing": self.load_icon(str(icon_base_teams / "red_bull.svg")),
 
             "Sauber": self.load_icon(str(icon_base_teams / "sauber.svg")),
             "Alfa Romeo": self.load_icon(str(icon_base_teams / "sauber.svg")),
