@@ -543,7 +543,7 @@ class TimingTowerOverlay(BaseOverlay):
         if ref_index is None:
             return
 
-        # Map driver index → position in relevant_rows
+        # Map driver index --> position in relevant_rows
         index_to_pos = {
             row["driver-info"]["index"]: i for i, row in enumerate(relevant_rows)
         }

@@ -472,7 +472,7 @@ class PitRejoinPredictionPage(BasePage):
         if ref_index is None:
             return
 
-        # Map driver index → position in relevant_rows
+        # Map driver index --> position in relevant_rows
         index_to_pos = {
             row["driver-info"]["index"]: i for i, row in enumerate(relevant_rows)
         }
@@ -542,7 +542,7 @@ class PitRejoinPredictionPage(BasePage):
         assert ref_row is not None
         assert pit_time_loss is not None
 
-        # Convert pit loss from seconds → milliseconds for consistent comparison
+        # Convert pit loss from seconds --> milliseconds for consistent comparison
         pit_time_loss_ms = pit_time_loss * 1000.0
 
         # Step 1: Compute projected gap to leader after pit
