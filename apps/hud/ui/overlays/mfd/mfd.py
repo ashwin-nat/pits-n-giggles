@@ -26,7 +26,7 @@ import itertools
 import logging
 from typing import Any, Dict
 
-from PySide6.QtWidgets import QStackedWidget, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
 
 from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays.base import BaseOverlay
@@ -34,6 +34,8 @@ from apps.hud.ui.overlays.mfd.pages import (CollapsedPage, FuelInfoPage,
                                             LapTimesPage,
                                             PitRejoinPredictionPage,
                                             TyreWearPage, WeatherForecastPage)
+
+from .animation import AnimatedStackedWidget
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -58,10 +60,8 @@ class MfdOverlay(BaseOverlay):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        self.pages = QStackedWidget(self)
-        # Set size policy to allow shrinking
-        from PySide6.QtWidgets import QSizePolicy
-        self.pages.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.pages = AnimatedStackedWidget(self)
+        self.pages.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         layout.addWidget(self.pages)
 
         # Define pages
@@ -131,7 +131,7 @@ class MfdOverlay(BaseOverlay):
             self.set_locked_state(locked)
 
     def _switch_page(self, index: int):
-        """Switch page and resize MFD based on open/closed state."""
+        """Switch page with animation and resize MFD based on open/closed state."""
         target_height = self.mfdClosed if index == 0 else self.mfdOpen
 
         # First set the stacked widget height constraint
@@ -142,10 +142,10 @@ class MfdOverlay(BaseOverlay):
             self.pages.setMaximumHeight(16777215)  # Qt's QWIDGETSIZE_MAX
             self.pages.setMinimumHeight(0)
 
-        # Then switch the page
-        self.pages.setCurrentIndex(index)
+        # Use animated transition instead of instant switch
+        self.pages.setCurrentIndexAnimated(index)
 
-        # Finally resize the window
+        # Resize the window
         self.resize(self.width(), target_height)
 
         page_name = "collapsed" if index == 0 else "expanded"
