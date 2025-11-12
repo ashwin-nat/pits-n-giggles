@@ -34,6 +34,7 @@ from PySide6.QtWidgets import (QFrame, QHBoxLayout, QHeaderView, QLabel,
 
 from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
 from apps.hud.ui.overlays.timing_tower.border_delegate import BorderDelegate
+from apps.hud.ui.overlays.timing_tower.drs_ers_delegate import DrsErsDelegate
 
 from lib.f1_types import F1Utils
 
@@ -52,8 +53,10 @@ class PitRejoinPredictionPage(BasePage):
         # UI components
         self.timing_table: Optional[QTableWidget] = None
         self.border_delegate = None
+        self.drs_ers_delegate = None
 
-        super().__init__(parent, logger, "PIT REJOIN PREDICTIONS")
+        super().__init__(parent, logger, title="PIT REJOIN PREDICTION")
+        self.overlay_id = "mfd.pit_rejoin"
         self._init_icons()
         self._build_ui()
 
@@ -130,12 +133,12 @@ class PitRejoinPredictionPage(BasePage):
 
     def _calculate_content_width(self) -> int:
         """Return total content width based on column sizes."""
-        return 40 + 30 + 160 + 90 + 75
+        return 40 + 30 + 160 + 90 + 75 + 75
 
     def _create_timing_table(self, content_width: int) -> QTableWidget:
         """Create and configure the timing table."""
-        table = QTableWidget(self.total_rows, 5)
-        table.setHorizontalHeaderLabels(["Pos", "Team", "Driver", "Delta", "Tyre"])
+        table = QTableWidget(self.total_rows, 6)
+        table.setHorizontalHeaderLabels(["Pos", "Team", "Driver", "Delta", "Tyre", "ERS"])
 
         self._configure_table_behavior(table)
         self._set_table_dimensions(table, content_width)
@@ -161,6 +164,10 @@ class PitRejoinPredictionPage(BasePage):
         header.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
         header.setStretchLastSection(False)
 
+        # Create ERS delegate with border support
+        self.drs_ers_delegate = DrsErsDelegate(table)
+        table.setItemDelegateForColumn(5, self.drs_ers_delegate)
+
         # Create border delegate for all other columns to handle reference row highlighting
         self.border_delegate = BorderDelegate(table)
         for col in range(5):  # Columns 0-4, excluding ERS column
@@ -168,7 +175,7 @@ class PitRejoinPredictionPage(BasePage):
 
     def _set_table_dimensions(self, table: QTableWidget, content_width: int) -> None:
         """Set column widths, row heights, and overall table size."""
-        column_widths = [40, 30, 160, 90, 75]
+        column_widths = [40, 30, 160, 90, 75, 75]
         for i, width in enumerate(column_widths):
             table.setColumnWidth(i, width)
 
@@ -237,7 +244,7 @@ class PitRejoinPredictionPage(BasePage):
         return item
 
     def _update_row(self, row_idx: int, position: int, team: str, name: str, delta: Optional[float],
-                   tyre_compound: str, tyre_age: int, is_ref: bool):
+                   tyre_compound: str, tyre_age: int, ers_mode: str, ers: float, is_ref: bool, drs: bool):
         """Update a specific row in the timing table"""
 
         # Position
@@ -291,12 +298,25 @@ class PitRejoinPredictionPage(BasePage):
         tyre_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         self.timing_table.setItem(row_idx, 4, tyre_item)
 
+        # ERS with mode color bar
+        ers_text = f"{F1Utils.formatFloat(ers, precision=0, signed=False)}%"
+        ers_item = self._create_table_item(ers_text, Qt.AlignmentFlag.AlignCenter)
+
+        # Store ERS mode color in item data for the delegate to use
+        ers_item.setData(Qt.ItemDataRole.UserRole, {
+            "ers-mode": ers_mode,
+            "drs" : drs,
+        })
+        self.timing_table.setItem(row_idx, 5, ers_item)
+
         # Update border delegates to highlight reference row
         if is_ref:
             if self.border_delegate:
                 self.border_delegate.set_reference_row(row_idx)
+            if self.drs_ers_delegate:
+                self.drs_ers_delegate.set_reference_row(row_idx)
             # Force repaint of all cells in this row
-            for col in range(5):
+            for col in range(6):
                 index = self.timing_table.model().index(row_idx, col)
                 self.timing_table.update(index)
 
@@ -307,10 +327,14 @@ class PitRejoinPredictionPage(BasePage):
         self.timing_table.setItem(row_idx, 2, self._create_table_item("---", Qt.AlignmentFlag.AlignLeft))
         self.timing_table.setItem(row_idx, 3, self._create_table_item("--.-"))
         self.timing_table.setItem(row_idx, 4, self._create_table_item("--"))
+        self.timing_table.setItem(row_idx, 5, self._create_table_item("0%"))
 
         # Clear reference row border if this was the reference
         if self.border_delegate and self.border_delegate.reference_row == row_idx:
             self.border_delegate.set_reference_row(-1)
+        if self.drs_ers_delegate and self.drs_ers_delegate.reference_row == row_idx:
+            self.drs_ers_delegate.set_reference_row(-1)
+
 
     def update(self, data: Dict[str, Any]) -> None:
 
@@ -334,6 +358,7 @@ class PitRejoinPredictionPage(BasePage):
                     driver_info: Dict[str, Any] = row_data.get("driver-info", {})
                     delta_info: Dict[str, Any]  = row_data.get("delta-info", {})
                     tyre_info: Dict[str, Any]   = row_data.get("tyre-info", {})
+                    ers_info: Dict[str, Any]    = row_data.get("ers-info", {})
 
                     position = driver_info.get("position", 0)
                     name = driver_info.get("name", "UNKNOWN")
@@ -345,8 +370,13 @@ class PitRejoinPredictionPage(BasePage):
                     tyre_compound = tyre_info.get("visual-tyre-compound", "UNKNOWN")
                     tyre_age = tyre_info.get("tyre-age", 0)
 
-                    self._update_row(idx, position, team, name, delta, tyre_compound, tyre_age,
-                                     (driver_idx == ref_index))
+                    ers_mode = ers_info.get("ers-mode", "None")
+                    ers_perc = ers_info.get("ers-percent-float", 0.0)
+
+                    drs = driver_info.get("drs", False)
+
+                    self._update_row(idx, position, team, name, delta, tyre_compound, tyre_age, ers_mode, ers_perc,
+                                        (driver_idx == ref_index), drs)
 
             # Hide remaining empty rows
             for i in range(num_rows_with_data, self.total_rows):
