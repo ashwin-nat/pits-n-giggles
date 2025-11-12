@@ -41,7 +41,8 @@ from lib.f1_types import (F1PacketType, PacketCarDamageData,
                           PacketTimeTrialData, PacketTyreSetsData)
 from lib.inter_task_communicator import (
     AsyncInterTaskCommunicator, FinalClassificationNotification,
-    HudToggleNotification, ITCMessage, TyreDeltaNotificationMessageCollection)
+    HudCycleMfdNotification, HudToggleNotification, ITCMessage,
+    TyreDeltaNotificationMessageCollection)
 from lib.save_to_disk import save_json_to_file
 from lib.telemetry_manager import AsyncF1TelemetryManager
 from lib.wdt import WatchDogTimer
@@ -127,6 +128,7 @@ class F1TelemetryHandler:
         self.m_udp_custom_action_code: Optional[int] = settings.Network.udp_custom_action_code
         self.m_udp_tyre_delta_action_code: Optional[int] = settings.Network.udp_tyre_delta_action_code
         self.m_hud_toggle_udp_action_code: Optional[int] = settings.HUD.toggle_overlays_udp_action_code
+        self.m_cycle_mfd_udp_action_code: Optional[int] = settings.HUD.cycle_mfd_udp_action_code
         self.m_final_classification_processed: bool = False
         self.m_capture_settings: CaptureSettings = settings.Capture
         self.m_button_debouncer: ButtonDebouncer = ButtonDebouncer()
@@ -431,6 +433,10 @@ class F1TelemetryHandler:
                 self.m_logger.debug('UDP action %d pressed - HUD toggle', self.m_hud_toggle_udp_action_code)
                 await self._processToggleHud()
 
+            if self._isUdpActionButtonPressed(buttons, self.m_cycle_mfd_udp_action_code):
+                self.m_logger.debug('UDP action %d pressed - Cycle MFD', self.m_cycle_mfd_udp_action_code)
+                await self._processCycleMFD()
+
         async def handleFlashBackEvent(packet: PacketEventData) -> None:
             """
             Handle and process the flashback event
@@ -612,5 +618,15 @@ class F1TelemetryHandler:
             ITCMessage(
                 m_message_type=ITCMessage.MessageType.HUD_TOGGLE_NOTIFICATION,
                 m_message=HudToggleNotification()
+            )
+        )
+
+    async def _processCycleMFD(self) -> None:
+        """Send the cycle MFD notification to the HUD manager."""
+        await AsyncInterTaskCommunicator().send(
+            "hud-notifier",
+            ITCMessage(
+                m_message_type=ITCMessage.MessageType.HUD_CYCLE_MFD_NOTIFICATION,
+                m_message=HudCycleMfdNotification()
             )
         )

@@ -46,6 +46,8 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.toggle_overlays_udp_action_code, 10)
         self.assertEqual(settings.show_lap_timer, True)
         self.assertEqual(settings.show_timing_tower, True)
+        self.assertEqual(settings.show_mfd, True)
+        self.assertEqual(settings.cycle_mfd_udp_action_code, 9)
         self.assertEqual(settings.overlays_opacity, 100)
 
     def test_enabled_validation(self):
@@ -79,6 +81,17 @@ class TestHudSettings(TestF1ConfigBase):
 
         with self.assertRaises(ValidationError):
             HudSettings(toggle_overlays_udp_action_code=420)
+
+        # Boundary value: minimum (1)
+        min_action_code = 1
+        hud_settings_min = HudSettings(toggle_overlays_udp_action_code=min_action_code)
+        self.assertEqual(hud_settings_min.toggle_overlays_udp_action_code, min_action_code)
+        # Boundary value: maximum (12)
+        max_action_code = 12
+        hud_settings_max = HudSettings(toggle_overlays_udp_action_code=max_action_code)
+        self.assertEqual(hud_settings_max.toggle_overlays_udp_action_code, max_action_code)
+        with self.assertRaises(ValidationError):
+            HudSettings(toggle_overlays_udp_action_code=None)  # type: ignore
 
     def test_show_lap_timer_validation(self):
         """Test valid and invalid show_lap_timer values"""
@@ -141,3 +154,64 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(hud_settings_max.overlays_opacity, max_opacity)
         with self.assertRaises(ValidationError):
             HudSettings(overlays_opacity=None)  # type: ignore
+
+    def test_show_mfd_validation(self):
+        """Test valid and invalid show_mfd values"""
+        # Valid value
+        show_mfd = True
+        hud_settings = HudSettings(show_mfd=show_mfd)
+        self.assertEqual(hud_settings.show_mfd, show_mfd)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(show_mfd=None)  # type: ignore
+
+        with self.assertRaises(ValidationError):
+            HudSettings(show_mfd="invalid")
+
+        with self.assertRaises(ValidationError):
+            HudSettings(show_mfd=420)
+
+    def test_cycle_mfd_udp_action_code_validation(self):
+        """Test valid and invalid cycle_mfd_udp_action_code values"""
+        # Valid value
+        action_code = 2
+        hud_settings = HudSettings(cycle_mfd_udp_action_code=action_code)
+        self.assertEqual(hud_settings.cycle_mfd_udp_action_code, action_code)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(cycle_mfd_udp_action_code=None)  # type: ignore
+
+        with self.assertRaises(ValidationError):
+            HudSettings(cycle_mfd_udp_action_code="invalid")
+
+        with self.assertRaises(ValidationError):
+            HudSettings(cycle_mfd_udp_action_code=420)
+
+        # Boundary value: minimum (1)
+        min_action_code = 1
+        hud_settings_min = HudSettings(cycle_mfd_udp_action_code=min_action_code)
+        self.assertEqual(hud_settings_min.cycle_mfd_udp_action_code, min_action_code)
+        # Boundary value: maximum (12)
+        max_action_code = 12
+        hud_settings_max = HudSettings(cycle_mfd_udp_action_code=max_action_code)
+        self.assertEqual(hud_settings_max.cycle_mfd_udp_action_code, max_action_code)
+        with self.assertRaises(ValidationError):
+            HudSettings(cycle_mfd_udp_action_code=None)  # type: ignore
+
+        # Non-integer float value should raise ValidationError
+        with self.assertRaises(ValidationError):
+            HudSettings(cycle_mfd_udp_action_code=5.5)
+
+    def test_hud_enabled_dependency(self):
+        """Test hud_enabled dependency on show_lap_timer, show_timing_tower values, show_mfd"""
+
+        # Disable all overlays and enable HUD
+        with self.assertRaises(ValidationError):
+            HudSettings(enabled=True, show_lap_timer=False, show_timing_tower=False, show_mfd=False)
+
+        # Enable atleast one overlay
+        settings = HudSettings(enabled=True, show_lap_timer=True, show_timing_tower=False, show_mfd=False)
+        self.assertEqual(settings.enabled, True)
+        self.assertEqual(settings.show_lap_timer, True)
+        self.assertEqual(settings.show_timing_tower, False)
+        self.assertEqual(settings.show_mfd, False)

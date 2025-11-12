@@ -22,16 +22,20 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .base import BaseOverlay
-from .lap_timer import LapTimerOverlay
-from .mfd import MfdOverlay
-from .timing_tower import TimingTowerOverlay
+from .collapsed import CollapsedPage
+from .fuel import FuelInfoPage
+from .lap_times import LapTimesPage
+from .pit_rejoin import PitRejoinPredictionPage
+from .tyre_wear import TyreWearPage
+from .weather import WeatherForecastPage
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    "BaseOverlay",
-    "LapTimerOverlay",
-    "TimingTowerOverlay",
-    "MfdOverlay",
+    "CollapsedPage",
+    "FuelInfoPage",
+    "LapTimesPage",
+    "PitRejoinPredictionPage",
+    "TyreWearPage",
+    "WeatherForecastPage",
 ]

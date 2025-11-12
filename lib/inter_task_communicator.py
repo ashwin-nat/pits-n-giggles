@@ -210,6 +210,30 @@ class HudToggleNotification:
             "dummy": "dummy"
         }
 
+class HudCycleMfdNotification:
+    def __init__(self) -> None:
+        """Initialize the HudCycleMfdNotification object.
+        """
+        pass
+
+    def __repr__(self) -> str:
+        """Return a string representation of the HudCycleMfdNotification object."""
+        return "HudCycleMfdNotification()"
+
+    def __str__(self) -> str:
+        """Return a string representation of the HudCycleMfdNotification object."""
+        return self.__repr__()
+
+    def toJSON(self) -> Dict[str, Any]:
+        """Get the JSON representation of this object.
+
+        Returns:
+            Dict[str, Any]: The JSON representation of this object.
+        """
+        return {
+            "dummy": "dummy"
+        }
+
 @dataclass(frozen=True)
 class ITCMessage:
     class MessageType(str, Enum):
@@ -219,6 +243,7 @@ class ITCMessage:
         UDP_PACKET_FORWARD                 = "udp-packet-forward"
         FINAL_CLASSIFICATION_NOTIFICATION  = "final-classification-notification"
         HUD_TOGGLE_NOTIFICATION            = "hud-toggle-notification"
+        HUD_CYCLE_MFD_NOTIFICATION         = "hud-cycle-mfd-notification"
 
         def __str__(self) -> str:
             return self.value

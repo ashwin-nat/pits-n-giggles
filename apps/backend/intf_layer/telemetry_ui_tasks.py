@@ -134,9 +134,9 @@ async def streamOverlayUpdateTask(
 
     sleep_duration = update_interval_ms / 1000
     while not shutdown_event.is_set():
-        if server.is_any_client_interested_in_event('player-overlay-update'):
+        if server.is_any_client_interested_in_event('stream-overlay-update'):
             await server.send_to_clients_interested_in_event(
-                event='player-overlay-update',
+                event='stream-overlay-update',
                 data=StreamOverlayData(session_state).toJSON(stream_overlay_start_sample_data))
         await asyncio.sleep(sleep_duration)
 

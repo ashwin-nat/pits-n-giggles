@@ -81,7 +81,7 @@ class HudAppMgr(PngAppMgrBase):
             style="Racing.TButton",
             state="disabled"  # Initially disabled until the app is running
         )
-        self.ping_button = ttk.Button(
+        self.hide_show_button = ttk.Button(
             frame,
             text="Hide/Show",
             command=self.hide_show_callback,
@@ -95,11 +95,19 @@ class HudAppMgr(PngAppMgrBase):
             style="Racing.TButton",
             state="disabled"  # Initially disabled until the app is running
         )
+        self.next_page_button = ttk.Button( # TODO - remove
+            frame,
+            text="Next Page",
+            command=self.next_page_callback,
+            style="Racing.TButton",
+            state="disabled"  # Initially disabled until the app is running
+        )
 
         return [
             self.start_stop_button,
-            self.ping_button,
+            self.hide_show_button,
             self.lock_button,
+            self.next_page_button
         ]
 
     def hide_show_callback(self):
@@ -131,6 +139,14 @@ class HudAppMgr(PngAppMgrBase):
             self.set_lock_button_text()
         else:
             self.console_app.error_log("Failed to toggle lock state.")
+
+    def next_page_callback(self): # TODO - remove
+        """Open the dashboard viewer in a web browser."""
+        self.console_app.info_log("Sending next page command to HUD...")
+        rsp = IpcParent(self.ipc_port).request(
+            command="next-page", args={}
+        )
+        self.console_app.info_log(str(rsp))
 
     def on_settings_change(self, new_settings: PngSettings) -> bool:
         """Handle changes in settings for the backend application
@@ -173,24 +189,27 @@ class HudAppMgr(PngAppMgrBase):
 
     def post_start(self):
         """Update buttons after app start"""
-        self.ping_button.config(state="normal")
+        self.hide_show_button.config(state="normal")
         self.start_stop_button.config(text="Stop")
         self.start_stop_button.config(state="normal")
         self.lock_button.config(state="normal")
+        self.next_page_button.config(state="normal")
 
     def post_stop(self):
         """Update buttons after app stop"""
-        self.ping_button.config(state="disabled")
+        self.hide_show_button.config(state="disabled")
         self.start_stop_button.config(text="Start")
         self.start_stop_button.config(state="normal")
         self.lock_button.config(state="disabled")
+        self.next_page_button.config(state="disabled")
 
     def start_stop_callback(self):
         """Start or stop the backend application."""
         # disable the button. enable in post_start/post_stop
-        self.ping_button.config(state="disabled")
+        self.hide_show_button.config(state="disabled")
         self.start_stop_button.config(state="disabled")
         self.lock_button.config(state="disabled")
+        self.next_page_button.config(state="disabled")
         try:
             # Call the start_stop method
             self.start_stop()
@@ -198,9 +217,10 @@ class HudAppMgr(PngAppMgrBase):
             # Log the error or handle it as needed
             self.console_app.debug_log(f"{self.display_name}:Error during start/stop: {e}")
             # If no exception, it will be handled in post_start/post_stop
-            self.ping_button.config(state="normal")
+            self.hide_show_button.config(state="normal")
             self.start_stop_button.config(state="normal")
             self.lock_button.config(state="normal")
+            self.next_page_button.config(state="normal")
 
     def set_lock_button_text(self):
         if self.locked:
@@ -223,11 +243,11 @@ class HudAppMgr(PngAppMgrBase):
             self.start()
             self.start_stop_button.config(state="normal")
             self.set_lock_button_text()
-            self.ping_button.config(state="normal")
+            self.hide_show_button.config(state="normal")
         else:
             self.stop()
             self.start_stop_button.config(state="disabled")
-            self.ping_button.config(state="disabled")
+            self.hide_show_button.config(state="disabled")
             self.lock_button.config(state="disabled")
 
     def _send_overlays_opacity_change(self, new_settings: PngSettings) -> None:

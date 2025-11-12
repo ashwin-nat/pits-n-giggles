@@ -22,16 +22,12 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .base import BaseOverlay
-from .lap_timer import LapTimerOverlay
-from .mfd import MfdOverlay
-from .timing_tower import TimingTowerOverlay
+from PySide6.QtCore import QModelIndex, Qt
+from PySide6.QtWidgets import QStyledItemDelegate, QStyleOptionViewItem
 
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-__all__ = [
-    "BaseOverlay",
-    "LapTimerOverlay",
-    "TimingTowerOverlay",
-    "MfdOverlay",
-]
+class NoElideDelegate(QStyledItemDelegate):
+    def initStyleOption(self, option: QStyleOptionViewItem, index: QModelIndex):
+        super().initStyleOption(option, index)
+        option.textElideMode = Qt.TextElideMode.ElideNone

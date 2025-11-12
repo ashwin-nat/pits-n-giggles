@@ -22,16 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .base import BaseOverlay
-from .lap_timer import LapTimerOverlay
-from .mfd import MfdOverlay
-from .timing_tower import TimingTowerOverlay
+from .pit_rejoin_page import PitRejoinPredictionPage
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    "BaseOverlay",
-    "LapTimerOverlay",
-    "TimingTowerOverlay",
-    "MfdOverlay",
+    "PitRejoinPredictionPage",
 ]

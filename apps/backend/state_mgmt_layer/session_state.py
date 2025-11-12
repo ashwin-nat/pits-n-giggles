@@ -278,36 +278,18 @@ class SessionInfo:
 
 class SessionState:
     """
-    Class that models the data for multiple race drivers.
+    Enter ye this holy state,
+    Where only the CPU may operate.
+    Do thy deeds with fervent rate.
+    For in this realm, none dare await.
 
-    Attributes:
-        m_driver_data (Dict[int, DataPerDriver]): A dictionary mapping driver IDs (int) to their
-                            corresponding DataPerDriver instances.
-        m_player_index (Optional[int]): The index of the player driver
-        m_fastest_index (Optional[int]): The index of the driver who achieved the fastest lap
-        m_num_active_cars (Optional[int]): The number of active cars in the race
-        m_num_dnf_cars (Optional[int]): The number of cars that did not finish the race
-        m_race_completed (Optional[bool]): Indicates whether the race has been completed
-        m_is_player_dnf (Optional[bool]): Indicates whether the player has not finished the race
-        m_ideal_pit_stop_window (Optional[int]): The ideal pit stop window for the player, according to the selected strategy
-        m_collision_records (List[CollisionRecord]): A list of collision records; empty if no collisions occurred.
-        m_fastest_s1_ms (Optional[int]): The fastest sector 1 time in milliseconds
-        m_fastest_s2_ms (Optional[int]): The fastest sector 2 time in milliseconds
-        m_fastest_s3_ms (Optional[int]): The fastest sector 3 time in milliseconds
-        m_time_trial_packet (Optional[PacketTimeTrialData]): A packet containing time trial data
-        m_overtakes_history (OvertakesHistory): An instance tracking overtakes history.
-        m_session_info (SessionInfo): An instance of SessionInfo containing global race data.
-        m_post_race_autosave (bool): Flag indicating whether to save data to file after race.
-        m_udp_custom_marker_action_code (Optional[int]): The UDP action code for custom marker
-        m_udp_tyre_delta_action_code (Optional[int]): The UDP action code for tyre delta notification
-        m_process_car_setups (bool): Flag indicating whether to process car setups packets.
-        m_save_race_ctrl_msgs (bool): Flag indicating whether to save race control messages to file
-                (will still be processed regardless)
-        m_custom_markers_history (CustomMarkersHistory): An instance tracking custom markers history.
-        m_first_session_update_received (bool): Flag indicating whether the first session update packet has been received.
-        m_version (str): Version string
-        m_connected_to_sim (bool): Flag indicating whether the client is connected to the simulator
-        m_race_ctrl (RaceCtrl): The session race control messages manager
+    No I/O, nor DB, nor HTTP,
+    Shall stain this land of purity.
+    Should such burdens tempt thy fate,
+    Cast them forth - communicate.
+
+    TLDR: only CPU bound operations allowed here. If you need to perform any I/O bound operation,
+    offload it to a separate task via the inter task communicator
     """
 
     MAX_DRIVERS: int = 22

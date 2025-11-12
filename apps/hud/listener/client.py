@@ -66,3 +66,14 @@ class HudClient(IpcSubscriber):
             """HUD toggle notification handler."""
             self.logger.debug(f"[HudClient] Received HUD toggle notification: {_data}")
             self.m_overlays_mgr.toggle_overlays_visibility()
+
+        @self.on('hud-cycle-mfd-notification')
+        def handle_hud_cycle_mfd_notification(_data):
+            """Cycle MFD notification handler."""
+            self.logger.debug(f"[HudClient] Received Cycle MFD notification: {_data}")
+            self.m_overlays_mgr.next_page()
+
+        @self.on('stream-overlay-update')
+        def handle_stream_overlay_update(data):
+            """Stream overlay data update handler."""
+            self.m_overlays_mgr.stream_overlays_update(data)

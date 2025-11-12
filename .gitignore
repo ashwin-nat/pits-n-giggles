@@ -1,6 +1,7 @@
 launch.json
 *.pyc
 *.log
+*.log*
 *.bin
 *.csv
 *.tar.xz
