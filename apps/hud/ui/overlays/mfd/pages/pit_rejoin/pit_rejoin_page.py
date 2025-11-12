@@ -123,7 +123,7 @@ class PitRejoinPredictionPage(BasePage):
         self.page_layout.addWidget(self.timing_table)
 
         self._apply_overall_style()
-        self.clear()
+        self._clear()
 
     def _configure_main_layout(self, layout: QVBoxLayout) -> None:
         """Configure main layout spacing, margins, and alignment."""
@@ -339,10 +339,31 @@ class PitRejoinPredictionPage(BasePage):
     def update(self, data: Dict[str, Any]) -> None:
 
         session_type = data["event-type"]
-        relevant_rows, ref_index = self._get_relevant_race_table_rows(data, self.num_adjacent_cars)
-        if self._is_race_type_session(session_type):
-            self._insert_relative_deltas_race(relevant_rows, ref_index)
-        session_type: str = data.get("event-type", "N/A")
+        if not self._is_race_type_session(session_type):
+            self._clear()
+            return
+
+        ref_row = self._get_ref_row(data)
+        if not ref_row:
+            self._clear()
+            return
+        ref_index = ref_row["driver-info"]["index"]
+
+        table_entries = data["table-entries"]
+        if not table_entries:
+            self._clear()
+            return
+
+        pit_time_loss = data["pit-time-loss"]
+        if not pit_time_loss:
+            # TODO: display an error saying pit time loss has not been configured for this track
+            self._clear()
+            return
+
+        table_entries.sort(key=lambda x: x["driver-info"]["position"])
+        updated_entries = self._add_pit_time_loss(table_entries, pit_time_loss, ref_row)
+        relevant_rows = self._get_relevant_race_table_rows(updated_entries, ref_index, self.num_adjacent_cars)
+        self._insert_relative_deltas_race(relevant_rows, ref_index)
 
         # If no data, hide all rows
         if not relevant_rows:
@@ -382,37 +403,33 @@ class PitRejoinPredictionPage(BasePage):
             for i in range(num_rows_with_data, self.total_rows):
                 self.timing_table.setRowHidden(i, True)
 
-    def clear(self):
+    def _clear(self):
         """Clear all timing data"""
         # Hide all rows when clearing
         for i in range(self.total_rows):
             self.timing_table.setRowHidden(i, True)
 
     def _get_relevant_race_table_rows(self,
-                                      data: Dict[str, Any],
-                                      num_adjacent_cars: int) -> Tuple[List[Dict[str, Any]], Optional[int]]:
-        table_entries = data.get("table-entries", [])
+                                         sorted_table_entries: Dict[str, Any],
+                                         ref_index: int,
+                                         num_adjacent_cars: int
+                                         ) -> List[Dict[str, Any]]:
 
-        if len(table_entries) == 0:
-            # Normal before session start, when no data is available
-            return [], None
+        ref_row = next(
+            (row for row in sorted_table_entries if row["driver-info"]["index"] == ref_index),
+            None
+        )
+        if not ref_row:
+            self.logger.warning(f'{self.overlay_id} Reference row is None!')
+            return []
 
-        ref_index = self._get_ref_row_index(data)
-
-        if ref_index is None:
-            self.logger.warning(f'{self.overlay_id} Reference index is None!')
-            return [], None
-
-        ref_position = table_entries[ref_index]["driver-info"]["position"]
-        total_cars = len(table_entries)
+        ref_position = ref_row["driver-info"]["position"]
+        total_cars = len(sorted_table_entries)
         lower_bound, upper_bound = self._get_adjacent_positions(ref_position, total_cars, num_adjacent_cars)
 
         if lower_bound is None:
             self.logger.warning(f'{self.overlay_id} Lower bound is None!')
-            return [], None
-
-        # Sort the list by position before computing relevant positions and update rejoin positions
-        sorted_table_entries = sorted(table_entries, key=lambda x: x.get("driver-info", {}).get("position", 999))
+            return []
 
         lower_index = lower_bound - 1
         result = sorted_table_entries[lower_index:upper_bound] # since upper bound is exclusive
@@ -422,7 +439,7 @@ class PitRejoinPredictionPage(BasePage):
         else:
             assert len(result) == total_cars
 
-        return result, ref_index
+        return result
 
     def _get_adjacent_positions(self, position, total_cars, num_adjacent_cars):
         if not (1 <= position <= total_cars):
@@ -513,3 +530,63 @@ class PitRejoinPredictionPage(BasePage):
                 row["delta-info"]["relative-delta"] = 0
             else:
                 row["delta-info"]["relative-delta"] = best_lap_ms - ref_best_lap_ms
+
+    def _add_pit_time_loss(
+        self,
+        table_entries: List[Dict[str, Any]],
+        pit_time_loss: float,
+        ref_row: Dict[str, Any],
+    ) -> List[Dict[str, Any]]:
+        """
+        Estimate where a driver would rejoin after a pit stop and update their deltas accordingly.
+        """
+
+        assert ref_row is not None
+        assert pit_time_loss is not None
+
+        # Convert pit loss from seconds → milliseconds for consistent comparison
+        pit_time_loss_ms = pit_time_loss * 1000.0
+
+        # Step 1: Compute projected gap to leader after pit
+        ref_delta = ref_row["delta-info"]["delta-to-leader"]
+        projected_gap = ref_delta + pit_time_loss_ms
+
+        # Step 2: Find rejoin position (where projected gap would place them)
+        rejoin_index = len(table_entries) - 1  # assume they rejoin last
+        for i, row in enumerate(table_entries):
+            if projected_gap < row["delta-info"]["delta-to-leader"]:
+                rejoin_index = i - 1
+                break
+
+        if rejoin_index < 0:
+            rejoin_index = 0  # ahead of everyone
+
+        # Step 3: Update ref driver info
+        ref_row["delta-info"]["delta-to-leader"] = projected_gap
+
+        if rejoin_index >= 0:
+            front_driver = table_entries[rejoin_index]
+            ref_row["delta-info"]["delta-to-car-in-front"] = (
+                projected_gap - front_driver["delta-info"]["delta-to-leader"]
+            )
+        else:
+            # Leader case — no car ahead
+            ref_row["delta-info"]["delta-to-car-in-front"] = 0
+
+        # Step 4: Remove driver from current position
+        table_entries = [r for r in table_entries if r is not ref_row]
+
+        # Step 5: Insert at new position
+        table_entries.insert(rejoin_index + 1, ref_row)
+
+        # Step 6: Reassign positions
+        for pos, row in enumerate(table_entries, start=1):
+            row["driver-info"]["position"] = pos
+
+        # Step 7: Recompute delta-to-car-in-front for consistency
+        for i in range(1, len(table_entries)):
+            prev = table_entries[i - 1]["delta-info"]["delta-to-leader"]
+            curr = table_entries[i]["delta-info"]["delta-to-leader"]
+            table_entries[i]["delta-info"]["delta-to-car-in-front"] = curr - prev
+
+        return table_entries
