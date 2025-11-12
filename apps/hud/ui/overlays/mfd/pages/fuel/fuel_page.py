@@ -24,7 +24,7 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
@@ -412,7 +412,7 @@ class FuelInfoPage(BasePage):
         """Get color based on surplus laps."""
         if surplus < 0:
             return self.COLOR_DANGER
-        elif surplus < self.MIN_FUEL:
+        if surplus < self.MIN_FUEL:
             return self.COLOR_WARNING
         return self.COLOR_PRIMARY
 

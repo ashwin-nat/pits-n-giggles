@@ -257,8 +257,7 @@ class TyreWearPage(BasePage):
         if telemetry_settings != "Public":
             self._show_telemetry_disabled()
             return
-        else:
-            self._hide_telemetry_disabled()
+        self._hide_telemetry_disabled()
 
         # Update wear table
         curr_lap_num = ref_row["lap-info"]["current-lap"]
@@ -290,7 +289,7 @@ class TyreWearPage(BasePage):
 
         # Current wear row
         rows_data.append({
-            'label': f'curr',
+            'label': 'curr',
             'fl': curr_wear.get('front-left-wear', 0.0),
             'fr': curr_wear.get('front-right-wear', 0.0),
             'rl': curr_wear.get('rear-left-wear', 0.0),

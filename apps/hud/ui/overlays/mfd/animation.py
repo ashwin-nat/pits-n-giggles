@@ -91,7 +91,7 @@ class AnimatedStackedWidget(QStackedWidget):
             self.setCurrentIndex(index)
             self._fade_in.start()
 
-        self._fade_out.finished.connect(lambda: self._on_animation_finished(next_effect))
+        self._fade_out.finished.connect(self._on_animation_finished())
         self._fade_out.valueChanged.connect(
             lambda: switch_page() if self._fade_out.currentValue() <= 0.5 and
                                      self.currentIndex() != index else None
@@ -99,7 +99,7 @@ class AnimatedStackedWidget(QStackedWidget):
 
         self._fade_out.start()
 
-    def _on_animation_finished(self, effect):
+    def _on_animation_finished(self):
         """Handle animation completion."""
         self._is_animating = False
 

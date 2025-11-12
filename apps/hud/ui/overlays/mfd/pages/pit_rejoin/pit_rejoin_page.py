@@ -24,18 +24,16 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QBrush, QColor, QFont
-from PySide6.QtWidgets import (QFrame, QHBoxLayout, QHeaderView, QLabel,
-                               QTableWidget, QTableWidgetItem, QVBoxLayout,
-                               QWidget)
+from PySide6.QtWidgets import (QFrame, QHeaderView, QTableWidget,
+                               QTableWidgetItem, QVBoxLayout, QWidget)
 
 from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
 from apps.hud.ui.overlays.timing_tower.border_delegate import BorderDelegate
 from apps.hud.ui.overlays.timing_tower.drs_ers_delegate import DrsErsDelegate
-
 from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -556,8 +554,7 @@ class PitRejoinPredictionPage(BasePage):
                 rejoin_index = i - 1
                 break
 
-        if rejoin_index < 0:
-            rejoin_index = 0  # ahead of everyone
+        rejoin_index = max(rejoin_index, 0)
 
         # Step 3: Update ref driver info
         ref_row["delta-info"]["delta-to-leader"] = projected_gap
