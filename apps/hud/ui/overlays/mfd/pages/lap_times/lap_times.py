@@ -121,9 +121,9 @@ class LapTimesPage(BasePage):
         self.table.setItemDelegate(NoElideDelegate(self.table))
         self.page_layout.addWidget(self.table)
 
-    def update_data(self, actual_data: Dict[str, Any]):
+    def update(self, data: Dict[str, Any]):
         """Populate the lap table with up to the last 5 laps. Leave remaining rows blank."""
-        lap_time_history = actual_data.get("lap-time-history", {})
+        lap_time_history = data.get("lap-time-history", {})
         if not lap_time_history:
             return
 

@@ -68,7 +68,7 @@ class WeatherForecastPage(BasePage):
 
         self.logger.info(f"{self.overlay_id} | Weather forecast widget initialized")
 
-    def update_forecast(self, data: Dict[str, Any]) -> None:
+    def update(self, data: Dict[str, Any]) -> None:
         forecast_data = data.get("weather-forecast-samples", [])[: self.MAX_SAMPLES]
         if not forecast_data:
             self.set_no_data_message()

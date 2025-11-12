@@ -89,12 +89,12 @@ class MfdOverlay(BaseOverlay):
         @self.on_command("race_table_update")
         def _handle_race_update(data: Dict[str, Any]):
             if self._is_page_active(self.weather_page):
-                self.weather_page.update_forecast(data)
+                self.weather_page.update(data)
 
         @self.on_command("stream_overlay_update")
         def _handle_stream_overlay_update(data: Dict[str, Any]):
             if self._is_page_active(self.lap_times_page):
-                self.lap_times_page.update_data(data)
+                self.lap_times_page.update(data)
 
         @self.on_command("set_locked_state")
         def handle_set_locked_state(data: dict):
