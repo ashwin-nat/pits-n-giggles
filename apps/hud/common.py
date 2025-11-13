@@ -84,7 +84,7 @@ def is_qualifying_session(session_type: str) -> bool:
 # Race table helpers
 # ------------------------------------------------
 
-def get_ref_row_index(self, data: Dict[str, Any]) -> Optional[int]:
+def get_ref_row_index(data: Dict[str, Any]) -> Optional[int]:
     """Helper to get the reference row index from incoming race table data.
 
     Args:
@@ -102,7 +102,6 @@ def get_ref_row_index(self, data: Dict[str, Any]) -> Optional[int]:
     if is_spectating and spectator_index is not None:
         if 0 <= spectator_index < len(data["table-entries"]):
             return spectator_index
-        self.logger.warning(f"Warning: Spectator index {spectator_index} is out of bounds.")
         return None
 
     return next(
@@ -129,13 +128,17 @@ def get_ref_row(data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
 
 def get_relevant_race_table_rows(
     sorted_table_entries: Dict[str, Any],
-    ref_index: int,
-    num_adjacent_cars: int
+    num_adjacent_cars: int,
+    ref_index: Optional[int] = None
 ) -> List[Dict[str, Any]]:
-    ref_row = next(
-        (row for row in sorted_table_entries if row["driver-info"]["index"] == ref_index),
-        None
-    )
+
+    if ref_index is None:
+        ref_row = get_ref_row(sorted_table_entries)
+    else:
+        ref_row = next(
+            (row for row in sorted_table_entries if row["driver-info"]["index"] == ref_index),
+            None
+        )
     if not ref_row:
         return []
 

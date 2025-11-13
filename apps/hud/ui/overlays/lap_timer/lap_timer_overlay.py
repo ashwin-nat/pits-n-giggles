@@ -29,6 +29,7 @@ from PySide6.QtCore import QTimer
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QLabel, QVBoxLayout
 
+from apps.hud.common import get_ref_row
 from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays.base import BaseOverlay
 from lib.f1_types import F1Utils
@@ -89,7 +90,7 @@ class LapTimerOverlay(BaseOverlay):
 
         @self.on_command("race_table_update")
         def handle_race_update(data: Dict[str, Any]) -> None:
-            ref_row = self._get_ref_row(data)
+            ref_row = get_ref_row(data)
             if not ref_row:
                 return
 

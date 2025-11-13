@@ -28,7 +28,7 @@ from typing import Any, Dict, List, Optional
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
-from apps.hud.common import (get_ref_row, get_relevant_race_table_rows, load_icon,
+from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
                              insert_relative_deltas_race, is_race_type_session)
 from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
 from apps.hud.ui.overlays.timing_tower.race_table import RaceTimingTable
@@ -58,7 +58,6 @@ class PitRejoinPredictionPage(BasePage):
             parent_layout=self.page_layout,
             logger=self.logger,
             overlay_id=self.overlay_id,
-            icon_loader=load_icon,
             num_rows=self.total_rows
         )
 
@@ -108,7 +107,7 @@ class PitRejoinPredictionPage(BasePage):
 
         table_entries.sort(key=lambda x: x["driver-info"]["position"])
         updated_entries = self._add_pit_time_loss(table_entries, pit_time_loss, ref_row)
-        relevant_rows = get_relevant_race_table_rows(updated_entries, ref_index, self.num_adjacent_cars)
+        relevant_rows = get_relevant_race_table_rows(updated_entries, self.num_adjacent_cars, ref_index)
         insert_relative_deltas_race(relevant_rows, ref_index)
 
         # Use the timing table's update_data method

@@ -33,6 +33,8 @@ from apps.hud.ui.overlays.base import BaseOverlay
 
 from .race_table import RaceTimingTable
 
+from apps.hud.common import get_ref_row, get_relevant_race_table_rows, is_race_type_session, insert_relative_deltas_race, is_tt_session
+
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class TimingTowerOverlay(BaseOverlay):
@@ -68,7 +70,6 @@ class TimingTowerOverlay(BaseOverlay):
             parent_layout=main_layout,
             logger=self.logger,
             overlay_id=self.overlay_id,
-            icon_loader=self.load_icon,
             num_rows=self.total_rows
         )
 
@@ -147,17 +148,37 @@ class TimingTowerOverlay(BaseOverlay):
         def handle_race_update(data: Dict[str, Any]) -> None:
 
             session_type = data["event-type"]
-            relevant_rows, ref_index = self._get_relevant_race_table_rows(data, self.num_adjacent_cars)
+            if is_tt_session(session_type):
+                self.header_label.setText("TIME TRIAL")
+                self.session_info_label.setText("-- / --")
+                self.timing_table.show_error("TIME TRIAL NOT YET SUPPORTED")
+                return
 
-            if self._is_race_type_session(session_type):
-                self._insert_relative_deltas_race(relevant_rows, ref_index)
-            elif not self._is_tt_session(session_type):
+            table_entries = data["table-entries"]
+            if not table_entries:
+                self.timing_table.clear()
+                return
+
+            ref_row = get_ref_row(data)
+            if not ref_row:
+                self.timing_table.show_error("ERROR: Please check the logs")
+                return
+            ref_index = ref_row["driver-info"]["index"]
+
+            pit_time_loss = data.get("pit-time-loss")
+            if not pit_time_loss:
+                self.timing_table.show_error("Pit time loss not configured for this track")
+                return
+
+            table_entries.sort(key=lambda x: x["driver-info"]["position"])
+            relevant_rows = get_relevant_race_table_rows(table_entries, self.num_adjacent_cars, ref_index)
+            if is_race_type_session(session_type):
+                insert_relative_deltas_race(relevant_rows, ref_index)
+            elif not is_tt_session(session_type):
                 self._insert_relative_deltas_fp_quali(relevant_rows, ref_index)
 
-            session_type: str = data.get("event-type", "N/A")
-
-            # Update header with session type
-            self.header_label.setText(f"{session_type.upper()}")
+            # Use the timing table's update_data method
+            self.timing_table.update_data(relevant_rows, ref_index)
 
             # Update session info (lap or time)
             if session_type == 'None':
@@ -173,136 +194,20 @@ class TimingTowerOverlay(BaseOverlay):
                 seconds = int(time_remaining_sec % 60)
                 self.session_info_label.setText(f"TIME: {minutes:02d}:{seconds:02d}")
 
-            # Use the timing table's update_data method
-            self.timing_table.update_data(relevant_rows, ref_index)
-
     def clear(self):
         """Clear all timing data"""
         self.header_label.setText("TIMING TOWER")
         self.session_info_label.setText("-- / --")
         self.timing_table.clear()
 
-    def _get_relevant_race_table_rows(
-        self,
-        data: Dict[str, Any],
-        num_adjacent_cars: int
-    ) -> Tuple[List[Dict[str, Any]], Optional[int]]:
-        table_entries = data.get("table-entries", [])
-
-        if len(table_entries) == 0:
-            # Normal before session start, when no data is available
-            return [], None
-
-        ref_index = self._get_ref_row_index(data)
-
-        if ref_index is None:
-            self.logger.warning('<<TIMING_TOWER>> Reference index is None!')
-            return [], None
-
-        ref_position = table_entries[ref_index]["driver-info"]["position"]
-        total_cars = len(table_entries)
-        lower_bound, upper_bound = self._get_adjacent_positions(ref_position, total_cars, num_adjacent_cars)
-
-        if lower_bound is None:
-            self.logger.warning('<<TIMING_TOWER>> Lower bound is None!')
-            return [], None
-
-        # Sort the list by position before computing relevant positions and update rejoin positions
-        sorted_table_entries = sorted(table_entries, key=lambda x: x.get("driver-info", {}).get("position", 999))
-
-        lower_index = lower_bound - 1
-        result = sorted_table_entries[lower_index:upper_bound] # since upper bound is exclusive
-
-        if total_cars >= 5:
-            assert len(result) == 5
-        else:
-            assert len(result) == total_cars
-
-        return result, ref_index
-
-    def _get_adjacent_positions(self, position, total_cars, num_adjacent_cars):
-        if not (1 <= position <= total_cars):
-            return None, None
-
-        min_valid_lower_bound = 1
-        max_valid_upper_bound = total_cars
-
-        # Calculate a window of num_adjacent_cars on each side of the position (inclusive bounds).
-        # If the window exceeds valid bounds, shift it towards the center while capping at boundaries
-        # to ensure lower_bound stays >= 1 and upper_bound stays <= total_cars.
-        lower_bound = position - num_adjacent_cars
-        upper_bound = position + num_adjacent_cars
-
-        # Adjust if window exceeds boundaries
-        if lower_bound < min_valid_lower_bound:
-            shift = min_valid_lower_bound - lower_bound
-            lower_bound = min_valid_lower_bound
-            upper_bound = min(upper_bound + shift, max_valid_upper_bound)
-
-        if upper_bound > max_valid_upper_bound:
-            shift = upper_bound - max_valid_upper_bound
-            upper_bound = max_valid_upper_bound
-            lower_bound = max(lower_bound - shift, min_valid_lower_bound)
-
-        return lower_bound, upper_bound
-
-    def _is_tt_session(self, session_type: str) -> bool:
-        return session_type == "Time Trial"
-
-    def _is_race_type_session(self, session_type: str) -> bool:
-        return "Race" in session_type
-
     def _should_show_lap_number(self, session_type: str) -> bool:
-        unsupported_session_types = ['Qualifying', 'Practice', 'Shootout']
-        return not any(sub in session_type for sub in unsupported_session_types)
-
-    def _insert_relative_deltas_race(self, relevant_rows, ref_index) -> None:
-        if ref_index is None:
-            return
-
-        # Map driver index --> position in relevant_rows
-        index_to_pos = {
-            row["driver-info"]["index"]: i for i, row in enumerate(relevant_rows)
-        }
-
-        ref_pos = index_to_pos.get(ref_index)
-        if ref_pos is None:
-            return
-
-        # For each car, sum the deltas between it and the reference car;
-        # cars ahead get negative values, cars behind get positive values.
-        for i, row in enumerate(relevant_rows):
-            if i == ref_pos:
-                row["delta-info"]["relative-delta"] = 0
-                continue
-
-            if i < ref_pos:
-                # Car(s) ahead of reference
-                total_delta = sum(
-                    relevant_rows[j + 1]["delta-info"]["delta-to-car-in-front"]
-                    for j in range(i, ref_pos)
-                )
-                row["delta-info"]["relative-delta"] = -total_delta
-            else:
-                # Car(s) behind reference
-                total_delta = sum(
-                    relevant_rows[j + 1]["delta-info"]["delta-to-car-in-front"]
-                    for j in range(ref_pos, i)
-                )
-                row["delta-info"]["relative-delta"] = total_delta
+        return is_race_type_session(session_type)
 
     def _insert_relative_deltas_fp_quali(self, relevant_rows, ref_index) -> None:
         if ref_index is None:
             return
 
-        ref_row = next(
-            (
-                row
-                for row in relevant_rows
-                if row["driver-info"]["index"] == ref_index
-            ),
-            None
-        )
+        ref_row = get_ref_row(relevant_rows)
         if not ref_row:
             self.logger.warning('<<TIMING_TOWER>> Reference row is None!')
             return
