@@ -56,7 +56,7 @@ _DEFAULT_OVERLAYS_CONFIG: Dict[str, OverlaysConfig] = {
     ),
     MfdOverlay.OVERLAY_ID: OverlaysConfig(
         x=10,
-        y=55,
+        y=355,
         width=450,
         height=270,
     ),
