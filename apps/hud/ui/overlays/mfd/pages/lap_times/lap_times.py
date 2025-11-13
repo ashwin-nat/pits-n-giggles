@@ -62,6 +62,9 @@ class LapTimesPage(BasePage):
         self.table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
         self.table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
+        # Make table transparent to mouse events so parent can handle dragging
+        self.table.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+
         # Hide scroll bars
         self.table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
