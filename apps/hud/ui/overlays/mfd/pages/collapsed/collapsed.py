@@ -29,6 +29,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QHBoxLayout, QLabel
 
+from apps.hud.common import load_icon
 from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -47,7 +48,7 @@ class CollapsedPage(BasePage):
         page_text = "Pits n' Giggles MFD"
 
         # Try loading icon
-        self.app_icon = self.load_icon(str(icon_path))
+        self.app_icon = load_icon(str(icon_path))
 
         if self.app_icon and not self.app_icon.isNull():
             layout = QHBoxLayout()

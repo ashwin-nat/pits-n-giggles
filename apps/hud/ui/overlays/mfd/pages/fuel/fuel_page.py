@@ -31,6 +31,7 @@ from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QProgressBar,
                                QVBoxLayout, QWidget)
 
+from apps.hud.common import get_ref_row, load_icon
 from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -62,7 +63,7 @@ class FuelInfoPage(BasePage):
         # Load fuel icon
         icon_base = Path("assets")
         icon_path = icon_base / "overlays" / "fuel-pump.svg"
-        self.fuel_icon = self.load_icon(str(icon_path))
+        self.fuel_icon = load_icon(str(icon_path))
         if self.fuel_icon and not self.fuel_icon.isNull():
             self.logger.debug(f"{self.overlay_id} | Fuel icon loaded")
         else:
@@ -327,7 +328,7 @@ class FuelInfoPage(BasePage):
 
     def update(self, data: Dict[str, Any]) -> None:
         """Update fuel information display."""
-        ref_row = self._get_ref_row(data)
+        ref_row = get_ref_row(data)
         if not ref_row:
             return
 

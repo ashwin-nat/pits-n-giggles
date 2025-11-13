@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (QFrame, QHBoxLayout, QHeaderView, QLabel,
                                QTableWidget, QTableWidgetItem, QVBoxLayout,
                                QWidget)
 
+from apps.hud.common import get_ref_row, load_icon
 from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -55,12 +56,12 @@ class TyreWearPage(BasePage):
     def _init_icons(self):
         icon_base_tyres = Path("assets") / "tyre-icons"
         self.tyre_icon_mappings = {
-            "Soft": self.load_icon(str(icon_base_tyres / "soft_tyre.svg")),
-            "Super Soft": self.load_icon(str(icon_base_tyres / "super_soft_tyre.svg")),
-            "Medium": self.load_icon(str(icon_base_tyres / "medium_tyre.svg")),
-            "Hard": self.load_icon(str(icon_base_tyres / "hard_tyre.svg")),
-            "Inters": self.load_icon(str(icon_base_tyres / "intermediate_tyre.svg")),
-            "Wet": self.load_icon(str(icon_base_tyres / "wet_tyre.svg")),
+            "Soft": load_icon(str(icon_base_tyres / "soft_tyre.svg")),
+            "Super Soft": load_icon(str(icon_base_tyres / "super_soft_tyre.svg")),
+            "Medium": load_icon(str(icon_base_tyres / "medium_tyre.svg")),
+            "Hard": load_icon(str(icon_base_tyres / "hard_tyre.svg")),
+            "Inters": load_icon(str(icon_base_tyres / "intermediate_tyre.svg")),
+            "Wet": load_icon(str(icon_base_tyres / "wet_tyre.svg")),
         }
         for name, icon in self.tyre_icon_mappings.items():
             if icon.isNull():
@@ -227,7 +228,7 @@ class TyreWearPage(BasePage):
 
     def update(self, data: Dict[str, Any]) -> None:
         """Update tyre wear information display."""
-        ref_row = self._get_ref_row(data)
+        ref_row = get_ref_row(data)
         if not ref_row:
             return
 
