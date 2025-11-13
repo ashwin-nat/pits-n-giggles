@@ -106,18 +106,10 @@ datas = [
     (os.path.join(PROJECT_ROOT, "assets", "team-logos", "sauber.svg"), "assets/team-logos"),
     (os.path.join(PROJECT_ROOT, "assets", "team-logos", "williams.svg"), "assets/team-logos"),
     (os.path.join(PROJECT_ROOT, "assets", "team-logos", "default.svg"), "assets/team-logos"),
+
+    # Overlay icons
+    (os.path.join(PROJECT_ROOT, "assets", "overlays", "fuel-pump.svg"), "assets/overlay"),
 ]
-
-# Overlays
-# overlays_base = os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays")
-
-# # Dynamically add all overlay folders
-# for overlay_name in os.listdir(overlays_base):
-#     overlay_path = os.path.join(overlays_base, overlay_name)
-#     if os.path.isdir(overlay_path):
-#         datas.append(
-#             (overlay_path, f"apps/hud/ui/overlays/{overlay_name}")
-#         )
 
 # --------------------------------------------------------------------------------------------------
 # Build pipeline
