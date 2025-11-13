@@ -40,7 +40,7 @@ class TyreWearPage(BasePage):
     """Modern tyre wear and prediction display for MFD."""
 
     FONT_FACE = "Montserrat"
-    FONT_SIZE = 9
+    FONT_SIZE = 10
     NUM_DECIMAL_PLACES = 2
     MED_WEAR = 50
     DANGER_WEAR = 75
@@ -132,10 +132,10 @@ class TyreWearPage(BasePage):
         age_label.setStyleSheet("color: #888; background: transparent;")
         top_layout.addWidget(age_label)
 
-        self.age_value = QLabel("—")
-        self.age_value.setFont(QFont(self.FONT_FACE, self.FONT_SIZE, QFont.Weight.Bold))
-        self.age_value.setStyleSheet("color: #00D4FF; background: transparent;")
-        top_layout.addWidget(self.age_value)
+        self.tyre_age_label = QLabel("—")
+        self.tyre_age_label.setFont(QFont(self.FONT_FACE, self.FONT_SIZE, QFont.Weight.Bold))
+        self.tyre_age_label.setStyleSheet("color: #00D4FF; background: transparent;")
+        top_layout.addWidget(self.tyre_age_label)
 
         # Divider
         divider2 = QLabel("•")
@@ -144,10 +144,10 @@ class TyreWearPage(BasePage):
         top_layout.addWidget(divider2)
 
         # Pitstops stat
-        stops_label = QLabel("Stops:")
-        stops_label.setFont(QFont(self.FONT_FACE, self.FONT_SIZE))
-        stops_label.setStyleSheet("color: #888; background: transparent;")
-        top_layout.addWidget(stops_label)
+        pit_stops_label = QLabel("Stops:")
+        pit_stops_label.setFont(QFont(self.FONT_FACE, self.FONT_SIZE))
+        pit_stops_label.setStyleSheet("color: #888; background: transparent;")
+        top_layout.addWidget(pit_stops_label)
 
         self.stops_value = QLabel("—")
         self.stops_value.setFont(QFont(self.FONT_FACE, self.FONT_SIZE, QFont.Weight.Bold))
@@ -158,28 +158,6 @@ class TyreWearPage(BasePage):
         top_layout.addStretch()
 
         parent_layout.addWidget(top_widget)
-
-
-    def _create_compact_stat(self, title: str, value: str) -> QWidget:
-        """Create a compact stat display."""
-        widget = QWidget()
-        widget.setStyleSheet("background: transparent;")
-        layout = QHBoxLayout(widget)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(6)
-
-        title_label = QLabel(title)
-        title_label.setFont(QFont(self.FONT_FACE, self.FONT_SIZE))
-        title_label.setStyleSheet("color: #888888; background: transparent;")
-        layout.addWidget(title_label)
-
-        value_label = QLabel(value)
-        value_label.setFont(QFont(self.FONT_FACE, self.FONT_SIZE, QFont.Weight.Bold))
-        value_label.setStyleSheet("color: #00D4FF; background: transparent;")
-        layout.addWidget(value_label)
-
-        setattr(widget, 'value_label', value_label)
-        return widget
 
     def _create_stat_divider(self) -> QLabel:
         """Create a vertical divider for stats."""
@@ -266,8 +244,8 @@ class TyreWearPage(BasePage):
         self._update_compound_display(visual_tyre_comp, actual_tyre_comp)
 
         # Update stats
-        self.age_label.value_label.setText(f"{tyre_age}L")
-        self.pitstops_label.value_label.setText(str(num_pit_stops))
+        self.tyre_age_label.setText(f"{tyre_age}L")
+        self.stops_value.setText(str(num_pit_stops))
 
         if telemetry_settings != "Public":
             self._show_telemetry_disabled()
@@ -344,6 +322,7 @@ class TyreWearPage(BasePage):
             label_item = QTableWidgetItem(row_data['label'])
             label_item.setFont(QFont(self.FONT_FACE, self.FONT_SIZE - 1, QFont.Weight.Bold))
             label_item.setForeground(Qt.GlobalColor.white)
+            label_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.wear_table.setItem(row_idx, 0, label_item)
 
             # Wear values
