@@ -130,12 +130,12 @@ class PitRejoinPredictionPage(BasePage):
 
     def _calculate_content_width(self) -> int:
         """Return total content width based on column sizes."""
-        return 40 + 30 + 160 + 90 + 75 + 75
+        return 40 + 30 + 160 + 90 + 75 + 75 + 50
 
     def _create_timing_table(self, content_width: int) -> QTableWidget:
         """Create and configure the timing table."""
-        table = QTableWidget(self.total_rows, 6)
-        table.setHorizontalHeaderLabels(["Pos", "Team", "Driver", "Delta", "Tyre", "ERS"])
+        table = QTableWidget(self.total_rows, 7)
+        table.setHorizontalHeaderLabels(["Pos", "Team", "Driver", "Delta", "Tyre", "ERS", "Pens"])
 
         self._configure_table_behavior(table)
         self._set_table_dimensions(table, content_width)
@@ -167,12 +167,13 @@ class PitRejoinPredictionPage(BasePage):
 
         # Create border delegate for all other columns to handle reference row highlighting
         self.border_delegate = BorderDelegate(table)
-        for col in range(5):  # Columns 0-4, excluding ERS column
-            table.setItemDelegateForColumn(col, self.border_delegate)
+        for col in range(6):  # Columns 0-4, excluding ERS column, and including the new penalty column
+            if col != 5: # Exclude ERS column
+                table.setItemDelegateForColumn(col, self.border_delegate)
 
     def _set_table_dimensions(self, table: QTableWidget, content_width: int) -> None:
         """Set column widths, row heights, and overall table size."""
-        column_widths = [40, 30, 160, 90, 75, 75]
+        column_widths = [40, 30, 160, 90, 75, 75, 50]
         for i, width in enumerate(column_widths):
             table.setColumnWidth(i, width)
 
@@ -253,6 +254,7 @@ class PitRejoinPredictionPage(BasePage):
         ers: float,
         is_ref: bool,
         drs: bool,
+        pens_sec: int
     ):
         """Update a specific row in the timing table."""
 
@@ -262,6 +264,7 @@ class PitRejoinPredictionPage(BasePage):
         self._update_delta_cell(row_idx, delta, is_ref)
         self._update_tyre_cell(row_idx, tyre_compound, max_tyre_wear_str)
         self._update_ers_cell(row_idx, ers, ers_mode, drs)
+        self._update_pens_cell(row_idx, pens_sec) # This line already exists
         self._update_reference_highlight(row_idx, is_ref)
 
     # -------------------------
@@ -339,6 +342,12 @@ class PitRejoinPredictionPage(BasePage):
         )
         self.timing_table.setItem(row_idx, 5, ers_item)
 
+    def _update_pens_cell(self, row_idx: int, pens_sec: int) -> None:
+        """Update penalties cell (column 6)."""
+        pens_str = f"+{pens_sec}s" if pens_sec > 0 else ""
+        pens_item = self._create_table_item(pens_str, Qt.AlignmentFlag.AlignCenter, QColor("#ffcc00"), bold=True)
+        self.timing_table.setItem(row_idx, 6, pens_item)
+
     def _update_reference_highlight(self, row_idx: int, is_ref: bool) -> None:
         """Highlight the reference row and trigger repaint."""
         if not is_ref:
@@ -350,7 +359,7 @@ class PitRejoinPredictionPage(BasePage):
             self.drs_ers_delegate.set_reference_row(row_idx)
 
         # Force repaint
-        for col in range(6):
+        for col in range(7): # Changed from 6 to 7 to include the new column
             index = self.timing_table.model().index(row_idx, col)
             self.timing_table.update(index)
 
@@ -363,6 +372,7 @@ class PitRejoinPredictionPage(BasePage):
         self.timing_table.setItem(row_idx, 3, self._create_table_item("--.-"))
         self.timing_table.setItem(row_idx, 4, self._create_table_item("--"))
         self.timing_table.setItem(row_idx, 5, self._create_table_item("0%"))
+        self.timing_table.setItem(row_idx, 6, self._create_table_item(""))
 
         # Clear reference row border if this was the reference
         if self.border_delegate and self.border_delegate.reference_row == row_idx:
@@ -414,6 +424,7 @@ class PitRejoinPredictionPage(BasePage):
                     delta_info: Dict[str, Any]  = row_data.get("delta-info", {})
                     tyre_info: Dict[str, Any]   = row_data.get("tyre-info", {})
                     ers_info: Dict[str, Any]    = row_data.get("ers-info", {})
+                    warns_pens_info: Dict[str, Any] = row_data.get("warns-pens-info", {})
 
                     position = driver_info.get("position", 0)
                     name = driver_info.get("name", "UNKNOWN")
@@ -430,8 +441,10 @@ class PitRejoinPredictionPage(BasePage):
                     ers_perc = ers_info.get("ers-percent-float", 0.0)
                     drs = driver_info.get("drs", False)
 
+                    time_pens_sec = warns_pens_info.get("time-penalties", 0)
+
                     self._update_row(idx, position, team, name, delta, tyre_compound, max_wear_str, ers_mode, ers_perc,
-                                        (driver_idx == ref_index), drs)
+                                        (driver_idx == ref_index), drs, time_pens_sec)
 
             # Hide remaining empty rows
             for i in range(num_rows_with_data, self.total_rows):
@@ -647,10 +660,10 @@ class PitRejoinPredictionPage(BasePage):
 
         # Place the item in column 0 and span across all columns
         self.timing_table.setItem(0, 0, msg_item)
-        self.timing_table.setSpan(0, 0, 1, self.timing_table.columnCount())
+        self.timing_table.setSpan(0, 0, 1, 7) # Hardcoded to 7 columns
 
         # Clear any leftover items in the spanned columns (avoid duplicate visuals)
-        for c in range(1, self.timing_table.columnCount()):
+        for c in range(1, 7): # Hardcoded to 7 columns
             self.timing_table.setItem(0, c, QTableWidgetItem(""))
 
         # Ensure remaining rows are hidden
