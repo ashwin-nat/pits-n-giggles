@@ -48,6 +48,7 @@ class PitRejoinPredictionPage(BasePage):
 
         super().__init__(parent, logger, "mfd.pit_rejoin", title="PIT REJOIN PREDICTION")
         self._build_ui()
+        self._init_event_handlers()
 
     def _build_ui(self):
         """Build the timing tower UI"""
@@ -78,40 +79,42 @@ class PitRejoinPredictionPage(BasePage):
             }
         """)
 
-    def update(self, data: Dict[str, Any]) -> None:
-        """Update the page with new data.
+    def _init_event_handlers(self):
+        @self.on_event("race_table_update")
+        def update(data: Dict[str, Any]) -> None:
+            """Update the page with new data.
 
-        Args:
-            data (Dict[str, Any]): The incoming data from the server (top level, including all keys)
-        """
-        session_type = data["event-type"]
-        if not is_race_type_session(session_type):
-            self.timing_table.show_error("Only supported in Race/Sprint Sessions")
-            return
+            Args:
+                data (Dict[str, Any]): The incoming data from the server (top level, including all keys)
+            """
+            session_type = data["event-type"]
+            if not is_race_type_session(session_type):
+                self.timing_table.show_error("Only supported in Race/Sprint Sessions")
+                return
 
-        table_entries = data["table-entries"]
-        if not table_entries:
-            self.timing_table.clear()
-            return
+            table_entries = data["table-entries"]
+            if not table_entries:
+                self.timing_table.clear()
+                return
 
-        ref_row = get_ref_row(data)
-        if not ref_row:
-            self.timing_table.show_error("ERROR: Please check the logs")
-            return
-        ref_index = ref_row["driver-info"]["index"]
+            ref_row = get_ref_row(data)
+            if not ref_row:
+                self.timing_table.show_error("ERROR: Please check the logs")
+                return
+            ref_index = ref_row["driver-info"]["index"]
 
-        pit_time_loss = data.get("pit-time-loss")
-        if not pit_time_loss:
-            self.timing_table.show_error("Pit time loss not configured for this track")
-            return
+            pit_time_loss = data.get("pit-time-loss")
+            if not pit_time_loss:
+                self.timing_table.show_error("Pit time loss not configured for this track")
+                return
 
-        table_entries.sort(key=lambda x: x["driver-info"]["position"])
-        updated_entries = self._add_pit_time_loss(table_entries, pit_time_loss, ref_row)
-        relevant_rows = get_relevant_race_table_rows(updated_entries, self.num_adjacent_cars, ref_index)
-        insert_relative_deltas_race(relevant_rows, ref_index)
+            table_entries.sort(key=lambda x: x["driver-info"]["position"])
+            updated_entries = self._add_pit_time_loss(table_entries, pit_time_loss, ref_row)
+            relevant_rows = get_relevant_race_table_rows(updated_entries, self.num_adjacent_cars, ref_index)
+            insert_relative_deltas_race(relevant_rows, ref_index)
 
-        # Use the timing table's update_data method
-        self.timing_table.update_data(relevant_rows, ref_index)
+            # Use the timing table's update_data method
+            self.timing_table.update_data(relevant_rows, ref_index)
 
     def _add_pit_time_loss(
         self,

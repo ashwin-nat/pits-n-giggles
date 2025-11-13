@@ -122,45 +122,49 @@ class LapTimesPage(BasePage):
         # Disable text ellipsis — text will just be truncated visually
         self.table.setItemDelegate(NoElideDelegate(self.table))
         self.page_layout.addWidget(self.table)
+        self._init_event_handlers()
 
-    def update(self, data: Dict[str, Any]):
-        """Populate the lap table with up to the last 5 laps. Leave remaining rows blank."""
-        lap_time_history = data.get("lap-time-history", {})
-        if not lap_time_history:
-            return
+    def _init_event_handlers(self):
+        """Initialize event handlers."""
+        @self.on_event("stream_overlay_update")
+        def _handle_stream_overlay_update(data: Dict[str, Any]):
+            """Populate the lap table with up to the last 5 laps. Leave remaining rows blank."""
+            lap_time_history = data.get("lap-time-history", {})
+            if not lap_time_history:
+                return
 
-        history_data = lap_time_history.get("lap-time-history-data", [])
-        if not history_data:
-            return
+            history_data = lap_time_history.get("lap-time-history-data", [])
+            if not history_data:
+                return
 
-        # Get the last 5 laps (if fewer exist, it's fine)
-        recent_laps = history_data[-self.NUM_ROWS:]
-        if not recent_laps:
-            return
+            # Get the last 5 laps (if fewer exist, it's fine)
+            recent_laps = history_data[-self.NUM_ROWS:]
+            if not recent_laps:
+                return
 
-        if self._last_processed_laps == recent_laps:
-            return
+            if self._last_processed_laps == recent_laps:
+                return
 
-        # Clear old contents but keep headers
-        self.table.clearContents()
+            # Clear old contents but keep headers
+            self.table.clearContents()
 
-        # TODO: implement lap/sector colours
-        # Fill available laps (latest at bottom)
-        for row, lap_info in enumerate(reversed(recent_laps)):
-            lap_num = lap_info.get("lap-number", 0)
-            s1_time = lap_info.get("sector-1-time-str", 0)
-            s2_time = lap_info.get("sector-2-time-str", 0)
-            s3_time = lap_info.get("sector-3-time-str", 0)
-            lap_time = lap_info.get("lap-time-str", 0)
+            # TODO: implement lap/sector colours
+            # Fill available laps (latest at bottom)
+            for row, lap_info in enumerate(reversed(recent_laps)):
+                lap_num = lap_info.get("lap-number", 0)
+                s1_time = lap_info.get("sector-1-time-str", 0)
+                s2_time = lap_info.get("sector-2-time-str", 0)
+                s3_time = lap_info.get("sector-3-time-str", 0)
+                lap_time = lap_info.get("lap-time-str", 0)
 
-            for col, value in enumerate([lap_num, s1_time, s2_time, s3_time, lap_time]):
-                if col == 0: # lap num
-                    content = str(value)
-                else:
-                    content = value if value not in ["0.000", "00:00.000"]  else "---"
-                item = QTableWidgetItem(content)
-                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                self.table.setItem(row, col, item)
+                for col, value in enumerate([lap_num, s1_time, s2_time, s3_time, lap_time]):
+                    if col == 0: # lap num
+                        content = str(value)
+                    else:
+                        content = value if value not in ["0.000", "00:00.000"]  else "---"
+                    item = QTableWidgetItem(content)
+                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                    self.table.setItem(row, col, item)
 
-        # Update the cache
-        self._last_processed_laps = recent_laps
+            # Update the cache
+            self._last_processed_laps = recent_laps

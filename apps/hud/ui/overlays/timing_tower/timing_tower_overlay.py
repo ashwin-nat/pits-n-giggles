@@ -23,7 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
@@ -176,7 +176,7 @@ class TimingTowerOverlay(BaseOverlay):
             if is_race_type_session(session_type):
                 insert_relative_deltas_race(relevant_rows, ref_index)
             elif not is_tt_session(session_type):
-                self._insert_relative_deltas_fp_quali(relevant_rows, ref_index)
+                self._insert_relative_deltas_fp_quali(relevant_rows, ref_row)
 
             # Use the timing table's update_data method
             self.timing_table.update_data(relevant_rows, ref_index)
@@ -204,11 +204,13 @@ class TimingTowerOverlay(BaseOverlay):
     def _should_show_lap_number(self, session_type: str) -> bool:
         return is_race_type_session(session_type)
 
-    def _insert_relative_deltas_fp_quali(self, relevant_rows, ref_index) -> None:
-        if ref_index is None:
-            return
+    def _insert_relative_deltas_fp_quali(self, relevant_rows: List[Dict[str, Any]], ref_row: Dict[str, Any]) -> None:
+        """Insert relative deltas for FP/Quali mode
 
-        ref_row = get_ref_row(relevant_rows)
+        Args:
+            relevant_rows (List[Dict[str, Any]]): List of relevant rows
+            ref_row (Dict[str, Any]): The reference row
+        """
         if not ref_row:
             self.logger.warning('<<TIMING_TOWER>> Reference row is None!')
             return

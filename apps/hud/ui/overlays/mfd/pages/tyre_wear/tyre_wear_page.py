@@ -52,6 +52,7 @@ class TyreWearPage(BasePage):
         self._init_icons()
         self._build_ui()
         self.logger.info(f"{self.overlay_id} | Tyre info widget initialized")
+        self._init_event_handlers()
 
     def _init_icons(self):
         icon_base_tyres = Path("assets") / "tyre-icons"
@@ -226,44 +227,46 @@ class TyreWearPage(BasePage):
         separator.setFixedHeight(1)
         parent_layout.addWidget(separator)
 
-    def update(self, data: Dict[str, Any]) -> None:
-        """Update tyre wear information display."""
-        ref_row = get_ref_row(data)
-        if not ref_row:
-            return
+    def _init_event_handlers(self):
+        @self.on_event("race_table_update")
+        def update(data: Dict[str, Any]) -> None:
+            """Update tyre wear information display."""
+            ref_row = get_ref_row(data)
+            if not ref_row:
+                return
 
-        tyre_info = ref_row["tyre-info"]
-        curr_wear = tyre_info["current-wear"]
-        num_pit_stops = tyre_info["num-pitstops"]
-        tyre_age = tyre_info["tyre-age"]
-        visual_tyre_comp = tyre_info["visual-tyre-compound"]
-        actual_tyre_comp = tyre_info["actual-tyre-compound"]
+            tyre_info = ref_row["tyre-info"]
+            curr_wear = tyre_info["current-wear"]
+            num_pit_stops = tyre_info["num-pitstops"]
+            tyre_age = tyre_info["tyre-age"]
+            visual_tyre_comp = tyre_info["visual-tyre-compound"]
+            actual_tyre_comp = tyre_info["actual-tyre-compound"]
 
-        telemetry_settings = ref_row["driver-info"]["telemetry-setting"]
+            telemetry_settings = ref_row["driver-info"]["telemetry-setting"]
 
-        # Update compound display
-        self._update_compound_display(visual_tyre_comp, actual_tyre_comp)
+            # Update compound display
+            self._update_compound_display(visual_tyre_comp, actual_tyre_comp)
 
-        # Update stats
-        self.tyre_age_label.setText(f"{tyre_age}L")
-        self.stops_value.setText(str(num_pit_stops))
+            # Update stats
+            self.tyre_age_label.setText(f"{tyre_age}L")
+            self.stops_value.setText(str(num_pit_stops))
 
-        if telemetry_settings != "Public":
-            self._show_telemetry_disabled()
-            return
-        self._hide_telemetry_disabled()
+            if telemetry_settings != "Public":
+                self._show_telemetry_disabled()
+                return
+            self._hide_telemetry_disabled()
 
-        # Update wear table
-        curr_lap_num = ref_row["lap-info"]["current-lap"]
-        predictions = None
-        pit_lap = None
+            # Update wear table
+            curr_lap_num = ref_row["lap-info"]["current-lap"]
+            predictions = None
+            pit_lap = None
 
-        if self._is_wear_prediction_supported(data):
-            wear_prediction = tyre_info["wear-prediction"]
-            pit_lap = wear_prediction["selected-pit-stop-lap"]
-            predictions = wear_prediction["predictions"]
+            if self._is_wear_prediction_supported(data):
+                wear_prediction = tyre_info["wear-prediction"]
+                pit_lap = wear_prediction["selected-pit-stop-lap"]
+                predictions = wear_prediction["predictions"]
 
-        self._update_wear_table(curr_wear, curr_lap_num, predictions, pit_lap)
+            self._update_wear_table(curr_wear, curr_lap_num, predictions, pit_lap)
 
     def _update_compound_display(self, visual_compound: str, actual_compound: str) -> None:
         """Update the tyre compound icon and label."""

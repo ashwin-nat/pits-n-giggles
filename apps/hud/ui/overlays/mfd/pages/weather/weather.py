@@ -64,26 +64,29 @@ class WeatherForecastPage(BasePage):
         self.forecast_container.setContentsMargins(4, 4, 4, 4)
         self.forecast_container.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.page_layout.addLayout(self.forecast_container)
+        self._init_event_handlers()
 
         self.logger.info(f"{self.overlay_id} | Weather forecast widget initialized")
 
-    def update(self, data: Dict[str, Any]) -> None:
-        forecast_data = data.get("weather-forecast-samples", [])[: self.MAX_SAMPLES]
-        if not forecast_data:
-            self.set_no_data_message()
-            return
+    def _init_event_handlers(self) -> None:
+        @self.on_event("race_table_update")
+        def update(data: Dict[str, Any]) -> None:
+            forecast_data = data.get("weather-forecast-samples", [])[: self.MAX_SAMPLES]
+            if not forecast_data:
+                self.set_no_data_message()
+                return
 
-        if forecast_data == self._last_processed_samples:
-            return
+            if forecast_data == self._last_processed_samples:
+                return
 
-        self._clear_forecast()
+            self._clear_forecast()
 
-        for item_data in forecast_data:
-            card = self._create_forecast_item(item_data)
-            card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-            self.forecast_container.addWidget(card, 1)
+            for item_data in forecast_data:
+                card = self._create_forecast_item(item_data)
+                card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+                self.forecast_container.addWidget(card, 1)
 
-        self._last_processed_samples = forecast_data
+            self._last_processed_samples = forecast_data
 
     def _clear_forecast(self) -> None:
         while self.forecast_container.count():

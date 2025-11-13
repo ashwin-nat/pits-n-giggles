@@ -30,8 +30,8 @@ from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
 
 from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays.base import BaseOverlay
-from apps.hud.ui.overlays.mfd.pages import (CollapsedPage, FuelInfoPage,
-                                            LapTimesPage,
+from apps.hud.ui.overlays.mfd.pages import (BasePage, CollapsedPage,
+                                            FuelInfoPage, LapTimesPage,
                                             PitRejoinPredictionPage,
                                             TyreWearPage, WeatherForecastPage)
 
@@ -67,21 +67,16 @@ class MfdOverlay(BaseOverlay):
         self.pages.currentChanged.connect(self._on_page_changed)
 
         # Define pages
-        self.collapsed_page = CollapsedPage(self, self.logger)
-
-        self.lap_times_page = LapTimesPage(self, self.logger)
-        self.weather_page   = WeatherForecastPage(self, self.logger)
-        self.fuel_page      = FuelInfoPage(self, self.logger)
-        self.tyre_wear_page = TyreWearPage(self, self.logger)
-        self.pit_rejoin_page= PitRejoinPredictionPage(self, self.logger)
-
-        # Add to stacked widget
-        self.pages.addWidget(self.collapsed_page)
-        self.pages.addWidget(self.lap_times_page)
-        self.pages.addWidget(self.weather_page)
-        self.pages.addWidget(self.fuel_page)
-        self.pages.addWidget(self.tyre_wear_page)
-        self.pages.addWidget(self.pit_rejoin_page)
+        pages = [
+            CollapsedPage,
+            LapTimesPage,
+            WeatherForecastPage,
+            FuelInfoPage,
+            TyreWearPage,
+            PitRejoinPredictionPage,
+        ]
+        for page in pages:
+            self._register_page(page)
 
         # Build an opaque iterator that cycles indefinitely
         self.page_cycle = itertools.cycle(range(self.pages.count()))
@@ -90,7 +85,12 @@ class MfdOverlay(BaseOverlay):
         # Apply initial height constraint for collapsed page
         self.pages.setFixedHeight(self.mfdClosed)
 
+    def _register_page(self, widget_cls: BasePage) -> None:
+        """Register an MFD page"""
+        self.pages.addWidget(widget_cls(self, self.logger))
+
     def _init_cmd_handlers(self):
+
         @self.on_command("next_page")
         def _handle_next_page(_data: Dict[str, Any]):
             self.logger.debug(f"{self.overlay_id} | Switching to next page...")
@@ -104,32 +104,15 @@ class MfdOverlay(BaseOverlay):
 
         @self.on_command("race_table_update")
         def _handle_race_update(data: Dict[str, Any]):
-            if self._is_page_active(self.weather_page):
-                self.weather_page.update(data)
-            elif self._is_page_active(self.fuel_page):
-                self.fuel_page.update(data)
-            elif self._is_page_active(self.tyre_wear_page):
-                self.tyre_wear_page.update(data)
-            elif self._is_page_active(self.pit_rejoin_page):
-                self.pit_rejoin_page.update(data)
+            self._handle_event("race_table_update", data)
 
         @self.on_command("stream_overlay_update")
         def _handle_stream_overlay_update(data: Dict[str, Any]):
-            if self._is_page_active(self.lap_times_page):
-                self.lap_times_page.update(data)
+            self._handle_event("stream_overlay_update", data)
 
-        @self.on_command("set_locked_state")
-        def handle_set_locked_state(data: dict):
-            locked = data.get('new-value', False)
-            self.logger.debug(f'{self.overlay_id} | [OVERRIDDEN METHOD] Setting locked state to {locked}')
-
-            # We need to not be in the default/collapse page when unlocking, so that the user gets a sense of how much
-            # width to configure.
-            if not locked and self._is_page_active(self.collapsed_page):
-                self.logger.debug(f"{self.overlay_id} | Switching to next page before unlocking ...")
-                _handle_next_page(data)
-
-            self.set_locked_state(locked)
+    def _handle_event(self, event_type: str, data: Dict[str, Any]) -> None:
+        active_page: BasePage = self.pages.currentWidget()
+        active_page._handle_event(event_type, data)
 
     def _switch_page(self, index: int):
         """Switch page with animation and resize MFD based on open/closed state."""
@@ -169,3 +152,4 @@ class MfdOverlay(BaseOverlay):
             self.pages.setMinimumHeight(0)
             self.resize(self.width(), self.mfdOpen)
             self.logger.debug(f"{self.overlay_id} | Page changed -> expanded (height={self.mfdOpen})")
+

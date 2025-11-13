@@ -79,6 +79,7 @@ class FuelInfoPage(BasePage):
         self.surplus_laps_widget = None
 
         self._build_ui()
+        self._init_event_handlers()
         self.logger.info(f"{self.overlay_id} | Fuel info widget initialized")
 
     def _build_ui(self):
@@ -326,62 +327,64 @@ class FuelInfoPage(BasePage):
 
         return frame
 
-    def update(self, data: Dict[str, Any]) -> None:
-        """Update fuel information display."""
-        ref_row = get_ref_row(data)
-        if not ref_row:
-            return
+    def _init_event_handlers(self) -> None:
+        @self.on_event("race_table_update")
+        def update(data: Dict[str, Any]) -> None:
+            """Update fuel information display."""
+            ref_row = get_ref_row(data)
+            if not ref_row:
+                return
 
-        telemetry_settings = ref_row["driver-info"]["telemetry-setting"]
-        if telemetry_settings != "Public":
-            self._show_telemetry_disabled()
-            return
+            telemetry_settings = ref_row["driver-info"]["telemetry-setting"]
+            if telemetry_settings != "Public":
+                self._show_telemetry_disabled()
+                return
 
-        fuel_info = ref_row["fuel-info"]
-        self.logger.debug(f"{self.overlay_id} | Received fuel info: {fuel_info}")
+            fuel_info = ref_row["fuel-info"]
+            self.logger.debug(f"{self.overlay_id} | Received fuel info: {fuel_info}")
 
-        # Extract values (may be None on first lap)
-        fuel_capacity = fuel_info.get("fuel-capacity", 0)
-        fuel_in_tank = fuel_info.get("fuel-in-tank", 0)
-        curr_fuel_rate = fuel_info.get("curr-fuel-rate")
-        last_lap_used = fuel_info.get("last-lap-fuel-used")
-        surplus_laps = fuel_info.get("surplus-laps-png")
-        target_rate_avg = fuel_info.get("target-fuel-rate-average")
-        target_rate_next_lap = fuel_info.get("target-fuel-rate-next-lap")
+            # Extract values (may be None on first lap)
+            fuel_capacity = fuel_info.get("fuel-capacity", 0)
+            fuel_in_tank = fuel_info.get("fuel-in-tank", 0)
+            curr_fuel_rate = fuel_info.get("curr-fuel-rate")
+            last_lap_used = fuel_info.get("last-lap-fuel-used")
+            surplus_laps = fuel_info.get("surplus-laps-png")
+            target_rate_avg = fuel_info.get("target-fuel-rate-average")
+            target_rate_next_lap = fuel_info.get("target-fuel-rate-next-lap")
 
-        # Update displays - handle None values
-        self._update_fuel_display(fuel_in_tank, fuel_capacity)
+            # Update displays - handle None values
+            self._update_fuel_display(fuel_in_tank, fuel_capacity)
 
-        # Handle potentially None values with fallback display
-        if curr_fuel_rate is not None:
-            self._update_stat(self.curr_rate_widget, f"{curr_fuel_rate:.3f}",
-                             self.COLOR_PRIMARY)
-        else:
-            self._update_stat(self.curr_rate_widget, "---", self.COLOR_TEXT_DIM)
+            # Handle potentially None values with fallback display
+            if curr_fuel_rate is not None:
+                self._update_stat(self.curr_rate_widget, f"{curr_fuel_rate:.3f}",
+                                self.COLOR_PRIMARY)
+            else:
+                self._update_stat(self.curr_rate_widget, "---", self.COLOR_TEXT_DIM)
 
-        if last_lap_used is not None:
-            self._update_stat(self.last_lap_widget, f"{last_lap_used:.3f}",
-                             self.COLOR_PRIMARY)
-        else:
-            self._update_stat(self.last_lap_widget, "---", self.COLOR_TEXT_DIM)
+            if last_lap_used is not None:
+                self._update_stat(self.last_lap_widget, f"{last_lap_used:.3f}",
+                                self.COLOR_PRIMARY)
+            else:
+                self._update_stat(self.last_lap_widget, "---", self.COLOR_TEXT_DIM)
 
-        if target_rate_avg is not None:
-            self._update_stat(self.target_avg_widget, f"{target_rate_avg:.3f}",
-                             self.COLOR_TEXT)
-        else:
-            self._update_stat(self.target_avg_widget, "---", self.COLOR_TEXT_DIM)
+            if target_rate_avg is not None:
+                self._update_stat(self.target_avg_widget, f"{target_rate_avg:.3f}",
+                                self.COLOR_TEXT)
+            else:
+                self._update_stat(self.target_avg_widget, "---", self.COLOR_TEXT_DIM)
 
-        if target_rate_next_lap is not None:
-            self._update_stat(self.target_next_widget, f"{target_rate_next_lap:.3f}",
-                             self.COLOR_TEXT)
-        else:
-            self._update_stat(self.target_next_widget, "---", self.COLOR_TEXT_DIM)
+            if target_rate_next_lap is not None:
+                self._update_stat(self.target_next_widget, f"{target_rate_next_lap:.3f}",
+                                self.COLOR_TEXT)
+            else:
+                self._update_stat(self.target_next_widget, "---", self.COLOR_TEXT_DIM)
 
-        if surplus_laps is not None:
-            self._update_stat(self.surplus_laps_widget, f"{surplus_laps:.3f}",
-                             self._get_surplus_color(surplus_laps))
-        else:
-            self._update_stat(self.surplus_laps_widget, "---", self.COLOR_TEXT_DIM)
+            if surplus_laps is not None:
+                self._update_stat(self.surplus_laps_widget, f"{surplus_laps:.3f}",
+                                self._get_surplus_color(surplus_laps))
+            else:
+                self._update_stat(self.surplus_laps_widget, "---", self.COLOR_TEXT_DIM)
 
     def _update_fuel_display(self, fuel_in_tank: float, fuel_capacity: float):
         """Update the fuel display with icon, progress bar, and value."""

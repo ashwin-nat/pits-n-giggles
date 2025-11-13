@@ -23,11 +23,15 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
-from typing import Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QIcon
-from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget, QFrame
+from PySide6.QtWidgets import QFrame, QLabel, QVBoxLayout, QWidget
+
+# -------------------------------------- TYPES -------------------------------------------------------------------------
+
+EventCommandHandler = Callable[[Dict[str, Any]], None] # Takes dict arg, returns None
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -62,6 +66,19 @@ class BasePage(QWidget):
         self.page_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         main_layout.addWidget(content_widget)
+        self._event_handlers: Dict[str, EventCommandHandler] = {}
+
+    def on_event(self, request_type: str):
+        """Decorator for registering request handlers that return responses."""
+        def decorator(func: Callable[[Dict[str, Any]], Any]):
+            self._event_handlers[request_type] = func
+            return func
+        return decorator
+
+    def _handle_event(self, request_type: str, data: Dict[str, Any]) -> None:
+        """Internal event dispatcher for overlays."""
+        if handler := self._event_handlers.get(request_type):
+            handler(data)
 
     def _create_title_bar(self, title: str) -> QFrame:
         """

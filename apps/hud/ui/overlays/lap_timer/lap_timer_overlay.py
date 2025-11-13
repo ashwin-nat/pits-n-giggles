@@ -90,6 +90,11 @@ class LapTimerOverlay(BaseOverlay):
 
         @self.on_command("race_table_update")
         def handle_race_update(data: Dict[str, Any]) -> None:
+            """Handles race_table_update event"""
+            session_type = data["event-type"]
+            if session_type == 'None':
+                return
+
             ref_row = get_ref_row(data)
             if not ref_row:
                 return
