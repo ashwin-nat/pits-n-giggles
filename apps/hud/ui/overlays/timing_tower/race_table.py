@@ -1,0 +1,466 @@
+# MIT License
+#
+# Copyright (c) [2025] [Ashwin Natarajan]
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# -------------------------------------- IMPORTS -----------------------------------------------------------------------
+
+import logging
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Callable
+
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QBrush, QColor, QFont, QIcon
+from PySide6.QtWidgets import (QFrame, QHeaderView, QTableWidget,
+                               QTableWidgetItem, QVBoxLayout)
+
+from .border_delegate import BorderDelegate
+from .drs_ers_delegate import DrsErsDelegate
+from lib.f1_types import F1Utils
+
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
+
+class RaceTimingTable:
+    """Reusable race timing table component."""
+
+    def __init__(
+        self,
+        parent_layout: QVBoxLayout,
+        logger: logging.Logger,
+        overlay_id: str,
+        icon_loader: Callable[[str], QIcon],
+        num_rows: int = 5
+    ):
+        """
+        Initialize the race timing table.
+
+        Args:
+            parent_layout: The layout to attach this table to
+            logger: Logger instance
+            overlay_id: Identifier for logging purposes
+            icon_loader: Function to load icons
+            num_rows: Number of rows in the table
+        """
+        self.logger = logger
+        self.overlay_id = overlay_id
+        self.icon_loader = icon_loader
+        self.num_rows = num_rows
+
+        # UI components
+        self.timing_table: Optional[QTableWidget] = None
+        self.border_delegate = None
+        self.drs_ers_delegate = None
+
+        # Icon mappings
+        self.tyre_icon_mappings = {}
+        self.team_logo_mappings = {}
+        self.default_team_logo = None
+
+        # Initialize and attach to layout
+        self._init_icons()
+        self._build_ui()
+        self._attach_to_layout(parent_layout)
+
+    def _init_icons(self):
+        """Initialize tyre and team icons."""
+        icon_base_tyres = Path("assets") / "tyre-icons"
+        self.tyre_icon_mappings = {
+            "Soft": self.icon_loader(str(icon_base_tyres / "soft_tyre.svg")),
+            "Super Soft": self.icon_loader(str(icon_base_tyres / "super_soft_tyre.svg")),
+            "Medium": self.icon_loader(str(icon_base_tyres / "medium_tyre.svg")),
+            "Hard": self.icon_loader(str(icon_base_tyres / "hard_tyre.svg")),
+            "Inters": self.icon_loader(str(icon_base_tyres / "intermediate_tyre.svg")),
+            "Wet": self.icon_loader(str(icon_base_tyres / "wet_tyre.svg")),
+        }
+        for name, icon in self.tyre_icon_mappings.items():
+            if icon.isNull():
+                self.logger.warning(f"{self.overlay_id} | Failed to load tyre icon: {name}")
+            else:
+                self.logger.debug(f"{self.overlay_id} | Loaded tyre icon successfully: {name}")
+
+        icon_base_teams = Path("assets") / "team-logos"
+        self.team_logo_mappings = {
+            "Alpine": self.icon_loader(str(icon_base_teams / "alpine.svg")),
+            "Aston Martin": self.icon_loader(str(icon_base_teams / "aston_martin.svg")),
+            "Ferrari": self.icon_loader(str(icon_base_teams / "ferrari.svg")),
+            "Haas": self.icon_loader(str(icon_base_teams / "haas.svg")),
+            "McLaren": self.icon_loader(str(icon_base_teams / "mclaren.svg")),
+            "Mclaren": self.icon_loader(str(icon_base_teams / "mclaren.svg")),
+            "Mercedes": self.icon_loader(str(icon_base_teams / "mercedes.svg")),
+            "RB": self.icon_loader(str(icon_base_teams / "rb.svg")),
+            "VCARB": self.icon_loader(str(icon_base_teams / "rb.svg")),
+            "Alpha Tauri": self.icon_loader(str(icon_base_teams / "rb.svg")),
+            "Red Bull": self.icon_loader(str(icon_base_teams / "red_bull.svg")),
+            "Red Bull Racing": self.icon_loader(str(icon_base_teams / "red_bull.svg")),
+            "Sauber": self.icon_loader(str(icon_base_teams / "sauber.svg")),
+            "Alfa Romeo": self.icon_loader(str(icon_base_teams / "sauber.svg")),
+            "Williams": self.icon_loader(str(icon_base_teams / "williams.svg"))
+        }
+        self.default_team_logo = self.icon_loader(str(icon_base_teams / "default.svg"))
+
+        for name, icon in self.team_logo_mappings.items():
+            if icon.isNull():
+                self.logger.warning(f"{self.overlay_id} | Failed to load team icon: {name}")
+            else:
+                self.logger.debug(f"{self.overlay_id} | Loaded team icon successfully: {name}")
+        if self.default_team_logo.isNull():
+            self.logger.warning(f"{self.overlay_id} | Failed to load default team icon")
+        else:
+            self.logger.debug(f"{self.overlay_id} | Loaded default team icon successfully")
+
+    def _build_ui(self):
+        """Build the timing table UI."""
+        content_width = self._calculate_content_width()
+        self.timing_table = self._create_timing_table(content_width)
+        self.clear()
+
+    def _attach_to_layout(self, layout: QVBoxLayout):
+        """Attach the table widget to the provided layout."""
+        layout.addWidget(self.timing_table)
+
+    def _calculate_content_width(self) -> int:
+        """Return total content width based on column sizes."""
+        return 40 + 30 + 160 + 90 + 75 + 75 + 50
+
+    def _create_timing_table(self, content_width: int) -> QTableWidget:
+        """Create and configure the timing table."""
+        table = QTableWidget(self.num_rows, 7)
+        table.setHorizontalHeaderLabels(["Pos", "Team", "Driver", "Delta", "Tyre", "ERS", "Pens"])
+
+        self._configure_table_behavior(table)
+        self._set_table_dimensions(table, content_width)
+        self._apply_table_style(table)
+
+        return table
+
+    def _configure_table_behavior(self, table: QTableWidget) -> None:
+        """Disable editing, selection, scrollbars, etc."""
+        table.setShowGrid(False)
+        table.setAlternatingRowColors(True)
+        table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
+        table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        table.verticalHeader().setVisible(False)
+        table.horizontalHeader().setVisible(False)
+        table.setMouseTracking(False)
+        table.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        header = table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        header.setStretchLastSection(False)
+
+        # Create ERS delegate with border support
+        self.drs_ers_delegate = DrsErsDelegate(table)
+        table.setItemDelegateForColumn(5, self.drs_ers_delegate)
+
+        # Create border delegate for all other columns to handle reference row highlighting
+        self.border_delegate = BorderDelegate(table)
+        for col in range(7):  # All columns except ERS
+            if col != 5:  # Exclude ERS column
+                table.setItemDelegateForColumn(col, self.border_delegate)
+
+    def _set_table_dimensions(self, table: QTableWidget, content_width: int) -> None:
+        """Set column widths, row heights, and overall table size."""
+        column_widths = [40, 30, 160, 90, 75, 75, 50]
+        for i, width in enumerate(column_widths):
+            table.setColumnWidth(i, width)
+
+        for i in range(self.num_rows):
+            table.setRowHeight(i, 32)
+
+        table_height = 32 * self.num_rows + 4
+        table.setFixedSize(content_width, table_height)
+        table.setFrameShape(QFrame.Shape.NoFrame)
+        table.setContentsMargins(0, 0, 0, 0)
+
+    def _apply_table_style(self, table: QTableWidget) -> None:
+        """Apply modern dark theme styling to the table."""
+        table.setStyleSheet("""
+            QTableWidget {
+                background-color: rgba(15, 15, 15, 220);
+                border: none;
+                border-radius: 6px;
+                gridline-color: transparent;
+            }
+
+            QTableWidget::item {
+                color: white;
+                padding: 4px 8px;
+                border: none;
+                background-color: rgba(25, 25, 25, 180);
+            }
+
+            QTableWidget::item:alternate {
+                background-color: rgba(20, 20, 20, 180);
+            }
+
+            QTableWidget::item:hover {
+                background-color: rgba(45, 45, 45, 200);
+            }
+        """)
+
+    def _create_table_item(
+        self,
+        text: str,
+        alignment: Qt.AlignmentFlag = Qt.AlignmentFlag.AlignCenter,
+        color: Optional[QColor] = None,
+        font_family: str = None,
+        bold: bool = False
+    ) -> QTableWidgetItem:
+        """Helper to create styled table items."""
+        item = QTableWidgetItem(text)
+        item.setTextAlignment(alignment)
+
+        if color:
+            item.setForeground(QBrush(color))
+
+        if font_family or bold:
+            font = QFont()
+            if font_family:
+                font.setFamily(font_family)
+            if bold:
+                font.setBold(True)
+            font.setPointSize(11)
+            item.setFont(font)
+
+        return item
+
+    def update_data(self, relevant_rows: List[Dict[str, Any]], ref_index: int) -> None:
+        """
+        Update the table with the given rows.
+
+        Args:
+            relevant_rows: List of row data dictionaries
+            ref_index: Index of the reference driver
+        """
+        # Clear any existing spans from error messages
+        self._clear_spans()
+
+        # If no data, hide all rows
+        if not relevant_rows:
+            for i in range(self.num_rows):
+                self.timing_table.setRowHidden(i, True)
+        else:
+            num_rows_with_data = min(len(relevant_rows), self.num_rows)
+
+            # Populate rows with data
+            for idx, row_data in enumerate(relevant_rows):
+                self.timing_table.setRowHidden(idx, False)
+                driver_info: Dict[str, Any] = row_data.get("driver-info", {})
+                delta_info: Dict[str, Any] = row_data.get("delta-info", {})
+                tyre_info: Dict[str, Any] = row_data.get("tyre-info", {})
+                ers_info: Dict[str, Any] = row_data.get("ers-info", {})
+                warns_pens_info: Dict[str, Any] = row_data.get("warns-pens-info", {})
+
+                position = driver_info.get("position", 0)
+                name = driver_info.get("name", "UNKNOWN")
+                team = driver_info.get("team", "UNKNOWN")
+                driver_idx = driver_info.get("index", -1)
+
+                delta = delta_info.get("relative-delta", 0)
+
+                tyre_compound = tyre_info.get("visual-tyre-compound", "UNKNOWN")
+                max_wear = F1Utils.getMaxTyreWear(tyre_info["current-wear"])
+                max_wear_str = f"{F1Utils.formatFloat(max_wear['max-wear'], 0)}%"
+
+                ers_mode = ers_info.get("ers-mode", "None")
+                ers_perc = ers_info.get("ers-percent-float", 0.0)
+                drs = driver_info.get("drs", False)
+
+                time_pens_sec = warns_pens_info.get("time-penalties", 0)
+
+                self._update_row(
+                    idx, position, team, name, delta, tyre_compound, max_wear_str,
+                    ers_mode, ers_perc, (driver_idx == ref_index), drs, time_pens_sec
+                )
+
+            # Hide remaining empty rows
+            for i in range(num_rows_with_data, self.num_rows):
+                self.timing_table.setRowHidden(i, True)
+
+    def _update_row(
+        self,
+        row_idx: int,
+        position: int,
+        team: str,
+        name: str,
+        delta: Optional[float],
+        tyre_compound: str,
+        max_tyre_wear_str: str,
+        ers_mode: str,
+        ers: float,
+        is_ref: bool,
+        drs: bool,
+        pens_sec: int
+    ):
+        """Update a specific row in the timing table."""
+        self._update_position_cell(row_idx, position)
+        self._update_team_cell(row_idx, team)
+        self._update_name_cell(row_idx, name)
+        self._update_delta_cell(row_idx, delta, is_ref)
+        self._update_tyre_cell(row_idx, tyre_compound, max_tyre_wear_str)
+        self._update_ers_cell(row_idx, ers, ers_mode, drs)
+        self._update_pens_cell(row_idx, pens_sec)
+        self._update_reference_highlight(row_idx, is_ref)
+
+    def _update_position_cell(self, row_idx: int, position: int) -> None:
+        """Update position cell (column 0)."""
+        pos_item = self._create_table_item(
+            str(position), Qt.AlignmentFlag.AlignCenter, QColor("#ddd"), bold=True
+        )
+        self.timing_table.setItem(row_idx, 0, pos_item)
+
+    def _update_team_cell(self, row_idx: int, team: str) -> None:
+        """Update team cell (column 1) with team icon."""
+        team_icon = self.team_logo_mappings.get(team)
+        if team_icon and not team_icon.isNull():
+            team_item = QTableWidgetItem(team_icon, "")
+        elif self.default_team_logo and not self.default_team_logo.isNull():
+            team_item = QTableWidgetItem(self.default_team_logo, "")
+        else:
+            team_item = self._create_table_item("??", Qt.AlignmentFlag.AlignCenter, bold=True)
+
+        team_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.timing_table.setItem(row_idx, 1, team_item)
+
+    def _update_name_cell(self, row_idx: int, name: str) -> None:
+        """Update driver name cell (column 2)."""
+        name_item = self._create_table_item(
+            name,
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+            QColor("#ffffff"),
+            bold=True,
+        )
+        self.timing_table.setItem(row_idx, 2, name_item)
+
+    def _update_delta_cell(self, row_idx: int, delta: Optional[float], is_ref: bool) -> None:
+        """Update delta cell (column 3)."""
+        if is_ref or delta == 0 or delta is None:
+            delta_text = "---"
+        else:
+            delta_text = f"{F1Utils.formatFloat(delta / 1000, precision=3, signed=True)}"
+
+        delta_item = self._create_table_item(
+            delta_text, Qt.AlignmentFlag.AlignCenter, QColor("#00ff99"), font_family="Courier New"
+        )
+        self.timing_table.setItem(row_idx, 3, delta_item)
+
+    def _update_tyre_cell(self, row_idx: int, tyre_compound: str, max_tyre_wear_str: str) -> None:
+        """Update tyre cell (column 4) with icon + wear percentage."""
+        tyre_icon = self.tyre_icon_mappings.get(tyre_compound)
+        if tyre_icon and not tyre_icon.isNull():
+            tyre_item = QTableWidgetItem(tyre_icon, max_tyre_wear_str)
+            font = tyre_item.font()
+            font.setPointSize(11)
+            tyre_item.setFont(font)
+        else:
+            tyre_display = (
+                f"{tyre_compound[:1]}({max_tyre_wear_str})" if tyre_compound else "--"
+            )
+            tyre_item = self._create_table_item(
+                tyre_display, Qt.AlignmentFlag.AlignCenter, bold=True
+            )
+
+        tyre_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.timing_table.setItem(row_idx, 4, tyre_item)
+
+    def _update_ers_cell(self, row_idx: int, ers: float, ers_mode: str, drs: bool) -> None:
+        """Update ERS cell (column 5)."""
+        ers_text = f"{F1Utils.formatFloat(ers, precision=0, signed=False)}%"
+        ers_item = self._create_table_item(ers_text, Qt.AlignmentFlag.AlignCenter)
+        ers_item.setData(
+            Qt.ItemDataRole.UserRole,
+            {"ers-mode": ers_mode, "drs": drs},
+        )
+        self.timing_table.setItem(row_idx, 5, ers_item)
+
+    def _update_pens_cell(self, row_idx: int, pens_sec: int) -> None:
+        """Update penalties cell (column 6)."""
+        pens_str = f"+{pens_sec}s" if pens_sec > 0 else ""
+        pens_item = self._create_table_item(
+            pens_str, Qt.AlignmentFlag.AlignCenter, QColor("#ffcc00"), bold=True
+        )
+        self.timing_table.setItem(row_idx, 6, pens_item)
+
+    def _update_reference_highlight(self, row_idx: int, is_ref: bool) -> None:
+        """Highlight the reference row and trigger repaint."""
+        if not is_ref:
+            return
+
+        if self.border_delegate:
+            self.border_delegate.set_reference_row(row_idx)
+        if self.drs_ers_delegate:
+            self.drs_ers_delegate.set_reference_row(row_idx)
+
+        # Force repaint
+        for col in range(7):
+            index = self.timing_table.model().index(row_idx, col)
+            self.timing_table.update(index)
+
+    def _clear_spans(self):
+        """Clear any cell spans (used by error messages)."""
+        # Only clear row 0, column 0 span (where error messages are placed)
+        # Check if a span exists before trying to clear it
+        if self.timing_table.rowSpan(0, 0) > 1 or self.timing_table.columnSpan(0, 0) > 1:
+            self.timing_table.setSpan(0, 0, 1, 1)
+
+    def clear(self):
+        """Clear all timing data."""
+        self._clear_spans()
+        for i in range(self.num_rows):
+            self.timing_table.setRowHidden(i, True)
+
+    def show_error(self, message: str) -> None:
+        """Display a single-row full-width error message in the timing table."""
+        if not self.timing_table:
+            return
+
+        # Clear any existing spans first
+        self._clear_spans()
+
+        # Ensure table has at least one visible row
+        for i in range(self.num_rows):
+            self.timing_table.setRowHidden(i, True)
+
+        # Use row 0 for the message (un-hide it)
+        self.timing_table.setRowHidden(0, False)
+
+        # Create the message item and style it
+        msg_item = QTableWidgetItem(message)
+        msg_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        font = QFont()
+        font.setPointSize(12)
+        font.setBold(True)
+        msg_item.setFont(font)
+        msg_item.setForeground(QBrush(QColor("#ffb86b")))  # orange-ish warning color
+
+        # Place the item in column 0 and span across all columns
+        self.timing_table.setItem(0, 0, msg_item)
+        self.timing_table.setSpan(0, 0, 1, 7)
+
+        # Clear any leftover items in the spanned columns (avoid duplicate visuals)
+        for c in range(1, 7):
+            self.timing_table.setItem(0, c, QTableWidgetItem(""))
+
+        # Ensure remaining rows are hidden
+        for i in range(1, self.num_rows):
+            self.timing_table.setRowHidden(i, True)
