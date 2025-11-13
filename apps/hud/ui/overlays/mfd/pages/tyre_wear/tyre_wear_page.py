@@ -95,55 +95,70 @@ class TyreWearPage(BasePage):
         self.page_layout.addWidget(main_container)
 
     def _build_top_section(self, parent_layout: QVBoxLayout) -> None:
-        """Build the top section with compound and stats."""
+        """Build a clean, single-row top section with tyre info and stats."""
         top_widget = QWidget()
         top_widget.setStyleSheet("""
             QWidget {
-                background-color: #242424;
-                border-radius: 4px;
+                background: #1b1b1b;
+                border-radius: 6px;
             }
         """)
         top_layout = QHBoxLayout(top_widget)
+        top_layout.setContentsMargins(10, 6, 10, 6)
         top_layout.setSpacing(15)
-        top_layout.setContentsMargins(8, 6, 8, 6)
+        top_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # Left: Tyre icon and compound
-        left_widget = QWidget()
-        left_widget.setStyleSheet("background: transparent;")
-        left_layout = QHBoxLayout(left_widget)
-        left_layout.setSpacing(10)
-        left_layout.setContentsMargins(0, 0, 0, 0)
-
+        # Tyre icon
         self.tyre_icon_label = QLabel()
-        self.tyre_icon_label.setFixedSize(36, 36)
+        self.tyre_icon_label.setFixedSize(32, 32)
         self.tyre_icon_label.setScaledContents(True)
-        left_layout.addWidget(self.tyre_icon_label)
+        top_layout.addWidget(self.tyre_icon_label)
 
-        self.compound_label = QLabel("Medium")
+        # Compound name
+        self.compound_label = QLabel("—")
         self.compound_label.setFont(QFont(self.FONT_FACE, 11, QFont.Weight.Bold))
         self.compound_label.setStyleSheet("color: #FFFFFF; background: transparent;")
-        left_layout.addWidget(self.compound_label)
+        top_layout.addWidget(self.compound_label)
 
-        top_layout.addWidget(left_widget)
+        # Divider
+        divider = QLabel("•")
+        divider.setFont(QFont(self.FONT_FACE, self.FONT_SIZE))
+        divider.setStyleSheet("color: #444; background: transparent;")
+        top_layout.addWidget(divider)
+
+        # Age stat
+        age_label = QLabel("Age:")
+        age_label.setFont(QFont(self.FONT_FACE, self.FONT_SIZE))
+        age_label.setStyleSheet("color: #888; background: transparent;")
+        top_layout.addWidget(age_label)
+
+        self.age_value = QLabel("—")
+        self.age_value.setFont(QFont(self.FONT_FACE, self.FONT_SIZE, QFont.Weight.Bold))
+        self.age_value.setStyleSheet("color: #00D4FF; background: transparent;")
+        top_layout.addWidget(self.age_value)
+
+        # Divider
+        divider2 = QLabel("•")
+        divider2.setFont(QFont(self.FONT_FACE, self.FONT_SIZE))
+        divider2.setStyleSheet("color: #444; background: transparent;")
+        top_layout.addWidget(divider2)
+
+        # Pitstops stat
+        stops_label = QLabel("Stops:")
+        stops_label.setFont(QFont(self.FONT_FACE, self.FONT_SIZE))
+        stops_label.setStyleSheet("color: #888; background: transparent;")
+        top_layout.addWidget(stops_label)
+
+        self.stops_value = QLabel("—")
+        self.stops_value.setFont(QFont(self.FONT_FACE, self.FONT_SIZE, QFont.Weight.Bold))
+        self.stops_value.setStyleSheet("color: #00D4FF; background: transparent;")
+        top_layout.addWidget(self.stops_value)
+
+        # Stretch to align right
         top_layout.addStretch()
 
-        # Right: Stats (horizontal layout for sleeker look)
-        right_widget = QWidget()
-        right_widget.setStyleSheet("background: transparent;")
-        right_layout = QHBoxLayout(right_widget)
-        right_layout.setSpacing(15)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-
-        self.age_label = self._create_compact_stat("Age:", "0")
-        self.pitstops_label = self._create_compact_stat("Stops:", "0")
-
-        right_layout.addWidget(self.age_label)
-        right_layout.addWidget(self._create_stat_divider())
-        right_layout.addWidget(self.pitstops_label)
-
-        top_layout.addWidget(right_widget)
-
         parent_layout.addWidget(top_widget)
+
 
     def _create_compact_stat(self, title: str, value: str) -> QWidget:
         """Create a compact stat display."""
