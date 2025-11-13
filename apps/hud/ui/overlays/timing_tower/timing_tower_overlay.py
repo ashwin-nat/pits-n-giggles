@@ -23,17 +23,18 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
-from typing import Any, Dict, Optional, List, Tuple
+from typing import Any, Dict, Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
+from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
+                             insert_relative_deltas_race, is_race_type_session,
+                             is_tt_session)
 from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays.base import BaseOverlay
 
 from .race_table import RaceTimingTable
-
-from apps.hud.common import get_ref_row, get_relevant_race_table_rows, is_race_type_session, insert_relative_deltas_race, is_tt_session
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 

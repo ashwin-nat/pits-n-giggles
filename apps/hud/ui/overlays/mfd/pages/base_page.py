@@ -23,8 +23,6 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
-import os
-import sys
 from typing import Dict, Optional
 
 from PySide6.QtCore import Qt

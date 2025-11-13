@@ -53,7 +53,7 @@ def load_icon(relative_path: str) -> QIcon:
         icon = QIcon(full_path)
         return icon
 
-    except Exception as e:  # pylint: disable=broad-except
+    except Exception:  # pylint: disable=broad-except
         return QIcon()
 
 # ------------------------------------------------
@@ -74,11 +74,8 @@ def is_practice_session(session_type: str) -> bool:
 
 def is_qualifying_session(session_type: str) -> bool:
     """Helper to determine if the session type is a qualifying session."""
-    substr = {"Qualifying" or "Shootout"}
-    for sub in substr:
-        if sub in session_type:
-            return True
-    return False
+    substrings = {"Qualifying", "Shootout"}
+    return any(sub in session_type for sub in substrings)
 
 # ------------------------------------------------
 # Race table helpers

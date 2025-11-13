@@ -24,18 +24,18 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Callable
+from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QBrush, QColor, QFont, QIcon
+from PySide6.QtGui import QBrush, QColor, QFont
 from PySide6.QtWidgets import (QFrame, QHeaderView, QTableWidget,
                                QTableWidgetItem, QVBoxLayout)
 
-from .border_delegate import BorderDelegate
-from .drs_ers_delegate import DrsErsDelegate
+from apps.hud.common import load_icon
 from lib.f1_types import F1Utils
 
-from apps.hud.common import load_icon
+from .border_delegate import BorderDelegate
+from .drs_ers_delegate import DrsErsDelegate
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 

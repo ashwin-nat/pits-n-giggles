@@ -24,8 +24,6 @@
 
 import json
 import logging
-import os
-import sys
 from typing import Any, Callable, Dict
 
 from PySide6.QtCore import Qt, Signal, Slot
