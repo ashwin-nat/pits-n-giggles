@@ -54,7 +54,7 @@ class TimingTowerOverlay(BaseOverlay):
         self.timing_table: Optional[RaceTimingTable] = None
 
         super().__init__(self.OVERLAY_ID, config, logger, locked, opacity)
-        self._init_cmd_handlers()
+        self._init_event_handlers()
 
     def build_ui(self):
         """Build the timing tower UI"""
@@ -143,11 +143,15 @@ class TimingTowerOverlay(BaseOverlay):
             }
         """)
 
-    def _init_cmd_handlers(self):
+    def _init_event_handlers(self):
+        """Initialize event handlers."""
+        @self.on_event("race_table_update")
+        def _handle_race_update(data: Dict[str, Any]) -> None:
+            """Handles race_table_update event
 
-        @self.on_command("race_table_update")
-        def handle_race_update(data: Dict[str, Any]) -> None:
-
+            Args:
+                data (Dict[str, Any]): The race table data from the server
+            """
             session_type = data["event-type"]
             if is_tt_session(session_type):
                 self.header_label.setText("TIME TRIAL")
@@ -202,6 +206,7 @@ class TimingTowerOverlay(BaseOverlay):
         self.timing_table.clear()
 
     def _should_show_lap_number(self, session_type: str) -> bool:
+        """Check if it is a race/sprint session"""
         return is_race_type_session(session_type)
 
     def _insert_relative_deltas_fp_quali(self, relevant_rows: List[Dict[str, Any]], ref_row: Dict[str, Any]) -> None:

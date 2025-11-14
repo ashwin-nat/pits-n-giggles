@@ -22,7 +22,6 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import json
 import logging
 from typing import Any, Callable, Dict
 
@@ -31,11 +30,12 @@ from PySide6.QtGui import QIcon, QMouseEvent
 from PySide6.QtWidgets import QWidget
 
 from apps.hud.ui.infra.config import OverlaysConfig
+from apps.hud.common import serialise_data, deserialise_data
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
 OverlayCommandHandler = Callable[[Dict[str, Any]], None] # Takes dict arg, returns None
-OverlayRequestHandler = Callable[[Dict[str, Any]], Any] # Takes dict arg, returns Any
+OverlayRequestHandler = Callable[[Dict[str, Any]], str] # Takes dict arg, returns str (serialised JSON)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -44,6 +44,15 @@ class BaseOverlay(QWidget):
     response_signal = Signal(str, object)  # request_type, response_data
 
     def __init__(self, overlay_id: str, config: OverlaysConfig, logger: logging.Logger, locked: bool, opacity: int):
+        """Initialize base overlay.
+
+        Args:
+            overlay_id (str): Overlay ID
+            config (OverlaysConfig): Overlay config
+            logger (logging.Logger): Logger object
+            locked (bool): Locked state
+            opacity (int): Window opacity
+        """
         super().__init__()
         self.overlay_id = overlay_id
         self.config = config
@@ -132,7 +141,7 @@ class BaseOverlay(QWidget):
     # --------------------------------------------------------------------------
     # Command infra
     # --------------------------------------------------------------------------
-    def on_command(self, cmd_name: str):
+    def on_event(self, cmd_name: str):
         """Flask-style decorator for registering command handlers."""
         def decorator(func: OverlayCommandHandler):
             self._command_handlers[cmd_name] = func
@@ -142,18 +151,21 @@ class BaseOverlay(QWidget):
     def _register_default_handlers(self):
         """Register built-in request handlers."""
         @self.on_request("get_window_info")
-        def handle_get_window_info(_data: Dict[str, Any]):
+        def _handle_get_window_info(_data: Dict[str, Any]) -> str:
+            """Return current geometry as an OverlaysConfig."""
             self.logger.debug(f'{self.overlay_id} | Received request "get_window_info"')
-            return self.get_window_info()
+            return serialise_data(self.get_window_info().toJSON())
 
-        @self.on_command("set_locked_state")
-        def handle_set_locked_state(data: dict):
+        @self.on_event("set_locked_state")
+        def _handle_set_locked_state(data: Dict[str, Any]):
+            """Set locked state."""
             locked = data.get('new-value', False)
             self.logger.debug(f'{self.overlay_id} | Setting locked state to {locked}')
             self.set_locked_state(locked)
 
-        @self.on_command("toggle_visibility")
-        def handle_toggle_visibility(_data: dict):
+        @self.on_event("toggle_visibility")
+        def _handle_toggle_visibility(_data: Dict[str, Any]):
+            """Toggle visibility."""
             self.logger.debug(f'{self.overlay_id} | Toggling visibility')
             if self.isVisible():
                 self.logger.debug(f'{self.overlay_id} | Hiding overlay')
@@ -162,33 +174,41 @@ class BaseOverlay(QWidget):
                 self.logger.debug(f'{self.overlay_id} | Showing overlay')
                 self.show()
 
-        @self.on_command("set_opacity")
-        def handle_set_opacity(data: dict):
+        @self.on_event("set_opacity")
+        def _handle_set_opacity(data: Dict[str, Any]):
+            """Set opacity."""
             opacity = data["opacity"]
             self.set_opacity(opacity)
 
-        @self.on_command("set_config")
-        def handle_set_window_config(data: Dict[str, Any]) -> None:
+        @self.on_event("set_config")
+        def _handle_set_window_config(data: Dict[str, Any]) -> None:
+            """Set window config."""
             config = OverlaysConfig.fromJSON(data)
             self.logger.debug(f"{self.overlay_id} | Setting window config to {config}")
             self.setGeometry(config.x, config.y, config.width, config.height)
 
     def on_request(self, request_type: str):
-        """Decorator for registering request handlers that return responses."""
+        """Flask-style Decorator for registering request handlers that return responses."""
         def decorator(func: Callable[[dict], Any]):
             self._request_handlers[request_type] = func
             return func
         return decorator
 
     @Slot(str, str, dict)
-    def _handle_request(self, recipient: str, request_type: str, request_data: dict):
-        """Internal request dispatcher for overlays."""
+    def _handle_request(self, recipient: str, request_type: str, request_data: str):
+        """Internal request dispatcher for overlays.
+
+        Args:
+            recipient (str): Overlay ID that sent the request
+            request_type (str): Request type
+            request_data (str): Request data JSON serialized as a string
+        """
         if recipient and recipient != self.overlay_id:
             return  # Not for this overlay
 
         if handler := self._request_handlers.get(request_type):
             self.logger.debug(f"{self.overlay_id} | Handling request '{request_type}'")
-            parsed_data = json.loads(request_data)
+            parsed_data = deserialise_data(request_data)
             try:
                 response = handler(parsed_data)
                 # Emit response back through window manager
@@ -204,12 +224,18 @@ class BaseOverlay(QWidget):
     # Existing _handle_cmd method stays the same
     @Slot(str, str, str)
     def _handle_cmd(self, recipient: str, cmd: str, data: str):
-        """Internal command dispatcher for overlays."""
+        """Internal command dispatcher for overlays.
+
+        Args:
+            recipient (str): Overlay ID that sent the command
+            cmd (str): Command
+            data (str): Command data JSON serialized as a string
+        """
         if recipient and recipient != self.overlay_id:
             return  # Not for this overlay
 
         if handler := self._command_handlers.get(cmd):
-            parsed_data = json.loads(data)
+            parsed_data = deserialise_data(data)
             try:
                 handler(parsed_data)
             except Exception as e: # pylint: disable=broad-except

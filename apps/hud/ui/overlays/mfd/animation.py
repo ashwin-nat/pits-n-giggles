@@ -30,14 +30,23 @@ from PySide6.QtWidgets import QGraphicsOpacityEffect, QStackedWidget
 class AnimatedStackedWidget(QStackedWidget):
     """QStackedWidget with fade transition animations between pages."""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QStackedWidget):
+        """Initialize the widget.
+
+        Args:
+            parent (QStackedWidget): Parent widget
+        """
         super().__init__(parent)
         self._animation_duration = 200  # milliseconds
         self._is_animating = False
         self._pending_index = None
 
     def setCurrentIndexAnimated(self, index: int):
-        """Switch to a page with fade animation."""
+        """Switch to a page with fade animation.
+
+        Args:
+            index (int): Index of the page
+        """
         if self._is_animating:
             # Queue the next transition
             self._pending_index = index

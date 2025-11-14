@@ -81,7 +81,7 @@ class PitRejoinPredictionPage(BasePage):
 
     def _init_event_handlers(self):
         @self.on_event("race_table_update")
-        def update(data: Dict[str, Any]) -> None:
+        def _handle_race_table_update(data: Dict[str, Any]) -> None:
             """Update the page with new data.
 
             Args:

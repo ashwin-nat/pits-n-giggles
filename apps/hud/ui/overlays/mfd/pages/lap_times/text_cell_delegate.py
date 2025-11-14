@@ -29,5 +29,6 @@ from PySide6.QtWidgets import QStyledItemDelegate, QStyleOptionViewItem
 
 class NoElideDelegate(QStyledItemDelegate):
     def initStyleOption(self, option: QStyleOptionViewItem, index: QModelIndex):
+        """Disable elide on the text"""
         super().initStyleOption(option, index)
         option.textElideMode = Qt.TextElideMode.ElideNone

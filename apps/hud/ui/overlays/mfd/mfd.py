@@ -91,7 +91,7 @@ class MfdOverlay(BaseOverlay):
 
     def _init_cmd_handlers(self):
 
-        @self.on_command("next_page")
+        @self.on_event("next_page")
         def _handle_next_page(_data: Dict[str, Any]):
             self.logger.debug(f"{self.overlay_id} | Switching to next page...")
 
@@ -107,15 +107,15 @@ class MfdOverlay(BaseOverlay):
                 self.logger.debug(f"{self.overlay_id} | Unlocked mode. Skipping collapsed page in next_page")
             self._switch_page(next_index)
 
-        @self.on_command("race_table_update")
+        @self.on_event("race_table_update")
         def _handle_race_update(data: Dict[str, Any]):
             self._handle_event("race_table_update", data)
 
-        @self.on_command("stream_overlay_update")
+        @self.on_event("stream_overlay_update")
         def _handle_stream_overlay_update(data: Dict[str, Any]):
             self._handle_event("stream_overlay_update", data)
 
-        @self.on_command("set_locked_state")
+        @self.on_event("set_locked_state")
         def _handle_set_locked_state(data: Dict[str, Any]):
             locked = data.get('new-value', False)
             self.logger.debug(f'{self.overlay_id} | [OVERRIDDEN METHOD] Setting locked state to {locked}')
@@ -128,7 +128,7 @@ class MfdOverlay(BaseOverlay):
 
             self.set_locked_state(locked)
 
-        @self.on_command("set_config")
+        @self.on_event("set_config")
         def _handle_set_config(data: Dict[str, Any]):
             config = OverlaysConfig.fromJSON(data)
             self.logger.debug(f"{self.overlay_id} | [OVERRIDDEN METHOD] Setting config {self.config}")

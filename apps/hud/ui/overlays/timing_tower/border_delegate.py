@@ -33,7 +33,12 @@ from PySide6.QtWidgets import (QStyledItemDelegate, QStyleOptionViewItem,
 class BorderDelegate(QStyledItemDelegate):
     """Custom delegate to draw borders around reference rows"""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QTableWidget):
+        """Initialise the delegate
+
+        Args:
+            parent (QTableWidget): Table widget
+        """
         super().__init__(parent)
         self.reference_row = -1
 
@@ -42,6 +47,7 @@ class BorderDelegate(QStyledItemDelegate):
         self.reference_row = row
 
     def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex) -> None:
+        """Paint the cell"""
         # First, paint the normal item
         super().paint(painter, option, index)
 

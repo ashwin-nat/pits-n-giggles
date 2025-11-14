@@ -24,14 +24,20 @@
 
 from PySide6.QtCore import QModelIndex, QRect, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen
-from PySide6.QtWidgets import QStyledItemDelegate, QStyleOptionViewItem
+from PySide6.QtWidgets import (QStyledItemDelegate, QStyleOptionViewItem,
+                               QTableWidget)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class DrsErsDelegate(QStyledItemDelegate):
     """Custom delegate to paint ERS cell with vertical color bar"""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QTableWidget):
+        """Initialise the delegate
+
+        Args:
+            parent (QTableWidget): Table widget
+        """
         super().__init__(parent)
         self.ers_colors = {
             "None": QColor("#888888"),

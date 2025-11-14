@@ -135,7 +135,7 @@ class OverlaysMgr:
 
         changed = False
         for overlay_id in list(self.window_manager.overlays.keys()):
-            curr_params = self._get_window_info_threadsafe(overlay_id)
+            curr_params = self._get_window_info(overlay_id)
             self.logger.debug(f"Current config for overlay '{overlay_id}' is {curr_params}")
             saved_params = self.config[overlay_id]
             if curr_params != saved_params:
@@ -243,7 +243,10 @@ class OverlaysMgr:
 
         return None
 
-    def _get_window_info_threadsafe(self, overlay_id: str, timeout_ms: int = 5000) -> Optional[OverlaysConfig]:
+    def _get_window_info(self, overlay_id: str, timeout_ms: int = 5000) -> Optional[OverlaysConfig]:
         """Thread-safe query for specific window info."""
         self.logger.debug(f"Requesting window info for {overlay_id}")
-        return self.window_manager.request(overlay_id, "get_window_info", timeout_ms=timeout_ms)
+        ret = self.window_manager.request(overlay_id, "get_window_info", timeout_ms=timeout_ms)
+        if not ret:
+            return None
+        return OverlaysConfig.fromJSON(ret)

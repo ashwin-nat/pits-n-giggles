@@ -312,7 +312,22 @@ class RaceTimingTable:
         drs: bool,
         pens_sec: int
     ):
-        """Update a specific row in the timing table."""
+        """Update a specific row in the timing table.
+
+        Args:
+            row_idx: Index of the row to update
+            position: Position of the driver
+            team: Team of the driver
+            name: Name of the driver
+            delta: Relative delta of the driver
+            tyre_compound: Tyre compound of the driver
+            max_tyre_wear_str: Maximum tyre wear of the driver
+            ers_mode: ERS mode of the driver
+            ers: ERS percentage of the driver
+            is_ref: Is the driver the reference driver
+            drs: Is the driver in DRS
+            pens_sec: Time penalties of the driver
+        """
         self._update_position_cell(row_idx, position)
         self._update_team_cell(row_idx, team)
         self._update_name_cell(row_idx, name)
@@ -323,14 +338,24 @@ class RaceTimingTable:
         self._update_reference_highlight(row_idx, is_ref)
 
     def _update_position_cell(self, row_idx: int, position: int) -> None:
-        """Update position cell (column 0)."""
+        """Update position cell (column 0).
+
+        Args:
+            row_idx: Index of the row to update
+            position: Position of the driver
+        """
         pos_item = self._create_table_item(
             str(position), Qt.AlignmentFlag.AlignCenter, QColor("#ddd"), bold=True
         )
         self.timing_table.setItem(row_idx, 0, pos_item)
 
     def _update_team_cell(self, row_idx: int, team: str) -> None:
-        """Update team cell (column 1) with team icon."""
+        """Update team cell (column 1) with team icon.
+
+        Args:
+            row_idx: Index of the row to update
+            team: Team of the driver
+        """
         team_icon = self.team_logo_mappings.get(team)
         if team_icon and not team_icon.isNull():
             team_item = QTableWidgetItem(team_icon, "")
@@ -343,7 +368,12 @@ class RaceTimingTable:
         self.timing_table.setItem(row_idx, 1, team_item)
 
     def _update_name_cell(self, row_idx: int, name: str) -> None:
-        """Update driver name cell (column 2)."""
+        """Update driver name cell (column 2).
+
+        Args:
+            row_idx: Index of the row to update
+            name: Name of the driver
+        """
         name_item = self._create_table_item(
             name,
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
@@ -353,7 +383,13 @@ class RaceTimingTable:
         self.timing_table.setItem(row_idx, 2, name_item)
 
     def _update_delta_cell(self, row_idx: int, delta: Optional[float], is_ref: bool) -> None:
-        """Update delta cell (column 3)."""
+        """Update delta cell (column 3).
+
+        Args:
+            row_idx: Index of the row to update
+            delta: Relative delta of the driver
+            is_ref: Is the driver the reference driver
+        """
         if is_ref or delta == 0 or delta is None:
             delta_text = "---"
         else:
@@ -365,7 +401,13 @@ class RaceTimingTable:
         self.timing_table.setItem(row_idx, 3, delta_item)
 
     def _update_tyre_cell(self, row_idx: int, tyre_compound: str, max_tyre_wear_str: str) -> None:
-        """Update tyre cell (column 4) with icon + wear percentage."""
+        """Update tyre cell (column 4) with icon + wear percentage.
+
+        Args:
+            row_idx: Index of the row to update
+            tyre_compound: Tyre compound of the driver
+            max_tyre_wear_str: Maximum tyre wear of the driver
+        """
         tyre_icon = self.tyre_icon_mappings.get(tyre_compound)
         if tyre_icon and not tyre_icon.isNull():
             tyre_item = QTableWidgetItem(tyre_icon, max_tyre_wear_str)
@@ -384,7 +426,14 @@ class RaceTimingTable:
         self.timing_table.setItem(row_idx, 4, tyre_item)
 
     def _update_ers_cell(self, row_idx: int, ers: float, ers_mode: str, drs: bool) -> None:
-        """Update ERS cell (column 5)."""
+        """Update ERS cell (column 5).
+
+        Args:
+            row_idx: Index of the row to update
+            ers: ERS percentage of the driver
+            ers_mode: ERS mode of the driver
+            drs: Is the driver in DRS
+        """
         ers_text = f"{F1Utils.formatFloat(ers, precision=0, signed=False)}%"
         ers_item = self._create_table_item(ers_text, Qt.AlignmentFlag.AlignCenter)
         ers_item.setData(
@@ -394,7 +443,12 @@ class RaceTimingTable:
         self.timing_table.setItem(row_idx, 5, ers_item)
 
     def _update_pens_cell(self, row_idx: int, pens_sec: int) -> None:
-        """Update penalties cell (column 6)."""
+        """Update penalties cell (column 6).
+
+        Args:
+            row_idx: Index of the row to update
+            pens_sec: Penalties in seconds
+        """
         pens_str = f"+{pens_sec}s" if pens_sec > 0 else ""
         pens_item = self._create_table_item(
             pens_str, Qt.AlignmentFlag.AlignCenter, QColor("#ffcc00"), bold=True
@@ -402,7 +456,12 @@ class RaceTimingTable:
         self.timing_table.setItem(row_idx, 6, pens_item)
 
     def _update_reference_highlight(self, row_idx: int, is_ref: bool) -> None:
-        """Highlight the reference row and trigger repaint."""
+        """Highlight the reference row and trigger repaint.
+
+        Args:
+            row_idx: Index of the row to update
+            is_ref: True if the row is the reference
+        """
         if not is_ref:
             return
 

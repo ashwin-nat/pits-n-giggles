@@ -42,7 +42,12 @@ class LapTimesPage(BasePage):
     NUM_ROWS = 5
 
     def __init__(self, parent: QWidget, logger: logging.Logger):
+        """Initialize lap times page.
 
+        Args:
+            parent (QWidget): Parent widget
+            logger (logging.Logger): Logger
+        """
         super().__init__(parent, logger, "mfd.lap_times", "RECENT LAP TIMES")
         self._last_processed_laps: List[Dict[str, Any]] = []
 

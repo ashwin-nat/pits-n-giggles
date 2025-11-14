@@ -22,7 +22,6 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import json
 import logging
 from typing import Any, Dict, Optional
 
@@ -31,18 +30,22 @@ from PySide6.QtCore import (QMutex, QMutexLocker, QObject, QWaitCondition,
 
 from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays import BaseOverlay
+from apps.hud.common import serialise_data, deserialise_data
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class WindowManager(QObject):
-    # Existing signal
-    mgmt_cmd_signal = Signal(str, str, str)  # recipient, cmd, data (serialised into string)
 
-    # New request/response signals
-    mgmt_request_signal = Signal(str, str, str)  # recipient, request_type, request_data
+    mgmt_cmd_signal = Signal(str, str, str)  # recipient, event, data (serialised into string)
+    mgmt_request_signal = Signal(str, str, str)  # recipient, request_type, request_data (serialised into string)
     mgmt_response_signal = Signal(str, object)     # request_type, response_data
 
     def __init__(self, logger: logging.Logger):
+        """Initialize window manager.
+
+        Args:
+            logger: Logger
+        """
         super().__init__()
         self.logger = logger
         self.overlays: Dict[str, BaseOverlay] = {}
@@ -66,7 +69,7 @@ class WindowManager(QObject):
         self.mgmt_cmd_signal.connect(overlay._handle_cmd)
         self.mgmt_request_signal.connect(overlay._handle_request)
 
-        # **CRITICAL FIX**: Connect overlay's response signal back to manager
+        # Connect overlay's response signal back to manager
         overlay.response_signal.connect(self.mgmt_response_signal.emit)
 
     def set_config(self, config_dict: Dict[str, OverlaysConfig]) -> None:
@@ -76,7 +79,7 @@ class WindowManager(QObject):
 
     # pylint: disable=useless-return
     @Slot(str, str, dict)
-    def _handle_request(self, recipient: str, _request_type: str, _request_data: dict):
+    def _handle_request(self, recipient: str, _request_type: str, _request_data: Dict[str, Any]):
         """Handle requests on GUI thread - manager-level requests only."""
         if recipient:
             return  # Overlay-specific requests handled by overlay
@@ -94,7 +97,7 @@ class WindowManager(QObject):
             self._response_condition.wakeAll()
 
     def request(self, recipient: str, request_type: str,
-                request_data: dict = None, timeout_ms: int = 5000) -> Optional[Any]:
+                request_data: Dict[str, Any] = None, timeout_ms: int = 5000) -> Dict[str, Any]:
         """
         Make a blocking request and wait for response.
 
@@ -113,19 +116,35 @@ class WindowManager(QObject):
             self._response_received = False
 
             # Emit request
-            self.mgmt_request_signal.emit(recipient, request_type, json.dumps(request_data,separators=(',', ':')) or {})
+            # Serialize request data to a string because the CPP bindings don't work well with nested dicts
+            self.mgmt_request_signal.emit(recipient, request_type, serialise_data(request_data))
 
             # Wait for response
+            # TODO - handle serialised data
             if self._response_condition.wait(self._response_mutex, timeout_ms):
-                return self._response_data
+                return deserialise_data(self._response_data)
             self.logger.warning(f"Request timeout: {request_type} to {recipient or 'manager'}")
             return None
 
     # Keep existing methods for GUI thread use
-    def broadcast_data(self, cmd: str, data: dict):
-        """Broadcast data to all registered overlays using signal."""
-        self.mgmt_cmd_signal.emit('', cmd, json.dumps(data, separators=(',', ':')))
+    def broadcast_data(self, cmd: str, data: Dict[str, Any]):
+        """Broadcast event data to all registered overlays using signal.
 
-    def unicast_data(self, overlay_id: str, cmd: str, data: dict):
-        """Unicast data to a specific overlay using signal."""
-        self.mgmt_cmd_signal.emit(overlay_id, cmd, json.dumps(data, separators=(',', ':')))
+        Args:
+            cmd (str): Command
+            data (Dict[str, Any]): Command data
+        """
+        # Serialize request data to a string because the CPP bindings don't work well with nested dicts
+        self.mgmt_cmd_signal.emit('', cmd, serialise_data(data))
+
+    def unicast_data(self, overlay_id: str, event: str, data: Dict[str, Any]):
+        """Unicast event data to a specific overlay using signal.
+
+        Args:
+            overlay_id (str): Overlay ID
+            event (str): Command
+            data (Dict[str, Any]): Command data
+        """
+        assert overlay_id
+        # Serialize request data to a string because the CPP bindings don't work well with nested dicts
+        self.mgmt_cmd_signal.emit(overlay_id, event, serialise_data(data))

@@ -55,6 +55,12 @@ class WeatherForecastPage(BasePage):
     MAX_SAMPLES = 5
 
     def __init__(self, parent: QWidget, logger: logging.Logger):
+        """Initialise the weather forecast page.
+
+        Args:
+            parent (QWidget): Parent widget
+            logger (logging.Logger): Logger
+        """
         super().__init__(parent, logger, "mfd.weather_forecast", title="Weather Forecast")
         self._last_processed_samples: List[Dict[str, Any]] = []
 

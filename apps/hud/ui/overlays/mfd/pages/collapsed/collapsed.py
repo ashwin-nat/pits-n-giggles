@@ -41,6 +41,12 @@ class CollapsedPage(BasePage):
     FONT_SIZE = 12
 
     def __init__(self, parent: BasePage, logger: logging.Logger):
+        """Initialise the collapsed page.
+
+        Args:
+            parent (BasePage): Parent widget
+            logger (logging.Logger): Logger
+        """
         super().__init__(parent, logger, "mfd.collapsed")
 
         icon_base = Path("assets")

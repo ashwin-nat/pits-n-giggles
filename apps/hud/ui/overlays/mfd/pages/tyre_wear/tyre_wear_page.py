@@ -47,6 +47,12 @@ class TyreWearPage(BasePage):
     DANGER_WEAR = 75
 
     def __init__(self, parent: QWidget, logger: logging.Logger):
+        """Initialise the tyre wear page.
+
+        Args:
+            parent (QWidget): Parent widget
+            logger (logging.Logger): Logger
+        """
         super().__init__(parent, logger, "mfd.tyre_info", title="TYRE WEAR INFO")
 
         self._init_icons()
@@ -55,6 +61,7 @@ class TyreWearPage(BasePage):
         self._init_event_handlers()
 
     def _init_icons(self):
+        """Load tyre icons."""
         icon_base_tyres = Path("assets") / "tyre-icons"
         self.tyre_icon_mappings = {
             "Soft": load_icon(str(icon_base_tyres / "soft_tyre.svg")),
@@ -229,6 +236,7 @@ class TyreWearPage(BasePage):
         parent_layout.addWidget(separator)
 
     def _init_event_handlers(self):
+        """Initialise event handlers."""
         @self.on_event("race_table_update")
         def update(data: Dict[str, Any]) -> None:
             """Update tyre wear information display."""

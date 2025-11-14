@@ -22,6 +22,8 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+from typing import List
+
 from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QWidget
 
@@ -33,12 +35,14 @@ class SectorStatusBar(QWidget):
 
     DEFAULT_SECTOR_STATUS = [F1Utils.SECTOR_STATUS_NA] * 3
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self):
+        """Initialize sector status bar."""
+        super().__init__(None)
         self.setFixedHeight(15)
         self.sector_status = self.DEFAULT_SECTOR_STATUS
 
     def paintEvent(self, _event):
+        """Paint the sector status bar."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
@@ -66,7 +70,8 @@ class SectorStatusBar(QWidget):
             x = int(i * sector_width)
             painter.drawLine(x, 0, x, height)
 
-    def set_sector_status(self, status_list):
-        if len(status_list) == 3:
-            self.sector_status = status_list
-            self.update()
+    def set_sector_status(self, status_list: List[int]):
+        """Set the sector status."""
+        assert len(status_list) == 3
+        self.sector_status = status_list
+        self.update()
