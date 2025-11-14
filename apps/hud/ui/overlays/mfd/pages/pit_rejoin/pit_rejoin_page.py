@@ -26,7 +26,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QVBoxLayout, QWidget
+from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
                              insert_relative_deltas_race, is_race_type_session)
@@ -45,6 +45,7 @@ class PitRejoinPredictionPage(BasePage):
 
         # Timing table component (will be initialized after parent init)
         self.timing_table: Optional[RaceTimingTable] = None
+        self.pit_time_loss_label: Optional[QLabel] = None
 
         super().__init__(parent, logger, "mfd.pit_rejoin", title="PIT REJOIN PREDICTION")
         self._build_ui()
@@ -53,6 +54,23 @@ class PitRejoinPredictionPage(BasePage):
     def _build_ui(self):
         """Build the timing tower UI"""
         self._configure_main_layout(self.page_layout)
+
+        # Create pit time loss header
+        self.pit_time_loss_label = QLabel("PIT TIME LOSS: --")
+        self.pit_time_loss_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.pit_time_loss_label.setStyleSheet("""
+            QLabel {
+                background-color: rgba(20, 20, 20, 180);
+                color: #FFFFFF;
+                font-size: 12px;
+                font-family: "Montserrat";
+                font-weight: bold;
+                padding: 4px;
+                border-radius: 4px;
+                margin-bottom: 2px;
+            }
+        """)
+        self.page_layout.addWidget(self.pit_time_loss_label)
 
         # Create and attach the timing table
         self.timing_table = RaceTimingTable(
@@ -106,7 +124,11 @@ class PitRejoinPredictionPage(BasePage):
             pit_time_loss = data.get("pit-time-loss")
             if not pit_time_loss:
                 self.timing_table.show_error("Pit time loss not configured for this track")
+                self.pit_time_loss_label.setText("PIT TIME LOSS: N/A")
                 return
+
+            # Update pit time loss header
+            self.pit_time_loss_label.setText(f"PIT TIME LOSS: {pit_time_loss:.1f}s")
 
             table_entries.sort(key=lambda x: x["driver-info"]["position"])
             updated_entries = self._add_pit_time_loss(table_entries, pit_time_loss, ref_row)
@@ -154,7 +176,7 @@ class PitRejoinPredictionPage(BasePage):
                 projected_gap - front_driver["delta-info"]["delta-to-leader"]
             )
         else:
-            # Leader case — no car ahead
+            # Leader case - no car ahead
             ref_row["delta-info"]["delta-to-car-in-front"] = 0
 
         # Step 4: Remove driver from current position

@@ -28,8 +28,7 @@ from typing import Any, Dict
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QProgressBar,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from apps.hud.common import get_ref_row, load_icon
 from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
