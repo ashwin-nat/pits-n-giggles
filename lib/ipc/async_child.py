@@ -197,7 +197,7 @@ class IpcChildAsync:
             self.close()
             self._running = False
 
-    def _def_heartbeat_missed_callback(self, _missed_heartbeats: int) -> Awaitable[None]:
+    async def _def_heartbeat_missed_callback(self, _missed_heartbeats: int) -> Awaitable[None]:
         """Default heartbeat missed callback. Hard kills the app"""
         os._exit(PNG_LOST_CONN_TO_PARENT)
 
