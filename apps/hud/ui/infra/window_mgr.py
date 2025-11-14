@@ -24,10 +24,12 @@
 
 import json
 import logging
-from typing import Dict, Optional, Any
+from typing import Any, Dict, Optional
 
-from PySide6.QtCore import QObject, Signal, Slot, QMutex, QWaitCondition, QMutexLocker
+from PySide6.QtCore import (QMutex, QMutexLocker, QObject, QWaitCondition,
+                            Signal, Slot)
 
+from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays import BaseOverlay
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -67,19 +69,10 @@ class WindowManager(QObject):
         # **CRITICAL FIX**: Connect overlay's response signal back to manager
         overlay.response_signal.connect(self.mgmt_response_signal.emit)
 
-    def unregister_overlay(self, overlay_id: str):
-        """Unregister an overlay and disconnect its signals."""
-        if overlay_id in self.overlays:
-            overlay = self.overlays[overlay_id]
-            # Disconnect all signals from this overlay
-            try:
-                self.mgmt_cmd_signal.disconnect(overlay._handle_cmd)
-                self.mgmt_request_signal.disconnect(overlay._handle_request)
-                overlay.response_signal.disconnect(self.mgmt_response_signal.emit)
-            except RuntimeError:
-                pass  # Already disconnected
-            del self.overlays[overlay_id]
-            self.logger.debug(f"Unregistered overlay {overlay_id}")
+    def set_config(self, config_dict: Dict[str, OverlaysConfig]) -> None:
+        """Set config for an overlay."""
+        for overlay_id, config in config_dict.items():
+            self.unicast_data(overlay_id, 'set_config', config.toJSON())
 
     # pylint: disable=useless-return
     @Slot(str, str, dict)

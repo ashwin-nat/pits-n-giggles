@@ -106,3 +106,19 @@ def handle_next_page(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMg
 
     overlays_mgr.next_page()
     return {"status": "success", "message": "next-page handler executed."}
+
+def handle_reset_overlays(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
+    """Handle the 'reset-overlays' IPC command to reset HUD widgets.
+
+    Args:
+        msg (dict): IPC command message
+        logger (logging.Logger): Logger
+        overlays_mgr (OverlaysMgr): Overlays manager
+
+    Returns:
+        dict: IPC response
+    """
+
+    logger.info("Received reset-overlays command. args: %s", msg)
+    overlays_mgr.reset_overlays()
+    return {"status": "success", "message": "reset-overlays handler executed."}

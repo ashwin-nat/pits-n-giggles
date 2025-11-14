@@ -95,6 +95,13 @@ class HudAppMgr(PngAppMgrBase):
             style="Racing.TButton",
             state="disabled"  # Initially disabled until the app is running
         )
+        self.reset_button = ttk.Button(
+            frame,
+            text="Reset",
+            command=self.reset_callback,
+            style="Racing.TButton",
+            state="disabled"  # Initially disabled until the app is running
+        )
         self.next_page_button = ttk.Button( # TODO - remove
             frame,
             text="Next Page",
@@ -107,6 +114,7 @@ class HudAppMgr(PngAppMgrBase):
             self.start_stop_button,
             self.hide_show_button,
             self.lock_button,
+            self.reset_button,
             self.next_page_button
         ]
 
@@ -139,6 +147,12 @@ class HudAppMgr(PngAppMgrBase):
             self.set_lock_button_text()
         else:
             self.console_app.error_log("Failed to toggle lock state.")
+
+    def reset_callback(self):
+        """Open the dashboard viewer in a web browser."""
+        self.console_app.info_log("Sending reset command to HUD...")
+        rsp = IpcParent(self.ipc_port).request(command="reset-overlays", args={})
+        self.console_app.info_log(str(rsp))
 
     def next_page_callback(self): # TODO - remove
         """Open the dashboard viewer in a web browser."""
@@ -193,6 +207,7 @@ class HudAppMgr(PngAppMgrBase):
         self.start_stop_button.config(text="Stop")
         self.start_stop_button.config(state="normal")
         self.lock_button.config(state="normal")
+        self.reset_button.config(state="normal")
         self.next_page_button.config(state="normal")
 
     def post_stop(self):
@@ -201,6 +216,7 @@ class HudAppMgr(PngAppMgrBase):
         self.start_stop_button.config(text="Start")
         self.start_stop_button.config(state="normal")
         self.lock_button.config(state="disabled")
+        self.reset_button.config(state="disabled")
         self.next_page_button.config(state="disabled")
 
     def start_stop_callback(self):
@@ -209,6 +225,7 @@ class HudAppMgr(PngAppMgrBase):
         self.hide_show_button.config(state="disabled")
         self.start_stop_button.config(state="disabled")
         self.lock_button.config(state="disabled")
+        self.reset_button.config(state="disabled")
         self.next_page_button.config(state="disabled")
         try:
             # Call the start_stop method
@@ -220,6 +237,7 @@ class HudAppMgr(PngAppMgrBase):
             self.hide_show_button.config(state="normal")
             self.start_stop_button.config(state="normal")
             self.lock_button.config(state="normal")
+            self.reset_button.config(state="normal")
             self.next_page_button.config(state="normal")
 
     def set_lock_button_text(self):

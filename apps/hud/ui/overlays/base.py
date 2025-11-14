@@ -144,7 +144,6 @@ class BaseOverlay(QWidget):
         @self.on_request("get_window_info")
         def handle_get_window_info(_data: Dict[str, Any]):
             self.logger.debug(f'{self.overlay_id} | Received request "get_window_info"')
-            # Return actual window info, not dummy values!
             return self.get_window_info()
 
         @self.on_command("set_locked_state")
@@ -167,6 +166,12 @@ class BaseOverlay(QWidget):
         def handle_set_opacity(data: dict):
             opacity = data["opacity"]
             self.set_opacity(opacity)
+
+        @self.on_command("set_config")
+        def handle_set_window_config(data: Dict[str, Any]) -> None:
+            config = OverlaysConfig.fromJSON(data)
+            self.logger.debug(f"{self.overlay_id} | Setting window config to {config}")
+            self.setGeometry(config.x, config.y, config.width, config.height)
 
     def on_request(self, request_type: str):
         """Decorator for registering request handlers that return responses."""

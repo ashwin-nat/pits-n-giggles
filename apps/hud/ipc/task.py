@@ -31,7 +31,9 @@ from lib.ipc import IpcChildSync
 
 from ..listener import HudClient
 from ..ui.infra import OverlaysMgr
-from .handlers import handle_lock_widgets, handle_toggle_visibility, handle_set_opacity, handle_next_page
+from .handlers import (handle_lock_widgets, handle_next_page,
+                       handle_reset_overlays, handle_set_opacity,
+                       handle_toggle_visibility)
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
@@ -44,6 +46,7 @@ COMMAND_HANDLERS: Dict[str, CommandHandler] = {
     "toggle-overlays-visibility": handle_toggle_visibility,
     "set-overlays-opacity": handle_set_opacity,
     "next-page": handle_next_page,
+    "reset-overlays": handle_reset_overlays,
 }
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------

@@ -110,6 +110,28 @@ class MfdOverlay(BaseOverlay):
         def _handle_stream_overlay_update(data: Dict[str, Any]):
             self._handle_event("stream_overlay_update", data)
 
+        @self.on_command("set_locked_state")
+        def _handle_set_locked_state(data: Dict[str, Any]):
+            locked = data.get('new-value', False)
+            self.logger.debug(f'{self.overlay_id} | [OVERRIDDEN METHOD] Setting locked state to {locked}')
+
+            # We need to not be in the default/collapse page when unlocking, so that the user gets a sense of how much
+            # width to configure.
+            if not locked and self.pages.currentIndex() == 0:
+                self.logger.debug(f"{self.overlay_id} | Switching to next page before unlocking ...")
+                _handle_next_page(data)
+
+            self.set_locked_state(locked)
+
+        @self.on_command("set_config")
+        def _handle_set_config(data: Dict[str, Any]):
+            config = OverlaysConfig.fromJSON(data)
+            self.logger.debug(f"{self.overlay_id} | [OVERRIDDEN METHOD] Setting config {self.config}")
+            config = OverlaysConfig.fromJSON(data)
+            self.setGeometry(config.x, config.y, config.width, config.height)
+            if self.pages.currentIndex != 0:
+                self._switch_page(0)
+
     def _handle_event(self, event_type: str, data: Dict[str, Any]) -> None:
         active_page: BasePage = self.pages.currentWidget()
         active_page._handle_event(event_type, data)

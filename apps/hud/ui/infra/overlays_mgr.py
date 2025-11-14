@@ -30,7 +30,8 @@ from typing import Dict, Optional
 from PySide6.QtCore import QMetaObject, Qt
 from PySide6.QtWidgets import QApplication
 
-from apps.hud.ui.overlays import LapTimerOverlay, TimingTowerOverlay, MfdOverlay
+from apps.hud.ui.overlays import (LapTimerOverlay, MfdOverlay,
+                                  TimingTowerOverlay)
 from lib.button_debouncer import ButtonDebouncer
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import PngSettings
@@ -166,6 +167,11 @@ class OverlaysMgr:
         """Go to the next page in MFD overlay"""
         self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID, 'next_page', {})
 
+    def reset_overlays(self):
+        """Reset overlays"""
+        self._reset_config()
+        self.window_manager.set_config(self.config)
+
     def stream_overlays_update(self, data):
         """Handle the stream overlay update event"""
         self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID, 'stream_overlay_update', data)
@@ -206,6 +212,11 @@ class OverlaysMgr:
             self.logger.debug(f"Final loaded config: \n{json_str}")
         if should_write:
             pass
+
+    def _reset_config(self):
+        """"Reset config to default"""
+        self.config = _DEFAULT_OVERLAYS_CONFIG
+        self._save_config()
 
     def _save_config(self):
         """"Save config file"""
