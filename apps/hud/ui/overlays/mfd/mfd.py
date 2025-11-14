@@ -100,6 +100,11 @@ class MfdOverlay(BaseOverlay):
             next_index = next(self.page_cycle)
             while next_index == current_index:
                 next_index = next(self.page_cycle)
+
+            # in unlocked mode, don't allow switching to collapsed page
+            if not self.locked and next_index == 0:
+                next_index = 1
+                self.logger.debug(f"{self.overlay_id} | Unlocked mode. Skipping collapsed page in next_page")
             self._switch_page(next_index)
 
         @self.on_command("race_table_update")
