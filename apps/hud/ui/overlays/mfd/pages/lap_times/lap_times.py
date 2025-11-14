@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
+from enum import Enum
 from typing import Any, Dict, List
 
 from PySide6.QtCore import Qt
@@ -36,10 +37,21 @@ from .text_cell_delegate import NoElideDelegate
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
+class CellColour(Enum):
+    NONE = 0
+    RED = 1
+    GREEN = 2
+    PURPLE = 3
+
 class LapTimesPage(BasePage):
     """Elegant lap times table with modern styling."""
     HEADERS = ["Lap", "S1", "S2", "S3", "Time"]
     NUM_ROWS = 5
+
+    LAP_VALID_MASK = 1
+    S1_VALID_MASK = 2
+    S2_VALID_MASK = 4
+    S3_VALID_MASK = 8
 
     def __init__(self, parent: QWidget, logger: logging.Logger):
         """Initialize lap times page.
@@ -49,7 +61,7 @@ class LapTimesPage(BasePage):
             logger (logging.Logger): Logger
         """
         super().__init__(parent, logger, "mfd.lap_times", "RECENT LAP TIMES")
-        self._last_processed_laps: List[Dict[str, Any]] = []
+        self._last_processed_data: List[Dict[str, Any]] = []
 
         # Font configuration
         FONT_SIZE = 9
@@ -138,38 +150,92 @@ class LapTimesPage(BasePage):
             if not lap_time_history:
                 return
 
+            if self._last_processed_data == lap_time_history:
+                return
+
             history_data = lap_time_history.get("lap-time-history-data", [])
             if not history_data:
                 return
+
 
             # Get the last 5 laps (if fewer exist, it's fine)
             recent_laps = history_data[-self.NUM_ROWS:]
             if not recent_laps:
                 return
 
-            if self._last_processed_laps == recent_laps:
-                return
 
             # Clear old contents but keep headers
             self.table.clearContents()
 
-            # TODO: implement lap/sector colours
+            pb_lap_num = lap_time_history["fastest-lap-number"]
+            pb_s1_lap_num = lap_time_history["fastest-s1-lap-number"]
+            pb_s2_lap_num = lap_time_history["fastest-s2-lap-number"]
+            pb_s3_lap_num = lap_time_history["fastest-s3-lap-number"]
+            glob_best_lap_ms = lap_time_history["global-fastest-lap-ms"]
+            glob_best_s1_ms = lap_time_history["global-fastest-s1-ms"]
+            glob_best_s2_ms = lap_time_history["global-fastest-s2-ms"]
+            glob_best_s3_ms = lap_time_history["global-fastest-s3-ms"]
+
             # Fill available laps (latest at bottom)
             for row, lap_info in enumerate(reversed(recent_laps)):
-                lap_num = lap_info.get("lap-number", 0)
-                s1_time = lap_info.get("sector-1-time-str", 0)
-                s2_time = lap_info.get("sector-2-time-str", 0)
-                s3_time = lap_info.get("sector-3-time-str", 0)
-                lap_time = lap_info.get("lap-time-str", 0)
+                lap_num = lap_info["lap-number"]
+                s1_time_ms  = lap_info["sector-1-time-in-ms"]
+                s2_time_ms  = lap_info["sector-2-time-in-ms"]
+                s3_time_ms  = lap_info["sector-3-time-in-ms"]
+                lap_time_ms = lap_info["lap-time-in-ms"]
 
-                for col, value in enumerate([lap_num, s1_time, s2_time, s3_time, lap_time]):
+                s1_time_str = lap_info["sector-1-time-str"]
+                s2_time_str = lap_info["sector-2-time-str"]
+                s3_time_str = lap_info["sector-3-time-str"]
+                lap_time_str= lap_info["lap-time-str"]
+                validFlags = lap_info["lap-valid-bit-flags"]
+
+                # Determine validity for each sector and lap
+                s1_valid = bool(validFlags & self.S1_VALID_MASK)
+                s2_valid = bool(validFlags & self.S2_VALID_MASK)
+                s3_valid = bool(validFlags & self.S3_VALID_MASK)
+                lap_valid = bool(validFlags & self.LAP_VALID_MASK)
+
+                # Create data tuples: (value, time_ms, pb_lap_num, global_best_ms, is_valid)
+                cell_data = [
+                    (lap_num, None, None, None, True),  # Lap number column (no coloring)
+                    (s1_time_str, s1_time_ms, pb_s1_lap_num, glob_best_s1_ms, s1_valid),
+                    (s2_time_str, s2_time_ms, pb_s2_lap_num, glob_best_s2_ms, s2_valid),
+                    (s3_time_str, s3_time_ms, pb_s3_lap_num, glob_best_s3_ms, s3_valid),
+                    (lap_time_str, lap_time_ms, pb_lap_num, glob_best_lap_ms, lap_valid)
+                ]
+
+                for col, (value, time_ms, pb_lap, global_best, is_valid) in enumerate(cell_data):
                     if col == 0: # lap num
                         content = str(value)
                     else:
                         content = value if value not in ["0.000", "00:00.000"]  else "---"
+
                     item = QTableWidgetItem(content)
                     item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+
+                    # Apply color if not lap number column
+                    if col > 0:
+                        cell_color = self._get_cell_text_colour(lap_num, time_ms, global_best, pb_lap, is_valid)
+                        if cell_color == CellColour.PURPLE:
+                            item.setForeground(Qt.GlobalColor.magenta)
+                        elif cell_color == CellColour.GREEN:
+                            item.setForeground(Qt.GlobalColor.green)
+                        elif cell_color == CellColour.RED:
+                            item.setForeground(Qt.GlobalColor.red)
+
                     self.table.setItem(row, col, item)
 
             # Update the cache
-            self._last_processed_laps = recent_laps
+            self._last_processed_data = lap_time_history
+
+    def _get_cell_text_colour(self, lap_num: int, time_ms: int, global_best_time_ms: int,
+                              pb_lap_num: int, isValid: bool) -> CellColour:
+        """Get the text colour for a cell"""
+        if (global_best_time_ms and (time_ms == global_best_time_ms)):
+            return CellColour.PURPLE
+        if (pb_lap_num and (lap_num == pb_lap_num)):
+            return CellColour.GREEN
+        if not isValid:
+            return CellColour.RED
+        return CellColour.NONE
