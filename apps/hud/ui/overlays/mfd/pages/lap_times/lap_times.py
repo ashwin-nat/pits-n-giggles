@@ -64,10 +64,10 @@ class LapTimesPage(BasePage):
         self._last_processed_data: List[Dict[str, Any]] = []
 
         # Font configuration
-        FONT_SIZE = 9
+        FONT_SIZE = 13
         FONT_FAMILY = "Montserrat"  # Clean, modern font (falls back gracefully)
         HEADER_FONT = "Montserrat"  # F1-style font (you can change this to any other appropriate font)
-        HEADER_FONT_SIZE = 9
+        HEADER_FONT_SIZE = 13
 
         self.table = QTableWidget(5, 5, self)
         self.table.setHorizontalHeaderLabels(self.HEADERS)

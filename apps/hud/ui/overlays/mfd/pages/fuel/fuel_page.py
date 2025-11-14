@@ -39,9 +39,9 @@ class FuelInfoPage(BasePage):
     """Modern fuel statistics display for MFD."""
 
     FONT_FACE = "Montserrat"
-    FONT_SIZE_TITLE = 9
-    FONT_SIZE_VALUE = 16
-    FONT_SIZE_UNIT = 9
+    FONT_SIZE_TITLE = 16
+    FONT_SIZE_VALUE = 13
+    FONT_SIZE_UNIT = 13
     FONT_SIZE_LABEL = 8
 
     # Color scheme

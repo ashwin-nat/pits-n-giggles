@@ -41,7 +41,7 @@ class TyreWearPage(BasePage):
     """Modern tyre wear and prediction display for MFD."""
 
     FONT_FACE = "Montserrat"
-    FONT_SIZE = 10
+    FONT_SIZE = 13
     NUM_DECIMAL_PLACES = 2
     MED_WEAR = 50
     DANGER_WEAR = 75

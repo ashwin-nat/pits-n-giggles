@@ -40,7 +40,7 @@ class BasePage(QWidget):
 
     # Class variables for title customization
     TITLE_FONT_FACE = "Montserrat"
-    TITLE_FONT_SIZE = 11
+    TITLE_FONT_SIZE = 13
 
     def __init__(self, parent: QWidget, logger: logging.Logger, overlay_id: str, title: Optional[str] = None):
         super().__init__(parent)

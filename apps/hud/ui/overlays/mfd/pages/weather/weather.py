@@ -48,8 +48,8 @@ class WeatherForecastPage(BasePage):
     }
 
     FONT_FACE = "Montserrat"
-    TIME_FONT_SIZE = 10
-    RAIN_FONT_SIZE = 10
+    TIME_FONT_SIZE = 13
+    RAIN_FONT_SIZE = 13
     EMOJI_FONT_FACE = "Montserrat"
     EMOJI_FONT_SIZE = 22
     MAX_SAMPLES = 5
