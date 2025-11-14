@@ -180,6 +180,7 @@ class TyreWearPage(BasePage):
         self.wear_table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
         self.wear_table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.wear_table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.wear_table.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
         # Style the table
         self.wear_table.setFont(QFont(self.FONT_FACE, self.FONT_SIZE))
