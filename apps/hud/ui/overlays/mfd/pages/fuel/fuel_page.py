@@ -76,8 +76,6 @@ class FuelInfoPage(BasePage):
             self.logger.warning(f"{self.overlay_id} | Failed to load fuel icon")
 
         # Initialize widget references to None
-        self.fuel_in_tank_widget = None
-        self.fuel_progress_bar = None
         self.curr_rate_widget = None
         self.last_lap_widget = None
         self.target_avg_widget = None
@@ -97,21 +95,13 @@ class FuelInfoPage(BasePage):
         main_layout.setContentsMargins(12, 12, 12, 12)
         main_layout.setSpacing(8)
 
-        # Top row: Fuel in tank and capacity
-        top_row = self._create_top_row()
+        # Top row: Current consumption and last lap
+        top_row = self._create_middle_row()
         main_layout.addLayout(top_row)
 
         # Separator
         separator1 = self._create_separator()
         main_layout.addWidget(separator1)
-
-        # Middle row: Current consumption and last lap
-        middle_row = self._create_middle_row()
-        main_layout.addLayout(middle_row)
-
-        # Separator
-        separator2 = self._create_separator()
-        main_layout.addWidget(separator2)
 
         # Bottom row: Target rates and surplus laps
         bottom_row = self._create_bottom_row()
@@ -129,17 +119,6 @@ class FuelInfoPage(BasePage):
         line.setStyleSheet(f"background-color: {self.COLOR_BORDER};")
         line.setFixedHeight(1)
         return line
-
-    def _create_top_row(self) -> QHBoxLayout:
-        """Create top row with fuel in tank (icon, progress bar, value)."""
-        layout = QHBoxLayout()
-        layout.setSpacing(12)
-
-        # Fuel in tank with icon, progress bar, and value
-        self.fuel_in_tank_widget = self._create_fuel_display_widget()
-        layout.addWidget(self.fuel_in_tank_widget)
-
-        return layout
 
     def _create_middle_row(self) -> QHBoxLayout:
         """Create middle row with current rate and last lap usage."""
@@ -173,7 +152,7 @@ class FuelInfoPage(BasePage):
 
         # Target next lap
         self.target_next_widget = self._create_stat_widget(
-            "TARGET NEXT", "0.000", "kg/lap", compact=True
+            "TARGET NEXT LAP", "0.000", "kg", compact=True
         )
         layout.addWidget(self.target_next_widget)
 
@@ -184,97 +163,6 @@ class FuelInfoPage(BasePage):
         layout.addWidget(self.surplus_laps_widget)
 
         return layout
-
-    def _create_fuel_display_widget(self) -> QFrame:
-        """Create the fuel display with icon, progress bar, and value."""
-        frame = QFrame()
-        frame.setStyleSheet(f"""
-            QFrame {{
-                background-color: {self.COLOR_BG};
-                border: 1px solid {self.COLOR_BORDER};
-                border-radius: 6px;
-            }}
-        """)
-
-        layout = QVBoxLayout(frame)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(6)
-
-        # Label
-        label_widget = QLabel("FUEL IN TANK")
-        label_font = QFont(self.FONT_FACE, self.FONT_SIZE_LABEL)
-        label_font.setWeight(QFont.Medium)
-        label_widget.setFont(label_font)
-        label_widget.setStyleSheet(f"color: {self.COLOR_TEXT_DIM}; border: none;")
-        label_widget.setAlignment(Qt.AlignLeft)
-        layout.addWidget(label_widget)
-
-        # Horizontal layout for icon, progress bar, and value
-        content_layout = QHBoxLayout()
-        content_layout.setSpacing(8)
-        content_layout.setContentsMargins(0, 0, 0, 0)
-
-        # Icon or emoji fallback
-        icon_label = QLabel()
-        if self.fuel_icon and not self.fuel_icon.isNull():
-            icon_label.setPixmap(self.fuel_icon.pixmap(24, 24))
-        else:
-            icon_label.setText("⛽")
-            icon_label.setFont(QFont(self.FONT_FACE, 18))
-            icon_label.setStyleSheet(f"color: {self.COLOR_PRIMARY}; border: none;")
-        icon_label.setAlignment(Qt.AlignCenter)
-        icon_label.setFixedSize(24, 24)
-        content_layout.addWidget(icon_label)
-
-        # Progress bar
-        progress_bar = QProgressBar()
-        progress_bar.setRange(0, 100)
-        progress_bar.setValue(0)
-        progress_bar.setTextVisible(False)
-        progress_bar.setFixedHeight(20)
-        progress_bar.setStyleSheet(f"""
-            QProgressBar {{
-                border: 1px solid {self.COLOR_BORDER};
-                border-radius: 4px;
-                background-color: #0a0a0a;
-                text-align: center;
-            }}
-            QProgressBar::chunk {{
-                background-color: {self.COLOR_PRIMARY};
-                border-radius: 3px;
-            }}
-        """)
-        self.fuel_progress_bar = progress_bar
-        content_layout.addWidget(progress_bar, stretch=1)
-
-        # Value and unit
-        value_unit_layout = QHBoxLayout()
-        value_unit_layout.setSpacing(4)
-        value_unit_layout.setContentsMargins(0, 0, 0, 0)
-
-        value_widget = QLabel("0.000")
-        value_font = QFont(self.FONT_FACE, self.FONT_SIZE_VALUE)
-        value_font.setWeight(QFont.Bold)
-        value_widget.setFont(value_font)
-        value_widget.setStyleSheet(f"color: {self.COLOR_PRIMARY}; border: none;")
-        value_unit_layout.addWidget(value_widget)
-
-        unit_widget = QLabel("kg")
-        unit_font = QFont(self.FONT_FACE, self.FONT_SIZE_UNIT)
-        unit_font.setWeight(QFont.Medium)
-        unit_widget.setFont(unit_font)
-        unit_widget.setStyleSheet(f"color: {self.COLOR_TEXT_DIM}; border: none;")
-        unit_widget.setAlignment(Qt.AlignBottom)
-        value_unit_layout.addWidget(unit_widget)
-
-        content_layout.addLayout(value_unit_layout)
-        layout.addLayout(content_layout)
-
-        # Store references
-        frame.value_label = value_widget
-        frame.unit_label = unit_widget
-
-        return frame
 
     def _create_stat_widget(self, label: str, value: str, unit: str,
                            large: bool = False, compact: bool = False) -> QFrame:
@@ -350,16 +238,11 @@ class FuelInfoPage(BasePage):
             self.logger.debug(f"{self.overlay_id} | Received fuel info: {fuel_info}")
 
             # Extract values (may be None on first lap)
-            fuel_capacity = fuel_info.get("fuel-capacity", 0)
-            fuel_in_tank = fuel_info.get("fuel-in-tank", 0)
             curr_fuel_rate = fuel_info.get("curr-fuel-rate")
             last_lap_used = fuel_info.get("last-lap-fuel-used")
             surplus_laps = fuel_info.get("surplus-laps-png")
             target_rate_avg = fuel_info.get("target-fuel-rate-average")
             target_rate_next_lap = fuel_info.get("target-fuel-rate-next-lap")
-
-            # Update displays - handle None values
-            self._update_fuel_display(fuel_in_tank, fuel_capacity)
 
             # Handle potentially None values with fallback display
             if curr_fuel_rate is not None:
@@ -392,31 +275,10 @@ class FuelInfoPage(BasePage):
             else:
                 self._update_stat(self.surplus_laps_widget, "---", self.COLOR_TEXT_DIM)
 
-    def _update_fuel_display(self, fuel_in_tank: float, fuel_capacity: float):
-        """Update the fuel display with icon, progress bar, and value."""
-        try:
-            if hasattr(self.fuel_in_tank_widget, 'value_label') and self.fuel_in_tank_widget.value_label is not None:
-                # Update value (always green)
-                self.fuel_in_tank_widget.value_label.setText(f"{fuel_in_tank:.3f}")
-                self.fuel_in_tank_widget.value_label.setStyleSheet(f"color: {self.COLOR_PRIMARY}; border: none;")
-
-                # Update progress bar (always green)
-                if self.fuel_progress_bar is not None:
-                    percentage = int((fuel_in_tank / fuel_capacity) * 100) if fuel_capacity > 0 else 0
-                    self.fuel_progress_bar.setValue(percentage)
-        except RuntimeError:
-            # Widget was deleted, ignore
-            pass
-
     def _update_stat(self, widget: QFrame, value: str, color: str):
         """Update a stat widget's value and color."""
-        try:
-            if hasattr(widget, 'value_label') and widget.value_label is not None:
-                widget.value_label.setText(value)
-                widget.value_label.setStyleSheet(f"color: {color}; border: none;")
-        except RuntimeError:
-            # Widget was deleted, ignore
-            pass
+        widget.value_label.setText(value)
+        widget.value_label.setStyleSheet(f"color: {color}; border: none;")
 
     def _get_surplus_color(self, surplus: float) -> str:
         """Get color based on surplus laps."""
@@ -432,7 +294,6 @@ class FuelInfoPage(BasePage):
         disabled_text = "---"
         disabled_color = self.COLOR_TEXT_DIM
 
-        self._update_stat(self.fuel_in_tank_widget, disabled_text, disabled_color)
         self._update_stat(self.curr_rate_widget, disabled_text, disabled_color)
         self._update_stat(self.last_lap_widget, disabled_text, disabled_color)
         self._update_stat(self.target_avg_widget, disabled_text, disabled_color)
