@@ -23,10 +23,12 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
+import os
 import threading
 from functools import partial
 from typing import Callable, Dict
 
+from lib.error_status import PNG_LOST_CONN_TO_PARENT
 from lib.ipc import IpcChildSync
 
 from ..listener import HudClient
@@ -74,6 +76,7 @@ def run_ipc_task(
     )
     ipc_server.register_shutdown_callback(partial(
         _shutdown_handler, logger=logger, overlays_mgr=overlays_mgr, receiver_client=receiver_client))
+    ipc_server.register_heartbeat_missed_callback(_handle_heartbeat_missed)
     return ipc_server.serve_in_thread(partial(_ipc_handler, logger=logger, overlays_mgr=overlays_mgr))
 
 def _ipc_handler(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
@@ -128,3 +131,9 @@ def _stop_other_tasks(args: dict, logger: logging.Logger, overlays_mgr: Overlays
     overlays_mgr.stop()
 
     logger.info("Exiting HUD subsystem")
+
+def _handle_heartbeat_missed(count: int) -> dict:
+    """Handle terminate command"""
+
+    print(f"[HUD] Missed heartbeat {count} times. This process has probably been orphaned. Terminating...")
+    os._exit(PNG_LOST_CONN_TO_PARENT)
