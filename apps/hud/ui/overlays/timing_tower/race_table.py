@@ -270,6 +270,7 @@ class RaceTimingTable:
                 tyre_info: Dict[str, Any] = row_data.get("tyre-info", {})
                 ers_info: Dict[str, Any] = row_data.get("ers-info", {})
                 warns_pens_info: Dict[str, Any] = row_data.get("warns-pens-info", {})
+                telemetry_public = driver_info.get("telemetry-setting") == "Public"
 
                 position = driver_info.get("position", 0)
                 name = driver_info.get("name", "UNKNOWN")
@@ -279,18 +280,28 @@ class RaceTimingTable:
                 delta = delta_info.get("relative-delta", 0)
 
                 tyre_compound = tyre_info.get("visual-tyre-compound", "UNKNOWN")
-                max_wear = F1Utils.getMaxTyreWear(tyre_info["current-wear"])
-                max_wear_str = f"{F1Utils.formatFloat(max_wear['max-wear'], 0)}%"
+                if telemetry_public:
+                    # Tyre wear if telemetry is public
+                    max_wear = F1Utils.getMaxTyreWear(tyre_info["current-wear"])
+                    tyre_wear_age_str = f"{F1Utils.formatFloat(max_wear['max-wear'], 0)}%"
+                else:
+                    # Tyre age if telemetry is not public
+                    tyre_age = tyre_info.get("tyre-age", 0)
+                    tyre_wear_age_str = f"{tyre_age}L"
 
                 ers_mode = ers_info.get("ers-mode", "None")
                 ers_perc = ers_info.get("ers-percent-float", 0.0)
+                if telemetry_public:
+                    ers_text = f"{F1Utils.formatFloat(ers_perc, precision=0, signed=False)}%"
+                else:
+                    ers_text = "N/A"
                 drs = driver_info.get("drs", False)
 
                 time_pens_sec = warns_pens_info.get("time-penalties", 0)
 
                 self._update_row(
-                    idx, position, team, name, delta, tyre_compound, max_wear_str,
-                    ers_mode, ers_perc, (driver_idx == ref_index), drs, time_pens_sec
+                    idx, position, team, name, delta, tyre_compound, tyre_wear_age_str,
+                    ers_mode, ers_text, (driver_idx == ref_index), drs, time_pens_sec
                 )
 
             # Hide remaining empty rows
@@ -307,7 +318,7 @@ class RaceTimingTable:
         tyre_compound: str,
         max_tyre_wear_str: str,
         ers_mode: str,
-        ers: float,
+        ers: str,
         is_ref: bool,
         drs: bool,
         pens_sec: int
@@ -425,7 +436,7 @@ class RaceTimingTable:
         tyre_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         self.timing_table.setItem(row_idx, 4, tyre_item)
 
-    def _update_ers_cell(self, row_idx: int, ers: float, ers_mode: str, drs: bool) -> None:
+    def _update_ers_cell(self, row_idx: int, ers: str, ers_mode: str, drs: bool) -> None:
         """Update ERS cell (column 5).
 
         Args:
@@ -434,8 +445,7 @@ class RaceTimingTable:
             ers_mode: ERS mode of the driver
             drs: Is the driver in DRS
         """
-        ers_text = f"{F1Utils.formatFloat(ers, precision=0, signed=False)}%"
-        ers_item = self._create_table_item(ers_text, Qt.AlignmentFlag.AlignCenter)
+        ers_item = self._create_table_item(ers, Qt.AlignmentFlag.AlignCenter)
         ers_item.setData(
             Qt.ItemDataRole.UserRole,
             {"ers-mode": ers_mode, "drs": drs},
