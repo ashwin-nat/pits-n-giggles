@@ -22,14 +22,11 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import os
 import threading
 import time
 from typing import Callable, Optional
 
 import zmq
-
-from lib.error_status import PNG_LOST_CONN_TO_PARENT
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -87,7 +84,7 @@ class IpcChildSync:
 
     def _def_heartbeat_missed_callback(self, _missed_heartbeats: int) -> None:
         """Default heartbeat missed callback. Hard kills the app."""
-        os._exit(PNG_LOST_CONN_TO_PARENT)
+        return
 
     def _handle_heartbeat(self) -> dict:
         """Handles incoming heartbeat and resets missed counter."""

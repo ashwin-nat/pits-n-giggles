@@ -94,7 +94,8 @@ class PngAppMgrBase(ABC):
                  console_app: ConsoleInterface,
                  settings: PngSettings,
                  args: list[str],
-                 debug_mode: bool):
+                 debug_mode: bool,
+                 coverage_enabled: bool):
         """Initialize the sub-application
         :param http_port_conflict_settings_field: Settings field to check for HTTP port conflicts
         :param udp_port_conflict_settings_field: Settings field to check for UDP port conflicts
@@ -105,12 +106,14 @@ class PngAppMgrBase(ABC):
         :param settings: Settings object
         :param args: Additional Command line arguments to pass to the sub-application
         :param debug_mode: Whether to run the sub-application in debug mode
+        :param coverage_enabled: Whether to enable coverage
         """
         self.http_port_conflict_settings_field = http_port_conflict_settings_field
         self.udp_port_conflict_settings_field = udp_port_conflict_settings_field
         self.module_path = module_path
         self.display_name = display_name
         self.console_app = console_app
+        self.coverage_enabled = coverage_enabled
         self.args = args or []  # Store CLI args
         self.process: Optional[subprocess.Popen] = None
         self._process_lock = threading.Lock()
@@ -151,6 +154,17 @@ class PngAppMgrBase(ABC):
         """
         if getattr(sys, "frozen", False):
             return [sys.executable, "--module", module_path, *args]
+        if self.coverage_enabled:
+            self.console_app.info_log(f"Starting {self.display_name} with coverage...")
+            return [
+                sys.executable,
+                '-m', 'coverage',
+                'run',
+                '--parallel-mode',
+                '--rcfile', 'scripts/.coveragerc_integration',
+                '-m', module_path, *args
+            ]
+        self.console_app.info_log(f"Starting {self.display_name} without coverage...")
         return [sys.executable, "-m", module_path, *args]
 
 
@@ -174,7 +188,7 @@ class PngAppMgrBase(ABC):
             # Start the subprocess and update all related state variables atomically
             # so no other thread sees a partially updated state.
             launch_command = self.get_launch_command(self.module_path, self.args)
-            self.console_app.info_log(f"Starting {self.display_name}...")
+            self.console_app.info_log(f"Starting {self.display_name} using launch command: {launch_command}...")
 
             self.ipc_port = get_free_tcp_port()
             launch_command.extend(["--ipc-port", f"{self.ipc_port}"])

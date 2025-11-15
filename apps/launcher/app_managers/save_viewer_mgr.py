@@ -35,12 +35,18 @@ from .base_mgr import PngAppMgrBase
 
 class SaveViewerAppMgr(PngAppMgrBase):
     """Implementation of PngApp for save viewer"""
-    def __init__(self, console_app: ConsoleInterface, settings: PngSettings, args: list[str], debug_mode: bool):
+    def __init__(self,
+                 console_app: ConsoleInterface,
+                 settings: PngSettings,
+                 args: list[str],
+                 debug_mode: bool,
+                 coverage_enabled: bool):
         """Initialize the save viewer manager
         :param console_app: Reference to a console interface for logging
         :param settings: Settings object
         :param args: Command line arguments to pass to the save viewer subsystem
         :param debug_mode: Whether to run the save viewer in debug mode
+        :param coverage_enabled: Whether to enable coverage
         """
         self.port = settings.Network.save_viewer_port
         self.args = args + ["--debug"] if debug_mode else (args or [])
@@ -53,7 +59,8 @@ class SaveViewerAppMgr(PngAppMgrBase):
             console_app=console_app,
             settings=settings,
             args=self.args,
-            debug_mode=debug_mode
+            debug_mode=debug_mode,
+            coverage_enabled=coverage_enabled
         )
         self.register_post_start(self.post_start)
         self.register_post_stop(self.post_stop)

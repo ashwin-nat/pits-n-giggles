@@ -12,6 +12,10 @@ omit =
 source =
     lib
     apps/backend
+    apps/hud
+    apps/launcher
+
+sigterm = True
 
 [report]
 show_missing = True

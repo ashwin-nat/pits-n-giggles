@@ -41,13 +41,15 @@ class BackendAppMgr(PngAppMgrBase):
                  settings: PngSettings,
                  args: list[str],
                  debug_mode: bool,
-                 replay_server: bool):
+                 replay_server: bool,
+                 coverage_enabled: bool):
         """Initialize the backend manager
         :param console_app: Reference to a console interface for logging
         :param settings: Settings object
         :param args: Additional Command line arguments to pass to the backend
         :param debug_mode: Whether to run the backend in debug mode
         :param replay_server: Whether to run the replay server
+        :param coverage_enabled: Whether to enable coverage
         """
 
         extra_args = []
@@ -67,7 +69,8 @@ class BackendAppMgr(PngAppMgrBase):
             console_app=console_app,
             settings=settings,
             args=temp_args,
-            debug_mode=debug_mode
+            debug_mode=debug_mode,
+            coverage_enabled=coverage_enabled
         )
         self.register_post_start(self.post_start)
         self.register_post_stop(self.post_stop)
