@@ -191,8 +191,7 @@ def fetch_test_files() -> list[str]:
 
     except Exception as e:
         logger.test_log(f"Error downloading from Google Drive: {e}")
-        files = get_cached_files()
-        if files:
+        if files := get_cached_files():
             logger.test_log(f"Using {len(files)} cached files")
             return files
         logger.test_log("No test files available to run.")

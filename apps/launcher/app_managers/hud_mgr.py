@@ -327,13 +327,6 @@ class HudAppMgr(PngAppMgrBase):
 
     def _integration_test_worker(self):
         """Worker thread that periodically calls next_page_callback"""
-        while not self.integration_test_stop_event.is_set():
-            # Wait for the interval or until stop event is set
-            if self.integration_test_stop_event.wait(timeout=self.integration_test_interval):
-                break
-            time.sleep(self.integration_test_interval)
-            # Call next_page_callback
-            try:
-                self.next_page_callback()
-            except Exception as e: # pylint: disable=broad-exception-caught
-                self.console_app.error_log(f"Integration test worker error: {e}")
+        while (not self.integration_test_stop_event.is_set()) and \
+            (not self.integration_test_stop_event.wait(timeout=self.integration_test_interval)):
+            self.next_page_callback()
