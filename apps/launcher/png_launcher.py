@@ -54,7 +54,8 @@ class PngLauncher(ConsoleInterface):
                  logo_path: str,
                  settings_icon_path: str,
                  debug_mode: bool,
-                 replay_mode: bool):
+                 replay_mode: bool,
+                 integration_test_mode: bool):
         """Initialize the main application window
 
         Args:
@@ -64,6 +65,7 @@ class PngLauncher(ConsoleInterface):
             settings_icon_path (str): Path to the settings icon
             debug_mode (bool): Flag to enable debug mode
             replay_mode (bool): Flag to enable replay mode
+            integration_test_mode (bool): Flag to enable integration test mode
         """
 
         self.root = root
@@ -74,6 +76,7 @@ class PngLauncher(ConsoleInterface):
         self.settings_icon_path = settings_icon_path
         self.debug_mode = debug_mode
         self.replay_mode = replay_mode
+        self.integration_test_mode = integration_test_mode
 
         # Init logger before anything else
         self.setup_logger()
@@ -204,6 +207,7 @@ class PngLauncher(ConsoleInterface):
                 settings=self.settings,
                 args=hud_args,
                 debug_mode=self.debug_mode,
+                integration_test_mode=self.integration_test_mode
             ),
         }
 

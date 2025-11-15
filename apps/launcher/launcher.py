@@ -179,6 +179,7 @@ def entry_point() -> None:
         settings_icon_path=SETTINGS_ICON_PATH,
         debug_mode=args.debug,
         replay_mode=args.replay_server,
+        integration_test_mode=args.ipc_port is not None
     )
 
     # --- Tk close handlers ---

@@ -24,6 +24,8 @@
 
 import json
 import sys
+import threading
+import time
 from tkinter import ttk
 
 from lib.button_debouncer import ButtonDebouncer
@@ -37,19 +39,29 @@ from .base_mgr import PngAppMgrBase
 
 class HudAppMgr(PngAppMgrBase):
     """Implementation of PngApp for save viewer"""
-    def __init__(self, console_app: ConsoleInterface, settings: PngSettings, args: list[str], debug_mode: bool):
+    def __init__(self,
+                 console_app: ConsoleInterface,
+                 settings: PngSettings,
+                 args: list[str],
+                 debug_mode: bool,
+                 integration_test_mode: bool):
         """Initialize the save viewer manager
         :param console_app: Reference to a console interface for logging
         :param settings: Settings object
         :param args: Command line arguments to pass to the save viewer subsystem
         :param debug_mode: Whether to run the save viewer in debug mode
+        :param integration_test_mode: Whether to run the save viewer in integration test mode
         """
         self.port = settings.Network.save_viewer_port
         self.supported = (sys.platform == "win32") # Only supported on Windows
         self.enabled = settings.HUD.enabled
+        self.integration_test_mode = integration_test_mode
+        self.integration_test_interval = 2.0
         self.args = args + ["--debug"] if debug_mode else (args or [])
         self.locked = True # HUD starts locked by default
         self.debouncer = ButtonDebouncer(debounce_time=1.5)
+        self.integration_test_thread = None
+        self.integration_test_stop_event = threading.Event()
         super().__init__(
             http_port_conflict_settings_field='N/A',
             udp_port_conflict_settings_field="N/A",
@@ -210,8 +222,16 @@ class HudAppMgr(PngAppMgrBase):
         self.reset_button.config(state="normal")
         # self.next_page_button.config(state="normal")
 
+        # Start integration test thread if in integration test mode
+        if self.integration_test_mode:
+            self._start_integration_test_thread()
+
     def post_stop(self):
         """Update buttons after app stop"""
+        # Stop integration test thread if running
+        if self.integration_test_mode:
+            self._stop_integration_test_thread()
+
         self.hide_show_button.config(state="disabled")
         self.start_stop_button.config(text="Start")
         self.start_stop_button.config(state="normal")
@@ -282,3 +302,36 @@ class HudAppMgr(PngAppMgrBase):
             self.console_app.error_log(f"Failed to set overlays opacity: {rsp}")
         else:
             self.console_app.debug_log(f"Set overlays opacity response: {rsp}")
+
+    def _start_integration_test_thread(self):
+        """Start the integration test thread"""
+        self.integration_test_stop_event.clear()
+        self.integration_test_thread = threading.Thread(
+            target=self._integration_test_worker,
+            daemon=True
+        )
+        self.integration_test_thread.start()
+        self.console_app.info_log(
+            f"Integration test thread started with interval {self.integration_test_interval}s"
+        )
+
+    def _stop_integration_test_thread(self):
+        """Stop the integration test thread"""
+        if self.integration_test_thread and self.integration_test_thread.is_alive():
+            self.console_app.info_log("Stopping integration test thread...")
+            self.integration_test_stop_event.set()
+            self.integration_test_thread.join(timeout=5.0)
+            self.console_app.info_log("Integration test thread stopped")
+
+    def _integration_test_worker(self):
+        """Worker thread that periodically calls next_page_callback"""
+        while not self.integration_test_stop_event.is_set():
+            # Wait for the interval or until stop event is set
+            if self.integration_test_stop_event.wait(timeout=self.integration_test_interval):
+                break
+            time.sleep(self.integration_test_interval)
+            # Call next_page_callback
+            try:
+                self.next_page_callback()
+            except Exception as e: # pylint: disable=broad-exception-caught
+                self.console_app.error_log(f"Integration test worker error: {e}")
