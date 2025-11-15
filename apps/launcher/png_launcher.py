@@ -399,12 +399,12 @@ class PngLauncher(ConsoleInterface):
         """Required for stdout redirection"""
         return
 
-    def on_closing(self):
+    def on_closing(self, reason: str):
         """Stop all running sub-apps and restore stdout before closing"""
-        self.debug_log("Closing %s", self.app_name)
+        self.info_log(f"Closing {self.app_name}. Reason: {reason}")
         for _, subapp in self.subapps.items():
             if subapp.is_running:
-                self.debug_log(f"Stopping {subapp.display_name}...")
+                self.info_log(f"Stopping {subapp.display_name}...")
                 subapp.stop()
 
         sys.stdout = self.stdout_original

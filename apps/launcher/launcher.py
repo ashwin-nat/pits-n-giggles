@@ -30,9 +30,11 @@ import shutil
 import sys
 import tempfile
 import tkinter as tk
+from functools import partial
 
 from apps.launcher.png_launcher import PngLauncher
 from lib.file_path import resolve_user_file
+from lib.ipc import IpcChildSync
 from lib.version import get_version
 from meta.meta import APP_NAME
 
@@ -73,6 +75,14 @@ def parse_args() -> argparse.Namespace:
         "--replay-server",
         action="store_true",
         help="Enable replay mode"
+    )
+
+    # If integration test IPC port is specified, start an IPC server
+    parser.add_argument(
+        "--ipc-port",
+        type=int,
+        default=None,
+        help="Port to enable synchronous IPC server for integration testing."
     )
 
     return parser.parse_args()
@@ -168,8 +178,47 @@ def entry_point() -> None:
         logo_path=APP_ICON_PATH,
         settings_icon_path=SETTINGS_ICON_PATH,
         debug_mode=args.debug,
-        replay_mode=args.replay_server
+        replay_mode=args.replay_server,
     )
-    root.protocol("WM_DELETE_WINDOW", app.on_closing)
-    root.createcommand("::tk::mac::Quit", app.on_closing)
-    root.mainloop()
+
+    # --- Tk close handlers ---
+    root.protocol("WM_DELETE_WINDOW", partial(app.on_closing, "WM_DELETE_WINDOW"))
+    root.createcommand("::tk::mac::Quit", partial(app.on_closing, "::tk::mac::Quit"))
+
+    ipc = None
+    if args.ipc_port is not None:
+        ipc = IpcChildSync(
+            port=args.ipc_port,
+            name="launcher_ipc",
+            max_missed_heartbeats=3,
+            heartbeat_timeout=5.0,
+        )
+
+        # shutdown handler (__shutdown__)
+        ipc.register_shutdown_callback(
+            lambda _args: (
+                app.on_closing("ipc_shutdown"),
+                {"status": "success"}
+            )[1]
+        )
+
+        # heartbeat missed callback
+        ipc.register_heartbeat_missed_callback(
+            lambda missed: app.on_closing("heartbeat_missed")
+        )
+
+        # minimal generic handler
+        def launcher_handler(request: dict) -> dict:
+            return {
+                "status": "error",
+                "message": f"Launcher does not support IPC requests. Unknown command {request['cmd']}",
+            }
+
+        ipc.serve_in_thread(handler_fn=launcher_handler, timeout=0.25)
+
+    # main loop
+    try:
+        root.mainloop()
+    finally:
+        if ipc:
+            ipc.close()
