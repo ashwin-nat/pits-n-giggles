@@ -25,7 +25,6 @@
 import json
 import sys
 import threading
-import time
 from tkinter import ttk
 
 from lib.button_debouncer import ButtonDebouncer
