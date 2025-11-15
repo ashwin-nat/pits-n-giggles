@@ -44,7 +44,8 @@ class HudAppMgr(PngAppMgrBase):
                  settings: PngSettings,
                  args: list[str],
                  debug_mode: bool,
-                 integration_test_mode: bool):
+                 integration_test_mode: bool,
+                 coverage_enabled: bool):
         """Initialize the save viewer manager
         :param console_app: Reference to a console interface for logging
         :param settings: Settings object
@@ -71,7 +72,8 @@ class HudAppMgr(PngAppMgrBase):
             console_app=console_app,
             settings=settings,
             args=self.args,
-            debug_mode=debug_mode
+            debug_mode=debug_mode,
+            coverage_enabled=coverage_enabled
         )
         if not self.enabled:
             self.status_var.set("Disabled")

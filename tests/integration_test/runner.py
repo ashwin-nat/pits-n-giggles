@@ -199,14 +199,24 @@ def fetch_test_files() -> list[str]:
         sys.exit(1)
 
 
-def start_app(port: int) -> subprocess.Popen:
+def start_app(port: int, coverage_enabled: bool) -> subprocess.Popen:
     """Start the application process."""
-    app_cmd = [
-        sys.executable, "-m", "apps.launcher",
+    app_cmd_base = [
+        "-m", "apps.launcher",
         "--ipc-port", str(port),
         "--debug",
         "--replay-server"
     ]
+    if coverage_enabled:
+        app_cmd = [
+            sys.executable, "-m", "coverage", "run",
+            "--parallel-mode", "--rcfile", "scripts/.coveragerc_integration", *app_cmd_base, "--coverage"
+        ]
+        os.environ["COVERAGE_PROCESS_START"] = str(Path("scripts/.coveragerc_integration").resolve())
+    else:
+        app_cmd = [sys.executable, *app_cmd_base]
+
+    logger.test_log(f"Starting app with command: {' '.join(app_cmd)}")
 
     if IS_WINDOWS:
         return subprocess.Popen(
@@ -224,7 +234,6 @@ def start_app(port: int) -> subprocess.Popen:
             text=True,
             preexec_fn=os.setsid
         )
-
 
 def process_test_file(file: str, telemetry_port: int, http_port: int, proto: str) -> dict:
     """Process a single test file and check endpoints."""
@@ -290,19 +299,18 @@ def print_test_statistics() -> None:
 
     logger.test_log("=" * 80)
 
-
 def main(telemetry_port: int, http_port: int, proto: str, coverage_enabled: bool) -> bool:
     """Main test execution function."""
     global app_process, exit_event, ipc_port
 
     files = fetch_test_files()
-    logger.test_log(f"Test files: {', '.join(Path(f).name for f in files)}")
+    logger.test_log(f"Number of Test files: {len(files)}")
 
     exit_event = threading.Event()
 
     # Start the app
     ipc_port = get_free_tcp_port()
-    app_process = start_app(ipc_port)
+    app_process = start_app(ipc_port, coverage_enabled)
     logger.test_log(f"Started app with IPC port: {ipc_port}")
 
     # Start heartbeat thread

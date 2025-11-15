@@ -85,6 +85,12 @@ def parse_args() -> argparse.Namespace:
         help="Port to enable synchronous IPC server for integration testing."
     )
 
+    parser.add_argument(
+        "--coverage",
+        action="store_true",
+        help="Enable coverage mode"
+    )
+
     return parser.parse_args()
 
 def resource_path(relative_path):
@@ -179,7 +185,8 @@ def entry_point() -> None:
         settings_icon_path=SETTINGS_ICON_PATH,
         debug_mode=args.debug,
         replay_mode=args.replay_server,
-        integration_test_mode=args.ipc_port is not None
+        integration_test_mode=args.ipc_port is not None,
+        coverage_enabled=args.coverage
     )
 
     # --- Tk close handlers ---

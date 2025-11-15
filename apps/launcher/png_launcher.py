@@ -55,7 +55,8 @@ class PngLauncher(ConsoleInterface):
                  settings_icon_path: str,
                  debug_mode: bool,
                  replay_mode: bool,
-                 integration_test_mode: bool):
+                 integration_test_mode: bool,
+                 coverage_enabled: bool):
         """Initialize the main application window
 
         Args:
@@ -77,6 +78,7 @@ class PngLauncher(ConsoleInterface):
         self.debug_mode = debug_mode
         self.replay_mode = replay_mode
         self.integration_test_mode = integration_test_mode
+        self.coverage_mode = coverage_enabled
 
         # Init logger before anything else
         self.setup_logger()
@@ -192,7 +194,8 @@ class PngLauncher(ConsoleInterface):
                 settings=self.settings,
                 args=server_args,
                 debug_mode=self.debug_mode,
-                replay_server=self.replay_mode
+                replay_server=self.replay_mode,
+                coverage_enabled=self.coverage_mode
             ),
             # SaveViewer app reads port from args
             "save_viewer": SaveViewerAppMgr(
@@ -200,6 +203,7 @@ class PngLauncher(ConsoleInterface):
                 settings=self.settings,
                 args=save_viewer_args,
                 debug_mode=self.debug_mode,
+                coverage_enabled=self.coverage_mode
             ),
             # HUD app reads ipc port from args
             "hud": HudAppMgr(
@@ -207,7 +211,8 @@ class PngLauncher(ConsoleInterface):
                 settings=self.settings,
                 args=hud_args,
                 debug_mode=self.debug_mode,
-                integration_test_mode=self.integration_test_mode
+                integration_test_mode=self.integration_test_mode,
+                coverage_enabled=self.coverage_mode
             ),
         }
 
