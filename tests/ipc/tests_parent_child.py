@@ -182,7 +182,7 @@ class TestIpcParentChild(TestIPC):
             await asyncio.sleep(1)
             return {"reply": "late"}
 
-        def heartbeat_missed_callback(_missed_heartbeats: int) -> None:
+        async def heartbeat_missed_callback(_missed_heartbeats: int) -> None:
             pass
 
         child = IpcChildAsync(self.port, name=self.id())

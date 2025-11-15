@@ -23,14 +23,11 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
-import os
 import time
 from typing import Awaitable, Callable, Optional
 
 import zmq
 import zmq.asyncio
-
-from lib.error_status import PNG_LOST_CONN_TO_PARENT
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -197,9 +194,9 @@ class IpcChildAsync:
             self.close()
             self._running = False
 
-    def _def_heartbeat_missed_callback(self, _missed_heartbeats: int) -> Awaitable[None]:
+    async def _def_heartbeat_missed_callback(self, _missed_heartbeats: int) -> Awaitable[None]:
         """Default heartbeat missed callback. Hard kills the app"""
-        os._exit(PNG_LOST_CONN_TO_PARENT)
+        return
 
     def close(self) -> None:
         """Closes the socket."""

@@ -23,9 +23,11 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
+import os
 
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import ManualSaveRsp
+from lib.error_status import PNG_LOST_CONN_TO_PARENT
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
@@ -41,3 +43,9 @@ async def handleShutdown(msg: dict, logger: logging.Logger) -> dict:
     logger.info(f"Received shutdown command. Reason: {reason}")
     await AsyncInterTaskCommunicator().send('shutdown', {"reason" : reason})
     return {'status': 'success'}
+
+async def handleHeartbeatMissed(count: int) -> dict:
+    """Handle terminate command"""
+
+    print(f"[BACKEND] Missed heartbeat {count} times. This process has probably been orphaned. Terminating...")
+    os._exit(PNG_LOST_CONN_TO_PARENT)

@@ -24,11 +24,13 @@
 
 import asyncio
 import logging
+import os
 import webbrowser
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 import apps.save_viewer.save_viewer_state as SaveViewerState
 from apps.save_viewer.save_web_server import SaveViewerWebServer
+from lib.error_status import PNG_LOST_CONN_TO_PARENT
 from lib.ipc import IpcChildAsync
 from lib.web_server import ClientType
 
@@ -49,6 +51,7 @@ class SaveViewerIpc:
         self.m_should_open_ui = True
         self.m_ipc_server = IpcChildAsync(ipc_port, "Save Viewer")
         self.m_ipc_server.register_shutdown_callback(self._shutdown_handler)
+        self.m_ipc_server.register_heartbeat_missed_callback(self._heartbeat_missed_handler)
 
     async def run(self) -> None:
         """Starts the IPC server."""
@@ -113,6 +116,13 @@ class SaveViewerIpc:
         self.m_logger.info(f"Shutting down. Reason: {reason}")
         await self.m_server.stop()
         return {"status": "success"}
+
+    async def _heartbeat_missed_handler(self, count: int) -> dict:
+        """Handle terminate command"""
+
+        print(f"[SAVE_VIEWER] Missed heartbeat {count} times. This process has probably been orphaned. Terminating...")
+        os._exit(PNG_LOST_CONN_TO_PARENT)
+
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
