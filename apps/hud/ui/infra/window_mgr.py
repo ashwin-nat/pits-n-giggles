@@ -23,14 +23,14 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
-from PySide6.QtCore import (QMutex, QMutexLocker, QObject, QWaitCondition,
-                            Signal, Slot)
+from PySide6.QtCore import (QMutex, QMutexLocker, QObject, QTimer,
+                            QWaitCondition, Signal, Slot)
 
+from apps.hud.common import deserialise_data, serialise_data
 from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays import BaseOverlay
-from apps.hud.common import serialise_data, deserialise_data
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -40,7 +40,7 @@ class WindowManager(QObject):
     mgmt_request_signal = Signal(str, str, str)  # recipient, request_type, request_data (serialised into string)
     mgmt_response_signal = Signal(str, object)     # request_type, response_data
 
-    def __init__(self, logger: logging.Logger):
+    def __init__(self, logger: logging.Logger, post_init_cb: Optional[Callable[[], None]] = None):
         """Initialize window manager.
 
         Args:
@@ -59,6 +59,10 @@ class WindowManager(QObject):
         # Connect signals
         self.mgmt_request_signal.connect(self._handle_request)
         self.mgmt_response_signal.connect(self._store_response)
+
+        if post_init_cb:
+            # Will be called once the event loop is running
+            QTimer.singleShot(0, post_init_cb)
 
     def register_overlay(self, overlay_id: str, overlay: BaseOverlay):
         """Register an overlay and connect signals to its slots."""

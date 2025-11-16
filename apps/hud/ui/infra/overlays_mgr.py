@@ -88,7 +88,7 @@ class OverlaysMgr:
         self.running = False
 
         assert settings.HUD.enabled, "HUD must be enabled to run overlays manager"
-        self.window_manager = WindowManager(logger)
+        self.window_manager = WindowManager(logger, notify_parent_init_complete)
 
         if settings.HUD.show_lap_timer:
             self.window_manager.register_overlay(LapTimerOverlay.OVERLAY_ID, LapTimerOverlay(
@@ -123,7 +123,6 @@ class OverlaysMgr:
     def run(self):
         """Start the overlays manager"""
         self.running = True
-        notify_parent_init_complete()
         self.app.exec()
 
     def on_locked_state_change(self, args: Dict[str, bool]):
