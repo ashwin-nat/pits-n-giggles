@@ -295,7 +295,6 @@ class TyreWearPage(BasePage):
 
             tyre_info = ref_row["tyre-info"]
             curr_wear = tyre_info["current-wear"]
-            num_pit_stops = tyre_info["num-pitstops"]
             tyre_age = tyre_info["tyre-age"]
             visual_tyre_comp = tyre_info["visual-tyre-compound"]
             actual_tyre_comp = tyre_info["actual-tyre-compound"]
