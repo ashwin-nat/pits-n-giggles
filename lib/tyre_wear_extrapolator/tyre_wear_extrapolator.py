@@ -141,6 +141,26 @@ class TyreWearExtrapolator:
         """
         return self.m_remaining_laps
 
+    @property
+    def fl_rate(self) -> float:
+        """The tyre wear per lap of the front left"""
+        return self.m_fl_regression.slope
+
+    @property
+    def fr_rate(self) -> float:
+        """The tyre wear per lap of the front right"""
+        return self.m_fr_regression.slope
+
+    @property
+    def rl_rate(self) -> float:
+        """The tyre wear per lap of the rear left"""
+        return self.m_rl_regression.slope
+
+    @property
+    def rr_rate(self) -> float:
+        """The tyre wear per lap of the rear right"""
+        return self.m_rr_regression.slope
+
     def _recompute(self) -> None:
         """Recompute the tyre wear extrapolator
         """

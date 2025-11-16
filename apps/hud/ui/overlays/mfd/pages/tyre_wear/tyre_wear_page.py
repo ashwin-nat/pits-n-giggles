@@ -104,7 +104,7 @@ class TyreWearPage(BasePage):
         self.page_layout.addWidget(main_container)
 
     def _build_top_section(self, parent_layout: QVBoxLayout) -> None:
-        """Build a clean, single-row top section with tyre info and stats."""
+        """Build a split top section with current tyre info (left) and available tyres (right)."""
         top_widget = QWidget()
         top_widget.setStyleSheet("""
             QWidget {
@@ -113,58 +113,107 @@ class TyreWearPage(BasePage):
             }
         """)
         top_layout = QHBoxLayout(top_widget)
-        top_layout.setContentsMargins(10, 6, 10, 6)
-        top_layout.setSpacing(15)
-        top_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        top_layout.setContentsMargins(8, 4, 8, 4)
+        top_layout.setSpacing(10)
+
+        # LEFT HALF: Current tyre info
+        left_widget = QWidget()
+        left_widget.setStyleSheet("background: transparent;")
+        left_layout = QHBoxLayout(left_widget)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(8)
+        left_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         # Tyre icon
         self.tyre_icon_label = QLabel()
-        self.tyre_icon_label.setFixedSize(32, 32)
+        self.tyre_icon_label.setFixedSize(28, 28)
         self.tyre_icon_label.setScaledContents(True)
-        top_layout.addWidget(self.tyre_icon_label)
+        left_layout.addWidget(self.tyre_icon_label)
 
         # Compound name
         self.compound_label = QLabel("—")
-        self.compound_label.setFont(QFont(self.FONT_FACE, 11, QFont.Weight.Bold))
+        self.compound_label.setFont(QFont(self.FONT_FACE, 10, QFont.Weight.Bold))
         self.compound_label.setStyleSheet("color: #FFFFFF; background: transparent;")
-        top_layout.addWidget(self.compound_label)
+        left_layout.addWidget(self.compound_label)
 
         # Divider
         divider = QLabel("•")
-        divider.setFont(QFont(self.FONT_FACE, self.FONT_SIZE))
+        divider.setFont(QFont(self.FONT_FACE, self.FONT_SIZE - 1))
         divider.setStyleSheet("color: #444; background: transparent;")
-        top_layout.addWidget(divider)
+        left_layout.addWidget(divider)
 
         # Age stat
         age_label = QLabel("Age:")
-        age_label.setFont(QFont(self.FONT_FACE, self.FONT_SIZE))
+        age_label.setFont(QFont(self.FONT_FACE, self.FONT_SIZE - 1))
         age_label.setStyleSheet("color: #888; background: transparent;")
-        top_layout.addWidget(age_label)
+        left_layout.addWidget(age_label)
 
         self.tyre_age_label = QLabel("—")
-        self.tyre_age_label.setFont(QFont(self.FONT_FACE, self.FONT_SIZE, QFont.Weight.Bold))
+        self.tyre_age_label.setFont(QFont(self.FONT_FACE, self.FONT_SIZE - 1, QFont.Weight.Bold))
         self.tyre_age_label.setStyleSheet("color: #00D4FF; background: transparent;")
-        top_layout.addWidget(self.tyre_age_label)
+        left_layout.addWidget(self.tyre_age_label)
 
         # Divider
         divider2 = QLabel("•")
-        divider2.setFont(QFont(self.FONT_FACE, self.FONT_SIZE))
+        divider2.setFont(QFont(self.FONT_FACE, self.FONT_SIZE - 1))
         divider2.setStyleSheet("color: #444; background: transparent;")
-        top_layout.addWidget(divider2)
+        left_layout.addWidget(divider2)
 
-        # Pitstops stat
-        pit_stops_label = QLabel("Stops:")
-        pit_stops_label.setFont(QFont(self.FONT_FACE, self.FONT_SIZE))
-        pit_stops_label.setStyleSheet("color: #888; background: transparent;")
-        top_layout.addWidget(pit_stops_label)
+        # Wear rate stat
+        wear_rate_label = QLabel("Rate:")
+        wear_rate_label.setFont(QFont(self.FONT_FACE, self.FONT_SIZE - 1))
+        wear_rate_label.setStyleSheet("color: #888; background: transparent;")
+        left_layout.addWidget(wear_rate_label)
 
-        self.stops_value = QLabel("—")
-        self.stops_value.setFont(QFont(self.FONT_FACE, self.FONT_SIZE, QFont.Weight.Bold))
-        self.stops_value.setStyleSheet("color: #00D4FF; background: transparent;")
-        top_layout.addWidget(self.stops_value)
+        self.wear_rate_value = QLabel("—")
+        self.wear_rate_value.setFont(QFont(self.FONT_FACE, self.FONT_SIZE - 1, QFont.Weight.Bold))
+        self.wear_rate_value.setStyleSheet("color: #00D4FF; background: transparent;")
+        left_layout.addWidget(self.wear_rate_value)
 
-        # Stretch to align right
-        top_layout.addStretch()
+        left_layout.addStretch()
+        top_layout.addWidget(left_widget, stretch=1)
+
+        # Vertical divider
+        v_divider = QFrame()
+        v_divider.setFrameShape(QFrame.Shape.VLine)
+        v_divider.setStyleSheet("background-color: #333333;")
+        v_divider.setFixedWidth(1)
+        top_layout.addWidget(v_divider)
+
+        # RIGHT HALF: Available fresh tyres
+        right_widget = QWidget()
+        right_widget.setStyleSheet("background: transparent;")
+        right_main_layout = QVBoxLayout(right_widget)
+        right_main_layout.setContentsMargins(0, 0, 0, 0)
+        right_main_layout.setSpacing(2)
+
+        # Title for unused tyres
+        unused_title = QLabel("Unused Tyres")
+        unused_title.setFont(QFont(self.FONT_FACE, self.FONT_SIZE - 2))
+        unused_title.setStyleSheet("color: #888; background: transparent;")
+        unused_title.setAlignment(Qt.AlignmentFlag.AlignRight)
+        right_main_layout.addWidget(unused_title)
+
+        # Container for tyre icons
+        tyres_container = QWidget()
+        tyres_container.setStyleSheet("background: transparent;")
+        self.right_layout = QHBoxLayout(tyres_container)
+        self.right_layout.setContentsMargins(0, 0, 0, 0)
+        self.right_layout.setSpacing(12)
+        self.right_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
+
+        # Placeholder text (will be replaced when data is available)
+        self.available_tyres_placeholder = QLabel("No fresh tyres")
+        self.available_tyres_placeholder.setFont(QFont(self.FONT_FACE, self.FONT_SIZE - 2))
+        self.available_tyres_placeholder.setStyleSheet("color: #666; background: transparent;")
+        self.right_layout.addWidget(self.available_tyres_placeholder)
+
+        right_main_layout.addWidget(tyres_container)
+
+        # Store reference to available tyre widgets for updates
+        self.available_tyre_widgets = []
+
+        top_layout.addWidget(right_widget, stretch=1)
 
         parent_layout.addWidget(top_widget)
 
@@ -238,7 +287,7 @@ class TyreWearPage(BasePage):
     def _init_event_handlers(self):
         """Initialise event handlers."""
         @self.on_event("race_table_update")
-        def update(data: Dict[str, Any]) -> None:
+        def _handle_race_table_update(data: Dict[str, Any]) -> None:
             """Update tyre wear information display."""
             ref_row = get_ref_row(data)
             if not ref_row:
@@ -258,7 +307,14 @@ class TyreWearPage(BasePage):
 
             # Update stats
             self.tyre_age_label.setText(f"{tyre_age}L")
-            self.stops_value.setText(str(num_pit_stops))
+
+            # Calculate and display wear rate
+            tyre_wear_rates: Dict[str, Any] = tyre_info.get('wear-prediction', {}).get('rate', {})
+            if tyre_wear_rates:
+                avg_rate = sum(tyre_wear_rates.values()) / len(tyre_wear_rates.values())
+                self.wear_rate_value.setText(f"{avg_rate:.{self.NUM_DECIMAL_PLACES}f}%/L")
+            else:
+                self.wear_rate_value.setText("—")
 
             if telemetry_settings != "Public":
                 self._show_telemetry_disabled()
@@ -267,21 +323,117 @@ class TyreWearPage(BasePage):
 
             # Update wear table
             curr_lap_num = ref_row["lap-info"]["current-lap"]
+            wear_prediction = tyre_info["wear-prediction"]
             predictions = None
             pit_lap = None
+            tyre_wear_rates: Dict[str, Any] = wear_prediction['rate']
+            avg_rate = sum(tyre_wear_rates.values()) / len(tyre_wear_rates.values())
 
             if self._is_wear_prediction_supported(data):
-                wear_prediction = tyre_info["wear-prediction"]
                 pit_lap = wear_prediction["selected-pit-stop-lap"]
                 predictions = wear_prediction["predictions"]
 
             self._update_wear_table(curr_wear, curr_lap_num, predictions, pit_lap)
 
+        @self.on_event("stream_overlay_update")
+        def _handle_stream_overlay_update(data: Dict[str, Any]) -> None:
+            """Update tyre wear information display."""
+            tyre_sets_info = data["tyre-sets"]
+            if not tyre_sets_info:
+                return
+
+            fresh_avlb_tyre_sets = [
+                tyre_set
+                for tyre_set in tyre_sets_info["tyre-set-data"]
+                if tyre_set["available"] and not tyre_set["fitted"] and tyre_set['wear'] == 0
+            ]
+            groupings_by_comp = self._get_tyres_grouping_by_vis_comp(fresh_avlb_tyre_sets)
+            self._update_available_tyres_display(groupings_by_comp)
+
+    def _get_tyres_grouping_by_vis_comp(self, tyre_sets: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+        """Group tyre sets by visual tyre compound.
+
+        Args:
+            tyre_sets (List[Dict[str, Any]]): List of tyre sets.
+
+        Returns:
+            Dict[str, Dict[str, Any]]: Dictionary of tyre set count grouped by visual tyre compound.
+        """
+        groupings_by_comp = {}
+        for ts in tyre_sets:
+            vis = ts['visual-tyre-compound']
+            act = ts['actual-tyre-compound']
+
+            stats = groupings_by_comp.setdefault(
+                vis, {'actual-tyre-compound': act, 'count': 0}
+            )
+            stats['count'] += 1
+        return groupings_by_comp
+
+    def _update_available_tyres_display(self, groupings_by_comp: Dict[str, Dict[str, Any]]) -> None:
+        """Update the right side of top section with available fresh tyres.
+
+        Args:
+            groupings_by_comp (Dict[str, Dict[str, Any]]): Dictionary of tyre counts by visual compound.
+        """
+        # Clear existing widgets
+        for widget in self.available_tyre_widgets:
+            widget.deleteLater()
+        self.available_tyre_widgets.clear()
+
+        if not groupings_by_comp:
+            self.available_tyres_placeholder.show()
+            return
+
+        self.available_tyres_placeholder.hide()
+
+        # Add tyre icons with counts
+        for visual_compound, stats in groupings_by_comp.items():
+            count = stats['count']
+
+            # Create container for icon + count
+            tyre_container = QWidget()
+            tyre_container.setStyleSheet("background: transparent;")
+            tyre_container_layout = QVBoxLayout(tyre_container)
+            tyre_container_layout.setContentsMargins(0, 0, 0, 0)
+            tyre_container_layout.setSpacing(0)
+            tyre_container_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+            # Icon and count in horizontal layout
+            icon_count_widget = QWidget()
+            icon_count_widget.setStyleSheet("background: transparent;")
+            icon_count_layout = QHBoxLayout(icon_count_widget)
+            icon_count_layout.setContentsMargins(0, 0, 0, 0)
+            icon_count_layout.setSpacing(0)
+            icon_count_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+            # Icon
+            icon_label = QLabel()
+            icon_label.setFixedSize(24, 24)
+            icon_label.setScaledContents(True)
+            icon = self.tyre_icon_mappings.get(visual_compound)
+            if icon and not icon.isNull():
+                pixmap = icon.pixmap(24, 24)
+                icon_label.setPixmap(pixmap)
+            icon_count_layout.addWidget(icon_label)
+
+            # Count label (bottom right of icon)
+            count_label = QLabel(f"x{count}")
+            count_label.setFont(QFont(self.FONT_FACE, 9, QFont.Weight.Bold))
+            count_label.setStyleSheet("color: #00D4FF; background: transparent; padding-left: 2px;")
+            count_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignBottom)
+            icon_count_layout.addWidget(count_label)
+
+            tyre_container_layout.addWidget(icon_count_widget)
+
+            self.right_layout.addWidget(tyre_container)
+            self.available_tyre_widgets.append(tyre_container)
+
     def _update_compound_display(self, visual_compound: str, actual_compound: str) -> None:
         """Update the tyre compound icon and label."""
         icon = self.tyre_icon_mappings.get(visual_compound)
         if icon and not icon.isNull():
-            pixmap = icon.pixmap(32, 32)
+            pixmap = icon.pixmap(28, 28)
             self.tyre_icon_label.setPixmap(pixmap)
         else:
             self.tyre_icon_label.clear()

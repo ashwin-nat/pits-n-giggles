@@ -260,17 +260,26 @@ class DataPerDriver:
             List[Dict[str, Any]]: List of JSON objects, each containing tyre wear predictions for a specific lap
         """
 
+        tyre_wear_rate = {
+            "front-left" : self.m_tyre_info.m_tyre_wear_extrapolator.fl_rate,
+            "front-right" : self.m_tyre_info.m_tyre_wear_extrapolator.fr_rate,
+            "rear-left" : self.m_tyre_info.m_tyre_wear_extrapolator.rl_rate,
+            "rear-right" : self.m_tyre_info.m_tyre_wear_extrapolator.rr_rate,
+        }
+
         if self.m_tyre_info.m_tyre_wear_extrapolator.isDataSufficient():
             return {
                 "status" : True,
                 "desc" : "Data is sufficient for extrapolation",
                 "predictions": [item.toJSON() for item in self.m_tyre_info.m_tyre_wear_extrapolator.predicted_tyre_wear],
+                "rate" : tyre_wear_rate,
                 "selected-pit-stop-lap": selected_pit_stop_lap
             }
         return {
             "status" : False,
             "desc" : "Insufficient data for extrapolation",
             "predictions": [],
+            "rate" : tyre_wear_rate,
             "selected-pit-stop-lap": None
         }
 

@@ -79,7 +79,7 @@ class StreamOverlayData(BaseAPI):
 
         self.__initCarTelemetry(player_data)
         self.__initLapTimes(player_data)
-        self.__initTyreWear(player_data)
+        self.__initTyreSets(player_data)
         self.__initPenalties(player_data)
         self.__initGForce(player_data)
         self.__initPaceComparison(player_data, prev_data, next_data)
@@ -113,35 +113,17 @@ class StreamOverlayData(BaseAPI):
         self.m_speed_trap_record: Optional[float] = player_data.m_packet_copies.m_packet_lap_data.m_speedTrapFastestSpeed \
             if player_data and player_data.m_packet_copies.m_packet_lap_data else None
 
-    def __initTyreWear(self, player_data: Optional[DataPerDriver]) -> None:
-        """Prepares the player's tyre wear data.
+    def __initTyreSets(self, player_data: Optional[DataPerDriver]) -> None:
+        """Prepares the player's tyre sets data.
 
         Args:
             player_data (Optional[TelData.DataPerDriver]): The player's DataPerDriver object
         """
 
-        if player_data and player_data.m_packet_copies.m_packet_car_damage:
-            self.m_tyre_wear = TyreWearPerLap(
-                fl_tyre_wear=player_data.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
-                fr_tyre_wear=player_data.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
-                rl_tyre_wear=player_data.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
-                rr_tyre_wear=player_data.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
-                lap_number=self.m_curr_lap,
-                is_racing_lap=True,
-                desc="Curr tyre wear"
-            )
-            self.m_tyre_wear_predictions = player_data.getTyrePredictionsJSONList(self.m_next_pit_window)
+        if player_data:
+            self.m_tyre_sets_pkt = player_data.m_packet_copies.m_packet_tyre_sets
         else:
-            self.m_tyre_wear = TyreWearPerLap(
-                fl_tyre_wear=0,
-                fr_tyre_wear=0,
-                rl_tyre_wear=0,
-                rr_tyre_wear=0,
-                lap_number=0,
-                is_racing_lap=True,
-                desc="No data"
-            )
-            self.m_tyre_wear_predictions = []
+            self.m_tyre_sets_pkt = None
 
     def __initPenalties(self, player_data: Optional[DataPerDriver]) -> None:
         """Prepares the player's penalties data.
@@ -299,11 +281,7 @@ class StreamOverlayData(BaseAPI):
                 "brake": (self.m_brake * 100),
                 "steering" : (self.m_steering * 100),
             },
-            "tyre-wear" : {
-                "current" : self.m_tyre_wear.toJSON(),
-                "predictions" : self.m_tyre_wear_predictions,
-                "pit-window" : self.m_next_pit_window
-            },
+            "tyre-sets" : self.m_tyre_sets_pkt.toJSON() if self.m_tyre_sets_pkt else None,
             "penalties-and-stats" : {
                 "time-penalties": self.m_penalties,
                 "total-warnings": self.m_total_warnings,
