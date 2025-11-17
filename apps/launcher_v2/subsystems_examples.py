@@ -5,15 +5,17 @@ Shows how to create concrete subsystem managers
 
 from typing import List, Dict, Any
 from .subsystem_manager import SubsystemManager
+from PySide6.QtWidgets import QMainWindow
 
 
 class ServerSubsystem(SubsystemManager):
     """Example: HTTP Server subsystem"""
 
-    def __init__(self, start_by_default: bool = True):
+    def __init__(self, console: QMainWindow, start_by_default: bool = True):
         super().__init__(
             module_path="my_app.server",  # Your actual module path
             display_name="Server",
+            console=console,
             start_by_default=start_by_default,
             args=["--port", "4768"],  # Example args
             http_port_conflict_field="server.http_port",
@@ -74,8 +76,9 @@ class ServerSubsystem(SubsystemManager):
 class HUDSubsystem(SubsystemManager):
     """Example: HUD overlay subsystem"""
 
-    def __init__(self, start_by_default: bool = False):
+    def __init__(self, console: QMainWindow, start_by_default: bool = True):
         super().__init__(
+            console=console,
             module_path="my_app.hud",
             display_name="HUD",
             start_by_default=start_by_default,
@@ -150,8 +153,9 @@ class HUDSubsystem(SubsystemManager):
 class DashboardSubsystem(SubsystemManager):
     """Example: Save viewer/analyzer subsystem"""
 
-    def __init__(self, start_by_default: bool = True):
+    def __init__(self, console: QMainWindow, start_by_default: bool = True):
         super().__init__(
+            console=console,
             module_path="my_app.dashboard",
             display_name="Save Viewer",
             start_by_default=start_by_default,

@@ -12,6 +12,7 @@ import time
 from pathlib import Path
 from typing import Optional, Callable, List, Dict, Any
 from PySide6.QtCore import QObject, Signal
+from PySide6.QtWidgets import QMainWindow
 
 import psutil
 
@@ -65,6 +66,7 @@ class SubsystemManager(QObject):
     DEFAULT_EXIT = EXIT_ERRORS[PNG_ERROR_CODE_UNKNOWN]
 
     def __init__(self,
+                 console: QMainWindow,
                  module_path: str,
                  display_name: str,
                  start_by_default: bool = False,
@@ -88,6 +90,7 @@ class SubsystemManager(QObject):
         """
         super().__init__()
 
+        self.console = console
         self.module_path = module_path
         self.display_name = display_name
         self.start_by_default = start_by_default
@@ -120,10 +123,6 @@ class SubsystemManager(QObject):
         self.heartbeat_interval: float = 5.0  # seconds
         self.num_missable_heartbeats: int = 3
         self._stop_heartbeat = threading.Event()
-
-    def set_console(self, console):
-        """Set the console interface for logging"""
-        self.console = console
 
     def get_buttons(self) -> List[Dict[str, Any]]:
         """

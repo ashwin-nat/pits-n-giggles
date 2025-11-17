@@ -16,6 +16,7 @@ from PySide6.QtCore import Qt, QTimer, Signal, QObject
 from PySide6.QtGui import QFont, QTextCursor, QAction
 
 from .subsystem_manager import SubsystemManager
+from .subsystems_examples import ServerSubsystem, HUDSubsystem, DashboardSubsystem
 
 
 class LogSignals(QObject):
@@ -173,9 +174,13 @@ class SubsystemRow(QWidget):
 class LauncherMainWindow(QMainWindow):
     """Main launcher window"""
 
-    def __init__(self, subsystems: List[SubsystemManager]):
+    def __init__(self):
         super().__init__()
-        self.subsystems = subsystems
+        self.subsystems = [
+            ServerSubsystem(start_by_default=True, console=self),
+            HUDSubsystem(start_by_default=False, console=self),
+            DashboardSubsystem(start_by_default=True, console=self),
+        ]
         self.log_file = Path("launcher.log")
 
         # Setup logging signals
@@ -184,10 +189,6 @@ class LauncherMainWindow(QMainWindow):
 
         # Setup file logging
         self.setup_file_logging()
-
-        # Register this launcher as console for all subsystems
-        for subsystem in self.subsystems:
-            subsystem.set_console(self)
 
         self.setup_ui()
 
@@ -429,15 +430,9 @@ def main():
     app = QApplication(sys.argv)
 
     # Example subsystems (you'll replace these with your actual implementations)
-    from .subsystems import ServerSubsystem, HUDSubsystem, DashboardSubsystem
 
-    subsystems = [
-        ServerSubsystem(start_by_default=True),
-        HUDSubsystem(start_by_default=False),
-        DashboardSubsystem(start_by_default=True),
-    ]
 
-    window = LauncherMainWindow(subsystems)
+    window = LauncherMainWindow()
     window.show()
 
     sys.exit(app.exec())
