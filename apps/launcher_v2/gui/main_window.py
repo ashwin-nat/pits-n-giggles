@@ -34,159 +34,14 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QTimer, Signal, QObject
 from PySide6.QtGui import QFont, QTextCursor, QCloseEvent
 
-from .subsystems import BackendAppMgr, PngAppMgrBase
+from apps.launcher_v2.subsystems import BackendAppMgr, PngAppMgrBase
 from lib.file_path import resolve_user_file
 from lib.config import PngSettings, load_config_from_ini
-from .logger import get_rotating_logger
+from apps.launcher_v2.logger import get_rotating_logger
+from .console import LogSignals, ConsoleWidget
+from .subsys_row import SubsystemRow
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
-
-class LogSignals(QObject):
-    """Signals for thread-safe logging"""
-    log_message = Signal(str, str)  # message, level
-
-
-class ConsoleWidget(QTextEdit):
-    """Custom console widget"""
-
-    def __init__(self):
-        super().__init__()
-        self.setReadOnly(True)
-        self.setFont(QFont("Consolas", 9))
-
-        # Clean dark theme styling
-        self.setStyleSheet("""
-            QTextEdit {
-                background-color: #1e1e1e;
-                color: #d4d4d4;
-                border: 1px solid #3e3e3e;
-                padding: 8px;
-            }
-        """)
-
-        # Log colors
-        self.colors = {
-            'INFO': '#4ec9b0',      # Teal
-            'DEBUG': '#808080',     # Gray
-            'WARNING': '#d7ba7d',   # Yellow
-            'ERROR': '#f48771',     # Red
-            'CHILD': '#569cd6'      # Blue
-        }
-
-    def append_log(self, message: str, level: str = 'INFO'):
-        """Append a log message with color coding"""
-
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
-        color = self.colors.get(level, '#d4d4d4')
-
-        formatted = f'<span style="color: #666;">[{timestamp}]</span> '
-        formatted += f'<span style="color: {color}; font-weight: bold;">[{level}]</span> '
-        formatted += f'<span style="color: #d4d4d4;">{message}</span>'
-
-        self.append(formatted)
-        self.moveCursor(QTextCursor.End)
-
-
-class SubsystemRow(QWidget):
-    """Compact single-row widget for a subsystem"""
-
-    def __init__(self, manager: PngAppMgrBase):
-        super().__init__()
-        self.manager = manager
-        self.setup_ui()
-
-        # Connect manager signals to UI updates
-        manager.status_changed.connect(self.update_status)
-
-    def setup_ui(self):
-        """Setup the subsystem row UI"""
-        layout = QHBoxLayout()
-        layout.setContentsMargins(10, 5, 10, 5)
-        layout.setSpacing(10)
-
-        # Name label (fixed width)
-        name_label = QLabel(f"{self.manager.display_name}:")
-        name_label.setFont(QFont("Arial", 10))
-        name_label.setFixedWidth(100)
-        name_label.setStyleSheet("color: #d4d4d4;")
-        layout.addWidget(name_label)
-
-        # Status indicator (fixed width)
-        self.status_label = QLabel(self.manager.status)
-        self.status_label.setFont(QFont("Arial", 9))
-        self.status_label.setFixedWidth(100)
-        self.update_status(self.manager.status)
-        layout.addWidget(self.status_label)
-
-        # Buttons
-        for button in self.manager.get_buttons():
-            layout.addWidget(button)
-
-        layout.addStretch()
-        self.setLayout(layout)
-
-    def update_status(self, status: str):
-        """Update the status indicator"""
-        color_map = {
-            'Stopped': '#808080',
-            'Starting': '#d7ba7d',
-            'Running': '#4ec9b0',
-            'Stopping': '#d7ba7d',
-            'Crashed': '#f48771',
-            'HTTP Port Conflict': '#f48771',
-            'UDP Port Conflict': '#f48771',
-            'Timed out': '#f48771'
-        }
-
-        color = color_map.get(status, '#d4d4d4')
-        self.status_label.setText(status)
-        self.status_label.setStyleSheet(f"color: {color}; font-weight: bold;")
-
-    def _get_button_style(self, is_primary: bool) -> str:
-        if is_primary:
-            return """
-                QPushButton {
-                    background-color: #0e639c;
-                    color: white;
-                    border: 1px solid #0e639c;
-                    border-radius: 3px;
-                    padding: 4px 12px;
-                }
-                QPushButton:hover {
-                    background-color: #1177bb;
-                }
-                QPushButton:pressed {
-                    background-color: #0d5689;
-                }
-                QPushButton:disabled {
-                    background-color: #3e3e3e;
-                    color: #808080;
-                    border-color: #3e3e3e;
-                }
-            """
-        else:
-            return """
-                QPushButton {
-                    background-color: #2d2d2d;
-                    color: #d4d4d4;
-                    border: 1px solid #3e3e3e;
-                    border-radius: 3px;
-                    padding: 4px 12px;
-                }
-                QPushButton:hover {
-                    background-color: #3e3e3e;
-                    border-color: #0e639c;
-                }
-                QPushButton:pressed {
-                    background-color: #1e1e1e;
-                }
-                QPushButton:disabled {
-                    background-color: #1e1e1e;
-                    color: #808080;
-                    border-color: #2d2d2d;
-                }
-            """
-
 
 class PngLauncherWindow(QMainWindow):
     """Main launcher window"""
@@ -414,7 +269,7 @@ class PngLauncherWindow(QMainWindow):
             "INFO": self.logger.info,
             "WARNING": self.logger.warning,
             "ERROR": self.logger.error,
-            "CHILD": lambda msg: self.logger.info(f"[CHILD] {msg}")
+            "CHILD": lambda msg: self.logger.info(f"[SUBSYS] {msg}")
         }
 
         # Get the appropriate log function (fallback = info)
