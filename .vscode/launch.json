@@ -5,6 +5,17 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Launcher v2 (debug/replay)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "apps.launcher_v2",
+            "console": "integratedTerminal",
+            "args": [
+                "--debug", "--replay-server"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
             "name": "Launcher (debug/replay)",
             "type": "debugpy",
             "request": "launch",
