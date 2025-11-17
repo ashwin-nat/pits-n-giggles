@@ -110,7 +110,7 @@ def send_heartbeat(
         port: int,
         num_missable_heartbeats: int = 3,
         interval: float = 5.0) -> None:
-    """Send periodic heartbeat to the backend process."""
+    """Send periodic heartbeat to the main app."""
     failed_heartbeat_count = 0
 
     while not stop_event.is_set():
@@ -119,23 +119,23 @@ def send_heartbeat(
 
             if rsp.get("status") == "success":
                 failed_heartbeat_count = 0
-                logger.test_log(f"Backend process: Heartbeat response: {rsp}")
+                logger.test_log(f"Integration test: Heartbeat response: {rsp}")
             else:
-                logger.test_log(f"Backend process: Heartbeat failed with response: {rsp}")
+                logger.test_log(f"Integration test: Heartbeat failed with response: {rsp}")
                 failed_heartbeat_count += 1
 
         except Exception as e:
-            logger.test_log(f"Backend process: Error sending heartbeat: {e}")
+            logger.test_log(f"Integration test: Error sending heartbeat: {e}")
             failed_heartbeat_count += 1
 
         if failed_heartbeat_count > num_missable_heartbeats:
-            logger.test_log(f"Backend process: Missed {failed_heartbeat_count} consecutive heartbeats. Stopping.")
+            logger.test_log(f"Integration test: Missed {failed_heartbeat_count} consecutive heartbeats. Stopping.")
             break
 
         time.sleep(interval)
 
     stop_event.clear()
-    logger.test_log("Backend process: Heartbeat job stopped")
+    logger.test_log("Integration test: Heartbeat job stopped")
 
 
 async def _check_endpoints_async(urls: list[str]) -> list[tuple[str, bool]]:
