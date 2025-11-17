@@ -26,10 +26,10 @@ import sys
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import List
+from typing import Callable
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QPushButton, QLabel, QTextEdit, QFrame, QSplitter
+    QPushButton, QLabel, QTextEdit, QFrame, QSplitter, QMessageBox
 )
 from PySide6.QtCore import Qt, QTimer, Signal, QObject
 from PySide6.QtGui import QFont, QTextCursor, QCloseEvent
@@ -64,7 +64,7 @@ class PngLauncherWindow(QMainWindow):
         self.log_file = Path("launcher.log")
         self.logger, self.log_file_path = get_rotating_logger(debug_mode=self.debug_mode)
         self.config_file = resolve_user_file("png_config.ini")
-        self.settings: PngSettings = load_config_from_ini(self.config_file, logger=self.logger) # TODO: use logger
+        self.settings: PngSettings = load_config_from_ini(self.config_file, logger=self.logger)
         super().__init__()
         self.subsystems = [
            BackendAppMgr(
@@ -298,3 +298,56 @@ class PngLauncherWindow(QMainWindow):
     def process_events(self):
         """Process pending events in the application's event loop"""
         self.app.processEvents()
+
+    def build_button(self, text: str, callback: Callable[[], None]) -> QPushButton:
+        """Build a button with the given text and callback"""
+        btn = QPushButton(text)
+        btn.setFixedHeight(28)
+        btn.setMinimumWidth(80)
+        btn.setFont(QFont("Arial", 9))
+        btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #0e639c;
+                    color: white;
+                    border: 1px solid #0e639c;
+                    border-radius: 3px;
+                    padding: 4px 12px;
+                }
+                QPushButton:hover {
+                    background-color: #1177bb;
+                }
+                QPushButton:pressed {
+                    background-color: #0d5689;
+                }
+                QPushButton:disabled {
+                    background-color: #3e3e3e;
+                    color: #808080;
+                    border-color: #3e3e3e;
+                }
+            """)
+        btn.clicked.connect(callback)
+        return btn
+
+    def set_button_state(self, button: QPushButton, enabled: bool):
+        """Enable/disable a QPushButton."""
+        button.setEnabled(enabled)
+
+    def set_button_text(self, button: QPushButton, text: str):
+        """Set text on a QPushButton."""
+        button.setText(text)
+
+    def show_success(self, title: str, message: str):
+        """Display a success/info message box."""
+        QMessageBox.information(
+            self,
+            title,
+            message
+        )
+
+    def show_error(self, title: str, message: str):
+        """Display an error message box."""
+        QMessageBox.critical(
+            self,
+            title,
+            message
+        )

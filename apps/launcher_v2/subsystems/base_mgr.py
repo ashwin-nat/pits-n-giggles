@@ -29,8 +29,7 @@ import threading
 import time
 from typing import Optional, Callable, List, Dict, Any, TYPE_CHECKING
 from PySide6.QtCore import QObject, Signal
-from PySide6.QtWidgets import QPushButton, QMessageBox
-from PySide6.QtGui import QFont
+from PySide6.QtWidgets import QPushButton # TODO: abstract
 
 from lib.ipc import get_free_tcp_port
 from lib.error_status import PNG_ERROR_CODE_HTTP_PORT_IN_USE, PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN, PNG_LOST_CONN_TO_PARENT
@@ -152,35 +151,6 @@ class PngAppMgrBase(QObject):
             List of buttons
         """
         raise NotImplementedError
-
-    def build_button(self, text: str, callback: Callable[[], None]) -> QPushButton:
-        """Build a button with the given text and callback"""
-        btn = QPushButton(text)
-        btn.setFixedHeight(28)
-        btn.setMinimumWidth(80)
-        btn.setFont(QFont("Arial", 9))
-        btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #0e639c;
-                    color: white;
-                    border: 1px solid #0e639c;
-                    border-radius: 3px;
-                    padding: 4px 12px;
-                }
-                QPushButton:hover {
-                    background-color: #1177bb;
-                }
-                QPushButton:pressed {
-                    background-color: #0d5689;
-                }
-                QPushButton:disabled {
-                    background-color: #3e3e3e;
-                    color: #808080;
-                    border-color: #3e3e3e;
-                }
-            """)
-        btn.clicked.connect(callback)
-        return btn
 
     def get_launch_command(self) -> List[str]:
         """Build the subprocess launch command"""
@@ -512,31 +482,27 @@ class PngAppMgrBase(QObject):
         self._post_stop_hook = func
         return func
 
-    def set_button_state(self, button: QPushButton, enabled: bool):
-        """Enable/disable a QPushButton."""
-        button.setEnabled(enabled)
-
-    def set_button_text(self, button: QPushButton, text: str):
-        """Set text on a QPushButton."""
-        button.setText(text)
+    def build_button(self, text: str, callback: Callable[[], None]) -> QPushButton:
+        """Build a button with the given text and callback"""
+        return self.window.build_button(text, callback)
 
     def set_button_text_state(self, button: QPushButton, text: str, enabled: bool):
         """Set text and enable/disable a QPushButton."""
-        self.set_button_text(button, text)
-        self.set_button_state(button, enabled)
+        self.window.set_button_text(button, text)
+        self.window.set_button_state(button, enabled)
+
+    def set_button_state(self, button: QPushButton, enabled: bool):
+        """Enable/disable a QPushButton."""
+        self.window.set_button_state(button, enabled)
+
+    def set_button_text(self, button: QPushButton, text: str):
+        """Set text on a QPushButton."""
+        self.window.set_button_text(button, text)
 
     def show_success(self, title: str, message: str):
         """Display a success/info message box."""
-        QMessageBox.information(
-            self,
-            title,
-            message
-        )
+        self.window.show_success(title, message)
 
     def show_error(self, title: str, message: str):
         """Display an error message box."""
-        QMessageBox.critical(
-            self,
-            title,
-            message
-        )
+        self.window.show_error(title, message)
