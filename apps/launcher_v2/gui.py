@@ -186,7 +186,7 @@ class SubsystemRow(QWidget):
             """
 
 
-class LauncherMainWindow(QMainWindow):
+class PngLauncherWindow(QMainWindow):
     """Main launcher window"""
 
     def __init__(self,

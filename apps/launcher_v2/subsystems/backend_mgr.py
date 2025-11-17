@@ -29,15 +29,18 @@ from lib.config import PngSettings
 from lib.ipc import IpcParent
 
 from .base_mgr import PngAppMgrBase
-from PySide6.QtWidgets import QMainWindow, QPushButton
-from typing import List
+from PySide6.QtWidgets import QPushButton
+from typing import List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from apps.launcher_v2.gui import PngLauncherWindow
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class BackendAppMgr(PngAppMgrBase):
     """Implementation of PngApp for backend services"""
     def __init__(self,
-                 console: QMainWindow,
+                 console: "PngLauncherWindow",
                  settings: PngSettings,
                  args: list[str],
                  debug_mode: bool,

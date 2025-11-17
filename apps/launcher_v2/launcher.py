@@ -32,7 +32,7 @@ import tempfile
 import tkinter as tk
 from functools import partial
 
-from apps.launcher_v2.gui import LauncherMainWindow
+from apps.launcher_v2.gui import PngLauncherWindow
 from lib.file_path import resolve_user_file
 from lib.ipc import IpcChildSync
 from lib.version import get_version
@@ -174,7 +174,7 @@ def entry_point() -> None:
         except Exception: # pylint: disable=broad-except
             pass
 
-    app = LauncherMainWindow(
+    app = PngLauncherWindow(
         ver_str=get_version(),
         logo_path=APP_ICON_PATH,
         settings_icon_path=SETTINGS_ICON_PATH,

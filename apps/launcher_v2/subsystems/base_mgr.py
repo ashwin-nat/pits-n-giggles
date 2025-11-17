@@ -27,9 +27,9 @@ import subprocess
 import sys
 import threading
 import time
-from typing import Optional, Callable, List, Dict, Any
+from typing import Optional, Callable, List, Dict, Any, TYPE_CHECKING
 from PySide6.QtCore import QObject, Signal
-from PySide6.QtWidgets import QMainWindow, QPushButton, QMessageBox
+from PySide6.QtWidgets import QPushButton, QMessageBox
 from PySide6.QtGui import QFont
 
 from lib.ipc import get_free_tcp_port
@@ -39,6 +39,8 @@ from lib.child_proc_mgmt import extract_pid_from_line, is_init_complete
 from lib.ipc import IpcParent
 
 import psutil
+if TYPE_CHECKING:
+    from apps.launcher_v2.gui import PngLauncherWindow
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -85,7 +87,7 @@ class PngAppMgrBase(QObject):
     DEFAULT_EXIT = EXIT_ERRORS[PNG_ERROR_CODE_UNKNOWN]
 
     def __init__(self,
-                 console: QMainWindow,
+                 console: "PngLauncherWindow",
                  module_path: str,
                  display_name: str,
                  settings: PngSettings,
@@ -483,23 +485,19 @@ class PngAppMgrBase(QObject):
     # Logging methods
     def _log_info(self, message: str, is_child_message: bool = False):
         """Log info message"""
-        if self.console:
-            self.console.info_log(message, is_child_message)
+        self.console.info_log(message, is_child_message)
 
     def _log_debug(self, message: str):
         """Log debug message"""
-        if self.console:
-            self.console.debug_log(message)
+        self.console.debug_log(message)
 
     def _log_warning(self, message: str):
         """Log warning message"""
-        if self.console:
-            self.console.warning_log(message)
+        self.console.warning_log(message)
 
     def _log_error(self, message: str):
         """Log error message"""
-        if self.console:
-            self.console.error_log(message)
+        self.console.error_log(message)
 
     # Hook registration
     def register_post_start(self, func: Callable[[], None]):
