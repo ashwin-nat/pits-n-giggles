@@ -213,21 +213,21 @@ class PngAppMgrBase(QObject):
     def start(self):
         """Start the subsystem process"""
 
-        self._log_debug(f"{self.display_name} acquiring _process_lock")
+        self.debug_log(f"{self.display_name} acquiring _process_lock")
         with self._process_lock:
-            self._log_debug(f"{self.display_name} acquired _process_lock")
+            self.debug_log(f"{self.display_name} acquired _process_lock")
             if self.is_running:
-                self._log_debug(f"{self.display_name} is already running")
+                self.debug_log(f"{self.display_name} is already running")
                 return
 
-            self._log_info(f"Starting {self.display_name}...")
+            self.info_log(f"Starting {self.display_name}...")
             self._update_status("Starting")
 
             self.ipc_port = get_free_tcp_port()
 
             # Build and execute launch command
             launch_cmd = self.get_launch_command()
-            self._log_debug(f"Launch command: {' '.join(launch_cmd)}")
+            self.debug_log(f"Launch command: {' '.join(launch_cmd)}")
 
             try:
                 # Start the subprocess
@@ -262,10 +262,10 @@ class PngAppMgrBase(QObject):
                     name=f"{self.display_name}-heartbeat"
                 ).start()
 
-                self._log_info(f"{self.display_name} started (PID: {self.child_pid})")
+                self.info_log(f"{self.display_name} started (PID: {self.child_pid})")
 
             except Exception as e:
-                self._log_error(f"Failed to start {self.display_name}: {e}")
+                self.error_log(f"Failed to start {self.display_name}: {e}")
                 self._update_status("Crashed")
                 self.is_running = False
 
@@ -273,10 +273,10 @@ class PngAppMgrBase(QObject):
         """Stop the subsystem process"""
         with self._process_lock:
             if not self.is_running:
-                self._log_debug(f"{self.display_name} is not running")
+                self.debug_log(f"{self.display_name} is not running")
                 return
 
-            self._log_info(f"Stopping {self.display_name}...")
+            self.info_log(f"Stopping {self.display_name}...")
             self._is_stopping.set()
             self._update_status("Stopping")
 
@@ -284,9 +284,9 @@ class PngAppMgrBase(QObject):
             if self._send_ipc_shutdown():
                 try:
                     self.process.wait(timeout=10)
-                    self._log_debug(f"{self.display_name} exited gracefully")
+                    self.debug_log(f"{self.display_name} exited gracefully")
                 except subprocess.TimeoutExpired:
-                    self._log_debug(f"{self.display_name} did not exit in time, forcing...")
+                    self.debug_log(f"{self.display_name} did not exit in time, forcing...")
                     self._terminate_process()
             else:
                 self._terminate_process()
@@ -303,12 +303,12 @@ class PngAppMgrBase(QObject):
                 try:
                     self._post_stop_hook()
                 except Exception as e:
-                    self._log_error(f"Post-stop hook error: {e}")
+                    self.error_log(f"Post-stop hook error: {e}")
 
     def restart(self):
         """Restart the subsystem"""
         self._is_restarting.set()
-        self._log_info(f"Restarting {self.display_name}...")
+        self.info_log(f"Restarting {self.display_name}...")
 
         if self.is_running:
             self.stop()
@@ -335,7 +335,7 @@ class PngAppMgrBase(QObject):
                 return
             stdout = process.stdout
 
-        self._log_debug(f"Capturing {self.display_name} output...")
+        self.debug_log(f"Capturing {self.display_name} output...")
         for line in stdout:
             if not line:
                 # EOF reached
@@ -349,19 +349,19 @@ class PngAppMgrBase(QObject):
                     current_pid = self.process.pid if self.process else None
                     changed = current_pid is not None and current_pid != pid
                     self.child_pid = pid
-                self._log_debug(f"{self.display_name} PID update: {pid} changed = {changed}")
+                self.debug_log(f"{self.display_name} PID update: {pid} changed = {changed}")
             elif is_init_complete(line):
-                self._log_debug(f"{self.display_name} initialization complete")
+                self.debug_log(f"{self.display_name} initialization complete")
                 with self._process_lock:
                     self._update_status("Running")
                 if self._post_start_hook:
                     try:
                         self._post_start_hook()
                     except Exception as e: # pylint: disable=broad-exception-caught
-                        self._log_error(f"{self.display_name}: Error in post-start hook: {e}")
+                        self.error_log(f"{self.display_name}: Error in post-start hook: {e}")
 
             else:
-                self._log_info(line, is_child_message=True)
+                self.info_log(line, is_child_message=True)
 
 
     def _monitor_exit(self):
@@ -394,7 +394,7 @@ class PngAppMgrBase(QObject):
 
     def _handle_unexpected_exit(self, ret_code: int):
         """Handle unexpected process termination"""
-        self._log_error(f"{self.display_name} exited unexpectedly (code: {ret_code})")
+        self.error_log(f"{self.display_name} exited unexpectedly (code: {ret_code})")
 
         with self._process_lock:
             self.is_running = False
@@ -411,7 +411,7 @@ class PngAppMgrBase(QObject):
             try:
                 self._post_stop_hook()
             except Exception as e:
-                self._log_error(f"Post-stop hook error: {e}")
+                self.error_log(f"Post-stop hook error: {e}")
 
     def _send_heartbeat(self):
         """Send periodic heartbeat to child process"""
@@ -419,30 +419,30 @@ class PngAppMgrBase(QObject):
         time.sleep(random.uniform(0, 2.0))
 
         failed_count = 0
-        self._log_debug(f"{self.display_name}: Starting heartbeat job to port {self.ipc_port}...")
+        self.debug_log(f"{self.display_name}: Starting heartbeat job to port {self.ipc_port}...")
         timeout_ms = (int(self.heartbeat_interval) - 2) * 1000
         assert timeout_ms > 0
 
         while not self._stop_heartbeat.is_set():
-            self._log_debug(f"{self.display_name}: Sending heartbeat to port {self.ipc_port}...")
+            self.debug_log(f"{self.display_name}: Sending heartbeat to port {self.ipc_port}...")
             try:
                 rsp = IpcParent(self.ipc_port, timeout_ms).heartbeat()
                 if rsp.get("status") == "success":
                     failed_heartbeat_count = 0
-                    self._log_debug(f"{self.display_name}: Heartbeat success response: {rsp} on port {self.ipc_port}")
+                    self.debug_log(f"{self.display_name}: Heartbeat success response: {rsp} on port {self.ipc_port}")
                 else:
-                    self._log_debug(
+                    self.debug_log(
                         f"{self.display_name}: Heartbeat failed with response: {rsp} on port {self.ipc_port}"
                     )
                     failed_heartbeat_count += 1
 
             except Exception as e:
-                self._log_debug(f"Heartbeat error: {e}")
+                self.debug_log(f"Heartbeat error: {e}")
                 failed_count += 1
 
             # Check for excessive failures
             if failed_count > self.num_missable_heartbeats and not self.debug_mode:
-                self._log_error(
+                self.error_log(
                     f"{self.display_name} missed {failed_count} heartbeats, stopping..."
                 )
                 self.stop()
@@ -458,7 +458,7 @@ class PngAppMgrBase(QObject):
             rsp = IpcParent(self.ipc_port).shutdown_child("Stop requested")
             return rsp.get("status") == "success"
         except Exception as e: # pylint: disable=broad-exception-caught
-            self._log_debug(f"IPC shutdown failed: {e}")
+            self.debug_log(f"IPC shutdown failed: {e}")
             return False
 
 
@@ -468,14 +468,14 @@ class PngAppMgrBase(QObject):
             # Terminate actual child (PyInstaller case)
             try:
                 psutil.Process(self.child_pid).kill()
-                self._log_debug(f"Killed child PID {self.child_pid}")
+                self.debug_log(f"Killed child PID {self.child_pid}")
             except psutil.NoSuchProcess:
-                self._log_debug(f"Child PID {self.child_pid} already gone")
+                self.debug_log(f"Child PID {self.child_pid} already gone")
         elif self.process:
             # Terminate subprocess
             self.process.kill()
             self.process.wait()
-            self._log_debug(f"Killed subprocess PID {self.process.pid}")
+            self.debug_log(f"Killed subprocess PID {self.process.pid}")
 
     def _update_status(self, status: str):
         """Update status and emit signal"""
@@ -483,19 +483,19 @@ class PngAppMgrBase(QObject):
         self.status_changed.emit(status)
 
     # Logging methods
-    def _log_info(self, message: str, is_child_message: bool = False):
+    def info_log(self, message: str, is_child_message: bool = False):
         """Log info message"""
         self.console.info_log(message, is_child_message)
 
-    def _log_debug(self, message: str):
+    def debug_log(self, message: str):
         """Log debug message"""
         self.console.debug_log(message)
 
-    def _log_warning(self, message: str):
+    def warning_log(self, message: str):
         """Log warning message"""
         self.console.warning_log(message)
 
-    def _log_error(self, message: str):
+    def error_log(self, message: str):
         """Log error message"""
         self.console.error_log(message)
 

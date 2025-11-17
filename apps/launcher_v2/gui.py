@@ -31,12 +31,13 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QTextEdit, QFrame, QSplitter, QMenuBar, QMenu
 )
-from PySide6.QtCore import Qt, QTimer, Signal, QObject
+from PySide6.QtCore import Qt, QTimer, Signal, QObject, QMutex
 from PySide6.QtGui import QFont, QTextCursor, QAction
 
 from .subsystems import BackendAppMgr, PngAppMgrBase
 from lib.file_path import resolve_user_file
 from lib.config import PngSettings, load_config_from_ini
+from .logger import get_rotating_logger
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -74,6 +75,7 @@ class ConsoleWidget(QTextEdit):
 
     def append_log(self, message: str, level: str = 'INFO'):
         """Append a log message with color coding"""
+
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
         color = self.colors.get(level, '#d4d4d4')
 
@@ -203,9 +205,11 @@ class PngLauncherWindow(QMainWindow):
         self.logo_path = logo_path
         self.integration_test_mode = integration_test_mode
         self.settings_icon_path = settings_icon_path
+        self.debug_mode = debug_mode
         self.log_file = Path("launcher.log")
+        self.logger, self.log_file_path = get_rotating_logger(debug_mode=self.debug_mode)
         self.config_file = resolve_user_file("png_config.ini")
-        self.settings = load_config_from_ini(self.config_file, logger=None) # TODO: use logger
+        self.settings: PngSettings = load_config_from_ini(self.config_file, logger=self.logger) # TODO: use logger
         super().__init__()
         self.subsystems = [
            BackendAppMgr(
@@ -226,9 +230,6 @@ class PngLauncherWindow(QMainWindow):
         self.setup_file_logging()
 
         self.setup_ui()
-
-        # Auto-start subsystems marked for auto-start
-        QTimer.singleShot(500, self.auto_start_subsystems)
 
     def setup_file_logging(self):
         """Setup file logging handler"""
@@ -262,9 +263,6 @@ class PngLauncherWindow(QMainWindow):
             }
         """)
 
-        # Menu bar
-        # self.create_menu_bar()
-
         # Central widget
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -277,7 +275,7 @@ class PngLauncherWindow(QMainWindow):
         self.console = ConsoleWidget()
 
         # Splitter for subsystems and console
-        splitter = QSplitter(Qt.Vertical)
+        splitter = QSplitter(Qt.Orientation.Vertical)
         splitter.setStyleSheet("""
             QSplitter::handle {
                 background-color: #3e3e3e;
@@ -301,42 +299,6 @@ class PngLauncherWindow(QMainWindow):
         # Initial log
         self.info_log(f"Pits n' Giggles {self.ver_str} started")
 
-    def create_menu_bar(self):
-        """Create the menu bar"""
-        menubar = self.menuBar()
-        menubar.setStyleSheet("""
-            QMenuBar {
-                background-color: #2d2d2d;
-                color: #d4d4d4;
-                border-bottom: 1px solid #3e3e3e;
-            }
-            QMenuBar::item:selected {
-                background-color: #3e3e3e;
-            }
-            QMenu {
-                background-color: #2d2d2d;
-                color: #d4d4d4;
-                border: 1px solid #3e3e3e;
-            }
-            QMenu::item:selected {
-                background-color: #0e639c;
-            }
-        """)
-
-        # File menu
-        file_menu = menubar.addMenu("File")
-
-        exit_action = QAction("Exit", self)
-        exit_action.triggered.connect(self.close)
-        file_menu.addAction(exit_action)
-
-        # Help menu
-        help_menu = menubar.addMenu("Help")
-
-        about_action = QAction("About", self)
-        about_action.triggered.connect(lambda: self.info_log("Pits n' Giggles Launcher v2.0"))
-        help_menu.addAction(about_action)
-
     def create_subsystems_area(self) -> QWidget:
         """Create the subsystems display area"""
         container = QFrame()
@@ -346,13 +308,13 @@ class PngLauncherWindow(QMainWindow):
 
         # Header
         header_label = QLabel("Subsystems")
-        header_label.setFont(QFont("Arial", 11, QFont.Bold))
+        header_label.setFont(QFont("Arial", 11, QFont.Weight.Bold))
         header_label.setStyleSheet("color: #d4d4d4; background-color: transparent; border: none;")
         layout.addWidget(header_label)
 
         # Add a separator
         separator = QFrame()
-        separator.setFrameShape(QFrame.HLine)
+        separator.setFrameShape(QFrame.Shape.HLine)
         separator.setStyleSheet("background-color: #3e3e3e; border: none;")
         separator.setFixedHeight(1)
         layout.addWidget(separator)
@@ -377,7 +339,7 @@ class PngLauncherWindow(QMainWindow):
         header_layout = QHBoxLayout()
 
         console_label = QLabel("Console Log")
-        console_label.setFont(QFont("Arial", 11, QFont.Bold))
+        console_label.setFont(QFont("Arial", 11, QFont.Weight.Bold))
         console_label.setStyleSheet("color: #d4d4d4; background-color: transparent; border: none;")
         header_layout.addWidget(console_label)
 
@@ -404,7 +366,7 @@ class PngLauncherWindow(QMainWindow):
 
         # Separator
         separator = QFrame()
-        separator.setFrameShape(QFrame.HLine)
+        separator.setFrameShape(QFrame.Shape.HLine)
         separator.setStyleSheet("background-color: #3e3e3e; border: none;")
         separator.setFixedHeight(1)
         layout.addWidget(separator)
@@ -429,6 +391,8 @@ class PngLauncherWindow(QMainWindow):
 
     def debug_log(self, message: str):
         """Thread-safe debug logging"""
+        if not self.debug_mode:
+            return
         self.log_signals.log_message.emit(message, 'DEBUG')
 
     def warning_log(self, message: str):
@@ -444,8 +408,19 @@ class PngLauncherWindow(QMainWindow):
         # Write to console widget
         self.console.append_log(message, level)
 
-        # Write to file
-        log_func = getattr(logging, level.lower(), logging.info)
+        # Map levels to logger methods
+        log_map = {
+            "DEBUG": self.logger.debug,
+            "INFO": self.logger.info,
+            "WARNING": self.logger.warning,
+            "ERROR": self.logger.error,
+            "CHILD": lambda msg: self.logger.info(f"[CHILD] {msg}")
+        }
+
+        # Get the appropriate log function (fallback = info)
+        log_func = log_map.get(level, self.logger.info)
+
+        # Write to rotating file logger
         log_func(message)
 
     def closeEvent(self, event):

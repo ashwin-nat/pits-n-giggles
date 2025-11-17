@@ -133,7 +133,7 @@ class BackendAppMgr(PngAppMgrBase):
                 "toggle_overlays_udp_action_code",
             ]
         })
-        self._log_debug(f"{self.display_name} Settings changed: {json.dumps(diff, indent=2)}")
+        self.debug_log(f"{self.display_name} Settings changed: {json.dumps(diff, indent=2)}")
 
         # Restart if diff is not empty
         return bool(diff)
@@ -155,7 +155,7 @@ class BackendAppMgr(PngAppMgrBase):
 
     def manual_save(self):
         """Send a manual save command to the backend."""
-        self._log_debug("Sending manual save command to backend...")
+        self.debug_log("Sending manual save command to backend...")
         ipc_client = IpcParent(self.ipc_port)
         rsp = ipc_client.request("manual-save", {})
 
@@ -163,13 +163,13 @@ class BackendAppMgr(PngAppMgrBase):
         message = rsp.get("message")
 
         if status == "success":
-            self._log_info(f"Manual save success. Path {message}")
+            self.info_log(f"Manual save success. Path {message}")
             self.show_success("Manual Save Success", f"The session has been saved successfully at:\n{message}")
 
         else:
             error = rsp.get("error", "Unknown error")
             message = rsp.get("message", "")
-            self._log_info(f"Error in manual save: error={error} message={message}")
+            self.info_log(f"Error in manual save: error={error} message={message}")
 
             error_details = "\n".join(filter(None, [error, message]))
             self.show_error("Manual Save Error", error_details)
@@ -186,6 +186,6 @@ class BackendAppMgr(PngAppMgrBase):
             self.start_stop()
         except Exception as e: # pylint: disable=broad-exception-caught
             # Log the error or handle it as needed
-            self._log_debug(f"{self.display_name}:Error during start/stop: {e}")
+            self.debug_log(f"{self.display_name}:Error during start/stop: {e}")
             # If no exception, it will be handled in post_start/post_stop
             self.set_button_state(self.start_stop_button, True)
