@@ -210,17 +210,15 @@ class PngAppMgrBase(QObject):
 
         return cmd
 
-    def start(self):
+    def start(self, reason: str):
         """Start the subsystem process"""
 
-        self.debug_log(f"{self.display_name} acquiring _process_lock")
         with self._process_lock:
-            self.debug_log(f"{self.display_name} acquired _process_lock")
             if self.is_running:
                 self.debug_log(f"{self.display_name} is already running")
                 return
 
-            self.info_log(f"Starting {self.display_name}...")
+            self.info_log(f"Starting {self.display_name}... Reason: {reason}")
             self._update_status("Starting")
 
             self.ipc_port = get_free_tcp_port()
@@ -269,7 +267,7 @@ class PngAppMgrBase(QObject):
                 self._update_status("Crashed")
                 self.is_running = False
 
-    def stop(self):
+    def stop(self, reason: str):
         """Stop the subsystem process"""
         with self._process_lock:
             if not self.is_running:
@@ -281,7 +279,7 @@ class PngAppMgrBase(QObject):
             self._update_status("Stopping")
 
             # Try graceful shutdown first (IPC would go here)
-            if self._send_ipc_shutdown():
+            if self._send_ipc_shutdown(reason):
                 try:
                     self.process.wait(timeout=10)
                     self.debug_log(f"{self.display_name} exited gracefully")
@@ -305,24 +303,25 @@ class PngAppMgrBase(QObject):
                 except Exception as e:
                     self.error_log(f"Post-stop hook error: {e}")
 
-    def restart(self):
+    def restart(self, reason: str):
         """Restart the subsystem"""
         self._is_restarting.set()
         self.info_log(f"Restarting {self.display_name}...")
+        _reason = f"Restarting: {reason}"
 
         if self.is_running:
-            self.stop()
+            self.stop(_reason)
 
         time.sleep(1)  # Brief pause
-        self.start()
+        self.start(_reason)
         self._is_restarting.clear()
 
-    def start_stop(self):
+    def start_stop(self, reason: str):
         """Toggle between start and stop"""
         if self.is_running:
-            self.stop()
+            self.stop(reason)
         else:
-            self.start()
+            self.start(reason)
 
     def _capture_output(self):
         """Capture subprocess output"""
@@ -445,17 +444,17 @@ class PngAppMgrBase(QObject):
                 self.error_log(
                     f"{self.display_name} missed {failed_count} heartbeats, stopping..."
                 )
-                self.stop()
+                self.stop("Heartbeat failure")
                 break
 
             self._stop_heartbeat.wait(self.heartbeat_interval)
 
         self._stop_heartbeat.clear()
 
-    def _send_ipc_shutdown(self) -> bool:
+    def _send_ipc_shutdown(self, reason: str) -> bool:
         """Send IPC shutdown command"""
         try:
-            rsp = IpcParent(self.ipc_port).shutdown_child("Stop requested")
+            rsp = IpcParent(self.ipc_port).shutdown_child(reason)
             return rsp.get("status") == "success"
         except Exception as e: # pylint: disable=broad-exception-caught
             self.debug_log(f"IPC shutdown failed: {e}")

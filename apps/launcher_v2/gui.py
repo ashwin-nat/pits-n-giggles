@@ -29,10 +29,10 @@ from pathlib import Path
 from typing import List
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QPushButton, QLabel, QTextEdit, QFrame, QSplitter, QMenuBar, QMenu
+    QPushButton, QLabel, QTextEdit, QFrame, QSplitter
 )
-from PySide6.QtCore import Qt, QTimer, Signal, QObject, QMutex
-from PySide6.QtGui import QFont, QTextCursor, QAction
+from PySide6.QtCore import Qt, QTimer, Signal, QObject
+from PySide6.QtGui import QFont, QTextCursor, QCloseEvent
 
 from .subsystems import BackendAppMgr, PngAppMgrBase
 from lib.file_path import resolve_user_file
@@ -382,7 +382,7 @@ class PngLauncherWindow(QMainWindow):
         for subsystem in self.subsystems:
             if subsystem.start_by_default:
                 self.info_log(f"Auto-starting {subsystem.display_name}...")
-                subsystem.start()
+                subsystem.start("Initial auto-start")
 
     def info_log(self, message: str, is_child_message: bool = False):
         """Thread-safe info logging"""
@@ -423,14 +423,14 @@ class PngLauncherWindow(QMainWindow):
         # Write to rotating file logger
         log_func(message)
 
-    def closeEvent(self, event):
+    def closeEvent(self, event: QCloseEvent):
         """Handle window close - stop all subsystems"""
         self.info_log("Shutting down launcher...")
 
         for subsystem in self.subsystems:
             if subsystem.is_running:
                 self.info_log(f"Stopping {subsystem.display_name}...")
-                subsystem.stop()
+                subsystem.stop("Launcher shutting down")
 
         event.accept()
 

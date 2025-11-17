@@ -183,7 +183,7 @@ class BackendAppMgr(PngAppMgrBase):
         self.set_button_state(self.open_obs_overlay_button, False)
         try:
             # Call the start_stop method
-            self.start_stop()
+            self.start_stop("Stop button pressed")
         except Exception as e: # pylint: disable=broad-exception-caught
             # Log the error or handle it as needed
             self.debug_log(f"{self.display_name}:Error during start/stop: {e}")
