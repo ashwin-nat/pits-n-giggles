@@ -29,13 +29,14 @@ import threading
 import time
 from typing import Optional, Callable, List, Dict, Any
 from PySide6.QtCore import QObject, Signal
-from PySide6.QtWidgets import QMainWindow, QPushButton
+from PySide6.QtWidgets import QMainWindow, QPushButton, QMessageBox
 from PySide6.QtGui import QFont
 
 from lib.ipc import get_free_tcp_port
 from lib.error_status import PNG_ERROR_CODE_HTTP_PORT_IN_USE, PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN, PNG_LOST_CONN_TO_PARENT
 from lib.config import PngSettings
 from lib.child_proc_mgmt import extract_pid_from_line, is_init_complete
+from lib.ipc import IpcParent
 
 import psutil
 
@@ -220,7 +221,6 @@ class PngAppMgrBase(QObject):
             self._log_info(f"Starting {self.display_name}...")
             self._update_status("Starting")
 
-            # Get a free port for IPC (stubbed for now)
             self.ipc_port = get_free_tcp_port()
 
             # Build and execute launch command
@@ -417,15 +417,22 @@ class PngAppMgrBase(QObject):
         time.sleep(random.uniform(0, 2.0))
 
         failed_count = 0
+        self._log_debug(f"{self.display_name}: Starting heartbeat job to port {self.ipc_port}...")
+        timeout_ms = (int(self.heartbeat_interval) - 2) * 1000
+        assert timeout_ms > 0
 
         while not self._stop_heartbeat.is_set():
+            self._log_debug(f"{self.display_name}: Sending heartbeat to port {self.ipc_port}...")
             try:
-                # Stub: In real implementation, send IPC heartbeat
-                # For now, just check if process is alive
-                if self.process and self.process.poll() is None:
-                    failed_count = 0
+                rsp = IpcParent(self.ipc_port, timeout_ms).heartbeat()
+                if rsp.get("status") == "success":
+                    failed_heartbeat_count = 0
+                    self._log_debug(f"{self.display_name}: Heartbeat success response: {rsp} on port {self.ipc_port}")
                 else:
-                    failed_count += 1
+                    self._log_debug(
+                        f"{self.display_name}: Heartbeat failed with response: {rsp} on port {self.ipc_port}"
+                    )
+                    failed_heartbeat_count += 1
 
             except Exception as e:
                 self._log_debug(f"Heartbeat error: {e}")
@@ -444,9 +451,14 @@ class PngAppMgrBase(QObject):
         self._stop_heartbeat.clear()
 
     def _send_ipc_shutdown(self) -> bool:
-        """Send IPC shutdown command (stub)"""
-        # Stub: Real implementation would use IPC
-        return False
+        """Send IPC shutdown command"""
+        try:
+            rsp = IpcParent(self.ipc_port).shutdown_child("Stop requested")
+            return rsp.get("status") == "success"
+        except Exception as e: # pylint: disable=broad-exception-caught
+            self._log_debug(f"IPC shutdown failed: {e}")
+            return False
+
 
     def _terminate_process(self):
         """Force-terminate the process"""
@@ -512,3 +524,19 @@ class PngAppMgrBase(QObject):
         """Set text and enable/disable a QPushButton."""
         self.set_button_text(button, text)
         self.set_button_state(button, enabled)
+
+    def show_success(self, title: str, message: str):
+        """Display a success/info message box."""
+        QMessageBox.information(
+            self,
+            title,
+            message
+        )
+
+    def show_error(self, title: str, message: str):
+        """Display an error message box."""
+        QMessageBox.critical(
+            self,
+            title,
+            message
+        )

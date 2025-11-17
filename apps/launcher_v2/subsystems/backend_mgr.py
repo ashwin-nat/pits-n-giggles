@@ -29,7 +29,7 @@ from lib.config import PngSettings
 from lib.ipc import IpcParent
 
 from .base_mgr import PngAppMgrBase
-from PySide6.QtWidgets import QMainWindow, QPushButton, QMessageBox
+from PySide6.QtWidgets import QMainWindow, QPushButton
 from typing import List
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -161,12 +161,7 @@ class BackendAppMgr(PngAppMgrBase):
 
         if status == "success":
             self._log_info(f"Manual save success. Path {message}")
-
-            QMessageBox.information(
-                self.console,                      # parent window
-                "Manual Save Success",             # title
-                f"The session has been saved successfully at:\n{message}"
-            )
+            self.show_success("Manual Save Success", f"The session has been saved successfully at:\n{message}")
 
         else:
             error = rsp.get("error", "Unknown error")
@@ -174,13 +169,7 @@ class BackendAppMgr(PngAppMgrBase):
             self._log_info(f"Error in manual save: error={error} message={message}")
 
             error_details = "\n".join(filter(None, [error, message]))
-
-            QMessageBox.critical(
-                self.console,                      # parent window
-                "Manual Save Error",               # title
-                error_details                      # message
-            )
-
+            self.show_error("Manual Save Error", error_details)
 
     def start_stop_callback(self):
         """Start or stop the backend application."""
