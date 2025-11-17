@@ -29,11 +29,13 @@ import threading
 import time
 from typing import Optional, Callable, List, Dict, Any
 from PySide6.QtCore import QObject, Signal
-from PySide6.QtWidgets import QMainWindow
+from PySide6.QtWidgets import QMainWindow, QPushButton
+from PySide6.QtGui import QFont
 
 from lib.ipc import get_free_tcp_port
 from lib.error_status import PNG_ERROR_CODE_HTTP_PORT_IN_USE, PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN, PNG_LOST_CONN_TO_PARENT
 from lib.config import PngSettings
+from lib.child_proc_mgmt import extract_pid_from_line, is_init_complete
 
 import psutil
 
@@ -116,6 +118,7 @@ class PngAppMgrBase(QObject):
         self.coverage_enabled = coverage_enabled
         self.http_port_conflict_field = http_port_conflict_field
         self.udp_port_conflict_field = udp_port_conflict_field
+        self.curr_settings = settings
 
         # Process management
         self.process: Optional[subprocess.Popen] = None
@@ -128,9 +131,6 @@ class PngAppMgrBase(QObject):
         # Status tracking
         self.status = "Stopped"
 
-        # Console interface (set by launcher)
-        self.console = None
-
         # Hooks
         self._post_start_hook: Optional[Callable[[], None]] = None
         self._post_stop_hook: Optional[Callable[[], None]] = None
@@ -141,24 +141,43 @@ class PngAppMgrBase(QObject):
         self.num_missable_heartbeats: int = 3
         self._stop_heartbeat = threading.Event()
 
-    def get_buttons(self) -> List[Dict[str, Any]]:
+    def get_buttons(self) -> List[QPushButton]:
         """
         Return button definitions for this subsystem's UI panel
 
         Returns:
-            List of button dicts with keys:
-                - text: Button label
-                - command: Callback function
-                - primary: (optional) True for primary button styling
-
-        Example:
-            return [
-                {'text': 'Start', 'command': self.start, 'primary': True},
-                {'text': 'Stop', 'command': self.stop},
-                {'text': 'Restart', 'command': self.restart},
-            ]
+            List of buttons
         """
         raise NotImplementedError
+
+    def build_button(self, text: str, callback: Callable[[], None]) -> QPushButton:
+        """Build a button with the given text and callback"""
+        btn = QPushButton(text)
+        btn.setFixedHeight(28)
+        btn.setMinimumWidth(80)
+        btn.setFont(QFont("Arial", 9))
+        btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #0e639c;
+                    color: white;
+                    border: 1px solid #0e639c;
+                    border-radius: 3px;
+                    padding: 4px 12px;
+                }
+                QPushButton:hover {
+                    background-color: #1177bb;
+                }
+                QPushButton:pressed {
+                    background-color: #0d5689;
+                }
+                QPushButton:disabled {
+                    background-color: #3e3e3e;
+                    color: #808080;
+                    border-color: #3e3e3e;
+                }
+            """)
+        btn.clicked.connect(callback)
+        return btn
 
     def get_launch_command(self) -> List[str]:
         """Build the subprocess launch command"""
@@ -190,7 +209,10 @@ class PngAppMgrBase(QObject):
 
     def start(self):
         """Start the subsystem process"""
+
+        self._log_debug(f"{self.display_name} acquiring _process_lock")
         with self._process_lock:
+            self._log_debug(f"{self.display_name} acquired _process_lock")
             if self.is_running:
                 self._log_debug(f"{self.display_name} is already running")
                 return
@@ -293,7 +315,7 @@ class PngAppMgrBase(QObject):
         self.start()
         self._is_restarting.clear()
 
-    def toggle(self):
+    def start_stop(self):
         """Toggle between start and stop"""
         if self.is_running:
             self.stop()
@@ -302,45 +324,43 @@ class PngAppMgrBase(QObject):
 
     def _capture_output(self):
         """Capture subprocess output"""
+
+        # Snapshot process and stdout once under the lock
         with self._process_lock:
-            if not self.process or not self.process.stdout:
+            process = self.process
+            # If process or its stdout isn't available, exit immediately.
+            if not process or not process.stdout:
                 return
-            stdout = self.process.stdout
+            stdout = process.stdout
 
-        try:
-            for line in stdout:
-                if not line:
-                    break
+        self._log_debug(f"Capturing {self.display_name} output...")
+        for line in stdout:
+            if not line:
+                # EOF reached
+                break
 
-                line = line.rstrip()
+            line = line.rstrip()
 
-                # Check for PID update
-                if "PID:" in line:
-                    try:
-                        pid = int(line.split("PID:")[1].strip())
-                        with self._process_lock:
-                            self.child_pid = pid
-                        self._log_debug(f"Updated PID to {pid}")
-                    except (ValueError, IndexError):
-                        pass
-
-                # Check for initialization complete
-                elif "initialization complete" in line.lower():
-                    self._log_debug(f"{self.display_name} initialization complete")
+            if pid := extract_pid_from_line(line):
+                with self._process_lock:
+                    # Check current PID safely in case process changed meanwhile
+                    current_pid = self.process.pid if self.process else None
+                    changed = current_pid is not None and current_pid != pid
+                    self.child_pid = pid
+                self._log_debug(f"{self.display_name} PID update: {pid} changed = {changed}")
+            elif is_init_complete(line):
+                self._log_debug(f"{self.display_name} initialization complete")
+                with self._process_lock:
                     self._update_status("Running")
+                if self._post_start_hook:
+                    try:
+                        self._post_start_hook()
+                    except Exception as e: # pylint: disable=broad-exception-caught
+                        self._log_error(f"{self.display_name}: Error in post-start hook: {e}")
 
-                    # Run post-start hook
-                    if self._post_start_hook:
-                        try:
-                            self._post_start_hook()
-                        except Exception as e:
-                            self._log_error(f"Post-start hook error: {e}")
-                else:
-                    # Regular log message from child
-                    self._log_info(line, is_child_message=True)
+            else:
+                self._log_info(line, is_child_message=True)
 
-        except Exception as e:
-            self._log_error(f"Output capture error: {e}")
 
     def _monitor_exit(self):
         """Monitor for unexpected process exit"""
@@ -479,3 +499,16 @@ class PngAppMgrBase(QObject):
         """Register a post-stop callback"""
         self._post_stop_hook = func
         return func
+
+    def set_button_state(self, button: QPushButton, enabled: bool):
+        """Enable/disable a QPushButton."""
+        button.setEnabled(enabled)
+
+    def set_button_text(self, button: QPushButton, text: str):
+        """Set text on a QPushButton."""
+        button.setText(text)
+
+    def set_button_text_state(self, button: QPushButton, text: str, enabled: bool):
+        """Set text and enable/disable a QPushButton."""
+        self.set_button_text(button, text)
+        self.set_button_state(button, enabled)

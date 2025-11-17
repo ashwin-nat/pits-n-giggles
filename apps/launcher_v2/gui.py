@@ -117,14 +117,8 @@ class SubsystemRow(QWidget):
         layout.addWidget(self.status_label)
 
         # Buttons
-        for button_def in self.manager.get_buttons():
-            btn = QPushButton(button_def['text'])
-            btn.setFixedHeight(28)
-            btn.setMinimumWidth(80)
-            btn.setFont(QFont("Arial", 9))
-            btn.setStyleSheet(self._get_button_style(button_def.get('primary', False)))
-            btn.clicked.connect(button_def['command'])
-            layout.addWidget(btn)
+        for button in self.manager.get_buttons():
+            layout.addWidget(button)
 
         layout.addStretch()
         self.setLayout(layout)
@@ -205,6 +199,10 @@ class LauncherMainWindow(QMainWindow):
                  coverage_enabled: bool):
 
         self.app = QApplication(sys.argv)
+        self.ver_str = ver_str
+        self.logo_path = logo_path
+        self.integration_test_mode = integration_test_mode
+        self.settings_icon_path = settings_icon_path
         self.log_file = Path("launcher.log")
         self.config_file = resolve_user_file("png_config.ini")
         self.settings = load_config_from_ini(self.config_file, logger=None) # TODO: use logger
@@ -301,7 +299,7 @@ class LauncherMainWindow(QMainWindow):
         central_widget.setLayout(main_layout)
 
         # Initial log
-        self.info_log("Application started")
+        self.info_log(f"Pits n' Giggles {self.ver_str} started")
 
     def create_menu_bar(self):
         """Create the menu bar"""
