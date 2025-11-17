@@ -523,7 +523,7 @@ def _create_driver_entry(
             "delta-to-leader": delta_relative,
         },
         "ers-info": {
-            "ers-percent": f'{F1Utils.floatToStr(ers_perc)}%',
+            "ers-percent": f'{F1Utils.formatFloat(ers_perc)}%',
             "ers-percent-float": ers_perc,
             "ers-mode": data_per_driver["car-status"].get("ers-deploy-mode", "None"),
         },

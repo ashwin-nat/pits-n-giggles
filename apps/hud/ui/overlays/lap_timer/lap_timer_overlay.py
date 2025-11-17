@@ -124,7 +124,6 @@ class LapTimerOverlay(BaseOverlay):
             incoming_lap_num = lap_info["current-lap"]
             if self._is_timer_active():
                 # Last lap display timer ongoing. Display last lap time
-                # TODO - see if we can avoid this update
                 display_time_ms = last_lap["lap-time-ms"]
                 display_sector_status = last_lap["sector-status"]
             elif self.curr_lap_num and (self.curr_lap_num != incoming_lap_num):

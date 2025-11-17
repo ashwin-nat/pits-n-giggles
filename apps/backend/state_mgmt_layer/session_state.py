@@ -1213,7 +1213,7 @@ class SessionState:
             track = str(self.m_session_info.m_track)
             event_type = str(self.m_session_info.m_session_type)
             curr_lap_percent = (
-                f"{F1Utils.floatToStr(float(curr_lap_dist) / float(self.m_session_info.m_track_len) * 100.0)}%"
+                f"{F1Utils.formatFloat(float(curr_lap_dist) / float(self.m_session_info.m_track_len) * 100.0)}%"
                 if curr_lap_dist is not None
                 else None
             )

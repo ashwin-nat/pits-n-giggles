@@ -31,7 +31,7 @@
 
 import math
 from abc import abstractmethod
-from typing import List, Optional, Set, Dict, Any
+from typing import Any, Dict, List, Set
 
 from .base_pkt import F1BaseEnum, F1CompareableEnum
 
@@ -1213,22 +1213,6 @@ class F1Utils:
         minutes, seconds_with_milliseconds = [str(item) for item in time_str.split(':')]
         seconds, milliseconds = [int(item) for item in seconds_with_milliseconds.split('.')]
         return int(minutes) * 60 * 1000 + seconds * 1000 + milliseconds
-
-    # TODO: deprecate this in favour of formatFloat
-    @staticmethod
-    def floatToStr(float_val : float, num_dec_places : Optional[int] = 2) -> str:
-        """
-        Convert a float to a string with a specified number of decimal places.
-
-        Parameters:
-        - float_val (float): The float value to convert.
-        - num_dec_places (Optional[int]): Number of decimal places (default is 2).
-
-        Returns:
-        - str: The formatted string.
-        """
-        format_string = "{:." + str(num_dec_places) + "f}"
-        return format_string.format(float_val)
 
     @staticmethod
     def formatFloat(float_number: float, precision: int = 2, signed: bool = False) -> str:

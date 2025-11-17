@@ -90,7 +90,7 @@ def handle_set_opacity(msg: dict, logger: logging.Logger, overlays_mgr: Overlays
     except ValidationError as e:
         return {"status": "error", "message": f"Invalid or missing opacity value in set-opacity command. {e}"}
 
-def handle_next_page(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict: # TODO - remove
+def handle_next_page(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
     """Handle the 'next-page' IPC command to show next page of HUD widgets.
 
     Args:

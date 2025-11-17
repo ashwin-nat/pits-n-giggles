@@ -124,7 +124,6 @@ class WindowManager(QObject):
             self.mgmt_request_signal.emit(recipient, request_type, serialise_data(request_data))
 
             # Wait for response
-            # TODO - handle serialised data
             if self._response_condition.wait(self._response_mutex, timeout_ms):
                 return deserialise_data(self._response_data)
             self.logger.warning(f"Request timeout: {request_type} to {recipient or 'manager'}")

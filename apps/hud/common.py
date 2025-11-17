@@ -49,7 +49,6 @@ def load_icon(relative_path: str) -> QIcon:
             # Running from source
             base_path = os.path.abspath(".")
 
-        # TODO - caching
         full_path = os.path.join(base_path, relative_path)
         icon = QIcon(full_path)
         return icon

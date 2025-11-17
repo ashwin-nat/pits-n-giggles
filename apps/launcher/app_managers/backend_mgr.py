@@ -65,7 +65,7 @@ class BackendAppMgr(PngAppMgrBase):
             udp_port_conflict_settings_field='Network -> "F1 UDP Telemetry Port"',
             module_path="apps.backend",
             display_name="Server",
-            start_by_default=True, # TODO: revert
+            start_by_default=True,
             console_app=console_app,
             settings=settings,
             args=temp_args,
