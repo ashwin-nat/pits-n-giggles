@@ -68,7 +68,7 @@ class PngLauncherWindow(QMainWindow):
         super().__init__()
         self.subsystems = [
            BackendAppMgr(
-               console=self,
+               window=self,
                settings=self.settings,
                args=[],
                debug_mode=debug_mode,
@@ -294,3 +294,7 @@ class PngLauncherWindow(QMainWindow):
         self.auto_start_subsystems()
         self.show()
         sys.exit(self.app.exec())
+
+    def process_events(self):
+        """Process pending events in the application's event loop"""
+        self.app.processEvents()

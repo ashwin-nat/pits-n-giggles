@@ -40,14 +40,14 @@ if TYPE_CHECKING:
 class BackendAppMgr(PngAppMgrBase):
     """Implementation of PngApp for backend services"""
     def __init__(self,
-                 console: "PngLauncherWindow",
+                 window: "PngLauncherWindow",
                  settings: PngSettings,
                  args: list[str],
                  debug_mode: bool,
                  replay_server: bool,
                  coverage_enabled: bool):
         """Initialize the backend manager
-        :param console_app: Reference to a console interface for logging
+        :param window: Reference to the GUI window object
         :param settings: Settings object
         :param args: Additional Command line arguments to pass to the backend
         :param debug_mode: Whether to run the backend in debug mode
@@ -64,7 +64,7 @@ class BackendAppMgr(PngAppMgrBase):
         self.port = settings.Network.server_port
         self.proto = settings.HTTPS.proto
         super().__init__(
-            console=console,
+            window=window,
             module_path="apps.backend",
             display_name="Server",
             settings=settings,

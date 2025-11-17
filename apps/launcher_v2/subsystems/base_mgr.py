@@ -87,7 +87,7 @@ class PngAppMgrBase(QObject):
     DEFAULT_EXIT = EXIT_ERRORS[PNG_ERROR_CODE_UNKNOWN]
 
     def __init__(self,
-                 console: "PngLauncherWindow",
+                 window: "PngLauncherWindow",
                  module_path: str,
                  display_name: str,
                  settings: PngSettings,
@@ -112,7 +112,7 @@ class PngAppMgrBase(QObject):
         """
         super().__init__()
 
-        self.console = console
+        self.window = window
         self.module_path = module_path
         self.display_name = display_name
         self.start_by_default = start_by_default
@@ -277,6 +277,9 @@ class PngAppMgrBase(QObject):
             self.info_log(f"Stopping {self.display_name}...")
             self._is_stopping.set()
             self._update_status("Stopping")
+
+            # Force Qt to update UI now
+            self.window.process_events()
 
             # Try graceful shutdown first (IPC would go here)
             if self._send_ipc_shutdown(reason):
@@ -484,19 +487,19 @@ class PngAppMgrBase(QObject):
     # Logging methods
     def info_log(self, message: str, is_child_message: bool = False):
         """Log info message"""
-        self.console.info_log(message, is_child_message)
+        self.window.info_log(message, is_child_message)
 
     def debug_log(self, message: str):
         """Log debug message"""
-        self.console.debug_log(message)
+        self.window.debug_log(message)
 
     def warning_log(self, message: str):
         """Log warning message"""
-        self.console.warning_log(message)
+        self.window.warning_log(message)
 
     def error_log(self, message: str):
         """Log error message"""
-        self.console.error_log(message)
+        self.window.error_log(message)
 
     # Hook registration
     def register_post_start(self, func: Callable[[], None]):
