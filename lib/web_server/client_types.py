@@ -29,6 +29,7 @@ from enum import Enum
 class ClientType(Enum):
     PLAYER_STREAM_OVERLAY = 'player-stream-overlay'
     RACE_TABLE = 'race-table'
+    HUD = 'hud'
 
     def __str__(self) -> str:
         return self.value

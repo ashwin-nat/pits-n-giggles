@@ -27,6 +27,7 @@ import threading
 import time
 from typing import Callable, Optional
 
+import msgpack
 import socketio
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -38,16 +39,22 @@ class IpcSubscriber:
     @self.on_connect / @self.on_disconnect.
     """
 
-    def __init__(self, url: str, logger: Optional[logging.Logger] = None) -> None:
+    def __init__(self,
+                 url: str,
+                 logger: Optional[logging.Logger] = None,
+                 msg_packed: bool = False
+                 ) -> None:
         """
         Args:
             url: Socket.IO server URL.
             logger: Optional logger; if None, logging is disabled.
+            msg_packed: Whether to use msgpack for message de-serialization.
         """
         self.url = url
         self.logger = logger
         self._stop_event = threading.Event()
         self._connected = False
+        self._msg_packed = msg_packed
 
         # storage for event bindings (so they persist across reconnects)
         self._event_handlers: list[tuple[str, Callable]] = []
@@ -79,17 +86,26 @@ class IpcSubscriber:
     def on(self, event_name: str):
         """
         Decorator to register a handler for a custom Socket.IO event.
-
-        Usage:
-            @self.on('race-table-update')
-            def handle(data):
-                ...
+        Automatically unpacks msgpack data if self._msg_packed is True.
         """
         def decorator(func):
+            # wrap the user's handler to decode msgpack if needed
+            if self._msg_packed:
+                def wrapped_handler(data):
+                    try:
+                        decoded = msgpack.unpackb(data, raw=False)
+                    except Exception as e: # pylint: disable=broad-exception-caught
+                        self._log(logging.ERROR, f"Failed to decode msgpack for event '{event_name}': {e}")
+                        return  # consistently returns None
+                    func(decoded)  # call handler without returning its value
+            else:
+                wrapped_handler = func
+
             # store handler for future rebinds
-            self._event_handlers.append((event_name, func))
-            self._sio.on(event_name, func)
+            self._event_handlers.append((event_name, wrapped_handler))
+            self._sio.on(event_name, wrapped_handler)
             return func
+
         return decorator
 
     def on_connect(self, func: Callable[[], None]):
@@ -157,13 +173,16 @@ class IpcSubscriber:
                 if not self._stop_event.is_set():
                     self._setup_sio()
 
+        self._log(logging.DEBUG, "IPC subscriber. Finished run loop")
+
     def stop(self) -> None:
         """Thread-safe stop method."""
         if self._stop_event.is_set():
             return
+        self._log(logging.INFO, "Stopping IPC subscriber...")
         self._stop_event.set()
         if self._connected:
-            self._log(logging.INFO, "Disconnecting from server...")
+            self._log(logging.DEBUG, "Disconnecting from server...")
             try:
                 self._sio.disconnect()
             except Exception as e: # pylint: disable=broad-except
@@ -176,60 +195,4 @@ class IpcSubscriber:
     def _log(self, level: int, msg: str) -> None:
         """Log a message, using the logger if available."""
         if self.logger:
-            self.logger.log(level, msg)
-
-# ------------------------- EXAMPLES -----------------------------------------------------------------------------------
-# TODO: remove
-
-class RaceTableClient(IpcSubscriber):
-    def __init__(self, url: str, logger: Optional[logging.Logger] = None):
-        super().__init__(url, logger)
-
-        # optional connect/disconnect hooks
-        @self.on_connect
-        def connected():
-            self._log(logging.INFO, "[RaceTableClient] Connected")
-            self._sio.emit('register-client', {
-                'type': 'race-table',
-                'id': 'race-table-client',
-                })
-
-        @self.on_disconnect
-        def disconnected():
-            self._log(logging.INFO, "[RaceTableClient] Disconnected")
-
-        # custom event handler
-        @self.on('race-table-update')
-        def handle_race_table(data):
-            self._log(logging.INFO, f"[RaceTableClient] Received race-table-update ({len(data)} bytes)")
-
-def get_logger(name: str = None, to_stdout: bool = True) -> logging.Logger:
-    """Return a logger that writes to stdout if enabled, else a dummy logger."""
-    logger = logging.getLogger(name)
-
-    # Clear previous handlers to avoid duplication if reused
-    logger.handlers.clear()
-
-    if to_stdout:
-        import sys  # pylint: disable=import-outside-toplevel
-        logger.setLevel(logging.DEBUG)
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setLevel(logging.DEBUG)
-        formatter = logging.Formatter(
-            fmt="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-            datefmt="%H:%M:%S"
-        )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-    else:
-        # Dummy (no-op) configuration
-        logger.addHandler(logging.NullHandler())
-
-    return logger
-
-if __name__ == "__main__":
-    try:
-        client = RaceTableClient(url="http://localhost:4768", logger=get_logger())
-        client.run()
-    except KeyboardInterrupt:
-        client.stop()
+            self.logger.log(level, msg, stacklevel=2)

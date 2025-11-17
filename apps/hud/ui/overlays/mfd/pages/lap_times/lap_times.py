@@ -1,0 +1,241 @@
+# MIT License
+#
+# Copyright (c) [2025] [Ashwin Natarajan]
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# -------------------------------------- IMPORTS -----------------------------------------------------------------------
+
+import logging
+from enum import Enum
+from typing import Any, Dict, List
+
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont
+from PySide6.QtWidgets import (QHeaderView, QTableWidget, QTableWidgetItem,
+                               QWidget)
+
+from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
+
+from .text_cell_delegate import NoElideDelegate
+
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
+
+class CellColour(Enum):
+    NONE = 0
+    RED = 1
+    GREEN = 2
+    PURPLE = 3
+
+class LapTimesPage(BasePage):
+    """Elegant lap times table with modern styling."""
+    HEADERS = ["Lap", "S1", "S2", "S3", "Time"]
+    NUM_ROWS = 5
+
+    LAP_VALID_MASK = 1
+    S1_VALID_MASK = 2
+    S2_VALID_MASK = 4
+    S3_VALID_MASK = 8
+
+    def __init__(self, parent: QWidget, logger: logging.Logger):
+        """Initialize lap times page.
+
+        Args:
+            parent (QWidget): Parent widget
+            logger (logging.Logger): Logger
+        """
+        super().__init__(parent, logger, "mfd.lap_times", "RECENT LAP TIMES")
+        self._last_processed_data: List[Dict[str, Any]] = []
+
+        # Font configuration
+        FONT_SIZE = 13
+        FONT_FAMILY = "Montserrat"  # Clean, modern font (falls back gracefully)
+        HEADER_FONT = "Montserrat"  # F1-style font (you can change this to any other appropriate font)
+        HEADER_FONT_SIZE = 13
+
+        self.table = QTableWidget(5, 5, self)
+        self.table.setHorizontalHeaderLabels(self.HEADERS)
+        self.table.verticalHeader().setVisible(False)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+
+        # Disable mouse interaction
+        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
+        self.table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+
+        # Make table transparent to mouse events so parent can handle dragging
+        self.table.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+
+        # Hide scroll bars
+        self.table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        # Styling table appearance
+        self.table.setAlternatingRowColors(True)
+        self.table.setShowGrid(True)
+
+        # Apply font to table
+        table_font = QFont(FONT_FAMILY, FONT_SIZE)
+        self.table.setFont(table_font)
+
+        # Cleaned-up and fixed stylesheet
+        self.table.setStyleSheet(f"""
+            QTableWidget {{
+                background-color: #1e1e1e;
+                color: #ffffff;
+                gridline-color: #3a3a3a;
+                border: 1px solid #3a3a3a;
+                border-radius: 5px;
+            }}
+            QTableWidget::item {{
+                padding: 2px;
+                font-family: {FONT_FAMILY};
+                font-size: {FONT_SIZE}pt;
+            }}
+            QTableWidget::item:alternate {{
+                background-color: #252525;
+            }}
+            QTableWidget::item:hover {{
+                background-color: transparent;  /* Disable hover highlighting */
+            }}
+            QTableWidget::item:alternate:hover {{
+                background-color: #252525;
+            }}
+            QHeaderView::section {{
+                background-color: #2d2d2d;
+                color: #FF0000;
+                padding: 8px;
+                border: none;
+                border-bottom: 2px solid #FF0000;
+                font-weight: bold;
+                font-family: {HEADER_FONT};
+                font-size: {HEADER_FONT_SIZE}pt;
+            }}
+        """)
+
+        # Set column widths here (adjust as needed)
+        self.table.setColumnWidth(0, 20)  # Set width for the "Lap" column (index 0)
+        self.table.setColumnWidth(1, 100) # Set width for the "S1" column (index 1)
+        self.table.setColumnWidth(2, 100) # Set width for the "S2" column (index 2)
+        self.table.setColumnWidth(3, 100) # Set width for the "S3" column (index 3)
+        self.table.setColumnWidth(4, 150) # Set width for the "Lap Time" column (index 4)
+
+        # Disable text ellipsis — text will just be truncated visually
+        self.table.setItemDelegate(NoElideDelegate(self.table))
+        self.page_layout.addWidget(self.table)
+        self._init_event_handlers()
+
+    def _init_event_handlers(self):
+        """Initialize event handlers."""
+        @self.on_event("stream_overlay_update")
+        def _handle_stream_overlay_update(data: Dict[str, Any]):
+            """Populate the lap table with up to the last 5 laps. Leave remaining rows blank."""
+            lap_time_history = data.get("lap-time-history", {})
+            if not lap_time_history:
+                return
+
+            if self._last_processed_data == lap_time_history:
+                return
+
+            history_data = lap_time_history.get("lap-time-history-data", [])
+            if not history_data:
+                return
+
+
+            # Get the last 5 laps (if fewer exist, it's fine)
+            recent_laps = history_data[-self.NUM_ROWS:]
+            if not recent_laps:
+                return
+
+
+            # Clear old contents but keep headers
+            self.table.clearContents()
+
+            pb_lap_num = lap_time_history["fastest-lap-number"]
+            pb_s1_lap_num = lap_time_history["fastest-s1-lap-number"]
+            pb_s2_lap_num = lap_time_history["fastest-s2-lap-number"]
+            pb_s3_lap_num = lap_time_history["fastest-s3-lap-number"]
+            glob_best_lap_ms = lap_time_history["global-fastest-lap-ms"]
+            glob_best_s1_ms = lap_time_history["global-fastest-s1-ms"]
+            glob_best_s2_ms = lap_time_history["global-fastest-s2-ms"]
+            glob_best_s3_ms = lap_time_history["global-fastest-s3-ms"]
+
+            # Fill available laps (latest at bottom)
+            for row, lap_info in enumerate(reversed(recent_laps)):
+                lap_num = lap_info["lap-number"]
+                s1_time_ms  = lap_info["sector-1-time-in-ms"]
+                s2_time_ms  = lap_info["sector-2-time-in-ms"]
+                s3_time_ms  = lap_info["sector-3-time-in-ms"]
+                lap_time_ms = lap_info["lap-time-in-ms"]
+
+                s1_time_str = lap_info["sector-1-time-str"]
+                s2_time_str = lap_info["sector-2-time-str"]
+                s3_time_str = lap_info["sector-3-time-str"]
+                lap_time_str= lap_info["lap-time-str"]
+                validFlags = lap_info["lap-valid-bit-flags"]
+
+                # Determine validity for each sector and lap
+                s1_valid = bool(validFlags & self.S1_VALID_MASK)
+                s2_valid = bool(validFlags & self.S2_VALID_MASK)
+                s3_valid = bool(validFlags & self.S3_VALID_MASK)
+                lap_valid = bool(validFlags & self.LAP_VALID_MASK)
+
+                # Create data tuples: (value, time_ms, pb_lap_num, global_best_ms, is_valid)
+                cell_data = [
+                    (lap_num, None, None, None, True),  # Lap number column (no coloring)
+                    (s1_time_str, s1_time_ms, pb_s1_lap_num, glob_best_s1_ms, s1_valid),
+                    (s2_time_str, s2_time_ms, pb_s2_lap_num, glob_best_s2_ms, s2_valid),
+                    (s3_time_str, s3_time_ms, pb_s3_lap_num, glob_best_s3_ms, s3_valid),
+                    (lap_time_str, lap_time_ms, pb_lap_num, glob_best_lap_ms, lap_valid)
+                ]
+
+                for col, (value, time_ms, pb_lap, global_best, is_valid) in enumerate(cell_data):
+                    if col == 0: # lap num
+                        content = str(value)
+                    else:
+                        content = value if value not in ["0.000", "00:00.000"]  else "---"
+
+                    item = QTableWidgetItem(content)
+                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+
+                    # Apply color if not lap number column
+                    if col > 0:
+                        cell_color = self._get_cell_text_colour(lap_num, time_ms, global_best, pb_lap, is_valid)
+                        if cell_color == CellColour.PURPLE:
+                            item.setForeground(Qt.GlobalColor.magenta)
+                        elif cell_color == CellColour.GREEN:
+                            item.setForeground(Qt.GlobalColor.green)
+                        elif cell_color == CellColour.RED:
+                            item.setForeground(Qt.GlobalColor.red)
+
+                    self.table.setItem(row, col, item)
+
+            # Update the cache
+            self._last_processed_data = lap_time_history
+
+    def _get_cell_text_colour(self, lap_num: int, time_ms: int, global_best_time_ms: int,
+                              pb_lap_num: int, isValid: bool) -> CellColour:
+        """Get the text colour for a cell"""
+        if (global_best_time_ms and (time_ms == global_best_time_ms)):
+            return CellColour.PURPLE
+        if (pb_lap_num and (lap_num == pb_lap_num)):
+            return CellColour.GREEN
+        if not isValid:
+            return CellColour.RED
+        return CellColour.NONE

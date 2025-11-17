@@ -19,38 +19,13 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-# pylint: skip-file
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
+from .tyre_wear_page import TyreWearPage
 
-# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+# -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
-def get_logger(debug_mode: bool = False, name: str = "save_viewer") -> logging.Logger:
-    """Get a logger with a console handler.
-
-    Args:
-        debug_mode (bool, optional): Whether to enable debug mode. Defaults to False.
-        name (str, optional): The name of the logger. Defaults to "save_viewer".
-
-    Returns:
-        logging.Logger: The logger
-    """
-    png_logger = logging.getLogger(name)
-    if debug_mode:
-        png_logger.setLevel(logging.DEBUG)
-    else:
-        png_logger.setLevel(logging.INFO)
-
-    handler = logging.StreamHandler()
-    formatter = logging.Formatter(
-        fmt="%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
-    )
-    handler.setFormatter(formatter)
-
-    if not png_logger.hasHandlers():
-        png_logger.addHandler(handler)
-
-    return png_logger
+__all__ = [
+    "TyreWearPage",
+]

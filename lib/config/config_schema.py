@@ -104,12 +104,80 @@ class ConfigDiffMixin:
         return bool(self.diff(other, fields))
 
 class NetworkSettings(ConfigDiffMixin, BaseModel):
-    telemetry_port: int = Field(20777, ge=0, le=65535, description="F1 UDP Telemetry Port")
-    server_port: int = Field(4768, ge=0, le=65535, description=f"{APP_NAME} HTTP Server Port")
-    save_viewer_port: int = Field(4769, ge=0, le=65535, description=f"{APP_NAME} Save Data Viewer Port")
-    udp_tyre_delta_action_code: int = Field(11, ge=1, le=12, description="Tyre Delta Marker: UDP Action Code")
-    udp_custom_action_code: int = Field(12, ge=1, le=12, description="Custom Marker: UDP Action Code")
-    wdt_interval_sec: int = Field(30, ge=1, le=120, description="UDP Telemetry Timeout (sec)")
+
+    ui_meta: ClassVar[Dict[str, Any]] = {
+        "visible" : True,
+    }
+
+    telemetry_port: int = Field(
+        default=20777,
+        ge=0,
+        le=65535,
+        description="F1 UDP Telemetry Port",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True
+            }
+        }
+    )
+    server_port: int = Field(
+        default=4768,
+        ge=0,
+        le=65535,
+        description=f"{APP_NAME} HTTP Server Port",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True
+            }
+        }
+    )
+    save_viewer_port: int = Field(
+        default=4769,
+        ge=0,
+        le=65535,
+        description=f"{APP_NAME} Save Data Viewer Port",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True
+            }
+        }
+    )
+    udp_tyre_delta_action_code: int = Field(
+        default=11,
+        ge=1,
+        le=12, description="Tyre Delta Marker: UDP Action Code", json_schema_extra={
+        "ui": {
+            "type" : "text_box",
+            "visible": True
+        },
+        "udp_action_code" : True
+    })
+    udp_custom_action_code: int = Field(
+        default=12,
+        ge=1,
+        le=12,
+        description="Custom Marker: UDP Action Code",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box"
+            },
+            "udp_action_code" : True
+        }
+    )
+    wdt_interval_sec: int = Field(
+        default=30,
+        ge=1,
+        le=120,
+        description="UDP Telemetry Timeout (sec)",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box"
+            }
+        }
+    )
 
     @model_validator(mode="after")
     def check_ports_and_action_codes(self) -> "NetworkSettings":
@@ -128,22 +196,115 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
         return self
 
 class CaptureSettings(ConfigDiffMixin, BaseModel):
-    post_race_data_autosave: bool = Field(True, description="Autosave race data at the end of races")
-    post_quali_data_autosave: bool = Field(True,
-                                           description="Autosave qualifying data at the end of qualifying sessions")
-    post_fp_data_autosave: bool = Field(False,
-                                        description="Autosave free practice data at the end of free practice sessions")
-    post_tt_data_autosave: bool = Field(False,
-                                        description="Autosave time trial data at the end of time trial sessions")
-    save_race_ctrl_msg: bool = Field(False, description="Save race control messages")
+
+    ui_meta: ClassVar[Dict[str, Any]] = {
+        "visible" : True,
+    }
+
+    post_race_data_autosave: bool = Field(
+        default=True,
+        description="Autosave race data at the end of races",
+        json_schema_extra={
+            "ui": {
+                "type" : "check_box",
+                "visible": True
+            }
+        }
+    )
+    post_quali_data_autosave: bool = Field(
+        default=True,
+        description="Autosave qualifying data at the end of qualifying sessions",
+        json_schema_extra={
+            "ui": {
+                "type" : "check_box",
+                "visible": True
+            }
+        }
+    )
+    post_fp_data_autosave: bool = Field(
+        default=False,
+        description="Autosave free practice data at the end of free practice sessions",
+        json_schema_extra={
+            "ui": {
+                "type" : "check_box",
+                "visible": True
+            }
+        }
+    )
+    post_tt_data_autosave: bool = Field(
+        default=False,
+        description="Autosave time trial data at the end of time trial sessions",
+        json_schema_extra={
+            "ui": {
+                "type" : "check_box",
+                "visible": True
+            }
+        }
+    )
+    save_race_ctrl_msg: bool = Field(
+        default=False,
+        description="Save race control messages",
+        json_schema_extra={
+            "ui": {
+                "type" : "check_box",
+                "visible": True
+            }
+        }
+    )
 
 class DisplaySettings(ConfigDiffMixin, BaseModel):
-    refresh_interval: int = Field(200, gt=0, description=f"{APP_NAME} client update interval (ms)")
-    disable_browser_autoload: bool = Field(False, description="Disable automatic opening of the web page in the browser")
+    ui_meta: ClassVar[Dict[str, Any]] = {
+        "visible" : True,
+    }
+
+    refresh_interval: int = Field(
+        default=200,
+        gt=0,
+        description=f"{APP_NAME} client update interval (ms)",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True
+            }
+        }
+    )
+    disable_browser_autoload: bool = Field(
+        default=False,
+        description="Disable automatic opening of the web page in the browser",
+        json_schema_extra={
+            "ui": {
+                "type" : "check_box",
+                "visible": True
+            }
+        }
+    )
 
 class LoggingSettings(ConfigDiffMixin, BaseModel):
-    log_file: str = Field("png.log", description="Path to the log file (relative only)")
-    log_file_size: int = Field(1_000_000, gt=0, description="Maximum size of the log file (bytes)")
+    ui_meta: ClassVar[Dict[str, Any]] = {
+        "visible" : False,
+    }
+
+    log_file: str = Field(
+        default="png.log",
+        description="Path to the log file (relative only)",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True
+            }
+        }
+    )
+    log_file_size: int = Field(
+        default=1_000_000,
+        gt=0,
+        description="Maximum size of the log file (bytes)",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True
+            }
+        }
+    )
 
     # Pydantic v2 field validators receive the model class as 'cls' automatically.
     # Not a classmethod, so we disable the no-self-argument warning.
@@ -160,17 +321,83 @@ class LoggingSettings(ConfigDiffMixin, BaseModel):
         str_strip_whitespace = True
 
 class PrivacySettings(ConfigDiffMixin, BaseModel):
-    process_car_setup: bool = Field(False, description="Whether to process car setup data")
+    ui_meta: ClassVar[Dict[str, Any]] = {
+        "visible" : True,
+    }
+
+    process_car_setup: bool = Field(
+        default=False,
+        description="Whether to process car setup data",
+        json_schema_extra={
+            "ui": {
+                "type" : "check_box",
+                "visible": True
+            }
+        }
+    )
 
 class StreamOverlaySettings(ConfigDiffMixin, BaseModel):
-    show_sample_data_at_start: bool = Field(False, description="Show sample data until first real data arrives")
-    stream_overlay_update_interval_ms: int = Field(100, ge=50,
-                                                   description="Interval between data updates to the stream overlay (ms)")
+    ui_meta: ClassVar[Dict[str, Any]] = {
+        "visible" : True,
+    }
+
+    show_sample_data_at_start: bool = Field(
+        default=False,
+        description="Show sample data until first real data arrives",
+        json_schema_extra={
+            "ui": {
+                "type" : "check_box",
+                "visible": True
+            }
+        }
+    )
+    stream_overlay_update_interval_ms: int = Field(
+        default=100,
+        ge=50,
+        description="Interval between data updates to the stream overlay (ms)",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True
+            }
+        }
+    )
 
 class ForwardingSettings(ConfigDiffMixin, BaseModel):
-    target_1: Optional[str] = ""
-    target_2: Optional[str] = ""
-    target_3: Optional[str] = ""
+    ui_meta: ClassVar[Dict[str, Any]] = {
+        "visible" : True,
+    }
+
+    target_1: Optional[str] = Field(
+        default="",
+        description="Target 1 (host:port)",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True
+            }
+        }
+    )
+    target_2: Optional[str] = Field(
+        default="",
+        description="Target 2 (host:port)",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True
+            }
+        }
+    )
+    target_3: Optional[str] = Field(
+        default="",
+        description="Target 3 (host:port)",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True
+            }
+        }
+    )
 
     hostport_pattern: ClassVar[re.Pattern] = re.compile(
         r"""
@@ -222,9 +449,39 @@ class ForwardingSettings(ConfigDiffMixin, BaseModel):
         return host, int(port_str)
 
 class HttpsSettings(ConfigDiffMixin, BaseModel):
-    enabled: bool = Field(False, description="Enable HTTPS support")
-    key_file_path: FilePathStr = Field("", description="Path to SSL private key file")
-    cert_file_path: FilePathStr = Field("", description="Path to SSL certificate file")
+    ui_meta: ClassVar[Dict[str, Any]] = {
+        "visible" : True,
+    }
+
+    enabled: bool = Field(
+        default=False, description="Enable HTTPS support",
+        json_schema_extra={
+            "ui": {
+                "type" : "check_box",
+                "visible": True
+            }
+        }
+    )
+    key_file_path: FilePathStr = Field(
+        default="",
+        description="Path to SSL private key file",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True
+            }
+        }
+    )
+    cert_file_path: FilePathStr = Field(
+        default="",
+        description="Path to SSL certificate file",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True
+            }
+        }
+    )
 
     def model_post_init(self, __context: Any) -> None: # pylint: disable=arguments-differ
         """Validate file existence only if HTTPS is enabled."""
@@ -248,7 +505,106 @@ class HttpsSettings(ConfigDiffMixin, BaseModel):
         """Path to SSL private key file. Will be None if HTTPS is disabled."""
         return None if not self.enabled else self.key_file_path
 
+class HudSettings(ConfigDiffMixin, BaseModel):
+    ui_meta: ClassVar[Dict[str, Any]] = {
+        "visible" : True,
+    }
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable HUD (only on Windows, setting will be ignored on other OS's)",
+        json_schema_extra={
+            "ui": {
+                "type" : "check_box",
+                "visible": True
+            }
+        }
+    )
+    show_lap_timer: bool = Field(
+        default=True,
+        description="Show lap timer overlay",
+        json_schema_extra={
+            "ui": {
+                "type" : "check_box",
+                "visible": True
+            }
+        }
+    )
+    show_timing_tower: bool = Field(
+        default=True,
+        description="Show timing tower overlay",
+        json_schema_extra={
+            "ui": {
+                "type" : "check_box",
+                "visible": True
+            }
+        }
+    )
+    show_mfd: bool = Field(
+        default=True,
+        description="Show MFD overlay",
+        json_schema_extra={
+            "ui": {
+                "type" : "check_box",
+                "visible": True
+            }
+        }
+    )
+    toggle_overlays_udp_action_code: int = Field(
+        default=10,
+        ge=1,
+        le=12,
+        description="The UDP custom action code to show/hide overlays",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True
+            },
+            "udp_action_code" : True
+        }
+    )
+    cycle_mfd_udp_action_code: int = Field(
+        default=9,
+        ge=1,
+        le=12,
+        description="The UDP custom action code to cycle MFD pages",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True
+            },
+            "udp_action_code" : True
+        }
+    )
+    overlays_opacity: int = Field(
+        default=100,
+        ge=0,
+        le=100,
+        description="Overlays opacity percentage",
+        json_schema_extra={
+            "ui": {
+                "type" : "slider",
+                "visible": True,
+                "min": 0,
+                "max": 100
+            }
+        }
+    )
+
+    def model_post_init(self, __context: Any) -> None: # pylint: disable=arguments-differ
+        """Validate file existence only if HTTPS is enabled."""
+        # Not allowed to enable HUD while all overlays are disabled
+        if self.enabled:
+            if not self.show_lap_timer and not self.show_timing_tower and not self.show_mfd:
+                raise ValueError("HUD cannot be enabled while all overlays are disabled")
+
+
 class PitTimeLossF1(ConfigDiffMixin, BaseModel):
+    ui_meta: ClassVar[Dict[str, Any]] = {
+        "visible" : False,
+    }
+
+    # Not adding field level metadata since whole section is hidden in UI
     Melbourne: float = Field(18.0)
     Shanghai: float = Field(22.0)
     Suzuka: float = Field(22.0)
@@ -280,6 +636,11 @@ class PitTimeLossF1(ConfigDiffMixin, BaseModel):
     Portimao: float = Field(None)
 
 class PitTimeLossF2(ConfigDiffMixin, BaseModel):
+    ui_meta: ClassVar[Dict[str, Any]] = {
+        "visible" : False,
+    }
+
+    # Not adding field level metadata since whole section is hidden in UI
     Melbourne: float = Field(None)
     Shanghai: float = Field(None)
     Suzuka: float = Field(None)
@@ -311,6 +672,11 @@ class PitTimeLossF2(ConfigDiffMixin, BaseModel):
     Portimao: float = Field(None)
 
 class SubSysCtrl(ConfigDiffMixin, BaseModel):
+    ui_meta: ClassVar[Dict[str, Any]] = {
+        "visible" : False,
+    }
+
+    # Not adding field level metadata since whole section is hidden in UI
     heartbeat_interval: float = Field(5.0, ge=1.0, le=60.0)
     num_missable_heartbeats: int = Field(3, ge=1, le=20)
 
@@ -323,11 +689,38 @@ class PngSettings(ConfigDiffMixin, BaseModel):
     Forwarding: ForwardingSettings = Field(default_factory=ForwardingSettings)
     StreamOverlay: StreamOverlaySettings = Field(default_factory=StreamOverlaySettings)
     HTTPS: HttpsSettings = Field(default_factory=HttpsSettings)
+    HUD: HudSettings = Field(default_factory=HudSettings)
     TimeLossInPitsF1: PitTimeLossF1 = Field(default_factory=PitTimeLossF1)
     TimeLossInPitsF2: PitTimeLossF2 = Field(default_factory=PitTimeLossF2)
     SubSysCtrlCfg__: SubSysCtrl = Field(default_factory=SubSysCtrl)
     class Config:
         str_strip_whitespace = True
+
+    @model_validator(mode="after")
+    def check_udp_action_codes(self) -> "PngSettings":
+        """Ensure all UDP action code fields across subsettings are unique."""
+        udp_fields = []
+
+        # Walk through submodels
+        for section_name, section in self.__dict__.items():
+            if isinstance(section, BaseModel):
+                # Access model_fields via the class (Pydantic v2/v3 safe)
+                for field_name, field in type(section).model_fields.items():
+                    extra = field.json_schema_extra or {}
+                    if extra.get("udp_action_code"):
+                        value = getattr(section, field_name)
+                        udp_fields.append((f"{section_name}.{field_name}", value))
+
+        # Check for duplicates
+        seen = {}
+        for name, val in udp_fields:
+            if val in seen:
+                raise ValueError(
+                    f"Duplicate UDP action code {val} between {seen[val]} and {name}"
+                )
+            seen[val] = name
+
+        return self
 
     def __str__(self) -> str:
         lines = ["PngSettings:"]

@@ -44,7 +44,11 @@ def _dispatch_frozen_submodule():
         pits_n_giggles.exe --module apps.save_viewer <...>
     """
 
-    ALLOWED_MODULES = {"apps.backend", "apps.save_viewer"}
+    ALLOWED_MODULES = {
+        "apps.backend",
+        "apps.save_viewer",
+        "apps.hud",
+    }
 
     # Locate the module name and its args
     idx = sys.argv.index('--module')

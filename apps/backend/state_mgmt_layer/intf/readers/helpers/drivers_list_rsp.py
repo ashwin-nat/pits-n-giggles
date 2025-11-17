@@ -381,7 +381,7 @@ class DriversListRsp(BaseAPI):
 
     def _getERSInfoJSON(self, driver_data: DataPerDriver) -> Dict[str, Any]:
         """Extract ERS information section for JSON response."""
-        ers_perc = f"{F1Utils.floatToStr(driver_data.m_car_info.m_ers_perc)}%" \
+        ers_perc = f"{F1Utils.formatFloat(driver_data.m_car_info.m_ers_perc)}%" \
             if driver_data.m_car_info.m_ers_perc is not None else "0.00%"
 
         car_status = driver_data.m_packet_copies.m_packet_car_status

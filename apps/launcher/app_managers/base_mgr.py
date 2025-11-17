@@ -44,16 +44,6 @@ from lib.ipc import IpcParent, get_free_tcp_port
 
 from ..console_interface import ConsoleInterface
 
-# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
-
-def get_executable_extension() -> str:
-    """Get the executable file extension based on the operating system"""
-    if sys.platform == "win32":
-        return ".exe"
-    if sys.platform == "darwin":
-        return ".app"
-    return "" if sys.platform.startswith("linux") else ""
-
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
 class PngAppMgrBase(ABC):
@@ -99,31 +89,31 @@ class PngAppMgrBase(ABC):
                  http_port_conflict_settings_field: str,
                  udp_port_conflict_settings_field: str,
                  module_path: str,
-                 exe_name_without_ext: str,
                  display_name: str,
                  start_by_default: bool,
                  console_app: ConsoleInterface,
                  settings: PngSettings,
                  args: list[str],
-                 debug_mode: bool):
+                 debug_mode: bool,
+                 coverage_enabled: bool):
         """Initialize the sub-application
         :param http_port_conflict_settings_field: Settings field to check for HTTP port conflicts
         :param udp_port_conflict_settings_field: Settings field to check for UDP port conflicts
         :param module_path: Path to the sub-application module
-        :param exe_name_without_ext: Executable name without extension
         :param display_name: Display name for the sub-application
         :param start_by_default: Whether to start this app by default
         :param console_app: Reference to a console interface for logging
         :param settings: Settings object
         :param args: Additional Command line arguments to pass to the sub-application
         :param debug_mode: Whether to run the sub-application in debug mode
+        :param coverage_enabled: Whether to enable coverage
         """
         self.http_port_conflict_settings_field = http_port_conflict_settings_field
         self.udp_port_conflict_settings_field = udp_port_conflict_settings_field
         self.module_path = module_path
         self.display_name = display_name
-        self.exec_name = exe_name_without_ext + get_executable_extension()
         self.console_app = console_app
+        self.coverage_enabled = coverage_enabled
         self.args = args or []  # Store CLI args
         self.process: Optional[subprocess.Popen] = None
         self._process_lock = threading.Lock()
@@ -135,7 +125,6 @@ class PngAppMgrBase(ABC):
         self.heartbeat_interval: float = settings.SubSysCtrlCfg__.heartbeat_interval
         self.num_missable_heartbeats: int = settings.SubSysCtrlCfg__.num_missable_heartbeats
         self._stop_heartbeat = threading.Event()
-        self._heartbeat_stopped = threading.Event()
         self.start_by_default = start_by_default
         self.child_pid = None
         self._post_start_hook: Optional[Callable[[], None]] = None
@@ -165,6 +154,17 @@ class PngAppMgrBase(ABC):
         """
         if getattr(sys, "frozen", False):
             return [sys.executable, "--module", module_path, *args]
+        if self.coverage_enabled:
+            self.console_app.info_log(f"Starting {self.display_name} with coverage...")
+            return [
+                sys.executable,
+                '-m', 'coverage',
+                'run',
+                '--parallel-mode',
+                '--rcfile', 'scripts/.coveragerc_integration',
+                '-m', module_path, *args
+            ]
+        self.console_app.info_log(f"Starting {self.display_name} without coverage...")
         return [sys.executable, "-m", module_path, *args]
 
 
@@ -188,7 +188,7 @@ class PngAppMgrBase(ABC):
             # Start the subprocess and update all related state variables atomically
             # so no other thread sees a partially updated state.
             launch_command = self.get_launch_command(self.module_path, self.args)
-            self.console_app.info_log(f"Starting {self.display_name}...")
+            self.console_app.info_log(f"Starting {self.display_name} using launch command: {launch_command}...")
 
             self.ipc_port = get_free_tcp_port()
             launch_command.extend(["--ipc-port", f"{self.ipc_port}"])
@@ -207,9 +207,10 @@ class PngAppMgrBase(ABC):
             self.status_var.set("Starting...")
 
         # Start output capture and monitor threads outside the lock to avoid deadlocks
-        threading.Thread(target=self._capture_output, daemon=True).start()
-        threading.Thread(target=self._monitor_process_exit, daemon=True).start()
-        threading.Thread(target=self._send_heartbeat, args=(self.ipc_port,), daemon=True).start()
+        threading.Thread(target=self._capture_output, daemon=True, name=f"{self.display_name} output capture").start()
+        threading.Thread(target=self._monitor_process_exit, daemon=True, name=f"{self.display_name} exit monitor").start()
+        threading.Thread(target=self._send_heartbeat, args=(self.ipc_port,), daemon=True,
+                         name=f"{self.display_name} heartbeat").start()
 
         self.console_app.debug_log(f"{self.display_name} started successfully. PID = {self.child_pid}")
 
@@ -225,21 +226,14 @@ class PngAppMgrBase(ABC):
             self.status_var.set("Stopping...")
             if self._send_ipc_shutdown():
                 try:
-                    self.process.wait(timeout=5)
+                    self.process.wait(timeout=10)
+                    self.console_app.debug_log(f"{self.display_name} exited successfully.")
                 except subprocess.TimeoutExpired:
                     self.console_app.debug_log(f"{self.display_name} did not exit in time after IPC shutdown. Killing it.")
                     self._terminate_process()
             else:
                 self.console_app.debug_log(f"Failed to send shutdown signal to {self.display_name}.")
                 self._terminate_process()
-
-            # Wait for heartbeat thread to stop
-            self.console_app.debug_log(f"{self.display_name} - Waiting for heartbeat thread to stop...")
-            if self._heartbeat_stopped.wait(timeout=self.heartbeat_interval + 1.0):
-                self.console_app.debug_log(f"{self.display_name} - Heartbeat thread stopped.")
-            else:
-                self.console_app.debug_log(f"{self.display_name} - Timed out waiting for heartbeat thread to stop.")
-            self._heartbeat_stopped.clear()
 
             # Clear process-related state atomically to avoid race conditions
             self.process = None
@@ -264,7 +258,7 @@ class PngAppMgrBase(ABC):
             except Exception as e:  # pylint: disable=broad-exception-caught
                 self.console_app.debug_log(f"{self.display_name}: Error during start/stop: {e}")
 
-        threading.Thread(target=worker, daemon=True).start()
+        threading.Thread(target=worker, daemon=True, name=f"{self.display_name} start/stop").start()
 
     def _start_stop_blocking(self):
         """Actual start/stop logic that may block (called in worker thread)."""
@@ -365,7 +359,6 @@ class PngAppMgrBase(ABC):
         assert timeout_ms > 0
 
         self.console_app.debug_log(f"{self.display_name}: Starting heartbeat on port {port_num}...")
-        self._heartbeat_stopped.clear()
 
         while not self._stop_heartbeat.is_set():
             try:
@@ -381,7 +374,7 @@ class PngAppMgrBase(ABC):
                     failed_heartbeat_count += 1
 
             except Exception as e:  # pylint: disable=broad-exception-caught
-                self.console_app.debug_log(f"{self.display_name}: Error sending heartbeat: {e} on port {port_num}")
+                self.console_app.debug_log(f"{self.display_name}: Error sending heartbeat: {e}")
                 failed_heartbeat_count += 1
 
             # Check if we've exceeded the maximum allowed missed heartbeats
@@ -395,7 +388,6 @@ class PngAppMgrBase(ABC):
             self._stop_heartbeat.wait(self.heartbeat_interval)
 
         self._stop_heartbeat.clear()
-        self._heartbeat_stopped.set()
         self.console_app.debug_log(f"{self.display_name}: Heartbeat job stopped on port {port_num}")
 
     def _is_restart_exit_expected(self, ret_code: int) -> bool:

@@ -71,7 +71,8 @@ entry_script = os.path.join(PROJECT_ROOT, "apps", "launcher", "__main__.py")
 hiddenimports = (
     collect_submodules("apps.launcher") +
     collect_submodules("apps.backend") +
-    collect_submodules("apps.save_viewer")
+    collect_submodules("apps.save_viewer") +
+    collect_submodules("apps.hud")
 )
 
 datas = [
@@ -92,6 +93,22 @@ datas = [
     (os.path.join(PROJECT_ROOT, "assets", "tyre-icons", "wet_tyre.svg"), "assets/tyre-icons"),
     (os.path.join(PROJECT_ROOT, "assets", "tyre-icons", "intermediate_tyre.svg"), "assets/tyre-icons"),
     (os.path.join(PROJECT_ROOT, "assets", "tyre-icons", "super_soft_tyre.svg"), "assets/tyre-icons"),
+
+    # Team icons
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "alpine.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "aston_martin.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "ferrari.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "haas.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "mclaren.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "mercedes.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "rb.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "red_bull.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "sauber.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "williams.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "default.svg"), "assets/team-logos"),
+
+    # Overlay icons
+    (os.path.join(PROJECT_ROOT, "assets", "overlays", "fuel-pump.svg"), "assets/overlay"),
 ]
 
 # --------------------------------------------------------------------------------------------------

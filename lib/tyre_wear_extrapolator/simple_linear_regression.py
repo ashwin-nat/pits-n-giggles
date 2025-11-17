@@ -97,3 +97,8 @@ class SimpleLinearRegression:
             c = mean_y - m * mean_x  # Intercept
 
         return m, c
+
+    @property
+    def slope(self) -> float:
+        """Get the slope of this simple linear regression model."""
+        return self.m

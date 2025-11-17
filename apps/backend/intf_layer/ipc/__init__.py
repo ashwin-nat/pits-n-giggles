@@ -33,6 +33,7 @@ from apps.backend.state_mgmt_layer import SessionState
 
 from .command_dispatcher import processIpcCommand
 from .command_handlers import handleShutdown
+from .command_handlers import handleHeartbeatMissed
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -56,6 +57,7 @@ def registerIpcTask(
         logger.debug(f"Starting IPC server on port {ipc_port}")
         server = IpcChildAsync(ipc_port, "Backend")
         server.register_shutdown_callback(partial(handleShutdown, logger=logger))
+        server.register_heartbeat_missed_callback(handleHeartbeatMissed)
         tasks.append(asyncio.create_task(server.run(partial(
             processIpcCommand, logger=logger, session_state=session_state)), name="IPC Task"))
 

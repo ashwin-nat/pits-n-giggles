@@ -4,6 +4,9 @@
  * @param {function} callback - Callback function that receives the update information
  */
 function checkForNewVersion(currentVersion, callback) {
+    // TODO - disabled for beta
+    return;
+
     const repoApiUrl = 'https://api.github.com/repos/ashwin-nat/pits-n-giggles/releases/latest';
 
     fetch(repoApiUrl)

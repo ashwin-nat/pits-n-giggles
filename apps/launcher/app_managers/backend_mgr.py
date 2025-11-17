@@ -41,13 +41,15 @@ class BackendAppMgr(PngAppMgrBase):
                  settings: PngSettings,
                  args: list[str],
                  debug_mode: bool,
-                 replay_server: bool):
+                 replay_server: bool,
+                 coverage_enabled: bool):
         """Initialize the backend manager
         :param console_app: Reference to a console interface for logging
         :param settings: Settings object
         :param args: Additional Command line arguments to pass to the backend
         :param debug_mode: Whether to run the backend in debug mode
         :param replay_server: Whether to run the replay server
+        :param coverage_enabled: Whether to enable coverage
         """
 
         extra_args = []
@@ -62,13 +64,13 @@ class BackendAppMgr(PngAppMgrBase):
             http_port_conflict_settings_field='Network -> "Pits n\' Giggles HTTP Server Port"',
             udp_port_conflict_settings_field='Network -> "F1 UDP Telemetry Port"',
             module_path="apps.backend",
-            exe_name_without_ext="backend",
             display_name="Server",
             start_by_default=True,
             console_app=console_app,
             settings=settings,
             args=temp_args,
-            debug_mode=debug_mode
+            debug_mode=debug_mode,
+            coverage_enabled=coverage_enabled
         )
         self.register_post_start(self.post_start)
         self.register_post_stop(self.post_stop)
@@ -148,6 +150,9 @@ class BackendAppMgr(PngAppMgrBase):
             "Privacy" : [],
             "Forwarding" : [],
             "StreamOverlay" : [],
+            "HUD": [
+                "toggle_overlays_udp_action_code",
+            ]
         })
         self.console_app.debug_log(f"{self.display_name} Settings changed: {json.dumps(diff, indent=2)}")
 

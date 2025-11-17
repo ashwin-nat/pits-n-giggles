@@ -25,7 +25,7 @@
 import copy
 import datetime
 import sys
-import threading
+import threading # pylint: disable=unused-import # TODO: undo
 import tkinter as tk
 import webbrowser
 from tkinter import ttk
@@ -38,7 +38,8 @@ from lib.file_path import resolve_user_file
 from lib.version import is_update_available
 from meta.meta import APP_NAME
 
-from .app_managers import BackendAppMgr, PngAppMgrBase, SaveViewerAppMgr
+from .app_managers import (BackendAppMgr, HudAppMgr, PngAppMgrBase,
+                           SaveViewerAppMgr)
 from .console_interface import ConsoleInterface
 from .logger import get_rotating_logger
 from .settings import SettingsWindow
@@ -53,7 +54,9 @@ class PngLauncher(ConsoleInterface):
                  logo_path: str,
                  settings_icon_path: str,
                  debug_mode: bool,
-                 replay_mode: bool):
+                 replay_mode: bool,
+                 integration_test_mode: bool,
+                 coverage_enabled: bool):
         """Initialize the main application window
 
         Args:
@@ -63,6 +66,7 @@ class PngLauncher(ConsoleInterface):
             settings_icon_path (str): Path to the settings icon
             debug_mode (bool): Flag to enable debug mode
             replay_mode (bool): Flag to enable replay mode
+            integration_test_mode (bool): Flag to enable integration test mode
         """
 
         self.root = root
@@ -73,6 +77,8 @@ class PngLauncher(ConsoleInterface):
         self.settings_icon_path = settings_icon_path
         self.debug_mode = debug_mode
         self.replay_mode = replay_mode
+        self.integration_test_mode = integration_test_mode
+        self.coverage_mode = coverage_enabled
 
         # Init logger before anything else
         self.setup_logger()
@@ -111,8 +117,9 @@ class PngLauncher(ConsoleInterface):
         sys.stdout = self
 
         # Check for updates in parallel (no-op in dev mode)
-        if self.version:
-            threading.Thread(target=self.check_for_updates_background, daemon=True).start()
+        # TODO: undo. currently disabled for beta
+        # if self.version:
+        #     threading.Thread(target=self.check_for_updates_background, daemon=True).start()
 
         # Initial log message
         self.info_log(f"{APP_NAME} started. Version: {self.version}. Log file: {self.log_file_path}")
@@ -174,8 +181,11 @@ class PngLauncher(ConsoleInterface):
 
     def setup_subapps(self):
         """Set up the hard-coded sub-apps"""
+        SUBAPPS_PER_ROW = 2 # hardcoded value, change if required
+
         save_viewer_args = ["--config-file", self.config_file]
         server_args = ["--config-file", self.config_file]
+        hud_args = ["--config-file", self.config_file]
 
         self.subapps = {
             # Backend app reads port from config file
@@ -184,7 +194,8 @@ class PngLauncher(ConsoleInterface):
                 settings=self.settings,
                 args=server_args,
                 debug_mode=self.debug_mode,
-                replay_server=self.replay_mode
+                replay_server=self.replay_mode,
+                coverage_enabled=self.coverage_mode
             ),
             # SaveViewer app reads port from args
             "save_viewer": SaveViewerAppMgr(
@@ -192,17 +203,29 @@ class PngLauncher(ConsoleInterface):
                 settings=self.settings,
                 args=save_viewer_args,
                 debug_mode=self.debug_mode,
+                coverage_enabled=self.coverage_mode
+            ),
+            # HUD app reads ipc port from args
+            "hud": HudAppMgr(
+                console_app=self,
+                settings=self.settings,
+                args=hud_args,
+                debug_mode=self.debug_mode,
+                integration_test_mode=self.integration_test_mode,
+                coverage_enabled=self.coverage_mode
             ),
         }
 
         # Create UI for each subapp
         for i, (_, subapp) in enumerate(self.subapps.items()):
+            row_num = i // SUBAPPS_PER_ROW
+            col_num = i % SUBAPPS_PER_ROW
             frame = ttk.Frame(self.subapps_frame, style="Racing.TFrame")
-            frame.grid(row=0, column=i, padx=15, pady=5)
+            frame.grid(row=row_num, column=col_num, padx=15, pady=5, sticky="nw")
 
             # Add controls for this subapp
             label = ttk.Label(frame, text=f"{subapp.display_name}:", style="Racing.TLabel")
-            label.grid(row=0, column=0, padx=5, pady=5)
+            label.grid(row=0, column=0, padx=5, pady=5, sticky="w")
 
             status_label = ttk.Label(frame, textvariable=subapp.status_var, width=10, style="Stopped.TLabel")
             status_label.grid(row=0, column=1, padx=5, pady=5)
@@ -326,7 +349,7 @@ class PngLauncher(ConsoleInterface):
         else:
             formatted_message = message
 
-        logger_func(message.rstrip(), extra={"with_timestamp": with_timestamp}, stacklevel=2)
+        logger_func(message.rstrip(), extra={"with_timestamp": with_timestamp}, stacklevel=3)
 
         self.console.configure(state=tk.NORMAL)
         self.console.insert(tk.END, formatted_message)
@@ -340,6 +363,10 @@ class PngLauncher(ConsoleInterface):
     def info_log(self, message: str, is_child_message: bool = False):
         """Log an info message to console and file."""
         self._write_log(self.m_logger.info, message, is_child_message)
+
+    def error_log(self, message: str, is_child_message: bool = False):
+        """Log an error message to console and file."""
+        self._write_log(self.m_logger.error, message, is_child_message)
 
     def clear_log(self):
         """Clear the console log"""
@@ -381,12 +408,12 @@ class PngLauncher(ConsoleInterface):
         """Required for stdout redirection"""
         return
 
-    def on_closing(self):
+    def on_closing(self, reason: str):
         """Stop all running sub-apps and restore stdout before closing"""
-        self.debug_log("Closing %s", self.app_name)
+        self.info_log(f"Closing {self.app_name}. Reason: {reason}")
         for _, subapp in self.subapps.items():
             if subapp.is_running:
-                self.debug_log(f"Stopping {subapp.display_name}...")
+                self.info_log(f"Stopping {subapp.display_name}...")
                 subapp.stop()
 
         sys.stdout = self.stdout_original
