@@ -32,7 +32,7 @@ from PySide6.QtWidgets import (
     QPushButton, QLabel, QTextEdit, QFrame, QSplitter, QMessageBox
 )
 from PySide6.QtCore import Qt, QTimer, Signal, QObject
-from PySide6.QtGui import QFont, QTextCursor, QCloseEvent
+from PySide6.QtGui import QFont, QTextCursor, QCloseEvent, QIcon
 
 from apps.launcher_v2.subsystems import BackendAppMgr, PngAppMgrBase
 from lib.file_path import resolve_user_file
@@ -56,8 +56,11 @@ class PngLauncherWindow(QMainWindow):
                  coverage_enabled: bool):
 
         self.app = QApplication(sys.argv)
+        super().__init__()
+
         self.ver_str = ver_str
         self.logo_path = logo_path
+        self.setWindowIcon(QIcon(self.logo_path))
         self.integration_test_mode = integration_test_mode
         self.settings_icon_path = settings_icon_path
         self.debug_mode = debug_mode
@@ -65,12 +68,14 @@ class PngLauncherWindow(QMainWindow):
         self.logger, self.log_file_path = get_rotating_logger(debug_mode=self.debug_mode)
         self.config_file = resolve_user_file("png_config.ini")
         self.settings: PngSettings = load_config_from_ini(self.config_file, logger=self.logger)
-        super().__init__()
+
+        # Common args
+        args = ["--config-file", self.config_file]
         self.subsystems = [
            BackendAppMgr(
                window=self,
                settings=self.settings,
-               args=[],
+               args=args,
                debug_mode=debug_mode,
                replay_server=replay_mode,
                coverage_enabled=coverage_enabled
@@ -81,19 +86,7 @@ class PngLauncherWindow(QMainWindow):
         self.log_signals = LogSignals()
         self.log_signals.log_message.connect(self._write_log)
 
-        # Setup file logging
-        self.setup_file_logging()
-
         self.setup_ui()
-
-    def setup_file_logging(self):
-        """Setup file logging handler"""
-        logging.basicConfig(
-            filename=self.log_file,
-            level=logging.DEBUG,
-            format='[%(asctime)s] [%(levelname)s] %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
-        )
 
     def setup_ui(self):
         """Setup the main UI"""
