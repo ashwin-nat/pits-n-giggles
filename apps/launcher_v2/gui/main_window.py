@@ -23,7 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import sys
-import logging
+import webbrowser
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, Dict, Optional
@@ -40,6 +40,7 @@ from lib.config import PngSettings, load_config_from_ini
 from apps.launcher_v2.logger import get_rotating_logger
 from .console import LogSignals, ConsoleWidget
 from .subsys_row import SubsystemCard
+from meta.meta import APP_NAME
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -118,6 +119,7 @@ class PngLauncherWindow(QMainWindow):
         icons_path_base = Path("assets") / "launcher-icons"
         self.icons: Dict[str, QIcon] = {
             "dashboard" : self._load_icon(icons_path_base / "dashboard.svg"),
+            "discord" : self._load_icon(icons_path_base / "discord.svg"),
             "lock" : self._load_icon(icons_path_base / "lock.svg"),
             "next-page" : self._load_icon(icons_path_base / "next-page.svg"),
             "open-file" : self._load_icon(icons_path_base / "open-file.svg"),
@@ -129,6 +131,8 @@ class PngLauncherWindow(QMainWindow):
             "stop" : self._load_icon(icons_path_base / "stop.svg"),
             "twitch" : self._load_icon(icons_path_base / "twitch.svg"),
             "unlock" : self._load_icon(icons_path_base / "unlock.svg"),
+            "updates" : self._load_icon(icons_path_base / "updates.svg"),
+            "website" : self._load_icon(icons_path_base / "website.svg"),
         }
 
     def get_icon(self, key: str) -> Optional[QIcon]:
@@ -138,7 +142,7 @@ class PngLauncherWindow(QMainWindow):
 
     def setup_ui(self):
         """Setup the main UI"""
-        self.setWindowTitle("Pits n' Giggles")
+        self.setWindowTitle(APP_NAME)
         self.setMinimumSize(1000, 700)
 
         # Clean dark theme
@@ -162,6 +166,51 @@ class PngLauncherWindow(QMainWindow):
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(10, 10, 10, 10)
         main_layout.setSpacing(10)
+
+        # Top bar with app info and global buttons
+        top_bar_layout = QHBoxLayout()
+
+        # Left side - App icon, name, and version
+        app_info_layout = QHBoxLayout()
+        app_info_layout.setSpacing(8)
+
+        # App icon
+        app_icon_label = QLabel()
+        app_icon_label.setPixmap(QIcon(self.logo_path).pixmap(32, 32))
+        app_icon_label.setFixedSize(32, 32)
+        app_info_layout.addWidget(app_icon_label)
+
+        # App name and version
+        app_title_label = QLabel(f"{APP_NAME} - {self.ver_str}")
+        app_title_label.setFont(QFont("Arial", 11, QFont.Weight.Bold))
+        app_title_label.setStyleSheet("color: #d4d4d4; background-color: transparent;")
+        app_info_layout.addWidget(app_title_label)
+
+        top_bar_layout.addLayout(app_info_layout)
+        top_bar_layout.addStretch()
+
+        # Right side - Global buttons
+        global_buttons_layout = QHBoxLayout()
+        global_buttons_layout.setSpacing(6)
+
+        # Settings button
+        self.settings_btn = self.build_button(self.get_icon("settings"), self.on_settings_clicked)
+        global_buttons_layout.addWidget(self.settings_btn)
+
+        # Discord button
+        self.discord_btn = self.build_button(self.get_icon("discord"), self.on_discord_clicked)
+        global_buttons_layout.addWidget(self.discord_btn)
+
+        # Website button
+        self.website_btn = self.build_button(self.get_icon("website"), self.on_website_clicked)
+        global_buttons_layout.addWidget(self.website_btn)
+
+        # Updates button
+        self.updates_btn = self.build_button(self.get_icon("updates"), self.on_updates_clicked)
+        global_buttons_layout.addWidget(self.updates_btn)
+
+        top_bar_layout.addLayout(global_buttons_layout)
+        main_layout.addLayout(top_bar_layout)
 
         # Create console first
         self.console = ConsoleWidget()
@@ -190,7 +239,7 @@ class PngLauncherWindow(QMainWindow):
         central_widget.setLayout(main_layout)
 
         # Initial log
-        self.info_log(f"Pits n' Giggles {self.ver_str} started")
+        self.info_log(f"{APP_NAME} {self.ver_str} started")
 
     def create_subsystems_area(self) -> QWidget:
         """Create the subsystems display area with grid layout"""
@@ -410,3 +459,21 @@ class PngLauncherWindow(QMainWindow):
             filter
         )
         return file_path or None
+
+    def on_settings_clicked(self):
+        """Handle settings button click"""
+        self.info_log("Settings button clicked")
+        # TODO: Implement settings dialog
+
+    def on_discord_clicked(self):
+        """Handle Discord button click"""
+        webbrowser.open("https://discord.gg/qQsSEHhW2V")
+
+    def on_website_clicked(self):
+        """Handle website button click"""
+        webbrowser.open("https://pitsngiggles.com/blog")
+
+    def on_updates_clicked(self):
+        """Handle updates button click"""
+        self.info_log("Updates button clicked")
+        # TODO: Check for updates
