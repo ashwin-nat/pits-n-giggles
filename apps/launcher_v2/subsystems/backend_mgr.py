@@ -29,7 +29,7 @@ from lib.config import PngSettings
 from lib.ipc import IpcParent
 
 from .base_mgr import PngAppMgrBase
-from PySide6.QtWidgets import QPushButton # TODO: abstract
+from PySide6.QtWidgets import QPushButton
 from typing import List, TYPE_CHECKING
 
 if TYPE_CHECKING:
