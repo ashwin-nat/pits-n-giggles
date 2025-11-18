@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class SaveViewerAppMgr(PngAppMgrBase):
-    """Implementation of PngApp for backend services"""
+    """Implementation of PngApp for save viewer"""
     def __init__(self,
                  window: "PngLauncherWindow",
                  settings: PngSettings,
@@ -153,7 +153,7 @@ class SaveViewerAppMgr(PngAppMgrBase):
         self.set_button_state(self.open_dashboard_button, False)
         try:
             # Call the start_stop method
-            self.start_stop("Stop button pressed")
+            self.start_stop("Button pressed")
         except Exception as e: # pylint: disable=broad-exception-caught
             # Log the error or handle it as needed
             self.debug_log(f"{self.display_name}:Error during start/stop: {e}")
