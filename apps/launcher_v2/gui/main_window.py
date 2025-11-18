@@ -29,12 +29,12 @@ from pathlib import Path
 from typing import Callable
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QPushButton, QLabel, QTextEdit, QFrame, QSplitter, QMessageBox
+    QPushButton, QLabel, QTextEdit, QFrame, QSplitter, QMessageBox, QFileDialog
 )
 from PySide6.QtCore import Qt, QTimer, Signal, QObject
 from PySide6.QtGui import QFont, QTextCursor, QCloseEvent, QIcon
 
-from apps.launcher_v2.subsystems import BackendAppMgr, PngAppMgrBase
+from apps.launcher_v2.subsystems import BackendAppMgr, SaveViewerAppMgr
 from lib.file_path import resolve_user_file
 from lib.config import PngSettings, load_config_from_ini
 from apps.launcher_v2.logger import get_rotating_logger
@@ -80,6 +80,13 @@ class PngLauncherWindow(QMainWindow):
                replay_server=replay_mode,
                coverage_enabled=coverage_enabled
            ),
+           SaveViewerAppMgr(
+               window=self,
+               settings=self.settings,
+               args=args,
+               debug_mode=debug_mode,
+               coverage_enabled=coverage_enabled
+           )
         ]
 
         # Setup logging signals
@@ -344,3 +351,13 @@ class PngLauncherWindow(QMainWindow):
             title,
             message
         )
+
+    def select_file(self, title="Select File", filter="All Files (*.*)"):
+        """Open a file dialog and return path or None."""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            title,
+            "",
+            filter
+        )
+        return file_path or None

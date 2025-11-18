@@ -24,10 +24,12 @@
 
 from .backend_mgr import BackendAppMgr
 from .base_mgr import PngAppMgrBase
+from .save_viewer_mgr import SaveViewerAppMgr
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
     "BackendAppMgr",
     "PngAppMgrBase",
+    "SaveViewerAppMgr",
 ]

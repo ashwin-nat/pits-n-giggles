@@ -71,7 +71,9 @@ class BackendAppMgr(PngAppMgrBase):
             start_by_default=True,
             args=temp_args,
             debug_mode=debug_mode,
-            coverage_enabled=coverage_enabled
+            coverage_enabled=coverage_enabled,
+            http_port_conflict_settings_field='Network -> "Pits n\' Giggles HTTP Server Port"',
+            udp_port_conflict_settings_field='Network -> "F1 UDP Telemetry Port"',
         )
 
         self.register_post_start(self.post_start)

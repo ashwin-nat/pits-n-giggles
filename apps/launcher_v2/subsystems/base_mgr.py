@@ -94,8 +94,8 @@ class PngAppMgrBase(QObject):
                  args: Optional[List[str]] = None,
                  debug_mode: bool = False,
                  coverage_enabled: bool = False,
-                 http_port_conflict_field: Optional[str] = None,
-                 udp_port_conflict_field: Optional[str] = None):
+                 http_port_conflict_settings_field: Optional[str] = None,
+                 udp_port_conflict_settings_field: Optional[str] = None):
         """
         Initialize the subsystem manager
 
@@ -106,8 +106,8 @@ class PngAppMgrBase(QObject):
             args: Additional command-line arguments
             debug_mode: Enable debug mode (disables heartbeat timeout)
             coverage_enabled: Enable code coverage tracking
-            http_port_conflict_field: Settings field name for HTTP port conflicts
-            udp_port_conflict_field: Settings field name for UDP port conflicts
+            http_port_conflict_settings_field: Settings field to check for HTTP port conflicts
+            udp_port_conflict_settings_field: Settings field to check for UDP port conflicts
         """
         super().__init__()
 
@@ -118,8 +118,8 @@ class PngAppMgrBase(QObject):
         self.args = args or []
         self.debug_mode = debug_mode
         self.coverage_enabled = coverage_enabled
-        self.http_port_conflict_field = http_port_conflict_field
-        self.udp_port_conflict_field = udp_port_conflict_field
+        self.http_port_conflict_field = http_port_conflict_settings_field
+        self.udp_port_conflict_field = udp_port_conflict_settings_field
         self.curr_settings = settings
 
         # Process management
@@ -506,3 +506,7 @@ class PngAppMgrBase(QObject):
     def show_error(self, title: str, message: str):
         """Display an error message box."""
         self.window.show_error(title, message)
+
+    def select_file(self, title="Select File", filter="All Files (*.*)") -> str:
+        """Open a file dialog and return path or None."""
+        return self.window.select_file(title, filter)
