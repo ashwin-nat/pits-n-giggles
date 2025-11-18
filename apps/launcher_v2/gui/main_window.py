@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Callable, Dict, Optional
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QPushButton, QLabel, QTextEdit, QFrame, QSplitter, QMessageBox, QFileDialog
+    QPushButton, QLabel, QTextEdit, QFrame, QSplitter, QMessageBox, QFileDialog, QGridLayout
 )
 from PySide6.QtCore import Qt, QTimer, Signal, QObject, QSize
 from PySide6.QtGui import QFont, QTextCursor, QCloseEvent, QIcon
@@ -39,7 +39,7 @@ from lib.file_path import resolve_user_file
 from lib.config import PngSettings, load_config_from_ini
 from apps.launcher_v2.logger import get_rotating_logger
 from .console import LogSignals, ConsoleWidget
-from .subsys_row import SubsystemRow
+from .subsys_row import SubsystemCard
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -153,10 +153,6 @@ class PngLauncherWindow(QMainWindow):
             QLabel {
                 color: #d4d4d4;
             }
-            QFrame {
-                background-color: #1e1e1e;
-                border: 1px solid #3e3e3e;
-            }
         """)
 
         # Central widget
@@ -175,6 +171,7 @@ class PngLauncherWindow(QMainWindow):
         splitter.setStyleSheet("""
             QSplitter::handle {
                 background-color: #3e3e3e;
+                height: 2px;
             }
         """)
 
@@ -186,8 +183,8 @@ class PngLauncherWindow(QMainWindow):
         console_widget = self.create_console_area()
         splitter.addWidget(console_widget)
 
-        # Set initial sizes (30% subsystems, 70% console)
-        splitter.setSizes([250, 550])
+        # Set initial sizes (25% subsystems, 75% console)
+        splitter.setSizes([200, 600])
 
         main_layout.addWidget(splitter)
         central_widget.setLayout(main_layout)
@@ -196,76 +193,83 @@ class PngLauncherWindow(QMainWindow):
         self.info_log(f"Pits n' Giggles {self.ver_str} started")
 
     def create_subsystems_area(self) -> QWidget:
-        """Create the subsystems display area"""
-        container = QFrame()
+        """Create the subsystems display area with grid layout"""
+        container = QWidget()
+        container.setStyleSheet("background-color: #252526;")
+
         layout = QVBoxLayout()
         layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(5)
+        layout.setSpacing(10)
 
         # Header
         header_label = QLabel("Subsystems")
-        header_label.setFont(QFont("Arial", 11, QFont.Weight.Bold))
-        header_label.setStyleSheet("color: #d4d4d4; background-color: transparent; border: none;")
+        header_label.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+        header_label.setStyleSheet("color: #d4d4d4; background-color: transparent;")
         layout.addWidget(header_label)
 
-        # Add a separator
-        separator = QFrame()
-        separator.setFrameShape(QFrame.Shape.HLine)
-        separator.setStyleSheet("background-color: #3e3e3e; border: none;")
-        separator.setFixedHeight(1)
-        layout.addWidget(separator)
+        # Grid layout for cards
+        grid_layout = QGridLayout()
+        grid_layout.setSpacing(12)
+        grid_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Add subsystem rows
-        for subsystem in self.subsystems:
-            row = SubsystemRow(subsystem)
-            layout.addWidget(row)
+        # Number of subsystems per row
+        NUM_SUBSYS_PER_ROW = 3
 
+        # Add subsystem cards in a grid
+        for idx, subsystem in enumerate(self.subsystems):
+            row = idx // NUM_SUBSYS_PER_ROW
+            col = idx % NUM_SUBSYS_PER_ROW
+            card = SubsystemCard(subsystem)
+            grid_layout.addWidget(card, row, col)
+
+        layout.addLayout(grid_layout)
         layout.addStretch()
+
         container.setLayout(layout)
         return container
 
     def create_console_area(self) -> QWidget:
         """Create the console area"""
-        container = QFrame()
+        container = QWidget()
+        container.setStyleSheet("background-color: #252526;")
+
         layout = QVBoxLayout()
         layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(5)
+        layout.setSpacing(8)
 
         # Header with clear button
         header_layout = QHBoxLayout()
 
         console_label = QLabel("Console Log")
-        console_label.setFont(QFont("Arial", 11, QFont.Weight.Bold))
-        console_label.setStyleSheet("color: #d4d4d4; background-color: transparent; border: none;")
+        console_label.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+        console_label.setStyleSheet("color: #d4d4d4; background-color: transparent;")
         header_layout.addWidget(console_label)
 
         header_layout.addStretch()
 
-        clear_btn = QPushButton("Clear Log")
-        clear_btn.setFixedHeight(25)
+        clear_btn = QPushButton("Clear")
+        clear_btn.setFixedHeight(28)
         clear_btn.setStyleSheet("""
             QPushButton {
                 background-color: #2d2d2d;
                 color: #d4d4d4;
                 border: 1px solid #3e3e3e;
-                border-radius: 3px;
-                padding: 4px 12px;
+                border-radius: 4px;
+                padding: 4px 16px;
+                font-size: 10px;
             }
             QPushButton:hover {
                 background-color: #3e3e3e;
+                border: 1px solid #0e639c;
+            }
+            QPushButton:pressed {
+                background-color: #1e1e1e;
             }
         """)
         clear_btn.clicked.connect(self.console.clear)
         header_layout.addWidget(clear_btn)
 
         layout.addLayout(header_layout)
-
-        # Separator
-        separator = QFrame()
-        separator.setFrameShape(QFrame.Shape.HLine)
-        separator.setStyleSheet("background-color: #3e3e3e; border: none;")
-        separator.setFixedHeight(1)
-        layout.addWidget(separator)
 
         # Console widget
         layout.addWidget(self.console)
@@ -346,29 +350,27 @@ class PngLauncherWindow(QMainWindow):
 
         btn = QPushButton()
         btn.setIcon(icon)
-        btn.setIconSize(QSize(18, 18))   # adjust as needed
+        btn.setIconSize(QSize(20, 20))
 
-        btn.setFixedHeight(28)
-        btn.setMinimumWidth(28)  # square button if you want
-        btn.setFont(QFont("Arial", 9))
+        btn.setFixedSize(32, 32)
         btn.setStyleSheet("""
             QPushButton {
-                background-color: #0e639c;
-                color: white;
-                border: 1px solid #0e639c;
-                border-radius: 3px;
-                padding: 4px;
+                background-color: #3e3e3e;
+                border: 1px solid #4e4e4e;
+                border-radius: 6px;
+                padding: 0px;
             }
             QPushButton:hover {
-                background-color: #1177bb;
+                background-color: #0e639c;
+                border: 1px solid #1177bb;
             }
             QPushButton:pressed {
                 background-color: #0d5689;
             }
             QPushButton:disabled {
-                background-color: #3e3e3e;
-                color: #808080;
-                border-color: #3e3e3e;
+                background-color: #2d2d2d;
+                border-color: #2d2d2d;
+                opacity: 0.4;
             }
         """)
 

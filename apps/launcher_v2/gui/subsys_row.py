@@ -39,8 +39,8 @@ if TYPE_CHECKING:
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class SubsystemRow(QWidget):
-    """Compact single-row widget for a subsystem"""
+class SubsystemCard(QFrame):
+    """Modern card-style widget for a subsystem"""
 
     def __init__(self, manager: "PngAppMgrBase"):
         super().__init__()
@@ -51,91 +51,109 @@ class SubsystemRow(QWidget):
         manager.status_changed.connect(self.update_status)
 
     def setup_ui(self):
-        """Setup the subsystem row UI"""
-        layout = QHBoxLayout()
-        layout.setContentsMargins(10, 5, 10, 5)
-        layout.setSpacing(10)
+        """Setup the subsystem card UI"""
+        self.setFrameStyle(QFrame.Shape.Box)
+        self.setStyleSheet("""
+            QFrame {
+                background-color: #1e1e1e;
+                border: 1px solid #3e3e3e;
+                border-radius: 8px;
+            }
+            QFrame:hover {
+                border: 1px solid #0e639c;
+            }
+        """)
 
-        # Name label (fixed width)
-        name_label = QLabel(f"{self.manager.display_name}:")
-        name_label.setFont(QFont("Arial", 10))
-        name_label.setFixedWidth(100)
-        name_label.setStyleSheet("color: #d4d4d4;")
-        layout.addWidget(name_label)
+        layout = QVBoxLayout()
+        layout.setContentsMargins(16, 12, 16, 12)
+        layout.setSpacing(8)
 
-        # Status indicator (fixed width)
+        # Header with name and status
+        header_layout = QHBoxLayout()
+        header_layout.setSpacing(12)
+
+        # Name
+        name_label = QLabel(self.manager.display_name)
+        name_label.setFont(QFont("Arial", 11, QFont.Weight.Bold))
+        name_label.setStyleSheet("color: #d4d4d4; background: transparent; border: none;")
+        header_layout.addWidget(name_label)
+
+        header_layout.addStretch()
+
+        # Status badge
         self.status_label = QLabel(self.manager.status)
         self.status_label.setFont(QFont("Arial", 9))
-        self.status_label.setFixedWidth(100)
+        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.status_label.setFixedHeight(22)
+        self.status_label.setStyleSheet("""
+            padding: 2px 12px;
+            border-radius: 11px;
+            background: transparent;
+            border: none;
+        """)
         self.update_status(self.manager.status)
-        layout.addWidget(self.status_label)
+        header_layout.addWidget(self.status_label)
 
-        # Buttons
+        layout.addLayout(header_layout)
+
+        # Buttons row
+        buttons_layout = QHBoxLayout()
+        buttons_layout.setSpacing(6)
+
         for button in self.manager.get_buttons():
-            layout.addWidget(button)
+            button.setFixedSize(32, 32)
+            buttons_layout.addWidget(button)
 
-        layout.addStretch()
+        buttons_layout.addStretch()
+        layout.addLayout(buttons_layout)
+
         self.setLayout(layout)
 
     def update_status(self, status: str):
-        """Update the status indicator"""
-        color_map = {
-            'Stopped': '#808080',
-            'Starting': '#d7ba7d',
-            'Running': '#4ec9b0',
-            'Stopping': '#d7ba7d',
-            'Crashed': '#f48771',
-            'HTTP Port Conflict': '#f48771',
-            'UDP Port Conflict': '#f48771',
-            'Timed out': '#f48771'
+        """Update the status badge"""
+        status_styles = {
+            'Stopped': {
+                'bg': '#3e3e3e',
+                'color': '#808080'
+            },
+            'Starting': {
+                'bg': '#3d3d2a',
+                'color': '#d7ba7d'
+            },
+            'Running': {
+                'bg': '#1e3a32',
+                'color': '#4ec9b0'
+            },
+            'Stopping': {
+                'bg': '#3d3d2a',
+                'color': '#d7ba7d'
+            },
+            'Crashed': {
+                'bg': '#3d2a2a',
+                'color': '#f48771'
+            },
+            'HTTP Port Conflict': {
+                'bg': '#3d2a2a',
+                'color': '#f48771'
+            },
+            'UDP Port Conflict': {
+                'bg': '#3d2a2a',
+                'color': '#f48771'
+            },
+            'Timed out': {
+                'bg': '#3d2a2a',
+                'color': '#f48771'
+            }
         }
 
-        color = color_map.get(status, '#d4d4d4')
+        style = status_styles.get(status, {'bg': '#3e3e3e', 'color': '#d4d4d4'})
+
         self.status_label.setText(status)
-        self.status_label.setStyleSheet(f"color: {color}; font-weight: bold;")
-
-    def _get_button_style(self, is_primary: bool) -> str:
-        if is_primary:
-            return """
-                QPushButton {
-                    background-color: #0e639c;
-                    color: white;
-                    border: 1px solid #0e639c;
-                    border-radius: 3px;
-                    padding: 4px 12px;
-                }
-                QPushButton:hover {
-                    background-color: #1177bb;
-                }
-                QPushButton:pressed {
-                    background-color: #0d5689;
-                }
-                QPushButton:disabled {
-                    background-color: #3e3e3e;
-                    color: #808080;
-                    border-color: #3e3e3e;
-                }
-            """
-        else:
-            return """
-                QPushButton {
-                    background-color: #2d2d2d;
-                    color: #d4d4d4;
-                    border: 1px solid #3e3e3e;
-                    border-radius: 3px;
-                    padding: 4px 12px;
-                }
-                QPushButton:hover {
-                    background-color: #3e3e3e;
-                    border-color: #0e639c;
-                }
-                QPushButton:pressed {
-                    background-color: #1e1e1e;
-                }
-                QPushButton:disabled {
-                    background-color: #1e1e1e;
-                    color: #808080;
-                    border-color: #2d2d2d;
-                }
-            """
-
+        self.status_label.setStyleSheet(f"""
+            padding: 2px 12px;
+            border-radius: 11px;
+            background-color: {style['bg']};
+            color: {style['color']};
+            font-weight: bold;
+            border: none;
+        """)
