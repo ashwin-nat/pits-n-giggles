@@ -26,15 +26,15 @@ import sys
 import webbrowser
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, Optional, List
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QTextEdit, QFrame, QSplitter, QMessageBox, QFileDialog, QGridLayout
 )
-from PySide6.QtCore import Qt, QTimer, Signal, QObject, QSize
+from PySide6.QtCore import Qt, QTimer, Signal, QObject, QSize, QRunnable, QThreadPool
 from PySide6.QtGui import QFont, QTextCursor, QCloseEvent, QIcon
 
-from apps.launcher_v2.subsystems import BackendAppMgr, SaveViewerAppMgr, HudAppMgr
+from apps.launcher_v2.subsystems import BackendAppMgr, SaveViewerAppMgr, HudAppMgr, PngAppMgrBase
 from lib.file_path import resolve_user_file
 from lib.config import PngSettings, load_config_from_ini
 from apps.launcher_v2.logger import get_rotating_logger
@@ -43,6 +43,16 @@ from .subsys_row import SubsystemCard
 from meta.meta import APP_NAME
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
+
+class StopTask(QRunnable):
+    def __init__(self, subsystem: PngAppMgrBase, reason: str):
+        super().__init__()
+        self.subsystem = subsystem
+        self.reason = reason
+
+    def run(self):
+        # This runs in a worker thread
+        self.subsystem.stop(self.reason)
 
 class PngLauncherWindow(QMainWindow):
     """Main launcher window"""
@@ -72,7 +82,7 @@ class PngLauncherWindow(QMainWindow):
 
         # Common args
         args = ["--config-file", self.config_file]
-        self.subsystems = [
+        self.subsystems: List[PngAppMgrBase] = [
            BackendAppMgr(
                window=self,
                settings=self.settings,
@@ -373,14 +383,18 @@ class PngLauncherWindow(QMainWindow):
         log_func(message)
 
     def closeEvent(self, event: QCloseEvent):
-        """Handle window close - stop all subsystems"""
         self.info_log("Shutting down launcher...")
 
-        for subsystem in self.subsystems:
-            if subsystem.is_running:
-                self.info_log(f"Stopping {subsystem.display_name}...")
-                subsystem.stop("Launcher shutting down")
+        pool = QThreadPool.globalInstance()
+        tasks = []
 
+        for subsystem in self.subsystems:
+            self.info_log(f"Stopping {subsystem.display_name}...")
+            task = StopTask(subsystem, "Launcher shutting down")
+            tasks.append(task)
+            pool.start(task)
+
+        pool.waitForDone()
         event.accept()
 
     def run(self):
