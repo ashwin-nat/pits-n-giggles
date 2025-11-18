@@ -109,6 +109,17 @@ datas = [
 
     # Overlay icons
     (os.path.join(PROJECT_ROOT, "assets", "overlays", "fuel-pump.svg"), "assets/overlay"),
+
+    # Launcher icons
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "dashboard.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "next-page.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "reset.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "settings.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "show-hide.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "start.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "stop.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "twitch.svg"), "assets/launcher-icons"),
+
 ]
 
 # --------------------------------------------------------------------------------------------------
