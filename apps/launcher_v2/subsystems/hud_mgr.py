@@ -91,11 +91,11 @@ class HudAppMgr(PngAppMgrBase):
         :return: List of button objects
         """
 
-        self.start_stop_button = self.build_button("Start", self.start_stop_callback)
-        self.hide_show_button = self.build_button("Hide/Show", self.hide_show_callback)
-        self.lock_button = self.build_button("Unlock", self.lock_callback)
-        self.reset_button = self.build_button("Reset", self.reset_callback)
-        self.next_page_button = self.build_button("Next Page", self.next_page_callback)
+        self.start_stop_button = self.build_button(self.get_icon("start"), self.start_stop_callback)
+        self.hide_show_button = self.build_button(self.get_icon("show-hide"), self.hide_show_callback)
+        self.lock_button = self.build_button(self.get_icon("unlock"), self.lock_callback)
+        self.reset_button = self.build_button(self.get_icon("reset"), self.reset_callback)
+        self.next_page_button = self.build_button(self.get_icon("next-page"), self.next_page_callback)
 
         if not self.enabled:
             self.set_button_state(self.start_stop_button, False)
@@ -138,7 +138,7 @@ class HudAppMgr(PngAppMgrBase):
         self.set_button_state(self.lock_button, True)
         status = rsp.get("status", None)
         if status is not None:
-            self.set_lock_button_text()
+            self.set_lock_button_icon()
         else:
             self.error_log("Failed to toggle lock state.")
 
@@ -199,7 +199,8 @@ class HudAppMgr(PngAppMgrBase):
     def post_start(self):
         """Update buttons after app start"""
         self.set_button_state(self.hide_show_button, True)
-        self.set_button_text_state(self.start_stop_button, "Stop", True)
+        self.set_button_state(self.start_stop_button, True)
+        self.set_button_icon(self.start_stop_button, self.get_icon("stop"))
         self.set_button_state(self.lock_button, True)
         self.set_button_state(self.reset_button, True)
         self.set_button_state(self.next_page_button, True)
@@ -215,7 +216,8 @@ class HudAppMgr(PngAppMgrBase):
             self._stop_integration_test_thread()
 
         self.set_button_state(self.hide_show_button, False)
-        self.set_button_text_state(self.start_stop_button, "Start", True)
+        self.set_button_state(self.start_stop_button, True)
+        self.set_button_icon(self.start_stop_button, self.get_icon("start"))
         self.set_button_state(self.lock_button, False)
         self.set_button_state(self.reset_button, False)
         self.set_button_state(self.next_page_button, False)
@@ -241,11 +243,11 @@ class HudAppMgr(PngAppMgrBase):
             self.set_button_state(self.reset_button, True)
             self.set_button_state(self.next_page_button, True)
 
-    def set_lock_button_text(self):
+    def set_lock_button_icon(self):
         if self.locked:
-            self.set_button_text(self.lock_button, "Unlock")
+            self.set_button_icon(self.lock_button, self.get_icon("unlock"))
         else:
-            self.set_button_text(self.lock_button, "Lock")
+            self.set_button_icon(self.lock_button, self.get_icon("lock"))
 
     def process_enabled_change(self):
         """
@@ -261,7 +263,7 @@ class HudAppMgr(PngAppMgrBase):
         if self.enabled:
             self.start()
             self.set_button_state(self.lock_button, True)
-            self.set_lock_button_text()
+            self.set_lock_button_icon()
             self.set_button_state(self.hide_show_button, True)
         else:
             self.stop()

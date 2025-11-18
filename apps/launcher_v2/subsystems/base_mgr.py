@@ -29,7 +29,8 @@ import threading
 import time
 from typing import Optional, Callable, List, Dict, Any, TYPE_CHECKING
 from PySide6.QtCore import QObject, Signal
-from PySide6.QtWidgets import QPushButton # TODO: abstract
+from PySide6.QtWidgets import QPushButton
+from PySide6.QtGui import QIcon
 
 from lib.ipc import get_free_tcp_port
 from lib.error_status import PNG_ERROR_CODE_HTTP_PORT_IN_USE, PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN, PNG_LOST_CONN_TO_PARENT
@@ -482,22 +483,21 @@ class PngAppMgrBase(QObject):
         self._post_stop_hook = func
         return func
 
-    def build_button(self, text: str, callback: Callable[[], None]) -> QPushButton:
-        """Build a button with the given text and callback"""
-        return self.window.build_button(text, callback)
+    def get_icon(self, key: str) -> Optional[QIcon]:
+        """Get icon by key"""
+        return self.window.get_icon(key)
 
-    def set_button_text_state(self, button: QPushButton, text: str, enabled: bool):
-        """Set text and enable/disable a QPushButton."""
-        self.window.set_button_text(button, text)
-        self.window.set_button_state(button, enabled)
+    def build_button(self, icon: QIcon, callback: Callable[[], None]) -> QPushButton:
+        """Build a button with the given icon and callback"""
+        return self.window.build_button(icon, callback)
 
     def set_button_state(self, button: QPushButton, enabled: bool):
         """Enable/disable a QPushButton."""
         self.window.set_button_state(button, enabled)
 
-    def set_button_text(self, button: QPushButton, text: str):
-        """Set text on a QPushButton."""
-        self.window.set_button_text(button, text)
+    def set_button_icon(self, button: QPushButton, icon: QIcon):
+        """Set icon on a QPushButton."""
+        self.window.set_button_icon(button, icon)
 
     def show_success(self, title: str, message: str):
         """Display a success/info message box."""

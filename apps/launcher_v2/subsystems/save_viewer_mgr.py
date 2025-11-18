@@ -82,9 +82,9 @@ class SaveViewerAppMgr(PngAppMgrBase):
         :return: List of button objects
         """
 
-        self.start_stop_button = self.build_button("Start", self.start_stop_callback)
-        self.open_file_button = self.build_button("Open File", self.open_file)
-        self.open_dashboard_button = self.build_button("Dashboard", self.open_dashboard)
+        self.start_stop_button = self.build_button(self.get_icon("start"), self.start_stop_callback)
+        self.open_file_button = self.build_button(self.get_icon("open-file"), self.open_file)
+        self.open_dashboard_button = self.build_button(self.get_icon("dashboard"), self.open_dashboard)
 
         return [
             self.start_stop_button,
@@ -134,14 +134,16 @@ class SaveViewerAppMgr(PngAppMgrBase):
 
     def post_start(self):
         """Update buttons after app start"""
-        self.set_button_text_state(self.start_stop_button, "Stop", True)
+        self.set_button_icon(self.start_stop_button, self.get_icon("stop"))
+        self.set_button_state(self.start_stop_button, True)
         self.set_button_state(self.start_stop_button, True)
         self.set_button_state(self.open_file_button, True)
         self.set_button_state(self.open_dashboard_button, True)
 
     def post_stop(self):
         """Update buttons after app stop"""
-        self.set_button_text_state(self.start_stop_button, "Start", True)
+        self.set_button_icon(self.start_stop_button, self.get_icon("start"))
+        self.set_button_state(self.start_stop_button, True)
         self.set_button_state(self.open_file_button, False)
         self.set_button_state(self.open_dashboard_button, False)
 

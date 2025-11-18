@@ -26,12 +26,12 @@ import sys
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Dict, Optional
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QTextEdit, QFrame, QSplitter, QMessageBox, QFileDialog
 )
-from PySide6.QtCore import Qt, QTimer, Signal, QObject
+from PySide6.QtCore import Qt, QTimer, Signal, QObject, QSize
 from PySide6.QtGui import QFont, QTextCursor, QCloseEvent, QIcon
 
 from apps.launcher_v2.subsystems import BackendAppMgr, SaveViewerAppMgr, HudAppMgr
@@ -101,7 +101,40 @@ class PngLauncherWindow(QMainWindow):
         self.log_signals = LogSignals()
         self.log_signals.log_message.connect(self._write_log)
 
+        self.init_icons()
         self.setup_ui()
+
+    def _load_icon(self, path: Path) -> QIcon:
+        """Load an icon"""
+        ret = QIcon(str(path))
+        if ret.isNull():
+            self.logger.warning(f"Failed to load icon: {path}")
+        else:
+            self.logger.debug(f"Loaded icon successfully: {path}")
+        return ret
+
+    def init_icons(self):
+        """Init the dict of icons"""
+        icons_path_base = Path("assets") / "launcher-icons"
+        self.icons: Dict[str, QIcon] = {
+            "dashboard" : self._load_icon(icons_path_base / "dashboard.svg"),
+            "lock" : self._load_icon(icons_path_base / "lock.svg"),
+            "next-page" : self._load_icon(icons_path_base / "next-page.svg"),
+            "open-file" : self._load_icon(icons_path_base / "open-file.svg"),
+            "reset" : self._load_icon(icons_path_base / "reset.svg"),
+            "save" : self._load_icon(icons_path_base / "save.svg"),
+            "settings" : self._load_icon(icons_path_base / "settings.svg"),
+            "show-hide" : self._load_icon(icons_path_base / "show-hide.svg"),
+            "start" : self._load_icon(icons_path_base / "start.svg"),
+            "stop" : self._load_icon(icons_path_base / "stop.svg"),
+            "twitch" : self._load_icon(icons_path_base / "twitch.svg"),
+            "unlock" : self._load_icon(icons_path_base / "unlock.svg"),
+        }
+
+    def get_icon(self, key: str) -> Optional[QIcon]:
+        """Get icon by key"""
+        return self.icons.get(key)
+
 
     def setup_ui(self):
         """Setup the main UI"""
@@ -307,32 +340,38 @@ class PngLauncherWindow(QMainWindow):
         """Process pending events in the application's event loop"""
         self.app.processEvents()
 
-    def build_button(self, text: str, callback: Callable[[], None]) -> QPushButton:
-        """Build a button with the given text and callback"""
-        btn = QPushButton(text)
+    def build_button(self, icon: QIcon, callback: Callable[[], None]) -> QPushButton:
+        """Build a button with an icon and callback"""
+        assert icon and not icon.isNull()
+
+        btn = QPushButton()
+        btn.setIcon(icon)
+        btn.setIconSize(QSize(18, 18))   # adjust as needed
+
         btn.setFixedHeight(28)
-        btn.setMinimumWidth(80)
+        btn.setMinimumWidth(28)  # square button if you want
         btn.setFont(QFont("Arial", 9))
         btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #0e639c;
-                    color: white;
-                    border: 1px solid #0e639c;
-                    border-radius: 3px;
-                    padding: 4px 12px;
-                }
-                QPushButton:hover {
-                    background-color: #1177bb;
-                }
-                QPushButton:pressed {
-                    background-color: #0d5689;
-                }
-                QPushButton:disabled {
-                    background-color: #3e3e3e;
-                    color: #808080;
-                    border-color: #3e3e3e;
-                }
-            """)
+            QPushButton {
+                background-color: #0e639c;
+                color: white;
+                border: 1px solid #0e639c;
+                border-radius: 3px;
+                padding: 4px;
+            }
+            QPushButton:hover {
+                background-color: #1177bb;
+            }
+            QPushButton:pressed {
+                background-color: #0d5689;
+            }
+            QPushButton:disabled {
+                background-color: #3e3e3e;
+                color: #808080;
+                border-color: #3e3e3e;
+            }
+        """)
+
         btn.clicked.connect(callback)
         return btn
 
@@ -340,9 +379,9 @@ class PngLauncherWindow(QMainWindow):
         """Enable/disable a QPushButton."""
         button.setEnabled(enabled)
 
-    def set_button_text(self, button: QPushButton, text: str):
-        """Set text on a QPushButton."""
-        button.setText(text)
+    def set_button_icon(self, button: QPushButton, icon: QIcon):
+        """Set icon on a QPushButton."""
+        button.setIcon(icon)
 
     def show_success(self, title: str, message: str):
         """Display a success/info message box."""

@@ -112,13 +112,17 @@ datas = [
 
     # Launcher icons
     (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "dashboard.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "lock.svg"), "assets/launcher-icons"),
     (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "next-page.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "open-file.svg"), "assets/launcher-icons"),
     (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "reset.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "save.svg"), "assets/launcher-icons"),
     (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "settings.svg"), "assets/launcher-icons"),
     (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "show-hide.svg"), "assets/launcher-icons"),
     (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "start.svg"), "assets/launcher-icons"),
     (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "stop.svg"), "assets/launcher-icons"),
     (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "twitch.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "unlock.svg"), "assets/launcher-icons"),
 
 ]
 
