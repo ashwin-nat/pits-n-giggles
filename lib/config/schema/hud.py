@@ -24,11 +24,67 @@
 
 from typing import Any, ClassVar, Dict
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator, ValidationError
 
 from .diff import ConfigDiffMixin
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
+
+class MfdPageSettings(ConfigDiffMixin, BaseModel):
+    ui_meta: ClassVar[Dict[str, Any]] = {"visible": True}
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable this MFD page",
+        json_schema_extra={"ui": {"type": "check_box", "visible": True}},
+    )
+
+    position: int = Field(
+        gt=0,
+        description="Ordering index",
+        json_schema_extra={"ui": {"type": "text_box", "visible": True}},
+    )
+
+
+DEFAULT_PAGES = {
+    "lap_times": MfdPageSettings(enabled=True, position=1, description="Lap Times"),
+    "weather_forecast": MfdPageSettings(enabled=True, position=2, description="Weather Forecast"),
+    "fuel_info": MfdPageSettings(enabled=True, position=3, description="Fuel Info"),
+    "tyre_wear": MfdPageSettings(enabled=True, position=4, description="Tyre Wear"),
+    "pit_rejoin": MfdPageSettings(enabled=True, position=5, description="Pit Rejoin"),
+}
+
+
+class MfdSettings(ConfigDiffMixin, BaseModel):
+    ui_meta: ClassVar[Dict[str, Any]] = {"visible": True}
+
+    pages: Dict[str, MfdPageSettings] = Field(
+        default_factory=lambda: DEFAULT_PAGES.copy(),
+        description="Dictionary of MFD pages",
+        json_schema_extra={"ui": {"type": "group_box", "visible": True}},
+    )
+
+    @model_validator(mode="after")
+    def check_unique_positions(self):
+        # Enabled pages must have unique positions
+        pos_map = {} # Key = position, Value = page
+        for name, page in self.pages.items():
+            if not page.enabled:
+                continue
+            if page.position in pos_map:
+                raise ValueError(
+                    f"MFD page '{name}' has duplicate position {page.position} "
+                    f"(also used by '{pos_map[page.position]}')"
+                )
+            pos_map[page.position] = name
+
+        return self
+
+    def sorted_enabled_pages(self):
+        return sorted(
+            [(name, page) for name, page in self.pages.items() if page.enabled],
+            key=lambda p: p[1].position
+        )
 
 class HudSettings(ConfigDiffMixin, BaseModel):
     ui_meta: ClassVar[Dict[str, Any]] = {
@@ -71,6 +127,16 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         json_schema_extra={
             "ui": {
                 "type" : "check_box",
+                "visible": True
+            }
+        }
+    )
+    mfd_settings: MfdSettings = Field(
+        default=MfdSettings(),
+        description="MFD overlay settings",
+        json_schema_extra={
+            "ui": {
+                "type" : "page",
                 "visible": True
             }
         }

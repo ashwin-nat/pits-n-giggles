@@ -66,16 +66,60 @@ class ConfigDiffMixin:
         if isinstance(fields, list) and fields:
             return self._basic_diff(self, other, fields)
 
-        # --- Case 3: Compare everything recursively (fields is None, empty, etc.)
+        # --- Case 3: Compare everything recursively
         result = {}
         for name, value in getattr(self, "__dict__", {}).items():
             other_value = getattr(other, name, None)
+
+            # --- NEW: Recursively diff dicts
+            if isinstance(value, dict) and isinstance(other_value, dict):
+                sub = self._diff_dict(value, other_value)
+                if sub:
+                    result[name] = sub
+                continue
+
+            # Nested ConfigDiffMixin objects
             if isinstance(value, ConfigDiffMixin) and isinstance(other_value, ConfigDiffMixin):
                 subdiff = value.diff(other_value)
                 if subdiff:
                     result[name] = subdiff
-            elif value != other_value:
-                    result[name] = {"old_value": value, "new_value": other_value}
+                continue
+
+            # Primitive difference
+            if value != other_value:
+                result[name] = {"old_value": value, "new_value": other_value}
+
+        return result
+
+    def _diff_dict(self, d1: dict, d2: dict) -> Dict[str, Any]:
+        """Recursive diff for dict fields."""
+        result = {}
+
+        all_keys = set(d1.keys()) | set(d2.keys())
+        for key in all_keys:
+            if key not in d1:
+                result[key] = {"old_value": None, "new_value": d2[key]}
+            elif key not in d2:
+                result[key] = {"old_value": d1[key], "new_value": None}
+            else:
+                v1, v2 = d1[key], d2[key]
+
+                # Nested ConfigDiffMixin
+                if isinstance(v1, ConfigDiffMixin) and isinstance(v2, ConfigDiffMixin):
+                    sub = v1.diff(v2)
+                    if sub:
+                        result[key] = sub
+
+                # Nested dict
+                elif isinstance(v1, dict) and isinstance(v2, dict):
+                    sub = self._diff_dict(v1, v2)
+                    if sub:
+                        result[key] = sub
+
+                # Primitive or object change
+                elif v1 != v2:
+                    result[key] = {"old_value": v1, "new_value": v2}
+
         return result
 
     def _basic_diff(self, self_obj: Any, other_obj: Any, fields: Iterable[str]) -> Dict[str, Any]:

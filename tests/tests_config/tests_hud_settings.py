@@ -30,7 +30,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from pydantic import ValidationError
 
-from lib.config import HudSettings
+from lib.config import HudSettings, MfdSettings, MfdPageSettings
 
 from .tests_config_base import TestF1ConfigBase
 
@@ -215,3 +215,151 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.show_lap_timer, True)
         self.assertEqual(settings.show_timing_tower, False)
         self.assertEqual(settings.show_mfd, False)
+
+    def test_mfd_default_pages(self):
+        """Verify default MFD pages exist and are valid"""
+        settings = HudSettings()
+        mfd = settings.mfd_settings
+
+        self.assertIsInstance(mfd, MfdSettings)
+        self.assertTrue(len(mfd.pages) > 0)
+
+        expected_pages = {
+            "lap_times",
+            "weather_forecast",
+            "fuel_info",
+            "tyre_wear",
+            "pit_rejoin",
+        }
+
+        for page in expected_pages:
+            self.assertIn(page, mfd.pages)
+            self.assertIsInstance(mfd.pages[page], MfdPageSettings)
+
+    def test_mfd_default_positions_unique(self):
+        """All default enabled pages must have unique positions"""
+        settings = HudSettings()
+        mfd = settings.mfd_settings
+
+        positions = [
+            p.position for p in mfd.pages.values()
+            if p.enabled
+        ]
+
+        self.assertEqual(len(positions), len(set(positions)))
+
+    #
+    # ------------------------------------------------------------
+    #  VALIDATION — DUPLICATE POSITIONS
+    # ------------------------------------------------------------
+    #
+
+    def test_mfd_duplicate_positions_validation(self):
+        """Duplicate enabled positions should raise ValidationError"""
+        settings = HudSettings()
+        mfd = settings.mfd_settings
+
+        # Force two pages to same position
+        keys = list(mfd.pages.keys())
+        mfd.pages[keys[0]].position = 0
+        mfd.pages[keys[1]].position = 0
+
+        with self.assertRaises(ValidationError):
+            HudSettings(mfd_settings=mfd)
+
+    #
+    # ------------------------------------------------------------
+    #  SORTING
+    # ------------------------------------------------------------
+    #
+
+    def test_mfd_sorted_enabled_pages(self):
+        """sorted_enabled_pages must return pages ordered by position"""
+        settings = HudSettings()
+        mfd = settings.mfd_settings
+
+        mfd.pages["lap_times"].position = 3
+        mfd.pages["fuel_info"].position = 1
+        mfd.pages["tyre_wear"].position = 2
+
+        sorted_pages = mfd.sorted_enabled_pages()
+
+        positions = [p.position for _, p in sorted_pages]
+        self.assertEqual(positions, sorted(positions))
+
+    def test_mfd_sorted_excludes_disabled(self):
+        """Disabled pages must be excluded from sorted output"""
+        settings = HudSettings()
+        mfd = settings.mfd_settings
+
+        mfd.pages["lap_times"].enabled = False
+        mfd.pages["fuel_info"].enabled = True
+
+        sorted_pages = mfd.sorted_enabled_pages()
+
+        self.assertNotIn("lap_times", [name for name, _ in sorted_pages])
+        self.assertIn("fuel_info", [name for name, _ in sorted_pages])
+
+    #
+    # ------------------------------------------------------------
+    #  ADDING / REMOVING PAGES
+    # ------------------------------------------------------------
+    #
+
+    def test_mfd_add_page(self):
+        """Adding a new MFD page should be allowed and valid"""
+        settings = HudSettings()
+        mfd = settings.mfd_settings
+
+        mfd.pages["new_page"] = MfdPageSettings(enabled=True, position=25)
+
+        self.assertIn("new_page", mfd.pages)
+        self.assertEqual(mfd.pages["new_page"].position, 25)
+
+    #
+    # ------------------------------------------------------------
+    #  DIFF BEHAVIOR
+    # ------------------------------------------------------------
+    #
+
+    def test_mfd_diff_internal_field_change(self):
+        """Changing a field inside a page must show up in the diff"""
+        old = HudSettings()
+        new = HudSettings()
+
+        new.mfd_settings.pages["lap_times"].position = 50
+
+        diff = new.diff(old)
+
+        self.assertIn("mfd_settings", diff)
+        self.assertIn("pages", diff["mfd_settings"])
+        self.assertIn("lap_times", diff["mfd_settings"]["pages"])
+        self.assertIn("position", diff["mfd_settings"]["pages"]["lap_times"])
+
+        self.assertEqual(
+            diff["mfd_settings"]["pages"]["lap_times"]["position"]["old_value"],
+            50
+        )
+        self.assertEqual(
+            diff["mfd_settings"]["pages"]["lap_times"]["position"]["new_value"],
+            old.mfd_settings.pages["lap_times"].position
+        )
+
+    #
+    # ------------------------------------------------------------
+    #  ENABLE / DISABLE PAGE
+    # ------------------------------------------------------------
+    #
+
+    def test_mfd_enable_disable_page_affects_diff(self):
+        old = HudSettings()
+        new = HudSettings()
+
+        new.mfd_settings.pages["tyre_wear"].enabled = False
+
+        diff = new.diff(old)
+
+        self.assertIn("mfd_settings", diff)
+        self.assertIn("pages", diff["mfd_settings"])
+        self.assertIn("tyre_wear", diff["mfd_settings"]["pages"])
+        self.assertIn("enabled", diff["mfd_settings"]["pages"]["tyre_wear"])

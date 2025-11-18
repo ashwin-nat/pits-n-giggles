@@ -24,7 +24,7 @@
 
 from .config_io import load_config_from_ini, save_config_to_ini
 from .schema import (CaptureSettings, DisplaySettings,
-                            ForwardingSettings, HttpsSettings, HudSettings,
+                            ForwardingSettings, HttpsSettings, HudSettings, MfdPageSettings, MfdSettings,
                             LoggingSettings, NetworkSettings, PitTimeLossF1,
                             PitTimeLossF2, PngSettings, PrivacySettings,
                             StreamOverlaySettings, SubSysCtrl)
@@ -46,6 +46,8 @@ __all__ = [
     'StreamOverlaySettings',
     'HttpsSettings',
     'HudSettings',
+    'MfdSettings',
+    'MfdPageSettings',
 
     'FilePathStr',
 
