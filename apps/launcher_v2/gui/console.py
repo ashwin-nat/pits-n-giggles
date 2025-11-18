@@ -43,12 +43,21 @@ class LogSignals(QObject):
 
 
 class ConsoleWidget(QTextEdit):
-    """Custom console widget"""
+    """Custom console widget with copy support and scroll lock"""
+
+    # Signal emitted when scroll lock state changes
+    scroll_lock_changed = Signal(bool)  # True = locked, False = auto-scroll
 
     def __init__(self):
         super().__init__()
         self.setReadOnly(True)
         self.setFont(QFont("Consolas", 9))
+
+        # Enable text interaction for copying
+        self.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse |
+            Qt.TextInteractionFlag.TextSelectableByKeyboard
+        )
 
         # Clean dark theme styling
         self.setStyleSheet("""
@@ -69,6 +78,30 @@ class ConsoleWidget(QTextEdit):
             'CHILD': '#569cd6'      # Blue
         }
 
+        # Scroll lock state
+        self._auto_scroll = True
+        self._user_scrolled = False
+
+        # Connect to scrollbar to detect user scrolling
+        scrollbar = self.verticalScrollBar()
+        scrollbar.valueChanged.connect(self._on_scroll_changed)
+
+    def _on_scroll_changed(self, value):
+        """Detect when user scrolls up"""
+        scrollbar = self.verticalScrollBar()
+
+        # If user scrolls away from bottom, enable scroll lock
+        if value < scrollbar.maximum() and not self._user_scrolled:
+            self._user_scrolled = True
+            self._auto_scroll = False
+            self.scroll_lock_changed.emit(True)
+
+        # If user scrolls back to bottom, re-enable auto-scroll
+        elif value == scrollbar.maximum() and self._user_scrolled:
+            self._user_scrolled = False
+            self._auto_scroll = True
+            self.scroll_lock_changed.emit(False)
+
     def append_log(self, message: str, level: str = 'INFO'):
         """Append a log message with color coding"""
 
@@ -80,4 +113,20 @@ class ConsoleWidget(QTextEdit):
         formatted += f'<span style="color: #d4d4d4;">{message}</span>'
 
         self.append(formatted)
-        self.moveCursor(QTextCursor.End)
+
+        # Only auto-scroll if enabled
+        if self._auto_scroll:
+            self.moveCursor(QTextCursor.MoveOperation.End)
+            self.ensureCursorVisible()
+
+    def enable_auto_scroll(self):
+        """Manually enable auto-scroll and scroll to bottom"""
+        self._auto_scroll = True
+        self._user_scrolled = False
+        self.moveCursor(QTextCursor.MoveOperation.End)
+        self.ensureCursorVisible()
+        self.scroll_lock_changed.emit(False)
+
+    def is_auto_scroll_enabled(self) -> bool:
+        """Check if auto-scroll is currently enabled"""
+        return self._auto_scroll
