@@ -22,13 +22,19 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .config_io import load_config_from_ini, save_config_to_ini
-from .schema import (CaptureSettings, DisplaySettings,
-                            ForwardingSettings, HttpsSettings, HudSettings,
-                            LoggingSettings, NetworkSettings, PitTimeLossF1,
-                            PitTimeLossF2, PngSettings, PrivacySettings,
-                            StreamOverlaySettings, SubSysCtrl)
-from .types import FilePathStr
+from .capture import CaptureSettings
+from .display import DisplaySettings
+from .forwarding import ForwardingSettings
+from .https import HttpsSettings
+from .hud import HudSettings
+from .logging import LoggingSettings
+from .network import NetworkSettings
+from .pit_time_loss_f1 import PitTimeLossF1
+from .pit_time_loss_f2 import PitTimeLossF2
+from .png import PngSettings
+from .privacy import PrivacySettings
+from .stream_overlay import StreamOverlaySettings
+from .subsys_ctrl import SubSysCtrl
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -36,19 +42,14 @@ __all__ = [
     'CaptureSettings',
     'DisplaySettings',
     'ForwardingSettings',
+    'HttpsSettings',
+    'HudSettings',
     'LoggingSettings',
     'NetworkSettings',
     'PitTimeLossF1',
     'PitTimeLossF2',
-    'SubSysCtrl',
     'PngSettings',
     'PrivacySettings',
     'StreamOverlaySettings',
-    'HttpsSettings',
-    'HudSettings',
-
-    'FilePathStr',
-
-    'load_config_from_ini',
-    'save_config_to_ini',
+    'SubSysCtrl',
 ]
