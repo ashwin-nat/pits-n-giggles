@@ -24,7 +24,7 @@
 
 from typing import Any, ClassVar, Dict
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field
 
 from .diff import ConfigDiffMixin
 

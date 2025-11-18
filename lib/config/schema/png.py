@@ -22,7 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+from pydantic import BaseModel, Field, model_validator
+
 from .capture import CaptureSettings
+from .diff import ConfigDiffMixin
 from .display import DisplaySettings
 from .forwarding import ForwardingSettings
 from .https import HttpsSettings
@@ -34,12 +37,6 @@ from .pit_time_loss_f2 import PitTimeLossF2
 from .privacy import PrivacySettings
 from .stream_overlay import StreamOverlaySettings
 from .subsys_ctrl import SubSysCtrl
-
-from pydantic import BaseModel, Field, field_validator, model_validator
-
-from meta.meta import APP_NAME
-
-from .diff import ConfigDiffMixin
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 

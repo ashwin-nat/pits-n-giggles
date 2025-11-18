@@ -26,8 +26,6 @@ from typing import Any, ClassVar, Dict
 
 from pydantic import BaseModel, Field
 
-from meta.meta import APP_NAME
-
 from .diff import ConfigDiffMixin
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
