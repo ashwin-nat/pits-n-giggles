@@ -32,7 +32,7 @@ from apps.save_viewer.save_viewer_ipc import init_ipc_task
 from apps.save_viewer.save_viewer_state import init_state
 from apps.save_viewer.save_web_server import init_server_task
 from lib.child_proc_mgmt import report_pid_from_child
-from lib.config import load_config_from_ini
+from lib.config import load_config_from_json
 from lib.error_status import PngError
 from lib.logger import get_logger
 from lib.version import get_version
@@ -91,7 +91,7 @@ def entry_point():
     args = parseArgs()
     png_logger = get_logger("save_viewer", args.debug)
     version = get_version()
-    configs = load_config_from_ini(args.config_file, png_logger)
+    configs = load_config_from_json(args.config_file, png_logger)
     if sys.platform == 'win32':
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     try:

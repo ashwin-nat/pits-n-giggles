@@ -36,7 +36,7 @@ from PySide6.QtGui import QFont, QTextCursor, QCloseEvent, QIcon
 
 from apps.launcher_v2.subsystems import BackendAppMgr, SaveViewerAppMgr, HudAppMgr, PngAppMgrBase
 from lib.file_path import resolve_user_file
-from lib.config import PngSettings, load_config_from_ini
+from lib.config import PngSettings, load_config_migrated
 from apps.launcher_v2.logger import get_rotating_logger
 from .console import LogSignals, ConsoleWidget
 from .subsys_row import SubsystemCard
@@ -77,11 +77,13 @@ class PngLauncherWindow(QMainWindow):
         self.debug_mode = debug_mode
         self.log_file = Path("launcher.log")
         self.logger, self.log_file_path = get_rotating_logger(debug_mode=self.debug_mode)
-        self.config_file = resolve_user_file("png_config.ini")
-        self.settings: PngSettings = load_config_from_ini(self.config_file, logger=self.logger)
+        self.config_file_legacy = resolve_user_file("png_config.ini")
+        self.config_file_new = resolve_user_file("png_config.json")
+        self.settings: PngSettings = load_config_migrated(self.config_file_legacy, self.config_file_new,
+                                                          logger=self.logger)
 
         # Common args
-        args = ["--config-file", self.config_file]
+        args = ["--config-file", self.config_file_new]
         self.subsystems: List[PngAppMgrBase] = [
            BackendAppMgr(
                window=self,
