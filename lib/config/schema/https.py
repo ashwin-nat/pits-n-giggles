@@ -82,7 +82,7 @@ class HttpsSettings(ConfigDiffMixin, BaseModel):
     @property
     def cert_path(self) -> Optional[str]:
         """Path to SSL certificate file. Will be None if HTTPS is disabled."""
-        return None if not self.enabled else self.cert_file_path
+        return self.cert_file_path if self.enabled else None
 
     @property
     def key_path(self) -> Optional[str]:

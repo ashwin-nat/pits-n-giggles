@@ -84,6 +84,8 @@ class ForwardingSettings(ConfigDiffMixin, BaseModel):
     def validate_hostport(cls, val): # pylint: disable=no-self-argument
         if val is None:
             return ""
+        if not isinstance(val, str):
+            raise ValueError(f"Invalid host:port format: '{val}'")
         v = val.strip()
         if not v:
             return v  # allow empty string

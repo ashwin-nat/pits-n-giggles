@@ -586,6 +586,21 @@ class TestLoadConfigFromJson(TestConfigIO):
         backup = self.json_path + ".invalid"
         self.assertTrue(os.path.exists(backup))
 
+    def test_corrupted_json_creates_backup_and_uses_defaults(self):
+        # Write malformed JSON to the config file
+        with open(self.json_path, "w", encoding="utf-8") as f:
+            f.write("{ this is not valid json! ")
+
+        config = load_config_from_json(self.json_path)
+
+        # Check that defaults are used
+        self.assertEqual(config.Display.refresh_interval, 200)
+        self.assertEqual(config.Logging.log_file, "png.log")
+
+        # Check that backup file was created
+        backup = self.json_path + ".invalid"
+        self.assertTrue(os.path.exists(backup))
+
     # ============================================================
     # Partial invalid section
     # ============================================================
@@ -600,6 +615,25 @@ class TestLoadConfigFromJson(TestConfigIO):
 
         self.assertEqual(config.Network.telemetry_port, 20779)
         self.assertEqual(config.Forwarding.target_1, "")
+
+        self.assertTrue(os.path.exists(self.json_path + ".invalid"))
+
+    def test_partial_config_with_multiple_invalid_fields_in_section(self):
+        self._write_json({
+            "Network": {"telemetry_port": 20779},
+            "Forwarding": {
+                "target_1": "bad-value",   # invalid
+                "target_2": 12345,         # invalid
+                "target_3": None           # invalid
+            },
+        })
+
+        config = load_config_from_json(self.json_path)
+
+        self.assertEqual(config.Network.telemetry_port, 20779)
+        self.assertEqual(config.Forwarding.target_1, "")
+        self.assertEqual(config.Forwarding.target_2, "")
+        self.assertEqual(config.Forwarding.target_3, "")
 
         self.assertTrue(os.path.exists(self.json_path + ".invalid"))
 

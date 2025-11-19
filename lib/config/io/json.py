@@ -169,7 +169,7 @@ def _maybe_update_config(
 
 
 def _backup_invalid_file(path: str, logger: Optional[Logger]):
-    backup = path + ".invalid"
+    backup = f"{path}.invalid"
     shutil.move(path, backup)
     if logger:
         logger.info("Backed up invalid JSON config to %s", backup)

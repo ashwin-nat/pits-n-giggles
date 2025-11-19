@@ -267,6 +267,14 @@ class TestHudSettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             HudSettings(mfd_settings=mfd)
 
+    # def test_mfd_add_page_duplicate_position(self):
+    #     """Adding a page with a duplicate enabled position should raise ValidationError"""
+    #     settings = HudSettings()
+    #     mfd = settings.mfd_settings
+
+    #     # Add an initial page with a specific position
+    #     mfd.pages["page1"] = MfdPageSettings(enabled=True, position=10)
+
     #
     # ------------------------------------------------------------
     #  SORTING

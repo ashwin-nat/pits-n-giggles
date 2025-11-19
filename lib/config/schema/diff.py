@@ -73,8 +73,7 @@ class ConfigDiffMixin:
 
             # --- NEW: Recursively diff dicts
             if isinstance(value, dict) and isinstance(other_value, dict):
-                sub = self._diff_dict(value, other_value)
-                if sub:
+                if sub := self._diff_dict(value, other_value):
                     result[name] = sub
                 continue
 
@@ -106,14 +105,12 @@ class ConfigDiffMixin:
 
                 # Nested ConfigDiffMixin
                 if isinstance(v1, ConfigDiffMixin) and isinstance(v2, ConfigDiffMixin):
-                    sub = v1.diff(v2)
-                    if sub:
+                    if sub := v1.diff(v2):
                         result[key] = sub
 
                 # Nested dict
                 elif isinstance(v1, dict) and isinstance(v2, dict):
-                    sub = self._diff_dict(v1, v2)
-                    if sub:
+                    if sub := self._diff_dict(v1, v2):
                         result[key] = sub
 
                 # Primitive or object change
