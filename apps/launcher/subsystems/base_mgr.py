@@ -571,9 +571,9 @@ class PngAppMgrBase(QObject):
         """Get icon by key"""
         return self.window.get_icon(key)
 
-    def build_button(self, icon: QIcon, callback: Callable[[], None]) -> QPushButton:
+    def build_button(self, icon: QIcon, callback: Callable[[], None], tooltip: str = "") -> QPushButton:
         """Build a button with the given icon and callback"""
-        return self.window.build_button(icon, callback)
+        return self.window.build_button(icon, callback, tooltip)
 
     def set_button_state(self, button: QPushButton, enabled: bool):
         """Enable/disable a QPushButton."""
@@ -582,6 +582,10 @@ class PngAppMgrBase(QObject):
     def set_button_icon(self, button: QPushButton, icon: QIcon):
         """Set icon on a QPushButton."""
         self.window.set_button_icon(button, icon)
+
+    def set_button_tooltip(self, button: QPushButton, tooltip: str):
+        """Set tooltip for a QPushButton and store it for later use."""
+        self.window.set_button_tooltip(button, tooltip)
 
     def show_success(self, title: str, message: str):
         """Display a success/info message box."""

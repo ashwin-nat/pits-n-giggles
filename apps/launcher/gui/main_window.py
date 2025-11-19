@@ -236,19 +236,20 @@ class PngLauncherWindow(QMainWindow):
         global_buttons_layout.setSpacing(6)
 
         # Settings button
-        self.settings_btn = self.build_button(self.get_icon("settings"), self.on_settings_clicked)
+        self.settings_btn = self.build_button(self.get_icon("settings"), self.on_settings_clicked, "Settings")
         global_buttons_layout.addWidget(self.settings_btn)
 
         # Discord button
-        self.discord_btn = self.build_button(self.get_icon("discord"), self.on_discord_clicked)
+        self.discord_btn = self.build_button(self.get_icon("discord"), self.on_discord_clicked, "Join Discord")
         global_buttons_layout.addWidget(self.discord_btn)
 
         # Website button
-        self.website_btn = self.build_button(self.get_icon("website"), self.on_website_clicked)
+        self.website_btn = self.build_button(self.get_icon("website"), self.on_website_clicked, "Tips n' Tricks")
         global_buttons_layout.addWidget(self.website_btn)
 
         # Updates button
-        self.updates_btn = self.build_button(self.get_icon("updates"), self.on_updates_clicked)
+        self.updates_btn = self.build_button(self.get_icon("updates"), self.on_updates_clicked,
+                                             "Download Latest Version")
         global_buttons_layout.addWidget(self.updates_btn)
 
         top_bar_layout.addLayout(global_buttons_layout)
@@ -465,7 +466,7 @@ class PngLauncherWindow(QMainWindow):
         """Process pending events in the application's event loop"""
         self.app.processEvents()
 
-    def build_button(self, icon: QIcon, callback: Callable[[], None]) -> QPushButton:
+    def build_button(self, icon: QIcon, callback: Callable[[], None], tooltip: str) -> QPushButton:
         """Build a button with an icon and callback"""
         assert icon and not icon.isNull()
 
@@ -496,11 +497,22 @@ class PngLauncherWindow(QMainWindow):
         """)
 
         btn.clicked.connect(callback)
+        self.set_button_tooltip(btn, tooltip)
         return btn
 
+    def set_button_tooltip(self, button: QPushButton, tooltip: str):
+        """Set tooltip for a QPushButton and store it for later use."""
+        button.setProperty("button_tooltip", tooltip)
+        button.setToolTip(tooltip)
+
     def set_button_state(self, button: QPushButton, enabled: bool):
-        """Enable/disable a QPushButton."""
+        """Enable/disable a QPushButton and restore tooltip if previously set."""
         button.setEnabled(enabled)
+
+        # Restore tooltip if it was previously configured
+        tooltip = button.property("button_tooltip")
+        if tooltip is not None:
+            button.setToolTip(tooltip)
 
     def set_button_icon(self, button: QPushButton, icon: QIcon):
         """Set icon on a QPushButton."""

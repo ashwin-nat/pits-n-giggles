@@ -91,11 +91,11 @@ class HudAppMgr(PngAppMgrBase):
         :return: List of button objects
         """
 
-        self.start_stop_button = self.build_button(self.get_icon("start"), self.start_stop_callback)
-        self.hide_show_button = self.build_button(self.get_icon("show-hide"), self.hide_show_callback)
-        self.lock_button = self.build_button(self.get_icon("unlock"), self.lock_callback)
-        self.reset_button = self.build_button(self.get_icon("reset"), self.reset_callback)
-        self.next_page_button = self.build_button(self.get_icon("next-page"), self.next_page_callback)
+        self.start_stop_button = self.build_button(self.get_icon("start"), self.start_stop_callback, "Start")
+        self.hide_show_button = self.build_button(self.get_icon("show-hide"), self.hide_show_callback, "Hide/Show")
+        self.lock_button = self.build_button(self.get_icon("unlock"), self.lock_callback, "Lock Overlays")
+        self.reset_button = self.build_button(self.get_icon("reset"), self.reset_callback, "Reset Overlays")
+        self.next_page_button = self.build_button(self.get_icon("next-page"), self.next_page_callback, "Next MFD Page")
 
         if not self.enabled:
             self.set_button_state(self.start_stop_button, False)
@@ -172,6 +172,7 @@ class HudAppMgr(PngAppMgrBase):
         self.set_button_state(self.hide_show_button, True)
         self.set_button_state(self.start_stop_button, True)
         self.set_button_icon(self.start_stop_button, self.get_icon("stop"))
+        self.set_button_tooltip(self.start_stop_button, "Stop")
         self.set_button_state(self.lock_button, True)
         self.set_button_state(self.reset_button, True)
         self.set_button_state(self.next_page_button, True)
@@ -189,6 +190,7 @@ class HudAppMgr(PngAppMgrBase):
         self.set_button_state(self.hide_show_button, False)
         self.set_button_state(self.start_stop_button, True)
         self.set_button_icon(self.start_stop_button, self.get_icon("start"))
+        self.set_button_tooltip(self.start_stop_button, "Start")
         self.set_button_state(self.lock_button, False)
         self.set_button_state(self.reset_button, False)
         self.set_button_state(self.next_page_button, False)
@@ -217,8 +219,10 @@ class HudAppMgr(PngAppMgrBase):
     def set_lock_button_icon(self):
         if self.locked:
             self.set_button_icon(self.lock_button, self.get_icon("unlock"))
+            self.set_button_tooltip(self.lock_button, "Unlock")
         else:
             self.set_button_icon(self.lock_button, self.get_icon("lock"))
+            self.set_button_tooltip(self.lock_button, "Lock")
 
     def process_enabled_change(self):
         """
