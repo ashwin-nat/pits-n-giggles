@@ -82,7 +82,7 @@ def _load_raw_json(path: str, logger: Optional[Logger]) -> Dict[str, Any]:
     try:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f) or {}
-    except Exception as e:
+    except Exception as e: # pylint: disable=broad-exception-caught
         if logger:
             logger.error("Could not parse JSON config: %s", e)
         _backup_invalid_file(path, logger)

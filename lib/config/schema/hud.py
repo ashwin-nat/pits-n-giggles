@@ -22,9 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import copy
 from typing import Any, ClassVar, Dict
 
-from pydantic import BaseModel, Field, model_validator, ValidationError
+from pydantic import BaseModel, Field, model_validator
 
 from .diff import ConfigDiffMixin
 
@@ -59,7 +60,7 @@ class MfdSettings(ConfigDiffMixin, BaseModel):
     ui_meta: ClassVar[Dict[str, Any]] = {"visible": True}
 
     pages: Dict[str, MfdPageSettings] = Field(
-        default_factory=lambda: DEFAULT_PAGES.copy(),
+        default_factory=lambda: copy.deepcopy(DEFAULT_PAGES),
         description="Dictionary of MFD pages",
         json_schema_extra={"ui": {"type": "group_box", "visible": True}},
     )
