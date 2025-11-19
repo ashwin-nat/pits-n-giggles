@@ -1,6 +1,6 @@
 {
     "Network": {
-        "telemetry_port": 20777,
+        "telemetry_port": 20778,
         "server_port": 4768,
         "save_viewer_port": 4769,
         "udp_tyre_delta_action_code": 11,
@@ -16,7 +16,7 @@
     },
     "Display": {
         "refresh_interval": 200,
-        "disable_browser_autoload": false
+        "disable_browser_autoload": true
     },
     "Logging": {
         "log_file": "png.log",
@@ -48,23 +48,23 @@
             "pages": {
                 "lap_times": {
                     "enabled": true,
-                    "position": 3
+                    "position": 2
                 },
                 "weather_forecast": {
                     "enabled": true,
-                    "position": 4
+                    "position": 1
                 },
                 "fuel_info": {
                     "enabled": true,
-                    "position": 2
+                    "position": 4
                 },
-                "tyre_wear": {
+                "tyre_info": {
                     "enabled": true,
                     "position": 5
                 },
                 "pit_rejoin": {
                     "enabled": true,
-                    "position": 1
+                    "position": 3
                 }
             }
         },
