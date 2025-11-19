@@ -22,17 +22,12 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import sys
-import logging
-from datetime import datetime
-from pathlib import Path
 from typing import TYPE_CHECKING
-from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QPushButton, QLabel, QTextEdit, QFrame, QSplitter
+from PySide6.QtWidgets import (QVBoxLayout, QHBoxLayout,
+    QLabel, QFrame
 )
-from PySide6.QtCore import Qt, QTimer, Signal, QObject
-from PySide6.QtGui import QFont, QTextCursor, QCloseEvent
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont
 
 if TYPE_CHECKING:
     from .main_window import PngAppMgrBase

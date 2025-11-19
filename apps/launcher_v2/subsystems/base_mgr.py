@@ -27,18 +27,20 @@ import subprocess
 import sys
 import threading
 import time
-from typing import Optional, Callable, List, Dict, Any, TYPE_CHECKING
-from PySide6.QtCore import QObject, Signal
-from PySide6.QtWidgets import QPushButton
-from PySide6.QtGui import QIcon
-
-from lib.ipc import get_free_tcp_port
-from lib.error_status import PNG_ERROR_CODE_HTTP_PORT_IN_USE, PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE, PNG_ERROR_CODE_UNKNOWN, PNG_LOST_CONN_TO_PARENT
-from lib.config import PngSettings
-from lib.child_proc_mgmt import extract_pid_from_line, is_init_complete
-from lib.ipc import IpcParent
+from typing import TYPE_CHECKING, Callable, List, Optional
 
 import psutil
+from PySide6.QtCore import QObject, Signal
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import QPushButton
+
+from lib.child_proc_mgmt import extract_pid_from_line, is_init_complete
+from lib.config import PngSettings
+from lib.error_status import (PNG_ERROR_CODE_HTTP_PORT_IN_USE,
+                              PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE,
+                              PNG_ERROR_CODE_UNKNOWN, PNG_LOST_CONN_TO_PARENT)
+from lib.ipc import IpcParent, get_free_tcp_port
+
 if TYPE_CHECKING:
     from apps.launcher_v2.gui import PngLauncherWindow
 
@@ -226,6 +228,7 @@ class PngAppMgrBase(QObject):
 
             try:
                 # Start the subprocess
+                # pylint: disable=consider-using-with
                 self.process = subprocess.Popen(
                     launch_cmd,
                     stdout=subprocess.PIPE,
@@ -259,7 +262,7 @@ class PngAppMgrBase(QObject):
 
                 self.info_log(f"{self.display_name} started (PID: {self.child_pid})")
 
-            except Exception as e:
+            except Exception as e: # pylint: disable=broad-exception-caught
                 self.error_log(f"Failed to start {self.display_name}: {e}")
                 self._update_status("Crashed")
                 self.is_running = False
@@ -300,7 +303,7 @@ class PngAppMgrBase(QObject):
             if self._post_stop_hook:
                 try:
                     self._post_stop_hook()
-                except Exception as e:
+                except Exception as e: # pylint: disable=broad-exception-caught
                     self.error_log(f"Post-stop hook error: {e}")
 
     def restart(self, reason: str):
@@ -444,7 +447,7 @@ class PngAppMgrBase(QObject):
         if self._post_stop_hook:
             try:
                 self._post_stop_hook()
-            except Exception as e:
+            except Exception as e: # pylint: disable=broad-exception-caught
                 self.error_log(f"Post-stop hook error: {e}")
 
         # Attempt auto-restart if enabled
@@ -454,11 +457,10 @@ class PngAppMgrBase(QObject):
                 daemon=True,
                 name=f"{self.display_name}-auto-restart"
             ).start()
-        else:
-            if self.auto_restart:
-                self.error_log(
-                    f"{self.display_name} will not auto-restart (max attempts reached)"
-                )
+        elif self.auto_restart:
+            self.error_log(
+                f"{self.display_name} will not auto-restart (max attempts reached)"
+            )
 
     def _send_heartbeat(self):
         """Send periodic heartbeat to child process"""
@@ -483,7 +485,7 @@ class PngAppMgrBase(QObject):
                     )
                     failed_count += 1
 
-            except Exception as e:
+            except Exception as e: # pylint: disable=broad-exception-caught
                 self.debug_log(f"Heartbeat error: {e}")
                 failed_count += 1
 
@@ -581,6 +583,6 @@ class PngAppMgrBase(QObject):
         """Display an error message box."""
         self.window.show_error(title, message)
 
-    def select_file(self, title="Select File", filter="All Files (*.*)") -> str:
+    def select_file(self, title="Select File", file_filter="All Files (*.*)") -> str:
         """Open a file dialog and return path or None."""
-        return self.window.select_file(title, filter)
+        return self.window.select_file(title, file_filter)

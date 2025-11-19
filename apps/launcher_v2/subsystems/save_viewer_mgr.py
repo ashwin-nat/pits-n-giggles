@@ -22,15 +22,15 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import json
 import webbrowser
+from typing import TYPE_CHECKING, List
+
+from PySide6.QtWidgets import QPushButton
 
 from lib.config import PngSettings
 from lib.ipc import IpcParent
 
 from .base_mgr import PngAppMgrBase
-from PySide6.QtWidgets import QPushButton, QFileDialog
-from typing import List, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from apps.launcher_v2.gui import PngLauncherWindow
@@ -79,7 +79,6 @@ class SaveViewerAppMgr(PngAppMgrBase):
 
     def get_buttons(self) -> List[QPushButton]:
         """Return a list of button objects directly
-        :param frame: The frame to place the buttons in
         :return: List of button objects
         """
 
@@ -99,7 +98,7 @@ class SaveViewerAppMgr(PngAppMgrBase):
 
     def open_file(self):
         """Open a file dialog and send the selected file path to the backend process."""
-        file_path = self.select_file(title="Select File", filter="JSON files (*.json);;All Files (*.*)")
+        file_path = self.select_file(title="Select File", file_filter="JSON files (*.json);;All Files (*.*)")
 
         if file_path:
             self.debug_log(f"Selected file: {file_path}")
@@ -162,20 +161,3 @@ class SaveViewerAppMgr(PngAppMgrBase):
             self.debug_log(f"{self.display_name}:Error during start/stop: {e}")
             # If no exception, it will be handled in post_start/post_stop
             self.set_button_state(self.start_stop_button, True)
-
-    def on_settings_change(self, new_settings: PngSettings) -> bool:
-        """Handle changes in settings for the backend application
-
-        :param new_settings: New settings
-
-        :return: True if the app needs to be restarted
-        """
-
-        diff = self.curr_settings.diff(new_settings, {
-            "Network": ["save_viewer_port"],
-        })
-        self.debug_log(f"{self.display_name} Settings changed: {diff}")
-        # Update the port number
-        should_restart = (self.port != new_settings.Network.save_viewer_port)
-        self.port = new_settings.Network.save_viewer_port
-        return should_restart

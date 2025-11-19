@@ -29,8 +29,6 @@ import os
 import shutil
 import sys
 import tempfile
-import tkinter as tk
-from functools import partial
 
 from apps.launcher_v2.gui import PngLauncherWindow
 from lib.file_path import resolve_user_file

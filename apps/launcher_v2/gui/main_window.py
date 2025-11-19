@@ -26,22 +26,24 @@ import sys
 import webbrowser
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Dict, Optional, List
-from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QPushButton, QLabel, QTextEdit, QFrame, QSplitter, QMessageBox, QFileDialog, QGridLayout
-)
-from PySide6.QtCore import Qt, QTimer, Signal, QObject, QSize, QRunnable, QThreadPool
-from PySide6.QtGui import QFont, QTextCursor, QCloseEvent, QIcon
+from typing import Callable, Dict, List, Optional
 
-from apps.launcher_v2.subsystems import BackendAppMgr, SaveViewerAppMgr, HudAppMgr, PngAppMgrBase
-from lib.file_path import resolve_user_file
-from lib.config import PngSettings, load_config_migrated, save_config_to_json
+from PySide6.QtCore import QRunnable, QSize, Qt, QThreadPool
+from PySide6.QtGui import QCloseEvent, QFont, QIcon
+from PySide6.QtWidgets import (QApplication, QFileDialog, QGridLayout,
+                               QHBoxLayout, QLabel, QMainWindow, QMessageBox,
+                               QPushButton, QSplitter, QVBoxLayout, QWidget)
+
 from apps.launcher_v2.logger import get_rotating_logger
-from .console import LogSignals, ConsoleWidget
-from .subsys_row import SubsystemCard
+from apps.launcher_v2.subsystems import (BackendAppMgr, HudAppMgr,
+                                         PngAppMgrBase, SaveViewerAppMgr)
+from lib.config import PngSettings, load_config_migrated, save_config_to_json
+from lib.file_path import resolve_user_file
 from meta.meta import APP_NAME
+
+from .console import ConsoleWidget, LogSignals
 from .settings import SettingsWindow
+from .subsys_row import SubsystemCard
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -147,9 +149,9 @@ class PngLauncherWindow(QMainWindow):
         """Load an icon"""
         ret = QIcon(str(path))
         if ret.isNull():
-            self.logger.warning(f"Failed to load icon: {path}")
+            self.warning_log(f"Failed to load icon: {path}")
         else:
-            self.logger.debug(f"Loaded icon successfully: {path}")
+            self.debug_log(f"Loaded icon successfully: {path}")
         return ret
 
     def init_icons(self):
@@ -374,7 +376,7 @@ class PngLauncherWindow(QMainWindow):
                 subsystem.start("Initial auto-start")
 
     def format_log_message_coloured(self, timestamp: str, message: str, level: str, src: str) -> str:
-
+        """Format log message with color coding"""
         if src in self.subsystems_short_names:
             prefix = src
             level = 'CHILD'
@@ -388,7 +390,7 @@ class PngLauncherWindow(QMainWindow):
         return formatted
 
     def format_log_message(self, timestamp: str, message: str, level: str, src: str) -> str:
-
+        """Format log message"""
         if src in self.subsystems_short_names:
             prefix = src
             level = 'CHILD'
@@ -520,13 +522,13 @@ class PngLauncherWindow(QMainWindow):
             message
         )
 
-    def select_file(self, title="Select File", filter="All Files (*.*)"):
+    def select_file(self, title="Select File", file_filter="All Files (*.*)"):
         """Open a file dialog and return path or None."""
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             title,
             "",
-            filter
+            file_filter
         )
         return file_path or None
 

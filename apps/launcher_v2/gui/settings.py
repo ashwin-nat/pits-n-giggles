@@ -22,16 +22,17 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, List, Tuple
-from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QCheckBox,
-    QLineEdit, QSlider, QLabel, QScrollArea, QWidget, QGroupBox,
-    QListWidget, QStackedWidget, QMessageBox, QFrame, QSizePolicy
-)
-from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QPoint, QParallelAnimationGroup
-from PySide6.QtGui import QFont, QIcon
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
+
 from pydantic import BaseModel, ValidationError
 from pydantic.fields import FieldInfo
+from PySide6.QtCore import (QEasingCurve, QParallelAnimationGroup, QPoint,
+                            QPropertyAnimation, Qt)
+from PySide6.QtGui import QFont, QIcon
+from PySide6.QtWidgets import (QCheckBox, QDialog, QFrame, QGroupBox,
+                               QHBoxLayout, QLabel, QLineEdit, QListWidget,
+                               QMessageBox, QPushButton, QScrollArea, QSlider,
+                               QStackedWidget, QVBoxLayout, QWidget)
 
 from lib.config import PngSettings
 
@@ -420,8 +421,6 @@ class SettingsWindow(QDialog):
                           field_path: str,
                           field_info: FieldInfo) -> Optional[QWidget]:
         """Build a widget for a dict field"""
-        ui_meta = field_info.json_schema_extra or {}
-        ui_config = ui_meta.get("ui", {})
 
         # Check if this is a reorderable collection
         collection_meta = ReorderableCollection(field_info)
@@ -429,20 +428,19 @@ class SettingsWindow(QDialog):
         if collection_meta.is_reorderable:
             # Build reorderable group for the dict
             return self._build_reorderable_dict_group(field_name, field_value, field_path, field_info)
-        else:
-            # Just show the dict items
-            group_box = QGroupBox(field_info.description or field_name)
-            layout = QVBoxLayout()
-            layout.setContentsMargins(10, 10, 10, 10)
-            layout.setSpacing(8)
+        # Just show the dict items
+        group_box = QGroupBox(field_info.description or field_name)
+        layout = QVBoxLayout()
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
 
-            for dict_key, dict_value in field_value.items():
-                if isinstance(dict_value, BaseModel):
-                    item_widget = self._build_dict_item(dict_key, dict_value, field_path)
-                    layout.addWidget(item_widget)
+        for dict_key, dict_value in field_value.items():
+            if isinstance(dict_value, BaseModel):
+                item_widget = self._build_dict_item(dict_key, dict_value, field_path)
+                layout.addWidget(item_widget)
 
-            group_box.setLayout(layout)
-            return group_box
+        group_box.setLayout(layout)
+        return group_box
 
     def _build_reoderable_view(self,
                            field_name: str,
@@ -698,7 +696,7 @@ class SettingsWindow(QDialog):
 
         # Find item with position - 1
         target_position = current_position - 1
-        for other_name, other_item in items_dict.items():
+        for _, other_item in items_dict.items():
             if (collection_meta.get_enabled(other_item) and
                 collection_meta.get_position(other_item) == target_position):
                 # Swap positions
@@ -732,7 +730,7 @@ class SettingsWindow(QDialog):
 
         # Find item with position + 1
         target_position = current_position + 1
-        for other_name, other_item in items_dict.items():
+        for _, other_item in items_dict.items():
             if (collection_meta.get_enabled(other_item) and
                 collection_meta.get_position(other_item) == target_position):
                 # Swap positions
@@ -744,7 +742,7 @@ class SettingsWindow(QDialog):
 
     def _reorder_item_widgets(self,
                               items_container: QWidget,
-                              items_dict: Dict[str, BaseModel],
+                              _items_dict: Dict[str, BaseModel],
                               collection_meta: ReorderableCollection):
         """Reorder the item widgets in the layout based on their positions with animation"""
         layout: QVBoxLayout = items_container.items_layout
@@ -810,7 +808,7 @@ class SettingsWindow(QDialog):
         try:
             self._set_nested_value(self.working_settings, field_path, value)
             self.parent_window.debug_log(f"Field {field_path} changed to {value}")
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-exception-caught
             self.parent_window.error_log(f"Error updating field {field_path}: {e}")
 
     def _on_slider_changed(self, field_path: str, value: int, label: QLabel):
@@ -893,7 +891,7 @@ class SettingsWindow(QDialog):
                     widget.setValue(value)
                 elif isinstance(widget, QLineEdit):
                     widget.setText(str(value))
-            except Exception as e:
+            except Exception as e: # pylint: disable=broad-exception-caught
                 self.parent_window.debug_log(f"Could not update widget {field_path}: {e}")
 
     def _get_nested_value(self, obj: Any, path: str) -> Any:
@@ -935,7 +933,7 @@ class SettingsWindow(QDialog):
                 f"Settings validation failed:\n\n{error_msg}"
             )
             self.parent_window.error_log(f"Settings validation failed: {e}")
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-exception-caught
             QMessageBox.critical(
                 self,
                 "Error",

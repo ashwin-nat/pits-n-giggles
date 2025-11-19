@@ -24,13 +24,14 @@
 
 import json
 import webbrowser
+from typing import TYPE_CHECKING, List
+
+from PySide6.QtWidgets import QPushButton
 
 from lib.config import PngSettings
 from lib.ipc import IpcParent
 
 from .base_mgr import PngAppMgrBase
-from PySide6.QtWidgets import QPushButton
-from typing import List, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from apps.launcher_v2.gui import PngLauncherWindow
@@ -82,7 +83,6 @@ class BackendAppMgr(PngAppMgrBase):
 
     def get_buttons(self) -> List[QPushButton]:
         """Return a list of button objects directly
-        :param frame: The frame to place the buttons in
         :return: List of button objects
         """
 
@@ -194,38 +194,3 @@ class BackendAppMgr(PngAppMgrBase):
             self.debug_log(f"{self.display_name}:Error during start/stop: {e}")
             # If no exception, it will be handled in post_start/post_stop
             self.set_button_state(self.start_stop_button, True)
-
-    def on_settings_change(self, new_settings: PngSettings) -> bool:
-        """Handle changes in settings for the backend application
-
-        :param new_settings: New settings
-
-        :return: True if the app needs to be restarted
-        """
-
-        # Update the port number
-        self.port = new_settings.Network.server_port
-        self.proto = new_settings.HTTPS.proto
-
-        diff = self.curr_settings.diff(new_settings, {
-            "Network": [
-                "telemetry_port",
-                "server_port",
-                "udp_tyre_delta_action_code",
-                "udp_custom_action_code",
-                "wdt_interval_sec",
-            ],
-            "Capture" : [],
-            "Display" : [],
-            "Logging" : [],
-            "Privacy" : [],
-            "Forwarding" : [],
-            "StreamOverlay" : [],
-            "HUD": [
-                "toggle_overlays_udp_action_code",
-            ]
-        })
-        self.debug_log(f"{self.display_name} Settings changed: {json.dumps(diff, indent=2)}")
-
-        # Restart if diff is not empty
-        return bool(diff)

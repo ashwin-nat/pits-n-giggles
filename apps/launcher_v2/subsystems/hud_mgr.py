@@ -25,15 +25,15 @@
 import json
 import sys
 import threading
+from typing import TYPE_CHECKING, List
 
+from PySide6.QtWidgets import QPushButton
+
+from lib.button_debouncer import ButtonDebouncer
 from lib.config import PngSettings
 from lib.ipc import IpcParent
 
 from .base_mgr import PngAppMgrBase
-from PySide6.QtWidgets import QPushButton, QFileDialog
-from typing import List, TYPE_CHECKING
-
-from lib.button_debouncer import ButtonDebouncer
 
 if TYPE_CHECKING:
     from apps.launcher_v2.gui import PngLauncherWindow
@@ -88,7 +88,6 @@ class HudAppMgr(PngAppMgrBase):
 
     def get_buttons(self) -> List[QPushButton]:
         """Return a list of button objects directly
-        :param frame: The frame to place the buttons in
         :return: List of button objects
         """
 
@@ -156,35 +155,6 @@ class HudAppMgr(PngAppMgrBase):
             command="next-page", args={}
         )
         self.info_log(str(rsp))
-
-    def on_settings_change(self, new_settings: PngSettings) -> bool:
-        """Handle changes in settings for the backend application
-
-        :param new_settings: New settings
-
-        :return: True if the app needs to be restarted
-        """
-
-        diff = self.curr_settings.diff(new_settings, {
-            "HUD": [
-                "enabled",
-                "show_lap_timer",
-                "show_timing_tower",
-            ],
-        })
-        self.debug_log(f"{self.display_name} Settings changed: {json.dumps(diff, indent=2)}")
-        should_restart = bool(diff)
-        if should_restart:
-            self.enabled = new_settings.HUD.enabled
-
-        # TODO: Handle opacity change here
-        if self.curr_settings.diff(new_settings, {
-            "HUD": [
-                "overlays_opacity",
-            ],
-        }):
-            self._send_overlays_opacity_change(new_settings)
-        return should_restart
 
     def start(self, reason: str):
         """Check for enabled flag before starting"""
@@ -262,12 +232,12 @@ class HudAppMgr(PngAppMgrBase):
         """
 
         if self.enabled:
-            self.start()
+            self.start("Enabling HUD")
             self.set_button_state(self.lock_button, True)
             self.set_lock_button_icon()
             self.set_button_state(self.hide_show_button, True)
         else:
-            self.stop()
+            self.stop("Disabling HUD")
             self.set_button_state(self.start_stop_button, False)
             self.set_button_state(self.hide_show_button, False)
             self.set_button_state(self.lock_button, False)
