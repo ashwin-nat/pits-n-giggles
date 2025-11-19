@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QPoint, QParallelAnimationGroup
 from PySide6.QtGui import QFont
 from pydantic import BaseModel, ValidationError
+from pydantic.fields import FieldInfo
 
 from lib.config import PngSettings
 
@@ -39,7 +40,17 @@ if TYPE_CHECKING:
 class SettingsWindow(QDialog):
     """Dynamic settings window that builds UI from PngSettings schema"""
 
-    def __init__(self, parent_window: "PngLauncherWindow", settings: PngSettings, on_settings_change: Optional[Callable[[PngSettings], None]] = None):
+    def __init__(self,
+                 parent_window: "PngLauncherWindow",
+                 settings: PngSettings,
+                 on_settings_change: Optional[Callable[[PngSettings], None]] = None):
+        """Initialize the settings window
+
+        Args:
+            parent_window: The parent window
+            settings: The current settings
+            on_settings_change: A callback function to handle settings changes
+        """
         super().__init__(parent_window)
         self.parent_window = parent_window
         self.original_settings = settings
@@ -219,7 +230,7 @@ class SettingsWindow(QDialog):
         if index >= 0:
             self.stacked_widget.setCurrentIndex(index)
 
-    def _build_category_content(self, category_name: str, category_model: BaseModel) -> QWidget:
+    def _build_category_content(self, category_name: str, category_model: BaseModel) -> QScrollArea:
         """Build content for a settings category"""
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -281,7 +292,11 @@ class SettingsWindow(QDialog):
 
         return scroll
 
-    def _build_field_widget(self, field_name: str, field_value: Any, field_path: str, field_info: Any) -> Optional[QWidget]:
+    def _build_field_widget(self,
+                            field_name: str,
+                            field_value: Any,
+                            field_path: str,
+                            field_info: FieldInfo) -> Optional[QWidget]:
         """Build a widget for a simple field"""
         ui_meta = field_info.json_schema_extra or {}
         ui_config = ui_meta.get("ui", {})
@@ -353,7 +368,12 @@ class SettingsWindow(QDialog):
         container.setLayout(layout)
         return container
 
-    def _build_nested_page(self, field_name: str, field_value: BaseModel, field_path: str, field_info: Any) -> QWidget:
+    def _build_nested_page(self,
+                           field_name: str,
+                           field_value: BaseModel,
+                           field_path: str,
+                           field_info: FieldInfo
+                           ) -> QWidget:
         """Build a collapsible nested page"""
         group_box = QGroupBox(field_info.description or field_name)
         layout = QVBoxLayout()
@@ -377,7 +397,8 @@ class SettingsWindow(QDialog):
 
                 if nested_ui_type == "group_box":
                     # Build reorderable group for the pages dict
-                    pages_widget = self._build_pages_dict_group(nested_field_name, nested_value, nested_path, field_value)
+                    pages_widget = self._build_pages_dict_group(nested_field_name, nested_value,
+                                                                nested_path, field_value)
                     layout.addWidget(pages_widget)
                 else:
                     # Just show the dict items
@@ -398,7 +419,12 @@ class SettingsWindow(QDialog):
         group_box.setLayout(layout)
         return group_box
 
-    def _build_nested_group(self, field_name: str, field_value: BaseModel, field_path: str, field_info: Any) -> QWidget:
+    def _build_nested_group(self,
+                            field_name: str,
+                            field_value: BaseModel,
+                            field_path: str,
+                            field_info: FieldInfo
+                            ) -> QWidget:
         """Build a nested group of fields"""
         group_box = QGroupBox(field_info.description or field_name)
         layout = QVBoxLayout()
@@ -425,7 +451,12 @@ class SettingsWindow(QDialog):
         group_box.setLayout(layout)
         return group_box
 
-    def _build_group_box(self, field_name: str, field_value: BaseModel, field_path: str, field_info: Any) -> QWidget:
+    def _build_group_box(self,
+                         field_name: str,
+                         field_value: BaseModel,
+                         field_path: str,
+                         field_info: FieldInfo
+                         ) -> QWidget:
         """Build a group box with reorderable items (for MFD pages, etc.)"""
         group_box = QGroupBox(field_info.description or field_name)
         main_layout = QVBoxLayout()
@@ -440,32 +471,36 @@ class SettingsWindow(QDialog):
         group_box.setLayout(main_layout)
         return group_box
 
-    def _build_pages_dict_group(self, title: str, pages_dict: Dict[str, BaseModel], parent_path: str, parent_model: BaseModel) -> QWidget:
-        """Build a group for a dict of pages with reordering"""
+    def _build_pages_dict_group(self,
+                                _title: str,
+                                pages_dict: Dict[str, BaseModel],
+                                parent_path: str,
+                                parent_model: BaseModel) -> QWidget:
+        """Build a group for a dict of items with reordering"""
         container = QWidget()
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
 
         # Store the layout reference for reordering
-        container.pages_layout = layout
+        container.items_layout = layout
         container.parent_path = parent_path
         container.parent_model = parent_model
 
-        # Add each page in sorted order
-        sorted_pages = sorted(
+        # Add each item in sorted order
+        sorted_items = sorted(
             [(name, settings) for name, settings in pages_dict.items() if settings.enabled],
             key=lambda x: x[1].position
         )
 
-        for page_name, page_settings in sorted_pages:
-            page_row = self._build_page_row(page_name, page_settings, parent_path, parent_model, container)
-            layout.addWidget(page_row)
+        for item_name, item_settings in sorted_items:
+            item_row = self._build_group_box_item_row(item_name, item_settings, parent_path, parent_model, container)
+            layout.addWidget(item_row)
 
         container.setLayout(layout)
 
         # Store reference for reordering
-        self.field_widgets[f"{parent_path}_pages_container"] = container
+        self.field_widgets[f"{parent_path}_items_container"] = container
 
         return container
 
@@ -498,8 +533,13 @@ class SettingsWindow(QDialog):
         container.setLayout(layout)
         return container
 
-    def _build_page_row(self, page_name: str, page_settings: BaseModel, parent_path: str, parent_model: BaseModel, pages_container: QWidget) -> QWidget:
-        """Build a row for a reorderable page item"""
+    def _build_group_box_item_row(self,
+                                  item_name: str,
+                                  item_settings: BaseModel,
+                                  parent_path: str,
+                                  parent_model: BaseModel,
+                                  items_container: QWidget) -> QWidget:
+        """Build a row for a reorderable group_box item"""
         row_widget = QFrame()
         row_widget.setFrameStyle(QFrame.Shape.Box | QFrame.Shadow.Sunken)
         row_widget.setStyleSheet("""
@@ -511,21 +551,21 @@ class SettingsWindow(QDialog):
             }
         """)
 
-        # Store metadata on the widget
-        row_widget.page_name = page_name
-        row_widget.page_settings = page_settings
+        # Store metadata on the widget (generic item identifier and settings)
+        row_widget.item_key = item_name
+        row_widget.item_settings = item_settings
 
         layout = QHBoxLayout()
         layout.setContentsMargins(8, 4, 8, 4)
 
         # Enabled checkbox
-        page_path = f"{parent_path}.pages.{page_name}"
-        enabled_cb = QCheckBox(page_name.replace("_", " ").title())
-        enabled_cb.setChecked(page_settings.enabled)
+        item_path = f"{parent_path}.pages.{item_name}"
+        enabled_cb = QCheckBox(item_name.replace("_", " ").title())
+        enabled_cb.setChecked(item_settings.enabled)
         enabled_cb.stateChanged.connect(
-            lambda state, path=f"{page_path}.enabled": self._on_field_changed(path, state == Qt.CheckState.Checked.value)
+            lambda state, path=f"{item_path}.enabled": self._on_field_changed(path, state == Qt.CheckState.Checked.value)
         )
-        self.field_widgets[f"{page_path}.enabled"] = enabled_cb
+        self.field_widgets[f"{item_path}.enabled"] = enabled_cb
         layout.addWidget(enabled_cb)
 
         layout.addStretch()
@@ -533,72 +573,80 @@ class SettingsWindow(QDialog):
         # Up/Down buttons
         up_btn = QPushButton("↑")
         up_btn.setFixedSize(32, 28)
-        up_btn.clicked.connect(lambda: self._move_page_up(page_name, parent_path, parent_model, pages_container))
+        up_btn.clicked.connect(lambda: self._move_group_box_item_up(item_name, parent_path, parent_model, items_container))
         layout.addWidget(up_btn)
 
         down_btn = QPushButton("↓")
         down_btn.setFixedSize(32, 28)
-        down_btn.clicked.connect(lambda: self._move_page_down(page_name, parent_path, parent_model, pages_container))
+        down_btn.clicked.connect(lambda: self._move_group_box_item_down(item_name, parent_path, parent_model, items_container))
         layout.addWidget(down_btn)
 
         row_widget.setLayout(layout)
         return row_widget
 
-
-    def _move_page_up(self, page_name: str, parent_path: str, parent_model: BaseModel, pages_container: QWidget):
-        """Move a page up in ordering"""
+    def _move_group_box_item_up(self,
+                                item_name: str,
+                                _parent_path: str,
+                                parent_model: BaseModel,
+                                items_container: QWidget):
+        """Move a group_box item up in ordering"""
         pages = parent_model.pages
-        current_page = pages[page_name]
+        current_item = pages[item_name]
 
-        if not current_page.enabled or current_page.position == 1:
+        if not current_item.enabled or current_item.position == 1:
             return
 
-        # Find page with position - 1
-        target_position = current_page.position - 1
-        for other_name, other_page in pages.items():
-            if other_page.enabled and other_page.position == target_position:
+        # Find item with position - 1
+        target_position = current_item.position - 1
+        for other_name, other_item in pages.items():
+            if other_item.enabled and other_item.position == target_position:
                 # Swap positions
-                other_page.position = current_page.position
-                current_page.position = target_position
-                self._reorder_page_widgets(pages_container, parent_model)
-                self.parent_window.debug_log(f"Moved page {page_name} up to position {target_position}")
+                other_item.position = current_item.position
+                current_item.position = target_position
+                self._reorder_group_box_item_widgets(items_container, parent_model)
+                self.parent_window.debug_log(f"Moved item {item_name} up to position {target_position}")
                 break
 
-    def _move_page_down(self, page_name: str, parent_path: str, parent_model: BaseModel, pages_container: QWidget):
-        """Move a page down in ordering"""
+    def _move_group_box_item_down(self,
+                                  item_name: str,
+                                  _parent_path: str,
+                                  parent_model: BaseModel,
+                                  items_container: QWidget):
+        """Move a group_box item down in ordering"""
         pages = parent_model.pages
-        current_page = pages[page_name]
+        current_item = pages[item_name]
 
-        if not current_page.enabled:
+        if not current_item.enabled:
             return
 
         # Find max position
         max_position = max(p.position for p in pages.values() if p.enabled)
-        if current_page.position == max_position:
+        if current_item.position == max_position:
             return
 
-        # Find page with position + 1
-        target_position = current_page.position + 1
-        for other_name, other_page in pages.items():
-            if other_page.enabled and other_page.position == target_position:
+        # Find item with position + 1
+        target_position = current_item.position + 1
+        for other_name, other_item in pages.items():
+            if other_item.enabled and other_item.position == target_position:
                 # Swap positions
-                other_page.position = current_page.position
-                current_page.position = target_position
-                self._reorder_page_widgets(pages_container, parent_model)
-                self.parent_window.debug_log(f"Moved page {page_name} down to position {target_position}")
+                other_item.position = current_item.position
+                current_item.position = target_position
+                self._reorder_group_box_item_widgets(items_container, parent_model)
+                self.parent_window.debug_log(f"Moved item {item_name} down to position {target_position}")
                 break
 
-    def _reorder_page_widgets(self, pages_container: QWidget, parent_model: BaseModel):
-        """Reorder the page widgets in the layout based on their positions with animation"""
-        layout = pages_container.pages_layout
+    def _reorder_group_box_item_widgets(self, items_container: QWidget, _parent_model: BaseModel):
+        """Reorder the group_box item widgets in the layout based on their positions with animation"""
+        layout: QVBoxLayout = items_container.items_layout
 
-        # Get all page widgets from the layout with their current positions
-        widgets_with_positions = []
+        # Get all reorderable item widgets from the layout with their current positions
+        widgets_with_positions: List[Tuple[QFrame, int, int]] = []
         for i in range(layout.count()):
             widget = layout.itemAt(i).widget()
-            if widget and hasattr(widget, 'page_name'):
+            if widget and hasattr(widget, 'item_key') and hasattr(widget, 'item_settings'):
                 current_y = widget.pos().y()
-                target_position = parent_model.pages[widget.page_name].position
+                # Get the position from the item's settings
+                target_position = widget.item_settings.position
                 widgets_with_positions.append((widget, current_y, target_position))
 
         # Sort by target position to get the new order
@@ -607,14 +655,14 @@ class SettingsWindow(QDialog):
         # Calculate target Y positions (based on layout spacing and widget height)
         spacing = layout.spacing()
         target_y = 0
-        widget_positions = []
+        widget_positions: List[Tuple[QFrame, int, int]] = []
 
         for widget, current_y, target_position in widgets_with_positions:
             widget_positions.append((widget, current_y, target_y))
             target_y += widget.height() + spacing
 
         # Create animation group
-        animation_group = QParallelAnimationGroup(pages_container)
+        animation_group = QParallelAnimationGroup(items_container)
 
         # Remove all widgets from layout temporarily
         for widget, _, _ in widget_positions:
@@ -626,7 +674,7 @@ class SettingsWindow(QDialog):
 
         # Force layout update to get new positions
         layout.update()
-        pages_container.update()
+        items_container.update()
 
         # Create animations for each widget that needs to move
         for widget, old_y, new_y in widget_positions:
@@ -647,8 +695,7 @@ class SettingsWindow(QDialog):
         if animation_group.animationCount() > 0:
             animation_group.start()
 
-
-    def _rebuild_pages_group(self, parent_path: str, parent_model: BaseModel):
+    def _rebuild_pages_group(self, _parent_path: str, _parent_model: BaseModel):
         """Rebuild the pages group after reordering"""
         # Find the parent widget in the stacked widget
         current_category_idx = self.category_list.currentRow()
@@ -687,7 +734,7 @@ class SettingsWindow(QDialog):
         label.setText(str(value))
         self._on_field_changed(field_path, value)
 
-    def _on_text_changed(self, field_path: str, text: str, field_info: Any):
+    def _on_text_changed(self, field_path: str, text: str, field_info: FieldInfo):
         """Handle text box change with type conversion"""
         try:
             # Try to convert to appropriate type
