@@ -41,6 +41,7 @@ from apps.launcher_v2.logger import get_rotating_logger
 from .console import LogSignals, ConsoleWidget
 from .subsys_row import SubsystemCard
 from meta.meta import APP_NAME
+from .settings import SettingsWindow
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -478,8 +479,16 @@ class PngLauncherWindow(QMainWindow):
 
     def on_settings_clicked(self):
         """Handle settings button click"""
-        self.info_log("Settings button clicked")
-        # TODO: Implement settings dialog
+
+        def on_settings_changed(new_settings: PngSettings):
+            self.settings = new_settings
+            # Save to file
+            with open(self.config_file_new, 'w') as f:
+                f.write(new_settings.model_dump_json(indent=2))
+            self.info_log("Settings saved successfully")
+
+        dialog = SettingsWindow(self, self.settings, on_settings_changed)
+        dialog.exec()
 
     def on_discord_clicked(self):
         """Handle Discord button click"""
@@ -491,5 +500,4 @@ class PngLauncherWindow(QMainWindow):
 
     def on_updates_clicked(self):
         """Handle updates button click"""
-        self.info_log("Updates button clicked")
-        # TODO: Check for updates
+        webbrowser.open("https://pitsngiggles.com/releases")
