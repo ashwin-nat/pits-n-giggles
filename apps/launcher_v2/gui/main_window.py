@@ -142,6 +142,8 @@ class PngLauncherWindow(QMainWindow):
         """Init the dict of icons"""
         icons_path_base = Path("assets") / "launcher-icons"
         self.icons: Dict[str, QIcon] = {
+            "arrow-down" : self._load_icon(icons_path_base / "arrow-down.svg"),
+            "arrow-up" : self._load_icon(icons_path_base / "arrow-up.svg"),
             "dashboard" : self._load_icon(icons_path_base / "dashboard.svg"),
             "discord" : self._load_icon(icons_path_base / "discord.svg"),
             "lock" : self._load_icon(icons_path_base / "lock.svg"),
@@ -491,7 +493,7 @@ class PngLauncherWindow(QMainWindow):
     def on_settings_clicked(self):
         """Handle settings button click"""
 
-        dialog = SettingsWindow(self, self.settings, self.on_settings_changed)
+        dialog = SettingsWindow(self, self.settings, self.icons, self.on_settings_changed)
         dialog.exec()
 
     def on_discord_clicked(self):

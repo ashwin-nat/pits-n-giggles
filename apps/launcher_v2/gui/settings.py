@@ -27,7 +27,7 @@ from PySide6.QtWidgets import (
     QListWidget, QStackedWidget, QMessageBox, QFrame, QSizePolicy
 )
 from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QPoint, QParallelAnimationGroup
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QIcon
 from pydantic import BaseModel, ValidationError
 from pydantic.fields import FieldInfo
 
@@ -43,6 +43,7 @@ class SettingsWindow(QDialog):
     def __init__(self,
                  parent_window: "PngLauncherWindow",
                  settings: PngSettings,
+                 icons_dict: Dict[str, QIcon],
                  on_settings_change: Optional[Callable[[PngSettings], None]] = None):
         """Initialize the settings window
 
@@ -56,6 +57,7 @@ class SettingsWindow(QDialog):
         self.original_settings = settings
         self.working_settings = settings.model_copy(deep=True)
         self.on_settings_change = on_settings_change
+        self.icons_dict = icons_dict
 
         # Track widgets for validation and updates
         self.field_widgets: Dict[str, Any] = {}
@@ -457,15 +459,15 @@ class SettingsWindow(QDialog):
                          field_path: str,
                          field_info: FieldInfo
                          ) -> QWidget:
-        """Build a group box with reorderable items (for MFD pages, etc.)"""
+        """Build a group box with reorderable items"""
         group_box = QGroupBox(field_info.description or field_name)
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(10, 10, 10, 10)
         main_layout.setSpacing(8)
 
-        # For MfdSettings, we have a 'pages' dict
+        # Every item will have a pages dict
         if hasattr(field_value, 'pages') and isinstance(field_value.pages, dict):
-            pages_widget = self._build_pages_dict_group("MFD Pages", field_value.pages, field_path, field_value)
+            pages_widget = self._build_pages_dict_group(field_name, field_value.pages, field_path, field_value)
             main_layout.addWidget(pages_widget)
 
         group_box.setLayout(main_layout)
@@ -571,12 +573,14 @@ class SettingsWindow(QDialog):
         layout.addStretch()
 
         # Up/Down buttons
-        up_btn = QPushButton("↑")
+        up_btn = QPushButton()
+        up_btn.setIcon(self.icons_dict['arrow-up'])
         up_btn.setFixedSize(32, 28)
         up_btn.clicked.connect(lambda: self._move_group_box_item_up(item_name, parent_path, parent_model, items_container))
         layout.addWidget(up_btn)
 
-        down_btn = QPushButton("↓")
+        down_btn = QPushButton()
+        down_btn.setIcon(self.icons_dict['arrow-down'])
         down_btn.setFixedSize(32, 28)
         down_btn.clicked.connect(lambda: self._move_group_box_item_down(item_name, parent_path, parent_model, items_container))
         layout.addWidget(down_btn)
