@@ -47,15 +47,16 @@ from tests_base import CustomTestResult, F1TelemetryUnitTestsBase
 from tests_collision_analyzer import (TestCollisionAnalyzer,
                                       TestCollisionPairKey,
                                       TestCollisionRecord)
-from tests_config import (TestCaptureSettings, TestConfigIO,
-                          TestDisplaySettings, TestEdgeCases, TestFilePathStr,
+from tests_config import (TestCaptureSettings, TestDisplaySettings,
+                          TestEdgeCases, TestFilePathStr,
                           TestForwardingSettings, TestHttpsSettings,
                           TestHudSettings, TestLoadConfigFromIni,
-                          TestLoggingSettings, TestMissingSectionsAndKeys,
-                          TestNetworkSettings, TestPitTimeLossF1,
-                          TestPitTimeLossF2, TestPngSettings,
-                          TestPrivacySettings, TestSampleSettingsFixture,
-                          TestStreamOverlaySettings, TestSubSysCtrl)
+                          TestLoadConfigFromJson, TestLoggingSettings,
+                          TestMissingSectionsAndKeys, TestNetworkSettings,
+                          TestPitTimeLossF1, TestPitTimeLossF2,
+                          TestPngSettings, TestPrivacySettings,
+                          TestSampleSettingsFixture, TestStreamOverlaySettings,
+                          TestSubSysCtrl)
 from tests_custom_markers import (TestCustomMarkerEntry,
                                   TestCustomMarkersHistory)
 from tests_data_per_driver import (TestTyreSetHistoryEntry,

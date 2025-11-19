@@ -23,10 +23,14 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .ini import load_config_from_ini, save_config_to_ini
+from .json import load_config_from_json, save_config_to_json
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
     'load_config_from_ini',
     'save_config_to_ini',
+
+    'load_config_from_json',
+    'save_config_to_json',
 ]

@@ -22,7 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .io import load_config_from_ini, save_config_to_ini
+from .io import load_config_from_ini, save_config_to_ini, save_config_to_json, load_config_from_json
 from .schema import (CaptureSettings, DisplaySettings,
                             ForwardingSettings, HttpsSettings, HudSettings, MfdPageSettings, MfdSettings,
                             LoggingSettings, NetworkSettings, PitTimeLossF1,
@@ -53,4 +53,7 @@ __all__ = [
 
     'load_config_from_ini',
     'save_config_to_ini',
+
+    'load_config_from_json',
+    'save_config_to_json',
 ]

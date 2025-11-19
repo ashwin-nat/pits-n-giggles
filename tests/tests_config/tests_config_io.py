@@ -23,47 +23,7 @@
 
 import os
 import sys
-
-from pydantic import ValidationError
-
-# Add the parent directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-import os
-import sys
-from unittest.mock import Mock, patch
-
-from pydantic import ValidationError
-
-from lib.config import LoggingSettings
-
-from .tests_config_base import TestF1ConfigBase
-
-# ----------------------------------------------------------------------------------------------------------------------
-# MIT License
-#
-# Copyright (c) [2025] [Ashwin Natarajan]
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-# pylint: skip-file
-
-
+import json
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -74,7 +34,8 @@ import tempfile
 from lib.config import (CaptureSettings, DisplaySettings, ForwardingSettings,
                         HttpsSettings, LoggingSettings, NetworkSettings,
                         PngSettings, PrivacySettings, StreamOverlaySettings,
-                        load_config_from_ini, save_config_to_ini)
+                        load_config_from_ini, load_config_from_json,
+                        save_config_to_ini, save_config_to_json)
 
 from .tests_config_base import TestF1ConfigBase
 
@@ -82,6 +43,20 @@ from .tests_config_base import TestF1ConfigBase
 
 class TestConfigIO(TestF1ConfigBase):
     """Test configuration I/O functions"""
+
+class TestLoadConfigFromIni(TestConfigIO):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.ini_path = os.path.join(self.temp_dir.name, "config.ini")
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def _write_ini(self, ini_dict: dict[str, dict[str, str]]):
+        cp = configparser.ConfigParser()
+        cp.read_dict(ini_dict)
+        with open(self.ini_path, "w", encoding="utf-8") as f:
+            cp.write(f)
 
     def test_save_config_to_ini(self):
         """Test saving configuration to INI file"""
@@ -396,20 +371,6 @@ cert_file_path = {cert_path}
             if os.path.exists(cert_path):
                 os.unlink(cert_path)
 
-class TestLoadConfigFromIni(TestF1ConfigBase):
-    def setUp(self):
-        self.temp_dir = tempfile.TemporaryDirectory()
-        self.ini_path = os.path.join(self.temp_dir.name, "config.ini")
-
-    def tearDown(self):
-        self.temp_dir.cleanup()
-
-    def _write_ini(self, ini_dict: dict[str, dict[str, str]]):
-        cp = configparser.ConfigParser()
-        cp.read_dict(ini_dict)
-        with open(self.ini_path, "w", encoding="utf-8") as f:
-            cp.write(f)
-
     def test_valid_config_loads_correctly(self):
         ini_data = {
             "Network": {"telemetry_port": "20778"},
@@ -456,3 +417,187 @@ class TestLoadConfigFromIni(TestF1ConfigBase):
         self.assertEqual(config.Network.telemetry_port, 20779)
         self.assertEqual(config.Forwarding.target_1, "")  # fallback default
         self.assertTrue(os.path.exists(self.ini_path + ".invalid"))
+
+class TestLoadConfigFromJson(TestConfigIO):
+
+    def setUp(self):
+        # One disposable folder per test
+        self.tmp = tempfile.TemporaryDirectory()
+        self.json_path = os.path.join(self.tmp.name, "config.json")
+
+    def tearDown(self):
+        # Clean up everything inside (including cert/key files)
+        self.tmp.cleanup()
+
+    def _write_json(self, data: dict):
+        with open(self.json_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4)
+
+    # ============================================================
+    # Saving Tests
+    # ============================================================
+
+    def test_save_config_to_json(self):
+        settings = PngSettings(
+            Network=NetworkSettings(telemetry_port=12345),
+            Capture=CaptureSettings(post_race_data_autosave=True),
+            Display=DisplaySettings(refresh_interval=150),
+            Logging=LoggingSettings(log_file="test.log"),
+            Privacy=PrivacySettings(process_car_setup=True),
+            Forwarding=ForwardingSettings(target_1="localhost:8080"),
+            StreamOverlay=StreamOverlaySettings(),
+        )
+
+        temp_json = os.path.join(self.tmp.name, "save.json")
+        save_config_to_json(settings, temp_json)
+
+        self.assertTrue(os.path.exists(temp_json))
+
+        with open(temp_json, "r") as f:
+            data = json.load(f)
+
+        self.assertEqual(data["Network"]["telemetry_port"], 12345)
+        self.assertEqual(data["Capture"]["post_race_data_autosave"], True)
+        self.assertEqual(data["Display"]["refresh_interval"], 150)
+        self.assertEqual(data["Logging"]["log_file"], "test.log")
+        self.assertEqual(data["Privacy"]["process_car_setup"], True)
+        self.assertEqual(data["Forwarding"]["target_1"], "localhost:8080")
+
+    # ============================================================
+    # Loading Tests
+    # ============================================================
+
+    def test_load_config_from_existing_json_old_config(self):
+        json_data = {
+            "Network": {"telemetry_port": 12345, "server_port": 9999},
+            "Capture": {"post_race_data_autosave": True},
+            "Display": {"refresh_interval": 150},
+            "Logging": {"log_file": "custom.log"},
+            "Privacy": {"process_car_setup": True},
+            "Forwarding": {"target_1": "localhost:8080"},
+        }
+
+        self._write_json(json_data)
+
+        settings = load_config_from_json(self.json_path)
+
+        self.assertEqual(settings.Network.telemetry_port, 12345)
+        self.assertEqual(settings.Network.server_port, 9999)
+        self.assertEqual(settings.Logging.log_file, "custom.log")
+
+        # new section auto-added
+        self.assertFalse(settings.HTTPS.enabled)
+
+    # ============================================================
+    # HTTPS tests (with temporary cert/key files)
+    # ============================================================
+
+    def test_load_config_from_existing_json_with_https(self):
+        key_path = os.path.join(self.tmp.name, "temp.key")
+        cert_path = os.path.join(self.tmp.name, "temp.crt")
+
+        # create the files
+        open(key_path, "w").close()
+        open(cert_path, "w").close()
+
+        json_data = {
+            "Network": {"telemetry_port": 12345, "server_port": 9999},
+            "Capture": {"post_race_data_autosave": True},
+            "Display": {"refresh_interval": 150},
+            "Logging": {"log_file": "custom.log"},
+            "Privacy": {"process_car_setup": True},
+            "Forwarding": {"target_1": "localhost:8080"},
+            "StreamOverlay": {"show_sample_data_at_start": True},
+            "HTTPS": {
+                "enabled": True,
+                "key_file_path": key_path,
+                "cert_file_path": cert_path,
+            },
+        }
+
+        self._write_json(json_data)
+
+        settings = load_config_from_json(self.json_path)
+
+        self.assertTrue(settings.HTTPS.enabled)
+        self.assertEqual(str(settings.HTTPS.key_file_path), key_path)
+        self.assertEqual(str(settings.HTTPS.cert_file_path), cert_path)
+
+    # ============================================================
+    # Missing file test
+    # ============================================================
+
+    def test_load_config_from_nonexistent_file(self):
+        self.assertFalse(os.path.exists(self.json_path))
+
+        settings = load_config_from_json(self.json_path)
+
+        self.assertTrue(os.path.exists(self.json_path))
+        self.assertIsInstance(settings, PngSettings)
+
+    # ============================================================
+    # Roundtrip tests
+    # ============================================================
+
+    def test_roundtrip_config_io(self):
+        original = PngSettings(
+            Network=NetworkSettings(telemetry_port=11111, server_port=22222),
+            Capture=CaptureSettings(post_race_data_autosave=True),
+            Display=DisplaySettings(refresh_interval=300),
+            Logging=LoggingSettings(log_file="roundtrip.log"),
+            Privacy=PrivacySettings(process_car_setup=True),
+            Forwarding=ForwardingSettings(
+                target_1="host1.example.com:8000",
+                target_2="host2.example.com:9000",
+            ),
+            StreamOverlay=StreamOverlaySettings(show_sample_data_at_start=True),
+        )
+
+        save_config_to_json(original, self.json_path)
+        loaded = load_config_from_json(self.json_path)
+
+        self.assertEqual(loaded.Network.telemetry_port, original.Network.telemetry_port)
+        self.assertEqual(loaded.Network.server_port, original.Network.server_port)
+        self.assertEqual(loaded.Capture.post_race_data_autosave, original.Capture.post_race_data_autosave)
+        self.assertEqual(loaded.Display.refresh_interval, original.Display.refresh_interval)
+        self.assertEqual(loaded.Logging.log_file, original.Logging.log_file)
+        self.assertEqual(loaded.Privacy.process_car_setup, original.Privacy.process_car_setup)
+        self.assertEqual(loaded.Forwarding.target_1, original.Forwarding.target_1)
+        self.assertEqual(loaded.Forwarding.target_2, original.Forwarding.target_2)
+        self.assertEqual(loaded.StreamOverlay.show_sample_data_at_start, original.StreamOverlay.show_sample_data_at_start)
+
+
+    # ============================================================
+    # Backup behavior
+    # ============================================================
+
+    def test_invalid_config_creates_backup_and_uses_defaults(self):
+        self._write_json({
+            "Display": {"refresh_interval": 0},   # invalid
+            "Logging": {"log_file": "C:/bad.log"} # invalid
+        })
+
+        config = load_config_from_json(self.json_path)
+
+        self.assertEqual(config.Display.refresh_interval, 200)
+        self.assertEqual(config.Logging.log_file, "png.log")
+
+        backup = self.json_path + ".invalid"
+        self.assertTrue(os.path.exists(backup))
+
+    # ============================================================
+    # Partial invalid section
+    # ============================================================
+
+    def test_partial_config_with_one_invalid_field(self):
+        self._write_json({
+            "Network": {"telemetry_port": 20779},
+            "Forwarding": {"target_1": "bad-value"},  # invalid
+        })
+
+        config = load_config_from_json(self.json_path)
+
+        self.assertEqual(config.Network.telemetry_port, 20779)
+        self.assertEqual(config.Forwarding.target_1, "")
+
+        self.assertTrue(os.path.exists(self.json_path + ".invalid"))
