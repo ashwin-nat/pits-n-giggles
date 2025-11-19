@@ -228,7 +228,7 @@ class TestHudSettings(TestF1ConfigBase):
             "lap_times",
             "weather_forecast",
             "fuel_info",
-            "tyre_wear",
+            "tyre_info",
             "pit_rejoin",
         }
 
@@ -288,7 +288,7 @@ class TestHudSettings(TestF1ConfigBase):
 
         mfd.pages["lap_times"].position = 3
         mfd.pages["fuel_info"].position = 1
-        mfd.pages["tyre_wear"].position = 2
+        mfd.pages["tyre_info"].position = 2
 
         sorted_pages = mfd.sorted_enabled_pages()
 
@@ -363,11 +363,11 @@ class TestHudSettings(TestF1ConfigBase):
         old = HudSettings()
         new = HudSettings()
 
-        new.mfd_settings.pages["tyre_wear"].enabled = False
+        new.mfd_settings.pages["tyre_info"].enabled = False
 
         diff = new.diff(old)
 
         self.assertIn("mfd_settings", diff)
         self.assertIn("pages", diff["mfd_settings"])
-        self.assertIn("tyre_wear", diff["mfd_settings"]["pages"])
-        self.assertIn("enabled", diff["mfd_settings"]["pages"]["tyre_wear"])
+        self.assertIn("tyre_info", diff["mfd_settings"]["pages"])
+        self.assertIn("enabled", diff["mfd_settings"]["pages"]["tyre_info"])

@@ -51,7 +51,7 @@ DEFAULT_PAGES = {
     "lap_times": MfdPageSettings(enabled=True, position=1, description="Lap Times"),
     "weather_forecast": MfdPageSettings(enabled=True, position=2, description="Weather Forecast"),
     "fuel_info": MfdPageSettings(enabled=True, position=3, description="Fuel Info"),
-    "tyre_wear": MfdPageSettings(enabled=True, position=4, description="Tyre Wear"),
+    "tyre_info": MfdPageSettings(enabled=True, position=4, description="Tyre Info"),
     "pit_rejoin": MfdPageSettings(enabled=True, position=5, description="Pit Rejoin"),
 }
 
