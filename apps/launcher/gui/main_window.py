@@ -28,15 +28,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
-from PySide6.QtCore import QRunnable, QSize, Qt, QThreadPool
+from PySide6.QtCore import QSize, Qt, QThreadPool, QTimer, Signal
 from PySide6.QtGui import QCloseEvent, QFont, QIcon
 from PySide6.QtWidgets import (QApplication, QFileDialog, QGridLayout,
                                QHBoxLayout, QLabel, QMainWindow, QMessageBox,
                                QPushButton, QSplitter, QVBoxLayout, QWidget)
 
 from apps.launcher.logger import get_rotating_logger
-from apps.launcher.subsystems import (BackendAppMgr, HudAppMgr,
-                                         PngAppMgrBase, SaveViewerAppMgr)
+from apps.launcher.subsystems import (BackendAppMgr, HudAppMgr, PngAppMgrBase,
+                                      SaveViewerAppMgr)
 from lib.config import PngSettings, load_config_migrated, save_config_to_json
 from lib.file_path import resolve_user_file
 from meta.meta import APP_NAME
@@ -44,32 +44,35 @@ from meta.meta import APP_NAME
 from .console import ConsoleWidget, LogSignals
 from .settings import SettingsWindow
 from .subsys_row import SubsystemCard
+from .tasks import SettingsChangeTask, StopTask, UpdateCheckTask
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class StopTask(QRunnable):
-    def __init__(self, subsystem: PngAppMgrBase, reason: str):
-        super().__init__()
-        self.subsystem = subsystem
-        self.reason = reason
-
-    def run(self):
-        # This runs in a worker thread
-        self.subsystem.stop(self.reason)
-
-class SettingsChangeTask(QRunnable):
-    def __init__(self, subsystem: PngAppMgrBase, new_settings: PngSettings):
-        super().__init__()
-        self.subsystem = subsystem
-        self.new_settings = new_settings
-
-    def run(self):
-        # This runs in a worker thread
-        if self.subsystem.on_settings_change(self.new_settings):
-            self.subsystem.restart("Settings changed")
-
 class PngLauncherWindow(QMainWindow):
     """Main launcher window"""
+
+    update_available = Signal()
+
+    BUTTON_STYLESHEET = """
+        QPushButton#updates_btn {
+            background-color: #3e3e3e;
+            border: 1px solid #4e4e4e;
+            border-radius: 6px;
+            padding: 0px;
+        }
+        QPushButton#updates_btn:hover {
+            background-color: #0e639c;
+            border: 1px solid #1177bb;
+        }
+        QPushButton#updates_btn:pressed {
+            background-color: #0d5689;
+        }
+        QPushButton#updates_btn:disabled {
+            background-color: #2d2d2d;
+            border-color: #2d2d2d;
+            opacity: 0.4;
+        }
+    """
 
     def __init__(self,
                  ver_str: str,
@@ -105,6 +108,13 @@ class PngLauncherWindow(QMainWindow):
         self.config_file_new = resolve_user_file("png_config.json")
         self.settings: PngSettings = load_config_migrated(self.config_file_legacy, self.config_file_new,
                                                           logger=self.logger)
+
+        # Update button blink timer
+        self.update_blink_timer = QTimer(self)
+        self.update_blink_timer.setInterval(2000)
+        self.update_blink_timer.timeout.connect(self._toggle_update_button_blink)
+        self._update_blink_state = False
+        self.update_available.connect(self.mark_update_button_available)
 
         # Common args
         args = ["--config-file", self.config_file_new]
@@ -185,6 +195,7 @@ class PngLauncherWindow(QMainWindow):
     def setup_ui(self):
         """Setup the main UI"""
         self.setWindowTitle(APP_NAME)
+        self.thread_pool = QThreadPool.globalInstance()
         self.setMinimumSize(1000, 700)
 
         # Clean dark theme
@@ -250,6 +261,7 @@ class PngLauncherWindow(QMainWindow):
         # Updates button
         self.updates_btn = self.build_button(self.get_icon("updates"), self.on_updates_clicked,
                                              "Download Latest Version")
+        self.updates_btn.setObjectName("updates_btn")
         global_buttons_layout.addWidget(self.updates_btn)
 
         top_bar_layout.addLayout(global_buttons_layout)
@@ -283,6 +295,10 @@ class PngLauncherWindow(QMainWindow):
 
         # Initial log
         self.info_log(f"{APP_NAME} {self.ver_str} started")
+
+        # Check for updates in parallel (no-op in dev/beta mode)
+        if self.ver_str != "dev" and "beta" not in self.ver_str:
+            self.thread_pool.start(UpdateCheckTask(self, self.ver_str))
 
     def create_subsystems_area(self) -> QWidget:
         """Create the subsystems display area with grid layout"""
@@ -475,26 +491,7 @@ class PngLauncherWindow(QMainWindow):
         btn.setIconSize(QSize(20, 20))
 
         btn.setFixedSize(32, 32)
-        btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3e3e3e;
-                border: 1px solid #4e4e4e;
-                border-radius: 6px;
-                padding: 0px;
-            }
-            QPushButton:hover {
-                background-color: #0e639c;
-                border: 1px solid #1177bb;
-            }
-            QPushButton:pressed {
-                background-color: #0d5689;
-            }
-            QPushButton:disabled {
-                background-color: #2d2d2d;
-                border-color: #2d2d2d;
-                opacity: 0.4;
-            }
-        """)
+        btn.setStyleSheet(self.BUTTON_STYLESHEET)
 
         btn.clicked.connect(callback)
         self.set_button_tooltip(btn, tooltip)
@@ -585,3 +582,24 @@ class PngLauncherWindow(QMainWindow):
 
 
         self.settings = new_settings
+
+    def mark_update_button_available(self):
+        """Mark the update button as available"""
+        if not self.update_blink_timer.isActive():
+            self.update_blink_timer.start()
+
+    def _toggle_update_button_blink(self):
+        """Toggle the update button blink state"""
+        self._update_blink_state = not self._update_blink_state
+        if self._update_blink_state:
+            self.updates_btn.setStyleSheet("""
+                QPushButton#updates_btn {
+                    background-color: #d64a4a;
+                    border: 1px solid #aa0000;
+                    border-radius: 6px;
+                    padding: 0px;
+                }
+            """)
+        else:
+            self.updates_btn.setStyleSheet(self.BUTTON_STYLESHEET)
+
