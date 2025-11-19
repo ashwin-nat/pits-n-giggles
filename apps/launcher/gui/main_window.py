@@ -179,6 +179,7 @@ class PngLauncherWindow(QMainWindow):
             "arrow-down" : self._load_icon(icons_path_base / "arrow-down.svg"),
             "arrow-up" : self._load_icon(icons_path_base / "arrow-up.svg"),
             "dashboard" : self._load_icon(icons_path_base / "dashboard.svg"),
+            "download" : self._load_icon(icons_path_base / "download.svg"),
             "discord" : self._load_icon(icons_path_base / "discord.svg"),
             "lock" : self._load_icon(icons_path_base / "lock.svg"),
             "next-page" : self._load_icon(icons_path_base / "next-page.svg"),
@@ -268,9 +269,14 @@ class PngLauncherWindow(QMainWindow):
 
         # Updates button
         self.updates_btn = self.build_button(self.get_icon("updates"), self.on_updates_clicked,
-                                             "Download Latest Version")
+                                             "What's New")
         self.updates_btn.setObjectName("updates_btn")
         global_buttons_layout.addWidget(self.updates_btn)
+
+        # Download button
+        self.download_btn = self.build_button(self.get_icon("download"), self.on_download_clicked,
+                                              "Download Latest Releases")
+        global_buttons_layout.addWidget(self.download_btn)
 
         top_bar_layout.addLayout(global_buttons_layout)
         main_layout.addLayout(top_bar_layout)
@@ -565,6 +571,11 @@ class PngLauncherWindow(QMainWindow):
 
     def on_updates_clicked(self):
         """Handle updates button click"""
+        self.info_log("Updates button clicked")
+        # TODO - implement release notes
+
+    def on_download_clicked(self):
+        """Handle download button click"""
         webbrowser.open("https://pitsngiggles.com/releases")
 
     def on_settings_changed(self, new_settings: PngSettings):
