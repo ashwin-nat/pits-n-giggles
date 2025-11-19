@@ -54,23 +54,31 @@ class PngLauncherWindow(QMainWindow):
     update_available = Signal()
 
     BUTTON_STYLESHEET = """
-        QPushButton#updates_btn {
+        QPushButton {
             background-color: #3e3e3e;
             border: 1px solid #4e4e4e;
             border-radius: 6px;
             padding: 0px;
         }
-        QPushButton#updates_btn:hover {
+        QPushButton:hover {
             background-color: #0e639c;
             border: 1px solid #1177bb;
         }
-        QPushButton#updates_btn:pressed {
+        QPushButton:pressed {
             background-color: #0d5689;
         }
-        QPushButton#updates_btn:disabled {
+        QPushButton:disabled {
             background-color: #2d2d2d;
             border-color: #2d2d2d;
             opacity: 0.4;
+        }
+    """
+    UPDATE_BLINK_STYLESHEET = """
+        QPushButton#updates_btn {
+            background-color: #d64a4a;
+            border: 1px solid #aa0000;
+            border-radius: 6px;
+            padding: 0px;
         }
     """
 
@@ -592,14 +600,7 @@ class PngLauncherWindow(QMainWindow):
         """Toggle the update button blink state"""
         self._update_blink_state = not self._update_blink_state
         if self._update_blink_state:
-            self.updates_btn.setStyleSheet("""
-                QPushButton#updates_btn {
-                    background-color: #d64a4a;
-                    border: 1px solid #aa0000;
-                    border-radius: 6px;
-                    padding: 0px;
-                }
-            """)
+            self.updates_btn.setStyleSheet(self.UPDATE_BLINK_STYLESHEET)
         else:
             self.updates_btn.setStyleSheet(self.BUTTON_STYLESHEET)
 
