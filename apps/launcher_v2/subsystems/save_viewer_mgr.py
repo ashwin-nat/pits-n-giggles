@@ -161,3 +161,20 @@ class SaveViewerAppMgr(PngAppMgrBase):
             self.debug_log(f"{self.display_name}:Error during start/stop: {e}")
             # If no exception, it will be handled in post_start/post_stop
             self.set_button_state(self.start_stop_button, True)
+
+    def on_settings_change(self, new_settings: PngSettings) -> bool:
+        """Handle changes in settings for the backend application
+
+        :param new_settings: New settings
+
+        :return: True if the app needs to be restarted
+        """
+
+        diff = self.curr_settings.diff(new_settings, {
+            "Network": ["save_viewer_port"],
+        })
+        self.debug_log(f"{self.display_name} Settings changed: {diff}")
+        # Update the port number
+        should_restart = (self.port != new_settings.Network.save_viewer_port)
+        self.port = new_settings.Network.save_viewer_port
+        return should_restart

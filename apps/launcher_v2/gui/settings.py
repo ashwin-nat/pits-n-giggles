@@ -832,6 +832,9 @@ class SettingsWindow(QDialog):
         try:
             # Validate the working settings
             validated_settings = PngSettings.model_validate(self.working_settings.model_dump())
+            if not self.original_settings.has_changed(validated_settings):
+                self.parent_window.debug_log("Settings unchanged, not saving")
+                return
 
             # Call the callback if provided
             if self.on_settings_change:

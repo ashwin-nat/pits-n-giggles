@@ -36,7 +36,7 @@ from PySide6.QtGui import QFont, QTextCursor, QCloseEvent, QIcon
 
 from apps.launcher_v2.subsystems import BackendAppMgr, SaveViewerAppMgr, HudAppMgr, PngAppMgrBase
 from lib.file_path import resolve_user_file
-from lib.config import PngSettings, load_config_migrated
+from lib.config import PngSettings, load_config_migrated, save_config_to_json
 from apps.launcher_v2.logger import get_rotating_logger
 from .console import LogSignals, ConsoleWidget
 from .subsys_row import SubsystemCard
@@ -54,6 +54,17 @@ class StopTask(QRunnable):
     def run(self):
         # This runs in a worker thread
         self.subsystem.stop(self.reason)
+
+class SettingsChangeTask(QRunnable):
+    def __init__(self, subsystem: PngAppMgrBase, new_settings: PngSettings):
+        super().__init__()
+        self.subsystem = subsystem
+        self.new_settings = new_settings
+
+    def run(self):
+        # This runs in a worker thread
+        if self.subsystem.on_settings_change(self.new_settings):
+            self.subsystem.restart("Settings changed")
 
 class PngLauncherWindow(QMainWindow):
     """Main launcher window"""
@@ -480,14 +491,7 @@ class PngLauncherWindow(QMainWindow):
     def on_settings_clicked(self):
         """Handle settings button click"""
 
-        def on_settings_changed(new_settings: PngSettings):
-            self.settings = new_settings
-            # Save to file
-            with open(self.config_file_new, 'w') as f:
-                f.write(new_settings.model_dump_json(indent=2))
-            self.info_log("Settings saved successfully")
-
-        dialog = SettingsWindow(self, self.settings, on_settings_changed)
+        dialog = SettingsWindow(self, self.settings, self.on_settings_changed)
         dialog.exec()
 
     def on_discord_clicked(self):
@@ -501,3 +505,27 @@ class PngLauncherWindow(QMainWindow):
     def on_updates_clicked(self):
         """Handle updates button click"""
         webbrowser.open("https://pitsngiggles.com/releases")
+
+    def on_settings_changed(self, new_settings: PngSettings):
+        """Handle settings changed event"""
+        try:
+            save_config_to_json(new_settings, self.config_file_new)
+        except Exception as e: # pylint: disable=broad-exception-caught
+            self.error_log(f"Failed to save settings to {self.config_file_new}: {e}")
+
+        self.info_log("Settings saved successfully")
+
+        pool = QThreadPool.globalInstance()
+        tasks = []
+
+        for subsystem in self.subsystems:
+            self.debug_log(f"On settings change for {subsystem.display_name}...")
+            task = SettingsChangeTask(subsystem, new_settings)
+            tasks.append(task)
+            pool.start(task)
+
+        pool.waitForDone()
+        self.show_success("Settings Changed", "The settings have been saved and applied successfully.")
+
+
+        self.settings = new_settings

@@ -311,3 +311,31 @@ class HudAppMgr(PngAppMgrBase):
         while (not self.integration_test_stop_event.is_set()) and \
             (not self.integration_test_stop_event.wait(timeout=self.integration_test_interval)):
             self.next_page_callback()
+
+    def on_settings_change(self, new_settings: PngSettings) -> bool:
+        """Handle changes in settings for the backend application
+
+        :param new_settings: New settings
+
+        :return: True if the app needs to be restarted
+        """
+
+        diff = self.curr_settings.diff(new_settings, {
+            "HUD": [
+                "enabled",
+                "show_lap_timer",
+                "show_timing_tower",
+            ],
+        })
+        self.debug_log(f"{self.display_name} Settings changed: {json.dumps(diff, indent=2)}")
+        should_restart = bool(diff)
+        if should_restart:
+            self.enabled = new_settings.HUD.enabled
+
+        if self.curr_settings.diff(new_settings, {
+            "HUD": [
+                "overlays_opacity",
+            ],
+        }):
+            self._send_overlays_opacity_change(new_settings)
+        return should_restart

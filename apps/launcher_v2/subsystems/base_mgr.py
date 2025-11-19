@@ -153,6 +153,15 @@ class PngAppMgrBase(QObject):
         """
         raise NotImplementedError
 
+    def on_settings_change(self, new_settings: PngSettings) -> bool:
+        """Handle changes in settings for the sub-application
+
+        :param new_settings: New settings
+
+        :return: True if the app needs to be restarted
+        """
+        raise NotImplementedError
+
     def get_launch_command(self) -> List[str]:
         """Build the subprocess launch command"""
         if getattr(sys, "frozen", False):
