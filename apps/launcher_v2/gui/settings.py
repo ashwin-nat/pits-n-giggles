@@ -20,6 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# -------------------------------------- IMPORTS -----------------------------------------------------------------------
+
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, List, Tuple
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QCheckBox,
@@ -36,6 +38,7 @@ from lib.config import PngSettings
 if TYPE_CHECKING:
     from .main_window import PngLauncherWindow
 
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class SettingsWindow(QDialog):
     """Dynamic settings window that builds UI from PngSettings schema"""
