@@ -132,17 +132,16 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
-    # TODO: temporarily removing MFD settings. will re-introduce this in new launcher branch
-    # mfd_settings: MfdSettings = Field(
-    #     default=MfdSettings(),
-    #     description="MFD overlay settings",
-    #     json_schema_extra={
-    #         "ui": {
-    #             "type" : "page",
-    #             "visible": True
-    #         }
-    #     }
-    # )
+    mfd_settings: MfdSettings = Field(
+        default=MfdSettings(),
+        description="MFD overlay settings",
+        json_schema_extra={
+            "ui": {
+                "type" : "page",
+                "visible": True
+            }
+        }
+    )
     toggle_overlays_udp_action_code: int = Field(
         default=10,
         ge=1,
